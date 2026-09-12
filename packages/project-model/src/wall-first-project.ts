@@ -146,9 +146,11 @@ export function validateWallFirstProject(input: unknown): WallFirstProjectValida
 	}
 
 	// P23.6H (S1b): the canonical Save writer requires canonical current-format
-	// state. A pre-H payload that bypassed the compatible decode rejects by name
-	// here instead of being persisted with pre-H field meaning — the compatible
-	// read boundary (`decodeLayoutValueCompatible`) is the one normalization seam.
+	// state. A non-current wall-first payload rejects by name here instead of
+	// being persisted with a superseded field meaning — there is no
+	// normalization seam: v5 is the only recognized wall-first version and a
+	// `4` payload fails as `unsupported_format_version` on every boundary
+	// (pre-baseline policy).
 	const layoutVersionIssue = wallFirstCanonicalFormatVersionIssue(record.layout);
 	if (layoutVersionIssue) {
 		issues.push(toSaveIssue('layout', prefixIssue('$.layout', layoutVersionIssue)));
