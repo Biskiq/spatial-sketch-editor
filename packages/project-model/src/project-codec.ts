@@ -166,11 +166,11 @@ export function parseProjectJson(
  *   compatibility*).
  * - A legacy (Room-owned, version-less) Layout is a different shape and is not
  *   gated here: the wall-first gate applies only when the payload declares a
- *   Layout format version. That path is retained **temporarily** because current
- *   internal demo/benchmark assets still depend on it — a development dependency,
- *   not a compatibility promise (`docs/north-star.md` → *Development-stage schema
- *   compatibility*) — and retiring the legacy write shape is P23.7's closeout
- *   decision, not a silent consequence of this gate.
+ *   Layout format version. That path is retained **temporarily** for internal
+ *   development assets — a development dependency, not a compatibility promise
+ *   (`docs/north-star.md` → *Development-stage schema compatibility*).
+ *   Retirement is tracked by GitHub Issue #26 and is explicitly post-P23, not a
+ *   silent consequence of this gate.
  *
  * `createProject()` stays a tolerant constructor (it returns the validated
  * document and writes nothing); the one rule is exported so any other writer can
