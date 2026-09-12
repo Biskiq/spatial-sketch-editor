@@ -60,7 +60,7 @@ function baseDocument(): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();
 	return {
 		...document,
-		floor: { ...document.floor, id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 }
+		floor: { ...document.floor, id: 'floor-1', name: 'Floor 1', elevation: 0 }
 	};
 }
 

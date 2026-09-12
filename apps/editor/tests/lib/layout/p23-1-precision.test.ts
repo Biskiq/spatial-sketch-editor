@@ -20,7 +20,7 @@ function squareDocument(): LayoutDocumentWallFirst {
 		// Canonical-current fixture: the pre-H `4` literal belongs only to
 		// historical compatibility fixtures (P23.6H H4 audit).
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },
 			{ id: 'B', point: [4, 0] },

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createEmptyProject, createEmptyWallFirstProject } from '$lib/project/project-codec';
-import { LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION } from '$lib/layout/layout-wall-first-types';
 import {
 	clearPendingCloudSave,
 	createProjectApi,
@@ -283,26 +282,24 @@ describe('project persistence client', () => {
 		expect(values.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
 	});
 
-	it('refuses a pre-H project instead of persisting it', () => {
-		// P23.6H S1b — the session handoff is a writer, so it carries the same
-		// current-format gate as `serializeProject()`: storing a pre-H payload
-		// would freeze pre-H `wall.height` meaning into the handoff.
+	it('refuses a superseded layout version instead of persisting it', () => {
+		// The session handoff is a writer, so it carries the same current-format
+		// gate as `serializeProject()`: a payload declaring any other version fails
+		// closed rather than freezing superseded meaning into the handoff. P23.6I
+		// recognizes one wall-first version, so `4` is unsupported, not migrated.
 		const values = new Map<string, string>();
 		const storage = {
 			getItem: (key: string) => values.get(key) ?? null,
 			setItem: (key: string, value: string) => values.set(key, value),
 			removeItem: (key: string) => values.delete(key)
 		};
-		const project = createEmptyWallFirstProject({ id: 'project:pre-h', name: 'Pre-H' });
-		const preH = {
+		const project = createEmptyWallFirstProject({ id: 'project:superseded', name: 'Superseded' });
+		const superseded = {
 			...project,
-			layout: {
-				...project.layout,
-				formatVersion: LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION
-			}
+			layout: { ...project.layout, formatVersion: 4 }
 		};
 
-		expect(writePendingCloudSave(preH, storage, 1_000_000)).toBe(false);
+		expect(writePendingCloudSave(superseded, storage, 1_000_000)).toBe(false);
 		expect(values.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
 		// The current-format document still writes normally.
 		expect(writePendingCloudSave(project, storage, 1_000_000)).toBe(true);

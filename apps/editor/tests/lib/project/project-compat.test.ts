@@ -8,10 +8,7 @@ import {
 	ProjectValidationError
 } from '$lib/project/project-codec';
 import type { Project } from '$lib/project/project-types';
-import {
-	LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION
-} from '$lib/layout/layout-wall-first-types';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-wall-first-types';
 import { decodeProjectCompatible } from '$lib/content/scene-format';
 import { identifySceneFormat } from '$lib/content/scene-format';
 
@@ -210,7 +207,7 @@ describe('project compatible decode (P23.0a)', () => {
 			layout: {
 				units: 'meters',
 				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
 				junctions: [],
 				walls: [],
 				rooms: [],
@@ -280,7 +277,7 @@ describe('P23.1 wall-first project codec', () => {
 			layout: {
 				units: 'meters',
 				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
 				junctions: [],
 				walls: [],
 				rooms: [],
@@ -292,19 +289,20 @@ describe('P23.1 wall-first project codec', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('the generic project serializer refuses a pre-H layout while the reader stays tolerant', () => {
-		// P23.6H S1b — one rule for every canonical writer. Both halves matter:
-		// the READ path must keep loading a stored pre-H payload (the API
-		// publication path validates persisted releases through `validateProject`),
-		// and the WRITE path must not emit that payload unchanged with pre-H
-		// `wall.height` meaning.
+	it('refuses a superseded wall-first version on both the read and write paths', () => {
+		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
+		// reached `main` before this branch is **not** a supported version, so
+		// neither path migrates it (`docs/north-star.md` → Development-stage schema
+		// compatibility). Reinterpreting the stored payload was the rejected
+		// alternative — under `4` the Floor *was* the vertical authority, so reading
+		// it as current state would change what the document says.
 		const project = validProject();
-		const preH = {
+		const superseded = {
 			...project,
 			scene: { ...project.scene, formatVersion: 1 as const },
 			layout: {
 				units: 'meters',
-				formatVersion: LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION,
+				formatVersion: 4,
 				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
 				junctions: [],
 				walls: [],
@@ -314,13 +312,17 @@ describe('P23.1 wall-first project codec', () => {
 			}
 		};
 
-		// Reader: still tolerant, so historical reads never break.
-		expect(validateProject(preH).success).toBe(true);
+		// Reader: rejects by name. Only the legacy (version-less) Room-owned shape
+		// stays tolerant; a declared version the decoder does not implement is an
+		// explicit failure rather than a silent reinterpretation.
+		const read = validateProject(superseded);
+		expect(read.success).toBe(false);
+		expect(issueCodes(read)).toContain('unsupported_format_version');
 
-		// Writer: fails closed by name, with the path prefixed onto the Layout half.
+		// Writer: the same failure, with the path prefixed onto the Layout half.
 		let thrown: unknown;
 		try {
-			serializeProject(preH);
+			serializeProject(superseded);
 		} catch (error) {
 			thrown = error;
 		}
@@ -329,20 +331,25 @@ describe('P23.1 wall-first project codec', () => {
 		expect(issue.code).toBe('unsupported_format_version');
 		expect(issue.path).toBe('$.layout.formatVersion');
 
-		// The compatible read path is what makes the same project writable: it
-		// normalizes to the current format, and the writer then succeeds.
-		const decoded = decodeProjectCompatible(preH);
-		if (decoded.kind !== 'wall-first' && decoded.kind !== 'migrated') {
-			throw new Error(`expected a wall-first decode: ${decoded.kind}`);
-		}
-		const migrated = {
-			id: decoded.project.id,
-			name: decoded.project.name,
-			layout: decoded.project.layout,
-			scene: decoded.project.scene
+		// The supported shapes still round-trip: the legacy Room-owned project and
+		// the canonical wall-first project both serialize.
+		expect(serializeProject(validProject())).toBeTruthy();
+		const canonical = {
+			...project,
+			scene: { ...project.scene, formatVersion: 1 as const },
+			layout: {
+				units: 'meters',
+				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
+				junctions: [],
+				walls: [],
+				rooms: [],
+				openings: [],
+				objects: []
+			}
 		};
-		expect(validateProject(migrated).success).toBe(true);
-		expect(serializeProject(migrated)).toContain(
+		expect(validateProject(canonical).success).toBe(true);
+		expect(serializeProject(canonical)).toContain(
 			`"formatVersion": ${LAYOUT_WALL_FIRST_FORMAT_VERSION}`
 		);
 	});

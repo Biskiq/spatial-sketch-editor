@@ -568,7 +568,7 @@ describe('unified project tree — wall-first documents', () => {
 			units: 'meters',
 			// Canonical-current fixture (P23.6H bumped the format 4 → 5).
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: [0, 0] },
 				{ id: 'j2', point: [5, 0] },

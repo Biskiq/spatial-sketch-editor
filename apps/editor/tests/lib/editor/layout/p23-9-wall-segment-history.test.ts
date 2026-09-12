@@ -34,7 +34,7 @@ import type { LayoutVec2 } from '$lib/layout/layout-types';
 function wallFirstPreviewState(): ReturnType<typeof createEmptyLayoutPreviewState> {
 	const state = createEmptyLayoutPreviewState();
 	const document = createEmptyWallFirstLayoutDocument();
-	document.floor = { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 };
+	document.floor = { id: 'floor-1', name: 'Floor 1', elevation: 0 };
 	const imported = importLayoutPreviewJson(state, serializeWallFirstLayoutDocument(document));
 	if (!imported) throw new Error('wall-first import failed');
 	return state;

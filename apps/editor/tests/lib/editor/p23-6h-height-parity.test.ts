@@ -39,12 +39,12 @@ function source(relativePath: string): string {
 }
 
 /** One straight canonical Wall from (0,0) to (4,0) at the given height. */
-function wallDocument(options: { wallHeight: number; floorHeight?: number; elevation?: number; sillHeight?: number; openingHeight?: number }): LayoutDocumentWallFirst {
-	const floorHeight = options.floorHeight ?? 3;
+function wallDocument(options: { wallHeight: number; elevation?: number; sillHeight?: number; openingHeight?: number }): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
 		formatVersion: 5,
-		floor: { id: 'floor-1', name: 'Floor 1', elevation: options.elevation ?? 0, height: floorHeight },
+		// P23.6I — the canonical Floor has no vertical extent; only the Wall does.
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: options.elevation ?? 0 },
 		junctions: [
 			{ id: 'j1', point: [0, 0] as LayoutVec2 },
 			{ id: 'j2', point: [4, 0] as LayoutVec2 }
@@ -81,7 +81,7 @@ function wallDocument(options: { wallHeight: number; floorHeight?: number; eleva
 
 describe('P23.6H mesh parity — one compiled Wall contract', () => {
 	it('builds a Wall mesh whose top equals the compiled Wall top (1.2 m partition)', () => {
-		const document = wallDocument({ wallHeight: 1.2, floorHeight: 3, elevation: 0 });
+		const document = wallDocument({ wallHeight: 1.2, elevation: 0 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		const wall = compiled.geometry.walls[0]!;
 		expect(wall.height).toBe(1.2);
@@ -94,7 +94,7 @@ describe('P23.6H mesh parity — one compiled Wall contract', () => {
 	});
 
 	it('keeps mesh and compiled extent identical on a raised Floor too', () => {
-		const document = wallDocument({ wallHeight: 0.9, floorHeight: 3.5, elevation: 1.25 });
+		const document = wallDocument({ wallHeight: 0.9, elevation: 1.25 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		const wall = compiled.geometry.walls[0]!;
 		const result = buildStandaloneWallMesh(wall, document.floor.elevation);
@@ -107,7 +107,7 @@ describe('P23.6H mesh parity — one compiled Wall contract', () => {
 	it('cuts an Opening against the hosting Wall height, not the Floor envelope', () => {
 		// 2.4 m Wall with a 2.1 m door: the cut must end at the Wall top, and the
 		// mesh must not extend to the 3 m Floor ceiling.
-		const document = wallDocument({ wallHeight: 2.4, floorHeight: 3, openingHeight: 2.1 });
+		const document = wallDocument({ wallHeight: 2.4, openingHeight: 2.1 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		expect(compiled.issues.filter((issue) => issue.severity !== 'warning')).toEqual([]);
 		const wall = compiled.geometry.walls[0]!;

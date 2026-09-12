@@ -154,20 +154,23 @@ export function parseProjectJson(
  * Boundary, stated explicitly so there are not two silent writer contracts:
  *
  * - `validateProject()` / `parseProjectJson()` are **readers** and stay
- *   version-tolerant on purpose — a stored pre-H release must remain loadable,
- *   and `apps/api/src/publication-persistence.ts` validates already-persisted
- *   releases through `validateProject()`.
+ *   tolerant on purpose — a stored legacy (Room-owned, version-less) release
+ *   must remain loadable, and `apps/api/src/publication-persistence.ts`
+ *   validates already-persisted releases through `validateProject()`.
  * - `serializeProject()` (and the editor facade that re-exports it) is a
- *   **writer**: it must not persist a pre-H wall-first Layout whose `height`
- *   values carried different meaning, so a declared version other than the
- *   current canonical one rejects here by name instead of being emitted
- *   unchanged. Historical payloads are normalized on the compatible **read**
- *   path (`decodeLayoutValueCompatible` → `normalizePreHWallFirstLayout`), which
- *   is the only migration seam.
- * - A legacy (Room-owned, version-less) Layout is a different, deliberately
- *   supported shape and is not gated here: the wall-first gate applies only when
- *   the payload declares a Layout format version. Retiring the legacy write
- *   shape is P23.7's closeout decision, not a silent consequence of this gate.
+ *   **writer**: a Layout that declares a version other than the single current
+ *   canonical one rejects here by name instead of being emitted unchanged. There
+ *   is no read-side normalization seam to point at: P23.6I recognizes exactly one
+ *   wall-first version (`5`) and a `4` payload fails as an unsupported version
+ *   rather than being migrated (`docs/north-star.md` → *Development-stage schema
+ *   compatibility*).
+ * - A legacy (Room-owned, version-less) Layout is a different shape and is not
+ *   gated here: the wall-first gate applies only when the payload declares a
+ *   Layout format version. That path is retained **temporarily** because current
+ *   internal demo/benchmark assets still depend on it — a development dependency,
+ *   not a compatibility promise (`docs/north-star.md` → *Development-stage schema
+ *   compatibility*) — and retiring the legacy write shape is P23.7's closeout
+ *   decision, not a silent consequence of this gate.
  *
  * `createProject()` stays a tolerant constructor (it returns the validated
  * document and writes nothing); the one rule is exported so any other writer can

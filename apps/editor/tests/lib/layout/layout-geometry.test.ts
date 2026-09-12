@@ -272,7 +272,7 @@ describe('compileLayoutGeometry', () => {
 		const document: LayoutDocumentWallFirst = {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j-a', point: [0, 0] },
 				{ id: 'j-b', point: [6, 0] },
@@ -337,7 +337,7 @@ describe('compileLayoutGeometry', () => {
 		const document: LayoutDocumentWallFirst = {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j-a', point: [0, 0] },
 				{ id: 'j-b', point: [4, 0] }

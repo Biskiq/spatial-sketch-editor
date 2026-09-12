@@ -183,7 +183,7 @@ describe('P23.0 F0 stage 1 — central format-dispatch policy tables', () => {
 		const wallFirstShape = {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [],
 			walls: [],
 			rooms: [],
@@ -307,7 +307,7 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 	const wallFirstLayout = {
 		units: 'meters',
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [
 			{ id: 'j-a', point: [0, 0] },
 			{ id: 'j-b', point: [6, 0] },

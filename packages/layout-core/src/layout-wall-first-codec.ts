@@ -32,12 +32,17 @@ import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	KNOWN_LAYOUT_FORMAT_VERSIONS
 } from './layout-wall-first-types';
-import { validateWallHeight } from './layout-wall-heights';
 import type { LayoutDocumentIssue } from './layout-codec';
 import { LayoutDocumentValidationError } from './layout-codec';
 import type { LayoutObject, LayoutVec2 } from './layout-types';
 
-/** Validation result carrying the wall-first document type, not the legacy one. */
+/**
+ * Validation result carrying the wall-first document type, not the legacy one.
+ *
+ * A success is **always** the canonical current-format document. There is one
+ * recognized version (`5`) and no historical variant: a payload declaring anything
+ * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
+ */
 export type WallFirstLayoutValidationResult =
 	| {
 			success: true;
@@ -66,7 +71,11 @@ const ROOT_KEYS = [
 	'openings',
 	'objects'
 ] as const;
-const FLOOR_KEYS = ['id', 'name', 'elevation', 'height'] as const;
+/**
+ * Canonical Floor key set (P23.6I). The current Floor has no vertical extent, so a
+ * present `height` is `unknown_key`.
+ */
+const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
 const JUNCTION_KEYS = ['id', 'point'] as const;
 const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height'] as const;
 const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
@@ -97,7 +106,7 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 	return {
 		units: UNITS,
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [],
 		walls: [],
 		rooms: [],
@@ -125,15 +134,15 @@ export function validateWallFirstLayoutDocument(
 	input: unknown
 ): WallFirstLayoutValidationResult {
 	const issues: LayoutDocumentIssue[] = [];
-	const document = parseDocument(input, '$', issues);
-	if (!document || issues.length > 0) {
+	const parsed = parseDocument(input, '$', issues);
+	if (!parsed || issues.length > 0) {
 		return { success: false, issues };
 	}
 
 	return {
 		success: true,
-		document,
-		canonicalJson: JSON.stringify(document, null, 2) + '\n'
+		document: parsed,
+		canonicalJson: JSON.stringify(parsed, null, 2) + '\n'
 	};
 }
 
@@ -155,45 +164,13 @@ export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutV
 }
 
 /**
- * P23.6H — normalize one pre-H (`formatVersion: 4`) wall-first document into the
- * canonical current format.
- *
- * Pre-H records carry a stored `wall.height` that was **not** authoritative for
- * rendered geometry: the compiler drew every Wall from the Floor elevation to the
- * Floor top, while the stored value could be a fixed birth default. Reinterpreting
- * those values as authored intent would visibly change old projects, so the
- * normalization rewrites every Wall to the *previously visible* Floor-derived
- * extent — the one value that reproduces the old render exactly.
- *
- * Pure, non-mutating and deterministic: field rewrite only, no ID, ordering or
- * allocation change, so Save diffs and history baselines stay comparable.
- *
- * **This is the only place a pre-H document becomes canonical.** It runs once at
- * the compatible read/decode boundary (`layout-compat.ts`); canonical validators
- * and writers operate on canonical current-format state and never normalize a
- * historical payload (a stray `4` payload fails closed against the current rule).
- */
-export function normalizePreHWallFirstLayout(
-	document: LayoutDocumentWallFirst
-): LayoutDocumentWallFirst {
-	return {
-		...document,
-		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		walls: document.walls.map((wall) => ({ ...wall, height: document.floor.height }))
-	};
-}
-
-/**
  * P23.6H — the canonical *writer* format requirement (S1b).
  *
- * `validateWallFirstLayoutDocument()` stays deliberately tolerant: the compatible
- * read/decode boundary must be able to validate a pre-H (`formatVersion: 4`)
- * payload *before* normalizing it. The canonical writers are a different
- * boundary — they receive canonical current-format state — so a document
+ * The canonical writers receive canonical current-format state, so a document
  * declaring any other format version rejects fail-closed instead of being
- * persisted with fields whose meaning belongs to the previous generation (a
- * pre-H `wall.height` was never authoritative for rendering; writing it as
- * current-format state would silently reinterpret it).
+ * persisted as if it were current. This is current-format strictness, not a
+ * compatibility branch: P23.6I recognizes exactly one version, so there is no
+ * historical payload that could be rewritten on the way out.
  *
  * Returns `undefined` when the input is not an object at all, so structural
  * validation owns that report.
@@ -209,7 +186,7 @@ export function wallFirstCanonicalFormatVersionIssue(
 		code: 'unsupported_format_version',
 		message: `Canonical Layout Save requires formatVersion ${LAYOUT_WALL_FIRST_FORMAT_VERSION}; got ${String(
 			declared
-		)}. A pre-H payload must be decoded through the compatible read path first (it is normalized there) — canonical writers never migrate.`
+		)}. Canonical writers never migrate a historical payload.`
 	};
 }
 
@@ -244,21 +221,15 @@ function parseDocument(
 	}
 
 	const formatVersion = readFormatVersion(record.formatVersion, `${path}.formatVersion`, issues);
-	const floor = parseFloor(record.floor, `${path}.floor`, issues);
-
-	// P23.6H — the Wall-height range rule is a *current-format* rule. A pre-H
-	// (`formatVersion: 4`) payload is validated with its own rule set (positive
-	// finite height only); the compatible decoder normalizes it afterwards, so a
-	// historical value above the Floor envelope can never reject a legacy load.
-	const wallHeightLimit =
-		formatVersion === LAYOUT_WALL_FIRST_FORMAT_VERSION && floor
-			? { floorHeight: floor.height }
+	// P23.6I — one Floor key set only: no vertical extent, so a present `height`
+	// is `unknown_key`.
+	const floor =
+		formatVersion === LAYOUT_WALL_FIRST_FORMAT_VERSION
+			? parseFloorV5(record.floor, `${path}.floor`, issues)
 			: undefined;
 
 	const junctions = parseArray(record.junctions, `${path}.junctions`, issues, parseJunction);
-	const walls = parseArray(record.walls, `${path}.walls`, issues, (value, wallPath, wallIssues) =>
-		parseWall(value, wallPath, wallIssues, wallHeightLimit)
-	);
+	const walls = parseArray(record.walls, `${path}.walls`, issues, parseWall);
 	const rooms = parseArray(record.rooms, `${path}.rooms`, issues, parseRoom);
 	const openings = parseArray(record.openings, `${path}.openings`, issues, parseOpening);
 	const objects = parseArray(record.objects, `${path}.objects`, issues, parseObject);
@@ -392,9 +363,10 @@ function parseDocument(
 	}
 
 	if (issues.length > 0) return undefined;
+	if (!floor) return undefined;
 	return {
 		units: UNITS,
-		formatVersion: formatVersion ?? LAYOUT_WALL_FIRST_FORMAT_VERSION,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor,
 		junctions,
 		walls,
@@ -425,20 +397,20 @@ function readFormatVersion(
 	return input as LayoutFormatVersion;
 }
 
-function parseFloor(
+/** Canonical Floor: `id`/`name`/`elevation` only (P23.6I). */
+function parseFloorV5(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
 ): ParsedValue<LayoutWallFirstFloor> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
-	assertAllowedKeys(record, FLOOR_KEYS, path, issues);
+	assertAllowedKeys(record, FLOOR_KEYS_V5, path, issues);
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readString(record.name, `${path}.name`, issues);
 	const elevation = readNumber(record.elevation, `${path}.elevation`, issues);
-	const height = readPositiveNumber(record.height, `${path}.height`, issues);
-	if (!id || !name || elevation === undefined || height === undefined) return undefined;
-	return { id, name, elevation, height };
+	if (!id || !name || elevation === undefined) return undefined;
+	return { id, name, elevation };
 }
 
 function parseJunction(
@@ -456,16 +428,14 @@ function parseJunction(
 	return { id, point };
 }
 
+/**
+ * P23.6I — `height` is finite and strictly positive with **no Floor cap**: the
+ * canonical Floor carries no vertical extent to clamp against.
+ */
 function parseWall(
 	input: unknown,
 	path: string,
-	issues: LayoutDocumentIssue[],
-	/**
-	 * P23.6H — present only for the current canonical format, where
-	 * `wall.height` is authoritative and bounded by the Floor envelope. Pre-H
-	 * payloads pass nothing and keep the historical positive-finite rule.
-	 */
-	heightLimit?: { floorHeight: number }
+	issues: LayoutDocumentIssue[]
 ): ParsedValue<LayoutWall> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
@@ -495,14 +465,6 @@ function parseWall(
 			'A Wall must reference two distinct Junctions'
 		);
 	}
-	if (heightLimit) {
-		const heightIssue = validateWallHeight(
-			{ id, height },
-			{ height: heightLimit.floorHeight },
-			`${path}.height`
-		);
-		if (heightIssue) addIssue(issues, heightIssue.path, heightIssue.code, heightIssue.message);
-	}
 	return { id, startJunctionId, endJunctionId, role, thickness, height };
 }
 
@@ -518,6 +480,19 @@ function parseRoom(
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readNonEmptyString(record.name, `${path}.name`, issues);
 	const boundary = parseBoundaryRefs(record.boundary, `${path}.boundary`, issues);
+	// P23.6I (D7) — a canonical Room with zero boundary references is not a
+	// degenerate architecture, it is invalid state: the codec previously accepted
+	// `boundary: []` because an empty array parses cleanly, which let a Room with
+	// no enclosure reach the compiler and acquire an invented ceiling. The ceiling
+	// is derived from boundary Walls, so the boundary must exist.
+	if (boundary && boundary.length === 0) {
+		addIssue(
+			issues,
+			`${path}.boundary`,
+			'room_boundary_empty',
+			'A canonical Room boundary must reference at least one Wall'
+		);
+	}
 	const floorThickness = readPositiveNumber(record.floorThickness, `${path}.floorThickness`, issues);
 	const ceilingThickness = readPositiveNumber(record.ceilingThickness, `${path}.ceilingThickness`, issues);
 	if (

@@ -1,35 +1,40 @@
 /**
- * P23.6H — Vertical Wall Semantics (core domain + compiler + compatibility).
+ * P23.6H + P23.6I — Vertical Wall Semantics (core domain + compiler +
+ * compatibility). P23.6I supersedes P23.6H's Floor cap, Floor-derived birth and
+ * Floor-derived Room/Floor envelope, so the assertions that pinned those are
+ * **replaced here** rather than deleted.
  *
  * `LayoutWall.height` is the authoritative physical Wall height:
  *
  * ```text
  * bottomY = floor.elevation
  * topY    = floor.elevation + wall.height
- * 0 < wall.height <= floor.height
+ * wall.height > 0        // finite, strictly positive, NO upper bound
  * ```
  *
- * This suite pins the four things the slice exists for:
- * 1. the **birth rule** — a new Wall is born at the document Floor height, with
- *    no fixed literal default anywhere on a Wall-birth path;
- * 2. **historical compatibility** — a pre-H (`formatVersion: 4`) payload keeps its
- *    previously visible Floor-derived extent, normalized once at the compatible
- *    decode boundary;
+ * This suite pins what the slice exists for:
+ * 1. the **creation rule** — a new Wall takes the named
+ *    `WALL_AUTHORING_DEFAULT_HEIGHT` or a deterministic topological seed, never a
+ *    Floor-derived value and never an unnamed literal;
+ * 2. **pre-baseline policy** — the wall-first `4` generation that reached `main`
+ *    before this branch is **not** migrated: it fails as an unsupported version
+ *    rather than being reinterpreted as `5` (P23.6I, `docs/north-star.md` →
+ *    Development-stage schema compatibility);
  * 3. **one compiler path** — compiled Wall vertical bounds/sections follow
- *    `wall.height`, while Room/Floor envelopes stay Floor-derived;
- * 4. **one edit operation** — `planExactWallHeight` rejects (never clamps) and
- *    leaves Wall/Junction/Opening/Room identity and topology untouched.
+ *    `wall.height`, and a Room's ceiling is the derived flat plane at
+ *    `floor.elevation + max(boundary Wall heights)`;
+ * 4. **one edit operation** — `planExactWallHeight` accepts any positive finite
+ *    value, rejects an Opening-invalidating lowering (never clamps) and leaves
+ *    Wall/Junction/Opening/Room identity and topology untouched.
  */
 import { describe, expect, it } from 'vitest';
 
+import * as layoutCore from '@portfolio/layout-core';
 import {
 	compileWallFirstLayoutGeometry,
-	decodeLayoutJsonCompatible,
 	decodeLayoutValueCompatible,
-	LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	migrateLegacyLayoutDocument,
-	normalizePreHWallFirstLayout,
 	planDuplicateIsolatedRoom,
 	planExactWallHeight,
 	planWallChain,
@@ -39,7 +44,7 @@ import {
 	validateWallFirstLayoutDocument,
 	validateWallFirstWallHeights,
 	wallFirstCanonicalFormatVersionIssue,
-	WALL_HEIGHT_EPSILON,
+	WALL_AUTHORING_DEFAULT_HEIGHT,
 	type LayoutDocument,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
@@ -65,15 +70,16 @@ const testAllocator = {
 
 /**
  * One closed rectangular Room (4×3 m) with four boundary Walls, in the current
- * canonical format. Wall/junction ids are stable so tests can address them.
+ * canonical format (P23.6I: the Floor carries no `height`). Wall/junction ids are
+ * stable so tests can address them.
  */
 function rectangleDocument(options: {
-	floorHeight?: number;
 	elevation?: number;
 	wallHeight?: number;
+	/** Per-Wall override, in document Wall order (w1…w4). */
+	wallHeights?: [number, number, number, number];
 } = {}): LayoutDocumentWallFirst {
-	const floorHeight = options.floorHeight ?? 3;
-	const wallHeight = options.wallHeight ?? floorHeight;
+	const wallHeight = options.wallHeight ?? WALL_AUTHORING_DEFAULT_HEIGHT;
 	const corners: Array<[string, number, number]> = [
 		['j1', 0, 0],
 		['j2', 4, 0],
@@ -83,20 +89,20 @@ function rectangleDocument(options: {
 	return {
 		units: 'meters',
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor-1', name: 'Floor 1', elevation: options.elevation ?? 0, height: floorHeight },
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: options.elevation ?? 0 },
 		junctions: corners.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: [
 			['w1', 'j1', 'j2'],
 			['w2', 'j2', 'j3'],
 			['w3', 'j3', 'j4'],
 			['w4', 'j4', 'j1']
-		].map(([id, startJunctionId, endJunctionId]) => ({
+		].map(([id, startJunctionId, endJunctionId], index) => ({
 			id,
 			startJunctionId,
 			endJunctionId,
 			role: 'boundary' as const,
 			thickness: 0.2,
-			height: wallHeight
+			height: options.wallHeights?.[index] ?? wallHeight
 		})),
 		rooms: [
 			{
@@ -138,10 +144,18 @@ function withOpening(
 	};
 }
 
-/** Reserialize a document at an explicit (historical) format version. */
-function asHistoricalPayload(document: LayoutDocumentWallFirst): unknown {
+/**
+ * Reserialize a document as the superseded wall-first `4` payload, Floor height
+ * included. P23.6I does **not** migrate that generation, so this payload exists
+ * in these tests only to prove it is refused by name — never to prove it loads.
+ */
+function asV4Payload(document: LayoutDocumentWallFirst, floorHeight: number): unknown {
 	return JSON.parse(
-		JSON.stringify({ ...document, formatVersion: LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION })
+		JSON.stringify({
+			...document,
+			formatVersion: 4,
+			floor: { ...document.floor, height: floorHeight }
+		})
 	);
 }
 
@@ -151,10 +165,10 @@ function wallById(document: LayoutDocumentWallFirst, wallId: string) {
 	return wall;
 }
 
-describe('P23.6H birth rule — a new Wall is born at the document Floor height', () => {
-	it('births every chain Wall at the Floor height, never a fixed default', () => {
+describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-derived height', () => {
+	it('gives every chain Wall the named authoring default, with no Floor involvement', () => {
 		const baseline: LayoutDocumentWallFirst = {
-			...rectangleDocument({ floorHeight: 4 }),
+			...rectangleDocument(),
 			junctions: [],
 			walls: [],
 			rooms: [],
@@ -174,13 +188,15 @@ describe('P23.6H birth rule — a new Wall is born at the document Floor height'
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls.length).toBeGreaterThan(0);
 		for (const wall of plan.document.walls) {
-			expect(wall.height).toBe(4);
+			expect(wall.height).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
 		}
+		// A Rectangle/Polygon gesture is one bounded command: one uniform height.
+		expect(new Set(plan.document.walls.map((wall) => wall.height)).size).toBe(1);
 	});
 
-	it('births a single Wall segment at the Floor height too', () => {
+	it('gives an isolated single Wall segment the same named default', () => {
 		const baseline: LayoutDocumentWallFirst = {
-			...rectangleDocument({ floorHeight: 2.5 }),
+			...rectangleDocument({ elevation: 2 }),
 			junctions: [],
 			walls: [],
 			rooms: [],
@@ -193,12 +209,14 @@ describe('P23.6H birth rule — a new Wall is born at the document Floor height'
 			role: 'partition'
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
-		expect(plan.document.walls.map((wall) => wall.height)).toEqual([2.5]);
+		expect(plan.document.walls.map((wall) => wall.height)).toEqual([
+			WALL_AUTHORING_DEFAULT_HEIGHT
+		]);
 	});
 
 	it('still honors an explicit height override', () => {
 		const baseline: LayoutDocumentWallFirst = {
-			...rectangleDocument({ floorHeight: 3 }),
+			...rectangleDocument(),
 			junctions: [],
 			walls: [],
 			rooms: [],
@@ -215,17 +233,16 @@ describe('P23.6H birth rule — a new Wall is born at the document Floor height'
 		expect(plan.document.walls[0]!.height).toBe(1.2);
 	});
 
-	it('rejects with a named code when the Floor frame cannot supply a birth height', () => {
+	it('has no Floor-birth rejection left (the Floor cannot supply a birth height any more)', () => {
 		const baseline: LayoutDocumentWallFirst = {
-			...rectangleDocument({ floorHeight: 0 }),
+			...rectangleDocument({ elevation: -2 }),
 			junctions: [],
 			walls: [],
 			rooms: [],
 			openings: []
 		};
 		const plan = planWallSegment({ baseline, start: [0, 0], end: [3, 0], role: 'partition' });
-		if (plan.kind !== 'rejected') throw new Error('expected rejection');
-		expect(plan.rejection.code).toBe('invalid_floor_height');
+		expect(plan.kind).toBe('success');
 	});
 
 	it('preserves the source height through a Wall split', () => {
@@ -249,89 +266,86 @@ describe('P23.6H birth rule — a new Wall is born at the document Floor height'
 	});
 });
 
-describe('P23.6H historical compatibility — pre-H documents keep their visible extent', () => {
-	it('a format-4 Wall above the Floor height normalizes to the old visible extent', () => {
-		// Pre-H reality: a fixed `height: 3` birth default on a 2.5 m Floor still
-		// rendered 2.5 m tall (the compiler used the Floor envelope). Reading the
-		// stored value as author intent would suddenly render 3 m.
-		const historical = { ...rectangleDocument({ floorHeight: 2.5, wallHeight: 3 }) };
-		const decoded = decodeLayoutJsonCompatible(JSON.stringify(asHistoricalPayload(historical)));
-		if (decoded.kind !== 'wall-first') throw new Error(`expected wall-first: ${JSON.stringify(decoded)}`);
-		expect(decoded.migratedFromVersion).toBe(LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION);
-		expect(decoded.document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		for (const wall of decoded.document.walls) {
-			expect(wall.height).toBe(2.5);
-		}
-		// …and the normalized document compiles to the old visible top.
-		const compiled = compileWallFirstLayoutGeometry(decoded.document);
-		expect(compiled.geometry.walls[0]!.bounds3.max[1]).toBe(2.5);
+describe('P23.6I pre-baseline policy — the wall-first `4` generation is not migrated', () => {
+	it('rejects a format-4 payload as an unsupported version instead of reinterpreting it', () => {
+		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
+		// reached `main` before this branch is deliberately **not** migrated, because
+		// having existed on `main` does not by itself create a compatibility
+		// obligation before the baseline (`docs/north-star.md` → Development-stage
+		// schema compatibility).
+		//
+		// Migration was rejected on meaning, not effort: a format-5 H document meant
+		// `Room ceiling = floor.height` while Wall-derived semantics mean
+		// `max(boundary Wall heights)`, so advancing a stored payload without
+		// rewriting it would silently change what that document *says*.
+		const historical = asV4Payload(rectangleDocument({ wallHeight: 3 }), 2.5);
+		const before = JSON.stringify(historical);
+		const decoded = decodeLayoutValueCompatible(historical);
+		expect(decoded.kind).toBe('unrecognized');
+		if (decoded.kind !== 'unrecognized') return;
+		expect(decoded.reason).toBe('unsupported-format-version');
+		expect(decoded.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
+		expect(decoded.issues.map((issue) => issue.path)).toContain('$.formatVersion');
+		// Decoding is a pure read: a rejected payload is never rewritten in place.
+		expect(JSON.stringify(historical)).toBe(before);
 	});
 
-	it('a format-4 Wall already at the Floor height is unchanged by normalization', () => {
-		const historical = rectangleDocument({ floorHeight: 3, wallHeight: 3 });
-		const decoded = decodeLayoutValueCompatible(asHistoricalPayload(historical));
-		if (decoded.kind !== 'wall-first') throw new Error('expected wall-first');
-		expect(normalizePreHWallFirstLayout(historical)).toEqual({
-			...historical,
-			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION
-		});
-		expect(decoded.document.walls).toEqual(historical.walls);
-	});
-
-	it('keeps the pre-H codec rule (positive height only) and does not reject above-Floor values', () => {
-		const historical = { ...rectangleDocument({ floorHeight: 2.5, wallHeight: 3 }) };
-		const result = validateWallFirstLayoutDocument(asHistoricalPayload(historical));
-		expect(result.success).toBe(true);
-	});
-
-	it('applies the range rule to the current format payload', () => {
-		const current = rectangleDocument({ floorHeight: 2.5, wallHeight: 3 });
-		const result = validateWallFirstLayoutDocument(current);
+	it('rejects the payload at the strict codec too, where `4` is not a known version', () => {
+		const result = validateWallFirstLayoutDocument(asV4Payload(rectangleDocument(), 2.5));
 		expect(result.success).toBe(false);
 		if (result.success) return;
-		expect(result.issues.map((issue) => issue.code)).toContain('wall_height_exceeds_floor');
+		expect(result.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
 	});
 
-	it('normalization is pure and deterministic', () => {
-		const historical = asHistoricalPayload(rectangleDocument({ floorHeight: 2.5, wallHeight: 3 }));
-		const first = normalizePreHWallFirstLayout(historical as LayoutDocumentWallFirst);
-		const second = normalizePreHWallFirstLayout(historical as LayoutDocumentWallFirst);
-		expect(first).toEqual(second);
-		expect(first.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(historical).toMatchObject({ formatVersion: 4 });
+	it('names the version rather than shape noise when only the version is superseded', () => {
+		// The payload below is a perfectly valid current-format document apart from
+		// its declared version, so the diagnosis must be the version — not a pile of
+		// structural complaints about fields that are correct for `5`.
+		const payload = { ...rectangleDocument(), formatVersion: 4 };
+		const decoded = decodeLayoutValueCompatible(payload);
+		expect(decoded.kind).toBe('unrecognized');
+		if (decoded.kind !== 'unrecognized') return;
+		expect(decoded.issues.every((issue) => issue.code === 'unsupported_format_version')).toBe(true);
 	});
 
-	it('canonical Save validation sees the current format after a format-4 compatible load', () => {
-		// S1b boundary assertion: normalization happens once, at the compatible
-		// read/decode boundary — the canonical Save path receives current-format
-		// state and never needs a normalization branch of its own.
-		const historical = asHistoricalPayload(rectangleDocument({ floorHeight: 2.5, wallHeight: 3 }));
-		const decoded = decodeLayoutValueCompatible(historical);
-		if (decoded.kind !== 'wall-first') throw new Error('expected wall-first');
-		expect(decoded.document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(validateWallFirstLayoutDocument(decoded.document).success).toBe(true);
-		expect(serializeWallFirstLayoutDocument(decoded.document)).toContain(
-			`"formatVersion": ${LAYOUT_WALL_FIRST_FORMAT_VERSION}`
-		);
+	it('keeps floor.height out of the canonical schema', () => {
+		// The canonical Floor carries no vertical extent, so a present `height` is
+		// `unknown_key` rather than a tolerated optional: there is no persisted
+		// Floor-level vertical authority to fall back to.
+		const current = validateWallFirstLayoutDocument({
+			...rectangleDocument(),
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 }
+		});
+		expect(current.success).toBe(false);
+		if (current.success) return;
+		expect(current.issues.map((issue) => issue.code)).toContain('unknown_key');
+		expect(current.issues.map((issue) => issue.path)).toContain('$.floor.height');
+		// The fixture every writer emits is the same shape.
+		expect('height' in layoutCore.createEmptyWallFirstLayoutDocument().floor).toBe(false);
 	});
 
-	it('canonical writers reject a raw pre-H payload by name instead of migrating it', () => {
-		// S1b invariant, the fail-closed half: normalization happens exactly once,
-		// at the compatible read boundary. A pre-H document that reaches a
-		// canonical writer without passing through it must reject — persisting it
-		// would silently reinterpret pre-H `wall.height` values as authored intent.
-		const historical = asHistoricalPayload(rectangleDocument({ floorHeight: 2.5, wallHeight: 3 }));
+	it('exposes no historical v4 decoder, normalizer or version constant', () => {
+		// A regression guard for the policy itself: re-adding a `4` path means
+		// re-adding these names and failing here first.
+		const exported = Object.keys(layoutCore);
+		expect(exported).not.toContain('normalizePreHWallFirstLayoutV4');
+		expect(exported).not.toContain('LAYOUT_PRE_AUTHORITATIVE_WALL_HEIGHT_FORMAT_VERSION');
+		expect(layoutCore.KNOWN_LAYOUT_FORMAT_VERSIONS).toEqual([LAYOUT_WALL_FIRST_FORMAT_VERSION]);
+	});
+
+	it('canonical writers reject a format-4 payload fail-closed', () => {
+		// The writer gate is current-format strictness, not a migration branch: a
+		// superseded payload cannot reach storage at all, and there is no read-side
+		// normalization path that could make it writable.
+		const historical = asV4Payload(rectangleDocument(), 2.5);
 		expect(wallFirstCanonicalFormatVersionIssue(historical)?.code).toBe(
 			'unsupported_format_version'
 		);
 		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
 			/Canonical Layout Save requires formatVersion 5/
 		);
-		// The compatible read path is what makes the same payload writable, and the
-		// canonical writer then receives current-format state.
-		const decoded = decodeLayoutValueCompatible(historical);
-		if (decoded.kind !== 'wall-first') throw new Error('expected wall-first');
-		expect(serializeWallFirstLayoutDocument(decoded.document)).toContain(
+		// A canonical document round-trips through the same writer unchanged.
+		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(
 			`"formatVersion": ${LAYOUT_WALL_FIRST_FORMAT_VERSION}`
 		);
 	});
@@ -347,21 +361,34 @@ describe('P23.6H historical compatibility — pre-H documents keep their visible
 	});
 });
 
-describe('P23.6H range and validation', () => {
+describe('P23.6I range and validation — positive, finite, unbounded', () => {
 	it('reports every invalid Wall height in document order', () => {
 		const document = rectangleDocument({ wallHeight: 1 });
 		document.walls[1]!.height = 0;
-		document.walls[3]!.height = 5;
+		document.walls[3]!.height = Number.NaN;
 		const issues = validateWallFirstWallHeights(document);
 		expect(issues.map((issue) => [issue.wallId, issue.code])).toEqual([
 			['w2', 'wall_height_invalid'],
-			['w4', 'wall_height_exceeds_floor']
+			['w4', 'wall_height_invalid']
 		]);
 	});
 
-	it('accepts exactly the Floor height and the epsilon boundary', () => {
-		const document = rectangleDocument({ floorHeight: 3, wallHeight: 3 + WALL_HEIGHT_EPSILON / 2 });
-		expect(validateWallFirstWallHeights(document)).toEqual([]);
+	it('accepts tall Walls with no storey-shaped ceiling', () => {
+		for (const height of [0.4, 3, 3.5, 6, 40]) {
+			const document = rectangleDocument({
+				wallHeights: [height, height, height, height]
+			});
+			expect(validateWallFirstWallHeights(document)).toEqual([]);
+			const result = validateWallFirstLayoutDocument(document);
+			expect(result.success).toBe(true);
+		}
+	});
+
+	it('has no Floor-cap code left anywhere in the rule set', () => {
+		const document = rectangleDocument({ wallHeights: [1.2, 4, 0.5, 3] });
+		const codes = validateWallFirstWallHeights(document).map((issue) => issue.code);
+		expect(codes).not.toContain('wall_height_exceeds_floor');
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
 	});
 
 	it('rejects zero, negative and non-finite heights in the current format', () => {
@@ -372,19 +399,16 @@ describe('P23.6H range and validation', () => {
 			expect(result.success).toBe(false);
 		}
 	});
-});
-
-/**
- * The Floor envelope is a **document-level Wall rule**, not a Room-boundary rule.
- * A freestanding partition — no Room references it, so no Room-boundary path can
- * supply the cap — is bounded by the same `floor.height` (D2/D3: the Floor is the
- * birth default *and* the Floor-level vertical envelope). Nothing in
- * `layout-wall-heights.ts` reads Room membership; this pins that explicitly so the
- * standalone case can never drift into a separate rule.
+});/**
+ * P23.6I supersedes the P23.6H "standalone Walls share the Floor envelope" rule:
+ * there is no Floor envelope any more. Nothing in `layout-wall-heights.ts` reads
+ * Room membership, so a freestanding partition — referenced by no Room — has
+ * exactly the same (unbounded) Wall rule as a Room-bounding one. These assertions
+ * replace the former cap pins.
  */
-describe('P23.6H standalone (non-room-bounding) Walls share the Floor envelope', () => {
-	function standalonePartitionDocument(floorHeight: number, wallHeight: number): LayoutDocumentWallFirst {
-		const document = rectangleDocument({ floorHeight });
+describe('P23.6I standalone (non-room-bounding) Walls have the same unbounded rule', () => {
+	function standalonePartitionDocument(wallHeight: number, elevation = 0): LayoutDocumentWallFirst {
+		const document = rectangleDocument({ elevation });
 		return {
 			...document,
 			rooms: [],
@@ -392,54 +416,50 @@ describe('P23.6H standalone (non-room-bounding) Walls share the Floor envelope',
 		};
 	}
 
-	it('caps a freestanding partition Wall by the Floor height at the codec', () => {
-		const document = standalonePartitionDocument(3, 3.5);
+	it('accepts a freestanding Wall taller than any former storey at the codec', () => {
+		const document = standalonePartitionDocument(4);
 		expect(document.rooms).toEqual([]);
-		const result = validateWallFirstLayoutDocument(document);
-		expect(result.success).toBe(false);
-		if (result.success) return;
-		expect(result.issues.map((issue) => issue.code)).toContain('wall_height_exceeds_floor');
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+		expect(validateWallFirstWallHeights(document)).toEqual([]);
 	});
 
-	it('binds the freestanding Wall to the same Floor height at the exact Height planner', () => {
-		const document = standalonePartitionDocument(3, 1.2);
+	it('lets the exact Height planner raise a freestanding Wall above 3 m', () => {
+		const document = standalonePartitionDocument(1.2);
 		const taller = planExactWallHeight(document, 'w1', 4);
-		if (taller.kind !== 'rejected') throw new Error(`expected rejection: ${JSON.stringify(taller)}`);
-		expect(taller.rejection.code).toBe('invalid_value');
-		expect(taller.rejection.message).toContain('Floor height 3');
+		if (taller.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(taller)}`);
+		expect(taller.document.walls[0]!.height).toBe(4);
 
-		// The reachable range for every Wall is 0 < height <= floor.height: shorter
-		// than the storey works, taller than the storey does not.
 		const shorter = planExactWallHeight(document, 'w1', 2.4);
 		if (shorter.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(shorter)}`);
 		expect(shorter.document.walls[0]!.height).toBe(2.4);
 
-		const full = planExactWallHeight(document, 'w1', 3);
-		if (full.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(full)}`);
-		expect(full.document.walls[0]!.height).toBe(3);
+		const veryTall = planExactWallHeight(standalonePartitionDocument(1.2), 'w1', 12);
+		if (veryTall.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(veryTall)}`);
+		expect(veryTall.document.walls[0]!.height).toBe(12);
 	});
 
-	it('raises the reachable Wall height when the document Floor is taller', () => {
-		// Same freestanding Wall, taller storey: the cap is the document envelope,
-		// not a hard-coded 3 m. (A taller Floor arrives through import/migration
-		// today; wall-first Floor-height editing is deferred — D5.)
-		const document = standalonePartitionDocument(4.5, 1.2);
-		const taller = planExactWallHeight(document, 'w1', 4);
+	it('does not depend on the Floor elevation or any Floor scalar', () => {
+		// The same Wall on an elevated Floor still admits the same heights: the
+		// reachable range is the Wall's own `0 < height`, full stop.
+		const document = standalonePartitionDocument(1.2, 2);
+		const taller = planExactWallHeight(document, 'w1', 9);
 		if (taller.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(taller)}`);
-		expect(taller.document.walls[0]!.height).toBe(4);
+		expect(taller.document.walls[0]!.height).toBe(9);
+		const compiled = compileWallFirstLayoutGeometry(taller.document);
+		const wall = compiled.geometry.walls.find((candidate) => candidate.wallId === 'w1')!;
+		expect(wall.bounds3.min[1]).toBe(2);
+		expect(wall.bounds3.max[1]).toBe(11);
 	});
 });
 
 describe('P23.6H compiler — compiled Wall vertical extent follows wall.height', () => {
-	it('ends a Wall at floor.elevation + wall.height, not at the Floor top', () => {
-		const document = rectangleDocument({ floorHeight: 3, elevation: 2, wallHeight: 1.5 });
+	it('ends a Wall at floor.elevation + wall.height, on an unbounded scale', () => {
+		const document = rectangleDocument({ elevation: 2, wallHeight: 1.5 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		const wall = compiled.geometry.walls.find((candidate) => candidate.wallId === 'w1')!;
 		expect(wall.height).toBe(1.5);
 		expect(wall.bounds3.min[1]).toBe(2);
 		expect(wall.bounds3.max[1]).toBe(3.5);
-		// The Floor envelope is 2 … 5; the Wall deliberately stops short of it.
-		expect(wall.bounds3.max[1]).not.toBe(2 + 3);
 	});
 
 	it('changes compiled bounds and the physical-Wall cacheKey when only height changes', () => {
@@ -456,32 +476,56 @@ describe('P23.6H compiler — compiled Wall vertical extent follows wall.height'
 		expect(shortWall.length).toBe(tallWall.length);
 	});
 
-	it('does not lower the Room ceiling, the Floor envelope or the Room bounds', () => {
+	it('SUPERSEDES the Floor-derived envelope: the Room ceiling follows the boundary Wall max', () => {
+		// P23.6H pinned "a short Wall does not lower the Room ceiling" because the
+		// ceiling was Floor-derived. P23.6I inverts that deliberately: the ceiling
+		// *is* the max of the boundary Wall heights.
 		const short = compileWallFirstLayoutGeometry(
-			rectangleDocument({ floorHeight: 3, elevation: 1, wallHeight: 1 })
+			rectangleDocument({ elevation: 1, wallHeight: 1 })
 		);
 		const full = compileWallFirstLayoutGeometry(
-			rectangleDocument({ floorHeight: 3, elevation: 1, wallHeight: 3 })
+			rectangleDocument({ elevation: 1, wallHeight: 3 })
 		);
 		const shortRoom = short.geometry.rooms.find((candidate) => candidate.roomId === 'room-a')!;
 		const fullRoom = full.geometry.rooms.find((candidate) => candidate.roomId === 'room-a')!;
-		// Room/Floor envelopes are Floor-derived and identical either way: a
-		// partial-height boundary Wall never lowers them.
-		expect(shortRoom.ceilingElevation).toBe(4);
-		expect(shortRoom.ceilingElevation).toBe(fullRoom.ceilingElevation);
-		expect(shortRoom.bounds3).toEqual(fullRoom.bounds3);
-		expect(short.geometry.floors[0]!.bounds3).toEqual(full.geometry.floors[0]!.bounds3);
-		expect(short.geometry.bounds).toEqual(full.geometry.bounds);
-		// …while the physical Wall tops genuinely differ.
+		expect(shortRoom.ceilingElevation).toBe(2);
+		expect(fullRoom.ceilingElevation).toBe(4);
+		expect(shortRoom.ceilingElevation).not.toBe(fullRoom.ceilingElevation);
+		// The physical Wall tops differ with them, and no Floor scalar returns.
 		expect(short.geometry.walls.find((wall) => wall.wallId === 'w1')!.bounds3.max[1]).toBe(2);
 		expect(full.geometry.walls.find((wall) => wall.wallId === 'w1')!.bounds3.max[1]).toBe(4);
+		expect('height' in short.geometry.floors[0]!).toBe(false);
+	});
+
+	it('renders a flat ceiling at the max while shorter boundary Walls stay short', () => {
+		const document = rectangleDocument({ elevation: 0, wallHeights: [4, 2, 2, 2] });
+		const compiled = compileWallFirstLayoutGeometry(document);
+		const room = compiled.geometry.rooms.find((candidate) => candidate.roomId === 'room-a')!;
+		expect(room.ceilingElevation).toBe(4);
+		const shortWall = compiled.geometry.walls.find((wall) => wall.wallId === 'w2')!;
+		expect(shortWall.height).toBe(2);
+		expect(shortWall.bounds3.max[1]).toBe(2);
+		// No wall-top infill: the band above the short Walls is intentional.
+		expect(compiled.geometry.walls.length).toBe(4);
+	});
+
+	it('leaves roomless physical Walls contributing to the aggregate bounds', () => {
+		const document: LayoutDocumentWallFirst = {
+			...rectangleDocument({ wallHeight: 1.2 }),
+			rooms: [],
+			objects: []
+		};
+		const compiled = compileWallFirstLayoutGeometry(document);
+		expect(compiled.geometry.bounds).not.toBeNull();
+		expect(compiled.geometry.bounds!.max[1]).toBe(1.2);
+		expect(compiled.geometry.floors[0]!.bounds3).not.toBeNull();
 	});
 
 	it('validates an Opening against its hosting Wall in the compiler gate as well', () => {
 		// Defensive: the compiler-side rule is host-Wall based too, so a document
 		// that reached the compiler without the document-level Opening-set gate
 		// still cannot render an Opening through a partial-height Wall.
-		const document = withOpening(rectangleDocument({ floorHeight: 3, wallHeight: 1 }), {
+		const document = withOpening(rectangleDocument({ wallHeight: 1 }), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 1.2,
@@ -494,7 +538,7 @@ describe('P23.6H compiler — compiled Wall vertical extent follows wall.height'
 	});
 
 	it('compiles a partial-height Wall with a fitting Opening cleanly', () => {
-		const document = withOpening(rectangleDocument({ floorHeight: 3, wallHeight: 2.4 }), {
+		const document = withOpening(rectangleDocument({ wallHeight: 2.4 }), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 0,
@@ -508,7 +552,7 @@ describe('P23.6H compiler — compiled Wall vertical extent follows wall.height'
 
 describe('P23.6H exact height operation', () => {
 	it('sets the height, preserves identity and leaves the Opening untouched', () => {
-		const document = withOpening(rectangleDocument({ floorHeight: 3 }), {
+		const document = withOpening(rectangleDocument(), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 0,
@@ -523,15 +567,19 @@ describe('P23.6H exact height operation', () => {
 		expect(plan.changedWallIds).toEqual(['w1']);
 		expect(wallById(plan.document, 'w1').height).toBe(2.4);
 		// One field changed: the rest of the document is byte-identical.
-		expect({ ...plan.document, walls: plan.document.walls.map((wall) => ({ ...wall, height: 3 })) }).toEqual(
-			document
-		);
+		expect({
+			...plan.document,
+			walls: plan.document.walls.map((wall) => ({
+				...wall,
+				height: WALL_AUTHORING_DEFAULT_HEIGHT
+			}))
+		}).toEqual(document);
 		expect(plan.document.openings).toEqual(document.openings);
 		expectUnchanged(document, before);
 	});
 
 	it('accepts a height exactly equal to the opening top (epsilon boundary)', () => {
-		const document = withOpening(rectangleDocument({ floorHeight: 3 }), {
+		const document = withOpening(rectangleDocument(), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 0,
@@ -542,7 +590,7 @@ describe('P23.6H exact height operation', () => {
 	});
 
 	it('rejects a Wall lowered below its hosted Opening instead of clamping or resizing it', () => {
-		const document = withOpening(rectangleDocument({ floorHeight: 3 }), {
+		const document = withOpening(rectangleDocument(), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 0.4,
@@ -557,13 +605,13 @@ describe('P23.6H exact height operation', () => {
 		expectUnchanged(document, before);
 	});
 
-	it('rejects above the Floor envelope without clamping', () => {
-		const document = rectangleDocument({ floorHeight: 2.5 });
+	it('SUPERSEDES the Floor cap: accepts a height above any former storey', () => {
+		// P23.6H rejected this with `invalid_value` naming the Floor envelope.
+		const document = rectangleDocument({ wallHeight: 2.5 });
 		const before = snapshot(document);
-		const plan = planExactWallHeight(document, 'w1', 3);
-		if (plan.kind !== 'rejected') throw new Error('expected rejection');
-		expect(plan.rejection.code).toBe('invalid_value');
-		expect(plan.rejection.message).toContain('Floor height 2.5');
+		const plan = planExactWallHeight(document, 'w1', 4.5);
+		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
+		expect(wallById(plan.document, 'w1').height).toBe(4.5);
 		expectUnchanged(document, before);
 	});
 
@@ -589,7 +637,7 @@ describe('P23.6H exact height operation', () => {
 
 describe('P23.6H topology purity — height is not topology', () => {
 	it('preserves Room, Wall, Junction and Opening identity, role and boundary cycle', () => {
-		const document = withOpening(rectangleDocument({ floorHeight: 3, wallHeight: 1.2 }), {
+		const document = withOpening(rectangleDocument({ wallHeight: 1.2 }), {
 			id: 'door-1',
 			wallId: 'w1',
 			sillHeight: 0,
@@ -608,7 +656,7 @@ describe('P23.6H topology purity — height is not topology', () => {
 	});
 
 	it('does not alter face extraction / Room correspondence inputs', () => {
-		const document = rectangleDocument({ floorHeight: 3, wallHeight: 3 });
+		const document = rectangleDocument({ wallHeight: 3 });
 		const plan = planExactWallHeight(document, 'w1', 1);
 		if (plan.kind !== 'success') throw new Error('expected success');
 		// Same boundary references, same directed cycle: reconciliation sees the
@@ -621,8 +669,8 @@ describe('P23.6H topology purity — height is not topology', () => {
 	});
 });
 
-describe('P23.6H legacy migration', () => {
-	it('births migrated Walls at the Floor height and writes the current format', () => {
+describe('P23.6I legacy migration', () => {
+	it('seeds migrated Walls from the legacy storey height and drops it from the canonical Floor', () => {
 		const legacy: LayoutDocument = {
 			units: 'meters',
 			floors: [
@@ -662,6 +710,14 @@ describe('P23.6H legacy migration', () => {
 		for (const wall of migration.document.walls) {
 			expect(wall.height).toBe(3.2);
 		}
+		// The legacy storey value completed its one conversion job: it seeded the
+		// Wall heights above and does not survive as canonical Floor truth.
+		expect(migration.document.floor).toEqual({
+			id: 'floor-1',
+			name: 'Floor 1',
+			elevation: 0
+		});
+		expect('height' in migration.document.floor).toBe(false);
 	});
 });
 

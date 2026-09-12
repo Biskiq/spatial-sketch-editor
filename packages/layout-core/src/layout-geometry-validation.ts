@@ -61,7 +61,12 @@ export function validateLayoutRoomGeometry(room: LayoutRoom, floor: LayoutFloor,
 
 export function validatePreparedLayoutRoomGeometry(
 	room: Pick<LayoutRoom, 'id' | 'boundary'> & { openings: readonly LayoutRoom['openings'][number][] },
-	floor: Pick<LayoutFloor, 'id' | 'height'>,
+	/**
+	 * P23.6I — `height` is now optional: the canonical wall-first Floor has no
+	 * vertical extent at all, while the legacy Room-owned Floor still drives the
+	 * Opening fit for its own Rooms (unchanged, including the positivity issue).
+	 */
+	floor: Pick<LayoutFloor, 'id'> & { height?: number },
 	prepared: readonly (SampledSegment | null)[],
 	path = `rooms.${room.id}`,
 	/**
@@ -75,7 +80,7 @@ export function validatePreparedLayoutRoomGeometry(
 ): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments;
-	if (floor.height <= 0 || !Number.isFinite(floor.height)) {
+	if (floor.height !== undefined && (floor.height <= 0 || !Number.isFinite(floor.height))) {
 		issues.push({ path: 'floor.height', code: 'invalid_floor_height', message: 'Floor height must be finite and greater than zero', targetId: floor.id });
 	}
 	if (segments.length < 3) {
@@ -135,8 +140,19 @@ export function validatePreparedLayoutRoomGeometry(
 		if (!Number.isFinite(opening.width) || opening.width <= 0) issues.push({ path: `${path}.openings[${index}].width`, code: 'opening_width_invalid', message: 'Opening width must be finite and greater than zero.', targetId: opening.id });
 		if (!Number.isFinite(opening.height) || opening.height <= 0) issues.push({ path: `${path}.openings[${index}].height`, code: 'opening_height_invalid', message: 'Opening height must be finite and greater than zero.', targetId: opening.id });
 		if (!Number.isFinite(opening.sillHeight) || opening.sillHeight < 0) issues.push({ path: `${path}.openings[${index}].sillHeight`, code: 'opening_sill_invalid', message: 'Opening sill height must be finite and non-negative.', targetId: opening.id });
-		const heightLimit = openingHeightLimitBySegmentId?.[opening.segmentId] ?? floor.height;
-		if (Number.isFinite(opening.sillHeight) && Number.isFinite(opening.height) && opening.sillHeight + opening.height > heightLimit + LAYOUT_GEOMETRY_EPSILON) issues.push({ path: `${path}.openings[${index}]`, code: 'opening_over_height', message: heightLimit === floor.height ? 'Opening top exceeds floor height.' : `Opening top exceeds Wall '${opening.segmentId}' height ${heightLimit} m.`, targetId: opening.id });
+		// P23.6I — provenance comes from **source presence**, never numeric equality.
+		// Comparing `heightLimit === floor.height` mislabelled a wall-first Opening
+		// whose hosting Wall happens to be exactly as tall as the legacy storey: the
+		// Opening is still constrained by its Wall and must name it.
+		const wallHeightLimit = openingHeightLimitBySegmentId?.[opening.segmentId];
+		const heightLimit = wallHeightLimit ?? floor.height;
+		const usesWallHeight = wallHeightLimit !== undefined;
+		if (
+			heightLimit !== undefined &&
+			Number.isFinite(opening.sillHeight) &&
+			Number.isFinite(opening.height) &&
+			opening.sillHeight + opening.height > heightLimit + LAYOUT_GEOMETRY_EPSILON
+		) issues.push({ path: `${path}.openings[${index}]`, code: 'opening_over_height', message: usesWallHeight ? `Opening top exceeds Wall '${opening.segmentId}' height ${heightLimit} m.` : 'Opening top exceeds floor height.', targetId: opening.id });
 		if (Number.isFinite(opening.width) && Number.isFinite(opening.height)) {
 			const profileResult = buildArchProfile(opening.profile, opening.width, opening.height);
 			for (const profileIssue of profileResult.issues) issues.push({ path: `${path}.openings[${index}].profile`, code: profileIssue.code, message: profileIssue.message, targetId: opening.id });

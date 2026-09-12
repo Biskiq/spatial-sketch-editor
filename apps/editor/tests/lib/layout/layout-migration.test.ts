@@ -86,9 +86,12 @@ describe('legacy → wall-first Layout migration (P23.0b / H5)', () => {
 		if (result.kind !== 'success') return;
 
 		const doc = result.document;
-		// P23.6H — migration output is the current canonical format.
+		// P23.6I — migration output is the current canonical format, and the legacy
+		// storey height is consumed once into the migrated Wall heights (checked
+		// below) rather than surviving on the canonical Floor.
 		expect(doc.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(doc.floor).toEqual({ id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 });
+		expect(doc.floor).toEqual({ id: 'floor-1', name: 'Floor 1', elevation: 0 });
+		expect(doc.walls.map((wall) => wall.height)).toEqual(doc.walls.map(() => 3));
 
 		// 4 corners for room-a + 2 new for room-b's far side = 6 junctions.
 		expect(doc.junctions).toHaveLength(6);

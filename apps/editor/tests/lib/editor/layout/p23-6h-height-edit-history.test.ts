@@ -29,14 +29,20 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	serializeWallFirstLayoutDocument
 } from '$lib/layout/layout-wall-first-codec';
-import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+import {
+	WALL_AUTHORING_DEFAULT_HEIGHT,
+	type LayoutDocumentWallFirst
+} from '$lib/layout/layout-wall-first-types';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
 import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
 
-/** A closed 4×3 m Room whose four Walls are all born at a given height. */
-function rectangleDocument(options: { floorHeight?: number; wallHeight?: number } = {}): LayoutDocumentWallFirst {
-	const floorHeight = options.floorHeight ?? 3;
-	const wallHeight = options.wallHeight ?? floorHeight;
+/**
+ * A closed 4×3 m Room whose four Walls all start at a given height. P23.6I: the
+ * canonical Floor carries no `height`, so the only authored vertical value here is
+ * the Wall height itself.
+ */
+function rectangleDocument(options: { wallHeight?: number } = {}): LayoutDocumentWallFirst {
+	const wallHeight = options.wallHeight ?? WALL_AUTHORING_DEFAULT_HEIGHT;
 	const corners: Array<[string, number, number]> = [
 		['j1', 0, 0],
 		['j2', 4, 0],
@@ -46,7 +52,7 @@ function rectangleDocument(options: { floorHeight?: number; wallHeight?: number 
 	return {
 		units: 'meters',
 		formatVersion: createEmptyWallFirstLayoutDocument().formatVersion,
-		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: floorHeight },
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: corners.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: [
 			['w1', 'j1', 'j2'],
@@ -136,7 +142,7 @@ function editHeight(
 
 describe('P23.6H Wall Height through Layout history', () => {
 	it('commits one entry and Undo/Redo restore exact height and compiled extent', () => {
-		const context = makeStore(rectangleDocument({ floorHeight: 3, wallHeight: 3 }));
+		const context = makeStore(rectangleDocument({ wallHeight: 3 }));
 		const { store, layoutPreview } = context;
 		expect(store.canUndo).toBe(false);
 
@@ -157,7 +163,7 @@ describe('P23.6H Wall Height through Layout history', () => {
 	});
 
 	it('restores every Wall height exactly across Undo', () => {
-		const context = makeStore(rectangleDocument({ floorHeight: 3, wallHeight: 2.2 }));
+		const context = makeStore(rectangleDocument({ wallHeight: 2.2 }));
 		const { store, layoutPreview } = context;
 		editHeight(context, 'w2', 1.1);
 		expect(wallFirstDocument(layoutPreview).walls.map((wall) => wall.height)).toEqual([2.2, 1.1, 2.2, 2.2]);
@@ -165,18 +171,31 @@ describe('P23.6H Wall Height through Layout history', () => {
 		expect(wallFirstDocument(layoutPreview).walls.map((wall) => wall.height)).toEqual([2.2, 2.2, 2.2, 2.2]);
 	});
 
-	it('writes zero entries for a rejected (above-envelope) edit', () => {
-		const context = makeStore(rectangleDocument({ floorHeight: 2.5, wallHeight: 2.5 }));
+	it('SUPERSEDES the Floor cap: a tall edit is accepted and still writes one entry', () => {
+		// P23.6H rejected this edit (`Floor height 2.5`) and wrote zero entries.
+		const context = makeStore(rectangleDocument({ wallHeight: 2.5 }));
 		const { store, layoutPreview } = context;
 		const outcome = editHeight(context, 'w1', 4);
+		expect(outcome.kind).toBe('committed');
+		expect(store.canUndo).toBe(true);
+		expect(wallHeight(layoutPreview, 'w1')).toBe(4);
+		store.undo();
+		expect(wallHeight(layoutPreview, 'w1')).toBe(2.5);
+		store.undo();
+		expect(store.canUndo).toBe(false);
+	});
+
+	it('writes zero entries when the Wall would drop below its hosted Opening', () => {
+		const context = makeStore(rectangleDocument({ wallHeight: 2.5 }));
+		const { store, layoutPreview } = context;
+		const outcome = editHeight(context, 'w1', Number.NaN);
 		expect(outcome.kind).toBe('cancelled');
 		expect(store.canUndo).toBe(false);
 		expect(wallHeight(layoutPreview, 'w1')).toBe(2.5);
-		expect((outcome as { result: { message: string } }).result.message).toContain('Floor height 2.5');
 	});
 
 	it('writes zero entries for a no-op edit', () => {
-		const context = makeStore(rectangleDocument({ floorHeight: 3, wallHeight: 2 }));
+		const context = makeStore(rectangleDocument({ wallHeight: 2 }));
 		const { store, layoutPreview } = context;
 		const outcome = editHeight(context, 'w1', 2);
 		expect(outcome.kind).toBe('cancelled');
@@ -194,7 +213,7 @@ describe('P23.6H Wall Height through Layout history', () => {
 	});
 
 	it('keeps the Wall selection identity and the Room after the commit', () => {
-		const context = makeStore(rectangleDocument({ floorHeight: 3, wallHeight: 3 }));
+		const context = makeStore(rectangleDocument({ wallHeight: 3 }));
 		const { layoutPreview } = context;
 		editHeight(context, 'w1', 1.2);
 		const document = wallFirstDocument(layoutPreview);

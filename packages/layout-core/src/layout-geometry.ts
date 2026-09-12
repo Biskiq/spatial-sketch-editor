@@ -71,16 +71,34 @@ export type CompilerRoomSource = {
 	 */
 	wallThicknessBySegmentId?: Readonly<Record<string, number>>;
 	/**
-	 * P23.6H Per-wall Opening vertical limit keyed by boundary segment id (the
-	 * wall-first adapter supplies each Wall's authoritative `height`; the legacy
-	 * schema is floor-envelope and leaves this absent). Absent keeps the
+	 * P23.6H/P23.6I Per-wall Opening vertical limit keyed by boundary segment id
+	 * (the wall-first adapter supplies each Wall's authoritative `height`; the
+	 * legacy schema is floor-envelope and leaves this absent). Absent keeps the
 	 * historical `floor.height` rule and byte-identical legacy behavior.
 	 */
 	openingHeightLimitBySegmentId?: Readonly<Record<string, number>>;
+	/**
+	 * P23.6I — explicit derived Room ceiling elevation (wall-first), computed once
+	 * by the adapter as `floor.elevation + max(boundary Wall heights)`. Absent on
+	 * the legacy path, where the ceiling stays Floor-derived and output stays
+	 * byte-identical. This is the same optional-override pattern as
+	 * `wallThicknessBySegmentId`/`openingHeightLimitBySegmentId`: exactly one Room
+	 * compile path, no second compiler.
+	 */
+	ceilingElevation?: number;
 };
 
-/** Internal compiler-source floor frame (legacy floor maps 1:1). */
-export type CompilerFloorSource = Pick<LayoutFloor, 'id' | 'elevation' | 'height'>;
+/**
+ * Internal compiler-source floor frame.
+ *
+ * Legacy floors map 1:1 and still carry the storey `height` (which drives their
+ * Room ceilings and cache keys byte-identically). P23.6I removed the canonical
+ * wall-first Floor scalar, so a wall-first frame supplies only `id`/`elevation`
+ * and each Room carries its own derived `ceilingElevation`.
+ */
+export type CompilerFloorSource = Pick<LayoutFloor, 'id' | 'elevation'> & {
+	height?: number;
+};
 
 /**
  * Internal compiler-source accepted by `compileLayoutGeometrySource`. The
@@ -156,6 +174,31 @@ export function compileWallFirstLayoutGeometry(
 		openingHeightLimitBySegmentId[wall.id] = wall.height;
 	}
 
+	// P23.6I (D6) — a wall-first Room's ceiling is the derived flat plane
+	// `floor.elevation + max(boundary Wall heights)`, computed once here and fed
+	// into the shared Room compile path. The Floor no longer supplies it.
+	// D7 applies: an unresolvable boundary is invalid state, not an architecture
+	// to invent a ceiling for, so it yields a blocking issue and **no** fallback.
+	const ceilingElevationByRoomId = new Map<string, number>();
+	const undefinedCeilingRoomIds: string[] = [];
+	for (const room of document.rooms) {
+		const heights: number[] = [];
+		let resolved = room.boundary.length > 0;
+		for (const ref of room.boundary) {
+			const wall = wallById.get(ref.wallId);
+			if (!wall || !Number.isFinite(wall.height)) {
+				resolved = false;
+				break;
+			}
+			heights.push(wall.height);
+		}
+		if (!resolved || heights.length === 0) {
+			undefinedCeilingRoomIds.push(room.id);
+			continue;
+		}
+		ceilingElevationByRoomId.set(room.id, document.floor.elevation + Math.max(...heights));
+	}
+
 	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
 		const segments: DraftSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
@@ -197,6 +240,7 @@ export function compileWallFirstLayoutGeometry(
 			}
 			roomOpenings.push({ ...opening, segmentId: opening.wallId });
 		}
+		const derivedCeiling = ceilingElevationByRoomId.get(room.id);
 		return {
 			room: {
 				id: room.id,
@@ -207,15 +251,32 @@ export function compileWallFirstLayoutGeometry(
 			boundary: { closed: true, segments },
 			openings: roomOpenings,
 			wallThicknessBySegmentId,
-			openingHeightLimitBySegmentId
+			openingHeightLimitBySegmentId,
+			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
 		};
 	});
 
-	return compileWallFirstWithPhysicalWalls(document, {
+	const result = compileWallFirstWithPhysicalWalls(document, {
 		floors: [{ floor: document.floor, rooms }],
 		objects: document.objects,
 		wallIdScope: 'document'
 	});
+	if (undefinedCeilingRoomIds.length === 0) return result;
+	// D7 defense-in-depth: a Room whose boundary cannot resolve never acquires a
+	// manufactured ceiling (neither `max(document Wall heights)` nor the authoring
+	// default) — it blocks the compile by name instead.
+	return {
+		geometry: result.geometry,
+		issues: [
+			...result.issues,
+			...undefinedCeilingRoomIds.map((roomId) => ({
+				path: `rooms.${roomId}.boundary`,
+				code: 'room_ceiling_undefined',
+				message: `Room '${roomId}' has no resolvable boundary Wall to derive a ceiling from`,
+				targetId: roomId
+			}))
+		]
+	};
 }
 
 /**
@@ -241,7 +302,6 @@ function compileWallFirstWithPhysicalWalls(
 	const geometry = result.geometry;
 	const floor = document.floor;
 	const floorElevation = floor.elevation;
-	const ceilingElevation = floor.elevation + floor.height;
 
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const queryBuilder: QueryGeometryBuilder = {
@@ -360,7 +420,6 @@ function compileWallFirstWithPhysicalWalls(
 									'floor',
 									floor.id,
 									candidate.elevation,
-									candidate.height,
 									candidate.roomIds,
 									floorBounds
 								])
@@ -370,10 +429,9 @@ function compileWallFirstWithPhysicalWalls(
 					...geometry.floors,
 					{
 						id: geometryId(['floor', floor.id]),
-						cacheKey: cacheKeyOf(['floor', floor.id, floorElevation, floor.height, [], floorBounds]),
+						cacheKey: cacheKeyOf(['floor', floor.id, floorElevation, [], floorBounds]),
 						floorId: floor.id,
 						elevation: floorElevation,
-						height: floor.height,
 						roomIds: [],
 						bounds3: floorBounds
 					}
@@ -579,6 +637,11 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 	for (const [floorIndex, floorEntry] of source.floors.entries()) {
 		const floor = floorEntry.floor;
 		const floorRoomIds: string[] = [];
+		// P23.6I — the Floor no longer carries a vertical extent, so the legacy
+		// storey scalar is kept only as a *cache-key dependency* where it exists
+		// (wall-first supplies each Room's derived ceiling instead). Legacy keys
+		// therefore stay byte-identical.
+		const floorCeilingDependencies: number[] = [];
 		let floorMin: Vec3 = [Infinity, Infinity, Infinity];
 		let floorMax: Vec3 = [-Infinity, -Infinity, -Infinity];
 
@@ -614,6 +677,7 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 			);
 			rooms.push(compiledRoom);
 			floorRoomIds.push(roomSource.room.id);
+			floorCeilingDependencies.push(compiledRoom.ceilingElevation);
 			includeBounds3(floorMin, floorMax, compiledRoom.bounds3.min, compiledRoom.bounds3.max);
 		}
 
@@ -629,13 +693,12 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 				'floor',
 				floor.id,
 				floor.elevation,
-				floor.height,
+				floor.height ?? floorCeilingDependencies,
 				floorRoomIds,
 				finiteBounds3(floorMin, floorMax)
 			]),
 			floorId: floor.id,
 			elevation: floor.elevation,
-			height: floor.height,
 			roomIds: floorRoomIds,
 			bounds3: finiteBounds3(floorMin, floorMax)
 		});
@@ -677,7 +740,13 @@ function compileRoom(
 ): CompiledRoom {
 	const room = roomSource.room;
 	const floorElevation = floor.elevation;
-	const ceilingElevation = floor.elevation + floor.height;
+	// P23.6I — a wall-first Room carries its derived ceiling (`floor.elevation +
+	// max(boundary Wall heights)`); the legacy path supplies nothing and keeps the
+	// storey-derived ceiling, so legacy output stays byte-identical.
+	const ceilingElevation = roomSource.ceilingElevation ?? floor.elevation + (floor.height ?? 0);
+	// Vertical extent handed to the shared Opening-splitting helper. Legacy equals
+	// `floor.height` exactly; wall-first uses its derived ceiling.
+	const roomVerticalExtent = ceilingElevation - floorElevation;
 
 	const floorPolygon: LayoutVec2[] = roomSource.boundary.segments.flatMap((segment, index) => {
 		const samples = sampledSegments[index]!.samples;
@@ -707,7 +776,7 @@ function compileRoom(
 			room.id,
 			segment
 		]);
-		const sections = splitSampledWallAroundOpenings(sampled, segment, openings, floor.height);
+		const sections = splitSampledWallAroundOpenings(sampled, segment, openings, roomVerticalExtent);
 		const compiledOpenings = openings.map((opening) =>
 			compileOpening(opening, sampled, floor.id, room.id, segmentDependencyKey)
 		);
@@ -723,7 +792,7 @@ function compileRoom(
 				openings,
 				wallThickness,
 				floor.elevation,
-				floor.height
+				floor.height ?? roomSource.ceilingElevation
 			]),
 			segmentId: segment.id,
 			thickness: wallThickness,
@@ -758,7 +827,7 @@ function compileRoom(
 			'room',
 			floor.id,
 			floor.elevation,
-			floor.height,
+			floor.height ?? roomSource.ceilingElevation,
 			room.id,
 			roomSource.boundary,
 			room.wallThickness,

@@ -17,7 +17,6 @@ import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
-import { WALL_HEIGHT_EPSILON } from './layout-wall-heights';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import {
@@ -236,15 +235,17 @@ export function planExactWallThickness(
 }
 
 /**
- * Set a Wall's authoritative physical height (P23.6H), preserving Wall,
- * Junction, Opening and Room identity.
+ * Set a Wall's authoritative physical height (P23.6H, unbounded since P23.6I),
+ * preserving Wall, Junction, Opening and Room identity.
  *
  * Height is independent of X/Z topology: the Wall stays the same authored Wall
  * with the same `role` and the same Room participation; only its vertical extent
- * changes (`topY = floor.elevation + height`). The Floor envelope caps the value —
- * this planner **rejects** an over-tall value rather than clamping it, and a Wall
- * shortened below a hosted Opening's top rejects atomically with the Opening
- * untouched (the canonical Opening validator owns that rule).
+ * changes (`topY = floor.elevation + height`). There is **no upper bound** — the
+ * canonical Floor has no storey scalar to cap against — so any finite positive
+ * value is accepted, including values taller than neighbouring Walls. A Wall
+ * shortened below a hosted Opening's top still rejects atomically with the Opening
+ * untouched (the canonical Opening validator owns that rule), and nothing is ever
+ * clamped.
  */
 export function planExactWallHeight(
 	document: LayoutDocumentWallFirst,
@@ -254,13 +255,6 @@ export function planExactWallHeight(
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
 	if (!finitePositive(height)) return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
-	if (height > document.floor.height + WALL_HEIGHT_EPSILON) {
-		return reject(
-			'invalid_value',
-			`Wall height ${height} m exceeds the Floor height ${document.floor.height} m`,
-			[wallId]
-		);
-	}
 	if (wall.height === height) return reject('no_op', `Wall '${wallId}' already has that height`, [wallId]);
 
 	const candidate = cloneDocument(document);

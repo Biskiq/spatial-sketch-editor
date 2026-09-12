@@ -45,7 +45,7 @@ function emptyDocument(elevation = 0): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor', name: 'Floor', elevation, height: 3 },
+		floor: { id: 'floor', name: 'Floor', elevation },
 		junctions: [],
 		walls: [],
 		rooms: [],
