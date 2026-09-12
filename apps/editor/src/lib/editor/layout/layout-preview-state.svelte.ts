@@ -196,6 +196,13 @@ export type WallFirstPrecisionMutationResult =
 			startJunctionId: string;
 			/** Canonical resolved end Junction (next continuation start). */
 			endJunctionId: string;
+			/**
+			 * P23.6I — the height this segment actually authored, read back from the
+			 * committed document. The continuous-run caller stores it as transient run
+			 * state and passes it to every later segment of the same run. Absent only
+			 * when the commit authored no Wall (nothing to continue at that height).
+			 */
+			wallHeight?: number;
 	  }
 	| { success: false; message: string };
 
@@ -938,16 +945,30 @@ export function commitWallChain(
  * P23.9 segment-first — commit one straight Wall segment as one Layout
  * history entry. Returns the canonical resolved Junctions for continuation
  * (never derived from `createdWallIds`). Rejection mutates nothing.
+ *
+ * P23.6I — `height` is the **continuation** height for a run already in
+ * progress: the editor's transient per-run value, passed explicitly so a turn
+ * that lands on a Junction with other incident heights keeps the run's height
+ * instead of re-resolving one. Omit it for the first segment of a run, where the
+ * canonical `planWallSegment` birth rule (`resolveWallBirthHeight`) derives the
+ * height from document topology — the editor never owns that decision.
  */
 export function commitWallSegment(
 	state: LayoutPreviewState,
 	start: LayoutVec2,
 	end: LayoutVec2,
-	role: ChainWallRole
+	role: ChainWallRole,
+	height?: number
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
-	const plan = planWallSegment({ baseline: layout, start, end, role });
+	const plan = planWallSegment({
+		baseline: layout,
+		start,
+		end,
+		role,
+		...(height !== undefined ? { height } : {})
+	});
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
 		return { success: false, message: plan.rejection.message };
@@ -965,6 +986,13 @@ export function commitWallSegment(
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
 		state.importError = null;
+		// The planner is the height authority: read the committed authored Wall's own
+		// value back out of the committed document rather than re-deriving it.
+		const authoredWallId = plan.authoredWallIds[0];
+		const wallHeight =
+			authoredWallId === undefined
+				? undefined
+				: plan.document.walls.find((wall) => wall.id === authoredWallId)?.height;
 		return {
 			success: true,
 			operation: 'wall-segment-commit',
@@ -972,7 +1000,8 @@ export function commitWallSegment(
 			allWallIds: [...plan.createdWallIds],
 			roomIds: plan.lineage.map((record) => record.roomId),
 			startJunctionId: plan.startJunctionId,
-			endJunctionId: plan.endJunctionId
+			endJunctionId: plan.endJunctionId,
+			...(wallHeight !== undefined ? { wallHeight } : {})
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Could not commit wall segment';

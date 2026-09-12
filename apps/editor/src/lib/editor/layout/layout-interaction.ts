@@ -340,6 +340,17 @@ export type LayoutInteractionState = {
 	wallChainStartJunctionId: string | null;
 	/** Canonical run-start Junction set once the first Wall commits. */
 	wallChainRunStartJunctionId: string | null;
+	/**
+	 * P23.6I — transient height for the **continuation** of one active draw run.
+	 *
+	 * `null` until the first segment of a run commits; then the committed authored
+	 * Wall's height, passed explicitly into every later segment so a turn arriving
+	 * at a Junction with other incident heights keeps the run's height instead of
+	 * re-resolving one. It is *not* a document rule — the first segment's height
+	 * comes from the canonical `resolveWallBirthHeight()` topology rule — and it is
+	 * not persisted, never enters history, and is cleared on every run-end path.
+	 */
+	wallChainRunHeight: number | null;
 	/** Last committed segment direction (for exact-length defaulting). */
 	wallChainLastDirection: LayoutVec2 | null;
 	/**
@@ -384,6 +395,7 @@ export function createLayoutInteractionState(): LayoutInteractionState {
 		wallChainStart: null,
 		wallChainStartJunctionId: null,
 		wallChainRunStartJunctionId: null,
+		wallChainRunHeight: null,
 		wallChainLastDirection: null,
 		wallChainHoverDirection: null,
 		wallChainCursor: null,
@@ -644,6 +656,9 @@ export function beginWallChain(state: LayoutInteractionState, point: LayoutVec2)
 	state.wallChainStart = [...point];
 	state.wallChainStartJunctionId = null;
 	state.wallChainRunStartJunctionId = null;
+	// P23.6I — a fresh run must not inherit the previous run's height: the
+	// first segment resolves its own birth height from canonical topology.
+	state.wallChainRunHeight = null;
 	state.wallChainLastDirection = null;
 	state.wallChainHoverDirection = null;
 	state.wallChainCursor = null;
@@ -672,7 +687,13 @@ export function hasWallChainRun(state: Pick<LayoutInteractionState, 'wallChainSt
  */
 export function advanceWallChainContinuation(
 	state: LayoutInteractionState,
-	result: { endPoint: LayoutVec2; endJunctionId: string; startJunctionId: string }
+	result: {
+		endPoint: LayoutVec2;
+		endJunctionId: string;
+		startJunctionId: string;
+		/** P23.6I — height the committed segment actually authored, if reported. */
+		wallHeight?: number;
+	}
 ): void {
 	const previousStart = state.wallChainStart;
 	if (previousStart) {
@@ -685,6 +706,11 @@ export function advanceWallChainContinuation(
 	if (state.wallChainRunStartJunctionId === null) {
 		state.wallChainRunStartJunctionId = result.startJunctionId;
 	}
+	// P23.6I — set the run height exactly once, from the first committed segment,
+	// so every later segment of this run (including turns) reuses it verbatim.
+	if (state.wallChainRunHeight === null && result.wallHeight !== undefined) {
+		state.wallChainRunHeight = result.wallHeight;
+	}
 	state.wallChainCursor = null;
 	state.wallChainHoverDirection = null;
 }
@@ -694,6 +720,9 @@ export function cancelWallChainRun(state: LayoutInteractionState): void {
 	state.wallChainStart = null;
 	state.wallChainStartJunctionId = null;
 	state.wallChainRunStartJunctionId = null;
+	// P23.6I — Escape / closure / tool change / document reset all land here, so
+	// clearing the run height with the rest of the run state is the one rule.
+	state.wallChainRunHeight = null;
 	state.wallChainLastDirection = null;
 	state.wallChainHoverDirection = null;
 	state.wallChainCursor = null;
@@ -703,6 +732,8 @@ export type WallChainRunSnapshot = {
 	start: LayoutVec2;
 	startJunctionId: string | null;
 	runStartJunctionId: string | null;
+	/** P23.6I — the run's continuation height (not history state). */
+	runHeight: number | null;
 	lastDirection: LayoutVec2 | null;
 	hoverDirection: LayoutVec2 | null;
 	cursor: LayoutVec2 | null;
@@ -721,6 +752,7 @@ export function captureWallChainRun(state: LayoutInteractionState): WallChainRun
 		start: [...state.wallChainStart],
 		startJunctionId: state.wallChainStartJunctionId,
 		runStartJunctionId: state.wallChainRunStartJunctionId,
+		runHeight: state.wallChainRunHeight,
 		lastDirection: state.wallChainLastDirection ? [...state.wallChainLastDirection] : null,
 		hoverDirection: state.wallChainHoverDirection ? [...state.wallChainHoverDirection] : null,
 		cursor: state.wallChainCursor ? [...state.wallChainCursor] : null
@@ -732,6 +764,7 @@ export function restoreWallChainRun(state: LayoutInteractionState, snapshot: Wal
 	state.wallChainStart = [...snapshot.start];
 	state.wallChainStartJunctionId = snapshot.startJunctionId;
 	state.wallChainRunStartJunctionId = snapshot.runStartJunctionId;
+	state.wallChainRunHeight = snapshot.runHeight;
 	state.wallChainLastDirection = snapshot.lastDirection ? [...snapshot.lastDirection] : null;
 	state.wallChainHoverDirection = snapshot.hoverDirection ? [...snapshot.hoverDirection] : null;
 	state.wallChainCursor = snapshot.cursor ? [...snapshot.cursor] : null;
