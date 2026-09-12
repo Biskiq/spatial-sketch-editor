@@ -1141,6 +1141,68 @@ now.
     candidate enclosed faces; it never independently allocates/recreates
     persistent semantic Rooms. Identity reconciliation/history is deterministic.
 
+## Development-stage schema compatibility
+
+Museum Editor is currently in active pre-baseline development. Persisted document schemas, development saves, fixtures, and intermediate branch formats are **not yet public compatibility contracts**.
+
+Until a **Compatibility Baseline** is explicitly ratified:
+
+* breaking changes to `ProjectDocument`, `LayoutDocument`, `SceneDocument`, Camera data, asset records, or other persisted authored state may invalidate earlier development data;
+* implementation work should optimize for one clear current canonical model rather than preserve superseded development schemas;
+* new schema work must **not add migration layers, tolerant historical decoders, multi-version canonical types, compatibility-only visitor branches, or legacy writer support by default**;
+* old local/cloud development projects may be reset or recreated;
+* development fixtures should be regenerated or updated to the current canonical schema unless their explicit purpose is testing an intentional import/conversion boundary;
+* intermediate formats created only on feature branches are implementation details and must not receive compatibility treatment;
+* **reaching `main` does not by itself create a backward-compatibility obligation.** A pre-baseline schema that shipped, or that exists on `main` today, is still development data: merge history is a record of what the code did, not a durability claim about what users own;
+* temporary adapters retained for internal demo content, benchmark fixtures, or other transitional development assets do **not** make the historical representation they read a supported product format;
+* when a schema is replaced before the baseline, remove obsolete compatibility code rather than carrying it forward solely because an earlier development revision existed.
+
+A migration or compatibility path before the baseline requires an explicit product reason and acceptance criterion. Examples that may justify one include:
+
+* externally distributed project files that must remain usable;
+* a published snapshot that has been intentionally declared durable;
+* an intentional import format or external integration;
+* production data that cannot reasonably be reset.
+
+These exceptions must be documented explicitly. Existing migration code is not itself evidence that compatibility remains required.
+
+```text
+LEGACY ADAPTER EXISTS
+≠
+LEGACY FORMAT IS A SUPPORTED PRODUCT CONTRACT
+```
+
+A pre-baseline reader may legitimately exist because internal demo content, benchmark goldens, or another not-yet-migrated internal asset still depends on the older representation. That is a development dependency with a named owner and a planned removal path, and it should be documented as temporary at the point it is introduced — it is not a promise that the format will keep loading. Removing such a dependency is its own slice rather than an automatic consequence of an unrelated schema change.
+
+This policy does **not** weaken canonical validation. Current documents must still be validated strictly, deterministic operations must preserve ownership and history invariants, and editor/visitor parity remains required.
+
+It also does not classify intentional format conversion as backward compatibility. An importer that deliberately converts an external or separately supported format into canonical project state may remain a product capability.
+
+### Compatibility Baseline
+
+Backward compatibility becomes a durable product requirement only when the project explicitly ratifies a Compatibility Baseline, expected no later than the point where user-authored projects or published versions are treated as durable external data.
+
+At that point:
+
+```text
+pre-baseline development data
+→ no compatibility guarantee
+
+baseline version and later
+→ explicit migration/version-support obligation
+```
+
+After the baseline, a breaking persisted-schema change must provide one of:
+
+1. a deterministic migration to the new canonical representation;
+2. an intentionally supported versioned reader/runtime path; or
+3. an explicit product-level deprecation policy.
+
+Published immutable versions must remain executable according to the compatibility contract established at that milestone.
+
+The long-term North Star remains unchanged: Museum Editor should support versioned projects, portable project ownership, publication, import/export, and deliberate schema evolution. The development-stage rule exists to prevent compatibility machinery for disposable prototypes from constraining the canonical architecture before that contract is needed.
+
+
 ## Technology gates
 
 Current production choices remain deliberate rather than ideological:
