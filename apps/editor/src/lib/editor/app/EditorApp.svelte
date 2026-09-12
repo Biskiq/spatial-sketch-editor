@@ -1996,6 +1996,7 @@
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
 		onReset={() => activeSelection.reset()}
+		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}
 		projectId={projectId}
@@ -2042,6 +2043,7 @@
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
 		onReset={() => activeSelection.reset()}
+		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}
 		projectId={projectId}

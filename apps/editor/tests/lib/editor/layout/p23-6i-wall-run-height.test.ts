@@ -40,6 +40,7 @@ import {
 	importLayoutPreviewJson,
 	layoutPreviewDocument,
 	layoutPreviewSnapshotMatchesLive,
+	resetLayoutPreview,
 	restoreLayoutPreviewSnapshot
 } from '$lib/editor/layout/layout-preview-state.svelte';
 import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
@@ -328,6 +329,51 @@ describe('P23.6I continuous Wall-run height — every run-end path clears it', (
 		const next = commitRunSegment(context, [0, 6], [4, 6]);
 		expect(authoredHeight(context, next)).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
 		expect(context.layoutInteraction.wallChainRunHeight).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
+	});
+
+	it('ends the run when a layout import replaces the document', () => {
+		// The reviewer's cross-document hazard: a 4 m first segment sets the
+		// run height, then Document B replaces the live document mid-run. The
+		// shell's post-replacement step (`onLayoutReplaced` in `EditorApp`,
+		// wired to `cancelWallChainRun`) must end the run, so the stale 4 m
+		// height can never cross into B as an explicit planner input.
+		const context = makeStore(tallWallDocument());
+		beginWallChain(context.layoutInteraction, [0, 0]);
+		const first = commitRunSegment(context, [0, 0], [3, 0]);
+		expect(authoredHeight(context, first)).toBe(4);
+		expect(context.layoutInteraction.wallChainRunHeight).toBe(4);
+
+		const imported = importLayoutPreviewJson(
+			context.layoutPreview,
+			serializeWallFirstLayoutDocument(emptyDocument())
+		);
+		expect(imported).toBe(true);
+		cancelWallChainRun(context.layoutInteraction);
+		expect(context.layoutInteraction.wallChainRunHeight).toBeNull();
+		expect(context.layoutInteraction.wallChainStart).toBeNull();
+
+		// A fresh run in B resolves from B's own (empty) topology: the
+		// authoring default, not the 4 m leaked from A.
+		beginWallChain(context.layoutInteraction, [0, 0]);
+		const next = commitRunSegment(context, [0, 0], [4, 0]);
+		expect(authoredHeight(context, next)).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
+		expect(context.layoutInteraction.wallChainRunHeight).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
+	});
+
+	it('ends the run when reset replaces the document', () => {
+		const context = makeStore(tallWallDocument());
+		beginWallChain(context.layoutInteraction, [0, 0]);
+		commitRunSegment(context, [0, 0], [3, 0]);
+		expect(context.layoutInteraction.wallChainRunHeight).toBe(4);
+
+		expect(resetLayoutPreview(context.layoutPreview)).toBe(true);
+		cancelWallChainRun(context.layoutInteraction);
+		expect(context.layoutInteraction.wallChainRunHeight).toBeNull();
+		expect(context.layoutInteraction.wallChainStart).toBeNull();
+
+		beginWallChain(context.layoutInteraction, [0, 0]);
+		const next = commitRunSegment(context, [0, 0], [4, 0]);
+		expect(authoredHeight(context, next)).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
 	});
 
 	it('survives a capture/restore round-trip (rejection retry)', () => {

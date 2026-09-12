@@ -43,7 +43,8 @@
 		onDiscardPendingSave,
 		resolveProjectAssetBytes,
 		open = $bindable(false),
-		onReset
+		onReset,
+		onLayoutReplaced
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -73,6 +74,13 @@
 		open?: boolean;
 		/** fired after a reset action; the shell clears the active selection on all three slots. */
 		onReset?: () => void;
+		/**
+		 * P23.6I review — fired after a layout document replacement (reset or
+		 * successful import); the shell cancels any in-flight Wall run so a stale
+		 * `wallChainRunHeight` can never cross into the new document. The relic
+		 * never passes this (its sidebar reset is frozen behavior).
+		 */
+		onLayoutReplaced?: () => void;
 	} = $props();
 
 	const dirty = $derived(projectIsDirty ?? (store.isDirty || layoutPreviewIsDirty(layoutPreview)));
@@ -119,10 +127,17 @@
 
 	function importLayoutJson(json: string, clearPasteOnSuccess = false) {
 		const parsed = parseLayoutDocumentJson(json);
-		if (!parsed.success) return importLayoutPreviewJson(layoutPreview, json);
+		if (!parsed.success) {
+			// Compatibility-shaped paste: no confirm gate on this path (existing
+			// behavior). A successful replacement still ends any in-flight run.
+			const fallback = importLayoutPreviewJson(layoutPreview, json);
+			if (fallback) onLayoutReplaced?.();
+			return fallback;
+		}
 		if (!confirmLayoutReplacement()) return false;
 		const imported = importLayoutPreviewJson(layoutPreview, json);
 		if (imported) store.clearSharedHistory();
+		if (imported) onLayoutReplaced?.();
 		if (imported && clearPasteOnSuccess) pastedLayoutJson = '';
 		return imported;
 	}
@@ -206,6 +221,7 @@
 		resetLayoutPreview(layoutPreview);
 		store.clearSharedHistory();
 		layoutPreview.statusMessage = 'Reset to empty layout';
+		onLayoutReplaced?.();
 		onReset?.();
 	}
 
