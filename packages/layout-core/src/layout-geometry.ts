@@ -178,9 +178,9 @@ export function compileWallFirstLayoutGeometry(
 	// `floor.elevation + max(boundary Wall heights)`, computed once here and fed
 	// into the shared Room compile path. The Floor no longer supplies it.
 	// D7 applies: an unresolvable boundary is invalid state, not an architecture
-	// to invent a ceiling for, so it yields a blocking issue and **no** fallback.
+	// to invent a ceiling for — the shared core skips such a Room with a blocking
+	// `room_ceiling_undefined` issue and no fallback.
 	const ceilingElevationByRoomId = new Map<string, number>();
-	const undefinedCeilingRoomIds: string[] = [];
 	for (const room of document.rooms) {
 		const heights: number[] = [];
 		let resolved = room.boundary.length > 0;
@@ -193,7 +193,8 @@ export function compileWallFirstLayoutGeometry(
 			heights.push(wall.height);
 		}
 		if (!resolved || heights.length === 0) {
-			undefinedCeilingRoomIds.push(room.id);
+			// No derived ceiling: the shared core owns the skip + blocking
+			// issue (D7) — never a manufactured ceiling.
 			continue;
 		}
 		ceilingElevationByRoomId.set(room.id, document.floor.elevation + Math.max(...heights));
@@ -256,27 +257,14 @@ export function compileWallFirstLayoutGeometry(
 		};
 	});
 
-	const result = compileWallFirstWithPhysicalWalls(document, {
+	// D7 is enforced inside the shared core: a Room with no derived ceiling is
+	// skipped there with a blocking `room_ceiling_undefined` issue, so no
+	// post-hoc issue append is needed here.
+	return compileWallFirstWithPhysicalWalls(document, {
 		floors: [{ floor: document.floor, rooms }],
 		objects: document.objects,
 		wallIdScope: 'document'
 	});
-	if (undefinedCeilingRoomIds.length === 0) return result;
-	// D7 defense-in-depth: a Room whose boundary cannot resolve never acquires a
-	// manufactured ceiling (neither `max(document Wall heights)` nor the authoring
-	// default) — it blocks the compile by name instead.
-	return {
-		geometry: result.geometry,
-		issues: [
-			...result.issues,
-			...undefinedCeilingRoomIds.map((roomId) => ({
-				path: `rooms.${roomId}.boundary`,
-				code: 'room_ceiling_undefined',
-				message: `Room '${roomId}' has no resolvable boundary Wall to derive a ceiling from`,
-				targetId: roomId
-			}))
-		]
-	};
 }
 
 /**
@@ -647,6 +635,20 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 
 		for (const [roomIndex, roomSource] of floorEntry.rooms.entries()) {
 			const path = `floors[${floorIndex}].rooms[${roomIndex}]`;
+			// P23.6I D7 (review closeout) — a Room with no vertical datum
+			// (neither a wall-first derived ceiling nor a legacy Floor height)
+			// never acquires an invented ceiling: skip it and block by name
+			// instead of compiling a fake zero-height Room at the elevation.
+			// Legacy frames always carry `height`, so legacy output is unchanged.
+			if (roomSource.ceilingElevation === undefined && floor.height === undefined) {
+				issues.push({
+					path: `${path}.boundary`,
+					code: 'room_ceiling_undefined',
+					message: `Room '${roomSource.room.id}' has no resolvable boundary Wall to derive a ceiling from`,
+					targetId: roomSource.room.id
+				});
+				continue;
+			}
 			const prepared = prepareLayoutRoomSegments(
 				{ id: roomSource.room.id, boundary: roomSource.boundary },
 				path
