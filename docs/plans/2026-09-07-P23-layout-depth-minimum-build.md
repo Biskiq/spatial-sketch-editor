@@ -6,7 +6,7 @@
 **Depends on:** P22 complete, including hosted cold-visitor acceptance.  
 **Owner reconciliation ratified:** 2026-09-09.  
 **Evidence basis:** completed `P23-H1`, `P23-H2`, `P23-H3`, `P23-H5`, current Museum Editor code, and the staging wall-first proposal.  
-**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H implemented on branch `P23.6-H`**; **P23.6I, P23.6a and P23.6b are implementation-ready child plans**, and H + I together are the single pre-merge format-5 vertical cutover.
+**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I implemented on branch `P23.6-H`** (PR #25 awaited review); **P23.6a and P23.6b are implementation-ready child plans**, and H + I together are the single pre-merge format-5 vertical cutover.
 
 This is the reconciled P23 umbrella. The accepted reconciliation — informed by the harvests — supersedes conflicting earlier P23 and North-Star direction. Harvest artifacts remain evidence, not implementation authority.
 
@@ -492,17 +492,17 @@ P23.6 owns the Plan-side Wall-drawing UX: live passive candidate length readout 
 
 [Child plan](2026-09-12-P23.6H-vertical-wall-semantics.md)
 
-Makes `LayoutWall.height` authoritative physical Wall height on the one canonical compiler path (`compileLayoutGeometry()` → compiled vertical sections → editor + visitor mesh), with host-Wall Opening vertical fit and one exact Height operation. Owns historical Wall-height compatibility (pre-H documents preserve previously visible Floor-derived extent, then canonicalize). Not part of the P23.6 presentation slice; required before P23.6b presents Height.
+Makes `LayoutWall.height` authoritative physical Wall height on the one canonical compiler path (`compileLayoutGeometry()` → compiled vertical sections → editor + visitor mesh), with host-Wall Opening vertical fit and one exact Height operation. Not part of the P23.6 presentation slice; required before P23.6b presents Height.
 
-**Implemented on branch `P23.6-H`** (see the child plan's §Implementation record): format 4 → 5 with pre-H documents still loadable and normalized once at the compatible decode boundary; `layout-wall-heights.ts` birth/range rule; compiler/physical-Wall bounds + `CompiledPhysicalWall.height`; host-Wall Opening fit in both gates; `planExactWallHeight`; planner-backed Inspector `Height (m)`; and editor/visitor/museum mesh parity including the editor-app `LayoutMuseumShell.svelte` canonical `geometry.walls` path.
+**Implemented on branch `P23.6-H`** (see the child plan's §Implementation record): `layout-wall-heights.ts` birth/range rule; compiler/physical-Wall bounds + `CompiledPhysicalWall.height`; host-Wall Opening fit in both gates; `planExactWallHeight`; planner-backed Inspector `Height (m)`; and editor/visitor/museum mesh parity including the editor-app `LayoutMuseumShell.svelte` canonical `geometry.walls` path.
 
-H's `floor.height` birth default, Floor cap and Floor-derived Room/Floor envelope are **superseded before merge by P23.6I** (below): H + I together are the single pre-merge format-5 vertical cutover.
+H's `floor.height` birth default, Floor cap, Floor-derived Room/Floor envelope **and pre-H `formatVersion: 4` compatibility** are **superseded before merge by P23.6I** (below): H + I together are the single pre-merge vertical cutover, and `5` is the only recognized wall-first version.
 
 ## P23.6I — Wall-defined vertical envelope
 
 [Child plan](2026-09-12-P23.6I-wall-defined-vertical-envelope.md)
 
-Forward amendment to P23.6H, landing before PR #25 merges: retires `floor.height` from the canonical wall-first schema so `LayoutWall.height` is the only authored vertical Wall authority (finite, positive, no storey cap), with the canonical Floor reduced to `{ id, name, elevation }`. Room ceilings become derived flat planes at `max(boundary Wall heights)`; legacy Room-owned documents keep their own Floor-height semantics on the compatibility path and legacy → wall-first migration consumes the legacy storey height once to seed migrated Wall heights. One format cutover — format 4 → format 5 — with **no intermediate generations**; H + I together are that cutover.
+Forward amendment to P23.6H, landed on the `P23.6-H` branch before PR #25 merges: retires `floor.height` from the canonical wall-first schema so `LayoutWall.height` is the only authored vertical Wall authority (finite, positive, no storey cap), with the canonical Floor reduced to `{ id, name, elevation }`. Room ceilings become derived flat planes at `max(boundary Wall heights)`; legacy Room-owned documents keep their own Floor-height semantics on the compatibility path and legacy → wall-first migration consumes the legacy storey height once to seed migrated Wall heights. Wall creation is the named `WALL_AUTHORING_DEFAULT_HEIGHT = 3` plus a core topology-derived birth rule, with the editor owning only transient run state. **`5` is the only recognized wall-first version**: the pre-baseline policy refuses the superseded wall-first `4` by name rather than migrating it, and there are no intermediate schema generations; H + I together are that cutover.
 
 ## P23.6a — Wall-first Room Unit Move
 
@@ -560,7 +560,7 @@ P23.6b
 P23.7
 ```
 
-P23.6H and P23.6I are one pre-merge vertical cutover (`P23.6H + P23.6I →` the single format 4 → 5 contract); P23.6I creates no further schema generation.
+P23.6H and P23.6I are one pre-merge vertical cutover (`P23.6H + P23.6I →` the single format-5 contract); P23.6I creates no further schema generation, and per the pre-baseline compatibility policy (`docs/north-star.md` → *Development-stage schema compatibility*) the wall-first `4` generation is refused by name rather than migrated.
 
 P23.4/P23.5 may overlap where their concrete dependencies permit. Numeric child IDs preserve planning history; dependency order, not numeric order, governs execution.
 
