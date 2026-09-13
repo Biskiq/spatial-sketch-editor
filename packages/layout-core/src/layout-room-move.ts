@@ -30,8 +30,8 @@
  * - Wall `id`/`role`/`thickness`/`height`, Opening identity and semantics,
  *   Room identity and metadata are preserved exactly — only Junction points and
  *   explicitly associated object X/Z change;
- * - `object.roomId === movedRoomId` non-profile objects follow by the same
- *   delta; no other object moves and containment never decides;
+ * - non-profile objects explicitly associated with any Room in `movedRoomIds`
+ *   follow by the same delta; no other object moves and containment never decides;
  * - zero Room births/retirements/splits/merges, asserted (not assumed);
  * - the input document is never mutated, and no face key or Room position is
  *   ever persisted.
