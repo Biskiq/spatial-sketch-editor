@@ -1,23 +1,30 @@
 /**
- * `layout-room-move.ts` — P23.6a: rigid whole-Room translation for wall-first
+ * `layout-room-move.ts` — P23.6a: rigid Room-unit translation for wall-first
  * Layout documents ([P23.6a plan](../../../../docs/plans/2026-09-12-P23.6a-wall-first-room-unit-move.md)).
  *
  * In wall-first Layout a Room is persistent semantic identity reconciled from
- * topology, not an authored polygon, so a whole-Room move translates the
- * Room's canonical boundary **Junctions** and lets the existing reconciliation
- * engine re-derive the committed Room:
+ * topology, not an authored polygon, so a whole-Room move translates canonical
+ * boundary **Junctions** and lets the existing reconciliation engine re-derive
+ * the committed Rooms:
  *
  * ```text
  * validate intent
  * → resolve persisted Room
- * → shared isolated-subgraph policy (P23.6a S1)
- * → clone candidate; translate boundary Junctions + associated objects
+ * → shared isolation policy: the CONNECTED ROOM GROUP that contains it (A)
+ * → clone candidate; translate group Junctions + associated objects
  * → exact boundary-lineage correspondence (key equality, no geometry)
- * → reconcileRooms() (existing engine, 1→1 branch only)
+ * → reconcileRooms() (existing engine, 1→1 branches only)
  * → assert global identity preservation
  * → canonical validation gates (codec → topology → opening set → portals → compile)
  * → exactly one candidate document (or a rejection; the caller keeps history)
  * ```
+ *
+ * **Amendment A (connected group).** The movable unit is the connected Room
+ * group, not a lone Room: Rooms joined through shared boundary Junctions cannot
+ * be separated without detaching architecture, so dragging any member moves the
+ * whole group rigidly while the shared interior Walls travel exactly once. A
+ * Room with no shared boundary Junctions is a group of one — the original
+ * P23.6a behaviour, discovered rather than special-cased.
  *
  * Guarantees (P23.6a D3/D4/D5/D7):
  * - Wall `id`/`role`/`thickness`/`height`, Opening identity and semantics,
@@ -39,7 +46,7 @@ import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
-import { resolveIsolatedRoomSubgraph } from './layout-room-isolation';
+import { resolveIsolatedRoomGroupSubgraph } from './layout-room-isolation';
 import {
 	reconcileRooms,
 	type ComponentLineage,
@@ -84,7 +91,13 @@ export type RoomMovePlan =
 			/** Exact committed document — same IDs, moved Junction points. */
 			document: LayoutDocumentWallFirst;
 			operation: 'room-move';
+			/** The dragged (anchor) Room — always a member of `movedRoomIds`. */
 			movedRoomId: string;
+			/**
+			 * Every Room moved as one rigid unit: the connected group containing the
+			 * anchor, anchor first then document order. A lone Room is a group of one.
+			 */
+			movedRoomIds: readonly string[];
 			/** Boundary Junctions translated by the delta, deterministic order. */
 			changedJunctionIds: readonly string[];
 			/** Boundary Walls that moved (their Junctions moved; fields did not). */
@@ -157,8 +170,9 @@ export function planWallFirstRoomMove(
 		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
 	}
 
-	// Shared isolation policy (P23.6a S1) — identical to the duplicate path.
-	const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+	// Shared isolation policy (P23.6a S1) in its group scope (amendment A): the
+	// movable unit is the connected Room group containing this Room.
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
 	if (isolation.kind === 'rejected') {
 		return reject(
 			isolation.rejection.code,
@@ -298,6 +312,7 @@ export function planWallFirstRoomMove(
 		document: structural.document,
 		operation: 'room-move',
 		movedRoomId: roomId,
+		movedRoomIds: [...subgraph.roomIds],
 		changedJunctionIds: [...subgraph.junctionIds],
 		changedWallIds: [...movedWallIds],
 		changedObjectIds: [...subgraph.associatedObjectIds]

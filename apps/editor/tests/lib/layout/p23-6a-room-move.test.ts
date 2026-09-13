@@ -12,7 +12,11 @@ import {
 	canonicalBoundaryCycleKey,
 	extractBoundaryCandidateFaces
 } from '$lib/layout/layout-face-extraction';
-import { resolveIsolatedRoomSubgraph } from '$lib/layout/layout-room-isolation';
+import {
+	connectedRoomIds,
+	resolveIsolatedRoomGroupSubgraph,
+	resolveIsolatedRoomSubgraph
+} from '$lib/layout/layout-room-isolation';
 import { planWallFirstRoomMove, roomBoundaryCycleKey } from '$lib/layout/layout-room-move';
 import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 import {
@@ -129,6 +133,141 @@ function isolatedRoomDocument(): LayoutDocumentWallFirst {
 	});
 	const faces = extractBoundaryCandidateFaces(base);
 	return { ...base, rooms: [roomFromFace('room-1', 'Alone', faces.faces[0]!)] };
+}
+
+/**
+ * Two adjacent 4×4 enclosures sharing `wall-b` (and therefore its two
+ * Junctions) — the connected group amendment A exists for.
+ */
+function twoRoomDocument(extra?: {
+	openings?: LayoutDocumentWallFirst['openings'];
+	thirdRoom?: boolean;
+}): LayoutDocumentWallFirst {
+	const base = shell({
+		junctions: [
+			['j-a', 0, 0],
+			['j-b', 4, 0],
+			['j-e1', 8, 0],
+			['j-e2', 8, 4],
+			['j-c', 4, 4],
+			['j-d', 0, 4],
+			...(extra?.thirdRoom
+				? ([['j-x', 40, 0], ['j-y', 40, 4]] as Array<[string, number, number]>)
+				: [])
+		],
+		walls: [
+			{ id: 'wall-a', start: 'j-a', end: 'j-b' },
+			{ id: 'wall-e', start: 'j-b', end: 'j-e1' },
+			{ id: 'wall-f', start: 'j-e1', end: 'j-e2' },
+			{ id: 'wall-g', start: 'j-e2', end: 'j-c' },
+			{ id: 'wall-b', start: 'j-b', end: 'j-c' },
+			{ id: 'wall-c', start: 'j-c', end: 'j-d' },
+			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
+			...(extra?.thirdRoom
+				? [
+						{
+							id: 'wall-rl',
+							start: 'j-x',
+							end: 'j-y',
+							role: 'partition' as const
+						}
+					]
+				: [])
+		],
+		openings: extra?.openings
+	});
+	const faces = extractBoundaryCandidateFaces(base);
+	const leftFace = faces.faces.find((face) =>
+		face.boundary.some((ref) => ref.wallId === 'wall-a')
+	)!;
+	const rightFace = faces.faces.find((face) => face !== leftFace)!;
+	return {
+		...base,
+		rooms: [
+			roomFromFace('room-left', 'Left', leftFace),
+			roomFromFace('room-right', 'Right', rightFace),
+			...(extra?.thirdRoom
+				? [
+						{
+							id: 'room-other',
+							name: 'Far',
+							boundary: [{ wallId: 'wall-rl', direction: 'forward' as const }],
+							floorThickness: 0.1,
+							ceilingThickness: 0.1
+						}
+					]
+				: [])
+		]
+	};
+}
+
+/** Two Rooms meeting at exactly one shared Junction (corner contact). */
+function cornerConnectedRoomsDocument(): LayoutDocumentWallFirst {
+	const base = shell({
+		junctions: [
+			['j-a', 0, 0],
+			['j-b', 4, 0],
+			['j-c', 4, 4],
+			['j-d', 0, 4],
+			['j-e', 8, 4],
+			['j-f', 8, 8],
+			['j-g', 4, 8]
+		],
+		walls: [
+			{ id: 'wall-a1', start: 'j-a', end: 'j-b' },
+			{ id: 'wall-a2', start: 'j-b', end: 'j-c' },
+			{ id: 'wall-a3', start: 'j-c', end: 'j-d' },
+			{ id: 'wall-a4', start: 'j-d', end: 'j-a' },
+			{ id: 'wall-b1', start: 'j-c', end: 'j-e' },
+			{ id: 'wall-b2', start: 'j-e', end: 'j-f' },
+			{ id: 'wall-b3', start: 'j-f', end: 'j-g' },
+			{ id: 'wall-b4', start: 'j-g', end: 'j-c' }
+		]
+	});
+	const faces = extractBoundaryCandidateFaces(base);
+	const first = faces.faces.find((face) =>
+		face.boundary.some((ref) => ref.wallId === 'wall-a1')
+	)!;
+	const second = faces.faces.find((face) => face !== first)!;
+	return {
+		...base,
+		rooms: [roomFromFace('room-a', 'A', first), roomFromFace('room-b', 'B', second)]
+	};
+}
+
+/** Two independent enclosures with no shared Junction or Wall. */
+function twoDisjointRoomsDocument(): LayoutDocumentWallFirst {
+	const base = shell({
+		junctions: [
+			['j-a1', 0, 0],
+			['j-a2', 6, 0],
+			['j-a3', 6, 4],
+			['j-a4', 0, 4],
+			['j-b1', 20, 0],
+			['j-b2', 26, 0],
+			['j-b3', 26, 4],
+			['j-b4', 20, 4]
+		],
+		walls: [
+			{ id: 'wall-a1', start: 'j-a1', end: 'j-a2' },
+			{ id: 'wall-a2', start: 'j-a2', end: 'j-a3' },
+			{ id: 'wall-a3', start: 'j-a3', end: 'j-a4' },
+			{ id: 'wall-a4', start: 'j-a4', end: 'j-a1' },
+			{ id: 'wall-b1', start: 'j-b1', end: 'j-b2' },
+			{ id: 'wall-b2', start: 'j-b2', end: 'j-b3' },
+			{ id: 'wall-b3', start: 'j-b3', end: 'j-b4' },
+			{ id: 'wall-b4', start: 'j-b4', end: 'j-b1' }
+		]
+	});
+	const faces = extractBoundaryCandidateFaces(base);
+	const first = faces.faces.find((face) =>
+		face.boundary.some((ref) => ref.wallId === 'wall-a1')
+	)!;
+	const second = faces.faces.find((face) => face !== first)!;
+	return {
+		...base,
+		rooms: [roomFromFace('room-a', 'A', first), roomFromFace('room-b', 'B', second)]
+	};
 }
 
 function success(plan: ReturnType<typeof planWallFirstRoomMove>) {
@@ -307,40 +446,138 @@ describe('P23.6a — isolated Room rigid move', () => {
 	});
 });
 
-describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
-	it('rejects a Room sharing a boundary Wall with another Room', () => {
-		// Two adjacent enclosures sharing `wall-e`.
-		const base = shell({
-			junctions: [
-				['j-a', 0, 0],
-				['j-b', 4, 0],
-				['j-e1', 8, 0],
-				['j-e2', 8, 4],
-				['j-c', 4, 4],
-				['j-d', 0, 4]
-			],
-			walls: [
-				{ id: 'wall-a', start: 'j-a', end: 'j-b' },
-				{ id: 'wall-e', start: 'j-b', end: 'j-e1' },
-				{ id: 'wall-f', start: 'j-e1', end: 'j-e2' },
-				{ id: 'wall-e2', start: 'j-e2', end: 'j-c' },
-				{ id: 'wall-b', start: 'j-b', end: 'j-c' },
-				{ id: 'wall-c', start: 'j-c', end: 'j-d' },
-				{ id: 'wall-d', start: 'j-d', end: 'j-a' }
+describe('P23.6a amendment A — the movable unit is the connected Room group', () => {
+	it('moves a Room sharing a boundary Wall with another Room as one group', () => {
+		const document = twoRoomDocument();
+		const plan = success(planWallFirstRoomMove(document, 'room-left', [0, 20]));
+
+		// The dragged Room anchors the group; the connected member travels with it.
+		expect(plan.movedRoomId).toBe('room-left');
+		expect(plan.movedRoomIds).toEqual(['room-left', 'room-right']);
+		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual([
+			'room-left',
+			'room-right'
+		]);
+		expect(plan.document.rooms).toHaveLength(document.rooms.length);
+
+		// Both enclosures are where the delta put them.
+		expect(junctionPoints(plan.document, ['j-a', 'j-b', 'j-c', 'j-d'])).toEqual([
+			[0, 20],
+			[4, 20],
+			[4, 24],
+			[0, 24]
+		]);
+		expect(junctionPoints(plan.document, ['j-e1', 'j-e2'])).toEqual([
+			[8, 20],
+			[8, 24]
+		]);
+
+		// Room identity and boundary lineage survive for every member.
+		for (const room of document.rooms) {
+			const moved = plan.document.rooms.find((candidate) => candidate.id === room.id)!;
+			expect(moved.name).toBe(room.name);
+			expect(roomBoundaryCycleKey(moved)).toBe(roomBoundaryCycleKey(room));
+		}
+	});
+
+	it('translates the shared interior Wall exactly once, with identical records', () => {
+		const document = twoRoomDocument();
+		const plan = success(planWallFirstRoomMove(document, 'room-right', [10, 10]));
+
+		// The shared Wall is one record in the moved set, not duplicated.
+		expect(plan.changedWallIds.filter((wallId) => wallId === 'wall-b')).toHaveLength(1);
+		expect(plan.document.walls.filter((wall) => wall.id === 'wall-b')).toHaveLength(1);
+		const before = new Map(document.walls.map((wall) => [wall.id, wall]));
+		for (const wall of plan.document.walls) {
+			// Fields never change; the Wall moves because its Junctions moved.
+			expect(wall).toEqual(before.get(wall.id)!);
+		}
+	});
+
+	it('groups Rooms that meet at only one shared Junction (corner contact)', () => {
+		const document = cornerConnectedRoomsDocument();
+		const plan = success(planWallFirstRoomMove(document, 'room-a', [0, 12]));
+		expect(plan.movedRoomIds).toEqual(['room-a', 'room-b']);
+		// The shared corner Junction moved once, so neither Room was torn off it.
+		expect(junctionPoints(plan.document, ['j-c'])).toEqual([[4, 16]]);
+	});
+
+	it('preserves a portal relation whose endpoints both move with the group', () => {
+		const document = twoRoomDocument({
+			openings: [
+				{
+					id: 'opening:door:1',
+					wallId: 'wall-b',
+					kind: 'door',
+					offset: 1,
+					width: 0.9,
+					height: 2.1,
+					sillHeight: 0,
+					profile: 'rectangular',
+					connectsRoomIds: ['room-left', 'room-right']
+				}
 			]
 		});
-		const faces = extractBoundaryCandidateFaces(base);
-		const document: LayoutDocumentWallFirst = {
-			...base,
-			rooms: [
-				roomFromFace('room-left', 'Left', faces.faces[0]!),
-				roomFromFace('room-right', 'Right', faces.faces[1]!)
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+		const plan = success(planWallFirstRoomMove(document, 'room-left', [0, 20]));
+		// An interior door stays a door: same record, same host Wall, same relation.
+		expect(plan.document.openings).toEqual(document.openings);
+	});
+
+	it('rejects a portal relation with an endpoint outside the group', () => {
+		const document = twoRoomDocument({
+			thirdRoom: true,
+			openings: [
+				{
+					id: 'opening:door:1',
+					wallId: 'wall-b',
+					kind: 'door',
+					offset: 1,
+					width: 0.9,
+					height: 2.1,
+					sillHeight: 0,
+					profile: 'rectangular',
+					connectsRoomIds: ['room-left', 'room-other']
+				}
 			]
-		};
-		const shared = rejection(planWallFirstRoomMove(document, 'room-left', [0, 20]));
-		expect(shared.code).toBe('room_not_isolated');
-		expect(shared.message).toContain('room-right');
-		expect(shared.message).toContain('wall-b');
+		});
+		expect(validateWallFirstLayoutDocument(document).success).toBe(true);
+		const rejected = rejection(planWallFirstRoomMove(document, 'room-left', [0, 20]));
+		expect(rejected.code).toBe('external_portal_relation');
+		expect(rejected.message).toContain('opening:door:1');
+	});
+
+	it('moves only the dragged component when Rooms are disjoint', () => {
+		const document = twoDisjointRoomsDocument();
+		const plan = success(planWallFirstRoomMove(document, 'room-a', [0, 30]));
+		expect(plan.movedRoomIds).toEqual(['room-a']);
+		// The unrelated enclosure did not move at all.
+		expect(junctionPoints(plan.document, ['j-b1', 'j-b2', 'j-b3', 'j-b4'])).toEqual([
+			[20, 0],
+			[26, 0],
+			[26, 4],
+			[20, 4]
+		]);
+		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['room-a', 'room-b']);
+	});
+});
+
+describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
+	it('keeps the single-Room duplicate policy (shared Wall still rejects there)', () => {
+		const document = twoRoomDocument();
+		const single = resolveIsolatedRoomSubgraph(document, 'room-left');
+		expect(single.kind).toBe('rejected');
+		if (single.kind === 'rejected') {
+			expect(single.rejection.code).toBe('room_not_isolated');
+			expect(single.rejection.message).toContain('room-right');
+			expect(single.rejection.message).toContain('wall-b');
+		}
+		// …while the group scope moves exactly that pair.
+		const group = resolveIsolatedRoomGroupSubgraph(document, 'room-left');
+		expect(group.kind).toBe('success');
+		if (group.kind === 'success') {
+			expect(group.subgraph.roomIds).toEqual(['room-left', 'room-right']);
+		}
 	});
 
 	it('rejects a boundary Junction carrying an external Wall (including corner-only)', () => {
@@ -432,7 +669,7 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 		expect(profile.message).toContain('obj-profile');
 	});
 
-	it('exposes the shared subgraph so duplicate and move can never drift', () => {
+	it('exposes the shared subgraphs so duplicate and move can never drift', () => {
 		const document = isolatedRoomDocument();
 		const resolved = resolveIsolatedRoomSubgraph(document, 'room-1');
 		expect(resolved.kind).toBe('success');
@@ -442,6 +679,23 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 		expect(resolved.subgraph.openingIds).toEqual(['opening:window:1']);
 		expect(resolved.subgraph.associatedObjectIds).toEqual(['obj-1']);
 		expect(resolved.subgraph.profileObjectIds).toEqual([]);
+
+		// Group scope: an isolated Room is a group of one, and the group
+		// subgraph is the union over its members.
+		const group = resolveIsolatedRoomGroupSubgraph(document, 'room-1');
+		expect(group.kind).toBe('success');
+		if (group.kind !== 'success') return;
+		expect(group.subgraph.roomIds).toEqual(['room-1']);
+		expect(group.subgraph.wallIds).toEqual(resolved.subgraph.wallIds);
+		expect(group.subgraph.junctionIds).toEqual(resolved.subgraph.junctionIds);
+		expect(group.subgraph.associatedObjectIds).toEqual(['obj-1']);
+
+		// Connectivity is junction-based and deterministic: anchor first.
+		expect(connectedRoomIds(twoRoomDocument(), 'room-right')).toEqual([
+			'room-right',
+			'room-left'
+		]);
+		expect(connectedRoomIds(twoDisjointRoomsDocument(), 'room-a')).toEqual(['room-a']);
 	});
 });
 

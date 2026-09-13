@@ -29,6 +29,8 @@ import {
 	setLayoutDraftTool,
 	updateLayoutRoomUnitDrag
 } from '$lib/editor/layout/layout-interaction';
+import { buildLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
+import { buildPlanInteractionProjection } from '$lib/editor/layout/plan-overlays';
 import {
 	captureLayoutPreviewSnapshot,
 	createEmptyLayoutPreviewState,
@@ -138,6 +140,30 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	};
 }
 
+/**
+ * Room whose corner Junction carries a stationary partition stub: the Room has
+ * no connected peer, but the stub would be torn off by a move — the surviving
+ * `room_not_isolated` case under group semantics.
+ */
+function roomWithPartitionStubDocument(): LayoutDocumentWallFirst {
+	const base = isolatedRoomDocument();
+	return {
+		...base,
+		junctions: [...base.junctions, { id: 'j-t', point: [0, -3] }],
+		walls: [
+			...base.walls,
+			{
+				id: 'wall-stub',
+				startJunctionId: 'j-a',
+				endJunctionId: 'j-t',
+				role: 'partition',
+				thickness: 0.2,
+				height: 3
+			}
+		]
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
@@ -201,7 +227,15 @@ function startRoomUnitDrag(context: GestureContext, roomId: string): boolean {
 	}
 	if (!store.beginLayoutTransaction()) return false;
 	context.snapshot = captureLayoutPreviewSnapshot(layoutPreview);
-	beginLayoutRoomUnitDrag(layoutInteraction, roomId, 'translate', [0, 0], [0, 0]);
+	// Mirrors the viewport: the eligible unit is the connected Room group.
+	beginLayoutRoomUnitDrag(
+		layoutInteraction,
+		roomId,
+		'translate',
+		[0, 0],
+		[0, 0],
+		eligibility.subgraph.roomIds
+	);
 	return true;
 }
 
@@ -248,6 +282,13 @@ function releaseRoomUnitDrag(
 	if (result.success) {
 		const changed = store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
 		kind = changed ? 'committed' : 'cancelled';
+		if (changed) {
+			// Mirrors the viewport's status line.
+			layoutPreview.statusMessage =
+				result.movedRoomIds.length > 1
+					? `Moved ${result.movedRoomIds.length} rooms`
+					: 'Moved room';
+		}
 		if (!changed) restoreLayoutPreviewSnapshot(layoutPreview, context.snapshot);
 	} else {
 		store.cancelLayoutTransaction();
@@ -298,12 +339,24 @@ describe('P23.6a adapter — previewWallFirstRoomMove', () => {
 
 	it('reports eligibility through the shared isolation policy', () => {
 		const context = makeStore();
-		expect(wallFirstRoomMoveEligibility(context.layoutPreview, 'room-1').movable).toBe(true);
+		const single = wallFirstRoomMoveEligibility(context.layoutPreview, 'room-1');
+		expect(single.movable).toBe(true);
+		if (single.movable) expect(single.subgraph.roomIds).toEqual(['room-1']);
 
+		// Amendment A — a Room sharing a Wall with another Room is movable as the
+		// connected group, and eligibility names every member.
 		const shared = makeStore(twoRoomDocument());
 		const eligibility = wallFirstRoomMoveEligibility(shared.layoutPreview, 'room-left');
-		expect(eligibility.movable).toBe(false);
-		if (!eligibility.movable) expect(eligibility.rejection.code).toBe('room_not_isolated');
+		expect(eligibility.movable).toBe(true);
+		if (eligibility.movable) {
+			expect(eligibility.subgraph.roomIds).toEqual(['room-left', 'room-right']);
+		}
+
+		// A stationary Wall at a group Junction is still not movable.
+		const stubbed = makeStore(roomWithPartitionStubDocument());
+		const blocked = wallFirstRoomMoveEligibility(stubbed.layoutPreview, 'room-1');
+		expect(blocked.movable).toBe(false);
+		if (!blocked.movable) expect(blocked.rejection.code).toBe('room_not_isolated');
 	});
 
 	it('leaves SceneDocument byte-equivalent through a committed move', () => {
@@ -402,15 +455,47 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 	});
 
 	it('an ineligible Room selects only — no transaction, no history', () => {
-		const context = makeStore(twoRoomDocument());
+		const context = makeStore(roomWithPartitionStubDocument());
 		const { store, layoutInteraction } = context;
 		const before = JSON.stringify(live(context));
-		expect(startRoomUnitDrag(context, 'room-left')).toBe(false);
-		expect(layoutInteraction.selection).toEqual({ kind: 'room', roomId: 'room-left' });
+		expect(startRoomUnitDrag(context, 'room-1')).toBe(false);
+		expect(layoutInteraction.selection).toEqual({ kind: 'room', roomId: 'room-1' });
 		expect(layoutInteraction.roomUnitDrag).toBeNull();
 		expect(store.canUndo).toBe(false);
 		expect(JSON.stringify(live(context))).toBe(before);
 		expect(context.layoutPreview.statusMessage).toContain('Move its Walls individually');
+	});
+
+	it('moves a connected Room pair as one unit with one history entry', () => {
+		const context = makeStore(twoRoomDocument());
+		const { store, layoutInteraction } = context;
+		const before = JSON.stringify(live(context));
+
+		expect(startRoomUnitDrag(context, 'room-left')).toBe(true);
+		// The session carries the whole moving unit for the overlay highlight.
+		expect(layoutInteraction.roomUnitDrag?.groupRoomIds).toEqual([
+			'room-left',
+			'room-right'
+		]);
+		expect(moveRoomUnitDrag(context, [0, 20]).success).toBe(true);
+		expect(releaseRoomUnitDrag(context, [0, 20]).kind).toBe('committed');
+
+		// Both Rooms moved; identities, names and the shared Wall are intact.
+		expect(live(context).rooms.map((room) => room.id).sort()).toEqual([
+			'room-left',
+			'room-right'
+		]);
+		expect(point(context, 'j-a')).toEqual([0, 20]);
+		expect(point(context, 'j-e1')).toEqual([8, 20]);
+		expect(live(context).walls.filter((wall) => wall.id === 'wall-b')).toHaveLength(1);
+		expect(context.layoutPreview.statusMessage).toBe('Moved 2 rooms');
+
+		// Exactly one entry restores and re-applies the whole group.
+		expect(store.undo()).toBe(true);
+		expect(JSON.stringify(live(context))).toBe(before);
+		expect(store.redo()).toBe(true);
+		expect(point(context, 'j-a')).toEqual([0, 20]);
+		expect(point(context, 'j-e1')).toEqual([8, 20]);
 	});
 
 	it('tracks candidate validity on the transient drag session only', () => {
@@ -429,5 +514,34 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		cancelRoomUnitDrag(context);
 		// The transient flag never leaks into the undo snapshot.
 		expect(JSON.stringify(live(context))).not.toContain('candidateValid');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Presentation — the moving unit is visible, not inferred
+// ---------------------------------------------------------------------------
+
+describe('P23.6a amendment A — group move presentation', () => {
+	it('highlights every member Room while a group drag is live', () => {
+		const context = makeStore(twoRoomDocument());
+		expect(startRoomUnitDrag(context, 'room-left')).toBe(true);
+
+		const model = buildLayoutPreviewModel(live(context)).model;
+		const projection = buildPlanInteractionProjection(
+			context.layoutInteraction,
+			[],
+			model
+		);
+		const groupBounds = projection.selection.filter(
+			(primitive) => primitive.style === 'selection-bounds'
+		);
+		expect(groupBounds).toHaveLength(2);
+		const polygons = groupBounds.flatMap((primitive) =>
+			primitive.kind === 'polygon' ? [primitive.points] : []
+		);
+		expect(polygons).toHaveLength(2);
+		// Both 4×4 enclosures are highlighted, not just the dragged one.
+		for (const points of polygons) expect(points).toHaveLength(4);
+		cancelRoomUnitDrag(context);
 	});
 });

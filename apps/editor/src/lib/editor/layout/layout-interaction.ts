@@ -42,6 +42,14 @@ export type LayoutRoomUnitDrag = LayoutRoomUnitTransform & {
 	 * never part of an undo snapshot.
 	 */
 	candidateValid: boolean;
+	/**
+	 * P23.6a amendment A — every Room that travels with this drag (the connected
+	 * Room group resolved at pointer down; the dragged Room is always a member).
+	 * Presentation only: the plan overlay highlights each member so the whole
+	 * moving unit is visible before release. `[]` on the legacy Room-unit path,
+	 * which has no canonical group. Never persisted.
+	 */
+	groupRoomIds: readonly string[];
 };
 
 export type LayoutPrimitiveDraft = {
@@ -1008,7 +1016,8 @@ export function beginLayoutRoomUnitDrag(
 	roomId: string,
 	mode: 'translate' | 'rotate',
 	startWorld: LayoutVec2,
-	pivot: LayoutVec2
+	pivot: LayoutVec2,
+	groupRoomIds: readonly string[] = []
 ): void {
 	state.roomUnitDrag = {
 		roomId,
@@ -1018,7 +1027,8 @@ export function beginLayoutRoomUnitDrag(
 		startAngle: Math.atan2(startWorld[1] - pivot[1], startWorld[0] - pivot[0]),
 		translation: [0, 0],
 		yaw: 0,
-		candidateValid: false
+		candidateValid: false,
+		groupRoomIds: [...groupRoomIds]
 	};
 	state.editing = null;
 }

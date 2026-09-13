@@ -566,6 +566,23 @@ export function buildPlanInteractionProjection(
 	const drafts: PlanRenderPrimitive[] = [];
 	const labels: PlanRenderPrimitive[] = [];
 
+	// P23.6a amendment A — a wall-first Room-unit drag moves the whole connected
+	// Room group. Every member shows its moving bounds while the gesture is live,
+	// so the unit that will commit is visible rather than inferred.
+	const draggedGroupRoomIds = interaction.roomUnitDrag?.groupRoomIds ?? [];
+	if (draggedGroupRoomIds.length > 1) {
+		for (const memberRoomId of draggedGroupRoomIds) {
+			const member = model.rooms.find((room) => room.roomId === memberRoomId);
+			if (!member || member.floorPolygon.length === 0) continue;
+			selection.push({
+				kind: 'polygon',
+				key: geometryId(['plan', 'overlay', 'group-move-bounds', memberRoomId]),
+				points: member.floorPolygon.map(([x, z]) => [x, z] as LayoutVec2),
+				style: 'selection-bounds'
+			});
+		}
+	}
+
 	const activeSelection = interaction.selection;
 	const selectedRoom =
 		interaction.tool === 'select' && activeSelection.kind === 'room'

@@ -79,8 +79,8 @@ import {
 	type WallOpeningRepeatIntent
 } from '$lib/layout/layout-duplicate';
 import {
-	resolveIsolatedRoomSubgraph,
-	type IsolatedRoomSubgraph,
+	resolveIsolatedRoomGroupSubgraph,
+	type IsolatedRoomGroupSubgraph,
 	type RoomIsolationRejection
 } from '$lib/layout/layout-room-isolation';
 import { planWallFirstRoomMove } from '$lib/layout/layout-room-move';
@@ -219,12 +219,22 @@ export type WallFirstRoomMoveMutationResult =
 	| { success: false; message: string };
 
 /**
- * P23.6a — should this wall-first Room expose a whole-unit move gesture?
- * `movable: false` carries the shared isolation policy's own rejection so the
- * viewport can explain *why* without duplicating policy in the component.
+ * P23.6a — the editor-facing move result. `movedRoomIds` is the connected Room
+ * group that actually travelled (the dragged Room is always a member), so the
+ * status line can report the unit honestly.
+ */
+export type LayoutRoomMoveResult =
+	| { success: true; movedRoomIds: readonly string[] }
+	| { success: false; message: string };
+
+/**
+ * P23.6a — should this wall-first Room expose a whole-unit move gesture, and
+ * which Rooms travel with it? `movable: false` carries the shared isolation
+ * policy's own rejection so the viewport can explain *why* without duplicating
+ * policy in the component.
  */
 export type WallFirstRoomMoveEligibility =
-	| { movable: true; subgraph: IsolatedRoomSubgraph }
+	| { movable: true; subgraph: IsolatedRoomGroupSubgraph }
 	| { movable: false; rejection: RoomIsolationRejection; hint: string };
 
 /**
@@ -1403,7 +1413,7 @@ export function wallFirstRoomMoveEligibility(
 		};
 		return { movable: false, rejection, hint: roomMoveStatusHint(rejection) };
 	}
-	const resolved = resolveIsolatedRoomSubgraph(layout, roomId);
+	const resolved = resolveIsolatedRoomGroupSubgraph(layout, roomId);
 	return resolved.kind === 'success'
 		? { movable: true, subgraph: resolved.subgraph }
 		: { movable: false, rejection: resolved.rejection, hint: roomMoveStatusHint(resolved.rejection) };
@@ -1420,16 +1430,23 @@ export function previewWallFirstRoomMove(
 	state: LayoutPreviewState,
 	roomId: string,
 	delta: LayoutVec2
-): LayoutRoomEditResult {
+): LayoutRoomMoveResult {
 	const layout = wallFirstLayoutOrError(state);
-	if (!layout) return failRoomEdit(state, state.lastMutationMessage ?? 'Wall-first layout is not active');
+	if (!layout) return failRoomMove(state, state.lastMutationMessage ?? 'Wall-first layout is not active');
 	const plan = planWallFirstRoomMove(layout, roomId, delta);
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
 		return { success: false, message: plan.rejection.message };
 	}
 	const applied = applyWallFirstDocumentPlan(state, plan.document, plan.operation);
-	return applied.success ? { success: true } : failRoomEdit(state, applied.message);
+	return applied.success
+		? { success: true, movedRoomIds: plan.movedRoomIds }
+		: failRoomMove(state, applied.message);
+}
+
+function failRoomMove(state: LayoutPreviewState, message: string): LayoutRoomMoveResult {
+	state.lastMutationMessage = message;
+	return { success: false, message };
 }
 
 /**

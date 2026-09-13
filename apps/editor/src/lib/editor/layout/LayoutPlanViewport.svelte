@@ -1181,11 +1181,12 @@
 		roomId: string,
 		mode: 'translate' | 'rotate',
 		point: LayoutVec2,
-		pivot: LayoutVec2
+		pivot: LayoutVec2,
+		groupRoomIds: readonly string[] = []
 	): boolean {
 		if (!svgElement || !onLayoutTransactionBegin()) return false;
 		roomUnitSnapshot = captureLayoutPreviewSnapshot(preview);
-		beginLayoutRoomUnitDrag(interaction, roomId, mode, point, pivot);
+		beginLayoutRoomUnitDrag(interaction, roomId, mode, point, pivot, groupRoomIds);
 		pointerId = event.pointerId;
 		svgElement.setPointerCapture(event.pointerId);
 		return true;
@@ -1675,8 +1676,16 @@
 			}
 			// Translation mode reads only `startWorld`, so the pointer-down world
 			// point is the pivot: no Room centroid is derived and no canonical
-			// Room-position field is invented (rotation stays deferred).
-			beginRoomUnitDrag(event, target.roomId, 'translate', point, point);
+			// Room-position field is invented (rotation stays deferred). The
+			// eligible unit is the connected Room group, so every member travels.
+			beginRoomUnitDrag(
+				event,
+				target.roomId,
+				'translate',
+				point,
+				point,
+				eligibility.subgraph.roomIds
+			);
 		}
 	}
 
@@ -2041,6 +2050,7 @@
 				// no-op release writes zero history.
 				const point = worldPoint(event);
 				let valid = false;
+				let movedRoomIds: readonly string[] | null = null;
 				if (point) {
 					updateLayoutRoomUnitDrag(
 						interaction,
@@ -2050,16 +2060,21 @@
 						event.shiftKey
 					);
 					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-					const result = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
-					valid = result.success;
+					const finalResult = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
+					valid = finalResult.success;
 					drag.candidateValid = valid;
-					if (!result.success) preview.statusMessage = result.message;
+					if (finalResult.success) movedRoomIds = finalResult.movedRoomIds;
+					else preview.statusMessage = finalResult.message;
 				} else {
 					preview.statusMessage = 'Could not resolve the release position';
 				}
 				if (valid) {
 					const changed = onLayoutTransactionCommit();
-					if (changed) preview.statusMessage = 'Moved room';
+					if (changed) {
+						const movedCount = movedRoomIds?.length ?? 1;
+						preview.statusMessage =
+							movedCount > 1 ? `Moved ${movedCount} rooms` : 'Moved room';
+					}
 				} else {
 					onLayoutTransactionCancel();
 					if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);

@@ -700,6 +700,23 @@ here, and no implementation detail is fixed.
   continuity work. **P23.7 must restate this as an explicit open deferral** and must
   not mark it complete.
 
+- **Layout Room multi-select** (registered 2026-09-12 from the P23.6a review,
+  tracked as **Issue #28**): an ordered, primary-bearing **set** of Layout Rooms —
+  and, as a separate later decision, arbitrary mixed Layout entity sets with
+  align/distribute. Current state: `LayoutSelection` is single-target by
+  construction and modifiers exist only on the Scene/Arrange path, so ~85
+  `interaction.selection` references across 11 files read a single entity. The
+  bounded shape to ratify is a **satellite slot** beside the authoritative primary
+  (`roomIds` + `primaryRoomId`, mirroring Scene `WorkspaceSelection.placement`),
+  homogeneous Room sets first, the existing modifier resolver reused, and the
+  shipped group-move planner reused for the disjoint-set case. Constraint: it is
+  one selection authority per owner/domain — no second selection truth — and every
+  existing single-target consumer must keep reading the primary. **Not required
+  for "move the whole unit"**: P23.6a amendment A already moves a connected Room
+  group from a single pick, so this capability is only about *disjoint* sets.
+  Owner: **unassigned / future scheduled slice**; P23.7 restates it as an open
+  deferral.
+
 # Documentation reconciliation rule
 
 The accepted 2026-09-09 reconciliation is the architecture decision. H1/H2/H3/H5 informed it; they do not themselves supersede product contracts.
