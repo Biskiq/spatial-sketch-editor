@@ -519,7 +519,7 @@ function finalizeCandidate(
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = validatePrecisionTopology(structural.document);
+	const topologyIssue = validateWallFirstTopology(structural.document);
 	if (topologyIssue) {
 		// P23.6H — a Wall-vs-Opening vertical conflict keeps its own rejection
 		// code; every other topology failure stays `topology_invalid`.
@@ -543,7 +543,17 @@ function finalizeCandidate(
 	};
 }
 
-function validatePrecisionTopology(document: LayoutDocumentWallFirst): LayoutGeometryIssue | undefined {
+/**
+ * The one canonical **wall-first topology gate** for wall-first candidates:
+ * no duplicate Junction points, non-zero Wall lengths, explicit-junction-only
+ * Wall relationships (collinear overlap rejected), Room boundary
+ * connectivity/role, and translation of the first canonical Opening-set
+ * issue. Shared by the P23.1 precision planners (via `finalizeCandidate`) and
+ * the P23.6a Room-move planner — never copied.
+ */
+export function validateWallFirstTopology(
+	document: LayoutDocumentWallFirst
+): LayoutGeometryIssue | undefined {
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {
 			if (samePoint(document.junctions[first]!.point, document.junctions[second]!.point)) {

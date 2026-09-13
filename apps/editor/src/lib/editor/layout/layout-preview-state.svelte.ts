@@ -78,6 +78,12 @@ import {
 	type LayoutObjectRepeatIntent,
 	type WallOpeningRepeatIntent
 } from '$lib/layout/layout-duplicate';
+import {
+	resolveIsolatedRoomGroupSubgraph,
+	type IsolatedRoomGroupSubgraph,
+	type RoomIsolationRejection
+} from '$lib/layout/layout-room-isolation';
+import { planWallFirstRoomMove, type RoomMoveRejectionCode } from '$lib/layout/layout-room-move';
 import { hasBlockingLayoutIssues, validateLayoutDocumentGeometry, validateLineRoom, type LayoutGeometryIssue } from '$lib/layout/layout-geometry-validation';
 import { deleteLayoutRoom as deleteRoomFromDocument } from './layout-room-editing';
 import {
@@ -207,6 +213,46 @@ export type WallFirstPrecisionMutationResult =
 	| { success: false; message: string };
 
 /** P23.4 duplicate/repeat results carry the created IDs for selection. */
+/** P23.6a Room-unit move result through the one document-install point. */
+export type WallFirstRoomMoveMutationResult =
+	| { success: true; operation: 'room-move' }
+	| { success: false; message: string };
+
+/**
+ * P23.6a — the editor-facing move result. `movedRoomIds` is the connected Room
+ * group that actually travelled (the dragged Room is always a member), so the
+ * status line can report the unit honestly.
+ *
+ * `code` is the planner's own machine code when the rejection came from the
+ * canonical plan, so a caller can tell a real rejection from a gesture that
+ * asked for nothing (`no_op` — a press/release that never moved the pointer).
+ * It is absent when the failure came from applying or installing a plan.
+ */
+export type LayoutRoomMoveResult =
+	| { success: true; movedRoomIds: readonly string[] }
+	| { success: false; message: string; code?: RoomMoveRejectionCode };
+
+/**
+ * P23.6a — should this wall-first Room expose a whole-unit move gesture, and
+ * which Rooms travel with it? `movable: false` carries the shared isolation
+ * policy's own rejection so the viewport can explain *why* without duplicating
+ * policy in the component.
+ */
+export type WallFirstRoomMoveEligibility =
+	| { movable: true; subgraph: IsolatedRoomGroupSubgraph }
+	| { movable: false; rejection: RoomIsolationRejection; hint: string };
+
+/**
+ * User-facing phrasing for a non-movable Room. The rejection itself stays the
+ * P23.4-faithful diagnostic (shared with duplicate); the hint adds the
+ * actionable move guidance the Plan status line shows.
+ */
+function roomMoveStatusHint(rejection: RoomIsolationRejection): string {
+	return rejection.code === 'room_not_isolated'
+		? `${rejection.message}. Move its Walls individually.`
+		: rejection.message;
+}
+
 export type WallFirstDuplicateMutationResult =
 	| {
 			success: true;
@@ -849,7 +895,18 @@ function applyWallFirstDocumentPlan(
 	document: LayoutDocumentWallFirst,
 	operation: PrecisionOperation | WallOpeningOperation,
 	openingId?: string
-): WallFirstPrecisionMutationResult {
+): WallFirstPrecisionMutationResult;
+function applyWallFirstDocumentPlan(
+	state: LayoutPreviewState,
+	document: LayoutDocumentWallFirst,
+	operation: 'room-move'
+): WallFirstRoomMoveMutationResult;
+function applyWallFirstDocumentPlan(
+	state: LayoutPreviewState,
+	document: LayoutDocumentWallFirst,
+	operation: PrecisionOperation | WallOpeningOperation | 'room-move',
+	openingId?: string
+): WallFirstPrecisionMutationResult | WallFirstRoomMoveMutationResult {
 	try {
 		const bundle = derivePreviewBundle(
 			state.project.id,
@@ -863,6 +920,7 @@ function applyWallFirstDocumentPlan(
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
 		state.importError = null;
+		if (operation === 'room-move') return { success: true, operation: 'room-move' };
 		return openingId === undefined
 			? { success: true, operation: operation as PrecisionOperation }
 			: { success: true, operation: operation as WallOpeningOperation, openingId };
@@ -1339,6 +1397,65 @@ export function duplicateWallFirstRoom(
 		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	}
 	return applyWallFirstDuplicatePlan(state, planDuplicateIsolatedRoom(layout, intent));
+}
+
+/**
+ * P23.6a — eligibility for the whole-Room move gesture on a wall-first Room.
+ * A thin, read-only wrapper over the shared isolation policy so the viewport
+ * can hint *why* a Room is not movable without duplicating that policy in the
+ * component. Legacy or unknown Rooms are not movable through this path.
+ */
+export function wallFirstRoomMoveEligibility(
+	state: LayoutPreviewState,
+	roomId: string
+): WallFirstRoomMoveEligibility {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		const rejection: RoomIsolationRejection = {
+			code: 'unknown_room',
+			message: state.lastMutationMessage ?? 'Wall-first layout is not active',
+			targetIds: [roomId]
+		};
+		return { movable: false, rejection, hint: roomMoveStatusHint(rejection) };
+	}
+	const resolved = resolveIsolatedRoomGroupSubgraph(layout, roomId);
+	return resolved.kind === 'success'
+		? { movable: true, subgraph: resolved.subgraph }
+		: { movable: false, rejection: resolved.rejection, hint: roomMoveStatusHint(resolved.rejection) };
+}
+
+/**
+ * P23.6a — preview (and thereby commit) one rigid X/Z Room-unit move on a
+ * wall-first document. Legacy documents stay on `previewLayoutRoomUnit`; the
+ * wall-first planner's candidate is installed through the one existing
+ * document-install point, so a preview is one bundle and one compile. A
+ * rejection writes nothing (no document, no history) and reports its reason.
+ */
+export function previewWallFirstRoomMove(
+	state: LayoutPreviewState,
+	roomId: string,
+	delta: LayoutVec2
+): LayoutRoomMoveResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return failRoomMove(state, state.lastMutationMessage ?? 'Wall-first layout is not active');
+	const plan = planWallFirstRoomMove(layout, roomId, delta);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return {
+			success: false,
+			message: plan.rejection.message,
+			code: plan.rejection.code
+		};
+	}
+	const applied = applyWallFirstDocumentPlan(state, plan.document, plan.operation);
+	return applied.success
+		? { success: true, movedRoomIds: plan.movedRoomIds }
+		: failRoomMove(state, applied.message);
+}
+
+function failRoomMove(state: LayoutPreviewState, message: string): LayoutRoomMoveResult {
+	state.lastMutationMessage = message;
+	return { success: false, message };
 }
 
 /**

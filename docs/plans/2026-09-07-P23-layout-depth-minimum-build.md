@@ -6,7 +6,7 @@
 **Depends on:** P22 complete, including hosted cold-visitor acceptance.  
 **Owner reconciliation ratified:** 2026-09-09.  
 **Evidence basis:** completed `P23-H1`, `P23-H2`, `P23-H3`, `P23-H5`, current Museum Editor code, and the staging wall-first proposal.  
-**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I implemented on branch `P23.6-H`** (PR #25 awaited review); **P23.6a and P23.6b are implementation-ready child plans**, **P23.6c is a proposed child plan (canonical Wall deletion, recorded from PR #25 review)**, and H + I together are the single pre-merge format-5 vertical cutover.
+**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I merged via PR #25 (`746aa16`)** as the single format-5 vertical cutover; **P23.6a implemented on branch `P23.6a`** (see its §Implementation record); **P23.6b is an implementation-ready child plan** that consumes P23.6a's ratified move capability; **P23.6c is a proposed child plan (canonical Wall deletion, recorded from PR #25 review)**.
 
 This is the reconciled P23 umbrella. The accepted reconciliation — informed by the harvests — supersedes conflicting earlier P23 and North-Star direction. Harvest artifacts remain evidence, not implementation authority.
 
@@ -699,6 +699,27 @@ here, and no implementation detail is fixed.
   must not be claimed complete merely because Plan selection and hierarchy
   continuity work. **P23.7 must restate this as an explicit open deferral** and must
   not mark it complete.
+
+- **Layout Room multi-select** (registered 2026-09-12 from the P23.6a review,
+  tracked as **Issue #28**): an ordered **set** of Layout Rooms — and, as a
+  separate later decision, arbitrary mixed Layout entity sets with
+  align/distribute. Current state: `LayoutSelection` is single-target by
+  construction and modifiers exist only on the Scene/Arrange path, so ~85
+  `interaction.selection` references across 11 files read a single entity. The
+  bounded shape to ratify is an **ordered satellite member list** beside the
+  existing authority (`roomIds`), while `selection` stays the **sole** primary
+  that every consumer already reads — deliberately **not** a satellite
+  `primaryRoomId`, which would be the second selection truth the constraint below
+  forbids; if ordering intent cannot be expressed that way, the alternative is one
+  atomic Room-set variant replacing the Room variant (Scene
+  `WorkspaceSelection.placement` is a precedent for a set slot, not for two
+  primaries). Homogeneous Room sets first, the existing modifier resolver reused,
+  and the shipped group-move planner reused for the disjoint-set case.
+  Constraint: it is one selection authority per owner/domain — no second selection
+  truth. **Not required for "move the whole unit"**: P23.6a amendment A already
+  moves a connected Room group from a single pick, so this capability is only
+  about *disjoint* sets. Owner: **unassigned / future scheduled slice**; P23.7
+  restates it as an open deferral.
 
 # Documentation reconciliation rule
 

@@ -65,6 +65,8 @@
 		commitLayoutObjectPreset,
 		commitLayoutRoomEdit,
 		previewLayoutRoomUnit,
+		previewWallFirstRoomMove,
+		wallFirstRoomMoveEligibility,
 		deleteLayoutObject,
 		deleteLayoutWallInteriorAnchor,
 		deleteWallFirstOpening,
@@ -1174,10 +1176,17 @@
 		suppressNextClick = true;
 	}
 
-	function beginRoomUnitDrag(event: PointerEvent, room: LayoutRoom, mode: 'translate' | 'rotate', point: LayoutVec2): boolean {
+	function beginRoomUnitDrag(
+		event: PointerEvent,
+		roomId: string,
+		mode: 'translate' | 'rotate',
+		point: LayoutVec2,
+		pivot: LayoutVec2,
+		groupRoomIds: readonly string[] = []
+	): boolean {
 		if (!svgElement || !onLayoutTransactionBegin()) return false;
 		roomUnitSnapshot = captureLayoutPreviewSnapshot(preview);
-		beginLayoutRoomUnitDrag(interaction, room.id, mode, point, layoutRoomUnitPivot(room));
+		beginLayoutRoomUnitDrag(interaction, roomId, mode, point, pivot, groupRoomIds);
 		pointerId = event.pointerId;
 		svgElement.setPointerCapture(event.pointerId);
 		return true;
@@ -1436,7 +1445,11 @@
 
 		if (interaction.tool === 'select') {
 			const rotationRoom = rotationHandleHit(screen);
-			if (rotationRoom && beginRoomUnitDrag(event, rotationRoom, 'rotate', point)) return;
+			if (
+				rotationRoom &&
+				beginRoomUnitDrag(event, rotationRoom.id, 'rotate', point, layoutRoomUnitPivot(rotationRoom))
+			)
+				return;
 		}
 
 		if (interaction.tool === 'rectangle') {
@@ -1640,14 +1653,39 @@
 		const legacyRoom = findLayoutRoom(rooms, target.roomId);
 		if (legacyRoom) {
 			selectLayoutRoom(interaction, target.roomId);
-			beginRoomUnitDrag(event, legacyRoom, 'translate', point);
+			beginRoomUnitDrag(
+				event,
+				legacyRoom.id,
+				'translate',
+				point,
+				layoutRoomUnitPivot(legacyRoom)
+			);
 			return;
 		}
-		// P23.6 — wall-first Room: select on the shared authority. Canonical
-		// Rooms have no Room-unit drag gesture (exact edits live in the
-		// Inspector); the legacy lookup above stays the only drag entry.
+		// P23.6a — wall-first Room: select on the one selection authority, then
+		// start a rigid whole-unit move **only** when the shared isolation policy
+		// proves the boundary graph can translate without detaching stationary
+		// architecture. An ineligible Room selects without opening a transaction.
 		if (wallFirstLayoutDocument()?.rooms.some((room) => room.id === target.roomId)) {
 			selectLayoutRoom(interaction, target.roomId);
+			const eligibility = wallFirstRoomMoveEligibility(preview, target.roomId);
+			if (!eligibility.movable) {
+				// The adapter owns the phrasing; the viewport never re-derives policy.
+				preview.statusMessage = eligibility.hint;
+				return;
+			}
+			// Translation mode reads only `startWorld`, so the pointer-down world
+			// point is the pivot: no Room centroid is derived and no canonical
+			// Room-position field is invented (rotation stays deferred). The
+			// eligible unit is the connected Room group, so every member travels.
+			beginRoomUnitDrag(
+				event,
+				target.roomId,
+				'translate',
+				point,
+				point,
+				eligibility.subgraph.roomIds
+			);
 		}
 	}
 
@@ -1795,11 +1833,21 @@
 				interaction.planView.angleSnapEnabled,
 				event.shiftKey
 			);
+			const drag = interaction.roomUnitDrag;
+			// Every candidate is derived from the immutable gesture baseline, and
+			// its validity is recorded on the session (never inferred at release).
 			restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-			const result = previewLayoutRoomUnit(preview, interaction.roomUnitDrag.roomId, {
-				translation: interaction.roomUnitDrag.translation,
-				yaw: interaction.roomUnitDrag.yaw
+			if (wallFirstLayoutDocument()) {
+				const result = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
+				drag.candidateValid = result.success;
+				if (!result.success) preview.statusMessage = result.message;
+				return;
+			}
+			const result = previewLayoutRoomUnit(preview, drag.roomId, {
+				translation: drag.translation,
+				yaw: drag.yaw
 			});
+			drag.candidateValid = result.success;
 			if (!result.success) preview.statusMessage = result.message;
 			return;
 		}
@@ -1994,13 +2042,60 @@
 			return;
 		}
 		if (interaction.roomUnitDrag) {
-			const changed = onLayoutTransactionCommit();
-			if (!changed && roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+			const drag = interaction.roomUnitDrag;
+			if (wallFirstLayoutDocument() && roomUnitSnapshot) {
+				// P23.6a — re-derive the candidate once from the RELEASE point: the
+				// final pointer position is authoritative, so an invalid final
+				// release can never commit the previously previewed candidate, and a
+				// no-op release writes zero history.
+				const point = worldPoint(event);
+				let valid = false;
+				let movedRoomIds: readonly string[] | null = null;
+				// Cancel + snapshot restore both replace `statusMessage`, so a real
+				// rejection is remembered here and re-applied *after* the restore —
+				// otherwise the Room snaps back with no reason shown. A `no_op`
+				// release (a press/release that never moved the pointer) is not a
+				// rejection: it is the same select-only click an ineligible Room gets,
+				// so it stays silent.
+				let rejectionMessage: string | null = null;
+				if (point) {
+					updateLayoutRoomUnitDrag(
+						interaction,
+						point,
+						interaction.planView.snapEnabled,
+						interaction.planView.angleSnapEnabled,
+						event.shiftKey
+					);
+					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+					const finalResult = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
+					valid = finalResult.success;
+					drag.candidateValid = valid;
+					if (finalResult.success) movedRoomIds = finalResult.movedRoomIds;
+					else if (finalResult.code !== 'no_op') rejectionMessage = finalResult.message;
+				} else {
+					rejectionMessage = 'Could not resolve the release position';
+				}
+				if (valid) {
+					const changed = onLayoutTransactionCommit();
+					if (changed) {
+						const movedCount = movedRoomIds?.length ?? 1;
+						preview.statusMessage =
+							movedCount > 1 ? `Moved ${movedCount} rooms` : 'Moved room';
+					}
+				} else {
+					onLayoutTransactionCancel();
+					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+					if (rejectionMessage) preview.statusMessage = rejectionMessage;
+				}
+			} else {
+				const changed = onLayoutTransactionCommit();
+				if (!changed && roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+				preview.statusMessage = changed ? 'Moved room unit' : preview.statusMessage;
+			}
 			cancelLayoutRoomUnitDrag(interaction);
 			roomUnitSnapshot = null;
 			rotationHoverScreen = null;
 			pointerId = null;
-			preview.statusMessage = changed ? 'Moved room unit' : preview.statusMessage;
 			svgElement?.releasePointerCapture(event.pointerId);
 			return;
 		}
@@ -2296,6 +2391,12 @@
 				return;
 			}
 			if (interaction.roomUnitDrag) {
+				// `cancel()` restores the pre-transaction preview snapshot
+				// (`HistoryController.cancel()` → `layoutHost.replace(before)`), which
+				// is exactly `roomUnitSnapshot`. The snapshot is also restored here
+				// explicitly so the gesture baseline never depends on that invariant
+				// alone; either way zero history is written.
+				if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
 				onLayoutTransactionCancel();
 				cancelLayoutRoomUnitDrag(interaction);
 				roomUnitSnapshot = null;
