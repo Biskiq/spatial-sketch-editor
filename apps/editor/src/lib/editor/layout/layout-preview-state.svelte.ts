@@ -83,7 +83,7 @@ import {
 	type IsolatedRoomGroupSubgraph,
 	type RoomIsolationRejection
 } from '$lib/layout/layout-room-isolation';
-import { planWallFirstRoomMove } from '$lib/layout/layout-room-move';
+import { planWallFirstRoomMove, type RoomMoveRejectionCode } from '$lib/layout/layout-room-move';
 import { hasBlockingLayoutIssues, validateLayoutDocumentGeometry, validateLineRoom, type LayoutGeometryIssue } from '$lib/layout/layout-geometry-validation';
 import { deleteLayoutRoom as deleteRoomFromDocument } from './layout-room-editing';
 import {
@@ -222,10 +222,15 @@ export type WallFirstRoomMoveMutationResult =
  * P23.6a — the editor-facing move result. `movedRoomIds` is the connected Room
  * group that actually travelled (the dragged Room is always a member), so the
  * status line can report the unit honestly.
+ *
+ * `code` is the planner's own machine code when the rejection came from the
+ * canonical plan, so a caller can tell a real rejection from a gesture that
+ * asked for nothing (`no_op` — a press/release that never moved the pointer).
+ * It is absent when the failure came from applying or installing a plan.
  */
 export type LayoutRoomMoveResult =
 	| { success: true; movedRoomIds: readonly string[] }
-	| { success: false; message: string };
+	| { success: false; message: string; code?: RoomMoveRejectionCode };
 
 /**
  * P23.6a — should this wall-first Room expose a whole-unit move gesture, and
@@ -1436,7 +1441,11 @@ export function previewWallFirstRoomMove(
 	const plan = planWallFirstRoomMove(layout, roomId, delta);
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
-		return { success: false, message: plan.rejection.message };
+		return {
+			success: false,
+			message: plan.rejection.message,
+			code: plan.rejection.code
+		};
 	}
 	const applied = applyWallFirstDocumentPlan(state, plan.document, plan.operation);
 	return applied.success

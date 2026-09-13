@@ -2051,6 +2051,13 @@
 				const point = worldPoint(event);
 				let valid = false;
 				let movedRoomIds: readonly string[] | null = null;
+				// Cancel + snapshot restore both replace `statusMessage`, so a real
+				// rejection is remembered here and re-applied *after* the restore —
+				// otherwise the Room snaps back with no reason shown. A `no_op`
+				// release (a press/release that never moved the pointer) is not a
+				// rejection: it is the same select-only click an ineligible Room gets,
+				// so it stays silent.
+				let rejectionMessage: string | null = null;
 				if (point) {
 					updateLayoutRoomUnitDrag(
 						interaction,
@@ -2064,9 +2071,9 @@
 					valid = finalResult.success;
 					drag.candidateValid = valid;
 					if (finalResult.success) movedRoomIds = finalResult.movedRoomIds;
-					else preview.statusMessage = finalResult.message;
+					else if (finalResult.code !== 'no_op') rejectionMessage = finalResult.message;
 				} else {
-					preview.statusMessage = 'Could not resolve the release position';
+					rejectionMessage = 'Could not resolve the release position';
 				}
 				if (valid) {
 					const changed = onLayoutTransactionCommit();
@@ -2077,7 +2084,8 @@
 					}
 				} else {
 					onLayoutTransactionCancel();
-					if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+					if (rejectionMessage) preview.statusMessage = rejectionMessage;
 				}
 			} else {
 				const changed = onLayoutTransactionCommit();

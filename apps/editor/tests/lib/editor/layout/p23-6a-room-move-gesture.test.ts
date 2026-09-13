@@ -293,6 +293,10 @@ function releaseRoomUnitDrag(
 	} else {
 		store.cancelLayoutTransaction();
 		restoreLayoutPreviewSnapshot(layoutPreview, context.snapshot);
+		// Mirrors the viewport: cancel/restore replaces `statusMessage`, so the
+		// reason is re-applied afterwards. A `no_op` release asked for no
+		// movement — it stays silent like any other select-only click.
+		if (result.code !== 'no_op') layoutPreview.statusMessage = result.message;
 	}
 	cancelLayoutRoomUnitDrag(layoutInteraction);
 	context.snapshot = null;
@@ -414,6 +418,9 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 
 		expect(JSON.stringify(live(context))).toBe(before);
 		expect(store.canUndo).toBe(false);
+		// The Room snapped back with its reason still on screen: the cancel +
+		// snapshot restore must not erase the rejection the user needs to see.
+		expect(context.layoutPreview.statusMessage).toBe(released.message);
 	});
 
 	it('a no-op release writes zero history', () => {
@@ -423,6 +430,52 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		const released = releaseRoomUnitDrag(context, [0, 0]);
 		expect(released.kind).toBe('cancelled');
 		expect(store.canUndo).toBe(false);
+	});
+
+	it('a no-op release reports nothing — a click is not a rejection', () => {
+		const context = makeStore();
+		const { store } = context;
+		const baseline = context.layoutPreview.statusMessage;
+		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
+
+		const released = releaseRoomUnitDrag(context, [0, 0]);
+
+		// The planner rejects a zero delta with `no_op`; that is the gesture
+		// asking for nothing, so the status line is left exactly as it was (a
+		// press and release inside a Room selects it, like the legacy path).
+		expect(released.kind).toBe('cancelled');
+		expect(released.message).toContain('non-zero');
+		expect(context.layoutPreview.statusMessage).toBe(baseline);
+		expect(store.canUndo).toBe(false);
+	});
+
+	it('clears the live rejection message when a pointer move resolves valid again', () => {
+		// The live-preview path sets its own message per pointer move; the release
+		// path must not depend on it, because the release restores first.
+		const context = makeStore();
+		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
+		expect(moveRoomUnitDrag(context, [20, 0]).success).toBe(false);
+		const rejection = context.layoutPreview.statusMessage;
+		expect(rejection).toBeTruthy();
+
+		expect(moveRoomUnitDrag(context, [12, 0]).success).toBe(true);
+		// A valid candidate clears the stale rejection (restore-then-resolve).
+		expect(context.layoutPreview.statusMessage).not.toBe(rejection);
+	});
+
+	it('reports the planner code so a no-op release is distinguishable from a rejection', () => {
+		// This is the contract the viewport's release branch reads: without the
+		// code, "the gesture asked for nothing" and "the gesture was rejected"
+		// are the same shape and a click would print a rejection reason.
+		const context = makeStore();
+
+		const noOp = previewWallFirstRoomMove(context.layoutPreview, 'room-1', [0, 0]);
+		if (noOp.success) throw new Error('expected the zero delta to reject');
+		expect(noOp.code).toBe('no_op');
+
+		const rejected = previewWallFirstRoomMove(context.layoutPreview, 'room-1', [20, 0]);
+		if (rejected.success) throw new Error('expected the collision to reject');
+		expect(rejected.code).toBe('topology_invalid');
 	});
 
 	it('Escape cancels to the exact baseline with zero history', () => {
