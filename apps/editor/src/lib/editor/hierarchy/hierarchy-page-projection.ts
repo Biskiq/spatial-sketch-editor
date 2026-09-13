@@ -245,25 +245,88 @@ function sectionRow(
 	};
 }
 
-function kindLabel(kind: string): string {
+/** Authoritative sub-kind label (`door` → `Door`, `box` → `Box`). */
+export function hierarchyKindLabel(kind: string): string {
 	return formatPlacementLabel(kind);
 }
 
 /** Bounded participation text: at most two names, then `+n`. */
-function participationText(prefix: string, names: string[]): string {
+export function hierarchyParticipationText(prefix: string, names: string[]): string {
 	const shown = names.slice(0, 2).join(', ');
 	const rest = names.length > 2 ? `, +${names.length - 2}` : '';
 	return `${prefix} ${shown}${rest}`;
 }
 
-function roomName(index: HierarchySourceIndex, roomId: string): string {
+/** Authored Room name, falling back to the raw canonical ID's display label. */
+export function hierarchyRoomName(index: HierarchySourceIndex, roomId: string): string {
 	return index.roomById.get(roomId)?.name ?? formatPlacementLabel(roomId);
 }
 
-function nestedOpeningRow(
+/**
+ * Shared row options for the canonical entity-row builders. Page builders and
+ * the relationship search both compose rows through these builders, so one
+ * entity has exactly one label/facet/secondary presentation everywhere.
+ */
+export type HierarchyEntityRowOptions = {
+	/** Overrides the per-kind default secondary text. */
+	secondary?: string;
+	children?: HierarchyProjectedRow[];
+	actions?: HierarchyRowAction[];
+	disclosureKey?: string;
+	defaultOpen?: boolean;
+	tooltip?: string;
+};
+
+export function hierarchyRoomRow(
 	index: HierarchySourceIndex,
 	rowKey: string,
-	openingId: string
+	roomId: string,
+	options: HierarchyEntityRowOptions = {}
+): HierarchyProjectedRow | null {
+	const room = index.roomById.get(roomId);
+	if (!room) return null;
+	return entityRow({
+		rowKey,
+		label: room.name,
+		entity: room.entity,
+		canonicalId: room.roomId,
+		secondary: options.secondary,
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
+	});
+}
+
+export function hierarchyWallRow(
+	index: HierarchySourceIndex,
+	rowKey: string,
+	wallId: string,
+	options: HierarchyEntityRowOptions = {}
+): HierarchyProjectedRow | null {
+	const wall = index.wallById.get(wallId);
+	if (!wall) return null;
+	return entityRow({
+		rowKey,
+		label: formatPlacementLabel(wall.wallId),
+		entity: wall.entity,
+		canonicalId: wall.wallId,
+		facet: wall.role,
+		secondary: options.secondary,
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
+	});
+}
+
+export function hierarchyOpeningRow(
+	index: HierarchySourceIndex,
+	rowKey: string,
+	openingId: string,
+	options: HierarchyEntityRowOptions = {}
 ): HierarchyProjectedRow | null {
 	const opening = index.openingById.get(openingId);
 	if (!opening) return null;
@@ -273,14 +336,20 @@ function nestedOpeningRow(
 		entity: opening.entity,
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
-		secondary: kindLabel(opening.openingKind)
+		secondary: options.secondary ?? hierarchyKindLabel(opening.openingKind),
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
 	});
 }
 
-function junctionEntityRow(
+export function hierarchyJunctionRow(
 	index: HierarchySourceIndex,
 	rowKey: string,
-	junctionId: string
+	junctionId: string,
+	options: HierarchyEntityRowOptions = {}
 ): HierarchyProjectedRow | null {
 	const junction = index.junctionById.get(junctionId);
 	if (!junction) return null;
@@ -290,15 +359,22 @@ function junctionEntityRow(
 		label: formatPlacementLabel(junction.junctionId),
 		entity: junction.entity,
 		canonicalId: junction.junctionId,
-		secondary: `${incident.length} wall${incident.length === 1 ? '' : 's'}`
+		secondary:
+			options.secondary ?? `${incident.length} wall${incident.length === 1 ? '' : 's'}`,
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
 	});
 }
 
-function layoutObjectRow(
+/** One document-level Layout Object; `assignmentText` appends the explicit assignment. */
+export function hierarchyObjectRow(
 	index: HierarchySourceIndex,
 	rowKey: string,
 	objectId: string,
-	options: { assignmentText: boolean }
+	options: HierarchyEntityRowOptions & { assignmentText?: boolean } = {}
 ): HierarchyProjectedRow | null {
 	const object = index.objectById.get(objectId);
 	if (!object) return null;
@@ -311,7 +387,66 @@ function layoutObjectRow(
 		facet: object.objectKind,
 		// Explicit `roomId` only — never coordinate/bounds inference.
 		secondary:
-			options.assignmentText && assignedRoom ? `assigned to ${assignedRoom.name}` : undefined
+			options.secondary ??
+			(options.assignmentText && assignedRoom ? `assigned to ${assignedRoom.name}` : undefined),
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
+	});
+}
+
+export function hierarchyClusterRow(
+	index: HierarchySourceIndex,
+	rowKey: string,
+	clusterId: string,
+	options: HierarchyEntityRowOptions = {}
+): HierarchyProjectedRow | null {
+	const cluster = index.sceneClusterById.get(clusterId);
+	if (!cluster) return null;
+	const memberCount = cluster.memberIds.length;
+	return entityRow({
+		rowKey,
+		label: cluster.name,
+		entity: cluster.entity,
+		canonicalId: cluster.clusterId,
+		facet: 'scene-cluster',
+		secondary:
+			options.secondary ?? `${memberCount} item${memberCount === 1 ? '' : 's'}`,
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
+	});
+}
+
+/**
+ * One Scene entity row. A cluster may reference a member the Scene document no
+ * longer contains; `options.label` keeps that row renderable rather than
+ * silently dropping a membership the cluster still claims.
+ */
+export function hierarchySceneEntityRow(
+	index: HierarchySourceIndex,
+	rowKey: string,
+	entityId: string,
+	options: HierarchyEntityRowOptions & { label?: string } = {}
+): HierarchyProjectedRow | null {
+	const entity = index.sceneEntityById.get(entityId);
+	if (!entity && options.label === undefined) return null;
+	return entityRow({
+		rowKey,
+		label: options.label ?? entity!.name,
+		entity: sceneEntityKey(entityId),
+		canonicalId: entityId,
+		facet: 'scene-entity',
+		secondary: options.secondary,
+		children: options.children,
+		actions: options.actions,
+		disclosureKey: options.disclosureKey,
+		defaultOpen: options.defaultOpen,
+		tooltip: options.tooltip
 	});
 }
 
@@ -343,7 +478,8 @@ export function boundaryJunctionIds(
 	return ids;
 }
 
-function endsRelationRow(
+/** The non-selectable oriented `Ends <start> · <end>` relation row of a Wall. */
+export function hierarchyEndsRow(
 	index: HierarchySourceIndex,
 	rowKey: string,
 	ref: { wallId: string; direction: 'forward' | 'reverse' }
@@ -411,39 +547,31 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 	const room = index.roomById.get(roomId);
 	if (!room) return [];
 
-	const rows: HierarchyProjectedRow[] = [
-		entityRow({
-			rowKey: `room:${roomId}:title`,
-			label: room.name,
-			entity: room.entity,
-			canonicalId: room.roomId
-		})
-	];
+	const title = hierarchyRoomRow(index, `room:${roomId}:title`, roomId);
+	if (!title) return [];
+	const rows: HierarchyProjectedRow[] = [title];
 
 	const boundaryChildren: HierarchyProjectedRow[] = [];
 	for (const ref of room.boundary) {
-		const wall = index.wallById.get(ref.wallId);
-		if (!wall) continue;
+		if (!index.wallById.has(ref.wallId)) continue;
 		const wallRowKey = `room:${roomId}:wall:${ref.wallId}`;
 		const openings = (index.openingsByWallId.get(ref.wallId) ?? [])
-			.map((openingId) => nestedOpeningRow(index, `${wallRowKey}:opening:${openingId}`, openingId))
+			.map((openingId) => hierarchyOpeningRow(index, `${wallRowKey}:opening:${openingId}`, openingId))
 			.filter((row): row is HierarchyProjectedRow => row !== null);
-		const ends = endsRelationRow(index, `${wallRowKey}:ends`, ref);
+		const ends = hierarchyEndsRow(index, `${wallRowKey}:ends`, ref);
 		const others = (index.roomIdsByWallId.get(ref.wallId) ?? []).filter((id) => id !== roomId);
 		boundaryChildren.push(
-			entityRow({
-				rowKey: wallRowKey,
-				label: formatPlacementLabel(ref.wallId),
-				entity: wall.entity,
-				canonicalId: ref.wallId,
-				facet: wall.role,
+			hierarchyWallRow(index, wallRowKey, ref.wallId, {
 				secondary: others.length
-					? participationText('also in', others.map((id) => roomName(index, id)))
+					? hierarchyParticipationText(
+							'also in',
+							others.map((id) => hierarchyRoomName(index, id))
+						)
 					: undefined,
 				disclosureKey: wallRowKey,
 				defaultOpen: false,
 				children: ends ? [...openings, ends] : openings
-			})
+			})!
 		);
 	}
 	rows.push(
@@ -462,7 +590,7 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 			`Boundary Junctions (${junctionIds.length})`,
 			junctionIds
 				.map((junctionId) =>
-					junctionEntityRow(index, `room:${roomId}:junction:${junctionId}`, junctionId)
+					hierarchyJunctionRow(index, `room:${roomId}:junction:${junctionId}`, junctionId)
 				)
 				.filter((row): row is HierarchyProjectedRow => row !== null),
 			{ defaultOpen: false }
@@ -477,9 +605,7 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 			`Assigned Layout Objects (${objectIds.length})`,
 			objectIds
 				.map((objectId) =>
-					layoutObjectRow(index, `room:${roomId}:object:${objectId}`, objectId, {
-						assignmentText: false
-					})
+					hierarchyObjectRow(index, `room:${roomId}:object:${objectId}`, objectId)
 				)
 				.filter((row): row is HierarchyProjectedRow => row !== null),
 			{
@@ -507,25 +633,22 @@ function buildWallsRows(
 		// The resting rows do not pay the metadata cost: room participation is
 		// only spelled out for the multiple-Room facet.
 		if (filter === 'multiple-rooms' && roomIds.length > 0) {
-			secondaryParts.push(participationText('in', roomIds.map((id) => roomName(index, id))));
+			secondaryParts.push(
+				hierarchyParticipationText('in', roomIds.map((id) => hierarchyRoomName(index, id)))
+			);
 		}
 		if (openingIds.length > 0) {
 			secondaryParts.push(`▸ ${openingIds.length} opening${openingIds.length === 1 ? '' : 's'}`);
 		}
 		rows.push(
-			entityRow({
-				rowKey,
-				label: formatPlacementLabel(wall.wallId),
-				entity: wall.entity,
-				canonicalId: wall.wallId,
-				facet: wall.role,
+			hierarchyWallRow(index, rowKey, wall.wallId, {
 				secondary: secondaryParts.length > 0 ? secondaryParts.join(' · ') : undefined,
 				disclosureKey: rowKey,
 				defaultOpen: false,
 				children: openingIds
-					.map((openingId) => nestedOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId))
+					.map((openingId) => hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId))
 					.filter((row): row is HierarchyProjectedRow => row !== null)
-			})
+			})!
 		);
 	}
 	return rows;
@@ -542,13 +665,8 @@ function buildOpeningsRows(
 		const host = index.wallById.get(opening.wallId);
 		const home = canonicalHierarchyHome(index, opening.entity);
 		rows.push(
-			entityRow({
-				rowKey: `openings:opening:${opening.openingId}`,
-				label: formatPlacementLabel(opening.openingId),
-				entity: opening.entity,
-				canonicalId: opening.openingId,
-				facet: opening.openingKind,
-				secondary: `${kindLabel(opening.openingKind)} on ${formatPlacementLabel(
+			hierarchyOpeningRow(index, `openings:opening:${opening.openingId}`, opening.openingId, {
+				secondary: `${hierarchyKindLabel(opening.openingKind)} on ${formatPlacementLabel(
 					host?.wallId ?? opening.wallId
 				)}`,
 				actions: home
@@ -560,7 +678,7 @@ function buildOpeningsRows(
 							}
 						]
 					: undefined
-			})
+			})!
 		);
 	}
 	return rows;
@@ -569,7 +687,7 @@ function buildOpeningsRows(
 function buildJunctionsRows(index: HierarchySourceIndex): HierarchyProjectedRow[] {
 	return index.orderedJunctions
 		.map((junction) =>
-			junctionEntityRow(index, `junctions:junction:${junction.junctionId}`, junction.junctionId)
+			hierarchyJunctionRow(index, `junctions:junction:${junction.junctionId}`, junction.junctionId)
 		)
 		.filter((row): row is HierarchyProjectedRow => row !== null);
 }
@@ -577,7 +695,7 @@ function buildJunctionsRows(index: HierarchySourceIndex): HierarchyProjectedRow[
 function buildLayoutObjectsRows(index: HierarchySourceIndex): HierarchyProjectedRow[] {
 	return index.orderedLayoutObjects
 		.map((object) =>
-			layoutObjectRow(index, `layoutObjects:object:${object.objectId}`, object.objectId, {
+			hierarchyObjectRow(index, `layoutObjects:object:${object.objectId}`, object.objectId, {
 				assignmentText: true
 			})
 		)
@@ -587,40 +705,32 @@ function buildLayoutObjectsRows(index: HierarchySourceIndex): HierarchyProjected
 function buildSceneContentRows(index: HierarchySourceIndex): HierarchyProjectedRow[] {
 	const rows: HierarchyProjectedRow[] = [];
 	for (const cluster of index.orderedSceneClusters) {
-		const memberRows: HierarchyProjectedRow[] = cluster.memberIds.map((memberId) => {
-			const entity = index.sceneEntityById.get(memberId);
-			return entityRow({
-				rowKey: `scene:cluster:${cluster.clusterId}:entity:${memberId}`,
-				label: entity?.name ?? formatPlacementLabel(memberId),
-				entity: sceneEntityKey(memberId),
-				canonicalId: memberId,
-				facet: 'scene-entity'
-			});
-		});
+		const memberRows: HierarchyProjectedRow[] = cluster.memberIds
+			.map((memberId) =>
+				hierarchySceneEntityRow(
+					index,
+					`scene:cluster:${cluster.clusterId}:entity:${memberId}`,
+					memberId,
+					// A member the Scene document no longer contains stays renderable
+					// with its raw id label rather than silently disappearing.
+					index.sceneEntityById.has(memberId)
+						? undefined
+						: { label: formatPlacementLabel(memberId) }
+				)
+			)
+			.filter((row): row is HierarchyProjectedRow => row !== null);
 		rows.push(
-			entityRow({
-				rowKey: `scene:cluster:${cluster.clusterId}`,
-				label: cluster.name,
-				entity: cluster.entity,
-				canonicalId: cluster.clusterId,
-				facet: 'scene-cluster',
-				secondary: `${memberRows.length} item${memberRows.length === 1 ? '' : 's'}`,
+			hierarchyClusterRow(index, `scene:cluster:${cluster.clusterId}`, cluster.clusterId, {
 				disclosureKey: `scene:cluster:${cluster.clusterId}`,
 				defaultOpen: true,
 				children: memberRows
-			})
+			})!
 		);
 	}
 	for (const entity of index.orderedSceneEntities) {
 		if (index.clusterByMemberId.has(entity.entityId)) continue;
 		rows.push(
-			entityRow({
-				rowKey: `scene:entity:${entity.entityId}`,
-				label: entity.name,
-				entity: entity.entity,
-				canonicalId: entity.entityId,
-				facet: 'scene-entity'
-			})
+			hierarchySceneEntityRow(index, `scene:entity:${entity.entityId}`, entity.entityId)!
 		);
 	}
 	return rows;
@@ -651,7 +761,11 @@ function buildPageRows(
 	}
 }
 
-function collectRepresentations(
+/**
+ * Build the representation registry for any row forest (page or search). Keyed
+ * by `entity.id`; the first occurrence per entity is `primary`.
+ */
+export function collectHierarchyRepresentations(
 	rows: readonly HierarchyProjectedRow[]
 ): Map<string, HierarchyRepresentation[]> {
 	const representations = new Map<string, HierarchyRepresentation[]>();
@@ -690,11 +804,11 @@ export function buildHierarchyPageProjection(
 	options: HierarchyPageOptions = {}
 ): HierarchyPageProjection {
 	const rows = buildPageRows(index, page, options);
-	const representations = collectRepresentations(rows);
+	const representations = collectHierarchyRepresentations(rows);
 	const filtered =
 		(options.wallFilter ?? 'all') !== 'all' || (options.openingFilter ?? 'all') !== 'all';
 	const unfiltered = filtered
-		? collectRepresentations(buildPageRows(index, page, {}))
+		? collectHierarchyRepresentations(buildPageRows(index, page, {}))
 		: representations;
 	return {
 		page,
@@ -704,9 +818,17 @@ export function buildHierarchyPageProjection(
 	};
 }
 
+/**
+ * Minimal shape any projection (page or relationship search) shares: the
+ * representation registry keyed by `entity.id`.
+ */
+export type HierarchyRepresentationSet = {
+	representations: Map<string, HierarchyRepresentation[]>;
+};
+
 /** Primary representation when one exists, otherwise the first. Pure lookup. */
 export function findHierarchyRepresentation(
-	projection: HierarchyPageProjection,
+	projection: HierarchyRepresentationSet,
 	entity: HierarchyEntityKey
 ): HierarchyRepresentation | null {
 	const list = projection.representations.get(entity.id);
@@ -782,8 +904,8 @@ export function canonicalHierarchyHome(
  */
 export function explainHierarchyExclusion(input: {
 	page: HierarchyPage;
-	current: HierarchyPageProjection;
-	base: HierarchyPageProjection;
+	current: HierarchyRepresentationSet;
+	base: HierarchyRepresentationSet;
 	entity: HierarchyEntityKey;
 	queryActive: boolean;
 	roomName?: string;

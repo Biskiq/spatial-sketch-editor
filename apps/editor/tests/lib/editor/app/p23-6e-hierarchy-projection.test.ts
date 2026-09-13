@@ -36,6 +36,11 @@ import {
 	type HierarchyPageProjection,
 	type HierarchyProjectedRow
 } from '$lib/editor/hierarchy/hierarchy-page-projection';
+import {
+	buildHierarchySearchProjection,
+	hierarchySearchMatches,
+	normalizeHierarchyQuery
+} from '$lib/editor/hierarchy/hierarchy-search';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1079,7 +1084,8 @@ describe('P23.6e slice 1 — determinism and authority purity', () => {
 	it('is a pure render model: no Svelte state, mutation, history or Camera imports', () => {
 		const sourceIndex = readLibSource('editor/hierarchy/hierarchy-source-index.ts');
 		const projection = readLibSource('editor/hierarchy/hierarchy-page-projection.ts');
-		for (const source of [sourceIndex, projection]) {
+		const searchSource = readLibSource('editor/hierarchy/hierarchy-search.ts');
+		for (const source of [sourceIndex, projection, searchSource]) {
 			expect(source).not.toMatch(/\$state|\$derived|\$effect/);
 			expect(source).not.toContain('history-controller');
 			expect(source).not.toContain('layout-mutation-runner');
@@ -1088,5 +1094,283 @@ describe('P23.6e slice 1 — determinism and authority purity', () => {
 			expect(source).not.toContain('editor-store');
 		}
 		expect(sourceIndex).not.toContain('svelte');
+	});
+});
+
+describe('P23.6e slice 2 — bounded relationship search', () => {
+	const search = (query: string, index: HierarchySourceIndex = fixtureIndex()) =>
+		buildHierarchySearchProjection(index, query);
+
+	const categories = (projection: ReturnType<typeof search>) =>
+		projection.blocks.map((block) => block.category);
+
+	const groupRows = (
+		projection: ReturnType<typeof search>,
+		category: string,
+		kind: string
+	) =>
+		projection.blocks
+			.find((block) => block.category === category)
+			?.groups.find((group) => group.kind === kind)?.rows ?? [];
+
+	it('normalizes and matches case/whitespace-insensitively', () => {
+		expect(normalizeHierarchyQuery('  Gallery B  ')).toBe('gallery b');
+		expect(hierarchySearchMatches('gallery b', 'Gallery B')).toBe(true);
+		expect(hierarchySearchMatches('gallery b', 'gallery-b')).toBe(false);
+		expect(hierarchySearchMatches('', 'Gallery B')).toBe(false);
+	});
+
+	it('returns an empty projection for an empty query without becoming a page', () => {
+		for (const query of ['', '   ']) {
+			const projection = search(query);
+			expect(projection.blocks).toEqual([]);
+			expect(projection.empty).toBe(true);
+			expect(projection.representations.size).toBe(0);
+		}
+	});
+
+	it('retrieves a Room with its boundary Walls, nested dependents and summarized topology', () => {
+		const projection = search('Gallery B');
+		expect(categories(projection)).toEqual(['rooms', 'walls']);
+
+		const directRooms = groupRows(projection, 'rooms', 'direct');
+		expect(directRooms.map((row) => row.label)).toEqual(['Gallery B']);
+		const relatedWalls = groupRows(projection, 'walls', 'related');
+		expect(relatedWalls.map((row) => row.canonicalId)).toEqual(['w2', 'w5', 'w6', 'w7']);
+		// Dependents nested only: the hosted Opening and the oriented Ends row.
+		expect(relatedWalls[0]!.children!.map((row) => row.rowKey)).toEqual([
+			'search:walls:wall:w2:opening:op-win-2',
+			'search:walls:wall:w2:ends'
+		]);
+		// Orientation comes from the Room boundary ref (w2 is reversed in B).
+		expect(relatedWalls[0]!.children![1]!.label).toBe('Ends J3 · J2');
+
+		// Topology summarized: a count row, never a Junction inventory.
+		const topology = groupRows(projection, 'rooms', 'topology');
+		expect(topology.map((row) => row.label)).toEqual(['Boundary Junctions (4)']);
+		expect(topology[0]!.actions![0]!.destination).toEqual({
+			page: { kind: 'room', roomId: 'room-b' },
+			reveal: {
+				entity: roomEntityKey('room-b'),
+				rowKey: 'room:room-b:section:junctions',
+				ancestorDisclosureKeys: []
+			}
+		});
+		expect(categories(projection)).not.toContain('junctions');
+	});
+
+	it('retrieves a Wall with its participating Rooms and stops there', () => {
+		const projection = search('w2');
+		expect(categories(projection)).toEqual(['rooms', 'walls']);
+		expect(groupRows(projection, 'walls', 'direct').map((row) => row.canonicalId)).toEqual(['w2']);
+		expect(groupRows(projection, 'rooms', 'related').map((row) => row.label)).toEqual([
+			'Gallery A', 'Gallery B', 'Gallery C'
+		]);
+		// STOP: the related Rooms never expand into their other Walls.
+		expect(groupRows(projection, 'walls', 'related')).toEqual([]);
+		expect(
+			walk(projection.blocks.flatMap((block) => block.groups.flatMap((group) => group.rows))).map(
+				(row) => row.canonicalId
+			)
+		).not.toContain('w1');
+		// The hosted Opening is a dependent of the matched Wall, not a new result.
+		expect(categories(projection)).not.toContain('openings');
+		expect(
+			groupRows(projection, 'walls', 'direct')[0]!.children!
+				.filter((row) => row.kind === 'entity')
+				.map((row) => row.canonicalId)
+		).toEqual(['op-win-2']);
+	});
+
+	it('retrieves an Opening with its host Wall, and the host back from the Opening end', () => {
+		const projection = search('op-win-2');
+		expect(categories(projection)).toEqual(['walls', 'openings']);
+		const direct = groupRows(projection, 'openings', 'direct');
+		expect(direct.map((row) => row.canonicalId)).toEqual(['op-win-2']);
+		expect(direct[0]!.secondary).toBe('on W2');
+		// Show in Walls keeps the canonical home (real page rowKeys, not search ones).
+		expect(direct[0]!.actions![0]!.destination).toEqual({
+			page: { kind: 'walls' },
+			reveal: {
+				entity: openingEntityKey('w2', 'op-win-2'),
+				rowKey: 'walls:wall:w2:opening:op-win-2',
+				ancestorDisclosureKeys: ['walls:wall:w2']
+			}
+		});
+		const relatedWalls = groupRows(projection, 'walls', 'related');
+		expect(relatedWalls.map((row) => row.canonicalId)).toEqual(['w2']);
+		expect(relatedWalls[0]!.secondary).toBe('in Gallery A, Gallery B, +1');
+	});
+
+	it('retrieves a Junction with incident Walls and its explicit boundary Rooms, then stops', () => {
+		const projection = search('j3');
+		expect(categories(projection)).toEqual(['rooms', 'walls', 'junctions']);
+		expect(groupRows(projection, 'junctions', 'direct').map((row) => row.canonicalId)).toEqual(['j3']);
+		expect(groupRows(projection, 'walls', 'related').map((row) => row.canonicalId)).toEqual([
+			'w2', 'w3', 'w5', 'w8', 'w11'
+		]);
+		expect(groupRows(projection, 'rooms', 'related').map((row) => row.label)).toEqual([
+			'Gallery A', 'Gallery B', 'Gallery C'
+		]);
+		// STOP: no Room → other-Wall recursion and no Junction → neighbour hops.
+		const allIds = walk(
+			projection.blocks.flatMap((block) => block.groups.flatMap((group) => group.rows))
+		).map((row) => row.canonicalId);
+		for (const forbidden of ['w1', 'w4', 'w7', 'j2', 'j1']) {
+			expect(allIds, `search expanded into ${forbidden}`).not.toContain(forbidden);
+		}
+		// A related Room is terminal: no topology summary is produced for it.
+		expect(groupRows(projection, 'rooms', 'topology')).toEqual([]);
+	});
+
+	it('retrieves an assigned Layout Object from the Room end and the Room from the Object end', () => {
+		const byObject = search('object-1');
+		expect(categories(byObject)).toEqual(['rooms', 'layoutObjects']);
+		expect(groupRows(byObject, 'layoutObjects', 'direct')[0]!.secondary).toBe('assigned to Gallery A');
+		expect(groupRows(byObject, 'rooms', 'related').map((row) => row.label)).toEqual(['Gallery A']);
+
+		const byRoom = search('Gallery A');
+		expect(groupRows(byRoom, 'rooms', 'direct').map((row) => row.label)).toEqual(['Gallery A']);
+		expect(groupRows(byRoom, 'layoutObjects', 'related').map((row) => row.canonicalId)).toEqual([
+			'object-1'
+		]);
+		// w2 is shared, so a Room retrieval reaches it and names the other Rooms.
+		expect(groupRows(byRoom, 'walls', 'related').map((row) => row.canonicalId)).toEqual([
+			'w1', 'w2', 'w3', 'w4'
+		]);
+	});
+
+	it('retrieves a cluster from its members and its members from the cluster', () => {
+		const byCluster = search('Statue Group');
+		const directClusters = groupRows(byCluster, 'scene', 'direct');
+		expect(directClusters.map((row) => row.canonicalId)).toEqual(['cluster-1']);
+		expect(directClusters[0]!.children!.map((row) => row.canonicalId)).toEqual(['entity-a1']);
+		expect(groupRows(byCluster, 'scene', 'related')).toEqual([]);
+
+		const byMember = search('Sculpture A');
+		expect(groupRows(byMember, 'scene', 'direct').map((row) => row.canonicalId)).toEqual([
+			'entity-a1'
+		]);
+		// The member's cluster is related and holds the member row; the member is
+		// not duplicated as a second related row.
+		const relatedClusters = groupRows(byMember, 'scene', 'related');
+		expect(relatedClusters.map((row) => row.canonicalId)).toEqual(['cluster-1']);
+		expect(relatedClusters[0]!.children!.map((row) => row.canonicalId)).toEqual(['entity-a1']);
+	});
+
+	it('stops at Scene content unless Scene itself matched', () => {
+		const sceneOnly = search('Grand Piano');
+		expect(categories(sceneOnly)).toEqual(['scene']);
+		expect(groupRows(sceneOnly, 'scene', 'direct').map((row) => row.canonicalId)).toEqual([
+			'entity-b1'
+		]);
+		expect(categories(search('w2'))).not.toContain('scene');
+		expect(categories(search('Gallery A'))).not.toContain('scene');
+	});
+
+	it('matches raw canonical IDs and display labels without inventing references', () => {
+		expect(groupRows(search('w2'), 'walls', 'direct')).toHaveLength(1);
+		// Display label match: 'Op Door 1' from the canonical id `op-door-1`.
+		expect(
+			groupRows(search('op door 1'), 'openings', 'direct').map((row) => row.canonicalId)
+		).toEqual(['op-door-1']);
+		// Type facet match.
+		expect(
+			groupRows(search('window'), 'openings', 'direct').map((row) => row.canonicalId)
+		).toEqual(['op-win-2']);
+		// An imported id containing separators stays addressable verbatim.
+		const layout = fixtureLayout();
+		layout.walls[0]!.id = 'wall:chain:9';
+		layout.rooms[0]!.boundary[0] = { wallId: 'wall:chain:9', direction: 'forward' };
+		const index = buildHierarchySourceIndex({ layout, scene: fixtureScene() });
+		expect(
+			groupRows(buildHierarchySearchProjection(index, 'wall:chain:9'), 'walls', 'direct').map(
+				(row) => row.canonicalId
+			)
+		).toEqual(['wall:chain:9']);
+		expect(
+			groupRows(buildHierarchySearchProjection(index, 'Wall:chain:9'), 'walls', 'direct')
+		).toHaveLength(1);
+	});
+
+	it('rebuilds live after rename, split, Opening rebase and Undo-shaped replacement', () => {
+		// Rename.
+		const renamed = fixtureLayout();
+		renamed.rooms[0]!.name = 'Hall A';
+		const renamedIndex = buildHierarchySourceIndex({ layout: renamed, scene: fixtureScene() });
+		expect(categories(buildHierarchySearchProjection(renamedIndex, 'Gallery A'))).not.toContain('rooms');
+		expect(
+			groupRows(buildHierarchySearchProjection(renamedIndex, 'Hall A'), 'rooms', 'direct').map(
+				(row) => row.canonicalId
+			)
+		).toEqual(['room-a']);
+
+		// Split-shaped document edit: a new Wall appears with a new canonical id.
+		const split = fixtureLayout();
+		split.walls.push({
+			id: 'w14',
+			startJunctionId: 'j4',
+			endJunctionId: 'j10',
+			role: 'partition',
+			thickness: 0.1,
+			height: 2.2
+		});
+		const splitIndex = buildHierarchySourceIndex({ layout: split, scene: fixtureScene() });
+		expect(
+			groupRows(buildHierarchySearchProjection(splitIndex, 'w14'), 'walls', 'direct').map(
+				(row) => row.canonicalId
+			)
+		).toEqual(['w14']);
+
+		// Opening rebase: the host changes, and both directions follow it.
+		const rebased = fixtureLayout();
+		rebased.openings = rebased.openings.map((opening) =>
+			opening.id === 'op-win-2' ? { ...opening, wallId: 'w3' } : opening
+		);
+		const rebasedIndex = buildHierarchySourceIndex({ layout: rebased, scene: fixtureScene() });
+		const rebasedSearch = buildHierarchySearchProjection(rebasedIndex, 'op-win-2');
+		expect(groupRows(rebasedSearch, 'walls', 'related')[0]!.canonicalId).toBe('w3');
+		expect(
+			groupRows(buildHierarchySearchProjection(rebasedIndex, 'w3'), 'walls', 'direct')[0]!.children!
+				.filter((row) => row.kind === 'entity')
+				.map((row) => row.canonicalId)
+		).toEqual(['op-win-2']);
+
+		// Undo-shaped document replacement: the removed Opening is gone, not stale.
+		const undone = fixtureLayout();
+		undone.openings = undone.openings.filter((opening) => opening.id !== 'op-door-3');
+		const undoneIndex = buildHierarchySourceIndex({ layout: undone, scene: fixtureScene() });
+		expect(buildHierarchySearchProjection(undoneIndex, 'op-door-3').empty).toBe(true);
+	});
+
+	it('produces byte-stable ordering for the same documents and query', () => {
+		const first = buildHierarchySearchProjection(fixtureIndex(), 'Gallery B');
+		const second = buildHierarchySearchProjection(fixtureIndex(), 'Gallery B');
+		expect(JSON.stringify(second.blocks)).toBe(JSON.stringify(first.blocks));
+		expect([...second.representations]).toEqual([...first.representations]);
+	});
+
+	it('never mutates the documents and exposes the shared representation registry', () => {
+		const layout = fixtureLayout();
+		const scene = fixtureScene();
+		const before = JSON.stringify({ layout, scene });
+		const projection = buildHierarchySearchProjection(
+			buildHierarchySourceIndex({ layout, scene }),
+			'Statue Group'
+		);
+		expect(JSON.stringify({ layout, scene })).toBe(before);
+		// The search registry is usable by the same reveal/exclusion helpers.
+		expect(
+			findHierarchyRepresentation(projection, sceneEntityKey('entity-a1'))!.ancestorDisclosureKeys
+		).toEqual(['search:scene:cluster:cluster-1']);
+		expect(
+			explainHierarchyExclusion({
+				page: { kind: 'root' },
+				current: projection,
+				base: projection,
+				entity: wallEntityKey('w1'),
+				queryActive: true
+			})
+		).toEqual({ kind: 'search', text: 'Not in search results' });
 	});
 });
