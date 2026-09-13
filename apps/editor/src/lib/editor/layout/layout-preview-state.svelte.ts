@@ -1369,23 +1369,22 @@ export function updateWallFirstRoomMetadata(
 }
 
 /**
- * P23.6d — guard-railed Room removal: the intent guard (`planRemoveRoom`)
- * selects exactly one Room-exclusive boundary Wall and reuses the P23.6c
- * `planDeleteWall` pipeline, so the Room retires through normal P23.8
- * reconciliation and demolition stays one authority. One plan = one history
- * entry; a rejection writes nothing. Post-removal selection is the callers'
- * fixed policy (canonical selection becomes `none` — the Room is gone).
+ * P23.6d — canonical Room removal: `planRemoveRoom` deletes the Room's whole
+ * boundary (its exclusive boundary Walls) through the shared Wall-removal
+ * pipeline, so the Room retires through normal P23.8 reconciliation and
+ * demolition stays one authority. One plan = one history entry; a rejection
+ * writes nothing. Post-removal selection is the callers' fixed policy
+ * (canonical selection becomes `none` — the Room is gone).
  */
 export function removeWallFirstRoom(
 	state: LayoutPreviewState,
-	roomId: string,
-	wallId: string
+	roomId: string
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) {
 		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	}
-	const plan = planRemoveRoom(layout, roomId, wallId);
+	const plan = planRemoveRoom(layout, roomId);
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
 		return { success: false, message: plan.rejection.message };

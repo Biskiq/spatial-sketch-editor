@@ -9,12 +9,13 @@
  *   patches (`invalid_patch`), empty names and non-positive/non-finite
  *   thicknesses (`invalid_value`), and no-op patches (`no_op`) so callers
  *   write zero history. Room identity and boundary are preserved.
- * - `planRemoveRoom` is a guard-railed intent over the P23.6c Wall pipeline:
- *   it selects exactly one **Room-exclusive** boundary Wall, refuses shared
- *   Walls (`wall_not_exclusive`), non-boundary Walls
- *   (`wall_not_in_room_boundary`) and <2-Wall faces
- *   (`ambiguous_room_removal`), then delegates to `planDeleteWall` so the
- *   Room retires through normal P23.8 reconciliation — never a record splice.
+ * - `planRemoveRoom` deletes the Room's **whole boundary** in one atomic
+ *   operation so a Room delete leaves no open shell of leftover Walls: every
+ *   boundary Wall the Room owns alone is removed, while a Wall shared with a
+ *   neighbouring Room is kept (one physical Wall the neighbour still needs).
+ *   It rides the shared Wall-removal pipeline (`planDeleteWall`'s authority),
+ *   so the Room retires through normal P23.8 reconciliation — never a record
+ *   splice. A Room whose every boundary Wall is shared rejects atomically.
  *
  * Editor integration (`updateWallFirstRoomMetadata` / `removeWallFirstRoom`
  * through the guarded history runner): one command = exactly one history
@@ -274,7 +275,6 @@ describe('P23.6d planRoomMetadataUpdate — metadata is not topology', () => {
 			'no_op'
 		);
 		expect(rejection(planRoomMetadataUpdate(BASE, 'room-left', {})).code).toBe('no_op');
-		// Explicit same-values patch is also a no-op.
 		expect(
 			rejection(planRoomMetadataUpdate(BASE, 'room-left', { floorThickness: 0.1, name: 'Left' })).code
 		).toBe('no_op');
@@ -294,7 +294,7 @@ describe('P23.6d planRoomMetadataUpdate — metadata is not topology', () => {
 	});
 });
 
-describe('P23.6d planRemoveRoom — guard-railed intent over the Wall pipeline', () => {
+describe('P23.6d planRemoveRoom — whole-room demolition over the Wall pipeline', () => {
 	it('reports exactly the Room-exclusive boundary Walls (never geometry)', () => {
 		expect(roomExclusiveBoundaryWallIds(BASE, 'room-left').sort()).toEqual([
 			'wall-a1',
@@ -311,58 +311,94 @@ describe('P23.6d planRemoveRoom — guard-railed intent over the Wall pipeline',
 		expect(roomExclusiveBoundaryWallIds(BASE, 'room-missing')).toEqual([]);
 	});
 
-	it('retires the Room deterministically through P23.8 reconciliation', () => {
-		const plan = success(planRemoveRoom(BASE, 'room-right', 'wall-b'));
-		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
+	it('removes the whole Room and all its own Walls in one operation (no leftover shell)', () => {
+		const plan = success(planRemoveRoom(BASE, 'room-right'));
+		// The Room and every Wall it owns alone are gone.
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
 		expect(plan.retiredRoomIds).toEqual(['room-right']);
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
+			'wall-a1',
+			'wall-c2',
+			'wall-d',
+			'wall-e',
+			'wall-rl'
+		]);
+		// No dangling shell: nothing from room-right survives except the shared
+		// divider (still needed by room-left).
+		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-a2');
+		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
+		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-c1');
 		expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
 		expect(compileWallFirstLayoutGeometry(plan.document).geometry.rooms).toHaveLength(1);
-		// The retired Room's other boundary Walls survive.
-		expect(plan.document.walls.map((wall) => wall.id)).toEqual(
-			expect.arrayContaining(['wall-a2', 'wall-c1', 'wall-e'])
+	});
+
+	it('keeps a Wall shared with a neighbour (one physical Wall the neighbour needs)', () => {
+		const plan = success(planRemoveRoom(BASE, 'room-right'));
+		expect(plan.document.walls.map((wall) => wall.id)).toContain('wall-e');
+		// room-left is completely untouched.
+		expect(plan.document.rooms.find((room) => room.id === 'room-left')!.boundary).toEqual(
+			BASE.rooms.find((room) => room.id === 'room-left')!.boundary
 		);
 	});
 
-	it('delegates to planDeleteWall rather than forking the pipeline', () => {
-		const direct = success(planDeleteWall(BASE, 'wall-b'));
-		const viaRoom = success(planRemoveRoom(BASE, 'room-right', 'wall-b'));
-		expect(viaRoom.document).toEqual(direct.document);
-		expect(viaRoom.retiredRoomIds).toEqual(direct.retiredRoomIds);
+	it('removes a standalone Room completely (the drawn 4-wall flow)', () => {
+		// A genuinely standalone single-room document (only the left enclosure's
+		// own Walls): every boundary Wall is exclusive, so the whole enclosure
+		// disappears with the Room.
+		const ownedWallIds = new Set(['wall-a1', 'wall-e', 'wall-c2', 'wall-d']);
+		const ownedJunctionIds = new Set(['j-a', 'j-m', 'j-n', 'j-d']);
+		const single: LayoutDocumentWallFirst = {
+			...BASE,
+			walls: BASE.walls.filter((wall) => ownedWallIds.has(wall.id)),
+			junctions: BASE.junctions.filter((junction) => ownedJunctionIds.has(junction.id)),
+			rooms: [{ ...BASE.rooms.find((room) => room.id === 'room-left')! }]
+		};
+		expect(roomExclusiveBoundaryWallIds(single, 'room-left').sort()).toEqual(
+			['wall-a1', 'wall-c2', 'wall-d', 'wall-e'].sort()
+		);
+		const plan = success(planRemoveRoom(single, 'room-left'));
+		expect(plan.document.rooms).toEqual([]);
+		expect(plan.document.walls).toEqual([]);
+		expect(plan.document.junctions).toEqual([]);
+		expect(plan.retiredRoomIds).toEqual(['room-left']);
+		expect(compileWallFirstLayoutGeometry(plan.document).geometry.walls).toEqual([]);
 	});
 
-	it('refuses a shared boundary Wall (wall_not_exclusive) and a foreign Wall', () => {
-		expect(rejection(planRemoveRoom(BASE, 'room-left', 'wall-e')).code).toBe('wall_not_exclusive');
-		// Right room's shared divider is also not exclusive to it.
-		expect(rejection(planRemoveRoom(BASE, 'room-right', 'wall-e')).code).toBe('wall_not_exclusive');
-		expect(rejection(planRemoveRoom(BASE, 'room-right', 'wall-a1')).code).toBe(
-			'wall_not_in_room_boundary'
-		);
-		expect(rejection(planRemoveRoom(BASE, 'room-right', 'wall-rl')).code).toBe(
-			'wall_not_in_room_boundary'
-		);
+	it('delegates to the shared planDeleteWall pipeline (never a forked path)', () => {
+		// Removing the Room's exclusive Walls is exactly the same candidate as
+		// deleting those Walls: pinned through the single-Wall planner below.
+		const viaRoom = success(planRemoveRoom(BASE, 'room-right'));
+		expect(viaRoom.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
+		expect(validateWallFirstLayoutDocument(viaRoom.document).success).toBe(true);
 	});
 
-	it('refuses a 1-Wall face (ambiguous_room_removal) before any boundary lookup', () => {
-		const oneWall: LayoutDocumentWallFirst = {
+	it('rejects atomically when every boundary Wall is shared (fully interior Room)', () => {
+		// Synthetic guard fixture: make every one of room-right's boundary Walls
+		// also referenced by room-left, so room-right owns nothing alone. The
+		// planner must refuse rather than demolish a neighbour's Walls.
+		const rightBoundary = BASE.rooms.find((room) => room.id === 'room-right')!.boundary;
+		const allShared: LayoutDocumentWallFirst = {
 			...BASE,
 			rooms: BASE.rooms.map((room) =>
-				room.id === 'room-left'
-					? { ...room, boundary: room.boundary.slice(0, 1) }
-					: room
+				room.id === 'room-left' ? { ...room, boundary: [...room.boundary, ...rightBoundary] } : room
 			)
 		};
-		expect(rejection(planRemoveRoom(oneWall, 'room-left', 'wall-e')).code).toBe(
-			'ambiguous_room_removal'
+		expect(roomExclusiveBoundaryWallIds(allShared, 'room-right')).toEqual([]);
+		expect(rejection(planRemoveRoom(allShared, 'room-right')).code).toBe('ambiguous_room_removal');
+	});
+
+	it('rejects an unknown Room and a boundary referencing a missing Wall', () => {
+		expect(rejection(planRemoveRoom(BASE, 'room-missing')).code).toBe('unknown_room');
+		const missingWall: LayoutDocumentWallFirst = {
+			...BASE,
+			walls: BASE.walls.filter((wall) => wall.id !== 'wall-b')
+		};
+		expect(rejection(planRemoveRoom(missingWall, 'room-right')).code).toBe(
+			'wall_not_in_room_boundary'
 		);
 	});
 
-	it('rejects unknown Room / unknown Wall atomically', () => {
-		expect(rejection(planRemoveRoom(BASE, 'room-missing', 'wall-b')).code).toBe('unknown_room');
-		expect(rejection(planRemoveRoom(BASE, 'room-right', 'wall-missing')).code).toBe('unknown_wall');
-	});
-
-	it('removes the removed Wall hosted Openings atomically', () => {
+	it('removes the removed Walls hosted Openings atomically', () => {
 		const hosted: LayoutDocumentWallFirst = {
 			...BASE,
 			openings: [
@@ -388,7 +424,7 @@ describe('P23.6d planRemoveRoom — guard-railed intent over the Wall pipeline',
 				}
 			]
 		};
-		const plan = success(planRemoveRoom(hosted, 'room-right', 'wall-b'));
+		const plan = success(planRemoveRoom(hosted, 'room-right'));
 		expect(plan.document.openings.map((opening) => opening.id)).toEqual(['opening:door:2']);
 	});
 
@@ -414,7 +450,7 @@ describe('P23.6d planRemoveRoom — guard-railed intent over the Wall pipeline',
 				}
 			]
 		};
-		const plan = success(planRemoveRoom(withObjects, 'room-right', 'wall-b'));
+		const plan = success(planRemoveRoom(withObjects, 'room-right'));
 		const byId = new Map(plan.document.objects.map((object) => [object.id, object]));
 		expect(byId.get('obj-1')!.roomId).toBeUndefined();
 		expect(byId.get('obj-2')!.roomId).toBe('room-left');
@@ -440,44 +476,36 @@ describe('P23.6d planRemoveRoom — guard-railed intent over the Wall pipeline',
 				}
 			]
 		};
-		const plan = planRemoveRoom(related, 'room-right', 'wall-b');
+		const plan = planRemoveRoom(related, 'room-right');
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind === 'rejected') {
-			// Either the reconciliation's own code or its wrap; the command is
-			// refused atomically either way.
 			expect(['room_reconciliation_rejected', 'unresolved_portal_remap']).toContain(
 				plan.rejection.code
 			);
 		}
 	});
 
-	it('never sweeps Junctions still referenced by a surviving Wall (endpoint-scoped cleanup)', () => {
+	it('prunes only the removed Walls endpoints; unrelated orphan Junctions survive', () => {
 		const withOrphan: LayoutDocumentWallFirst = {
 			...BASE,
 			junctions: [...BASE.junctions, { id: 'j-orphan', point: [20, 20] }]
 		};
-		const plan = success(planRemoveRoom(withOrphan, 'room-right', 'wall-b'));
+		const plan = success(planRemoveRoom(withOrphan, 'room-right'));
 		const ids = new Set(plan.document.junctions.map((junction) => junction.id));
-		// Every endpoint of a boundary Wall is shared with the surviving
-		// boundary chain, so Room removal must never orphan them; and the
-		// unrelated pre-existing orphan is never swept.
-		expect(ids.has('j-b')).toBe(true);
-		expect(ids.has('j-c')).toBe(true);
+		// j-b / j-c belonged only to room-right's Walls → pruned; j-m / j-n are
+		// shared with surviving Walls → kept; the unrelated orphan is never swept.
+		expect(ids.has('j-b')).toBe(false);
+		expect(ids.has('j-c')).toBe(false);
+		expect(ids.has('j-m')).toBe(true);
+		expect(ids.has('j-n')).toBe(true);
 		expect(ids.has('j-orphan')).toBe(true);
-		// The removed Wall's own endpoints are still the only prune candidates:
-		// a room-exclusive boundary Wall whose endpoint is genuinely
-		// unreferenced prunes reference-only (pinned via the delegated delete).
-		const orphaned = success(planDeleteWall({ ...withOrphan, rooms: [] }, 'wall-rl'));
-		expect(orphaned.document.junctions.map((junction) => junction.id)).not.toContain('j-x');
-		expect(orphaned.document.junctions.map((junction) => junction.id)).toContain('j-orphan');
 	});
 
 	it('is input-pure and rejects leave zero partial mutation', () => {
 		const snapshot = JSON.stringify(BASE);
-		success(planRemoveRoom(BASE, 'room-right', 'wall-b'));
-		rejection(planRemoveRoom(BASE, 'room-left', 'wall-e'));
-		rejection(planRemoveRoom(BASE, 'room-right', 'wall-a1'));
-		rejection(planRemoveRoom(BASE, 'room-missing', 'wall-b'));
+		success(planRemoveRoom(BASE, 'room-right'));
+		success(planRemoveRoom(BASE, 'room-left'));
+		rejection(planRemoveRoom(BASE, 'room-missing'));
 		expect(JSON.stringify(BASE)).toBe(snapshot);
 	});
 });
@@ -532,7 +560,7 @@ describe('P23.6d editor adapters — history and selection', () => {
 		expect(layoutInteraction.selection).toEqual({ kind: 'room', roomId: 'room-left' });
 	});
 
-	it('removes a Room in one history entry; Undo/Redo restore exact IDs', () => {
+	it('removes the whole Room in one history entry; Undo/Redo restore exact IDs', () => {
 		const seeded: LayoutDocumentWallFirst = {
 			...BASE,
 			openings: [
@@ -551,12 +579,19 @@ describe('P23.6d editor adapters — history and selection', () => {
 		const { store, layoutPreview } = makeStore(seeded);
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => removeWallFirstRoom(layoutPreview, 'room-right', 'wall-b'),
+			() => removeWallFirstRoom(layoutPreview, 'room-right'),
 			(result) => result.success
 		);
 		if (outcome.kind !== 'committed') throw new Error(`expected commit: ${JSON.stringify(outcome)}`);
 		const after = wallFirstDocument(layoutPreview);
 		expect(after.rooms.map((room) => room.id)).toEqual(['room-left']);
+		expect(after.walls.map((wall) => wall.id)).toEqual([
+			'wall-a1',
+			'wall-c2',
+			'wall-d',
+			'wall-e',
+			'wall-rl'
+		]);
 		expect(after.openings).toEqual([]);
 
 		expect(store.undo()).toBe(true);
@@ -582,7 +617,7 @@ describe('P23.6d editor adapters — history and selection', () => {
 		const { store, layoutPreview } = makeStore();
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => removeWallFirstRoom(layoutPreview, 'room-left', 'wall-e'),
+			() => removeWallFirstRoom(layoutPreview, 'room-missing'),
 			(result) => result.success
 		);
 		expect(outcome.kind).toBe('cancelled');
@@ -607,7 +642,7 @@ describe('P23.6d editor adapters — history and selection', () => {
 		expect(updateWallFirstRoomMetadata(layoutPreview, 'room-left', { name: 'X' }).success).toBe(
 			false
 		);
-		expect(removeWallFirstRoom(layoutPreview, 'room-left', 'wall-b').success).toBe(false);
+		expect(removeWallFirstRoom(layoutPreview, 'room-left').success).toBe(false);
 	});
 });
 
@@ -649,9 +684,9 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		expect(source).toContain('function updateWallFirstRoomThickness');
 	});
 
-	it('the Inspector Remove room action uses the adapter and lists exclusive Walls', () => {
+	it('the Inspector Remove room action deletes the whole Room', () => {
 		const source = readSource('editor/EditorInspector.svelte');
-		expect(source).toContain('removeWallFirstRoom(layoutPreview, room.id, wallId)');
+		expect(source).toContain('removeWallFirstRoom(layoutPreview, room.id)');
 		expect(source).toContain('wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, selectedWallFirstRoom.id)');
 		expect(source).toContain('>Remove room</button>');
 	});
@@ -661,7 +696,7 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		// Removal clears the canonical selection (the Room retires).
 		const removeStart = source.indexOf('function removeSelectedWallFirstRoom');
 		expect(removeStart).toBeGreaterThan(-1);
-		expect(source.slice(removeStart, removeStart + 900)).toContain(
+		expect(source.slice(removeStart, removeStart + 1200)).toContain(
 			"layoutInteraction.selection = { kind: 'none' }"
 		);
 		// The metadata handlers never touch selection.
@@ -679,9 +714,52 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		const handlerBody = source.slice(handlerStart, openCall);
 		expect(handlerBody).toContain("if (!roomRowInteractive({ kind: 'room', roomId })) return;");
 		expect(handlerBody).toContain('removeRoom:');
-		expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId, wallId)');
+		expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId)');
 		// The row binds the gated context-menu handler.
 		expect(source).toContain('onWallFirstRoomRowContextMenu(event, room.roomId)');
+	});
+
+	it('the Plan viewport routes wall-first Room removal through the canonical adapter (never the legacy commands)', () => {
+		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
+		// The Layout-mode room context menu is format-aware: wall-first Rooms get
+		// ONLY the canonical removal, because the legacy `renameRoom`/`deleteRoom`
+		// commands reject wall-first documents (dead menu items).
+		expect(source).toContain('onRoomRemove?: (roomId: string) => boolean;');
+		const actionsStart = source.indexOf('actions: wallFirstLayoutDocument()');
+		expect(actionsStart).toBeGreaterThan(-1);
+		const actionsBlock = source.slice(
+			actionsStart,
+			source.indexOf('deleteLayoutObjectViaTransaction', actionsStart)
+		);
+		expect(actionsBlock).toContain('removeRoom:');
+		expect(actionsBlock).toContain('onRoomRemove?.(roomId)');
+		expect(actionsBlock).not.toContain('renameRoom');
+		expect(actionsBlock).not.toContain('onRoomDelete');
+	});
+
+	it('the Delete/Backspace Room branch is format-aware (canonical wall-first removal)', () => {
+		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
+		const branchStart = source.indexOf(
+			"interaction.selection.kind === 'room'",
+			source.indexOf('function onKeyDown')
+		);
+		expect(branchStart).toBeGreaterThan(-1);
+		const branch = source.slice(branchStart, branchStart + 900);
+		expect(branch).toContain('wallFirstLayoutDocument()');
+		expect(branch).toContain('onRoomRemove?.');
+		expect(branch).toContain('onRoomDelete(');
+	});
+
+	it('both viewport mount sites wire the canonical removeRoom handler', () => {
+		for (const relativePath of [
+			'editor/EditorViewport.svelte',
+			'editor/app/PlanWorkspace.svelte'
+		]) {
+			const source = readSource(relativePath);
+			expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId)');
+			expect(source).toContain('wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId)');
+			expect(source).toContain('onRoomRemove={removeRoom}');
+		}
 	});
 
 	it('Camera domain exposes no Room removal authority (review regression)', () => {
@@ -689,5 +767,13 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		expect(cameraSidebar).not.toContain('oncontextmenu');
 		expect(cameraSidebar).not.toContain('removeWallFirstRoom');
 		expect(cameraSidebar).not.toContain('buildPlanLayoutContextMenuItems');
+	});
+});
+
+describe('P23.6d legacy single-Wall delete stays intact', () => {
+	it('planDeleteWall still deletes exactly one Wall', () => {
+		const plan = success(planDeleteWall(BASE, 'wall-e'));
+		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-e');
+		expect(plan.document.rooms).toHaveLength(1);
 	});
 });

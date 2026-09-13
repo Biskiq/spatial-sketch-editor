@@ -26,8 +26,10 @@ export type PlanLayoutMenuActions = {
 	 * Legacy-Room rename only: it routes into `updateLayoutRoomFields`, which
 	 * resolves the Room through `layout.floors`. Optional so a caller can
 	 * omit it entirely — P23.6b requires a wall-first Room menu to expose NO
-	 * rename command (never a no-op dummy), since no canonical Room metadata
-	 * operation exists.
+	 * rename command (never a no-op dummy). P23.6d keeps that policy: its
+	 * canonical `planRoomMetadataUpdate` rename is an Inspector field, not a
+	 * menu command, so the hierarchy/viewport menus still pass no `renameRoom`
+	 * for wall-first Rooms.
 	 */
 	renameRoom?(roomId: string): void;
 	/**
@@ -65,9 +67,6 @@ export function buildPlanLayoutContextMenuItems(input: {
 	const deleteDisabled = input.mutationBlockedReason;
 	if (target.kind === 'room') {
 		const items: ContextMenuItem[] = [];
-		// P23.6b — omit the command entirely when the caller cannot honor it:
-		// a wall-first Room menu must not expose Rename at all, so the tree
-		// passes no `renameRoom` instead of a dead callback.
 		// P23.6b — omit the command entirely when the caller cannot honor it:
 		// a wall-first Room menu must not expose Rename at all, so the tree
 		// passes no `renameRoom` instead of a dead callback.

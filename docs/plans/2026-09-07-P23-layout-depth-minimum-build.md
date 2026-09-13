@@ -526,7 +526,7 @@ Delete one selected canonical Wall through the `planWallRoleChange()` architectu
 
 [Child plan](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md)
 
-Closes the remaining wall-first Room authoring debt **before** the final Hierarchy/UI overhaul consumes those capabilities: canonical Room metadata/name editing (`planRoomMetadataUpdate`) and the narrow, guard-railed `planRemoveRoom` (a Room-forward intent over the P23.6c Wall pipeline that retires the Room through normal P23.8 reconciliation — never a `LayoutRoom` record splice, which would leave the same enclosure intact and violate the Room-identity invariant). Restates the existing move/duplicate boundaries as the lifecycle contract. Execution order is dependency-driven, not numeric: 6d precedes the 6e UI overhaul even though the directive historically carried the 6d label. **Implemented on branch `P23.6d`** (see the child plan's §Implementation record): `planRoomMetadataUpdate` + `planRemoveRoom` (+ `roomExclusiveBoundaryWallIds`) in `layout-wall-topology-ops.ts`, the `'room-metadata'`/`'room-remove'` operation vocabulary and editor adapters, and the Inspector Room panel + gated hierarchy Room-row context menu on the one planner, with operation-specific selection (metadata preserves, removal clears to `none`). P23.6b's "wall-first Room rows bind no context menu" contract is deliberately superseded and its regression updated accordingly.
+Closes the remaining wall-first Room authoring debt **before** the final Hierarchy/UI overhaul consumes those capabilities: canonical Room metadata/name editing (`planRoomMetadataUpdate`) and **whole-room demolition** (`planRemoveRoom` — deletes the Room's exclusive boundary Walls as one atomic set over the P23.6c Wall pipeline, so a drawn Room and its enclosure go together and the Room retires through normal P23.8 reconciliation; never a `LayoutRoom` record splice, which would leave the same enclosure intact and violate the Room-identity invariant, and never a neighbour's shared Wall). Restates the existing move/duplicate boundaries as the lifecycle contract. Execution order is dependency-driven, not numeric: 6d precedes the 6e UI overhaul even though the directive historically carried the 6d label. **Implemented on branch `P23.6d`** (see the child plan's §Implementation record): `planRoomMetadataUpdate` + `planRemoveRoom` (+ `roomExclusiveBoundaryWallIds`) in `layout-wall-topology-ops.ts`, the `'room-metadata'`/`'room-remove'` operation vocabulary and editor adapters, and the Inspector Room panel + gated hierarchy Room-row context menu + viewport `Delete`/`Backspace` over a selected Room on the one planner, with operation-specific selection (metadata preserves, removal clears to `none`). P23.6b's "wall-first Room rows bind no context menu" contract is deliberately superseded and its regression updated accordingly.
 
 ## P23.6e — Final product-semantics reconciliation
 
@@ -716,14 +716,13 @@ here, and no implementation detail is fixed.
   continuity work. **P23.7 must restate this as an explicit open deferral** and must
   not mark it complete.
 
-- **Bulk "demolish room" multi-Wall cascade** (registered 2026-09-13 from the
-  [P23.6d](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md) planning):
-  deleting every boundary Wall of a Room as one command, with explicit
-  shared-Wall adjudication and per-Wall portal reconciliation previews.
-  P23.6d deliberately ships the narrow `planRemoveRoom` (one exclusive boundary
-  Wall through the P23.6c pipeline) instead; the broad cascade stays
-  unscheduled until a product case exists. Owner: unassigned / future
-  scheduled slice.
+- ~~**Bulk "demolish room" multi-Wall cascade**~~ — **closed by
+  [P23.6d](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md)**
+  (owner review 2026-09-13): the product model is "draw a Room, then select it
+  and delete the whole thing", so `planRemoveRoom` now removes the Room's
+  exclusive boundary Walls as one atomic command (keeping only Walls shared
+  with a neighbour) and the Inspector, hierarchy and viewport Delete surfaces
+  all drive it. No wider cascade tooling is owned here.
 
 - **Layout Room multi-select** (registered 2026-09-12 from the P23.6a review,
   tracked as **Issue #28**): an ordered **set** of Layout Rooms — and, as a

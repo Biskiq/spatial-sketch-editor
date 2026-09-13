@@ -564,20 +564,14 @@
 
 	/**
 	 * P23.6d — canonical wall-first Room removal from the Architecture tree.
-	 * The SAME planner-backed adapter the Inspector calls (one history entry).
-	 * The Wall choice defaults to the first Room-exclusive boundary Wall in
-	 * boundary order — no geometry guessing; the Inspector exposes the full
-	 * wall list for an explicit pick. Success clears the canonical selection to
+	 * The SAME planner-backed adapter the Inspector calls (one history entry):
+	 * the Room and its own boundary Walls are removed in one atomic step; Walls
+	 * shared with a neighbour stay. Success clears the canonical selection to
 	 * `none` (the Room retires).
 	 */
 	function removeRoomFromTree(roomId: string) {
-		const wallId = wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId)[0];
-		if (!wallId) {
-			store.setStatusMessage('Remove room needs a boundary Wall this room owns alone');
-			return;
-		}
 		const outcome = runLayoutMutationGuarded(
-			() => removeWallFirstRoom(layoutPreview, roomId, wallId),
+			() => removeWallFirstRoom(layoutPreview, roomId),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {

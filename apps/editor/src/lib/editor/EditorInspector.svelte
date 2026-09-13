@@ -381,21 +381,14 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	const selectedPrecisionJunction = $derived(selectedWallFirstJunction);
 	const selectedPrecisionWall = $derived(selectedWallFirstWall);
 	const selectedPrecisionRoom = $derived(selectedWallFirstRoom);
-	// P23.6d — Room removal intent: the selected Room's **exclusive** boundary
-	// Walls are the only Walls whose deletion expresses "remove this Room".
-	// The explicit wall choice (Inspector select) survives while still
-	// eligible; otherwise it defaults to the first eligible Wall. No geometry
-	// guessing — exclusivity comes from the canonical boundary references.
-	let roomRemovalWallId = $state<string | null>(null);
+	// P23.6d — Room removal eligibility: `Remove room` deletes the Room's whole
+	// boundary, so it needs at least one boundary Wall the Room owns alone. A
+	// shared Wall is one physical Wall a neighbour still needs and is kept.
+	// Exclusivity comes from the canonical boundary references, never geometry.
 	const selectedWallFirstRoomExclusiveWalls = $derived(
 		selectedWallFirstRoom
 			? wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, selectedWallFirstRoom.id)
 			: []
-	);
-	const selectedRoomRemovalWallId = $derived(
-		roomRemovalWallId && selectedWallFirstRoomExclusiveWalls.includes(roomRemovalWallId)
-			? roomRemovalWallId
-			: (selectedWallFirstRoomExclusiveWalls[0] ?? null)
 	);
 	const selectedPrecisionWallEndpoints = $derived(selectedWallFirstWallEndpoints);
 	// P23.6b — Wall-panel relations: hosted Openings (document order) and the
@@ -1331,17 +1324,23 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
-	 * P23.6d — canonical Room removal: the chosen exclusive boundary Wall is
-	 * deleted through the P23.6c pipeline, so the Room retires through P23.8
-	 * reconciliation. Success clears the canonical selection to `none` (the
-	 * Room is gone — never a dangling `roomId`, never a nearest survivor).
+	 * P23.6d — canonical Room removal: the Room's whole boundary (its exclusive
+	 * boundary Walls) is deleted in one atomic operation, so the Room retires
+	 * through P23.8 reconciliation and no open shell of leftover Walls survives.
+	 * Success clears the canonical selection to `none` (the Room is gone — never
+	 * a dangling `roomId`, never a nearest survivor).
 	 */
 	function removeSelectedWallFirstRoom() {
 		const room = selectedWallFirstRoom;
-		const wallId = selectedRoomRemovalWallId;
-		if (!room || !wallId) return;
+		if (!room) return;
+		if (selectedWallFirstRoomExclusiveWalls.length === 0) {
+			store.setStatusMessage(
+				'Every boundary wall is shared with a neighbouring room; delete a shared wall instead'
+			);
+			return;
+		}
 		const outcome = runLayoutMutationGuarded(
-			() => removeWallFirstRoom(layoutPreview, room.id, wallId),
+			() => removeWallFirstRoom(layoutPreview, room.id),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
@@ -2054,19 +2053,19 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						</fieldset>
 					{/if}
 					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
-					<!-- P23.6d — Room removal is a named, deliberate command: it opens
-						the enclosure by deleting ONE Room-exclusive boundary Wall through
-						the P23.6c pipeline. No exclusive Wall eligible → disabled with a
-						reason (never a bare record splice). -->
+					<!-- P23.6d — Room removal is a named, deliberate command that deletes
+						the Room's WHOLE boundary (its exclusive boundary Walls) in one atomic
+						operation, so no open shell of leftover Walls survives. Walls shared
+						with a neighbour are kept (the neighbour still needs them). No
+						Room-exclusive Wall → disabled with a reason (never a bare splice). -->
 					<fieldset class="staging-transform-fields">
 						<legend>Remove room</legend>
 						{#if selectedWallFirstRoomExclusiveWalls.length > 0}
-							<span>Opens the enclosure by removing one boundary Wall this Room owns alone.</span>
-							<label>Boundary Wall<select value={selectedRoomRemovalWallId ?? ''} onchange={(event) => roomRemovalWallId = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedWallFirstRoomExclusiveWalls as wallId}<option value={wallId}>{wallId}</option>{/each}</select></label>
+							<span>Deletes this Room and its {selectedWallFirstRoomExclusiveWalls.length} own boundary {selectedWallFirstRoomExclusiveWalls.length === 1 ? 'wall' : 'walls'} in one step.</span>
 							<button type="button" class="layout-danger" onclick={removeSelectedWallFirstRoom}>Remove room</button>
 						{:else}
-							<span>Not removable — every boundary Wall is shared with a neighbouring room. Delete a shared Wall explicitly, or reshape the Room.</span>
-							<button type="button" class="layout-danger" disabled title="No Room-exclusive boundary Wall">Remove room</button>
+							<span>Not removable — every boundary wall is shared with a neighbouring room. Delete a shared wall explicitly, or reshape the Room.</span>
+							<button type="button" class="layout-danger" disabled title="No Room-exclusive boundary wall">Remove room</button>
 						{/if}
 					</fieldset>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
