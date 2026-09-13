@@ -8,8 +8,8 @@
  * callers:
  *
  * - `resolveIsolatedRoomSubgraph()` — **one** Room whose boundary graph is
- *   isolated from every other Room and Wall. P23.4 duplication and the
- *   single-Room move path.
+ *   isolated from every other Room and Wall. P23.4 duplication uses this scope;
+ *   an isolated Room move still resolves through the group scope as a group of one.
  * - `resolveIsolatedRoomGroupSubgraph()` — the **connected Room group** that
  *   contains a Room: every Room transitively joined to it through shared
  *   boundary Junctions. Moving any member alone would detach the others, so
