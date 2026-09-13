@@ -62,6 +62,7 @@ import {
 	createLayoutInteractionState,
 	selectLayoutPhysicalWall
 } from '$lib/editor/layout/layout-interaction';
+import { isUnifiedTreeRowInteractive, type UnifiedTreeRow } from '$lib/editor/unified-project-tree-model';
 import { buildPlanLayoutContextMenuItems } from '$lib/editor/context-menu/plan-menu-items';
 
 type WallSeed = {
@@ -297,6 +298,39 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		const junctionIds = new Set(outerPlan.document.junctions.map((junction) => junction.id));
 		expect(junctionIds.has('j-a')).toBe(true);
 		expect(junctionIds.has('j-m')).toBe(true);
+	});
+
+	it('never sweeps pre-existing orphan Junctions unrelated to the deleted Wall (review regression)', () => {
+		// An orphan Junction parked far from both rooms, authored before the
+		// delete and referenced by no Wall. It belongs to no Wall's endpoints,
+		// so deleting ANY Wall must leave it alone — cleanup is scoped to the
+		// deleted Wall's own startJunctionId/endJunctionId, never a
+		// document-wide unreferenced-Junction sweep.
+		const withUnrelatedOrphan: LayoutDocumentWallFirst = {
+			...BASE,
+			junctions: [...BASE.junctions, { id: 'j-orphan', point: [20, 20] }]
+		};
+		// The orphan is valid input: walls resolve, rooms are untouched.
+		expect(validateWallFirstLayoutDocument(withUnrelatedOrphan).success).toBe(true);
+		for (const wallId of ['wall-rl', 'wall-e', 'wall-b']) {
+			const plan = success(planDeleteWall(withUnrelatedOrphan, wallId));
+			expect(plan.document.junctions.map((junction) => junction.id)).toContain('j-orphan');
+			expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
+		}
+		// The deleted Wall's own endpoints still prune under the same rule:
+		// wall-rl's j-x/j-y go, but the unrelated orphan survives.
+		const partitionPlan = success(planDeleteWall(withUnrelatedOrphan, 'wall-rl'));
+		const ids = new Set(partitionPlan.document.junctions.map((junction) => junction.id));
+		expect(ids.has('j-x')).toBe(false);
+		expect(ids.has('j-y')).toBe(false);
+		expect(ids.has('j-orphan')).toBe(true);
+		// And when one endpoint IS shared with a surviving Wall, it survives
+		// while the other endpoint goes — per-endpoint reference check.
+		const outerPlan = success(planDeleteWall(withUnrelatedOrphan, 'wall-a1'));
+		const outerIds = new Set(outerPlan.document.junctions.map((junction) => junction.id));
+		expect(outerIds.has('j-a')).toBe(true);
+		expect(outerIds.has('j-m')).toBe(true);
+		expect(outerIds.has('j-orphan')).toBe(true);
 	});
 
 	it('remaps a surviving-wall portal relation through the 2→1 merge', () => {
@@ -571,5 +605,46 @@ describe('P23.6c caller wiring — one planner, fixed post-delete selection', ()
 		const source = readSource('editor/UnifiedProjectTree.svelte');
 		expect(source).toContain('deleteWallFirstWall(layoutPreview, wallId)');
 		expect(source).toContain("target: { kind: 'wall', wallId }");
+	});
+
+	it('an inert physicalWall row never opens its context menu — the menu obeys the same row-authority gate as activation (review regression)', () => {
+		const source = readSource('editor/UnifiedProjectTree.svelte');
+		// The handler builds its row and consults the SAME predicate the
+		// left-click activation binding uses.
+		const handlerStart = source.indexOf('function onWallRowContextMenu');
+		expect(handlerStart).toBeGreaterThan(-1);
+		const openCall = source.indexOf('openTreeContextMenu(', handlerStart);
+		const handlerBody = source.slice(handlerStart, openCall);
+		expect(handlerBody).toContain("{ kind: 'physicalWall', wallId }");
+		expect(handlerBody).toContain('roomRowInteractive(row)');
+		// Gate BEFORE the menu: an authority-refused row returns before any
+		// menu can be built, so an inert row can never expose — let alone
+		// execute — the canonical Delete command.
+		expect(handlerBody).toContain('if (!roomRowInteractive(row)) return;');
+		// Activation keeps its own gate (unchanged contract): the row button
+		// binds selection only when the row is interactive.
+		expect(source).toContain('onclick={roomRowInteractive(wallRow) ? () => selectPhysicalWall(wall.wallId) : undefined}');
+	});
+
+	it('Camera domain exposes no Wall context menu at all — CameraSidebar wires no delete authority (review regression)', () => {
+		// The Camera domain renders the Environment projection from the same
+		// tree model, but it never mounts the context-menu surface: no
+		// oncontextmenu, no menu builder, no deleteWall adapter.
+		const cameraSidebar = readSource('editor/app/CameraSidebar.svelte');
+		expect(cameraSidebar).not.toContain('oncontextmenu');
+		expect(cameraSidebar).not.toContain('buildPlanLayoutContextMenuItems');
+		expect(cameraSidebar).not.toContain('deleteWall');
+		expect(cameraSidebar).not.toContain('deleteWallFirstWall');
+	});
+
+	it('physicalWall row authority: Camera domain and Plan Arrange are inert, Scene layout/3D are authoritative (review regression)', () => {
+		const row: UnifiedTreeRow = { kind: 'physicalWall', wallId: 'wall-e' };
+		// Inert: no activation, and through the gated handler no context menu.
+		expect(isUnifiedTreeRowInteractive(row, 'camera', 'plan')).toBe(false);
+		expect(isUnifiedTreeRowInteractive(row, 'camera', '3d')).toBe(false);
+		expect(isUnifiedTreeRowInteractive(row, 'scene', 'plan', 'staging')).toBe(false);
+		// Authority: the only surfaces whose context menu may offer Delete.
+		expect(isUnifiedTreeRowInteractive(row, 'scene', 'plan', 'layout')).toBe(true);
+		expect(isUnifiedTreeRowInteractive(row, 'scene', '3d')).toBe(true);
 	});
 });

@@ -438,7 +438,9 @@ export function planWallRoleChange(
  *
  * Deleting a physical Wall is a topology-changing operation, never a direct
  * `walls` splice: the candidate graph (Wall removed, hosted Openings removed
- * atomically, Junctions pruned only when no surviving Wall references them)
+ * atomically, Junction cleanup scoped to the deleted Wall's own
+ * start/end Junctions — an endpoint is pruned only when no surviving Wall
+ * references it, and pre-existing orphan Junctions elsewhere are untouched)
  * runs face extraction + P23.8 correspondence reconciliation + the final
  * canonical gates, exactly like the chain engine and the role change. The
  * deterministic reconciliation result is accepted as-is — deletion is not
@@ -480,15 +482,24 @@ export function planDeleteWall(
 		walls: document.walls.filter((entry) => entry.id !== wallId),
 		openings: document.openings.filter((opening) => opening.wallId !== wallId)
 	};
-	// Reference-based Junction cleanup only: prune a Junction when no
-	// surviving Wall references it as either endpoint. No coordinate healing,
-	// no spatial merging.
-	const referencedJunctionIds = new Set<string>();
+	// Reference-based Junction cleanup, scoped to the deleted Wall's own
+	// endpoints: a pre-existing unreferenced Junction elsewhere in the
+	// document is untouched — only `startJunctionId`/`endJunctionId` of the
+	// deleted Wall may be pruned, and only when no surviving Wall references
+	// them as either endpoint. No coordinate healing, no spatial merging,
+	// no document-wide orphan sweep.
+	const survivingJunctionIds = new Set<string>();
 	for (const surviving of candidate.walls) {
-		referencedJunctionIds.add(surviving.startJunctionId);
-		referencedJunctionIds.add(surviving.endJunctionId);
+		survivingJunctionIds.add(surviving.startJunctionId);
+		survivingJunctionIds.add(surviving.endJunctionId);
 	}
-	candidate.junctions = document.junctions.filter((junction) => referencedJunctionIds.has(junction.id));
+	const deletableEndpointIds = new Set([
+		wall.startJunctionId,
+		wall.endJunctionId
+	]);
+	candidate.junctions = document.junctions.filter(
+		(junction) => !deletableEndpointIds.has(junction.id) || survivingJunctionIds.has(junction.id)
+	);
 
 	// --- room reconciliation -------------------------------------------------
 	// Same correspondence as the chain engine and the role change: predecessor

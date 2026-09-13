@@ -565,7 +565,14 @@
 	function onWallRowContextMenu(event: MouseEvent, wallId: string): void {
 		if (!contextMenu) return;
 		const row = { kind: 'physicalWall', wallId } satisfies UnifiedTreeRow;
-		if (roomRowInteractive(row)) selectPhysicalWall(wallId);
+		// P23.6c review fix — the context menu obeys the SAME row-authority
+		// contract as activation (`isUnifiedTreeRowInteractive`): an
+		// inert/read-only physicalWall row (Camera domain, Scene Plan Arrange)
+		// gets neither selection nor a canonical Delete command. Only an
+		// authority surface that can activate the row may open its menu, so
+		// the menu can never bypass the gate and execute Delete.
+		if (!roomRowInteractive(row)) return;
+		selectPhysicalWall(wallId);
 		openTreeContextMenu(
 			event,
 			buildPlanLayoutContextMenuItems({
