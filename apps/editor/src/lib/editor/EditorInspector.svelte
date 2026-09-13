@@ -858,7 +858,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		// new Room through the ONE canonical selection authority (the retired
 		// `precisionTarget` seed is gone).
 		if (committed.createdRoomId) {
-			selectCanonicalRoom(committed.createdRoomId);
+			if (selectedWallFirstRoom?.id !== committed.createdRoomId) {
+				precisionRectangleAnchor = null;
+				precisionRectangleWidthWall = null;
+			}
+			selectLayoutRoom(layoutInteraction, committed.createdRoomId);
 		}
 	}
 
@@ -1255,29 +1259,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		store.setStatusMessage('Deleted room');
 	}
 
-	/**
-	 * P23.6b — navigation onto the ONE canonical selection authority. The old
-	 * Inspector-local `precisionTarget` write is gone: every caller (the
-	 * Architecture inventory rows, diagnostics, post-create seeds) activates
-	 * `layoutInteraction.selection` through the existing select helpers, and
-	 * rectangle operation parameters reset when the Room identity changes.
-	 */
-	function selectCanonicalJunction(junctionId: string): void {
-		selectLayoutJunction(layoutInteraction, junctionId);
-	}
-
-	function selectCanonicalWall(wallId: string): void {
-		selectLayoutPhysicalWall(layoutInteraction, wallId);
-	}
-
-	function selectCanonicalRoom(roomId: string): void {
-		if (selectedWallFirstRoom?.id !== roomId) {
-			precisionRectangleAnchor = null;
-			precisionRectangleWidthWall = null;
-		}
-		selectLayoutRoom(layoutInteraction, roomId);
-	}
-
 	function precisionNumber(
 		event: Event,
 		fallback: number,
@@ -1293,86 +1274,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return null;
 		}
 		return parsed.value;
-	}
-
-	function updatePrecisionJunction(index: 0 | 1, event: Event): void {
-		const junction = selectedPrecisionJunction;
-		if (!junction) return;
-		const previous = junction.point[index];
-		const value = precisionNumber(event, previous, formatMeters);
-		if (value === null) return;
-		const point = [...junction.point] as [number, number];
-		point[index] = value;
-		const outcome = runLayoutMutationGuarded(
-			() => updateWallFirstJunction(layoutPreview, junction.id, point),
-			(result) => result.success
-		);
-		if (outcome.kind === 'skipped') {
-			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-			store.setStatusMessage('Finish the current layout interaction first');
-			return;
-		}
-		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Junction ${junction.id}` : `Junction rejected: ${outcome.result.message}`);
-	}
-
-	function updatePrecisionWallLength(event: Event): void {
-		const wall = selectedPrecisionWall;
-		const endpoints = selectedPrecisionWallEndpoints;
-		if (!wall || !endpoints) return;
-		const previous = endpoints.length;
-		const value = precisionNumber(event, previous, formatMeters);
-		if (value === null) return;
-		const outcome = runLayoutMutationGuarded(
-			() => updateWallFirstWallLength(layoutPreview, wall.id, value, precisionFixedEndpoint),
-			(result) => result.success
-		);
-		if (outcome.kind === 'skipped') {
-			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-			store.setStatusMessage('Finish the current layout interaction first');
-			return;
-		}
-		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} length` : `Wall rejected: ${outcome.result.message}`);
-	}
-
-	function updatePrecisionWallAngle(event: Event): void {
-		const wall = selectedPrecisionWall;
-		const endpoints = selectedPrecisionWallEndpoints;
-		if (!wall || !endpoints) return;
-		const previous = endpoints.angleDegrees;
-		const value = precisionNumber(event, previous, formatDegrees);
-		if (value === null) return;
-		const outcome = runLayoutMutationGuarded(
-			() => updateWallFirstWallAngle(layoutPreview, wall.id, degreesToRadians(value), precisionFixedEndpoint),
-			(result) => result.success
-		);
-		if (outcome.kind === 'skipped') {
-			(event.currentTarget as HTMLInputElement).value = formatDegrees(previous);
-			store.setStatusMessage('Finish the current layout interaction first');
-			return;
-		}
-		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatDegrees(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} angle` : `Wall rejected: ${outcome.result.message}`);
-	}
-
-	function updatePrecisionWallThickness(event: Event): void {
-		const wall = selectedPrecisionWall;
-		if (!wall) return;
-		const previous = wall.thickness;
-		const value = precisionNumber(event, previous, formatMeters);
-		if (value === null) return;
-		const outcome = runLayoutMutationGuarded(
-			() => updateWallFirstWallThickness(layoutPreview, wall.id, value),
-			(result) => result.success
-		);
-		if (outcome.kind === 'skipped') {
-			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-			store.setStatusMessage('Finish the current layout interaction first');
-			return;
-		}
-		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} thickness` : `Wall rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1465,8 +1366,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
-	 * P23.6b — subdivision re-homed onto the canonical Wall panel: identical
-	 * planner and guarded transaction as the old Architecture · exact control.
+	 * P23.6 — exact subdivision of the selected canonical Wall (identical
+	 * planner and guarded transaction as the retired "Architecture · exact"
+	 * control; re-homed onto the canonical Wall panel by P23.6b).
 	 */
 	function addSelectedWallVertex(event: Event): void {
 		const wall = selectedWallFirstWall;
@@ -1547,24 +1449,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		if (wallFirstLayout.junctions.some((junction) => junction.id === targetId)) {
 			selectLayoutJunction(layoutInteraction, targetId);
 		}
-	}
-
-	function addPrecisionVertex(event: Event): void {
-		const wall = selectedPrecisionWall;
-		const endpoints = selectedPrecisionWallEndpoints;
-		if (!wall || !endpoints) return;
-		const fallback = endpoints.length / 2;
-		const value = precisionNumber(event, fallback);
-		if (value === null) return;
-		const outcome = runLayoutMutationGuarded(
-			() => subdivideWallFirstWall(layoutPreview, wall.id, value),
-			(result) => result.success
-		);
-		if (outcome.kind === 'skipped') {
-			store.setStatusMessage('Finish the current layout interaction first');
-			return;
-		}
-		store.setStatusMessage(outcome.result.success ? `Added Vertex to Wall ${wall.id}` : `Vertex rejected: ${outcome.result.message}`);
 	}
 
 	function updatePrecisionRectangle(metric: 'width' | 'depth', event: Event): void {
@@ -1700,7 +1584,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			</dl>
 			{#if layoutPreview.importError}<p class="layout-opening-warning" role="alert">Import failed: {layoutPreview.importError}</p>{/if}
 			<p class="layout-inspector-note">Openings are geometry-only in this phase. No room adjacency or portal semantics are inferred.</p>
-			{#if isWallFirstLayout}<p class="layout-inspector-note">Wall-first layout: use Architecture · exact for Junctions, Walls, Rooms, and existing object transforms. Door and Window place canonical Openings on a Wall; Column, Platform and Plinth place ordinary objects; legacy room and primitive placement is unavailable.</p>{/if}
+			{#if isWallFirstLayout}<p class="layout-inspector-note">Wall-first layout: select a Wall, Junction, Opening or Room on Plan (or in the Hierarchy) to edit it exactly here — the Inspector shows only the one selected entity, never a document-wide inventory. Door and Window place canonical Openings on a Wall; Column, Platform and Plinth place ordinary objects; legacy room and primitive placement is unavailable.</p>{/if}
 
 			{#if isScenePlanLayout}
 			<div class="layout-accordion">
@@ -1735,70 +1619,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				{/if}
 				</div>
 
+				<!-- P23.6b — the document-wide Junction/Wall/Room inventory (the old
+					"Architecture · exact" accordion) is gone: it was the Inspector's
+					competing inventory and made the panel busy. Document navigation
+					lives in the Hierarchy's Architecture / Topology… groups; the
+					Inspector presents exactly the one selected entity below. The
+					issue-driven Topology diagnostics accordion stays. -->
 				{#if isWallFirstLayout && wallFirstLayout}
-				<div class="layout-accordion" aria-label="Wall-first exact authoring">
-					<div class="accordion-trigger"><strong>Architecture · exact</strong><span>m / °</span></div>
-					<div class="layout-selection-content">
-						<p class="layout-inspector-note">Exact values are document meters and degrees. Snap is bypassed; Apply/Enter creates one layout history entry. Selecting a row navigates the one canonical selection — the Inspector has no separate target of its own.</p>
-						<div class="layout-object-list" aria-label="Wall-first Junctions">
-							<strong>Junctions</strong>
-							{#if wallFirstLayout.junctions.length === 0}<span class="layout-empty">No Junctions.</span>{/if}
-							{#each wallFirstLayout.junctions as junction (junction.id)}
-								<button type="button" class:selected={selectedWallFirstJunction?.id === junction.id} class="object-row-select" onclick={() => selectCanonicalJunction(junction.id)}><strong>{junction.id}</strong><span>{junction.point[0].toFixed(2)}, {junction.point[1].toFixed(2)}</span></button>
-							{/each}
-						</div>
-						<div class="layout-object-list" aria-label="Wall-first Walls">
-							<strong>Walls</strong>
-							{#if wallFirstLayout.walls.length === 0}<span class="layout-empty">No Walls.</span>{/if}
-							{#each wallFirstLayout.walls as wall (wall.id)}
-								<button type="button" class:selected={selectedWallFirstWall?.id === wall.id} class="object-row-select" onclick={() => selectCanonicalWall(wall.id)}><strong>{wall.id}</strong><span>{wall.startJunctionId} → {wall.endJunctionId}</span></button>
-							{/each}
-						</div>
-						<div class="layout-object-list" aria-label="Wall-first Rooms">
-							<strong>Rooms</strong>
-							{#if wallFirstLayout.rooms.length === 0}<span class="layout-empty">No Rooms.</span>{/if}
-							{#each wallFirstLayout.rooms as room (room.id)}
-								<button type="button" class:selected={selectedWallFirstRoom?.id === room.id} class="object-row-select" onclick={() => selectCanonicalRoom(room.id)}><strong>{room.name}</strong><span>{room.id}</span></button>
-							{/each}
-						</div>
-
-						{#if selectedPrecisionJunction}
-							<div class="layout-selected-room" aria-label="Exact Junction editor">
-								<strong>Junction {selectedPrecisionJunction.id}</strong>
-								<span>Connected Wall geometry follows this Junction.</span>
-								<label>X (m)<input type="number" step="any" value={formatMeters(selectedPrecisionJunction.point[0])} onchange={(event) => updatePrecisionJunction(0, event)} /></label>
-								<label>Z (m)<input type="number" step="any" value={formatMeters(selectedPrecisionJunction.point[1])} onchange={(event) => updatePrecisionJunction(1, event)} /></label>
-								{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
-							</div>
-						{:else if selectedPrecisionWall && selectedPrecisionWallEndpoints}
-							<div class="layout-selected-room" aria-label="Exact Wall editor">
-								<strong>Wall {selectedPrecisionWall.id}</strong>
-								<span>Canonical: {selectedPrecisionWallEndpoints.start.id} → {selectedPrecisionWallEndpoints.end.id}</span>
-								<span>Start {selectedPrecisionWallEndpoints.start.point[0].toFixed(3)}, {selectedPrecisionWallEndpoints.start.point[1].toFixed(3)} · End {selectedPrecisionWallEndpoints.end.point[0].toFixed(3)}, {selectedPrecisionWallEndpoints.end.point[1].toFixed(3)}</span>
-								<label>Fixed endpoint<select value={precisionFixedEndpoint} onchange={(event) => precisionFixedEndpoint = (event.currentTarget as HTMLSelectElement).value as 'start' | 'end'}><option value="start">Start</option><option value="end">End</option></select></label>
-								<label>Length (m)<input type="number" step="any" value={formatMeters(selectedPrecisionWallEndpoints.length)} onchange={updatePrecisionWallLength} /></label>
-								<label>Angle (°)<input type="number" step="any" value={formatDegrees(selectedPrecisionWallEndpoints.angleDegrees)} onchange={updatePrecisionWallAngle} /></label>
-								<label>Thickness (m)<input type="number" step="any" value={formatMeters(selectedPrecisionWall.thickness)} onchange={updatePrecisionWallThickness} /></label>
-								<label>Add Vertex at (m)<input type="number" step="any" value={formatMeters(selectedPrecisionWallEndpoints.length / 2)} onchange={addPrecisionVertex} /></label>
-								<span>Openings stay on physical Wall meters and are rejected if the edit would make them invalid.</span>
-								{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
-							</div>
-						{:else if selectedPrecisionRoom && selectedPrecisionRectangle}
-							<div class="layout-selected-room" aria-label="Exact rectangle editor">
-								<strong>Rectangle {selectedPrecisionRoom.name}</strong>
-								<span>Four boundary Walls · shared-boundary edits reject when ambiguous.</span>
-								<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{id}</option>{/each}</select></label>
-								<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallId}</option>{/each}</select></label>
-								<label>Width (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.width} onchange={(event) => updatePrecisionRectangle('width', event)} /></label>
-								<label>Depth (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.depth} onchange={(event) => updatePrecisionRectangle('depth', event)} /></label>
-								<label>Duplicate Δ X (m)<input type="number" step="0.1" value={roomDuplicateDeltaX} onchange={(event) => { roomDuplicateTouched = true; roomDuplicateDeltaX = Number((event.currentTarget as HTMLInputElement).value); }} /></label>
-								<label>Duplicate Δ Z (m)<input type="number" step="0.1" value={roomDuplicateDeltaZ} onchange={(event) => { roomDuplicateTouched = true; roomDuplicateDeltaZ = Number((event.currentTarget as HTMLInputElement).value); }} /></label>
-								<button type="button" onclick={duplicateSelectedPrecisionRoom}>Duplicate room</button>
-								{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
-							</div>
-						{/if}
-					</div>
-				</div>
 				{#if layoutPreview.issues.length > 0}
 				<div class="layout-accordion" aria-label="Wall-first topology diagnostics">
 					<div class="accordion-trigger"><strong>Topology diagnostics</strong><span>{layoutPreview.issues.length}</span></div>
@@ -2061,6 +1888,26 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 							? 'Movable as a whole unit (drag in Plan)'
 							: `Not movable as a unit — ${selectedWallFirstRoomFacts.eligibility.hint}`}
 					</span>
+					<!-- Capability re-homing: the exact rectangle Width/Depth editor
+						(and its anchor / width-Wall operation parameters + Duplicate)
+						moves here from the retired "Architecture · exact" accordion —
+						reachable exactly while this canonical Room is selected. -->
+					{#if selectedWallFirstRoomFacts.eligibility && selectedPrecisionRectangle}
+						<fieldset class="staging-transform-fields">
+							<legend>Exact dimensions</legend>
+							<span>Four boundary Walls · shared-boundary edits reject when ambiguous.</span>
+							<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{id}</option>{/each}</select></label>
+							<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallId}</option>{/each}</select></label>
+							<label>Width (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.width} onchange={(event) => updatePrecisionRectangle('width', event)} /></label>
+							<label>Depth (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.depth} onchange={(event) => updatePrecisionRectangle('depth', event)} /></label>
+						</fieldset>
+						<fieldset class="staging-transform-fields">
+							<legend>Duplicate</legend>
+							<label>Δ X (m)<input type="number" step="0.1" value={roomDuplicateDeltaX} onchange={(event) => { roomDuplicateTouched = true; roomDuplicateDeltaX = Number((event.currentTarget as HTMLInputElement).value); }} /></label>
+							<label>Δ Z (m)<input type="number" step="0.1" value={roomDuplicateDeltaZ} onchange={(event) => { roomDuplicateTouched = true; roomDuplicateDeltaZ = Number((event.currentTarget as HTMLInputElement).value); }} /></label>
+							<button type="button" onclick={duplicateSelectedPrecisionRoom}>Duplicate room</button>
+						</fieldset>
+					{/if}
 					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
 					<span>{selectedWallFirstRoom.floorThickness.toFixed(2)} m floor · {selectedWallFirstRoom.ceilingThickness.toFixed(2)} m ceiling assembly</span>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}

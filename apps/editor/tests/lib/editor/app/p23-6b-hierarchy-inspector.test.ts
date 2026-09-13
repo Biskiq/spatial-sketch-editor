@@ -411,6 +411,34 @@ describe('P23.6b source contracts', () => {
 		expect(block).not.toContain('renameRoomViaPrompt(roomId');
 	});
 
+	it('the Inspector presents no document-wide inventory (busy right rail retired)', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		// The old "Architecture · exact" accordion enumerated every
+		// Junction/Wall/Room in the document — the Inspector's competing
+		// inventory. P23.6b moves document navigation to the Hierarchy's
+		// Architecture / Topology… groups; the Inspector presents exactly the
+		// one selected entity (§Inspector structure).
+		expect(inspector).not.toContain('Wall-first exact authoring');
+		expect(inspector).not.toContain('aria-label="Wall-first Junctions"');
+		expect(inspector).not.toContain('aria-label="Wall-first Walls"');
+		expect(inspector).not.toContain('aria-label="Wall-first Rooms"');
+		// Its duplicated exact editors go with it (the canonical Selection
+		// panels already carry the same operations).
+		expect(inspector).not.toContain('aria-label="Exact Junction editor"');
+		expect(inspector).not.toContain('aria-label="Exact Wall editor"');
+		expect(inspector).not.toContain('updatePrecisionWallLength');
+		expect(inspector).not.toContain('updatePrecisionWallAngle');
+		expect(inspector).not.toContain('updatePrecisionWallThickness');
+		expect(inspector).not.toContain('addPrecisionVertex');
+		// Issue-driven topology diagnostics remain (a disclosure, not an
+		// inventory of healthy geometry).
+		expect(inspector).toContain('Wall-first topology diagnostics');
+		// The rectangle Width/Depth capability is re-homed onto the canonical
+		// Room panel with its anchor / width-Wall parameters + Duplicate.
+		expect(inspector).toContain('updatePrecisionRectangle');
+		expect(inspector).toContain('duplicateSelectedPrecisionRoom');
+	});
+
 	it('the Inspector has no Inspector-local selected-entity target', () => {
 		const inspector = readLibSource('editor/EditorInspector.svelte');
 		expect(inspector).not.toContain('let precisionTarget');
