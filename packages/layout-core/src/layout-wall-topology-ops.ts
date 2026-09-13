@@ -442,8 +442,8 @@ export function planWallRoleChange(
 /**
  * P23.6c/P23.6d — shared Wall-removal pipeline: delete a SET of physical
  * Walls atomically. `planDeleteWall` (one Wall) and `planRemoveRoom` (a
- * Room's whole boundary) both ride this one authority — never a forked
- * pipeline.
+ * Room's exclusive enclosure Walls) both ride this one authority — never a
+ * forked pipeline.
  *
  * Deleting a physical Wall is a topology-changing operation, never a direct
  * `walls` splice: the candidate graph (Wall removed, hosted Openings removed
@@ -722,10 +722,12 @@ export function roomExclusiveBoundaryWallIds(
 }
 
 /**
- * P23.6d — canonical "Remove Room": delete the Room's **whole boundary** in
- * one atomic operation, so selecting a Room and deleting removes the Room
- * together with its own Walls (not just one Wall). Rides the shared Wall-
- * removal pipeline, so single-Wall delete and Room removal stay one authority.
+ * P23.6d — canonical "Remove Room": remove the Room and its exclusive
+ * enclosure Walls in one atomic operation while preserving shared physical
+ * Walls required by adjacent Rooms, so selecting a Room and deleting removes
+ * the Room together with the Walls it owns alone (never a neighbour's Walls).
+ * Rides the shared Wall-removal pipeline, so single-Wall delete and Room
+ * removal stay one authority.
  *
  * Wall ownership comes from the baseline `rooms[].boundary` references, never
  * geometry:

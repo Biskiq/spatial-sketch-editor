@@ -291,7 +291,8 @@
 
 	/**
 	 * P23.6d — canonical wall-first Room removal (viewport context menu + Delete
-	 * key). Removes the Room and its own boundary Walls in one atomic step (Walls
+	 * key). Removes the Room and its exclusive enclosure Walls while preserving
+	 * shared physical Walls required by adjacent Rooms, in one atomic step (Walls
 	 * shared with a neighbour stay) and clears the canonical selection to `none`
 	 * on success — never a dangling `roomId`.
 	 */
@@ -303,7 +304,7 @@
 			return false;
 		}
 		const outcome = runLayoutMutationGuarded(
-			() => removeWallFirstRoom(layoutPreview, roomId),
+			() => removeWallFirstRoom(layoutPreview, roomId, store.document),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {

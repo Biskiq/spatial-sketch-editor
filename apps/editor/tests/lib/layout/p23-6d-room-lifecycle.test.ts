@@ -9,20 +9,23 @@
  *   patches (`invalid_patch`), empty names and non-positive/non-finite
  *   thicknesses (`invalid_value`), and no-op patches (`no_op`) so callers
  *   write zero history. Room identity and boundary are preserved.
- * - `planRemoveRoom` deletes the Room's **whole boundary** in one atomic
- *   operation so a Room delete leaves no open shell of leftover Walls: every
- *   boundary Wall the Room owns alone is removed, while a Wall shared with a
- *   neighbouring Room is kept (one physical Wall the neighbour still needs).
- *   It rides the shared Wall-removal pipeline (`planDeleteWall`'s authority),
- *   so the Room retires through normal P23.8 reconciliation — never a record
- *   splice. A Room whose every boundary Wall is shared rejects atomically.
+ * - `planRemoveRoom` removes the Room and its exclusive enclosure Walls in
+ *   one atomic operation so a Room delete leaves no open shell of leftover
+ *   Walls, while a Wall shared with a neighbouring Room is kept (one physical
+ *   Wall the neighbour still needs). It rides the shared Wall-removal pipeline
+ *   (`planDeleteWall`'s authority), so the Room retires through normal P23.8
+ *   reconciliation — never a record splice. A Room whose every boundary Wall
+ *   is shared rejects atomically.
  *
  * Editor integration (`updateWallFirstRoomMetadata` / `removeWallFirstRoom`
  * through the guarded history runner): one command = exactly one history
  * entry, rejections write zero entries, and Undo/Redo restore exact
  * Wall/Junction/Opening/Room IDs. Selection policy is operation-specific:
  * metadata preserves the selected Room; removal clears it to `none`
- * (caller-owned), pinned by source contract.
+ * (caller-owned), pinned by source contract. `removeWallFirstRoom` enforces
+ * the legacy reject-when-referenced Scene policy against the authoritative
+ * scene document for EVERY retiring Room (selected or collateral), so a
+ * referenced Room blocks the whole operation atomically.
  */
 import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
@@ -33,8 +36,12 @@ import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extractio
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptySceneDocument } from '$lib/content/scene';
 import {
+	createEmptySceneDocument,
+	serializeSceneDocument,
+	type SceneDocument
+} from '$lib/content/scene';
+import { sceneDocument as chopinSceneDocument } from '$lib/content/chopin-project';import {
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument
 } from '$lib/layout/layout-wall-first-codec';
@@ -55,16 +62,19 @@ import {
 	captureLayoutPreviewSnapshot,
 	createEmptyLayoutPreviewState,
 	importLayoutPreviewJson,
+	layoutPreviewCanonicalJson,
 	layoutPreviewDocument,
 	removeWallFirstRoom,
 	restoreLayoutPreviewSnapshot,
 	updateWallFirstRoomMetadata,
-	wallFirstRoomExclusiveBoundaryWallIds
+	wallFirstRoomExclusiveBoundaryWallIds,
+	wallFirstRoomSceneBlockedRoomIds
 } from '$lib/editor/layout/layout-preview-state.svelte';
 import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
 import {
 	createLayoutInteractionState,
-	selectLayoutRoom
+	selectLayoutRoom,
+	setPlanViewMode
 } from '$lib/editor/layout/layout-interaction';
 import { buildPlanLayoutContextMenuItems } from '$lib/editor/context-menu/plan-menu-items';
 
@@ -149,6 +159,91 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 
 const BASE = twoRoomDocument();
 
+/**
+ * A real scene entity repointed at a wall-first Room — the same
+ * `listLayoutRoomSceneReferences` count the legacy policy uses. Entities are
+ * never resolved through the room registry, so this is safe to boot into a
+ * store whose registry is the empty wall-first one.
+ */
+function sceneReferencingRoom(roomId: string): SceneDocument {
+	const scene = createEmptySceneDocument();
+	scene.entities.push({ ...structuredClone(chopinSceneDocument.entities[0]!), roomId });
+	return scene;
+}
+
+/**
+ * P23.6d review blocker fixture — a topology that reconciles a retirement the
+ * selected Room does NOT own: a 10×8 outer enclosure with a 4×4 inner Room
+ * fully inside it (roomless walls between them, so neither boundary references
+ * the other's Walls). Removing the OUTER room's exclusive Walls (the only
+ * intent) dissolves both rings into exactly the inner room's face, so
+ * reconciliation MERGES outer→inner-face: the surviving face is fully inside
+ * BOTH predecessor polygons (an overlap tie), the winner is the lexical ID
+ * (`room-a` — the selected outer room) and `room-z` (the inner room) retires
+ * as collateral. Pinned at the top of the Scene-safety tests so the
+ * retirement is proven, not assumed.
+ */
+function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
+	const junctions: Array<[string, number, number]> = [
+		['j-oo1', 0, 0],
+		['j-oo2', 10, 0],
+		['j-oo3', 10, 8],
+		['j-oo4', 0, 8],
+		['j-i1', 3, 2],
+		['j-i2', 7, 2],
+		['j-i3', 7, 6],
+		['j-i4', 3, 6]
+	];
+	const walls: WallSeed[] = [
+		{ id: 'wall-o1', start: 'j-oo1', end: 'j-oo2' },
+		{ id: 'wall-o2', start: 'j-oo2', end: 'j-oo3' },
+		{ id: 'wall-o3', start: 'j-oo3', end: 'j-oo4' },
+		{ id: 'wall-o4', start: 'j-oo4', end: 'j-oo1' },
+		{ id: 'wall-i1', start: 'j-i1', end: 'j-i2' },
+		{ id: 'wall-i2', start: 'j-i2', end: 'j-i3' },
+		{ id: 'wall-i3', start: 'j-i3', end: 'j-i4' },
+		{ id: 'wall-i4', start: 'j-i4', end: 'j-i1' }
+	];
+	const shell = {
+		units: 'meters' as const,
+		formatVersion: 5 as const,
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
+		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
+		walls: walls.map((wall) => ({
+			id: wall.id,
+			startJunctionId: wall.start,
+			endJunctionId: wall.end,
+			role: 'boundary' as const,
+			thickness: 0.2,
+			height: 3
+		})),
+		openings: [] as LayoutDocumentWallFirst['openings'],
+		objects: [] as LayoutDocumentWallFirst['objects']
+	};
+	const extraction = extractBoundaryCandidateFaces({ ...shell, rooms: [] });
+	const outerFace = extraction.faces.find((face) =>
+		face.boundary.some((ref) => ref.wallId === 'wall-o1')
+	)!;
+	const innerFace = extraction.faces.find((face) =>
+		face.boundary.some((ref) => ref.wallId === 'wall-i1')
+	)!;
+	const room = (
+		id: string,
+		name: string,
+		boundary: typeof outerFace.boundary
+	): LayoutWallFirstRoom => ({
+		id,
+		name,
+		boundary: boundary.map((ref) => ({ ...ref })),
+		floorThickness: 0.1,
+		ceilingThickness: 0.1
+	});
+	return {
+		...shell,
+		rooms: [room('room-a', 'Outer', outerFace.boundary), room('room-z', 'Inner', innerFace.boundary)]
+	};
+}
+
 function success(plan: WallFirstOpPlan): Extract<WallFirstOpPlan, { kind: 'success' }> {
 	if (plan.kind !== 'success') {
 		throw new Error(`expected success, got ${JSON.stringify(plan.rejection)}`);
@@ -169,9 +264,12 @@ function wallFirstDocument(
 	return document;
 }
 
-function makeStore(seed: LayoutDocumentWallFirst = BASE) {
+function makeStore(
+	seed: LayoutDocumentWallFirst = BASE,
+	scene: SceneDocument = createEmptySceneDocument()
+) {
 	const store = createEditorStore({
-		document: createEmptySceneDocument(),
+		document: scene,
 		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
 	});
 	const layoutPreview = createEmptyLayoutPreviewState();
@@ -294,7 +392,7 @@ describe('P23.6d planRoomMetadataUpdate — metadata is not topology', () => {
 	});
 });
 
-describe('P23.6d planRemoveRoom — whole-room demolition over the Wall pipeline', () => {
+describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => {
 	it('reports exactly the Room-exclusive boundary Walls (never geometry)', () => {
 		expect(roomExclusiveBoundaryWallIds(BASE, 'room-left').sort()).toEqual([
 			'wall-a1',
@@ -511,6 +609,8 @@ describe('P23.6d planRemoveRoom — whole-room demolition over the Wall pipeline
 });
 
 describe('P23.6d editor adapters — history and selection', () => {
+	const EMPTY_SCENE = createEmptySceneDocument();
+
 	it('updates metadata in exactly one history entry; Undo/Redo restore exact state', () => {
 		const { store, layoutPreview } = makeStore();
 		expect(store.canUndo).toBe(false);
@@ -579,7 +679,7 @@ describe('P23.6d editor adapters — history and selection', () => {
 		const { store, layoutPreview } = makeStore(seeded);
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => removeWallFirstRoom(layoutPreview, 'room-right'),
+			() => removeWallFirstRoom(layoutPreview, 'room-right', store.document),
 			(result) => result.success
 		);
 		if (outcome.kind !== 'committed') throw new Error(`expected commit: ${JSON.stringify(outcome)}`);
@@ -617,7 +717,7 @@ describe('P23.6d editor adapters — history and selection', () => {
 		const { store, layoutPreview } = makeStore();
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => removeWallFirstRoom(layoutPreview, 'room-missing'),
+			() => removeWallFirstRoom(layoutPreview, 'room-missing', store.document),
 			(result) => result.success
 		);
 		expect(outcome.kind).toBe('cancelled');
@@ -633,16 +733,98 @@ describe('P23.6d editor adapters — history and selection', () => {
 			'wall-d'
 		]);
 		expect(wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, 'room-missing')).toEqual([]);
-	});
-
-	it('refuses both adapters on a legacy document', () => {
+	});	it('refuses both adapters on a legacy document', () => {
 		const layoutPreview = createEmptyLayoutPreviewState();
 		// `createEmptyLayoutPreviewState()` boots the legacy compatibility
 		// fixture; the wall-first adapters must refuse it rather than guess.
 		expect(updateWallFirstRoomMetadata(layoutPreview, 'room-left', { name: 'X' }).success).toBe(
 			false
 		);
-		expect(removeWallFirstRoom(layoutPreview, 'room-left').success).toBe(false);
+		expect(removeWallFirstRoom(layoutPreview, 'room-left', EMPTY_SCENE).success).toBe(
+			false
+		);
+	});
+
+	it('commits when no retiring Room is scene-referenced (scene untouched)', () => {
+		const { store, layoutPreview } = makeStore();
+		const sceneJson = serializeSceneDocument(store.document);
+		const before = layoutPreviewCanonicalJson(layoutPreview);
+		const outcome = runLayoutMutation(
+			layoutMutationRunnerFor(store, layoutPreview),
+			() => removeWallFirstRoom(layoutPreview, 'room-right', store.document),
+			(result) => result.success
+		);
+		expect(outcome.kind).toBe('committed');
+		expect(store.canUndo).toBe(true);
+		expect(wallFirstDocument(layoutPreview).rooms.map((room) => room.id)).toEqual(['room-left']);
+		// The layout candidate installed; the authoritative scene never changed.
+		expect(layoutPreviewCanonicalJson(layoutPreview)).not.toBe(before);
+		expect(serializeSceneDocument(store.document)).toBe(sceneJson);
+	});
+
+	it('rejects atomically when the selected Room is scene-referenced (zero history)', () => {
+		const { store, layoutPreview } = makeStore(BASE, sceneReferencingRoom('room-right'));
+		const layoutBefore = serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview));
+		const outcome = runLayoutMutation(
+			layoutMutationRunnerFor(store, layoutPreview),
+			() => removeWallFirstRoom(layoutPreview, 'room-right', store.document),
+			(result) => result.success
+		);
+		expect(outcome.kind).toBe('cancelled');
+		if (outcome.kind !== 'cancelled') throw new Error('expected cancellation');
+		const failure = outcome.result;
+		expect(failure.success).toBe(false);
+		if (failure.success) throw new Error('expected failure');
+		expect(failure.message).toContain('referenced by scene content');
+		expect(failure.message).toContain('room-right');
+		expect(store.canUndo).toBe(false);
+		// Exact preservation: the layout document is byte-identical and the
+		// selection is unchanged (nothing installed, nothing retired).
+		expect(serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview))).toBe(layoutBefore);
+		// The authoritative scene is never mutated by a blocked removal.
+		expect(serializeSceneDocument(store.document)).toBe(
+			serializeSceneDocument(sceneReferencingRoom('room-right'))
+		);
+	});
+
+	it('rejects when a COLLATERAL retirement is scene-referenced even though the selected Room is clean', () => {
+		// The selected outer room survives (deterministic merge-winner tie-break);
+		// reconciliation still retires the inner room — checking only the
+		// selected `roomId` would miss it.
+		const nested = nestedOuterInnerDocument();
+		expect(roomExclusiveBoundaryWallIds(nested, 'room-a')).toEqual(['wall-o1', 'wall-o2', 'wall-o3', 'wall-o4']);
+		const plan = success(planRemoveRoom(nested, 'room-a'));
+		expect(plan.retiredRoomIds).toEqual(['room-z']);
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-a']);
+
+		const scene = sceneReferencingRoom('room-z');
+		const { store, layoutPreview } = makeStore(nested, scene);
+		const layoutBefore = serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview));
+		const outcome = runLayoutMutation(
+			layoutMutationRunnerFor(store, layoutPreview),
+			() => removeWallFirstRoom(layoutPreview, 'room-a', store.document),
+			(result) => result.success
+		);
+		expect(outcome.kind).toBe('cancelled');
+		if (outcome.kind !== 'cancelled') throw new Error('expected cancellation');
+		const failure = outcome.result;
+		expect(failure.success).toBe(false);
+		if (failure.success) throw new Error('expected failure');
+		expect(store.canUndo).toBe(false);
+		expect(serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview))).toBe(layoutBefore);
+		// The blocked reason names the collateral Room, not the selected one.
+		expect(failure.message).toContain('room-z');
+		expect(failure.message).not.toContain('room-a');
+		// Read-only preview agrees with the executor's policy (no second rule).
+		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-a', store.document)).toEqual([
+			'room-z'
+		]);
+		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-missing', store.document)).toEqual([]);
+	});
+
+	it('wallFirstRoomSceneBlockedRoomIds reports [] for a clean removal', () => {
+		const { store, layoutPreview } = makeStore();
+		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-right', store.document)).toEqual([]);
 	});
 });
 
@@ -686,7 +868,7 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 
 	it('the Inspector Remove room action deletes the whole Room', () => {
 		const source = readSource('editor/EditorInspector.svelte');
-		expect(source).toContain('removeWallFirstRoom(layoutPreview, room.id)');
+		expect(source).toContain('removeWallFirstRoom(layoutPreview, room.id, store.document)');
 		expect(source).toContain('wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, selectedWallFirstRoom.id)');
 		expect(source).toContain('>Remove room</button>');
 	});
@@ -714,7 +896,7 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		const handlerBody = source.slice(handlerStart, openCall);
 		expect(handlerBody).toContain("if (!roomRowInteractive({ kind: 'room', roomId })) return;");
 		expect(handlerBody).toContain('removeRoom:');
-		expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId)');
+		expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId, store.document)');
 		// The row binds the gated context-menu handler.
 		expect(source).toContain('onWallFirstRoomRowContextMenu(event, room.roomId)');
 	});
@@ -744,19 +926,47 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 			source.indexOf('function onKeyDown')
 		);
 		expect(branchStart).toBeGreaterThan(-1);
-		const branch = source.slice(branchStart, branchStart + 900);
+		const branch = source.slice(branchStart, branchStart + 1600);
 		expect(branch).toContain('wallFirstLayoutDocument()');
 		expect(branch).toContain('onRoomRemove?.');
 		expect(branch).toContain('onRoomDelete(');
 	});
 
-	it('both viewport mount sites wire the canonical removeRoom handler', () => {
+	it('a remembered Room selection survives the switch to Arrange and Delete cannot reach it from there (review regression)', () => {
+		// Premise (real behavior): `setPlanViewMode` deliberately keeps the
+		// committed Layout selection as memory when switching to Arrange —
+		// so the Room selection is still present in an authority-inert mode.
+		const layoutInteraction = createLayoutInteractionState();
+		selectLayoutRoom(layoutInteraction, 'room-right');
+		setPlanViewMode(layoutInteraction, 'staging');
+		expect(layoutInteraction.selection).toEqual({ kind: 'room', roomId: 'room-right' });
+		// Authority: the viewport's wall-first Room Delete branch requires
+		// Layout mode. Without the gate, the Arrange owner-delete branch (Scene
+		// delete needs an active Scene target; the Layout-object branch needs an
+		// active Layout object) falls through into the remembered Room selection
+		// and dispatches canonical `onRoomRemove` from Arrange.
+		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
+		const dispatch = source.indexOf('onRoomRemove?.(interaction.selection.roomId)');
+		expect(dispatch).toBeGreaterThan(-1);
+		// The dispatch is guarded by the Layout-authority condition inside the
+		// wall-first branch (between the wallFirst guard and the dispatch).
+		const branchStart = source.lastIndexOf('wallFirstLayoutDocument()', dispatch);
+		expect(branchStart).toBeGreaterThan(-1);
+		const guard = source.slice(branchStart, dispatch);
+		expect(guard).toContain("interaction.planViewMode === 'layout'");
+		// Legacy behavior is unchanged: the legacy `onRoomDelete` path stays
+		// ungated by planViewMode (its own guarded legacy delete).
+		const legacyDispatch = source.indexOf('onRoomDelete(interaction.selection.roomId)');
+		expect(legacyDispatch).toBeGreaterThan(-1);
+	});
+
+	it('both viewport mount sites wire the canonical removeRoom handler with the authoritative scene', () => {
 		for (const relativePath of [
 			'editor/EditorViewport.svelte',
 			'editor/app/PlanWorkspace.svelte'
 		]) {
 			const source = readSource(relativePath);
-			expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId)');
+			expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId, store.document)');
 			expect(source).toContain('wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId)');
 			expect(source).toContain('onRoomRemove={removeRoom}');
 		}

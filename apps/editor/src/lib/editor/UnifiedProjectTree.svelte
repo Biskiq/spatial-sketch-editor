@@ -565,13 +565,13 @@
 	/**
 	 * P23.6d — canonical wall-first Room removal from the Architecture tree.
 	 * The SAME planner-backed adapter the Inspector calls (one history entry):
-	 * the Room and its own boundary Walls are removed in one atomic step; Walls
-	 * shared with a neighbour stay. Success clears the canonical selection to
-	 * `none` (the Room retires).
+	 * the Room and its exclusive enclosure Walls are removed in one atomic step;
+	 * shared physical Walls required by adjacent Rooms stay. Success clears the
+	 * canonical selection to `none` (the Room retires).
 	 */
 	function removeRoomFromTree(roomId: string) {
 		const outcome = runLayoutMutationGuarded(
-			() => removeWallFirstRoom(layoutPreview, roomId),
+			() => removeWallFirstRoom(layoutPreview, roomId, store.document),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {

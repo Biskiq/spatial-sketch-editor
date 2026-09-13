@@ -2575,12 +2575,26 @@
 		if ((event.key === 'Delete' || event.key === 'Backspace') && interaction.tool === 'select' && interaction.selection.kind === 'room') {
 			event.preventDefault();
 			// P23.6d — a wall-first Room removes through the canonical Room
-			// lifecycle (demolish the Room's exclusive boundary Walls, so the Room
-			// and its enclosure go together); the legacy `deleteLayoutRoom` rejects
-			// wall-first documents, which is why this keystroke previously did
-			// nothing. Legacy rooms keep the existing guarded legacy delete.
-			if (wallFirstLayoutDocument()) onRoomRemove?.(interaction.selection.roomId);
-			else onRoomDelete(interaction.selection.roomId);
+			// lifecycle (remove the Room's exclusive enclosure Walls, so the Room
+			// and its enclosure go together while Walls shared with adjacent
+			// Rooms stay); the legacy `deleteLayoutRoom` rejects wall-first
+			// documents, which is why this keystroke previously did nothing.
+			// Legacy rooms keep the existing guarded legacy delete.
+			if (wallFirstLayoutDocument()) {
+				// P23.6d review fix — Layout authority only (same class of fix as
+				// P23.6c's `physicalWall` branch): `setPlanViewMode()` deliberately
+				// keeps a committed Layout selection as memory when switching to
+				// Arrange, so the remembered Room selection would otherwise become
+				// an active Delete target there after the Arrange owner-delete
+				// branch falls through (no active Scene target). A remembered
+				// structural selection must never execute canonical removal from an
+				// authority-inert mode; never solved by clearing the memory.
+				if (interaction.planViewMode === 'layout') {
+					onRoomRemove?.(interaction.selection.roomId);
+				}
+				return;
+			}
+			onRoomDelete(interaction.selection.roomId);
 			return;
 		}
 		if (event.key === 'Backspace' && interaction.tool === 'polygon' && interaction.polygonPoints.length > 0) {

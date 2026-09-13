@@ -1324,11 +1324,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
-	 * P23.6d — canonical Room removal: the Room's whole boundary (its exclusive
-	 * boundary Walls) is deleted in one atomic operation, so the Room retires
-	 * through P23.8 reconciliation and no open shell of leftover Walls survives.
-	 * Success clears the canonical selection to `none` (the Room is gone — never
-	 * a dangling `roomId`, never a nearest survivor).
+	 * P23.6d — canonical Room removal: the Room and its exclusive enclosure
+	 * Walls are removed in one atomic operation while shared physical Walls
+	 * required by adjacent Rooms survive, so the Room retires through P23.8
+	 * reconciliation. Success clears the canonical selection to `none` (the
+	 * Room is gone — never a dangling `roomId`, never a nearest survivor).
 	 */
 	function removeSelectedWallFirstRoom() {
 		const room = selectedWallFirstRoom;
@@ -1340,7 +1340,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		const outcome = runLayoutMutationGuarded(
-			() => removeWallFirstRoom(layoutPreview, room.id),
+			() => removeWallFirstRoom(layoutPreview, room.id, store.document),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
