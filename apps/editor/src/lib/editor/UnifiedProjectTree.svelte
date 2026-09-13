@@ -29,6 +29,9 @@
 		selectLayoutOpening,
 		selectLayoutRoom,
 		selectLayoutWall,
+		selectLayoutPhysicalWall,
+		selectLayoutWallOpening,
+		selectLayoutJunction,
 		setArrangeOwner,
 		setLayoutDraftTool,
 		type LayoutInteractionState
@@ -42,6 +45,8 @@
 		isUnifiedTreeRowInteractive,
 		isUnifiedTreeRowSelected,
 		layoutSelectionAncestorRoomId,
+		layoutSelectionRevealTarget,
+		type LayoutTreeRevealTarget,
 		type UnifiedTreeDiscovery,
 		type UnifiedTreeRow,
 		type UnifiedTreeRoom
@@ -104,6 +109,18 @@
 
 	let roomsOpen = $state(true);
 	let cameraTourOpen = $state(false);
+	// P23.6b — canonical root disclosures. `architectureOpen` expands the
+	// Architecture group; `topologyOpen` gates the Junction browser behind the
+	// `Topology…` disclosure (D4 — no resting Junction clutter). Both are
+	// transient UI state, never project state.
+	let architectureOpen = $state(false);
+	let topologyOpen = $state(false);
+	let layoutObjectsOpen = $state(false);
+	let sceneContentOpen = $state(false);
+	// P23.6b — filter-safe reveal state (§Canvas ↔ tree reveal). When the
+	// reveal target's row is excluded by the active filter, the query is kept
+	// (never auto-cleared) and the row offers an explicit Reveal/Clear affordance.
+	let hiddenRevealTarget = $state<LayoutTreeRevealTarget | null>(null);
 	let openMenuFor = $state<string | null>(null);
 	let treeElement = $state<HTMLElement>();
 
@@ -131,6 +148,32 @@
 	// collapse during an active filter stays authoritative until then).
 	$effect(() => {
 		if (filterActive) roomsOpen = true;
+	});
+
+	// P23.6b — canonical reveal: expand the ancestors of the active canonical
+	// selection and scroll its resting row into view. Runs alongside the legacy
+	// `layoutSelectionAncestorRoomId` pick-expand below (they own disjoint
+	// selection kinds). Junction reveals open the Topology disclosure without
+	// exploding the whole inventory (D4). The target is cleared on every run so
+	// a stale target never pin-flags a row after the selection changes.
+	$effect(() => {
+		const selection = activeSelection.active;
+		if (selection.domain !== 'layout') {
+			hiddenRevealTarget = null;
+			return;
+		}
+		const target = layoutSelectionRevealTarget(
+			selection.selection,
+			layoutPreview.project.layout
+		);
+		if (!target) {
+			hiddenRevealTarget = null;
+			return;
+		}
+		const rowHidden = revealTargetHidden(target);
+		hiddenRevealTarget = rowHidden ? target : null;
+		if (rowHidden) return; // filter owns the row; user reveals explicitly
+		applyRevealTarget(target);
 	});
 
 	// Expansion seeding: `treeExpandedRoomIds` defaults to ['paris'] — a Chopin
@@ -204,6 +247,82 @@
 		);
 	}
 
+	// ── P23.6b — reveal plumbing ─────────────────────────────────────────
+
+	/** Is the reveal target's row excluded by the active filter (or absent)? */
+	function revealTargetHidden(target: LayoutTreeRevealTarget): boolean {
+		if (!filterActive) return false;
+		switch (target.group) {
+			case 'rooms':
+				return !visibleModel.wallFirstRooms.some((room) => room.roomId === target.roomId) &&
+					!visibleModel.rooms.some((room) => room.roomId === target.roomId);
+			case 'architecture':
+				return 'openingId' in target
+					? !visibleModel.architecture.walls.some((wall) =>
+							wall.wallId === target.wallId &&
+							wall.openings.some((opening) => opening.openingId === target.openingId)
+						)
+					: !visibleModel.architecture.walls.some((wall) => wall.wallId === target.wallId);
+			case 'layoutObjects':
+				return !visibleModel.layoutObjects.some((object) => object.objectId === target.objectId);
+			case 'topology':
+				return !visibleModel.architecture.junctions.some(
+					(junction) => junction.junctionId === target.junctionId
+				);
+			default:
+				return false;
+		}
+	}
+
+	// P23.6b — which Architecture Wall rows have their hosted Openings expanded
+	// (transient, never persisted; a selection reveal also expands its host).
+	let openWallIds = $state<string[]>([]);
+	function toggleWallRow(wallId: string) {
+		openWallIds = openWallIds.includes(wallId)
+			? openWallIds.filter((id) => id !== wallId)
+			: [...openWallIds, wallId];
+	}
+
+	/** Expand the target's ancestors and scroll its row into view (no filter). */
+	function applyRevealTarget(target: LayoutTreeRevealTarget): void {
+		if ('openingId' in target) topologyOpen = false;
+		switch (target.group) {
+			case 'rooms':
+				roomsOpen = true;
+				store.ensureRoomTreeExpanded(target.roomId);
+				break;
+			case 'architecture':
+				roomsOpen = true;
+				architectureOpen = true;
+				break;
+			case 'topology':
+				architectureOpen = true;
+				topologyOpen = true;
+				break;
+			case 'layoutObjects':
+				layoutObjectsOpen = true;
+				break;
+			case 'scene':
+				sceneContentOpen = true;
+				break;
+			default:
+				break;
+		}
+		queueMicrotask(() => {
+			treeElement
+				?.querySelector(`[data-reveal-id="${target.group}:${'wallId' in target ? target.wallId : ''}${'roomId' in target ? target.roomId : ''}${'objectId' in target ? target.objectId : ''}${'junctionId' in target ? target.junctionId : ''}"]`)
+				?.scrollIntoView({ block: 'nearest' });
+		});
+	}
+
+	/** Explicit user action: clear the filter so the hidden row can reveal. */
+	function revealHiddenSelection() {
+		const target = hiddenRevealTarget;
+		filterQuery = '';
+		hiddenRevealTarget = null;
+		if (target) applyRevealTarget(target);
+	}
+
 	function roomOpen(room: UnifiedTreeRoom): boolean {
 		return store.treeExpandedRoomIds.includes(room.roomId);
 	}
@@ -232,6 +351,48 @@
 		selectLayoutObject(layoutInteraction, objectId);
 		// P10 — a hierarchy pick in Arrange switches the active owner too.
 		if (layoutInteraction.planViewMode === 'staging') setArrangeOwner(layoutInteraction, 'layout-object');
+	}
+
+	// P23.6b — canonical wall-first row routing: every pick activates the
+	// existing canonical selection slot through the existing select helpers.
+	function selectPhysicalWall(wallId: string) {
+		selectLayoutPhysicalWall(layoutInteraction, wallId);
+	}
+
+	function selectHostedOpening(wallId: string, openingId: string) {
+		selectLayoutWallOpening(layoutInteraction, wallId, openingId);
+	}
+
+	function selectJunctionRow(junctionId: string) {
+		selectLayoutJunction(layoutInteraction, junctionId);
+	}
+
+	/**
+	 * P23.6b Room rename guard — wall-first Room rows are interactive but
+	 * NEVER inherit the legacy rename: `updateLayoutRoomFields` resolves the
+	 * Room through `layout.floors`, which no wall-first document has. No
+	 * wall-first Room metadata operation exists (P23.6 verified), so the
+	 * context menu for a canonical Room carries no rename command.
+	 */
+	function onWallFirstRoomRowContextMenu(event: MouseEvent, roomId: string): void {
+		if (!contextMenu) return;
+		if (roomRowInteractive({ kind: 'room', roomId })) selectRoom({ roomId, name: roomId, walls: [], openings: [], objects: [], clusters: [], entities: [] });
+		openTreeContextMenu(
+			event,
+			buildPlanLayoutContextMenuItems({
+				target: { kind: 'room', roomId },
+				mutationBlockedReason: treeMutationBlocked(),
+				// Rename is deliberately absent: the legacy renameRoom action
+				// routes into `updateLayoutRoomFields` (floors-only) and would
+				// fail/corrupt a canonical Room id.
+				actions: {
+					renameRoom: () => {},
+					deleteRoom,
+					deleteOpening: () => {},
+					deleteObject: () => {}
+				}
+			})
+		);
 	}
 
 	function selectEntity(entity: SceneEntity, event?: MouseEvent) {
@@ -475,6 +636,16 @@
 		><ListFilter size={14} aria-hidden="true" /></button>
 	</div>
 
+	{#if hiddenRevealTarget}
+		<!-- P23.6b — the selected row is excluded by the active filter: keep the
+			query (never auto-clear) and offer an explicit reveal. -->
+		<div class="tree-reveal-hint" role="status">
+			<span>Selection hidden by filter</span>
+			<button type="button" onclick={revealHiddenSelection}>Reveal</button>
+			<button type="button" onclick={() => (filterQuery = '')}>Clear filter</button>
+		</div>
+	{/if}
+
 	<div class="tree-root">
 		<div class="tree-root__header">
 			<button
@@ -509,14 +680,18 @@
 					     their boundary Walls are document-global (`wallId`). A document is
 					     one format, so only one of these two lists is ever populated. -->
 					{#each visibleModel.wallFirstRooms as room (room.roomId)}
-						<li role="treeitem" aria-selected={false}>
+						{@const wallFirstRoomRow = { kind: 'room', roomId: room.roomId } satisfies UnifiedTreeRow}
+						<li role="treeitem" aria-selected={rowSelected(wallFirstRoomRow)}>
 							<div class="room-line">
 								<span class="tree-row__chevron-spacer" aria-hidden="true"></span>
 								<button
 									type="button"
 									class="tree-row room-row"
-									aria-disabled="true"
-									title={`Wall-first Room · ${room.wallIds.length} walls · ${room.openingIds.length} openings — edit in Architecture · exact`}
+									class:tree-row--selected={rowSelected(wallFirstRoomRow)}
+									aria-disabled={!roomRowInteractive(wallFirstRoomRow)}
+									title={`Canonical Room · ${room.wallIds.length} walls · ${room.openingIds.length} openings`}
+									onclick={roomRowInteractive(wallFirstRoomRow) ? () => selectRoom({ roomId: room.roomId, name: room.name, walls: [], openings: [], objects: [], clusters: [], entities: [] }) : undefined}
+									oncontextmenu={contextMenu ? (event) => onWallFirstRoomRowContextMenu(event, room.roomId) : undefined}
 								>
 									<span class="tree-row__label" title={room.name}>{room.name}</span>
 									<span class="tree-row__meta">{room.wallIds.length} walls</span>
@@ -871,6 +1046,257 @@
 		{/if}
 	</div>
 
+	<!-- P23.6b — canonical document-level roots. Populated for wall-first
+			documents only (format-gated); the component renders no empty groups,
+			so legacy documents keep exactly their Room-nested projection. -->
+	{#if model.architecture.walls.length > 0}
+		<div class="tree-root">
+			<button
+				type="button"
+				class="tree-root__row"
+				aria-expanded={architectureOpen}
+				onclick={() => (architectureOpen = !architectureOpen)}
+			>
+				<span class="chevron" class:open={architectureOpen}>›</span>
+				<span class="tree-row__label tree-root__label">Architecture</span>
+				<span class="tree-row__meta">{model.architecture.walls.length}</span>
+			</button>
+			{#if architectureOpen}
+				<ul role="tree" aria-label="Architecture walls">
+					{#each visibleModel.architecture.walls as wall (wall.wallId)}
+						{@const wallRow = { kind: 'physicalWall', wallId: wall.wallId } satisfies UnifiedTreeRow}
+						{@const wallOpen = wall.openings.length > 0 && (openWallIds.includes(wall.wallId) || wall.openings.some((opening) => activeSelection.active.domain === 'layout' && activeSelection.active.selection.kind === 'wallOpening' && activeSelection.active.selection.wallId === wall.wallId && activeSelection.active.selection.openingId === opening.openingId))}
+						<li role="treeitem" aria-expanded={wall.openings.length > 0} aria-selected={rowSelected(wallRow)}>
+							<div class="room-line">
+								<button
+									type="button"
+									class="tree-row__chevron"
+									class:invisible={wall.openings.length === 0}
+									aria-label={`${wallOpen ? 'Collapse' : 'Expand'} ${wall.wallId} openings`}
+									aria-expanded={wallOpen}
+									disabled={wall.openings.length === 0}
+									onclick={() => toggleWallRow(wall.wallId)}
+								>
+									<span class="chevron" class:open={wallOpen}>›</span>
+								</button>
+								<button
+									type="button"
+									class="tree-row wall-row"
+									class:tree-row--selected={rowSelected(wallRow)}
+									aria-disabled={!roomRowInteractive(wallRow)}
+									data-reveal-id={`architecture:${wall.wallId}`}
+									onclick={roomRowInteractive(wallRow) ? () => selectPhysicalWall(wall.wallId) : undefined}
+								>
+									<span class="tree-row__label" title={wall.wallId}>Wall · {formatPlacementLabel(wall.wallId)}</span>
+									<span class="tree-row__meta" title={`${wall.role} · ${wall.height.toFixed(2)} m`}>{wall.role} · {wall.height.toFixed(2)} m</span>
+								</button>
+							</div>
+							{#if wallOpen}
+								<ul class="wall-children" role="group" aria-label={`${wall.wallId} openings`}>
+									{#each wall.openings as opening (opening.openingId)}
+										{@const openingRow = { kind: 'wallOpening', wallId: wall.wallId, openingId: opening.openingId } satisfies UnifiedTreeRow}
+										<li role="treeitem" aria-selected={rowSelected(openingRow)}>
+											<button
+												type="button"
+												class="tree-row opening-row"
+												class:tree-row--selected={rowSelected(openingRow)}
+												aria-disabled={!roomRowInteractive(openingRow)}
+												data-reveal-id={`architecture:${wall.wallId}`}
+												onclick={roomRowInteractive(openingRow) ? () => selectHostedOpening(wall.wallId, opening.openingId) : undefined}
+											>
+												<span class="tree-row__label">{opening.kind === 'door' ? 'Door' : 'Window'}</span>
+												<span class="tree-row__meta" title={opening.openingId}>{formatPlacementLabel(opening.openingId)}</span>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				<!-- D4 — Junctions stay behind the Topology disclosure; the
+					disclosed surface is canonical-selection navigation (the old
+					Architecture · exact inventory re-homed), never a second model. -->
+				<button
+					type="button"
+					class="tree-row topology-toggle"
+					aria-expanded={topologyOpen}
+					onclick={() => (topologyOpen = !topologyOpen)}
+				>
+					<span class="chevron" class:open={topologyOpen}>›</span>
+					<span class="tree-row__label">Topology…</span>
+					<span class="tree-row__meta">{model.architecture.junctions.length}</span>
+				</button>
+				{#if topologyOpen}
+					<ul class="wall-children" role="tree" aria-label="Junction topology">
+						{#each visibleModel.architecture.junctions as junction (junction.junctionId)}
+							{@const junctionRow = { kind: 'junction', junctionId: junction.junctionId } satisfies UnifiedTreeRow}
+							<li role="treeitem" aria-selected={rowSelected(junctionRow)}>
+								<button
+									type="button"
+									class="tree-row junction-row"
+									class:tree-row--selected={rowSelected(junctionRow)}
+									aria-disabled={!roomRowInteractive(junctionRow)}
+									data-reveal-id={`topology:${junction.junctionId}`}
+									onclick={roomRowInteractive(junctionRow) ? () => selectJunctionRow(junction.junctionId) : undefined}
+								>
+									<span class="tree-row__label">Junction · {formatPlacementLabel(junction.junctionId)}</span>
+									<span class="tree-row__meta">{junction.point[0].toFixed(2)}, {junction.point[1].toFixed(2)}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/if}
+		</div>
+	{/if}
+
+	{#if model.layoutObjects.length > 0}
+		<div class="tree-root">
+			<button
+				type="button"
+				class="tree-root__row"
+				aria-expanded={layoutObjectsOpen}
+				onclick={() => (layoutObjectsOpen = !layoutObjectsOpen)}
+			>
+				<span class="chevron" class:open={layoutObjectsOpen}>›</span>
+				<span class="tree-row__label tree-root__label">Layout Objects</span>
+				<span class="tree-row__meta">{model.layoutObjects.length}</span>
+			</button>
+			{#if layoutObjectsOpen}
+				<ul role="tree" aria-label="Layout objects">
+					{#each visibleModel.layoutObjects as object (object.objectId)}
+						{@const objectRow = { kind: 'object', objectId: object.objectId } satisfies UnifiedTreeRow}
+						<li role="treeitem" aria-selected={rowSelected(objectRow)}>
+							<div class="member-line">
+								<button
+									type="button"
+									class="tree-row object-row"
+									class:tree-row--selected={rowSelected(objectRow)}
+									aria-disabled={!roomRowInteractive(objectRow)}
+									data-reveal-id={`layoutObjects:${object.objectId}`}
+									onclick={roomRowInteractive(objectRow) ? () => selectObject(object.objectId) : undefined}
+								>
+									<span class="tree-row__label" title={object.objectId}>{formatPlacementLabel(object.kind)} · {formatPlacementLabel(object.objectId)}</span>
+								</button>
+								{#if sceneInteractive}
+									<div class="row-actions">
+										<button
+											type="button"
+											class="kebab"
+											aria-label={`Actions for ${formatPlacementLabel(object.objectId)}`}
+											aria-expanded={openMenuFor === `object:${object.objectId}`}
+											onclick={() => toggleMenu(`object:${object.objectId}`)}
+										><EllipsisVertical size={14} aria-hidden="true" /></button>
+										{#if openMenuFor === `object:${object.objectId}`}
+											<div class="row-menu" role="menu">
+												<button type="button" role="menuitem" class="danger" onclick={() => deleteObject(object.objectId)}><Trash2 size={13} aria-hidden="true" /> Delete</button>
+											</div>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
+
+	{#if model.sceneContent.clusters.length > 0 || model.sceneContent.entities.length > 0}
+		<div class="tree-root">
+			<button
+				type="button"
+				class="tree-root__row"
+				aria-expanded={sceneContentOpen}
+				onclick={() => (sceneContentOpen = !sceneContentOpen)}
+			>
+				<span class="chevron" class:open={sceneContentOpen}>›</span>
+				<span class="tree-row__label tree-root__label">Scene Content</span>
+				<span class="tree-row__meta">{model.sceneContent.clusters.length + model.sceneContent.entities.length}</span>
+			</button>
+			{#if sceneContentOpen}
+				<ul role="tree" aria-label="Scene content">
+					{#each visibleModel.sceneContent.clusters as cluster (cluster.clusterId)}
+						{@const clusterRow = { kind: 'cluster', clusterId: cluster.clusterId } satisfies UnifiedTreeRow}
+						{@const clusterOpen = store.treeExpandedClusterIds.includes(cluster.clusterId)}
+						<li role="treeitem" aria-expanded={clusterOpen} aria-selected={rowSelected(clusterRow)}>
+							<div class="cluster-line">
+								<button
+									type="button"
+									class="tree-row__chevron"
+									aria-label={`${clusterOpen ? 'Collapse' : 'Expand'} ${cluster.name}`}
+									aria-expanded={clusterOpen}
+									onclick={() => store.toggleClusterTreeExpansion(cluster.clusterId)}
+								>
+									<span class="chevron" class:open={clusterOpen}>›</span>
+								</button>
+								<button
+									type="button"
+									class="tree-row cluster-row"
+									class:tree-row--selected={rowSelected(clusterRow)}
+									aria-disabled={!roomRowInteractive(clusterRow)}
+									onclick={roomRowInteractive(clusterRow) ? () => selectCluster(cluster.clusterId) : undefined}
+								>
+									<span class="cluster-title">
+										<span class="folder-icon" aria-hidden="true"></span>
+										<span class="tree-row__label" title={cluster.name}>{cluster.name}</span>
+									</span>
+									<span class="tree-row__meta">{cluster.memberIds.length}</span>
+								</button>
+							</div>
+							{#if clusterOpen}
+								<ul class="cluster-members" role="group" aria-label={`${cluster.name} members`}>
+									{#each cluster.memberIds as memberId (memberId)}
+										{@const entity = sceneEntitiesById.get(memberId)}
+										{@const memberRow = { kind: 'entity', entityId: memberId } satisfies UnifiedTreeRow}
+										{#if entity}
+											<li role="treeitem" aria-selected={rowSelected(memberRow)}>
+												<div class="member-line">
+													<button
+														type="button"
+														class="tree-row object-row"
+														class:tree-row--selected={rowSelected(memberRow)}
+														aria-disabled={!roomRowInteractive(memberRow)}
+														onclick={roomRowInteractive(memberRow) ? (event) => selectEntity(entity, event) : undefined}
+													>
+														<span class="tree-row__label" title={entityLabel(entity)}>{entityLabel(entity)}</span>
+														<span class="tree-row__meta" title={entityMeta(entity)}>{entityMeta(entity)}</span>
+													</button>
+												</div>
+											</li>
+										{/if}
+									{/each}
+								</ul>
+							{/if}
+						</li>
+					{/each}
+					{#each visibleModel.sceneContent.entities as entry (entry.entityId)}
+						{@const entity = sceneEntitiesById.get(entry.entityId)}
+						{@const entityRow = { kind: 'entity', entityId: entry.entityId } satisfies UnifiedTreeRow}
+						{#if entity}
+							<li role="treeitem" aria-selected={rowSelected(entityRow)}>
+								<div class="member-line">
+									<button
+										type="button"
+										class="tree-row object-row"
+										class:tree-row--selected={rowSelected(entityRow)}
+										aria-disabled={!roomRowInteractive(entityRow)}
+										data-reveal-id={`scene:${entry.entityId}`}
+										onclick={roomRowInteractive(entityRow) ? (event) => selectEntity(entity, event) : undefined}
+									>
+										<span class="tree-row__label" title={entityLabel(entity)}>{entityLabel(entity)}</span>
+										<span class="tree-row__meta" title={entityMeta(entity)}>{entityMeta(entity)}</span>
+									</button>
+								</div>
+							</li>
+						{/if}
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="tree-root">
 		<button
 			type="button"
@@ -995,6 +1421,31 @@
 	.room-row { min-height: 2.125rem; }
 	.room-children { margin: 0.12rem 0 0.2rem 0.85rem; padding-left: 0.65rem; border-left: 1px solid var(--editor-border-subtle); }
 	.group-header { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font-size: 0.62rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
+	/* P23.6b — filter-safe reveal affordance + Topology disclosure. */
+	.tree-reveal-hint {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.25rem 0.45rem;
+		border: 1px solid var(--editor-accent-border);
+		border-radius: 0.34rem;
+		background: var(--editor-bg-panel-raised);
+		color: var(--editor-text-secondary);
+		font-size: 0.68rem;
+	}
+	.tree-reveal-hint button {
+		padding: 0.15rem 0.45rem;
+		border: 1px solid var(--editor-border-normal);
+		border-radius: 0.24rem;
+		background: transparent;
+		color: var(--editor-text-primary);
+		font: inherit;
+		font-size: 0.66rem;
+		cursor: pointer;
+	}
+	.tree-reveal-hint button:hover { border-color: var(--editor-accent-border); background: var(--editor-bg-selected); }
+	.topology-toggle { min-height: 1.8rem; margin: 0.1rem 0 0 0.85rem; }
+	.invisible { visibility: hidden; }
 	.wall-children, .cluster-members { margin-left: 0.85rem; padding-left: 0.62rem; border-left: 1px solid var(--editor-border-normal); }
 	.cluster-row { justify-content: space-between; }
 	.cluster-title { display: flex; min-width: 0; align-items: center; gap: 0.4rem; }

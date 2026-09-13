@@ -17,7 +17,7 @@
  * camera row contract (and the discovery-driven direction-row rule) for tests.
  */
 
-import type { LayoutDocument } from '$lib/layout/layout-types';
+import type { LayoutDocument, LayoutVec2 } from '$lib/layout/layout-types';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 import type { SceneDocument } from '$lib/content/scene';
 import type { CameraConnectionDirection } from '$lib/types/scene';
@@ -35,6 +35,15 @@ export type UnifiedTreeRow =
 	| { kind: 'object'; objectId: string }
 	| { kind: 'cluster'; clusterId: string }
 	| { kind: 'entity'; entityId: string }
+	/**
+	 * P23.6b — canonical wall-first rows. Row identity is **exactly** the
+	 * identity the canonical selection slots use (`physicalWall` /
+	 * `wallOpening` / `junction`), so a tree row selects through the one
+	 * selection authority and never fabricates a room-qualified identity.
+	 */
+	| { kind: 'physicalWall'; wallId: string }
+	| { kind: 'wallOpening'; wallId: string; openingId: string }
+	| { kind: 'junction'; junctionId: string }
 	| { kind: 'camera-node'; nodeId: string }
 	| { kind: 'camera-connection'; connectionId: string }
 	| { kind: 'camera-direction'; connectionId: string; direction: CameraConnectionDirection }
@@ -105,8 +114,11 @@ export type UnifiedTreeCameraTour = {
  * `(roomId, segmentId)` identity, and a wall-first Room's boundary references
  * document-global Walls by `wallId`. Reusing the legacy rows would have
  * fabricated a segment id for a canonical Wall, which is exactly the fake
- * identity the wall-first schema removes. The bucket stays read-only until the
- * canonical tree rows are cut over.
+ * identity the wall-first schema removes.
+ *
+ * P23.6b — the bucket is no longer read-only-only: its `roomId` **is** the
+ * canonical `{ kind: 'room', roomId }` selection identity, so wall-first Room
+ * rows are interactive tree rows that select through `selectLayoutRoom`.
  */
 export type UnifiedWallFirstRoom = {
 	roomId: string;
@@ -117,9 +129,59 @@ export type UnifiedWallFirstRoom = {
 	openingIds: string[];
 };
 
+/**
+ * P23.6b — one canonical Architecture row per **document-global** Wall
+ * (`layout.walls` order, never per Room). Openings nest under their single
+ * host Wall; boundary participation is a relation (`boundedRoomIds`), never
+ * ownership. Walls carry the authoritative P23.6H/P23.6I per-Wall `height`.
+ */
+export type UnifiedTreeWallRow = {
+	wallId: string;
+	role: 'boundary' | 'partition';
+	height: number;
+	/** Host-nested canonical Openings in `layout.openings` document order. */
+	openings: { openingId: string; kind: 'door' | 'window' }[];
+	/** Rooms whose boundary references this Wall (relation only). */
+	boundedRoomIds: string[];
+};
+
+/**
+ * P23.6b — canonical Junction row for the disclosed `Topology…` surface.
+ * Junctions are never resting clutter: they live behind the disclosure and
+ * stay reachable through canvas, search and selected-Wall endpoint relations.
+ */
+export type UnifiedTreeJunctionRow = {
+	junctionId: string;
+	point: LayoutVec2;
+};
+
+/**
+ * P23.6b — Scene-owned content in the shared hierarchy (D6). One hierarchy
+ * over two documents is not one document: Scene rows route to the Scene
+ * (workspace) selection slot, never `LayoutSelection`.
+ */
+export type UnifiedTreeSceneContent = {
+	clusters: UnifiedTreeCluster[];
+	/** Standalone entities (cluster members render inside their cluster). */
+	entities: UnifiedTreeEntity[];
+};
+
 export type UnifiedProjectTreeModel = {
 	rooms: UnifiedTreeRoom[];
 	wallFirstRooms: UnifiedWallFirstRoom[];
+	/**
+	 * P23.6b — canonical document-level roots. Populated for wall-first
+	 * documents only; the legacy compatibility branch returns empty roots and
+	 * the component renders no empty groups (§Format-gated legacy policy —
+	 * legacy objects/entities already nest under their Rooms, and populating
+	 * the roots for legacy documents would render them twice).
+	 */
+	architecture: {
+		walls: UnifiedTreeWallRow[];
+		junctions: UnifiedTreeJunctionRow[];
+	};
+	layoutObjects: UnifiedTreeObject[];
+	sceneContent: UnifiedTreeSceneContent;
 	cameraTour: UnifiedTreeCameraTour;
 };
 
@@ -172,15 +234,69 @@ export function buildUnifiedProjectTreeModel(input: {
 				const wallIds = room.boundary
 					.map((ref) => ref.wallId)
 					.filter((wallId) => wallIdsInDocument.has(wallId));
-				return {
-					roomId: room.id,
-					name: room.name,
-					wallIds,
-					openingIds: wallIds.flatMap((wallId) => openingIdsByWall.get(wallId) ?? [])
-				};
-			});
-			return { rooms: [], wallFirstRooms, cameraTour };
+			return {
+				roomId: room.id,
+				name: room.name,
+				wallIds,
+				openingIds: wallIds.flatMap((wallId) => openingIdsByWall.get(wallId) ?? [])
+			};
+		});
+		// P23.6b — canonical document-level roots (D1/D2/D3/D5/D6). Walls come
+		// from `layout.walls` (one row per physical Wall, document order), never
+		// from `wallFirstRooms[].wallIds`; Openings group by host in
+		// `layout.openings` order; boundary participation is collected as a
+		// relation. All orderings are deterministic document order (D9).
+		const openingsByWall = new Map<string, { openingId: string; kind: 'door' | 'window' }[]>();
+		for (const opening of layout.openings) {
+			const hosted = openingsByWall.get(opening.wallId);
+			const row = { openingId: opening.id, kind: opening.kind };
+			if (hosted) hosted.push(row);
+			else openingsByWall.set(opening.wallId, [row]);
 		}
+		const boundedRoomIdsByWall = new Map<string, string[]>();
+		for (const room of layout.rooms) {
+			for (const ref of room.boundary) {
+				if (!wallIdsInDocument.has(ref.wallId)) continue;
+				const bounded = boundedRoomIdsByWall.get(ref.wallId);
+				if (bounded) {
+					if (!bounded.includes(room.id)) bounded.push(room.id);
+				} else {
+					boundedRoomIdsByWall.set(ref.wallId, [room.id]);
+				}
+			}
+		}
+		const architecture = {
+			walls: layout.walls.map((wall) => ({
+				wallId: wall.id,
+				role: wall.role,
+				height: wall.height,
+				openings: openingsByWall.get(wall.id) ?? [],
+				boundedRoomIds: boundedRoomIdsByWall.get(wall.id) ?? []
+			})),
+			junctions: layout.junctions.map((junction) => ({
+				junctionId: junction.id,
+				point: [...junction.point] as LayoutVec2
+			}))
+		};
+		const layoutObjects: UnifiedTreeObject[] = layout.objects.map((object) => ({
+			objectId: object.id,
+			kind: object.kind
+		}));
+		const clusteredMemberIds = new Set(
+			(scene.clusters ?? []).flatMap((cluster) => cluster.memberIds)
+		);
+		const sceneContent: UnifiedTreeSceneContent = {
+			clusters: (scene.clusters ?? []).map((cluster) => ({
+				clusterId: cluster.id,
+				name: cluster.name,
+				memberIds: [...cluster.memberIds]
+			})),
+			entities: scene.entities
+				.filter((entity) => !clusteredMemberIds.has(entity.id))
+				.map((entity) => ({ entityId: entity.id, name: entity.name }))
+		};
+		return { rooms: [], wallFirstRooms, architecture, layoutObjects, sceneContent, cameraTour };
+	}
 
 		const rooms: UnifiedTreeRoom[] = layout.floors.flatMap((floor) =>
 		floor.rooms.map((room): UnifiedTreeRoom => ({
@@ -221,7 +337,18 @@ export function buildUnifiedProjectTreeModel(input: {
 		}))
 	);
 
-	return { rooms, wallFirstRooms: [], cameraTour };
+	// P23.6b — legacy compatibility projection: the Room-nested shape stays
+	// exactly as today (objects/clusters/entities nest inside `UnifiedTreeRoom`)
+	// and the canonical document-level roots stay **empty** so nothing renders
+	// twice. Legacy hierarchy migration is P23.7's decision.
+	return {
+		rooms,
+		wallFirstRooms: [],
+		architecture: { walls: [], junctions: [] },
+		layoutObjects: [],
+		sceneContent: { clusters: [], entities: [] },
+		cameraTour
+	};
 }
 
 /**
@@ -297,7 +424,58 @@ export function filterUnifiedProjectTreeModel(
 			room.openingIds.some((openingId) => matches(openingId))
 	);
 
-	return { rooms, wallFirstRooms, cameraTour: model.cameraTour };
+	// P23.6b — canonical Architecture rows survive a matching self or
+	// descendant term: a matched Opening keeps its host Wall, a matched Wall
+	// keeps the Architecture group reachable. Junctions match id + label.
+	const architecture = {
+		walls: model.architecture.walls
+			.map((wall) => ({
+				...wall,
+				openings: wall.openings.filter((opening) =>
+					matches(opening.kind, opening.openingId)
+				)
+			}))
+			.filter(
+				(wall) =>
+					matches('wall', wall.wallId) ||
+					matches(wall.role) ||
+					wall.openings.length > 0
+			),
+		junctions: model.architecture.junctions.filter(
+			(junction) => matches('junction', junction.junctionId)
+		)
+	};
+
+	const layoutObjects = model.layoutObjects.filter((object) =>
+		matches(object.kind, object.objectId)
+	);
+
+	// Scene rows match name + id; a matched cluster keeps its matching members.
+	const sceneClusters = model.sceneContent.clusters
+		.map((cluster) => ({
+			...cluster,
+			memberIds: cluster.memberIds.filter((memberId) =>
+				matches(
+					model.sceneContent.entities.find((entity) => entity.entityId === memberId)?.name,
+					memberId
+				)
+			)
+		}))
+		.filter(
+			(cluster) => matches(cluster.name, cluster.clusterId) || cluster.memberIds.length > 0
+		);
+	const sceneEntities = model.sceneContent.entities.filter((entity) =>
+		matches(entity.name, entity.entityId)
+	);
+
+	return {
+		rooms,
+		wallFirstRooms,
+		architecture,
+		layoutObjects,
+		sceneContent: { clusters: sceneClusters, entities: sceneEntities },
+		cameraTour: model.cameraTour
+	};
 }
 
 /**
@@ -437,6 +615,25 @@ export function isUnifiedTreeRowSelected(
 				active.selection.direction === row.direction &&
 				active.selection.keyframeId === row.keyframeId
 			);
+		case 'physicalWall':
+			return (
+				active.domain === 'layout' &&
+				active.selection.kind === 'physicalWall' &&
+				active.selection.wallId === row.wallId
+			);
+		case 'wallOpening':
+			return (
+				active.domain === 'layout' &&
+				active.selection.kind === 'wallOpening' &&
+				active.selection.wallId === row.wallId &&
+				active.selection.openingId === row.openingId
+			);
+		case 'junction':
+			return (
+				active.domain === 'layout' &&
+				active.selection.kind === 'junction' &&
+				active.selection.junctionId === row.junctionId
+			);
 	}
 }
 
@@ -474,6 +671,13 @@ export function isUnifiedTreeRowInteractive(
 		case 'wall':
 		case 'opening':
 		case 'interiorAnchor':
+		// P23.6b — canonical Wall/Opening/Junction rows follow the existing
+		// structural gating: interactive in Scene 3D and Scene Plan Layout,
+		// inert in Staging (structural selections stay memory there) and never
+		// active in the Camera domain.
+		case 'physicalWall':
+		case 'wallOpening':
+		case 'junction':
 			return scene3d || scenePlanLayout;
 		case 'object':
 			// P10 — Arrange (staging) makes Layout-object rows interactive too;
@@ -506,10 +710,66 @@ export function layoutSelectionAncestorRoomId(
 				layout.objects.find((object) => object.id === selection.objectId)?.roomId ?? null
 			);
 		// P23.3 canonical wall-first Opening selection has no Room ancestor.
-		// P23.6 canonical Wall/Junction selections have none either.
+		// P23.6 canonical Wall/Junction selections have none either. The
+		// behavior is itself a pinned contract (P23.6b): canonical reveal is
+		// `layoutSelectionRevealTarget`'s job, not this helper's.
 		case 'wallOpening':
 		case 'physicalWall':
 		case 'junction':
+		case 'none':
+			return null;
+	}
+}
+
+/**
+ * P23.6b — the tree reveal target for a canonical wall-first selection: a
+ * pure **presentation projection** naming the ancestors to expand and the row
+ * to scroll to. It is **not** a second selected-entity authority: it never
+ * selects, never edits and never persists. Junction selections reveal through
+ * the disclosed Topology surface **without** expanding the whole inventory.
+ */
+export type LayoutTreeRevealTarget =
+	| { group: 'rooms'; roomId: string }
+	| { group: 'architecture'; wallId: string }
+	| { group: 'architecture'; wallId: string; openingId: string }
+	| { group: 'topology'; junctionId: string }
+	| { group: 'layoutObjects'; objectId: string }
+	| { group: 'scene' }
+	| { group: 'camera' };
+
+export function layoutSelectionRevealTarget(
+	selection: LayoutSelection,
+	layout: LayoutDocument | LayoutDocumentWallFirst
+): LayoutTreeRevealTarget | null {
+	switch (selection.kind) {
+		case 'room':
+			return { group: 'rooms', roomId: selection.roomId };
+		case 'physicalWall':
+			return { group: 'architecture', wallId: selection.wallId };
+		case 'wallOpening':
+			return { group: 'architecture', wallId: selection.wallId, openingId: selection.openingId };
+		case 'junction':
+			return { group: 'topology', junctionId: selection.junctionId };
+		case 'object': {
+			// A wall-first document has no `floors`; object reveal targets the
+			// document-level Layout Objects root. A legacy object with an
+			// explicit `roomId` still reveals through its Room (the legacy
+			// projection nests it there) — resolve through whichever branch owns
+			// it, never from coordinates.
+			if ('formatVersion' in layout) {
+				return layout.objects.some((object) => object.id === selection.objectId)
+					? { group: 'layoutObjects', objectId: selection.objectId }
+					: null;
+			}
+			const legacyRoomId = layoutSelectionAncestorRoomId(selection, layout);
+			return legacyRoomId ? { group: 'rooms', roomId: legacyRoomId } : null;
+		}
+		// Legacy Room-qualified selections keep `layoutSelectionAncestorRoomId`
+		// as their reveal path (the component already handles them); this helper
+		// adds no parallel meaning for them.
+		case 'wall':
+		case 'opening':
+		case 'interiorAnchor':
 		case 'none':
 			return null;
 	}
@@ -538,6 +798,14 @@ export function layoutRowToSelection(row: UnifiedTreeRow): LayoutSelection | nul
 			};
 		case 'object':
 			return { kind: 'object', objectId: row.objectId };
+		// P23.6b — canonical wall-first rows qualify through the canonical
+		// selection slots; row identity IS selection identity.
+		case 'physicalWall':
+			return { kind: 'physicalWall', wallId: row.wallId };
+		case 'wallOpening':
+			return { kind: 'wallOpening', wallId: row.wallId, openingId: row.openingId };
+		case 'junction':
+			return { kind: 'junction', junctionId: row.junctionId };
 		default:
 			return null;
 	}

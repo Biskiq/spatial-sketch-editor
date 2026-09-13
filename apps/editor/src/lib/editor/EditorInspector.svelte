@@ -59,6 +59,7 @@
 		selectLayoutJunction,
 		selectLayoutObject,
 		selectLayoutPhysicalWall,
+		selectLayoutRoom,
 		selectLayoutWallOpening,
 		selectedLayoutRoomId,
 		setLayoutDraftTool,
@@ -69,6 +70,10 @@
 		type LayoutPrimitiveTool
 	} from './layout/layout-interaction';
 	import { roomBounds, roomEdgeLength } from './layout/layout-editing';
+	import {
+		wallFirstRoomMoveEligibility,
+		type WallFirstRoomMoveEligibility
+	} from './layout/layout-preview-state.svelte';
 	import {
 		type EditorStore
 	} from './editor-store.svelte';
@@ -246,52 +251,21 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	const wallFirstLayout = $derived('formatVersion' in layoutDocument ? layoutDocument : null);
 	const isWallFirstLayout = $derived(wallFirstLayout !== null);
 	const layoutRooms = $derived('floors' in layoutDocument ? layoutDocument.floors.flatMap((floor) => floor.rooms) : []);
-	type PrecisionTarget =
-		| { kind: 'junction'; id: string }
-		| { kind: 'wall'; id: string }
-		| { kind: 'room'; id: string }
-		| null;
-	let precisionTarget = $state<PrecisionTarget>(null);
+	// P23.6b — the Inspector-local `precisionTarget` selected-entity authority
+	// is RETIRED: `layoutInteraction.selection` is the single "which entity is
+	// selected" source. `precisionFixedEndpoint`, `precisionRectangleAnchor`
+	// and `precisionRectangleWidthWall` survive as **ephemeral operation
+	// parameters** (D8) — they never select an entity and never edit a
+	// document; the `$effect` below re-keys them off the canonical selection.
 	let precisionFixedEndpoint = $state<'start' | 'end'>('start');
 	let precisionRectangleAnchor = $state<string | null>(null);
 	let precisionRectangleWidthWall = $state<string | null>(null);
-	const precisionTargetKind = $derived(precisionTarget?.kind ?? null);
-	const precisionTargetId = $derived(precisionTarget?.id ?? null);
-	const selectedPrecisionJunction = $derived(
-		wallFirstLayout && precisionTargetKind === 'junction' && precisionTargetId
-			? wallFirstLayout.junctions.find((junction) => junction.id === precisionTargetId)
-			: undefined
-	);
-	const selectedPrecisionWall = $derived(
-		wallFirstLayout && precisionTargetKind === 'wall' && precisionTargetId
-			? wallFirstLayout.walls.find((wall) => wall.id === precisionTargetId)
-			: undefined
-	);
-	const selectedPrecisionRoom = $derived(
-		wallFirstLayout && precisionTargetKind === 'room' && precisionTargetId
-			? wallFirstLayout.rooms.find((room) => room.id === precisionTargetId)
-			: undefined
-	);
-	const selectedPrecisionWallEndpoints = $derived(
-		selectedPrecisionWall && wallFirstLayout
-			? precisionWallEndpoints(wallFirstLayout, selectedPrecisionWall)
-			: null
-	);
-	const selectedPrecisionRectangle = $derived(
-		selectedPrecisionRoom && wallFirstLayout
-			? precisionRectangleMetrics(wallFirstLayout, selectedPrecisionRoom)
-			: null
-	);
-	const precisionRectangleWidthWallOptions = $derived.by(() => {
-		if (!wallFirstLayout || !selectedPrecisionRoom) return [];
-		const resolved = resolveRectangle(
-			wallFirstLayout,
-			selectedPrecisionRoom.id,
-			precisionRectangleAnchor ? { anchorJunctionId: precisionRectangleAnchor } : {}
-		);
-		if ('rejection' in resolved) return [];
-		return [resolved.widthWallId, resolved.depthWallId];
-	});
+	// P23.6b — canonical wall-first panels read the one canonical selection.
+	// (Alias + rectangle deriveds live below, next to the `selectedWallFirst*`
+	// definitions, so the TDZ is respected.)
+	// P23.6b — aliases over the canonical selection-derived targets (declared
+	// after the `selectedWallFirst*` definitions below); the old Inspector-local
+	// `precisionTarget` state is retired.
 	const selectedLayoutRoom = $derived(
 		selectedLayoutRoomId(layoutInteraction)
 			? layoutRooms.find((room) => room.id === selectedLayoutRoomId(layoutInteraction))
@@ -384,6 +358,70 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				) ?? null)
 			: null
 	);
+	// P23.6b — aliases over the canonical targets above: the retired
+	// `precisionTarget` machinery keeps its helper names, now bound to the one
+	// canonical selection instead of an Inspector-local state.
+	const selectedPrecisionJunction = $derived(selectedWallFirstJunction);
+	const selectedPrecisionWall = $derived(selectedWallFirstWall);
+	const selectedPrecisionRoom = $derived(selectedWallFirstRoom);
+	const selectedPrecisionWallEndpoints = $derived(selectedWallFirstWallEndpoints);
+	// P23.6b — Wall-panel relations: hosted Openings (document order) and the
+	// Rooms whose boundary references this Wall (D2: relation, not ownership).
+	const selectedWallFirstHostedOpenings = $derived(
+		selectedWallFirstWall && wallFirstLayout
+			? wallFirstLayout.openings.filter((opening) => opening.wallId === selectedWallFirstWall.id)
+			: []
+	);
+	const selectedWallFirstBoundedRooms = $derived(
+		selectedWallFirstWall && wallFirstLayout
+			? wallFirstLayout.rooms
+					.filter((room) => room.boundary.some((ref) => ref.wallId === selectedWallFirstWall.id))
+					.map((room) => room.name)
+			: []
+	);
+	const selectedPrecisionRectangle = $derived(
+		selectedWallFirstRoom && wallFirstLayout
+			? precisionRectangleMetrics(wallFirstLayout, selectedWallFirstRoom)
+			: null
+	);
+	const precisionRectangleWidthWallOptions = $derived.by(() => {
+		if (!wallFirstLayout || !selectedWallFirstRoom) return [];
+		const resolved = resolveRectangle(
+			wallFirstLayout,
+			selectedWallFirstRoom.id,
+			precisionRectangleAnchor ? { anchorJunctionId: precisionRectangleAnchor } : {}
+		);
+		if ('rejection' in resolved) return [];
+		return [resolved.widthWallId, resolved.depthWallId];
+	});
+	// P23.6b — Room-panel derived facts (priority order: identity → editable
+	// properties → behavior → relations → advanced). Area/perimeter derive
+	// from the Room's compiled floor polygon; the derived ceiling is
+	// presented read-only (P23.6I: no authored Room ceiling exists — authoring
+	// one is a separate slice). Move eligibility consumes P23.6a's adapter
+	// verbatim; B never re-derives isolation policy and the gesture stays A's.
+	const selectedWallFirstRoomFacts = $derived.by(() => {
+		const room = selectedWallFirstRoom;
+		if (!room) return null;
+		const compiled = layoutPreview.geometry.rooms.find((candidate) => candidate.roomId === room.id);
+		const polygon = compiled?.floorPolygon ?? [];
+		let area = 0;
+		let perimeter = 0;
+		for (let index = 0; index < polygon.length; index += 1) {
+			const [ax, az] = polygon[index]!;
+			const [bx, bz] = polygon[(index + 1) % polygon.length]!;
+			area += ax * bz - bx * az;
+			perimeter += Math.hypot(bx - ax, bz - az);
+		}
+		area = Math.abs(area) / 2;
+		const boundaryWallIds = [
+			...new Set(room.boundary.map((ref) => ref.wallId).filter((wallId) => wallFirstLayout?.walls.some((wall) => wall.id === wallId)))
+		];
+		const eligibility: WallFirstRoomMoveEligibility = wallFirstLayout
+			? wallFirstRoomMoveEligibility(layoutPreview, room.id)
+			: { movable: false, rejection: { code: 'unknown_room', message: 'No wall-first layout', targetIds: [room.id] }, hint: 'Room move requires a wall-first layout' };
+		return { area, perimeter, ceilingElevation: compiled?.ceilingElevation ?? null, boundaryWallIds, eligibility };
+	});
 	const selectedLayoutSegment = $derived(
 		selectedLayoutWallSelection && selectedLayoutRoom
 			? selectedLayoutRoom.boundary.segments.find((segment) => segment.id === selectedLayoutWallSelection.segmentId)
@@ -406,25 +444,22 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			: undefined
 	);
 
+	// P23.6b — operation parameters re-key off the canonical selection (D8):
+	// they are reset whenever the selected canonical entity changes identity
+	// (or the rectangle parameters stop being valid for it), and never select
+	// an entity themselves. Selection validity is `reconcileLayoutSelection`'s
+	// job, so no target-liveness effect is needed anymore.
 	$effect(() => {
-		if (!wallFirstLayout) {
-			precisionTarget = null;
-			return;
-		}
-		const target = precisionTarget;
-		if (!target) return;
-		if (target.kind === 'junction' && !wallFirstLayout.junctions.some((junction) => junction.id === target.id)) precisionTarget = null;
-		if (target.kind === 'wall' && !wallFirstLayout.walls.some((wall) => wall.id === target.id)) precisionTarget = null;
-		if (target.kind === 'room') {
-			const room = wallFirstLayout.rooms.find((candidate) => candidate.id === target.id);
-			const rectangle = room ? precisionRectangleMetrics(wallFirstLayout, room) : null;
-			const invalidAnchor = Boolean(precisionRectangleAnchor && (!rectangle || !rectangle.cornerIds.includes(precisionRectangleAnchor)));
-			const invalidWidthWall = Boolean(precisionRectangleWidthWall && (!rectangle || rectangle.widthWallId !== precisionRectangleWidthWall));
-			if (!room || invalidAnchor || invalidWidthWall) {
-				precisionRectangleAnchor = null;
-				precisionRectangleWidthWall = null;
-				precisionTarget = null;
-			}
+		const room = selectedWallFirstRoom;
+		void selectedWallFirstJunction?.id;
+		void selectedWallFirstWall?.id;
+		if (!room || !wallFirstLayout) return;
+		const rectangle = precisionRectangleMetrics(wallFirstLayout, room);
+		const invalidAnchor = Boolean(precisionRectangleAnchor && (!rectangle || !rectangle.cornerIds.includes(precisionRectangleAnchor)));
+		const invalidWidthWall = Boolean(precisionRectangleWidthWall && (!rectangle || rectangle.widthWallId !== precisionRectangleWidthWall));
+		if (invalidAnchor || invalidWidthWall) {
+			precisionRectangleAnchor = null;
+			precisionRectangleWidthWall = null;
 		}
 	});
 
@@ -819,10 +854,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			(result) => `Duplicated room · ${result.createdRoomId ?? ''}`
 		);
 		if (!committed) return;
-		// A failed operation restores prior selection; success may select the
-		// first new Room through the existing authority.
+		// A failed operation restores prior selection; success selects the
+		// new Room through the ONE canonical selection authority (the retired
+		// `precisionTarget` seed is gone).
 		if (committed.createdRoomId) {
-			precisionTarget = { kind: 'room', id: committed.createdRoomId };
+			selectCanonicalRoom(committed.createdRoomId);
 		}
 	}
 
@@ -1219,12 +1255,27 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		store.setStatusMessage('Deleted room');
 	}
 
-	function selectPrecisionTarget(target: Exclude<PrecisionTarget, null>): void {
-		precisionTarget = target;
-		if (target.kind === 'room') {
+	/**
+	 * P23.6b — navigation onto the ONE canonical selection authority. The old
+	 * Inspector-local `precisionTarget` write is gone: every caller (the
+	 * Architecture inventory rows, diagnostics, post-create seeds) activates
+	 * `layoutInteraction.selection` through the existing select helpers, and
+	 * rectangle operation parameters reset when the Room identity changes.
+	 */
+	function selectCanonicalJunction(junctionId: string): void {
+		selectLayoutJunction(layoutInteraction, junctionId);
+	}
+
+	function selectCanonicalWall(wallId: string): void {
+		selectLayoutPhysicalWall(layoutInteraction, wallId);
+	}
+
+	function selectCanonicalRoom(roomId: string): void {
+		if (selectedWallFirstRoom?.id !== roomId) {
 			precisionRectangleAnchor = null;
 			precisionRectangleWidthWall = null;
 		}
+		selectLayoutRoom(layoutInteraction, roomId);
 	}
 
 	function precisionNumber(
@@ -1411,6 +1462,28 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
 		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} height` : `Wall rejected: ${outcome.result.message}`);
+	}
+
+	/**
+	 * P23.6b — subdivision re-homed onto the canonical Wall panel: identical
+	 * planner and guarded transaction as the old Architecture · exact control.
+	 */
+	function addSelectedWallVertex(event: Event): void {
+		const wall = selectedWallFirstWall;
+		const endpoints = selectedWallFirstWallEndpoints;
+		if (!wall || !endpoints) return;
+		const fallback = endpoints.length / 2;
+		const value = precisionNumber(event, fallback);
+		if (value === null) return;
+		const outcome = runLayoutMutationGuarded(
+			() => subdivideWallFirstWall(layoutPreview, wall.id, value),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(outcome.result.success ? `Added Vertex to Wall ${wall.id}` : `Vertex rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1666,26 +1739,26 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				<div class="layout-accordion" aria-label="Wall-first exact authoring">
 					<div class="accordion-trigger"><strong>Architecture · exact</strong><span>m / °</span></div>
 					<div class="layout-selection-content">
-						<p class="layout-inspector-note">Exact values are document meters and degrees. Snap is bypassed; Apply/Enter creates one layout history entry.</p>
+						<p class="layout-inspector-note">Exact values are document meters and degrees. Snap is bypassed; Apply/Enter creates one layout history entry. Selecting a row navigates the one canonical selection — the Inspector has no separate target of its own.</p>
 						<div class="layout-object-list" aria-label="Wall-first Junctions">
 							<strong>Junctions</strong>
 							{#if wallFirstLayout.junctions.length === 0}<span class="layout-empty">No Junctions.</span>{/if}
 							{#each wallFirstLayout.junctions as junction (junction.id)}
-								<button type="button" class:selected={precisionTarget?.kind === 'junction' && precisionTarget.id === junction.id} class="object-row-select" onclick={() => selectPrecisionTarget({ kind: 'junction', id: junction.id })}><strong>{junction.id}</strong><span>{junction.point[0].toFixed(2)}, {junction.point[1].toFixed(2)}</span></button>
+								<button type="button" class:selected={selectedWallFirstJunction?.id === junction.id} class="object-row-select" onclick={() => selectCanonicalJunction(junction.id)}><strong>{junction.id}</strong><span>{junction.point[0].toFixed(2)}, {junction.point[1].toFixed(2)}</span></button>
 							{/each}
 						</div>
 						<div class="layout-object-list" aria-label="Wall-first Walls">
 							<strong>Walls</strong>
 							{#if wallFirstLayout.walls.length === 0}<span class="layout-empty">No Walls.</span>{/if}
 							{#each wallFirstLayout.walls as wall (wall.id)}
-								<button type="button" class:selected={precisionTarget?.kind === 'wall' && precisionTarget.id === wall.id} class="object-row-select" onclick={() => selectPrecisionTarget({ kind: 'wall', id: wall.id })}><strong>{wall.id}</strong><span>{wall.startJunctionId} → {wall.endJunctionId}</span></button>
+								<button type="button" class:selected={selectedWallFirstWall?.id === wall.id} class="object-row-select" onclick={() => selectCanonicalWall(wall.id)}><strong>{wall.id}</strong><span>{wall.startJunctionId} → {wall.endJunctionId}</span></button>
 							{/each}
 						</div>
 						<div class="layout-object-list" aria-label="Wall-first Rooms">
 							<strong>Rooms</strong>
 							{#if wallFirstLayout.rooms.length === 0}<span class="layout-empty">No Rooms.</span>{/if}
 							{#each wallFirstLayout.rooms as room (room.id)}
-								<button type="button" class:selected={precisionTarget?.kind === 'room' && precisionTarget.id === room.id} class="object-row-select" onclick={() => selectPrecisionTarget({ kind: 'room', id: room.id })}><strong>{room.name}</strong><span>{room.id}</span></button>
+								<button type="button" class:selected={selectedWallFirstRoom?.id === room.id} class="object-row-select" onclick={() => selectCanonicalRoom(room.id)}><strong>{room.name}</strong><span>{room.id}</span></button>
 							{/each}
 						</div>
 
@@ -1816,7 +1889,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<label>Radius (m)<input type="number" min="0.001" step="0.05" value={selectedLayoutObject.dimensions[0] / 2} disabled={arrangeMode} onchange={(event) => updateObjectMetric('radius', event)} /></label>
 						<label>Height (m)<input type="number" min="0.001" step="0.05" value={selectedLayoutObject.dimensions[1]} disabled={arrangeMode} onchange={(event) => updateObjectMetric('height', event)} /></label>
 					{/if}
-					<div class="object-room-meta"><span>Room ownership</span><strong>{layoutRooms.find((room) => room.id === selectedLayoutObject.roomId)?.name ?? 'Unassigned'} · {selectedLayoutObject.roomId ?? 'none'}</strong></div>
+					<div class="object-room-meta"><span>Associated Room</span><strong>{layoutRooms.find((room) => room.id === selectedLayoutObject.roomId)?.name ?? 'Unassigned'} · {selectedLayoutObject.roomId ?? 'none'}</strong></div>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 					{#if isWallFirstLayout}
 						<fieldset class="staging-transform-fields">
@@ -1842,7 +1915,28 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Angle (°)<input type="number" step="any" value={formatDegrees(selectedWallFirstWallEndpoints.angleDegrees)} onchange={updateSelectedWallAngle} /></label>
 					<label>Thickness (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.thickness)} onchange={updateSelectedWallThickness} /></label>
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
+					<label>Add Vertex at (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallVertex} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
+					<!-- D2/D3 — boundary participation is a relation, never ownership;
+						hosted Openings select through the canonical wallOpening slot. -->
+					{#if selectedWallFirstHostedOpenings.length > 0}
+						<div class="object-room-meta"><span>Hosted openings</span>
+							<span class="relation-links">
+								{#each selectedWallFirstHostedOpenings as hostedOpening (hostedOpening.id)}
+									<button type="button" class="object-row-select" onclick={() => selectLayoutWallOpening(layoutInteraction, selectedWallFirstWall!.id, hostedOpening.id)}>{hostedOpening.kind} · {hostedOpening.id}</button>
+								{/each}
+							</span>
+						</div>
+					{/if}
+					{#if selectedWallFirstBoundedRooms.length > 0}
+						<div class="object-room-meta"><span>Bounded rooms</span><strong>{selectedWallFirstBoundedRooms.join(', ')}</strong></div>
+					{/if}
+					<div class="object-room-meta"><span>Endpoints</span>
+						<span class="relation-links">
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.start.id)}>{selectedWallFirstWallEndpoints.start.id}</button>
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.end.id)}>{selectedWallFirstWallEndpoints.end.id}</button>
+						</span>
+					</div>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstJunction}
@@ -1947,11 +2041,29 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" disabled={isWallFirstLayout} onclick={() => armOpeningTool('window')}>Window</button>
 					</div>
 				</div>
-			{:else if selectedWallFirstRoom}
+			{:else if selectedWallFirstRoom && selectedWallFirstRoomFacts}
 				<div class="layout-selected-room" aria-label="Selected wall-first room">
 					<strong>{selectedWallFirstRoom.name}</strong>
 					<span>{selectedWallFirstRoom.id}</span>
-					<span>{selectedWallFirstRoom.boundary.length} boundary walls · floor {selectedWallFirstRoom.floorThickness.toFixed(2)} m · ceiling {selectedWallFirstRoom.ceilingThickness.toFixed(2)} m</span>
+					<!-- D9 — derived metrics, read-only; no authored Room metadata
+						operation exists, so identity stays read-only (P23.6). -->
+					{#if Number.isFinite(selectedWallFirstRoomFacts.area) && selectedWallFirstRoomFacts.area > 0}
+					<span>Area {selectedWallFirstRoomFacts.area.toFixed(2)} m² · perimeter {selectedWallFirstRoomFacts.perimeter.toFixed(2)} m</span>
+					{/if}
+					{#if selectedWallFirstRoomFacts.ceilingElevation !== null}
+					<span>Derived ceiling {selectedWallFirstRoomFacts.ceilingElevation.toFixed(2)} m</span>
+					{/if}
+					<!-- P23.6a — move eligibility state + the identical rejection
+						hint A returns; the move gesture itself stays A's (viewport).
+						No invented absolute Room X/Z, no Room rotation. -->
+					<span class="room-move-state">
+						{selectedWallFirstRoomFacts.eligibility.movable
+							? 'Movable as a whole unit (drag in Plan)'
+							: `Not movable as a unit — ${selectedWallFirstRoomFacts.eligibility.hint}`}
+					</span>
+					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
+					<span>{selectedWallFirstRoom.floorThickness.toFixed(2)} m floor · {selectedWallFirstRoom.ceilingThickness.toFixed(2)} m ceiling assembly</span>
+					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedLayoutRoom && selectedLayoutBounds}
 				<div class="layout-selected-room" aria-label="Selected layout room">

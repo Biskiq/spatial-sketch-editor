@@ -1224,6 +1224,29 @@ describe('unified hierarchy contracts', () => {
 		expect(tree).toContain('ensureClusterTreeExpanded');
 		expect(model).toContain('export function layoutSelectionAncestorRoomId');
 	});
+
+	it('pins the P23.6b canonical reveal helper beside the legacy ancestor helper', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		const model = readLibSource('editor/unified-project-tree-model.ts');
+		// Canonical wall-first reveal is a NEW pure sibling — never an overload
+		// of `layoutSelectionAncestorRoomId`, whose null-for-canonical behavior
+		// is itself a pinned contract above. Both helpers stay exported.
+		expect(model).toContain('export function layoutSelectionRevealTarget');
+		expect(model).toContain("export function layoutSelectionAncestorRoomId");
+		// The component consumes both: the legacy helper for legacy
+		// Room-qualified selections, the new one for canonical selections.
+		expect(tree).toContain('layoutSelectionRevealTarget');
+		expect(tree).toContain('layoutSelectionAncestorRoomId');
+	});
+
+	it('keeps the P23.6b format-gated roots empty for legacy documents', () => {
+		const model = readLibSource('editor/unified-project-tree-model.ts');
+		// The legacy branch must return empty canonical roots so legacy
+		// Room-nested objects/entities never render twice.
+		expect(model).toContain("architecture: { walls: [], junctions: [] }");
+		expect(model).toContain("layoutObjects: []");
+		expect(model).toContain("sceneContent: { clusters: [], entities: [] }");
+	});
 });
 
 describe('layout 3D pick metadata', () => {
