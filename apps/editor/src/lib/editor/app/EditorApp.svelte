@@ -89,6 +89,10 @@
 		ACTIVE_EDITOR_SELECTION_KEY,
 		EditorActiveSelectionStore
 	} from './active-editor-selection.svelte';
+	import {
+		HIERARCHY_NAVIGATOR_KEY,
+		HierarchyNavigatorStore
+	} from './hierarchy-navigator-state.svelte';
 	import { SCENE_GIZMO_POLICY } from '$lib/editor/gizmo/scene-gizmo-adapter.svelte';
 	import { CAMERA_GIZMO_POLICY } from '$lib/editor/gizmo/camera-gizmo-adapter.svelte';
 	import { projectDomainGizmoCapabilities } from '$lib/editor/gizmo/editor-gizmo-policy';
@@ -255,6 +259,11 @@
 		() => clearLayoutSelection(layoutInteraction)
 	);
 	setContext(ACTIVE_EDITOR_SELECTION_KEY, activeSelection);
+	// P23.6e — one UI-only Hierarchy Navigator instance at the composition root.
+	// It owns page/search/filter/disclosure/scroll/back and transient row
+	// emphasis; it never selects, mutates documents or records history.
+	const hierarchyNavigator = new HierarchyNavigatorStore();
+	setContext(HIERARCHY_NAVIGATOR_KEY, hierarchyNavigator);
 	store.registerLayoutHistory({
 		capture: () => captureLayoutPreviewSnapshot(layoutPreview),
 		replace: (snapshot) => {
