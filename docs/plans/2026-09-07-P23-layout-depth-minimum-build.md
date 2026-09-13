@@ -6,7 +6,7 @@
 **Depends on:** P22 complete, including hosted cold-visitor acceptance.  
 **Owner reconciliation ratified:** 2026-09-09.  
 **Evidence basis:** completed `P23-H1`, `P23-H2`, `P23-H3`, `P23-H5`, current Museum Editor code, and the staging wall-first proposal.  
-**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I implemented on branch `P23.6-H`** (PR #25 awaited review); **P23.6a and P23.6b are implementation-ready child plans**, and H + I together are the single pre-merge format-5 vertical cutover.
+**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I implemented on branch `P23.6-H`** (PR #25 awaited review); **P23.6a and P23.6b are implementation-ready child plans**, **P23.6c is a proposed child plan (canonical Wall deletion, recorded from PR #25 review)**, and H + I together are the single pre-merge format-5 vertical cutover.
 
 This is the reconciled P23 umbrella. The accepted reconciliation — informed by the harvests — supersedes conflicting earlier P23 and North-Star direction. Harvest artifacts remain evidence, not implementation authority.
 
@@ -514,7 +514,13 @@ Rigid X/Z translation of an **isolated** canonical Room boundary graph in Scene 
 
 [Child plan](2026-09-12-P23.6b-architecture-hierarchy-inspector-reconciliation.md)
 
-Owner-review follow-up before P23.7: an ownership-truthful hierarchy for document-global Walls/Openings/Junctions/Rooms plus document-level LayoutObjects and Scene content (shared Walls never duplicated, subordinate Topology inventory) and a selection-first Architecture Inspector that retires the Inspector-local `precisionTarget` authority. Same `LayoutSelection`/Scene/Camera slots, no second store/path/model. UX/presentation + hierarchy reconciliation, not another geometry migration.
+Owner-review follow-up before P23.7: an ownership-truthful hierarchy for document-global Walls/Openings/Junctions/Rooms plus document-level LayoutObjects and Scene content (shared Walls never duplicated, subordinate Topology inventory) and a selection-first Architecture Inspector that retires the Inspector-local `precisionTarget` authority. Same `LayoutSelection`/Scene/Camera slots, no second store/path/model. UX/presentation + hierarchy reconciliation, not another geometry migration. (Canonical Wall deletion is the follow-up [P23.6c](2026-09-13-P23.6c-canonical-wall-deletion.md), not this slice.)
+
+## P23.6c — Canonical Wall Deletion
+
+[Child plan](2026-09-13-P23.6c-canonical-wall-deletion.md)
+
+Delete one selected canonical Wall through the `planWallRoleChange()` architecture (candidate graph → face extraction → P23.8 Room reconciliation → canonical validation/compiler → one history entry): hosted Openings go atomically, orphan Junctions prune only when unreferenced, ambiguous topology rejects, Undo/Redo restores exact IDs, and `Delete`/`Backspace` plus Inspector/hierarchy Delete share the one planner. Recorded from PR #25 review; deliberately after P23.6b and before P23.7, never stuffed into PR #25.
 
 ## P23.7 — Integration, compatibility and closeout
 
@@ -556,6 +562,8 @@ P23.6I
 P23.6a
       ↓
 P23.6b
+      ↓
+P23.6c
       ↓
 P23.7
 ```

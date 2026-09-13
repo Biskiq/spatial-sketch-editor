@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
 	import { parseSceneDocumentJson } from '$lib/content/scene-codec';
-	import { parseLayoutDocumentJson } from '$lib/layout/layout-codec';
 	import {
-		importLayoutPreviewJson,
 		layoutPreviewCanonicalJson,
 		layoutPreviewIsDirty,
 		layoutPreviewStatusLabel,
@@ -11,6 +9,7 @@
 		setLayoutPreviewImportError,
 		type LayoutPreviewState
 	} from './layout/layout-preview-state.svelte';
+	import { requestLayoutImportReplacement } from './layout/layout-import-replacement';
 	import { onMount } from 'svelte';
 	import { acquireObjectUrl, releaseObjectUrl } from './store/binary-texture-store.svelte';
 	import type { EditorStore } from './editor-store.svelte';
@@ -126,20 +125,19 @@
 	}
 
 	function importLayoutJson(json: string, clearPasteOnSuccess = false) {
-		const parsed = parseLayoutDocumentJson(json);
-		if (!parsed.success) {
-			// Compatibility-shaped paste: no confirm gate on this path (existing
-			// behavior). A successful replacement still ends any in-flight run.
-			const fallback = importLayoutPreviewJson(layoutPreview, json);
-			if (fallback) onLayoutReplaced?.();
-			return fallback;
-		}
-		if (!confirmLayoutReplacement()) return false;
-		const imported = importLayoutPreviewJson(layoutPreview, json);
-		if (imported) store.clearSharedHistory();
-		if (imported) onLayoutReplaced?.();
-		if (imported && clearPasteOnSuccess) pastedLayoutJson = '';
-		return imported;
+		// P23.6I review — one routing for every recognized Layout format:
+		// preflight with the compatible decoder, confirm once, then mutate.
+		// The helper clears shared history on success and fires the
+		// replacement lifecycle; paste clearing stays here.
+		const ok = requestLayoutImportReplacement({
+			layoutPreview,
+			json,
+			confirmReplacement: confirmLayoutReplacement,
+			clearSharedHistory: () => store.clearSharedHistory(),
+			onReplaced: () => onLayoutReplaced?.()
+		});
+		if (ok && clearPasteOnSuccess) pastedLayoutJson = '';
+		return ok;
 	}
 
 	async function onLayoutImportFileChange(event: Event) {
