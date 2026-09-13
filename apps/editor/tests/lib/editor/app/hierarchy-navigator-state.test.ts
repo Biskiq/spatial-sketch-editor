@@ -206,6 +206,25 @@ describe('P23.6e slice 3 — transient in-place state', () => {
 		expect(store.current.disclosure).toEqual([]);
 	});
 
+	it('counts user disclosure gestures only, so auto-reveal cannot re-trigger itself', () => {
+		const store = new HierarchyNavigatorStore();
+		expect(store.disclosureRevision).toBe(0);
+		store.toggleDisclosure('room:room-a:section:junctions');
+		expect(store.disclosureRevision).toBe(1);
+		store.toggleDisclosure('room:room-a:section:junctions');
+		expect(store.disclosureRevision).toBe(2);
+		// Auto-disclosure, bulk writes, navigation and transient fields are not
+		// user gestures: the reveal cycle must not scroll again for them.
+		store.revealDisclosure(['room:room-a:section:objects']);
+		store.setDisclosure(['room:room-a:section:boundary']);
+		store.open({ kind: 'walls' });
+		store.back();
+		store.setQuery('wall');
+		store.setScrollTop(10);
+		store.reset();
+		expect(store.disclosureRevision).toBe(2);
+	});
+
 	it('revealDisclosure unions required ancestors in place and reports real changes', () => {
 		const store = new HierarchyNavigatorStore();
 		store.open({ kind: 'walls' });

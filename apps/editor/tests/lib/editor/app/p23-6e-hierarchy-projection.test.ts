@@ -23,8 +23,11 @@ import {
 	buildHierarchyPageProjection,
 	boundaryJunctionIds,
 	canonicalHierarchyHome,
+	evaluateHierarchyReveal,
 	explainHierarchyExclusion,
 	findHierarchyRepresentation,
+	hierarchyEntityLabel,
+	hierarchyHomeLabel,
 	isHierarchyRowSelectable,
 	layoutSelectionToHierarchyEntity,
 	activeSelectionToHierarchyEntity,
@@ -34,7 +37,8 @@ import {
 	type HierarchyPage,
 	type HierarchyPageOptions,
 	type HierarchyPageProjection,
-	type HierarchyProjectedRow
+	type HierarchyProjectedRow,
+	type HierarchyRevealObservation
 } from '$lib/editor/hierarchy/hierarchy-page-projection';
 import {
 	buildHierarchySearchProjection,
@@ -1483,6 +1487,319 @@ describe('P23.6e slice 4 — page Navigator UI migration', () => {
 		for (const source of [navigatorSource, rowSource]) {
 			expect(source).not.toContain('Camera');
 			expect(source).not.toContain('camera');
+		}
+	});
+});
+
+describe('P23.6e slice 5 — representation reveal and pinned selection', () => {
+	function observation(
+		overrides: Partial<HierarchyRevealObservation> = {}
+	): HierarchyRevealObservation {
+		return {
+			transitionRevision: 1,
+			transitionKind: 'ordinary-entry',
+			targetRowKey: null,
+			selectionId: null,
+			representedRowKey: null,
+			ancestorDisclosureKeys: [],
+			userDisclosureRevision: 0,
+			...overrides
+		};
+	}
+
+	function representationOf(page: HierarchyPage, entity: HierarchyEntityKey) {
+		const representation = findHierarchyRepresentation(
+			buildHierarchyPageProjection(fixtureIndex(), page),
+			entity
+		)!;
+		return {
+			representedRowKey: representation.rowKey,
+			ancestorDisclosureKeys: representation.ancestorDisclosureKeys
+		};
+	}
+
+	it('restores the entry scroll on ordinary entry instead of chasing a pre-existing selection', () => {
+		const index = fixtureIndex();
+		const wall = wallEntityKey('w13');
+		const representation = representationOf({ kind: 'walls' }, wall);
+		expect(index.wallById.has('w13')).toBe(true);
+		// An ordinary entry: the page starts at its intended top/default state and
+		// only highlights the represented selection.
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({
+					transitionRevision: 2,
+					transitionKind: 'ordinary-entry',
+					selectionId: wall.id,
+					...representation
+				})
+			)
+		).toEqual({ kind: 'restore-scroll' });
+	});
+
+	it('suppresses selection auto-scroll for the history-restore cycle even while represented', () => {
+		const wall = wallEntityKey('w13');
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({
+					transitionRevision: 2,
+					transitionKind: 'history-restore',
+					selectionId: wall.id,
+					...representationOf({ kind: 'walls' }, wall)
+				})
+			)
+		).toEqual({ kind: 'restore-scroll' });
+	});
+
+	it('Show in Walls reveals the exact Opening under its exact host, and only that host', () => {
+		const opening = openingEntityKey('w2', 'op-win-2');
+		const representation = representationOf({ kind: 'walls' }, opening);
+		expect(representation.representedRowKey).toBe('walls:wall:w2:opening:op-win-2');
+		expect(representation.ancestorDisclosureKeys).toEqual(['walls:wall:w2']);
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({
+					transitionRevision: 2,
+					transitionKind: 'show-in',
+					targetRowKey: representation.representedRowKey,
+					selectionId: opening.id,
+					...representation
+				})
+			)
+		).toEqual({
+			kind: 'reveal',
+			disclose: ['walls:wall:w2'],
+			scrollTo: 'walls:wall:w2:opening:op-win-2'
+		});
+	});
+
+	it('a Room boundary Junction reveal opens only its contextual section', () => {
+		const junction = junctionEntityKey('j1');
+		const representation = representationOf({ kind: 'room', roomId: 'room-a' }, junction);
+		expect(representation.ancestorDisclosureKeys).toEqual(['room:room-a:section:junctions']);
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({ selectionId: junction.id, ...representation })
+			)
+		).toEqual({
+			kind: 'reveal',
+			disclose: ['room:room-a:section:junctions'],
+			scrollTo: representation.representedRowKey
+		});
+	});
+
+	it('a global Junction reveal opens no inventory at all', () => {
+		const junction = junctionEntityKey('j3');
+		const representation = representationOf({ kind: 'junctions' }, junction);
+		expect(representation.ancestorDisclosureKeys).toEqual([]);
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({ selectionId: junction.id, ...representation })
+			)
+		).toEqual({
+			kind: 'reveal',
+			disclose: [],
+			scrollTo: representation.representedRowKey
+		});
+	});
+
+	it('a filter-excluded selection pins instead of revealing, and Clear resumes the reveal', () => {
+		const index = fixtureIndex();
+		const wall = wallEntityKey('w12');
+		const filtered = buildHierarchyPageProjection(index, { kind: 'walls' }, { wallFilter: 'one-room' });
+		const calm = buildHierarchyPageProjection(index, { kind: 'walls' });
+		const excluded = findHierarchyRepresentation(filtered, wall);
+		const represented = findHierarchyRepresentation(calm, wall)!;
+		expect(excluded).toBeNull();
+
+		// Same selection, filter active: nothing to reveal, the strip explains it.
+		const selected = observation({ selectionId: wall.id, representedRowKey: null });
+		expect(evaluateHierarchyReveal(observation({ selectionId: null }), selected)).toEqual({
+			kind: 'none'
+		});
+		expect(
+			explainHierarchyExclusion({
+				page: { kind: 'walls' },
+				current: filtered,
+				base: calm,
+				entity: wall,
+				queryActive: false
+			})
+		).toEqual({ kind: 'filter', text: 'Outside active filter' });
+
+		// Clear filter: the unchanged selection is newly represented → reveal.
+		expect(
+			evaluateHierarchyReveal(selected, {
+				...selected,
+				representedRowKey: represented.rowKey,
+				ancestorDisclosureKeys: represented.ancestorDisclosureKeys
+			})
+		).toEqual({
+			kind: 'reveal',
+			disclose: [...represented.ancestorDisclosureKeys],
+			scrollTo: represented.rowKey
+		});
+	});
+
+	it('pins the exact reason and canonical home for an unrelated selection', () => {
+		const index = fixtureIndex();
+		const wall = wallEntityKey('w6');
+		const roomPage = buildHierarchyPageProjection(index, { kind: 'room', roomId: 'room-a' });
+		const calmRoomPage = buildHierarchyPageProjection(index, { kind: 'room', roomId: 'room-a' });
+		expect(findHierarchyRepresentation(roomPage, wall)).toBeNull();
+		const reason = explainHierarchyExclusion({
+			page: { kind: 'room', roomId: 'room-a' },
+			current: roomPage,
+			base: calmRoomPage,
+			entity: wall,
+			queryActive: false,
+			roomName: 'Gallery A'
+		});
+		expect(reason).toEqual({ kind: 'room', text: 'Not in Gallery A' });
+		const home = canonicalHierarchyHome(index, wall)!;
+		expect(home.page).toEqual({ kind: 'walls' });
+		expect(hierarchyHomeLabel(home)).toBe('Walls');
+		expect(hierarchyEntityLabel(index, wall)).toBe('W6');
+	});
+
+	it('a manual disclosure gesture scrolls only and never re-expands anything', () => {
+		const junction = junctionEntityKey('j1');
+		const representation = representationOf({ kind: 'room', roomId: 'room-a' }, junction);
+		const decision = evaluateHierarchyReveal(
+			observation({ selectionId: junction.id, ...representation, userDisclosureRevision: 0 }),
+			observation({ selectionId: junction.id, ...representation, userDisclosureRevision: 1 })
+		);
+		expect(decision).toEqual({ kind: 'scroll', scrollTo: representation.representedRowKey });
+		expect(decision).not.toHaveProperty('disclose');
+	});
+
+	it('drops the strip for a selected identity the documents no longer contain', () => {
+		const index = fixtureIndex();
+		const deleted = wallEntityKey('w-deleted');
+		const walls = buildHierarchyPageProjection(index, { kind: 'walls' });
+		expect(
+			explainHierarchyExclusion({
+				page: { kind: 'walls' },
+				current: walls,
+				base: walls,
+				entity: deleted,
+				queryActive: false
+			})
+		).toEqual({ kind: 'page', text: 'Not on this page' });
+		// No canonical home → derived pinned state is null and the strip disappears.
+		expect(canonicalHierarchyHome(index, deleted)).toBeNull();
+	});
+
+	it('does not reveal for an unrepresented selection change', () => {
+		const wall = wallEntityKey('w6');
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({ selectionId: wall.id, representedRowKey: null })
+			)
+		).toEqual({ kind: 'none' });
+	});
+
+	it('re-reveals when a canonical edit moves the selection to a new primary row', () => {
+		const junction = junctionEntityKey('j1');
+		const decision = evaluateHierarchyReveal(
+			observation({
+				selectionId: junction.id,
+				representedRowKey: 'room:room-a:junction:j1'
+			}),
+			observation({
+				selectionId: junction.id,
+				representedRowKey: 'room:room-a:wall:w1:junction:j1'
+			})
+		);
+		expect(decision).toEqual({
+			kind: 'reveal',
+			disclose: [],
+			scrollTo: 'room:room-a:wall:w1:junction:j1'
+		});
+	});
+
+	it('replaces the pending reveal on rapid selection changes, one decision per cycle', () => {
+		const first = wallEntityKey('w1');
+		const second = wallEntityKey('w2');
+		const firstRepresentation = representationOf({ kind: 'walls' }, first);
+		const secondRepresentation = representationOf({ kind: 'walls' }, second);
+		const afterFirst = evaluateHierarchyReveal(
+			observation({ selectionId: null }),
+			observation({ selectionId: first.id, ...firstRepresentation })
+		);
+		const afterSecond = evaluateHierarchyReveal(
+			observation({ selectionId: first.id, ...firstRepresentation }),
+			observation({ selectionId: second.id, ...secondRepresentation })
+		);
+		expect(afterFirst).toEqual({
+			kind: 'reveal',
+			disclose: [],
+			scrollTo: firstRepresentation.representedRowKey
+		});
+		expect(afterSecond).toEqual({
+			kind: 'reveal',
+			disclose: [],
+			scrollTo: secondRepresentation.representedRowKey
+		});
+	});
+
+	it('is deterministic and never mutates its observations', () => {
+		const previous = observation({ selectionId: null });
+		const current = observation({
+			selectionId: wallEntityKey('w2').id,
+			representedRowKey: 'walls:wall:w2',
+			ancestorDisclosureKeys: []
+		});
+		const before = JSON.stringify({ previous, current });
+		expect(evaluateHierarchyReveal(previous, current)).toEqual(
+			evaluateHierarchyReveal(previous, current)
+		);
+		expect(JSON.stringify({ previous, current })).toBe(before);
+	});
+
+	it('labels every entity with its canonical row label, never an ordinal scheme', () => {
+		const index = fixtureIndex();
+		expect(hierarchyEntityLabel(index, roomEntityKey('room-a'))).toBe('Gallery A');
+		expect(hierarchyEntityLabel(index, wallEntityKey('w2'))).toBe('W2');
+		expect(hierarchyEntityLabel(index, openingEntityKey('w2', 'op-win-2'))).toBe('Op Win 2');
+		expect(hierarchyEntityLabel(index, junctionEntityKey('j1'))).toBe('J1');
+		expect(hierarchyEntityLabel(index, layoutObjectEntityKey('object-1'))).toBe('Object 1');
+		expect(hierarchyEntityLabel(index, sceneClusterEntityKey('cluster-1'))).toBe('Statue Group');
+		expect(hierarchyEntityLabel(index, sceneEntityKey('entity-b1'))).toBe('Grand Piano');
+		for (const entity of [
+			roomEntityKey('room-a'),
+			wallEntityKey('w2'),
+			openingEntityKey('w2', 'op-win-2'),
+			junctionEntityKey('j1'),
+			layoutObjectEntityKey('object-1'),
+			sceneClusterEntityKey('cluster-1'),
+			sceneEntityKey('entity-b1')
+		]) {
+			expect(hierarchyEntityLabel(index, entity)).not.toMatch(/^(W|J|D)\d{2,}$/);
+		}
+	});
+
+	it('names every canonical home consistently with the root inventory', () => {
+		const index = fixtureIndex();
+		const homes: [HierarchyEntityKey, string][] = [
+			[roomEntityKey('room-a'), 'Rooms'],
+			[wallEntityKey('w2'), 'Walls'],
+			[openingEntityKey('w2', 'op-win-2'), 'Walls'],
+			[junctionEntityKey('j1'), 'Junctions'],
+			[layoutObjectEntityKey('object-1'), 'Layout Objects'],
+			[sceneClusterEntityKey('cluster-1'), 'Scene Content'],
+			[sceneEntityKey('entity-b1'), 'Scene Content']
+		];
+		for (const [entity, label] of homes) {
+			const home = canonicalHierarchyHome(index, entity);
+			expect(home, `missing home for ${entity.id}`).not.toBeNull();
+			expect(hierarchyHomeLabel(home!)).toBe(label);
 		}
 	});
 });

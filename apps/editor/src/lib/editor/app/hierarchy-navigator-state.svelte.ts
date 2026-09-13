@@ -36,6 +36,7 @@ import type {
 	HierarchyPage,
 	HierarchyProjectedRow,
 	HierarchyRevealTarget,
+	HierarchyTransitionKind,
 	OpeningFilter,
 	WallFilter
 } from '../hierarchy/hierarchy-page-projection';
@@ -44,7 +45,9 @@ import type { HierarchyEntityKey } from '../hierarchy/hierarchy-source-index';
 /** Context key so hierarchy children read the one Navigator instance. */
 export const HIERARCHY_NAVIGATOR_KEY = Symbol('hierarchy-navigator');
 
-export type HierarchyTransitionKind = 'ordinary-entry' | 'history-restore' | 'show-in';
+// The transition vocabulary is owned by the pure reveal model, so the store and
+// `evaluateHierarchyReveal` can never drift apart. Re-exported for consumers.
+export type { HierarchyTransitionKind };
 
 export type HierarchyTransitionIntent = {
 	/** Monotonic across the store's lifetime; the renderer handles each once. */
@@ -110,6 +113,12 @@ export class HierarchyNavigatorStore {
 		page: { kind: 'root' },
 		target: null
 	});
+	/**
+	 * Monotonic count of **user** disclosure gestures. `revealDisclosure` must not
+	 * bump it: the reveal effect reads it to tell a deliberate expand (scroll
+	 * only) from its own auto-disclosure (which owes no further scroll).
+	 */
+	disclosureRevision = $state(0);
 
 	#revision = 0;
 
@@ -179,6 +188,9 @@ export class HierarchyNavigatorStore {
 			? this.current.disclosure.filter((key) => key !== disclosureKey)
 			: [...this.current.disclosure, disclosureKey];
 		this.current = { ...this.current, disclosure };
+		// An explicit user gesture: the renderer may scroll to a selection it just
+		// rendered, but it must never expand anything on its own here.
+		this.disclosureRevision += 1;
 	}
 
 	/** Auto-disclosure for a represented selection: union only, in place. */

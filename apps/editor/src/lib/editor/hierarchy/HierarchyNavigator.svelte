@@ -7,6 +7,7 @@
 	// `HierarchyNavigatorStore`. Row activation calls the existing canonical
 	// selection writers and nothing else — opening a page never selects, and
 	// selecting never navigates.
+	import { tick, untrack } from 'svelte';
 	import { EllipsisVertical, Eye, EyeOff, Scan, Trash2 } from 'lucide-svelte';
 	import type { SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from '../editor-outliner';
@@ -36,9 +37,16 @@
 	import {
 		activeSelectionToHierarchyEntity,
 		buildHierarchyPageProjection,
+		canonicalHierarchyHome,
+		evaluateHierarchyReveal,
+		explainHierarchyExclusion,
+		findHierarchyRepresentation,
+		hierarchyEntityLabel,
+		hierarchyHomeLabel,
 		type HierarchyDestination,
 		type HierarchyPage,
-		type HierarchyProjectedRow
+		type HierarchyProjectedRow,
+		type HierarchyRevealObservation
 	} from './hierarchy-page-projection';
 	import { buildHierarchySourceIndex, type HierarchyEntityKey } from './hierarchy-source-index';
 	import HierarchyRow from './HierarchyRow.svelte';
@@ -91,8 +99,54 @@
 		new Map(store.document.entities.map((entity) => [entity.id, entity]))
 	);
 
+	// ── representation, pinned strip and reveal (slice 5) ────────────────
+
+	// The calm/default projection for the active page, so an active filter can be
+	// told apart from the page itself never containing the entity.
+	const baseProjection = $derived(buildHierarchyPageProjection(index, entry.page));
+	const activeRepresentation = $derived(
+		activeEntity ? findHierarchyRepresentation(projection, activeEntity) : null
+	);
+
+	// Neutral bottom-pinned strip: derived, never stored, never a second selection.
+	// Rows under collapsed ancestors and rows outside the viewport are
+	// represented, so only projection absence pins (plan §Reason priority).
+	const pinned = $derived.by(() => {
+		const entity = activeEntity;
+		if (!entity || activeRepresentation) return null;
+		const reason = explainHierarchyExclusion({
+			page: entry.page,
+			current: projection,
+			base: baseProjection,
+			entity,
+			queryActive: entry.query.trim().length > 0,
+			roomName:
+				entry.page.kind === 'room'
+					? index.roomById.get(entry.page.roomId)?.name
+					: undefined
+		});
+		if (!reason) return null;
+		const home = canonicalHierarchyHome(index, entity);
+		if (!home) return null;
+		return {
+			entity,
+			label: hierarchyEntityLabel(index, entity),
+			reason,
+			home,
+			homeLabel: hierarchyHomeLabel(home)
+		};
+	});
+
 	let openMenuFor = $state<string | null>(null);
 	let scrollElement = $state<HTMLElement | null>(null);
+	// Non-reactive scheduling state: one pending scroll per cycle, replaced by a
+	// newer reveal and applied after the disclosure render has produced the row.
+	let pendingScroll: { rowKey: string } | { top: number } | null = null;
+	let revealObservation: HierarchyRevealObservation | null = null;
+	// Was the selected row actually rendered last cycle? A manual disclosure
+	// gesture may scroll only when it newly produced that row (DOM knowledge the
+	// pure reveal model deliberately does not have).
+	let renderedSelectionRowKey: string | null = null;
 
 	// ── page validity / reconciliation ───────────────────────────────────
 
@@ -105,6 +159,100 @@
 	$effect(() => {
 		navigator.reconcile({ isPageValid: pageValid });
 	});
+
+	// ── reveal / scroll ownership (slice 5) ──────────────────────────────
+
+	/** The exact row element for a canonical row key, if it is rendered now. */
+	function findRenderedRow(rowKey: string): HTMLElement | null {
+		if (!scrollElement) return null;
+		for (const element of scrollElement.querySelectorAll<HTMLElement>('[data-row-key]')) {
+			if (element.dataset.rowKey === rowKey) return element;
+		}
+		return null;
+	}
+
+	/**
+	 * Apply after the disclosure render: `tick()` waits for the state change,
+	 * and one animation frame guards against a paint still in flight. A row that
+	 * is still not rendered (for example a collapse) simply does not scroll.
+	 */
+	function scheduleScroll(next: { rowKey: string } | { top: number }): void {
+		pendingScroll = next;
+		const scheduled = next;
+		void tick().then(() => {
+			requestAnimationFrame(() => {
+				if (pendingScroll !== scheduled) return;
+				pendingScroll = null;
+				if (!scrollElement) return;
+				if ('top' in scheduled) {
+					scrollElement.scrollTop = scheduled.top;
+					return;
+				}
+				findRenderedRow(scheduled.rowKey)?.scrollIntoView({ block: 'nearest' });
+			});
+		});
+	}
+
+	/**
+	 * Event/cause-aware reveal. The decision is pure (slice-1 model); this effect
+	 * only performs the side effects: disclose, then scroll. It never writes page
+	 * history or canonical selection, and it never scrolls on ordinary entry or
+	 * a Back restoration - those restore the entry's own saved scroll instead.
+	 */
+	$effect(() => {
+		const observation: HierarchyRevealObservation = {
+			transitionRevision: navigator.transition.revision,
+			transitionKind: navigator.transition.kind,
+			targetRowKey: navigator.transition.target?.rowKey ?? null,
+			selectionId: activeEntity?.id ?? null,
+			representedRowKey: activeRepresentation?.rowKey ?? null,
+			ancestorDisclosureKeys: activeRepresentation?.ancestorDisclosureKeys ?? [],
+			userDisclosureRevision: navigator.disclosureRevision
+		};
+		const previous = revealObservation;
+		revealObservation = observation;
+		// First render is an ordinary entry: highlight only, never scroll.
+		if (!previous) {
+			renderedSelectionRowKey = findRenderedRow(observation.representedRowKey ?? '')
+				? observation.representedRowKey
+				: null;
+			return;
+		}
+		const decision = evaluateHierarchyReveal(previous, observation);
+		switch (decision.kind) {
+			case 'reveal':
+				if (decision.disclose.length > 0) navigator.revealDisclosure(decision.disclose);
+				scheduleScroll({ rowKey: decision.scrollTo });
+				break;
+			case 'scroll': {
+				// Scroll only when this gesture actually produced the selected row.
+				const rowKey = observation.representedRowKey;
+				if (
+					rowKey !== null &&
+					renderedSelectionRowKey !== rowKey &&
+					findRenderedRow(rowKey) !== null
+				) {
+					scheduleScroll({ rowKey });
+				}
+				break;
+			}
+			case 'restore-scroll':
+				// Back/history-restore and ordinary entry put the viewport back where
+				// the entry says; the restored scroll wins over any selection reveal.
+				scheduleScroll({ top: untrack(() => navigator.current.scrollTop) });
+				break;
+			default:
+				break;
+		}
+		const rowKey = observation.representedRowKey;
+		renderedSelectionRowKey =
+			rowKey !== null && findRenderedRow(rowKey) !== null ? rowKey : null;
+	});
+
+	/** Scroll capture: the entry owns the offset, never a separate scroll store. */
+	function captureScroll(): void {
+		if (scrollElement) navigator.setScrollTop(scrollElement.scrollTop);
+	}
 
 	const pageLabel = $derived.by(() => {
 		switch (entry.page.kind) {
@@ -316,7 +464,7 @@
 		{/if}
 	{/snippet}
 
-	<div class="tree-scroll" bind:this={scrollElement}>
+	<div class="tree-scroll" bind:this={scrollElement} onscroll={captureScroll}>
 		{#if projection.rows.length === 0}
 			<p class="empty">{emptyMessage}</p>
 		{:else}
@@ -339,6 +487,24 @@
 			</ul>
 		{/if}
 	</div>
+
+	{#if pinned}
+		<!-- Neutral, in-place pinned selection: no icon, colour or animation. -->
+		<div class="hierarchy-pin" role="status">
+			<span class="hierarchy-pin__text">
+				<span class="hierarchy-pin__title" title={pinned.entity.id}>
+					Selected {pinned.label}
+				</span>
+				<span class="hierarchy-pin__reason">{pinned.reason.text}</span>
+			</span>
+			<button
+				type="button"
+				class="hierarchy-pin__action"
+				title={`Show ${pinned.label} in ${pinned.homeLabel}`}
+				onclick={() => navigator.showIn(pinned.home)}
+			>Show in {pinned.homeLabel} ›</button>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -393,6 +559,55 @@
 		overscroll-behavior: contain;
 	}
 	.tree-page { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
+	.empty {
+		margin: 0.5rem 0.45rem;
+		color: var(--editor-text-muted);
+		font-size: 0.7rem;
+		line-height: 1.4;
+	}
+	.hierarchy-pin {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.4rem;
+		padding: 0.34rem 0.45rem;
+		border-top: 1px solid var(--editor-border-subtle);
+		background: var(--editor-bg-panel);
+	}
+	.hierarchy-pin__text { display: flex; min-width: 0; flex-direction: column; }
+	.hierarchy-pin__title {
+		min-width: 0;
+		overflow: hidden;
+		color: var(--editor-text-secondary);
+		font-size: 0.68rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hierarchy-pin__reason {
+		min-width: 0;
+		overflow: hidden;
+		color: var(--editor-text-muted);
+		font-size: 0.62rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hierarchy-pin__action {
+		flex: 0 0 auto;
+		padding: 0.2rem 0.4rem;
+		border: 1px solid var(--editor-border-normal);
+		border-radius: 0.24rem;
+		background: transparent;
+		color: var(--editor-text-secondary);
+		font: inherit;
+		font-size: 0.64rem;
+		cursor: pointer;
+	}
+	.hierarchy-pin__action:hover {
+		border-color: var(--editor-accent-border);
+		background: var(--editor-bg-selected);
+		color: var(--editor-text-primary);
+	}
 	:global(.hierarchy-node) { display: flex; min-width: 0; flex-direction: column; gap: 0.1rem; }
 	:global(.hierarchy-heading) {
 		margin: 0.35rem 0.45rem 0.05rem;

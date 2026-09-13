@@ -957,3 +957,162 @@ export function activeSelectionToHierarchyEntity(
 	}
 	return null;
 }
+
+/**
+ * Display reference for one entity, byte-identical to the label its canonical row
+ * uses (`formatPlacementLabel(id)`, or the authored Room/cluster/entity name).
+ * Never an invented ordinal (gate 1).
+ */
+export function hierarchyEntityLabel(
+	index: HierarchySourceIndex,
+	entity: HierarchyEntityKey
+): string {
+	switch (entity.kind) {
+		case 'room':
+			return index.roomById.get(entity.roomId)?.name ?? formatPlacementLabel(entity.roomId);
+		case 'wall':
+			return formatPlacementLabel(entity.wallId);
+		case 'opening':
+			return formatPlacementLabel(entity.openingId);
+		case 'junction':
+			return formatPlacementLabel(entity.junctionId);
+		case 'object':
+			return formatPlacementLabel(entity.objectId);
+		case 'cluster':
+			return (
+				index.sceneClusterById.get(entity.clusterId)?.name ?? formatPlacementLabel(entity.clusterId)
+			);
+		case 'entity':
+			return (
+				index.sceneEntityById.get(entity.entityId)?.name ?? formatPlacementLabel(entity.entityId)
+			);
+	}
+}
+
+/** The human name of a canonical `Show in…` home (`Walls`, `Junctions`, …). */
+export function hierarchyHomeLabel(home: HierarchyDestination): string {
+	switch (home.page.kind) {
+		case 'rooms':
+			return 'Rooms';
+		case 'walls':
+			return 'Walls';
+		case 'junctions':
+			return 'Junctions';
+		case 'layoutObjects':
+			return 'Layout Objects';
+		case 'sceneContent':
+			return 'Scene Content';
+		default:
+			return 'Hierarchy';
+	}
+}
+
+/** Page entries the renderer distinguishes for reveal purposes (plan §History). */
+export type HierarchyTransitionKind = 'ordinary-entry' | 'history-restore' | 'show-in';
+
+/**
+ * One render cycle's reveal inputs, in the exact order selection, page and
+ * disclosure last changed. The renderer keeps the previous observation and asks
+ * `evaluateHierarchyReveal` what (if anything) this cycle owes the user.
+ *
+ * `userDisclosureRevision` counts **user** disclosure gestures only; automatic
+ * `revealDisclosure` writes must not bump it, or the reveal would re-trigger
+ * itself.
+ */
+export type HierarchyRevealObservation = {
+	transitionRevision: number;
+	transitionKind: HierarchyTransitionKind;
+	/** Exact canonical row of an explicit `Show in…`, else null. */
+	targetRowKey: string | null;
+	/** Canonical selected entity id, or null when nothing is selected. */
+	selectionId: string | null;
+	/** Exact active-page representation row key, or null when excluded. */
+	representedRowKey: string | null;
+	/** Ancestors the representation needs before its row exists. */
+	ancestorDisclosureKeys: readonly string[];
+	/** Monotonic count of user disclosure gestures. */
+	userDisclosureRevision: number;
+};
+
+/**
+ * What one reveal cycle should do. `restore-scroll` is deliberately distinct
+ * from `none`: ordinary page entry and history restore put the viewport back to
+ * the entry's own saved scroll and never chase the pre-existing selection.
+ */
+export type HierarchyRevealDecision =
+	| { kind: 'none' }
+	| { kind: 'restore-scroll' }
+	| { kind: 'reveal'; disclose: string[]; scrollTo: string }
+	| { kind: 'scroll'; scrollTo: string };
+
+/**
+ * Pure, event/cause-aware reveal decision (plan §Representation, reveal, and
+ * pinned selection). Rows under collapsed ancestors and rows outside the
+ * viewport still count as represented, so only the projection decides.
+ *
+ * Reveal is scheduled for exactly four causes:
+ * 1. an explicit `show-in` transition carrying a canonical target;
+ * 2. a genuine canonical selection identity change that is represented;
+ * 3. a same-page excluded → represented transition for the unchanged selection;
+ * 4. a canonical edit that moved the selection to a different primary row.
+ *
+ * A user disclosure expansion scrolls only — it never re-expands anything — and
+ * ordinary page entry / history restore restore their own scroll instead.
+ */
+export function evaluateHierarchyReveal(
+	previous: HierarchyRevealObservation,
+	current: HierarchyRevealObservation
+): HierarchyRevealDecision {
+	// Page-entry event: the only reveal is an explicit Show in… target.
+	if (current.transitionRevision !== previous.transitionRevision) {
+		if (
+			current.transitionKind === 'show-in' &&
+			current.targetRowKey !== null &&
+			current.representedRowKey !== null
+		) {
+			return {
+				kind: 'reveal',
+				disclose: [...current.ancestorDisclosureKeys],
+				scrollTo: current.targetRowKey
+			};
+		}
+		return { kind: 'restore-scroll' };
+	}
+
+	// Manual disclosure gesture: scroll to the selection the user just rendered,
+	// and never auto-expand a sibling or an inventory.
+	if (
+		current.userDisclosureRevision !== previous.userDisclosureRevision &&
+		current.selectionId === previous.selectionId &&
+		current.representedRowKey !== null
+	) {
+		return { kind: 'scroll', scrollTo: current.representedRowKey };
+	}
+
+	if (current.selectionId === null) return { kind: 'none' };
+	if (current.representedRowKey === null) return { kind: 'none' };
+
+	// Genuine selection change that is represented on the active page.
+	if (current.selectionId !== previous.selectionId) {
+		return {
+			kind: 'reveal',
+			disclose: [...current.ancestorDisclosureKeys],
+			scrollTo: current.representedRowKey
+		};
+	}
+
+	// Same selection, newly (or differently) represented: Clear search/filter, or
+	// a canonical edit that changed its primary representation row.
+	if (
+		previous.representedRowKey === null ||
+		previous.representedRowKey !== current.representedRowKey
+	) {
+		return {
+			kind: 'reveal',
+			disclose: [...current.ancestorDisclosureKeys],
+			scrollTo: current.representedRowKey
+		};
+	}
+
+	return { kind: 'none' };
+}

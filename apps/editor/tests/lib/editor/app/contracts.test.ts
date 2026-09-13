@@ -1239,6 +1239,26 @@ describe('unified hierarchy contracts', () => {
 		expect(tree).toContain('layoutSelectionAncestorRoomId');
 	});
 
+	it('reveals canonical selections through the pure P23.6e Navigator decision, not the legacy target', () => {
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		const projection = readLibSource('editor/hierarchy/hierarchy-page-projection.ts');
+		// The canonical branch decides reveal from the pure event/cause model: exact
+		// representation row plus ancestor-only disclosure, never the legacy
+		// root-based target and never the filter-clear hint.
+		expect(projection).toContain('export function evaluateHierarchyReveal');
+		expect(navigator).toContain('evaluateHierarchyReveal');
+		expect(navigator).not.toContain('layoutSelectionRevealTarget');
+		expect(navigator).not.toContain('hiddenRevealTarget');
+		// Auto-disclosure changes the current UI entry; it must never push history or
+		// write canonical selection.
+		expect(navigator).toContain('navigator.revealDisclosure(');
+		expect(navigator).not.toContain('navigator.open(');
+		// The pinned strip is derived presentation with its canonical Show action.
+		expect(navigator).toContain('explainHierarchyExclusion');
+		expect(navigator).toContain('canonicalHierarchyHome');
+		expect(navigator).toContain('hierarchy-pin');
+	});
+
 	it('keeps the P23.6b format-gated roots empty for legacy documents', () => {
 		const model = readLibSource('editor/unified-project-tree-model.ts');
 		// The legacy branch must return empty canonical roots so legacy
