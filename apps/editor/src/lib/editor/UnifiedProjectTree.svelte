@@ -368,6 +368,17 @@
 	}
 
 	/**
+	 * P23.6b — the boundary relation on the row itself: walls are document-
+	 * global (D2, never grouped under rooms), so the room names a wall bounds
+	 * are shown as a relation to make the derived labels distinguishable.
+	 */
+	function wallBoundedRoomNames(wallId: string): string[] {
+		return model.wallFirstRooms
+			.filter((room) => room.wallIds.includes(wallId))
+			.map((room) => room.name);
+	}
+
+	/**
 	 * P23.6b Room rename guard — wall-first Room rows are interactive but
 	 * NEVER inherit the legacy rename: `updateLayoutRoomFields` resolves the
 	 * Room through `layout.floors`, which no wall-first document has. No
@@ -1087,8 +1098,12 @@
 									data-reveal-id={`architecture:${wall.wallId}`}
 									onclick={roomRowInteractive(wallRow) ? () => selectPhysicalWall(wall.wallId) : undefined}
 								>
-									<span class="tree-row__label" title={wall.wallId}>Wall · {formatPlacementLabel(wall.wallId)}</span>
+								<span class="tree-row__label" title={`${wall.wallId} · ${wall.role} · ${wall.height.toFixed(2)} m${wallBoundedRoomNames(wall.wallId).length > 0 ? ` — bounds ${wallBoundedRoomNames(wall.wallId).join(', ')}` : ' — bounds no room'}`}>Wall · {formatPlacementLabel(wall.wallId)}</span>
+								{#if wallBoundedRoomNames(wall.wallId).length > 0}
+									<span class="tree-row__meta" title={`Bounds ${wallBoundedRoomNames(wall.wallId).join(', ')} · ${wall.role} · ${wall.height.toFixed(2)} m`}>{wallBoundedRoomNames(wall.wallId).join(', ')}</span>
+								{:else}
 									<span class="tree-row__meta" title={`${wall.role} · ${wall.height.toFixed(2)} m`}>{wall.role} · {wall.height.toFixed(2)} m</span>
+								{/if}
 								</button>
 							</div>
 							{#if wallOpen}
