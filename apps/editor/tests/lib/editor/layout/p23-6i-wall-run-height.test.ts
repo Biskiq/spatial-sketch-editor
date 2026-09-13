@@ -376,6 +376,23 @@ describe('P23.6I continuous Wall-run height — every run-end path clears it', (
 		expect(authoredHeight(context, next)).toBe(WALL_AUTHORING_DEFAULT_HEIGHT);
 	});
 
+	it('preserves the run when an import is rejected (no document replacement)', () => {
+		// The shell only ends the run on *successful* replacement
+		// (`onLayoutReplaced` fires only when `importLayoutPreviewJson` returns
+		// true). A rejected paste must leave the in-flight run — including its
+		// height — untouched.
+		const context = makeStore(tallWallDocument());
+		beginWallChain(context.layoutInteraction, [0, 0]);
+		commitRunSegment(context, [0, 0], [3, 0]);
+		expect(context.layoutInteraction.wallChainRunHeight).toBe(4);
+		const before = liveDocument(context);
+
+		expect(importLayoutPreviewJson(context.layoutPreview, '{ not json')).toBe(false);
+		expect(context.layoutInteraction.wallChainRunHeight).toBe(4);
+		expect(context.layoutInteraction.wallChainStart).not.toBeNull();
+		expect(liveDocument(context)).toEqual(before);
+	});
+
 	it('survives a capture/restore round-trip (rejection retry)', () => {
 		const context = makeStore(tallWallDocument());
 		beginWallChain(context.layoutInteraction, [0, 0]);

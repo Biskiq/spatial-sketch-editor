@@ -18,7 +18,8 @@
 		confirmLayoutReplacement,
 		outlinerElement = $bindable(),
 		onAssetSelection,
-		onReset
+		onReset,
+		onLayoutReplaced
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -27,6 +28,13 @@
 		onAssetSelection?: (asset: Asset | undefined) => void;
 		/** fired after the sidebar "Reset empty" action; the shell clears the active selection. */
 		onReset?: () => void;
+		/**
+		 * P23.6I review — fired after the sidebar layout reset replaces the
+		 * document; the shell ends any in-flight Wall run so transient
+		 * `wallChainRunHeight` cannot cross documents. The relic wires this
+		 * like the main shell even though it has no Wall tool.
+		 */
+		onLayoutReplaced?: () => void;
 	} = $props();
 
 	function switchLeftPanel(panel: 'scene' | 'assets') {
@@ -37,6 +45,7 @@
 		if (confirmLayoutReplacement()) {
 			resetLayoutPreview(layoutPreview);
 			store.clearSharedHistory();
+			onLayoutReplaced?.();
 			onReset?.();
 		}
 	}
