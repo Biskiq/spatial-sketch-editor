@@ -150,6 +150,27 @@ describe('Plan menu models (P3.4 — post-P10 routing)', () => {
 		);
 	});
 
+	// P23.6b — a wall-first Room menu must expose NO rename command (never a
+	// dead Rename… with a no-op callback): the tree omits the action and the
+	// builder omits the item.
+	it('omits Rename entirely when no renameRoom action is provided (wall-first Room menu)', () => {
+		const deleteRoom = vi.fn();
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'room', roomId: 'room-wf' },
+			mutationBlockedReason: null,
+			actions: {
+				deleteRoom,
+				deleteOpening: vi.fn(),
+				deleteObject: vi.fn()
+			}
+		});
+		expect(items.map((item) => item.id)).toEqual(['delete-room']);
+		expect(items.map((item) => item.label)).not.toContain('Rename…');
+		// The surviving delete still works and is not separator-led.
+		items.find((item) => item.id === 'delete-room')!.run();
+		expect(deleteRoom).toHaveBeenCalledWith('room-wf');
+	});
+
 	it('opening targets offer Delete; object targets offer Delete', () => {
 		const actions = {
 			renameRoom: vi.fn(),

@@ -251,6 +251,19 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	const wallFirstLayout = $derived('formatVersion' in layoutDocument ? layoutDocument : null);
 	const isWallFirstLayout = $derived(wallFirstLayout !== null);
 	const layoutRooms = $derived('floors' in layoutDocument ? layoutDocument.floors.flatMap((floor) => floor.rooms) : []);
+	// P23.6b — room-name lookup that works for BOTH formats: a wall-first
+	// LayoutObject's explicit `roomId` is an Associated Room relation and must
+	// resolve its display name from the current-format Room collection, not
+	// degrade to "Unassigned".
+	const associatedRoomName = $derived.by(() => {
+		const roomId = selectedLayoutObject?.roomId;
+		if (!roomId) return null;
+		return (
+			layoutRooms.find((room) => room.id === roomId)?.name ??
+			wallFirstLayout?.rooms.find((room) => room.id === roomId)?.name ??
+			null
+		);
+	});
 	// P23.6b — the Inspector-local `precisionTarget` selected-entity authority
 	// is RETIRED: `layoutInteraction.selection` is the single "which entity is
 	// selected" source. `precisionFixedEndpoint`, `precisionRectangleAnchor`
@@ -1716,7 +1729,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<label>Radius (m)<input type="number" min="0.001" step="0.05" value={selectedLayoutObject.dimensions[0] / 2} disabled={arrangeMode} onchange={(event) => updateObjectMetric('radius', event)} /></label>
 						<label>Height (m)<input type="number" min="0.001" step="0.05" value={selectedLayoutObject.dimensions[1]} disabled={arrangeMode} onchange={(event) => updateObjectMetric('height', event)} /></label>
 					{/if}
-					<div class="object-room-meta"><span>Associated Room</span><strong>{layoutRooms.find((room) => room.id === selectedLayoutObject.roomId)?.name ?? 'Unassigned'} · {selectedLayoutObject.roomId ?? 'none'}</strong></div>
+					<div class="object-room-meta"><span>Associated Room</span><strong>{associatedRoomName ?? 'Unassigned'} · {selectedLayoutObject.roomId ?? 'none'}</strong></div>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 					{#if isWallFirstLayout}
 						<fieldset class="staging-transform-fields">

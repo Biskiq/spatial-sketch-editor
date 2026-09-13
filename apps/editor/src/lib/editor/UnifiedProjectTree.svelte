@@ -105,7 +105,15 @@
 	// rows stay reachable; the Camera Flow panel is left untouched.
 	let filterQuery = $state('');
 	const filterActive = $derived(filterQuery.trim() !== '');
-	const visibleModel = $derived(filterUnifiedProjectTreeModel(model, filterQuery));
+	// P23.6b — clustered Scene members are excluded from `sceneContent.entities`
+	// (no double render), so the filter resolves their display labels from the
+	// scene document via this pure lookup — a search for a member's visible
+	// name must find it inside its cluster.
+	const visibleModel = $derived(
+		filterUnifiedProjectTreeModel(model, filterQuery, (entityId) =>
+			sceneEntitiesById.get(entityId)?.name
+		)
+	);
 
 	let roomsOpen = $state(true);
 	let cameraTourOpen = $state(false);
@@ -114,6 +122,8 @@
 	// `Topology…` disclosure (D4 — no resting Junction clutter). Both are
 	// transient UI state, never project state.
 	let architectureOpen = $state(false);
+	// D1 — the Walls subgroup under Architecture (Topology… is its sibling).
+	let wallsOpen = $state(false);
 	let topologyOpen = $state(false);
 	let layoutObjectsOpen = $state(false);
 	let sceneContentOpen = $state(false);
@@ -219,23 +229,39 @@
 			return;
 		}
 		if (selection.domain === 'scene') {
-			roomsOpen = true;
+		// P23.6b — wall-first documents render Scene rows under the document-
+		// level Scene Content root (no Room nesting), so reveal opens that
+		// root and the containing cluster. Legacy keeps its Room-nested reveal.
+		if (model.wallFirstRooms.length > 0 || model.rooms.length === 0) {
+			sceneContentOpen = true;
 			const workspace = selection.selection;
 			if (workspace.kind === 'cluster') {
-				store.ensureRoomTreeExpanded(workspace.roomId);
 				store.ensureClusterTreeExpanded(workspace.clusterId);
 			} else if (workspace.kind === 'placement' && workspace.ids.length > 0) {
-				store.ensureRoomTreeExpanded(workspace.roomId);
-				// Viewport placement selections carry `clusterId: null`, so
-				// membership must be resolved from the document clusters —
-				// otherwise a picked member stays hidden inside its collapsed
-				// cluster ancestor.
 				const containingCluster = (store.document.clusters ?? []).find((cluster) =>
 					cluster.memberIds.some((memberId) => workspace.ids.includes(memberId))
 				);
 				if (containingCluster) store.ensureClusterTreeExpanded(containingCluster.id);
 			}
+			return;
 		}
+		roomsOpen = true;
+		const workspace = selection.selection;
+		if (workspace.kind === 'cluster') {
+			store.ensureRoomTreeExpanded(workspace.roomId);
+			store.ensureClusterTreeExpanded(workspace.clusterId);
+		} else if (workspace.kind === 'placement' && workspace.ids.length > 0) {
+			store.ensureRoomTreeExpanded(workspace.roomId);
+			// Viewport placement selections carry `clusterId: null`, so
+			// membership must be resolved from the document clusters —
+			// otherwise a picked member stays hidden inside its collapsed
+			// cluster ancestor.
+			const containingCluster = (store.document.clusters ?? []).find((cluster) =>
+				cluster.memberIds.some((memberId) => workspace.ids.includes(memberId))
+			);
+			if (containingCluster) store.ensureClusterTreeExpanded(containingCluster.id);
+		}
+	}
 	});
 
 	function rowSelected(row: UnifiedTreeRow): boolean {
@@ -283,20 +309,50 @@
 			: [...openWallIds, wallId];
 	}
 
+	/**
+	 * The exact DOM anchor for a reveal target — canonical keys, unique per
+	 * row (P23.6b review: an Opening row must scroll to the Opening, not its
+	 * host Wall; a Room row must have its own `rooms:` anchor).
+	 */
+	function revealAnchor(target: LayoutTreeRevealTarget): string {
+		switch (target.group) {
+			case 'rooms':
+				return `rooms:${target.roomId}`;
+			case 'architecture':
+				return 'openingId' in target
+					? `architecture:${target.wallId}:${target.openingId}`
+					: `architecture:${target.wallId}`;
+			case 'topology':
+				return `topology:${target.junctionId}`;
+			case 'layoutObjects':
+				return `layoutObjects:${target.objectId}`;
+			default:
+				return 'scene';
+		}
+	}
+
 	/** Expand the target's ancestors and scroll its row into view (no filter). */
 	function applyRevealTarget(target: LayoutTreeRevealTarget): void {
-		if ('openingId' in target) topologyOpen = false;
+		if ('openingId' in target) {
+			topologyOpen = false;
+			// The Opening's host Wall row must be expanded for the child row
+			// to exist in the DOM before the scroll.
+			if (!openWallIds.includes(target.wallId)) {
+				openWallIds = [...openWallIds, target.wallId];
+			}
+		}
 		switch (target.group) {
 			case 'rooms':
 				roomsOpen = true;
 				store.ensureRoomTreeExpanded(target.roomId);
 				break;
 			case 'architecture':
-				roomsOpen = true;
 				architectureOpen = true;
+				wallsOpen = true;
 				break;
 			case 'topology':
 				architectureOpen = true;
+				wallsOpen = true;
 				topologyOpen = true;
 				break;
 			case 'layoutObjects':
@@ -310,7 +366,7 @@
 		}
 		queueMicrotask(() => {
 			treeElement
-				?.querySelector(`[data-reveal-id="${target.group}:${'wallId' in target ? target.wallId : ''}${'roomId' in target ? target.roomId : ''}${'objectId' in target ? target.objectId : ''}${'junctionId' in target ? target.junctionId : ''}"]`)
+				?.querySelector(`[data-reveal-id="${revealAnchor(target)}"]`)
 				?.scrollIntoView({ block: 'nearest' });
 		});
 	}
@@ -382,8 +438,10 @@
 	 * P23.6b Room rename guard — wall-first Room rows are interactive but
 	 * NEVER inherit the legacy rename: `updateLayoutRoomFields` resolves the
 	 * Room through `layout.floors`, which no wall-first document has. No
-	 * wall-first Room metadata operation exists (P23.6 verified), so the
-	 * context menu for a canonical Room carries no rename command.
+	 * wall-first Room metadata operation exists (P23.6 verified), and
+	 * `deleteLayoutRoom` rejects wall-first documents outright, so the menu
+	 * OMITS rename entirely (no dead Rename command — the builder skips it
+	 * when no `renameRoom` action is passed) and carries no room delete.
 	 */
 	function onWallFirstRoomRowContextMenu(event: MouseEvent, roomId: string): void {
 		if (!contextMenu) return;
@@ -393,12 +451,10 @@
 			buildPlanLayoutContextMenuItems({
 				target: { kind: 'room', roomId },
 				mutationBlockedReason: treeMutationBlocked(),
-				// Rename is deliberately absent: the legacy renameRoom action
-				// routes into `updateLayoutRoomFields` (floors-only) and would
-				// fail/corrupt a canonical Room id.
+				// No `renameRoom` on purpose: passing a no-op would still
+				// expose a dead Rename… command, which the plan forbids.
 				actions: {
-					renameRoom: () => {},
-					deleteRoom,
+					deleteRoom: () => {},
 					deleteOpening: () => {},
 					deleteObject: () => {}
 				}
@@ -700,6 +756,7 @@
 									class="tree-row room-row"
 									class:tree-row--selected={rowSelected(wallFirstRoomRow)}
 									aria-disabled={!roomRowInteractive(wallFirstRoomRow)}
+									data-reveal-id={`rooms:${room.roomId}`}
 									title={`Canonical Room · ${room.wallIds.length} walls · ${room.openingIds.length} openings`}
 									onclick={roomRowInteractive(wallFirstRoomRow) ? () => selectRoom({ roomId: room.roomId, name: room.name, walls: [], openings: [], objects: [], clusters: [], entities: [] }) : undefined}
 									oncontextmenu={contextMenu ? (event) => onWallFirstRoomRowContextMenu(event, room.roomId) : undefined}
@@ -1073,6 +1130,20 @@
 				<span class="tree-row__meta">{model.architecture.walls.length}</span>
 			</button>
 			{#if architectureOpen}
+				<!-- D1 — Architecture → Walls → Wall → Opening. The Walls
+					subgroup keeps the wall list from being structural clutter
+					directly under the root; Topology… stays its sibling. -->
+				<button
+					type="button"
+					class="tree-row topology-toggle"
+					aria-expanded={wallsOpen}
+					onclick={() => (wallsOpen = !wallsOpen)}
+				>
+					<span class="chevron" class:open={wallsOpen}>›</span>
+					<span class="tree-row__label">Walls</span>
+					<span class="tree-row__meta">{model.architecture.walls.length}</span>
+				</button>
+				{#if wallsOpen}
 				<ul role="tree" aria-label="Architecture walls">
 					{#each visibleModel.architecture.walls as wall (wall.wallId)}
 						{@const wallRow = { kind: 'physicalWall', wallId: wall.wallId } satisfies UnifiedTreeRow}
@@ -1116,7 +1187,7 @@
 												class="tree-row opening-row"
 												class:tree-row--selected={rowSelected(openingRow)}
 												aria-disabled={!roomRowInteractive(openingRow)}
-												data-reveal-id={`architecture:${wall.wallId}`}
+												data-reveal-id={`architecture:${wall.wallId}:${opening.openingId}`}
 												onclick={roomRowInteractive(openingRow) ? () => selectHostedOpening(wall.wallId, opening.openingId) : undefined}
 											>
 												<span class="tree-row__label">{opening.kind === 'door' ? 'Door' : 'Window'}</span>
@@ -1129,6 +1200,7 @@
 						</li>
 					{/each}
 				</ul>
+				{/if}
 				<!-- D4 — Junctions stay behind the Topology disclosure; the
 					disclosed surface is canonical-selection navigation (the old
 					Architecture · exact inventory re-homed), never a second model. -->

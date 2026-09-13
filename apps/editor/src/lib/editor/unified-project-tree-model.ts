@@ -361,10 +361,19 @@ export function buildUnifiedProjectTreeModel(input: {
  * the model untouched. Camera rows are intentionally not modeled here (the
  * tree embeds `CameraFlowPanel`), so the camera-tour slot is carried through
  * unchanged.
+ *
+ * `resolveEntityName` is an optional pure lookup for Scene cluster members:
+ * the wall-first projection deliberately removes cluster members from
+ * `sceneContent.entities` (no double render), so without a resolver their
+ * display names are unreachable and a search for "Grand Piano" would miss a
+ * clustered member that shows exactly that label. The component passes its
+ * own `sceneEntitiesById` read; tests that build models standalone keep the
+ * id-only fallback.
  */
 export function filterUnifiedProjectTreeModel(
 	model: UnifiedProjectTreeModel,
-	query: string
+	query: string,
+	resolveEntityName: (entityId: string) => string | undefined = () => undefined
 ): UnifiedProjectTreeModel {
 	const needle = query.trim().toLowerCase();
 	if (!needle) return model;
@@ -451,12 +460,14 @@ export function filterUnifiedProjectTreeModel(
 	);
 
 	// Scene rows match name + id; a matched cluster keeps its matching members.
+	// Cluster members resolve their display label through `resolveEntityName`
+	// (see above) — the projection excludes them from `sceneContent.entities`.
 	const sceneClusters = model.sceneContent.clusters
 		.map((cluster) => ({
 			...cluster,
 			memberIds: cluster.memberIds.filter((memberId) =>
 				matches(
-					model.sceneContent.entities.find((entity) => entity.entityId === memberId)?.name,
+					resolveEntityName(memberId),
 					memberId
 				)
 			)
@@ -468,6 +479,9 @@ export function filterUnifiedProjectTreeModel(
 		matches(entity.name, entity.entityId)
 	);
 
+	// The Walls/Topology subgroup split is presentation IA (D1): the model
+	// carries the two row collections; the component renders the `Walls`
+	// disclosure and keeps `Topology…` as its sibling under Architecture.
 	return {
 		rooms,
 		wallFirstRooms,

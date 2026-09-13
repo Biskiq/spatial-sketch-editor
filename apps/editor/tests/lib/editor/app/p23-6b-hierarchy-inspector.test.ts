@@ -240,6 +240,23 @@ describe('P23.6b ownership projection', () => {
 		expect(model.sceneContent.entities).toEqual([]);
 	});
 
+	it('matches clustered Scene members by their display name via the resolver', () => {
+		// Review fix: members are excluded from sceneContent.entities (no
+		// double render), so without a resolver their visible label is
+		// unreachable and "Piano" would find nothing.
+		const model = buildWallFirstModel();
+		const named = (id: string) => (id === 'entity-1' ? 'Grand Piano' : undefined);
+
+		const byDisplayName = filterUnifiedProjectTreeModel(model, 'grand piano', named);
+		expect(byDisplayName.sceneContent.clusters).toEqual([
+			{ clusterId: 'cluster-1', name: 'Statue', memberIds: ['entity-1'] }
+		]);
+		// Without a resolver the id-only fallback still applies.
+		expect(filterUnifiedProjectTreeModel(model, 'entity-1').sceneContent.clusters).toHaveLength(1);
+		// A non-matching query prunes the member and then the cluster.
+		expect(filterUnifiedProjectTreeModel(model, 'zzz', named).sceneContent.clusters).toEqual([]);
+	});
+
 	it('survives filtering through self or descendant terms', () => {
 		const model = buildWallFirstModel();
 		const byOpening = filterUnifiedProjectTreeModel(model, 'op-2');
@@ -409,6 +426,17 @@ describe('P23.6b source contracts', () => {
 		// legacy Room context-menu action bundle that carries it.
 		expect(block).not.toContain('updateLayoutRoomFields(layoutPreview');
 		expect(block).not.toContain('renameRoomViaPrompt(roomId');
+		// Review fix: the menu builder receives NO renameRoom action — a no-op
+		// dummy would still expose a dead Rename… command, which the plan
+		// forbids ("no legacy renameRoom action / context-menu command").
+		expect(block).not.toContain('renameRoom:');
+	});
+
+	it('omits the Rename item when the menu builder gets no renameRoom action', () => {
+		const menu = readLibSource('editor/context-menu/plan-menu-items.ts');
+		// The builder skips the item entirely (never a disabled no-op) when the
+		// caller cannot honor it — pinned behaviorally in context-menu.test.ts.
+		expect(menu).toContain('if (input.actions.renameRoom) {');
 	});
 
 	it('the Inspector presents no document-wide inventory (busy right rail retired)', () => {
@@ -473,10 +501,11 @@ describe('P23.6b source contracts', () => {
 		}
 	});
 
-	it('renders the Topology disclosure and document-level groups in the tree component', () => {
+	it('renders the Walls subgroup and Topology sibling under Architecture (D1)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
 		for (const fragment of [
 			'Architecture',
+			'Walls</span>',
 			'Topology…',
 			'Layout Objects',
 			'Scene Content',
@@ -485,5 +514,30 @@ describe('P23.6b source contracts', () => {
 		]) {
 			expect(tree, `tree misses ${fragment}`).toContain(fragment);
 		}
+		// The reveal effect opens the Walls subgroup with the Architecture root.
+		expect(tree).toContain('wallsOpen = true');
+	});
+
+	it('anchors reveal targets on unique per-row keys', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		// Review fix: wall-first Room rows carry their own rooms: anchor, and
+		// Opening rows are keyed wall:opening so an Opening reveal scrolls to
+		// the Opening row, not its host Wall.
+		expect(tree).toContain('data-reveal-id={`rooms:${room.roomId}`}');
+		expect(tree).toContain("data-reveal-id={`architecture:${wall.wallId}:${opening.openingId}`}");
+		expect(tree).toContain("data-reveal-id={`architecture:${wall.wallId}`}");
+		expect(tree).toContain("data-reveal-id={`topology:${junction.junctionId}`}");
+		// The selector builder maps targets to exactly these keys.
+		expect(tree).toContain("return `rooms:${target.roomId}`;");
+		expect(tree).toContain("`architecture:${target.wallId}:${target.openingId}`");
+	});
+
+	it('reveals wall-first Scene selections through the Scene Content root', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		// Review fix: wall-first Scene rows moved from Room-nested to the
+		// document-level Scene Content root, so their reveal must open that
+		// root (the legacy branch keeps its Room expansion).
+		expect(tree).toContain('sceneContentOpen = true;');
+		expect(tree).toContain('if (model.wallFirstRooms.length > 0 || model.rooms.length === 0) {');
 	});
 });

@@ -20,7 +20,14 @@ export type PlanLayoutTarget =
 	| { kind: 'object'; objectId: string };
 
 export type PlanLayoutMenuActions = {
-	renameRoom(roomId: string): void;
+	/**
+	 * Legacy-Room rename only: it routes into `updateLayoutRoomFields`, which
+	 * resolves the Room through `layout.floors`. Optional so a caller can
+	 * omit it entirely — P23.6b requires a wall-first Room menu to expose NO
+	 * rename command (never a no-op dummy), since no canonical Room metadata
+	 * operation exists.
+	 */
+	renameRoom?(roomId: string): void;
 	deleteRoom(roomId: string): void;
 	deleteOpening(roomId: string, openingId: string): void;
 	deleteObject(objectId: string): void;
@@ -34,22 +41,27 @@ export function buildPlanLayoutContextMenuItems(input: {
 	const { target } = input;
 	const deleteDisabled = input.mutationBlockedReason;
 	if (target.kind === 'room') {
-		return [
-			{
+		const items: ContextMenuItem[] = [];
+		// P23.6b — omit the command entirely when the caller cannot honor it:
+		// a wall-first Room menu must not expose Rename at all, so the tree
+		// passes no `renameRoom` instead of a dead callback.
+		if (input.actions.renameRoom) {
+			items.push({
 				id: 'rename-room',
 				label: 'Rename…',
 				disabledReason: input.mutationBlockedReason,
-				run: () => input.actions.renameRoom(target.roomId)
-			},
-			{
-				id: 'delete-room',
-				label: 'Delete room',
-				danger: true,
-				separatorBefore: true,
-				disabledReason: deleteDisabled,
-				run: () => input.actions.deleteRoom(target.roomId)
-			}
-		];
+				run: () => input.actions.renameRoom!(target.roomId)
+			});
+		}
+		items.push({
+			id: 'delete-room',
+			label: 'Delete room',
+			danger: true,
+			separatorBefore: items.length > 0,
+			disabledReason: deleteDisabled,
+			run: () => input.actions.deleteRoom(target.roomId)
+		});
+		return items;
 	}
 	if (target.kind === 'opening') {
 		return [
