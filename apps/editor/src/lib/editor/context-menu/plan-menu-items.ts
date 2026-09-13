@@ -39,6 +39,13 @@ export type PlanLayoutMenuActions = {
 	 * for those rows entirely (native behavior) rather than show one.
 	 */
 	deleteRoom?(roomId: string): void;
+	/**
+	 * P23.6d — canonical wall-first Room removal (the guard-railed
+	 * `planRemoveRoom` adapter). Optional and omit-don't-dummy: a caller that
+	 * cannot honor it (or a Room with no Room-exclusive boundary Wall) passes
+	 * nothing and gets no item at all.
+	 */
+	removeRoom?(roomId: string): void;
 	deleteOpening(roomId: string, openingId: string): void;
 	/**
 	 * P23.6c — canonical Wall delete (the planner-backed adapter). Optional so
@@ -83,6 +90,19 @@ export function buildPlanLayoutContextMenuItems(input: {
 				separatorBefore: items.length > 0,
 				disabledReason: deleteDisabled,
 				run: () => input.actions.deleteRoom!(target.roomId)
+			});
+		}
+		// P23.6d — canonical wall-first Room removal. Same omit-don't-dummy
+		// policy as rename/delete: a wall-first Room row passes this only when a
+		// Room-exclusive boundary Wall is available to open the enclosure.
+		if (input.actions.removeRoom) {
+			items.push({
+				id: 'remove-room',
+				label: 'Remove room…',
+				danger: true,
+				separatorBefore: items.length > 0,
+				disabledReason: deleteDisabled,
+				run: () => input.actions.removeRoom!(target.roomId)
 			});
 		}
 		return items;

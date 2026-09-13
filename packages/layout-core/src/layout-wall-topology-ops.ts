@@ -80,7 +80,7 @@ function allocateId(taken: ReadonlySet<string>, seed: string): string {
 	return `${seed}.${index}`;
 }
 
-/** Why a canonical birth operation rejected; stable machine codes. */
+/** Why a canonical topology operation rejected; stable machine codes. */
 export type WallFirstOpRejectionCode =
 	| 'unknown_wall'
 	| 'invalid_role'
@@ -89,7 +89,14 @@ export type WallFirstOpRejectionCode =
 	| 'no_enclosed_face'
 	| 'room_reconciliation_rejected'
 	| 'invalid_candidate_document'
-	| 'candidate_does_not_compile';
+	| 'candidate_does_not_compile'
+	/* P23.6d — canonical Room lifecycle completion. */
+	| 'unknown_room'
+	| 'invalid_patch'
+	| 'invalid_value'
+	| 'wall_not_in_room_boundary'
+	| 'wall_not_exclusive'
+	| 'ambiguous_room_removal';
 
 export type WallFirstOpRejection = {
 	code: WallFirstOpRejectionCode;
@@ -566,6 +573,203 @@ export function planDeleteWall(
 		lineage,
 		retiredRoomIds
 	}));
+}
+
+/**
+ * P23.6d — canonical Room metadata update (name, floor/ceiling thickness).
+ *
+ * Metadata is **not** topology: no face extraction, no P23.8 reconciliation.
+ * The candidate rewrites only the Room's own authored fields and runs the same
+ * final canonical validation + compile gate every planner uses, so a metadata
+ * edit can never smuggle in a boundary/topology change.
+ *
+ * - `boundary` is correspondence-owned and **not patchable** — a patch that
+ *   carries it (or any unrecognized/legacy field) rejects `invalid_patch`;
+ * - `name` is trimmed and must be non-empty (duplicate names are legal — `id`
+ *   is identity, mirroring legacy behavior);
+ * - `floorThickness`/`ceilingThickness` use the existing canonical numeric
+ *   rule only (strictly positive finite — exactly what the wall-first codec
+ *   requires), with no invented tolerance or range;
+ * - a patch that changes nothing rejects `no_op`, so callers write zero
+ *   history.
+ */
+export type RoomMetadataPatch = {
+	name?: string;
+	floorThickness?: number;
+	ceilingThickness?: number;
+};
+
+export function planRoomMetadataUpdate(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	patch: RoomMetadataPatch
+): WallFirstOpPlan {
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (!room) {
+		return reject({
+			code: 'unknown_room',
+			message: `Unknown room '${roomId}'`,
+			roomIds: [roomId]
+		});
+	}
+	if (patch === null || typeof patch !== 'object' || Array.isArray(patch)) {
+		return reject({
+			code: 'invalid_patch',
+			message: 'Room metadata patch must be an object',
+			roomIds: [roomId]
+		});
+	}
+	const allowedKeys = new Set(['name', 'floorThickness', 'ceilingThickness']);
+	const unknownKeys = Object.keys(patch).filter((key) => !allowedKeys.has(key));
+	if (unknownKeys.length > 0) {
+		return reject({
+			code: 'invalid_patch',
+			message: `Room metadata patch cannot change ${unknownKeys.join(', ')}; the boundary is correspondence-owned`,
+			roomIds: [roomId]
+		});
+	}
+
+	const nextRoom: LayoutWallFirstRoom = { ...room, boundary: room.boundary.map((ref) => ({ ...ref })) };
+	if (patch.name !== undefined) {
+		if (typeof patch.name !== 'string' || patch.name.trim().length === 0) {
+			return reject({
+				code: 'invalid_value',
+				message: 'Room name cannot be empty',
+				roomIds: [roomId]
+			});
+		}
+		nextRoom.name = patch.name.trim();
+	}
+	for (const field of ['floorThickness', 'ceilingThickness'] as const) {
+		const value = patch[field];
+		if (value === undefined) continue;
+		if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+			return reject({
+				code: 'invalid_value',
+				message: `Room ${field} must be a finite number greater than zero`,
+				roomIds: [roomId]
+			});
+		}
+		nextRoom[field] = value;
+	}
+	if (
+		nextRoom.name === room.name &&
+		nextRoom.floorThickness === room.floorThickness &&
+		nextRoom.ceilingThickness === room.ceilingThickness
+	) {
+		return reject({
+			code: 'no_op',
+			message: `Room '${roomId}' already has those values`,
+			roomIds: [roomId]
+		});
+	}
+
+	const candidate: LayoutDocumentWallFirst = {
+		...document,
+		rooms: document.rooms.map((entry) => (entry.id === roomId ? nextRoom : entry))
+	};
+	return validateAndCompile(candidate, reject, (committed) => ({
+		kind: 'success',
+		document: committed,
+		lineage: [],
+		retiredRoomIds: []
+	}));
+}
+
+/**
+ * P23.6d — boundary Walls a Room removal could open: the Room's own boundary
+ * Walls that reference **no other** Room (exclusive per the baseline
+ * document's `rooms[].boundary` references, never geometry). Returned in the
+ * Room's boundary order, deduplicated. Surface callers (Inspector wall list,
+ * hierarchy menu) use this same predicate the planner guards with.
+ */
+export function roomExclusiveBoundaryWallIds(
+	document: LayoutDocumentWallFirst,
+	roomId: string
+): string[] {
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (!room) return [];
+	const boundaryWallIds = new Set(room.boundary.map((ref) => ref.wallId));
+	const sharedWallIds = new Set<string>();
+	for (const other of document.rooms) {
+		if (other.id === roomId) continue;
+		for (const ref of other.boundary) {
+			if (boundaryWallIds.has(ref.wallId)) sharedWallIds.add(ref.wallId);
+		}
+	}
+	return [...boundaryWallIds].filter((wallId) => !sharedWallIds.has(wallId));
+}
+
+/**
+ * P23.6d — guard-railed "Remove Room" over the P23.6c Wall pipeline.
+ *
+ * "Remove Room" means **open the enclosure** — never a `LayoutRoom` record
+ * splice (the Room-identity invariant forbids a boundary-less Room). This
+ * planner contributes only the intent guard; the demolition itself is
+ * `planDeleteWall` (called, not forked), so Wall deletion stays one authority:
+ *
+ * - `roomId` must exist (`unknown_room`);
+ * - the Room must have at least two boundary Walls (`ambiguous_room_removal`);
+ * - `wallId` must exist (`unknown_wall`) and bound this Room
+ *   (`wall_not_in_room_boundary`);
+ * - `wallId` must be exclusive — no other Room's boundary references it
+ *   (`wall_not_exclusive`), so a shared Wall is never demolished by accident.
+ *
+ * On success the Room retires through normal P23.8 reconciliation, hosted
+ * Openings of the chosen Wall go atomically, endpoint Junctions prune
+ * reference-only, and portal/object associations remap/clear per the existing
+ * contract. Downstream rejection codes are `planDeleteWall`'s unchanged.
+ */
+export function planRemoveRoom(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	wallId: string
+): WallFirstOpPlan {
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const room = document.rooms.find((candidate) => candidate.id === roomId);
+	if (!room) {
+		return reject({
+			code: 'unknown_room',
+			message: `Unknown room '${roomId}'`,
+			roomIds: [roomId]
+		});
+	}
+	if (room.boundary.length < 2) {
+		return reject({
+			code: 'ambiguous_room_removal',
+			message: `Room '${roomId}' has fewer than two boundary Walls; no Wall removal opens the enclosure`,
+			roomIds: [roomId]
+		});
+	}
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) {
+		return reject({
+			code: 'unknown_wall',
+			message: `Unknown wall '${wallId}'`,
+			wallIds: [wallId]
+		});
+	}
+	if (!room.boundary.some((ref) => ref.wallId === wallId)) {
+		return reject({
+			code: 'wall_not_in_room_boundary',
+			message: `Wall '${wallId}' does not bound room '${roomId}'`,
+			wallIds: [wallId],
+			roomIds: [roomId]
+		});
+	}
+	const shared = document.rooms.some(
+		(other) => other.id !== roomId && other.boundary.some((ref) => ref.wallId === wallId)
+	);
+	if (shared) {
+		return reject({
+			code: 'wall_not_exclusive',
+			message: `Wall '${wallId}' is shared with a neighbouring room; remove a Wall that bounds this room alone`,
+			wallIds: [wallId],
+			roomIds: [roomId]
+		});
+	}
+	return planDeleteWall(document, wallId);
 }
 
 /**

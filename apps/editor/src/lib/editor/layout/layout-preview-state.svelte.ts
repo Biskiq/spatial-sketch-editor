@@ -40,8 +40,12 @@ import {
 } from '$lib/layout/layout-wall-first-precision';
 import {
 	planDeleteWall,
+	planRemoveRoom,
+	planRoomMetadataUpdate,
 	planWallRoleChange,
-	type LayoutWallRole as WallRoleChangeRole
+	roomExclusiveBoundaryWallIds,
+	type LayoutWallRole as WallRoleChangeRole,
+	type RoomMetadataPatch
 } from '$lib/layout/layout-wall-topology-ops';
 import type { NodingIdAllocator } from '$lib/layout/layout-wall-noding';
 import { planWallChain, planWallSegment, type LayoutWallRole as ChainWallRole } from '$lib/layout/layout-wall-chain';
@@ -1338,6 +1342,69 @@ export function deleteWallFirstWall(
 		return { success: false, message: plan.rejection.message };
 	}
 	return applyWallFirstDocumentPlan(state, plan.document, 'wall-delete');
+}
+
+/**
+ * P23.6d — canonical wall-first Room metadata update (name, floor/ceiling
+ * thickness) through the one planner. Metadata is not topology, so no face
+ * extraction runs; the candidate still passes the canonical validation +
+ * compile gate. One plan = one history entry at the caller. Rejections write
+ * nothing. Selection is preserved by the caller (the Room survives the edit).
+ */
+export function updateWallFirstRoomMetadata(
+	state: LayoutPreviewState,
+	roomId: string,
+	patch: RoomMetadataPatch
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planRoomMetadataUpdate(layout, roomId, patch);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'room-metadata');
+}
+
+/**
+ * P23.6d — guard-railed Room removal: the intent guard (`planRemoveRoom`)
+ * selects exactly one Room-exclusive boundary Wall and reuses the P23.6c
+ * `planDeleteWall` pipeline, so the Room retires through normal P23.8
+ * reconciliation and demolition stays one authority. One plan = one history
+ * entry; a rejection writes nothing. Post-removal selection is the callers'
+ * fixed policy (canonical selection becomes `none` — the Room is gone).
+ */
+export function removeWallFirstRoom(
+	state: LayoutPreviewState,
+	roomId: string,
+	wallId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planRemoveRoom(layout, roomId, wallId);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'room-remove');
+}
+
+/**
+ * P23.6d — the selected Room's exclusive boundary Walls (the walls a Room
+ * removal may open). Read-only surface query for the Inspector wall list and
+ * the hierarchy menu; `[]` when the document is not wall-first.
+ */
+export function wallFirstRoomExclusiveBoundaryWallIds(
+	state: LayoutPreviewState,
+	roomId: string
+): string[] {
+	const layout = layoutPreviewDocument(state);
+	if (!isWallFirstLayoutDocument(layout)) return [];
+	return roomExclusiveBoundaryWallIds(layout, roomId);
 }
 
 /**

@@ -78,6 +78,10 @@ export type PrecisionOperation =
 	| 'wall-role'
 	/** P23.6c — canonical Wall deletion (planner: `planDeleteWall`). */
 	| 'wall-delete'
+	/** P23.6d — canonical Room metadata update (planner: `planRoomMetadataUpdate`). */
+	| 'room-metadata'
+	/** P23.6d — guard-railed Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
+	| 'room-remove'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
 	| 'layout-object-transform'

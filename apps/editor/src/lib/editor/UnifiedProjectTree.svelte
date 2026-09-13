@@ -14,7 +14,7 @@
 	import { isSceneModelEntity, type SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from './editor-outliner';
 	import { layoutPreviewDocument, type LayoutPreviewState } from './layout/layout-preview-state.svelte';
-	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, deleteWallFirstWall, updateLayoutRoomFields } from './layout/layout-preview-state.svelte';
+	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, deleteWallFirstWall, removeWallFirstRoom, updateLayoutRoomFields, wallFirstRoomExclusiveBoundaryWallIds } from './layout/layout-preview-state.svelte';
 	import type { EditorContextMenuStore } from './context-menu/context-menu-state.svelte';
 	import { isEditableTarget } from './context-menu/editable-target';
 	import { resolveSelectionBeforeMenu } from './context-menu/selection-before-menu';
@@ -562,6 +562,59 @@
 		store.setStatusMessage(outcome.result.success ? 'Deleted wall' : outcome.result.message);
 	}
 
+	/**
+	 * P23.6d — canonical wall-first Room removal from the Architecture tree.
+	 * The SAME planner-backed adapter the Inspector calls (one history entry).
+	 * The Wall choice defaults to the first Room-exclusive boundary Wall in
+	 * boundary order — no geometry guessing; the Inspector exposes the full
+	 * wall list for an explicit pick. Success clears the canonical selection to
+	 * `none` (the Room retires).
+	 */
+	function removeRoomFromTree(roomId: string) {
+		const wallId = wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId)[0];
+		if (!wallId) {
+			store.setStatusMessage('Remove room needs a boundary Wall this room owns alone');
+			return;
+		}
+		const outcome = runLayoutMutationGuarded(
+			() => removeWallFirstRoom(layoutPreview, roomId, wallId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (outcome.result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(outcome.result.success ? 'Removed room' : outcome.result.message);
+	}
+
+	/**
+	 * P23.6d — wall-first Room row context menu. It obeys the SAME
+	 * row-authority contract as activation (`isUnifiedTreeRowInteractive`): an
+	 * inert row (Camera domain, Plan Arrange) opens no menu, so it can never
+	 * expose — let alone execute — canonical Room removal. It exposes only
+	 * commands a wall-first Room can honor (`Remove room…`, and only when a
+	 * Room-exclusive boundary Wall exists); never the legacy rename/delete.
+	 * With no eligible command it keeps native behavior (no empty menu).
+	 */
+	function onWallFirstRoomRowContextMenu(event: MouseEvent, roomId: string): void {
+		if (!contextMenu) return;
+		if (!roomRowInteractive({ kind: 'room', roomId })) return;
+		selectLayoutRoom(layoutInteraction, roomId);
+		const eligible = wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId).length > 0;
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'room', roomId },
+			mutationBlockedReason: treeMutationBlocked(),
+			actions: {
+				...(eligible ? { removeRoom: (targetRoomId: string) => removeRoomFromTree(targetRoomId) } : {}),
+				deleteOpening,
+				deleteObject
+			}
+		});
+		if (items.length === 0) return;
+		openTreeContextMenu(event, items);
+	}
+
 	function onWallRowContextMenu(event: MouseEvent, wallId: string): void {
 		if (!contextMenu) return;
 		const row = { kind: 'physicalWall', wallId } satisfies UnifiedTreeRow;
@@ -792,6 +845,7 @@
 									data-reveal-id={`rooms:${room.roomId}`}
 									title={`Canonical Room · ${room.wallIds.length} walls · ${room.openingIds.length} openings`}
 									onclick={roomRowInteractive(wallFirstRoomRow) ? () => selectRoom({ roomId: room.roomId, name: room.name, walls: [], openings: [], objects: [], clusters: [], entities: [] }) : undefined}
+									oncontextmenu={contextMenu ? (event) => onWallFirstRoomRowContextMenu(event, room.roomId) : undefined}
 								>
 									<span class="tree-row__label" title={room.name}>{room.name}</span>
 									<span class="tree-row__meta">{room.wallIds.length} walls</span>
