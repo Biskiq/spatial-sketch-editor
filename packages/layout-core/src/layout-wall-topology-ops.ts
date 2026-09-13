@@ -434,6 +434,130 @@ export function planWallRoleChange(
 }
 
 /**
+ * P23.6c — canonical Wall deletion through the canonical topology path.
+ *
+ * Deleting a physical Wall is a topology-changing operation, never a direct
+ * `walls` splice: the candidate graph (Wall removed, hosted Openings removed
+ * atomically, Junctions pruned only when no surviving Wall references them)
+ * runs face extraction + P23.8 correspondence reconciliation + the final
+ * canonical gates, exactly like the chain engine and the role change. The
+ * deterministic reconciliation result is accepted as-is — deletion is not
+ * intrinsically a "merge Rooms" command:
+ *
+ * - shared boundary Wall between two Rooms whose deletion yields one valid
+ *   enclosed face → the normal 2→1 merge path;
+ * - outer boundary Wall of an enclosed Room → the enclosure opens and the
+ *   affected Room retires through normal reconciliation;
+ * - roomless / partition Wall → clean removal with existing Room topology
+ *   and identities unchanged.
+ *
+ * Portal relations remap/clear per the existing P23.8 portal contract inside
+ * reconciliation (one vanished endpoint beside a surviving one rejects
+ * rather than guessing). Ambiguous or unsupported topology rejects atomically
+ * with zero history. One plan = one history entry at the caller. Post-delete
+ * selection is the caller's fixed policy (canonical selection becomes
+ * `none`); this planner owns document state only.
+ */
+export function planDeleteWall(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+): WallFirstOpPlan {
+	const reject = (rejection: WallFirstOpRejection): WallFirstOpPlan => ({ kind: 'rejected', rejection });
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) {
+		return reject({
+			code: 'unknown_wall',
+			message: `Unknown wall '${wallId}'`,
+			wallIds: [wallId]
+		});
+	}
+
+	// --- candidate graph ------------------------------------------------------
+	// Hosted Openings are the Wall's single-host records: they go away
+	// atomically with it (never orphaned, never re-hosted).
+	const candidate: LayoutDocumentWallFirst = {
+		...document,
+		walls: document.walls.filter((entry) => entry.id !== wallId),
+		openings: document.openings.filter((opening) => opening.wallId !== wallId)
+	};
+	// Reference-based Junction cleanup only: prune a Junction when no
+	// surviving Wall references it as either endpoint. No coordinate healing,
+	// no spatial merging.
+	const referencedJunctionIds = new Set<string>();
+	for (const surviving of candidate.walls) {
+		referencedJunctionIds.add(surviving.startJunctionId);
+		referencedJunctionIds.add(surviving.endJunctionId);
+	}
+	candidate.junctions = document.junctions.filter((junction) => referencedJunctionIds.has(junction.id));
+
+	// --- room reconciliation -------------------------------------------------
+	// Same correspondence as the chain engine and the role change: predecessor
+	// polygons/witnesses come from the BASELINE rooms, components join
+	// predecessor rooms with candidate faces, and reconcileRooms owns
+	// preservation/merge/retirement. A roomless/partition delete reconciles
+	// nothing (no faces, no rooms) and leaves Room topology untouched.
+	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
+	let retiredRoomIds: readonly string[] = [];
+	const extraction = extractBoundaryCandidateFaces(candidate);
+	if (extraction.faces.length > 0 || document.rooms.length > 0) {
+		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
+		const predecessorWitnesses = new Map<string, LayoutVec2>();
+		for (const room of document.rooms) {
+			const polygon = roomBoundaryPolygon(document, room.id);
+			if (!polygon) {
+				return reject({
+					code: 'room_reconciliation_rejected',
+					message: `Predecessor room '${room.id}' has an unresolvable boundary`,
+					roomIds: [room.id]
+				});
+			}
+			predecessorPolygons.set(room.id, polygon);
+			predecessorWitnesses.set(room.id, interiorWitness(polygon));
+		}
+		const components = buildCorrespondenceComponents(
+			extraction.faces,
+			document.rooms.map((room) => room.id),
+			predecessorWitnesses,
+			predecessorPolygons
+		);
+		const result = reconcileRooms({
+			baseline: document,
+			candidateDocument: candidate,
+			extraction,
+			components,
+			predecessorWitnesses,
+			predecessorPolygons,
+			allocator: createAuthoringRoomAllocator()
+		});
+		if ('rejection' in result) {
+			return reject({
+				code: 'room_reconciliation_rejected',
+				message: result.rejection.message,
+				...(result.rejection.roomIds ? { roomIds: result.rejection.roomIds } : {}),
+				...(result.rejection.faceKey ? { faceKey: result.rejection.faceKey } : {})
+			});
+		}
+		candidate.rooms = result.document.rooms;
+		candidate.objects = result.document.objects;
+		// The reconciliation's portal remap runs over the candidate openings —
+		// the deleted Wall's own hosted Openings are already gone, so only
+		// surviving walls' relations participate.
+		candidate.openings = result.document.openings;
+		lineage = result.lineage
+			.filter((record) => record.kind === 'created')
+			.map((record) => ({ faceKey: record.faceKey, roomId: record.roomId, kind: 'created' as const }));
+		retiredRoomIds = [...result.retiredRoomIds];
+	}
+
+	return validateAndCompile(candidate, reject, (committed) => ({
+		kind: 'success',
+		document: committed,
+		lineage,
+		retiredRoomIds
+	}));
+}
+
+/**
  * Convenience geometry helper for callers/tests: the submitted wall chain
  * as an untyped rectangle-equivalent seed list, so fixtures can build
  * closed chains without hand-writing junction arrays. Production callers

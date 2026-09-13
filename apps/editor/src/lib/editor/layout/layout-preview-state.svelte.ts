@@ -39,6 +39,7 @@ import {
 	type PrecisionPlan
 } from '$lib/layout/layout-wall-first-precision';
 import {
+	planDeleteWall,
 	planWallRoleChange,
 	type LayoutWallRole as WallRoleChangeRole
 } from '$lib/layout/layout-wall-topology-ops';
@@ -1311,6 +1312,32 @@ export function deleteWallFirstOpening(
 		state,
 		planDeleteWallFirstOpening(layout, openingId)
 	);
+}
+
+/**
+ * P23.6c — canonical Wall delete (one history entry at the caller). The
+ * planner runs the full topology path: hosted Openings go away atomically,
+ * unreferenced endpoint Junctions are pruned reference-only, affected Rooms
+ * reconcile through the P23.8 machinery, portal relations remap/clear per the
+ * existing contract, and the final canonical gates run before anything
+ * installs. A rejection leaves the document and history untouched. Post-delete
+ * selection is the callers' fixed policy (canonical selection becomes
+ * `none`) — this adapter owns document state only.
+ */
+export function deleteWallFirstWall(
+	state: LayoutPreviewState,
+	wallId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planDeleteWall(layout, wallId);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'wall-delete');
 }
 
 /**

@@ -17,6 +17,8 @@ import { buildSceneEntityContextMenuItems } from './scene-menu-items';
 export type PlanLayoutTarget =
 	| { kind: 'room'; roomId: string }
 	| { kind: 'opening'; roomId: string; openingId: string }
+	/** P23.6c — canonical wall-first Wall target (document-global `wallId`). */
+	| { kind: 'wall'; wallId: string }
 	| { kind: 'object'; objectId: string };
 
 export type PlanLayoutMenuActions = {
@@ -38,6 +40,12 @@ export type PlanLayoutMenuActions = {
 	 */
 	deleteRoom?(roomId: string): void;
 	deleteOpening(roomId: string, openingId: string): void;
+	/**
+	 * P23.6c — canonical Wall delete (the planner-backed adapter). Optional so
+	 * a caller that cannot honor it gets no item at all (never a no-op dummy),
+	 * mirroring the `renameRoom`/`deleteRoom` policy.
+	 */
+	deleteWall?(wallId: string): void;
 	deleteObject(objectId: string): void;
 };
 
@@ -87,6 +95,20 @@ export function buildPlanLayoutContextMenuItems(input: {
 				danger: true,
 				disabledReason: deleteDisabled,
 				run: () => input.actions.deleteOpening(target.roomId, target.openingId)
+			}
+		];
+	}
+	// P23.6c — wall targets expose exactly the canonical Wall delete; callers
+	// without the action get no items (same omit-don't-dummy policy as Rooms).
+	if (target.kind === 'wall') {
+		if (!input.actions.deleteWall) return [];
+		return [
+			{
+				id: 'delete-wall',
+				label: 'Delete wall',
+				danger: true,
+				disabledReason: deleteDisabled,
+				run: () => input.actions.deleteWall!(target.wallId)
 			}
 		];
 	}

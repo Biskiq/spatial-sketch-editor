@@ -31,7 +31,8 @@
 		createWallFirstOpening,
 		deleteLayoutOpening,
 		deleteLayoutRoom,
-		deleteWallFirstOpening
+		deleteWallFirstOpening,
+		deleteWallFirstWall
 	} from './layout/layout-preview-state.svelte';
 	import { layoutMutationRunnerFor, runLayoutMutation } from './layout/layout-mutation-runner';
 	import {
@@ -268,6 +269,24 @@
 		store.setStatusMessage(result.success ? 'Deleted opening' : `Opening delete failed: ${result.message}`);
 	}
 
+	/** P23.6c — canonical Wall delete: one history entry, post-delete selection fixed to `none`. */
+	function deleteWall(wallId: string) {
+		const outcome = runLayoutMutationGuarded(
+			() => deleteWallFirstWall(layoutPreview, wallId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		const result = outcome.result;
+		if (result.success) {
+			// Fixed policy — never a nearest-survivor or dangling `wallId`.
+			layoutInteraction.selection = { kind: 'none' };
+		}
+		store.setStatusMessage(result.success ? 'Deleted wall' : `Wall delete failed: ${result.message}`);
+	}
+
 	function beginLayoutTransaction(): boolean {
 		return store.beginLayoutTransaction();
 	}
@@ -387,9 +406,9 @@
 				onCommit={commitDraftRoom}
 				onWallSegmentCommit={commitDraftWallSegment}
 				onOpeningCreate={createOpening}
-				onOpeningDelete={deleteOpening}
-				onWallOpeningCreate={createWallOpening}
-				onWallOpeningDelete={deleteWallOpening}
+				onOpeningDelete={deleteOpening}					onWallOpeningCreate={createWallOpening}
+					onWallOpeningDelete={deleteWallOpening}
+					onWallDelete={deleteWall}
 				onRoomDelete={deleteRoom}
 				onLayoutTransactionBegin={beginLayoutTransaction}
 				onLayoutTransactionCommit={commitLayoutTransaction}

@@ -183,6 +183,7 @@
 		onOpeningDelete,
 		onWallOpeningCreate,
 		onWallOpeningDelete,
+		onWallDelete,
 		onRoomDelete,
 		onLayoutTransactionBegin,
 		onLayoutTransactionCommit,
@@ -227,6 +228,8 @@
 		onWallOpeningCreate?: (wallId: string, kind: LayoutOpeningKind, clickOffset: number) => void;
 		/** P23.3 — delete the selected canonical Opening by `openingId`. */
 		onWallOpeningDelete?: (openingId: string) => void;
+		/** P23.6c — delete the selected canonical Wall by document-global `wallId`. */
+		onWallDelete?: (wallId: string) => void;
 		onRoomDelete: (roomId: string) => boolean;
 		onLayoutTransactionBegin: () => boolean;
 		onLayoutTransactionCommit: () => boolean;
@@ -2498,6 +2501,13 @@
 		if ((event.key === 'Delete' || event.key === 'Backspace') && interaction.tool === 'select' && interaction.selection.kind === 'wallOpening') {
 			event.preventDefault();
 			onWallOpeningDelete?.(interaction.selection.openingId);
+			return;
+		}
+		// P23.6c — canonical Wall delete: Delete/Backspace and the Inspector/
+		// hierarchy Delete actions call the same planner-backed adapter.
+		if ((event.key === 'Delete' || event.key === 'Backspace') && interaction.tool === 'select' && interaction.selection.kind === 'physicalWall') {
+			event.preventDefault();
+			onWallDelete?.(interaction.selection.wallId);
 			return;
 		}
 		if (

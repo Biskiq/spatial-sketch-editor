@@ -14,7 +14,7 @@
 	import { isSceneModelEntity, type SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from './editor-outliner';
 	import { layoutPreviewDocument, type LayoutPreviewState } from './layout/layout-preview-state.svelte';
-	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, updateLayoutRoomFields } from './layout/layout-preview-state.svelte';
+	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, deleteWallFirstWall, updateLayoutRoomFields } from './layout/layout-preview-state.svelte';
 	import type { EditorContextMenuStore } from './context-menu/context-menu-state.svelte';
 	import { isEditableTarget } from './context-menu/editable-target';
 	import { resolveSelectionBeforeMenu } from './context-menu/selection-before-menu';
@@ -542,6 +542,42 @@
 			return;
 		}
 		store.setStatusMessage(outcome.result.success ? 'Deleted opening' : outcome.result.message);
+	}
+
+	/**
+	 * P23.6c — canonical Wall delete from the Architecture row. The SAME
+	 * planner-backed adapter the viewport Delete/Backspace path calls (one
+	 * history entry); success clears the canonical selection to `none`.
+	 */
+	function deleteWall(wallId: string) {
+		const outcome = runLayoutMutationGuarded(
+			() => deleteWallFirstWall(layoutPreview, wallId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (outcome.result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(outcome.result.success ? 'Deleted wall' : outcome.result.message);
+	}
+
+	function onWallRowContextMenu(event: MouseEvent, wallId: string): void {
+		if (!contextMenu) return;
+		const row = { kind: 'physicalWall', wallId } satisfies UnifiedTreeRow;
+		if (roomRowInteractive(row)) selectPhysicalWall(wallId);
+		openTreeContextMenu(
+			event,
+			buildPlanLayoutContextMenuItems({
+				target: { kind: 'wall', wallId },
+				mutationBlockedReason: treeMutationBlocked(),
+				actions: {
+					deleteOpening,
+					deleteObject,
+					deleteWall
+				}
+			})
+		);
 	}
 
 	function toggleEntityHidden(entityId: string) {
@@ -1157,6 +1193,7 @@
 									aria-disabled={!roomRowInteractive(wallRow)}
 									data-reveal-id={`architecture:${wall.wallId}`}
 									onclick={roomRowInteractive(wallRow) ? () => selectPhysicalWall(wall.wallId) : undefined}
+									oncontextmenu={contextMenu ? (event) => onWallRowContextMenu(event, wall.wallId) : undefined}
 								>
 								<span class="tree-row__label" title={`${wall.wallId} · ${wall.role} · ${wall.height.toFixed(2)} m${wallBoundedRoomNames(wall.wallId).length > 0 ? ` — bounds ${wallBoundedRoomNames(wall.wallId).join(', ')}` : ' — bounds no room'}`}>Wall · {formatPlacementLabel(wall.wallId)}</span>
 								{#if wallBoundedRoomNames(wall.wallId).length > 0}
