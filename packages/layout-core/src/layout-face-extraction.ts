@@ -328,6 +328,23 @@ function nextCounterClockwiseFaceEdge(
 	return star[nextIndex];
 }
 
+/**
+ * Canonical **boundary-cycle key** for one oriented wall-reference cycle
+ * (P23.6a S2). This is the single derivation used both by candidate-face
+ * extraction (a face key) and by explicit boundary-lineage correspondence (a
+ * persisted Room's `boundary` cycle): the token format and the
+ * rotation-normalization live in exactly one place, so a face key and a Room
+ * lineage key can never diverge.
+ *
+ * The key is temporarily-scoped evidence only — never persisted as Room
+ * identity, and never a Room ID.
+ */
+export function canonicalBoundaryCycleKey(
+	refs: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>
+): string {
+	return canonicalFaceKey(keyFloorlessTokens(refs));
+}
+
 function keyFloorlessTokens(
 	boundary: ReadonlyArray<{ wallId: string; direction: 'forward' | 'reverse' }>
 ): string[] {

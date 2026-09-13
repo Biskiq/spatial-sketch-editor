@@ -34,6 +34,14 @@ export type LayoutRoomUnitDrag = LayoutRoomUnitTransform & {
 	startWorld: LayoutVec2;
 	pivot: LayoutVec2;
 	startAngle: number;
+	/**
+	 * P23.6a — did the **current** candidate resolve through the canonical
+	 * planner? Reset on every update and set from the adapter result, so a
+	 * rejected intermediate candidate can never be committed by a later release
+	 * that resolves nothing. Transient session state only: never persisted,
+	 * never part of an undo snapshot.
+	 */
+	candidateValid: boolean;
 };
 
 export type LayoutPrimitiveDraft = {
@@ -1009,7 +1017,8 @@ export function beginLayoutRoomUnitDrag(
 		pivot: [...pivot],
 		startAngle: Math.atan2(startWorld[1] - pivot[1], startWorld[0] - pivot[0]),
 		translation: [0, 0],
-		yaw: 0
+		yaw: 0,
+		candidateValid: false
 	};
 	state.editing = null;
 }
@@ -1023,6 +1032,8 @@ export function updateLayoutRoomUnitDrag(
 ): void {
 	const drag = state.roomUnitDrag;
 	if (!drag) return;
+	// The previous candidate was resolved against the previous pointer position.
+	drag.candidateValid = false;
 	if (drag.mode === 'translate') {
 		const target = snapEnabled ? snapToGrid(currentWorld) : currentWorld;
 		drag.translation = [target[0] - drag.startWorld[0], target[1] - drag.startWorld[1]];

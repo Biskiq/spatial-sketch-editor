@@ -16,6 +16,8 @@ export * from './layout-room-frame';
 export * from './layout-align';
 export * from './layout-duplicate';
 export * from './layout-snap';
+export * from './layout-room-isolation';
+export * from './layout-room-move';
 export * from './layout-room-reconciliation';
 export * from './layout-robust-orientation';
 export * from './layout-types';

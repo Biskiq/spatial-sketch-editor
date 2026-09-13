@@ -33,6 +33,10 @@ import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-open
 import { validateWallFirstPortalRelations } from './layout-portals';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
+import {
+	isSupportedLayoutObject,
+	resolveIsolatedRoomSubgraph
+} from './layout-room-isolation';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,
@@ -254,14 +258,12 @@ function cloneObject(object: LayoutObject): LayoutObject {
 }
 
 /**
- * Shared supported-object predicate for P23.4 duplicate paths: profile
- * objects are read-only compatibility placeholders and reject explicitly.
- * Both the standalone object repeat and the isolated-Room batch (which
- * clones every associated object) use this — never silently strip.
+ * Shared supported-object predicate for the P23.4 duplicate paths. The one
+ * implementation lives in `layout-room-isolation.ts` (P23.6a shares the whole
+ * isolation policy, including this predicate, with the Room-move planner);
+ * this alias keeps the duplicate-facing name for its callers.
  */
-export function isSupportedDuplicateLayoutObject(object: Pick<LayoutObject, 'kind'>): boolean {
-	return object.kind !== 'profile';
-}
+export const isSupportedDuplicateLayoutObject = isSupportedLayoutObject;
 
 // ---------------------------------------------------------------------------
 // Layout object duplicate / linear repeat
@@ -436,84 +438,31 @@ export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,
 	intent: RoomDuplicateIntent
 ): DuplicatePlan {
-	const source = document.rooms.find((candidate) => candidate.id === intent.roomId);
-	if (!source) {
-		return reject('unknown_room', `Unknown room '${intent.roomId}'`, [intent.roomId]);
-	}
 	const [dx, dz] = intent.delta;
-	if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
-		return reject('invalid_value', 'Room duplicate delta must be finite', [intent.roomId]);
-	}
-
-	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
-	const boundaryWallIds = [...new Set(source.boundary.map((ref) => ref.wallId))];
-	const missing = boundaryWallIds.filter((wallId) => !wallById.has(wallId));
-	if (missing.length > 0) {
-		return reject('invalid_reference', `Room '${intent.roomId}' has unresolved boundary Walls`, [
-			intent.roomId,
-			...missing
-		]);
-	}
-
-	// Isolation gate 1: no boundary Wall may be shared with another Room —
-	// copying it would force detaching/copy-on-write semantics (rejected in
-	// the P23.4 initial minimum with a clear diagnostic, never silently).
-	const boundaryWallSet = new Set(boundaryWallIds);
-	for (const other of document.rooms) {
-		if (other.id === intent.roomId) continue;
-		const shared = other.boundary
-			.map((ref) => ref.wallId)
-			.filter((wallId) => boundaryWallSet.has(wallId));
-		if (shared.length > 0) {
-			return reject(
-				'room_not_isolated',
-				`Room '${intent.roomId}' shares Wall(s) ${shared.join(', ')} with Room '${other.id}'; shared-boundary Room duplicate is unsupported`,
-				[intent.roomId, other.id, ...shared]
-			);
+	if (document.rooms.some((candidate) => candidate.id === intent.roomId)) {
+		if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
+			return reject('invalid_value', 'Room duplicate delta must be finite', [intent.roomId]);
 		}
 	}
 
-	// Isolation gate 2: the cloned subgraph must own every wall incident to
-	// its junctions — an outside wall attached to a boundary junction would
-	// otherwise be detached (or duplicated one-sided) by the clone.
-	const boundaryJunctionIds = new Set<string>();
-	for (const wallId of boundaryWallIds) {
-		const wall = wallById.get(wallId)!;
-		boundaryJunctionIds.add(wall.startJunctionId);
-		boundaryJunctionIds.add(wall.endJunctionId);
-	}
-	const attachedOutsideWallIds = document.walls
-		.filter(
-			(wall) =>
-				!boundaryWallSet.has(wall.id) &&
-				(boundaryJunctionIds.has(wall.startJunctionId) ||
-					boundaryJunctionIds.has(wall.endJunctionId))
-		)
-		.map((wall) => wall.id);
-	if (attachedOutsideWallIds.length > 0) {
+	// S1 (P23.6a) — one shared isolation policy for duplicate and move.
+	const isolation = resolveIsolatedRoomSubgraph(document, intent.roomId);
+	if (isolation.kind === 'rejected') {
 		return reject(
-			'room_not_isolated',
-			`Room '${intent.roomId}' boundary junctions carry non-cloned wall(s) ${attachedOutsideWallIds.join(', ')}; the bounded subgraph is not isolated`,
-			[intent.roomId, ...attachedOutsideWallIds]
+			isolation.rejection.code,
+			isolation.rejection.message,
+			isolation.rejection.targetIds
 		);
 	}
+	// The shared policy already rejected any read-only profile object.
+	const { room: source, subgraph } = isolation;
 
-	// External portal relations: a hosted Opening relation references Rooms
-	// outside the cloned subgraph and cannot be remapped safely.
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
+	const boundaryWallIds = subgraph.wallIds;
+	const boundaryWallSet = new Set(boundaryWallIds);
 	const hostedOpenings = document.openings.filter((opening) =>
 		boundaryWallSet.has(opening.wallId)
 	);
-	const relationOpeningIds = hostedOpenings
-		.filter((opening) => opening.connectsRoomIds !== undefined)
-		.map((opening) => opening.id);
-	if (relationOpeningIds.length > 0) {
-		return reject(
-			'external_portal_relation',
-			`Room '${intent.roomId}' opening(s) ${relationOpeningIds.join(', ')} carry portal relations into non-cloned Rooms; resolve or remove them before duplicating`,
-			[intent.roomId, ...relationOpeningIds]
-		);
-	}
-
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 
 	// Pass 2: allocate all new IDs, build old→new maps, then clone once.
@@ -596,17 +545,8 @@ export function planDuplicateIsolatedRoom(
 	// Associated Layout objects only: explicit roomId equals the source Room.
 	// Unassociated objects inside the face never copy; Floor ownership is
 	// never inferred from coordinates. A read-only/profile associated object
-	// rejects the whole Room batch (never silently stripped).
-	for (const object of document.objects) {
-		if (object.roomId !== intent.roomId) continue;
-		if (!isSupportedDuplicateLayoutObject(object)) {
-			return reject(
-				'profile_object_read_only',
-				`Room '${intent.roomId}' contains read-only profile object '${object.id}'; resolve or remove it before duplicating`,
-				[intent.roomId, object.id]
-			);
-		}
-	}
+	// rejects the whole Room batch (never silently stripped) — proven above by
+	// the shared isolation policy before any allocation.
 	const objectTaken = new Set(document.objects.map((object) => object.id));
 	const clonedObjects: LayoutObject[] = [];
 	const createdObjectIds: string[] = [];
