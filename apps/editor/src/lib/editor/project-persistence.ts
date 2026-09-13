@@ -1,5 +1,5 @@
 import type { ProjectDocument } from '@portfolio/project-model';
-import { validateProject } from '$lib/project/project-codec';
+import { validateProject, wallFirstCanonicalProjectFormatIssue } from '$lib/project/project-codec';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/editor/helpers/mime-sniff';
 
 export type ProjectLoginIntent = 'projects' | 'save';
@@ -194,6 +194,13 @@ export function writePendingCloudSave(
 	createdAt = Date.now()
 ): boolean {
 	if (!storage || !Number.isFinite(createdAt)) return false;
+	// P23.6H (S1b) — this is a **writer** (it persists canonical JSON into the
+	// session handoff), so it carries the same current-format gate as
+	// `serializeProject()` and fails closed instead of storing a pre-H payload
+	// with pre-H `wall.height` meaning. Unreachable for documents the editor
+	// holds (always current format); defensive for imported/hand-built input.
+	// `readPendingCloudSave()` stays tolerant — that half is a read.
+	if (wallFirstCanonicalProjectFormatIssue(project)) return false;
 	const validation = validateProject(project);
 	if (!validation.success) return false;
 	try {

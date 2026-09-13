@@ -1409,6 +1409,10 @@
 		}
 		clearRetainedSourceAliases();
 		installLayoutPreviewBundle(layoutPreview, bundle);
+		// P23.6I review — a document replacement ends any in-flight Wall run,
+		// so a stale `wallChainRunHeight` can never cross into the new document
+		// as an explicit planner input (same seam as import/reset).
+		cancelWallChainRun(layoutInteraction);
 		setLayoutViewMode(layoutInteraction, viewState.activeView === 'plan' ? 'plan' : '3d');
 		// Replacement installs a temporary clean baseline; restore the blank boot
 		// baseline so a failed resumed Save leaves the draft visibly dirty.
@@ -1493,6 +1497,9 @@
 			}
 			clearRetainedSourceAliases();
 			installLayoutPreviewBundle(layoutPreview, bundle);
+			// P23.6I review — loading another project replaces the document, so end
+			// any in-flight Wall run with it (same seam as import/reset).
+			cancelWallChainRun(layoutInteraction);
 			setLayoutViewMode(layoutInteraction, viewState.activeView === 'plan' ? 'plan' : '3d');
 			store.markSaved(serializeSceneDocument(validation.project.scene));
 			markLayoutPreviewSaved(layoutPreview, serializeActiveLayout(validation.project.layout));
@@ -1996,6 +2003,7 @@
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
 		onReset={() => activeSelection.reset()}
+		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}
 		projectId={projectId}
@@ -2042,6 +2050,7 @@
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
 		onReset={() => activeSelection.reset()}
+		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}
 		projectId={projectId}

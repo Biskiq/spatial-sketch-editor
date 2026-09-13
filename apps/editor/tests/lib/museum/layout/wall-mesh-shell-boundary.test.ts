@@ -33,16 +33,33 @@ describe('G4 visitor shell boundary', () => {
 		expect(source).toContain('ok === false');
 	});
 
-	it('filters bespoke rooms BEFORE buildRoomWallMesh, matching the topology estimator', () => {
+	it('filters bespoke and detail-less rooms BEFORE buildRoomWallMesh, matching the topology estimator', () => {
 		const source = readFileSync(shellPath, 'utf8');
-		// The excluded-room predicate must gate the build loop itself, not only
-		// hide the rendered group — otherwise the live scene still pays the build
-		// cost and diverges from estimateWallMeshTopology's exclusion semantics.
-		// `lastIndexOf` resolves to the build CALL (the first occurrence is the import).
+		// Both guards must gate the build loop itself, not only hide the rendered
+		// group — otherwise the live scene still pays the build cost and diverges
+		// from estimateWallMeshTopology's exclusion semantics. The second guard is
+		// P23.6H: a wall-first canonical Room carries no Room-owned wall detail
+		// (its Walls render through the canonical physical-Wall path), so it must
+		// build no room mesh at all rather than a fabricated failure surface.
 		const buildIndex = source.lastIndexOf('buildRoomWallMesh');
-		const filterIndex = source.indexOf('.filter((room) => !excludedRoomIds.includes(room.roomId))');
+		const exclusionIndex = source.indexOf('if (excludedRoomIds.includes(room.roomId)) return [];');
+		const emptyRoomIndex = source.indexOf('if (room.walls.length === 0) return [];');
 		expect(buildIndex).toBeGreaterThan(0);
-		expect(filterIndex).toBeGreaterThan(0);
-		expect(filterIndex).toBeLessThan(buildIndex);
+		expect(exclusionIndex).toBeGreaterThan(0);
+		expect(emptyRoomIndex).toBeGreaterThan(0);
+		expect(exclusionIndex).toBeLessThan(buildIndex);
+		expect(emptyRoomIndex).toBeLessThan(buildIndex);
+	});
+
+	it('renders canonical physical Walls through the one compiled contract (P23.6H)', () => {
+		const source = readFileSync(shellPath, 'utf8');
+		// This shell (the editor app's own visitor-facing layout surface) previously
+		// rendered Room meshes only, so wall-first canonical Walls never appeared.
+		expect(source).toContain('buildStandaloneWallMesh');
+		expect(source).toContain('geometry.walls');
+		expect(source).toContain('LayoutPhysicalWall');
+		// Vertical extent comes from the compiled Wall's own `height`; no
+		// floor-derived ceiling may be computed and passed in from the shell.
+		expect(source).not.toMatch(/buildStandaloneWallMesh\(\s*wall,\s*[^)]*height/);
 	});
 });

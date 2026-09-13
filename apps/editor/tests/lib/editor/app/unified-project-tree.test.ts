@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutDocument } from '$lib/layout/layout-types';
-import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+import {
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+	type LayoutDocumentWallFirst
+} from '$lib/layout/layout-wall-first-types';
 import type { SceneDocument, SceneEntity } from '$lib/content/scene';
 import type { ActiveEditorSelection } from '$lib/editor/app/active-editor-selection.svelte';	import {
 		buildUnifiedProjectTreeModel,
@@ -563,8 +566,9 @@ describe('unified project tree — wall-first documents', () => {
 	function makeWallFirstLayout(): LayoutDocumentWallFirst {
 		return {
 			units: 'meters',
-			formatVersion: 4,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			// Canonical-current fixture (P23.6H bumped the format 4 → 5).
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: [0, 0] },
 				{ id: 'j2', point: [5, 0] },

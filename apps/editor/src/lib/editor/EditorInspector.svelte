@@ -38,6 +38,7 @@
 		updateWallFirstJunction,
 		updateWallFirstWallAngle,
 		updateWallFirstWallLength,
+		updateWallFirstWallHeight,
 		updateWallFirstWallThickness,
 		updateWallFirstRectangle,
 		commitWallRoleChange,
@@ -1388,6 +1389,31 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
+	 * P23.6H — authoritative physical Wall height. Same pattern as Thickness:
+	 * blank input rejects before the planner runs, and the planner (not the
+	 * input) owns the Floor envelope and hosted-Opening fit. A rejected or
+	 * skipped edit restores the previous value and writes no history.
+	 */
+	function updateSelectedWallHeight(event: Event): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const previous = wall.height;
+		const value = precisionNumber(event, previous, formatMeters);
+		if (value === null) return;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstWallHeight(layoutPreview, wall.id, value),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} height` : `Wall rejected: ${outcome.result.message}`);
+	}
+
+	/**
 	 * P23.6 — Defines room boundary: checked → `boundary` (participates in
 	 * Room face extraction), unchecked → `partition` (physical Wall remains,
 	 * stops dividing Rooms). Runs the canonical role-change operation
@@ -1815,6 +1841,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Length (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length)} onchange={updateSelectedWallLength} /></label>
 					<label>Angle (°)<input type="number" step="any" value={formatDegrees(selectedWallFirstWallEndpoints.angleDegrees)} onchange={updateSelectedWallAngle} /></label>
 					<label>Thickness (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.thickness)} onchange={updateSelectedWallThickness} /></label>
+					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>

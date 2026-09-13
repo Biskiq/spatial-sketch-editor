@@ -124,10 +124,21 @@ export type CompiledRoom = CompiledIdentity & {
 	bounds3: LayoutBounds3;
 };
 
+/**
+ * Compiled Floor.
+ *
+ * P23.6I — carries **no vertical extent**. `height` was a copy of the legacy
+ * storey scalar, and the wall-first model defines the enclosure by its Walls
+ * (`CompiledPhysicalWall.height`) with Room ceilings derived per Room
+ * (`CompiledRoom.ceilingElevation`). It is deliberately not replaced by another
+ * Floor scalar: `floor.elevation` is the datum, `bounds3` is the aggregate spatial
+ * extent (which includes physical Walls no Room references), and a
+ * `max(Room envelopes)` envelope would under-report real architecture because
+ * wall-first permits Walls without Rooms.
+ */
 export type CompiledFloor = CompiledIdentity & {
 	floorId: string;
 	elevation: number;
-	height: number;
 	roomIds: string[];
 	bounds3: LayoutBounds3 | null;
 };
@@ -219,6 +230,13 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	role: 'boundary' | 'partition';
 	floorId: string;
 	thickness: number;
+	/**
+	 * P23.6H — the Wall's authoritative physical height in meters, carried into
+	 * compiled output so downstream consumers (mesh builders, Inspector, Plan)
+	 * never have to re-read `LayoutDocument`. Vertical extent is
+	 * `[floor.elevation, floor.elevation + height]`.
+	 */
+	height: number;
 	length: number;
 	samples: CompiledCurveSample[];
 	sections: CompiledWallSection[];

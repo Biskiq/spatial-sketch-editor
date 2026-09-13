@@ -60,7 +60,7 @@ function baseDocument(): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();
 	return {
 		...document,
-		floor: { ...document.floor, id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 }
+		floor: { ...document.floor, id: 'floor-1', name: 'Floor 1', elevation: 0 }
 	};
 }
 
@@ -459,11 +459,15 @@ describe('P23.6 exact inputs — presentation formatting, planner-owned validity
 		expect(thickness.document.walls.find((wall) => wall.id === wallId)?.thickness).toBe(0.25);
 	});
 
-	it('defers Height editing: no wall Height control, floor-derived height stands', () => {
-		expect(INSPECTOR_SOURCE).not.toContain('updatePrecisionWallHeight');
-		expect(INSPECTOR_SOURCE).not.toContain('updateSelectedWallHeight');
-		expect(INSPECTOR_SOURCE).not.toContain('planExactWallHeight');
-		expect(layoutCoreModule).not.toHaveProperty('planExactWallHeight');
+	it('ships a planner-backed Wall Height control (P23.6H owns the semantics)', () => {
+		// Historical: P23.6 deferred Height because no per-Wall height semantics
+		// existed, so a control would have written a durable field with no render
+		// effect. P23.6H makes `LayoutWall.height` authoritative, so the control is
+		// live — and it must stay planner-backed (never a direct field write).
+		expect(INSPECTOR_SOURCE).toContain('updateSelectedWallHeight');
+		expect(INSPECTOR_SOURCE).toContain('updateWallFirstWallHeight');
+		expect(INSPECTOR_SOURCE).not.toContain('wall.height =');
+		expect(layoutCoreModule).toHaveProperty('planExactWallHeight');
 	});
 });
 

@@ -3,7 +3,8 @@
  * writer.
  *
  * Stage-2 scope (P23.0 execution order, item 2): the Save half of the
- * canonical writers — a wall-first Layout (`formatVersion: 4`) plus a
+ * canonical writers — a wall-first Layout (current
+ * `LAYOUT_WALL_FIRST_FORMAT_VERSION`, `5` since P23.6H) plus a
  * world-local Scene (`formatVersion: 1`) serialized through one canonical
  * Project validation gate, with the portable package manifest versioned so
  * package orchestration can never dispatch on the generator string.
@@ -16,6 +17,7 @@
 import {
 	validateWallFirstLayoutDocument,
 	validateWallFirstPortalRelations,
+	wallFirstCanonicalFormatVersionIssue,
 	type LayoutDocumentWallFirst,
 	type LayoutDocumentIssue
 } from '@portfolio/layout-core';
@@ -78,8 +80,10 @@ function prefixIssue(
 
 /**
  * Validate a wall-first Save payload with explicit format identification:
- * the Layout must decode through the wall-first codec (`formatVersion: 4`)
- * and the Scene through the explicit world-local identification boundary
+ * the Layout must decode through the wall-first codec **at the current
+ * canonical format** (P23.6H: a historical `formatVersion: 4` payload is
+ * rejected by name here — normalization belongs to the compatible read boundary,
+ * not to Save) and the Scene through the explicit world-local identification boundary
  * (`formatVersion: 1`). Legacy shapes reject BY NAME — never silently
  * accepted and never silently migrated here; conversion is P23.0b's read
  * path, not a Save-side normalization (P23.0: "new saves serialize only
@@ -139,6 +143,17 @@ export function validateWallFirstProject(input: unknown): WallFirstProjectValida
 	const layout = validateWallFirstLayoutDocument(record.layout);
 	if (!layout.success) {
 		issues.push(...layout.issues.map((issue) => toSaveIssue('layout', prefixIssue('$.layout', issue))));
+	}
+
+	// P23.6H (S1b): the canonical Save writer requires canonical current-format
+	// state. A non-current wall-first payload rejects by name here instead of
+	// being persisted with a superseded field meaning — there is no
+	// normalization seam: v5 is the only recognized wall-first version and a
+	// `4` payload fails as `unsupported_format_version` on every boundary
+	// (pre-baseline policy).
+	const layoutVersionIssue = wallFirstCanonicalFormatVersionIssue(record.layout);
+	if (layoutVersionIssue) {
+		issues.push(toSaveIssue('layout', prefixIssue('$.layout', layoutVersionIssue)));
 	}
 
 	const scene = identifySceneFormat(record.scene);

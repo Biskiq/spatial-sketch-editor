@@ -14,10 +14,11 @@
  *
  * Scope: the hosting-geometry semantics the wall-first codec cannot see —
  * host Wall resolvability, interval fit against the canonical Wall length,
- * vertical fit against the floor height, same-Wall interval overlap, and
- * profile/width/height compatibility. Field shape (finite/non-negative/
- * positive numbers, enum values), reference existence, and door-only portal
- * relations stay the codec's job; nothing here is re-implemented twice.
+ * vertical fit against the **hosting Wall's authoritative height** (P23.6H),
+ * same-Wall interval overlap, and profile/width/height compatibility. Field
+ * shape (finite/non-negative/positive numbers, enum values), reference
+ * existence, and door-only portal relations stay the codec's job; nothing here
+ * is re-implemented twice.
  *
  * **No clamping.** This validator never repairs a candidate: an out-of-fit
  * interval, overlap, or vertical mismatch is an issue the caller must reject.
@@ -42,7 +43,12 @@ export type OpeningSetIssueCode =
 	| 'opening_offset_invalid'
 	| 'opening_dimensions_invalid'
 	| 'opening_exceeds_wall'
-	| 'opening_exceeds_floor_height'
+	/**
+	 * P23.6H — the Opening's vertical extent exceeds its **hosting Wall's**
+	 * authoritative `height`. Renamed from `opening_exceeds_floor_height`: the
+	 * Floor envelope bounds Wall height, not Opening-top directly.
+	 */
+	| 'opening_exceeds_wall_height'
 	| 'opening_overlap'
 	| 'opening_profile_invalid';
 
@@ -140,16 +146,19 @@ export function validateWallFirstOpeningSet(
 				message: `Opening '${opening.id}' does not fit on Wall '${opening.wallId}'`
 			});
 		}
+		// P23.6H — vertical fit is measured against the hosting Wall, not the
+		// Floor: a partial-height Wall legitimately caps its own Openings while a
+		// full-height Wall keeps the historical Floor-envelope behavior.
 		if (
 			opening.sillHeight + opening.height >
-			document.floor.height + OPENING_SET_EPSILON
+			wall.height + OPENING_SET_EPSILON
 		) {
 			issues.push({
 				openingId: opening.id,
 				wallId: opening.wallId,
 				path,
-				code: 'opening_exceeds_floor_height',
-				message: `Opening '${opening.id}' exceeds the floor height`
+				code: 'opening_exceeds_wall_height',
+				message: `Opening '${opening.id}' (sill ${opening.sillHeight} m + height ${opening.height} m) does not fit Wall '${wall.id}' height ${wall.height} m`
 			});
 		}
 		const profileResult = buildArchProfile(

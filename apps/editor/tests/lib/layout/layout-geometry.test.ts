@@ -272,7 +272,7 @@ describe('compileLayoutGeometry', () => {
 		const document: LayoutDocumentWallFirst = {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j-a', point: [0, 0] },
 				{ id: 'j-b', point: [6, 0] },
@@ -337,7 +337,7 @@ describe('compileLayoutGeometry', () => {
 		const document: LayoutDocumentWallFirst = {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j-a', point: [0, 0] },
 				{ id: 'j-b', point: [4, 0] }
@@ -376,6 +376,72 @@ describe('compileLayoutGeometry', () => {
 			expect(aabb.aabb.min[0]).toBeLessThanOrEqual(0);
 			expect(aabb.aabb.max[0]).toBeGreaterThanOrEqual(4);
 		}
+	});
+
+	// P23.6I D7 (review closeout): a Room whose boundary cannot resolve never
+	// acquires an invented ceiling — the shared core skips it with a blocking
+	// `room_ceiling_undefined` issue instead of compiling a fake zero-height
+	// Room at the floor elevation.
+	it('skips a wall-first Room with no resolvable boundary instead of inventing a zero-height ceiling', () => {
+		const document: LayoutDocumentWallFirst = {
+			units: 'meters',
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
+			junctions: [
+				{ id: 'j-a', point: [0, 0] },
+				{ id: 'j-b', point: [4, 0] },
+				{ id: 'j-c', point: [4, 3] },
+				{ id: 'j-d', point: [0, 3] }
+			],
+			walls: [
+				{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3 }
+			],
+			rooms: [
+				{
+					id: 'room-ok',
+					name: 'Ok Room',
+					boundary: [
+						{ wallId: 'wall-a', direction: 'forward' },
+						{ wallId: 'wall-b', direction: 'forward' },
+						{ wallId: 'wall-c', direction: 'forward' },
+						{ wallId: 'wall-d', direction: 'forward' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				},
+				{
+					id: 'room-broken',
+					name: 'Broken Room',
+					boundary: [{ wallId: 'wall-missing', direction: 'forward' }],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				},
+				{
+					id: 'room-empty',
+					name: 'Empty Room',
+					boundary: [],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
+			],
+			openings: [],
+			objects: []
+		};
+		const { geometry, issues } = compileWallFirstLayoutGeometry(document);
+		// Only the resolvable Room compiles, with its derived ceiling.
+		expect(geometry.rooms.map((room) => room.roomId).sort()).toEqual(['room-ok']);
+		expect(geometry.rooms[0]!.ceilingElevation).toBe(3);
+		// No fabricated zero-height ceiling anywhere.
+		for (const room of geometry.rooms) {
+			expect(room.ceilingElevation).toBeGreaterThan(0);
+		}
+		// Both malformed Rooms block by name.
+		const ceilingIssues = issues.filter((issue) => issue.code === 'room_ceiling_undefined');
+		expect(ceilingIssues.map((issue) => issue.targetId).sort()).toEqual(['room-broken', 'room-empty']);
+		for (const issue of ceilingIssues) expect(issue.severity).not.toBe('warning');
 	});
 
 	// P23 review round 1 / B1: the compiler cutover briefly compiled only

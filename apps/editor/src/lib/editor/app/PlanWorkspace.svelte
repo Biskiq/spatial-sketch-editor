@@ -127,11 +127,27 @@
 	function commitDraftWallSegment(
 		start: [number, number],
 		end: [number, number]
-	): { success: boolean; startJunctionId?: string; endJunctionId?: string; closedRun?: boolean } {
+	): {
+		success: boolean;
+		startJunctionId?: string;
+		endJunctionId?: string;
+		closedRun?: boolean;
+		/** P23.6I — height the committed segment authored (run continuation state). */
+		wallHeight?: number;
+	} {
 		const role = wallChainRoleForTool(layoutInteraction.tool) ?? 'boundary';
 		const runStartBefore = layoutInteraction.wallChainRunStartJunctionId;
 		const outcome = runLayoutMutationGuarded(
-			() => commitWallSegment(layoutPreview, start, end, role),
+			// P23.6I — an in-progress run passes its own height explicitly; the first
+			// segment of a run passes nothing and lets the canonical birth rule decide.
+			() =>
+				commitWallSegment(
+					layoutPreview,
+					start,
+					end,
+					role,
+					layoutInteraction.wallChainRunHeight ?? undefined
+				),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
@@ -157,7 +173,8 @@
 			success: true,
 			startJunctionId: result.startJunctionId,
 			endJunctionId: result.endJunctionId,
-			closedRun
+			closedRun,
+			...(result.wallHeight !== undefined ? { wallHeight: result.wallHeight } : {})
 		};
 	}
 

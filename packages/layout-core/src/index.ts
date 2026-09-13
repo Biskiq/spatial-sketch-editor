@@ -22,6 +22,7 @@ export * from './layout-types';
 export * from './layout-wall-first-codec';
 export * from './layout-wall-first-precision';
 export * from './layout-wall-first-types';
+export * from './layout-wall-heights';
 export * from './layout-wall-openings';
 export * from './layout-wall-noding';
 export * from './layout-wall-chain';

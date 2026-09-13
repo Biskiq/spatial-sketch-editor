@@ -2,7 +2,7 @@
  * P23.3 — a new project boots a wall-first Layout, and that boot is saveable.
  *
  * The canonical Junction/Wall/Room/Opening authoring path only applies to a
- * wall-first Layout document (`formatVersion: 4`), so before this change the
+ * wall-first Layout document (current wall-first format), so before this change the
  * canonical Opening flow was unreachable without importing a wall-first Layout
  * JSON. The editor's boot now composes the canonical pair.
  *
@@ -30,8 +30,8 @@ import {
 	resetLayoutPreview
 } from '$lib/editor/layout/layout-preview-state.svelte';
 
-/** The wall-first Layout discriminator (P23.0a). */
-const WALL_FIRST_LAYOUT_FORMAT_VERSION = 4;
+/** The wall-first Layout discriminator (P23.0a; bumped to 5 by P23.6H). */
+const WALL_FIRST_LAYOUT_FORMAT_VERSION = 5;
 /** The world-local Scene discriminator (P23.0b). */
 const WORLD_LOCAL_SCENE_FORMAT_VERSION = 1;
 

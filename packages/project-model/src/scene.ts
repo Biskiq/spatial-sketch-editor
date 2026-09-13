@@ -402,7 +402,7 @@ export function createEmptySceneDocument(): SceneDocument {
  * half of the canonical new-project boot.
  *
  * P23.0 moves the two discriminators together: `validateProject` rejects a
- * wall-first Layout (`formatVersion: 4`) that carries the recognized legacy
+ * wall-first Layout (any explicit `formatVersion`) that carries the recognized legacy
  * room-local Scene (`scene_not_world_local`), so a project cannot adopt the
  * wall-first Layout and keep the legacy Scene. `createEmptySceneDocument`
  * keeps returning the legacy shape — it stays the compatibility/legacy-

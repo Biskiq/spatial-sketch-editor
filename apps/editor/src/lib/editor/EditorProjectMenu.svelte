@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { ChevronDown } from 'lucide-svelte';
 	import { parseSceneDocumentJson } from '$lib/content/scene-codec';
-	import { parseLayoutDocumentJson } from '$lib/layout/layout-codec';
 	import {
-		importLayoutPreviewJson,
 		layoutPreviewCanonicalJson,
 		layoutPreviewIsDirty,
 		layoutPreviewStatusLabel,
@@ -11,6 +9,7 @@
 		setLayoutPreviewImportError,
 		type LayoutPreviewState
 	} from './layout/layout-preview-state.svelte';
+	import { requestLayoutImportReplacement } from './layout/layout-import-replacement';
 	import { onMount } from 'svelte';
 	import { acquireObjectUrl, releaseObjectUrl } from './store/binary-texture-store.svelte';
 	import type { EditorStore } from './editor-store.svelte';
@@ -43,7 +42,8 @@
 		onDiscardPendingSave,
 		resolveProjectAssetBytes,
 		open = $bindable(false),
-		onReset
+		onReset,
+		onLayoutReplaced
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -73,6 +73,13 @@
 		open?: boolean;
 		/** fired after a reset action; the shell clears the active selection on all three slots. */
 		onReset?: () => void;
+		/**
+		 * P23.6I review — fired after a layout document replacement (reset or
+		 * successful import); the shell cancels any in-flight Wall run so a stale
+		 * `wallChainRunHeight` can never cross into the new document. The relic
+		 * never passes this (its sidebar reset is frozen behavior).
+		 */
+		onLayoutReplaced?: () => void;
 	} = $props();
 
 	const dirty = $derived(projectIsDirty ?? (store.isDirty || layoutPreviewIsDirty(layoutPreview)));
@@ -118,13 +125,19 @@
 	}
 
 	function importLayoutJson(json: string, clearPasteOnSuccess = false) {
-		const parsed = parseLayoutDocumentJson(json);
-		if (!parsed.success) return importLayoutPreviewJson(layoutPreview, json);
-		if (!confirmLayoutReplacement()) return false;
-		const imported = importLayoutPreviewJson(layoutPreview, json);
-		if (imported) store.clearSharedHistory();
-		if (imported && clearPasteOnSuccess) pastedLayoutJson = '';
-		return imported;
+		// P23.6I review — one routing for every recognized Layout format:
+		// preflight with the compatible decoder, confirm once, then mutate.
+		// The helper clears shared history on success and fires the
+		// replacement lifecycle; paste clearing stays here.
+		const ok = requestLayoutImportReplacement({
+			layoutPreview,
+			json,
+			confirmReplacement: confirmLayoutReplacement,
+			clearSharedHistory: () => store.clearSharedHistory(),
+			onReplaced: () => onLayoutReplaced?.()
+		});
+		if (ok && clearPasteOnSuccess) pastedLayoutJson = '';
+		return ok;
 	}
 
 	async function onLayoutImportFileChange(event: Event) {
@@ -206,6 +219,7 @@
 		resetLayoutPreview(layoutPreview);
 		store.clearSharedHistory();
 		layoutPreview.statusMessage = 'Reset to empty layout';
+		onLayoutReplaced?.();
 		onReset?.();
 	}
 

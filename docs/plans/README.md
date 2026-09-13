@@ -37,6 +37,25 @@ The tracker is authoritative when a plan doc's `**Status:**` drifts.
 8. **Collapse on ship.** Archiving a doc and collapsing its Active row happen
    in the same edit — shipped rows never linger in the table.
 
+### Development compatibility policy
+
+Museum Editor is **pre-Compatibility-Baseline**. Superseded development schemas and saved development data are disposable unless a plan explicitly identifies an external durability requirement.
+
+Therefore, plans and implementation agents must default to the **current canonical schema only**. Do not add or preserve migrations, historical decoders, multi-version canonical types, or compatibility-only runtime paths merely because an older development revision existed. **A schema having shipped, or having existed on `main`, does not by itself create a compatibility obligation before the baseline.**
+
+If compatibility is genuinely required, the owning plan must name the durable consumer and acceptance criterion explicitly.
+
+```text
+LEGACY ADAPTER EXISTS
+≠
+LEGACY FORMAT IS A SUPPORTED PRODUCT CONTRACT
+```
+
+An adapter retained for internal demo content, benchmark fixtures or another not-yet-migrated internal asset is a temporary development dependency with a planned removal path — not a promise that the old format keeps loading. Such a dependency must be documented as temporary where it is introduced, and removing it is its own slice.
+
+See `docs/north-star.md` → **Development-stage schema compatibility** for the normative policy.
+
+
 ## Progressive planning model (2026-09-08)
 
 Roadmap tiers follow one structure — umbrella plan → targeted research / code
@@ -113,7 +132,7 @@ Policy rules:
 | # | Plan | Status | Depends on | Doc |
 |---|------|--------|------------|-----|
 | P13 | Sequence stop-at-node playback | proposed — nice-to-have, unscheduled (owner 2026-08-27) | P12 | [2026-08-27-P13-stop-at-node-playback.md](2026-08-27-P13-stop-at-node-playback.md) |
-| P23 | Layout Depth — minimum useful Build set | approved — owner-ratified wall-first reconciliation 2026-09-09; H1/H2/H3/H5 complete; coupled Foundation Gate **P23.0a → P23.8 → P23.0b shipped** (commits `13a96a0`, `7d9df94`, `41a5cde` on main); **F0 CLOSED 2026-09-10** — stage-6 writer flip `455f587`, cross-format transaction-invariant fix `93111a2`, candidate-proof tightening `79b3551`, merged through PR #7 as `32b2e8f`; wall-first writes are adapted; **P23.1 merged through PR #9 as `d5ec0df`; P23.2 merged through PR #13 as `a369a15`; P23.9 merged through PR #18 as `5f20aaa`; P23.3 merged through PR #19 as `d1705b7`; P23.4 merged through PR #21 as `c6601f2`; P23.5 merged through PR #22 as `75a32ca`**; P23.6 merged through PR #23 as `3f6c78d`; [P23.6H](2026-09-12-P23.6H-vertical-wall-semantics.md) / [P23.6a](2026-09-12-P23.6a-wall-first-room-unit-move.md) / [P23.6b](2026-09-12-P23.6b-architecture-hierarchy-inspector-reconciliation.md) `implementation-ready` child plans; order is P23.6 → P23.6H → P23.6a → P23.6b → P23.7 | P22 | [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
+| P23 | Layout Depth — minimum useful Build set | approved — owner-ratified wall-first reconciliation 2026-09-09; H1/H2/H3/H5 complete; coupled Foundation Gate **P23.0a → P23.8 → P23.0b shipped** (commits `13a96a0`, `7d9df94`, `41a5cde` on main); **F0 CLOSED 2026-09-10** — stage-6 writer flip `455f587`, cross-format transaction-invariant fix `93111a2`, candidate-proof tightening `79b3551`, merged through PR #7 as `32b2e8f`; wall-first writes are adapted; **P23.1 merged through PR #9 as `d5ec0df`; P23.2 merged through PR #13 as `a369a15`; P23.9 merged through PR #18 as `5f20aaa`; P23.3 merged through PR #19 as `d1705b7`; P23.4 merged through PR #21 as `c6601f2`; P23.5 merged through PR #22 as `75a32ca`**; P23.6 merged through PR #23 as `3f6c78d`; [P23.6H](2026-09-12-P23.6H-vertical-wall-semantics.md) **implemented on branch `P23.6-H`** (authoritative per-Wall height); [P23.6I](2026-09-12-P23.6I-wall-defined-vertical-envelope.md) **`implemented` on branch `P23.6-H`** — Wall-defined vertical envelope: retires canonical `floor.height`, unbounded per-Wall heights, Wall-derived flat Room ceilings, **`5` as the only recognized wall-first version** (the pre-baseline decision refuses a `4` payload by name instead of migrating it); [P23.6a](2026-09-12-P23.6a-wall-first-room-unit-move.md) / [P23.6b](2026-09-12-P23.6b-architecture-hierarchy-inspector-reconciliation.md) `implementation-ready` child plans + [P23.6c](2026-09-13-P23.6c-canonical-wall-deletion.md) `proposed` (canonical Wall deletion, PR #25 review follow-up); order is P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7, where **H + I together are the single pre-merge format-5 vertical cutover (I adds no schema generation)** | P22 | [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
 | P24 | Scene / Staging Depth — P24A supply + P24B authoring | proposed — **R0–R9 planning complete; minimum frozen; P24.0–P24.5 implementation-ready for owner review.** Execution waits for accepted P23 minimum and approval; implementation/ship gates open. | P23 | [freeze](2026-09-10-P24-R9-minimum-freeze.md) · [child briefs](2026-09-10-P24-minimum-child-plans.md) · [umbrella](2026-09-08-P24-scene-staging-depth-umbrella.md) · [annex](2026-09-08-P24A-asset-supply-canonical-ingest-annex.md) |
 | P25 | Experience Foundation umbrella | proposed — focused research reconciled 2026-09-09: Destination + guided Stop/occurrence + Content/Info Panel + bounded Interaction + visitor/a11y product semantics closed; implementation remains blocked on targeted post-F0/P24 seam rechecks, E5 reference integrity and E6 persistence/operations; no P25.x implementation-ready child plans yet | P24 | [umbrella](2026-09-08-P25-experience-foundation-umbrella.md) |
 | — | Branch rejoin — experiment, no schedule | proposed | P8 conceptually | [2026-08-21-branch-rejoin-experiment.md](2026-08-21-branch-rejoin-experiment.md) |
@@ -165,7 +184,7 @@ P24.5 acceptance clears only P25's P24 dependency; P25 E5/E6 and its other gates
 Ship narrative for P1–P21 (execution order, scope decisions, the P12/P3B hard
 gate) now lives in the archived docs, not here.
 
-- Next: P23.1 merged through PR #9 as `d5ec0df`; P23.2 merged through PR #13 as `a369a15`; P23.9 merged through PR #18 as `5f20aaa`; P23.3 merged through PR #19 as `d1705b7`; P23.4 merged through PR #21 as `c6601f2`; P23.5 merged through PR #22 as `75a32ca`; P23.6 merged through PR #23 as `3f6c78d`; current focus is the implementation-ready P23.6H / P23.6a / P23.6b child plans before P23.7 closeout. P24 R0–R9 planning complete: [minimum freeze](2026-09-10-P24-R9-minimum-freeze.md) and [child briefs](2026-09-10-P24-minimum-child-plans.md) await owner review; execution still waits for accepted P23 minimum. All P24 implementation/parity gates remain open. Prior: P22 shipped 2026-09-08 (P22.1–P22.5 + hosted acceptance — production
+- Next: P23.1 merged through PR #9 as `d5ec0df`; P23.2 merged through PR #13 as `a369a15`; P23.9 merged through PR #18 as `5f20aaa`; P23.3 merged through PR #19 as `d1705b7`; P23.4 merged through PR #21 as `c6601f2`; P23.5 merged through PR #22 as `75a32ca`; P23.6 merged through PR #23 as `3f6c78d`; P23.6H is implemented on branch `P23.6-H`; P23.6I is **implemented on branch `P23.6-H`** (Wall-defined vertical envelope; landed before PR #25 merges) — current focus is **P23.6a**, then P23.6b, then P23.7 closeout. H + I reach `main` as the single pre-merge format-5 vertical cutover, and `5` is the only recognized wall-first version. P24 R0–R9 planning complete: [minimum freeze](2026-09-10-P24-R9-minimum-freeze.md) and [child briefs](2026-09-10-P24-minimum-child-plans.md) await owner review; execution still waits for accepted P23 minimum. All P24 implementation/parity gates remain open. Prior: P22 shipped 2026-09-08 (P22.1–P22.5 + hosted acceptance — production
   cold-browser loop through deployed proxy/API/Postgres/R2, anonymous
   release-membership boundary, shipped-static retention, full checks + route
   bundle gates green; public-route `untrack` fix deployed as `f46e8f3`);

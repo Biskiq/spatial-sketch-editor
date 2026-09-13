@@ -32,9 +32,11 @@
  *   stays on the read-only compatibility path instead of being normalized;
  * - every allocation is deterministic from sorted qualified source keys —
  *   never coordinates, traversal order, timestamps or randomness (H5 §4.5);
- * - wall-first Walls keep `height: floor.height` because the legacy schema
- *   has no independent wall height (H5: floor elevation/height are
- *   floor-level properties).
+ * - wall-first Walls are migrated from the legacy storey height
+ *   (`height: floor.height`) because the legacy schema has no independent wall
+ *   height (H5: floor elevation/height are floor-level properties); P23.6I then
+ *   drops `floor.height` from the canonical Floor, because the value has
+ *   completed its conversion and the current model has no Floor scalar.
  */
 import type { LayoutDocument, LayoutObject, LayoutVec2 } from './layout-types';
 import type {
@@ -741,7 +743,9 @@ function toNodingDocument(
 	return {
 		units: 'meters',
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+		// Placeholder datum for the noding-plan input only; the migrated Floor is
+		// built separately and never inherits this record.
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [...junctions],
 		walls: walls.map((wall) => ({
 			id: wall.id,
@@ -937,11 +941,13 @@ function dedupeFragments(
 	finalWalls.sort((a, b) => a.id.localeCompare(b.id));
 	finalOpenings.sort((a, b) => a.id.localeCompare(b.id));
 
+	// P23.6I — the legacy storey height has done its one conversion job: it seeded
+	// every migrated Wall's `height` above. The canonical Floor keeps only the
+	// datum, so the legacy scalar does not survive as wall-first truth.
 	const floorRecord: LayoutWallFirstFloor = {
 		id: floor.id,
 		name: floor.name,
-		elevation: floor.elevation,
-		height: floor.height
+		elevation: floor.elevation
 	};
 	const document: LayoutDocumentWallFirst = {
 		units: 'meters',

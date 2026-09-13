@@ -21,19 +21,34 @@
 import type { LayoutObject, LayoutVec2 } from './layout-types';
 
 /**
- * Explicit wall-first format discriminator value.
+ * Explicit wall-first format discriminator value (current canonical format).
  *
  * Historical usage recheck (P23.0 requires this before freezing): the active
  * legacy Layout JSON carries no `formatVersion` key (the legacy codec rejects
  * it as `unknown_key`), so a missing version can only mean the Room-owned
  * legacy shape. Archived Museum terminology called the immediately preceding
- * Layout model "v3"; the least surprising wall-first number is therefore `4`
+ * Layout model "v3"; the least surprising wall-first number was therefore `4`
  * (H5 §10.1). Any other explicit value is rejected as unrecognized — a real
  * decoder must exist before a number becomes loadable.
+ *
+ * P23.6H bumped the canonical format to `5` and P23.6I made it the **final**
+ * Wall-defined vertical model: `LayoutWall.height` is the only authored vertical
+ * Wall authority (finite, strictly positive, no storey cap), the canonical Floor
+ * carries `id`/`name`/`elevation` only, and a Room ceiling is derived from its
+ * boundary Wall heights.
+ *
+ * **`5` is the only recognized version, and there is no `4` decoder.** P23.6I is a
+ * pre-Compatibility-Baseline slice, so the wall-first `4` generation that reached
+ * `main` before this branch is deliberately *not* migrated: having existed on
+ * `main` does not by itself create a backward-compatibility obligation before the
+ * Compatibility Baseline (`docs/north-star.md` → *Development-stage schema
+ * compatibility*). A payload declaring `4` therefore fails as
+ * `unsupported_format_version` instead of being silently reinterpreted as `5`.
+ * There is no `4`→`5` cutover, no historical document type, no `6`/`7`.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 4 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 5 as const;
 
-/** All explicit `formatVersion` values the compatible decoder recognizes. */
+/** All explicit `formatVersion` values the decoder recognizes. */
 export const KNOWN_LAYOUT_FORMAT_VERSIONS = [LAYOUT_WALL_FIRST_FORMAT_VERSION] as const;
 
 export type LayoutFormatVersion = (typeof KNOWN_LAYOUT_FORMAT_VERSIONS)[number];
@@ -51,11 +66,20 @@ export type LayoutJunction = {
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
  *
- * `height` is the birth default (floor height) carried as data. Authored
- * height editing is deferred: the canonical compiler, bounds, mesh, and
- * opening-fit validation all derive vertical geometry from the floor, so an
- * editor for this field would violate authored-state → compiler → render
- * until partial-height Wall semantics are designed (post-P23.6).
+ * `height` is the **authoritative physical height** of this Wall (P23.6H),
+ * measured upward from the Floor elevation:
+ *
+ * ```text
+ * bottomY = floor.elevation
+ * topY    = floor.elevation + wall.height
+ * ```
+ *
+ * It is finite, strictly positive, per physical Wall, shared by both sides of the
+ * Wall, and **has no global upper bound** (P23.6I): a Wall may be shorter or
+ * taller than its neighbours, and a Room's derived ceiling is the maximum of its
+ * boundary Wall heights. Wall height is consumed by the canonical compiler,
+ * bounds, mesh inputs and Opening fit — and is deliberately **not** part of Plan
+ * face extraction, so a height change alone never alters Room topology.
  */
 export type LayoutWall = {
   id: string;
@@ -90,20 +114,25 @@ export type LayoutWallOpening = {
   sillHeight: number;
   profile: 'rectangular' | 'rounded' | 'pointed';
   connectsRoomIds?: [string, string];
-};
-
-/**
- * Floor descriptor (P23.0b). Floor-level Y coordinates stay floor-owned
- * exactly as in the legacy schema (H5: `LayoutFloor.elevation`/`.height` are
- * floor-level properties, not Room metadata). One floor is the P23 minimum
- * storey; the codec enforces the same floor-height/opening-height rules the
- * legacy geometry validation applies.
+};/**
+ * Floor descriptor — **canonical current (format 5)** shape after P23.6I.
+ *
+ * The Floor owns the horizontal *datum* only: `elevation` is authoritative for
+ * Wall bottoms (`bottomY = floor.elevation`) and the Room floor plane. It carries
+ * **no vertical extent**: `floor.height` was the legacy storey scalar, and the
+ * enclosure is now defined by its Walls (`wall.height`) with Room ceilings derived
+ * per Room. Nothing replaces it — a `max(Room envelopes)` Floor envelope is
+ * explicitly rejected, because wall-first permits physical Walls without Rooms and
+ * a room-only maximum would under-report real architecture.
+ *
+ * A `height` key on the current Floor is rejected by the codec as `unknown_key`:
+ * there is no persisted Floor-level vertical extent, and no `{ height?: number }`
+ * compatibility variant of this type.
  */
 export type LayoutWallFirstFloor = {
-  id: string;
-  name: string;
-  elevation: number;
-  height: number;
+	id: string;
+	name: string;
+	elevation: number;
 };
 
 /**
@@ -125,15 +154,19 @@ export type LayoutWallFirstRoom = {
  * `LayoutObject[]` record type: Layout objects remain document-level and
  * project/world-local; P23.0a does not move them under Floors and does not
  * change their transform ownership.
- */
-export type LayoutDocumentWallFirst = {
-  units: 'meters';
-  formatVersion: LayoutFormatVersion;
-  /**
-   * Floor-level Y frame (P23.0b). Exactly one floor for the P23 minimum;
-   * multi-floor legacy payloads are compatibility-only (H5 excludes
-   * multi-floor topology).
-   */
+ */export type LayoutDocumentWallFirst = {
+	units: 'meters';
+	/**
+	 * Canonical current format — narrowed to the constant's value (P23.6I), so no
+	 * downstream consumer needs a `formatVersion` branch at all.
+	 */
+	formatVersion: typeof LAYOUT_WALL_FIRST_FORMAT_VERSION;
+	/**
+	 * Floor-level Y datum (P23.0b/P23.6I). Exactly one floor for the P23 minimum;
+	 * multi-floor legacy payloads are compatibility-only (H5 excludes
+	 * multi-floor topology). Carries no vertical extent — see
+	 * {@link LayoutWallFirstFloor}.
+	 */
   floor: LayoutWallFirstFloor;
   junctions: LayoutJunction[];
   walls: LayoutWall[];

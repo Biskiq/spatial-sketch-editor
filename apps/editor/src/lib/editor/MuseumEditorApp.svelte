@@ -116,6 +116,7 @@
 		{confirmLayoutReplacement}
 		bind:outlinerElement
 		onAssetSelection={(asset) => (selectedAsset = asset)}
+		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 	/>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (the WebGL viewport owns guarded editor shortcuts) -->
 	<div

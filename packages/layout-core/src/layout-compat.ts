@@ -2,17 +2,26 @@
  * `layout-compat.ts` — P23.0a explicit Layout format identification.
  *
  * The single dispatch boundary between the legacy Room-owned Layout JSON and
- * the wall-first `formatVersion: 4` schema. Identification is **explicit,
- * never inferred from field shapes** (H5 §10.1: "Do not infer schema version
- * from presence/absence of arbitrary fields after the versioned cutover").
+ * the wall-first Layout schema (current `formatVersion: 5`). Identification is
+ * **explicit, never inferred from field shapes** (H5 §10.1: "Do not infer schema
+ * version from presence/absence of arbitrary fields after the versioned
+ * cutover").
  *
- * Dispatch rule (P23.0 child plan / H5 §10.1):
+ * Dispatch rule (P23.0 child plan / H5 §10.1, as amended by P23.6I):
  *
  * ```text
  * missing formatVersion  → legacy Room-owned decoder (only where it recognizes the shape)
- * formatVersion: 4       → wall-first decoder
- * any other version      → unrecognized (rejected unless a real decoder exists)
+ * formatVersion: 5       → wall-first decoder (current canonical format)
+ * any other version      → unrecognized (rejected — a real decoder must exist first)
  * ```
+ *
+ * **There is no `4` branch.** P23.6I is a pre-Compatibility-Baseline slice, so the
+ * wall-first `4` generation that reached `main` before this branch is not
+ * migrated: a `4` payload is simply an unrecognized version (see
+ * `docs/north-star.md` → *Development-stage schema compatibility*). Every
+ * `kind: 'wall-first'` result is therefore canonical current-format state and no
+ * caller branches on the version.
+ *
  *
  * P23.0a scaffolding note: the legacy branch revalidates the current
  * Room-owned document through the unchanged legacy codec — **no migration
@@ -49,7 +58,7 @@ export type LegacyLayoutDecode = {
 
 export type WallFirstLayoutDecode = {
 	kind: 'wall-first';
-	/** New canonical wall-first document. No migration was required. */
+	/** Canonical wall-first document (current format). */
 	document: LayoutDocumentWallFirst;
 	/** Wall-first documents are project/world-local by definition. */
 	sceneSpace: 'project-world';
@@ -136,10 +145,20 @@ export function decodeLayoutValueCompatible(input: unknown): CompatibleLayoutDec
 						]
 		};
 	}
+		// P23.6I — there is exactly one wall-first version, so this boundary has no
+		// normalization step and reports no migrated version: a payload declaring
+		// anything other than the current format is rejected above as an
+		// unsupported version, before shape parsing. Canonical writers additionally
+		// call `wallFirstCanonicalFormatVersionIssue()` and fail closed.
 		const result = validateWallFirstLayoutDocument(input);
-		return result.success
-			? { kind: 'wall-first', document: result.document, sceneSpace: 'project-world' }
-			: { kind: 'unrecognized', reason: 'unsupported-format-version', issues: result.issues };
+		if (!result.success) {
+			return { kind: 'unrecognized', reason: 'unsupported-format-version', issues: result.issues };
+		}
+		return {
+			kind: 'wall-first',
+			document: result.document,
+			sceneSpace: 'project-world'
+		};
 	}
 
 	const legacy = validateLayoutDocument(input);

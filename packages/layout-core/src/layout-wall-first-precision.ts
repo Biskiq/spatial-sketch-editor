@@ -74,6 +74,7 @@ export type PrecisionOperation =
 	| 'wall-length'
 	| 'wall-angle'
 	| 'wall-thickness'
+	| 'wall-height'
 	| 'wall-role'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
@@ -93,6 +94,12 @@ export type PrecisionRejection = {
 		| 'unsupported_geometry'
 		| 'shared_boundary_resize_ambiguous'
 		| 'topology_invalid'
+		/**
+		 * P23.6H — the edit would cap a Wall below the top of a hosted Opening. The
+		 * canonical Opening validator owns the rule; this code only names the
+		 * rejection so the message stays actionable.
+		 */
+		| 'wall_height_below_opening'
 		| 'geometry_invalid'
 		| 'no_op'
 		| 'split_at_existing_endpoint'
@@ -225,6 +232,34 @@ export function planExactWallThickness(
 	const candidate = cloneDocument(document);
 	candidate.walls.find((entry) => entry.id === wallId)!.thickness = thickness;
 	return finalizeCandidate(candidate, 'wall-thickness', [], [wallId]);
+}
+
+/**
+ * Set a Wall's authoritative physical height (P23.6H, unbounded since P23.6I),
+ * preserving Wall, Junction, Opening and Room identity.
+ *
+ * Height is independent of X/Z topology: the Wall stays the same authored Wall
+ * with the same `role` and the same Room participation; only its vertical extent
+ * changes (`topY = floor.elevation + height`). There is **no upper bound** — the
+ * canonical Floor has no storey scalar to cap against — so any finite positive
+ * value is accepted, including values taller than neighbouring Walls. A Wall
+ * shortened below a hosted Opening's top still rejects atomically with the Opening
+ * untouched (the canonical Opening validator owns that rule), and nothing is ever
+ * clamped.
+ */
+export function planExactWallHeight(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	height: number
+): PrecisionPlan {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
+	if (!finitePositive(height)) return reject('invalid_value', 'Wall height must be finite and greater than zero', [wallId]);
+	if (wall.height === height) return reject('no_op', `Wall '${wallId}' already has that height`, [wallId]);
+
+	const candidate = cloneDocument(document);
+	candidate.walls.find((entry) => entry.id === wallId)!.height = height;
+	return finalizeCandidate(candidate, 'wall-height', [], [wallId]);
 }
 
 /**
@@ -485,7 +520,15 @@ function finalizeCandidate(
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
 	const topologyIssue = validatePrecisionTopology(structural.document);
-	if (topologyIssue) return reject('topology_invalid', topologyIssue.message, topologyIssue.targetId ? [topologyIssue.targetId] : undefined, [topologyIssue]);
+	if (topologyIssue) {
+		// P23.6H — a Wall-vs-Opening vertical conflict keeps its own rejection
+		// code; every other topology failure stays `topology_invalid`.
+		const topologyCode: PrecisionRejection['code'] =
+			topologyIssue.code === 'wall_height_below_opening'
+				? 'wall_height_below_opening'
+				: 'topology_invalid';
+		return reject(topologyCode, topologyIssue.message, topologyIssue.targetId ? [topologyIssue.targetId] : undefined, [topologyIssue]);
+	}
 	const compiled = compileWallFirstLayoutGeometry(structural.document);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
@@ -582,6 +625,18 @@ function validatePrecisionTopology(document: LayoutDocumentWallFirst): LayoutGeo
 	// here — this gate only translates the first canonical issue.
 	const openingIssue = validateWallFirstOpeningSet(document)[0];
 	if (openingIssue) {
+		// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
+		// Wall-height edit can report it as `wall_height_below_opening` instead of
+		// a generic topology failure. The canonical Opening validator owns the
+		// rule; this branch only translates its issue.
+		if (openingIssue.code === 'opening_exceeds_wall_height') {
+			return {
+				path: `walls.${openingIssue.wallId}.height`,
+				code: 'wall_height_below_opening',
+				message: openingIssue.message,
+				targetId: openingIssue.wallId
+			};
+		}
 		return topologyFailure(
 			openingIssue.openingId,
 			openingIssue.wallId,

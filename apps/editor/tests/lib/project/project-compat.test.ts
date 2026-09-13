@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
 	createEmptyProject,
 	parseProjectJson,
-	serializeProject
+	serializeProject,
+	validateProject,
+	ProjectValidationError
 } from '$lib/project/project-codec';
 import type { Project } from '$lib/project/project-types';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-wall-first-types';
 import { decodeProjectCompatible } from '$lib/content/scene-format';
 import { identifySceneFormat } from '$lib/content/scene-format';
 
@@ -111,8 +114,9 @@ describe('project compatible decode (P23.0a)', () => {
 		expect(decoded.kind).toBe('migrated');
 		if (decoded.kind !== 'migrated') return;
 		expect(decoded.sceneSpace).toBe('project-world');
-		// The layout is now the wall-first shape with the floor descriptor.
-		expect(decoded.project.layout.formatVersion).toBe(4);
+		// The layout is now the wall-first shape with the floor descriptor, at
+		// the current canonical format (P23.6H bumped 4 → 5).
+		expect(decoded.project.layout.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
 		expect(decoded.project.layout.floor.id).toBe('floor-1');
 		expect(decoded.project.layout.rooms[0]!.id).toBe('room-a');
 		// The scene is world-local (discriminated) with no room-bound entities.
@@ -202,8 +206,8 @@ describe('project compatible decode (P23.0a)', () => {
 			...project,
 			layout: {
 				units: 'meters',
-				formatVersion: 4,
-				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
 				junctions: [],
 				walls: [],
 				rooms: [],
@@ -272,8 +276,8 @@ describe('P23.1 wall-first project codec', () => {
 			scene: { ...project.scene, formatVersion: 1 as const },
 			layout: {
 				units: 'meters',
-				formatVersion: 4,
-				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
 				junctions: [],
 				walls: [],
 				rooms: [],
@@ -283,5 +287,70 @@ describe('P23.1 wall-first project codec', () => {
 		};
 		const result = parseProjectJson(JSON.stringify(wallFirstProject));
 		expect(result.success).toBe(true);
+	});
+
+	it('refuses a superseded wall-first version on both the read and write paths', () => {
+		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
+		// reached `main` before this branch is **not** a supported version, so
+		// neither path migrates it (`docs/north-star.md` → Development-stage schema
+		// compatibility). Reinterpreting the stored payload was the rejected
+		// alternative — under `4` the Floor *was* the vertical authority, so reading
+		// it as current state would change what the document says.
+		const project = validProject();
+		const superseded = {
+			...project,
+			scene: { ...project.scene, formatVersion: 1 as const },
+			layout: {
+				units: 'meters',
+				formatVersion: 4,
+				floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+				junctions: [],
+				walls: [],
+				rooms: [],
+				openings: [],
+				objects: []
+			}
+		};
+
+		// Reader: rejects by name. Only the legacy (version-less) Room-owned shape
+		// stays tolerant; a declared version the decoder does not implement is an
+		// explicit failure rather than a silent reinterpretation.
+		const read = validateProject(superseded);
+		expect(read.success).toBe(false);
+		expect(issueCodes(read)).toContain('unsupported_format_version');
+
+		// Writer: the same failure, with the path prefixed onto the Layout half.
+		let thrown: unknown;
+		try {
+			serializeProject(superseded);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toBeInstanceOf(ProjectValidationError);
+		const issue = (thrown as ProjectValidationError).issue;
+		expect(issue.code).toBe('unsupported_format_version');
+		expect(issue.path).toBe('$.layout.formatVersion');
+
+		// The supported shapes still round-trip: the legacy Room-owned project and
+		// the canonical wall-first project both serialize.
+		expect(serializeProject(validProject())).toBeTruthy();
+		const canonical = {
+			...project,
+			scene: { ...project.scene, formatVersion: 1 as const },
+			layout: {
+				units: 'meters',
+				formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+				floor: { id: 'floor', name: 'Floor', elevation: 0 },
+				junctions: [],
+				walls: [],
+				rooms: [],
+				openings: [],
+				objects: []
+			}
+		};
+		expect(validateProject(canonical).success).toBe(true);
+		expect(serializeProject(canonical)).toContain(
+			`"formatVersion": ${LAYOUT_WALL_FIRST_FORMAT_VERSION}`
+		);
 	});
 });

@@ -29,6 +29,7 @@ import {
 	planExactRectangleDimensions,
 	planExactWallAngle,
 	planExactWallLength,
+	planExactWallHeight,
 	planExactWallThickness,
 	planWallSubdivision,
 	type FixedWallEndpoint,
@@ -195,6 +196,13 @@ export type WallFirstPrecisionMutationResult =
 			startJunctionId: string;
 			/** Canonical resolved end Junction (next continuation start). */
 			endJunctionId: string;
+			/**
+			 * P23.6I — the height this segment actually authored, read back from the
+			 * committed document. The continuous-run caller stores it as transient run
+			 * state and passes it to every later segment of the same run. Absent only
+			 * when the commit authored no Wall (nothing to continue at that height).
+			 */
+			wallHeight?: number;
 	  }
 	| { success: false; message: string };
 
@@ -376,14 +384,12 @@ function buildWallMeshesByRoom(geometry: CompiledLayoutGeometry): {
 		}
 		issues.push(...result.issues);
 	}
+	// P23.6H — the canonical Wall's own authoritative height supplies the mesh
+	// vertical extent; no Floor-derived ceiling is passed (or derivable) here.
 	const floorElevationById = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
-	const ceilingElevationById = new Map(
-		geometry.floors.map((floor) => [floor.floorId, floor.elevation + floor.height] as const)
-	);
 	for (const wall of geometry.walls) {
 		const floorElevation = floorElevationById.get(wall.floorId) ?? 0;
-		const ceilingElevation = ceilingElevationById.get(wall.floorId) ?? floorElevation + 3;
-		const result = buildStandaloneWallMesh(wall, floorElevation, ceilingElevation);
+		const result = buildStandaloneWallMesh(wall, floorElevation);
 		if (result.mesh) wallMeshesByWall.set(wall.wallId, result.mesh);
 		issues.push(...result.issues);
 	}
@@ -939,16 +945,30 @@ export function commitWallChain(
  * P23.9 segment-first — commit one straight Wall segment as one Layout
  * history entry. Returns the canonical resolved Junctions for continuation
  * (never derived from `createdWallIds`). Rejection mutates nothing.
+ *
+ * P23.6I — `height` is the **continuation** height for a run already in
+ * progress: the editor's transient per-run value, passed explicitly so a turn
+ * that lands on a Junction with other incident heights keeps the run's height
+ * instead of re-resolving one. Omit it for the first segment of a run, where the
+ * canonical `planWallSegment` birth rule (`resolveWallBirthHeight`) derives the
+ * height from document topology — the editor never owns that decision.
  */
 export function commitWallSegment(
 	state: LayoutPreviewState,
 	start: LayoutVec2,
 	end: LayoutVec2,
-	role: ChainWallRole
+	role: ChainWallRole,
+	height?: number
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
-	const plan = planWallSegment({ baseline: layout, start, end, role });
+	const plan = planWallSegment({
+		baseline: layout,
+		start,
+		end,
+		role,
+		...(height !== undefined ? { height } : {})
+	});
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
 		return { success: false, message: plan.rejection.message };
@@ -966,6 +986,13 @@ export function commitWallSegment(
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
 		state.importError = null;
+		// The planner is the height authority: read the committed authored Wall's own
+		// value back out of the committed document rather than re-deriving it.
+		const authoredWallId = plan.authoredWallIds[0];
+		const wallHeight =
+			authoredWallId === undefined
+				? undefined
+				: plan.document.walls.find((wall) => wall.id === authoredWallId)?.height;
 		return {
 			success: true,
 			operation: 'wall-segment-commit',
@@ -973,7 +1000,8 @@ export function commitWallSegment(
 			allWallIds: [...plan.createdWallIds],
 			roomIds: plan.lineage.map((record) => record.roomId),
 			startJunctionId: plan.startJunctionId,
-			endJunctionId: plan.endJunctionId
+			endJunctionId: plan.endJunctionId,
+			...(wallHeight !== undefined ? { wallHeight } : {})
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Could not commit wall segment';
@@ -1022,6 +1050,22 @@ export function updateWallFirstWallThickness(
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	return applyWallFirstPrecisionPlan(state, planExactWallThickness(layout, wallId, thickness));
+}
+
+/**
+ * P23.6H — commit one canonical Wall height edit as one Layout history entry.
+ * The planner owns the Floor envelope and host-Wall Opening fit; a rejection
+ * leaves the document, the Opening and history untouched. UI code never assigns
+ * `wall.height` directly.
+ */
+export function updateWallFirstWallHeight(
+	state: LayoutPreviewState,
+	wallId: string,
+	height: number
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planExactWallHeight(layout, wallId, height));
 }
 
 /**

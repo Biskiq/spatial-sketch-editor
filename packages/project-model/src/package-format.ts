@@ -46,7 +46,8 @@ export interface PackageManifestPackage {
 	 * P23.0 (stage 2): portable package format version. A SEPARATE concept
 	 * from the nested Scene/Layout schema versions — package orchestration
 	 * must never dispatch on the generator string, and the nested documents
-	 * identify themselves (`layout.formatVersion: 4` wall-first, `scene
+	 * identify themselves (`layout.formatVersion` wall-first — current 5 since
+	 * P23.6H, pre-H 4 still loadable, `scene
 	 * .formatVersion: 1` world-local, missing = recognized legacy). Old
 	 * manifests without the key remain importable through the recognized
 	 * legacy decoder path.

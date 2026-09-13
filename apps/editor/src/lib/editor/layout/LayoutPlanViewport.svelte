@@ -211,7 +211,14 @@
 		onSceneDelete?: () => boolean;
 		onCommit: (points: LayoutVec2[]) => boolean;
 	/** P23.9 segment-first — commit one Wall/Partition segment (one history entry). Returns the canonical Junctions for continuation. */
-	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2) => { success: boolean; startJunctionId?: string; endJunctionId?: string; closedRun?: boolean };
+	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2) => {
+		success: boolean;
+		startJunctionId?: string;
+		endJunctionId?: string;
+		closedRun?: boolean;
+		/** P23.6I — height the committed segment authored (run continuation state). */
+		wallHeight?: number;
+	};
 		onOpeningCreate: (roomId: string, segmentId: string, kind: LayoutOpeningKind, clickOffset: number) => void;
 		onOpeningDelete: (roomId: string, openingId: string) => void;
 		/** P23.3 — canonical create on a document-global `wallId` (no `roomId`). */
@@ -2191,7 +2198,8 @@
 			advanceWallChainContinuation(interaction, {
 				endPoint,
 				endJunctionId: result.endJunctionId,
-				startJunctionId: result.startJunctionId
+				startJunctionId: result.startJunctionId,
+				...(result.wallHeight !== undefined ? { wallHeight: result.wallHeight } : {})
 			});
 		}
 		draftedVersion = preview.previewVersion;

@@ -47,6 +47,7 @@ import {
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import type { LayoutDocumentIssue } from './layout-codec';
 
@@ -55,10 +56,17 @@ function samePoint(a: LayoutVec2, b: LayoutVec2): boolean {
 	return a[0] === b[0] && a[1] === b[1];
 }
 
-/** Chain wall/junction defaults (same as the P23.0 seed helpers). */
+/**
+ * Chain wall/junction defaults (same as the P23.0 seed helpers).
+ *
+ * P23.6I removed the Wall-birth height from this table: a new Wall's height comes
+ * from `resolveWallBirthHeight()` (the named `WALL_AUTHORING_DEFAULT_HEIGHT` or a
+ * deterministic incident-Wall inheritance), so no runtime Wall-birth path may
+ * carry a literal height. Thickness stays a fixed sketch default (it is not a
+ * vertical quantity).
+ */
 export const WALL_CHAIN_DEFAULTS = {
-	thickness: 0.2,
-	height: 3
+	thickness: 0.2
 } as const;
 
 /** Why a chain sketch rejected; stable machine codes. */
@@ -178,8 +186,17 @@ export function planWallChain(options: {
 }): WallChainPlan {
 	const allocator = options.allocator ?? defaultChainAllocator();
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
-	const height = options.height ?? WALL_CHAIN_DEFAULTS.height;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
+
+	// P23.6I birth semantics. `planWallChain` is the **bounded compound** planner
+	// (Rectangle/Polygon and explicit multi-point callers): the whole generated
+	// chain uses one explicit height or the named authoring default, deliberately
+	// with no per-leg or per-vertex inheritance — one gesture must produce one
+	// coherent height. Continuous segment-first authoring resolves the birth height
+	// from canonical topology in `planWallSegment` (see `resolveWallBirthHeight`)
+	// and passes it explicitly, which is why the default lives here rather than a
+	// Floor-derived value: the canonical Floor has no vertical extent to inherit.
+	const height = options.height ?? WALL_AUTHORING_DEFAULT_HEIGHT;
 
 	// --- draft normalization -------------------------------------------------
 	const points = options.points.map((point) => [...point] as LayoutVec2);
@@ -621,6 +638,24 @@ function nodingAllocatorAdapter(allocator: WallChainIdAllocator, document: Layou
  * authoring command. Thin wrapper over `planWallChain` with exactly two
  * points and no implicit close. Callers use the returned `startJunctionId` /
  * `endJunctionId` for continuation — never `createdWallIds`.
+ *
+ * **Wall-birth height lives here, not in the editor (P23.6I).** A headless
+ * caller and the human Plan interaction must execute the same semantic
+ * operation, so the first-segment rule is resolved from canonical document
+ * topology by `resolveWallBirthHeight()`:
+ *
+ * ```text
+ * explicit height                                  → that height
+ * start point on a Junction with one unique
+ * incident Wall height                             → inherit it
+ * isolated/new start, or mixed incident heights    → WALL_AUTHORING_DEFAULT_HEIGHT
+ * ```
+ *
+ * The start Junction is resolved with the same exact-coordinate rule
+ * `planWallChain` uses for point reuse, so the birth decision and the committed
+ * topology cannot disagree. Continuation *inside one active draw run* stays an
+ * explicit caller decision: the editor holds the run height as transient state
+ * and passes it as `height`, which the explicit branch above honours.
  */
 export function planWallSegment(options: {
 	baseline: LayoutDocumentWallFirst;
@@ -631,13 +666,20 @@ export function planWallSegment(options: {
 	height?: number;
 	allocator?: WallChainIdAllocator;
 }): WallChainPlan {
+	const startJunction = options.baseline.junctions.find((junction) =>
+		samePoint(junction.point, options.start)
+	);
 	return planWallChain({
 		baseline: options.baseline,
 		points: [options.start, options.end],
 		close: false,
 		role: options.role,
+		height: resolveWallBirthHeight(
+			options.baseline,
+			startJunction?.id ?? null,
+			options.height
+		),
 		...(options.thickness !== undefined ? { thickness: options.thickness } : {}),
-		...(options.height !== undefined ? { height: options.height } : {}),
 		...(options.allocator !== undefined ? { allocator: options.allocator } : {})
 	});
 }

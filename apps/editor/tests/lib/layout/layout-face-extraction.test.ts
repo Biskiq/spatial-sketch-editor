@@ -25,7 +25,7 @@ type WallSeed = {
 		return {
 			units: 'meters',
 			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0, height: 3 },
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
 			id: wall.id,

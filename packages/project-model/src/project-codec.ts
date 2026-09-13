@@ -2,6 +2,7 @@ import {
 	createEmptyLayoutDocument,
 	createEmptyWallFirstLayoutDocument,
 	validateLayoutDocument,
+	wallFirstCanonicalFormatVersionIssue,
 	type LayoutValidationResult
 } from '@portfolio/layout-core';
 import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
@@ -71,7 +72,8 @@ export function createEmptyProject(input: EmptyProjectInput): Project {
 /**
  * Authoring-empty WALL-FIRST project — the canonical new-project boot.
  *
- * One valid empty wall-first Layout (`formatVersion: 4`) plus one valid empty
+ * One valid empty wall-first Layout (current `LAYOUT_WALL_FIRST_FORMAT_VERSION`,
+ * `5` since P23.6H) plus one valid empty
  * world-local Scene (`formatVersion: 1`): the pair `validateProject` requires,
  * since a wall-first Layout carrying the recognized legacy Scene is rejected
  * by name. Booting the canonical pair is what makes the wall-first Layout path
@@ -145,10 +147,55 @@ export function parseProjectJson(
 	}
 }
 
+/**
+ * P23.6H (S1b) — the canonical **writer** gate for the wall-first Layout half of
+ * a project payload.
+ *
+ * Boundary, stated explicitly so there are not two silent writer contracts:
+ *
+ * - `validateProject()` / `parseProjectJson()` are **readers** and stay
+ *   tolerant on purpose — a stored legacy (Room-owned, version-less) release
+ *   must remain loadable, and `apps/api/src/publication-persistence.ts`
+ *   validates already-persisted releases through `validateProject()`.
+ * - `serializeProject()` (and the editor facade that re-exports it) is a
+ *   **writer**: a Layout that declares a version other than the single current
+ *   canonical one rejects here by name instead of being emitted unchanged. There
+ *   is no read-side normalization seam to point at: P23.6I recognizes exactly one
+ *   wall-first version (`5`) and a `4` payload fails as an unsupported version
+ *   rather than being migrated (`docs/north-star.md` → *Development-stage schema
+ *   compatibility*).
+ * - A legacy (Room-owned, version-less) Layout is a different shape and is not
+ *   gated here: the wall-first gate applies only when the payload declares a
+ *   Layout format version. That path is retained **temporarily** for internal
+ *   development assets — a development dependency, not a compatibility promise
+ *   (`docs/north-star.md` → *Development-stage schema compatibility*).
+ *   Retirement is tracked by GitHub Issue #26 and is explicitly post-P23, not a
+ *   silent consequence of this gate.
+ *
+ * `createProject()` stays a tolerant constructor (it returns the validated
+ * document and writes nothing); the one rule is exported so any other writer can
+ * adopt it without re-deriving the version policy.
+ */
+export function wallFirstCanonicalProjectFormatIssue(
+	project: unknown
+): ProjectIssue | undefined {
+	if (!record(project)) return undefined;
+	const layout = project.layout;
+	// Only a Layout that *declares* a format version is a wall-first payload; a
+	// version-less Layout is the legacy Room-owned shape, which this gate does
+	// not judge (structural validation owns that report).
+	if (!record(layout) || !('formatVersion' in layout)) return undefined;
+	const gate = wallFirstCanonicalFormatVersionIssue(layout);
+	if (!gate) return undefined;
+	return issue(`$.layout${gate.path.slice(1)}`, gate.code, gate.message);
+}
+
 export function serializeProject(
 	project: unknown,
 	options: ProjectValidationOptions = {}
 ): string {
+	const writerIssue = wallFirstCanonicalProjectFormatIssue(project);
+	if (writerIssue) throw new ProjectValidationError(writerIssue);
 	const result = validateProject(project, options);
 	if (!result.success) throw new ProjectValidationError(result.issues[0]!);
 	return result.canonicalJson;

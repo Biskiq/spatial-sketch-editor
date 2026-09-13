@@ -80,13 +80,16 @@
       return [{ roomId: room.roomId, ok: true, ...adapted } as AdaptedRoom];
     });
     // P23.9 canonical physical Walls (wall-first only; empty for legacy).
-    const floorFrameById = new Map(
-      geometry.floors.map((floor) => [floor.floorId, { elevation: floor.elevation, height: floor.height }] as const)
+    // P23.6I — a Floor datum only. There is no storey vertical extent to fall
+    // back to, and no `{ height: 3 }` compatibility literal may survive here.
+    const floorElevationById = new Map(
+      geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const)
     );
     const walls: AdaptedWall[] = [];
     for (const wall of geometry.walls ?? []) {
-      const frame = floorFrameById.get(wall.floorId) ?? { elevation: 0, height: 3 };
-      const result = buildStandaloneWallMesh(wall, frame.elevation, frame.elevation + frame.height, { classifySurface: () => 'wall' });
+      const frame = { elevation: floorElevationById.get(wall.floorId) ?? 0 };
+      // P23.6H — the compiled Wall's own height decides its vertical extent.
+      const result = buildStandaloneWallMesh(wall, frame.elevation, { classifySurface: () => 'wall' });
       if (!result.mesh) {
         walls.push({ wallId: wall.wallId, ok: false, bounds: wall.bounds3 });
         continue;

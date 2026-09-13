@@ -34,6 +34,7 @@
 		onDiscardPendingSave,
 		resolveProjectAssetBytes,
 		onReset,
+		onLayoutReplaced,
 		onPreview,
 		previewDisabledReason = null,
 		projectId = null,
@@ -65,6 +66,8 @@
 		resolveProjectAssetBytes?: (uri: string) => Promise<Uint8Array | null>;
 		/** fired after the Project-menu reset actions; the shell clears the active selection. */
 		onReset?: () => void;
+		/** fired after a layout document replacement (reset or successful import); the shell cancels any in-flight Wall run. */
+		onLayoutReplaced?: () => void;
 		onPreview?: () => void | Promise<void>;
 		previewDisabledReason?: string | null;
 		projectId?: string | null;
@@ -154,6 +157,7 @@
 			{onDiscardPendingSave}
 			{resolveProjectAssetBytes}
 			{onReset}
+			{onLayoutReplaced}
 			bind:open={projectMenuOpen}
 		/>
 	</div>

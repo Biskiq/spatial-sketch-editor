@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createEmptyProject } from '$lib/project/project-codec';
+import { createEmptyProject, createEmptyWallFirstProject } from '$lib/project/project-codec';
 import {
 	clearPendingCloudSave,
 	createProjectApi,
@@ -280,5 +280,28 @@ describe('project persistence client', () => {
 		writePendingCloudSave(project, storage, now);
 		clearPendingCloudSave(storage);
 		expect(values.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
+	});
+
+	it('refuses a superseded layout version instead of persisting it', () => {
+		// The session handoff is a writer, so it carries the same current-format
+		// gate as `serializeProject()`: a payload declaring any other version fails
+		// closed rather than freezing superseded meaning into the handoff. P23.6I
+		// recognizes one wall-first version, so `4` is unsupported, not migrated.
+		const values = new Map<string, string>();
+		const storage = {
+			getItem: (key: string) => values.get(key) ?? null,
+			setItem: (key: string, value: string) => values.set(key, value),
+			removeItem: (key: string) => values.delete(key)
+		};
+		const project = createEmptyWallFirstProject({ id: 'project:superseded', name: 'Superseded' });
+		const superseded = {
+			...project,
+			layout: { ...project.layout, formatVersion: 4 }
+		};
+
+		expect(writePendingCloudSave(superseded, storage, 1_000_000)).toBe(false);
+		expect(values.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
+		// The current-format document still writes normally.
+		expect(writePendingCloudSave(project, storage, 1_000_000)).toBe(true);
 	});
 });

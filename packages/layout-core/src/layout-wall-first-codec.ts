@@ -1,6 +1,6 @@
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 4`), shared by P23.1 operations and the
+ * `LayoutDocument` (`formatVersion: 5`), shared by P23.1 operations and the
  * canonical project Save boundary.
  *
  * The codec intentionally provides:
@@ -28,12 +28,21 @@ import type {
 	LayoutWallOpening,
 	OrientedWallRef
 } from './layout-wall-first-types';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION, KNOWN_LAYOUT_FORMAT_VERSIONS } from './layout-wall-first-types';
+import {
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+	KNOWN_LAYOUT_FORMAT_VERSIONS
+} from './layout-wall-first-types';
 import type { LayoutDocumentIssue } from './layout-codec';
 import { LayoutDocumentValidationError } from './layout-codec';
 import type { LayoutObject, LayoutVec2 } from './layout-types';
 
-/** Validation result carrying the wall-first document type, not the legacy one. */
+/**
+ * Validation result carrying the wall-first document type, not the legacy one.
+ *
+ * A success is **always** the canonical current-format document. There is one
+ * recognized version (`5`) and no historical variant: a payload declaring anything
+ * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
+ */
 export type WallFirstLayoutValidationResult =
 	| {
 			success: true;
@@ -62,7 +71,11 @@ const ROOT_KEYS = [
 	'openings',
 	'objects'
 ] as const;
-const FLOOR_KEYS = ['id', 'name', 'elevation', 'height'] as const;
+/**
+ * Canonical Floor key set (P23.6I). The current Floor has no vertical extent, so a
+ * present `height` is `unknown_key`.
+ */
+const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
 const JUNCTION_KEYS = ['id', 'point'] as const;
 const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height'] as const;
 const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
@@ -93,7 +106,7 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 	return {
 		units: UNITS,
 		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
-		floor: { id: 'floor', name: 'Floor', elevation: 0, height: 3 },
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [],
 		walls: [],
 		rooms: [],
@@ -121,15 +134,15 @@ export function validateWallFirstLayoutDocument(
 	input: unknown
 ): WallFirstLayoutValidationResult {
 	const issues: LayoutDocumentIssue[] = [];
-	const document = parseDocument(input, '$', issues);
-	if (!document || issues.length > 0) {
+	const parsed = parseDocument(input, '$', issues);
+	if (!parsed || issues.length > 0) {
 		return { success: false, issues };
 	}
 
 	return {
 		success: true,
-		document,
-		canonicalJson: JSON.stringify(document, null, 2) + '\n'
+		document: parsed,
+		canonicalJson: JSON.stringify(parsed, null, 2) + '\n'
 	};
 }
 
@@ -150,7 +163,42 @@ export function parseWallFirstLayoutDocumentJson(json: string): WallFirstLayoutV
 	}
 }
 
+/**
+ * P23.6H — the canonical *writer* format requirement (S1b).
+ *
+ * The canonical writers receive canonical current-format state, so a document
+ * declaring any other format version rejects fail-closed instead of being
+ * persisted as if it were current. This is current-format strictness, not a
+ * compatibility branch: P23.6I recognizes exactly one version, so there is no
+ * historical payload that could be rewritten on the way out.
+ *
+ * Returns `undefined` when the input is not an object at all, so structural
+ * validation owns that report.
+ */
+export function wallFirstCanonicalFormatVersionIssue(
+	input: unknown
+): LayoutDocumentIssue | undefined {
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) return undefined;
+	const declared = (input as { formatVersion?: unknown }).formatVersion;
+	if (declared === LAYOUT_WALL_FIRST_FORMAT_VERSION) return undefined;
+	return {
+		path: '$.formatVersion',
+		code: 'unsupported_format_version',
+		message: `Canonical Layout Save requires formatVersion ${LAYOUT_WALL_FIRST_FORMAT_VERSION}; got ${String(
+			declared
+		)}. Canonical writers never migrate a historical payload.`
+	};
+}
+
+/**
+ * Canonical Layout serialization. Throws on invalid input.
+ *
+ * Unlike validation, this is a **writer**: it requires canonical current-format
+ * state and rejects a historical payload by name (P23.6H, S1b).
+ */
 export function serializeWallFirstLayoutDocument(document: unknown): string {
+	const versionIssue = wallFirstCanonicalFormatVersionIssue(document);
+	if (versionIssue) throw new LayoutDocumentValidationError(versionIssue);
 	const result = validateWallFirstLayoutDocument(document);
 	if (!result.success) {
 		throw new LayoutDocumentValidationError(result.issues[0]!);
@@ -173,7 +221,12 @@ function parseDocument(
 	}
 
 	const formatVersion = readFormatVersion(record.formatVersion, `${path}.formatVersion`, issues);
-	const floor = parseFloor(record.floor, `${path}.floor`, issues);
+	// P23.6I — one Floor key set only: no vertical extent, so a present `height`
+	// is `unknown_key`.
+	const floor =
+		formatVersion === LAYOUT_WALL_FIRST_FORMAT_VERSION
+			? parseFloorV5(record.floor, `${path}.floor`, issues)
+			: undefined;
 
 	const junctions = parseArray(record.junctions, `${path}.junctions`, issues, parseJunction);
 	const walls = parseArray(record.walls, `${path}.walls`, issues, parseWall);
@@ -310,9 +363,10 @@ function parseDocument(
 	}
 
 	if (issues.length > 0) return undefined;
+	if (!floor) return undefined;
 	return {
 		units: UNITS,
-		formatVersion: formatVersion ?? LAYOUT_WALL_FIRST_FORMAT_VERSION,
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
 		floor,
 		junctions,
 		walls,
@@ -343,20 +397,20 @@ function readFormatVersion(
 	return input as LayoutFormatVersion;
 }
 
-function parseFloor(
+/** Canonical Floor: `id`/`name`/`elevation` only (P23.6I). */
+function parseFloorV5(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
 ): ParsedValue<LayoutWallFirstFloor> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
-	assertAllowedKeys(record, FLOOR_KEYS, path, issues);
+	assertAllowedKeys(record, FLOOR_KEYS_V5, path, issues);
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readString(record.name, `${path}.name`, issues);
 	const elevation = readNumber(record.elevation, `${path}.elevation`, issues);
-	const height = readPositiveNumber(record.height, `${path}.height`, issues);
-	if (!id || !name || elevation === undefined || height === undefined) return undefined;
-	return { id, name, elevation, height };
+	if (!id || !name || elevation === undefined) return undefined;
+	return { id, name, elevation };
 }
 
 function parseJunction(
@@ -374,6 +428,10 @@ function parseJunction(
 	return { id, point };
 }
 
+/**
+ * P23.6I — `height` is finite and strictly positive with **no Floor cap**: the
+ * canonical Floor carries no vertical extent to clamp against.
+ */
 function parseWall(
 	input: unknown,
 	path: string,
@@ -422,6 +480,19 @@ function parseRoom(
 	const id = readId(record.id, `${path}.id`, issues);
 	const name = readNonEmptyString(record.name, `${path}.name`, issues);
 	const boundary = parseBoundaryRefs(record.boundary, `${path}.boundary`, issues);
+	// P23.6I (D7) — a canonical Room with zero boundary references is not a
+	// degenerate architecture, it is invalid state: the codec previously accepted
+	// `boundary: []` because an empty array parses cleanly, which let a Room with
+	// no enclosure reach the compiler and acquire an invented ceiling. The ceiling
+	// is derived from boundary Walls, so the boundary must exist.
+	if (boundary && boundary.length === 0) {
+		addIssue(
+			issues,
+			`${path}.boundary`,
+			'room_boundary_empty',
+			'A canonical Room boundary must reference at least one Wall'
+		);
+	}
 	const floorThickness = readPositiveNumber(record.floorThickness, `${path}.floorThickness`, issues);
 	const ceilingThickness = readPositiveNumber(record.ceilingThickness, `${path}.ceilingThickness`, issues);
 	if (

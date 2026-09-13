@@ -445,11 +445,15 @@ export function closedChainWalls(options: {
 	walls: ReadonlyArray<readonly [string, string, string]>;
 	role?: LayoutWall['role'];
 	thickness?: number;
-	height?: number;
+	/**
+	 * P23.6H — required authoritative Wall height. Fixtures pass their Floor
+	 * height; no fixed default survives on this (or any) Wall-birth path.
+	 */
+	height: number;
 }): Pick<LayoutDocumentWallFirst, 'junctions' | 'walls'> {
 	const role = options.role ?? 'boundary';
 	const thickness = options.thickness ?? 0.2;
-	const height = options.height ?? 3;
+	const height = options.height;
 	return {
 		junctions: options.junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: options.walls.map(([id, start, end]) => ({

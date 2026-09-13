@@ -207,11 +207,14 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
  * to the Wall ID, and there is no Room ownership to claim). Corner seams
  * between connected Walls are butt joints here; mitered room-corner polish
  * stays with P23.6.
+ *
+ * Vertical extent comes from `wall.height` (P23.6H): `floorElevation` …
+ * `floorElevation + wall.height`, so a partial-height Wall ends at its authored
+ * top with no fake ceiling extension.
  */
 export function buildStandaloneWallMesh(
 	wall: CompiledPhysicalWall,
 	floorElevation: number,
-	ceilingElevation: number,
 	options: WallMeshOptions = {}
 ): WallMeshBuildResult {
 	const issues: LayoutGeometryIssue[] = [];
@@ -225,7 +228,12 @@ export function buildStandaloneWallMesh(
 
 	const classify = options.classifySurface ?? ((ref: WallMeshSectionRef) => ref.kind);
 	const weldTolerance = options.weldTolerance ?? DEFAULT_WELD_TOLERANCE;
-	const wallHeight = ceilingElevation - floorElevation;
+	// P23.6H — the Wall's own authoritative height decides the mesh extent.
+	// Dropping the `ceilingElevation` parameter makes a Floor-derived vertical
+	// extent impossible to pass in by accident: every surface that renders
+	// wall-first architecture shares this one compiled contract.
+	const wallHeight = wall.height;
+	const ceilingElevation = floorElevation + wallHeight;
 	const half = wall.thickness / 2;
 	const wallAsCompiled: CompiledWall = { ...wall, segmentId: wall.wallId };
 	const roomView = {
