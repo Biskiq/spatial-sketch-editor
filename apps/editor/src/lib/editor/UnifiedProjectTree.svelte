@@ -163,8 +163,9 @@
 	// P23.6b — canonical reveal: expand the ancestors of the active canonical
 	// selection and scroll its resting row into view. Runs alongside the legacy
 	// `layoutSelectionAncestorRoomId` pick-expand below (they own disjoint
-	// selection kinds). Junction reveals open the Topology disclosure without
-	// exploding the whole inventory (D4). The target is cleared on every run so
+	// selection kinds). Junction reveals open the Architecture root without
+	// exploding the Topology inventory (D4 — see applyRevealTarget). The target
+	// is cleared on every run so
 	// a stale target never pin-flags a row after the selection changes.
 	$effect(() => {
 		const selection = activeSelection.active;
@@ -229,10 +230,14 @@
 			return;
 		}
 		if (selection.domain === 'scene') {
-		// P23.6b — wall-first documents render Scene rows under the document-
-		// level Scene Content root (no Room nesting), so reveal opens that
-		// root and the containing cluster. Legacy keeps its Room-nested reveal.
-		if (model.wallFirstRooms.length > 0 || model.rooms.length === 0) {
+		// P23.6b — gate on the DOCUMENT FORMAT (direct projection of the
+		// layout), never on projection emptiness: an empty legacy document
+		// has no rooms either, and the plan promises format-gated legacy
+		// behavior. Wall-first documents render Scene rows under the
+		// document-level Scene Content root (no Room nesting), so reveal
+		// opens that root and the containing cluster. Legacy keeps its
+		// Room-nested reveal.
+		if (wallFirstLayout) {
 			sceneContentOpen = true;
 			const workspace = selection.selection;
 			if (workspace.kind === 'cluster') {
@@ -350,11 +355,14 @@
 				architectureOpen = true;
 				wallsOpen = true;
 				break;
-			case 'topology':
-				architectureOpen = true;
-				wallsOpen = true;
-				topologyOpen = true;
-				break;
+		case 'topology':
+			// P23.6b D4 — a Junction selection must NOT explode the disclosed
+			// Topology inventory (dense projects hold 50–100 junctions) and
+			// must not drag the Walls list open with it. Opening the
+			// Architecture root is enough for orientation; the user expands
+			// Topology… (or uses search / Wall endpoint links) themselves.
+			architectureOpen = true;
+			break;
 			case 'layoutObjects':
 				layoutObjectsOpen = true;
 				break;
@@ -435,32 +443,14 @@
 	}
 
 	/**
-	 * P23.6b Room rename guard — wall-first Room rows are interactive but
-	 * NEVER inherit the legacy rename: `updateLayoutRoomFields` resolves the
-	 * Room through `layout.floors`, which no wall-first document has. No
-	 * wall-first Room metadata operation exists (P23.6 verified), and
-	 * `deleteLayoutRoom` rejects wall-first documents outright, so the menu
-	 * OMITS rename entirely (no dead Rename command — the builder skips it
-	 * when no `renameRoom` action is passed) and carries no room delete.
+	 * P23.6b Room context-menu guard — wall-first Room rows are interactive
+	 * but carry NO legacy Room commands: `updateLayoutRoomFields` resolves the
+	 * Room through `layout.floors` and `deleteLayoutRoom` rejects wall-first
+	 * documents outright, and no canonical Room metadata/delete operation
+	 * exists (P23.6 verified). So the row binds no oncontextmenu at all —
+	 * a menu with zero commands is worse than the native menu (P3.4 rows
+	 * without an approved action set keep native behavior).
 	 */
-	function onWallFirstRoomRowContextMenu(event: MouseEvent, roomId: string): void {
-		if (!contextMenu) return;
-		if (roomRowInteractive({ kind: 'room', roomId })) selectRoom({ roomId, name: roomId, walls: [], openings: [], objects: [], clusters: [], entities: [] });
-		openTreeContextMenu(
-			event,
-			buildPlanLayoutContextMenuItems({
-				target: { kind: 'room', roomId },
-				mutationBlockedReason: treeMutationBlocked(),
-				// No `renameRoom` on purpose: passing a no-op would still
-				// expose a dead Rename… command, which the plan forbids.
-				actions: {
-					deleteRoom: () => {},
-					deleteOpening: () => {},
-					deleteObject: () => {}
-				}
-			})
-		);
-	}
 
 	function selectEntity(entity: SceneEntity, event?: MouseEvent) {
 		// P10 — cross-owner hierarchy picks in Arrange replace the active
@@ -759,7 +749,6 @@
 									data-reveal-id={`rooms:${room.roomId}`}
 									title={`Canonical Room · ${room.wallIds.length} walls · ${room.openingIds.length} openings`}
 									onclick={roomRowInteractive(wallFirstRoomRow) ? () => selectRoom({ roomId: room.roomId, name: room.name, walls: [], openings: [], objects: [], clusters: [], entities: [] }) : undefined}
-									oncontextmenu={contextMenu ? (event) => onWallFirstRoomRowContextMenu(event, room.roomId) : undefined}
 								>
 									<span class="tree-row__label" title={room.name}>{room.name}</span>
 									<span class="tree-row__meta">{room.wallIds.length} walls</span>

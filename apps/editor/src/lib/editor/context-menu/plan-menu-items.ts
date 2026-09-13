@@ -28,7 +28,15 @@ export type PlanLayoutMenuActions = {
 	 * operation exists.
 	 */
 	renameRoom?(roomId: string): void;
-	deleteRoom(roomId: string): void;
+	/**
+	 * Legacy-Room delete only: it routes into `deleteLayoutRoom`, which
+	 * REJECTS wall-first documents. Optional so a caller can omit it —
+	 * P23.6b requires a wall-first Room menu to expose NO delete command
+	 * either (never a no-op dummy). A room target with neither action
+	 * resolves to an empty item list; callers should skip opening a menu
+	 * for those rows entirely (native behavior) rather than show one.
+	 */
+	deleteRoom?(roomId: string): void;
 	deleteOpening(roomId: string, openingId: string): void;
 	deleteObject(objectId: string): void;
 };
@@ -45,6 +53,9 @@ export function buildPlanLayoutContextMenuItems(input: {
 		// P23.6b — omit the command entirely when the caller cannot honor it:
 		// a wall-first Room menu must not expose Rename at all, so the tree
 		// passes no `renameRoom` instead of a dead callback.
+		// P23.6b — omit the command entirely when the caller cannot honor it:
+		// a wall-first Room menu must not expose Rename at all, so the tree
+		// passes no `renameRoom` instead of a dead callback.
 		if (input.actions.renameRoom) {
 			items.push({
 				id: 'rename-room',
@@ -53,14 +64,19 @@ export function buildPlanLayoutContextMenuItems(input: {
 				run: () => input.actions.renameRoom!(target.roomId)
 			});
 		}
-		items.push({
-			id: 'delete-room',
-			label: 'Delete room',
-			danger: true,
-			separatorBefore: items.length > 0,
-			disabledReason: deleteDisabled,
-			run: () => input.actions.deleteRoom(target.roomId)
-		});
+		// Same policy for delete: `deleteLayoutRoom` rejects wall-first
+		// documents, so a caller with no `deleteRoom` action gets no item
+		// (never a no-op dummy).
+		if (input.actions.deleteRoom) {
+			items.push({
+				id: 'delete-room',
+				label: 'Delete room',
+				danger: true,
+				separatorBefore: items.length > 0,
+				disabledReason: deleteDisabled,
+				run: () => input.actions.deleteRoom!(target.roomId)
+			});
+		}
 		return items;
 	}
 	if (target.kind === 'opening') {

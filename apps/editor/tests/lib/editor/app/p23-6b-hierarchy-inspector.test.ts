@@ -414,22 +414,21 @@ describe('P23.6b reveal target helper', () => {
 });
 
 describe('P23.6b source contracts', () => {
-	it('the tree component exposes no legacy rename on the wall-first Room path', () => {
+	it('binds no legacy context menu on the wall-first Room path', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// The dedicated wall-first Room context-menu handler must not route a
-		// canonical roomId into `updateLayoutRoomFields` (floors-only legacy).
-		expect(tree).toContain('onWallFirstRoomRowContextMenu');
-		const start = tree.indexOf('function onWallFirstRoomRowContextMenu');
-		const end = tree.indexOf('function ', start + 10);
-		const block = tree.slice(start, end);
-		// No invocation of the legacy floors-only renamer, and no reuse of the
-		// legacy Room context-menu action bundle that carries it.
-		expect(block).not.toContain('updateLayoutRoomFields(layoutPreview');
-		expect(block).not.toContain('renameRoomViaPrompt(roomId');
-		// Review fix: the menu builder receives NO renameRoom action — a no-op
-		// dummy would still expose a dead Rename… command, which the plan
-		// forbids ("no legacy renameRoom action / context-menu command").
-		expect(block).not.toContain('renameRoom:');
+		// Review fix: NO dedicated wall-first Room menu handler at all — a
+		// canonical Room has zero working Room commands (no metadata op;
+		// `deleteLayoutRoom` rejects wall-first), and a zero-item menu is
+		// worse than the native menu (P3.4 rows without an approved action
+		// set keep native behavior).
+		expect(tree).not.toContain('onWallFirstRoomRowContextMenu');
+		// No no-op Room actions are ever handed to the menu builder.
+		expect(tree).not.toContain('deleteRoom: () => {}');
+		// And the wall-first Room row button carries no oncontextmenu binding.
+		const anchor = tree.indexOf('data-reveal-id={`rooms:${room.roomId}`}');
+		expect(anchor).toBeGreaterThan(-1);
+		const row = tree.slice(tree.lastIndexOf('<button', anchor), tree.indexOf('</button>', anchor));
+		expect(row).not.toContain('oncontextmenu');
 	});
 
 	it('omits the Rename item when the menu builder gets no renameRoom action', () => {
@@ -514,8 +513,23 @@ describe('P23.6b source contracts', () => {
 		]) {
 			expect(tree, `tree misses ${fragment}`).toContain(fragment);
 		}
-		// The reveal effect opens the Walls subgroup with the Architecture root.
+		// The Architecture/Wall reveal opens the Walls subgroup with the root.
 		expect(tree).toContain('wallsOpen = true');
+	});
+
+	it('junction reveal opens Architecture without exploding Walls/Topology (D4)', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		// Review fix: a Junction selection must not auto-expand the disclosed
+		// Topology inventory (nor drag the Walls list open) — orientation
+		// comes from the Architecture root; the user expands Topology….
+		// (Slice the applyRevealTarget switch — not the revealTargetHidden one.)
+		const fnStart = tree.indexOf('function applyRevealTarget');
+		expect(fnStart).toBeGreaterThan(-1);
+		const start = tree.indexOf("case 'topology':", fnStart);
+		const block = tree.slice(start, tree.indexOf("case 'layoutObjects':", start));
+		expect(block).toContain('architectureOpen = true;');
+		expect(block).not.toContain('wallsOpen = true');
+		expect(block).not.toContain('topologyOpen = true');
 	});
 
 	it('anchors reveal targets on unique per-row keys', () => {
@@ -532,12 +546,13 @@ describe('P23.6b source contracts', () => {
 		expect(tree).toContain("`architecture:${target.wallId}:${target.openingId}`");
 	});
 
-	it('reveals wall-first Scene selections through the Scene Content root', () => {
+	it('reveals wall-first Scene selections through the Scene Content root (format-gated)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// Review fix: wall-first Scene rows moved from Room-nested to the
-		// document-level Scene Content root, so their reveal must open that
-		// root (the legacy branch keeps its Room expansion).
+		// Review fix: the branch keys on the DOCUMENT FORMAT (`wallFirstLayout`),
+		// not on projection emptiness — an empty legacy document has no rooms
+		// either and must keep the legacy Room-nested reveal path.
+		expect(tree).toContain('if (wallFirstLayout) {');
 		expect(tree).toContain('sceneContentOpen = true;');
-		expect(tree).toContain('if (model.wallFirstRooms.length > 0 || model.rooms.length === 0) {');
+		expect(tree).not.toContain('model.wallFirstRooms.length > 0 || model.rooms.length === 0');
 	});
 });
