@@ -410,3 +410,87 @@ describe('P23.6e slice 3 — authority isolation', () => {
 		expect(source).toContain('$state');
 	});
 });
+
+describe('P23.6e slice 6 — search, filters and exact Back restoration', () => {
+	it('keeps the query a transient current-entry field that never pushes or navigates', () => {
+		const store = new HierarchyNavigatorStore();
+		store.open({ kind: 'walls' });
+		const stack = JSON.stringify(store.backStack);
+		const revision = store.transition.revision;
+		store.setQuery('gallery');
+		store.setQuery('gallery b');
+		expect(store.current.query).toBe('gallery b');
+		// The underlying page is untouched: Empty/Escape returns to it exactly.
+		expect(store.current.page).toEqual({ kind: 'walls' });
+		expect(JSON.stringify(store.backStack)).toBe(stack);
+		expect(store.transition.revision).toBe(revision);
+	});
+
+	it('pushes the named home with an empty query and restores every field on Back', () => {
+		const store = new HierarchyNavigatorStore();
+		store.open({ kind: 'room', roomId: 'room-a' });
+		store.setQuery('gallery b');
+		store.setWallFilter('multiple-rooms');
+		store.setOpeningFilter('door');
+		store.setDisclosure(['room:room-a:section:junctions']);
+		store.setScrollTop(120);
+
+		// An explicit Show from a search result: empty query, calm filters, target
+		// disclosure, top scroll, one pushed entry and a targeted intent.
+		store.showIn({ page: { kind: 'walls' }, reveal: wallReveal });
+		expect(store.current).toEqual({
+			page: { kind: 'walls' },
+			query: '',
+			wallFilter: HIERARCHY_DEFAULT_WALL_FILTER,
+			openingFilter: HIERARCHY_DEFAULT_OPENING_FILTER,
+			disclosure: [...wallReveal.ancestorDisclosureKeys],
+			scrollTop: 0
+		});
+		expect(store.transition.kind).toBe('show-in');
+		expect(store.canGoBack).toBe(true);
+
+		// Back restores page, query, filters, disclosure and scroll exactly.
+		expect(store.back()).toBe(true);
+		expect(store.current).toEqual({
+			page: { kind: 'room', roomId: 'room-a' },
+			query: 'gallery b',
+			wallFilter: 'multiple-rooms',
+			openingFilter: 'door',
+			disclosure: ['room:room-a:section:junctions'],
+			scrollTop: 120
+		});
+		expect(store.transition.kind).toBe('history-restore');
+		expect(store.transition.target).toBeNull();
+	});
+
+	it('lets a restored scroll win over reveal for that cycle without clearing the selection intent', () => {
+		const store = new HierarchyNavigatorStore();
+		store.open({ kind: 'walls' });
+		store.setScrollTop(300);
+		store.open({ kind: 'rooms' });
+		store.back();
+		// The intent carries no reveal target, so the renderer restores the exact
+		// saved offset and only highlights; a genuine later selection still
+		// emits its own reveal cycle.
+		expect(store.transition.kind).toBe('history-restore');
+		expect(store.transition.target).toBeNull();
+		expect(store.current.scrollTop).toBe(300);
+		expect(store.current.page).toEqual({ kind: 'walls' });
+	});
+
+	it('never dirties a document under any Navigator-only sequence', () => {
+		const project = JSON.stringify({ layout: { walls: 200 }, scene: { entities: [] } });
+		const store = new HierarchyNavigatorStore();
+		store.open({ kind: 'walls' });
+		store.setWallFilter('with-openings');
+		store.setQuery('gallery b');
+		store.toggleDisclosure('walls:wall:w2');
+		store.revealDisclosure(['walls:wall:w3']);
+		store.setScrollTop(64);
+		store.showIn({ page: { kind: 'walls' }, reveal: null });
+		store.setOpeningFilter('window');
+		store.back();
+		store.reset();
+		expect(JSON.stringify({ layout: { walls: 200 }, scene: { entities: [] } })).toBe(project);
+	});
+});

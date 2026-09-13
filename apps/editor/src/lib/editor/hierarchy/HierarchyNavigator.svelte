@@ -8,7 +8,7 @@
 	// selection writers and nothing else — opening a page never selects, and
 	// selecting never navigates.
 	import { tick, untrack } from 'svelte';
-	import { EllipsisVertical, Eye, EyeOff, Scan, Trash2 } from 'lucide-svelte';
+	import { EllipsisVertical, Eye, EyeOff, Scan, Search, Trash2 } from 'lucide-svelte';
 	import type { SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from '../editor-outliner';
 	import type { EditorStore } from '../editor-store.svelte';
@@ -43,11 +43,16 @@
 		findHierarchyRepresentation,
 		hierarchyEntityLabel,
 		hierarchyHomeLabel,
+		OPENING_FILTER_LABELS,
+		WALL_FILTER_LABELS,
 		type HierarchyDestination,
 		type HierarchyPage,
 		type HierarchyProjectedRow,
-		type HierarchyRevealObservation
+		type HierarchyRevealObservation,
+		type OpeningFilter,
+		type WallFilter
 	} from './hierarchy-page-projection';
+	import { buildHierarchySearchProjection } from './hierarchy-search';
 	import { buildHierarchySourceIndex, type HierarchyEntityKey } from './hierarchy-source-index';
 	import HierarchyRow from './HierarchyRow.svelte';
 
@@ -104,8 +109,16 @@
 	// The calm/default projection for the active page, so an active filter can be
 	// told apart from the page itself never containing the entity.
 	const baseProjection = $derived(buildHierarchyPageProjection(index, entry.page));
+	// Search is a global projection over the same documents while the underlying
+	// page stays in the current entry: it is not a page, and it never pushes.
+	const searchProjection = $derived(
+		entry.query.trim().length > 0 ? buildHierarchySearchProjection(index, entry.query) : null
+	);
+	const searching = $derived(searchProjection !== null);
+	// Whichever surface is actually rendered owns representation and reveal.
+	const activeProjection = $derived(searchProjection ?? projection);
 	const activeRepresentation = $derived(
-		activeEntity ? findHierarchyRepresentation(projection, activeEntity) : null
+		activeEntity ? findHierarchyRepresentation(activeProjection, activeEntity) : null
 	);
 
 	// Neutral bottom-pinned strip: derived, never stored, never a second selection.
@@ -116,10 +129,10 @@
 		if (!entity || activeRepresentation) return null;
 		const reason = explainHierarchyExclusion({
 			page: entry.page,
-			current: projection,
+			current: activeProjection,
 			base: baseProjection,
 			entity,
-			queryActive: entry.query.trim().length > 0,
+			queryActive: searching,
 			roomName:
 				entry.page.kind === 'room'
 					? index.roomById.get(entry.page.roomId)?.name
@@ -253,6 +266,40 @@
 	function captureScroll(): void {
 		if (scrollElement) navigator.setScrollTop(scrollElement.scrollTop);
 	}
+
+	// ── transient search / filters (slice 6) ─────────────────────────────
+
+	// The page's own offset while search results are showing: Empty/Escape must
+	// return to the underlying page exactly, not to a leftover result offset.
+	let pageScrollBeforeSearch = 0;
+
+	function setQuery(next: string): void {
+		const wasSearching = entry.query.trim().length > 0;
+		const willSearch = next.trim().length > 0;
+		if (willSearch && !wasSearching) {
+			pageScrollBeforeSearch = untrack(() => navigator.current.scrollTop);
+		}
+		navigator.setQuery(next);
+		if (willSearch && !wasSearching) scheduleScroll({ top: 0 });
+		else if (!willSearch && wasSearching) scheduleScroll({ top: pageScrollBeforeSearch });
+	}
+
+	function clearQuery(): void {
+		if (entry.query.length > 0) setQuery('');
+	}
+
+	const wallFilterOptions = $derived(
+		(Object.keys(WALL_FILTER_LABELS) as WallFilter[]).map((value) => ({
+			value,
+			label: WALL_FILTER_LABELS[value]
+		}))
+	);
+	const openingFilterOptions = $derived(
+		(Object.keys(OPENING_FILTER_LABELS) as OpeningFilter[]).map((value) => ({
+			value,
+			label: OPENING_FILTER_LABELS[value]
+		}))
+	);
 
 	const pageLabel = $derived.by(() => {
 		switch (entry.page.kind) {
@@ -419,6 +466,57 @@
 		<span class="tree-nav__page" title={pageLabel}>{pageLabel}</span>
 	</nav>
 
+	<div class="tree-search" role="search">
+		<span class="tree-search__icon"><Search size={14} aria-hidden="true" /></span>
+		<input
+			type="search"
+			class="tree-search__input"
+			value={entry.query}
+			placeholder="Search Rooms, Walls, Openings…"
+			aria-label="Search hierarchy"
+			oninput={(event) => setQuery(event.currentTarget.value)}
+			onkeydown={(event) => {
+				if (event.key === 'Escape') {
+					event.preventDefault();
+					clearQuery();
+				}
+			}}
+		/>
+		{#if entry.query.length > 0}
+			<button
+				type="button"
+				class="tree-search__clear"
+				aria-label="Clear search"
+				onclick={clearQuery}>×</button>
+		{/if}
+	</div>
+
+	{#if !searching && entry.page.kind === 'walls'}
+		<label class="tree-filter-select">
+			<span class="tree-filter-select__label">Walls</span>
+			<select
+				value={entry.wallFilter}
+				onchange={(event) => navigator.setWallFilter(event.currentTarget.value as WallFilter)}
+			>
+				{#each wallFilterOptions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
+		</label>
+	{:else if !searching && entry.page.kind === 'openings'}
+		<label class="tree-filter-select">
+			<span class="tree-filter-select__label">Openings</span>
+			<select
+				value={entry.openingFilter}
+				onchange={(event) => navigator.setOpeningFilter(event.currentTarget.value as OpeningFilter)}
+			>
+				{#each openingFilterOptions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
+		</label>
+	{/if}
+
 	{#snippet rowExtras(row: HierarchyProjectedRow)}
 		{@const entity = row.entity}
 		{#if entity?.owner === 'scene' && entity.kind === 'entity' && sceneInteractive}
@@ -465,7 +563,37 @@
 	{/snippet}
 
 	<div class="tree-scroll" bind:this={scrollElement} onscroll={captureScroll}>
-		{#if projection.rows.length === 0}
+		{#if searchProjection}
+			{#if searchProjection.empty}
+				<p class="empty">No matches for “{searchProjection.query.trim()}”</p>
+			{:else}
+				{#each searchProjection.blocks as block (block.category)}
+					<section class="search-block">
+						<p class="hierarchy-heading">{block.label}</p>
+						{#each block.groups as group (group.kind)}
+							<p class="search-group">{group.label}</p>
+							<ul class="tree-page" role="tree" aria-label={`${block.label} ${group.label}`}>
+								{#each group.rows as row (row.rowKey)}
+									<HierarchyRow
+										{row}
+										isSelected={rowSelected}
+										isInteractive={rowInteractive}
+										isOpen={rowOpen}
+										onSelect={selectRow}
+										onToggle={toggleRow}
+										onAction={runAction}
+										onContextMenu={contextMenu ? rowContextMenu : undefined}
+										onEmphasis={emphasize}
+										onEmphasisLeave={deEmphasize}
+										{rowExtras}
+									/>
+								{/each}
+							</ul>
+						{/each}
+					</section>
+				{/each}
+			{/if}
+		{:else if projection.rows.length === 0}
 			<p class="empty">{emptyMessage}</p>
 		{:else}
 			<ul class="tree-page" role="tree" aria-label={pageLabel}>
@@ -557,6 +685,75 @@
 		flex-direction: column;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+	}
+	.tree-search {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.22rem 0.35rem;
+		border: 1px solid var(--editor-border-normal);
+		border-radius: 0.3rem;
+		background: var(--editor-bg-panel-raised);
+	}
+	.tree-search__icon { display: inline-flex; color: var(--editor-text-muted); }
+	.tree-search__input {
+		min-width: 0;
+		flex: 1 1 auto;
+		border: 0;
+		background: transparent;
+		color: var(--editor-text-primary);
+		font: inherit;
+		font-size: 0.72rem;
+		outline: none;
+	}
+	.tree-search__input::-webkit-search-cancel-button { display: none; }
+	.tree-search__clear {
+		display: inline-flex;
+		width: 1.2rem;
+		height: 1.2rem;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: 0;
+		border-radius: 0.2rem;
+		background: transparent;
+		color: var(--editor-text-muted);
+		font: inherit;
+		font-size: 0.85rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.tree-search__clear:hover { background: var(--editor-bg-control); color: var(--editor-text-primary); }
+	.tree-filter-select {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.35rem;
+	}
+	.tree-filter-select__label {
+		color: var(--editor-text-muted);
+		font-size: 0.62rem;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+	.tree-filter-select select {
+		min-width: 0;
+		flex: 1 1 auto;
+		padding: 0.2rem 0.3rem;
+		border: 1px solid var(--editor-border-normal);
+		border-radius: 0.26rem;
+		background: var(--editor-bg-panel-raised);
+		color: var(--editor-text-secondary);
+		font: inherit;
+		font-size: 0.68rem;
+	}
+	.search-block { display: flex; min-width: 0; flex-direction: column; }
+	.search-group {
+		margin: 0.25rem 0.45rem 0.1rem;
+		color: var(--editor-text-muted);
+		font-size: 0.6rem;
+		opacity: 0.75;
 	}
 	.tree-page { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
 	.empty {

@@ -1785,6 +1785,47 @@ describe('P23.6e slice 5 — representation reveal and pinned selection', () => 
 		}
 	});
 
+	it('searches a ~200-Wall fixture with stable order and calm resting metadata', () => {
+		// Same shape as the manual scenario: a large wall-only inventory with no
+		// Openings, so resting rows carry identity and nothing else.
+		const layout = fixtureLayout();
+		layout.rooms = [];
+		layout.openings = [];
+		layout.junctions = Array.from({ length: 201 }, (_, index) => ({
+			id: `j${index + 1}`,
+			point: [index, index % 3] as [number, number]
+		}));
+		layout.walls = Array.from({ length: 200 }, (_, index) => ({
+			id: `w${index + 1}`,
+			startJunctionId: `j${index + 1}`,
+			endJunctionId: `j${index + 2}`,
+			role: 'boundary' as const,
+			thickness: 0.15,
+			height: 2.8
+		}));
+		const index = buildHierarchySourceIndex({ layout, scene: fixtureScene() });
+		const walls = buildHierarchyPageProjection(index, { kind: 'walls' });
+		expect(walls.rows).toHaveLength(200);
+		expect(walls.rows.map((row) => row.canonicalId)).toEqual(
+			Array.from({ length: 200 }, (_, position) => `w${position + 1}`)
+		);
+		for (const row of walls.rows) {
+			expect(row.kind).toBe('entity');
+			expect(row.secondary).toBeUndefined();
+			expect(row.defaultOpen).toBe(false);
+			expect(row.children).toEqual([]);
+		}
+		// Byte-stable on rebuild, for the page and for search over the same source.
+		const rebuilt = buildHierarchyPageProjection(
+			buildHierarchySourceIndex({ layout, scene: fixtureScene() }),
+			{ kind: 'walls' }
+		);
+		expect(JSON.stringify(rebuilt.rows)).toBe(JSON.stringify(walls.rows));
+		const firstSearch = buildHierarchySearchProjection(index, 'w1');
+		const secondSearch = buildHierarchySearchProjection(index, 'w1');
+		expect(JSON.stringify(secondSearch.blocks)).toBe(JSON.stringify(firstSearch.blocks));
+	});
+
 	it('names every canonical home consistently with the root inventory', () => {
 		const index = fixtureIndex();
 		const homes: [HierarchyEntityKey, string][] = [
@@ -1801,5 +1842,64 @@ describe('P23.6e slice 5 — representation reveal and pinned selection', () => 
 			expect(home, `missing home for ${entity.id}`).not.toBeNull();
 			expect(hierarchyHomeLabel(home!)).toBe(label);
 		}
+	});
+});
+
+describe('P23.6e slice 6 — search UI, filters and Back restoration (source contracts)', () => {
+	const navigatorSource = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+	const searchSource = readLibSource('editor/hierarchy/hierarchy-search.ts');
+
+	it('renders the global result blocks and groups the projection produced', () => {
+		expect(navigatorSource).toContain('buildHierarchySearchProjection');
+		expect(navigatorSource).toContain('searchProjection.blocks');
+		// Block and group labels come from the projection, never from a second
+		// hardcoded list in the renderer.
+		expect(navigatorSource).toContain('{block.label}');
+		expect(navigatorSource).toContain('{group.label}');
+		expect(searchSource).toContain('HIERARCHY_SEARCH_BLOCK_LABELS');
+		expect(searchSource).toContain('HIERARCHY_SEARCH_GROUP_LABELS');
+		// Search rows reuse the one row renderer and the canonical Show actions.
+		expect(navigatorSource).toContain('onAction={runAction}');
+	});
+
+	it('keeps search a transient field: Clear, Escape and no navigation', () => {
+		expect(navigatorSource).toContain('navigator.setQuery(');
+		expect(navigatorSource).toContain("event.key === 'Escape'");
+		expect(navigatorSource).toContain('aria-label="Clear search"');
+		const setQueryBody = /function setQuery\(next: string\)[\s\S]*?\n\t}/.exec(navigatorSource)![0];
+		expect(setQueryBody).toContain('navigator.setQuery(next)');
+		expect(setQueryBody).not.toContain('navigator.open(');
+		expect(setQueryBody).not.toContain('navigator.showIn(');
+	});
+
+	it('pins the two page filters to the settled option labels', () => {
+		expect(navigatorSource).toContain('WALL_FILTER_LABELS');
+		expect(navigatorSource).toContain('OPENING_FILTER_LABELS');
+		expect(navigatorSource).toContain('navigator.setWallFilter(');
+		expect(navigatorSource).toContain('navigator.setOpeningFilter(');
+		// Native single-select dropdowns, only on their own page and only when the
+		// search projection is not the rendered surface.
+		expect(navigatorSource).toMatch(/!searching && entry\.page\.kind === 'walls'/);
+		expect(navigatorSource).toMatch(/!searching && entry\.page\.kind === 'openings'/);
+		expect(WALL_FILTER_LABELS.all).toBe('All Walls');
+		expect(OPENING_FILTER_LABELS.door).toBe('Doors');
+		expect(OPENING_FILTER_LABELS.window).toBe('Windows');
+	});
+
+	it('leaves the query alone when a result is selected', () => {
+		const selectRowBody = /function selectRow\(row: HierarchyProjectedRow\): void \{[\s\S]*?\n\t}/.exec(
+			navigatorSource
+		)![0];
+		expect(selectRowBody).toContain('selectLayoutRoom(layoutInteraction');
+		expect(selectRowBody).not.toContain('setQuery');
+		expect(selectRowBody).not.toContain('navigator.open(');
+		expect(selectRowBody).not.toContain('navigator.showIn(');
+	});
+
+	it('renders the search surface in place of the page without leaving it', () => {
+		// The underlying page entry is untouched, so clearing returns to it.
+		expect(navigatorSource).toMatch(/\{#if searchProjection\}/);
+		expect(navigatorSource).toContain('{:else if projection.rows.length === 0}');
+		expect(navigatorSource).toContain('No matches for');
 	});
 });
