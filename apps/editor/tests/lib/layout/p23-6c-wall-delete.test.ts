@@ -60,7 +60,8 @@ import {
 import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
 import {
 	createLayoutInteractionState,
-	selectLayoutPhysicalWall
+	selectLayoutPhysicalWall,
+	setPlanViewMode
 } from '$lib/editor/layout/layout-interaction';
 import { isUnifiedTreeRowInteractive, type UnifiedTreeRow } from '$lib/editor/unified-project-tree-model';
 import { buildPlanLayoutContextMenuItems } from '$lib/editor/context-menu/plan-menu-items';
@@ -646,5 +647,33 @@ describe('P23.6c caller wiring — one planner, fixed post-delete selection', ()
 		// Authority: the only surfaces whose context menu may offer Delete.
 		expect(isUnifiedTreeRowInteractive(row, 'scene', 'plan', 'layout')).toBe(true);
 		expect(isUnifiedTreeRowInteractive(row, 'scene', '3d')).toBe(true);
+	});
+
+	it('a remembered physicalWall selection survives the switch to Arrange and Delete cannot reach it from there (review regression)', () => {
+		// Premise (real behavior): `setPlanViewMode` deliberately keeps the
+		// committed Layout selection as memory when switching to Arrange —
+		// so the Wall selection is still present in an authority-inert mode.
+		const layoutInteraction = createLayoutInteractionState();
+		selectLayoutPhysicalWall(layoutInteraction, 'wall-e');
+		setPlanViewMode(layoutInteraction, 'staging');
+		expect(layoutInteraction.selection).toEqual({ kind: 'physicalWall', wallId: 'wall-e' });
+		// Authority: the viewport's Wall Delete branch requires Layout mode.
+		// Without the gate, the Arrange owner-delete branch (Scene delete
+		// needs an active Scene target; the Layout-object branch needs an
+		// active Layout object) falls through into the remembered-Wall
+		// selection and deletes a canonical Wall from Arrange.
+		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
+		const dispatch = source.indexOf('onWallDelete?.(interaction.selection.wallId)');
+		expect(dispatch).toBeGreaterThan(-1);
+		const condition = source.slice(source.lastIndexOf('if (', dispatch), dispatch);
+		expect(condition).toContain("interaction.selection.kind === 'physicalWall'");
+		expect(condition).toContain("interaction.planViewMode === 'layout'");
+		// The Arrange Scene-delete branch above keeps its active-owner
+		// requirement (unchanged contract).
+		const keyDownStart = source.indexOf('function onKeyDown');
+		expect(keyDownStart).toBeGreaterThan(-1);
+		const sceneDispatch = source.indexOf('onSceneDelete?.();', keyDownStart);
+		expect(sceneDispatch).toBeGreaterThan(-1);
+		expect(source.slice(keyDownStart, sceneDispatch)).toContain('arrangeActiveScene !== null');
 	});
 });

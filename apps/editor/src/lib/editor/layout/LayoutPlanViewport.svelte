@@ -2505,7 +2505,21 @@
 		}
 		// P23.6c — canonical Wall delete: Delete/Backspace and the Inspector/
 		// hierarchy Delete actions call the same planner-backed adapter.
-		if ((event.key === 'Delete' || event.key === 'Backspace') && interaction.tool === 'select' && interaction.selection.kind === 'physicalWall') {
+		// P23.6c review fix — Layout authority only: `setPlanViewMode()`
+		// deliberately keeps a committed Layout selection as memory when
+		// switching to Arrange, and the structural selection stays memory
+		// there. Without this gate the branch caught the remembered
+		// `physicalWall` after the Arrange owner-delete branch fell through
+		// (no active Scene target), deleting a Wall from an authority-inert
+		// mode — the same class of bypass as the hierarchy context menu. In
+		// Arrange, Delete routes to the active owner only (the Scene and
+		// Layout-object branches above).
+		if (
+			(event.key === 'Delete' || event.key === 'Backspace') &&
+			interaction.tool === 'select' &&
+			interaction.selection.kind === 'physicalWall' &&
+			interaction.planViewMode === 'layout'
+		) {
 			event.preventDefault();
 			onWallDelete?.(interaction.selection.wallId);
 			return;
