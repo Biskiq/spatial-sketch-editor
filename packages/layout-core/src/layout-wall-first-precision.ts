@@ -76,6 +76,8 @@ export type PrecisionOperation =
 	| 'wall-thickness'
 	| 'wall-height'
 	| 'wall-role'
+	/** P23.6c — canonical Wall deletion (planner: `planDeleteWall`). */
+	| 'wall-delete'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
 	| 'layout-object-transform'

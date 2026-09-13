@@ -6,7 +6,7 @@
 **Depends on:** P22 complete, including hosted cold-visitor acceptance.  
 **Owner reconciliation ratified:** 2026-09-09.  
 **Evidence basis:** completed `P23-H1`, `P23-H2`, `P23-H3`, `P23-H5`, current Museum Editor code, and the staging wall-first proposal.  
-**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I merged via PR #25 (`746aa16`)** as the single format-5 vertical cutover; **P23.6a implemented on branch `P23.6a`** (see its §Implementation record); **P23.6b is an implementation-ready child plan** that consumes P23.6a's ratified move capability; **P23.6c is a proposed child plan (canonical Wall deletion, recorded from PR #25 review)**.
+**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I merged via PR #25 (`746aa16`)** as the single format-5 vertical cutover; **P23.6a implemented on branch `P23.6a`** (see its §Implementation record); **P23.6b implemented on branch `P23.6b`** (ownership-truthful hierarchy + canonical-only Inspector; see its §Implementation record); **P23.6c implemented on branch `p23.6c`** (canonical Wall deletion through the one planner; see its §Implementation record).
 
 This is the reconciled P23 umbrella. The accepted reconciliation — informed by the harvests — supersedes conflicting earlier P23 and North-Star direction. Harvest artifacts remain evidence, not implementation authority.
 
@@ -520,13 +520,25 @@ Owner-review follow-up before P23.7: an ownership-truthful hierarchy for documen
 
 [Child plan](2026-09-13-P23.6c-canonical-wall-deletion.md)
 
-Delete one selected canonical Wall through the `planWallRoleChange()` architecture (candidate graph → face extraction → P23.8 Room reconciliation → canonical validation/compiler → one history entry): hosted Openings go atomically, orphan Junctions prune only when unreferenced, ambiguous topology rejects, Undo/Redo restores exact IDs, and `Delete`/`Backspace` plus Inspector/hierarchy Delete share the one planner. Recorded from PR #25 review; deliberately after P23.6b and before P23.7, never stuffed into PR #25.
+Delete one selected canonical Wall through the `planWallRoleChange()` architecture (candidate graph → face extraction → P23.8 Room reconciliation → canonical validation/compiler → one history entry): hosted Openings go atomically, Junction cleanup is scoped to the deleted Wall's own start/end Junctions (an endpoint prunes only when no surviving Wall references it; unrelated orphan Junctions elsewhere are untouched), ambiguous topology rejects, Undo/Redo restores exact IDs, and `Delete`/`Backspace` plus Inspector/hierarchy Delete share the one planner. Recorded from PR #25 review; deliberately after P23.6b and before P23.7, never stuffed into PR #25. **Implemented on branch `p23.6c`** (see the child plan's §Implementation record): `planDeleteWall` in `layout-wall-topology-ops.ts`, the `deleteWallFirstWall` editor adapter, and the four surfaces (viewport Delete/Backspace, both viewport mount sites, Inspector Wall panel, hierarchy wall-row context menu) on the one planner with the fixed post-delete selection-`none` policy. Review blockers closed: junction cleanup is endpoint-scoped (never a document-wide unreferenced-Junction sweep) and the hierarchy Wall context menu obeys the same `isUnifiedTreeRowInteractive` row-authority contract as activation (Camera domain / Plan Arrange expose no menu).
+
+## P23.6d — Canonical Room Lifecycle Completion
+
+[Child plan](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md)
+
+Closes the remaining wall-first Room authoring debt **before** the final Hierarchy/UI overhaul consumes those capabilities: canonical Room metadata/name editing (`planRoomMetadataUpdate`) and the narrow, guard-railed `planRemoveRoom` (a Room-forward intent over the P23.6c Wall pipeline that retires the Room through normal P23.8 reconciliation — never a `LayoutRoom` record splice, which would leave the same enclosure intact and violate the Room-identity invariant). Restates the existing move/duplicate boundaries as the lifecycle contract. Execution order is dependency-driven, not numeric: 6d precedes the 6e UI overhaul even though the directive historically carried the 6d label.
+
+## P23.6e — Final product-semantics reconciliation
+
+[Directive](P23.6e-directive.md)
+
+The final Hierarchy / product-semantics UI overhaul (formerly recorded under the 6d label): Scene-domain Hierarchy pages, pinned-strip reveal semantics, search/retrieval depth and the Inspector/navigation separation. Not yet planned in detail as an implementation slice; it consumes the completed Room lifecycle from P23.6d and must not invent Room capabilities itself.
 
 ## P23.7 — Integration, compatibility and closeout
 
 [Child plan](2026-09-08-P23.7-integration-closeout.md)
 
-Runs last. Proves the complete Build loop, exact IDs/history, old save/publication compatibility, standalone Scene migration rejection/success cases, Scene/Camera exterior placement, Plan/3D parity, Save/Load, Preview and Publish. Accepts the completed Wall/Junction/Opening selection cutover: no stale Room-owned selection/hit path may remain authoritative.
+Runs last. Proves the complete Build loop, exact IDs/history, old save/publication compatibility, standalone Scene migration rejection/success cases, Scene/Camera exterior placement, Plan/3D parity, Save/Load, Preview and Publish. Accepts the completed Wall/Junction/Opening selection cutover: no stale Room-owned selection/hit path may remain authoritative. Closeout acceptance now also covers the **complete wall-first Room lifecycle** delivered by [P23.6d](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md) — canonical Room metadata/name editing and the guard-railed `planRemoveRoom` retirement through P23.8 reconciliation — plus the final P23.6e Hierarchy/UI overhaul that consumes those capabilities, rather than treating Room rename/metadata as an open deferral and Room removal as unowned smoke.
 
 P23.7 owns acceptance proving the Wall-drawing UX: second-click commits the Wall (no separate Commit button), Escape cancels only the active transient candidate/run, no redundant Commit/Cancel action bar is required, successful commits do not emit noisy implementation-count messages, invalid/rejected operations still surface useful diagnostics, exact selected-Wall Length/Angle edits reuse canonical P23.1 precision/topology/history paths, and Plan UI does not obscure the XZ axis or important viewport affordances.
 
@@ -564,6 +576,10 @@ P23.6a
 P23.6b
       ↓
 P23.6c
+      ↓
+P23.6d
+      ↓
+P23.6e
       ↓
 P23.7
 ```
@@ -699,6 +715,15 @@ here, and no implementation detail is fixed.
   must not be claimed complete merely because Plan selection and hierarchy
   continuity work. **P23.7 must restate this as an explicit open deferral** and must
   not mark it complete.
+
+- **Bulk "demolish room" multi-Wall cascade** (registered 2026-09-13 from the
+  [P23.6d](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md) planning):
+  deleting every boundary Wall of a Room as one command, with explicit
+  shared-Wall adjudication and per-Wall portal reconciliation previews.
+  P23.6d deliberately ships the narrow `planRemoveRoom` (one exclusive boundary
+  Wall through the P23.6c pipeline) instead; the broad cascade stays
+  unscheduled until a product case exists. Owner: unassigned / future
+  scheduled slice.
 
 - **Layout Room multi-select** (registered 2026-09-12 from the P23.6a review,
   tracked as **Issue #28**): an ordered **set** of Layout Rooms — and, as a

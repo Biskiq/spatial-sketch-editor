@@ -22,6 +22,7 @@
 		deleteLayoutOpening,
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
+		deleteWallFirstWall,
 		layoutPreviewSourceLabel,
 		layoutPreviewStatusLabel,
 		layoutRoomSceneReferenceSummary,
@@ -1431,6 +1432,28 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		);
 	}
 
+	/**
+	 * P23.6c — canonical Wall delete through the same planner-backed adapter
+	 * the viewport Delete/Backspace path calls (one operation = one history
+	 * entry). A rejection installs nothing; success clears the canonical
+	 * selection to `none` (the fixed post-delete policy — never a
+	 * nearest-survivor and never a dangling `wallId`).
+	 */
+	function deleteSelectedWallFirstWall(): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const outcome = runLayoutMutationGuarded(
+			() => deleteWallFirstWall(layoutPreview, wall.id),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (outcome.result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(outcome.result.success ? 'Deleted wall' : `Wall delete failed: ${outcome.result.message}`);
+	}
+
 	function updateSelectedJunction(index: 0 | 1, event: Event): void {
 		const junction = selectedWallFirstJunction;
 		if (!junction) return;
@@ -1757,6 +1780,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
 					<label>Add Vertex at (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallVertex} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
+					<div class="layout-opening-actions">
+						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
+					</div>
 					<!-- D2/D3 — boundary participation is a relation, never ownership;
 						hosted Openings select through the canonical wallOpening slot. -->
 					{#if selectedWallFirstHostedOpenings.length > 0}
