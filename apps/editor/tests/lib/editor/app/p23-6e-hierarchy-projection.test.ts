@@ -1374,3 +1374,115 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		).toEqual({ kind: 'search', text: 'Not in search results' });
 	});
 });
+
+describe('P23.6e slice 4 — page Navigator UI migration', () => {
+	const navigatorSource = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+	const rowSource = readLibSource('editor/hierarchy/HierarchyRow.svelte');
+	const treeSource = readLibSource('editor/UnifiedProjectTree.svelte');
+
+	it('isolates the legacy accordion behind the wall-first gate', () => {
+		const gate = treeSource.indexOf('{#if wallFirstLayout}');
+		expect(gate).toBeGreaterThan(-1);
+		const navigatorMount = treeSource.indexOf('<HierarchyNavigator', gate);
+		const legacyRoot = treeSource.indexOf('class="tree-filter"');
+		expect(navigatorMount).toBeGreaterThan(gate);
+		// The legacy search/accordion markup stays reachable but only after the
+		// canonical branch's `{:else}`.
+		expect(legacyRoot).toBeGreaterThan(navigatorMount);
+		expect(treeSource).toMatch(/\{:else\}/);
+	});
+
+	it('renders headings as non-interactive eyebrows, never destinations or buttons', () => {
+		expect(rowSource).toContain('<p class="hierarchy-heading">{row.label}</p>');
+		expect(rowSource).not.toMatch(/row\.kind === 'heading'[\s\S]{0,140}?<button/);
+		for (const row of buildHierarchyPageProjection(fixtureIndex(), { kind: 'root' }).rows.filter(
+			(candidate) => candidate.kind === 'heading'
+		)) {
+			expect(row.destination).toBeUndefined();
+			expect(row.entity).toBeUndefined();
+			expect(row.disclosureKey).toBeUndefined();
+			expect(row.actions).toBeUndefined();
+		}
+	});
+
+	it('routes root destinations directly and never through a disclosure row', () => {
+		const rows = buildHierarchyPageProjection(fixtureIndex(), { kind: 'root' }).rows;
+		const destinations = rows.filter((row) => row.kind === 'destination');
+		expect(destinations.map((row) => row.destination!.page.kind)).toEqual([
+			'rooms',
+			'walls',
+			'openings',
+			'junctions',
+			'layoutObjects',
+			'sceneContent'
+		]);
+		for (const row of destinations) {
+			expect(row.disclosureKey).toBeUndefined();
+			expect(row.defaultOpen).toBeUndefined();
+			// Navigation-only: no entity, so an activation cannot select.
+			expect(isHierarchyRowSelectable(row)).toBe(false);
+			expect(row.destination!.reveal).toBeNull();
+		}
+		// Every destination is a real `<button type="button">`, so keyboard entry
+		// is native rather than a click-only div.
+		expect(rowSource).toMatch(/row\.kind === 'destination'[\s\S]{0,120}?<button type="button"/);
+	});
+
+	it('separates Room (and every entity) selection from the navigation action', () => {
+		// Two distinct affordances on the entity line: the row itself selects via
+		// `onSelect`, action buttons navigate via `onAction`.
+		expect(rowSource).toMatch(/onclick=\{interactive \? \(\) => onSelect\(row\) : undefined\}/);
+		expect(rowSource).toMatch(/onclick=\{\(\) => onAction\(action\.destination\)\}/);
+		expect(navigatorSource).toContain('function selectRow(');
+		expect(navigatorSource).toContain('function runAction(');
+		expect(navigatorSource).toMatch(/function runAction\(destination: HierarchyDestination\)[\s\S]{0,220}navigator\.showIn\(destination\)/);
+		// Disabled rows stay mounted and focusable with an honest ARIA state.
+		expect(rowSource).toContain('aria-disabled={!interactive}');
+		expect(rowSource).toMatch(/aria-expanded=\{open\}/);
+	});
+
+	it('writes selection only through the canonical layout interaction helpers', () => {
+		for (const writer of [
+			'selectLayoutRoom',
+			'selectLayoutPhysicalWall',
+			'selectLayoutWallOpening',
+			'selectLayoutJunction',
+			'selectLayoutObject'
+		]) {
+			expect(navigatorSource).toContain(writer);
+		}
+		expect(navigatorSource).toMatch(/from '\.\.\/layout\/layout-interaction'/);
+		// No direct selection writes, no document mutation, no history controller.
+		expect(navigatorSource).not.toMatch(/activeSelection\.active\s*=/);
+		expect(navigatorSource).not.toContain('layout-mutation-runner');
+		expect(navigatorSource).not.toContain('history-controller');
+	});
+
+	it('keeps Scene and Layout owners separate, with mutations gated to 3D Scene', () => {
+		// Scene row extras (visibility/frame/delete/cluster) are Scene-owned and
+		// 3D-gated; Layout rows only expose the owner selection/context paths.
+		expect(navigatorSource).toMatch(/entity\?\.owner === 'scene' && entity\.kind === 'entity' && sceneInteractive/);
+		expect(navigatorSource).toMatch(/if \(entity\.owner === 'layout'\)/);
+		expect(navigatorSource).toContain('const sceneInteractive = $derived(domain === \'scene\' && view === \'3d\')');
+		expect(navigatorSource).toContain('store.toggleEntityVisibility');
+		expect(navigatorSource).toContain('store.focusPlacement');
+		expect(navigatorSource).toContain('store.deletePlacements');
+		expect(navigatorSource).toContain('store.addMemberToCluster');
+		expect(navigatorSource).toContain('store.removeMemberFromCluster');
+	});
+
+	it('keeps P23.6c / P23.6d context menus reachable on the canonical rows', () => {
+		expect(treeSource).toContain('onWallContextMenu={onWallRowContextMenu}');
+		expect(treeSource).toContain('onRoomContextMenu={onWallFirstRoomRowContextMenu}');
+		expect(navigatorSource).toMatch(/entity\.kind === 'wall'\) onWallContextMenu\(event, entity\.wallId\)/);
+		expect(navigatorSource).toMatch(/entity\.kind === 'room'\) onRoomContextMenu\(event, entity\.roomId\)/);
+		expect(rowSource).toMatch(/oncontextmenu=\{onContextMenu \? \(event\) => onContextMenu\(event, row\) : undefined\}/);
+	});
+
+	it('carries no Camera dependency in the Navigator surface', () => {
+		for (const source of [navigatorSource, rowSource]) {
+			expect(source).not.toContain('Camera');
+			expect(source).not.toContain('camera');
+		}
+	});
+});

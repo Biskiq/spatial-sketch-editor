@@ -149,7 +149,10 @@
 	{:else}
 		<!-- Both panels stay mounted; the inactive one is hidden by class so the
 		     tree's component-local expansion state survives tab switches. -->
-		<div class="panel-content" class:panel-content--hidden={showScenePanelTabs && store.leftPanel === 'assets'}>
+		<div
+			class="panel-content panel-content--tree"
+			class:panel-content--hidden={showScenePanelTabs && store.leftPanel === 'assets'}
+		>
 			<UnifiedProjectTree
 				{store}
 				{layoutPreview}
@@ -220,6 +223,9 @@
 	.panel-tabs button { padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.32rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: inherit; font-size: 0.73rem; cursor: pointer; }
 	.panel-tabs button.active { border-color: var(--editor-accent); background: var(--editor-bg-selected); color: var(--editor-text-primary); }
 	.panel-content { display: contents; }
+	/* P23.6e — the hierarchy owns its inner scroll viewport: give the tree a
+	   bounded flex track so page reveal/scroll restoration has a stable owner. */
+	.panel-content--tree { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
 	.panel-content--hidden { display: none; }
 	.layout-error { margin: 0; color: var(--editor-danger-fg); font-size: 0.7rem; line-height: 1.4; }
 

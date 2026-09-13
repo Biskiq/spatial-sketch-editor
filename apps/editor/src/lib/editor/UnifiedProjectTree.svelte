@@ -8,7 +8,7 @@
 	// Selection is domain-driven: picks call the
 	// source APIs the viewport calls, S3's hooks own cross-domain exclusivity,
 	// and the highlight reads `ActiveEditorSelection.active`.
-	import { onMount } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { EllipsisVertical, Eye, EyeOff, ListFilter, Plus, Scan, Search, Trash2 } from 'lucide-svelte';
 	import { getAsset } from '$lib/content/assets';
 	import { isSceneModelEntity, type SceneEntity } from '$lib/content/scene';
@@ -53,6 +53,11 @@
 	} from './unified-project-tree-model';
 	import type { EditorDomain } from './app/editor-view-state.svelte';
 	import type { EditorViewMode } from './app/editor-view-mode';
+	import HierarchyNavigator from './hierarchy/HierarchyNavigator.svelte';
+	import {
+		HIERARCHY_NAVIGATOR_KEY,
+		HierarchyNavigatorStore
+	} from './app/hierarchy-navigator-state.svelte';
 
 	let {
 		store,
@@ -84,6 +89,11 @@
 		})
 	);
 	const wallFirstLayout = $derived('formatVersion' in layoutPreviewDocument(layoutPreview));
+	// P23.6e — the one UI-only Navigator instance, provided by the composition
+	// root. A local fallback keeps a bare mount functional without a provider.
+	const hierarchyNavigator =
+		getContext<HierarchyNavigatorStore | undefined>(HIERARCHY_NAVIGATOR_KEY) ??
+		new HierarchyNavigatorStore();
 	const active = $derived(activeSelection.active);
 	// Camera discovery slots (reducer's discoveryConnectionId/discoveryDirection)
 	// — only consulted by the matcher for direction rows, which the embedded
@@ -762,6 +772,25 @@
 </script>
 
 <section bind:this={treeElement} class="unified-tree" aria-label="Project hierarchy">
+	{#if wallFirstLayout}
+		<!-- P23.6e — canonical wall-first documents render the relationship-aware
+		     page Navigator; legacy Room-owned documents keep the quarantined
+		     accordion below until P23.7 decides its retirement. -->
+		<HierarchyNavigator
+			{store}
+			{layoutPreview}
+			{layoutInteraction}
+			{activeSelection}
+			navigator={hierarchyNavigator}
+			{domain}
+			{view}
+			{contextMenu}
+			onSelectSceneEntity={selectEntity}
+			onSelectCluster={selectCluster}
+			onWallContextMenu={onWallRowContextMenu}
+			onRoomContextMenu={onWallFirstRoomRowContextMenu}
+		/>
+	{:else}
 	<div class="tree-filter" role="search">
 		<span class="tree-filter__icon"><Search size={14} aria-hidden="true" /></span>
 		<input
@@ -1484,10 +1513,11 @@
 			{/if}
 		{/if}
 	</div>
+	{/if}
 </section>
 
 <style>
-	.unified-tree { display: flex; min-width: 0; flex-direction: column; gap: 0.6rem; }
+	.unified-tree { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 0.6rem; }
 
 	/* S10.1 — hierarchy filter/search bar. */
 	.tree-filter {
