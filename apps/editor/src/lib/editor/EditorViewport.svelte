@@ -32,7 +32,9 @@
 		deleteLayoutOpening,
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
-		deleteWallFirstWall
+		deleteWallFirstWall,
+		removeWallFirstRoom,
+		wallFirstRoomExclusiveBoundaryWallIds
 	} from './layout/layout-preview-state.svelte';
 	import { layoutMutationRunnerFor, runLayoutMutation } from './layout/layout-mutation-runner';
 	import {
@@ -287,6 +289,34 @@
 		store.setStatusMessage(result.success ? 'Deleted wall' : `Wall delete failed: ${result.message}`);
 	}
 
+	/**
+	 * P23.6d — canonical wall-first Room removal (viewport context menu + Delete
+	 * key). Removes the Room and its exclusive enclosure Walls while preserving
+	 * shared physical Walls required by adjacent Rooms, in one atomic step (Walls
+	 * shared with a neighbour stay) and clears the canonical selection to `none`
+	 * on success — never a dangling `roomId`.
+	 */
+	function removeRoom(roomId: string): boolean {
+		if (wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, roomId).length === 0) {
+			store.setStatusMessage(
+				'Every boundary wall is shared with a neighbouring room; delete a shared wall instead'
+			);
+			return false;
+		}
+		const outcome = runLayoutMutationGuarded(
+			() => removeWallFirstRoom(layoutPreview, roomId, store.document),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return false;
+		}
+		const result = outcome.result;
+		if (result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(result.success ? 'Removed room' : `Room remove failed: ${result.message}`);
+		return result.success;
+	}
+
 	function beginLayoutTransaction(): boolean {
 		return store.beginLayoutTransaction();
 	}
@@ -410,6 +440,7 @@
 					onWallOpeningDelete={deleteWallOpening}
 					onWallDelete={deleteWall}
 				onRoomDelete={deleteRoom}
+				onRoomRemove={removeRoom}
 				onLayoutTransactionBegin={beginLayoutTransaction}
 				onLayoutTransactionCommit={commitLayoutTransaction}
 				onLayoutTransactionCancel={cancelLayoutTransaction}

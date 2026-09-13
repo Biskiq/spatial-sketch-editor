@@ -28,9 +28,12 @@
 		layoutRoomSceneReferenceSummary,
 		layoutRoomSceneReferenceTotal,
 		listLayoutRoomSceneReferences,
+		removeWallFirstRoom,
 		repeatWallFirstObject,
 		repeatWallFirstOpening,
 		updateWallFirstOpening,
+		updateWallFirstRoomMetadata,
+		wallFirstRoomExclusiveBoundaryWallIds,
 		updateLayoutObjectFields,
 		layoutPreviewDocument,
 		updateLayoutOpeningFields,
@@ -378,6 +381,15 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	const selectedPrecisionJunction = $derived(selectedWallFirstJunction);
 	const selectedPrecisionWall = $derived(selectedWallFirstWall);
 	const selectedPrecisionRoom = $derived(selectedWallFirstRoom);
+	// P23.6d — Room removal eligibility: `Remove room` deletes the Room's whole
+	// boundary, so it needs at least one boundary Wall the Room owns alone. A
+	// shared Wall is one physical Wall a neighbour still needs and is kept.
+	// Exclusivity comes from the canonical boundary references, never geometry.
+	const selectedWallFirstRoomExclusiveWalls = $derived(
+		selectedWallFirstRoom
+			? wallFirstRoomExclusiveBoundaryWallIds(layoutPreview, selectedWallFirstRoom.id)
+			: []
+	);
 	const selectedPrecisionWallEndpoints = $derived(selectedWallFirstWallEndpoints);
 	// P23.6b — Wall-panel relations: hosted Openings (document order) and the
 	// Rooms whose boundary references this Wall (D2: relation, not ownership).
@@ -1255,6 +1267,94 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		Boolean(roomDeleteReferences && layoutRoomSceneReferenceTotal(roomDeleteReferences) > 0)
 	);
 
+	/**
+	 * P23.6d — canonical Room metadata edits. The Room survives the edit, so
+	 * canonical selection is preserved (the Inspector stay continues: rename →
+	 * thickness without the panel disappearing).
+	 */
+	function updateWallFirstRoomName(event: Event) {
+		const room = selectedWallFirstRoom;
+		if (!room) return;
+		const input = event.currentTarget as HTMLInputElement;
+		const previous = room.name;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstRoomMetadata(layoutPreview, room.id, { name: input.value }),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			input.value = previous;
+			return;
+		}
+		if (!outcome.result.success) {
+			input.value = previous;
+			store.setStatusMessage(`Room rejected: ${outcome.result.message}`);
+			return;
+		}
+		store.setStatusMessage('Updated room name');
+	}
+
+	function updateWallFirstRoomThickness(
+		field: 'floorThickness' | 'ceilingThickness',
+		event: Event
+	) {
+		const room = selectedWallFirstRoom;
+		if (!room) return;
+		const input = event.currentTarget as HTMLInputElement;
+		const previous = room[field];
+		const value = Number(input.value);
+		if (!Number.isFinite(value)) {
+			input.value = String(previous);
+			store.setStatusMessage('Layout value must be finite');
+			return;
+		}
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstRoomMetadata(layoutPreview, room.id, { [field]: value }),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			input.value = String(previous);
+			return;
+		}
+		if (!outcome.result.success) input.value = String(previous);
+		store.setStatusMessage(
+			outcome.result.success ? `Updated ${field}` : `Room rejected: ${outcome.result.message}`
+		);
+	}
+
+	/**
+	 * P23.6d — canonical Room removal: the Room and its exclusive enclosure
+	 * Walls are removed in one atomic operation while shared physical Walls
+	 * required by adjacent Rooms survive, so the Room retires through P23.8
+	 * reconciliation. Success clears the canonical selection to `none` (the
+	 * Room is gone — never a dangling `roomId`, never a nearest survivor).
+	 */
+	function removeSelectedWallFirstRoom() {
+		const room = selectedWallFirstRoom;
+		if (!room) return;
+		if (selectedWallFirstRoomExclusiveWalls.length === 0) {
+			store.setStatusMessage(
+				'Every boundary wall is shared with a neighbouring room; delete a shared wall instead'
+			);
+			return;
+		}
+		const outcome = runLayoutMutationGuarded(
+			() => removeWallFirstRoom(layoutPreview, room.id, store.document),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (!outcome.result.success) {
+			store.setStatusMessage(`Room remove failed: ${outcome.result.message}`);
+			return;
+		}
+		layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage('Removed room');
+	}
+
 	function removeSelectedRoom() {
 		if (!selectedLayoutRoom) return;
 		const outcome = runLayoutMutationGuarded(
@@ -1911,8 +2011,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				<div class="layout-selected-room" aria-label="Selected wall-first room">
 					<strong>{selectedWallFirstRoom.name}</strong>
 					<span>{selectedWallFirstRoom.id}</span>
-					<!-- D9 — derived metrics, read-only; no authored Room metadata
-						operation exists, so identity stays read-only (P23.6). -->
+					<!-- P23.6d — authoritative canonical Room metadata (name and the
+						two surface thicknesses) through `planRoomMetadataUpdate`;
+						the Room survives the edit, so selection is preserved. -->
+					<label>Name<input type="text" value={selectedWallFirstRoom.name} onchange={updateWallFirstRoomName} /></label>
+					<label>Floor thickness (m)<input type="number" min="0.001" step="0.01" value={selectedWallFirstRoom.floorThickness} onchange={(event) => updateWallFirstRoomThickness('floorThickness', event)} /></label>
+					<label>Ceiling thickness (m)<input type="number" min="0.001" step="0.01" value={selectedWallFirstRoom.ceilingThickness} onchange={(event) => updateWallFirstRoomThickness('ceilingThickness', event)} /></label>
+					<!-- D9 — derived metrics, read-only (P23.6b). -->
 					{#if Number.isFinite(selectedWallFirstRoomFacts.area) && selectedWallFirstRoomFacts.area > 0}
 					<span>Area {selectedWallFirstRoomFacts.area.toFixed(2)} m² · perimeter {selectedWallFirstRoomFacts.perimeter.toFixed(2)} m</span>
 					{/if}
@@ -1948,7 +2053,21 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						</fieldset>
 					{/if}
 					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
-					<span>{selectedWallFirstRoom.floorThickness.toFixed(2)} m floor · {selectedWallFirstRoom.ceilingThickness.toFixed(2)} m ceiling assembly</span>
+					<!-- P23.6d — Room removal is a named, deliberate command that deletes
+						the Room's WHOLE boundary (its exclusive boundary Walls) in one atomic
+						operation, so no open shell of leftover Walls survives. Walls shared
+						with a neighbour are kept (the neighbour still needs them). No
+						Room-exclusive Wall → disabled with a reason (never a bare splice). -->
+					<fieldset class="staging-transform-fields">
+						<legend>Remove room</legend>
+						{#if selectedWallFirstRoomExclusiveWalls.length > 0}
+							<span>Deletes this Room and its {selectedWallFirstRoomExclusiveWalls.length} own boundary {selectedWallFirstRoomExclusiveWalls.length === 1 ? 'wall' : 'walls'} in one step.</span>
+							<button type="button" class="layout-danger" onclick={removeSelectedWallFirstRoom}>Remove room</button>
+						{:else}
+							<span>Not removable — every boundary wall is shared with a neighbouring room. Delete a shared wall explicitly, or reshape the Room.</span>
+							<button type="button" class="layout-danger" disabled title="No Room-exclusive boundary wall">Remove room</button>
+						{/if}
+					</fieldset>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedLayoutRoom && selectedLayoutBounds}

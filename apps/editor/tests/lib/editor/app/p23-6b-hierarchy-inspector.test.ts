@@ -414,21 +414,23 @@ describe('P23.6b reveal target helper', () => {
 });
 
 describe('P23.6b source contracts', () => {
-	it('binds no legacy context menu on the wall-first Room path', () => {
+	it('exposes no legacy Room command on the wall-first Room path (P23.6d: canonical removal only)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// Review fix: NO dedicated wall-first Room menu handler at all — a
-		// canonical Room has zero working Room commands (no metadata op;
-		// `deleteLayoutRoom` rejects wall-first), and a zero-item menu is
-		// worse than the native menu (P3.4 rows without an approved action
-		// set keep native behavior).
-		expect(tree).not.toContain('onWallFirstRoomRowContextMenu');
-		// No no-op Room actions are ever handed to the menu builder.
+		// P23.6b shipped "no dedicated wall-first Room menu handler at all"
+		// because a canonical Room had zero working commands. P23.6d supersedes
+		// that state: the canonical `planRemoveRoom` now exists, so the wall-first
+		// Room row opens a menu with exactly that one command — and it must still
+		// never hand the builder the legacy rename/delete or a no-op dummy.
+		expect(tree).toContain('onWallFirstRoomRowContextMenu');
+		expect(tree).not.toContain('renameRoom: () => {}');
 		expect(tree).not.toContain('deleteRoom: () => {}');
-		// And the wall-first Room row button carries no oncontextmenu binding.
+		// The wall-first Room row button binds the canonical handler (not the
+		// legacy Room handler) so the legacy commands stay unreachable.
 		const anchor = tree.indexOf('data-reveal-id={`rooms:${room.roomId}`}');
 		expect(anchor).toBeGreaterThan(-1);
 		const row = tree.slice(tree.lastIndexOf('<button', anchor), tree.indexOf('</button>', anchor));
-		expect(row).not.toContain('oncontextmenu');
+		expect(row).toContain('onWallFirstRoomRowContextMenu');
+		expect(row).not.toContain('onRoomRowContextMenu');
 	});
 
 	it('omits the Rename item when the menu builder gets no renameRoom action', () => {
