@@ -150,6 +150,59 @@ describe('Plan menu models (P3.4 — post-P10 routing)', () => {
 		);
 	});
 
+	// P23.6b — a wall-first Room menu must expose NO legacy command (never a
+	// dead Rename…/Delete with a no-op callback): the tree omits the actions
+	// and the builder omits the items.
+	it('omits Rename entirely when no renameRoom action is provided (wall-first Room menu)', () => {
+		const deleteRoom = vi.fn();
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'room', roomId: 'room-wf' },
+			mutationBlockedReason: null,
+			actions: {
+				deleteRoom,
+				deleteOpening: vi.fn(),
+				deleteObject: vi.fn()
+			}
+		});
+		expect(items.map((item) => item.id)).toEqual(['delete-room']);
+		expect(items.map((item) => item.label)).not.toContain('Rename…');
+		// The surviving delete still works and is not separator-led.
+		items.find((item) => item.id === 'delete-room')!.run();
+		expect(deleteRoom).toHaveBeenCalledWith('room-wf');
+	});
+
+	it('omits Delete room entirely when no deleteRoom action is provided (deleteLayoutRoom rejects wall-first)', () => {
+		const renameRoom = vi.fn();
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'room', roomId: 'room-wf' },
+			mutationBlockedReason: null,
+			actions: {
+				renameRoom,
+				deleteOpening: vi.fn(),
+				deleteObject: vi.fn()
+			}
+		});
+		expect(items.map((item) => item.id)).toEqual(['rename-room']);
+		expect(items.map((item) => item.label)).not.toContain('Delete room');
+		items.find((item) => item.id === 'rename-room')!.run();
+		expect(renameRoom).toHaveBeenCalledWith('room-wf');
+	});
+
+	// A wall-first Room has NO working Room command at all (no canonical
+	// metadata or delete operation exists) — the builder returns an empty
+	// list and callers must not open a menu for such rows.
+	it('returns an empty item list when neither legacy Room action exists', () => {
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'room', roomId: 'room-wf' },
+			mutationBlockedReason: null,
+			actions: {
+				deleteOpening: vi.fn(),
+				deleteObject: vi.fn()
+			}
+		});
+		expect(items).toEqual([]);
+	});
+
 	it('opening targets offer Delete; object targets offer Delete', () => {
 		const actions = {
 			renameRoom: vi.fn(),

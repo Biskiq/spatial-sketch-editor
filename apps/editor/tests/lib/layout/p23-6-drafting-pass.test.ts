@@ -404,18 +404,16 @@ const INSPECTOR_SOURCE = fs.readFileSync(
 
 /** Number inputs bound to the P23.6 wall/junction exact handlers or values. */
 function exactWallJunctionInputs(): string[] {
+	// P23.6b retired the Inspector's document-wide "Architecture · exact"
+	// inventory and its duplicate exact editors; the surviving exact inputs are
+	// the canonical selected-entity panels (Wall/Junction/Opening/Room).
 	const markers = [
-		'updatePrecisionJunction',
-		'updatePrecisionWallLength',
-		'updatePrecisionWallAngle',
-		'updatePrecisionWallThickness',
-		'addPrecisionVertex',
 		'updateSelectedWallLength',
 		'updateSelectedWallAngle',
 		'updateSelectedWallThickness',
+		'updateSelectedWallHeight',
+		'addSelectedWallVertex',
 		'updateSelectedJunction',
-		'selectedPrecisionWallEndpoints',
-		'selectedPrecisionJunction',
 		'selectedWallFirstWallEndpoints',
 		'selectedWallFirstJunction'
 	];
@@ -428,7 +426,7 @@ function exactWallJunctionInputs(): string[] {
 describe('P23.6 exact inputs — presentation formatting, planner-owned validity', () => {
 	it('binds every exact wall/junction input to a bounded formatted value', () => {
 		const inputs = exactWallJunctionInputs();
-		expect(inputs.length).toBeGreaterThanOrEqual(11);
+		expect(inputs.length).toBeGreaterThanOrEqual(7);
 		for (const input of inputs) {
 			if (input.includes('Angle')) expect(input).toContain('formatDegrees(');
 			else expect(input).toContain('formatMeters(');
@@ -437,7 +435,7 @@ describe('P23.6 exact inputs — presentation formatting, planner-owned validity
 
 	it('never lets browser step/min arithmetic reject a planner-valid value', () => {
 		const inputs = exactWallJunctionInputs();
-		expect(inputs.length).toBeGreaterThanOrEqual(11);
+		expect(inputs.length).toBeGreaterThanOrEqual(7);
 		for (const input of inputs) {
 			expect(input).toContain('step="any"');
 			expect(input).not.toContain('min="');
