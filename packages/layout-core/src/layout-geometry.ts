@@ -31,6 +31,13 @@ import { geometryId } from './layout-geometry-types';
 import { pointAlongSamples, sampleSegment, type SampledSegment } from './layout-geometry-curve';
 import { wallCenterlineSegment, wallCenterlineSamples } from './layout-wall-centerline';
 import {
+	WALL_OFFSET_FOLD_CODE,
+	WALL_OFFSET_FOLD_MESSAGE,
+	WALL_OFFSET_OVERLAP_CODE,
+	WALL_OFFSET_OVERLAP_MESSAGE,
+	wallOffsetClearanceFailure
+} from './layout-wall-offset-clearance';
+import {
 	archProfileTopAt,
 	buildArchProfile,
 	splitSampledWallAroundOpenings,
@@ -317,6 +324,10 @@ function compileWallFirstWithPhysicalWalls(
 		)
 	};
 	const physicalWalls: CompiledPhysicalWall[] = [];
+	// Render-safe acceptance issues (see the per-Wall clearance gate below),
+	// appended to the shared compile result so every caller's existing
+	// blocking-issue check rejects without a second acceptance path.
+	const wallIssues: LayoutGeometryIssue[] = [];
 	let documentMin: Vec3 | null = geometry.bounds ? [...geometry.bounds.min] as Vec3 : null;
 	let documentMax: Vec3 | null = geometry.bounds ? [...geometry.bounds.max] as Vec3 : null;
 	const includePhysicalBounds = (min: Vec3, max: Vec3): void => {
@@ -373,6 +384,24 @@ function compileWallFirstWithPhysicalWalls(
 			bounds2: wallBounds2Value,
 			bounds3: wallBounds3Value
 		};
+		// P23.11 / Issue #6 — render-safe acceptance. A curved Wall whose local
+		// bend is tighter than half its thickness renders as a folded or
+		// overlapping solid. That is a property of the compile output, so it is
+		// decided HERE, from the very samples the renderers consume, and reported
+		// as a blocking issue before any document or history commit. Straight
+		// Walls are skipped: their offsets are two parallel polylines with
+		// identical tangents, so neither branch of the predicate can fire.
+		if (wall.centerline.kind !== 'line') {
+			const clearance = wallOffsetClearanceFailure(compiled.samples, wall.thickness);
+			if (clearance) {
+				wallIssues.push({
+					path: `walls.${wall.id}`,
+					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
+					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
+					targetId: wall.id
+				});
+			}
+		}
 		physicalWalls.push(compiled);
 		emitPhysicalWallQueryRecords(queryBuilder, floor, wall, sampled, compiledOpenings, solidSpans);
 		queryBuilder.aabbs.push(aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], wallBounds3Value.min, wallBounds3Value.max));
@@ -459,7 +488,7 @@ function compileWallFirstWithPhysicalWalls(
 			},
 			bounds
 		},
-		issues: result.issues
+		issues: [...result.issues, ...wallIssues]
 	};
 }
 

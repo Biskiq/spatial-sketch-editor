@@ -9,7 +9,16 @@ import type {
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
-import { sampledPolylineSelfIntersects, type CurveSample } from './layout-geometry-curve';
+import { type CurveSample } from './layout-geometry-curve';
+import {
+	WALL_CLEARANCE_INSUFFICIENT_CODE,
+	WALL_OFFSET_FOLD_CODE,
+	WALL_OFFSET_FOLD_MESSAGE,
+	WALL_OFFSET_OVERLAP_CODE,
+	WALL_OFFSET_OVERLAP_MESSAGE,
+	wallOffsetClearanceFailure,
+	wallPairClearanceOverlap
+} from '@portfolio/layout-core';
 
 /**
  * Pure, renderer-neutral indexed wall mesh for one room. Positions/normals are
@@ -225,6 +234,25 @@ export function buildStandaloneWallMesh(
 	}
 	if (issues.length > 0) return { mesh: undefined, issues };
 
+	// P23.11 / Issue #6 — defense-in-depth. The canonical acceptance path
+	// already refuses a Wall that cannot render at its own thickness, so this
+	// normally never fires; it exists so the renderer is never the first place
+	// a folded solid becomes visible. Same predicate, same codes, no second rule.
+	const clearance = wallOffsetClearanceFailure(wall.samples, wall.thickness);
+	if (clearance) {
+		return {
+			mesh: undefined,
+			issues: [
+				{
+					path: `walls.${wall.wallId}`,
+					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
+					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
+					targetId: wall.wallId
+				}
+			]
+		};
+	}
+
 	const classify = options.classifySurface ?? ((ref: WallMeshSectionRef) => ref.kind);
 	const weldTolerance = options.weldTolerance ?? DEFAULT_WELD_TOLERANCE;
 	// P23.6H — the Wall's own authoritative height decides the mesh extent.
@@ -299,22 +327,22 @@ function validateRoom(room: CompiledRoom): LayoutGeometryIssue[] {
 function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 	const issues: LayoutGeometryIssue[] = [];
 	for (const wall of room.walls) {
-		const half = wall.thickness / 2;
-		const front = offsetSamples(wall.samples, half);
-		const back = offsetSamples(wall.samples, -half);
-		if (sampledPolylineSelfIntersects(front) || sampledPolylineSelfIntersects(back)) {
+		// P23.11 — the finite-thickness decision comes from `layout-core`, the
+		// same predicate the canonical compile gate runs. This builder keeps its
+		// own issue shaping only; it never re-derives the rule.
+		const clearance = wallOffsetClearanceFailure(wall.samples, wall.thickness);
+		if (clearance === 'fold') {
 			issues.push({
 				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
-				code: 'wall_offset_fold',
-				message: 'Wall offset folds or self-intersects (curve radius smaller than half the wall thickness).',
+				code: WALL_OFFSET_FOLD_CODE,
+				message: WALL_OFFSET_FOLD_MESSAGE,
 				targetId: wall.segmentId
 			});
-		}
-		if (polylineSelfClearance(wall.samples, wall.thickness)) {
+		} else if (clearance === 'neck') {
 			issues.push({
 				path: `rooms.${room.roomId}.walls.${wall.segmentId}`,
-				code: 'wall_offset_overlap',
-				message: 'Wall passes closer than its thickness to itself (narrow neck); offset regions overlap.',
+				code: WALL_OFFSET_OVERLAP_CODE,
+				message: WALL_OFFSET_OVERLAP_MESSAGE,
 				targetId: wall.segmentId
 			});
 		}
@@ -326,11 +354,10 @@ function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 			if (j === i + 1 || (i === 0 && j === count - 1)) continue; // adjacent walls share a corner
 			const a = room.walls[i]!;
 			const b = room.walls[j]!;
-			const clearance = minPolylineDistance(a.samples, b.samples);
-			if (clearance < a.thickness / 2 + b.thickness / 2) {
+			if (wallPairClearanceOverlap(a, b)) {
 				issues.push({
 					path: `rooms.${room.roomId}`,
-					code: 'wall_clearance_insufficient',
+					code: WALL_CLEARANCE_INSUFFICIENT_CODE,
 					message: `Walls ${a.segmentId} and ${b.segmentId} are closer than their combined thickness; offset regions overlap.`,
 					targetId: room.roomId
 				});
@@ -338,16 +365,6 @@ function detectOffsetOverlap(room: CompiledRoom): LayoutGeometryIssue[] {
 		}
 	}
 	return issues;
-}
-
-function offsetSamples(samples: readonly CurveSample[], half: number): CurveSample[] {
-	return samples.map((sample) => ({
-		point: [sample.point[0] + half * sample.normal[0], sample.point[1] + half * sample.normal[1]] as LayoutVec2,
-		distance: sample.distance,
-		tangent: sample.tangent,
-		normal: sample.normal,
-		t: sample.t
-	}));
 }
 
 function buildAllWallFaces(
@@ -1411,71 +1428,6 @@ function collectSurfaceKeys(wallsFaces: WallFaces[]): WallMeshSurfaceKey[] {
 		const rb = rank(b);
 		return ra === rb ? a.localeCompare(b) : ra - rb;
 	});
-}
-
-function minPolylineDistance(a: readonly CurveSample[], b: readonly CurveSample[]): number {
-	let best = Infinity;
-	for (let i = 1; i < a.length; i += 1) {
-		for (let j = 1; j < b.length; j += 1) {
-			best = Math.min(best, segmentDistance(a[i - 1]!.point, a[i]!.point, b[j - 1]!.point, b[j]!.point));
-		}
-	}
-	return best;
-}
-
-function polylineSelfClearance(samples: readonly CurveSample[], thickness: number): boolean {
-	// A self-overlap only happens when the wall folds *back on itself*: two
-	// non-adjacent portions are geometrically close (< thickness) and their
-	// tangents oppose (dot < 0). Same-direction chords of a smooth or straight
-	// wall are the wall's own continuous run, never a narrow neck.
-	for (let i = 0; i < samples.length - 1; i += 1) {
-		const tangentA = samples[i]!.tangent;
-		for (let j = i + 2; j < samples.length - 1; j += 1) {
-			const tangentB = samples[j]!.tangent;
-			const dot = tangentA[0] * tangentB[0] + tangentA[1] * tangentB[1];
-			if (dot >= 0) continue;
-			const d = segmentDistance(samples[i]!.point, samples[i + 1]!.point, samples[j]!.point, samples[j + 1]!.point);
-			if (d < thickness - LAYOUT_GEOMETRY_EPSILON) return true;
-		}
-	}
-	return false;
-}
-
-function segmentDistance(a0: LayoutVec2, a1: LayoutVec2, b0: LayoutVec2, b1: LayoutVec2): number {
-	const d0 = [a1[0] - a0[0], a1[1] - a0[1]];
-	const d1 = [b1[0] - b0[0], b1[1] - b0[1]];
-	const r = [a0[0] - b0[0], a0[1] - b0[1]];
-	const a = d0[0] * d0[0] + d0[1] * d0[1];
-	const e = d1[0] * d1[0] + d1[1] * d1[1];
-	const f = d1[0] * r[0] + d1[1] * r[1];
-	let s = 0;
-	let t = 0;
-	if (a <= LAYOUT_GEOMETRY_EPSILON && e <= LAYOUT_GEOMETRY_EPSILON) {
-		return Math.hypot(r[0], r[1]);
-	}
-	if (a <= LAYOUT_GEOMETRY_EPSILON) {
-		t = clamp(f / e, 0, 1);
-	} else {
-		const c = d0[0] * r[0] + d0[1] * r[1];
-		if (e <= LAYOUT_GEOMETRY_EPSILON) {
-			s = clamp(-c / a, 0, 1);
-		} else {
-			const b = d0[0] * d1[0] + d0[1] * d1[1];
-			const denom = a * e - b * b;
-			s = denom > LAYOUT_GEOMETRY_EPSILON ? clamp((b * f - c * e) / denom, 0, 1) : 0;
-			t = (b * s + f) / e;
-			if (t < 0) {
-				t = 0;
-				s = clamp(-c / a, 0, 1);
-			} else if (t > 1) {
-				t = 1;
-				s = clamp((b - c) / a, 0, 1);
-			}
-		}
-	}
-	const cx = a0[0] + d0[0] * s - (b0[0] + d1[0] * t);
-	const cy = a0[1] + d0[1] * s - (b0[1] + d1[1] * t);
-	return Math.hypot(cx, cy);
 }
 
 function clamp(value: number, min: number, max: number): number {
