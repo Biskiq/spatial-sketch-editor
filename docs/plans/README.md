@@ -141,7 +141,7 @@ Policy rules:
 
 **Pending archival (live files for shipped work — not tracked rows; owner follow-up):**
 
-- Done 2026-09-05: P7 umbrella + P7.6 annex + P8 moved to
+- Done 2026-09-05: P7 umbrella + P7.6 annex + P8 umbrella moved to
   `docs/archive/plans/` (moved as a set — the annex link at umbrella `:1179`
   is relative and survives); byte-identical P11.2 annex deleted (archive holds
   the copy); 0-byte P12.2 live husk deleted (archive holds the content).
@@ -276,7 +276,7 @@ conditional infrastructure):
   writers enable. It then adds precise Wall/Junction dimensions, deterministic
   snapping/alignment, continuous Wall/Partition sketching, openings, repeat/
   isolated-room duplicate, small presets and drafting visual polish. Layout
-  objects stay document-level/project-world-local. Optional depth tail (stairs,
+  objects stay document-level/project/world-local. Optional depth tail (stairs,
   railings, richer parametric components, curved-wall topology, profile/extrude,
   sweep/revolve, roof helpers, general constraint sophistication) remains
   demand/evidence-gated and never blocks Experience. Everything continues through
