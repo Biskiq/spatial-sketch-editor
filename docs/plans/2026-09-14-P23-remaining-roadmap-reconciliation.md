@@ -5,8 +5,8 @@ slice is implementation-ready.
 
 **Parent:** [P23 — Layout Depth umbrella](2026-09-07-P23-layout-depth-minimum-build.md)
 
-**Baseline:** `main` at `86027a7` (P23.6e merged through PR #47; independent
-wall-engine fixes merged through PR #48).
+**Baseline:** reconciliation landed on `main` at `c401e2f` (P23.6e merged
+through PR #47; independent wall-engine fixes merged through PR #48).
 
 **Authority:** this document supersedes the previous remaining-scope, ordering,
 deferral and closeout-readiness statements in the P23 umbrella and the former
@@ -63,31 +63,37 @@ geometry/selection/history system.
 
 ### P23.11 — Canonical curved Walls and render-safe validation
 
-- **Purpose / product outcome:** Restore a bounded, trustworthy Bézier/curved
-  Wall workflow in the wall-first model so P23 does not regress a useful
-  architectural capability to a legacy read-only artifact.
+- **Purpose / product outcome:** Deliver a bounded, trustworthy Bézier/curved
+  Wall workflow on canonical Walls, with validation that prevents accepted edits
+  from becoming unrenderable.
 - **Scope:** One canonical curve representation on a Wall with explicit endpoint
   Junctions; bounded create/convert, select, add/move/delete curve-control UX;
   curved boundary participation for supported closed loops; arc-length-aware
   Opening placement/editing; shared Plan/3D/visitor sampling; commit-time
   centerline, offset-clearance, Opening-fit and mesh-preflight validation.
   Straight/curve and curve/curve crossings that require unsupported noding must
-  reject clearly rather than flatten or silently miscompile.
+  reject clearly rather than flatten or silently miscompile. Legacy Room-owned
+  curve editing is not in scope; retained legacy data receives only the existing
+  internal-dependency load/render smoke at P23.16.
 - **Major dependencies:** P23.10 gesture lifecycle and canonical direct selection;
-  landed curve evaluation/sampling and legacy compatibility evidence; P23.2 snap
+  landed curve evaluation/sampling evidence; P23.2 snap
   queries, P23.3 Openings, P23.8 Room identity/reconciliation, canonical compiler
   and mesh adapters.
-- **GitHub issues absorbed or explicitly deferred:** Absorbs #6 by closing the
-  commit-versus-render validation gap for retained legacy and new canonical curve
-  edits. Explicitly defers general curve intersection/noding, tangent constraint
-  networks, NURBS, offset/trim/fillet operations and unrestricted curved topology.
+- **GitHub issues absorbed or explicitly deferred:** Uses #6's commit-versus-render
+  failure class to define canonical curved-Wall validation. It does not absorb or
+  expand the issue's legacy Room-owned editing surface into a P23 product
+  contract. Explicitly defers general curve intersection/noding, tangent
+  constraint networks, NURBS, offset/trim/fillet operations and unrestricted
+  curved topology.
 - **Key architecture invariants:** Curve data is authored on canonical Walls;
   endpoint connectivity is still Junction-ID equality; consumers use one curve
   evaluator/compiler output; Rooms stay persistent semantic faces; invalid
-  candidates never enter history; no flatten-on-save or consumer-local resampling.
+  candidates never enter history; no flatten-on-save or consumer-local resampling;
+  the legacy adapter never becomes a curve-authoring authority.
 - **Clear non-goals:** Full spline/CAD tooling, arbitrary self-intersecting curves,
   curve Boolean repair, general curved-wall joins at crossings, construction-line
-  networks, migration expansion for disposable development formats.
+  networks, legacy Room-owned curve authoring/editing, or compatibility expansion
+  beyond named internal-dependency smoke.
 - **Exit criteria:** A creator can author and refine a supported curved Wall in
   Plan; supported curved enclosures preserve Room identity; hosted Openings track
   the curved host; accepted edits render coherently in Plan and 3D while the #6
@@ -105,24 +111,30 @@ geometry/selection/history system.
   Inspector: authored names where product-useful (Rooms already; Walls and
   Openings gain bounded optional naming), stable compact references for unnamed
   Walls/Openings/Junctions, raw canonical IDs available as secondary/debug detail,
-  and deterministic rename/split/Undo/Redo behavior. Junctions receive references,
-  not mandatory authored names.
+  and deterministic rename/split/Undo/Redo behavior. Compact references are never
+  document-order ordinals. The future child plan must choose either persisted
+  presentation metadata or a deterministic derivative of canonical IDs.
+  Junctions receive references, not mandatory authored names.
 - **Major dependencies:** P23.6d Room metadata; merged P23.6e relationship-aware
   Navigator/search; P23.10 subdivision semantics; P23.11 final Wall vocabulary.
 - **GitHub issues absorbed or explicitly deferred:** No current issue fully owns
   this gap. Resolves P23.6e's documented unavailable short-reference gate.
   Explicitly defers a general tagging/taxonomy system and building/storey/zone IA.
 - **Key architecture invariants:** Display name/reference is never canonical
-  identity or connectivity; IDs remain stable and collision-safe; naming is
-  Layout metadata only; rename is one deterministic Layout transaction; Room
-  identity remains reconciliation-owned.
-- **Clear non-goals:** Renumbering canonical IDs, order-derived identity, naming
-  every Junction, aliases across documents, BIM classification, tags, localization
-  infrastructure, hierarchy ownership changes.
+  identity or connectivity; canonical IDs remain the only identity/connectivity
+  authority. Compact references never depend on document order. Whether persisted
+  presentation metadata or ID-derived, they remain stable and collision-safe;
+  naming is Layout metadata only; rename is one deterministic Layout transaction;
+  Room identity remains reconciliation-owned.
+- **Clear non-goals:** Renumbering canonical IDs, document-order display ordinals,
+  order-derived identity, naming every Junction, aliases across documents, BIM
+  classification, tags, localization infrastructure, hierarchy ownership changes.
 - **Exit criteria:** Every Wall, Opening, Junction and Room has a concise,
   accessible, unambiguous label everywhere it appears; names and references are
-  searchable and stable across deletion, insertion, split, Save/Load and
-  Undo/Redo; renaming never changes topology, selection identity or Scene/Camera.
+  searchable and stable across reorder, deletion, insertion, split, Save/Load and
+  Undo/Redo; renaming never changes topology, selection identity or Scene/Camera;
+  the child plan explicitly ratifies persisted-metadata or canonical-ID-derived
+  reference semantics before implementation.
 - **Ordering rationale:** Identity presentation depends on final split/curve
   semantics and should land before visual and shell polish so those surfaces do
   not polish raw-ID placeholders.
@@ -134,11 +146,14 @@ geometry/selection/history system.
   wall engine.
 - **Scope:** Final visual/interaction pass over the existing SVG Plan authority:
   coherent wall thickness/joins/caps, boundary-versus-nonboundary distinction,
-  legible Door/Window cuts and symbols, Room name/reference and derived area
-  presentation, dimensions, zoom-stable line weights and handles, selection/
+  legible authored Door/Window cuts with neutral technical-plan symbols, Room
+  name/reference and derived area presentation, dimensions, zoom-stable line
+  weights and handles, selection/
   hover precedence, direct-edit and curve affordances, snap/draft/invalid
   feedback, label collision/suppression, empty and dense-plan states, and
-  representative-theme/zoom review.
+  representative-theme/zoom review. Opening symbols represent only authored
+  semantics; they never infer swing, handing, inward/outward direction, leaf type
+  or other absent architectural meaning.
 - **Major dependencies:** P23.10 direct manipulation, P23.11 curves, P23.12 final
   labels, landed P23.6 drafting primitives, P23.2 snaps and P23.3 Openings.
 - **GitHub issues absorbed or explicitly deferred:** No open issue wholly owns
@@ -147,16 +162,19 @@ geometry/selection/history system.
   annotation authoring, DXF/PDF export and construction-document standards.
 - **Key architecture invariants:** `CompiledLayoutGeometry → PlanRenderModel →`
   SVG remains the only Plan path; no SVG-owned geometry/topology/selection state;
-  all labels/areas are derived or canonical metadata; Scene footprints remain
-  passive in Layout mode; Camera Plan reuses architectural context without
-  gaining Layout authority.
+  all labels/areas are derived or canonical metadata; Door/Window symbols derive
+  only from authored Opening semantics; Scene footprints remain passive in Layout
+  mode; Camera Plan reuses architectural context without gaining Layout authority.
 - **Clear non-goals:** New topology algorithms, renderer replacement, Canvas/WebGL
-  Plan, general annotation system, print layout, full accessibility remediation
-  outside the Scene Plan Build journey, visual redesign of the whole application.
+  Plan, invented Door swing/handing/direction/leaf semantics, general annotation
+  system, print layout, full accessibility remediation outside the Scene Plan
+  Build journey, visual redesign of the whole application.
 - **Exit criteria:** Representative small, angled, shared-wall, curved and dense
   plans are legible at supported zooms; Walls/Openings/Rooms/Junctions and active
-  editing state are visually distinguishable; labels do not obscure core geometry;
-  no accepted geometry is invisible; Plan interaction remains deterministic.
+  editing state are visually distinguishable; Door/Window treatment stays neutral
+  unless authored data supplies additional semantics; labels do not obscure core
+  geometry; no accepted geometry is invisible; Plan interaction remains
+  deterministic.
 - **Ordering rationale:** This is intentionally late: visual polish must evaluate
   the complete direct-edit, curve and identity vocabulary instead of being redone
   after each capability lands.
@@ -201,30 +219,35 @@ geometry/selection/history system.
 - **Purpose / product outcome:** Ensure the architectural plan a creator authored
   produces credible connected Wall geometry in 3D, Preview and visitor output.
 - **Scope:** Junction-aware wall tessellation using explicit canonical Junction
-  identity for terminal, continuation, L, T and X cases, plus a bounded
-  deterministic policy for higher-degree cases;
-  mixed thickness/height and straight/curved tangent cases supported by the final
-  P23 Wall vocabulary; deterministic miter/bevel/bridge fallback; editor/visitor
-  parity and visible-gap/overlap/degeneracy validation.
+  identity for all and only Junction configurations/degrees already accepted by
+  canonical P23 topology. Mixed thickness/height and straight/curved tangent cases
+  supported by that accepted topology and the final P23 Wall vocabulary receive a
+  deterministic miter/bevel/bridge policy, editor/visitor parity and visible-gap/
+  overlap/degeneracy validation. Unsupported topology remains rejected upstream;
+  rendering never broadens the valid topology set.
 - **Major dependencies:** P23.11 final curved-Wall compiler shape; P23.13 final
-  supported Plan fixtures; landed per-Wall height and canonical physical-Wall
-  compilation.
+  supported Plan fixtures; landed P23.8 topology acceptance, per-Wall height and
+  canonical physical-Wall compilation.
 - **GitHub issues absorbed or explicitly deferred:** Moves the existing junction-
   rendering implementation scope out of the former P23.7 into its own
   prerequisite slice.
   Canonical 3D Wall/Opening picking and highlighting remain explicitly deferred
   post-P23.
 - **Key architecture invariants:** Connectivity comes only from Junction IDs,
-  never coordinate proximity; one compiler output feeds all consumers; mesh state
-  is derived and never persisted; editor and visitor share visitor-safe geometry;
-  no second topology or geometry compiler.
-- **Clear non-goals:** CSG, fused-building manifold, general mesh editing,
-  proximity-derived welding, 3D authoring/picking/highlighting, P24 materials or
-  lighting, broad mesh-system rewrite.
-- **Exit criteria:** Supported junction fixtures have no visible gaps, invalid
-  overlaps or degenerate surfaces in editor, Preview and visitor; mixed Wall
-  cases are deterministic; Plan and 3D identities/geometry agree; visitor/editor
-  isolation and performance remain acceptable.
+  never coordinate proximity; the renderer consumes canonical topology validity
+  and never defines or expands it; one compiler output feeds all consumers; mesh
+  state is derived and never persisted; editor and visitor share visitor-safe
+  geometry; no second topology or geometry compiler.
+- **Clear non-goals:** Expanding canonical topology validity or Junction degree
+  support, CSG, fused-building manifold, general mesh editing, proximity-derived
+  welding, 3D authoring/picking/highlighting, P24 materials or lighting, broad
+  mesh-system rewrite.
+- **Exit criteria:** Every Junction configuration accepted by canonical P23
+  topology has representative fixtures with no visible gaps, invalid overlaps or
+  degenerate surfaces in editor, Preview and visitor; topology rejected upstream
+  remains rejected rather than gaining a render fallback; mixed Wall cases are
+  deterministic; Plan and 3D identities/geometry agree; visitor/editor isolation
+  and performance remain acceptable.
 - **Ordering rationale:** It must see the final straight/curved Wall vocabulary,
   but it must finish before P23.16 so the closeout gate verifies architecture
   rather than implementing it.
@@ -288,7 +311,7 @@ jump from P23.15 to P23.7.
 
 | Issue | Disposition | P23 owner / rationale |
 |---|---|---|
-| #6 — Bézier commit/render validation gap | include in P23 | P23.11; the same offset-aware rejection must protect canonical curves and retained legacy editing paths. |
+| #6 — Bézier commit/render validation gap | include in P23 | P23.11 adopts the validation failure class for canonical curved Walls only; legacy Room-owned curves remain internal-dependency smoke, not a product editing contract. |
 | #26 — retire legacy Room-owned Layout stack | defer post-P23 | Explicit architecture-debt cleanup after P23; closeout performs smoke only and adds no compatibility behavior. |
 | #28 — Layout Room multi-select | defer post-P23 | A credible minimum needs reliable single-target editing, not selection sets; connected-group Room move already covers the contiguous-unit case. |
 | #29 — direct Wall/Junction manipulation + vertex insertion | include in P23 | P23.10; this is now required for the revised good-enough editor outcome. |
@@ -330,14 +353,17 @@ repository; they therefore have no disposition.
    future cutover.
 7. The former P23.7's broad legacy migration/read/publication matrix overstates
    the pre-Compatibility-Baseline promise. The remaining gate is canonical
-   current-format acceptance plus smoke for named internal legacy dependencies; no new
-   legacy behavior is added.
+   current-format acceptance plus smoke for named internal legacy dependencies;
+   no new legacy behavior is added.
 8. The former P23.7's curve section treats fidelity-preserving legacy read as
-   sufficient. P23.11 now owns a bounded editable canonical wall-first curve
-   workflow and absorbs #6.
+   sufficient. P23.11 owns a bounded editable canonical wall-first curve workflow
+   and imports #6's validation failure class only; it does not promote legacy
+   Room-owned curve editing into the P23 product contract.
 9. P23.6e documented stable short architecture references as unavailable and
    fell back to formatted raw IDs. P23.12 now closes that product-facing identity
-   gap without changing canonical IDs.
+   gap without changing canonical IDs. Its future child plan must choose persisted
+   presentation metadata or a deterministic canonical-ID derivative; document-
+   order ordinals are prohibited.
 10. `Shell-scene-workspaces.md` still says Room drag makes Room-local Scene
     content follow. That is compatibility-path prose; canonical wall-first Scene
     and Camera placement is world-local and must not move implicitly.

@@ -5,23 +5,20 @@ slice plus one next action only.
 
 ## Working tree
 
-- P23 remaining-roadmap reconciliation is uncommitted; changes are limited to
-  planning documents and stale planning-reference comments.
-  [The umbrella roadmap](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
-  changes P23's end state from foundation/minimum Build to a credible good-enough
-  wall-first architectural Plan editor, proposes P23.10–P23.15, and repositions
-  P23.16 as the dependency-last whole-product closeout gate. No child
-  implementation brief or product behavior was added.
-- Immediate previous slice: P23.6e merged through PR #47 (`80ea541`) with its
-  relationship-aware Scene Navigator; the independent wall-engine split merged
-  through PR #48 (`86027a7`). `main`/`origin/main` are at `86027a7` before the
-  documentation edits.
+- [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
+  landed on `main`/`origin/main` at `c401e2f`. It sets the credible good-enough
+  wall-first architectural Plan-editor boundary and the dependency sequence
+  P23.10–P23.16.
+- The current working tree contains documentation-only review corrections to
+  curve validation/legacy scope, Junction-rendering scope, Door/Window drafting
+  semantics, compact display references and this handoff. No slice order,
+  implementation brief, GitHub issue or product behavior changes.
 
 ## Next action
 
-- Owner review of the P23 remaining-roadmap boundary, names/numbers, sequence and
-  issue dispositions. If approved, write the P23.10 implementation-ready child
-  plan first; do not start implementation from the umbrella roadmap.
+- Owner review of the tightened P23 boundaries. If approved, write the P23.10
+  implementation-ready child plan first; do not start implementation from the
+  umbrella roadmap.
 
 ## Verification
 

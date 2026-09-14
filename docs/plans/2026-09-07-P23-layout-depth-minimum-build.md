@@ -329,9 +329,13 @@ Therefore P23 must introduce Scene-format identification alongside Layout-format
 
 Package-format version and Scene-document version remain separate concerns.
 
-## Read-only legacy compatibility path
+## Landed legacy compatibility record
 
-Not every valid legacy document is losslessly migratable. Ambiguous coincident walls/openings and preserved curved geometry require a concrete compatibility path.
+This section records the landed foundation's retained adapter behavior, not a
+remaining P23 product compatibility promise. P23.16 performs only named current
+internal-dependency smoke. P23.11 imports Issue #6's accepted-then-unrenderable
+failure class for canonical curved Walls; it does not add legacy Room-owned curve
+authoring or editing.
 
 ```text
 raw saved / published data
@@ -354,19 +358,17 @@ For conflicting coincident legacy walls:
 - remain readable/renderable in read-only compatibility mode;
 - block new-schema Save until the conflict is explicitly resolved.
 
-For legacy `auto-bezier` boundaries:
+For legacy `auto-bezier` boundaries used by named internal dependencies:
 
 - preserve authored curve fidelity;
 - never flatten to straight segments and call it lossless;
-- use a compatibility geometry variant or read-only compatibility representation until a fidelity-preserving canonical Wall representation exists;
-- remain readable/renderable fidelity-preserving compatibility geometry, and
-  keep unsupported topology editing **visibly unavailable** rather than
-  silently flattening, approximating or corrupting the preserved curve.
+- use the retained compatibility geometry representation for load/render smoke;
+- keep editing unavailable rather than silently flattening, approximating or
+  corrupting the preserved curve.
 
-New canonical Wall authoring/direct manipulation is **straight-Wall-only for
-the P23 minimum**. Curved-Wall/Bézier authoring, selection, direct
-manipulation, topology, snapping and Opening manipulation are explicitly
-post-P23 (see the deferred-capability register under Deferred scope).
+The earlier straight-Wall-only product boundary is superseded by P23.11's bounded
+canonical curved-Wall scope. That change does not promote the retained legacy
+representation into a product editing contract.
 
 ## Legacy Scene runtime preparation
 
@@ -715,7 +717,8 @@ F0 must pass before new-schema writes:
 - migrated/new Scene is not Room-transformed again;
 - compatible exact shared walls/openings can migrate without changing Room IDs;
 - conflicting coincident walls/openings remain readable without silent collapse and block new-schema Save;
-- legacy curves remain readable without flattening;
+- named internal legacy curve fixtures continue to load/render through the
+  retained adapter without creating a legacy editing contract;
 - old active published release cold-loads without rewriting stored bytes;
 - legacy nonadjacent portal relation remains readable in compatibility mode and blocks new-schema Save until resolved;
 - Wall topology/Room fixtures cover first-enclosure creation (including Partition→boundary), 1→1, 1→2, 2→1, subdivision and rejected many↔many components;
@@ -743,8 +746,8 @@ Whole P23 closeout additionally proves:
 - architecture edits do not move world-local staged content;
 - split/merge preserves H5 identities and exact Undo/Redo;
 - object/opening repeat and isolated Room duplicate behave deterministically;
-- supported wall-first 3D junctions render without gaps/invalid overlaps through
-  the shared editor/visitor geometry path;
+- every Junction configuration already accepted by canonical P23 topology renders
+  without gaps/invalid overlaps through the shared editor/visitor geometry path;
 - Plan/3D, Save/Load, Preview and Publish remain coherent;
 - visitor/editor isolation and existing camera route/motion authorities remain intact.
 
@@ -757,7 +760,8 @@ Do not expand the minimum into:
 - arbitrary many↔many Room identity solving;
 - general nested/hole region authoring;
 - complex curved-wall topology/intersections;
-- flattening legacy curves;
+- legacy Room-owned curve authoring/editing or compatibility expansion beyond
+  named internal-dependency smoke;
 - multi-floor topology workflow expansion;
 - BIM assemblies/structural semantics;
 - stairs/railings/roof systems;
