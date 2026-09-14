@@ -15,7 +15,10 @@ import {
 	type PlanPolylinePrimitive,
 	type PlanSelection
 } from '$lib/layout/plan-render-model';
-import { hierarchyEntityToPlanHit } from '$lib/editor/hierarchy/hierarchy-plan-bridge';
+import {
+	hierarchyEntityToPlanHit,
+	hierarchyEntityToScenePlanId
+} from '$lib/editor/hierarchy/hierarchy-plan-bridge';
 import {
 	junctionEntityKey,
 	layoutObjectEntityKey,
@@ -111,10 +114,12 @@ describe('P23.6e slice 7 — hierarchy entity → Plan hover identity', () => {
 	});
 
 	it('never fabricates a Plan footprint for Scene content', () => {
-		// A cluster is organization, not geometry: the Scene footprint outline is
-		// the Scene hover path's own presentation and is never invented here.
+		// A cluster is organization, not geometry, and the layout-hit vocabulary
+		// must not grow a fake Scene primitive.
 		expect(hierarchyEntityToPlanHit(sceneClusterEntityKey('cluster-1'))).toBeNull();
 		expect(hierarchyEntityToPlanHit(sceneEntityKey('entity-a1'))).toBeNull();
+		expect(hierarchyEntityToScenePlanId(sceneClusterEntityKey('cluster-1'))).toBeNull();
+		expect(hierarchyEntityToScenePlanId(sceneEntityKey('entity-a1'))).toBe('entity-a1');
 	});
 
 	it('carries only canonical documents ids, never room-anchored coordinates', () => {
@@ -181,7 +186,9 @@ describe('P23.6e slice 7 — Plan bridge wiring (source contracts)', () => {
 		const planWorkspace = readLibSource('editor/app/PlanWorkspace.svelte');
 		expect(planWorkspace).toContain('HIERARCHY_NAVIGATOR_KEY');
 		expect(planWorkspace).toContain('hierarchyEntityToPlanHit(hierarchyNavigator.emphasis)');
+		expect(planWorkspace).toContain('hierarchyEntityToScenePlanId(hierarchyNavigator.emphasis)');
 		expect(planWorkspace).toContain('{hierarchyEmphasis}');
+		expect(planWorkspace).toContain('hierarchySceneEmphasis={hierarchySceneEmphasis}');
 		// Camera Plan mounts the same viewport without the prop, so no Scene
 		// Navigator emphasis can ever reach it.
 		expect(readLibSource('editor/EditorViewport.svelte')).not.toContain('hierarchyEmphasis');
@@ -190,6 +197,8 @@ describe('P23.6e slice 7 — Plan bridge wiring (source contracts)', () => {
 	it('lets viewport-local hover win and keeps one hover renderer', () => {
 		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 		expect(viewport).toContain('hierarchyEmphasis?: PlanHitIdentity | null;');
+		expect(viewport).toContain('hierarchySceneEmphasis?: string | null;');
+		expect(viewport).toContain('hierarchySceneEmphasis === entityId');
 		expect(viewport).toContain('layoutHover ?? hierarchyEmphasis ?? undefined');
 		// Exactly one place builds the interaction projection from hover input.
 		expect(viewport.match(/buildPlanInteractionProjection\(/g)).toHaveLength(1);

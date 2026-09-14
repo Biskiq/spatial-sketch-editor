@@ -120,12 +120,20 @@ function pushUniqueRow(rows: HierarchyProjectedRow[], row: HierarchyProjectedRow
 function searchWallRow(
 	index: HierarchySourceIndex,
 	wallId: string,
-	options: { related: boolean; direction: 'forward' | 'reverse' }
+	options: {
+		related: boolean;
+		direction: 'forward' | 'reverse';
+		excludeOpeningIds?: ReadonlySet<string>;
+	}
 ): HierarchyProjectedRow | null {
 	if (!index.wallById.has(wallId)) return null;
 	const rowKey = `search:walls:wall:${wallId}`;
 	const children: HierarchyProjectedRow[] = [];
 	for (const openingId of index.openingsByWallId.get(wallId) ?? []) {
+		// A direct Opening result owns its exact search occurrence. Do not repeat
+		// it under the related host Wall, where the Wall block is ordered first
+		// and would otherwise steal the primary representation/reveal target.
+		if (options.excludeOpeningIds?.has(openingId)) continue;
 		const opening = hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId);
 		if (opening) children.push(opening);
 	}
@@ -369,7 +377,11 @@ export function buildHierarchySearchProjection(
 			if (!directWalls.has(wall.wallId)) continue;
 			pushUniqueRow(
 				directRows,
-				searchWallRow(index, wall.wallId, { related: false, direction: 'forward' })
+				searchWallRow(index, wall.wallId, {
+					related: false,
+					direction: 'forward',
+					excludeOpeningIds: directOpenings
+				})
 			);
 		}
 		const relatedRows: HierarchyProjectedRow[] = [];
@@ -379,7 +391,8 @@ export function buildHierarchySearchProjection(
 				relatedRows,
 				searchWallRow(index, wall.wallId, {
 					related: true,
-					direction: wallDirectionFromRoom.get(wall.wallId) ?? 'forward'
+					direction: wallDirectionFromRoom.get(wall.wallId) ?? 'forward',
+					excludeOpeningIds: directOpenings
 				})
 			);
 		}

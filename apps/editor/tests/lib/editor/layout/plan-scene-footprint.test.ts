@@ -171,6 +171,29 @@ describe('buildPlanSceneFootprintProjection', () => {
 		expect(projection.footprints.some((footprint) => footprint.entityId === 'cluster-a')).toBe(false);
 	});
 
+	it('applies the shared bridge-hover presentation to the emphasized Scene entity', () => {
+		const entities: SceneEntity[] = [
+			modelEntity('scene-a', 'asset-a', { position: [1, 0, 1] }),
+			createPrimitiveEntity({
+				id: 'scene-b',
+				kind: 'box',
+				roomId: 'room-a',
+				position: [4, 0, 4],
+				dimensions: { width: 1, height: 1, depth: 1 }
+			})
+		];
+		const projection = buildPlanSceneFootprintProjection(sceneWith(entities), testRooms(), {
+			assetById: () => asset({ width: 1, depth: 1 }),
+			presentationForEntity: (entityId) =>
+				entityId === 'scene-a' ? 'bridge-hover' : 'passive'
+		});
+
+		expect(projection.footprints.map((footprint) => footprint.presentation)).toEqual([
+			'bridge-hover',
+			'passive'
+		]);
+	});
+
 	it('omits missing, invalid, non-floor, and unknown-room models', () => {
 		const entities = [
 			modelEntity('missing', 'missing'),

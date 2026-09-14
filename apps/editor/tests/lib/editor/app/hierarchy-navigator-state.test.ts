@@ -194,6 +194,7 @@ describe('P23.6e slice 3 — transient in-place state', () => {
 			openingFilter: 'window',
 			disclosure: ['walls:wall:w2'],
 			collapsed: [],
+			pageScrollTop: 0,
 			scrollTop: 120
 		});
 		// No page transition, no history: the intent object is untouched, so the
@@ -466,6 +467,25 @@ describe('P23.6e slice 6 — search, filters and exact Back restoration', () => 
 		expect(store.transition.revision).toBe(revision);
 	});
 
+	it('keeps the underlying page offset separate from search-result scrolling', () => {
+		const store = new HierarchyNavigatorStore();
+		store.open({ kind: 'sceneContent' });
+		store.setScrollTop(500);
+
+		expect(store.setQuery('D007')).toBeNull();
+		expect(store.current.pageScrollTop).toBe(500);
+		store.setScrollTop(200);
+		// A page remount/history round-trip preserves both surfaces in one entry.
+		store.open({ kind: 'walls' });
+		expect(store.back()).toBe(true);
+		expect(store.current.scrollTop).toBe(200);
+		expect(store.current.pageScrollTop).toBe(500);
+
+		expect(store.setQuery('')).toBe(500);
+		expect(store.current.scrollTop).toBe(500);
+		expect(store.current).not.toHaveProperty('pageScrollTop');
+	});
+
 	it('pushes the named home with an empty query and restores every field on Back', () => {
 		const store = new HierarchyNavigatorStore();
 		store.open({ kind: 'room', roomId: 'room-a' });
@@ -499,6 +519,7 @@ describe('P23.6e slice 6 — search, filters and exact Back restoration', () => 
 			openingFilter: 'door',
 			disclosure: ['room:room-a:section:junctions'],
 			collapsed: [],
+			pageScrollTop: 0,
 			scrollTop: 120
 		});
 		expect(store.transition.kind).toBe('history-restore');

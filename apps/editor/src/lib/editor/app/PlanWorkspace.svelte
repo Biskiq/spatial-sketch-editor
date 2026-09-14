@@ -44,7 +44,10 @@
 		HIERARCHY_NAVIGATOR_KEY,
 		type HierarchyNavigatorStore
 	} from './hierarchy-navigator-state.svelte';
-	import { hierarchyEntityToPlanHit } from '$lib/editor/hierarchy/hierarchy-plan-bridge';
+	import {
+		hierarchyEntityToPlanHit,
+		hierarchyEntityToScenePlanId
+	} from '$lib/editor/hierarchy/hierarchy-plan-bridge';
 
 	let {
 		store,
@@ -70,6 +73,11 @@
 	);
 	const hierarchyEmphasis = $derived(
 		hierarchyNavigator?.emphasis ? hierarchyEntityToPlanHit(hierarchyNavigator.emphasis) : null
+	);
+	const hierarchySceneEmphasis = $derived(
+		hierarchyNavigator?.emphasis
+			? hierarchyEntityToScenePlanId(hierarchyNavigator.emphasis)
+			: null
 	);
 
 	function effectiveSceneScale(entity: SceneEntity) {
@@ -490,6 +498,7 @@
 		onLayoutTransactionCancel={cancelLayoutTransaction}
 		onDeselect={activeSelection ? deselectPlanActive : undefined}
 		{hierarchyEmphasis}
+		hierarchySceneEmphasis={hierarchySceneEmphasis}
 		{store}
 		{contextMenu}
 	/>

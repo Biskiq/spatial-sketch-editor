@@ -286,19 +286,14 @@
 
 	// ── transient search / filters (slice 6) ─────────────────────────────
 
-	// The page's own offset while search results are showing: Empty/Escape must
-	// return to the underlying page exactly, not to a leftover result offset.
-	let pageScrollBeforeSearch = 0;
-
 	function setQuery(next: string): void {
 		const wasSearching = entry.query.trim().length > 0;
 		const willSearch = next.trim().length > 0;
-		if (willSearch && !wasSearching) {
-			pageScrollBeforeSearch = untrack(() => navigator.current.scrollTop);
-		}
-		navigator.setQuery(next);
+		const restoredPageScrollTop = navigator.setQuery(next);
 		if (willSearch && !wasSearching) scheduleScroll({ top: 0 });
-		else if (!willSearch && wasSearching) scheduleScroll({ top: pageScrollBeforeSearch });
+		else if (!willSearch && wasSearching && restoredPageScrollTop !== null) {
+			scheduleScroll({ top: restoredPageScrollTop });
+		}
 	}
 
 	function clearQuery(): void {

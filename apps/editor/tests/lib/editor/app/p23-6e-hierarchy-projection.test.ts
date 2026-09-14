@@ -1246,6 +1246,17 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		const relatedWalls = groupRows(projection, 'walls', 'related');
 		expect(relatedWalls.map((row) => row.canonicalId)).toEqual(['w2']);
 		expect(relatedWalls[0]!.secondary).toBe('in Gallery A, Gallery B, +1');
+		// The direct Opening owns the only search occurrence; its host Wall does
+		// not repeat it as a nested dependent or steal the primary reveal row.
+		expect(relatedWalls[0]!.children!.map((row) => row.canonicalId)).not.toContain('op-win-2');
+		expect(
+			projection.representations.get(openingEntityKey('w2', 'op-win-2').id)
+		).toEqual([
+			expect.objectContaining({
+				rowKey: 'search:openings:opening:op-win-2',
+				primary: true
+			})
+		]);
 	});
 
 	it('retrieves a Junction with incident Walls and its explicit boundary Rooms, then stops', () => {
@@ -1969,6 +1980,8 @@ describe('P23.6e slice 6 — search UI, filters and Back restoration (source con
 		expect(setQueryBody).toContain('navigator.setQuery(next)');
 		expect(setQueryBody).not.toContain('navigator.open(');
 		expect(setQueryBody).not.toContain('navigator.showIn(');
+		expect(navigatorSource).not.toContain('pageScrollBeforeSearch');
+		expect(readLibSource('editor/app/hierarchy-navigator-state.svelte.ts')).toContain('pageScrollTop');
 	});
 
 	it('pins the two page filters to the settled option labels', () => {

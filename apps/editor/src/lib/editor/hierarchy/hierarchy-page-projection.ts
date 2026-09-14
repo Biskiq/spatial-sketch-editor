@@ -73,6 +73,8 @@ export type HierarchyHistoryEntry = {
 	disclosure: string[];
 	/** Explicitly collapsed overrides for rows whose default is open. */
 	collapsed?: string[];
+	/** The underlying page offset while `query` renders the search surface. */
+	pageScrollTop?: number;
 	scrollTop: number;
 };
 

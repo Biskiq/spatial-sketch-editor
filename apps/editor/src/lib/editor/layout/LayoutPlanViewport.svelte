@@ -257,6 +257,8 @@
 		 * receives nothing.
 		 */
 		hierarchyEmphasis?: PlanHitIdentity | null;
+		/** Scene entity emphasis uses the existing passive footprint renderer. */
+		hierarchySceneEmphasis?: string | null;
 	} = $props();
 
 	let svgElement = $state<SVGSVGElement>();
@@ -413,11 +415,14 @@
 		void interaction.planViewMode;
 		void selectedPlacementIds.length;
 		void sceneBridgeHover?.entityId;
+		void hierarchySceneEmphasis;
 		return buildPlanSceneFootprintProjection(scene, sceneRooms, {
 			getEffectiveScale: getEffectiveSceneScale,
 			presentationForEntity: (entityId) => {
 				if (interaction.planViewMode === 'staging' && selectedPlacementIds.includes(entityId)) return 'selected';
-				if (sceneBridgeHover?.entityId === entityId) return 'bridge-hover';
+				if (sceneBridgeHover?.entityId === entityId || hierarchySceneEmphasis === entityId) {
+					return 'bridge-hover';
+				}
 				return interaction.planViewMode === 'staging' ? 'active' : 'passive';
 			}
 		});

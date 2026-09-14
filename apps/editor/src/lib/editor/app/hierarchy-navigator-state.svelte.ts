@@ -169,9 +169,32 @@ export class HierarchyNavigatorStore {
 		return false;
 	}
 
-	/** In-place transient updates: they never push history or move the page. */
-	setQuery(query: string): void {
+	/**
+	 * In-place transient updates: they never push history or move the page.
+	 * Search owns a separate base-page offset because `scrollTop` follows the
+	 * currently rendered surface and therefore becomes the result-list offset.
+	 * Returns the page offset when a search is cleared so the renderer can apply
+	 * it after the page rows have rendered.
+	 */
+	setQuery(query: string): number | null {
+		const wasSearching = this.current.query.trim().length > 0;
+		const willSearch = query.trim().length > 0;
+		if (willSearch && !wasSearching) {
+			this.current = {
+				...this.current,
+				query,
+				pageScrollTop: this.current.scrollTop
+			};
+			return null;
+		}
+		if (!willSearch && wasSearching) {
+			const pageScrollTop = this.current.pageScrollTop ?? this.current.scrollTop;
+			const { pageScrollTop: _pageScrollTop, ...entry } = this.current;
+			this.current = { ...entry, query, scrollTop: pageScrollTop };
+			return pageScrollTop;
+		}
 		this.current = { ...this.current, query };
+		return null;
 	}
 
 	setWallFilter(wallFilter: WallFilter): void {

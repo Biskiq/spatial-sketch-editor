@@ -10,9 +10,9 @@
  * Deliberately total-but-honest about what Plan can express:
  * - Room / Wall / Opening / Junction / Layout Object map to their canonical
  *   wall-first hit (the existing `-hovered` tokens);
- * - Scene clusters and Scene entities have **no** Plan hit identity, so they map
- *   to `null`: a Scene footprint outline is the Scene hover path's own
- *   presentation and must never be fabricated from a cluster.
+ * - Scene clusters and Scene entities have no *layout hit* identity, so they
+ *   map to `null` here. Scene entities use the separate footprint presentation
+ *   bridge below; a cluster still has no geometry of its own.
  *
  * No Svelte, DOM, renderer or mutation imports: this module is a lookup table.
  */
@@ -40,4 +40,9 @@ export function hierarchyEntityToPlanHit(entity: HierarchyEntityKey): PlanHitIde
 		case 'entity':
 			return null;
 	}
+}
+
+/** Scene entity → existing Plan footprint identity, or null for clusters. */
+export function hierarchyEntityToScenePlanId(entity: HierarchyEntityKey): string | null {
+	return entity.owner === 'scene' && entity.kind === 'entity' ? entity.entityId : null;
 }
