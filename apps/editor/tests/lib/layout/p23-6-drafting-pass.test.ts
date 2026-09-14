@@ -82,6 +82,8 @@ function emptyContext(overrides: Partial<PlanWallFirstContext> = {}): PlanWallFi
 	return {
 		junctions: [],
 		junctionFocus: null,
+		// P23.11 — no curved Wall selected, so no curve controls are exposed.
+		curveControls: [],
 		roomNames: new Map(),
 		runStartPoint: null,
 		issues: [],

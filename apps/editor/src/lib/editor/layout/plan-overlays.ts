@@ -14,6 +14,7 @@ import { geometryId } from '$lib/layout/layout-geometry-types';
 import { layoutArchitecturalPreset } from '$lib/layout/layout-wall-first-precision';
 import { isLayoutPresetTool, type LayoutPresetTool } from './layout-interaction';
 import type { LayoutArchitecturalPresetId, SnapResolution } from '@portfolio/layout-core';
+import type { PlanCurveControlCandidate } from './plan-hit';
 import type {
 	PlanHitIdentity,
 	PlanInteractionProjection,
@@ -43,6 +44,13 @@ const DIMENSION_LABEL_OFFSET_PX = 5;
 export type PlanWallFirstContext = {
 	/** Canonical Junctions for edit-context handles. */
 	junctions: readonly { id: string; point: LayoutVec2 }[];
+	/**
+	 * P23.11 — the transient curve controls of the selected curved Wall, or an
+	 * empty list. Only a selected curved Wall exposes them, so this is editing
+	 * state rather than document truth: the same list the *hit* query receives,
+	 * which keeps one authority for what is hoverable and what is drawn.
+	 */
+	curveControls: readonly PlanCurveControlCandidate[];
 	/**
 	 * Junctions to show when a Wall is selected (`null` = all). The viewport
 	 * focuses the selected Wall's endpoints so selection context stays quiet.
@@ -886,6 +894,34 @@ export function buildPlanInteractionProjection(
 	// click that selects it. Never global clutter: hidden below the Plan scale
 	// floor, and focused to the selected Wall's endpoints when a Wall selection
 	// owns the context.
+	//
+	// P23.11 — curve controls draw on the same layer and under the same scale
+	// floor, but BELOW the Junction handles: a Junction outranks a control in
+	// hit authority, so it must also read as the nearer affordance. The control
+	// being dragged shows hover language while the pointer holds it.
+	if (wallFirst && wallFirst.curveControls.length > 0) {
+		if (interaction.planView.pixelsPerMeter >= JUNCTION_HANDLES_MIN_PX_PER_M) {
+			for (const control of wallFirst.curveControls) {
+				const active =
+					hovered?.kind === 'wallCurveControl' &&
+					hovered.wallId === control.wallId &&
+					hovered.anchorId === control.anchorId;
+				handles.push({
+					kind: 'circle',
+					key: geometryId(['plan', 'overlay', 'curve-control', control.wallId, control.anchorId]),
+					center: [control.point[0], control.point[1]] as LayoutVec2,
+					radiusPx: 5,
+					style: active ? 'curve-control-hovered' : 'curve-control',
+					hit: {
+						kind: 'wallCurveControl',
+						wallId: control.wallId,
+						anchorId: control.anchorId
+					} satisfies PlanHitIdentity
+				});
+			}
+		}
+	}
+
 	if (wallFirst) {
 		const chainArmed = wallChainRoleForTool(interaction.tool) !== null;
 		const selection = interaction.selection;

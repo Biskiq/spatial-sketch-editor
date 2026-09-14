@@ -34,6 +34,8 @@
 		'interior-anchor-selected': 'interior-anchor selected',
 		'vertex-handle-selected': 'vertex-handle selected',
 		'vertex-handle-hovered': 'vertex-handle hovered',
+		// P23.11 — interior curve controls of a selected curved Wall.
+		'curve-control-hovered': 'curve-control hovered',
 		'primitive-ghost-circle': 'primitive-ghost circle',
 		'primitive-ghost-sphere': 'primitive-ghost sphere',
 		'primitive-ghost-invalid': 'primitive-ghost invalid',
@@ -369,6 +371,10 @@
 	.layout-diagnostic { fill: rgb(239 98 108 / 14%); stroke: var(--editor-danger); stroke-width: 2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.vertex-handle.selected, .vertex-handle-selected { fill: var(--editor-plan-selection); stroke: var(--editor-plan-canvas-bg); }
 	.vertex-handle.hovered, .vertex-handle-hovered { fill: var(--editor-plan-hover-stroke); stroke: var(--editor-plan-canvas-bg); }
+	/* P23.11 — interior curve controls: hollow so they never read as the
+	   Junction handles they reshape the Wall between. */
+	.curve-control { fill: var(--editor-plan-canvas-bg); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; }
+	.curve-control.hovered, .curve-control-hovered { fill: var(--editor-plan-hover-stroke); stroke: var(--editor-plan-canvas-bg); }
 	.draft-point { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; }
 	/* P23.2 — session-only snap feedback (semantic rank above grid fallback). */
 	.snap-guide { fill: none; stroke: var(--editor-plan-selection); stroke-width: 1.25; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }

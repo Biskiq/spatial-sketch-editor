@@ -44,6 +44,11 @@
 		updateWallFirstWallLength,
 		updateWallFirstWallHeight,
 		updateWallFirstWallThickness,
+		deleteWallFirstWallCurveAnchor,
+		insertWallFirstWallCurveAnchor,
+		updateWallFirstWallCurve,
+		updateWallFirstWallCurveAnchor,
+		updateWallFirstWallLine,
 		updateWallFirstRectangle,
 		commitWallRoleChange,
 		subdivideWallFirstWall,
@@ -351,6 +356,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		selectedWallFirstWall && wallFirstLayout
 			? precisionWallEndpoints(wallFirstLayout, selectedWallFirstWall)
 			: null
+	);
+	// P23.11 — the selected Wall's owns curve. Straight Walls expose no
+	// controls, so the panel shows the one Convert action instead.
+	const selectedWallFirstWallAnchors = $derived(
+		selectedWallFirstWall?.centerline.kind === 'auto-bezier'
+			? selectedWallFirstWall.centerline.interiorAnchors
+			: []
 	);
 	// P23.6 — canonical wall-first Room Inspector target. Read-only identity
 	// presentation (no wall-first Room metadata operation exists yet);
@@ -1537,6 +1549,117 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
+	 * P23.11 — the selected Wall's own curve, through the same canonical
+	 * planners the Plan control gesture calls (one operation = one history
+	 * entry). Converting plants one control on the exact chord midpoint, so the
+	 * Wall keeps its length, direction and every hosted Opening offset until a
+	 * control is actually moved; deleting the last control converts back to a
+	 * straight Wall rather than leaving an anchor-less curve.
+	 */
+	function setSelectedWallCurved(curved: boolean): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const outcome = runLayoutMutationGuarded(
+			() =>
+				curved
+					? updateWallFirstWallCurve(layoutPreview, wall.id)
+					: updateWallFirstWallLine(layoutPreview, wall.id),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? curved
+					? `Wall ${wall.id} is now curved`
+					: `Wall ${wall.id} is now straight`
+				: `Wall curve rejected: ${outcome.result.message}`
+		);
+	}
+
+	/**
+	 * Add one control at the Wall's physical arc midpoint, read from the same
+	 * compiled samples the renderers consume. The planner projects the point onto
+	 * the canonical centerline, so the control lands ON the Wall and no
+	 * midpoint is re-derived here.
+	 */
+	function addSelectedWallCurveAnchor(): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const compiled = layoutPreview.geometry.walls.find((candidate) => candidate.wallId === wall.id);
+		const samples = compiled?.samples ?? [];
+		if (samples.length === 0) {
+			store.setStatusMessage('Wall centerline is unavailable');
+			return;
+		}
+		const half = (compiled?.length ?? 0) / 2;
+		const midpoint = samples.reduce((best, sample) =>
+			Math.abs(sample.distance - half) < Math.abs(best.distance - half) ? sample : best
+		);
+		const outcome = runLayoutMutationGuarded(
+			() => insertWallFirstWallCurveAnchor(layoutPreview, wall.id, [...midpoint.point] as [number, number]),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? `Added a control to Wall ${wall.id}`
+				: `Add control rejected: ${outcome.result.message}`
+		);
+	}
+
+	function updateSelectedWallCurveAnchor(anchorId: string, index: 0 | 1, event: Event): void {
+		const wall = selectedWallFirstWall;
+		const anchor = selectedWallFirstWallAnchors.find((candidate) => candidate.id === anchorId);
+		if (!wall || !anchor) return;
+		const previous = anchor.point[index];
+		const value = precisionNumber(event, previous, formatMeters);
+		if (value === null) return;
+		const point = [...anchor.point] as [number, number];
+		point[index] = value;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstWallCurveAnchor(layoutPreview, wall.id, anchorId, point),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+		store.setStatusMessage(
+			outcome.result.success
+				? `Moved control ${anchorId}`
+				: `Control rejected: ${outcome.result.message}`
+		);
+	}
+
+	function deleteSelectedWallCurveAnchor(anchorId: string): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const outcome = runLayoutMutationGuarded(
+			() => deleteWallFirstWallCurveAnchor(layoutPreview, wall.id, anchorId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? selectedWallFirstWallAnchors.length <= 1
+					? `Wall ${wall.id} is now straight`
+					: `Removed control ${anchorId}`
+				: `Remove control rejected: ${outcome.result.message}`
+		);
+	}
+
+	/**
 	 * P23.6c — canonical Wall delete through the same planner-backed adapter
 	 * the viewport Delete/Backspace path calls (one operation = one history
 	 * entry). A rejection installs nothing; success clears the canonical
@@ -1884,6 +2007,24 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
 					<label>Add junction at distance from start (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallJunction} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
+					<!-- P23.11 — the Wall's own curve. Straight Walls get the one
+						Convert action; a curved Wall lists its controls as exact X/Z
+						edits plus removal, and removing the last control converts it
+						back to a straight Wall. -->
+					<label><input type="checkbox" checked={selectedWallFirstWall.centerline.kind === 'auto-bezier'} onchange={(event) => setSelectedWallCurved((event.currentTarget as HTMLInputElement).checked)} /> Curved wall</label>
+					{#if selectedWallFirstWallAnchors.length > 0}
+						<div class="object-room-meta"><span>Wall controls</span><strong>{selectedWallFirstWallAnchors.length}</strong></div>
+						{#each selectedWallFirstWallAnchors as anchor (anchor.id)}
+							<label>Control {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 0, event)} /></label>
+							<label>Control {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 1, event)} /></label>
+							<div class="layout-opening-actions">
+								<button type="button" onclick={() => deleteSelectedWallCurveAnchor(anchor.id)}>Remove control</button>
+							</div>
+						{/each}
+						<div class="layout-opening-actions">
+							<button type="button" onclick={addSelectedWallCurveAnchor}>Add control at midpoint</button>
+						</div>
+					{/if}
 					<div class="layout-opening-actions">
 						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
 					</div>

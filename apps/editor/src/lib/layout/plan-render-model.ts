@@ -63,6 +63,10 @@ export type PlanStyleToken =
 	| 'rotation-handle'
 	| 'rotation-feedback'
 	| 'vertex-handle'
+	// P23.11 — one interior control of a curved Wall. Distinct from a Junction
+	// handle because it is transient editing state, not a document vertex.
+	| 'curve-control'
+	| 'curve-control-hovered'
 	| 'interior-anchor'
 	| 'interior-anchor-selected'
 	| 'primitive-ghost'
@@ -122,7 +126,13 @@ export type PlanHitIdentity =
 	 */
 	| { kind: 'physicalWall'; wallId: string }
 	/** P23.6 — canonical wall-first Junction identity (`junctionId`). */
-	| { kind: 'junction'; junctionId: string };
+	| { kind: 'junction'; junctionId: string }
+	/**
+	 * P23.11 — one interior curve control of a curved Wall, keyed by
+	 * `{ wallId, anchorId }`. Transient editing state: never a `LayoutSelection`
+	 * variant, so this identity only ever styles and targets a control handle.
+	 */
+	| { kind: 'wallCurveControl'; wallId: string; anchorId: string };
 
 /**
  * Renderer-neutral selection descriptor. Mirrors the editor's selection shape

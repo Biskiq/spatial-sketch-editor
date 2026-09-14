@@ -87,6 +87,7 @@
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
+		updateWallFirstWallCurveAnchor,
 		updateWallFirstWallMove,
 		createWallFirstOpening,
 		type LayoutPreviewSnapshot
@@ -116,6 +117,7 @@
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
+	import type { PlanCurveControlCandidate } from './plan-hit';
 	import type { PlanHitIdentity } from '$lib/layout/plan-render-model';
 	import { buildPlanSceneFootprintProjection } from './plan-scene-footprint';
 	import { resolvePlanSceneHitAtZoom, PLAN_SCENE_HIT_HALO_PX } from './plan-scene-hit';
@@ -444,7 +446,9 @@
 		const result =
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
-				: updateWallFirstWallMove(preview, gesture.wallId, input);
+				: gesture.kind === 'wall-move'
+					? updateWallFirstWallMove(preview, gesture.wallId, input)
+					: updateWallFirstWallCurveAnchor(preview, gesture.wallId, gesture.anchorId, input);
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -473,9 +477,15 @@
 					grabPoint: LayoutVec2;
 					startJunctionId: string;
 					endJunctionId: string;
-					baselineStart: LayoutVec2;
-					baselineEnd: LayoutVec2;
+					baselineStart: LayoutVec2;						baselineEnd: LayoutVec2;
 					affectedWallIds: readonly string[];
+			  }
+			| {
+					kind: 'curve-control-move';
+					wallId: string;
+					anchorId: string;
+					baselineAnchorPoint: LayoutVec2;
+					curveExcludePoints: readonly LayoutVec2[];
 			  }
 	): boolean {
 		if (!event.isPrimary || !svgElement) return false;
@@ -487,7 +497,24 @@
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
 		const gesture: LayoutArchitectureEditGesture =
-			baseline.kind === 'junction-move'
+			baseline.kind === 'curve-control-move'
+				? {
+						kind: 'curve-control-move',
+						pointerId: event.pointerId,
+						wallId: baseline.wallId,
+						anchorId: baseline.anchorId,
+						startPointer: [...point] as LayoutVec2,
+						baselineAnchorPoint: [...baseline.baselineAnchorPoint] as LayoutVec2,
+						curveExcludePoints: baseline.curveExcludePoints.map(
+							(exclude) => [...exclude] as LayoutVec2
+						),
+						// The edited Wall alone: a control move leaves both endpoint
+						// Junctions in place, so no neighbouring Wall reshapes.
+						affectedWallIds: [baseline.wallId],
+						candidatePoint: [...baseline.baselineAnchorPoint] as LayoutVec2,
+						valid: false
+				  }
+				: baseline.kind === 'junction-move'
 				? {
 						kind: 'junction-move',
 						pointerId: event.pointerId,
@@ -589,7 +616,12 @@
 		if (valid) {
 			const changed = onLayoutTransactionCommit();
 			if (changed) {
-				preview.statusMessage = gesture?.kind === 'junction-move' ? 'Moved junction' : 'Moved wall';
+				preview.statusMessage =
+					gesture?.kind === 'junction-move'
+						? 'Moved junction'
+						: gesture?.kind === 'wall-move'
+							? 'Moved wall'
+							: 'Moved wall point';
 			}
 		} else {
 			onLayoutTransactionCancel();
@@ -687,7 +719,12 @@
 		if (!('formatVersion' in layout)) return undefined;
 		const document = layout as unknown as {
 			junctions: { id: string; point: LayoutVec2 }[];
-			walls: { id: string; startJunctionId: string; endJunctionId: string }[];
+			walls: {
+				id: string;
+				startJunctionId: string;
+				endJunctionId: string;
+				centerline: { kind: 'line' } | { kind: 'auto-bezier'; interiorAnchors: { id: string; point: LayoutVec2 }[] };
+			}[];
 			rooms: { id: string; name: string }[];
 		};
 		const selection = interaction.selection;
@@ -702,6 +739,10 @@
 				point: [...junction.point] as LayoutVec2
 			})),
 			junctionFocus,
+			// P23.11 — the selected curved Wall's controls, read from the live
+			// document. This is the ONE list: it feeds both the rendered handles
+			// and the hit query, so the affordance and its hit region cannot drift.
+			curveControls: selectedCurveControls(document.walls),
 			roomNames: new Map(document.rooms.map((room) => [room.id, room.name] as const)),
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
@@ -1986,7 +2027,7 @@ const interactionProjection = $derived(
 			model.queries,
 			point,
 			LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-			planHitEndpointGate()
+			planHitOptions()
 		);
 		if (!target) {
 			// a Plan empty-click deselects whichever domain is active (a
@@ -2098,6 +2139,35 @@ const interactionProjection = $derived(
 				originScreen: screen
 			};
 			svgElement.setPointerCapture(event.pointerId);
+			return;
+		}
+
+		// P23.11 — an interior curve control of the selected curved Wall. The
+		// Wall STAYS the selection for the whole gesture: a control is transient
+		// editing state, so no second selection slot is written and no hierarchy
+		// row is invented. A non-primary contact and a second contact during a
+		// live gesture are refused, exactly like the other direct edits.
+		if (target.kind === 'wallCurveControl') {
+			if (!event.isPrimary || interaction.architectureEdit) return;
+			const anchor = wallFirstLayoutDocument()
+				?.walls.find((candidate) => candidate.id === target.wallId)
+				?.centerline;
+			const baselineAnchorPoint =
+				anchor?.kind === 'auto-bezier'
+					? anchor.interiorAnchors.find((candidate) => candidate.id === target.anchorId)?.point
+					: undefined;
+			if (!baselineAnchorPoint) return;
+			selectLayoutPhysicalWall(interaction, target.wallId);
+			beginArchitectureEditGesture(event, {
+				kind: 'curve-control-move',
+				wallId: target.wallId,
+				anchorId: target.anchorId,
+				baselineAnchorPoint: [...baselineAnchorPoint] as LayoutVec2,
+				// A control may not land on a Junction coordinate: the resulting
+				// degenerate segment can only be rejected, so honoring that snap
+				// family would install a guaranteed rejection as the winner.
+				curveExcludePoints: architectureEditJunctionExcludePoints()
+			});
 			return;
 		}
 
@@ -2252,7 +2322,7 @@ const interactionProjection = $derived(
 							model.queries,
 							hoverPoint,
 							LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-							planHitEndpointGate()
+							planHitOptions()
 						);
 			layoutHover = toLayoutHover(hoverHit);
 		} else if (layoutHover) {
@@ -2818,6 +2888,57 @@ const interactionProjection = $derived(
 		};
 	}
 
+	type WallFirstCenterlineWall = {
+		id: string;
+		centerline:
+			| { kind: 'line' }
+			| { kind: 'auto-bezier'; interiorAnchors: { id: string; point: LayoutVec2 }[] };
+	};
+
+	/**
+	 * P23.11 — the transient curve controls of the SELECTED curved Wall, in
+	 * persisted anchor order. Empty for any other selection, for a straight Wall
+	 * and for a legacy document: only the Wall being edited exposes draggable
+	 * controls, so the control affordance never becomes global clutter.
+	 *
+	 * Below the Junction-handle scale floor the controls are not drawn, and they
+	 * must not be hittable either — an invisible affordance outranking the Wall
+	 * body would swallow the click that selects the Wall.
+	 */
+	function selectedCurveControls(
+		walls: readonly WallFirstCenterlineWall[]
+	): PlanCurveControlCandidate[] {
+		const selection = interaction.selection;
+		if (selection.kind !== 'physicalWall') return [];
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return [];
+		const wall = walls.find((candidate) => candidate.id === selection.wallId);
+		if (!wall || wall.centerline.kind !== 'auto-bezier') return [];
+		return wall.centerline.interiorAnchors.map((anchor) => ({
+			wallId: wall.id,
+			anchorId: anchor.id,
+			point: [anchor.point[0], anchor.point[1]] as LayoutVec2
+		}));
+	}
+
+	/**
+	 * P23.11 — the shared hit options for the SELECT and hover paths: the
+	 * endpoint gate plus the selected Wall's controls. The context menu, the
+	 * door/window tool and every non-select path keep `planHitEndpointGate()`:
+	 * a control outranking the Wall body would otherwise remove the Wall's own
+	 * context menu and block Opening placement next to a control.
+	 */
+	function planHitOptions(): {
+		includeEndpoints: boolean;
+		curveControls?: readonly PlanCurveControlCandidate[];
+	} {
+		const layout = wallFirstLayoutDocument();
+		const controls = layout ? selectedCurveControls(layout.walls) : [];
+		return {
+			...planHitEndpointGate(),
+			...(controls.length > 0 ? { curveControls: controls } : {})
+		};
+	}
+
 	/** P23.6 — map a canonical Wall endpoint to its Junction ID (click-select). */
 	function wallEndpointJunctionId(wallId: string, endpoint: 0 | 1): string | null {
 		const layout = preview.project.layout;
@@ -2842,6 +2963,10 @@ const interactionProjection = $derived(
 		switch (hit.kind) {
 			case 'physicalWall':
 				return { kind: 'physicalWall', wallId: hit.wallId };
+			// P23.11 — the hover language is the control's only affordance, so a
+			// control hit must not fall through to the Wall behind it.
+			case 'wallCurveControl':
+				return { kind: 'wallCurveControl', wallId: hit.wallId, anchorId: hit.anchorId };
 			case 'wall':
 				return { kind: 'wall', roomId: hit.roomId, segmentId: hit.segmentId };
 			case 'wallOpening':
