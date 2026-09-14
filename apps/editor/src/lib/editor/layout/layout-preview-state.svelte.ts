@@ -33,6 +33,11 @@ import {
 	planExactWallThickness,
 	planRigidWallMove,
 	planWallSubdivision,
+	planConvertWallToCurve,
+	planConvertWallToLine,
+	planDeleteWallCurveAnchor,
+	planInsertWallCurveAnchor,
+	planMoveWallCurveAnchor,
 	type FixedWallEndpoint,
 	type LayoutArchitecturalPresetId,
 	type LayoutObjectTransformPatch,
@@ -1109,6 +1114,62 @@ export function updateWallFirstWallMove(
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	return applyWallFirstPrecisionPlan(state, planRigidWallMove(layout, wallId, delta));
+}
+
+/**
+ * P23.11 — commit one canonical Wall curve operation as one Layout history
+ * entry. Thin adapters over the core planners, so the direct control gesture
+ * and the Inspector can never reach acceptance by different routes. A rejection
+ * installs nothing and leaves the document and history untouched; the Wall keeps
+ * its identity, its Junctions and every hosted Opening throughout.
+ */
+export function updateWallFirstWallCurve(
+	state: LayoutPreviewState,
+	wallId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planConvertWallToCurve(layout, wallId));
+}
+
+export function updateWallFirstWallLine(
+	state: LayoutPreviewState,
+	wallId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planConvertWallToLine(layout, wallId));
+}
+
+export function insertWallFirstWallCurveAnchor(
+	state: LayoutPreviewState,
+	wallId: string,
+	point: LayoutVec2
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planInsertWallCurveAnchor(layout, wallId, point));
+}
+
+export function updateWallFirstWallCurveAnchor(
+	state: LayoutPreviewState,
+	wallId: string,
+	anchorId: string,
+	point: LayoutVec2
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planMoveWallCurveAnchor(layout, wallId, anchorId, point));
+}
+
+export function deleteWallFirstWallCurveAnchor(
+	state: LayoutPreviewState,
+	wallId: string,
+	anchorId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planDeleteWallCurveAnchor(layout, wallId, anchorId));
 }
 
 export function updateWallFirstWallLength(

@@ -398,6 +398,42 @@ export type LayoutArchitectureEditGesture =
 			valid: boolean;
 			rejectionCode?: string;
 			rejectionMessage?: string;
+	  }
+	| {
+			/**
+			 * P23.11 — drag one interior curve control of a curved Wall.
+			 *
+			 * The control is transient editing state keyed by
+			 * `{ wallId, anchorId }`, never a new `LayoutSelection` variant and never
+			 * a hierarchy row: the Wall stays the durable selection for the whole
+			 * gesture, so no second selection authority exists.
+			 */
+			kind: 'curve-control-move';
+			pointerId: number;
+			wallId: string;
+			anchorId: string;
+			/** World-space pointer at pointer-down (immutable for the gesture). */
+			startPointer: LayoutVec2;
+			/** Canonical anchor point at pointer-down (grab offset preserved). */
+			baselineAnchorPoint: LayoutVec2;
+			/**
+			 * Excluded from the control's own snap for the same reason a Junction
+			 * move excludes them: the canonical planner rejects a control landing on
+			 * a Junction coordinate, so honoring that family would install a
+			 * guaranteed rejection as the winning candidate.
+			 */
+			curveExcludePoints: readonly LayoutVec2[];
+			/**
+			 * The edited Wall alone. A control move leaves both endpoint Junctions
+			 * exactly where they are, so no neighbouring Wall reshapes and only this
+			 * Wall's own geometry may not be its own snap target.
+			 */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate point (baseline + total displacement). */
+			candidatePoint: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
 	  };
 
 /**
@@ -445,7 +481,12 @@ export function architectureEditRawTarget(
 ): LayoutVec2 {
 	const dx = pointer[0] - gesture.startPointer[0];
 	const dz = pointer[1] - gesture.startPointer[1];
-	const anchor = gesture.kind === 'junction-move' ? gesture.baselinePoint : gesture.baselineGrabPoint;
+	const anchor =
+		gesture.kind === 'wall-move'
+			? gesture.baselineGrabPoint
+			: gesture.kind === 'curve-control-move'
+				? gesture.baselineAnchorPoint
+				: gesture.baselinePoint;
 	return [anchor[0] + dx, anchor[1] + dz];
 }
 
@@ -464,7 +505,7 @@ export function updateLayoutArchitectureEdit(
 	gesture.valid = false;
 	delete gesture.rejectionCode;
 	delete gesture.rejectionMessage;
-	if (gesture.kind === 'junction-move') {
+	if (gesture.kind === 'junction-move' || gesture.kind === 'curve-control-move') {
 		gesture.candidatePoint = [target[0], target[1]];
 		return [target[0], target[1]];
 	}
@@ -533,9 +574,16 @@ export function architectureEditExclusionOwners(
 export function architectureEditExcludePoints(
 	gesture: LayoutArchitectureEditGesture
 ): LayoutVec2[] {
-	return gesture.kind === 'junction-move'
-		? gesture.junctionExcludePoints.map((point) => [point[0], point[1]] as LayoutVec2)
-		: [];
+	// A rigid Wall move excludes nothing by point — its captured grab point may
+	// legitimately align with a stationary Junction because one translation
+	// merges no endpoint IDs. Both point-anchored gestures do exclude.
+	const points =
+		gesture.kind === 'junction-move'
+			? gesture.junctionExcludePoints
+			: gesture.kind === 'curve-control-move'
+				? gesture.curveExcludePoints
+				: [];
+	return points.map((point) => [point[0], point[1]] as LayoutVec2);
 }
 
 /**
@@ -546,7 +594,9 @@ export function architectureEditExcludePoints(
 export function architectureEditAllowedKinds(
 	gesture: LayoutArchitectureEditGesture
 ): readonly SnapFeatureKind[] | undefined {
-	return gesture.kind === 'junction-move' ? LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS : undefined;
+	// Both point-anchored gestures drop the `'junction'` family; only a rigid
+	// Wall move keeps the full P23.2 ranking.
+	return gesture.kind === 'wall-move' ? undefined : LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS;
 }
 
 export type LayoutInteractionState = {

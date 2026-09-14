@@ -442,7 +442,13 @@ export function withPlanObjectRotationHandle(
  */
 export type LayoutArchitectureEditIntent =
 	| { kind: 'junction-move'; point: LayoutVec2 }
-	| { kind: 'wall-move'; start: LayoutVec2; end: LayoutVec2 };
+	| { kind: 'wall-move'; start: LayoutVec2; end: LayoutVec2 }
+	/**
+	 * P23.11 — a rejected curve-control drag. The Wall keeps its installed
+	 * shape and only the rejected control point renders, mirroring the
+	 * Junction case: one point, never a fabricated curve.
+	 */
+	| { kind: 'curve-control-move'; point: LayoutVec2 };
 
 /**
  * P23.10 — the transient intent for one live direct edit, or `null` when
@@ -461,8 +467,9 @@ export function architectureEditIntentFor(
 ): LayoutArchitectureEditIntent | null {
 	if (!gesture || !moved || gesture.valid) return null;
 	if (gesture.rejectionCode === undefined || gesture.rejectionCode === 'no_op') return null;
-	if (gesture.kind === 'junction-move') {
-		return { kind: 'junction-move', point: [gesture.candidatePoint[0], gesture.candidatePoint[1]] };
+	// Point-anchored gestures render the rejected control/Junction point itself.
+	if (gesture.kind !== 'wall-move') {
+		return { kind: gesture.kind, point: [gesture.candidatePoint[0], gesture.candidatePoint[1]] };
 	}
 	const [dx, dz] = gesture.candidateDelta;
 	return {
@@ -482,18 +489,18 @@ export function withArchitectureEditIntent(
 ): PlanInteractionProjection {
 	if (!intent) return projection;
 	const primitive: PlanRenderPrimitive =
-		intent.kind === 'junction-move'
+		intent.kind === 'wall-move'
 			? {
+					kind: 'polyline',
+					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+					points: [intent.start, intent.end],
+					style: 'architecture-edit-intent-invalid'
+			  }
+			: {
 					kind: 'circle',
 					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
 					center: intent.point,
 					radiusPx: 7,
-					style: 'architecture-edit-intent-invalid'
-			  }
-			: {
-					kind: 'polyline',
-					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
-					points: [intent.start, intent.end],
 					style: 'architecture-edit-intent-invalid'
 			  };
 	return { ...projection, drafts: [...projection.drafts, primitive] };
