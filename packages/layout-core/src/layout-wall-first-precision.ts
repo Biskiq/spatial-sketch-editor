@@ -35,6 +35,7 @@ import {
 	type RoomIdAllocator
 } from './layout-room-reconciliation';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
+import { cloneWallCenterline } from './layout-wall-centerline';
 import {
 	planWallSplit,
 	type NodingIdAllocator,
@@ -1151,7 +1152,9 @@ function cloneDocument(document: LayoutDocumentWallFirst): LayoutDocumentWallFir
 		...document,
 		floor: { ...document.floor },
 		junctions: document.junctions.map((junction) => ({ ...junction, point: [junction.point[0], junction.point[1]] })),
-		walls: document.walls.map((wall) => ({ ...wall })),
+		// P23.11 — Wall clones deep-copy the centerline so candidate planners
+		// never share anchor arrays or points with the baseline.
+		walls: document.walls.map((wall) => ({ ...wall, centerline: cloneWallCenterline(wall.centerline) })),
 		rooms: document.rooms.map((room) => ({ ...room, boundary: room.boundary.map((ref) => ({ ...ref })) })),
 		openings: document.openings.map((opening) => ({
 			...opening,

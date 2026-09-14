@@ -23,6 +23,8 @@ import type {
 	LayoutFormatVersion,
 	LayoutJunction,
 	LayoutWall,
+	LayoutWallCenterline,
+	LayoutWallCurveAnchor,
 	LayoutWallFirstFloor,
 	LayoutWallFirstRoom,
 	LayoutWallOpening,
@@ -77,7 +79,9 @@ const ROOT_KEYS = [
  */
 const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
 const JUNCTION_KEYS = ['id', 'point'] as const;
-const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height'] as const;
+const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height', 'centerline'] as const;
+/** P23.11 — one curve anchor of a Wall `auto-bezier` centerline. */
+const WALL_CURVE_ANCHOR_KEYS = ['id', 'point'] as const;
 const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
 const WALL_REF_KEYS = ['wallId', 'direction'] as const;
 const OPENING_KEYS = [
@@ -447,13 +451,17 @@ function parseWall(
 	const role = readEnum(record.role, `${path}.role`, ['boundary', 'partition'], issues);
 	const thickness = readPositiveNumber(record.thickness, `${path}.thickness`, issues);
 	const height = readPositiveNumber(record.height, `${path}.height`, issues);
+	// P23.11 — the centerline is required on every Wall (fresh-authority
+	// policy: no migration, no missing-field tolerance).
+	const centerline = parseWallCenterline(record.centerline, `${path}.centerline`, issues);
 	if (
 		!id ||
 		!startJunctionId ||
 		!endJunctionId ||
 		!role ||
 		thickness === undefined ||
-		height === undefined
+		height === undefined ||
+		!centerline
 	) {
 		return undefined;
 	}
@@ -465,7 +473,63 @@ function parseWall(
 			'A Wall must reference two distinct Junctions'
 		);
 	}
-	return { id, startJunctionId, endJunctionId, role, thickness, height };
+	return { id, startJunctionId, endJunctionId, role, thickness, height, centerline };
+}
+
+/**
+ * P23.11 — parse the canonical Wall centerline union. `line` carries no
+ * payload; `auto-bezier` requires at least one interior anchor with stable
+ * unique IDs and finite X/Z points.
+ */
+function parseWallCenterline(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutWallCenterline> {
+	if (!isRecord(input)) {
+		addIssue(issues, path, 'invalid_type', 'Expected a centerline object');
+		return undefined;
+	}
+	const kind = readString(input.kind, `${path}.kind`, issues);
+	if (kind === 'line') {
+		assertAllowedKeys(input, ['kind'], path, issues);
+		return { kind: 'line' };
+	}
+	if (kind === 'auto-bezier') {
+		assertAllowedKeys(input, ['kind', 'interiorAnchors'], path, issues);
+		const anchors = parseArray(input.interiorAnchors, `${path}.interiorAnchors`, issues, parseWallCurveAnchor);
+		if (!anchors) return undefined;
+		validateUniqueIds(anchors, `${path}.interiorAnchors`, issues, (anchor) => anchor.id);
+		if (anchors.length === 0) {
+			addIssue(
+				issues,
+				`${path}.interiorAnchors`,
+				'empty_array',
+				'A curved Wall centerline requires at least one interior anchor'
+			);
+			return undefined;
+		}
+		return { kind: 'auto-bezier', interiorAnchors: anchors };
+	}
+	if (kind !== undefined) {
+		addIssue(issues, `${path}.kind`, 'unsupported_value', `Unsupported wall centerline kind '${kind}'`);
+	}
+	return undefined;
+}
+
+/** One `auto-bezier` interior anchor: stable unique ID + finite X/Z point. */
+function parseWallCurveAnchor(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutWallCurveAnchor> {
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, WALL_CURVE_ANCHOR_KEYS, path, issues);
+	const id = readId(record.id, `${path}.id`, issues);
+	const point = readVec2(record.point, `${path}.point`, issues);
+	if (!id || !point) return undefined;
+	return { id, point };
 }
 
 function parseRoom(

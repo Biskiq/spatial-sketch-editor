@@ -63,11 +63,11 @@ function isolatedRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'j-y', point: [20, 4] }
 		],
 		walls: [
-			{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 4.5 },
-			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-rl', startJunctionId: 'j-x', endJunctionId: 'j-y', role: 'partition', thickness: 0.2, height: 3 }
+			{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 4.5, centerline: { kind: 'line' } as const},
+			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-rl', startJunctionId: 'j-x', endJunctionId: 'j-y', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [],
 		openings: [],
@@ -115,13 +115,13 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'j-d', point: [0, 4] }
 		],
 		walls: [
-			{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-e', startJunctionId: 'j-b', endJunctionId: 'j-e1', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-f', startJunctionId: 'j-e1', endJunctionId: 'j-e2', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'wall-g', startJunctionId: 'j-e2', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3 }
+			{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-e', startJunctionId: 'j-b', endJunctionId: 'j-e1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-f', startJunctionId: 'j-e1', endJunctionId: 'j-e2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'wall-g', startJunctionId: 'j-e2', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [],
 		openings: [],
@@ -158,7 +158,8 @@ function roomWithPartitionStubDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'j-t',
 				role: 'partition',
 				thickness: 0.2,
-				height: 3
+				height: 3,
+				centerline: { kind: 'line' } as const,
 			}
 		]
 	};

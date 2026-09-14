@@ -319,7 +319,10 @@ export function planWallChain(options: {
 			endJunctionId: endId,
 			role: options.role,
 			thickness,
-			height
+			height,
+			// P23.11 — authored chains are straight; curves arrive only through
+			// the canonical curve planners.
+			centerline: { kind: 'line' }
 		};
 		candidate.walls.push(wall);
 		createdWallIds.push(id);

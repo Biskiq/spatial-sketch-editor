@@ -63,6 +63,35 @@ export type LayoutJunction = {
 };
 
 /**
+ * One persistent interior curve-control anchor of a curved Wall centerline
+ * (P23.11). Anchors are owned by their Wall — they are never Junctions and
+ * never participate in connectivity (Junction IDs remain the only topology
+ * truth). Anchor order is persisted and deterministic.
+ */
+export type LayoutWallCurveAnchor = {
+	id: string;
+	point: LayoutVec2;
+};
+
+/**
+ * Canonical Wall centerline (P23.11). A Wall is either a straight line
+ * between its endpoint Junctions (`kind: 'line'`) or an auto-Bézier curve
+ * through its endpoint Junctions and its ordered `interiorAnchors`.
+ *
+ * Rules:
+ * - endpoints remain owned only by `startJunctionId` / `endJunctionId`;
+ * - `auto-bezier` requires at least one interior anchor (deleting the last
+ *   anchor converts the Wall back to `line`);
+ * - curve anchors are never Junctions and never carry connectivity.
+ */
+export type LayoutWallCenterline =
+	| { kind: 'line' }
+	| {
+			kind: 'auto-bezier';
+			interiorAnchors: LayoutWallCurveAnchor[];
+	  };
+
+/**
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
  *
@@ -80,6 +109,11 @@ export type LayoutJunction = {
  * boundary Wall heights. Wall height is consumed by the canonical compiler,
  * bounds, mesh inputs and Opening fit — and is deliberately **not** part of Plan
  * face extraction, so a height change alone never alters Room topology.
+ *
+ * `centerline` is the authoritative P23.11 curve state: `'line'` for straight
+ * Walls, an `auto-bezier` anchor list for curved ones. The field is required on
+ * every persisted Wall (fresh-authority policy: no migration, no missing-field
+ * tolerance).
  */
 export type LayoutWall = {
   id: string;
@@ -88,6 +122,7 @@ export type LayoutWall = {
   role: LayoutWallRole;
   thickness: number;
   height: number;
+  centerline: LayoutWallCenterline;
 };
 
 /** Directed Wall reference used by persistent Room boundaries. */

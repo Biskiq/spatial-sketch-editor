@@ -122,13 +122,13 @@ function sharedWallBirth(): LayoutDocumentWallFirst {
 				{ id: 'j-d', point: [0, 4] as [number, number] }
 			],
 			walls: [
-				{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-m', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-a2', startJunctionId: 'j-m', endJunctionId: 'j-b', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-c1', startJunctionId: 'j-c', endJunctionId: 'j-n', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-c2', startJunctionId: 'j-n', endJunctionId: 'j-d', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary' as const, thickness: 0.2, height: 3 },
-				{ id: 'wall-e', startJunctionId: 'j-m', endJunctionId: 'j-n', role: 'boundary' as const, thickness: 0.2, height: 3 }
+				{ id: 'wall-a1', startJunctionId: 'j-a', endJunctionId: 'j-m', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-a2', startJunctionId: 'j-m', endJunctionId: 'j-b', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-c1', startJunctionId: 'j-c', endJunctionId: 'j-n', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-c2', startJunctionId: 'j-n', endJunctionId: 'j-d', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-e', startJunctionId: 'j-m', endJunctionId: 'j-n', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 			],
 			rooms: [],
 			openings: [],

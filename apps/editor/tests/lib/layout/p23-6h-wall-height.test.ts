@@ -102,7 +102,8 @@ function rectangleDocument(options: {
 			endJunctionId,
 			role: 'boundary' as const,
 			thickness: 0.2,
-			height: options.wallHeights?.[index] ?? wallHeight
+			height: options.wallHeights?.[index] ?? wallHeight,
+			centerline: { kind: 'line' } as const
 		})),
 		rooms: [
 			{

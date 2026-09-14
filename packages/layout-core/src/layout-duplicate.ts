@@ -32,6 +32,7 @@ import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { cloneWallCenterline } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
 	isSupportedLayoutObject,
@@ -498,7 +499,10 @@ export function planDuplicateIsolatedRoom(
 			endJunctionId: junctionIdMap.get(wall.endJunctionId)!,
 			role: wall.role,
 			thickness: wall.thickness,
-			height: wall.height
+			height: wall.height,
+			// P23.11 — the cloned Wall keeps its centerline shape with a deep
+			// anchor copy so the copy never shares arrays/points with the source.
+			centerline: cloneWallCenterline(wall.centerline)
 		});
 	}
 

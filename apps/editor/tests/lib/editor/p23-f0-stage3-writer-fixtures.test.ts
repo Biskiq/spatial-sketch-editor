@@ -97,7 +97,8 @@ function birthDocument(parts: {
 			endJunctionId: end,
 			role: parts.role ?? ('boundary' as const),
 			thickness: 0.2,
-			height: 3
+			height: 3,
+			centerline: { kind: 'line' } as const,
 		})),
 		rooms: [],
 		openings: (parts.openings ?? []).map((opening) => ({

@@ -196,14 +196,17 @@ function planWallSplitInternal(
 			walls.push(candidate);
 			continue;
 		}
-		walls.push({ ...candidate, endJunctionId: junctionId });
+		// P23.11 — the split primitive stays straight-only: both fragments emit
+		// the canonical straight centerline (curved Walls reject earlier).
+		walls.push({ ...candidate, endJunctionId: junctionId, centerline: { kind: 'line' } });
 		walls.push({
 			id: newWallId,
 			startJunctionId: junctionId,
 			endJunctionId: candidate.endJunctionId,
 			role: candidate.role,
 			thickness: candidate.thickness,
-			height: candidate.height
+			height: candidate.height,
+			centerline: { kind: 'line' }
 		});
 	}
 	for (const opening of document.openings) {

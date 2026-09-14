@@ -115,12 +115,12 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 				{ id: 'j6', point: p(0, 12) }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.2, height: 3 },
-				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.2, height: 3 },
-				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.2, height: 3 },
-				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', role: 'boundary', thickness: 0.2, height: 3 },
-				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', role: 'boundary', thickness: 0.2, height: 3 },
-				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', role: 'boundary', thickness: 0.2, height: 3 }
+				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 			],
 			openings: [],
 			objects: [

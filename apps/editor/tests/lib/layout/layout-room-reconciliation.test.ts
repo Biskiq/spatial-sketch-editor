@@ -35,7 +35,8 @@ function document(
 			endJunctionId: wall.end,
 			role: wall.role ?? 'boundary',
 			thickness: 0.2,
-			height: 3
+			height: 3,
+			centerline: { kind: 'line' } as const,
 		})),
 		openings: [],
 		objects: []
@@ -338,7 +339,8 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				endJunctionId: wall.end,
 				role: 'boundary' as const,
 				thickness: 0.2,
-				height: 3
+				height: 3,
+				centerline: { kind: 'line' } as const,
 			}))],
 			rooms: [
 				room('room-keep', 'Keep', RECT_FACE.boundary.map((ref) => ({ ...ref }))),
@@ -383,7 +385,8 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				endJunctionId: wall.end,
 				role: 'boundary' as const,
 				thickness: 0.2,
-				height: 3
+				height: 3,
+				centerline: { kind: 'line' } as const,
 			}))],
 			rooms: [
 				room('room-keep', 'Keep', RECT_FACE.boundary.map((ref) => ({ ...ref }))),

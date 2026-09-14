@@ -824,7 +824,8 @@ export function closedChainWalls(options: {
 			endJunctionId: end,
 			role,
 			thickness,
-			height
+			height,
+			centerline: { kind: 'line' } as const
 		}))
 	};
 }

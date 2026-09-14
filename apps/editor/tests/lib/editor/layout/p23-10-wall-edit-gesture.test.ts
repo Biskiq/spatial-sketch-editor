@@ -73,10 +73,10 @@ function squareDocument(): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3 }
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [
 			{
@@ -433,7 +433,7 @@ describe('P23.10 gesture — rigid Wall translation', () => {
 		expect(junctionPoint(context, 'A')).toEqual([0, -2]);
 		expect(junctionPoint(context, 'B')).toEqual([4, -2]);
 		const wall = live(context).walls.find((candidate) => candidate.id === 'w1')!;
-		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3 });
+		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const});
 		expect(Math.hypot(4, 0)).toBeCloseTo(baselineLength, 12);
 		expect(live(context).openings).toEqual(squareDocument().openings);
 		// Neighbouring Walls reshape; Room identity is preserved.

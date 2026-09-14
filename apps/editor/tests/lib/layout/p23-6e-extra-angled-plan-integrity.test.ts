@@ -214,7 +214,8 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					endJunctionId: 'host-b',
 					role: 'partition',
 					thickness: 0.1,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				},
 				{
 					id: 'old-wall',
@@ -222,7 +223,8 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					endJunctionId: 'old-end',
 					role: 'partition',
 					thickness: 0.1,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};
@@ -295,7 +297,8 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					endJunctionId: 'host-b',
 					role: 'boundary',
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};
@@ -362,7 +365,8 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 					endJunctionId: 'junction-b',
 					role: 'boundary',
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				},
 				{
 					id: 'wall-b',
@@ -370,7 +374,8 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 					endJunctionId: 'junction-c',
 					role: 'boundary',
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};
