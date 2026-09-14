@@ -9,7 +9,8 @@ slice plus one next action only.
   projected onto oblique host spans: sub-nanometre projection dust no longer
   misses canonical T-noding or creates false Room-correspondence components.
   The child brief is
-  `docs/plans/2026-09-14-P23.9-wall-span-topology-regression.md`.
+  `docs/plans/2026-09-14-P23.9-wall-span-topology-regression.md`; review is
+  [PR #50](https://github.com/toni8699/spatial-sketch-editor/pull/50).
 - [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
   landed on `main`/`origin/main` at `c401e2f`. It sets the credible good-enough
   wall-first architectural Plan-editor boundary and the dependency sequence
@@ -17,7 +18,7 @@ slice plus one next action only.
 
 ## Next action
 
-- Review and merge the focused P23.9 wall-span topology regression fix;
+- Review and merge PR #50, the focused P23.9 wall-span topology regression fix;
   afterward the roadmap next action remains owner review of the tightened P23
   boundaries before P23.10 implementation.
 
