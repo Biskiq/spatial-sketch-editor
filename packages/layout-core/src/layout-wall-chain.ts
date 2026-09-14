@@ -28,7 +28,12 @@
  * - collinear overlap rejects — no auto-merge/trim;
  * - new-schema data never contains an un-noded visual crossing.
  */
-import type { LayoutDocumentWallFirst, LayoutWall, LayoutWallRole } from './layout-wall-first-types';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallRole
+} from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
@@ -50,11 +55,10 @@ import { classifyWallIntersection, type TopologySegment } from './layout-wall-to
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import type { LayoutDocumentIssue } from './layout-codec';
-
-/** Exact coordinate equality — the same junction-identity bar P23.1 holds. */
-function samePoint(a: LayoutVec2, b: LayoutVec2): boolean {
-	return a[0] === b[0] && a[1] === b[1];
-}
+import {
+	coincidesAsJunction,
+	JUNCTION_COINCIDENCE_EPSILON
+} from './layout-junction-identity';
 
 /**
  * Chain wall/junction defaults (same as the P23.0 seed helpers).
@@ -204,11 +208,12 @@ export function planWallChain(options: {
 		return reject({ code: 'non_finite_point', message: 'Chain points must be finite coordinates' });
 	}
 	const junctionPoints = options.baseline.junctions.map((junction) => ({ id: junction.id, point: junction.point }));
-	// Resolve each draft point to an existing junction when its coordinate
-	// matches (snap is a suggestion; explicit junction reuse is the commit
-	// semantic). Reused points adopt the junction's exact coordinate.
+	// Resolve each draft point to an existing junction when it coincides with
+	// one (snap is a suggestion; explicit junction reuse is the commit
+	// semantic). Reused points adopt the junction's stored coordinate, so a
+	// tolerant match still yields exactly one spelling of the node.
 	const resolved: Array<{ junctionId: string | null; point: LayoutVec2 }> = points.map((point) => {
-		const existing = junctionPoints.find((junction) => samePoint(junction.point, point));
+		const existing = junctionPoints.find((junction) => coincidesAsJunction(junction.point, point));
 		return existing ? { junctionId: existing.id, point: [...existing.point] as LayoutVec2 } : { junctionId: null, point };
 	});
 
@@ -218,7 +223,7 @@ export function planWallChain(options: {
 	if (!close && resolved.length >= 2) {
 		const firstPoint = resolved[0]!.point;
 		const lastPoint = resolved.at(-1)!.point;
-		if (samePoint(firstPoint, lastPoint)) {
+		if (coincidesAsJunction(firstPoint, lastPoint)) {
 			close = true;
 			resolved.pop();
 		}
@@ -240,7 +245,7 @@ export function planWallChain(options: {
 	for (let index = 0; index < legCount; index += 1) {
 		const start = resolved[index]!;
 		const end = resolved[(index + 1) % resolved.length]!;
-		if (samePoint(start.point, end.point)) {
+		if (coincidesAsJunction(start.point, end.point)) {
 			return reject({ code: 'zero_length_leg', message: 'Chain legs must have non-zero length' });
 		}
 		legEndpoints.push({ start, end });
@@ -267,7 +272,7 @@ export function planWallChain(options: {
 				adjacent &&
 				sharedJunctionId !== null &&
 				sharedJunctionId === otherEndpointId &&
-				samePoint(sharedPoint, otherPoint)
+				coincidesAsJunction(sharedPoint, otherPoint)
 					? [sharedJunctionId]
 					: [];
 			const classified = classifyWallIntersection(
@@ -334,6 +339,18 @@ export function planWallChain(options: {
 	const splitWallIds = new Set<string>();
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
+	const junctionIdRedirects = new Map<string, string>();
+	const resolveJunctionId = (junctionId: string): string => {
+		let resolvedId = junctionId;
+		const visited = new Set<string>();
+		while (!visited.has(resolvedId)) {
+			visited.add(resolvedId);
+			const redirect = junctionIdRedirects.get(resolvedId);
+			if (!redirect) break;
+			resolvedId = redirect;
+		}
+		return resolvedId;
+	};
 	const MAX_NODING_PASSES = 64;
 	let passes = 0;
 	for (;;) {
@@ -344,6 +361,30 @@ export function planWallChain(options: {
 		const fix = nextNodingFix(candidate, [...authoredWallIds]);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
+		if (fix.kind === 'adopt') {
+			// Two Junction records described one physical node (a chain point and
+			// a crossing-derived point a hair apart). Adopt one identity instead
+			// of splitting: geometry is untouched, only the duplicate record is
+			// retired and every wall reference is remapped.
+			const duplicates = new Set(fix.duplicateJunctionIds);
+			for (const duplicateId of duplicates) {
+				junctionIdRedirects.set(duplicateId, fix.keepJunctionId);
+			}
+			candidate.junctions = candidate.junctions.filter(
+				(junction) => !duplicates.has(junction.id)
+			);
+			candidate.walls = candidate.walls.map((wall) => {
+				const start = duplicates.has(wall.startJunctionId);
+				const end = duplicates.has(wall.endJunctionId);
+				if (!start && !end) return wall;
+				return {
+					...wall,
+					startJunctionId: start ? fix.keepJunctionId : wall.startJunctionId,
+					endJunctionId: end ? fix.keepJunctionId : wall.endJunctionId
+				};
+			});
+			continue;
+		}
 		const plan =
 			fix.kind === 'crossing'
 				? planWallCrossing(candidate, fix.wallIds, fix.point, nodingAllocatorAdapter(allocator, candidate))
@@ -467,19 +508,31 @@ export function planWallChain(options: {
 		});
 	}
 
-	const startJunctionId = close
-		? resolved[0]!.junctionId!
-		: resolved[0]!.junctionId!;
-	const endJunctionId = close
-		? resolved[0]!.junctionId!
-		: resolved[resolved.length - 1]!.junctionId!;
+	const finalJunctionIds = new Set(validated.document.junctions.map((junction) => junction.id));
+	const resolveFinalJunctionId = (entry: { junctionId: string | null; point: LayoutVec2 }): string | null => {
+		if (!entry.junctionId) return null;
+		const redirectedId = resolveJunctionId(entry.junctionId);
+		if (finalJunctionIds.has(redirectedId)) return redirectedId;
+		return validated.document.junctions.find((junction) =>
+			coincidesAsJunction(junction.point, entry.point)
+		)?.id ?? null;
+	};
+	const startJunctionId = resolveFinalJunctionId(resolved[0]!);
+	const endJunctionId = resolveFinalJunctionId(close ? resolved[0]! : resolved[resolved.length - 1]!);
+	if (!startJunctionId || !endJunctionId) {
+		return reject({
+			code: 'invalid_candidate_document',
+			message: 'Committed candidate lost a resolved Junction identity'
+		});
+	}
 
 	return {
 		kind: 'success',
 		document: validated.document,
 		createdWallIds: [...new Set(createdWallIds)],
 		authoredWallIds: [...authoredWallIds],
-		createdJunctionIds: [...new Set([...createdJunctionIds, ...nodedJunctionIds])],
+		createdJunctionIds: [...new Set([...createdJunctionIds, ...nodedJunctionIds])]
+			.filter((junctionId) => finalJunctionIds.has(junctionId)),
 		splitWallIds: [...splitWallIds],
 		startJunctionId,
 		endJunctionId,
@@ -491,7 +544,76 @@ export function planWallChain(options: {
 type NodingFix =
 	| { kind: 'crossing'; wallIds: [string, string]; point: LayoutVec2 }
 	| { kind: 'tee'; interiorWallId: string; endpointJunctionId: string; splitDistance: number; point: LayoutVec2 }
+	| { kind: 'adopt'; keepJunctionId: string; duplicateJunctionIds: string[] }
 	| { kind: 'reject'; rejection: WallChainRejection };
+
+/** The Junction whose point coincides with `point`, if any. */
+function junctionAtPoint(
+	document: LayoutDocumentWallFirst,
+	point: LayoutVec2
+): LayoutJunction | undefined {
+	return document.junctions.find((junction) => coincidesAsJunction(junction.point, point));
+}
+
+/**
+ * Junction records the given walls reference at `point` that are **not**
+ * `keepJunctionId` — duplicate identities for one physical node, which noding
+ * retires in favour of the kept record. Both walls of the classified
+ * relationship are consulted, so the interior wall of a T contributes its own
+ * coincident endpoint: retiring that record is what turns a would-be
+ * degenerate split into an identity adoption.
+ *
+ * Scope is deliberate: only the records participating in this relationship are
+ * retired. A baseline that already carried two records for one node is a
+ * pre-existing identity defect, and a draw must not silently rewrite walls the
+ * gesture never touched.
+ */
+function duplicateJunctionsAt(
+	document: LayoutDocumentWallFirst,
+	walls: readonly LayoutWall[],
+	point: LayoutVec2,
+	keepJunctionId: string
+): string[] {
+	const duplicates = new Set<string>();
+	for (const wall of walls) {
+		for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+			if (junctionId === keepJunctionId || duplicates.has(junctionId)) continue;
+			const junction = document.junctions.find((candidate) => candidate.id === junctionId);
+			if (!junction) continue;
+			if (coincidesAsJunction(junction.point, point)) duplicates.add(junctionId);
+		}
+	}
+	return [...duplicates];
+}
+
+/**
+ * Node a relationship that lands on an existing Junction by splitting the wall
+ * the Junction is strictly interior to and reusing it. Returns `undefined`
+ * when the Junction is an endpoint of every candidate wall, in which case the
+ * walls already meet there and identity adoption is the correct fix.
+ */
+function teeThroughJunction(
+	segments: readonly TopologySegment[],
+	junction: LayoutJunction
+): NodingFix | undefined {
+	for (const segment of segments) {
+		const length = Math.hypot(segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]);
+		const splitDistance = Math.hypot(
+			junction.point[0] - segment.start[0],
+			junction.point[1] - segment.start[1]
+		);
+		if (splitDistance <= JUNCTION_COINCIDENCE_EPSILON) continue;
+		if (length - splitDistance <= JUNCTION_COINCIDENCE_EPSILON) continue;
+		return {
+			kind: 'tee',
+			interiorWallId: segment.id,
+			endpointJunctionId: junction.id,
+			splitDistance,
+			point: [junction.point[0], junction.point[1]]
+		};
+	}
+	return undefined;
+}
 
 /**
  * Find the next un-noded relationship between a chain wall and any other
@@ -527,6 +649,24 @@ function nextNodingFix(
 					: [];
 			const classified = classifyWallIntersection(segmentA, segmentB, shared);
 			if (classified.kind === 'proper-crossing') {
+				// A crossing that lands on an existing Junction is a node, not an X:
+				// splitting a wall that already ends there has a degenerate
+				// distance, so node through the Junction instead.
+				const existing = junctionAtPoint(document, classified.point);
+				if (existing) {
+					const throughJunction = teeThroughJunction([segmentA, segmentB], existing);
+					if (throughJunction) return throughJunction;
+					const duplicates = duplicateJunctionsAt(document, [a, b], classified.point, existing.id);
+					if (duplicates.length > 0) {
+						return { kind: 'adopt', keepJunctionId: existing.id, duplicateJunctionIds: duplicates };
+					}
+					// `teeThroughJunction` skips a segment the Junction is already an
+					// endpoint of, and duplicate records have just been ruled out, so
+					// both walls already meet at this node: there is nothing left to
+					// node, and a `crossing` fix here would request a zero-distance
+					// split. Skip the pair and keep scanning for a real relationship.
+					continue;
+				}
 				return { kind: 'crossing', wallIds: [a.id, b.id], point: classified.point };
 			}
 			if (classified.kind === 'endpoint-on-interior') {
@@ -534,11 +674,30 @@ function nextNodingFix(
 				// point; the interior wall splits against it.
 				const endpointWall = wallById(document, classified.endpointWallId);
 				const endpointJunctionId =
-					endpointWall && samePoint(segments.get(classified.endpointWallId)!.start, classified.point)
+					endpointWall &&
+					coincidesAsJunction(segments.get(classified.endpointWallId)!.start, classified.point)
 						? endpointWall.startJunctionId
 						: endpointWall?.endJunctionId;
 				if (!endpointJunctionId) continue;
 				const interiorWall = wallById(document, classified.interiorWallId)!;
+				// A touch point that coincides with an existing Junction is the same
+				// physical node — including the interior wall's *own* endpoint (the
+				// near-miss case: the click landed a hair short of the Junction it
+				// meant). Adopt that identity instead of planning a split whose
+				// distance would be degenerate (`Split distance …`).
+				const coincident = junctionAtPoint(document, classified.point);
+				if (coincident) {
+					// `a`/`b` are the endpoint wall and the interior wall of this T.
+					const duplicates = duplicateJunctionsAt(
+						document,
+						[a, b],
+						classified.point,
+						coincident.id
+					);
+					if (duplicates.length > 0) {
+						return { kind: 'adopt', keepJunctionId: coincident.id, duplicateJunctionIds: duplicates };
+					}
+				}
 				const interiorStart = junctionById.get(interiorWall.startJunctionId)!.point;
 				const splitDistance = Math.hypot(
 					classified.point[0] - interiorStart[0],
@@ -667,7 +826,7 @@ export function planWallSegment(options: {
 	allocator?: WallChainIdAllocator;
 }): WallChainPlan {
 	const startJunction = options.baseline.junctions.find((junction) =>
-		samePoint(junction.point, options.start)
+		coincidesAsJunction(junction.point, options.start)
 	);
 	return planWallChain({
 		baseline: options.baseline,

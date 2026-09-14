@@ -1,4 +1,5 @@
 import type { DraftSegment, LayoutInteriorAnchor, LayoutVec2 } from './layout-types';
+import { coincidesAsJunction } from './layout-junction-identity';
 
 export const CURVE_ENDPOINT_EPSILON = 1e-6;
 export const CURVE_FLATNESS_TOLERANCE = 0.01;
@@ -67,7 +68,7 @@ export function compileAutoBezierAnchors(points: readonly LayoutVec2[]): CubicBe
 		const point = clonePoint(points[0]!);
 		return [{ start: point, handleOut: clonePoint(point), handleIn: clonePoint(point), end: clonePoint(point) }];
 	}
-	if (points.length === 2 && !samePoint(points[0]!, points[1]!)) {
+	if (points.length === 2 && !coincidesAsJunction(points[0]!, points[1]!)) {
 		const start = clonePoint(points[0]!);
 		const end = clonePoint(points[1]!);
 		return [{ start, handleOut: lerp(start, end, 1 / 3), handleIn: lerp(start, end, 2 / 3), end }];
@@ -316,7 +317,7 @@ export function sampledPolylineIntersects(
 			const firstEnd = first[firstIndex]!.point;
 			const secondStart = second[secondIndex - 1]!.point;
 			const secondEnd = second[secondIndex]!.point;
-			if (ignoreSharedEndpoint && ((samePoint(firstEnd, ignoreSharedEndpoint, tolerance) && samePoint(secondStart, ignoreSharedEndpoint, tolerance)) || (samePoint(firstStart, ignoreSharedEndpoint, tolerance) && samePoint(secondEnd, ignoreSharedEndpoint, tolerance)))) continue;
+			if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) continue;
 			if (polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance)) return true;
 		}
 	}
@@ -549,7 +550,7 @@ function nearestDistinctPoint(
 		candidateIndex += direction
 	) {
 		const candidate = points[candidateIndex]!;
-		if (!samePoint(candidate, point)) return candidate;
+		if (!coincidesAsJunction(candidate, point)) return candidate;
 	}
 	return null;
 }
@@ -587,7 +588,7 @@ function onSegmentWithTolerance(a: LayoutVec2, b: LayoutVec2, point: LayoutVec2,
 	return point[0] >= Math.min(a[0], b[0]) - tolerance && point[0] <= Math.max(a[0], b[0]) + tolerance && point[1] >= Math.min(a[1], b[1]) - tolerance && point[1] <= Math.max(a[1], b[1]) + tolerance;
 }
 
-function samePoint(a: LayoutVec2, b: LayoutVec2, tolerance = 0): boolean {
+function pointsWithinTolerance(a: LayoutVec2, b: LayoutVec2, tolerance: number): boolean {
 	return Math.abs(a[0] - b[0]) <= tolerance && Math.abs(a[1] - b[1]) <= tolerance;
 }
 

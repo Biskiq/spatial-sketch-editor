@@ -26,6 +26,13 @@ function expectSuccess(plan: ReturnType<typeof planWallChain>) {
 	return plan;
 }
 
+function expectReturnedJunctionIdsLive(plan: Extract<ReturnType<typeof planWallChain>, { kind: 'success' }>) {
+	const junctionIds = new Set(plan.document.junctions.map((junction) => junction.id));
+	for (const junctionId of [plan.startJunctionId, plan.endJunctionId, ...plan.createdJunctionIds]) {
+		expect(junctionIds.has(junctionId), `returned Junction '${junctionId}' is not in the committed document`).toBe(true);
+	}
+}
+
 function expectRejected(plan: ReturnType<typeof planWallChain>, code: string) {
 	if (plan.kind !== 'rejected') throw new Error(`expected rejection ${code}, got success`);
 	expect(plan.rejection.code).toBe(code);
@@ -640,6 +647,21 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		const points = compiled.geometry.queries.points.filter((point) => point.segmentId === plan.authoredWallIds[0]);
 		expect(points.length).toBeGreaterThan(0);
 		for (const point of points) expect(point.roomId).toBeUndefined();
+	});
+
+	it('returns only Junction IDs that survive noding adoption', () => {
+		const baseline = expectSuccess(
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' })
+		);
+		const plan = expectSuccess(
+			planWallSegment({
+				baseline: baseline.document,
+				start: [1e-16, 0],
+				end: p(6, 6),
+				role: 'boundary'
+			})
+		);
+		expectReturnedJunctionIdsLive(plan);
 	});
 
 	it('typed exact length commits exactly one segment with the authored length', () => {

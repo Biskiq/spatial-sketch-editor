@@ -714,3 +714,67 @@ describe('P23.2 opening drag resolution (offset space)', () => {
 		expect(resolution.candidate.offset).toBeCloseTo(2.55, 6);
 	});
 });
+
+describe('P23.6e review — the grid floor cannot widen semantic acquisition', () => {
+	// The grid fallback may accept a wider band than the fixed 8 CSS-pixel
+	// semantic radius. That fallback must not turn a nearby-but-unacquired wall
+	// into a semantic hit.
+	it('a click outside the 8 CSS-pixel wall radius stays on the grid', () => {
+		const geometry = emptyGeometry();
+		// One straight wall along z=0 from x=0 to x=6.
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		// 150 px/m → 8 CSS px = 0.053 m. This click is 0.07 m (10.5 CSS px)
+		// off the wall, so it is outside semantic acquisition but inside the grid
+		// fallback band.
+		const resolution = resolveLayoutSnap(geometry, [2.4, 0.07], { pixelsPerMeter: 150 });
+		expect(resolution.kind).toBe('snap');
+		if (resolution.kind !== 'snap') return;
+		expect(resolution.candidate).toMatchObject({ kind: 'grid', point: [2.5, 0] });
+	});
+
+	it('a click outside the 8 CSS-pixel junction radius stays on the grid', () => {
+		const geometry = emptyGeometry();
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		// A T-junction where another wall lands mid-span.
+		geometry.queries.points.push(vertexAt(3, 0, 'wall-b'));
+		const resolution = resolveLayoutSnap(geometry, [3.08, 0.08], { pixelsPerMeter: 150 });
+		expect(resolution.kind).toBe('snap');
+		if (resolution.kind !== 'snap') return;
+		expect(resolution.candidate.kind).toBe('grid');
+	});
+
+	it('custom grid size never changes semantic acquisition distance', () => {
+		const geometry = emptyGeometry();
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		// 200 px/m → 8 CSS px = 0.04 m. The 0.07 m gap is outside the
+		// semantic radius, even though a 1 m grid accepts the pointer.
+		const resolution = resolveLayoutSnap(geometry, [2.4, 0.07], {
+			pixelsPerMeter: 200,
+			gridStep: 1
+		});
+		expect(resolution.kind).toBe('snap');
+		if (resolution.kind !== 'snap') return;
+		expect(resolution.candidate).toMatchObject({ kind: 'grid', point: [2, 0] });
+	});
+
+	it('the grid still wins when nothing semantic is inside its band', () => {
+		const geometry = emptyGeometry();
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		// 0.3 m off the wall: beyond step/2, so neither semantic nor grid.
+		const resolution = resolveLayoutSnap(geometry, [2.4, 0.3], { pixelsPerMeter: 150 });
+		expect(resolution.kind).toBe('snap');
+		if (resolution.kind !== 'snap') return;
+		expect(resolution.candidate.kind).toBe('grid');
+	});
+
+	it('zoomed-out views keep the previous behavior (radius already covers step/2)', () => {
+		const geometry = emptyGeometry();
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		// At 60 px/m the semantic radius is 0.133 m > 0.125 m; identical
+		// outcome before and after the fix.
+		const resolution = resolveLayoutSnap(geometry, [2.4, 0.1], { pixelsPerMeter: 60 });
+		expect(resolution.kind).toBe('snap');
+		if (resolution.kind !== 'snap') return;
+		expect(resolution.candidate.kind).toBe('wall-span');
+	});
+});
