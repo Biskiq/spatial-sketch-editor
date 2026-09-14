@@ -7,6 +7,10 @@ import {
 import type { LayoutDocument } from '$lib/layout/layout-types';
 import type { ActiveEditorSelection } from '$lib/editor/app/active-editor-selection.svelte';
 import {
+	HierarchyNavigatorStore,
+	hierarchyDisclosureOpen
+} from '$lib/editor/app/hierarchy-navigator-state.svelte';
+import {
 	buildHierarchySourceIndex,
 	hierarchyEntityKeyEquals,
 	junctionEntityKey,
@@ -838,6 +842,44 @@ describe('P23.6e slice 1 — Scene Content page', () => {
 			ancestorDisclosureKeys: [],
 			primary: true
 		});
+	});
+
+	it('lets default-open Scene clusters collapse on both page and search surfaces', () => {
+		const page = project({ kind: 'sceneContent' });
+		const pageCluster = rowByKey(page.rows, 'scene:cluster:cluster-1');
+		const search = buildHierarchySearchProjection(fixtureIndex(), 'Statue Group');
+		const searchRows = search.blocks.flatMap((block) =>
+			block.groups.flatMap((group) => group.rows)
+		);
+		const searchCluster = rowByKey(searchRows, 'search:scene:cluster:cluster-1');
+		const boundary = rowByKey(project({ kind: 'room', roomId: 'room-a' }).rows, 'room:room-a:section:boundary');
+		const store = new HierarchyNavigatorStore();
+
+		expect(pageCluster.defaultOpen).toBe(true);
+		expect(searchCluster.defaultOpen).toBe(true);
+		expect(boundary.alwaysOpen).toBe(true);
+		expect(hierarchyDisclosureOpen(store.current, pageCluster)).toBe(true);
+		expect(hierarchyDisclosureOpen(store.current, searchCluster)).toBe(true);
+
+		store.toggleDisclosure(
+			pageCluster.disclosureKey!,
+			pageCluster.defaultOpen === true,
+			pageCluster.alwaysOpen === true
+		);
+		store.toggleDisclosure(
+			searchCluster.disclosureKey!,
+			searchCluster.defaultOpen === true,
+			searchCluster.alwaysOpen === true
+		);
+		expect(hierarchyDisclosureOpen(store.current, pageCluster)).toBe(false);
+		expect(hierarchyDisclosureOpen(store.current, searchCluster)).toBe(false);
+
+		store.toggleDisclosure(
+			boundary.disclosureKey!,
+			boundary.defaultOpen === true,
+			boundary.alwaysOpen === true
+		);
+		expect(hierarchyDisclosureOpen(store.current, boundary)).toBe(true);
 	});
 });
 
@@ -2045,6 +2087,30 @@ describe('P23.6e slice 7 — legacy quarantine and single ownership (source cont
 		expect(navigatorSource).toMatch(/onSelectSceneEntity\(sceneEntity, event\)/);
 		// A layout entity still selects through the canonical writer, unchanged.
 		expect(navigatorSource).not.toMatch(/selectLayoutRoom\(layoutInteraction, entity\.roomId, event\)/);
+	});
+
+	it('highlights every selected Scene placement while keeping the primary id for reveal', () => {
+		// Row presentation is additive over the canonical selection; the pure
+		// reveal mapper remains intentionally singular and uses the last id.
+		expect(navigatorSource).toMatch(
+			/active\.domain === 'scene'[\s\S]{0,180}active\.selection\.ids\.includes\(entity\.entityId\)/
+		);
+		expect(activeSelectionToHierarchyEntity({
+			domain: 'scene',
+			selection: {
+				kind: 'placement',
+				ids: ['entity-a1', 'entity-b1'],
+				clusterId: null,
+				roomId: 'room-a'
+			}
+		})).toEqual(sceneEntityKey('entity-b1'));
+	});
+
+	it('restores the saved scroll after Navigator remount without selection disclosure', () => {
+		const mount = /onMount\(\(\) => \{[\s\S]*?\n\t\}\);/.exec(navigatorSource);
+		expect(mount).not.toBeNull();
+		expect(mount![0]).toContain('scheduleScroll({ top: untrack(() => navigator.current.scrollTop) })');
+		expect(mount![0]).not.toContain('revealDisclosure');
 	});
 
 	it('resets the Navigator on every document-replacing seam', () => {

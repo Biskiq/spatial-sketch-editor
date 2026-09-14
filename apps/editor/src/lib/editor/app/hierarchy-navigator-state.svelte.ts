@@ -2,9 +2,9 @@
  * `hierarchy-navigator-state.svelte.ts` — P23.6e slice 3 (plan §Navigator state).
  *
  * UI-only state for the relationship-aware Scene Navigator: which page is open,
- * the global search query, the two calm filters, the disclosure set, the scroll
- * offset, a bounded back stack, and a transient row emphasis for the Plan
- * bridge. It is **coordination state, not authority**:
+ * the global search query, the two calm filters, the disclosure and collapsed
+ * sets, the scroll offset, a bounded back stack, and a transient row emphasis
+ * for the Plan bridge. It is **coordination state, not authority**:
  *
  * - it never selects: row activation goes through the existing canonical
  *   selection writers, and `open`/`showIn`/`back` never touch a selection slot;
@@ -22,7 +22,7 @@
  * | `open` | destination | new defaults | push prior | `ordinary-entry` |
  * | `showIn` | named home | empty query + required disclosure | push prior | `show-in` + target |
  * | `back` | restored | exact popped snapshot | pop | `history-restore` |
- * | query/filter/disclosure/scroll | unchanged | updated in place | unchanged | (none) |
+ * | query/filter/disclosure/collapse/scroll | unchanged | updated in place | unchanged | (none) |
  *
  * The transition intent is a monotonic, one-render-cycle coordination signal so
  * the renderer can tell a page change from a selection change. It is not part of
@@ -74,6 +74,7 @@ export function defaultHierarchyHistoryEntry(
 		wallFilter: HIERARCHY_DEFAULT_WALL_FILTER,
 		openingFilter: HIERARCHY_DEFAULT_OPENING_FILTER,
 		disclosure: [],
+		collapsed: [],
 		scrollTop: 0
 	};
 }
@@ -82,20 +83,22 @@ function cloneEntry(entry: HierarchyHistoryEntry): HierarchyHistoryEntry {
 	return {
 		...entry,
 		page: { ...entry.page },
-		disclosure: [...entry.disclosure]
+		disclosure: [...entry.disclosure],
+		collapsed: [...(entry.collapsed ?? [])]
 	};
 }
 
 /**
- * Disclosure is UI state, not data: a row with `defaultOpen` is open regardless
- * (sections the plan fixes as "always open"), and everything else opens only
- * when its stable contextual key is in the current entry's disclosure set.
+ * Disclosure is UI state, not data: `defaultOpen` is the initial state, while a
+ * current-entry collapsed override can close that row. `alwaysOpen` is reserved
+ * for sections the plan fixes open (currently Room Boundary).
  */
 export function hierarchyDisclosureOpen(
-	entry: Pick<HierarchyHistoryEntry, 'disclosure'>,
-	row: Pick<HierarchyProjectedRow, 'disclosureKey' | 'defaultOpen'>
+	entry: Pick<HierarchyHistoryEntry, 'disclosure' | 'collapsed'>,
+	row: Pick<HierarchyProjectedRow, 'disclosureKey' | 'defaultOpen' | 'alwaysOpen'>
 ): boolean {
-	if (!row.disclosureKey) return true;
+	if (!row.disclosureKey || row.alwaysOpen) return true;
+	if (entry.collapsed?.includes(row.disclosureKey)) return false;
 	return row.defaultOpen === true || entry.disclosure.includes(row.disclosureKey);
 }
 
@@ -180,24 +183,53 @@ export class HierarchyNavigatorStore {
 	}
 
 	setDisclosure(disclosure: readonly string[]): void {
-		this.current = { ...this.current, disclosure: [...disclosure] };
+		const nextDisclosure = [...disclosure];
+		this.current = {
+			...this.current,
+			disclosure: nextDisclosure,
+			collapsed: (this.current.collapsed ?? []).filter((key) => !nextDisclosure.includes(key))
+		};
 	}
 
-	toggleDisclosure(disclosureKey: string): void {
-		const disclosure = this.current.disclosure.includes(disclosureKey)
-			? this.current.disclosure.filter((key) => key !== disclosureKey)
-			: [...this.current.disclosure, disclosureKey];
-		this.current = { ...this.current, disclosure };
+	toggleDisclosure(disclosureKey: string, defaultOpen = false, alwaysOpen = false): void {
+		if (alwaysOpen) return;
+
+		const collapsed = this.current.collapsed ?? [];
+		if (defaultOpen) {
+			const isCollapsed = collapsed.includes(disclosureKey);
+			this.current = {
+				...this.current,
+				disclosure: this.current.disclosure.filter((key) => key !== disclosureKey),
+				collapsed: isCollapsed
+					? collapsed.filter((key) => key !== disclosureKey)
+					: [...collapsed, disclosureKey]
+			};
+		} else {
+			const disclosure = this.current.disclosure.includes(disclosureKey)
+				? this.current.disclosure.filter((key) => key !== disclosureKey)
+				: [...this.current.disclosure, disclosureKey];
+			this.current = {
+				...this.current,
+				disclosure,
+				collapsed: collapsed.filter((key) => key !== disclosureKey)
+			};
+		}
 		// An explicit user gesture: the renderer may scroll to a selection it just
 		// rendered, but it must never expand anything on its own here.
 		this.disclosureRevision += 1;
 	}
 
-	/** Auto-disclosure for a represented selection: union only, in place. */
+	/** Auto-disclosure for a represented selection: open its required ancestors. */
 	revealDisclosure(keys: readonly string[]): boolean {
 		const missing = keys.filter((key) => !this.current.disclosure.includes(key));
-		if (missing.length === 0) return false;
-		this.current = { ...this.current, disclosure: [...this.current.disclosure, ...missing] };
+		const collapsed = this.current.collapsed ?? [];
+		const uncollapsed = collapsed.filter((key) => !keys.includes(key));
+		if (missing.length === 0 && uncollapsed.length === collapsed.length) return false;
+		this.current = {
+			...this.current,
+			disclosure: [...this.current.disclosure, ...missing],
+			collapsed: uncollapsed
+		};
 		return true;
 	}
 
@@ -238,7 +270,7 @@ export class HierarchyNavigatorStore {
 		if (isPageValid(this.current.page)) return false;
 		const fallback: HierarchyPage =
 			this.current.page.kind === 'room' ? { kind: 'rooms' } : { kind: 'root' };
-		this.current = { ...this.current, page: fallback, disclosure: [] };
+		this.current = { ...this.current, page: fallback, disclosure: [], collapsed: [] };
 		this.#emit('ordinary-entry', fallback, null);
 		return true;
 	}

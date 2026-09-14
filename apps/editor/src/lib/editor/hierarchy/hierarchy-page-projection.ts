@@ -69,8 +69,10 @@ export type HierarchyHistoryEntry = {
 	query: string;
 	wallFilter: WallFilter;
 	openingFilter: OpeningFilter;
-	/** Stable contextual row/section keys. */
+	/** Stable contextual row/section keys explicitly opened by the user/reveal. */
 	disclosure: string[];
+	/** Explicitly collapsed overrides for rows whose default is open. */
+	collapsed?: string[];
 	scrollTop: number;
 };
 
@@ -118,6 +120,8 @@ export type HierarchyProjectedRow = {
 	destination?: HierarchyDestination;
 	/** Collapsible container key (sections and nested host rows). */
 	disclosureKey?: string;
+	/** A default-open row may be collapsed by a user; this flag is absolute. */
+	alwaysOpen?: boolean;
 	defaultOpen?: boolean;
 	children?: HierarchyProjectedRow[];
 	actions?: HierarchyRowAction[];
@@ -231,14 +235,15 @@ function sectionRow(
 	rowKey: string,
 	label: string,
 	children: HierarchyProjectedRow[],
-	options: { defaultOpen: boolean; tooltip?: string }
+	options: { defaultOpen: boolean; alwaysOpen?: boolean; tooltip?: string }
 ): HierarchyProjectedRow {
 	return {
 		rowKey,
 		kind: 'section',
 		label,
-		count: children.length,
+	count: children.length,
 		disclosureKey: rowKey,
+		...(options.alwaysOpen === true ? { alwaysOpen: true } : {}),
 		defaultOpen: options.defaultOpen,
 		tooltip: options.tooltip,
 		children
@@ -579,7 +584,7 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 			`room:${roomId}:section:boundary`,
 			`Boundary (${boundaryChildren.length} walls)`,
 			boundaryChildren,
-			{ defaultOpen: true }
+			{ defaultOpen: true, alwaysOpen: true }
 		)
 	);
 

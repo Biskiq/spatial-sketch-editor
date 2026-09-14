@@ -7,7 +7,7 @@
 	// `HierarchyNavigatorStore`. Row activation calls the existing canonical
 	// selection writers and nothing else — opening a page never selects, and
 	// selecting never navigates.
-	import { onDestroy, tick, untrack } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { EllipsisVertical, Eye, EyeOff, Scan, Search, Trash2 } from 'lucide-svelte';
 	import type { SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from '../editor-outliner';
@@ -268,6 +268,13 @@
 			rowKey !== null && findRenderedRow(rowKey) !== null ? rowKey : null;
 	});
 
+	// The Navigator remounts when the editor sidebar switches domain. Restore the
+	// saved entry offset only after this instance has rendered its rows; mount-time
+	// selection must not disclose or reveal anything.
+	onMount(() => {
+		scheduleScroll({ top: untrack(() => navigator.current.scrollTop) });
+	});
+
 	/** Scroll capture: the entry owns the offset, never a separate scroll store. */
 	function captureScroll(): void {
 		if (scrollElement) navigator.setScrollTop(scrollElement.scrollTop);
@@ -374,6 +381,14 @@
 		) {
 			return true;
 		}
+		if (
+			entity.owner === 'scene' &&
+			entity.kind === 'entity' &&
+			active.domain === 'scene' &&
+			active.selection.kind === 'placement'
+		) {
+			return active.selection.ids.includes(entity.entityId);
+		}
 		return activeEntity?.id === entity.id;
 	}
 
@@ -392,7 +407,9 @@
 	}
 
 	function toggleRow(row: HierarchyProjectedRow): void {
-		if (row.disclosureKey) navigator.toggleDisclosure(row.disclosureKey);
+		if (row.disclosureKey) {
+			navigator.toggleDisclosure(row.disclosureKey, row.defaultOpen === true, row.alwaysOpen === true);
+		}
 	}
 
 	function selectRow(row: HierarchyProjectedRow, event?: MouseEvent): void {

@@ -47,6 +47,7 @@ describe('P23.6e slice 3 — Navigator entry and back semantics', () => {
 			wallFilter: HIERARCHY_DEFAULT_WALL_FILTER,
 			openingFilter: HIERARCHY_DEFAULT_OPENING_FILTER,
 			disclosure: [],
+			collapsed: [],
 			scrollTop: 0
 		});
 		expect(store.canGoBack).toBe(false);
@@ -69,6 +70,7 @@ describe('P23.6e slice 3 — Navigator entry and back semantics', () => {
 			wallFilter: 'all',
 			openingFilter: 'all',
 			disclosure: [],
+			collapsed: [],
 			scrollTop: 0
 		});
 		expect(store.canGoBack).toBe(true);
@@ -96,6 +98,7 @@ describe('P23.6e slice 3 — Navigator entry and back semantics', () => {
 			wallFilter: 'all',
 			openingFilter: 'all',
 			disclosure: ['walls:wall:w2'],
+			collapsed: [],
 			scrollTop: 0
 		});
 		expect(store.transition).toEqual({
@@ -115,7 +118,7 @@ describe('P23.6e slice 3 — Navigator entry and back semantics', () => {
 		expect(store.transition.target).toBeNull();
 	});
 
-	it('back() restores the exact five fields and emits history-restore', () => {
+	it('back() restores the exact entry fields and emits history-restore', () => {
 		const store = new HierarchyNavigatorStore();
 		store.open({ kind: 'room', roomId: 'room-a' });
 		store.setQuery('door');
@@ -190,6 +193,7 @@ describe('P23.6e slice 3 — transient in-place state', () => {
 			wallFilter: 'multiple-rooms',
 			openingFilter: 'window',
 			disclosure: ['walls:wall:w2'],
+			collapsed: [],
 			scrollTop: 120
 		});
 		// No page transition, no history: the intent object is untouched, so the
@@ -204,6 +208,36 @@ describe('P23.6e slice 3 — transient in-place state', () => {
 		expect(store.current.disclosure).toEqual(['walls:wall:w2']);
 		store.toggleDisclosure('walls:wall:w2');
 		expect(store.current.disclosure).toEqual([]);
+	});
+
+	it('uses defaultOpen as the initial state, with a collapsible override and an always-open escape hatch', () => {
+		const store = new HierarchyNavigatorStore();
+		const cluster = { disclosureKey: 'scene:cluster:cluster-1', defaultOpen: true };
+		const boundary = {
+			disclosureKey: 'room:room-a:section:boundary',
+			defaultOpen: true,
+			alwaysOpen: true
+		};
+
+		expect(hierarchyDisclosureOpen(store.current, cluster)).toBe(true);
+		store.toggleDisclosure(cluster.disclosureKey, cluster.defaultOpen);
+		expect(store.current.collapsed).toEqual([cluster.disclosureKey]);
+		expect(hierarchyDisclosureOpen(store.current, cluster)).toBe(false);
+		expect(store.revealDisclosure([cluster.disclosureKey])).toBe(true);
+		expect(store.current.collapsed).toEqual([]);
+		expect(hierarchyDisclosureOpen(store.current, cluster)).toBe(true);
+
+		store.toggleDisclosure(cluster.disclosureKey, cluster.defaultOpen);
+		expect(store.current.collapsed).toEqual([cluster.disclosureKey]);
+		expect(hierarchyDisclosureOpen(store.current, cluster)).toBe(false);
+		store.toggleDisclosure(cluster.disclosureKey, cluster.defaultOpen);
+		expect(store.current.collapsed).toEqual([]);
+		expect(hierarchyDisclosureOpen(store.current, cluster)).toBe(true);
+
+		const revision = store.disclosureRevision;
+		store.toggleDisclosure(boundary.disclosureKey, boundary.defaultOpen, boundary.alwaysOpen);
+		expect(store.disclosureRevision).toBe(revision);
+		expect(hierarchyDisclosureOpen(store.current, boundary)).toBe(true);
 	});
 
 	it('counts user disclosure gestures only, so auto-reveal cannot re-trigger itself', () => {
@@ -343,7 +377,7 @@ describe('P23.6e slice 3 — reconciliation, emphasis and reset', () => {
 		expect(store.transition.kind).toBe('ordinary-entry');
 	});
 
-	it('disclosure helper: defaultOpen rows are open regardless; others need their key', () => {
+	it('disclosure helper: defaultOpen is initial, and collapsed overrides it', () => {
 		const entry = { disclosure: ['walls:wall:w2'] };
 		expect(hierarchyDisclosureOpen(entry, { disclosureKey: 'walls:wall:w2' })).toBe(true);
 		expect(hierarchyDisclosureOpen(entry, { disclosureKey: 'walls:wall:w3' })).toBe(false);
@@ -351,6 +385,12 @@ describe('P23.6e slice 3 — reconciliation, emphasis and reset', () => {
 		expect(
 			hierarchyDisclosureOpen(entry, { disclosureKey: 'room:room-a:section:boundary', defaultOpen: true })
 		).toBe(true);
+		expect(
+			hierarchyDisclosureOpen(
+				{ disclosure: [], collapsed: ['scene:cluster:cluster-1'] },
+				{ disclosureKey: 'scene:cluster:cluster-1', defaultOpen: true }
+			)
+		).toBe(false);
 	});
 });
 
@@ -444,6 +484,7 @@ describe('P23.6e slice 6 — search, filters and exact Back restoration', () => 
 			wallFilter: HIERARCHY_DEFAULT_WALL_FILTER,
 			openingFilter: HIERARCHY_DEFAULT_OPENING_FILTER,
 			disclosure: [...wallReveal.ancestorDisclosureKeys],
+			collapsed: [],
 			scrollTop: 0
 		});
 		expect(store.transition.kind).toBe('show-in');
@@ -457,6 +498,7 @@ describe('P23.6e slice 6 — search, filters and exact Back restoration', () => 
 			wallFilter: 'multiple-rooms',
 			openingFilter: 'door',
 			disclosure: ['room:room-a:section:junctions'],
+			collapsed: [],
 			scrollTop: 120
 		});
 		expect(store.transition.kind).toBe('history-restore');
