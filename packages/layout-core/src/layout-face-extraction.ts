@@ -655,6 +655,21 @@ export function polygonsShareInteriorArea(
 	};
 	const strictlyInside = (polygon: readonly LayoutVec2[], point: LayoutVec2): boolean =>
 		pointStrictlyInsidePolygon(polygon, point) && !withinRing(polygon, point);
+	const pointNearSegment = (point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): boolean => {
+		const dx = end[0] - start[0];
+		const dz = end[1] - start[1];
+		const lengthSquared = dx * dx + dz * dz;
+		const t =
+			lengthSquared === 0
+				? 0
+				: Math.max(
+						0,
+						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+					);
+		const offsetX = point[0] - (start[0] + dx * t);
+		const offsetZ = point[1] - (start[1] + dz * t);
+		return offsetX * offsetX + offsetZ * offsetZ <= ON_RING_TOLERANCE * ON_RING_TOLERANCE;
+	};
 	// Vertices *and* interior points of each edge. Vertices alone miss the
 	// common case where one polygon's edge lies strictly inside the other
 	// (a Room subdivided by a divider: the child's corners sit on the parent's
@@ -691,7 +706,22 @@ export function polygonsShareInteriorArea(
 			if (firstSide * secondSide >= 0) continue;
 			const thirdSide = orientXZ(bStart, bEnd, aStart);
 			const fourthSide = orientXZ(bStart, bEnd, aEnd);
-			if (thirdSide * fourthSide < 0) return true;
+			if (thirdSide * fourthSide < 0) {
+				// A split Junction projected onto an oblique predecessor edge can be
+				// a few ulps off that edge. Exact orientation then describes a tiny
+				// crossing at the endpoint, but it is not positive-area Room overlap.
+				// Ignore only crossings anchored within the established ring tolerance;
+				// ordinary proper crossings still prove shared interior area.
+				if (
+					pointNearSegment(aStart, bStart, bEnd) ||
+					pointNearSegment(aEnd, bStart, bEnd) ||
+					pointNearSegment(bStart, aStart, aEnd) ||
+					pointNearSegment(bEnd, aStart, aEnd)
+				) {
+					continue;
+				}
+				return true;
+			}
 		}
 	}
 	// Identical or nested rings — every boundary probe can lie on the shared

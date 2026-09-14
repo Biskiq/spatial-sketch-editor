@@ -5,25 +5,29 @@ slice plus one next action only.
 
 ## Working tree
 
+- A focused P23.9 regression fix is implementation-complete for Wall endpoints
+  projected onto oblique host spans: sub-nanometre projection dust no longer
+  misses canonical T-noding or creates false Room-correspondence components.
+  The child brief is
+  `docs/plans/2026-09-14-P23.9-wall-span-topology-regression.md`.
 - [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
   landed on `main`/`origin/main` at `c401e2f`. It sets the credible good-enough
   wall-first architectural Plan-editor boundary and the dependency sequence
   P23.10–P23.16.
-- The current working tree contains documentation-only review corrections to
-  curve validation/legacy scope, Junction-rendering scope, Door/Window drafting
-  semantics, compact display references and this handoff. No slice order,
-  implementation brief, GitHub issue or product behavior changes.
 
 ## Next action
 
-- Owner review of the tightened P23 boundaries. If approved, write the P23.10
-  implementation-ready child plan first; do not start implementation from the
-  umbrella roadmap.
+- Review and merge the focused P23.9 wall-span topology regression fix;
+  afterward the roadmap next action remains owner review of the tightened P23
+  boundaries before P23.10 implementation.
 
 ## Verification
 
-- Documentation/reference consistency checks only are required for this
-  working-tree change; no executable behavior changed.
+- Focused Wall regression suites: 45 passed. The new deterministic matrix
+  covers 1,310 candidate operations across false `2→2`, `2→3`, `3→4`, missed
+  noding and out-of-tolerance non-connection cases.
+- `npm test`: 3,506 passed / 1 skipped; `npm run check`: editor + museum 0
+  errors/warnings; `npm run build`: editor + museum passed.
 - Last landed P23.6e verification from PR #47: `npm test` 3,476 passed / 1
   skipped; `npm run check` editor + museum 0 errors/warnings; `npm run build`
   editor + museum passed; focused hierarchy/Plan regressions 157 passed.

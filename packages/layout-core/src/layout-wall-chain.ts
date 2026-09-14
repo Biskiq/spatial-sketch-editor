@@ -648,6 +648,33 @@ function nextNodingFix(
 					? [a.endJunctionId]
 					: [];
 			const classified = classifyWallIntersection(segmentA, segmentB, shared);
+			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
+				return {
+					kind: 'reject',
+					rejection: {
+						code: 'collinear_overlap',
+						message: `Chain overlaps existing wall '${chainSet.has(a.id) ? b.id : a.id}' on one line; trim or redraw the overlapping span`,
+						wallIds: [a.id, b.id]
+					}
+				};
+			}
+			// A wall-span snap is an ordinary floating-point projection. On an
+			// oblique host its rounded coordinate can sit ~1e-16 m off the exact
+			// supporting line, so the robust classifier truthfully returns `none`,
+			// `invalid`, or a crossing infinitesimally before the authored endpoint.
+			// Recover only an authored endpoint within the canonical Junction-identity
+			// tolerance of a pre-existing host interior. This is snap normalization,
+			// not a general intersection epsilon: geometry farther away remains
+			// disconnected and the exact classifier still owns every other case.
+			const projectedTee = projectedAuthoredEndpointTee(
+				a,
+				segmentA,
+				b,
+				segmentB,
+				chainSet,
+				shared
+			);
+			if (projectedTee) return projectedTee;
 			if (classified.kind === 'proper-crossing') {
 				// A crossing that lands on an existing Junction is a node, not an X:
 				// splitting a wall that already ends there has a degenerate
@@ -711,19 +738,69 @@ function nextNodingFix(
 					point: classified.point
 				};
 			}
-			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
-				return {
-					kind: 'reject',
-					rejection: {
-						code: 'collinear_overlap',
-						message: `Chain overlaps existing wall '${chainSet.has(a.id) ? b.id : a.id}' on one line; trim or redraw the overlapping span`,
-						wallIds: [a.id, b.id]
-					}
-				};
-			}
 		}
 	}
 	return null;
+}
+
+/**
+ * Recover the semantic T encoded by an authored endpoint projected onto a
+ * host Wall. The recovery is deliberately asymmetric: only chain-derived
+ * endpoints may move, and only onto a non-chain host. Baseline geometry is
+ * never pulled toward a newly authored Wall.
+ */
+function projectedAuthoredEndpointTee(
+	a: LayoutWall,
+	segmentA: TopologySegment,
+	b: LayoutWall,
+	segmentB: TopologySegment,
+	chainSet: ReadonlySet<string>,
+	sharedJunctionIds: readonly string[]
+): NodingFix | undefined {
+	if (sharedJunctionIds.length > 0) return undefined;
+	const candidates: Array<{
+		endpointWall: LayoutWall;
+		endpointSegment: TopologySegment;
+		hostSegment: TopologySegment;
+	}> = [];
+	if (chainSet.has(a.id) && !chainSet.has(b.id)) {
+		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostSegment: segmentB });
+	}
+	if (chainSet.has(b.id) && !chainSet.has(a.id)) {
+		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostSegment: segmentA });
+	}
+	for (const { endpointWall, endpointSegment, hostSegment } of candidates) {
+		const endpoints = [
+			{ junctionId: endpointWall.startJunctionId, point: endpointSegment.start },
+			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
+		];
+		for (const endpoint of endpoints) {
+			const dx = hostSegment.end[0] - hostSegment.start[0];
+			const dz = hostSegment.end[1] - hostSegment.start[1];
+			const lengthSquared = dx * dx + dz * dz;
+			if (!(lengthSquared > 0)) continue;
+			const t =
+				((endpoint.point[0] - hostSegment.start[0]) * dx +
+					(endpoint.point[1] - hostSegment.start[1]) * dz) /
+				lengthSquared;
+			const length = Math.sqrt(lengthSquared);
+			const endpointMargin = JUNCTION_COINCIDENCE_EPSILON / length;
+			if (!(t > endpointMargin && t < 1 - endpointMargin)) continue;
+			const projected: LayoutVec2 = [
+				hostSegment.start[0] + dx * t,
+				hostSegment.start[1] + dz * t
+			];
+			if (!coincidesAsJunction(endpoint.point, projected)) continue;
+			return {
+				kind: 'tee',
+				interiorWallId: hostSegment.id,
+				endpointJunctionId: endpoint.junctionId,
+				splitDistance: t * length,
+				point: projected
+			};
+		}
+	}
+	return undefined;
 }
 
 function wallById(document: LayoutDocumentWallFirst, wallId: string): LayoutWall | undefined {
