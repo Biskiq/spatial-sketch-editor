@@ -5,6 +5,7 @@ import {
 	primitiveDraftFootprint,
 	rectanglePoints,
 	wallChainRoleForTool,
+	type LayoutArchitectureEditGesture,
 	type LayoutInteractionState,
 	type LayoutSelection
 } from './layout-interaction';
@@ -431,6 +432,71 @@ export function withPlanObjectRotationHandle(
 				: [])
 		]
 	};
+}
+
+/**
+ * P23.10 — one transient direct Wall/Junction edit intent: what the pointer
+ * asked for while the canonical planner rejects it. An ACCEPTED candidate is
+ * already fully previewed by the installed document, so the viewport passes
+ * `null` and nothing extra renders.
+ */
+export type LayoutArchitectureEditIntent =
+	| { kind: 'junction-move'; point: LayoutVec2 }
+	| { kind: 'wall-move'; start: LayoutVec2; end: LayoutVec2 };
+
+/**
+ * P23.10 — the transient intent for one live direct edit, or `null` when
+ * nothing should render.
+ *
+ * Nothing renders while the press is still a plain click (`moved === false`):
+ * the pointer has not asked for geometry yet, so a press over a Wall must not
+ * flash an invalid candidate. Nothing renders for an accepted candidate either
+ * — the installed document preview already shows it — and a silent `no_op`
+ * release is deliberately not a rejection: drawing it red would report a
+ * failure the user never requested.
+ */
+export function architectureEditIntentFor(
+	gesture: LayoutArchitectureEditGesture | null,
+	moved: boolean
+): LayoutArchitectureEditIntent | null {
+	if (!gesture || !moved || gesture.valid) return null;
+	if (gesture.rejectionCode === undefined || gesture.rejectionCode === 'no_op') return null;
+	if (gesture.kind === 'junction-move') {
+		return { kind: 'junction-move', point: [gesture.candidatePoint[0], gesture.candidatePoint[1]] };
+	}
+	const [dx, dz] = gesture.candidateDelta;
+	return {
+		kind: 'wall-move',
+		start: [gesture.baselineStart[0] + dx, gesture.baselineStart[1] + dz],
+		end: [gesture.baselineEnd[0] + dx, gesture.baselineEnd[1] + dz]
+	};
+}
+
+/**
+ * P23.10 — draw one rejected direct-edit intent with the existing transient
+ * token family (never document truth, never history).
+ */
+export function withArchitectureEditIntent(
+	projection: PlanInteractionProjection,
+	intent: LayoutArchitectureEditIntent | null
+): PlanInteractionProjection {
+	if (!intent) return projection;
+	const primitive: PlanRenderPrimitive =
+		intent.kind === 'junction-move'
+			? {
+					kind: 'circle',
+					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+					center: intent.point,
+					radiusPx: 7,
+					style: 'architecture-edit-intent-invalid'
+			  }
+			: {
+					kind: 'polyline',
+					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+					points: [intent.start, intent.end],
+					style: 'architecture-edit-intent-invalid'
+			  };
+	return { ...projection, drafts: [...projection.drafts, primitive] };
 }
 
 /**

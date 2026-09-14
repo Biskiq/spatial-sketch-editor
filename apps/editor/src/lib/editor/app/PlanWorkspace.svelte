@@ -13,6 +13,7 @@
 		deleteWallFirstOpening,
 		deleteWallFirstWall,
 		removeWallFirstRoom,
+		subdivideWallFirstWall,
 		wallFirstRoomExclusiveBoundaryWallIds
 	} from '$lib/editor/layout/layout-preview-state.svelte';
 	import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
@@ -309,6 +310,26 @@
 	}
 
 	/**
+	 * P23.10 — canonical Wall subdivision from a resolved Plan hit (the
+	 * context-menu **Add junction here** command). One guarded Layout mutation;
+	 * `planWallSplit` keeps the original `wallId` for the start fragment, so the
+	 * retained Wall selection and its endpoint handles stay valid — never a
+	 * synthesized post-edit selection.
+	 */
+	function addWallJunction(wallId: string, splitDistance: number) {
+		const outcome = runLayoutMutationGuarded(
+			() => subdivideWallFirstWall(layoutPreview, wallId, splitDistance),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		const result = outcome.result;
+		store.setStatusMessage(result.success ? 'Added junction' : `Add junction failed: ${result.message}`);
+	}
+
+	/**
 	 * P23.6d — canonical wall-first Room removal (viewport context menu + Delete
 	 * key). Removes the Room and its exclusive enclosure Walls while preserving
 	 * shared physical Walls required by adjacent Rooms, in one atomic step, and
@@ -491,6 +512,7 @@
 		onOpeningDelete={deleteOpening}								onWallOpeningCreate={createWallOpening}
 								onWallOpeningDelete={deleteWallOpening}
 								onWallDelete={deleteWall}
+								onWallJunctionAdd={addWallJunction}
 		onRoomDelete={deleteRoom}
 		onRoomRemove={removeRoom}
 		onLayoutTransactionBegin={beginLayoutTransaction}

@@ -335,6 +335,35 @@ describe('P23.6 hover affordances — selection always wins', () => {
 	});
 });
 
+describe('P23.10 direct-edit hit priority — an Opening owns its own body', () => {
+	it('keeps an Opening hit ahead of the host Wall body, so Wall drag never grabs a door', () => {
+		const document = twoWallDocument();
+		const [first] = document.walls;
+		document.openings.push({
+			id: 'door',
+			wallId: first!.id,
+			kind: 'door',
+			offset: 1,
+			width: 1,
+			height: 2,
+			sillHeight: 0,
+			profile: 'rectangular'
+		});
+		const { geometry } = compileWallFirstLayoutGeometry(document);
+		// Mid-Opening: the Opening wins (and carries no Room context).
+		expect(resolvePlanHit(geometry.queries, [1.5, 0.02], 0.2)).toMatchObject({
+			kind: 'wallOpening',
+			wallId: first!.id,
+			openingId: 'door'
+		});
+		// Clear of the Opening: the Wall body is the hit again.
+		expect(resolvePlanHit(geometry.queries, [3, 0.02], 0.2)).toMatchObject({
+			kind: 'physicalWall',
+			wallId: first!.id
+		});
+	});
+});
+
 describe('P23.6 endpoint LOD — invisible endpoints lose hit authority', () => {
 	it('lets the physical Wall win below the Junction-handle zoom floor', () => {
 		const document = twoWallDocument();

@@ -7,6 +7,11 @@
 	import {
 		addPolygonPoint,
 		advanceWallChainContinuation,
+		architectureEditAllowedKinds,
+		architectureEditExcludePoints,
+		architectureEditExclusionOwners,
+		architectureEditRawTarget,
+		beginLayoutArchitectureEdit,
 		beginLayoutObjectDrag,
 		beginLayoutObjectRotateDrag,
 		beginLayoutRoomUnitDrag,
@@ -15,6 +20,7 @@
 		beginRectangle,
 		beginRoomEdit,
 		beginWallChain,
+		cancelLayoutArchitectureEdit,
 		cancelLayoutObjectDrag,
 		cancelLayoutRoomUnitDrag,
 		cancelLayoutPrimitiveDraft,
@@ -37,6 +43,8 @@
 		selectLayoutWall,
 		selectLayoutWallOpening,
 		updateLayoutWallOpeningDrag,
+		updateLayoutArchitectureEdit,
+		markLayoutArchitectureEditValidity,
 		setArrangeOwner,
 		setLayoutDraftTool,
 		type LayoutDraftTool,
@@ -54,6 +62,7 @@
 		deriveArrangeTarget,
 		primitiveDraftCenter,
 		rectanglePoints,
+		type LayoutArchitectureEditGesture,
 		type LayoutInteractionState,
 		type LayoutWallOpeningDrag,
 		type LayoutWallOpeningDragMode
@@ -77,6 +86,8 @@
 		updateLayoutWallInteriorAnchor,
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
+		updateWallFirstJunction,
+		updateWallFirstWallMove,
 		createWallFirstOpening,
 		type LayoutPreviewSnapshot
 	} from './layout-preview-state.svelte';
@@ -127,12 +138,14 @@
 	import type { PlanViewMode } from './layout-interaction';
 	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
+		architectureEditIntentFor,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
 		presetIdForTool,
 		rotationHandleScreenPoint,
 		wallOpeningEdgeWorldPoints,
+		withArchitectureEditIntent,
 		withArrangeHoverOutline,
 		withLayoutSnapFeedback,
 		withPlanObjectRotationHandle,
@@ -184,6 +197,7 @@
 		onWallOpeningCreate,
 		onWallOpeningDelete,
 		onWallDelete,
+		onWallJunctionAdd,
 		onRoomDelete,
 		onRoomRemove,
 		onLayoutTransactionBegin,
@@ -233,6 +247,13 @@
 		onWallOpeningDelete?: (openingId: string) => void;
 		/** P23.6c — delete the selected canonical Wall by document-global `wallId`. */
 		onWallDelete?: (wallId: string) => void;
+		/**
+		 * P23.10 — canonical Wall subdivision from a resolved physical-Wall hit.
+		 * `splitDistance` is the hit projection's physical meters from the canonical
+		 * start Junction, so the viewport never invents a coordinate. Omitted by
+		 * mounts that cannot subdivide; then no Add-junction item is offered.
+		 */
+		onWallJunctionAdd?: (wallId: string, splitDistance: number) => void;
 		onRoomDelete: (roomId: string) => boolean;
 		/**
 		 * P23.6d — canonical wall-first Room removal (guard-railed `planRemoveRoom`).
@@ -322,6 +343,297 @@
 		snapFeedback = resolution;
 		return resolution.kind === 'snap' ? [...resolution.candidate.point] as LayoutVec2 : point;
 	}
+	// ── P23.10 direct architecture editing ──────────────────────────────────
+	// One immutable baseline snapshot and one Layout transaction per gesture.
+	// Snapping always resolves against the CAPTURED baseline geometry (never the
+	// live preview, which may already hold a candidate) with the moving owners
+	// frozen at pointer-down. `architectureEditMoved` is the shared editor drag
+	// threshold: below it the press is still a plain click and no candidate is
+	// planned, so a click never writes history.
+	let architectureEditSnapshot = $state<LayoutPreviewSnapshot | null>(null);
+	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
+	let architectureEditMoved = $state(false);
+	let architectureEditReplacementVersion = $state<number | null>(null);
+
+	/** Every Wall the edit deforms, in document order (frozen at pointer-down). */
+	function architectureEditAffectedWallIds(junctionIds: readonly string[]): string[] {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return [];
+		const owned = new Set(junctionIds);
+		return layout.walls
+			.filter((wall) => owned.has(wall.startJunctionId) || owned.has(wall.endJunctionId))
+			.map((wall) => wall.id);
+	}
+
+	/**
+	 * P23.10 — every baseline Junction coordinate for a Junction move's point
+	 * exclusion. Read at pointer-down, when the live document is still the
+	 * baseline: Junction merging is out of scope, so a candidate landing exactly
+	 * on an existing Junction must not win — by any snap family, since
+	 * `'wall-span'`/`'wall-intersection'` are projective and resolve onto
+	 * Junction coordinates that sit on another Wall's span.
+	 */
+	function architectureEditJunctionExcludePoints(): LayoutVec2[] {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return [];
+		return layout.junctions.map((junction) => [junction.point[0], junction.point[1]] as LayoutVec2);
+	}
+
+	/** Openings hosted by any affected Wall (frozen at pointer-down). */
+	function architectureEditHostedOpeningIds(wallIds: readonly string[]): string[] {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return [];
+		const owned = new Set(wallIds);
+		return layout.openings
+			.filter((opening) => owned.has(opening.wallId))
+			.map((opening) => opening.id);
+	}
+
+	/**
+	 * P23.10 — resolve one direct-edit snap against the captured baseline
+	 * geometry with the frozen moving-owner exclusions. A Junction move removes
+	 * the `'junction'` family before winner selection (Junction merging is out
+	 * of scope); a rigid Wall move keeps the full P23.2 ranking because one
+	 * delta over two existing endpoint IDs merges nothing.
+	 */
+	function resolveArchitectureEditSnapTarget(
+		gesture: LayoutArchitectureEditGesture,
+		rawTarget: LayoutVec2
+	): LayoutVec2 {
+		const snapshot = architectureEditSnapshot;
+		if (!interaction.planView.snapEnabled || !snapshot) {
+			clearLayoutSnapFeedback();
+			return rawTarget;
+		}
+		const input: SnapInputContext = {
+			excludeOwners: architectureEditExclusionOwners(
+				gesture,
+				architectureEditHostedOpeningIds(gesture.affectedWallIds)
+			)
+		};
+
+		const allowedKinds = architectureEditAllowedKinds(gesture);
+		if (allowedKinds) input.allowedKinds = [...allowedKinds];
+		const excludePoints = architectureEditExcludePoints(gesture);
+		if (excludePoints.length > 0) input.excludePoints = excludePoints;
+		const resolution = resolveLayoutSnap(
+			snapshot.geometry,
+			rawTarget,
+			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
+			input
+		);
+		snapFeedback = resolution;
+		return resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : rawTarget;
+	}
+
+	/**
+	 * Plan one candidate from the immutable baseline. The baseline is restored
+	 * before planning, so a rejected candidate can never leave the previous
+	 * preview installed, and the canonical planner (never the viewport) decides
+	 * whether the snapped target is valid.
+	 */
+	function planArchitectureEditTarget(
+		gesture: LayoutArchitectureEditGesture,
+		target: LayoutVec2
+	): { success: boolean; message?: string; code?: string } {
+		const snapshot = architectureEditSnapshot;
+		if (!snapshot) return { success: false, message: 'No baseline snapshot for the architecture edit' };
+		const input = updateLayoutArchitectureEdit(interaction, target);
+		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
+		restoreLayoutPreviewSnapshot(preview, snapshot);
+		const result =
+			gesture.kind === 'junction-move'
+				? updateWallFirstJunction(preview, gesture.junctionId, input)
+				: updateWallFirstWallMove(preview, gesture.wallId, input);
+		if (result.success) {
+			markLayoutArchitectureEditValidity(interaction, true);
+			return { success: true };
+		}
+		markLayoutArchitectureEditValidity(interaction, false, result.code, result.message);
+		return { success: false, message: result.message, code: result.code };
+	}
+
+	/**
+	 * Begin one direct edit: capture the baseline, open the transaction, capture
+	 * the pointer. Only a primary contact may start one — a secondary button
+	 * never captures the pointer, opens a transaction or moves geometry.
+	 */
+	function beginArchitectureEditGesture(
+		event: PointerEvent,
+		baseline:
+			| {				kind: 'junction-move';
+				junctionId: string;
+				baselinePoint: LayoutVec2;
+				junctionExcludePoints: readonly LayoutVec2[];
+				affectedWallIds: readonly string[];
+			  }
+			| {
+					kind: 'wall-move';
+					wallId: string;
+					grabPoint: LayoutVec2;
+					startJunctionId: string;
+					endJunctionId: string;
+					baselineStart: LayoutVec2;
+					baselineEnd: LayoutVec2;
+					affectedWallIds: readonly string[];
+			  }
+	): boolean {
+		if (!event.isPrimary || !svgElement) return false;
+		const point = worldPoint(event);
+		const screen = screenPoint(event);
+		if (!point || !screen) return false;
+		if (!onLayoutTransactionBegin()) return false;
+		architectureEditSnapshot = captureLayoutPreviewSnapshot(preview);
+		architectureEditStartScreen = screen;
+		architectureEditMoved = false;
+		const gesture: LayoutArchitectureEditGesture =
+			baseline.kind === 'junction-move'
+				? {
+						kind: 'junction-move',
+						pointerId: event.pointerId,
+						junctionId: baseline.junctionId,
+						startPointer: [...point] as LayoutVec2,
+						baselinePoint: [...baseline.baselinePoint] as LayoutVec2,
+						junctionExcludePoints: baseline.junctionExcludePoints.map(
+							(point) => [...point] as LayoutVec2
+						),
+						affectedWallIds: [...baseline.affectedWallIds],
+						candidatePoint: [...baseline.baselinePoint] as LayoutVec2,
+						valid: false
+				  }
+				: {
+						kind: 'wall-move',
+						pointerId: event.pointerId,
+						wallId: baseline.wallId,
+						startPointer: [...point] as LayoutVec2,
+						baselineGrabPoint: [...baseline.grabPoint] as LayoutVec2,
+						startJunctionId: baseline.startJunctionId,
+						endJunctionId: baseline.endJunctionId,
+						baselineStart: [...baseline.baselineStart] as LayoutVec2,
+						baselineEnd: [...baseline.baselineEnd] as LayoutVec2,
+						affectedWallIds: [...baseline.affectedWallIds],
+						candidateDelta: [0, 0],
+						valid: false
+				  };
+		beginLayoutArchitectureEdit(interaction, gesture);
+		pointerId = event.pointerId;
+		svgElement.setPointerCapture(event.pointerId);
+		return true;
+	}
+
+	/** One pointermove: total-delta candidate, baseline snap, canonical plan. */
+	function previewArchitectureEdit(event: PointerEvent): void {
+		const gesture = interaction.architectureEdit;
+		if (!gesture || !architectureEditSnapshot) return;
+		const point = worldPoint(event);
+		const screen = screenPoint(event);
+		if (!point || !screen) return;
+		// Below the shared drag threshold the operation is still a click: the
+		// canonical baseline stays installed and nothing is planned or written.
+		if (!architectureEditMoved) {
+			if (!shouldBeginWallBend(architectureEditStartScreen ?? screen, screen)) return;
+			architectureEditMoved = true;
+		}
+		const target = resolveArchitectureEditSnapTarget(gesture, architectureEditRawTarget(gesture, point));
+		const result = planArchitectureEditTarget(gesture, target);
+		// A rejected candidate keeps the baseline installed; the snapped target
+		// stays visible as an invalid intent and the planner reason is the status.
+		if (!result.success && result.code !== 'no_op') preview.statusMessage = result.message ?? null;
+	}
+
+	/**
+	 * Clear the transient gesture state, drop the captured pointer and clear the
+	 * snap feedback — the one cleanup path every exit (commit, cancel, Escape,
+	 * lost capture, tool change) goes through, so none can leak a capture or a
+	 * stale marker. `pointerIdToRelease` is `null` only when no pointer was ever
+	 * captured.
+	 */
+	function finishArchitectureEditGesture(pointerIdToRelease: number | null): void {
+		cancelLayoutArchitectureEdit(interaction);
+		architectureEditSnapshot = null;
+		architectureEditStartScreen = null;
+		architectureEditMoved = false;
+		clearLayoutSnapFeedback();
+		pointerId = null;
+		if (pointerIdToRelease !== null && svgElement?.hasPointerCapture(pointerIdToRelease)) {
+			svgElement.releasePointerCapture(pointerIdToRelease);
+		}
+	}
+
+	/**
+	 * P23.10 — cancel/commit the direct edit at release. The candidate is
+	 * re-derived once from the ACTUAL release coordinate against the immutable
+	 * baseline (never a remembered last-valid intermediate), then committed once
+	 * or cancelled with the baseline restored. A no-op release stays silent.
+	 */
+	function commitArchitectureEditGesture(event: PointerEvent): void {
+		const gesture = interaction.architectureEdit;
+		const snapshot = architectureEditSnapshot;
+		const moved = architectureEditMoved;
+		let valid = false;
+		let rejectionMessage: string | null = null;
+		if (gesture && snapshot && moved) {
+			const point = worldPoint(event);
+			if (point) {
+				const target = resolveArchitectureEditSnapTarget(
+					gesture,
+					architectureEditRawTarget(gesture, point)
+				);
+				const result = planArchitectureEditTarget(gesture, target);
+				valid = result.success;
+				if (!result.success && result.code !== 'no_op') rejectionMessage = result.message ?? null;
+			} else {
+				rejectionMessage = 'Could not resolve the release position';
+			}
+		}
+		if (valid) {
+			const changed = onLayoutTransactionCommit();
+			if (changed) {
+				preview.statusMessage = gesture?.kind === 'junction-move' ? 'Moved junction' : 'Moved wall';
+			}
+		} else {
+			onLayoutTransactionCancel();
+			if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+			if (rejectionMessage) preview.statusMessage = rejectionMessage;
+			suppressNextClick = moved;
+		}
+		finishArchitectureEditGesture(event.pointerId);
+	}
+
+	/** Escape / pointer-cancel / mode change: restore the baseline, cancel once. */
+	function cancelArchitectureEditGesture(): void {
+		const gesture = interaction.architectureEdit;
+		const snapshot = architectureEditSnapshot;
+		if (!gesture) {
+			if (!snapshot) return;
+			// A tool/mode/document change clears the interaction gesture before
+			// the viewport effect runs, but the captured pointer, the open
+			// transaction and the snap feedback are still ours: finish through the
+			// same cleanup instead of leaving a capture (and a transaction) open.
+			restoreLayoutPreviewSnapshot(preview, snapshot);
+			onLayoutTransactionCancel();
+			suppressNextClick = architectureEditMoved;
+			finishArchitectureEditGesture(pointerId);
+			return;
+		}
+		if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+		onLayoutTransactionCancel();
+		suppressNextClick = architectureEditMoved;
+		finishArchitectureEditGesture(gesture.pointerId);
+	}
+
+	/**
+	 * P23.10 — a capture lost to the browser (context menu, window blur, element
+	 * removal, OS gesture) still ends the gesture: restore the canonical baseline
+	 * and cancel the open Layout transaction exactly once. Our own release in
+	 * `finishArchitectureEditGesture` runs after the gesture state is cleared, so
+	 * this is a no-op on every normal exit.
+	 */
+	function onLostPointerCapture(event: PointerEvent): void {
+		if (interaction.architectureEdit?.pointerId !== event.pointerId) return;
+		cancelArchitectureEditGesture();
+	}
+
 	let previousPlanViewMode = $state<PlanViewMode | null>(null);
 	let stagingGesture = $state<{
 		pointerId: number;
@@ -590,33 +902,44 @@
 		if (!footprint || selectedPlacementIds.includes(footprint.entityId)) return null;
 		return { id: footprint.entityId, points: footprint.points };
 	});
-	const interactionProjection = $derived(
-		withLayoutSnapFeedback(
-			withArrangeHoverOutline(
-			withPlanObjectRotationHandle(
-				withPlanSceneRotationHandle(
-					baseInteractionProjection,
-					stagingRotationHandle
-						? {
-							entityId: stagingRotationHandle.primaryId,
-							pivot: stagingRotationHandle.pivot,
-							handle: stagingRotationHandle.handle
-						}
-						: null,
-					sceneRotateFeedback
+	// P23.10 — a rejected direct-edit candidate installs nothing, so the attempted
+	// geometry is drawn transiently from the gesture's baseline-derived values.
+	// `architectureEditIntentFor` owns the gate: nothing renders while the press
+	// is still a click, nothing for an accepted candidate (the installed preview
+	// already shows it) and nothing for a silent `no_op`.
+	const architectureEditIntent = $derived(
+		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)
+	);
+const interactionProjection = $derived(
+		withArchitectureEditIntent(
+			withLayoutSnapFeedback(
+				withArrangeHoverOutline(
+					withPlanObjectRotationHandle(
+						withPlanSceneRotationHandle(
+							baseInteractionProjection,
+							stagingRotationHandle
+								? {
+									entityId: stagingRotationHandle.primaryId,
+									pivot: stagingRotationHandle.pivot,
+									handle: stagingRotationHandle.handle
+								}
+								: null,
+							sceneRotateFeedback
+						),
+						arrangeLayoutRotationHandle
+							? {
+								objectId: arrangeLayoutRotationHandle.objectId,
+								pivot: arrangeLayoutRotationHandle.pivot,
+								handle: arrangeLayoutRotationHandle.handle
+							}
+							: null,
+						objectRotateFeedback
+					),
+					arrangeHoverOutline
 				),
-				arrangeLayoutRotationHandle
-					? {
-						objectId: arrangeLayoutRotationHandle.objectId,
-						pivot: arrangeLayoutRotationHandle.pivot,
-						handle: arrangeLayoutRotationHandle.handle
-					}
-					: null,
-				objectRotateFeedback
+				snapFeedback
 			),
-			arrangeHoverOutline
-			),
-			snapFeedback
+			architectureEditIntent
 		)
 	);
 	const planModel = $derived(
@@ -657,7 +980,16 @@
 		void active;
 		void interaction.planViewMode;
 		void interaction.tool;
-		if (!active && stagingGesture) cancelStagingGesture();
+		if (!active) {
+			if (stagingGesture) cancelStagingGesture();
+			// Scene Plan stays mounted while Camera Plan owns the viewport. Losing
+			// that authority is a direct-edit mode transition even when the shared
+			// Layout/3D mode and tool did not change, so restore the captured
+			// baseline and close the Layout transaction through the canonical path.
+			if (interaction.architectureEdit || architectureEditSnapshot) {
+				cancelArchitectureEditGesture();
+			}
+		}
 		if (!active || interaction.planViewMode !== 'layout' || interaction.tool !== 'select') {
 			sceneBridgeHover = null;
 		}
@@ -678,6 +1010,30 @@
 		if (mode === previousPlanViewMode) return;
 		previousPlanViewMode = mode;
 		cancelLocalPlanInteraction();
+	});
+
+	$effect(() => {
+		// P23.10 — the shared interaction helpers clear a direct architecture
+		// edit on every tool/authority change. The viewport still owns the open
+		// transaction and the captured baseline, so it restores and cancels
+		// exactly once here (a tool change must never leak a transaction).
+		if (interaction.architectureEdit) return;
+		if (!architectureEditSnapshot) return;
+		cancelArchitectureEditGesture();
+	});
+
+	$effect(() => {
+		// P23.10 — a document/project replacement (import/reset/undo/redo, which
+		// bumps `reframeVersion`) must never leave a direct edit planning against
+		// a stale baseline. Ordinary commits bump only `previewVersion`.
+		const version = preview.reframeVersion;
+		if (architectureEditReplacementVersion === null) {
+			architectureEditReplacementVersion = version;
+			return;
+		}
+		if (version === architectureEditReplacementVersion) return;
+		architectureEditReplacementVersion = version;
+		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
 	});
 
 	$effect(() => {
@@ -759,6 +1115,7 @@
 		const hadLayoutInteraction = Boolean(
 			dragSnapshot ||
 			roomUnitSnapshot ||
+			architectureEditSnapshot ||
 			openingDrag ||
 			pendingWallBend ||
 			draggedInteriorAnchor ||
@@ -768,6 +1125,7 @@
 		);
 		if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);
 		if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+		if (architectureEditSnapshot) restoreLayoutPreviewSnapshot(preview, architectureEditSnapshot);
 		if (hadLayoutInteraction) onLayoutTransactionCancel();
 		for (const captured of [
 			pointerId,
@@ -789,6 +1147,10 @@
 		openingDrag = null;
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
+		architectureEditSnapshot = null;
+		architectureEditStartScreen = null;
+		architectureEditMoved = false;
+		cancelLayoutArchitectureEdit(interaction);
 		rotationHoverScreen = null;
 		stagingRotationHoverScreen = null;
 		arrangeLayoutRotationHoverScreen = null;
@@ -900,9 +1262,12 @@
 		if (
 			target.kind !== 'room' &&
 			target.kind !== 'opening' &&
-			target.kind !== 'object'
+			target.kind !== 'object' &&
+			// P23.10 — a canonical physical-Wall body hit carries its already
+			// resolved projection, so the Wall target needs no second resolver.
+			target.kind !== 'physicalWall'
 		) {
-			return; // wall/vertex/anchor targets have no approved v1 items
+			return; // vertex/opening-endpoint/anchor targets have no approved v1 items
 		}
 		// selection-before-menu mirrors the click path's slot writes
 		if (
@@ -923,6 +1288,14 @@
 			(interaction.selection.kind !== 'object' || interaction.selection.objectId !== target.objectId)
 		) {
 			selectLayoutObject(interaction, target.objectId);
+		} else if (
+			target.kind === 'physicalWall' &&
+			(interaction.selection.kind !== 'physicalWall' ||
+				interaction.selection.wallId !== target.wallId)
+		) {
+			// P23.10 — a right-click keeps the clicked Wall selected so the command
+			// acts on the same primitive the user pointed at.
+			selectLayoutPhysicalWall(interaction, target.wallId);
 		}
 		event.preventDefault();
 		contextMenu.open({
@@ -935,7 +1308,14 @@
 						? { kind: 'room', roomId: target.roomId }
 						: target.kind === 'opening'
 							? { kind: 'opening', roomId: target.roomId, openingId: target.openingId }
-							: { kind: 'object', objectId: target.objectId },
+							: target.kind === 'physicalWall'
+								? {
+										kind: 'wall',
+										wallId: target.wallId,
+										// Canonical-start meters straight from the hit projection.
+										splitDistance: target.projection.offset
+									}
+								: { kind: 'object', objectId: target.objectId },
 				mutationBlockedReason:
 					store.isDocumentMutationBlocked ? 'Preview is active' : null,
 				// P23.6d — wall-first Rooms expose ONLY the canonical removal. The
@@ -947,7 +1327,15 @@
 					? {
 							removeRoom: (roomId) => void onRoomRemove?.(roomId),
 							deleteOpening: (roomId, openingId) => onOpeningDelete(roomId, openingId),
-							deleteObject: deleteLayoutObjectViaTransaction
+							deleteObject: deleteLayoutObjectViaTransaction,
+							// P23.10 — omitted (never stubbed) when the mount cannot subdivide.
+							...(onWallJunctionAdd
+								? {
+										addJunction: (wallId: string, splitDistance: number) =>
+											onWallJunctionAdd?.(wallId, splitDistance)
+									}
+								: {}),
+							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
 						}
 					: {
 							renameRoom: renameRoomViaPrompt,
@@ -1122,6 +1510,7 @@
 			interaction.primitiveDraft === null &&
 			interaction.objectDrag === null &&
 			interaction.roomUnitDrag === null &&
+			interaction.architectureEdit === null &&
 			interaction.editing === null
 		);
 	}
@@ -1623,7 +2012,25 @@
 			// P23.6 — canonical Junction select: endpoint identity resolves
 			// through the wall-first document (same selection authority).
 			const junctionId = wallEndpointJunctionId(target.wallId, target.endpoint);
-			if (junctionId) selectLayoutJunction(interaction, junctionId);
+			if (!junctionId) return;
+			// P23.10 — a non-primary contact never owns a direct edit, and a
+			// second contact during a live gesture must not move the selection
+			// out from under it. Checked BEFORE the select, because the gesture
+			// start itself would refuse the contact.
+			if (!event.isPrimary || interaction.architectureEdit) return;
+			selectLayoutJunction(interaction, junctionId);
+			// P23.10 — a Wall endpoint handle IS that canonical Junction, so a
+			// primary drag reshapes every incident Wall through one Junction move.
+			// Below the drag threshold the press stays a plain select.
+			const baselinePoint = resolveJunctionPoint(junctionId);
+			if (!baselinePoint) return;
+			beginArchitectureEditGesture(event, {
+				kind: 'junction-move',
+				junctionId,
+				baselinePoint,
+				junctionExcludePoints: architectureEditJunctionExcludePoints(),
+				affectedWallIds: architectureEditAffectedWallIds([junctionId])
+			});
 			return;
 		}
 		if (target.kind === 'interiorAnchor') {
@@ -1697,7 +2104,33 @@
 		// P23.6 — a canonical physical-Wall hit selects the Wall on the one
 		// selection authority (no Room-unit target, no wall bend gesture yet).
 		if (target.kind === 'physicalWall') {
+			if (!event.isPrimary || interaction.architectureEdit) return;
 			selectLayoutPhysicalWall(interaction, target.wallId);
+			// P23.10 — a body drag translates the Wall rigidly: both endpoint
+			// Junctions move by ONE delta, so the Wall keeps ID, role, thickness,
+			// height, endpoint order, length and angle. An Opening body/handle hit
+			// already won the priority above, so a door/window drag never reaches
+			// this branch.
+			const wall = wallFirstLayoutDocument()?.walls.find(
+				(candidate) => candidate.id === target.wallId
+			);
+			if (!wall) return;
+			const baselineStart = resolveJunctionPoint(wall.startJunctionId);
+			const baselineEnd = resolveJunctionPoint(wall.endJunctionId);
+			if (!baselineStart || !baselineEnd) return;
+			beginArchitectureEditGesture(event, {
+				kind: 'wall-move',
+				wallId: wall.id,
+				grabPoint: [...target.projection.point] as LayoutVec2,
+				startJunctionId: wall.startJunctionId,
+				endJunctionId: wall.endJunctionId,
+				baselineStart,
+				baselineEnd,
+				affectedWallIds: architectureEditAffectedWallIds([
+					wall.startJunctionId,
+					wall.endJunctionId
+				])
+			});
 			return;
 		}
 
@@ -1805,6 +2238,7 @@
 			!stagingGesture &&
 			!interaction.objectDrag &&
 			!interaction.roomUnitDrag &&
+			!interaction.architectureEdit &&
 			!interaction.editing &&
 			!interaction.wallOpeningDrag &&
 			!openingDrag &&
@@ -1872,6 +2306,10 @@
 				draggedInteriorAnchor.anchorId,
 				next
 			);
+			return;
+		}
+		if (interaction.architectureEdit && interaction.architectureEdit.pointerId === event.pointerId) {
+			previewArchitectureEdit(event);
 			return;
 		}
 		if (pointerId !== event.pointerId) return;
@@ -2058,6 +2496,12 @@
 			onLayoutTransactionCommit();
 			suppressNextClick = true;
 			svgElement?.releasePointerCapture(event.pointerId);
+			return;
+		}
+		if (interaction.architectureEdit?.pointerId === event.pointerId) {
+			// Only the pointer that opened the gesture may commit it: another
+			// contact's release must never finalize someone else's candidate.
+			commitArchitectureEditGesture(event);
 			return;
 		}
 		if (pointerId !== event.pointerId) return;
@@ -2263,6 +2707,11 @@
 			rotationHoverScreen = null;
 			pointerId = null;
 		}
+		// P23.10 — an OS pointer cancel on a direct architecture edit restores
+		// the canonical baseline and writes no history.
+		if (interaction.architectureEdit && pointerId === event.pointerId) {
+			cancelArchitectureEditGesture();
+		}
 		if (interaction.objectDrag && pointerId === event.pointerId) {
 			onLayoutTransactionCancel();
 			cancelLayoutObjectDrag(interaction);
@@ -2440,6 +2889,12 @@
 				pendingWallBend = null;
 				suppressNextClick = true;
 				svgElement?.releasePointerCapture(pendingPointerId);
+				return;
+			}
+			// P23.10 — Escape abandons a direct architecture edit: the canonical
+			// baseline is restored and the open transaction is cancelled once.
+			if (interaction.architectureEdit || architectureEditSnapshot) {
+				cancelArchitectureEditGesture();
 				return;
 			}
 			if (interaction.roomUnitDrag) {
@@ -2693,6 +3148,7 @@
 		onpointermove={onPointerMove}
 		onpointerup={onPointerUp}
 		onpointercancel={onPointerCancel}
+		onlostpointercapture={onLostPointerCapture}
 		onclick={onClick}
 		onwheel={onWheel}
 		onkeydown={onKeyDown}

@@ -17,8 +17,16 @@ import { buildSceneEntityContextMenuItems } from './scene-menu-items';
 export type PlanLayoutTarget =
 	| { kind: 'room'; roomId: string }
 	| { kind: 'opening'; roomId: string; openingId: string }
-	/** P23.6c — canonical wall-first Wall target (document-global `wallId`). */
-	| { kind: 'wall'; wallId: string }
+	/**
+	 * P23.6c — canonical wall-first Wall target (document-global `wallId`).
+	 *
+	 * P23.10 — `splitDistance` is the clicked span's already-resolved physical
+	 * distance (meters) from the canonical start Junction. It is present only
+	 * for viewport targets that carry a projection: a P23.6e hierarchy Wall row
+	 * has no spatial coordinate, so it passes nothing and never sees the
+	 * Add-junction command (no invented coordinate, no second hit resolver).
+	 */
+	| { kind: 'wall'; wallId: string; splitDistance?: number }
 	| { kind: 'object'; objectId: string };
 
 export type PlanLayoutMenuActions = {
@@ -55,6 +63,14 @@ export type PlanLayoutMenuActions = {
 	 * mirroring the `renameRoom`/`deleteRoom` policy.
 	 */
 	deleteWall?(wallId: string): void;
+	/**
+	 * P23.10 — canonical Wall subdivision (the planner-backed
+	 * `subdivideWallFirstWall` adapter). Exposed only when BOTH this action and
+	 * a finite `splitDistance` exist: without a resolved coordinate there is no
+	 * honest "here". Same omit-don't-dummy policy as the other optional
+	 * commands.
+	 */
+	addJunction?(wallId: string, splitDistance: number): void;
 	deleteObject(objectId: string): void;
 };
 
@@ -117,19 +133,32 @@ export function buildPlanLayoutContextMenuItems(input: {
 			}
 		];
 	}
-	// P23.6c — wall targets expose exactly the canonical Wall delete; callers
-	// without the action get no items (same omit-don't-dummy policy as Rooms).
+	// P23.6c — wall targets expose the canonical Wall delete; callers without
+	// the action get no item (same omit-don't-dummy policy as Rooms).
 	if (target.kind === 'wall') {
-		if (!input.actions.deleteWall) return [];
-		return [
-			{
+		const items: ContextMenuItem[] = [];
+		// P23.10 — the additive, non-destructive command comes first, and only a
+		// caller that resolved a coordinate from the hit projection can offer it.
+		const splitDistance = target.splitDistance;
+		if (input.actions.addJunction && typeof splitDistance === 'number' && Number.isFinite(splitDistance)) {
+			items.push({
+				id: 'add-junction',
+				label: 'Add junction here',
+				disabledReason: deleteDisabled,
+				run: () => input.actions.addJunction!(target.wallId, splitDistance)
+			});
+		}
+		if (input.actions.deleteWall) {
+			items.push({
 				id: 'delete-wall',
 				label: 'Delete wall',
 				danger: true,
+				separatorBefore: items.length > 0,
 				disabledReason: deleteDisabled,
 				run: () => input.actions.deleteWall!(target.wallId)
-			}
-		];
+			});
+		}
+		return items;
 	}
 	return [
 		{

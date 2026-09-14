@@ -31,12 +31,14 @@ import {
 	planExactWallLength,
 	planExactWallHeight,
 	planExactWallThickness,
+	planRigidWallMove,
 	planWallSubdivision,
 	type FixedWallEndpoint,
 	type LayoutArchitecturalPresetId,
 	type LayoutObjectTransformPatch,
 	type PrecisionOperation,
-	type PrecisionPlan
+	type PrecisionPlan,
+	type PrecisionRejection
 } from '$lib/layout/layout-wall-first-precision';
 import {
 	planDeleteWall,
@@ -215,7 +217,17 @@ export type WallFirstPrecisionMutationResult =
 			 */
 			wallHeight?: number;
 	  }
-	| { success: false; message: string };
+	| {
+			success: false;
+			message: string;
+			/**
+			 * P23.10 — the canonical planner's own rejection code when the failure
+			 * came from `PrecisionPlan` (never from applying or installing it), so a
+			 * gesture can tell a real rejection from a no-op release without parsing
+			 * the message.
+			 */
+			code?: PrecisionRejection['code'];
+	  };
 
 /** P23.4 duplicate/repeat results carry the created IDs for selection. */
 /** P23.6a Room-unit move result through the one document-install point. */
@@ -943,7 +955,7 @@ function applyWallFirstPrecisionPlan(
 ): WallFirstPrecisionMutationResult {
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
-		return { success: false, message: plan.rejection.message };
+		return { success: false, message: plan.rejection.message, code: plan.rejection.code };
 	}
 	return applyWallFirstDocumentPlan(state, plan.document, plan.operation);
 }
@@ -1081,6 +1093,22 @@ export function updateWallFirstJunction(
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	return applyWallFirstPrecisionPlan(state, planExactJunctionMove(layout, junctionId, point));
+}
+
+/**
+ * P23.10 — commit one rigid straight-Wall translation as one Layout history
+ * entry. Thin adapter over the shared core planner: the same planner the
+ * numeric Junction/Wall commands use, so the direct gesture and the Inspector
+ * can never reach acceptance by different routes. Rejection installs nothing.
+ */
+export function updateWallFirstWallMove(
+	state: LayoutPreviewState,
+	wallId: string,
+	delta: LayoutVec2
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planRigidWallMove(layout, wallId, delta));
 }
 
 export function updateWallFirstWallLength(

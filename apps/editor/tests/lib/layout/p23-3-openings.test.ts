@@ -442,9 +442,9 @@ describe('P23.3 shared canonical opening-set validator (P23.1 shrink)', () => {
 			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
 		);
 		// wall-e is 4 m; shrinking to 1.5 m would leave offset 1 + width 0.9
-		// outside the new length → the P23.1 precision gate must reject.
+		// outside the new length → the shared Opening-set contract must reject.
 		const shrunk = planExactWallLength(created.document, 'wall-e', 1.5);
-		expect(shrunk).toMatchObject({ kind: 'rejected', rejection: { code: 'topology_invalid' } });
+		expect(shrunk).toMatchObject({ kind: 'rejected', rejection: { code: 'opening_set_invalid' } });
 		// A shrink that still fits keeps the same authored Opening.
 		const ok = planExactWallLength(created.document, 'wall-e', 3);
 		if (ok.kind !== 'success') throw new Error('expected successful shrink');

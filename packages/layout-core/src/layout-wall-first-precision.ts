@@ -7,17 +7,33 @@
  * result for the editor transaction runner to commit. There is no persistent
  * constraint solver and no snap state involved in an exact operation.
  *
+ * P23.10 extends this module with `planRigidWallMove` and moves every
+ * canonical Junction-coordinate operation (Junction position, Wall length,
+ * Wall angle, rigid Wall move, exact rectangle dimensions and Wall
+ * subdivision) onto `finalizeWallGeometryCandidate`, which adds explicit 1→1
+ * Room reconciliation and the portal/Opening gates. Metadata and object
+ * operations keep the generic `finalizeCandidate` path.
+ *
  * Angles use the document's X/Z convention: `atan2(z, x)` in radians. A wall
  * keeps its canonical start → end direction for length and angle edits; the
  * selected fixed endpoint is never silently swapped.
  */
 import type { LayoutDocumentIssue } from './layout-codec';
+import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
+import { validateWallFirstPortalRelations } from './layout-portals';
+import {
+	reconcileRooms,
+	type ComponentLineage,
+	type ReconciliationFailure,
+	type ReconciliationResult,
+	type RoomIdAllocator
+} from './layout-room-reconciliation';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import {
 	planWallSplit,
@@ -47,6 +63,16 @@ export type WallAngleIntent = {
 	fixedEndpoint?: FixedWallEndpoint;
 };
 
+/**
+ * P23.10 — one rigid straight-Wall translation: both endpoint Junctions
+ * receive the identical X/Z delta. Endpoint order, role, thickness, height,
+ * length and angle are all preserved.
+ */
+export type WallMoveIntent = {
+	wallId: string;
+	delta: LayoutVec2;
+};
+
 export type RectangleResizeOptions = {
 	/** Explicit anchor reference. Omission uses the smallest stable corner ID. */
 	anchorJunctionId?: string;
@@ -74,6 +100,8 @@ export type PrecisionOperation =
 	| 'junction-position'
 	| 'wall-length'
 	| 'wall-angle'
+	/** P23.10 — rigid straight-Wall translation (planner: `planRigidWallMove`). */
+	| 'wall-move'
 	| 'wall-thickness'
 	| 'wall-height'
 	| 'wall-role'
@@ -101,6 +129,17 @@ export type PrecisionRejection = {
 		| 'unsupported_geometry'
 		| 'shared_boundary_resize_ambiguous'
 		| 'topology_invalid'
+		/**
+		 * P23.10 — the geometry edit could not map every baseline Room to exactly
+		 * one candidate face through explicit boundary-cycle lineage. Direct
+		 * coordinate edits and subdivision never authorize Room birth, retirement,
+		 * split or merge.
+		 */
+		| 'room_identity_lost'
+		/** P23.10 — the candidate failed the canonical whole-document Opening set. */
+		| 'opening_set_invalid'
+		/** P23.10 — the candidate failed the canonical portal-relation (adjacency) gate. */
+		| 'portal_relation_invalid'
 		/**
 		 * P23.6H — the edit would cap a Wall below the top of a hosted Opening. The
 		 * canonical Opening validator owns the rule; this code only names the
@@ -148,7 +187,68 @@ export function planExactJunctionMove(
 	const candidate = cloneDocument(document);
 	const moved = candidate.junctions.find((entry) => entry.id === junctionId)!;
 	moved.point = [point[0], point[1]];
-	return finalizeCandidate(candidate, 'junction-position', [junctionId], incidentWallIds(document, junctionId));
+	return finalizeWallGeometryCandidate({
+		baseline: document,
+		candidate,
+		operation: 'junction-position',
+		changedJunctionIds: [junctionId],
+		changedWallIds: incidentWallIds(document, junctionId)
+	});
+}
+
+/**
+ * P23.10 — translate one canonical straight Wall rigidly in X/Z: both endpoint
+ * Junctions receive the identical delta, so the Wall keeps its ID, role,
+ * thickness, height, endpoint order, length and angle, and every hosted Opening
+ * keeps its ID, host, offset, width and vertical/profile fields.
+ *
+ * Walls incident to either moved endpoint reshape because their shared Junction
+ * IDs moved; the operation never detaches a shared endpoint. A candidate that
+ * breaks a neighbour, an Opening, Room identity, a portal relation or the
+ * compiler rejects atomically.
+ */
+export function planRigidWallMove(
+	document: LayoutDocumentWallFirst,
+	wallOrIntent: string | WallMoveIntent,
+	deltaArgument?: LayoutVec2
+): PrecisionPlan {
+	const intent: WallMoveIntent = typeof wallOrIntent === 'string'
+		? { wallId: wallOrIntent, delta: (deltaArgument ?? [0, 0]) as LayoutVec2 }
+		: { wallId: wallOrIntent.wallId, delta: wallOrIntent.delta };
+	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
+	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
+	if (!finitePoint(intent.delta)) return reject('invalid_value', 'Wall move delta must be finite X/Z', [wall.id]);
+	if (intent.delta[0] === 0 && intent.delta[1] === 0) return reject('no_op', `Wall '${wall.id}' already has that position`, [wall.id]);
+
+	const endpoints = wallEndpoints(document, wall);
+	if (!endpoints) return reject('unsupported_geometry', `Wall '${wall.id}' has unresolved junction geometry`, [wall.id]);
+	if (!(endpoints.length > POINT_EPSILON)) return reject('unsupported_geometry', `Wall '${wall.id}' has zero effective length`, [wall.id]);
+
+	// Canonical endpoint order, de-duplicated: a degenerate self-loop Wall
+	// carries one Junction, not two.
+	const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
+	const candidate = cloneDocument(document);
+	for (const junction of candidate.junctions) {
+		if (!changedJunctionIds.includes(junction.id)) continue;
+		junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
+	}
+	// Deterministic document-order union of every Wall incident to either moved
+	// endpoint: those neighbours reshape because their shared Junction ID moved.
+	const changedWallIds = document.walls
+		.filter((candidate) =>
+			changedJunctionIds.some(
+				(junctionId) =>
+					candidate.startJunctionId === junctionId || candidate.endJunctionId === junctionId
+			)
+		)
+		.map((candidate) => candidate.id);
+	return finalizeWallGeometryCandidate({
+		baseline: document,
+		candidate,
+		operation: 'wall-move',
+		changedJunctionIds,
+		changedWallIds
+	});
 }
 
 /** Set a straight Wall's exact physical length while keeping one endpoint fixed. */
@@ -187,7 +287,13 @@ export function planExactWallLength(
 	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
 
 	const candidate = moveJunction(document, movedJunctionId, movedPoint);
-	return finalizeCandidate(candidate, 'wall-length', [movedJunctionId], incidentWallIds(document, movedJunctionId));
+	return finalizeWallGeometryCandidate({
+		baseline: document,
+		candidate,
+		operation: 'wall-length',
+		changedJunctionIds: [movedJunctionId],
+		changedWallIds: incidentWallIds(document, movedJunctionId)
+	});
 }
 
 /** Set a supported straight Wall's exact X/Z angle in radians. */
@@ -222,7 +328,13 @@ export function planExactWallAngle(
 	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
 
 	const candidate = moveJunction(document, movedJunctionId, movedPoint);
-	return finalizeCandidate(candidate, 'wall-angle', [movedJunctionId], incidentWallIds(document, movedJunctionId));
+	return finalizeWallGeometryCandidate({
+		baseline: document,
+		candidate,
+		operation: 'wall-angle',
+		changedJunctionIds: [movedJunctionId],
+		changedWallIds: incidentWallIds(document, movedJunctionId)
+	});
 }
 
 /** Set a Wall-owned physical thickness, preserving Wall and Opening identity. */
@@ -285,14 +397,14 @@ export function planWallSubdivision(
 	if (planned.kind === 'rejected') {
 		return reject(planned.rejection.code, planned.rejection.message, [wallId]);
 	}
-	return finalizeCandidate(
-		planned.document,
-		'wall-subdivision',
-		[planned.junctionId],
-		planned.splitWallIds,
-		undefined,
-		planned.createdWallIds
-	);
+	return finalizeWallGeometryCandidate({
+		baseline: document,
+		candidate: planned.document,
+		operation: 'wall-subdivision',
+		changedJunctionIds: [planned.junctionId],
+		changedWallIds: planned.splitWallIds,
+		createdWallIds: planned.createdWallIds
+	});
 }
 
 /** P23.1 naming alias for callers that describe the operation as Add Vertex. */
@@ -355,12 +467,13 @@ export function planExactRectangleDimensions(
 		const point = targetPoints.get(junction.id);
 		if (point) junction.point = point;
 	}
-	return finalizeCandidate(
+	return finalizeWallGeometryCandidate({
+		baseline: document,
 		candidate,
-		'rectangle-dimensions',
-		[...targetPoints.keys()],
-		[...new Set([...roomWallIds, widthWallId, depthWallId])]
-	);
+		operation: 'rectangle-dimensions',
+		changedJunctionIds: [...targetPoints.keys()],
+		changedWallIds: [...new Set([...roomWallIds, widthWallId, depthWallId])]
+	});
 }
 
 // =====================================================================
@@ -551,6 +664,247 @@ function finalizeCandidate(
 }
 
 /**
+ * P23.8 result narrowing: `RoomReconciliation` carries no `kind` discriminant,
+ * so a type predicate is what lets the success branch expose `document`.
+ */
+function isReconciliationFailure(
+	result: ReconciliationResult
+): result is ReconciliationFailure {
+	return 'kind' in result && result.kind === 'rejected';
+}
+
+/**
+ * P23.10 — the canonical **geometry-edit acceptance path**.
+ *
+ * Every operation that edits canonical Junction coordinates or subdivides a
+ * Wall runs the same seam, so a pointer gesture and the Inspector's exact
+ * fields can never reach acceptance by different routes:
+ *
+ * ```text
+ * candidate (immutable baseline → cloned coordinate edit, or planWallSplit)
+ *   → pre-reconciliation structural/topology gate (canonical rejection codes)
+ *   → candidate faces (extractBoundaryCandidateFaces)
+ *   → explicit 1→1 Room boundary-cycle lineage declared from authored IDs
+ *   → reconcileRooms with an allocator that records — never grants — a birth
+ *   → assert exact Room identity preservation (no birth/retire/split/merge)
+ *   → wall-first codec → topology → Opening set → portal relations → compiler
+ * ```
+ *
+ * Lineage is declared from the candidate document's own authored boundary
+ * cycles, never from nearest-polygon geometry: a coordinate edit leaves every
+ * cycle key invariant, and `planWallSplit` has already rewritten the split
+ * Room's cycle to its successor fragments. Both therefore map 1→1 by key
+ * equality, which is why arbitrarily large valid moves stay exact.
+ *
+ * The pre-reconciliation gate runs first so a malformed reference or an
+ * invalid crossing/overlap keeps its canonical rejection instead of being
+ * misreported as a correspondence failure. Metadata/object operations stay on
+ * the generic `finalizeCandidate` path — Room reconciliation is never forced
+ * onto an operation that cannot change topology.
+ */
+function finalizeWallGeometryCandidate(options: {
+	baseline: LayoutDocumentWallFirst;
+	candidate: LayoutDocumentWallFirst;
+	operation: PrecisionOperation;
+	changedJunctionIds: readonly string[];
+	changedWallIds: readonly string[];
+	createdWallIds?: readonly string[];
+}): PrecisionPlan {
+	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
+
+	const preStructural = validateWallFirstLayoutDocument(candidate);
+	if (!preStructural.success) {
+		return reject('geometry_invalid', `Candidate failed wall-first validation: ${preStructural.issues[0]?.message ?? 'unknown issue'}`, undefined, preStructural.issues);
+	}
+	// Geometry edits own the stable Opening-set rejection contract below. The
+	// topology helper still validates the same canonical rules, but must defer
+	// translating Opening-set issues or every non-height Opening failure would
+	// be consumed as `topology_invalid` before the explicit gate can classify it.
+	const preTopology = validateWallFirstTopology(preStructural.document, { openingSet: 'defer' });
+	if (preTopology) {
+		return reject(
+			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
+			preTopology.message,
+			preTopology.targetId ? [preTopology.targetId] : undefined,
+			[preTopology]
+		);
+	}
+
+	const document = preStructural.document;
+	const extraction = extractBoundaryCandidateFaces(document);
+	const candidateRoomById = new Map(document.rooms.map((room) => [room.id, room]));
+	const components: ComponentLineage[] = [];
+	for (const room of baseline.rooms) {
+		const candidateRoom = candidateRoomById.get(room.id);
+		if (!candidateRoom) {
+			return reject('room_identity_lost', `Room '${room.id}' has no candidate boundary`, [room.id]);
+		}
+		components.push({
+			candidateFaceKeys: [canonicalBoundaryCycleKey(candidateRoom.boundary)],
+			predecessorRoomIds: [room.id]
+		});
+	}
+
+	const allocationAttempted = { value: false };
+	const reconciliation: ReconciliationResult = reconcileRooms({
+		baseline,
+		candidateDocument: document,
+		extraction,
+		components,
+		allocator: guardedRoomAllocator(allocationAttempted)
+	});
+	if (isReconciliationFailure(reconciliation)) {
+		const { rejection } = reconciliation;
+		return reject('room_identity_lost', rejection.message, rejection.roomIds);
+	}
+
+	const identityIssue = assertWallGeometryRoomIdentityPreserved(
+		baseline,
+		document,
+		reconciliation,
+		allocationAttempted.value
+	);
+	if (identityIssue) {
+		return reject('room_identity_lost', identityIssue.message, identityIssue.targetIds);
+	}
+
+	const reconciled = reconciliation.document;
+	const structural = validateWallFirstLayoutDocument(reconciled);
+	if (!structural.success) {
+		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
+	}
+	const topologyIssue = validateWallFirstTopology(structural.document, { openingSet: 'defer' });
+	if (topologyIssue) {
+		return reject(
+			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
+			topologyIssue.message,
+			topologyIssue.targetId ? [topologyIssue.targetId] : undefined,
+			[topologyIssue]
+		);
+	}
+	const setIssues = validateWallFirstOpeningSet(structural.document);
+	if (setIssues.length > 0) {
+		const first = setIssues[0]!;
+		return reject(
+			first.code === 'opening_exceeds_wall_height' ? 'wall_height_below_opening' : 'opening_set_invalid',
+			first.message,
+			[first.wallId, first.openingId],
+			setIssues
+		);
+	}
+	const relationIssues = validateWallFirstPortalRelations(structural.document);
+	if (relationIssues.length > 0) {
+		const first = relationIssues[0]!;
+		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
+	}
+	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	if (hasBlockingLayoutIssues(compiled.issues)) {
+		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
+	}
+	return {
+		kind: 'success',
+		document: structural.document,
+		operation,
+		changedJunctionIds: [...changedJunctionIds],
+		changedWallIds: [...new Set([...changedWallIds, ...(options.createdWallIds ?? [])])]
+	};
+}
+
+/**
+ * An allocator that must never be reached: a coordinate edit or subdivision
+ * preserves global Room identity, so a reconciliation branch that allocates a
+ * Room ID/name is proof the operation was not identity-preserving. It records
+ * the attempt instead of throwing so the planner rejects through its ordinary
+ * result contract.
+ */
+function guardedRoomAllocator(attempted: { value: boolean }): RoomIdAllocator {
+	return {
+		nextRoomId(_document, faceKey) {
+			attempted.value = true;
+			return `unreachable-wall-edit.${faceKey}`;
+		},
+		nextRoomName() {
+			attempted.value = true;
+			return 'Unreachable Wall Edit';
+		}
+	};
+}
+
+/**
+ * Prove the geometry edit preserved **global** Room identity: every baseline
+ * Room survives with the same ID and name, no Room was born, retired, split or
+ * merged, the declared candidate boundary cycle was honored, and reconciliation
+ * never reached an allocating branch.
+ */
+function assertWallGeometryRoomIdentityPreserved(
+	baseline: LayoutDocumentWallFirst,
+	candidate: LayoutDocumentWallFirst,
+	reconciliation: {
+		document: LayoutDocumentWallFirst;
+		lineage: readonly {
+			faceKey: string;
+			roomId: string;
+			predecessorRoomIds: readonly string[];
+			kind: 'preserved' | 'split-survivor' | 'merge-survivor' | 'created';
+		}[];
+		retiredRoomIds: readonly string[];
+	},
+	allocationAttempted: boolean
+): { message: string; targetIds?: readonly string[] } | null {
+	if (allocationAttempted) {
+		return {
+			message: 'Geometry edit reached a Room allocation branch; direct Wall/Junction edits preserve Room identity'
+		};
+	}
+	if (reconciliation.retiredRoomIds.length > 0) {
+		return {
+			message: `Geometry edit retired Room(s) ${reconciliation.retiredRoomIds.join(', ')}`,
+			targetIds: [...reconciliation.retiredRoomIds]
+		};
+	}
+	if (reconciliation.lineage.length !== baseline.rooms.length) {
+		return {
+			message: `Geometry edit produced ${reconciliation.lineage.length} lineage record(s) for ${baseline.rooms.length} Room(s)`
+		};
+	}
+	for (const record of reconciliation.lineage) {
+		if (record.kind !== 'preserved' || record.predecessorRoomIds.length !== 1) {
+			return {
+				message: `Geometry edit produced a '${record.kind}' lineage record for Room '${record.roomId}'`,
+				targetIds: [record.roomId]
+			};
+		}
+	}
+	if (reconciliation.document.rooms.length !== baseline.rooms.length) {
+		return {
+			message: `Room count changed during the geometry edit (${baseline.rooms.length} → ${reconciliation.document.rooms.length})`
+		};
+	}
+	const finalByRoomId = new Map(reconciliation.document.rooms.map((room) => [room.id, room]));
+	const candidateById = new Map(candidate.rooms.map((room) => [room.id, room]));
+	for (const room of baseline.rooms) {
+		const finalRoom = finalByRoomId.get(room.id);
+		if (!finalRoom) {
+			return { message: `Room '${room.id}' did not survive the geometry edit`, targetIds: [room.id] };
+		}
+		if (finalRoom.name !== room.name) {
+			return { message: `Room '${room.id}' name changed during the geometry edit`, targetIds: [room.id] };
+		}
+		const declared = candidateById.get(room.id);
+		if (
+			!declared ||
+			canonicalBoundaryCycleKey(finalRoom.boundary) !== canonicalBoundaryCycleKey(declared.boundary)
+		) {
+			return {
+				message: `Room '${room.id}' boundary lineage changed during the geometry edit`,
+				targetIds: [room.id]
+			};
+		}
+	}
+	return null;
+}
+
+/**
  * The one canonical **wall-first topology gate** for wall-first candidates:
  * no duplicate Junction points, non-zero Wall lengths, explicit-junction-only
  * Wall relationships (collinear overlap rejected), Room boundary
@@ -558,8 +912,18 @@ function finalizeCandidate(
  * issue. Shared by the P23.1 precision planners (via `finalizeCandidate`) and
  * the P23.6a Room-move planner — never copied.
  */
+export type WallFirstTopologyOptions = {
+	/**
+	 * Keep the Opening-set validator canonical, but let a caller that owns a
+	 * later stable Opening rejection gate defer its translation. The default
+	 * preserves the historical topology-gate contract.
+	 */
+	openingSet?: 'translate' | 'defer';
+};
+
 export function validateWallFirstTopology(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	options: WallFirstTopologyOptions = {}
 ): LayoutGeometryIssue | undefined {
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {
@@ -636,29 +1000,31 @@ export function validateWallFirstTopology(
 		if (previousEnd !== firstStart) return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
 	}
 
-	// Whole-hosting-Wall opening set: ONE canonical validator shared with the
-	// P23.3 opening create/edit/drag/resize paths
-	// (`layout-opening-set.ts`). Do not duplicate fit/overlap/vertical checks
-	// here — this gate only translates the first canonical issue.
-	const openingIssue = validateWallFirstOpeningSet(document)[0];
-	if (openingIssue) {
-		// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
-		// Wall-height edit can report it as `wall_height_below_opening` instead of
-		// a generic topology failure. The canonical Opening validator owns the
-		// rule; this branch only translates its issue.
-		if (openingIssue.code === 'opening_exceeds_wall_height') {
-			return {
-				path: `walls.${openingIssue.wallId}.height`,
-				code: 'wall_height_below_opening',
-				message: openingIssue.message,
-				targetId: openingIssue.wallId
-			};
+	if (options.openingSet !== 'defer') {
+		// Whole-hosting-Wall opening set: ONE canonical validator shared with the
+		// P23.3 opening create/edit/drag/resize paths (`layout-opening-set.ts`).
+		// Do not duplicate fit/overlap/vertical checks here — this gate only
+		// translates the first canonical issue.
+		const openingIssue = validateWallFirstOpeningSet(document)[0];
+		if (openingIssue) {
+			// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
+			// Wall-height edit can report it as `wall_height_below_opening` instead of
+			// a generic topology failure. The canonical Opening validator owns the
+			// rule; this branch only translates its issue.
+			if (openingIssue.code === 'opening_exceeds_wall_height') {
+				return {
+					path: `walls.${openingIssue.wallId}.height`,
+					code: 'wall_height_below_opening',
+					message: openingIssue.message,
+					targetId: openingIssue.wallId
+				};
+			}
+			return topologyFailure(
+				openingIssue.openingId,
+				openingIssue.wallId,
+				openingIssue.message
+			);
 		}
-		return topologyFailure(
-			openingIssue.openingId,
-			openingIssue.wallId,
-			openingIssue.message
-		);
 	}
 	return undefined;
 }

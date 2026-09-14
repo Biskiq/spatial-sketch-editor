@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS } from '$lib/editor/layout/layout-interaction';
 import {
 	LAYOUT_PLAN_GRID_STEP,
 	LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
@@ -712,6 +713,96 @@ describe('P23.2 opening drag resolution (offset space)', () => {
 		// midpoint resolves instead (opening-edge would win otherwise).
 		expect(resolution.candidate.kind).toBe('wall-midpoint');
 		expect(resolution.candidate.offset).toBeCloseTo(2.55, 6);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// P23.10 review — direct-edit filters reach the resolver untouched
+// ---------------------------------------------------------------------------
+describe('P23.10 review — direct-edit family filters inside resolveLayoutSnap', () => {
+	it('filters the junction family for a Junction move so a lower-ranked family wins', () => {
+		const geometry = emptyGeometry();
+		// A wall running along z=0 with a stationary T-junction landing on its
+		// midpoint: the two candidates are coincident, so only the filter decides.
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [4, 0]));
+		geometry.queries.points.push(vertexAt(2, 0, 'wall-b'));
+
+		const unfiltered = resolveLayoutSnap(geometry, [2.02, 0.02], { pixelsPerMeter: 50 });
+		expect(unfiltered.kind).toBe('snap');
+		if (unfiltered.kind !== 'snap') return;
+		expect(unfiltered.candidate.kind).toBe('junction');
+
+		// A Junction move must never merge into another Junction, so the family
+		// is removed before winner selection — the midpoint is then accepted.
+		const filtered = resolveLayoutSnap(geometry, [2.02, 0.02], { pixelsPerMeter: 50 }, {
+			allowedKinds: [...LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS]
+		});
+		expect(filtered.kind).toBe('snap');
+		if (filtered.kind !== 'snap') return;
+		expect(filtered.candidate.kind).toBe('wall-midpoint');
+		expect(filtered.candidate.point).toEqual([2, 0]);
+	});
+
+	it('excludes a Junction coordinate a projective family would otherwise land on', () => {
+		// Regression (direct Junction edit): the family filter alone still leaves
+		// `'wall-span'` free to project onto the exact coordinate of a Junction
+		// that sits on another Wall's span — a position the planner rejects,
+		// because Junction merging is out of scope.
+		const geometry = emptyGeometry();
+		// One 6 m Wall plus a stationary Junction on its exact midpoint, so the
+		// forbidden coordinate is reachable through the midpoint, span-start/end
+		// and grid families as well as the filtered `'junction'` one.
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		geometry.queries.points.push(vertexAt(3, 0, 'wall-b'));
+
+		const unfiltered = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 });
+		expect(unfiltered.kind).toBe('snap');
+		if (unfiltered.kind !== 'snap') return;
+		expect(unfiltered.candidate).toMatchObject({ kind: 'junction', point: [3, 0] });
+
+		const familyFiltered = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 }, {
+			allowedKinds: [...LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS]
+		});
+		expect(familyFiltered.kind).toBe('snap');
+		if (familyFiltered.kind !== 'snap') return;
+		// Still the forbidden coordinate, now through `'wall-midpoint'`.
+		expect(familyFiltered.candidate.point).toEqual([3, 0]);
+		expect(familyFiltered.candidate.kind).not.toBe('junction');
+
+		const pointExcluded = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 }, {
+			allowedKinds: [...LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS],
+			excludePoints: [[3, 0]]
+		});
+		expect(pointExcluded.kind).toBe('snap');
+		if (pointExcluded.kind !== 'snap') return;
+		// The occupied coordinate is unreachable; the ordinary projection wins.
+		expect(pointExcluded.candidate.kind).toBe('wall-span');
+		expect(pointExcluded.candidate.point[0]).toBeCloseTo(3.02, 9);
+		expect(pointExcluded.candidate.point[1]).toBe(0);
+	});
+
+	it('excludes both endpoints of a moving Wall so a farther stationary Junction wins', () => {
+		// A rigid Wall move keeps the junction family (one delta merges no IDs)
+		// but must never snap back onto its own translation group: one owner key
+		// covers both endpoints, so a different owner is free to win.
+		const geometry = emptyGeometry();
+		geometry.queries.points.push(
+			vertexAt(0, 0, 'wall-moving'),
+			vertexAt(4, 0, 'wall-moving'),
+			vertexAt(0.2, 0, 'wall-stationary')
+		);
+		const raw = resolveLayoutSnap(geometry, [0.05, 0.02], { pixelsPerMeter: 50 });
+		expect(raw.kind).toBe('snap');
+		if (raw.kind !== 'snap') return;
+		expect(raw.candidate.sourceId).toBe('wall-moving');
+
+		const excluded = resolveLayoutSnap(geometry, [0.05, 0.02], { pixelsPerMeter: 50 }, {
+			excludeOwners: new Set([snapOwnerKey({ kind: 'wall', id: 'wall-moving' })])
+		});
+		expect(excluded.kind).toBe('snap');
+		if (excluded.kind !== 'snap') return;
+		expect(excluded.candidate).toMatchObject({ kind: 'junction', sourceId: 'wall-stationary' });
+		expect(excluded.candidate.point).toEqual([0.2, 0]);
 	});
 });
 

@@ -14,7 +14,104 @@ import {
 	updateLayoutRoomUnitDrag,
 	updateRectangle
 } from '$lib/editor/layout/layout-interaction';
-import { buildPlanInteractionProjection } from '$lib/editor/layout/plan-overlays';
+import {
+	buildPlanInteractionProjection,
+	architectureEditIntentFor,
+	withArchitectureEditIntent
+} from '$lib/editor/layout/plan-overlays';
+import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
+
+/** One live Junction-move gesture, with the fields the intent gate reads. */
+function junctionGesture(
+	patch: Partial<Extract<LayoutArchitectureEditGesture, { kind: 'junction-move' }>> = {}
+): LayoutArchitectureEditGesture {
+	return {
+		kind: 'junction-move',
+		pointerId: 1,
+		junctionId: 'A',
+		startPointer: [0, 0],
+		baselinePoint: [0, 0],
+		junctionExcludePoints: [[0, 0], [4, 0]],
+		affectedWallIds: ['w1'],
+		candidatePoint: [1, 1],
+		valid: false,
+		...patch
+	};
+}
+
+describe('P23.10 architecture-edit intent gate', () => {
+	it('renders nothing before the press becomes a drag', () => {
+		// A pointer-down over a Wall is still a click: no candidate has been
+		// requested, so nothing may flash an invalid overlay.
+		expect(architectureEditIntentFor(junctionGesture(), false)).toBeNull();
+		expect(architectureEditIntentFor(junctionGesture({ valid: true }), false)).toBeNull();
+		expect(architectureEditIntentFor(null, true)).toBeNull();
+	});
+
+	it('renders nothing for an accepted candidate or a silent no-op', () => {
+		// An accepted candidate is already previewed by the installed document.
+		expect(architectureEditIntentFor(junctionGesture({ valid: true }), true)).toBeNull();
+		// A no-op release asked for nothing: drawing it as a rejection would
+		// report a failure the user never requested.
+		expect(
+			architectureEditIntentFor(junctionGesture({ rejectionCode: 'no_op' }), true)
+		).toBeNull();
+		expect(
+			architectureEditIntentFor(junctionGesture({ rejectionCode: undefined }), true)
+		).toBeNull();
+	});
+
+	it('renders the rejected attempt after a drag, from baseline-derived values', () => {
+		expect(
+			architectureEditIntentFor(junctionGesture({ rejectionCode: 'duplicate_junction' }), true)
+		).toEqual({ kind: 'junction-move', point: [1, 1] });
+
+		const wall: LayoutArchitectureEditGesture = {
+			kind: 'wall-move',
+			pointerId: 1,
+			wallId: 'w1',
+			startPointer: [0, 0],
+			baselineGrabPoint: [0, 0],
+			startJunctionId: 'A',
+			endJunctionId: 'B',
+			baselineStart: [0, 0],
+			baselineEnd: [4, 0],
+			affectedWallIds: ['w1'],
+			candidateDelta: [1, 2],
+			valid: false,
+			rejectionCode: 'topology_invalid'
+		};
+		expect(architectureEditIntentFor(wall, true)).toEqual({
+			kind: 'wall-move',
+			start: [1, 2],
+			end: [5, 2]
+		});
+	});
+
+	it('draws a rejected intent with the transient token and nothing when null', () => {
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const base = {
+			selection: [],
+			handles: [],
+			drafts: [],
+			labels: []
+		} as unknown as Parameters<typeof withArchitectureEditIntent>[0];
+		expect(architectureEditIntentFor(junctionGesture({ rejectionCode: 'no_op' }), true)).toBeNull();
+		const intent = architectureEditIntentFor(
+			junctionGesture({ rejectionCode: 'topology_invalid' }),
+			true
+		);
+		const drawn = withArchitectureEditIntent(base, intent);
+		expect(drawn.drafts).toHaveLength(1);
+		expect(drawn.drafts[0]).toMatchObject({
+			kind: 'circle',
+			style: 'architecture-edit-intent-invalid'
+		});
+		expect(withArchitectureEditIntent(base, null).drafts).toHaveLength(0);
+		expect(model.rooms.map((room) => room.roomId)).toEqual(['room-rectangle']);
+	});
+});
 
 describe('buildPlanInteractionProjection', () => {
 	it('emits only the persistent room name for an idle state on a line room', () => {
