@@ -31,6 +31,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
+import { coincidesAsJunction } from './layout-junction-identity';
 
 /** Exact straight-segment length between two points. */
 function segmentSpanLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -173,10 +174,7 @@ function planWallSplitInternal(
 	} else {
 		const existing = document.junctions.find((junction) => junction.id === options.existingJunctionId);
 		if (existing) {
-			if (
-				existing.point[0] !== splitPoint[0] ||
-				existing.point[1] !== splitPoint[1]
-			) {
+			if (!coincidesAsJunction(existing.point, splitPoint)) {
 				return rejected({
 					code: 'junction_point_mismatch',
 					message: `Junction '${junctionId}' exists at a different coordinate than the requested split point`,

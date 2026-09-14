@@ -45,6 +45,7 @@ import {
 	type FaceExtractionResult,
 	faceArea,
 	polygonIntersectionArea,
+	polygonsShareInteriorArea,
 	pointStrictlyInsidePolygon
 } from './layout-face-extraction';
 
@@ -215,7 +216,11 @@ export function buildCorrespondenceComponents(
 			const witness = predecessorWitnesses.get(roomId);
 			const polygon = predecessorPolygons.get(roomId);
 			const inside = witness !== undefined && pointStrictlyInsidePolygon(face.polygon, witness);
-			const overlap = polygon !== undefined && polygonIntersectionArea(polygon, face.polygon) > 1e-9;
+			// Exact adjacency-aware overlap: Rooms that merely share a Wall (any
+			// angle) are neighbours, never one component. The sampled
+			// `polygonIntersectionArea` (still used below for survivor ranking)
+			// reported a phantom sliver for oblique shared edges.
+			const overlap = polygon !== undefined && polygonsShareInteriorArea(polygon, face.polygon);
 			if (inside || overlap) union(predIndex, predecessorCount + faceIndex);
 		});
 	});

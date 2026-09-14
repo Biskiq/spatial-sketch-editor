@@ -445,6 +445,119 @@ function pointStrictlyInsidePolygon(polygon: readonly LayoutVec2[], point: Layou
 	return inside;
 }
 
+/**
+ * Find a deterministic point in the strict interior of a simple polygon.
+ *
+ * A bounding-box lattice is not suitable evidence here: a valid narrow arm can
+ * fall between every lattice line. Ear clipping gives us actual triangles of
+ * the polygon instead. The centroid of every non-degenerate ear is strictly
+ * inside the original ring; choosing the deepest one also keeps it away from
+ * the ring tolerance used by the adjacency predicate.
+ */
+function polygonInteriorPoint(polygon: readonly LayoutVec2[]): LayoutVec2 | null {
+	if (polygon.length < 3) return null;
+	const signedArea = polygonSignedArea(polygon);
+	if (signedArea === 0 || !Number.isFinite(signedArea)) return null;
+
+	const winding = signedArea > 0 ? 1 : -1;
+	const remaining = polygon.map((_, index) => index);
+	const candidates: LayoutVec2[] = [];
+	const addCandidate = (previous: number, current: number, next: number): void => {
+		const a = polygon[previous]!;
+		const b = polygon[current]!;
+		const c = polygon[next]!;
+		const candidate: LayoutVec2 = [
+			(a[0] + b[0] + c[0]) / 3,
+			(a[1] + b[1] + c[1]) / 3
+		];
+		if (pointStrictlyInsidePolygon(polygon, candidate)) candidates.push(candidate);
+	};
+
+	while (remaining.length > 3) {
+		let earPosition = -1;
+		for (let position = 0; position < remaining.length; position += 1) {
+			const previous = remaining[(position - 1 + remaining.length) % remaining.length]!;
+			const current = remaining[position]!;
+			const next = remaining[(position + 1) % remaining.length]!;
+			const a = polygon[previous]!;
+			const b = polygon[current]!;
+			const c = polygon[next]!;
+			// A convex vertex in the polygon's winding is an ear candidate.
+			if (winding * orientXZ(a, b, c) <= 0) continue;
+			// No other active vertex may lie strictly inside the ear triangle.
+			if (
+				remaining.some(
+					(index) =>
+						index !== previous &&
+						index !== current &&
+						index !== next &&
+						pointStrictlyInsideTriangle(polygon[index]!, a, b, c)
+					)
+			)
+				continue;
+			addCandidate(previous, current, next);
+			earPosition = position;
+			break;
+		}
+		// A malformed/self-intersecting ring may have no ear. Do not invent
+		// evidence for it; the normal topology validation will reject/diagnose it.
+		if (earPosition === -1) break;
+		remaining.splice(earPosition, 1);
+	}
+	if (remaining.length === 3) {
+		addCandidate(remaining[0]!, remaining[1]!, remaining[2]!);
+	}
+	if (candidates.length === 0) return null;
+
+	let deepest = candidates[0]!;
+	let deepestDistance = distanceToPolygonRing(polygon, deepest);
+	for (const candidate of candidates.slice(1)) {
+		const distance = distanceToPolygonRing(polygon, candidate);
+		if (distance > deepestDistance) {
+			deepest = candidate;
+			deepestDistance = distance;
+		}
+	}
+	return deepest;
+}
+
+function pointStrictlyInsideTriangle(
+	point: LayoutVec2,
+	a: LayoutVec2,
+	b: LayoutVec2,
+	c: LayoutVec2
+): boolean {
+	const first = orientXZ(a, b, point);
+	const second = orientXZ(b, c, point);
+	const third = orientXZ(c, a, point);
+	return (
+		(first > 0 && second > 0 && third > 0) ||
+		(first < 0 && second < 0 && third < 0)
+	);
+}
+
+function distanceToPolygonRing(polygon: readonly LayoutVec2[], point: LayoutVec2): number {
+	let best = Infinity;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const start = polygon[index]!;
+		const end = polygon[(index + 1) % polygon.length]!;
+		const dx = end[0] - start[0];
+		const dz = end[1] - start[1];
+		const lengthSquared = dx * dx + dz * dz;
+		const t =
+			lengthSquared === 0
+				? 0
+				: Math.max(
+						0,
+						Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+					);
+		const offsetX = point[0] - (start[0] + dx * t);
+		const offsetZ = point[1] - (start[1] + dz * t);
+		best = Math.min(best, Math.hypot(offsetX, offsetZ));
+	}
+	return best;
+}
+
 /** Polygon area of a candidate face (exposed for reconciliation overlap math). */
 export function faceArea(face: { polygon: readonly LayoutVec2[] }): number {
 	return Math.abs(polygonSignedArea(face.polygon));
@@ -490,6 +603,107 @@ export function polygonIntersectionArea(
 		}
 	}
 	return hits * dx * dy;
+}
+
+/**
+ * Do two simple polygons share interior area?
+ *
+ * Adjacency-aware and tolerance-robust: polygons that merely touch along an
+ * edge or at a vertex do **not** overlap. This is the correctness predicate for
+ * Room correspondence evidence — two Rooms separated by a Wall are adjacent,
+ * never overlapping.
+ *
+ * `polygonIntersectionArea` above cannot answer that question: it counts
+ * lattice samples that land on a shared **oblique** edge as inside both
+ * polygons, so every pair of Rooms divided by an angled Wall reported a
+ * phantom sliver of overlap and their correspondence components fused into one
+ * (rejected as `Unsupported correspondence component N→N`). Axis-aligned
+ * neighbours happened to produce a degenerate intersection box and returned
+ * zero, which is why only angled plans broke.
+ */
+export function polygonsShareInteriorArea(
+	a: readonly LayoutVec2[],
+	b: readonly LayoutVec2[]
+): boolean {
+	// `pointOnPolygonBoundary` is exact-collinearity (`orientXZ === 0`). Points
+	// sampled along a shared **oblique** ring evaluate a hair off zero
+	// (measured ~1e-16 on a reproduced plan), which is exactly how the sampled
+	// `polygonIntersectionArea` came to count them as interior to both Rooms.
+	// Tolerance, not exact equality, is what makes "on the ring" decidable.
+	const ON_RING_TOLERANCE = 1e-9;
+	const withinRing = (polygon: readonly LayoutVec2[], point: LayoutVec2): boolean => {
+		for (let index = 0; index < polygon.length; index += 1) {
+			const start = polygon[index]!;
+			const end = polygon[(index + 1) % polygon.length]!;
+			const dx = end[0] - start[0];
+			const dz = end[1] - start[1];
+			const lengthSquared = dx * dx + dz * dz;
+			const t =
+				lengthSquared === 0
+					? 0
+					: Math.max(
+							0,
+							Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared)
+						);
+				const offsetX = point[0] - (start[0] + dx * t);
+				const offsetZ = point[1] - (start[1] + dz * t);
+				if (offsetX * offsetX + offsetZ * offsetZ <= ON_RING_TOLERANCE * ON_RING_TOLERANCE) {
+					return true;
+				}
+		}
+		return false;
+	};
+	const strictlyInside = (polygon: readonly LayoutVec2[], point: LayoutVec2): boolean =>
+		pointStrictlyInsidePolygon(polygon, point) && !withinRing(polygon, point);
+	// Vertices *and* interior points of each edge. Vertices alone miss the
+	// common case where one polygon's edge lies strictly inside the other
+	// (a Room subdivided by a divider: the child's corners sit on the parent's
+	// ring, yet the two polygons genuinely share area). Points on the other
+	// polygon's ring are excluded by `withinRing`, so shared Walls — axis-aligned
+	// or oblique — never count as overlap.
+	const probes = (polygon: readonly LayoutVec2[]): LayoutVec2[] => {
+		const points: LayoutVec2[] = [];
+		for (let index = 0; index < polygon.length; index += 1) {
+			const start = polygon[index]!;
+			const end = polygon[(index + 1) % polygon.length]!;
+			points.push(start);
+			for (const t of [0.25, 0.5, 0.75]) {
+				points.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
+			}
+		}
+		return points;
+	};
+	for (const point of probes(a)) {
+		if (strictlyInside(b, point)) return true;
+	}
+	for (const point of probes(b)) {
+		if (strictlyInside(a, point)) return true;
+	}
+	// A proper edge crossing implies shared interior area; edge *touches* do not.
+	for (let index = 0; index < a.length; index += 1) {
+		const aStart = a[index]!;
+		const aEnd = a[(index + 1) % a.length]!;
+		for (let other = 0; other < b.length; other += 1) {
+			const bStart = b[other]!;
+			const bEnd = b[(other + 1) % b.length]!;
+			const firstSide = orientXZ(aStart, aEnd, bStart);
+			const secondSide = orientXZ(aStart, aEnd, bEnd);
+			if (firstSide * secondSide >= 0) continue;
+			const thirdSide = orientXZ(bStart, bEnd, aStart);
+			const fourthSide = orientXZ(bStart, bEnd, aEnd);
+			if (thirdSide * fourthSide < 0) return true;
+		}
+	}
+	// Identical or nested rings — every boundary probe can lie on the shared
+	// ring and no edge crosses. Ear-triangle centroids provide real interior
+	// evidence without assuming a grid resolution. This remains AFTER the
+	// adjacency probes: two Rooms sharing only a Wall have disjoint interiors,
+	// so neither polygon's interior point can be strictly inside the other.
+	const interiorA = polygonInteriorPoint(a);
+	if (interiorA !== null && strictlyInside(b, interiorA)) return true;
+	const interiorB = polygonInteriorPoint(b);
+	if (interiorB !== null && strictlyInside(a, interiorB)) return true;
+	return false;
 }
 
 export { pointStrictlyInsidePolygon };

@@ -24,6 +24,7 @@ import {
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
+import { coincidesAsJunction } from './layout-junction-identity';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import type { LayoutObject, LayoutVec2 } from './layout-types';
 import type { Vec3 } from './types';
@@ -142,7 +143,7 @@ export function planExactJunctionMove(
 	const junction = document.junctions.find((candidate) => candidate.id === junctionId);
 	if (!junction) return reject('unknown_junction', `Unknown junction '${junctionId}'`, [junctionId]);
 	if (!finitePoint(point)) return reject('invalid_value', 'Junction X/Z must be finite', [junctionId]);
-	if (samePoint(junction.point, point)) return reject('no_op', `Junction '${junctionId}' is already at that point`, [junctionId]);
+	if (coincidesAsJunction(junction.point, point)) return reject('no_op', `Junction '${junctionId}' is already at that point`, [junctionId]);
 
 	const candidate = cloneDocument(document);
 	const moved = candidate.junctions.find((entry) => entry.id === junctionId)!;
@@ -183,7 +184,7 @@ export function planExactWallLength(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * intent.length, fixedPoint[1] + direction[1] * intent.length]
 		: [fixedPoint[0] - direction[0] * intent.length, fixedPoint[1] - direction[1] * intent.length];
-	if (samePoint(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
+	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that length`, [wall.id]);
 
 	const candidate = moveJunction(document, movedJunctionId, movedPoint);
 	return finalizeCandidate(candidate, 'wall-length', [movedJunctionId], incidentWallIds(document, movedJunctionId));
@@ -218,7 +219,7 @@ export function planExactWallAngle(
 	const movedPoint: LayoutVec2 = intent.fixed === 'start'
 		? [fixedPoint[0] + direction[0] * endpoints.length, fixedPoint[1] + direction[1] * endpoints.length]
 		: [fixedPoint[0] - direction[0] * endpoints.length, fixedPoint[1] - direction[1] * endpoints.length];
-	if (samePoint(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
+	if (coincidesAsJunction(currentJunctionPoint(document, movedJunctionId), movedPoint)) return reject('no_op', `Wall '${wall.id}' already has that angle`, [wall.id]);
 
 	const candidate = moveJunction(document, movedJunctionId, movedPoint);
 	return finalizeCandidate(candidate, 'wall-angle', [movedJunctionId], incidentWallIds(document, movedJunctionId));
@@ -345,7 +346,7 @@ export function planExactRectangleDimensions(
 		[depthCorner.id, add(anchor.point, scale(depthAxis, depth))],
 		[opposite.id, add(add(anchor.point, scale(widthAxis, width)), scale(depthAxis, depth))]
 	]);
-	if ([...targetPoints].every(([id, point]) => samePoint(currentJunctionPoint(document, id), point))) {
+	if ([...targetPoints].every(([id, point]) => coincidesAsJunction(currentJunctionPoint(document, id), point))) {
 		return reject('no_op', `Room '${roomId}' already has those rectangle dimensions`, [roomId]);
 	}
 
@@ -562,7 +563,7 @@ export function validateWallFirstTopology(
 ): LayoutGeometryIssue | undefined {
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {
-			if (samePoint(document.junctions[first]!.point, document.junctions[second]!.point)) {
+			if (coincidesAsJunction(document.junctions[first]!.point, document.junctions[second]!.point)) {
 				return {
 					path: `junctions[${second}].point`,
 					code: 'duplicate_junction_point',
@@ -871,10 +872,6 @@ function normalize(a: LayoutVec2): LayoutVec2 | undefined {
 
 function dot(a: LayoutVec2, b: LayoutVec2): number {
 	return a[0] * b[0] + a[1] * b[1];
-}
-
-function samePoint(a: LayoutVec2, b: LayoutVec2): boolean {
-	return a[0] === b[0] && a[1] === b[1];
 }
 
 function vectorEqual(a: readonly number[], b: readonly number[]): boolean {

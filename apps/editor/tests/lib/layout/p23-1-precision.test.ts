@@ -173,6 +173,17 @@ describe('P23.1 wall-first precise semantic operations', () => {
 		expect(baseline.junctions.find((junction) => junction.id === 'A')?.point).toEqual([0, 0]);
 	});
 
+	it('rejects a Junction identity duplicate within the canonical tolerance', () => {
+		const baseline = squareDocument();
+		const result = planExactJunctionMove(baseline, 'A', [4 + 5e-10, 5e-10]);
+
+		expect(result).toMatchObject({ kind: 'rejected', rejection: { code: 'topology_invalid' } });
+		if (result.kind !== 'rejected') return;
+		expect(result.rejection.issues).toEqual(expect.arrayContaining([
+			expect.objectContaining({ code: 'duplicate_junction_point' })
+		]));
+	});
+
 	it('edits document-level LayoutObject transforms as one exact candidate', () => {
 		const result = planExactLayoutObjectTransform(squareDocument(), 'chair', {
 			position: [2, 0.5, 1],
