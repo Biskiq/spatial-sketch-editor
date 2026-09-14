@@ -407,6 +407,27 @@ describe('P23.10 gesture — rigid Wall translation', () => {
 		expect(junctionPoint(context, 'A')).toEqual([0, 0]);
 	});
 
+	it('leaves the Scene document, Scene selection and camera focus untouched', () => {
+		// A direct Wall/Junction edit is a Layout-domain mutation. It must not
+		// reach Scene content, Scene selection or the camera domain — the same
+		// isolation the visitor bundle depends on.
+		const context = makeStore();
+		const { store } = context;
+		const scene = JSON.stringify(store.document);
+		const sceneSelection = JSON.stringify([...store.selectedPlacementIds]);
+		const cameraSelection = JSON.stringify(store.cameraSelection);
+		const cameraFocus = store.cameraFocusVersion;
+
+		expect(startWallEdit(context, 'w1', [1, 0])).toBe(true);
+		expect(releaseEdit(context, [0, -2]).kind).toBe('committed');
+		expect(store.canUndo).toBe(true);
+
+		expect(JSON.stringify(store.document)).toBe(scene);
+		expect(JSON.stringify([...store.selectedPlacementIds])).toBe(sceneSelection);
+		expect(JSON.stringify(store.cameraSelection)).toBe(cameraSelection);
+		expect(store.cameraFocusVersion).toBe(cameraFocus);
+	});
+
 	it('an invalid release after a valid preview restores the baseline exactly', () => {
 		const context = makeStore();
 		const { store } = context;

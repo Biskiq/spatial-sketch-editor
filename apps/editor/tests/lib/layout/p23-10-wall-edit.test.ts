@@ -472,6 +472,71 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 		});
 	});
 
+	it('routes every geometry operation through the reconciled portal gate', () => {
+		// Two Rooms share `w2`; a door on `w1` relates both Rooms but is
+		// physically adjacent to one. Endpoint-valid, topology-valid — only the
+		// reconciled late gate can reject it. Every geometry operation must stop
+		// there, so none can reach acceptance through a precision-only path.
+		//
+		// `room-3` is physically disjoint, so the rectangle operation cannot stop
+		// at its own shared-boundary ambiguity gate first and has to reach the
+		// reconciled seam like the rest.
+		const portalInvalid = (): LayoutDocumentWallFirst => {
+			const document = twoRoomDocument();
+			document.junctions.push(
+				{ id: 'P', point: [20, 0] },
+				{ id: 'Q', point: [24, 0] },
+				{ id: 'R', point: [24, 3] },
+				{ id: 'S', point: [20, 3] }
+			);
+			document.walls.push(
+				{ id: 'wb1', startJunctionId: 'P', endJunctionId: 'Q', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wb2', startJunctionId: 'Q', endJunctionId: 'R', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wb3', startJunctionId: 'R', endJunctionId: 'S', role: 'boundary', thickness: 0.2, height: 3 },
+				{ id: 'wb4', startJunctionId: 'S', endJunctionId: 'P', role: 'boundary', thickness: 0.2, height: 3 }
+			);
+			document.rooms.push({
+				id: 'room-3',
+				name: 'Room 3',
+				boundary: ['wb1', 'wb2', 'wb3', 'wb4'].map((wallId) => ({
+					wallId,
+					direction: 'forward' as const
+				})),
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			});
+			document.openings = [{
+				id: 'door',
+				wallId: 'w1',
+				kind: 'door',
+				offset: 1,
+				width: 1,
+				height: 2,
+				sillHeight: 0,
+				profile: 'rectangular',
+				connectsRoomIds: ['room', 'room-2']
+			}];
+			return document;
+		};
+		const plans = [
+			planExactJunctionMove(portalInvalid(), 'A', [-1, 0]),
+			planRigidWallMove(portalInvalid(), 'w4', [-1, 0]),
+			planExactWallLength(portalInvalid(), { wallId: 'w1', length: 3, fixed: 'start' }),
+			planExactWallAngle(portalInvalid(), { wallId: 'w1', angle: Math.atan2(0.5, 4), fixed: 'start' }),
+			planExactRectangleDimensions(portalInvalid(), 'room-3', 5, 3, {
+				anchorJunctionId: 'P',
+				widthWallId: 'wb1'
+			}),
+			planWallSubdivision(portalInvalid(), 'w1', 2, allocator)
+		];
+		for (const plan of plans) {
+			expect(plan).toMatchObject({
+				kind: 'rejected',
+				rejection: { code: 'portal_relation_invalid' }
+			});
+		}
+	});
+
 	it('forwards the canonical rejection code and issues instead of a UI string', () => {
 		const invalid = squareDocument();
 		// The Room boundary references a Wall that does not exist: the canonical

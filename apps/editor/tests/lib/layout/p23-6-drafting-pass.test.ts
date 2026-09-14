@@ -293,6 +293,36 @@ describe('P23.6 junction handles and selection', () => {
 		).toHaveLength(1);
 	});
 
+	it('renders one handle for a Junction shared by two incident Walls', () => {
+		// P23.10 — a degree-2 Junction is ONE canonical record, so the endpoint
+		// handle is drawn once and hit once, even though both Walls name it.
+		const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)], 'boundary');
+		const document = commitChain(first, [p(4, 0), p(4, 2)], 'boundary');
+		const shared = document.walls[0]!.endJunctionId;
+		expect(document.walls[1]!.startJunctionId).toBe(shared);
+		expect(document.junctions.filter((junction) => junction.id === shared)).toHaveLength(1);
+
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'wall-chain');
+		const junctions = document.junctions.map((junction) => ({
+			id: junction.id,
+			point: [...junction.point] as [number, number]
+		}));
+		const handles = junctionHandles(
+			buildPlanInteractionProjection(state, [], model, emptyContext({ junctions }))
+		);
+		expect(handles).toHaveLength(document.junctions.length);
+		expect(
+			handles.filter(
+				(primitive) =>
+					primitive.kind === 'circle' &&
+					primitive.hit?.kind === 'junction' &&
+					primitive.hit.junctionId === shared
+			)
+		).toHaveLength(1);
+	});
+
 	it('hides Junction handles below the Plan scale floor', () => {
 		const { model, junctions } = twoWalls();
 		const state = createLayoutInteractionState();

@@ -37,6 +37,7 @@ import {
 import {
 	createLayoutInteractionState,
 	reconcileLayoutSelection,
+	selectLayoutJunction,
 	selectLayoutPhysicalWall
 } from '$lib/editor/layout/layout-interaction';
 import { resolvePlanHit } from '$lib/editor/layout/plan-hit';
@@ -297,6 +298,31 @@ describe('P23.10 Add junction here — canonical subdivision through one adapter
 			kind: 'physicalWall',
 			wallId: 'w1'
 		});
+	});
+
+	it('undo clears a selection on the Junction the split created, and redo never invents one', () => {
+		const { store, layoutPreview } = makeStore();
+		const interaction = createLayoutInteractionState();
+		expect(addJunction(layoutPreview, store, 2.5).kind).toBe('committed');
+
+		selectLayoutJunction(interaction, 'w1-split:junction');
+		expect(
+			reconcileLayoutSelection(interaction.selection, wallFirstDocument(layoutPreview) as never)
+		).toEqual({ kind: 'junction', junctionId: 'w1-split:junction' });
+
+		expect(store.undo()).toBe(true);
+		const afterUndo = wallFirstDocument(layoutPreview);
+		expect(afterUndo.junctions.some((junction) => junction.id === 'w1-split:junction')).toBe(false);
+		// Reconciliation is the editor's own authority: the dangling ID is
+		// dropped, never remapped onto a nearest survivor.
+		interaction.selection = reconcileLayoutSelection(interaction.selection, afterUndo as never);
+		expect(interaction.selection).toEqual({ kind: 'none' });
+
+		expect(store.redo()).toBe(true);
+		expect(wallFirstDocument(layoutPreview).junctions.map((junction) => junction.id)).toContain(
+			'w1-split:junction'
+		);
+		expect(interaction.selection).toEqual({ kind: 'none' });
 	});
 
 	it('derives the retained and new hierarchy rows from the canonical document', () => {
