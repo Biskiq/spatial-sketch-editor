@@ -282,6 +282,11 @@ function cancelEdit(context: Context): void {
 	context.snapshot = null;
 }
 
+/** Scene Plan → Camera Plan: the hidden Scene owner loses viewport authority. */
+function deactivateScenePlan(context: Context): void {
+	if (context.interaction.architectureEdit || context.snapshot) cancelEdit(context);
+}
+
 // ---------------------------------------------------------------------------
 // Gesture lifecycle
 // ---------------------------------------------------------------------------
@@ -387,6 +392,29 @@ describe('P23.10 gesture — Junction move/endpoint reshape', () => {
 		cancelEdit(toolSwitch);
 		expect(JSON.stringify(live(toolSwitch))).toBe(beforeSwitch);
 		expect(toolSwitch.store.canUndo).toBe(false);
+	});
+
+	it('Scene Plan losing active authority cancels a valid preview to its exact baseline', () => {
+		const context = makeStore();
+		const { store } = context;
+		const before = JSON.stringify(live(context));
+		let active = true;
+
+		expect(startJunctionEdit(context, 'A')).toBe(true);
+		expect(moveEdit(context, [-2, 0]).success).toBe(true);
+		expect(JSON.stringify(live(context))).not.toBe(before);
+		expect(store.isDocumentUndoBlocked).toBe(true);
+
+		// The shared Plan view remains `plan`; only the Scene workspace's
+		// authority changes when Camera Plan becomes active.
+		active = false;
+		if (!active) deactivateScenePlan(context);
+
+		expect(JSON.stringify(live(context))).toBe(before);
+		expect(context.snapshot).toBeNull();
+		expect(context.interaction.architectureEdit).toBeNull();
+		expect(store.isDocumentUndoBlocked).toBe(false);
+		expect(store.canUndo).toBe(false);
 	});
 });
 
@@ -515,6 +543,14 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 		const body = viewport.slice(cancel, viewport.indexOf('function onLostPointerCapture'));
 		expect(body).toContain('finishArchitectureEditGesture(pointerId);');
 		expect(body).not.toMatch(/architectureEditSnapshot = null;/);
+	});
+
+	it('cancels direct architecture edits when the Scene Plan loses active authority', () => {
+		const effect = viewport.indexOf('if (!active) {');
+		expect(effect).toBeGreaterThan(-1);
+		const body = viewport.slice(effect, effect + 700);
+		expect(body).toContain('interaction.architectureEdit || architectureEditSnapshot');
+		expect(body).toContain('cancelArchitectureEditGesture();');
 	});
 
 	it('freezes every baseline Junction coordinate into the gesture', () => {

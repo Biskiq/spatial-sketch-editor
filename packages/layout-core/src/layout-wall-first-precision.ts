@@ -716,7 +716,11 @@ function finalizeWallGeometryCandidate(options: {
 	if (!preStructural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${preStructural.issues[0]?.message ?? 'unknown issue'}`, undefined, preStructural.issues);
 	}
-	const preTopology = validateWallFirstTopology(preStructural.document);
+	// Geometry edits own the stable Opening-set rejection contract below. The
+	// topology helper still validates the same canonical rules, but must defer
+	// translating Opening-set issues or every non-height Opening failure would
+	// be consumed as `topology_invalid` before the explicit gate can classify it.
+	const preTopology = validateWallFirstTopology(preStructural.document, { openingSet: 'defer' });
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -769,7 +773,7 @@ function finalizeWallGeometryCandidate(options: {
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = validateWallFirstTopology(structural.document);
+	const topologyIssue = validateWallFirstTopology(structural.document, { openingSet: 'defer' });
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -781,7 +785,12 @@ function finalizeWallGeometryCandidate(options: {
 	const setIssues = validateWallFirstOpeningSet(structural.document);
 	if (setIssues.length > 0) {
 		const first = setIssues[0]!;
-		return reject('opening_set_invalid', first.message, [first.wallId, first.openingId], setIssues);
+		return reject(
+			first.code === 'opening_exceeds_wall_height' ? 'wall_height_below_opening' : 'opening_set_invalid',
+			first.message,
+			[first.wallId, first.openingId],
+			setIssues
+		);
 	}
 	const relationIssues = validateWallFirstPortalRelations(structural.document);
 	if (relationIssues.length > 0) {
@@ -903,8 +912,18 @@ function assertWallGeometryRoomIdentityPreserved(
  * issue. Shared by the P23.1 precision planners (via `finalizeCandidate`) and
  * the P23.6a Room-move planner — never copied.
  */
+export type WallFirstTopologyOptions = {
+	/**
+	 * Keep the Opening-set validator canonical, but let a caller that owns a
+	 * later stable Opening rejection gate defer its translation. The default
+	 * preserves the historical topology-gate contract.
+	 */
+	openingSet?: 'translate' | 'defer';
+};
+
 export function validateWallFirstTopology(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	options: WallFirstTopologyOptions = {}
 ): LayoutGeometryIssue | undefined {
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {
@@ -981,29 +1000,31 @@ export function validateWallFirstTopology(
 		if (previousEnd !== firstStart) return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
 	}
 
-	// Whole-hosting-Wall opening set: ONE canonical validator shared with the
-	// P23.3 opening create/edit/drag/resize paths
-	// (`layout-opening-set.ts`). Do not duplicate fit/overlap/vertical checks
-	// here — this gate only translates the first canonical issue.
-	const openingIssue = validateWallFirstOpeningSet(document)[0];
-	if (openingIssue) {
-		// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
-		// Wall-height edit can report it as `wall_height_below_opening` instead of
-		// a generic topology failure. The canonical Opening validator owns the
-		// rule; this branch only translates its issue.
-		if (openingIssue.code === 'opening_exceeds_wall_height') {
-			return {
-				path: `walls.${openingIssue.wallId}.height`,
-				code: 'wall_height_below_opening',
-				message: openingIssue.message,
-				targetId: openingIssue.wallId
-			};
+	if (options.openingSet !== 'defer') {
+		// Whole-hosting-Wall opening set: ONE canonical validator shared with the
+		// P23.3 opening create/edit/drag/resize paths (`layout-opening-set.ts`).
+		// Do not duplicate fit/overlap/vertical checks here — this gate only
+		// translates the first canonical issue.
+		const openingIssue = validateWallFirstOpeningSet(document)[0];
+		if (openingIssue) {
+			// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
+			// Wall-height edit can report it as `wall_height_below_opening` instead of
+			// a generic topology failure. The canonical Opening validator owns the
+			// rule; this branch only translates its issue.
+			if (openingIssue.code === 'opening_exceeds_wall_height') {
+				return {
+					path: `walls.${openingIssue.wallId}.height`,
+					code: 'wall_height_below_opening',
+					message: openingIssue.message,
+					targetId: openingIssue.wallId
+				};
+			}
+			return topologyFailure(
+				openingIssue.openingId,
+				openingIssue.wallId,
+				openingIssue.message
+			);
 		}
-		return topologyFailure(
-			openingIssue.openingId,
-			openingIssue.wallId,
-			openingIssue.message
-		);
 	}
 	return undefined;
 }

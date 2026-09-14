@@ -980,7 +980,16 @@ const interactionProjection = $derived(
 		void active;
 		void interaction.planViewMode;
 		void interaction.tool;
-		if (!active && stagingGesture) cancelStagingGesture();
+		if (!active) {
+			if (stagingGesture) cancelStagingGesture();
+			// Scene Plan stays mounted while Camera Plan owns the viewport. Losing
+			// that authority is a direct-edit mode transition even when the shared
+			// Layout/3D mode and tool did not change, so restore the captured
+			// baseline and close the Layout transaction through the canonical path.
+			if (interaction.architectureEdit || architectureEditSnapshot) {
+				cancelArchitectureEditGesture();
+			}
+		}
 		if (!active || interaction.planViewMode !== 'layout' || interaction.tool !== 'select') {
 			sceneBridgeHover = null;
 		}

@@ -210,6 +210,23 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 		expect(baseline.junctions.find((junction) => junction.id === 'C')?.point).toEqual([4, 3]);
 	});
 
+	it('forwards non-height Opening-set failures as opening_set_invalid', () => {
+		const baseline = squareDocument();
+		// Valid on the 4 m baseline Wall; shrinking w1 to 3 m makes the same
+		// authored Opening exceed its host without changing any topology rule.
+		baseline.openings[0]!.offset = 2.5;
+		const result = planExactJunctionMove(baseline, 'B', [3, 0]);
+
+		expect(result).toMatchObject({
+			kind: 'rejected',
+			rejection: { code: 'opening_set_invalid' }
+		});
+		if (result.kind !== 'rejected') return;
+		expect(result.rejection.issues).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: 'opening_exceeds_wall' })])
+		);
+	});
+
 	it('rejects when an existing portal relation stops matching physical adjacency', () => {
 		// Two Rooms share `w2`. A door hosted by `w1` (adjacent to ONE Room)
 		// that relates both Rooms is endpoint-valid but physically nonadjacent —
