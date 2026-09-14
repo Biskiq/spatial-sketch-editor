@@ -1,12 +1,13 @@
 # P23 remaining roadmap — credible wall-first architectural Plan editor
 
-**Status:** proposed umbrella reconciliation for owner review; no remaining child
-slice is implementation-ready.
+**Status:** active umbrella reconciliation. P23.10 is delivered through PR #49;
+P23.11–P23.16 remain prerequisite/final-gate work and are not implementation-ready
+until their child plans are reconciled against the landed baseline.
 
 **Parent:** [P23 — Layout Depth umbrella](2026-09-07-P23-layout-depth-minimum-build.md)
 
-**Baseline:** reconciliation landed on `main` at `c401e2f` (P23.6e merged
-through PR #47; independent wall-engine fixes merged through PR #48).
+**Baseline:** `main` at `ca66be80` after PR #50 (`10156009`, projected Wall-endpoint
+noding hardening) and PR #49 (P23.10 direct Wall/Junction editing).
 
 **Authority:** this document supersedes the previous remaining-scope, ordering,
 deferral and closeout-readiness statements in the P23 umbrella and the former
@@ -29,6 +30,9 @@ geometry/selection/history system.
 ## Proposed remaining slices
 
 ### P23.10 — Direct Wall and Junction editing
+
+**Status:** delivered through PR #49 on 2026-09-14. Retained here as the landed
+prerequisite contract for P23.11–P23.16.
 
 - **Purpose / product outcome:** Make the canonical architecture feel directly
   editable: a creator can manipulate the Wall or Junction they selected instead
@@ -75,10 +79,10 @@ geometry/selection/history system.
   reject clearly rather than flatten or silently miscompile. Legacy Room-owned
   curve editing is not in scope; retained legacy data receives only the existing
   internal-dependency load/render smoke at P23.16.
-- **Major dependencies:** P23.10 gesture lifecycle and canonical direct selection;
-  landed curve evaluation/sampling evidence; P23.2 snap
-  queries, P23.3 Openings, P23.8 Room identity/reconciliation, canonical compiler
-  and mesh adapters.
+- **Major dependencies:** Landed P23.10 gesture lifecycle and canonical direct
+  selection; landed curve evaluation/sampling evidence; P23.2 snap queries,
+  P23.3 Openings, P23.8 Room identity/reconciliation, canonical compiler and mesh
+  adapters.
 - **GitHub issues absorbed or explicitly deferred:** Uses #6's commit-versus-render
   failure class to define canonical curved-Wall validation. It does not absorb or
   expand the issue's legacy Room-owned editing surface into a P23 product
@@ -107,34 +111,62 @@ geometry/selection/history system.
 
 - **Purpose / product outcome:** Let creators recognize and retrieve architecture
   without reading raw internal IDs, while preserving exact canonical identity.
-- **Scope:** A single display-identity contract across Plan, Navigator, search and
-  Inspector: authored names where product-useful (Rooms already; Walls and
-  Openings gain bounded optional naming), stable compact references for unnamed
-  Walls/Openings/Junctions, raw canonical IDs available as secondary/debug detail,
-  and deterministic rename/split/Undo/Redo behavior. Compact references are never
-  document-order ordinals. The future child plan must choose either persisted
-  presentation metadata or a deterministic derivative of canonical IDs.
-  Junctions receive references, not mandatory authored names.
+- **Current repository fact / starting point:** canonical Room naming is already
+  complete enough to reuse, not redesign. `LayoutWallFirstRoom.name` is persisted,
+  P23.6d `planRoomMetadataUpdate` owns the mutation, and the selected canonical
+  Room Inspector already exposes an editable **Name** field through the guarded
+  Layout transaction path. Canonical `LayoutWall`, `LayoutWallOpening` and
+  `LayoutJunction` currently have no `name` field. P23.12 must therefore preserve
+  the existing Room rename path rather than create a second one, while adding only
+  the missing Wall/Opening naming capability and reference presentation.
+- **Scope:** Define one display-identity contract consumed by Plan, Navigator,
+  search and Inspector. Rooms keep their existing authored `name`. Walls and
+  Openings gain bounded optional authored naming as Layout metadata, with one
+  canonical metadata planner/adapter/transaction path and editable **Name** fields
+  in the selected Wall/Opening Inspector panels. Junctions do **not** gain authored
+  names in the P23 minimum; they receive stable compact references only. Unnamed
+  Walls/Openings/Junctions receive stable compact references, raw canonical IDs
+  remain available as secondary/debug detail, and rename/split/Undo/Redo behavior
+  is deterministic. The future child plan must choose the stable compact-reference
+  mechanism (persisted presentation metadata or a deterministic collision-safe
+  derivative of canonical IDs); references are never document-order ordinals.
+- **Presentation contract:** authored name is the primary human label where one
+  exists; the stable compact reference remains available as an unambiguous
+  secondary identity. Unnamed architecture uses the compact reference as the
+  primary label. Search indexes authored names, compact references and raw
+  canonical IDs. Navigator/search/Plan are consumers of this identity contract,
+  not rename authorities; the bounded P23 minimum keeps rename mutation in the
+  canonical Inspector instead of adding inline Navigator editing or a second
+  context-menu mutation path. P23.13 owns final Plan label placement/collision;
+  P23.14 owns final shell/Navigator density and styling.
 - **Major dependencies:** P23.6d Room metadata; merged P23.6e relationship-aware
-  Navigator/search; P23.10 subdivision semantics; P23.11 final Wall vocabulary.
+  Navigator/search; landed P23.10 subdivision semantics; P23.11 final Wall
+  vocabulary.
 - **GitHub issues absorbed or explicitly deferred:** No current issue fully owns
-  this gap. Resolves P23.6e's documented unavailable short-reference gate.
+  this gap. Resolves P23.6e's documented unavailable short-reference gate and the
+  real-browser raw-ID legibility problem it leaves in the 268 px Navigator rail.
   Explicitly defers a general tagging/taxonomy system and building/storey/zone IA.
 - **Key architecture invariants:** Display name/reference is never canonical
   identity or connectivity; canonical IDs remain the only identity/connectivity
   authority. Compact references never depend on document order. Whether persisted
   presentation metadata or ID-derived, they remain stable and collision-safe;
   naming is Layout metadata only; rename is one deterministic Layout transaction;
+  the existing Room rename path remains the only Room-name mutation authority;
   Room identity remains reconciliation-owned.
 - **Clear non-goals:** Renumbering canonical IDs, document-order display ordinals,
-  order-derived identity, naming every Junction, aliases across documents, BIM
-  classification, tags, localization infrastructure, hierarchy ownership changes.
+  order-derived identity, mandatory or authored Junction naming, a second Room
+  naming field/path, inline Navigator rename as a competing mutation authority,
+  aliases across documents, BIM classification, tags, localization infrastructure,
+  or hierarchy ownership changes.
 - **Exit criteria:** Every Wall, Opening, Junction and Room has a concise,
-  accessible, unambiguous label everywhere it appears; names and references are
-  searchable and stable across reorder, deletion, insertion, split, Save/Load and
-  Undo/Redo; renaming never changes topology, selection identity or Scene/Camera;
-  the child plan explicitly ratifies persisted-metadata or canonical-ID-derived
-  reference semantics before implementation.
+  accessible, unambiguous label everywhere it appears. Room rename continues to
+  work through its existing Inspector/metadata path; selected Walls and Openings
+  expose bounded optional Name editing through canonical Layout transactions;
+  Junctions use compact references without gaining authored-name semantics. Names
+  and references are searchable and stable across reorder, deletion, insertion,
+  split, Save/Load and Undo/Redo; renaming never changes topology, selection
+  identity or Scene/Camera; the child plan explicitly ratifies the compact-
+  reference mechanism before implementation.
 - **Ordering rationale:** Identity presentation depends on final split/curve
   semantics and should land before visual and shell polish so those surfaces do
   not polish raw-ID placeholders.
@@ -153,9 +185,12 @@ geometry/selection/history system.
   feedback, label collision/suppression, empty and dense-plan states, and
   representative-theme/zoom review. Opening symbols represent only authored
   semantics; they never infer swing, handing, inward/outward direction, leaf type
-  or other absent architectural meaning.
-- **Major dependencies:** P23.10 direct manipulation, P23.11 curves, P23.12 final
-  labels, landed P23.6 drafting primitives, P23.2 snaps and P23.3 Openings.
+  or other absent architectural meaning. All architecture labels consume the
+  P23.12 display-identity contract rather than formatting raw canonical IDs in the
+  renderer.
+- **Major dependencies:** Landed P23.10 direct manipulation, P23.11 curves,
+  P23.12 final labels, landed P23.6 drafting primitives, P23.2 snaps and P23.3
+  Openings.
 - **GitHub issues absorbed or explicitly deferred:** No open issue wholly owns
   this pass. #34 is grouped with P23.14 because it is shell/status accessibility,
   not Plan geometry. Explicitly defers print sheets, scale bars, dimension chains,
@@ -189,27 +224,44 @@ geometry/selection/history system.
   action and destructive-action placement, focus continuity between Plan,
   Navigator and Inspector, accessible tablists/context menus/Document and Project
   Row popovers, semantic color-token cleanup, and status-hint contrast. Preserve
-  P23.6e page/history/reveal state and canonical selection routing.
+  P23.6e page/history/reveal state and canonical selection routing. Reconcile the
+  real-browser P23.6e density issue exposed by expanded Room Wall rows: today each
+  Wall can render a non-selectable `Ends <junction> · <junction>` relation row.
+  After P23.12 compact references land, evaluate the final rail at its canonical
+  268 px width with the **preferred default of removing that `Ends` row from
+  normal Room Wall disclosures**. A Wall disclosure should normally show hosted
+  Openings; `Boundary Junctions (n)` remains the Room-context Junction inventory
+  and the global Junctions page remains the architecture-wide index. Do not solve
+  the density/affordance problem by making `Ends` another Junction-selection
+  surface. If final usability review retains the relation, it must use compact
+  references and unmistakable non-entity metadata styling.
 - **Major dependencies:** Merged P23.6e Navigator; P23.12 naming; P23.13 final
   Plan affordances; existing shell and Inspector contracts.
 - **GitHub issues absorbed or explicitly deferred:** Absorbs #34, #35, #38, #39,
-  #40 and #41. Defers #32 and #36 (3D utility popovers), #37 (Material Choice,
-  aligned with later material work), and #28 (multi-select). #31, #33 and #44
-  remain unrelated to this slice.
+  #40 and #41. Also owns the bounded P23.6e Navigator-density follow-up above;
+  this is presentation/IA polish, not a new topology or selection feature. Defers
+  #32 and #36 (3D utility popovers), #37 (Material Choice, aligned with later
+  material work), and #28 (multi-select). #31, #33 and #44 remain unrelated to
+  this slice.
 - **Key architecture invariants:** One canonical Layout selection and shared
   history; Navigator state remains UI-only and never mutates documents; shell
-  domains/views do not leak; accessibility work changes semantics/focus, not
-  Camera graph/motion, persistence or authored ownership; visitor bundles import
-  no editor shell code.
+  domains/views do not leak; a Junction may have several factual relationship
+  representations but Wall accordions do not become a second Junction-selection
+  authority; accessibility work changes semantics/focus, not Camera graph/motion,
+  persistence or authored ownership; visitor bundles import no editor shell code.
 - **Clear non-goals:** Wholesale shell redesign, asset-library redesign, Camera
   sidebar redesign, 3D control-popover remediation, material authoring, auth or
-  persistence changes, multi-selection, new editor-local entity truth.
+  persistence changes, multi-selection, new editor-local entity truth, or a
+  topology-explorer tree that explodes every Wall/Junction relationship.
 - **Exit criteria:** The core Build loop is usable by pointer and keyboard;
   relevant popovers/menus/tabs enter, navigate, dismiss and restore focus
   correctly; P23.6e page/search/filter/reveal state survives shell changes;
-  Inspector fields/actions are comprehensible and use canonical tokens; a focused
-  Scene Plan accessibility pass has no known blocking violations in the included
-  surfaces.
+  Inspector fields/actions are comprehensible and use the P23.12 identity
+  contract; the 268 px Navigator remains calm with real names/references and does
+  not present inert endpoint metadata as a competing selectable entity surface;
+  `Boundary Junctions` and the global Junctions page remain the Junction inventory
+  surfaces; a focused Scene Plan accessibility pass has no known blocking
+  violations in the included surfaces.
 - **Ordering rationale:** It follows final Plan and naming decisions so shell
   polish can integrate the real end-state controls once; it remains separate from
   Plan rendering and domain semantics to keep the change bounded.
@@ -262,7 +314,7 @@ geometry/selection/history system.
   Save/Load/import/export, Preview, immutable Publish/cold visitor, current
   internal legacy-dependency smoke, route/bundle isolation, documentation and
   tracker closeout.
-- **Major dependencies:** Every landed P23 slice plus P23.10–P23.15. P23.16 is
+- **Major dependencies:** Every landed P23 slice plus P23.11–P23.15. P23.16 is
   dependency-last.
 - **GitHub issues absorbed or explicitly deferred:** Closes only issues assigned
   to completed prerequisite slices. Restates #26 and #28 as post-P23; restates
@@ -292,8 +344,7 @@ geometry/selection/history system.
 Delivered work remains in its landed dependency order. The remaining sequence is:
 
 ```text
-P23.6e merged baseline
-  → P23.10 Direct Wall and Junction editing
+P23.10 merged baseline
   → P23.11 Canonical curved Walls and render-safe validation
   → P23.12 Architectural names and stable display identity
   → P23.13 Architectural Plan drafting finish
@@ -302,8 +353,8 @@ P23.6e merged baseline
   → P23.16 Final whole-product integration and P23 closeout gate
 ```
 
-P23.12 may be researched while P23.10/P23.11 proceed, and issue-only shell work
-inside P23.14 may be prepared in parallel, but acceptance follows the order above.
+P23.12 may be researched while P23.11 proceeds, and issue-only shell work inside
+P23.14 may be prepared in parallel, but acceptance follows the order above.
 P23.16 is both numerically and dependency-last, eliminating the former backward
 jump from P23.15 to P23.7.
 
@@ -314,7 +365,7 @@ jump from P23.15 to P23.7.
 | #6 — Bézier commit/render validation gap | include in P23 | P23.11 adopts the validation failure class for canonical curved Walls only; legacy Room-owned curves remain internal-dependency smoke, not a product editing contract. |
 | #26 — retire legacy Room-owned Layout stack | defer post-P23 | Explicit architecture-debt cleanup after P23; closeout performs smoke only and adds no compatibility behavior. |
 | #28 — Layout Room multi-select | defer post-P23 | A credible minimum needs reliable single-target editing, not selection sets; connected-group Room move already covers the contiguous-unit case. |
-| #29 — direct Wall/Junction manipulation + vertex insertion | include in P23 | P23.10; this is now required for the revised good-enough editor outcome. |
+| #29 — direct Wall/Junction manipulation + vertex insertion | delivered | P23.10 landed through PR #49; retained here as a prerequisite contract rather than remaining implementation scope. |
 | #31 — Camera Connections list semantics | unrelated | Camera-only presentation debt; no change to the P23 Layout workflow or Camera authority. |
 | #32 — accessible 3D Grid popover | defer post-P23 | Valid debt, but the control is a 3D utility outside the 2D Build accessibility boundary. |
 | #33 — texture-library filtered empty state | unrelated | Asset-library/P24 supply presentation, not P23 architecture. |
@@ -338,9 +389,10 @@ repository; they therefore have no disposition.
    conflicts with the revised good-enough 2D editor outcome.
 2. P23.6a–P23.6e are not future branch work. They are merged on `main` through
    PRs #27, #30, #45, #46 and #47; PR #48 separately landed the wall-engine
-   fixes that had been split from P23.6e.
+   fixes that had been split from P23.6e. P23.10 subsequently landed through
+   PR #49, with PR #50's endpoint-noding hardening already in the merged baseline.
 3. The former P23.7, now P23.16, is not implementation-ready and is not the next
-   implementation slice. It is blocked by P23.10–P23.15 and must own integration/
+   implementation slice. It is blocked by P23.11–P23.15 and must own integration/
    acceptance only.
 4. Wall-first 3D junction resolution is new architecture, not closeout work. It
    moves to P23.15 so P23.16 can remain a true gate.
@@ -360,25 +412,33 @@ repository; they therefore have no disposition.
    and imports #6's validation failure class only; it does not promote legacy
    Room-owned curve editing into the P23 product contract.
 9. P23.6e documented stable short architecture references as unavailable and
-   fell back to formatted raw IDs. P23.12 now closes that product-facing identity
-   gap without changing canonical IDs. Its future child plan must choose persisted
-   presentation metadata or a deterministic canonical-ID derivative; document-
-   order ordinals are prohibited.
-10. `Shell-scene-workspaces.md` still says Room drag makes Room-local Scene
+   fell back to formatted raw IDs. Real-browser review now confirms that fallback
+   is materially noisy in the canonical 268 px rail: for example, the intentional
+   non-selectable Wall relation row renders long endpoint labels as
+   `Ends Junction Chain … · Junction Chain …`. P23.12 closes the identity/reference
+   gap; P23.14 owns the final density/affordance decision and must not turn that
+   relation into a second Junction-selection surface.
+10. Canonical Room naming is already authored **and exposed**: current
+    `LayoutWallFirstRoom.name` is persisted, P23.6d owns `planRoomMetadataUpdate`,
+    and `EditorInspector.svelte` renders the selected Room's editable Name field.
+    By contrast, current `LayoutWall`, `LayoutWallOpening` and `LayoutJunction`
+    have no `name` field. P23.12 therefore reuses Room naming, adds bounded
+    optional naming only for Walls/Openings, and keeps Junctions reference-only.
+11. `Shell-scene-workspaces.md` still says Room drag makes Room-local Scene
     content follow. That is compatibility-path prose; canonical wall-first Scene
     and Camera placement is world-local and must not move implicitly.
-11. Canonical wall-first 3D Wall/Opening picking/highlighting remains a real
+12. Canonical wall-first 3D Wall/Opening picking/highlighting remains a real
     deferral. Junction-correct rendering in P23.15 must not be misreported as
     completion of 3D picking.
 
 ## Recommended names and numbers
 
-Use P23.10–P23.15 for the new prerequisite slices and renumber the former P23.7
-as P23.16, the final gate:
+Use P23.10–P23.15 for the prerequisite slices and P23.16 as the final gate.
+P23.10 is now landed; the remaining implementation sequence begins at P23.11:
 
 | Number | Recommended name |
 |---|---|
-| P23.10 | Direct Wall and Junction editing |
+| P23.10 | Direct Wall and Junction editing — delivered |
 | P23.11 | Canonical curved Walls and render-safe validation |
 | P23.12 | Architectural names and stable display identity |
 | P23.13 | Architectural Plan drafting finish |
