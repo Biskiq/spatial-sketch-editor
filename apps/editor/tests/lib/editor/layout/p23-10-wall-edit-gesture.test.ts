@@ -10,6 +10,9 @@
  * the baseline installed.
  */
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
@@ -167,6 +170,11 @@ function junctionGesture(context: Context, junctionId: string): LayoutArchitectu
 		junctionId,
 		startPointer: [...junctionPoint(context, junctionId)] as LayoutVec2,
 		baselinePoint: junctionPoint(context, junctionId),
+		// Every baseline Junction coordinate (the viewport freezes them at
+		// pointer-down from the live document).
+		junctionExcludePoints: document.junctions.map(
+			(junction) => [...junction.point] as LayoutVec2
+		),
 		affectedWallIds,
 		candidatePoint: junctionPoint(context, junctionId),
 		valid: false
@@ -461,6 +469,67 @@ describe('P23.10 gesture — rigid Wall translation', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Viewport wiring contract
+// ---------------------------------------------------------------------------
+
+const LIB_DIR = fileURLToPath(new URL('../../../../src/lib', import.meta.url));
+
+function readLibSource(relativePath: string): string {
+	return fs.readFileSync(path.join(LIB_DIR, relativePath), 'utf8');
+}
+
+describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
+	const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+
+	it('refuses a non-primary contact before it can change the selection', () => {
+		// A second finger used to reach `selectLayoutJunction`/'physicalWall'
+		// before the gesture start refused the contact, so the selection moved
+		// out from under the live gesture.
+		const guard = viewport.indexOf("if (!event.isPrimary || interaction.architectureEdit) return;");
+		expect(guard).toBeGreaterThan(-1);
+		const junctionSelect = viewport.indexOf('selectLayoutJunction(interaction, junctionId);', guard);
+		const wallSelect = viewport.indexOf('selectLayoutPhysicalWall(interaction, target.wallId);', guard);
+		expect(junctionSelect).toBeGreaterThan(guard);
+		expect(wallSelect).toBeGreaterThan(guard);
+	});
+
+	it('commits a direct edit only for the pointer that opened it', () => {
+		expect(viewport).toContain('if (interaction.architectureEdit?.pointerId === event.pointerId) {');
+	});
+
+	it('cancels the gesture when the pointer capture is lost', () => {
+		expect(viewport).toContain('onlostpointercapture={onLostPointerCapture}');
+		const handler = viewport.indexOf('function onLostPointerCapture(event: PointerEvent)');
+		expect(handler).toBeGreaterThan(-1);
+		const body = viewport.slice(handler, handler + 400);
+		expect(body).toContain('interaction.architectureEdit?.pointerId !== event.pointerId');
+		expect(body).toContain('cancelArchitectureEditGesture();');
+	});
+
+	it('finishes the snapshot-only cancel through the common cleanup', () => {
+		// A tool/mode change clears the interaction gesture first; the viewport
+		// must still release the capture, cancel the transaction and drop the
+		// snap feedback through the one cleanup path.
+		const cancel = viewport.indexOf('function cancelArchitectureEditGesture()');
+		expect(cancel).toBeGreaterThan(-1);
+		const body = viewport.slice(cancel, viewport.indexOf('function onLostPointerCapture'));
+		expect(body).toContain('finishArchitectureEditGesture(pointerId);');
+		expect(body).not.toMatch(/architectureEditSnapshot = null;/);
+	});
+
+	it('freezes every baseline Junction coordinate into the gesture', () => {
+		expect(viewport).toContain('junctionExcludePoints: architectureEditJunctionExcludePoints()');
+		expect(viewport).toContain('layout.junctions.map((junction) => [');
+	});
+
+	it('gates the transient intent through the pure helper, not an inline derivation', () => {
+		expect(viewport).toContain(
+			'architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)'
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Snapping contract
 // ---------------------------------------------------------------------------
 
@@ -480,10 +549,17 @@ describe('P23.10 snapping — baseline geometry, frozen exclusions, family filte
 				snapOwnerKey({ kind: 'opening', id: 'door' })
 			].sort()
 		);
-		// A Junction move excludes its own baseline point; a rigid Wall move
-		// excludes none, so its grab point may still align to a stationary
-		// Junction (one translation merges no endpoint IDs).
-		expect(architectureEditExcludePoints(gesture)).toEqual([[0, 0]]);
+		// A Junction move excludes EVERY baseline Junction coordinate — not just
+		// its own — because a projective family resolves onto a Junction's exact
+		// coordinate wherever that Junction sits on another Wall's span. A rigid
+		// Wall move excludes none, so its grab point may still align to a
+		// stationary Junction (one translation merges no endpoint IDs).
+		expect(architectureEditExcludePoints(gesture)).toEqual([
+			[0, 0],
+			[4, 0],
+			[4, 3],
+			[0, 3]
+		]);
 		expect(
 			architectureEditExcludePoints({
 				...gesture,
@@ -529,6 +605,27 @@ describe('P23.10 snapping — baseline geometry, frozen exclusions, family filte
 				candidateDelta: [0, 0]
 			} as LayoutArchitectureEditGesture)
 		).toBeUndefined();
+	});
+
+	it('drops a projective family that resolves onto an existing Junction', () => {
+		// Regression: removing the `'junction'` family alone left `'wall-span'`
+		// (and `'wall-intersection'`) free to resolve onto the coordinate of a
+		// Junction sitting on another Wall's span, so the highest-ranked
+		// survivor was a position the planner must reject. The point exclusion
+		// is what actually closes it.
+		const candidates: SnapCandidate[] = [
+			{ point: [2.1, 0], kind: 'wall-span', sourceId: 'w2', distance: 0.02 },
+			{ point: [2, 0], kind: 'grid', sourceId: 'grid', distance: 0.12 }
+		];
+		expect(
+			pickSnapWinner(candidates, { allowedKinds: ['wall-span', 'grid'] })
+		).toMatchObject({ kind: 'wall-span', point: [2.1, 0] });
+		expect(
+			pickSnapWinner(candidates, {
+				allowedKinds: ['wall-span', 'grid'],
+				excludePoints: [[2.1, 0]]
+			})
+		).toMatchObject({ kind: 'grid', point: [2, 0] });
 	});
 
 	it('lets a lower-ranked family win once the junction family is removed', () => {

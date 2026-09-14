@@ -364,6 +364,14 @@ export type LayoutArchitectureEditGesture =
 			startPointer: LayoutVec2;
 			/** Canonical Junction point at pointer-down (grab offset preserved). */
 			baselinePoint: LayoutVec2;
+			/**
+			 * Every baseline Junction coordinate (this one included), frozen at
+			 * pointer-down. A candidate landing exactly on any of them would merge
+			 * Junctions, which this slice does not do — and filtering the
+			 * `'junction'` family is not sufficient, because a projective family
+			 * (`'wall-span'`, `'wall-intersection'`) can land on the same coordinate.
+			 */
+			junctionExcludePoints: readonly LayoutVec2[];
 			/** Every Wall incident to the Junction; frozen from the baseline. */
 			affectedWallIds: readonly string[];
 			/** Current raw candidate point (baseline + total displacement). */
@@ -401,6 +409,9 @@ export type LayoutArchitectureEditGesture =
  * delta to two existing endpoint IDs and merges nothing.
  */
 export const LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS: readonly SnapFeatureKind[] = [
+	// NOTE: removing the family is necessary but not sufficient — see
+	// `architectureEditExcludePoints`, which also excludes every baseline
+	// Junction coordinate for a Junction move.
 	'wall-intersection',
 	'wall-midpoint',
 	'opening-edge',
@@ -506,15 +517,25 @@ export function architectureEditExclusionOwners(
 
 /**
  * P23.10 — exact world points that must never win their own snap: a Junction
- * move excludes its own baseline point (the candidate is a *derived* position,
- * so the exclusion stays the immutable authored one). A rigid Wall move
- * excludes nothing by point — its captured grab point may legitimately align
- * with a stationary Junction because one translation merges no endpoint IDs.
+ * move excludes **every baseline Junction coordinate**, not just its own.
+ *
+ * Removing the `'junction'` family is not enough: `'wall-span'` and
+ * `'wall-intersection'` candidates are projective, so where a Junction sits on
+ * another Wall's span they resolve to exactly that Junction's coordinate and
+ * would be selected as the highest-ranked survivor — a position the planner
+ * must then reject, because Junction merging is out of scope. The exclusion is
+ * by point, so every family is covered.
+ *
+ * A rigid Wall move excludes nothing by point — its captured grab point may
+ * legitimately align with a stationary Junction because one translation merges
+ * no endpoint IDs.
  */
 export function architectureEditExcludePoints(
 	gesture: LayoutArchitectureEditGesture
 ): LayoutVec2[] {
-	return gesture.kind === 'junction-move' ? [[gesture.baselinePoint[0], gesture.baselinePoint[1]]] : [];
+	return gesture.kind === 'junction-move'
+		? gesture.junctionExcludePoints.map((point) => [point[0], point[1]] as LayoutVec2)
+		: [];
 }
 
 /**

@@ -743,6 +743,44 @@ describe('P23.10 review — direct-edit family filters inside resolveLayoutSnap'
 		expect(filtered.candidate.point).toEqual([2, 0]);
 	});
 
+	it('excludes a Junction coordinate a projective family would otherwise land on', () => {
+		// Regression (direct Junction edit): the family filter alone still leaves
+		// `'wall-span'` free to project onto the exact coordinate of a Junction
+		// that sits on another Wall's span — a position the planner rejects,
+		// because Junction merging is out of scope.
+		const geometry = emptyGeometry();
+		// One 6 m Wall plus a stationary Junction on its exact midpoint, so the
+		// forbidden coordinate is reachable through the midpoint, span-start/end
+		// and grid families as well as the filtered `'junction'` one.
+		geometry.queries.spans.push(wallSpan('boundary', [0, 0], [6, 0]));
+		geometry.queries.points.push(vertexAt(3, 0, 'wall-b'));
+
+		const unfiltered = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 });
+		expect(unfiltered.kind).toBe('snap');
+		if (unfiltered.kind !== 'snap') return;
+		expect(unfiltered.candidate).toMatchObject({ kind: 'junction', point: [3, 0] });
+
+		const familyFiltered = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 }, {
+			allowedKinds: [...LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS]
+		});
+		expect(familyFiltered.kind).toBe('snap');
+		if (familyFiltered.kind !== 'snap') return;
+		// Still the forbidden coordinate, now through `'wall-midpoint'`.
+		expect(familyFiltered.candidate.point).toEqual([3, 0]);
+		expect(familyFiltered.candidate.kind).not.toBe('junction');
+
+		const pointExcluded = resolveLayoutSnap(geometry, [3.02, 0.01], { pixelsPerMeter: 50 }, {
+			allowedKinds: [...LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS],
+			excludePoints: [[3, 0]]
+		});
+		expect(pointExcluded.kind).toBe('snap');
+		if (pointExcluded.kind !== 'snap') return;
+		// The occupied coordinate is unreachable; the ordinary projection wins.
+		expect(pointExcluded.candidate.kind).toBe('wall-span');
+		expect(pointExcluded.candidate.point[0]).toBeCloseTo(3.02, 9);
+		expect(pointExcluded.candidate.point[1]).toBe(0);
+	});
+
 	it('excludes both endpoints of a moving Wall so a farther stationary Junction wins', () => {
 		// A rigid Wall move keeps the junction family (one delta merges no IDs)
 		// but must never snap back onto its own translation group: one owner key
