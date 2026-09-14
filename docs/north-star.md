@@ -211,12 +211,15 @@ first-class Junctions/Walls, Wall-hosted Openings, `boundary | partition` Wall
 roles, and persistent semantic Rooms reconciled over derived boundary-Wall
 faces. Layout objects remain document-level/project-world-local. Exact
 Wall/Junction dimensions, deterministic snapping/alignment, continuous
-Wall/Partition sketching, duplicate/repeat, useful presets, and truthful Plan
-visuals build on that foundation. Later depth (stairs, railings, richer
-parametric components, curved-wall topology/tooling, profile/extrude, sweep,
-revolve, roof helpers, general constraint sophistication) stays in the North
-Star as demand/evidence-gated follow-ups, not prerequisites for the first
-Experience proof.
+Wall/Partition sketching, duplicate/repeat, useful presets, direct
+Wall/Junction manipulation, a bounded canonical curved-Wall workflow with
+render-safe validation, stable architectural display identity, and truthful
+Plan/3D presentation build on that foundation before P23 closeout. Broader
+depth (stairs, railings, richer parametric components, arbitrary/general
+curve intersection and noding, tangent-constraint networks, NURBS,
+offset/trim/fillet-style CAD curve operations, profile/extrude, sweep, revolve,
+roof helpers, general constraint sophistication) stays demand/evidence-gated
+and is not a prerequisite for the first Experience proof.
 
 ### P23 `LayoutRoom` is the current enclosed-region minimum, not the universal spatial abstraction
 
