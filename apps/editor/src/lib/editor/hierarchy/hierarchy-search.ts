@@ -303,12 +303,6 @@ export function buildHierarchySearchProjection(
 	for (const roomId of directRoomIds) relatedRoomIds.delete(roomId);
 	for (const objectId of directObjectIds) relatedObjectIds.delete(objectId);
 	for (const clusterId of directClusterIds) relatedClusterIds.delete(clusterId);
-	// Entities nested under an included cluster row are represented there.
-	for (const clusterId of new Set([...directClusterIds, ...relatedClusterIds])) {
-		for (const memberId of index.sceneClusterById.get(clusterId)?.memberIds ?? []) {
-			relatedEntityIds.delete(memberId);
-		}
-	}
 	for (const entityId of directEntityIds) relatedEntityIds.delete(entityId);
 
 	const blocks: HierarchySearchBlock[] = [];
@@ -469,28 +463,13 @@ export function buildHierarchySearchProjection(
 
 	// ---- Scene Content ----
 	{
-		const includedClusterIds = new Set([...directClusterIds, ...relatedClusterIds]);
 		const clusterRow = (clusterId: string): HierarchyProjectedRow | null => {
-			const cluster = index.sceneClusterById.get(clusterId);
-			if (!cluster) return null;
+			if (!index.sceneClusterById.has(clusterId)) return null;
 			const rowKey = `search:scene:cluster:${clusterId}`;
-			const members: HierarchyProjectedRow[] = cluster.memberIds
-				.map((memberId) =>
-					hierarchySceneEntityRow(
-						index,
-						`${rowKey}:entity:${memberId}`,
-						memberId,
-						index.sceneEntityById.has(memberId)
-							? undefined
-							: { label: formatPlacementLabel(memberId) }
-					)
-				)
-				.filter((row): row is HierarchyProjectedRow => row !== null);
-			return hierarchyClusterRow(index, rowKey, clusterId, {
-				disclosureKey: rowKey,
-				defaultOpen: true,
-				children: members
-			});
+			// Search relations stay flat. The page projection owns nested Scene
+			// clusters; putting members here would expose siblings through a
+			// second hop from a member query.
+			return hierarchyClusterRow(index, rowKey, clusterId);
 		};
 
 		const directRows: HierarchyProjectedRow[] = [];
@@ -500,10 +479,6 @@ export function buildHierarchySearchProjection(
 		}
 		for (const entity of index.orderedSceneEntities) {
 			if (!directEntities.has(entity.entityId)) continue;
-			// A member already shown under a direct cluster row is not repeated.
-			if (index.clusterByMemberId.has(entity.entityId) && directClusters.has(index.clusterByMemberId.get(entity.entityId)!)) {
-				continue;
-			}
 			pushUniqueRow(
 				directRows,
 				hierarchySceneEntityRow(index, `search:scene:entity:${entity.entityId}`, entity.entityId)

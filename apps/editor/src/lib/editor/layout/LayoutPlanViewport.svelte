@@ -192,7 +192,8 @@
 		onDeselect,
 		store,
 		contextMenu = null,
-		hierarchyEmphasis = null
+		hierarchyEmphasis = null,
+		hierarchySceneEmphasis = null
 	}: {
 		model: LayoutPreviewModel;
 		preview: LayoutPreviewState;
@@ -342,6 +343,15 @@
 	// pointer is over). Derived from the same resolveArrangeHit call the click
 	// path uses; it never writes selection or document state.
 	let arrangeHover = $state<{ owner: 'layout-object' | 'scene'; id: string } | null>(null);
+	// A local Plan hover owns Scene footprint presentation while it exists. The
+	// Navigator emphasis is only the fallback, so a layout-object Arrange hit
+	// also clears any stale Scene emphasis instead of highlighting two targets.
+	const effectiveSceneHover = $derived.by(() => {
+		if (sceneBridgeHover !== null) return sceneBridgeHover.entityId;
+		if (arrangeHover !== null) return arrangeHover.owner === 'scene' ? arrangeHover.id : null;
+		if (layoutHover !== null) return null;
+		return hierarchySceneEmphasis;
+	});
 	// P3.3 — live yaw readout while a Scene rotate gesture is in progress
 	// (same feedback language as room rotation).
 	let stagingYawFeedback = $state<number | null>(null);
@@ -414,13 +424,12 @@
 		if (!scene || !sceneRooms) return undefined;
 		void interaction.planViewMode;
 		void selectedPlacementIds.length;
-		void sceneBridgeHover?.entityId;
-		void hierarchySceneEmphasis;
+		void effectiveSceneHover;
 		return buildPlanSceneFootprintProjection(scene, sceneRooms, {
 			getEffectiveScale: getEffectiveSceneScale,
 			presentationForEntity: (entityId) => {
 				if (interaction.planViewMode === 'staging' && selectedPlacementIds.includes(entityId)) return 'selected';
-				if (sceneBridgeHover?.entityId === entityId || hierarchySceneEmphasis === entityId) {
+				if (effectiveSceneHover === entityId) {
 					return 'bridge-hover';
 				}
 				return interaction.planViewMode === 'staging' ? 'active' : 'passive';

@@ -844,7 +844,7 @@ describe('P23.6e slice 1 — Scene Content page', () => {
 		});
 	});
 
-	it('lets default-open Scene clusters collapse on both page and search surfaces', () => {
+	it('keeps page Scene clusters collapsible while search relations stay flat', () => {
 		const page = project({ kind: 'sceneContent' });
 		const pageCluster = rowByKey(page.rows, 'scene:cluster:cluster-1');
 		const search = buildHierarchySearchProjection(fixtureIndex(), 'Statue Group');
@@ -856,23 +856,18 @@ describe('P23.6e slice 1 — Scene Content page', () => {
 		const store = new HierarchyNavigatorStore();
 
 		expect(pageCluster.defaultOpen).toBe(true);
-		expect(searchCluster.defaultOpen).toBe(true);
+		expect(searchCluster.defaultOpen).toBeUndefined();
+		expect(searchCluster.disclosureKey).toBeUndefined();
+		expect(searchCluster.children).toBeUndefined();
 		expect(boundary.alwaysOpen).toBe(true);
 		expect(hierarchyDisclosureOpen(store.current, pageCluster)).toBe(true);
-		expect(hierarchyDisclosureOpen(store.current, searchCluster)).toBe(true);
 
 		store.toggleDisclosure(
 			pageCluster.disclosureKey!,
 			pageCluster.defaultOpen === true,
 			pageCluster.alwaysOpen === true
 		);
-		store.toggleDisclosure(
-			searchCluster.disclosureKey!,
-			searchCluster.defaultOpen === true,
-			searchCluster.alwaysOpen === true
-		);
 		expect(hierarchyDisclosureOpen(store.current, pageCluster)).toBe(false);
-		expect(hierarchyDisclosureOpen(store.current, searchCluster)).toBe(false);
 
 		store.toggleDisclosure(
 			boundary.disclosureKey!,
@@ -1301,18 +1296,38 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		const byCluster = search('Statue Group');
 		const directClusters = groupRows(byCluster, 'scene', 'direct');
 		expect(directClusters.map((row) => row.canonicalId)).toEqual(['cluster-1']);
-		expect(directClusters[0]!.children!.map((row) => row.canonicalId)).toEqual(['entity-a1']);
-		expect(groupRows(byCluster, 'scene', 'related')).toEqual([]);
+		expect(directClusters[0]!.children).toBeUndefined();
+		expect(groupRows(byCluster, 'scene', 'related').map((row) => row.canonicalId)).toEqual([
+			'entity-a1'
+		]);
 
 		const byMember = search('Sculpture A');
 		expect(groupRows(byMember, 'scene', 'direct').map((row) => row.canonicalId)).toEqual([
 			'entity-a1'
 		]);
-		// The member's cluster is related and holds the member row; the member is
-		// not duplicated as a second related row.
+		// The member's cluster is related but remains a terminal search row; its
+		// members are not expanded through a second hop.
 		const relatedClusters = groupRows(byMember, 'scene', 'related');
 		expect(relatedClusters.map((row) => row.canonicalId)).toEqual(['cluster-1']);
-		expect(relatedClusters[0]!.children!.map((row) => row.canonicalId)).toEqual(['entity-a1']);
+		expect(relatedClusters[0]!.children).toBeUndefined();
+
+		// A member query never exposes its cluster siblings through the related
+		// cluster row.
+		const scene = fixtureScene();
+		scene.entities.push(sceneEntity('entity-a2', 'Sculpture B', 'room-a'));
+		scene.entities.push(sceneEntity('entity-a3', 'Sculpture C', 'room-a'));
+		scene.clusters![0]!.memberIds.push('entity-a2', 'entity-a3');
+		const bounded = buildHierarchySearchProjection(
+			buildHierarchySourceIndex({ layout: fixtureLayout(), scene }),
+			'Sculpture A'
+		);
+		expect(groupRows(bounded, 'scene', 'direct').map((row) => row.canonicalId)).toEqual(['entity-a1']);
+		expect(groupRows(bounded, 'scene', 'related').map((row) => row.canonicalId)).toEqual(['cluster-1']);
+		expect(
+			walk(bounded.blocks.flatMap((block) => block.groups.flatMap((group) => group.rows))).map(
+				(row) => row.canonicalId
+			)
+		).not.toEqual(expect.arrayContaining(['entity-a2', 'entity-a3']));
 	});
 
 	it('stops at Scene content unless Scene itself matched', () => {
@@ -1419,7 +1434,7 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		// The search registry is usable by the same reveal/exclusion helpers.
 		expect(
 			findHierarchyRepresentation(projection, sceneEntityKey('entity-a1'))!.ancestorDisclosureKeys
-		).toEqual(['search:scene:cluster:cluster-1']);
+		).toEqual([]);
 		expect(
 			explainHierarchyExclusion({
 				page: { kind: 'root' },

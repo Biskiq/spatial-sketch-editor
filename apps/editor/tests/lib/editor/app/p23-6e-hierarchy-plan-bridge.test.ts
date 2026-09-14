@@ -198,7 +198,11 @@ describe('P23.6e slice 7 — Plan bridge wiring (source contracts)', () => {
 		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 		expect(viewport).toContain('hierarchyEmphasis?: PlanHitIdentity | null;');
 		expect(viewport).toContain('hierarchySceneEmphasis?: string | null;');
-		expect(viewport).toContain('hierarchySceneEmphasis === entityId');
+		expect(viewport).toContain('const effectiveSceneHover = $derived.by(');
+		expect(viewport).toContain('if (arrangeHover !== null)');
+		expect(viewport).toContain('if (layoutHover !== null) return null;');
+		expect(viewport).toContain('if (effectiveSceneHover === entityId)');
+		expect(viewport).not.toContain('sceneBridgeHover?.entityId === entityId || hierarchySceneEmphasis === entityId');
 		expect(viewport).toContain('layoutHover ?? hierarchyEmphasis ?? undefined');
 		// Exactly one place builds the interaction projection from hover input.
 		expect(viewport.match(/buildPlanInteractionProjection\(/g)).toHaveLength(1);
