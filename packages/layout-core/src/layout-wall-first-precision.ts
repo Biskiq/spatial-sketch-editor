@@ -35,14 +35,21 @@ import {
 	type RoomIdAllocator
 } from './layout-room-reconciliation';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
-import { cloneWallCenterline } from './layout-wall-centerline';
+import { cloneWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
 import {
 	planWallSplit,
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
 import { coincidesAsJunction } from './layout-junction-identity';
-import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import {
+	classifyWallIntersection,
+	sampledWallSelfIntersects,
+	sampledWallsCross,
+	type SampledTopologyWall,
+	type TopologySegment
+} from './layout-wall-topology';
+import type { CurveSample } from './layout-geometry-curve';
 import type { LayoutObject, LayoutVec2 } from './layout-types';
 import type { Vec3 } from './types';
 
@@ -978,6 +985,63 @@ export function validateWallFirstTopology(
 		}
 	}
 
+	// P23.11 — curve-level crossing gate. The chord classifier above is exact
+	// for straight Walls and stays authoritative for a straight/straight pair;
+	// a curved Wall needs its sampled centerline, because a bow can cross a
+	// neighbour (or itself) while its endpoint chord stays clear of everything.
+	// A straight Wall contributes just its two chord endpoints — densifying it
+	// would be waste, since a straight polyline IS its chord — so a document
+	// with no curves pays nothing here beyond one tiny record per Wall.
+	const sampledWalls = new Map<string, SampledTopologyWall>();
+	for (const wall of document.walls) {
+		const segment = wallSegments.get(wall.id);
+		if (!segment) continue;
+		let samples: readonly CurveSample[];
+		if (wall.centerline.kind === 'line') {
+			samples = chordPolyline(segment);
+		} else {
+			const endpoints = wallEndpoints(document, wall);
+			const sampled = endpoints
+				? wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
+				: undefined;
+			if (!sampled) continue;
+			samples = sampled.samples;
+		}
+		sampledWalls.set(wall.id, {
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId,
+			samples
+		});
+	}
+	for (const wall of document.walls) {
+		if (wall.centerline.kind === 'line') continue;
+		const sampled = sampledWalls.get(wall.id);
+		if (sampled && sampledWallSelfIntersects(sampled)) {
+			return topologyFailure(wall.id, wall.id, `Wall '${wall.id}' centerline intersects itself`);
+		}
+	}
+	for (let first = 0; first < document.walls.length; first += 1) {
+		for (let second = first + 1; second < document.walls.length; second += 1) {
+			const a = document.walls[first]!;
+			const b = document.walls[second]!;
+			// Two straight Walls are already fully decided above.
+			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
+			const sampledA = sampledWalls.get(a.id);
+			const sampledB = sampledWalls.get(b.id);
+			if (!sampledA || !sampledB) continue;
+			const shared = sharedJunctionIds(a, b)[0];
+			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+			return topologyFailure(
+				a.id,
+				b.id,
+				shared
+					? `Walls '${a.id}' and '${b.id}' cross away from their shared Junction`
+					: `Walls '${a.id}' and '${b.id}' have unsupported centerline crossing`
+			);
+		}
+	}
+
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	for (const room of document.rooms) {
 		if (room.boundary.length < 3) {
@@ -1141,6 +1205,19 @@ function incidentWallIds(document: LayoutDocumentWallFirst, junctionId: string):
 	return document.walls
 		.filter((wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId)
 		.map((wall) => wall.id);
+}
+
+/**
+ * P23.11 — a straight Wall's centerline as a two-point polyline. Densifying a
+ * line adds no information for crossing tests, so the chord endpoints are the
+ * whole representation (and the shape `sampledWallsCross` already walks for
+ * curved Walls).
+ */
+function chordPolyline(segment: TopologySegment): CurveSample[] {
+	return [
+		{ point: segment.start, distance: 0, tangent: [1, 0], normal: [0, 1], t: 0 },
+		{ point: segment.end, distance: distance(segment.start, segment.end), tangent: [1, 0], normal: [0, 1], t: 1 }
+	];
 }
 
 function sharedJunctionIds(a: LayoutWall, b: LayoutWall): string[] {

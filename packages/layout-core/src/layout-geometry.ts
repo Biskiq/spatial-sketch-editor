@@ -224,10 +224,17 @@ export function compileWallFirstLayoutGeometry(
 			// unchanged (no second sampling path).
 			const reversed = ref.direction === 'reverse';
 			segments.push(
-				wallCenterlineSegment(wall, reversed ? end : start, reversed ? start : end)
+				wallCenterlineSegment(
+					wall,
+					reversed ? end : start,
+					reversed ? start : end,
+					reversed ? 'reverse' : 'forward'
+				)
 			);
 			if (!arcLengthByWallId.has(wall.id)) {
-				const sampled = wallCenterlineSamples(wall, start, end);
+				// Mirroring always measures along the CANONICAL traversal: an
+				// Opening offset is authored from the Wall's own start Junction.
+				const sampled = wallCenterlineSamples(wall, start, end, 'forward');
 				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
 			}
 		}
@@ -327,7 +334,7 @@ function compileWallFirstWithPhysicalWalls(
 		if (!start || !end) continue;
 		// P23.11 — the canonical centerline adapter maps every Wall (line or
 		// auto-bezier) onto the existing curve kernel; no second sampling path.
-		const segment = wallCenterlineSegment(wall, start, end);
+		const segment = wallCenterlineSegment(wall, start, end, 'forward');
 		let sampled: SampledSegment;
 		try {
 			sampled = sampleSegment(segment);

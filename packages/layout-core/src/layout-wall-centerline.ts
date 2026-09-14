@@ -53,6 +53,12 @@ export function translateWallCenterline(
 	};
 }
 
+/**
+ * Which way a consumer walks a Wall: `forward` follows
+ * `startJunctionId → endJunctionId`, `reverse` walks it back.
+ */
+export type WallCenterlineTraversal = 'forward' | 'reverse';
+
 /** The canonical Wall centerline mapped onto the curve-kernel segment shape. */
 export type WallCenterlineSegment =
 	| { id: string; kind: 'line'; start: LayoutVec2; end: LayoutVec2 }
@@ -72,26 +78,37 @@ export type WallCenterlineSegment =
  * `auto-bezier` segment carrying the Wall's ordered interior anchors. This is
  * the ONE adapter — no compiler/topology/Opening code builds Wall curve
  * segments by hand.
+ *
+ * `traversal` is required rather than defaulted: a reverse walk that forgot it
+ * would silently trace a different curve, which is exactly the class of bug
+ * this seam exists to prevent.
  */
 export function wallCenterlineSegment(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
-	endPoint: LayoutVec2
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
 ): WallCenterlineSegment {
+	const start = [startPoint[0], startPoint[1]] as LayoutVec2;
+	const end = [endPoint[0], endPoint[1]] as LayoutVec2;
 	if (wall.centerline.kind === 'line') {
-		return {
-			id: wall.id,
-			kind: 'line',
-			start: [startPoint[0], startPoint[1]] as LayoutVec2,
-			end: [endPoint[0], endPoint[1]] as LayoutVec2
-		};
+		return { id: wall.id, kind: 'line', start, end };
 	}
+	// A reverse traversal walks the SAME curve from the end Junction back to
+	// the start, so the interior anchors must be reversed too. Swapping only
+	// the endpoints would chain the anchors in their persisted order and trace
+	// a different curve — with two or more anchors a self-swallowing loop whose
+	// arc length, area and samples are all wrong.
+	const orderedAnchors =
+		traversal === 'reverse'
+			? [...wall.centerline.interiorAnchors].reverse()
+			: wall.centerline.interiorAnchors;
 	return {
 		id: wall.id,
 		kind: 'auto-bezier',
-		start: [startPoint[0], startPoint[1]] as LayoutVec2,
-		end: [endPoint[0], endPoint[1]] as LayoutVec2,
-		interiorAnchors: wall.centerline.interiorAnchors.map((anchor) => ({
+		start,
+		end,
+		interiorAnchors: orderedAnchors.map((anchor) => ({
 			id: anchor.id,
 			point: [anchor.point[0], anchor.point[1]] as LayoutVec2
 		}))
@@ -105,10 +122,11 @@ export function wallCenterlineSegment(
 export function wallCenterlineSamples(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,
-	endPoint: LayoutVec2
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
 ): SampledSegment | undefined {
 	try {
-		return sampleSegment(wallCenterlineSegment(wall, startPoint, endPoint));
+		return sampleSegment(wallCenterlineSegment(wall, startPoint, endPoint, traversal));
 	} catch {
 		return undefined;
 	}

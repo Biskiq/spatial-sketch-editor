@@ -174,7 +174,7 @@ function compiledWall(document: LayoutDocumentWallFirst, wallId: string) {
 function adapterLength(document: LayoutDocumentWallFirst, wall: LayoutWall): number {
 	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)!.point;
 	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)!.point;
-	return sampleSegment(wallCenterlineSegment(wall, start, end)).length;
+	return sampleSegment(wallCenterlineSegment(wall, start, end, 'forward')).length;
 }
 
 describe('P23.11 slice 2 — straight-Wall compilation is unchanged', () => {
@@ -199,7 +199,7 @@ describe('P23.11 slice 2 — straight-Wall compilation is unchanged', () => {
 		const document = straightWallDocument();
 		const wall = document.walls[0]!;
 		const { wall: compiled } = compiledWall(document, 'wall-a');
-		const reference = wallCenterlineSamples(wall, [0, 0], [CHORD, 0])!;
+		const reference = wallCenterlineSamples(wall, [0, 0], [CHORD, 0], 'forward')!;
 		// One sampling path: the compiled samples ARE the adapter's samples.
 		expect(compiled.samples).toEqual(reference.samples);
 		expect(compiled.length).toBe(reference.length);
@@ -218,7 +218,9 @@ describe('P23.11 slice 2 — curved Walls compile through the same kernel', () =
 		// Samples leave the chord line: the curve reaches its z = 2 peak.
 		const peak = Math.max(...compiled.samples.map((sample) => sample.point[1]));
 		expect(peak).toBeGreaterThan(1.5);
-		expect(compiled.samples).toEqual(wallCenterlineSamples(wall, [0, 0], [CHORD, 0])!.samples);
+		expect(compiled.samples).toEqual(
+			wallCenterlineSamples(wall, [0, 0], [CHORD, 0], 'forward')!.samples
+		);
 		for (let index = 1; index < compiled.samples.length; index += 1) {
 			expect(compiled.samples[index]!.distance).toBeGreaterThan(
 				compiled.samples[index - 1]!.distance
@@ -323,7 +325,7 @@ describe('P23.11 slice 2 — the adapter is the only Wall curve seam', () => {
 			const start = document.junctions.find((j) => j.id === wall.startJunctionId)!.point;
 			const end = document.junctions.find((j) => j.id === wall.endJunctionId)!.point;
 			const { wall: compiled } = compiledWall(document, 'wall-a');
-			const sampled = sampleSegment(wallCenterlineSegment(wall, start, end));
+			const sampled = sampleSegment(wallCenterlineSegment(wall, start, end, 'forward'));
 			expect(compiled.length).toBe(sampled.length);
 			expect(compiled.samples).toEqual(sampled.samples);
 		}

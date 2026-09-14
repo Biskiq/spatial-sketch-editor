@@ -81,7 +81,7 @@ export function wallFirstWallSpan(
 		(junction) => junction.id === wall.endJunctionId
 	)?.point;
 	if (!start || !end) return undefined;
-	const sampled = wallCenterlineSamples(wall, start, end);
+	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
 	if (!sampled) return undefined;
 	return { start, end, length: sampled.length };
 }
