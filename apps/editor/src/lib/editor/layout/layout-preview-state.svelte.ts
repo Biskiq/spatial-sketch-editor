@@ -132,8 +132,8 @@ export type LayoutPreviewState = {
 	wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
 	/**
 	 * Derived cache: one prebuilt render-only `IndexedWallMesh` per canonical
-	 * physical Wall, keyed by `wallId` (P23.9). Render-only until the
-	 * P23.6/P23.7 `wallId` selection cutover: these meshes are never entered
+	 * physical Wall, keyed by `wallId` (P23.9). Render-only for interaction;
+	 * canonical wall-first 3D picking is post-P23. These meshes are never entered
 	 * into `layout3dPickIndexByRoom` (no fake `roomId` ownership for picking).
 	 * Same lifecycle as `wallMeshesByRoom`, never in the undo snapshot.
 	 */

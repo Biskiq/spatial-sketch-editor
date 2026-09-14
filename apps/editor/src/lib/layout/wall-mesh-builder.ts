@@ -202,11 +202,10 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
  * opening reveals, band splits and winding guards reuse the room path
  * verbatim by passing the Wall as its own neighbor with trivial corners.
  *
- * Render-only until the P23.6/P23.7 `wallId` selection cutover: callers must
- * NOT enter the result into room-keyed pick-index maps (its refs namespace
- * to the Wall ID, and there is no Room ownership to claim). Corner seams
- * between connected Walls are butt joints here; mitered room-corner polish
- * stays with P23.6.
+ * Render-only for interaction: canonical wall-first 3D picking/highlighting is
+ * explicitly deferred post-P23. Callers must NOT enter the result into
+ * room-keyed pick-index maps (its refs namespace to the Wall ID, and there is
+ * no Room ownership to claim). Junction-correct seams are proposed for P23.15.
  *
  * Vertical extent comes from `wall.height` (P23.6H): `floorElevation` …
  * `floorElevation + wall.height`, so a partial-height Wall ends at its authored

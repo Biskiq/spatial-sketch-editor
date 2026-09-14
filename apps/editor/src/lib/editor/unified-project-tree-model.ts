@@ -340,7 +340,7 @@ export function buildUnifiedProjectTreeModel(input: {
 	// P23.6b — legacy compatibility projection: the Room-nested shape stays
 	// exactly as today (objects/clusters/entities nest inside `UnifiedTreeRoom`)
 	// and the canonical document-level roots stay **empty** so nothing renders
-	// twice. Legacy hierarchy migration is P23.7's decision.
+	// twice. Legacy hierarchy retirement is tracked post-P23 by Issue #26.
 	return {
 		rooms,
 		wallFirstRooms: [],

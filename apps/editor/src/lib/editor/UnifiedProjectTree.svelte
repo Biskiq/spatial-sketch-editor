@@ -4,7 +4,7 @@
 	// P23.6e routing: canonical wall-first documents render the
 	// relationship-aware page Navigator (`hierarchy/HierarchyNavigator.svelte`).
 	// The legacy Room-nested accordion below stays quarantined for legacy
-	// Room-owned documents until P23.7 decides its retirement: Rooms come from
+	// Room-owned documents until post-P23 Issue #26 retires them: Rooms come from
 	// the layout (document order, via the pure model) and clusters/entities nest
 	// under their explicit roomId. Camera content lives in `CameraSidebar` only —
 	// the Scene hierarchy carries no Camera Flow. Selection is domain-driven:
@@ -581,7 +581,7 @@
 	{#if wallFirstLayout}
 		<!-- P23.6e — canonical wall-first documents render the relationship-aware
 		     page Navigator; legacy Room-owned documents keep the quarantined
-		     accordion below until P23.7 decides its retirement. -->
+		     accordion below until post-P23 Issue #26 retires it. -->
 		<HierarchyNavigator
 			{store}
 			{layoutPreview}

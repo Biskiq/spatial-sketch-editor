@@ -1,20 +1,37 @@
-# P23 — Layout Depth: minimum useful Build set
+# P23 — Layout Depth: credible wall-first architectural Plan editor
+
+**Remaining-roadmap authority (2026-09-14):**
+[P23 remaining roadmap reconciliation](2026-09-14-P23-remaining-roadmap-reconciliation.md).
+It supersedes this document's earlier remaining-slice order, deferral boundary
+and closeout-readiness claims. No P23.10–P23.15 child brief exists yet; P23.16 is a
+dependency-last acceptance gate, not the next implementation slice.
 
 **Ratified cross-view direction:** [Unified Plan / 3D authoring addendum](2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md) — read alongside this plan for entity-owned mutations, selection continuity, gesture cancellation and PlanProxy/placement ownership. Existing scope, status and dependency gates remain unchanged.
 
-**Created:** 2026-09-07 · **Status:** approved (tracker authoritative)  
+**Created:** 2026-09-07 · **Status:** approved direction and landed baseline;
+remaining decomposition proposed for owner review (tracker authoritative)
 **Depends on:** P22 complete, including hosted cold-visitor acceptance.  
 **Owner reconciliation ratified:** 2026-09-09.  
 **Evidence basis:** completed `P23-H1`, `P23-H2`, `P23-H3`, `P23-H5`, current Museum Editor code, and the staging wall-first proposal.  
-**Implementation status:** Foundation Gate shipped — P23.0/P23.8 F0 acceptance passed 2026-09-10 and the stage-6 flip (branch `p23-stage6-flip`) enabled wall-first writes; legacy room-owned behavior persists only as the compatibility read path. The Build-set slices below (P23.1 → P23.2 → P23.9 → P23.3 → P23.4/P23.5 → P23.6 → P23.6H → P23.6I → P23.6a → P23.6b → P23.6c → P23.7) are the live implementation order; P23.1 and P23.2 are merged on `main` (PRs #9 and #13); **P23.9 merged via PR #18 (`5f20aaa`)**; **P23.3 merged via PR #19 (`d1705b7`)**; **P23.4 merged via PR #21 (`c6601f2`)**; **P23.5 merged via PR #22 (`75a32ca`)**; **P23.6 merged via PR #23 (`3f6c78d`)**; **P23.6H and P23.6I merged via PR #25 (`746aa16`)** as the single format-5 vertical cutover; **P23.6a implemented on branch `P23.6a`** (see its §Implementation record); **P23.6b implemented on branch `P23.6b`** (ownership-truthful hierarchy + canonical-only Inspector; see its §Implementation record); **P23.6c implemented on branch `p23.6c`** (canonical Wall deletion through the one planner; see its §Implementation record).
+**Implementation status:** P23.0/P23.8 Foundation Gate and P23.1–P23.6e
+are merged on `main`; PR #48 separately merged the wall-engine fixes split from
+P23.6e. Remaining work is the proposed P23.10–P23.15 sequence followed by the
+dependency-last P23.16 closeout gate. See the remaining-roadmap authority above.
 
 This is the reconciled P23 umbrella. The accepted reconciliation — informed by the harvests — supersedes conflicting earlier P23 and North-Star direction. Harvest artifacts remain evidence, not implementation authority.
 
 ## User outcome
 
-A creator can sketch a small architectural layout from explicit Walls, divide it into persistent semantic Rooms, add doors/windows and non-room-bounding Walls, dimension and snap architecture precisely, place reusable architectural objects, and preserve the result through Undo, Save/Load, Preview and Publish.
+A creator can sketch a small architectural layout from explicit Walls, divide
+it into persistent semantic Rooms, add doors/windows and non-room-bounding
+Walls, directly move and reshape canonical Walls/Junctions, author a bounded
+curved-Wall case, recognize architecture by useful names/references, and read
+the result as a credible architectural Plan. The same authored result remains
+coherent through deterministic Undo/Redo, Save/Load, 3D, Preview and Publish.
 
-The minimum is deliberately architectural rather than BIM/CAD-complete. It establishes one durable wall-first spatial model that later Build depth can extend.
+The minimum is deliberately a good-enough 2D architectural editor rather than
+full CAD/BIM. Its final boundary and remaining slices live in the 2026-09-14
+remaining-roadmap reconciliation linked above.
 
 ## Ratified product direction
 
@@ -52,9 +69,16 @@ Core principles:
 
 ## Current implementation versus target
 
-F0 has shipped; wall-first writes are enabled. Legacy Room-owned boundary segments/openings and Room-required Scene/Camera ownership persist only as the compatibility read path for recognized legacy Projects. Current Room frames still resolve legacy Scene/Camera world meaning through explicit trusted context. Existing component/architecture docs that describe those mechanics remain correct **current-behavior documentation for the compatibility read path**.
+F0 and P23.1–P23.6e have shipped on `main`; PR #48 also landed the independent
+wall-engine fixes split from P23.6e. New editor projects boot the canonical
+wall-first Layout plus world-local Scene pair. Legacy Room-owned boundary/
+Opening and Room-local Scene mechanics remain only for named internal dependency
+and read paths pending post-P23 Issue #26; they are not the new-project default
+or a product compatibility promise.
 
-Wall-first authoring is now the current editable state. Legacy compatibility remains separate.
+The remaining product gap is P23.10–P23.15 plus final P23.16 acceptance: direct
+canonical manipulation, bounded canonical curves, architecture identity UX,
+Plan drafting finish, Build-shell finish and junction-correct wall-first 3D.
 
 ## Evidence authority
 
@@ -248,7 +272,7 @@ H3 owns predicate/tolerance policy. H5 must not introduce a second epsilon or ge
 
 # Compatibility and migration contract
 
-Compatibility is part of F0, not a P23.7 afterthought.
+Compatibility is part of F0, not a closeout afterthought.
 
 ## Full Project migration
 
@@ -494,7 +518,10 @@ P23.6 owns the Plan-side Wall-drawing UX: live passive candidate length readout 
 
 Makes `LayoutWall.height` authoritative physical Wall height on the one canonical compiler path (`compileLayoutGeometry()` → compiled vertical sections → editor + visitor mesh), with host-Wall Opening vertical fit and one exact Height operation. Not part of the P23.6 presentation slice; required before P23.6b presents Height.
 
-**Implemented on branch `P23.6-H`** (see the child plan's §Implementation record): `layout-wall-heights.ts` birth/range rule; compiler/physical-Wall bounds + `CompiledPhysicalWall.height`; host-Wall Opening fit in both gates; `planExactWallHeight`; planner-backed Inspector `Height (m)`; and editor/visitor/museum mesh parity including the editor-app `LayoutMuseumShell.svelte` canonical `geometry.walls` path.
+**Merged through PR #25 (`746aa16`)** with P23.6I (see the child plan's
+§Implementation record): authoritative Wall-height birth/validation, compiler/
+mesh propagation, host-Wall Opening fit, exact Inspector editing and editor/
+visitor parity all share the canonical Wall path.
 
 H's `floor.height` birth default, Floor cap, Floor-derived Room/Floor envelope **and pre-H `formatVersion: 4` compatibility** are **superseded before merge by P23.6I** (below): H + I together are the single pre-merge vertical cutover, and `5` is the only recognized wall-first version.
 
@@ -504,43 +531,71 @@ H's `floor.height` birth default, Floor cap, Floor-derived Room/Floor envelope *
 
 Forward amendment to P23.6H, landed on the `P23.6-H` branch before PR #25 merges: retires `floor.height` from the canonical wall-first schema so `LayoutWall.height` is the only authored vertical Wall authority (finite, positive, no storey cap), with the canonical Floor reduced to `{ id, name, elevation }`. Room ceilings become derived flat planes at `max(boundary Wall heights)`; legacy Room-owned documents keep their own Floor-height semantics on the compatibility path and legacy → wall-first migration consumes the legacy storey height once to seed migrated Wall heights. Wall creation is the named `WALL_AUTHORING_DEFAULT_HEIGHT = 3` plus a core topology-derived birth rule, with the editor owning only transient run state. **`5` is the only recognized wall-first version**: the pre-baseline policy refuses the superseded wall-first `4` by name rather than migrating it, and there are no intermediate schema generations; H + I together are that cutover.
 
+**Status:** merged with P23.6H through PR #25 (`746aa16`).
+
 ## P23.6a — Wall-first Room Unit Move
 
 [Child plan](2026-09-12-P23.6a-wall-first-room-unit-move.md)
 
-Rigid X/Z translation of an **isolated** canonical Room boundary graph in Scene → Plan → Layout, preserving `roomId`, Wall/Opening/Junction identity and P23.6I per-Wall heights, with explicit predecessor-Room → candidate-face correspondence through the existing reconciliation engine and zero Room birth/retirement. Shared or externally connected Rooms reject whole-unit movement. Supersedes the earlier `P23.6a` architecture-inspector hierarchy seed, whose scope moved to P23.6b.
+Rigid X/Z translation of the selected Room's **connected Room group** in Scene
+→ Plan → Layout, preserving Room/Wall/Opening/Junction identity and P23.6I
+per-Wall heights. Shared interior Walls move once through the same canonical
+graph; topology, not a selection set, resolves the movable unit. Merged through
+PR #27 (`59b8e81`); Room multi-select remains Issue #28.
 
 ## P23.6b — Architecture Hierarchy + Inspector Reconciliation
 
 [Child plan](2026-09-12-P23.6b-architecture-hierarchy-inspector-reconciliation.md)
 
-Owner-review follow-up before P23.7: an ownership-truthful hierarchy for document-global Walls/Openings/Junctions/Rooms plus document-level LayoutObjects and Scene content (shared Walls never duplicated, subordinate Topology inventory) and a selection-first Architecture Inspector that retires the Inspector-local `precisionTarget` authority. Same `LayoutSelection`/Scene/Camera slots, no second store/path/model. UX/presentation + hierarchy reconciliation, not another geometry migration. (Canonical Wall deletion is the follow-up [P23.6c](2026-09-13-P23.6c-canonical-wall-deletion.md), not this slice.)
+Merged through PR #30 (`28de1e6`): an ownership-truthful hierarchy for
+document-global Walls/Openings/Junctions/Rooms plus document-level LayoutObjects
+and Scene content, and a selection-first Architecture Inspector that retired
+the Inspector-local `precisionTarget`. Same Layout/Scene/Camera selection slots;
+no second store/path/model.
 
 ## P23.6c — Canonical Wall Deletion
 
 [Child plan](2026-09-13-P23.6c-canonical-wall-deletion.md)
 
-Delete one selected canonical Wall through the `planWallRoleChange()` architecture (candidate graph → face extraction → P23.8 Room reconciliation → canonical validation/compiler → one history entry): hosted Openings go atomically, Junction cleanup is scoped to the deleted Wall's own start/end Junctions (an endpoint prunes only when no surviving Wall references it; unrelated orphan Junctions elsewhere are untouched), ambiguous topology rejects, Undo/Redo restores exact IDs, and `Delete`/`Backspace` plus Inspector/hierarchy Delete share the one planner. Recorded from PR #25 review; deliberately after P23.6b and before P23.7, never stuffed into PR #25. **Implemented on branch `p23.6c`** (see the child plan's §Implementation record): `planDeleteWall` in `layout-wall-topology-ops.ts`, the `deleteWallFirstWall` editor adapter, and the four surfaces (viewport Delete/Backspace, both viewport mount sites, Inspector Wall panel, hierarchy wall-row context menu) on the one planner with the fixed post-delete selection-`none` policy. Review blockers closed: junction cleanup is endpoint-scoped (never a document-wide unreferenced-Junction sweep) and the hierarchy Wall context menu obeys the same `isUnifiedTreeRowInteractive` row-authority contract as activation (Camera domain / Plan Arrange expose no menu).
+Delete one selected canonical Wall through the one topology/Room reconciliation/
+validation/history path; hosted Openings go atomically and cleanup is scoped to
+the deleted Wall's own now-unreferenced endpoints. Viewport, Inspector and
+Hierarchy share the planner; successful deletion clears Layout selection.
+Merged through PR #45 (`5657dd0`).
 
 ## P23.6d — Canonical Room Lifecycle Completion
 
 [Child plan](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md)
 
-Closes the remaining wall-first Room authoring debt **before** the final Hierarchy/UI overhaul consumes those capabilities: canonical Room metadata/name editing (`planRoomMetadataUpdate`) and **whole-room demolition** (`planRemoveRoom` — deletes the Room's exclusive boundary Walls as one atomic set over the P23.6c Wall pipeline, so a drawn Room and its enclosure go together and the Room retires through normal P23.8 reconciliation; never a `LayoutRoom` record splice, which would leave the same enclosure intact and violate the Room-identity invariant, and never a neighbour's shared Wall). Restates the existing move/duplicate boundaries as the lifecycle contract. Execution order is dependency-driven, not numeric: 6d precedes the 6e UI overhaul even though the directive historically carried the 6d label. **Implemented on branch `P23.6d`** (see the child plan's §Implementation record): `planRoomMetadataUpdate` + `planRemoveRoom` (+ `roomExclusiveBoundaryWallIds`) in `layout-wall-topology-ops.ts`, the `'room-metadata'`/`'room-remove'` operation vocabulary and editor adapters, and the Inspector Room panel + gated hierarchy Room-row context menu + viewport `Delete`/`Backspace` over a selected Room on the one planner, with operation-specific selection (metadata preserves, removal clears to `none`). P23.6b's "wall-first Room rows bind no context menu" contract is deliberately superseded and its regression updated accordingly.
+Canonical Room metadata/name editing and whole-room demolition through the
+shared Wall-removal/P23.8 reconciliation path; never a Room-record splice and
+never deletion of a neighbour's shared Wall. Inspector, Hierarchy and viewport
+share the planner; metadata preserves selection and removal clears it. Merged
+through PR #46 (`75c370a`).
 
 ## P23.6e — Final product-semantics reconciliation
 
-[Directive](P23.6e-directive.md)
+[Landed plan](2026-09-13-P23.6e-relationship-aware-hierarchy.md) ·
+[directive](P23.6e-directive.md)
 
-The final Hierarchy / product-semantics UI overhaul (formerly recorded under the 6d label): Scene-domain Hierarchy pages, pinned-strip reveal semantics, search/retrieval depth and the Inspector/navigation separation. Not yet planned in detail as an implementation slice; it consumes the completed Room lifecycle from P23.6d and must not invent Room capabilities itself.
+**Status:** merged on `main` through PR #47 (`80ea541`); the independent
+wall-engine split merged through PR #48 (`86027a7`). The landed Scene-domain
+Navigator provides relationship-aware pages, pinned-selection reveal semantics,
+bounded search/retrieval and Inspector/navigation separation without changing
+canonical selection or document ownership.
 
-## P23.7 — Integration, compatibility and closeout
+## P23.16 — Final whole-product integration and P23 closeout gate
 
-[Child plan](2026-09-08-P23.7-integration-closeout.md)
+[Closeout gate](2026-09-08-P23.16-final-whole-product-integration-closeout.md)
 
-Runs last. Proves the complete Build loop, exact IDs/history, old save/publication compatibility, standalone Scene migration rejection/success cases, Scene/Camera exterior placement, Plan/3D parity, Save/Load, Preview and Publish. Accepts the completed Wall/Junction/Opening selection cutover: no stale Room-owned selection/hit path may remain authoritative. Closeout acceptance now also covers the **complete wall-first Room lifecycle** delivered by [P23.6d](2026-09-13-P23.6d-canonical-room-lifecycle-completion.md) — canonical Room metadata/name editing and the guard-railed `planRemoveRoom` retirement through P23.8 reconciliation — plus the final P23.6e Hierarchy/UI overhaul that consumes those capabilities, rather than treating Room rename/metadata as an open deferral and Room removal as unowned smoke.
-
-P23.7 owns acceptance proving the Wall-drawing UX: second-click commits the Wall (no separate Commit button), Escape cancels only the active transient candidate/run, no redundant Commit/Cancel action bar is required, successful commits do not emit noisy implementation-count messages, invalid/rejected operations still surface useful diagnostics, exact selected-Wall Length/Angle edits reuse canonical P23.1 precision/topology/history paths, and Plan UI does not obscure the XZ axis or important viewport affordances.
+**Repositioned and renumbered:** the former P23.7 is now P23.16, the final
+whole-product integration and P23 closeout gate after P23.10–P23.15. It
+verifies the complete Build loop, exact identity/
+history, canonical current-format Save/Load, Preview, Publish/cold visitor,
+internal legacy-dependency smoke and visitor/editor isolation. It owns no new
+geometry, interaction, schema or renderer architecture; junction-correct 3D
+implementation moved to P23.15. The remaining-roadmap reconciliation is the
+authoritative scope.
 
 # Execution order
 
@@ -581,12 +636,29 @@ P23.6d
       ↓
 P23.6e
       ↓
-P23.7
+P23.10 — Direct Wall and Junction editing
+      ↓
+P23.11 — Canonical curved Walls and render-safe validation
+      ↓
+P23.12 — Architectural names and stable display identity
+      ↓
+P23.13 — Architectural Plan drafting finish
+      ↓
+P23.14 — Build shell, Navigator and Inspector finish
+      ↓
+P23.15 — Junction-correct wall-first 3D
+      ↓
+P23.16 — Final whole-product integration and P23 closeout gate
 ```
 
 P23.6H and P23.6I are one pre-merge vertical cutover (`P23.6H + P23.6I →` the single format-5 contract); P23.6I creates no further schema generation, and per the pre-baseline compatibility policy (`docs/north-star.md` → *Development-stage schema compatibility*) the wall-first `4` generation is refused by name rather than migrated.
 
-P23.4/P23.5 may overlap where their concrete dependencies permit. Numeric child IDs preserve planning history; dependency order, not numeric order, governs execution.
+P23.4/P23.5 may overlap where their concrete dependencies permit. P23.12
+research and bounded P23.14 issue work may overlap earlier implementation, but
+their acceptance remains ordered as shown. Numeric child IDs preserve planning
+history and give the remaining work a linear order. The proposed
+remaining-slice purposes, boundaries and gates live in the remaining-roadmap
+reconciliation; implementation-ready child plans do not exist yet.
 
 # Canonical mutation/history contract
 
@@ -658,10 +730,21 @@ Whole P23 closeout additionally proves:
 - add one shared-Wall door → one physical Opening;
 - draw an interior Wall, disable **Defines room boundary** → physical Wall without Room split;
 - exact Wall/Junction dimensions and deterministic snaps;
+- direct canonical Junction move, rigid straight-Wall move, unambiguous Wall
+  reshape and Add Junction subdivision share the exact-edit semantics;
+- one bounded canonical curved-Wall workflow authors, edits, validates and
+  round-trips without flattening or accepted-then-unrenderable geometry;
+- Walls/Openings/Junctions/Rooms have stable, accessible display identity and
+  useful names where authored naming is in scope;
+- representative Plan fixtures read as credible architectural drawings across
+  supported zooms/themes, with clear edit handles and diagnostics;
+- the included Scene Plan shell/Navigator/Inspector keyboard and focus flows pass;
 - Scene object and Camera may exist outside every Room;
 - architecture edits do not move world-local staged content;
 - split/merge preserves H5 identities and exact Undo/Redo;
 - object/opening repeat and isolated Room duplicate behave deterministically;
+- supported wall-first 3D junctions render without gaps/invalid overlaps through
+  the shared editor/visitor geometry path;
 - Plan/3D, Save/Load, Preview and Publish remain coherent;
 - visitor/editor isolation and existing camera route/motion authorities remain intact.
 
@@ -692,13 +775,10 @@ accepted but deliberately unscheduled and owned by no slice yet. They receive a
 P-number, child plan and date only when actually scheduled; nothing is assigned
 here, and no implementation detail is fixed.
 
-- **Curved-wall refinement** (registered 2026-09-11): curved-Wall/Bézier
-  authoring, selection, direct manipulation, topology, snapping and Opening
-  manipulation, plus the fidelity-preserving canonical Wall representation
-  that replaces today's read-only compatibility variant. It must reuse the one
-  canonical `LayoutDocument` → `compileLayoutGeometry()` family and the
-  existing auto-bezier sampling/evaluation machinery, and must never introduce
-  a second curve geometry, snapping, selection or rendering authority.
+- ~~**Curved-wall refinement**~~ — promoted into the revised P23 minimum as
+  proposed **P23.11 — Canonical curved Walls and render-safe validation**. The
+  bounded canonical workflow is now a prerequisite; general curved intersection/
+  noding, NURBS and broader CAD curve operations remain deferred.
 
 - **Canonical wall-first 3D Wall/Opening picking + highlighting** (registered
   2026-09-12, deferred by [P23.6H](2026-09-12-P23.6H-vertical-wall-semantics.md)
@@ -713,7 +793,7 @@ here, and no implementation detail is fixed.
   slice owns it yet. Constraints: it must extend the existing one canonical pick /
   selection path, must not build a second pick path or renderer-local identity, and
   must not be claimed complete merely because Plan selection and hierarchy
-  continuity work. **P23.7 must restate this as an explicit open deferral** and must
+  continuity work. **P23.16 must restate this as an explicit open deferral** and must
   not mark it complete.
 
 - ~~**Bulk "demolish room" multi-Wall cascade**~~ — **closed by
@@ -742,7 +822,7 @@ here, and no implementation detail is fixed.
   Constraint: it is one selection authority per owner/domain — no second selection
   truth. **Not required for "move the whole unit"**: P23.6a amendment A already
   moves a connected Room group from a single pick, so this capability is only
-  about *disjoint* sets. Owner: **unassigned / future scheduled slice**; P23.7
+  about *disjoint* sets. Owner: **unassigned / future scheduled slice**; P23.16
   restates it as an open deferral.
 
 # Documentation reconciliation rule

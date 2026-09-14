@@ -176,8 +176,8 @@ export type LayoutSelection =
 	/**
 	 * P23.6 — canonical wall-first Wall target on the same selection
 	 * authority: document-global `wallId`, no `roomId` and no `segmentId`.
-	 * Never a faked room-anchored `wall` hit. Junction selection and the full
-	 * legacy `(roomId, segmentId)` retirement stay deferred to P23.7.
+	 * Never a faked room-anchored `wall` hit. Junction selection is canonical;
+	 * legacy `(roomId, segmentId)` retirement is tracked post-P23 by Issue #26.
 	 */
 	| { kind: 'physicalWall'; wallId: string }
 	/**

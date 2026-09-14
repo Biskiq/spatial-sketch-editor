@@ -133,9 +133,9 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 		};
 	});
 
-	// P23.9 canonical standalone walls: render-only meshes with no pick
+	// P23.9 canonical standalone walls: render-only meshes with no 3D pick
 	// identity (no `roomId` userData, so the S6 coordinator ignores them and
-	// clicks pass through — selection cutover stays with P23.6/P23.7).
+	// clicks pass through). Canonical wall-first 3D picking stays post-P23.
 	let adaptedWalls = $state<Map<string, AdaptedRoom>>(new Map());
 
 	$effect(() => {
