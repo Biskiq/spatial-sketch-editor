@@ -107,6 +107,10 @@
 		}
 		if (!confirmSceneReplacement()) return false;
 		if (!store.importDocument(parsed.document)) return false;
+		// A successful import replaced the document: the unified reset clears
+		// the canonical selection and the Navigator's page/query/history, which
+		// described the previous document (same seam as reset/load).
+		onReset?.();
 		if (clearPasteOnSuccess) pastedSceneJson = '';
 		store.setStatusMessage('Imported scene document');
 		return true;
@@ -136,7 +140,13 @@
 			clearSharedHistory: () => store.clearSharedHistory(),
 			onReplaced: () => onLayoutReplaced?.()
 		});
-		if (ok && clearPasteOnSuccess) pastedLayoutJson = '';
+		if (ok) {
+			// Same seam as reset: the layout document was replaced, so end the
+			// Wall run (onLayoutReplaced above) AND clear document-scoped
+			// selection/Navigator state.
+			onReset?.();
+			if (clearPasteOnSuccess) pastedLayoutJson = '';
+		}
 		return ok;
 	}
 
@@ -265,6 +275,8 @@
 				store.setStatusMessage(`Import failed: ${result.detail}`);
 				return;
 			}
+			// Same seam as scene import: the package replaced the document.
+			onReset?.();
 			store.setStatusMessage('Imported package');
 		} catch (err) {
 			store.setStatusMessage(

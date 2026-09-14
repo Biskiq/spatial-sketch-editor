@@ -2004,9 +2004,7 @@ describe('P23.6e slice 7 — legacy quarantine and single ownership (source cont
 			expect(treeSource, `legacy quarantine still carries ${removed}`).not.toContain(removed);
 		}
 	});
-});
-
-describe('P23.6e review — Navigator presentation, activation and document reset', () => {
+});	describe('P23.6e review — Navigator presentation, activation and document reset', () => {
 	const navigatorSource = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
 	const rowSource = readLibSource('editor/hierarchy/HierarchyRow.svelte');
 	const appSource = readLibSource('editor/app/EditorApp.svelte');
@@ -2073,5 +2071,49 @@ describe('P23.6e review — Navigator presentation, activation and document rese
 		]) {
 			expect(reset, `Navigator reset does not clear ${cleared}`).toContain(cleared);
 		}
+	});
+});
+
+describe('P23.6e review — every successful import routes through the document-scoped reset', () => {
+	const menuSource = readLibSource('editor/EditorProjectMenu.svelte');
+	const appSource = readLibSource('editor/app/EditorApp.svelte');
+
+	it('scene JSON import fires onReset after a successful import', () => {
+		// Inside importSceneJson, after `store.importDocument` succeeds, the
+		// unified reset must run — before the success status message.
+		const fn = /function importSceneJson\([\s\S]*?\n\t}/.exec(menuSource);
+		expect(fn).not.toBeNull();
+		const body = fn![0];
+		const importCall = body.indexOf('if (!store.importDocument(parsed.document)) return false;');
+		const resetCall = body.indexOf('onReset?.();');
+		const statusCall = body.indexOf("store.setStatusMessage('Imported scene document');");
+		expect(importCall).toBeGreaterThan(-1);
+		expect(resetCall).toBeGreaterThan(importCall);
+		expect(statusCall).toBeGreaterThan(resetCall);
+	});
+
+	it('layout JSON import fires onReset after a successful replacement', () => {
+		const fn = /function importLayoutJson\([\s\S]*?\n\t}/.exec(menuSource);
+		expect(fn).not.toBeNull();
+		const body = fn![0];
+		expect(body).toMatch(/if \(ok\) \{[\s\S]*?onReset\?\.\(\);[\s\S]*?\}\n\t\treturn ok;/);
+		// The replacement lifecycle (Wall-run cancellation) stays wired.
+		expect(body).toContain('onReplaced: () => onLayoutReplaced?.()');
+	});
+
+	it('package archive import fires onReset after a successful import', () => {
+		const fn = /async function importPackageArchive\([\s\S]*?\n\t}/.exec(menuSource);
+		expect(fn).not.toBeNull();
+		const body = fn![0];
+		const rejected = body.indexOf("store.setStatusMessage(`Import failed: ${result.detail}`);");
+		const resetCall = body.indexOf('onReset?.();');
+		const statusCall = body.indexOf("store.setStatusMessage('Imported package');");
+		expect(rejected).toBeGreaterThan(-1);
+		expect(resetCall).toBeGreaterThan(rejected);
+		expect(statusCall).toBeGreaterThan(resetCall);
+	});
+
+	it('the shell still owns resetDocumentScopedState and passes it to the menu', () => {
+		expect(appSource.match(/onReset=\{resetDocumentScopedState\}/g)?.length).toBe(2);
 	});
 });
