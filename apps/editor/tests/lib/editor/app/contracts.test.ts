@@ -1228,15 +1228,16 @@ describe('unified hierarchy contracts', () => {
 	it('pins the P23.6b canonical reveal helper beside the legacy ancestor helper', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
 		const model = readLibSource('editor/unified-project-tree-model.ts');
-		// Canonical wall-first reveal is a NEW pure sibling — never an overload
-		// of `layoutSelectionAncestorRoomId`, whose null-for-canonical behavior
-		// is itself a pinned contract above. Both helpers stay exported.
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		// Both pure helpers stay exported and covered (their behavior is pinned
+		// above). P23.6e moved canonical reveal off the accordion: the tree keeps
+		// only the legacy Room-qualified ancestor helper, and the Navigator owns
+		// canonical reveal through the pure page/search representation model.
 		expect(model).toContain('export function layoutSelectionRevealTarget');
 		expect(model).toContain("export function layoutSelectionAncestorRoomId");
-		// The component consumes both: the legacy helper for legacy
-		// Room-qualified selections, the new one for canonical selections.
-		expect(tree).toContain('layoutSelectionRevealTarget');
 		expect(tree).toContain('layoutSelectionAncestorRoomId');
+		expect(tree).not.toContain('layoutSelectionRevealTarget');
+		expect(navigator).toContain('evaluateHierarchyReveal');
 	});
 
 	it('reveals canonical selections through the pure P23.6e Navigator decision, not the legacy target', () => {

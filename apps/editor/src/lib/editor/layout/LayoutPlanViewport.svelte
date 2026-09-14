@@ -191,7 +191,8 @@
 		onLayoutTransactionCancel,
 		onDeselect,
 		store,
-		contextMenu = null
+		contextMenu = null,
+		hierarchyEmphasis = null
 	}: {
 		model: LayoutPreviewModel;
 		preview: LayoutPreviewState;
@@ -249,6 +250,13 @@
 		store?: EditorStore;
 		/** P3.4 — shared context-menu slot; absent keeps the surface frozen. */
 		contextMenu?: EditorContextMenuStore | null;
+		/**
+		 * P23.6e — optional external hover emphasis from the Scene Navigator. It is
+		 * plain presentation data (never a selection): the viewport's own pointer
+		 * hover always wins, and only the Scene Plan mount passes it, so Camera Plan
+		 * receives nothing.
+		 */
+		hierarchyEmphasis?: PlanHitIdentity | null;
 	} = $props();
 
 	let svgElement = $state<SVGSVGElement>();
@@ -378,7 +386,14 @@
 		};
 	});
 	const baseInteractionProjection = $derived(
-		buildPlanInteractionProjection(interaction, rooms, model, wallFirstContext, layoutHover ?? undefined)
+		buildPlanInteractionProjection(
+			interaction,
+			rooms,
+			model,
+			wallFirstContext,
+			// Viewport-local pointer hover wins; Navigator emphasis is the fallback.
+			layoutHover ?? hierarchyEmphasis ?? undefined
+		)
 	);
 	const cameraProjection = $derived.by(() => {
 		if (interaction.planViewMode !== 'layout' || !interaction.planView.showTourOverlay) return undefined;

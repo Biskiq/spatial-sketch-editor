@@ -40,6 +40,11 @@
 		ACTIVE_EDITOR_SELECTION_KEY,
 		type EditorActiveSelectionStore
 	} from './active-editor-selection.svelte';
+	import {
+		HIERARCHY_NAVIGATOR_KEY,
+		type HierarchyNavigatorStore
+	} from './hierarchy-navigator-state.svelte';
+	import { hierarchyEntityToPlanHit } from '$lib/editor/hierarchy/hierarchy-plan-bridge';
 
 	let {
 		store,
@@ -57,6 +62,14 @@
 	} = $props();
 	const activeSelection = getContext<EditorActiveSelectionStore | undefined>(
 		ACTIVE_EDITOR_SELECTION_KEY
+	);
+	// P23.6e — Scene Navigator row hover/focus becomes ordinary Plan hover
+	// presentation. Pure conversion, no selection, no camera, no history.
+	const hierarchyNavigator = getContext<HierarchyNavigatorStore | undefined>(
+		HIERARCHY_NAVIGATOR_KEY
+	);
+	const hierarchyEmphasis = $derived(
+		hierarchyNavigator?.emphasis ? hierarchyEntityToPlanHit(hierarchyNavigator.emphasis) : null
 	);
 
 	function effectiveSceneScale(entity: SceneEntity) {
@@ -476,6 +489,7 @@
 		onLayoutTransactionCommit={commitLayoutTransaction}
 		onLayoutTransactionCancel={cancelLayoutTransaction}
 		onDeselect={activeSelection ? deselectPlanActive : undefined}
+		{hierarchyEmphasis}
 		{store}
 		{contextMenu}
 	/>

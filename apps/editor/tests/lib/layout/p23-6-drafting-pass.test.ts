@@ -585,7 +585,9 @@ describe('P23.6 hover affordances — projection and viewport wiring', () => {
 			'utf8'
 		);
 		expect(viewport).toContain('layoutHover = toLayoutHover(');
-		expect(viewport).toContain('wallFirstContext, layoutHover ?? undefined');
+		// P23.6e — viewport-local pointer hover still wins; the Navigator's row
+		// emphasis is the external fallback when the pointer is elsewhere.
+		expect(viewport).toContain('layoutHover ?? hierarchyEmphasis ?? undefined');
 		// Cleared both when another tool/gesture takes over and on pointerleave.
 		expect(viewport.split('layoutHover = null').length - 1).toBeGreaterThanOrEqual(2);
 	});

@@ -7,7 +7,7 @@
 	// `HierarchyNavigatorStore`. Row activation calls the existing canonical
 	// selection writers and nothing else — opening a page never selects, and
 	// selecting never navigates.
-	import { tick, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { EllipsisVertical, Eye, EyeOff, Scan, Search, Trash2 } from 'lucide-svelte';
 	import type { SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from '../editor-outliner';
@@ -266,6 +266,10 @@
 	function captureScroll(): void {
 		if (scrollElement) navigator.setScrollTop(scrollElement.scrollTop);
 	}
+
+	// Row emphasis is transient presentation only: unmounting the Scene Navigator
+	// must never leave the Plan surface highlighting a row that no longer exists.
+	onDestroy(() => navigator.clearEmphasis());
 
 	// ── transient search / filters (slice 6) ─────────────────────────────
 

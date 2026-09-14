@@ -1903,3 +1903,48 @@ describe('P23.6e slice 6 — search UI, filters and Back restoration (source con
 		expect(navigatorSource).toContain('No matches for');
 	});
 });
+
+describe('P23.6e slice 7 — legacy quarantine and single ownership (source contracts)', () => {
+	const treeSource = readLibSource('editor/UnifiedProjectTree.svelte');
+
+	it('keeps the Scene hierarchy free of Camera content (gate 4)', () => {
+		// Camera content lives in CameraSidebar; the Scene hierarchy exposes no
+		// Camera Flow panel, no camera-tour state and no camera effect.
+		expect(treeSource).not.toContain('CameraFlowPanel');
+		expect(treeSource).not.toContain('cameraTour');
+		expect(treeSource).not.toContain('cameraInteractive');
+		expect(readLibSource('editor/app/CameraSidebar.svelte')).toContain('CameraFlowPanel');
+	});
+
+	it('owns no second hover renderer', () => {
+		expect(treeSource).not.toContain('layoutHover');
+		expect(treeSource).not.toContain('PlanHitIdentity');
+	});
+
+	it('keeps the legacy Room-nested path intact and canonical-only code gone', () => {
+		// The quarantined accordion keeps its own Room-nested rows and filter; the
+		// canonical scaffolding the Navigator replaced is deleted rather than
+		// left dormant.
+		expect(treeSource).toContain('buildUnifiedProjectTreeModel');
+		expect(treeSource).toContain('filterUnifiedProjectTreeModel');
+		expect(treeSource).toContain('visibleModel.rooms');
+		for (const removed of [
+			'layoutSelectionRevealTarget',
+			'hiddenRevealTarget',
+			'openWallIds',
+			'toggleWallRow',
+			'applyRevealTarget',
+			'revealTargetHidden',
+			'wallBoundedRoomNames',
+			'data-reveal-id',
+			'tree-reveal-hint',
+			'Topology…',
+			'visibleModel.wallFirstRooms',
+			'architectureOpen',
+			'sceneContentOpen',
+			'layoutObjectsOpen'
+		]) {
+			expect(treeSource, `legacy quarantine still carries ${removed}`).not.toContain(removed);
+		}
+	});
+});

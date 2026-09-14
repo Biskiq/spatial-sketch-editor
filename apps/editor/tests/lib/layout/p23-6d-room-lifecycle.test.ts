@@ -897,8 +897,12 @@ describe('P23.6d caller wiring — row authority and selection policy', () => {
 		expect(handlerBody).toContain("if (!roomRowInteractive({ kind: 'room', roomId })) return;");
 		expect(handlerBody).toContain('removeRoom:');
 		expect(source).toContain('removeWallFirstRoom(layoutPreview, roomId, store.document)');
-		// The row binds the gated context-menu handler.
-		expect(source).toContain('onWallFirstRoomRowContextMenu(event, room.roomId)');
+		// P23.6e — the canonical Room row lives in the Navigator, which routes every
+		// canonical Room row to this same gated handler (and never the legacy one).
+		expect(source).toContain('onRoomContextMenu={onWallFirstRoomRowContextMenu}');
+		expect(
+			readSource('editor/hierarchy/HierarchyNavigator.svelte')
+		).toContain("entity.kind === 'room') onRoomContextMenu(event, entity.roomId)");
 	});
 
 	it('the Plan viewport routes wall-first Room removal through the canonical adapter (never the legacy commands)', () => {
