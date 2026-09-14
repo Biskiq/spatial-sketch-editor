@@ -197,6 +197,7 @@
 		onWallOpeningCreate,
 		onWallOpeningDelete,
 		onWallDelete,
+		onWallJunctionAdd,
 		onRoomDelete,
 		onRoomRemove,
 		onLayoutTransactionBegin,
@@ -246,6 +247,13 @@
 		onWallOpeningDelete?: (openingId: string) => void;
 		/** P23.6c — delete the selected canonical Wall by document-global `wallId`. */
 		onWallDelete?: (wallId: string) => void;
+		/**
+		 * P23.10 — canonical Wall subdivision from a resolved physical-Wall hit.
+		 * `splitDistance` is the hit projection's physical meters from the canonical
+		 * start Junction, so the viewport never invents a coordinate. Omitted by
+		 * mounts that cannot subdivide; then no Add-junction item is offered.
+		 */
+		onWallJunctionAdd?: (wallId: string, splitDistance: number) => void;
 		onRoomDelete: (roomId: string) => boolean;
 		/**
 		 * P23.6d — canonical wall-first Room removal (guard-railed `planRemoveRoom`).
@@ -1217,9 +1225,12 @@ const interactionProjection = $derived(
 		if (
 			target.kind !== 'room' &&
 			target.kind !== 'opening' &&
-			target.kind !== 'object'
+			target.kind !== 'object' &&
+			// P23.10 — a canonical physical-Wall body hit carries its already
+			// resolved projection, so the Wall target needs no second resolver.
+			target.kind !== 'physicalWall'
 		) {
-			return; // wall/vertex/anchor targets have no approved v1 items
+			return; // vertex/opening-endpoint/anchor targets have no approved v1 items
 		}
 		// selection-before-menu mirrors the click path's slot writes
 		if (
@@ -1240,6 +1251,14 @@ const interactionProjection = $derived(
 			(interaction.selection.kind !== 'object' || interaction.selection.objectId !== target.objectId)
 		) {
 			selectLayoutObject(interaction, target.objectId);
+		} else if (
+			target.kind === 'physicalWall' &&
+			(interaction.selection.kind !== 'physicalWall' ||
+				interaction.selection.wallId !== target.wallId)
+		) {
+			// P23.10 — a right-click keeps the clicked Wall selected so the command
+			// acts on the same primitive the user pointed at.
+			selectLayoutPhysicalWall(interaction, target.wallId);
 		}
 		event.preventDefault();
 		contextMenu.open({
@@ -1252,7 +1271,14 @@ const interactionProjection = $derived(
 						? { kind: 'room', roomId: target.roomId }
 						: target.kind === 'opening'
 							? { kind: 'opening', roomId: target.roomId, openingId: target.openingId }
-							: { kind: 'object', objectId: target.objectId },
+							: target.kind === 'physicalWall'
+								? {
+										kind: 'wall',
+										wallId: target.wallId,
+										// Canonical-start meters straight from the hit projection.
+										splitDistance: target.projection.offset
+									}
+								: { kind: 'object', objectId: target.objectId },
 				mutationBlockedReason:
 					store.isDocumentMutationBlocked ? 'Preview is active' : null,
 				// P23.6d — wall-first Rooms expose ONLY the canonical removal. The
@@ -1264,7 +1290,15 @@ const interactionProjection = $derived(
 					? {
 							removeRoom: (roomId) => void onRoomRemove?.(roomId),
 							deleteOpening: (roomId, openingId) => onOpeningDelete(roomId, openingId),
-							deleteObject: deleteLayoutObjectViaTransaction
+							deleteObject: deleteLayoutObjectViaTransaction,
+							// P23.10 — omitted (never stubbed) when the mount cannot subdivide.
+							...(onWallJunctionAdd
+								? {
+										addJunction: (wallId: string, splitDistance: number) =>
+											onWallJunctionAdd?.(wallId, splitDistance)
+									}
+								: {}),
+							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
 						}
 					: {
 							renameRoom: renameRoomViaPrompt,

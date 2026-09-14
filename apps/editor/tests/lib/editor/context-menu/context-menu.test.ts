@@ -226,6 +226,59 @@ describe('Plan menu models (P3.4 — post-P10 routing)', () => {
 		).toEqual(['Delete object']);
 	});
 
+	// P23.10 — a Wall target is additive-first: the non-destructive command
+	// precedes the dangerous Delete, and only a caller that resolved a real
+	// coordinate from the hit projection can offer it.
+	it('offers Add junction here before Delete wall when a split distance was resolved', () => {
+		const addJunction = vi.fn();
+		const deleteWall = vi.fn();
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'wall', wallId: 'wall-e', splitDistance: 1.25 },
+			mutationBlockedReason: null,
+			actions: { deleteOpening: vi.fn(), deleteObject: vi.fn(), addJunction, deleteWall }
+		});
+		expect(items.map((item) => item.id)).toEqual(['add-junction', 'delete-wall']);
+		expect(items.map((item) => item.label)).toEqual(['Add junction here', 'Delete wall']);
+		// Only the destructive command is separator-led.
+		expect(items[0]!.separatorBefore ?? false).toBe(false);
+		expect(items[1]!.separatorBefore).toBe(true);
+		expect(items[1]!.danger).toBe(true);
+		items[0]!.run();
+		expect(addJunction).toHaveBeenCalledWith('wall-e', 1.25);
+		items[1]!.run();
+		expect(deleteWall).toHaveBeenCalledWith('wall-e');
+	});
+
+	it('omits Add junction for a hierarchy row with no resolved coordinate', () => {
+		// A P23.6e Wall row has no spatial hit: pass the action and still get no
+		// item rather than an invented "here".
+		const addJunction = vi.fn();
+		const withAction = buildPlanLayoutContextMenuItems({
+			target: { kind: 'wall', wallId: 'wall-e' },
+			mutationBlockedReason: null,
+			actions: { deleteOpening: vi.fn(), deleteObject: vi.fn(), addJunction }
+		});
+		expect(withAction.map((item) => item.id)).toEqual([]);
+		expect(addJunction).not.toHaveBeenCalled();
+
+		const noAction = buildPlanLayoutContextMenuItems({
+			target: { kind: 'wall', wallId: 'wall-e', splitDistance: 1.25 },
+			mutationBlockedReason: null,
+			actions: { deleteOpening: vi.fn(), deleteObject: vi.fn() }
+		});
+		expect(noAction).toEqual([]);
+	});
+
+	it('disables Add junction with the active mutation reason instead of hiding it', () => {
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'wall', wallId: 'wall-e', splitDistance: 2 },
+			mutationBlockedReason: 'Preview is active',
+			actions: { deleteOpening: vi.fn(), deleteObject: vi.fn(), addJunction: vi.fn() }
+		});
+		expect(items.map((item) => item.id)).toEqual(['add-junction']);
+		expect(items[0]!.disabledReason).toBe('Preview is active');
+	});
+
 	it('Arrange routes layout-object targets through Layout commands only', () => {
 		const deleteLayoutObject = vi.fn();
 		const duplicateScene = vi.fn();
