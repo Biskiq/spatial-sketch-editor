@@ -192,6 +192,33 @@ describe('planWallSplit — T noding (H3 §9.1 / P23.8 identity rules)', () => {
 		expect(plan.document.junctions).toHaveLength(5);
 	});
 
+	it('keeps a reused Junction coordinate canonical within identity tolerance', () => {
+		const baseline = singleRoomDocument();
+		const canonicalPoint: [number, number] = [2, 5e-10];
+		baseline.junctions.push({ id: 'j-t', point: canonicalPoint });
+		baseline.walls.push({
+			id: 'wall-attached',
+			startJunctionId: 'j-t',
+			endJunctionId: 'j-d',
+			role: 'partition',
+			thickness: 0.1,
+			height: 3
+		});
+		const frozenAttachedWall = structuredClone(baseline.walls.at(-1));
+
+		const plan = planWallSplit(baseline, 'wall-bottom', 2, nodingAllocator(), {
+			existingJunctionId: 'j-t'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.document.junctions.find((junction) => junction.id === 'j-t')?.point).toEqual(
+			canonicalPoint
+		);
+		expect(plan.document.walls.find((wall) => wall.id === 'wall-attached')).toEqual(
+			frozenAttachedWall
+		);
+	});
+
 	it('rejects unknown walls', () => {
 		const plan = planWallSplit(singleRoomDocument(), 'wall-nope', 1, nodingAllocator());
 		expect(plan.kind === 'rejected' && plan.rejection.code).toBe('unknown_wall');

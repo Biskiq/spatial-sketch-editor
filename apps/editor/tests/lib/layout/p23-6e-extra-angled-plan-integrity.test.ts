@@ -174,6 +174,74 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 		return document;
 	}
 
+	it('uses one shared Junction for the projected stem and both host fragments', () => {
+		const document = twoRoomsWithOneObliqueDivider();
+		const start = p(3.37, -4);
+		const end = projectToSpan(p(start[0], -0.92), bottomStart, bottomEnd);
+		const result = plan(document, start, end);
+		expect(result.kind).toBe('success');
+		if (result.kind !== 'success') return;
+
+		const sharedJunctionId = result.endJunctionId;
+		const incidentWalls = result.document.walls.filter(
+			(wall) =>
+				wall.startJunctionId === sharedJunctionId || wall.endJunctionId === sharedJunctionId
+		);
+		const authoredWallIds = new Set(result.authoredWallIds);
+		expect(incidentWalls.filter((wall) => authoredWallIds.has(wall.id))).toHaveLength(1);
+		expect(incidentWalls.filter((wall) => !authoredWallIds.has(wall.id))).toHaveLength(2);
+		expect(
+			result.document.junctions.filter((junction) =>
+				Math.hypot(junction.point[0] - end[0], junction.point[1] - end[1]) <= 1e-9
+			)
+		).toHaveLength(1);
+	});
+
+	it('does not move a reused baseline Junction while noding a near host', () => {
+		const canonicalPoint = p(2, 5e-10);
+		const baseline: LayoutDocumentWallFirst = {
+			...baseDocument(),
+			junctions: [
+				{ id: 'host-a', point: p(0, 0) },
+				{ id: 'host-b', point: p(4, 0) },
+				{ id: 'existing', point: canonicalPoint },
+				{ id: 'old-end', point: p(4, 2) }
+			],
+			walls: [
+				{
+					id: 'host',
+					startJunctionId: 'host-a',
+					endJunctionId: 'host-b',
+					role: 'partition',
+					thickness: 0.1,
+					height: 3
+				},
+				{
+					id: 'old-wall',
+					startJunctionId: 'existing',
+					endJunctionId: 'old-end',
+					role: 'partition',
+					thickness: 0.1,
+					height: 3
+				}
+			]
+		};
+		const oldWall = structuredClone(baseline.walls[1]);
+		const result = planWallChain({
+			baseline,
+			points: [canonicalPoint, p(2, -2)],
+			close: false,
+			role: 'partition'
+		});
+		expect(result.kind).toBe('success');
+		if (result.kind !== 'success') return;
+		expect(result.document.junctions.find((junction) => junction.id === 'existing')?.point).toEqual(
+			canonicalPoint
+		);
+		expect(result.document.walls.find((wall) => wall.id === 'old-wall')).toEqual(oldWall);
+		expect(result.createdJunctionIds).not.toContain('existing');
+	});
+
 	it('stress-splits one oblique host without false 2→3 correspondence', () => {
 		const document = twoRoomsWithOneObliqueDivider();
 		for (let step = 100; step <= 690; step += 1) {

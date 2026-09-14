@@ -24,10 +24,12 @@ slice plus one next action only.
 
 ## Verification
 
-- Focused Wall regression suites: 45 passed. The new deterministic matrix
+- Focused Wall regression suites: 49 passed. The new deterministic matrix
   covers 1,310 candidate operations across false `2→2`, `2→3`, `3→4`, missed
-  noding and out-of-tolerance non-connection cases.
-- `npm test`: 3,506 passed / 1 skipped; `npm run check`: editor + museum 0
+  noding and out-of-tolerance non-connection cases; direct regressions pin
+  canonical reused-Junction ownership, shared T-node identity, and both sides
+  of the polygon ring-tolerance boundary.
+- `npm test`: 3,510 passed / 1 skipped; `npm run check`: editor + museum 0
   errors/warnings; `npm run build`: editor + museum passed.
 - Last landed P23.6e verification from PR #47: `npm test` 3,476 passed / 1
   skipped; `npm run check` editor + museum 0 errors/warnings; `npm run build`

@@ -167,10 +167,9 @@ function planWallSplitInternal(
 	// record is inserted when newly allocated; a supplied existing junction is
 	// reused as-is when present, or inserted at the resolved point when the
 	// caller names a junction that does not exist yet (X crossings: the first
-	// split introduces the shared junction). An existing Junction within the
-	// identity tolerance adopts the resolved split coordinate. This removes the
-	// sub-nanometre projection dust that otherwise leaves the two new host
-	// fragments very slightly bent relative to the predecessor Wall.
+	// split introduces the shared junction). Existing Junction coordinates are
+	// canonical: a tolerant identity match permits reuse but never moves the
+	// Junction or other authored geometry already attached to it.
 	let junctions: LayoutJunction[] = document.junctions;
 	if (!options.existingJunctionId) {
 		junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
@@ -184,11 +183,6 @@ function planWallSplitInternal(
 					wallId
 				});
 			}
-			junctions = document.junctions.map((junction) =>
-				junction.id === junctionId
-					? { ...junction, point: [splitPoint[0], splitPoint[1]] }
-					: junction
-			);
 		} else {
 			junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
 		}

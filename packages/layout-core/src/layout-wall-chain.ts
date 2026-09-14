@@ -339,6 +339,8 @@ export function planWallChain(options: {
 	const splitWallIds = new Set<string>();
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
+	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
+	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
 	const resolveJunctionId = (junctionId: string): string => {
 		let resolvedId = junctionId;
@@ -358,7 +360,7 @@ export function planWallChain(options: {
 		if (passes > MAX_NODING_PASSES) {
 			return reject({ code: 'noding_rejected', message: 'Chain noding did not converge' });
 		}
-		const fix = nextNodingFix(candidate, [...authoredWallIds]);
+		const fix = nextNodingFix(candidate, [...authoredWallIds], operationOwnedJunctionIds);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
 		if (fix.kind === 'adopt') {
@@ -369,6 +371,7 @@ export function planWallChain(options: {
 			const duplicates = new Set(fix.duplicateJunctionIds);
 			for (const duplicateId of duplicates) {
 				junctionIdRedirects.set(duplicateId, fix.keepJunctionId);
+				operationOwnedJunctionIds.delete(duplicateId);
 			}
 			candidate.junctions = candidate.junctions.filter(
 				(junction) => !duplicates.has(junction.id)
@@ -384,6 +387,13 @@ export function planWallChain(options: {
 				};
 			});
 			continue;
+		}
+		if (fix.kind === 'tee' && fix.projectOwnedEndpoint) {
+			candidate.junctions = candidate.junctions.map((junction) =>
+				junction.id === fix.endpointJunctionId
+					? { ...junction, point: [fix.point[0], fix.point[1]] }
+					: junction
+			);
 		}
 		const plan =
 			fix.kind === 'crossing'
@@ -418,7 +428,10 @@ export function planWallChain(options: {
 			}
 		}
 		for (const split of plan.splitWallIds) splitWallIds.add(split);
-		nodedJunctionIds.add(plan.junctionId);
+		if (!baselineJunctionIds.has(plan.junctionId)) {
+			nodedJunctionIds.add(plan.junctionId);
+			operationOwnedJunctionIds.add(plan.junctionId);
+		}
 		// planWallCrossing/planWallSplit return full documents; adopt them.
 		candidate.junctions = document.junctions;
 		candidate.walls = document.walls;
@@ -543,7 +556,14 @@ export function planWallChain(options: {
 
 type NodingFix =
 	| { kind: 'crossing'; wallIds: [string, string]; point: LayoutVec2 }
-	| { kind: 'tee'; interiorWallId: string; endpointJunctionId: string; splitDistance: number; point: LayoutVec2 }
+	| {
+			kind: 'tee';
+			interiorWallId: string;
+			endpointJunctionId: string;
+			splitDistance: number;
+			point: LayoutVec2;
+			projectOwnedEndpoint?: boolean;
+	  }
 	| { kind: 'adopt'; keepJunctionId: string; duplicateJunctionIds: string[] }
 	| { kind: 'reject'; rejection: WallChainRejection };
 
@@ -622,7 +642,8 @@ function teeThroughJunction(
  */
 function nextNodingFix(
 	document: LayoutDocumentWallFirst,
-	chainDerivedWallIds: readonly string[]
+	chainDerivedWallIds: readonly string[],
+	operationOwnedJunctionIds: ReadonlySet<string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	const segments = new Map<string, TopologySegment>();
@@ -672,6 +693,7 @@ function nextNodingFix(
 				b,
 				segmentB,
 				chainSet,
+				operationOwnedJunctionIds,
 				shared
 			);
 			if (projectedTee) return projectedTee;
@@ -745,9 +767,10 @@ function nextNodingFix(
 
 /**
  * Recover the semantic T encoded by an authored endpoint projected onto a
- * host Wall. The recovery is deliberately asymmetric: only chain-derived
- * endpoints may move, and only onto a non-chain host. Baseline geometry is
- * never pulled toward a newly authored Wall.
+ * host Wall. The recovery is deliberately asymmetric: only Junctions created
+ * by this command may move, and only onto a non-chain host. A chain Wall can
+ * reuse a baseline Junction, so Wall lineage alone is not sufficient proof of
+ * endpoint ownership.
  */
 function projectedAuthoredEndpointTee(
 	a: LayoutWall,
@@ -755,6 +778,7 @@ function projectedAuthoredEndpointTee(
 	b: LayoutWall,
 	segmentB: TopologySegment,
 	chainSet: ReadonlySet<string>,
+	operationOwnedJunctionIds: ReadonlySet<string>,
 	sharedJunctionIds: readonly string[]
 ): NodingFix | undefined {
 	if (sharedJunctionIds.length > 0) return undefined;
@@ -775,6 +799,7 @@ function projectedAuthoredEndpointTee(
 			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
 		];
 		for (const endpoint of endpoints) {
+			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
 			const dx = hostSegment.end[0] - hostSegment.start[0];
 			const dz = hostSegment.end[1] - hostSegment.start[1];
 			const lengthSquared = dx * dx + dz * dz;
@@ -796,7 +821,8 @@ function projectedAuthoredEndpointTee(
 				interiorWallId: hostSegment.id,
 				endpointJunctionId: endpoint.junctionId,
 				splitDistance: t * length,
-				point: projected
+				point: projected,
+				projectOwnedEndpoint: true
 			};
 		}
 	}
