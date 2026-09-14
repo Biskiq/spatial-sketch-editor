@@ -54,6 +54,12 @@ export type NodingRejection = {
 		| 'split_through_opening_interior'
 		| 'unknown_wall'
 		| 'unknown_junction'
+		/**
+		 * P23.11 — the Wall carries a curved centerline. Splitting a curve is
+		 * explicitly deferred: this planner measures in chords, so letting a curved
+		 * Wall through would silently flatten it into straight fragments.
+		 */
+		| 'curved_wall_unsupported'
 		| 'junction_point_mismatch';
 	message: string;
 	/** Involved authored IDs where available. */
@@ -126,6 +132,16 @@ function planWallSplitInternal(
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
 		return rejected({ code: 'unknown_wall', message: `Unknown wall '${wallId}'`, wallId });
+	}
+	// P23.11 — fail fast before allocating anything. This planner's whole model
+	// (chord length, straight fragments) cannot represent a curve, so pinning it
+	// as straight-only here is what keeps another caller from flattening one.
+	if (wall.centerline.kind !== 'line') {
+		return rejected({
+			code: 'curved_wall_unsupported',
+			message: `Wall '${wallId}' is curved; splitting a curved Wall is unsupported`,
+			wallId
+		});
 	}
 	const startJunction = document.junctions.find((junction) => junction.id === wall.startJunctionId);
 	const endJunction = document.junctions.find((junction) => junction.id === wall.endJunctionId);

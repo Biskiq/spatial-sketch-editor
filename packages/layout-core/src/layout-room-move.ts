@@ -56,6 +56,7 @@ import {
 } from './layout-room-reconciliation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
+import { translateWallCenterline } from './layout-wall-centerline';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 
@@ -195,6 +196,16 @@ export function planWallFirstRoomMove(
 						point: [junction.point[0] + dx, junction.point[1] + dz] as LayoutVec2
 					}
 				: junction
+		),
+		// P23.11 — a moved Wall's curve anchors are absolute document X/Z, so
+		// they translate with the same delta as its Junctions. Anchors left
+		// behind would not preserve the moved shape: the curve would swing back
+		// toward the baseline position and can cross a Wall outside the move
+		// group. Flat `line` centerlines carry no absolute data and are shared.
+		walls: document.walls.map((wall) =>
+			movedWallIds.has(wall.id)
+				? { ...wall, centerline: translateWallCenterline(wall.centerline, [dx, dz]) }
+				: wall
 		),
 		objects: document.objects.map((object) =>
 			associatedObjectIds.has(object.id)

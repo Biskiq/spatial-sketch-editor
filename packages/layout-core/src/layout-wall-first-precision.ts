@@ -34,8 +34,19 @@ import {
 	type ReconciliationResult,
 	type RoomIdAllocator
 } from './layout-room-reconciliation';
-import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
-import { cloneWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
+import type {
+	LayoutDocumentWallFirst,
+	LayoutJunction,
+	LayoutWall,
+	LayoutWallCurveAnchor
+} from './layout-wall-first-types';
+import {
+	cloneWallCenterline,
+	cloneWallCurveAnchor,
+	translateWallCenterline,
+	wallCenterlineSamples
+} from './layout-wall-centerline';
+import { nextInteriorAnchorId, projectPointToSampledSegment } from './layout-geometry-curve';
 import {
 	planWallSplit,
 	type NodingIdAllocator,
@@ -119,6 +130,12 @@ export type PrecisionOperation =
 	| 'room-metadata'
 	/** P23.6d — Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
 	| 'room-remove'
+	/** P23.11 — canonical curve operations (convert / anchor insert / move / delete). */
+	| 'wall-convert-to-curve'
+	| 'wall-convert-to-line'
+	| 'wall-curve-anchor-insert'
+	| 'wall-curve-anchor-move'
+	| 'wall-curve-anchor-delete'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
 	| 'layout-object-transform'
@@ -135,6 +152,14 @@ export type PrecisionRejection = {
 		| 'invalid_endpoint'
 		| 'invalid_reference'
 		| 'unsupported_geometry'
+		/**
+		 * P23.11 — the operation is straight-only and the target Wall carries a
+		 * curved centerline. Exact length, exact angle and subdivision all reject
+		 * here rather than approximate a curve they cannot solve for.
+		 */
+		| 'curved_wall_unsupported'
+		/** P23.11 — the named curve control does not exist on that Wall. */
+		| 'unknown_curve_anchor'
 		| 'shared_boundary_resize_ambiguous'
 		| 'topology_invalid'
 		/**
@@ -240,6 +265,12 @@ export function planRigidWallMove(
 		if (!changedJunctionIds.includes(junction.id)) continue;
 		junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
 	}
+	// P23.11 — the moved Wall's own curve anchors are absolute document X/Z and
+	// must receive the identical rigid delta, or the Wall would change SHAPE.
+	// Anchors on neighbouring Walls stay put: those Walls reshape because their
+	// shared Junction moved, which is the documented endpoint-move semantics.
+	const moved = candidate.walls.find((entry) => entry.id === wall.id)!;
+	moved.centerline = translateWallCenterline(moved.centerline, intent.delta);
 	// Deterministic document-order union of every Wall incident to either moved
 	// endpoint: those neighbours reshape because their shared Junction ID moved.
 	const changedWallIds = document.walls
@@ -276,6 +307,10 @@ export function planExactWallLength(
 	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
+	// P23.11 — an exact *length* is a chord solve: the endpoint moves along the
+	// endpoint direction and the curve would have to be re-solved to keep its
+	// shape. Curves use the canonical anchor planners instead.
+	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact length', wall.id);
 	if (!finitePositive(intent.length)) return reject('invalid_value', 'Wall length must be finite and greater than zero', [wall.id]);
 
 	const endpoints = wallEndpoints(document, wall);
@@ -321,6 +356,9 @@ export function planExactWallAngle(
 	const wall = document.walls.find((candidate) => candidate.id === intent.wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${intent.wallId}'`, [intent.wallId]);
 	if (!validFixedEndpoint(intent.fixed)) return reject('invalid_endpoint', "Fixed endpoint must be 'start' or 'end'", [wall.id]);
+	// P23.11 — an exact *angle* is the endpoint-chord direction of a straight
+	// Wall; a curve has no single angle to set.
+	if (wall.centerline.kind !== 'line') return rejectCurvedWall('exact angle', wall.id);
 	const angle = intent.angle;
 	if (typeof angle !== 'number' || !Number.isFinite(angle)) return reject('invalid_value', 'Wall angle must be finite radians', [wall.id]);
 
@@ -401,6 +439,12 @@ export function planWallSubdivision(
 	splitDistance: number,
 	allocator: NodingIdAllocator
 ): PrecisionPlan {
+	// P23.11 — reject a curved target before the noder runs so the UX failure is
+	// reported deterministically even though `planWallSplit` would also refuse
+	// (it stays independently fail-fast for every other caller).
+	const target = document.walls.find((candidate) => candidate.id === wallId);
+	if (target && target.centerline.kind !== 'line') return rejectCurvedWall('subdivision', wallId);
+
 	const planned: NodingPlan = planWallSplit(document, wallId, splitDistance, allocator);
 	if (planned.kind === 'rejected') {
 		return reject(planned.rejection.code, planned.rejection.message, [wallId]);
@@ -417,6 +461,249 @@ export function planWallSubdivision(
 
 /** P23.1 naming alias for callers that describe the operation as Add Vertex. */
 export const planAddWallVertex = planWallSubdivision;
+
+// =====================================================================
+// P23.11 — canonical curve operations.
+//
+// Every planner builds a candidate from the immutable baseline, mutates only
+// canonical Layout data, allocates deterministic anchor IDs, runs the shared
+// `finalizeWallGeometryCandidate` acceptance path, and returns either one
+// accepted document or a stable rejection. Wall, Junction, Opening and Room
+// identities are preserved throughout: a curve edit never births or retires
+// anything, it only reshapes the Wall's own centerline.
+//
+// Rejections leave the baseline untouched — the caller commits the returned
+// document or nothing at all.
+// =====================================================================
+
+/** The shared straight-only rejection so every curve gate reads identically. */
+function rejectCurvedWall(operation: string, wallId: string): PrecisionPlan {
+	return reject(
+		'curved_wall_unsupported',
+		`Wall '${wallId}' is curved; ${operation} is supported for straight Walls only`,
+		[wallId]
+	);
+}
+
+/** Resolved inputs shared by the anchor planners. */
+function resolveCurveTarget(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+):
+	| { plan: PrecisionPlan }
+	| { wall: LayoutWall; start: LayoutVec2; end: LayoutVec2; anchors: readonly LayoutWallCurveAnchor[] } {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return { plan: reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]) };
+	if (wall.centerline.kind !== 'auto-bezier') {
+		return {
+			plan: reject(
+				'unsupported_geometry',
+				`Wall '${wallId}' is straight; convert it to a curve before editing its controls`,
+				[wallId]
+			)
+		};
+	}
+	const endpoints = wallEndpoints(document, wall);
+	if (!endpoints) {
+		return {
+			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
+		};
+	}
+	return { wall, start: endpoints.start, end: endpoints.end, anchors: wall.centerline.interiorAnchors };
+}
+
+/** Commit a candidate that only reshaped one Wall's own centerline. */
+function finalizeCurveCandidate(
+	baseline: LayoutDocumentWallFirst,
+	candidate: LayoutDocumentWallFirst,
+	operation: PrecisionOperation,
+	wallId: string
+): PrecisionPlan {
+	return finalizeWallGeometryCandidate({
+		baseline,
+		candidate,
+		operation,
+		changedJunctionIds: [],
+		changedWallIds: [wallId]
+	});
+}
+
+/** Write one Wall's centerline into a fresh candidate document. */
+function withWallCenterline(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	centerline: LayoutWall['centerline']
+): LayoutDocumentWallFirst {
+	const candidate = cloneDocument(document);
+	candidate.walls.find((entry) => entry.id === wallId)!.centerline = centerline;
+	return candidate;
+}
+
+/**
+ * Convert one straight Wall into a curved one, keeping every authored ID.
+ *
+ * The single initial control is planted on the exact Wall midpoint, so the
+ * interpolating spline is degenerate-straight: the Wall keeps its length,
+ * direction and every hosted Opening offset, and nothing moves on screen until
+ * a control is actually dragged. Committing one history entry.
+ */
+export function planConvertWallToCurve(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+): PrecisionPlan {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
+	if (wall.centerline.kind === 'auto-bezier') {
+		return reject('no_op', `Wall '${wallId}' is already curved`, [wallId]);
+	}
+	const endpoints = wallEndpoints(document, wall);
+	if (!endpoints) {
+		return reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId]);
+	}
+	if (!(endpoints.length > POINT_EPSILON)) {
+		return reject('unsupported_geometry', `Wall '${wallId}' has zero effective length`, [wallId]);
+	}
+	const midpoint: LayoutVec2 = [
+		(endpoints.start[0] + endpoints.end[0]) / 2,
+		(endpoints.start[1] + endpoints.end[1]) / 2
+	];
+	const candidate = withWallCenterline(document, wallId, {
+		kind: 'auto-bezier',
+		interiorAnchors: [{ id: nextInteriorAnchorId(wallId, []), point: midpoint }]
+	});
+	return finalizeCurveCandidate(document, candidate, 'wall-convert-to-curve', wallId);
+}
+
+/**
+ * Convert one curved Wall back to a straight one, keeping every authored ID.
+ * Endpoints are owned by the Junctions, so removing the controls cannot move
+ * the Wall; the resulting straight Wall — and its hosted Openings — are
+ * validated through the canonical acceptance path and reject atomically if the
+ * straight form cannot host them.
+ */
+export function planConvertWallToLine(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+): PrecisionPlan {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
+	if (wall.centerline.kind === 'line') {
+		return reject('no_op', `Wall '${wallId}' is already straight`, [wallId]);
+	}
+	const candidate = withWallCenterline(document, wallId, { kind: 'line' });
+	return finalizeCurveCandidate(document, candidate, 'wall-convert-to-line', wallId);
+}
+
+/**
+ * Insert one interior control at a position projected onto the sampled Wall.
+ *
+ * The pointer is projected to the nearest point on the canonical centerline
+ * (the same sampling the compiler and renderers read), which keeps the new
+ * control ON the Wall, and the control is placed in the persisted anchor order
+ * by its arc distance so the ordering stays deterministic. Insertion may change
+ * the interpolation; P23.11 does not promise shape-preserving insertion.
+ */
+export function planInsertWallCurveAnchor(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: LayoutVec2
+): PrecisionPlan {
+	const target = resolveCurveTarget(document, wallId);
+	if ('plan' in target) return target.plan;
+	const { wall, start, end, anchors } = target;
+	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId]);
+
+	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+	if (!sampled) {
+		return reject('unsupported_geometry', `Wall '${wallId}' centerline could not be sampled`, [wallId]);
+	}
+	const projected = projectPointToSampledSegment(point, sampled);
+	// A control landing on either endpoint would duplicate a Junction-owned
+	// point; the Wall's ends belong to its Junctions, never to its controls.
+	if (
+		projected.distance <= POINT_EPSILON ||
+		sampled.length - projected.distance <= POINT_EPSILON
+	) {
+		return reject(
+			'invalid_value',
+			`Curve control would coincide with an endpoint of Wall '${wallId}'`,
+			[wallId]
+		);
+	}
+
+	const inserted: LayoutWallCurveAnchor = {
+		id: nextInteriorAnchorId(wallId, anchors),
+		point: [projected.point[0], projected.point[1]]
+	};
+	const ordered = [...anchors, inserted].sort(
+		(first, second) =>
+			projectPointToSampledSegment(first.point, sampled).distance -
+			projectPointToSampledSegment(second.point, sampled).distance
+	);
+	const candidate = withWallCenterline(document, wallId, {
+		kind: 'auto-bezier',
+		interiorAnchors: ordered.map(cloneWallCurveAnchor)
+	});
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-insert', wallId);
+}
+
+/** Move exactly one interior control, preserving every other ID and position. */
+export function planMoveWallCurveAnchor(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	anchorId: string,
+	point: LayoutVec2
+): PrecisionPlan {
+	const target = resolveCurveTarget(document, wallId);
+	if ('plan' in target) return target.plan;
+	const { anchors } = target;
+	const existing = anchors.find((anchor) => anchor.id === anchorId);
+	if (!existing) {
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no curve control '${anchorId}'`, [wallId, anchorId]);
+	}
+	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId, anchorId]);
+	if (coincidesAsJunction(existing.point, point)) {
+		return reject('no_op', `Curve control '${anchorId}' is already at that point`, [wallId, anchorId]);
+	}
+
+	const candidate = withWallCenterline(document, wallId, {
+		kind: 'auto-bezier',
+		interiorAnchors: anchors.map((anchor) =>
+			anchor.id === anchorId
+				? ({ id: anchor.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveAnchor)
+				: cloneWallCurveAnchor(anchor)
+		)
+	});
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-move', wallId);
+}
+
+/**
+ * Delete one interior control. Removing the LAST control converts the Wall to
+ * `line` — a curved Wall always keeps at least one interior anchor — so the
+ * schema's "`auto-bezier` requires at least one anchor" rule can never be
+ * violated by a deletion.
+ */
+export function planDeleteWallCurveAnchor(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	anchorId: string
+): PrecisionPlan {
+	const target = resolveCurveTarget(document, wallId);
+	if ('plan' in target) return target.plan;
+	const { anchors } = target;
+	if (!anchors.some((anchor) => anchor.id === anchorId)) {
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no curve control '${anchorId}'`, [wallId, anchorId]);
+	}
+	const remaining = anchors.filter((anchor) => anchor.id !== anchorId);
+	const candidate = withWallCenterline(
+		document,
+		wallId,
+		remaining.length === 0
+			? { kind: 'line' }
+			: { kind: 'auto-bezier', interiorAnchors: remaining.map(cloneWallCurveAnchor) }
+	);
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-delete', wallId);
+}
 
 /** Resize a four-edge straight Room boundary into an exact rectangle. */
 export function planExactRectangleDimensions(

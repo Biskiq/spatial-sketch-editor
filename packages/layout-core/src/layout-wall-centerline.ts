@@ -20,16 +20,15 @@ import {
 	type SampledSegment
 } from './layout-geometry-curve';
 
+/** Deep-copy one curve anchor: same stable ID, an independent point array. */
+export function cloneWallCurveAnchor(anchor: LayoutWallCurveAnchor): LayoutWallCurveAnchor {
+	return { id: anchor.id, point: [anchor.point[0], anchor.point[1]] as LayoutVec2 };
+}
+
 /** Deep-copy one canonical centerline (anchors cloned point-wise). */
 export function cloneWallCenterline(centerline: LayoutWallCenterline): LayoutWallCenterline {
 	if (centerline.kind === 'line') return { kind: 'line' };
-	return {
-		kind: 'auto-bezier',
-		interiorAnchors: centerline.interiorAnchors.map((anchor) => ({
-			id: anchor.id,
-			point: [anchor.point[0], anchor.point[1]] as LayoutVec2
-		}))
-	};
+	return { kind: 'auto-bezier', interiorAnchors: centerline.interiorAnchors.map(cloneWallCurveAnchor) };
 }
 
 /**
