@@ -83,6 +83,19 @@ describe('P23.6e review — near-identical concave rings share interior area', (
 		expect(polygonsShareInteriorArea(l, neighbor)).toBe(false);
 		expect(polygonsShareInteriorArea(neighbor, l)).toBe(false);
 	});
+
+	it('distinguishes endpoint dust from positive-area edge crossings at the ring tolerance', () => {
+		const room = [p(0, 0), p(2, 0), p(2, 2), p(0, 2)];
+		const crossingStrip = (overlap: number): LayoutVec2[] => [
+			p(2 - overlap, -1),
+			p(3, -1),
+			p(3, 1),
+			p(2 - overlap, 1)
+		];
+
+		expect(polygonsShareInteriorArea(room, crossingStrip(5e-10))).toBe(false);
+		expect(polygonsShareInteriorArea(room, crossingStrip(2e-9))).toBe(true);
+	});
 });
 
 describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () => {

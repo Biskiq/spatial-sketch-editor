@@ -339,6 +339,8 @@ export function planWallChain(options: {
 	const splitWallIds = new Set<string>();
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
+	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
+	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
 	const resolveJunctionId = (junctionId: string): string => {
 		let resolvedId = junctionId;
@@ -358,7 +360,7 @@ export function planWallChain(options: {
 		if (passes > MAX_NODING_PASSES) {
 			return reject({ code: 'noding_rejected', message: 'Chain noding did not converge' });
 		}
-		const fix = nextNodingFix(candidate, [...authoredWallIds]);
+		const fix = nextNodingFix(candidate, [...authoredWallIds], operationOwnedJunctionIds);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
 		if (fix.kind === 'adopt') {
@@ -369,6 +371,7 @@ export function planWallChain(options: {
 			const duplicates = new Set(fix.duplicateJunctionIds);
 			for (const duplicateId of duplicates) {
 				junctionIdRedirects.set(duplicateId, fix.keepJunctionId);
+				operationOwnedJunctionIds.delete(duplicateId);
 			}
 			candidate.junctions = candidate.junctions.filter(
 				(junction) => !duplicates.has(junction.id)
@@ -384,6 +387,13 @@ export function planWallChain(options: {
 				};
 			});
 			continue;
+		}
+		if (fix.kind === 'tee' && fix.projectOwnedEndpoint) {
+			candidate.junctions = candidate.junctions.map((junction) =>
+				junction.id === fix.endpointJunctionId
+					? { ...junction, point: [fix.point[0], fix.point[1]] }
+					: junction
+			);
 		}
 		const plan =
 			fix.kind === 'crossing'
@@ -418,7 +428,10 @@ export function planWallChain(options: {
 			}
 		}
 		for (const split of plan.splitWallIds) splitWallIds.add(split);
-		nodedJunctionIds.add(plan.junctionId);
+		if (!baselineJunctionIds.has(plan.junctionId)) {
+			nodedJunctionIds.add(plan.junctionId);
+			operationOwnedJunctionIds.add(plan.junctionId);
+		}
 		// planWallCrossing/planWallSplit return full documents; adopt them.
 		candidate.junctions = document.junctions;
 		candidate.walls = document.walls;
@@ -543,7 +556,14 @@ export function planWallChain(options: {
 
 type NodingFix =
 	| { kind: 'crossing'; wallIds: [string, string]; point: LayoutVec2 }
-	| { kind: 'tee'; interiorWallId: string; endpointJunctionId: string; splitDistance: number; point: LayoutVec2 }
+	| {
+			kind: 'tee';
+			interiorWallId: string;
+			endpointJunctionId: string;
+			splitDistance: number;
+			point: LayoutVec2;
+			projectOwnedEndpoint?: boolean;
+	  }
 	| { kind: 'adopt'; keepJunctionId: string; duplicateJunctionIds: string[] }
 	| { kind: 'reject'; rejection: WallChainRejection };
 
@@ -622,7 +642,8 @@ function teeThroughJunction(
  */
 function nextNodingFix(
 	document: LayoutDocumentWallFirst,
-	chainDerivedWallIds: readonly string[]
+	chainDerivedWallIds: readonly string[],
+	operationOwnedJunctionIds: ReadonlySet<string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	const segments = new Map<string, TopologySegment>();
@@ -648,6 +669,34 @@ function nextNodingFix(
 					? [a.endJunctionId]
 					: [];
 			const classified = classifyWallIntersection(segmentA, segmentB, shared);
+			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
+				return {
+					kind: 'reject',
+					rejection: {
+						code: 'collinear_overlap',
+						message: `Chain overlaps existing wall '${chainSet.has(a.id) ? b.id : a.id}' on one line; trim or redraw the overlapping span`,
+						wallIds: [a.id, b.id]
+					}
+				};
+			}
+			// A wall-span snap is an ordinary floating-point projection. On an
+			// oblique host its rounded coordinate can sit ~1e-16 m off the exact
+			// supporting line, so the robust classifier truthfully returns `none`,
+			// `invalid`, or a crossing infinitesimally before the authored endpoint.
+			// Recover only an authored endpoint within the canonical Junction-identity
+			// tolerance of a pre-existing host interior. This is snap normalization,
+			// not a general intersection epsilon: geometry farther away remains
+			// disconnected and the exact classifier still owns every other case.
+			const projectedTee = projectedAuthoredEndpointTee(
+				a,
+				segmentA,
+				b,
+				segmentB,
+				chainSet,
+				operationOwnedJunctionIds,
+				shared
+			);
+			if (projectedTee) return projectedTee;
 			if (classified.kind === 'proper-crossing') {
 				// A crossing that lands on an existing Junction is a node, not an X:
 				// splitting a wall that already ends there has a degenerate
@@ -711,19 +760,73 @@ function nextNodingFix(
 					point: classified.point
 				};
 			}
-			if (classified.kind === 'collinear-overlap' || classified.kind === 'collinear-endpoint-touch') {
-				return {
-					kind: 'reject',
-					rejection: {
-						code: 'collinear_overlap',
-						message: `Chain overlaps existing wall '${chainSet.has(a.id) ? b.id : a.id}' on one line; trim or redraw the overlapping span`,
-						wallIds: [a.id, b.id]
-					}
-				};
-			}
 		}
 	}
 	return null;
+}
+
+/**
+ * Recover the semantic T encoded by an authored endpoint projected onto a
+ * host Wall. The recovery is deliberately asymmetric: only Junctions created
+ * by this command may move, and only onto a non-chain host. A chain Wall can
+ * reuse a baseline Junction, so Wall lineage alone is not sufficient proof of
+ * endpoint ownership.
+ */
+function projectedAuthoredEndpointTee(
+	a: LayoutWall,
+	segmentA: TopologySegment,
+	b: LayoutWall,
+	segmentB: TopologySegment,
+	chainSet: ReadonlySet<string>,
+	operationOwnedJunctionIds: ReadonlySet<string>,
+	sharedJunctionIds: readonly string[]
+): NodingFix | undefined {
+	if (sharedJunctionIds.length > 0) return undefined;
+	const candidates: Array<{
+		endpointWall: LayoutWall;
+		endpointSegment: TopologySegment;
+		hostSegment: TopologySegment;
+	}> = [];
+	if (chainSet.has(a.id) && !chainSet.has(b.id)) {
+		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostSegment: segmentB });
+	}
+	if (chainSet.has(b.id) && !chainSet.has(a.id)) {
+		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostSegment: segmentA });
+	}
+	for (const { endpointWall, endpointSegment, hostSegment } of candidates) {
+		const endpoints = [
+			{ junctionId: endpointWall.startJunctionId, point: endpointSegment.start },
+			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
+		];
+		for (const endpoint of endpoints) {
+			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
+			const dx = hostSegment.end[0] - hostSegment.start[0];
+			const dz = hostSegment.end[1] - hostSegment.start[1];
+			const lengthSquared = dx * dx + dz * dz;
+			if (!(lengthSquared > 0)) continue;
+			const t =
+				((endpoint.point[0] - hostSegment.start[0]) * dx +
+					(endpoint.point[1] - hostSegment.start[1]) * dz) /
+				lengthSquared;
+			const length = Math.sqrt(lengthSquared);
+			const endpointMargin = JUNCTION_COINCIDENCE_EPSILON / length;
+			if (!(t > endpointMargin && t < 1 - endpointMargin)) continue;
+			const projected: LayoutVec2 = [
+				hostSegment.start[0] + dx * t,
+				hostSegment.start[1] + dz * t
+			];
+			if (!coincidesAsJunction(endpoint.point, projected)) continue;
+			return {
+				kind: 'tee',
+				interiorWallId: hostSegment.id,
+				endpointJunctionId: endpoint.junctionId,
+				splitDistance: t * length,
+				point: projected,
+				projectOwnedEndpoint: true
+			};
+		}
+	}
+	return undefined;
 }
 
 function wallById(document: LayoutDocumentWallFirst, wallId: string): LayoutWall | undefined {

@@ -167,7 +167,9 @@ function planWallSplitInternal(
 	// record is inserted when newly allocated; a supplied existing junction is
 	// reused as-is when present, or inserted at the resolved point when the
 	// caller names a junction that does not exist yet (X crossings: the first
-	// split introduces the shared junction).
+	// split introduces the shared junction). Existing Junction coordinates are
+	// canonical: a tolerant identity match permits reuse but never moves the
+	// Junction or other authored geometry already attached to it.
 	let junctions: LayoutJunction[] = document.junctions;
 	if (!options.existingJunctionId) {
 		junctions = [...document.junctions, { id: junctionId, point: splitPoint }];
