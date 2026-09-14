@@ -191,7 +191,9 @@
 		onLayoutTransactionCancel,
 		onDeselect,
 		store,
-		contextMenu = null
+		contextMenu = null,
+		hierarchyEmphasis = null,
+		hierarchySceneEmphasis = null
 	}: {
 		model: LayoutPreviewModel;
 		preview: LayoutPreviewState;
@@ -249,6 +251,15 @@
 		store?: EditorStore;
 		/** P3.4 — shared context-menu slot; absent keeps the surface frozen. */
 		contextMenu?: EditorContextMenuStore | null;
+		/**
+		 * P23.6e — optional external hover emphasis from the Scene Navigator. It is
+		 * plain presentation data (never a selection): the viewport's own pointer
+		 * hover always wins, and only the Scene Plan mount passes it, so Camera Plan
+		 * receives nothing.
+		 */
+		hierarchyEmphasis?: PlanHitIdentity | null;
+		/** Scene entity emphasis uses the existing passive footprint renderer. */
+		hierarchySceneEmphasis?: string | null;
 	} = $props();
 
 	let svgElement = $state<SVGSVGElement>();
@@ -332,6 +343,15 @@
 	// pointer is over). Derived from the same resolveArrangeHit call the click
 	// path uses; it never writes selection or document state.
 	let arrangeHover = $state<{ owner: 'layout-object' | 'scene'; id: string } | null>(null);
+	// A local Plan hover owns Scene footprint presentation while it exists. The
+	// Navigator emphasis is only the fallback, so a layout-object Arrange hit
+	// also clears any stale Scene emphasis instead of highlighting two targets.
+	const effectiveSceneHover = $derived.by(() => {
+		if (sceneBridgeHover !== null) return sceneBridgeHover.entityId;
+		if (arrangeHover !== null) return arrangeHover.owner === 'scene' ? arrangeHover.id : null;
+		if (layoutHover !== null) return null;
+		return hierarchySceneEmphasis;
+	});
 	// P3.3 — live yaw readout while a Scene rotate gesture is in progress
 	// (same feedback language as room rotation).
 	let stagingYawFeedback = $state<number | null>(null);
@@ -378,7 +398,14 @@
 		};
 	});
 	const baseInteractionProjection = $derived(
-		buildPlanInteractionProjection(interaction, rooms, model, wallFirstContext, layoutHover ?? undefined)
+		buildPlanInteractionProjection(
+			interaction,
+			rooms,
+			model,
+			wallFirstContext,
+			// Viewport-local pointer hover wins; Navigator emphasis is the fallback.
+			layoutHover ?? hierarchyEmphasis ?? undefined
+		)
 	);
 	const cameraProjection = $derived.by(() => {
 		if (interaction.planViewMode !== 'layout' || !interaction.planView.showTourOverlay) return undefined;
@@ -397,12 +424,14 @@
 		if (!scene || !sceneRooms) return undefined;
 		void interaction.planViewMode;
 		void selectedPlacementIds.length;
-		void sceneBridgeHover?.entityId;
+		void effectiveSceneHover;
 		return buildPlanSceneFootprintProjection(scene, sceneRooms, {
 			getEffectiveScale: getEffectiveSceneScale,
 			presentationForEntity: (entityId) => {
 				if (interaction.planViewMode === 'staging' && selectedPlacementIds.includes(entityId)) return 'selected';
-				if (sceneBridgeHover?.entityId === entityId) return 'bridge-hover';
+				if (effectiveSceneHover === entityId) {
+					return 'bridge-hover';
+				}
 				return interaction.planViewMode === 'staging' ? 'active' : 'passive';
 			}
 		});

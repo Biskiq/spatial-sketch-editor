@@ -89,6 +89,10 @@
 		ACTIVE_EDITOR_SELECTION_KEY,
 		EditorActiveSelectionStore
 	} from './active-editor-selection.svelte';
+	import {
+		HIERARCHY_NAVIGATOR_KEY,
+		HierarchyNavigatorStore
+	} from './hierarchy-navigator-state.svelte';
 	import { SCENE_GIZMO_POLICY } from '$lib/editor/gizmo/scene-gizmo-adapter.svelte';
 	import { CAMERA_GIZMO_POLICY } from '$lib/editor/gizmo/camera-gizmo-adapter.svelte';
 	import { projectDomainGizmoCapabilities } from '$lib/editor/gizmo/editor-gizmo-policy';
@@ -255,6 +259,21 @@
 		() => clearLayoutSelection(layoutInteraction)
 	);
 	setContext(ACTIVE_EDITOR_SELECTION_KEY, activeSelection);
+	// P23.6e — one UI-only Hierarchy Navigator instance at the composition root.
+	// It owns page/search/filter/disclosure/scroll/back and transient row
+	// emphasis; it never selects, mutates documents or records history.
+	const hierarchyNavigator = new HierarchyNavigatorStore();
+	setContext(HIERARCHY_NAVIGATOR_KEY, hierarchyNavigator);
+	/**
+	 * P23.6e review — every seam that replaces the document resets both the
+	 * canonical selection *and* the Navigator's UI-only state. Otherwise another
+	 * project's page, query, filters, disclosure, emphasis and Back history stay
+	 * live against a document they never described.
+	 */
+	function resetDocumentScopedState(): void {
+		activeSelection.reset();
+		hierarchyNavigator.reset();
+	}
 	store.registerLayoutHistory({
 		capture: () => captureLayoutPreviewSnapshot(layoutPreview),
 		replace: (snapshot) => {
@@ -1417,7 +1436,7 @@
 		// Replacement installs a temporary clean baseline; restore the blank boot
 		// baseline so a failed resumed Save leaves the draft visibly dirty.
 		store.markSaved(sceneBaseline);
-		activeSelection.reset();
+		resetDocumentScopedState();
 		projectName = pending.project.name;
 		projectVersion = null;
 		pendingSaveActive = true;
@@ -1503,7 +1522,7 @@
 			setLayoutViewMode(layoutInteraction, viewState.activeView === 'plan' ? 'plan' : '3d');
 			store.markSaved(serializeSceneDocument(validation.project.scene));
 			markLayoutPreviewSaved(layoutPreview, serializeActiveLayout(validation.project.layout));
-			activeSelection.reset();
+			resetDocumentScopedState();
 			projectId = loaded.projectId;
 			projectName = validation.project.name;
 			savedProjectName = validation.project.name;
@@ -2002,7 +2021,7 @@
 		pendingSaveActive={pendingSaveActive}
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
-		onReset={() => activeSelection.reset()}
+		onReset={resetDocumentScopedState}
 		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}
@@ -2049,7 +2068,7 @@
 		pendingSaveActive={pendingSaveActive}
 		onDiscardPendingSave={discardPendingSave}
 		resolveProjectAssetBytes={projectAssetsAvailable ? resolveProjectAssetBytes : undefined}
-		onReset={() => activeSelection.reset()}
+		onReset={resetDocumentScopedState}
 		onLayoutReplaced={() => cancelWallChainRun(layoutInteraction)}
 		onPreview={() => void requestPreviewEntry()}
 		previewDisabledReason={previewTransitioning ? 'Opening preview…' : null}

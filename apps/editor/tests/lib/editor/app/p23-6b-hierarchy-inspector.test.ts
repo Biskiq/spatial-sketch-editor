@@ -416,6 +416,7 @@ describe('P23.6b reveal target helper', () => {
 describe('P23.6b source contracts', () => {
 	it('exposes no legacy Room command on the wall-first Room path (P23.6d: canonical removal only)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
 		// P23.6b shipped "no dedicated wall-first Room menu handler at all"
 		// because a canonical Room had zero working commands. P23.6d supersedes
 		// that state: the canonical `planRemoveRoom` now exists, so the wall-first
@@ -424,13 +425,12 @@ describe('P23.6b source contracts', () => {
 		expect(tree).toContain('onWallFirstRoomRowContextMenu');
 		expect(tree).not.toContain('renameRoom: () => {}');
 		expect(tree).not.toContain('deleteRoom: () => {}');
-		// The wall-first Room row button binds the canonical handler (not the
-		// legacy Room handler) so the legacy commands stay unreachable.
-		const anchor = tree.indexOf('data-reveal-id={`rooms:${room.roomId}`}');
-		expect(anchor).toBeGreaterThan(-1);
-		const row = tree.slice(tree.lastIndexOf('<button', anchor), tree.indexOf('</button>', anchor));
-		expect(row).toContain('onWallFirstRoomRowContextMenu');
-		expect(row).not.toContain('onRoomRowContextMenu');
+		// P23.6e — the canonical Room row lives in the Navigator now, and it still
+		// binds the canonical handler (never the legacy Room one) so the legacy
+		// commands stay unreachable from the canonical surface.
+		expect(tree).toContain('onRoomContextMenu={onWallFirstRoomRowContextMenu}');
+		expect(navigator).toContain("entity.kind === 'room') onRoomContextMenu(event, entity.roomId)");
+		expect(navigator).not.toContain('onRoomRowContextMenu');
 	});
 
 	it('omits the Rename item when the menu builder gets no renameRoom action', () => {
@@ -502,59 +502,63 @@ describe('P23.6b source contracts', () => {
 		}
 	});
 
-	it('renders the Walls subgroup and Topology sibling under Architecture (D1)', () => {
+	it('renders the canonical page inventory through the Navigator, not accordion groups (D1)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		for (const fragment of [
-			'Architecture',
-			'Walls</span>',
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		// P23.6e — the canonical inventory is the Navigator's direct page
+		// destinations (Rooms / Walls / Openings / Junctions / Layout Objects /
+		// Scene Content); the accordion keeps only the legacy Room-nested path.
+		expect(tree).toContain('<HierarchyNavigator');
+		expect(navigator).toContain('buildHierarchyPageProjection');
+		expect(navigator).toContain('canonicalHierarchyHome');
+		for (const gone of [
 			'Topology…',
-			'Layout Objects',
-			'Scene Content',
+			'data-reveal-id',
+			'tree-reveal-hint',
 			'layoutSelectionRevealTarget',
-			'tree-reveal-hint'
+			'openWallIds',
+			'architectureOpen',
+			'wallsOpen',
+			'topologyOpen',
+			'layoutObjectsOpen',
+			'sceneContentOpen'
 		]) {
-			expect(tree, `tree misses ${fragment}`).toContain(fragment);
+			expect(tree, `legacy accordion still carries ${gone}`).not.toContain(gone);
 		}
-		// The Architecture/Wall reveal opens the Walls subgroup with the root.
-		expect(tree).toContain('wallsOpen = true');
 	});
 
-	it('junction reveal opens Architecture without exploding Walls/Topology (D4)', () => {
+	it('a global Junction reveal expands no inventory (D4)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// Review fix: a Junction selection must not auto-expand the disclosed
-		// Topology inventory (nor drag the Walls list open) — orientation
-		// comes from the Architecture root; the user expands Topology….
-		// (Slice the applyRevealTarget switch — not the revealTargetHidden one.)
-		const fnStart = tree.indexOf('function applyRevealTarget');
-		expect(fnStart).toBeGreaterThan(-1);
-		const start = tree.indexOf("case 'topology':", fnStart);
-		const block = tree.slice(start, tree.indexOf("case 'layoutObjects':", start));
-		expect(block).toContain('architectureOpen = true;');
-		expect(block).not.toContain('wallsOpen = true');
-		expect(block).not.toContain('topologyOpen = true');
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		// Review fix, re-homed: the Junction reveal decision is pure now, and the
+		// p23-6e suite proves it discloses zero ancestors for a global Junctions
+		// page row. The accordion keeps no Junction inventory at all, so a
+		// selection can never drag one open.
+		expect(navigator).toContain('evaluateHierarchyReveal(previous, observation)');
+		expect(tree).not.toContain('topologyOpen');
+		expect(tree).not.toContain('wallsOpen');
 	});
 
-	it('anchors reveal targets on unique per-row keys', () => {
-		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// Review fix: wall-first Room rows carry their own rooms: anchor, and
-		// Opening rows are keyed wall:opening so an Opening reveal scrolls to
-		// the Opening row, not its host Wall.
-		expect(tree).toContain('data-reveal-id={`rooms:${room.roomId}`}');
-		expect(tree).toContain("data-reveal-id={`architecture:${wall.wallId}:${opening.openingId}`}");
-		expect(tree).toContain("data-reveal-id={`architecture:${wall.wallId}`}");
-		expect(tree).toContain("data-reveal-id={`topology:${junction.junctionId}`}");
-		// The selector builder maps targets to exactly these keys.
-		expect(tree).toContain("return `rooms:${target.roomId}`;");
-		expect(tree).toContain("`architecture:${target.wallId}:${target.openingId}`");
+	it('anchors reveal on exact canonical row keys, unique per representation', () => {
+		const row = readLibSource('editor/hierarchy/HierarchyRow.svelte');
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		// Review fix, re-homed: a reveal targets the exact row, so an Opening row
+		// never collapses onto its host Wall. Rows carry the projection's stable
+		// `rowKey`; the scroll resolves that key exactly.
+		expect(row).toContain('data-row-key={row.rowKey}');
+		expect(navigator).toContain('if (element.dataset.rowKey === rowKey) return element;');
+		expect(navigator).toContain("scrollIntoView({ block: 'nearest' })");
 	});
 
-	it('reveals wall-first Scene selections through the Scene Content root (format-gated)', () => {
+	it('defers wall-first Scene reveal to the Navigator (format-gated)', () => {
 		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
-		// Review fix: the branch keys on the DOCUMENT FORMAT (`wallFirstLayout`),
-		// not on projection emptiness — an empty legacy document has no rooms
-		// either and must keep the legacy Room-nested reveal path.
-		expect(tree).toContain('if (wallFirstLayout) {');
-		expect(tree).toContain('sceneContentOpen = true;');
-		expect(tree).not.toContain('model.wallFirstRooms.length > 0 || model.rooms.length === 0');
+		// Review fix: the branch still keys on the DOCUMENT FORMAT
+		// (`wallFirstLayout`), not on projection emptiness — an empty legacy
+		// document has no rooms either and must keep the legacy Room-nested reveal
+		// path. Canonical documents return before it, because the Navigator owns
+		// their reveal.
+		expect(tree).toContain('if (wallFirstLayout) return;');
+		expect(tree).toContain('layoutSelectionAncestorRoomId');
+		expect(tree).not.toContain('sceneContentOpen');
 	});
 });

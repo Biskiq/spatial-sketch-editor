@@ -622,9 +622,20 @@ describe('P23.6c caller wiring — one planner, fixed post-delete selection', ()
 		// menu can be built, so an inert row can never expose — let alone
 		// execute — the canonical Delete command.
 		expect(handlerBody).toContain('if (!roomRowInteractive(row)) return;');
-		// Activation keeps its own gate (unchanged contract): the row button
-		// binds selection only when the row is interactive.
-		expect(source).toContain('onclick={roomRowInteractive(wallRow) ? () => selectPhysicalWall(wall.wallId) : undefined}');
+		// Activation keeps its own gate (unchanged contract): a row binds
+		// selection only when the row is interactive. P23.6e moved canonical Wall
+		// activation to the page Navigator, which consults the same authority
+		// predicate before it reaches the canonical writer.
+		// (The binding also forwards the originating event so Scene modifier-click
+		// semantics survive; the interactivity gate is what this asserts.)
+		expect(readSource('editor/hierarchy/HierarchyRow.svelte')).toContain(
+			'onclick={interactive ? (event) => onSelect(row, event) : undefined}'
+		);
+		const navigator = readSource('editor/hierarchy/HierarchyNavigator.svelte');
+		expect(navigator).toContain('isUnifiedTreeRowInteractive(');
+		expect(navigator).toContain('selectLayoutPhysicalWall(layoutInteraction, entity.wallId)');
+		// The legacy accordion keeps only the canonical Wall context-menu route.
+		expect(source).toContain('function selectPhysicalWall(wallId: string)');
 	});
 
 	it('Camera domain exposes no Wall context menu at all — CameraSidebar wires no delete authority (review regression)', () => {
