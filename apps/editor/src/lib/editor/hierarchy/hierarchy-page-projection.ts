@@ -1024,11 +1024,13 @@ export type HierarchyRevealObservation = {
 	transitionKind: HierarchyTransitionKind;
 	/** Exact canonical row of an explicit `Show in…`, else null. */
 	targetRowKey: string | null;
+	/** Ancestors an explicit `Show in…` target needs, in root→leaf order. */
+	targetAncestorDisclosureKeys: readonly string[];
 	/** Canonical selected entity id, or null when nothing is selected. */
 	selectionId: string | null;
 	/** Exact active-page representation row key, or null when excluded. */
 	representedRowKey: string | null;
-	/** Ancestors the representation needs before its row exists. */
+	/** Ancestors the *selection's* representation needs before its row exists. */
 	ancestorDisclosureKeys: readonly string[];
 	/** Monotonic count of user disclosure gestures. */
 	userDisclosureRevision: number;
@@ -1056,6 +1058,11 @@ export type HierarchyRevealDecision =
  * 3. a same-page excluded → represented transition for the unchanged selection;
  * 4. a canonical edit that moved the selection to a different primary row.
  *
+ * `show-in` reveals the target it carries — its row and its own ancestor chain —
+ * and is therefore **independent of the active selection**: an explicit action
+ * must work with nothing selected and must never disclose another entity's
+ * ancestors.
+ *
  * A user disclosure expansion scrolls only — it never re-expands anything — and
  * ordinary page entry / history restore restore their own scroll instead.
  */
@@ -1065,14 +1072,12 @@ export function evaluateHierarchyReveal(
 ): HierarchyRevealDecision {
 	// Page-entry event: the only reveal is an explicit Show in… target.
 	if (current.transitionRevision !== previous.transitionRevision) {
-		if (
-			current.transitionKind === 'show-in' &&
-			current.targetRowKey !== null &&
-			current.representedRowKey !== null
-		) {
+		if (current.transitionKind === 'show-in' && current.targetRowKey !== null) {
+			// The target's own chain, never the selection's: the user asked for
+			// this row, and the selection may be absent or unrelated.
 			return {
 				kind: 'reveal',
-				disclose: [...current.ancestorDisclosureKeys],
+				disclose: [...current.targetAncestorDisclosureKeys],
 				scrollTo: current.targetRowKey
 			};
 		}

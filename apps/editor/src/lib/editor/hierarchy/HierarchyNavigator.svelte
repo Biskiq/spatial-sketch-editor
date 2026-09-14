@@ -213,10 +213,16 @@
 	 * a Back restoration - those restore the entry's own saved scroll instead.
 	 */
 	$effect(() => {
+		const transition = navigator.transition;
 		const observation: HierarchyRevealObservation = {
-			transitionRevision: navigator.transition.revision,
-			transitionKind: navigator.transition.kind,
-			targetRowKey: navigator.transition.target?.rowKey ?? null,
+			transitionRevision: transition.revision,
+			transitionKind: transition.kind,
+			// The target travels on its own: an explicit `Show in…` reveals the row
+			// it names even with nothing selected, and discloses that row's
+			// ancestors rather than the selection's.
+			targetRowKey: transition.kind === 'show-in' ? (transition.target?.rowKey ?? null) : null,
+			targetAncestorDisclosureKeys:
+				transition.kind === 'show-in' ? (transition.target?.ancestorDisclosureKeys ?? []) : [],
 			selectionId: activeEntity?.id ?? null,
 			representedRowKey: activeRepresentation?.rowKey ?? null,
 			ancestorDisclosureKeys: activeRepresentation?.ancestorDisclosureKeys ?? [],
@@ -389,7 +395,7 @@
 		if (row.disclosureKey) navigator.toggleDisclosure(row.disclosureKey);
 	}
 
-	function selectRow(row: HierarchyProjectedRow): void {
+	function selectRow(row: HierarchyProjectedRow, event?: MouseEvent): void {
 		const entity = row.entity;
 		if (!entity) return;
 		if (entity.owner === 'layout') {
@@ -419,7 +425,9 @@
 			return;
 		}
 		const sceneEntity = sceneEntitiesById.get(entity.entityId);
-		if (sceneEntity) onSelectSceneEntity(sceneEntity);
+		// Forward the originating event: Shift-click must still reach the existing
+		// additive Scene-selection path instead of a plain replace.
+		if (sceneEntity) onSelectSceneEntity(sceneEntity, event);
 	}
 
 	function runAction(destination: HierarchyDestination): void {
@@ -759,7 +767,16 @@
 		font-size: 0.6rem;
 		opacity: 0.75;
 	}
-	.tree-page { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
+	.tree-page {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 0.12rem;
+		/* Reset the UA list indent/markers: these are tree rows, not bullets. */
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
 	.empty {
 		margin: 0.5rem 0.45rem;
 		color: var(--editor-text-muted);

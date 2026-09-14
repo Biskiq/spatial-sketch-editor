@@ -32,7 +32,12 @@
 		isSelected: (row: HierarchyProjectedRow) => boolean;
 		isInteractive: (row: HierarchyProjectedRow) => boolean;
 		isOpen: (row: HierarchyProjectedRow) => boolean;
-		onSelect: (row: HierarchyProjectedRow) => void;
+		/**
+		 * Row activation. The originating event is forwarded so owners can keep
+		 * modifier semantics (Scene Shift-click adds to the selection) rather than
+		 * flattening every activation into a plain replace.
+		 */
+		onSelect: (row: HierarchyProjectedRow, event?: MouseEvent) => void;
 		onToggle: (row: HierarchyProjectedRow) => void;
 		onAction: (destination: HierarchyDestination) => void;
 		onContextMenu?: (event: MouseEvent, row: HierarchyProjectedRow) => void;
@@ -107,7 +112,7 @@
 					class:tree-row--selected={selected}
 					aria-disabled={!interactive}
 					title={row.tooltip ?? row.canonicalId}
-					onclick={interactive ? () => onSelect(row) : undefined}
+					onclick={interactive ? (event) => onSelect(row, event) : undefined}
 					oncontextmenu={onContextMenu ? (event) => onContextMenu(event, row) : undefined}
 					onpointerenter={() => onEmphasis?.(row)}
 					onpointerleave={() => onEmphasisLeave?.(row)}
@@ -159,3 +164,116 @@
 		</ul>
 	{/if}
 </li>
+
+<style>
+	/*
+	 * P23.6e review — row primitives live here, not in `UnifiedProjectTree`.
+	 * Svelte scopes a parent's stylesheet to its own markup, so the classes the
+	 * legacy tree stylesheet defines (`.tree-row`, `.tree-row__label`, …) never
+	 * reached this child component: the Navigator rows rendered as native gray
+	 * buttons in the UA font, with default list markers and indent.
+	 *
+	 * `.hierarchy-node`/`.hierarchy-line`/`.hierarchy-children` structure and the
+	 * shared `--editor-*` tokens still come from the surface that owns them.
+	 */
+	ul {
+		min-width: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.tree-root__row {
+		display: flex;
+		width: 100%;
+		min-width: 0;
+		min-height: 2.125rem;
+		box-sizing: border-box;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.28rem 0.45rem;
+		border: 1px solid transparent;
+		border-radius: 0.28rem;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.tree-root__row:hover {
+		border-color: var(--editor-border-normal);
+		background: var(--editor-bg-control);
+	}
+	.tree-root__label { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.02em; }
+	.chevron {
+		display: block;
+		font-size: 1rem;
+		line-height: 1;
+		transform: rotate(0);
+		transition: transform 120ms ease;
+	}
+	.chevron.open { transform: rotate(90deg); }
+	.tree-row {
+		display: flex;
+		width: 100%;
+		min-width: 0;
+		min-height: 2rem;
+		box-sizing: border-box;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.28rem 0.45rem;
+		border: 1px solid transparent;
+		border-radius: 0.28rem;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+	}
+	button.tree-row { cursor: pointer; }
+	button.tree-row:hover:not([aria-disabled='true']) {
+		border-color: var(--editor-border-normal);
+		background: var(--editor-bg-control);
+	}
+	button.tree-row[aria-disabled='true'] { opacity: 0.6; }
+	.tree-row--selected {
+		border-color: var(--editor-accent-border);
+		background: var(--editor-bg-selected);
+		box-shadow: inset 0 0 0 1px var(--editor-accent-pressed);
+		color: var(--editor-text-primary);
+	}
+	.tree-row--selected[aria-disabled='true'] { opacity: 1; }
+	.tree-row__chevron {
+		display: grid;
+		width: 1.7rem;
+		min-height: 2rem;
+		place-items: center;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: 0.28rem;
+		background: transparent;
+		color: var(--editor-accent);
+		cursor: pointer;
+	}
+	.tree-row__chevron:hover {
+		border-color: var(--editor-border-normal);
+		background: var(--editor-bg-control);
+	}
+	.tree-row__chevron-spacer { display: block; width: 1.7rem; min-height: 2rem; }
+	.tree-row__label {
+		min-width: 0;
+		overflow: hidden;
+		font-size: 0.74rem;
+		font-weight: 570;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tree-row__meta {
+		min-width: 0;
+		margin-left: auto;
+		overflow: hidden;
+		color: var(--editor-text-muted);
+		font-size: 0.62rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tree-row--selected .tree-row__meta { color: var(--editor-text-primary); }
+</style>

@@ -626,8 +626,10 @@ describe('P23.6c caller wiring — one planner, fixed post-delete selection', ()
 		// selection only when the row is interactive. P23.6e moved canonical Wall
 		// activation to the page Navigator, which consults the same authority
 		// predicate before it reaches the canonical writer.
+		// (The binding also forwards the originating event so Scene modifier-click
+		// semantics survive; the interactivity gate is what this asserts.)
 		expect(readSource('editor/hierarchy/HierarchyRow.svelte')).toContain(
-			'onclick={interactive ? () => onSelect(row) : undefined}'
+			'onclick={interactive ? (event) => onSelect(row, event) : undefined}'
 		);
 		const navigator = readSource('editor/hierarchy/HierarchyNavigator.svelte');
 		expect(navigator).toContain('isUnifiedTreeRowInteractive(');

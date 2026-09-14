@@ -1435,7 +1435,7 @@ describe('P23.6e slice 4 — page Navigator UI migration', () => {
 	it('separates Room (and every entity) selection from the navigation action', () => {
 		// Two distinct affordances on the entity line: the row itself selects via
 		// `onSelect`, action buttons navigate via `onAction`.
-		expect(rowSource).toMatch(/onclick=\{interactive \? \(\) => onSelect\(row\) : undefined\}/);
+		expect(rowSource).toMatch(/onclick=\{interactive \? \(event\) => onSelect\(row, event\) : undefined\}/);
 		expect(rowSource).toMatch(/onclick=\{\(\) => onAction\(action\.destination\)\}/);
 		expect(navigatorSource).toContain('function selectRow(');
 		expect(navigatorSource).toContain('function runAction(');
@@ -1499,6 +1499,7 @@ describe('P23.6e slice 5 — representation reveal and pinned selection', () => 
 			transitionRevision: 1,
 			transitionKind: 'ordinary-entry',
 			targetRowKey: null,
+			targetAncestorDisclosureKeys: [],
 			selectionId: null,
 			representedRowKey: null,
 			ancestorDisclosureKeys: [],
@@ -1565,8 +1566,64 @@ describe('P23.6e slice 5 — representation reveal and pinned selection', () => 
 					transitionRevision: 2,
 					transitionKind: 'show-in',
 					targetRowKey: representation.representedRowKey,
+					targetAncestorDisclosureKeys: representation.ancestorDisclosureKeys,
 					selectionId: opening.id,
 					...representation
+				})
+			)
+		).toEqual({
+			kind: 'reveal',
+			disclose: ['walls:wall:w2'],
+			scrollTo: 'walls:wall:w2:opening:op-win-2'
+		});
+	});
+
+	it('Show in… reveals its target with nothing selected, disclosing the target chain only', () => {
+		const opening = openingEntityKey('w2', 'op-win-2');
+		const representation = representationOf({ kind: 'walls' }, opening);
+		// No selection at all: the explicit action still owes the reveal, and it
+		// must disclose the target's host — not the (absent) selection's chain.
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({
+					transitionRevision: 2,
+					transitionKind: 'show-in',
+					targetRowKey: representation.representedRowKey,
+					targetAncestorDisclosureKeys: representation.ancestorDisclosureKeys,
+					selectionId: null,
+					representedRowKey: null,
+					ancestorDisclosureKeys: []
+				})
+			)
+		).toEqual({
+			kind: 'reveal',
+			disclose: ['walls:wall:w2'],
+			scrollTo: 'walls:wall:w2:opening:op-win-2'
+		});
+	});
+
+	it('Show in… uses the target chain even when another entity is selected', () => {
+		const target = openingEntityKey('w2', 'op-win-2');
+		const unrelated = junctionEntityKey('j1');
+		const targetRepresentation = representationOf({ kind: 'walls' }, target);
+		const selectionRepresentation = representationOf(
+			{ kind: 'room', roomId: 'room-a' },
+			unrelated
+		);
+		expect(selectionRepresentation.ancestorDisclosureKeys).toEqual([
+			'room:room-a:section:junctions'
+		]);
+		expect(
+			evaluateHierarchyReveal(
+				observation({ selectionId: null }),
+				observation({
+					transitionRevision: 2,
+					transitionKind: 'show-in',
+					targetRowKey: targetRepresentation.representedRowKey,
+					targetAncestorDisclosureKeys: targetRepresentation.ancestorDisclosureKeys,
+					selectionId: unrelated.id,
+					...selectionRepresentation
 				})
 			)
 		).toEqual({
@@ -1887,7 +1944,7 @@ describe('P23.6e slice 6 — search UI, filters and Back restoration (source con
 	});
 
 	it('leaves the query alone when a result is selected', () => {
-		const selectRowBody = /function selectRow\(row: HierarchyProjectedRow\): void \{[\s\S]*?\n\t}/.exec(
+		const selectRowBody = /function selectRow\(row: HierarchyProjectedRow, event\?: MouseEvent\): void \{[\s\S]*?\n\t}/.exec(
 			navigatorSource
 		)![0];
 		expect(selectRowBody).toContain('selectLayoutRoom(layoutInteraction');
@@ -1945,6 +2002,76 @@ describe('P23.6e slice 7 — legacy quarantine and single ownership (source cont
 			'layoutObjectsOpen'
 		]) {
 			expect(treeSource, `legacy quarantine still carries ${removed}`).not.toContain(removed);
+		}
+	});
+});
+
+describe('P23.6e review — Navigator presentation, activation and document reset', () => {
+	const navigatorSource = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+	const rowSource = readLibSource('editor/hierarchy/HierarchyRow.svelte');
+	const appSource = readLibSource('editor/app/EditorApp.svelte');
+
+	it('owns the row primitives in the row component, not the parent stylesheet', () => {
+		// Svelte scopes a parent stylesheet to its own markup, so the legacy tree's
+		// `.tree-row` rules could never reach this child. The primitives must be
+		// declared where they render — otherwise the rows come back as native
+		// buttons in the UA font with default list markers and indent.
+		expect(rowSource).toContain('<style>');
+		for (const primitive of [
+			'.tree-row {',
+			'.tree-row--selected {',
+			'.tree-row__chevron {',
+			'.tree-row__chevron-spacer {',
+			'.tree-row__label {',
+			'.tree-row__meta {',
+			'.tree-root__row {',
+			'.chevron {'
+		]) {
+			expect(rowSource, `HierarchyRow is missing ${primitive}`).toContain(primitive);
+		}
+		// Native `ul`/`li` chrome is reset where the list is rendered.
+		const rowListReset = /ul \{[\s\S]{0,120}?list-style: none;/.exec(rowSource);
+		expect(rowListReset).not.toBeNull();
+		expect(navigatorSource).toMatch(/\.tree-page \{[\s\S]{0,200}?list-style: none;/);
+		// Interactivity and typography stay explicit, never UA defaults.
+		expect(rowSource).toMatch(/\.tree-row \{[\s\S]{0,400}?font: inherit;/);
+		expect(rowSource).toMatch(/button\.tree-row \{ cursor: pointer; \}/);
+	});
+
+	it('forwards the originating MouseEvent into the canonical Scene selection', () => {
+		// Scene Shift-click adds to the selection; the row must not flatten every
+		// activation into a plain replace by dropping the event.
+		expect(rowSource).toMatch(/onSelect: \(row: HierarchyProjectedRow, event\?: MouseEvent\) => void;/);
+		expect(rowSource).toMatch(/onclick=\{interactive \? \(event\) => onSelect\(row, event\) : undefined\}/);
+		expect(navigatorSource).toMatch(/function selectRow\(row: HierarchyProjectedRow, event\?: MouseEvent\): void \{/);
+		expect(navigatorSource).toMatch(/onSelectSceneEntity\(sceneEntity, event\)/);
+		// A layout entity still selects through the canonical writer, unchanged.
+		expect(navigatorSource).not.toMatch(/selectLayoutRoom\(layoutInteraction, entity\.roomId, event\)/);
+	});
+
+	it('resets the Navigator on every document-replacing seam', () => {
+		// Page/query/filters/disclosure/emphasis/Back must not outlive the document
+		// they described: reset, import, project load and pending-draft replacement
+		// all go through one seam.
+		const seam = /function resetDocumentScopedState\(\): void \{[\s\S]*?\n\t}/.exec(appSource);
+		expect(seam).not.toBeNull();
+		const seamBody = seam![0];
+		expect(seamBody).toContain('activeSelection.reset();');
+		expect(seamBody).toContain('hierarchyNavigator.reset();');
+		// Both project-load and pending-draft replacement call it...
+		expect(appSource.match(/^\t\t	?resetDocumentScopedState\(\);/gm)?.length).toBe(2);
+		// ...and every `onReset` seam uses it instead of resetting selection alone.
+		expect(appSource.match(/onReset=\{resetDocumentScopedState\}/g)?.length).toBe(2);
+		expect(appSource).not.toContain('onReset={() => activeSelection.reset()}');
+		// The Navigator reset itself clears the whole UI state, not a subset.
+		const storeSource = readLibSource('editor/app/hierarchy-navigator-state.svelte.ts');
+		const reset = /reset\(\): void \{[\s\S]*?\n\t}/.exec(storeSource)![0];
+		for (const cleared of [
+			'defaultHierarchyHistoryEntry()',
+			'this.backStack = []',
+			'this.emphasis = null'
+		]) {
+			expect(reset, `Navigator reset does not clear ${cleared}`).toContain(cleared);
 		}
 	});
 });
