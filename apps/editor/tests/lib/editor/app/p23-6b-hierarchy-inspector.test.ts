@@ -489,7 +489,7 @@ describe('P23.6b source contracts', () => {
 			'updateSelectedWallThickness',
 			'updateSelectedWallHeight',
 			'updateSelectedWallRole',
-			'addSelectedWallVertex',
+			'addSelectedWallJunction',
 			'updateSelectedJunction',
 			'updatePrecisionRectangle',
 			'duplicateSelectedPrecisionRoom',

@@ -31,6 +31,7 @@ import {
 	planExactWallLength,
 	planExactWallHeight,
 	planExactWallThickness,
+	planRigidWallMove,
 	planWallSubdivision,
 	type FixedWallEndpoint,
 	type LayoutArchitecturalPresetId,
@@ -1081,6 +1082,22 @@ export function updateWallFirstJunction(
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
 	return applyWallFirstPrecisionPlan(state, planExactJunctionMove(layout, junctionId, point));
+}
+
+/**
+ * P23.10 — commit one rigid straight-Wall translation as one Layout history
+ * entry. Thin adapter over the shared core planner: the same planner the
+ * numeric Junction/Wall commands use, so the direct gesture and the Inspector
+ * can never reach acceptance by different routes. Rejection installs nothing.
+ */
+export function updateWallFirstWallMove(
+	state: LayoutPreviewState,
+	wallId: string,
+	delta: LayoutVec2
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planRigidWallMove(layout, wallId, delta));
 }
 
 export function updateWallFirstWallLength(

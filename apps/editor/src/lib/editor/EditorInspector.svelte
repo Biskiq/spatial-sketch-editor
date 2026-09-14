@@ -1483,8 +1483,12 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	 * P23.6 — exact subdivision of the selected canonical Wall (identical
 	 * planner and guarded transaction as the retired "Architecture · exact"
 	 * control; re-homed onto the canonical Wall panel by P23.6b).
+	 *
+	 * P23.10 — the command addresses canonical Junctions, so it is labelled and
+	 * reported with Junction language; the planner is unchanged and shares its
+	 * acceptance path with the direct Add-junction gesture.
 	 */
-	function addSelectedWallVertex(event: Event): void {
+	function addSelectedWallJunction(event: Event): void {
 		const wall = selectedWallFirstWall;
 		const endpoints = selectedWallFirstWallEndpoints;
 		if (!wall || !endpoints) return;
@@ -1499,7 +1503,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			store.setStatusMessage('Finish the current layout interaction first');
 			return;
 		}
-		store.setStatusMessage(outcome.result.success ? `Added Vertex to Wall ${wall.id}` : `Vertex rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Added junction to Wall ${wall.id}` : `Add junction rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1878,7 +1882,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Angle (°)<input type="number" step="any" value={formatDegrees(selectedWallFirstWallEndpoints.angleDegrees)} onchange={updateSelectedWallAngle} /></label>
 					<label>Thickness (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.thickness)} onchange={updateSelectedWallThickness} /></label>
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
-					<label>Add Vertex at (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallVertex} /></label>
+					<label>Add junction at distance from start (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallJunction} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
 					<div class="layout-opening-actions">
 						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>

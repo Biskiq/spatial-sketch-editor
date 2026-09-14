@@ -412,7 +412,7 @@ function exactWallJunctionInputs(): string[] {
 		'updateSelectedWallAngle',
 		'updateSelectedWallThickness',
 		'updateSelectedWallHeight',
-		'addSelectedWallVertex',
+		'addSelectedWallJunction',
 		'updateSelectedJunction',
 		'selectedWallFirstWallEndpoints',
 		'selectedWallFirstJunction'
