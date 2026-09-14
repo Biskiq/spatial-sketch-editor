@@ -28,6 +28,7 @@ import {
 	buildArchProfile,
 	LAYOUT_GEOMETRY_EPSILON
 } from './layout-geometry-openings';
+import { wallCenterlineSamples } from './layout-wall-centerline';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWall,
@@ -61,7 +62,14 @@ export type OpeningSetIssue = {
 	message: string;
 };
 
-/** Canonical straight Wall span in document X/Z space (meters). */
+/**
+ * Canonical Wall span in document X/Z space (meters).
+ *
+ * P23.11 — `length` is the **sampled arc length** of the Wall's canonical
+ * centerline, so curved Walls report their true physical length (a straight
+ * Wall's arc length equals its chord exactly, keeping prior behavior).
+ * `start`/`end` remain the resolved endpoint Junction coordinates.
+ */
 export function wallFirstWallSpan(
 	document: LayoutDocumentWallFirst,
 	wall: LayoutWall
@@ -73,7 +81,9 @@ export function wallFirstWallSpan(
 		(junction) => junction.id === wall.endJunctionId
 	)?.point;
 	if (!start || !end) return undefined;
-	return { start, end, length: Math.hypot(end[0] - start[0], end[1] - start[1]) };
+	const sampled = wallCenterlineSamples(wall, start, end);
+	if (!sampled) return undefined;
+	return { start, end, length: sampled.length };
 }
 
 /** Canonical Wall length in meters, or `undefined` when the span is unresolved. */

@@ -29,6 +29,7 @@ import type {
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
 import { pointAlongSamples, sampleSegment, type SampledSegment } from './layout-geometry-curve';
+import { wallCenterlineSegment, wallCenterlineSamples } from './layout-wall-centerline';
 import {
 	archProfileTopAt,
 	buildArchProfile,
@@ -203,6 +204,10 @@ export function compileWallFirstLayoutGeometry(
 	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
 		const segments: DraftSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
+		// P23.11 — reverse-ref Opening offsets mirror by the **sampled arc
+		// length** of the host Wall's canonical centerline, never the Euclidean
+		// chord (straight Walls keep the identical chord value).
+		const arcLengthByWallId = new Map<string, number>();
 		for (const ref of room.boundary) {
 			const wall = wallById.get(ref.wallId);
 			if (!wall) continue; // reference integrity is the codec's job
@@ -214,24 +219,24 @@ export function compileWallFirstLayoutGeometry(
 			// The legacy compiler core measures opening offsets from each
 			// boundary segment's start, so reverse refs also mirror offsets
 			// (o' = L − (o + w)) to keep them measured from the canonical
-			// Wall start downstream.
+			// Wall start downstream. P23.11: the centerline adapter supplies
+			// the segment, so curved Walls flow through the curve kernel
+			// unchanged (no second sampling path).
 			const reversed = ref.direction === 'reverse';
-			segments.push({
-				id: wall.id,
-				kind: 'line',
-				start: [...(reversed ? end : start)] as LayoutVec2,
-				end: [...(reversed ? start : end)] as LayoutVec2
-			});
+			segments.push(
+				wallCenterlineSegment(wall, reversed ? end : start, reversed ? start : end)
+			);
+			if (!arcLengthByWallId.has(wall.id)) {
+				const sampled = wallCenterlineSamples(wall, start, end);
+				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
+			}
 		}
 		for (const opening of document.openings) {
 			const ref = room.boundary.find((candidate) => candidate.wallId === opening.wallId);
 			if (!ref) continue;
 			if (ref.direction === 'reverse') {
-				const wall = wallById.get(opening.wallId)!;
-				const start = pointById.get(wall.startJunctionId);
-				const end = pointById.get(wall.endJunctionId);
-				if (!start || !end) continue;
-				const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+				const length = arcLengthByWallId.get(opening.wallId);
+				if (length === undefined) continue;
 				roomOpenings.push({
 					...opening,
 					segmentId: opening.wallId,
@@ -320,7 +325,9 @@ function compileWallFirstWithPhysicalWalls(
 		const start = pointById.get(wall.startJunctionId);
 		const end = pointById.get(wall.endJunctionId);
 		if (!start || !end) continue;
-		const segment: DraftSegment = { id: wall.id, kind: 'line', start: [...start] as LayoutVec2, end: [...end] as LayoutVec2 };
+		// P23.11 — the canonical centerline adapter maps every Wall (line or
+		// auto-bezier) onto the existing curve kernel; no second sampling path.
+		const segment = wallCenterlineSegment(wall, start, end);
 		let sampled: SampledSegment;
 		try {
 			sampled = sampleSegment(segment);

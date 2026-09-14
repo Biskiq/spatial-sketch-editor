@@ -32,6 +32,27 @@ export function cloneWallCenterline(centerline: LayoutWallCenterline): LayoutWal
 	};
 }
 
+/**
+ * Deep-copy one canonical centerline with every interior anchor translated by
+ * `delta` (document X/Z, meters). A rigid copy of a Wall must move its anchors
+ * with its endpoint Junctions — an anchor left at the source position no
+ * longer describes the same shape and can swing the curve across neighbouring
+ * Walls. Flat `line` centerlines carry no absolute data.
+ */
+export function translateWallCenterline(
+	centerline: LayoutWallCenterline,
+	delta: LayoutVec2
+): LayoutWallCenterline {
+	if (centerline.kind === 'line') return { kind: 'line' };
+	return {
+		kind: 'auto-bezier',
+		interiorAnchors: centerline.interiorAnchors.map((anchor) => ({
+			id: anchor.id,
+			point: [anchor.point[0] + delta[0], anchor.point[1] + delta[1]] as LayoutVec2
+		}))
+	};
+}
+
 /** The canonical Wall centerline mapped onto the curve-kernel segment shape. */
 export type WallCenterlineSegment =
 	| { id: string; kind: 'line'; start: LayoutVec2; end: LayoutVec2 }

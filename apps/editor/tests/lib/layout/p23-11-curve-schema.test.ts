@@ -251,10 +251,8 @@ describe('P23.11 slice 1 — canonical Wall constructors', () => {
 		const plan = planDuplicateIsolatedRoom(document, { roomId: 'room-a', delta: [10, 0] });
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
-		const sourceCurve = document.walls[0]!.centerline;
-		const clonedCurve = plan.document.walls.find((wall) => wall.id !== 'wall-a' && wall.startJunctionId !== plan.document.walls[0]!.startJunctionId);
-		// Every cloned wall must carry a centerline; the cloned curved wall's
-		// anchors must equal the source's (deep-copied, never shared).
+		const sourceCenterline = document.walls[0]!.centerline;
+		// Every cloned wall must carry a centerline.
 		for (const wall of plan.document.walls) {
 			expect(wall.centerline).toBeDefined();
 		}
@@ -262,9 +260,24 @@ describe('P23.11 slice 1 — canonical Wall constructors', () => {
 			(wall) => wall.id !== 'wall-a' && wall.centerline.kind === 'auto-bezier'
 		);
 		expect(curvedClones).toHaveLength(1);
-		expect(curvedClones[0]!.centerline).toEqual(sourceCurve);
-		expect(curvedClones[0]!.centerline).not.toBe(sourceCurve);
-		expect(clonedCurve).toBeDefined();
+		const cloneCenterline = curvedClones[0]!.centerline;
+		expect(cloneCenterline.kind).toBe('auto-bezier');
+		expect(sourceCenterline.kind).toBe('auto-bezier');
+		if (cloneCenterline.kind !== 'auto-bezier' || sourceCenterline.kind !== 'auto-bezier') return;
+		// P23.11 slice 2 — anchors are absolute document X/Z, so the copy's
+		// anchors translate with its Junctions. Leaving them behind would not
+		// preserve the shape: the curve would swing across the source-position
+		// anchors and cross a sibling Wall of the copy (rejected compile).
+		expect(cloneCenterline.interiorAnchors).toEqual([
+			{ id: 'wall-a:anchor:1', point: [13, 1] }
+		]);
+		// Deep copy: the copy never shares anchor arrays or points with the
+		// source, and the baseline's own anchor is untouched.
+		expect(cloneCenterline.interiorAnchors).not.toBe(sourceCenterline.interiorAnchors);
+		expect(cloneCenterline.interiorAnchors[0]).not.toBe(sourceCenterline.interiorAnchors[0]);
+		expect(sourceCenterline.interiorAnchors).toEqual([
+			{ id: 'wall-a:anchor:1', point: [3, 1] }
+		]);
 	});
 
 	it('every wall in an accepted wall-chain document validates with centerline required', () => {
