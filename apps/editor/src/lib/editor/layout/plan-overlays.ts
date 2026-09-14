@@ -434,6 +434,43 @@ export function withPlanObjectRotationHandle(
 }
 
 /**
+ * P23.10 — one transient direct Wall/Junction edit intent: what the pointer
+ * asked for while the canonical planner rejects it. An ACCEPTED candidate is
+ * already fully previewed by the installed document, so the viewport passes
+ * `null` and nothing extra renders.
+ */
+export type LayoutArchitectureEditIntent =
+	| { kind: 'junction-move'; point: LayoutVec2 }
+	| { kind: 'wall-move'; start: LayoutVec2; end: LayoutVec2 };
+
+/**
+ * P23.10 — draw one rejected direct-edit intent with the existing transient
+ * token family (never document truth, never history).
+ */
+export function withArchitectureEditIntent(
+	projection: PlanInteractionProjection,
+	intent: LayoutArchitectureEditIntent | null
+): PlanInteractionProjection {
+	if (!intent) return projection;
+	const primitive: PlanRenderPrimitive =
+		intent.kind === 'junction-move'
+			? {
+					kind: 'circle',
+					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+					center: intent.point,
+					radiusPx: 7,
+					style: 'architecture-edit-intent-invalid'
+			  }
+			: {
+					kind: 'polyline',
+					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+					points: [intent.start, intent.end],
+					style: 'architecture-edit-intent-invalid'
+			  };
+	return { ...projection, drafts: [...projection.drafts, primitive] };
+}
+
+/**
  * P23.2 — transient snap feedback as render primitives. Session state only:
  * the resolution is recomputed per pointer event and never mutates the
  * document or history. Guides render as thin dashed screen-space lines; the

@@ -5,6 +5,7 @@ import { createPlanViewportState, snapToGrid, type PlanViewportState } from './l
 import { EDITOR_DRAG_THRESHOLD_PX } from '../interaction-constants';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
+import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
 export type LayoutViewMode = 'plan' | '3d';
 /** Scene → Plan's local authoring authority. Camera Plan never reads this. */
 export type PlanViewMode = 'layout' | 'staging';
@@ -341,6 +342,192 @@ export function cancelLayoutWallOpeningDrag(state: LayoutInteractionState): void
 	state.wallOpeningDrag = null;
 }
 
+/**
+ * P23.10 — one direct architecture edit gesture (transient, session-only).
+ *
+ * The state carries exactly enough baseline-derived intent to render an
+ * invalid candidate *without* installing it; the complete document baseline
+ * lives in the viewport's `LayoutPreviewSnapshot`, never duplicated here.
+ * Every candidate value is derived from the immutable pointer-down values, so
+ * move frequency can never accumulate error.
+ *
+ * `kind: 'junction-move'` is both the Junction-handle drag and the Wall
+ * endpoint reshape — an endpoint handle **is** that canonical Junction, so it
+ * never acquires Wall-private vertex state.
+ */
+export type LayoutArchitectureEditGesture =
+	| {
+			kind: 'junction-move';
+			pointerId: number;
+			junctionId: string;
+			/** World-space pointer at pointer-down (immutable for the gesture). */
+			startPointer: LayoutVec2;
+			/** Canonical Junction point at pointer-down (grab offset preserved). */
+			baselinePoint: LayoutVec2;
+			/** Every Wall incident to the Junction; frozen from the baseline. */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate point (baseline + total displacement). */
+			candidatePoint: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
+	  }
+	| {
+			kind: 'wall-move';
+			pointerId: number;
+			wallId: string;
+			startPointer: LayoutVec2;
+			/** The hit projection's world point at pointer-down. */
+			baselineGrabPoint: LayoutVec2;
+			startJunctionId: string;
+			endJunctionId: string;
+			baselineStart: LayoutVec2;
+			baselineEnd: LayoutVec2;
+			/** Selected Wall plus every Wall incident to either endpoint. */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate delta (target − baseline grab point). */
+			candidateDelta: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
+	  };
+
+/**
+ * P23.10 — the P23.2 families a Junction move may snap to. The `'junction'`
+ * family is removed before winner selection because Junction merging is out of
+ * scope: honoring it would let the highest-ranked family mask every
+ * lower-ranked candidate with a target duplicate-Junction validation can never
+ * accept. Rigid Wall translation keeps the full family set — it applies one
+ * delta to two existing endpoint IDs and merges nothing.
+ */
+export const LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS: readonly SnapFeatureKind[] = [
+	'wall-intersection',
+	'wall-midpoint',
+	'opening-edge',
+	'wall-span',
+	'object-bounds-edge',
+	'object-bounds-center',
+	'grid'
+];
+
+export type LayoutArchitectureEditKind = LayoutArchitectureEditGesture['kind'];
+
+/** Begin one direct architecture edit with an immutable baseline. */
+export function beginLayoutArchitectureEdit(
+	state: LayoutInteractionState,
+	gesture: LayoutArchitectureEditGesture
+): void {
+	state.architectureEdit = gesture;
+}
+
+/**
+ * Total candidate **target** from the immutable pointer-down values:
+ * `target = grabPoint + (pointer − startPointer)`. Deriving the total (never
+ * adding a per-move delta) makes the candidate order- and frequency-independent.
+ *
+ * For a Junction move the grab point is the Junction itself; for a rigid Wall
+ * move it is the hit projection, so the Wall keeps the pointer's grab offset.
+ */
+export function architectureEditRawTarget(
+	gesture: LayoutArchitectureEditGesture,
+	pointer: LayoutVec2
+): LayoutVec2 {
+	const dx = pointer[0] - gesture.startPointer[0];
+	const dz = pointer[1] - gesture.startPointer[1];
+	const anchor = gesture.kind === 'junction-move' ? gesture.baselinePoint : gesture.baselineGrabPoint;
+	return [anchor[0] + dx, anchor[1] + dz];
+}
+
+/**
+ * Install one resolved candidate target on the gesture and return the value the
+ * canonical planner receives: the Junction point, or the rigid delta. Validity
+ * resets on every update so a rejected intermediate candidate can never be
+ * committed by a later release that resolves nothing.
+ */
+export function updateLayoutArchitectureEdit(
+	state: LayoutInteractionState,
+	target: LayoutVec2
+): LayoutVec2 | null {
+	const gesture = state.architectureEdit;
+	if (!gesture) return null;
+	gesture.valid = false;
+	delete gesture.rejectionCode;
+	delete gesture.rejectionMessage;
+	if (gesture.kind === 'junction-move') {
+		gesture.candidatePoint = [target[0], target[1]];
+		return [target[0], target[1]];
+	}
+	// One identical delta for both endpoint Junctions: never two independent
+	// endpoint snaps, which would rotate or resize the Wall.
+	const delta: LayoutVec2 = [
+		target[0] - gesture.baselineGrabPoint[0],
+		target[1] - gesture.baselineGrabPoint[1]
+	];
+	gesture.candidateDelta = delta;
+	return delta;
+}
+
+/** Record the canonical planner's verdict for the current candidate. */
+export function markLayoutArchitectureEditValidity(
+	state: LayoutInteractionState,
+	valid: boolean,
+	rejectionCode?: string,
+	rejectionMessage?: string
+): void {
+	const gesture = state.architectureEdit;
+	if (!gesture) return;
+	gesture.valid = valid;
+	if (rejectionCode !== undefined) gesture.rejectionCode = rejectionCode;
+	else delete gesture.rejectionCode;
+	if (rejectionMessage !== undefined) gesture.rejectionMessage = rejectionMessage;
+	else delete gesture.rejectionMessage;
+}
+
+/** Cancel the gesture (Escape / pointer-cancel / mode change). Nothing is written. */
+export function cancelLayoutArchitectureEdit(state: LayoutInteractionState): void {
+	state.architectureEdit = null;
+}
+
+/**
+ * P23.10 — frozen moving-owner exclusion for one direct edit's snap query:
+ * every affected Wall plus every Opening those Walls host. Built once at
+ * pointer-down from the immutable baseline, so a live candidate can never
+ * become its own snap authority.
+ */
+export function architectureEditExclusionOwners(
+	gesture: LayoutArchitectureEditGesture,
+	hostedOpeningIds: readonly string[]
+): Set<string> {
+	const owners = new Set<string>();
+	for (const wallId of gesture.affectedWallIds) owners.add(snapOwnerKey({ kind: 'wall', id: wallId }));
+	for (const openingId of hostedOpeningIds) owners.add(snapOwnerKey({ kind: 'opening', id: openingId }));
+	return owners;
+}
+
+/**
+ * P23.10 — exact world points that must never win their own snap: a Junction
+ * move excludes its own baseline point (the candidate is a *derived* position,
+ * so the exclusion stays the immutable authored one). A rigid Wall move
+ * excludes nothing by point — its captured grab point may legitimately align
+ * with a stationary Junction because one translation merges no endpoint IDs.
+ */
+export function architectureEditExcludePoints(
+	gesture: LayoutArchitectureEditGesture
+): LayoutVec2[] {
+	return gesture.kind === 'junction-move' ? [[gesture.baselinePoint[0], gesture.baselinePoint[1]]] : [];
+}
+
+/**
+ * P23.10 — the `allowedKinds` filter for one direct edit's snap query:
+ * the Junction move removes the `'junction'` family before winner selection;
+ * a rigid Wall move passes no filter (full P23.2 ranking).
+ */
+export function architectureEditAllowedKinds(
+	gesture: LayoutArchitectureEditGesture
+): readonly SnapFeatureKind[] | undefined {
+	return gesture.kind === 'junction-move' ? LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS : undefined;
+}
+
 export type LayoutInteractionState = {
 	viewMode: LayoutViewMode;
 	planViewMode: PlanViewMode;
@@ -388,6 +575,8 @@ export type LayoutInteractionState = {
 	roomUnitDrag: LayoutRoomUnitDrag | null;
 	/** P23.3 canonical Opening drag session (transient; never persisted). */
 	wallOpeningDrag: LayoutWallOpeningDrag | null;
+	/** P23.10 direct Wall/Junction edit gesture (transient; never persisted). */
+	architectureEdit: LayoutArchitectureEditGesture | null;
 	/** P10 — the Arrange session's remembered last owner (routing, never identity). */
 	arrangeOwner: ArrangeOwner;
 	accordions: LayoutAccordionState;
@@ -423,6 +612,7 @@ export function createLayoutInteractionState(): LayoutInteractionState {
 		objectDrag: null,
 		roomUnitDrag: null,
 		wallOpeningDrag: null,
+		architectureEdit: null,
 		arrangeOwner: null,
 		accordions: { place: true, objects: true, selection: true },
 		planView: createPlanViewportState(),
@@ -497,6 +687,7 @@ export function hasLayoutTransientInteraction(
 		| 'objectDrag'
 		| 'roomUnitDrag'
 		| 'wallOpeningDrag'
+		| 'architectureEdit'
 		| 'editing'
 		| 'wallChainStart'
 	>
@@ -512,6 +703,7 @@ export function hasLayoutTransientInteraction(
 		state.objectDrag ||
 		state.roomUnitDrag ||
 		state.wallOpeningDrag ||
+		state.architectureEdit ||
 		state.editing
 	);
 }
@@ -525,6 +717,7 @@ export function setLayoutViewMode(state: LayoutInteractionState, viewMode: Layou
 	state.primitiveDraft = null;
 	state.presetDraft = null;
 	state.wallOpeningDrag = null;
+	state.architectureEdit = null;
 }
 
 export function setLayoutDraftTool(state: LayoutInteractionState, tool: LayoutDraftTool): void {
@@ -536,6 +729,7 @@ export function setLayoutDraftTool(state: LayoutInteractionState, tool: LayoutDr
 	state.primitiveDraft = null;
 	state.presetDraft = null;
 	state.wallOpeningDrag = null;
+	state.architectureEdit = null;
 }
 
 export function toggleLayoutAccordion(

@@ -84,6 +84,11 @@ export type PlanStyleToken =
 	| 'opening-handle'
 	| 'opening-drag-preview'
 	| 'opening-drag-preview-invalid'
+	// P23.10 — transient direct Wall/Junction edit intent (drawn only while the
+	// canonical planner REJECTS the current candidate: an accepted candidate is
+	// already fully previewed by the installed document).
+	| 'architecture-edit-intent'
+	| 'architecture-edit-intent-invalid'
 	| 'snap-guide'
 	| 'snap-marker'
 	| 'snap-marker-grid'
