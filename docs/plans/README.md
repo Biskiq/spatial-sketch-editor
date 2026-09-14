@@ -275,12 +275,15 @@ conditional infrastructure):
   query/editor-adapter cutover; and old Save/Publish compatibility before new
   writers enable. It then adds precise Wall/Junction dimensions, deterministic
   snapping/alignment, continuous Wall/Partition sketching, openings, repeat/
-  isolated-room duplicate, small presets and drafting visual polish. Layout
-  objects stay document-level/project/world-local. Optional depth tail (stairs,
-  railings, richer parametric components, curved-wall topology, profile/extrude,
-  sweep/revolve, roof helpers, general constraint sophistication) remains
-  demand/evidence-gated and never blocks Experience. Everything continues through
-  one `LayoutDocument` → `compileLayoutGeometry()` → Plan/3D/visitor geometry
+  isolated-room duplicate, small presets, direct Wall/Junction manipulation,
+  bounded canonical curved-Wall authoring with render-safe validation, stable
+  architectural display identity, final Plan/shell finish and junction-correct
+  wall-first 3D before closeout. Layout objects stay document-level/project-world-local.
+  Optional depth tail (stairs, railings, richer parametric components,
+  arbitrary/general curve intersection/noding and broader CAD curve tooling,
+  profile/extrude, sweep/revolve, roof helpers, general constraint sophistication)
+  remains demand/evidence-gated and never blocks Experience. Everything continues
+  through one `LayoutDocument` → `compileLayoutGeometry()` → Plan/3D/visitor geometry
   authority, with Layout and Scene ownership kept separate. P23 implementation
   proceeds from its own umbrella/child dependencies; completed Pascal evidence is
   optional and should be read only for a materially overlapping slice, never as a
