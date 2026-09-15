@@ -12,6 +12,7 @@
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
 		deleteWallFirstWall,
+		insertWallFirstWallCurveKnot,
 		removeWallFirstRoom,
 		subdivideWallFirstWall,
 		wallFirstRoomExclusiveBoundaryWallIds
@@ -330,6 +331,30 @@
 	}
 
 	/**
+	 * P23.11 — canonical bend-point insertion from a resolved Plan hit (the
+	 * context-menu **Add bend point here** command): the no-keyboard authoring
+	 * path. It reaches the SAME `planInsertWallCurveKnot` authority the
+	 * Bend-command gesture reaches, so there is one curve-insertion
+	 * implementation, not one per surface. Insertion without a drag is
+	 * identity-preserving — a knot planted exactly on the curve changes nothing,
+	 * which is what makes "click here to add a bend point" safe.
+	 */
+	function addWallBendPoint(wallId: string, bendDistance: number) {
+		const outcome = runLayoutMutationGuarded(
+			() => insertWallFirstWallCurveKnot(layoutPreview, wallId, bendDistance),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		const result = outcome.result;
+		store.setStatusMessage(
+			result.success ? 'Added bend point' : `Add bend point failed: ${result.message}`
+		);
+	}
+
+	/**
 	 * P23.6d — canonical wall-first Room removal (viewport context menu + Delete
 	 * key). Removes the Room and its exclusive enclosure Walls while preserving
 	 * shared physical Walls required by adjacent Rooms, in one atomic step, and
@@ -513,6 +538,7 @@
 								onWallOpeningDelete={deleteWallOpening}
 								onWallDelete={deleteWall}
 								onWallJunctionAdd={addWallJunction}
+								onWallBendPointAdd={addWallBendPoint}
 		onRoomDelete={deleteRoom}
 		onRoomRemove={removeRoom}
 		onLayoutTransactionBegin={beginLayoutTransaction}

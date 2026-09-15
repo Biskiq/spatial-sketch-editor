@@ -3,6 +3,7 @@ import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-type
 import type { LayoutRoomUnitTransform } from './layout-room-transform';
 import { createPlanViewportState, snapToGrid, type PlanViewportState } from './layout-plan-transform';
 import { EDITOR_DRAG_THRESHOLD_PX } from '../interaction-constants';
+import type { EditorCommandId } from '../editor-command-intent';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
 import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
@@ -434,6 +435,50 @@ export type LayoutArchitectureEditGesture =
 			valid: boolean;
 			rejectionCode?: string;
 			rejectionMessage?: string;
+	  }
+	| {
+			/**
+			 * P23.11 — the Bend-command Wall-body drag.
+			 *
+			 * `command` is the intent resolved at pointer-down and frozen here for
+			 * the whole gesture: nothing re-reads modifiers afterwards, so releasing
+			 * the key mid-drag does not hand the drag to rigid translation and
+			 * pressing it mid-drag does not hand it to bend.
+			 *
+			 * The insert is **deferred**: pointer-down stores only the grabbed
+			 * physical arc distance from the immutable baseline, and the composite
+			 * canonical planner runs once the shared drag threshold is crossed. A
+			 * sub-threshold release therefore stays an ordinary click that selects
+			 * the Wall, and the insert position can never drift because every plan
+			 * resolves that distance against the restored baseline.
+			 */
+			kind: 'wall-bend';
+			command: EditorCommandId;
+			pointerId: number;
+			wallId: string;
+			/** World-space pointer at pointer-down (immutable for the gesture). */
+			startPointer: LayoutVec2;
+			/** The hit projection's world point at pointer-down (grab offset). */
+			baselineGrabPoint: LayoutVec2;
+			/** Grabbed physical arc distance from the Wall's canonical start. */
+			bendDistance: number;
+			/**
+			 * Excluded from the dragged bend point's own snap for the same reason a
+			 * control move excludes them: a bend point landing on a Junction
+			 * coordinate can only be rejected, so honoring that family would install
+			 * a guaranteed rejection as the winning candidate.
+			 */
+			bendExcludePoints: readonly LayoutVec2[];
+			/**
+			 * The bent Wall alone. Inserting one bend point leaves both endpoint
+			 * Junctions exactly where they are, so no neighbouring Wall reshapes.
+			 */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate point (baseline + total displacement). */
+			candidatePoint: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
 	  };
 
 /**
@@ -482,7 +527,7 @@ export function architectureEditRawTarget(
 	const dx = pointer[0] - gesture.startPointer[0];
 	const dz = pointer[1] - gesture.startPointer[1];
 	const anchor =
-		gesture.kind === 'wall-move'
+		gesture.kind === 'wall-move' || gesture.kind === 'wall-bend'
 			? gesture.baselineGrabPoint
 			: gesture.kind === 'curve-control-move'
 				? gesture.baselineAnchorPoint
@@ -505,7 +550,11 @@ export function updateLayoutArchitectureEdit(
 	gesture.valid = false;
 	delete gesture.rejectionCode;
 	delete gesture.rejectionMessage;
-	if (gesture.kind === 'junction-move' || gesture.kind === 'curve-control-move') {
+	if (
+		gesture.kind === 'junction-move' ||
+		gesture.kind === 'curve-control-move' ||
+		gesture.kind === 'wall-bend'
+	) {
 		gesture.candidatePoint = [target[0], target[1]];
 		return [target[0], target[1]];
 	}
@@ -582,7 +631,9 @@ export function architectureEditExcludePoints(
 			? gesture.junctionExcludePoints
 			: gesture.kind === 'curve-control-move'
 				? gesture.curveExcludePoints
-				: [];
+				: gesture.kind === 'wall-bend'
+					? gesture.bendExcludePoints
+					: [];
 	return points.map((point) => [point[0], point[1]] as LayoutVec2);
 }
 
@@ -594,8 +645,9 @@ export function architectureEditExcludePoints(
 export function architectureEditAllowedKinds(
 	gesture: LayoutArchitectureEditGesture
 ): readonly SnapFeatureKind[] | undefined {
-	// Both point-anchored gestures drop the `'junction'` family; only a rigid
-	// Wall move keeps the full P23.2 ranking.
+	// Every point-anchored gesture drops the `'junction'` family; only a rigid
+	// Wall move (one delta over two existing endpoint IDs) keeps the full P23.2
+	// ranking.
 	return gesture.kind === 'wall-move' ? undefined : LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS;
 }
 

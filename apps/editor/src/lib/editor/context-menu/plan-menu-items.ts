@@ -71,6 +71,14 @@ export type PlanLayoutMenuActions = {
 	 * commands.
 	 */
 	addJunction?(wallId: string, splitDistance: number): void;
+	/**
+	 * P23.11 — canonical bend-point insertion (the same planner-backed adapter
+	 * the Bend-command gesture calls). Exposed only when BOTH this action and a
+	 * finite resolved distance exist, so the item always means a real "here".
+	 * This is the no-keyboard authoring path: the command is discoverable
+	 * without a dedicated tool and without a second curve-editing code path.
+	 */
+	addBendPoint?(wallId: string, bendDistance: number): void;
 	deleteObject(objectId: string): void;
 };
 
@@ -146,6 +154,17 @@ export function buildPlanLayoutContextMenuItems(input: {
 				label: 'Add junction here',
 				disabledReason: deleteDisabled,
 				run: () => input.actions.addJunction!(target.wallId, splitDistance)
+			});
+		}
+		// P23.11 — the Bend command's discoverable twin. Same resolved distance
+		// authority as **Add junction here**, same omit-don't-dummy policy, and
+		// the same canonical chain-algebra planner the ⌘-drag gesture reaches.
+		if (input.actions.addBendPoint && typeof splitDistance === 'number' && Number.isFinite(splitDistance)) {
+			items.push({
+				id: 'add-bend-point',
+				label: 'Add bend point here',
+				disabledReason: deleteDisabled,
+				run: () => input.actions.addBendPoint!(target.wallId, splitDistance)
 			});
 		}
 		if (input.actions.deleteWall) {

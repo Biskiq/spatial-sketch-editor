@@ -456,7 +456,13 @@ export type LayoutArchitectureEditIntent =
 	 * shape and only the rejected control point renders, mirroring the
 	 * Junction case: one point, never a fabricated curve.
 	 */
-	| { kind: 'curve-control-move'; point: LayoutVec2 };
+	| { kind: 'curve-control-move'; point: LayoutVec2 }
+	/**
+	 * P23.11 — a rejected Bend-command drag. Point-anchored for the same reason:
+	 * the baseline stays installed and only the refused bend point renders, so
+	 * the transient layer never invents curve geometry of its own.
+	 */
+	| { kind: 'wall-bend'; point: LayoutVec2 };
 
 /**
  * P23.10 — the transient intent for one live direct edit, or `null` when

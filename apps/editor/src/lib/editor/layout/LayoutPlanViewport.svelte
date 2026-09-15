@@ -5,6 +5,12 @@
 	import type { Vec3 } from '$lib/types/scene';
 	import type { LayoutPreviewModel } from './layout-mesh-factory';
 	import {
+		resolveEditorCommandIntent,
+		resolveEditorPlatform,
+		type EditorCommandId,
+		type EditorModifierSnapshot
+	} from '../editor-command-intent';
+	import {
 		addPolygonPoint,
 		advanceWallChainContinuation,
 		architectureEditAllowedKinds,
@@ -87,6 +93,7 @@
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
+		updateWallFirstWallBend,
 		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
 		createWallFirstOpening,
@@ -200,6 +207,7 @@
 		onWallOpeningDelete,
 		onWallDelete,
 		onWallJunctionAdd,
+		onWallBendPointAdd,
 		onRoomDelete,
 		onRoomRemove,
 		onLayoutTransactionBegin,
@@ -256,6 +264,14 @@
 		 * mounts that cannot subdivide; then no Add-junction item is offered.
 		 */
 		onWallJunctionAdd?: (wallId: string, splitDistance: number) => void;
+		/**
+		 * P23.11 — canonical bend-point insertion from a resolved physical-Wall hit
+		 * (the context-menu **Add bend point here** command). `bendDistance` is the
+		 * same hit projection's canonical-start meters the junction command uses,
+		 * so the menu action and the Bend gesture share one insertion authority.
+		 * Omitted by mounts that cannot insert; then no item is offered.
+		 */
+		onWallBendPointAdd?: (wallId: string, bendDistance: number) => void;
 		onRoomDelete: (roomId: string) => boolean;
 		/**
 		 * P23.6d — canonical wall-first Room removal (guard-railed `planRemoveRoom`).
@@ -308,6 +324,31 @@
 	// P23.2 — transient snap resolution (session-only). The resolution was
 	// computed at the raw pointer world position; null clears feedback.
 	let snapFeedback = $state<SnapResolution | null>(null);
+
+	/**
+	 * P23.11 — the Bend modifier is a **named command**, not a key.
+	 *
+	 * The platform is detected once here (the only impure step, and the only
+	 * place a raw modifier flag is read) and the pointer-down path asks the pure
+	 * resolver which commands are live. Nothing downstream inspects
+	 * `event.metaKey` / `event.altKey`, so remapping the command later is a
+	 * binding-table change with no consumer edit.
+	 */
+	const editorPlatform = resolveEditorPlatform(
+		typeof navigator === 'undefined'
+			? null
+			: { platform: navigator.platform, userAgent: navigator.userAgent }
+	);
+
+	function commandIntentFor(event: PointerEvent): ReadonlySet<EditorCommandId> {
+		const snapshot: EditorModifierSnapshot = {
+			meta: event.metaKey,
+			ctrl: event.ctrlKey,
+			alt: event.altKey,
+			shift: event.shiftKey
+		};
+		return resolveEditorCommandIntent(snapshot, editorPlatform);
+	}
 
 	function clearLayoutSnapFeedback(): void {
 		snapFeedback = null;
@@ -448,7 +489,15 @@
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
 				: gesture.kind === 'wall-move'
 					? updateWallFirstWallMove(preview, gesture.wallId, input)
-					: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input);
+					: gesture.kind === 'wall-bend'
+						? // One canonical call for one history entry: the composite
+							// planner inserts the grabbed arc position AND places it, with
+							// no surface between the pointer and acceptance.
+							updateWallFirstWallBend(preview, gesture.wallId, {
+								distance: gesture.bendDistance,
+								point: input
+							})
+						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input);
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -487,6 +536,20 @@
 					baselineAnchorPoint: LayoutVec2;
 					curveExcludePoints: readonly LayoutVec2[];
 			  }
+			| {
+					/**
+					 * The Bend command, already resolved from the intent at pointer-down.
+					 * `bendDistance` is the grabbed physical arc distance; the insert is
+					 * deferred to the threshold crossing. `command` is stored on the
+					 * gesture so nothing can re-read modifiers mid-drag.
+					 */
+					kind: 'wall-bend';
+					command: EditorCommandId;
+					wallId: string;
+					grabPoint: LayoutVec2;
+					bendDistance: number;
+					bendExcludePoints: readonly LayoutVec2[];
+			  }
 	): boolean {
 		if (!event.isPrimary || !svgElement) return false;
 		const point = worldPoint(event);
@@ -497,7 +560,25 @@
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
 		const gesture: LayoutArchitectureEditGesture =
-			baseline.kind === 'curve-control-move'
+			baseline.kind === 'wall-bend'
+				? {
+						kind: 'wall-bend',
+						command: baseline.command,
+						pointerId: event.pointerId,
+						wallId: baseline.wallId,
+						startPointer: [...point] as LayoutVec2,
+						baselineGrabPoint: [...baseline.grabPoint] as LayoutVec2,
+						bendDistance: baseline.bendDistance,
+						bendExcludePoints: baseline.bendExcludePoints.map(
+							(exclude) => [...exclude] as LayoutVec2
+						),
+						// The bent Wall alone: inserting one bend point leaves both
+						// endpoint Junctions in place, so no neighbour reshapes.
+						affectedWallIds: [baseline.wallId],
+						candidatePoint: [...baseline.grabPoint] as LayoutVec2,
+						valid: false
+				  }
+				: baseline.kind === 'curve-control-move'
 				? {
 						kind: 'curve-control-move',
 						pointerId: event.pointerId,
@@ -1382,6 +1463,15 @@ const interactionProjection = $derived(
 											onWallJunctionAdd?.(wallId, splitDistance)
 									}
 								: {}),
+							// P23.11 — the no-keyboard authoring path. **Add bend point here**
+							// reaches the same canonical insertion authority the Bend command
+							// uses, so discoverability never costs a second implementation.
+							...(onWallBendPointAdd
+								? {
+										addBendPoint: (wallId: string, bendDistance: number) =>
+											onWallBendPointAdd?.(wallId, bendDistance)
+									}
+								: {}),
 							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
 						}
 					: {
@@ -2131,6 +2221,13 @@ const interactionProjection = $derived(
 		}
 		if (target.kind === 'wall') {
 			selectLayoutWall(interaction, target.roomId, target.segmentId);
+			// P23.11 — the legacy Room-owned Wall no longer bends on a plain body
+			// drag: the same `layout.wall.bend` intent that bends a canonical Wall
+			// owns this gesture too, so the two representations stop contradicting
+			// each other. The legacy writer below is unchanged — only its ownership
+			// moved behind the intent — and legacy Room-owned curves are neither
+			// revived nor promoted to authority. A plain press selects and stops.
+			if (!commandIntentFor(event).has('layout.wall.bend')) return;
 			if (!svgElement) return;
 			const projected = applyLayoutSnap(target.projection.point, {
 				excludeOwners: new Set([
@@ -2182,6 +2279,24 @@ const interactionProjection = $derived(
 		if (target.kind === 'physicalWall') {
 			if (!event.isPrimary || interaction.architectureEdit) return;
 			selectLayoutPhysicalWall(interaction, target.wallId);
+			// P23.11 — the Bend command owns this press when its intent is live:
+			// the grabbed physical arc position becomes a bend point and the drag
+			// continues as that knot. The intent is resolved at THIS instant and
+			// frozen into the gesture, so releasing the modifier mid-drag keeps the
+			// bend and pressing it mid-drag never steals a rigid move.
+			if (commandIntentFor(event).has('layout.wall.bend')) {
+				beginArchitectureEditGesture(event, {
+					kind: 'wall-bend',
+					command: 'layout.wall.bend',
+					wallId: target.wallId,
+					grabPoint: [...target.projection.point] as LayoutVec2,
+					// Canonical-start metres straight from the hit projection, so the
+					// viewport never re-measures the Wall or guesses a position.
+					bendDistance: target.projection.offset,
+					bendExcludePoints: architectureEditJunctionExcludePoints()
+				});
+				return;
+			}
 			// P23.10 — a body drag translates the Wall rigidly: both endpoint
 			// Junctions move by ONE delta, so the Wall keeps ID, role, thickness,
 			// height, endpoint order, length and angle. An Opening body/handle hit
