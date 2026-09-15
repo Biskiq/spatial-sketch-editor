@@ -48,24 +48,27 @@ describe('P23.10 architecture-edit intent gate', () => {
 		expect(architectureEditIntentFor(null, true)).toBeNull();
 	});
 
-	it('renders nothing for an accepted candidate or a silent no-op', () => {
-		// An accepted candidate is already previewed by the installed document.
-		expect(architectureEditIntentFor(junctionGesture({ valid: true }), true)).toBeNull();
-		// A no-op release asked for nothing: drawing it as a rejection would
-		// report a failure the user never requested.
-		expect(
-			architectureEditIntentFor(junctionGesture({ rejectionCode: 'no_op' }), true)
-		).toBeNull();
-		expect(
-			architectureEditIntentFor(junctionGesture({ rejectionCode: undefined }), true)
-		).toBeNull();
+	it('renders the live attempt after a drag, whatever the last verdict was', () => {
+		// P23.11 transient pass — this intent is the DRAG PREVIEW, not a rejection
+		// report. The canonical document is no longer written per pointermove, so
+		// an attempt with no verdict, one the planner last accepted, a silent
+		// `no_op` and a refused one all draw the geometry the pointer is asking
+		// for. Whether it commits is decided once, by the planner, at release — so
+		// the gate must not read the verdict at all.
+		for (const patch of [
+			{},
+			{ valid: true },
+			{ rejectionCode: 'no_op' },
+			{ rejectionCode: 'duplicate_junction' }
+		]) {
+			expect(architectureEditIntentFor(junctionGesture(patch), true)).toEqual({
+				kind: 'junction-move',
+				point: [1, 1]
+			});
+		}
 	});
 
-	it('renders the rejected attempt after a drag, from baseline-derived values', () => {
-		expect(
-			architectureEditIntentFor(junctionGesture({ rejectionCode: 'duplicate_junction' }), true)
-		).toEqual({ kind: 'junction-move', point: [1, 1] });
-
+	it('renders the attempted rigid Wall move from baseline-derived values', () => {
 		const wall: LayoutArchitectureEditGesture = {
 			kind: 'wall-move',
 			pointerId: 1,
@@ -88,7 +91,7 @@ describe('P23.10 architecture-edit intent gate', () => {
 		});
 	});
 
-	it('draws a rejected intent with the transient token and nothing when null', () => {
+	it('draws a live attempt pending, and the refused token only for an underivable one', () => {
 		const document = g2LineRectangleDocument();
 		const model = buildLayoutPreviewModel(document).model;
 		const base = {
@@ -97,14 +100,25 @@ describe('P23.10 architecture-edit intent gate', () => {
 			drafts: [],
 			labels: []
 		} as unknown as Parameters<typeof withArchitectureEditIntent>[0];
-		expect(architectureEditIntentFor(junctionGesture({ rejectionCode: 'no_op' }), true)).toBeNull();
-		const intent = architectureEditIntentFor(
-			junctionGesture({ rejectionCode: 'topology_invalid' }),
-			true
+		const drawn = withArchitectureEditIntent(
+			base,
+			architectureEditIntentFor(junctionGesture(), true)
 		);
-		const drawn = withArchitectureEditIntent(base, intent);
 		expect(drawn.drafts).toHaveLength(1);
+		// Pending: validity is not a pointermove fact, so the attempt must not
+		// claim to be refused.
 		expect(drawn.drafts[0]).toMatchObject({
+			kind: 'circle',
+			style: 'architecture-edit-intent'
+		});
+		// The one refused fact a move does know: the attempt could not be derived
+		// at all, so only its marker renders — in the existing refused language.
+		const refused = withArchitectureEditIntent(
+			base,
+			architectureEditIntentFor(junctionGesture(), true, null, true)
+		);
+		expect(refused.drafts).toHaveLength(1);
+		expect(refused.drafts[0]).toMatchObject({
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
 		});
@@ -141,14 +155,14 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			point: [3, 4],
 			shape
 		});
-		// No proposal degrades to the rejected point marker alone.
+		// No proposal degrades to the attempt's point marker alone.
 		expect(architectureEditIntentFor(curveGesture(), true)).toEqual({
 			kind: 'wall-bend',
 			point: [3, 4]
 		});
 	});
 
-	it('draws the whole attempted Wall polyline with invalid styling', () => {
+	it('draws the whole attempted Wall polyline in the attempt language', () => {
 		const base = {
 			selection: [],
 			handles: [],
@@ -156,18 +170,35 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			labels: []
 		} as unknown as Parameters<typeof withArchitectureEditIntent>[0];
 		const shape: [number, number][] = [[0, 0], [2, 2], [4, 0]];
-		const drawn = withArchitectureEditIntent(base, {
+		const live = withArchitectureEditIntent(base, {
 			kind: 'curve-control-move',
 			point: [2, 2],
 			shape
 		});
-		expect(drawn.drafts).toHaveLength(2);
-		expect(drawn.drafts[0]).toMatchObject({
+		expect(live.drafts).toHaveLength(2);
+		expect(live.drafts[0]).toMatchObject({
 			kind: 'polyline',
 			points: shape,
+			style: 'architecture-edit-intent'
+		});
+		expect(live.drafts[1]).toMatchObject({
+			kind: 'circle',
+			style: 'architecture-edit-intent'
+		});
+		// The refused language is still reachable, and still means the same
+		// thing: this attempt could not be derived.
+		const refused = withArchitectureEditIntent(base, {
+			kind: 'curve-control-move',
+			point: [2, 2],
+			shape,
+			invalid: true
+		});
+		expect(refused.drafts).toHaveLength(2);
+		expect(refused.drafts[0]).toMatchObject({
+			kind: 'polyline',
 			style: 'architecture-edit-intent-invalid'
 		});
-		expect(drawn.drafts[1]).toMatchObject({
+		expect(refused.drafts[1]).toMatchObject({
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
 		});
@@ -188,21 +219,17 @@ describe('P23.11 follow-up — all invalid architecture edits render proposal ge
 	];
 
 	it('renders complete Junction-local Wall geometry with one invalid visual language', () => {
-		const intent = architectureEditIntentFor(
-			junctionGesture({ rejectionCode: 'topology_invalid' }),
-			true,
-			walls
-		);
+		const intent = architectureEditIntentFor(junctionGesture(), true, walls);
 		expect(intent).toEqual({ kind: 'junction-move', point: [1, 1], walls });
 		const base = { drafts: [], selection: [], labels: [] } as unknown as Parameters<
 			typeof withArchitectureEditIntent
 		>[0];
 		const drawn = withArchitectureEditIntent(base, intent);
 		expect(drawn.drafts).toHaveLength(3);
-		expect(drawn.drafts.slice(0, 2).every((draft) => draft.style === 'architecture-edit-intent-invalid')).toBe(true);
+		expect(drawn.drafts.slice(0, 2).every((draft) => draft.style === 'architecture-edit-intent')).toBe(true);
 		expect(drawn.drafts[0]).toMatchObject({ kind: 'polyline', points: walls[0]!.points });
 		expect(drawn.drafts[1]).toMatchObject({ kind: 'polyline', points: walls[1]!.points });
-		expect(drawn.drafts[2]).toMatchObject({ kind: 'circle', style: 'architecture-edit-intent-invalid' });
+		expect(drawn.drafts[2]).toMatchObject({ kind: 'circle', style: 'architecture-edit-intent' });
 	});
 
 	it('renders a curved rigid-move proposal instead of an endpoint chord', () => {
