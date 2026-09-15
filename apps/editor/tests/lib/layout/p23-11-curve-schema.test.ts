@@ -326,7 +326,7 @@ describe('P23.11 slice 1 — representation is behaviour-preserving', () => {
 		}
 	});
 
-	it('samples a stored chain identically to the legacy anchor evaluator', () => {
+	it('samples a stored chain geometrically identically to the legacy anchor evaluator', () => {
 		const points: LayoutVec2[] = [[0, 0], [3, 2], [7, -2], [10, 0]];
 		const spans = deriveChainSpans(points);
 		const stored = sampleSegment({
@@ -349,8 +349,28 @@ describe('P23.11 slice 1 — representation is behaviour-preserving', () => {
 				{ id: 'wall-a:knot:2', point: [7, -2] }
 			]
 		});
-		expect(stored.samples).toEqual(derived.samples);
-		expect(stored.length).toBeCloseTo(derived.length, 12);
+		// The two entry points are one evaluator: identical sample points,
+		// tangents, normals and parameters.
+		const geometryOf = (samples: typeof stored.samples) =>
+			samples.map((sample) => ({
+				point: sample.point,
+				tangent: sample.tangent,
+				normal: sample.normal,
+				t: sample.t
+			}));
+		expect(geometryOf(stored.samples)).toEqual(geometryOf(derived.samples));
+		// P23.11 fix 2 — the canonical cubic-chain segment reports its sample
+		// `distance` as TRUE cubic arc length (the one authored Wall metric the
+		// editor, Openings and the exact split share). The legacy Room-owned
+		// `auto-bezier` shape deliberately keeps its chord accumulation, so the
+		// two lengths agree to the sampler's flatness tolerance rather than
+		// byte-for-byte.
+		expect(stored.length).toBeCloseTo(derived.length, 2);
+		// …and the canonical chain's own length IS true arc: the last sample's
+		// distance is the total, and true arc is strictly longer than the
+		// chord-sum of the same samples.
+		expect(stored.samples.at(-1)!.distance).toEqual(stored.length);
+		expect(stored.length).toBeGreaterThan(derived.length);
 	});
 
 	it('samples a forward and a reverse chain traversal of the same curve equally long', () => {

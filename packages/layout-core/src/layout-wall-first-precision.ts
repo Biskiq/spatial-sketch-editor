@@ -52,6 +52,7 @@ import { deriveChainSpans } from './layout-geometry-curve';
 import {
 	deleteWallCurveKnot,
 	insertWallCurveKnot,
+	moveWallCurveKnot,
 	resolveWallCurveSplit,
 	type WallCurveChain,
 	type WallCurveEditRejection
@@ -571,6 +572,8 @@ function curveEditRejection(code: WallCurveEditRejection): PrecisionRejection['c
 			return 'split_distance_out_of_range';
 		case 'split_at_endpoint':
 			return 'split_at_existing_endpoint';
+		case 'invalid_point':
+			return 'invalid_value';
 		default:
 			return 'unsupported_geometry';
 	}
@@ -687,8 +690,15 @@ export function planConvertWallToLine(
  * new spans together are the original span and every other span is untouched:
  * the Wall keeps its sampled centerline, its length and every hosted Opening
  * offset until the new bend point is actually dragged. Insertion is therefore
- * safe to commit on its own (Inspector "Add Bend Point"), and it is also the
- * first half of the Bend gesture.
+ * safe to commit on its own (context-menu / Inspector "Add Bend Point"), and it
+ * is also the first half of the Bend gesture.
+ *
+ * A **straight** Wall needs no separate "Curved wall" step: the target chain is
+ * the exactly-straight cubic on its chord, and the exact subdivision of that
+ * cubic is again exactly straight, so one atomic candidate converts the Wall to
+ * a cubic chain, plants the bend point at the clicked physical position and
+ * leaves the geometry visually unchanged. The Bend gesture and the visible
+ * "Add bend point here" action therefore share one insertion authority.
  */
 export function planInsertWallCurveKnot(
 	document: LayoutDocumentWallFirst,
@@ -696,7 +706,7 @@ export function planInsertWallCurveKnot(
 	distance: number,
 	options: { knotId?: string } = {}
 ): PrecisionPlan {
-	const target = resolveCurveTarget(document, wallId);
+	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
 	const { chain } = target;
 	if (!Number.isFinite(distance)) {
@@ -734,7 +744,7 @@ export function planMoveWallCurveKnot(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { start, end, chain } = target;
+	const { chain } = target;
 	const existing = chain.knots.find((knot) => knot.id === knotId);
 	if (!existing) {
 		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${knotId}'`, [wallId, knotId]);
@@ -744,12 +754,14 @@ export function planMoveWallCurveKnot(
 		return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
 	}
 
-	const moved = chain.knots.map((knot) =>
-		knot.id === knotId
-			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
-			: knot
-	);
-	const candidate = withWallCenterline(document, wallId, chainFromKnots(moved, start, end));
+	// Local reshape: only the two spans incident to the moved knot change, so
+	// every stored span the grab does not touch — including exact split-derived
+	// or inserted spans — survives byte-identically. Never a whole-chain refit.
+	const moved = moveWallCurveKnot(chain, knotId, point);
+	if (moved.kind === 'rejected') {
+		return reject(curveEditRejection(moved.code), moved.message, [wallId, knotId]);
+	}
+	const candidate = withWallCenterline(document, wallId, wallCubicChain(moved.knots, moved.spans));
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-move', wallId);
 }
 
@@ -780,6 +792,77 @@ export function planDeleteWallCurveKnot(
 		wallCubicChain(deletion.knots, deletion.spans)
 	);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-delete', wallId);
+}
+
+// =====================================================================
+// P23.11 — the pure curve PROPOSAL seam.
+//
+// Separate from canonical acceptance on purpose: a rejected drag must still
+// render the attempted Wall while the immutable baseline is installed, and the
+// only way to do that without a second interpolation authority is to run the
+// SAME chain algebra the planners run, without finalizing.
+// =====================================================================
+
+/** Which curve edit a transient proposal describes. */
+export type WallCurveProposeIntent =
+	| { kind: 'knot-move'; knotId: string; point: LayoutVec2 }
+	| { kind: 'bend'; distance: number; point: LayoutVec2 };
+
+/**
+ * P23.11 — pure, non-validating curve **proposal**.
+ *
+ * Runs the canonical chain algebra (`moveWallCurveKnot`, the exact subdivision
+ * authority) WITHOUT acceptance and samples the result through the one
+ * centerline adapter, so a rejected drag can render the attempted Wall shape
+ * transiently. It installs no document, validates nothing and persists nothing:
+ * the caller keeps the immutable baseline and draws this only as overlay truth.
+ *
+ * Returns the attempted centerline as a sampled polyline in canonical order, or
+ * `undefined` when the intent cannot even be proposed (unknown Wall or knot, a
+ * non-finite point, an out-of-range bend distance).
+ */
+export function proposeWallCurveShape(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	intent: WallCurveProposeIntent
+): LayoutVec2[] | undefined {
+	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
+	if ('plan' in target) return undefined;
+	const { start, end, chain } = target;
+	if (intent.kind === 'knot-move') {
+		if (!finitePoint(intent.point)) return undefined;
+		const moved = moveWallCurveKnot(chain, intent.knotId, intent.point);
+		if (moved.kind === 'rejected') return undefined;
+		return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
+	}
+	if (!Number.isFinite(intent.distance) || !finitePoint(intent.point)) return undefined;
+	const resolution = resolveWallCurveSplit(chain, intent.distance);
+	if (resolution.kind === 'rejected') return undefined;
+	const { fragments, promotedKnotId, point } = resolution.result;
+	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	const knots = promotedKnotId
+		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
+		: [
+				...fragments.a.knots,
+				{ id: knotId, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot,
+				...fragments.b.knots
+		  ];
+	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
+	const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point);
+	if (moved.kind === 'rejected') return undefined;
+	return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
+}
+
+/** Sample an attempted centerline through the one canonical Wall adapter. */
+function sampleProposedChain(
+	wallId: string,
+	start: LayoutVec2,
+	end: LayoutVec2,
+	centerline: LayoutWallCenterline
+): LayoutVec2[] | undefined {
+	const sampled = wallCenterlineSamples({ id: wallId, centerline }, start, end, 'forward');
+	if (!sampled) return undefined;
+	return sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2);
 }
 
 /** Target of one Bend gesture: how far along the Wall it was grabbed, and where. */
@@ -855,12 +938,17 @@ export function planBendWallCurveKnot(
 		const partition = withWallCenterline(document, wallId, wallCubicChain(fragments.a.knots.concat(insertedKnot, fragments.b.knots), [...fragments.a.spans, ...fragments.b.spans]));
 		return finalizeCurveCandidate(document, partition, 'wall-curve-knot-bend', wallId);
 	}
-	const moved = knots.map((knot) =>
-		knot.id === knotId
-			? ({ id: knot.id, point: [intent.point[0], intent.point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
-			: knot
-	);
-	const candidate = withWallCenterline(document, wallId, chainFromKnots(moved, start, end));
+	// Insert/promote through the exact subdivision authority, then move the
+	// grabbed knot through the SAME local-move primitive an ordinary knot drag
+	// uses — there is no Bend-specific interpolation. Only the two spans around
+	// the grab reshape, so every other stored span (including exact
+	// split-derived and previously inserted spans) survives byte-identically.
+	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
+	const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point);
+	if (moved.kind === 'rejected') {
+		return reject(curveEditRejection(moved.code), moved.message, [wallId, knotId]);
+	}
+	const candidate = withWallCenterline(document, wallId, wallCubicChain(moved.knots, moved.spans));
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-bend', wallId);
 }
 
@@ -1432,61 +1520,25 @@ export function validateWallFirstTopology(
 		}
 	}
 
-	// P23.11 — curve-level crossing gate. The chord classifier above is exact
-	// for straight Walls and stays authoritative for a straight/straight pair;
-	// a curved Wall needs its sampled centerline, because a bow can cross a
-	// neighbour (or itself) while its endpoint chord stays clear of everything.
-	// A straight Wall contributes just its two chord endpoints — densifying it
-	// would be waste, since a straight polyline IS its chord — so a document
-	// with no curves pays nothing here beyond one tiny record per Wall.
-	const sampledWalls = new Map<string, SampledTopologyWall>();
-	for (const wall of document.walls) {
-		const segment = wallSegments.get(wall.id);
-		if (!segment) continue;
-		let samples: readonly CurveSample[];
-		if (wall.centerline.kind === 'line') {
-			samples = chordPolyline(segment);
-		} else {
-			const endpoints = wallEndpoints(document, wall);
-			const sampled = endpoints
-				? wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
-				: undefined;
-			if (!sampled) continue;
-			samples = sampled.samples;
-		}
-		sampledWalls.set(wall.id, {
-			id: wall.id,
-			startJunctionId: wall.startJunctionId,
-			endJunctionId: wall.endJunctionId,
-			samples
-		});
-	}
-	for (const wall of document.walls) {
-		if (wall.centerline.kind === 'line') continue;
-		const sampled = sampledWalls.get(wall.id);
-		if (sampled && sampledWallSelfIntersects(sampled)) {
-			return topologyFailure(wall.id, wall.id, `Wall '${wall.id}' centerline intersects itself`);
-		}
-	}
-	for (let first = 0; first < document.walls.length; first += 1) {
-		for (let second = first + 1; second < document.walls.length; second += 1) {
-			const a = document.walls[first]!;
-			const b = document.walls[second]!;
-			// Two straight Walls are already fully decided above.
-			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
-			const sampledA = sampledWalls.get(a.id);
-			const sampledB = sampledWalls.get(b.id);
-			if (!sampledA || !sampledB) continue;
-			const shared = sharedJunctionIds(a, b)[0];
-			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+	// P23.11 — canonical curve-level crossing gate (one implementation, shared
+	// with the Wall-chain authoring path).
+	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments);
+	if (curveCrossing) {
+		if (curveCrossing.kind === 'self') {
 			return topologyFailure(
-				a.id,
-				b.id,
-				shared
-					? `Walls '${a.id}' and '${b.id}' cross away from their shared Junction`
-					: `Walls '${a.id}' and '${b.id}' have unsupported centerline crossing`
+				curveCrossing.wallId,
+				curveCrossing.wallId,
+				`Wall '${curveCrossing.wallId}' centerline intersects itself`
 			);
 		}
+		const [firstCurve, secondCurve] = curveCrossing.wallIds;
+		return topologyFailure(
+			firstCurve,
+			secondCurve,
+			curveCrossing.sharedJunctionId
+				? `Walls '${firstCurve}' and '${secondCurve}' cross away from their shared Junction`
+				: `Walls '${firstCurve}' and '${secondCurve}' have unsupported centerline crossing`
+		);
 	}
 
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -1617,6 +1669,83 @@ function hasAmbiguousSharedBoundary(
 			(wall.startJunctionId === junctionId || wall.endJunctionId === junctionId) && !roomWalls.has(wall.id)
 		)
 	);
+}
+
+/**
+ * P23.11 — a Wall pair (or one Wall against itself) that only the **sampled**
+ * centerlines reveal.
+ */
+export type WallCurveTopologyCrossing =
+	| { kind: 'self'; wallId: string }
+	| { kind: 'pair'; wallIds: [string, string]; sharedJunctionId?: string };
+
+/**
+ * P23.11 — the canonical **curve-level** Wall-crossing gate.
+ *
+ * `classifyWallIntersection` is exact for straight Walls but blind to
+ * curvature: two Walls whose endpoint chords miss each other can still cross
+ * where they bow, and one curved Wall can cross a straight host its chord never
+ * reaches. This walks both sampled centerlines through the curve kernel's own
+ * polyline predicate (never a second intersection recipe) and reports the first
+ * offending Wall or pair, or `undefined` when the document is clear.
+ *
+ * Shared by `validateWallFirstTopology` and the P23.9 Wall-chain authoring path,
+ * so a chain that would bow across an existing curved Wall — with a clear
+ * endpoint chord — rejects before any commit through the same authority. A
+ * straight Wall contributes just its two chord endpoints (a straight polyline
+ * IS its chord), so a document with no curves pays nothing beyond one record
+ * per Wall.
+ */
+export function detectWallCurveTopologyCrossings(
+	document: LayoutDocumentWallFirst,
+	wallSegments: ReadonlyMap<string, TopologySegment>
+): WallCurveTopologyCrossing | undefined {
+	const sampledWalls = new Map<string, SampledTopologyWall>();
+	for (const wall of document.walls) {
+		const segment = wallSegments.get(wall.id);
+		if (!segment) continue;
+		let samples: readonly CurveSample[];
+		if (wall.centerline.kind === 'line') {
+			samples = chordPolyline(segment);
+		} else {
+			const endpoints = wallEndpoints(document, wall);
+			const sampled = endpoints
+				? wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
+				: undefined;
+			if (!sampled) continue;
+			samples = sampled.samples;
+		}
+		sampledWalls.set(wall.id, {
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId,
+			samples
+		});
+	}
+	for (const wall of document.walls) {
+		if (wall.centerline.kind === 'line') continue;
+		const sampled = sampledWalls.get(wall.id);
+		if (sampled && sampledWallSelfIntersects(sampled)) {
+			return { kind: 'self', wallId: wall.id };
+		}
+	}
+	for (let first = 0; first < document.walls.length; first += 1) {
+		for (let second = first + 1; second < document.walls.length; second += 1) {
+			const a = document.walls[first]!;
+			const b = document.walls[second]!;
+			// Two straight Walls are already fully decided by the chord gate.
+			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
+			const sampledA = sampledWalls.get(a.id);
+			const sampledB = sampledWalls.get(b.id);
+			if (!sampledA || !sampledB) continue;
+			const shared = sharedJunctionIds(a, b)[0];
+			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
+			return shared
+				? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }
+				: { kind: 'pair', wallIds: [a.id, b.id] };
+		}
+	}
+	return undefined;
 }
 
 function topologyFailure(firstId: string, secondId: string | undefined, message: string): LayoutGeometryIssue {

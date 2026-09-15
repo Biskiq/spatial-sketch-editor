@@ -132,19 +132,54 @@ export function deriveChainSpans(points: readonly LayoutVec2[]): CubicSpanContro
 	const tangents = points.map((_point, index) => createAutomaticTangent(points, index));
 	const spans: CubicSpanControls[] = [];
 	for (let index = 0; index < points.length - 1; index += 1) {
-		const start = points[index]!;
-		const end = points[index + 1]!;
-		const interval = centripetalInterval(start, end);
-		if (interval === 0) {
-			spans.push({ handleOut: clonePoint(start), handleIn: clonePoint(end) });
-			continue;
-		}
-		spans.push({
-			handleOut: addScaled(start, tangents[index]!, interval / 3),
-			handleIn: addScaled(end, tangents[index + 1]!, -interval / 3)
-		});
+		spans.push(
+			spanControlsFromTangents(points[index]!, points[index + 1]!, tangents[index]!, tangents[index + 1]!)
+		);
 	}
 	return spans;
+}
+
+/**
+ * Turn one interval's two endpoint tangents into the stored control pair — the
+ * single place the canonical smoothness rule becomes a cubic span. Both the
+ * whole-chain write path and the single-span local reshape read it, so a local
+ * move cannot drift from a full re-derivation.
+ */
+function spanControlsFromTangents(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	startTangent: LayoutVec2,
+	endTangent: LayoutVec2
+): CubicSpanControls {
+	const interval = centripetalInterval(start, end);
+	if (interval === 0) return { handleOut: clonePoint(start), handleIn: clonePoint(end) };
+	return {
+		handleOut: addScaled(start, startTangent, interval / 3),
+		handleIn: addScaled(end, endTangent, -interval / 3)
+	};
+}
+
+/**
+ * P23.11 — the canonical smoothness rule for exactly one span: the control pair
+ * span `index` would receive on the whole-chain write path.
+ *
+ * Exported so a local bend-point move can reshape only the spans touching the
+ * moved knot without re-deriving the rest of the chain. A persisted chain's
+ * untouched spans may come from an exact de Casteljau subdivision or an
+ * identity-preserving knot insertion, whose controls are **not** what the
+ * smoothness rule would produce from their remaining points — re-deriving them
+ * would silently refit geometry the author never touched.
+ */
+export function deriveCubicSpanControls(
+	points: readonly LayoutVec2[],
+	index: number
+): CubicSpanControls {
+	return spanControlsFromTangents(
+		points[index]!,
+		points[index + 1]!,
+		createAutomaticTangent(points, index),
+		createAutomaticTangent(points, index + 1)
+	);
 }
 
 /**
@@ -533,6 +568,59 @@ export function sampledPolylineSelfIntersects(
 	return false;
 }
 
+/**
+ * P23.11 — the ONE authored Wall-distance metric.
+ *
+ * A sample's `distance` is the **true cubic arc length** from the segment start
+ * to that sample's parameter, not the cumulative chord of the sampled polyline.
+ * The two differ by the sampler's own flatness error, which is large enough to
+ * misplace an authored meter: the editor's Wall hits and the Openings they
+ * place expose these distances, and the exact cubic split resolves a distance
+ * into a subdivision parameter. Measuring one surface in chord-summed metres
+ * and interpreting it as true arc (or vice versa) is what made a bend land
+ * slightly off the grabbed point, an Opening-edge split misclassify as a
+ * straddle and a rebased Opening drift.
+ *
+ * Straight segments and straight cubics are unaffected: their arc length IS
+ * their chord, so line segments keep the exact chord accumulation below and a
+ * collinear chain reports its chord to quadrature tolerance.
+ */
+function trueArcSampleDistances(
+	pointsWithT: readonly { point: LayoutVec2; t: number }[],
+	cubics: readonly CubicBezierShape[]
+): number[] {
+	const distances: number[] = [];
+	let running = 0;
+	let currentIndex = -1;
+	let currentLocal = 0;
+	for (const entry of pointsWithT) {
+		const scaled = clamp01(entry.t) * cubics.length;
+		let index = Math.min(cubics.length - 1, Math.floor(scaled));
+		let local = clamp01(scaled - index);
+		// Guard against global-parameter rounding at a cubic boundary, so a
+		// walk can never step backwards inside one cubic.
+		if (currentIndex >= 0 && (index < currentIndex || (index === currentIndex && local < currentLocal))) {
+			index = currentIndex;
+			local = currentLocal;
+		}
+		if (currentIndex < 0) {
+			running += cubicBezierArcLengthBetween(cubics[0]!, 0, local);
+		} else if (index === currentIndex) {
+			running += cubicBezierArcLengthBetween(cubics[index]!, currentLocal, local);
+		} else {
+			running += cubicBezierArcLengthBetween(cubics[currentIndex]!, currentLocal, 1);
+			for (let skipped = currentIndex + 1; skipped < index; skipped += 1) {
+				running += cubicBezierArcLength(cubics[skipped]!);
+			}
+			running += cubicBezierArcLengthBetween(cubics[index]!, 0, local);
+		}
+		currentIndex = index;
+		currentLocal = local;
+		distances.push(running);
+	}
+	return distances;
+}
+
 function buildSampledSegment(
 	segmentId: string,
 	pointsWithT: readonly { point: LayoutVec2; t: number }[],
@@ -540,9 +628,17 @@ function buildSampledSegment(
 	cubics?: readonly CubicBezierShape[]
 ): SampledSegment {
 	const points = pointsWithT.map((entry) => entry.point);
-	const distances = [0];
-	for (let index = 1; index < points.length; index += 1) {
-		distances.push(distances[index - 1]! + distance(points[index - 1]!, points[index]!));
+	let distances: number[];
+	// Only the canonical cubic-chain segment adopts the true-arc metric. The
+	// legacy Room-owned `auto-bezier` shape keeps its chord accumulation, so
+	// legacy golden output stays byte-identical.
+	if (cubics && cubics.length > 0 && segment.kind === 'cubic-chain') {
+		distances = trueArcSampleDistances(pointsWithT, cubics);
+	} else {
+		distances = [0];
+		for (let index = 1; index < points.length; index += 1) {
+			distances.push(distances[index - 1]! + distance(points[index - 1]!, points[index]!));
+		}
 	}
 	const length = distances.at(-1) ?? 0;
 	const samples = pointsWithT.map((entry, index) => {

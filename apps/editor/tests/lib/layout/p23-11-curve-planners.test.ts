@@ -353,7 +353,7 @@ describe('P23.11 slice 5 — bend point planners', () => {
 		]);
 	});
 
-	it('rejects an insert that is out of range, on a straight Wall, or on a knot', () => {
+	it('rejects an insert that is out of range or on an existing knot', () => {
 		const document = curvedDocument();
 		const total = wallLengthOf(document, 'wall-a');
 		expect(planInsertWallCurveKnot(document, 'wall-a', 0)).toMatchObject({
@@ -364,15 +364,25 @@ describe('P23.11 slice 5 — bend point planners', () => {
 			kind: 'rejected',
 			rejection: { code: 'split_distance_out_of_range' }
 		});
-		// A straight Wall has no bend points to edit until it is converted.
-		expect(planInsertWallCurveKnot(documentOf(), 'wall-a', 3)).toMatchObject({
-			kind: 'rejected',
-			rejection: { code: 'unsupported_geometry' }
-		});
 		expect(planInsertWallCurveKnot(document, 'wall-a', knotDistanceOf(document, 'wall-a:knot:1'))).toMatchObject({
 			kind: 'rejected',
 			rejection: { code: 'no_op' }
 		});
+	});
+
+	it('plants a bend point on a straight Wall by converting it atomically (Fix 4)', () => {
+		const document = documentOf();
+		const baseline = samplePointsOf(document, 'wall-a');
+		const plan = expectSuccess(planInsertWallCurveKnot(document, 'wall-a', 3));
+		const chain = chainViewOf(plan.document, 'wall-a');
+		// One atomic candidate: the Wall becomes a cubic chain with the new bend
+		// point at the clicked physical position, and nothing moves on screen.
+		expect(chain.knots).toHaveLength(1);
+		expect(chain.knots[0]!.point[0]).toBeCloseTo(3, 9);
+		expect(chain.knots[0]!.point[1]).toBeCloseTo(0, 9);
+		expect(worstDeviation(samplePointsOf(plan.document, 'wall-a'), baseline)).toBeLessThan(1e-9);
+		// The baseline is untouched, so Undo/Redo sees one entry.
+		expect(documentOf().walls[0]!.centerline.kind).toBe('line');
 	});
 
 	it('moves exactly one bend point and leaves the far spans byte-identical', () => {

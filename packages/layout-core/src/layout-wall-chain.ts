@@ -52,6 +52,7 @@ import {
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import type { LayoutDocumentIssue } from './layout-codec';
@@ -850,6 +851,32 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 		const end = junctionById.get(wall.endJunctionId);
 		if (!start || !end) continue;
 		entries.push({ wall, segment: { id: wall.id, start: start.point, end: end.point } });
+	}
+	// P23.11 — the chord classifier below is exact for straight/straight
+	// relationships and stays authoritative there. A curved Wall can bow across
+	// a new straight Wall while its endpoint chord never intersects it, so the
+	// canonical sampled crossing authority runs on the built candidate before
+	// commit. It is the SAME gate `validateWallFirstTopology` runs — never a
+	// second crossing algorithm — and any curve crossing that would need
+	// automatic curved noding rejects the whole authoring command.
+	const curveCrossing = detectWallCurveTopologyCrossings(
+		document,
+		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
+	);
+	if (curveCrossing) {
+		return curveCrossing.kind === 'self'
+			? {
+					code: 'self_intersecting_chain',
+					message: `Wall '${curveCrossing.wallId}' centerline intersects itself`,
+					wallIds: [curveCrossing.wallId]
+			  }
+			: {
+					code: 'self_intersecting_chain',
+					message: `Walls '${curveCrossing.wallIds[0]}' and '${curveCrossing.wallIds[1]}' have unsupported ${
+						curveCrossing.sharedJunctionId ? 'crossing away from their shared Junction' : 'centerline crossing'
+					}`,
+					wallIds: [...curveCrossing.wallIds]
+			  };
 	}
 	const segments = entries.map((entry) => entry.segment);
 	for (let first = 0; first < entries.length; first += 1) {

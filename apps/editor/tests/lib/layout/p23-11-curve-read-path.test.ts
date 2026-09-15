@@ -457,8 +457,21 @@ describe('P23.11 slice 2 — one sampler, one adapter seam', () => {
 		const wall: LayoutWall = { ...singleWallDocument({ kind: 'line' }).walls[0]!, centerline: chainFromPoints('wall-a', points) };
 		const legacySampled = sampleSegment(legacy);
 		const chainSampled = sampleSegment(wallCenterlineSegment(wall, [0, 0], [CHORD, 0], 'forward'));
-		expect(chainSampled.length).toBeCloseTo(legacySampled.length, 12);
-		expect(chainSampled.samples).toEqual(legacySampled.samples);
+		// One evaluator: identical sample geometry (point, tangent, normal, t).
+		const geometryOf = (samples: typeof legacySampled.samples) =>
+			samples.map((sample) => ({
+				point: sample.point,
+				tangent: sample.tangent,
+				normal: sample.normal,
+				t: sample.t
+			}));
+		expect(geometryOf(chainSampled.samples)).toEqual(geometryOf(legacySampled.samples));
+		// P23.11 fix 2 — the canonical chain reports true cubic arc length while
+		// the legacy Room-owned shape keeps chord accumulation, so the two total
+		// lengths agree to the sampler's flatness tolerance and the canonical arc
+		// is strictly longer than the legacy chord-sum.
+		expect(chainSampled.length).toBeCloseTo(legacySampled.length, 2);
+		expect(chainSampled.length).toBeGreaterThan(legacySampled.length);
 	});
 
 	it('keeps a single flattening core and a single Wall centerline seam', () => {

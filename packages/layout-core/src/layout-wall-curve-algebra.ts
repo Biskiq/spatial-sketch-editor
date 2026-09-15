@@ -39,6 +39,7 @@ import {
 	cubicBezierArcLength,
 	cubicBezierArcLengthAt,
 	cubicBezierPoint,
+	deriveCubicSpanControls,
 	spansToCubics,
 	type CubicBezierShape
 } from './layout-geometry-curve';
@@ -366,7 +367,81 @@ export function resolveWallCurveSplitAtKnot(
 }
 
 /** Why an insertion or deletion could not be applied. */
-export type WallCurveEditRejection = WallSplitRejection | 'knot_already_exists' | 'knot_not_found';
+export type WallCurveEditRejection =
+	| WallSplitRejection
+	| 'knot_already_exists'
+	| 'knot_not_found'
+	| 'invalid_point';
+
+/**
+ * Move exactly one bend point, preserving every stored span the moved knot
+ * does not semantically touch (P23.11 blocker 1).
+ *
+ * The stored chain — not a re-derivation from the remaining points — is the
+ * geometry authority. So only the two cubics incident to the moved knot are
+ * recomputed (with the same canonical smoothness rule the whole-chain write
+ * path applies), so the edited neighbourhood is exactly what a from-scratch
+ * chain would produce there. Every other span is copied byte-for-byte: a span
+ * produced by an exact de Casteljau subdivision or an identity-preserving
+ * insertion survives the edit untouched instead of being silently refit.
+ *
+ * The knot keeps its ID and position in the chain; the invariant
+ * `spans.length === knots.length + 1` is preserved. A missing knot, a
+ * non-finite point or a chain with no incident span pair rejects.
+ */
+export function moveWallCurveKnot(
+	chain: WallCurveChain,
+	knotId: string,
+	point: LayoutVec2
+):
+	| { kind: 'moved'; knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[] }
+	| { kind: 'rejected'; code: WallCurveEditRejection; message: string } {
+	const knotIndex = chain.knots.findIndex((knot) => knot.id === knotId);
+	if (knotIndex < 0) {
+		return {
+			kind: 'rejected',
+			code: 'knot_not_found',
+			message: `Wall centerline has no knot '${knotId}'.`
+		};
+	}
+	if (!point.every((value) => Number.isFinite(value))) {
+		return { kind: 'rejected', code: 'invalid_point', message: 'Bend point X/Z must be finite.' };
+	}
+	if (!wallCurveChainSatisfiesInvariant(chain) || chain.spans.length < 2) {
+		return {
+			kind: 'rejected',
+			code: 'degenerate_chain',
+			message: 'Wall centerline has no span pair around the knot.'
+		};
+	}
+	// Chain vertices `start, …knots, end`: the moved knot is `pointIndex`.
+	const points = wallCurveChainPoints(chain);
+	const pointIndex = knotIndex + 1;
+	points[pointIndex] = [point[0], point[1]] as LayoutVec2;
+	// The two spans incident to the moved knot are recomputed from the SAME
+	// canonical smoothness rule a full write would apply, so the edited
+	// neighbourhood matches a from-scratch chain (a one-knot chain is therefore
+	// bit-for-bit what the old whole-chain re-derivation produced). Every other
+	// stored span is copied byte-for-byte, so a split-derived or inserted span
+	// away from the grab survives the edit instead of being silently refit.
+	const incoming = deriveCubicSpanControls(points, pointIndex - 1);
+	const outgoing = deriveCubicSpanControls(points, pointIndex);
+	const spans = chain.spans.map(cloneSpan);
+	spans[pointIndex - 1] = {
+		handleOut: clonePoint(incoming.handleOut),
+		handleIn: clonePoint(incoming.handleIn)
+	};
+	spans[pointIndex] = {
+		handleOut: clonePoint(outgoing.handleOut),
+		handleIn: clonePoint(outgoing.handleIn)
+	};
+	const knots = chain.knots.map((knot, index) =>
+		index === knotIndex
+			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
+			: cloneKnot(knot)
+	);
+	return { kind: 'moved', knots, spans };
+}
 
 /**
  * Insert one bend point at a physical arc distance **without moving the curve**.
@@ -458,6 +533,10 @@ export function wallCurveChainSatisfiesInvariant(chain: {
 
 function cloneKnot(knot: LayoutWallCurveKnot): LayoutWallCurveKnot {
 	return { id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 };
+}
+
+function clonePoint(point: LayoutVec2): LayoutVec2 {
+	return [point[0], point[1]] as LayoutVec2;
 }
 
 function cloneSpan(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
