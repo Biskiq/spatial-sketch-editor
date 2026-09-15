@@ -38,15 +38,17 @@ import type {
 	LayoutDocumentWallFirst,
 	LayoutJunction,
 	LayoutWall,
-	LayoutWallCurveAnchor
+	LayoutWallCenterline,
+	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import {
 	cloneWallCenterline,
-	cloneWallCurveAnchor,
+	nextWallCurveKnotId,
 	translateWallCenterline,
-	wallCenterlineSamples
+	wallCenterlineSamples,
+	wallCubicChain
 } from './layout-wall-centerline';
-import { nextInteriorAnchorId, projectPointToSampledSegment } from './layout-geometry-curve';
+import { deriveChainSpans, projectPointToSampledSegment } from './layout-geometry-curve';
 import {
 	planWallSplit,
 	type NodingIdAllocator,
@@ -485,20 +487,25 @@ function rejectCurvedWall(operation: string, wallId: string): PrecisionPlan {
 	);
 }
 
-/** Resolved inputs shared by the anchor planners. */
+/** Resolved inputs shared by the bend-point planners. */
 function resolveCurveTarget(
 	document: LayoutDocumentWallFirst,
 	wallId: string
 ):
 	| { plan: PrecisionPlan }
-	| { wall: LayoutWall; start: LayoutVec2; end: LayoutVec2; anchors: readonly LayoutWallCurveAnchor[] } {
+	| {
+			wall: LayoutWall;
+			start: LayoutVec2;
+			end: LayoutVec2;
+			knots: readonly LayoutWallCurveKnot[];
+	  } {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return { plan: reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]) };
-	if (wall.centerline.kind !== 'auto-bezier') {
+	if (wall.centerline.kind !== 'cubic-chain') {
 		return {
 			plan: reject(
 				'unsupported_geometry',
-				`Wall '${wallId}' is straight; convert it to a curve before editing its controls`,
+				`Wall '${wallId}' is straight; convert it to a curve before editing its bend points`,
 				[wallId]
 			)
 		};
@@ -509,7 +516,24 @@ function resolveCurveTarget(
 			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
 		};
 	}
-	return { wall, start: endpoints.start, end: endpoints.end, anchors: wall.centerline.interiorAnchors };
+	return { wall, start: endpoints.start, end: endpoints.end, knots: wall.centerline.knots };
+}
+
+/**
+ * Rebuild one Wall's cubic chain from a new bend-point list.
+ *
+ * This is the **write path**: the canonical smoothness rule runs here, once,
+ * and its result is persisted. The read path (`centerline → cubics → samples`)
+ * consumes the stored spans and never re-derives them, which is what keeps
+ * subdivision and rigid translation exact.
+ */
+function chainFromKnots(
+	knots: readonly LayoutWallCurveKnot[],
+	start: LayoutVec2,
+	end: LayoutVec2
+): LayoutWallCenterline {
+	const points: LayoutVec2[] = [start, ...knots.map((knot) => knot.point), end];
+	return wallCubicChain(knots, deriveChainSpans(points));
 }
 
 /** Commit a candidate that only reshaped one Wall's own centerline. */
@@ -553,7 +577,7 @@ export function planConvertWallToCurve(
 ): PrecisionPlan {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]);
-	if (wall.centerline.kind === 'auto-bezier') {
+	if (wall.centerline.kind === 'cubic-chain') {
 		return reject('no_op', `Wall '${wallId}' is already curved`, [wallId]);
 	}
 	const endpoints = wallEndpoints(document, wall);
@@ -567,10 +591,15 @@ export function planConvertWallToCurve(
 		(endpoints.start[0] + endpoints.end[0]) / 2,
 		(endpoints.start[1] + endpoints.end[1]) / 2
 	];
-	const candidate = withWallCenterline(document, wallId, {
-		kind: 'auto-bezier',
-		interiorAnchors: [{ id: nextInteriorAnchorId(wallId, []), point: midpoint }]
-	});
+	const knot: LayoutWallCurveKnot = {
+		id: nextWallCurveKnotId(wallId, []),
+		point: midpoint
+	};
+	const candidate = withWallCenterline(
+		document,
+		wallId,
+		chainFromKnots([knot], endpoints.start, endpoints.end)
+	);
 	return finalizeCurveCandidate(document, candidate, 'wall-convert-to-curve', wallId);
 }
 
@@ -610,7 +639,7 @@ export function planInsertWallCurveAnchor(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { wall, start, end, anchors } = target;
+	const { wall, start, end, knots } = target;
 	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId]);
 
 	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
@@ -631,19 +660,16 @@ export function planInsertWallCurveAnchor(
 		);
 	}
 
-	const inserted: LayoutWallCurveAnchor = {
-		id: nextInteriorAnchorId(wallId, anchors),
+	const inserted: LayoutWallCurveKnot = {
+		id: nextWallCurveKnotId(wallId, knots),
 		point: [projected.point[0], projected.point[1]]
 	};
-	const ordered = [...anchors, inserted].sort(
+	const ordered = [...knots, inserted].sort(
 		(first, second) =>
 			projectPointToSampledSegment(first.point, sampled).distance -
 			projectPointToSampledSegment(second.point, sampled).distance
 	);
-	const candidate = withWallCenterline(document, wallId, {
-		kind: 'auto-bezier',
-		interiorAnchors: ordered.map(cloneWallCurveAnchor)
-	});
+	const candidate = withWallCenterline(document, wallId, chainFromKnots(ordered, start, end));
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-insert', wallId);
 }
 
@@ -656,24 +682,25 @@ export function planMoveWallCurveAnchor(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { anchors } = target;
-	const existing = anchors.find((anchor) => anchor.id === anchorId);
+	const { start, end, knots } = target;
+	const existing = knots.find((knot) => knot.id === anchorId);
 	if (!existing) {
-		return reject('unknown_curve_anchor', `Wall '${wallId}' has no curve control '${anchorId}'`, [wallId, anchorId]);
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${anchorId}'`, [wallId, anchorId]);
 	}
 	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId, anchorId]);
 	if (coincidesAsJunction(existing.point, point)) {
 		return reject('no_op', `Curve control '${anchorId}' is already at that point`, [wallId, anchorId]);
 	}
 
-	const candidate = withWallCenterline(document, wallId, {
-		kind: 'auto-bezier',
-		interiorAnchors: anchors.map((anchor) =>
-			anchor.id === anchorId
-				? ({ id: anchor.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveAnchor)
-				: cloneWallCurveAnchor(anchor)
-		)
-	});
+	// Re-deriving the spans around the moved knot is the documented reshape
+	// rule: only the two cubics adjacent to the moved knot change, so the edit
+	// stays local to the grabbed bend point.
+	const moved = knots.map((knot) =>
+		knot.id === anchorId
+			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
+			: knot
+	);
+	const candidate = withWallCenterline(document, wallId, chainFromKnots(moved, start, end));
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-move', wallId);
 }
 
@@ -690,17 +717,17 @@ export function planDeleteWallCurveAnchor(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { anchors } = target;
-	if (!anchors.some((anchor) => anchor.id === anchorId)) {
-		return reject('unknown_curve_anchor', `Wall '${wallId}' has no curve control '${anchorId}'`, [wallId, anchorId]);
+	const { start, end, knots } = target;
+	if (!knots.some((knot) => knot.id === anchorId)) {
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${anchorId}'`, [wallId, anchorId]);
 	}
-	const remaining = anchors.filter((anchor) => anchor.id !== anchorId);
+	const remaining = knots.filter((knot) => knot.id !== anchorId);
 	const candidate = withWallCenterline(
 		document,
 		wallId,
 		remaining.length === 0
 			? { kind: 'line' }
-			: { kind: 'auto-bezier', interiorAnchors: remaining.map(cloneWallCurveAnchor) }
+			: chainFromKnots(remaining, start, end)
 	);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-delete', wallId);
 }

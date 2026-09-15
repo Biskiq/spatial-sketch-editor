@@ -27,6 +27,37 @@ export type CubicBezierShape = {
 	end: LayoutVec2;
 };
 
+/**
+ * Control pair for exactly one cubic span: `handleOut` leaves the span's first
+ * point and `handleIn` arrives at its second point, so one span is one cubic.
+ * Structurally identical to the canonical `LayoutWallCubicSpan`, kept general
+ * here so the curve kernel never depends on the canonical Wall schema.
+ */
+export type CubicSpanControls = {
+	handleOut: LayoutVec2;
+	handleIn: LayoutVec2;
+};
+
+/**
+ * P23.11 — the canonical Wall adapter's transient segment shape: explicit
+ * cubic spans already resolved against the Wall's endpoint Junctions. Never
+ * persisted and never a `DraftSegment`: it carries derived geometry, not
+ * authored control points.
+ */
+export type CubicChainSegment = {
+	id: string;
+	kind: 'cubic-chain';
+	cubics: CubicBezierShape[];
+};
+
+/** One non-straight segment shape the sampler understands. */
+export type CurvedSampleableSegment = AutoBezierSegment | CubicChainSegment;
+
+/** Every segment shape the one sampler understands. */
+export type SampleableSegment =
+	| Extract<DraftSegment, { kind: 'line' }>
+	| CurvedSampleableSegment;
+
 export type LegacyBezierSegment = {
 	id: string;
 	kind: 'bezier';
@@ -62,36 +93,67 @@ export function autoBezierAnchorPoints(segment: AutoBezierSegment): LayoutVec2[]
 	return [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
 }
 
-export function compileAutoBezierAnchors(points: readonly LayoutVec2[]): CubicBezierShape[] {
+/**
+ * P23.11 — the one canonical smoothness rule, on the **write** path only.
+ *
+ * Derives one control pair per cubic span from the ordered point sequence:
+ * endpoints get a one-sided tangent, interior points blend both neighbours
+ * centripetally (`LAYOUT_AUTO_BEZIER_ALPHA`). {@link spansToCubics} turns the
+ * result back into cubic geometry.
+ *
+ * The read path never calls this. A canonical Wall persists the derived spans,
+ * so evaluation, subdivision and translation all consume stored controls
+ * exactly — that is what makes an exact split possible. Callers here are the
+ * planners that author or move a bend point.
+ */
+export function deriveChainSpans(points: readonly LayoutVec2[]): CubicSpanControls[] {
 	if (points.length === 0) return [];
 	if (points.length === 1) {
 		const point = clonePoint(points[0]!);
-		return [{ start: point, handleOut: clonePoint(point), handleIn: clonePoint(point), end: clonePoint(point) }];
+		return [{ handleOut: clonePoint(point), handleIn: clonePoint(point) }];
 	}
 	if (points.length === 2 && !coincidesAsJunction(points[0]!, points[1]!)) {
 		const start = clonePoint(points[0]!);
 		const end = clonePoint(points[1]!);
-		return [{ start, handleOut: lerp(start, end, 1 / 3), handleIn: lerp(start, end, 2 / 3), end }];
+		return [{ handleOut: lerp(start, end, 1 / 3), handleIn: lerp(start, end, 2 / 3) }];
 	}
 
 	const tangents = points.map((_point, index) => createAutomaticTangent(points, index));
-	const cubics: CubicBezierShape[] = [];
+	const spans: CubicSpanControls[] = [];
 	for (let index = 0; index < points.length - 1; index += 1) {
-		const start = clonePoint(points[index]!);
-		const end = clonePoint(points[index + 1]!);
+		const start = points[index]!;
+		const end = points[index + 1]!;
 		const interval = centripetalInterval(start, end);
 		if (interval === 0) {
-			cubics.push({ start, handleOut: clonePoint(start), handleIn: clonePoint(end), end });
+			spans.push({ handleOut: clonePoint(start), handleIn: clonePoint(end) });
 			continue;
 		}
-		cubics.push({
-			start,
+		spans.push({
 			handleOut: addScaled(start, tangents[index]!, interval / 3),
-			handleIn: addScaled(end, tangents[index + 1]!, -interval / 3),
-			end
+			handleIn: addScaled(end, tangents[index + 1]!, -interval / 3)
 		});
 	}
-	return cubics;
+	return spans;
+}
+
+/**
+ * Pair each span with the points it spans: cubic `i` runs
+ * `points[i] → points[i + 1]`, so `spans.length` is `points.length - 1`.
+ */
+export function spansToCubics(
+	points: readonly LayoutVec2[],
+	spans: readonly CubicSpanControls[]
+): CubicBezierShape[] {
+	return spans.map((span, index) => ({
+		start: clonePoint(points[index]!),
+		handleOut: clonePoint(span.handleOut),
+		handleIn: clonePoint(span.handleIn),
+		end: clonePoint(points[index + 1]!)
+	}));
+}
+
+export function compileAutoBezierAnchors(points: readonly LayoutVec2[]): CubicBezierShape[] {
+	return spansToCubics(points, deriveChainSpans(points));
 }
 
 export function legacyBezierToAutoBezier(segment: LegacyBezierSegment): AutoBezierSegment {
@@ -133,7 +195,36 @@ export function cubicBezierDerivative(segment: CubicBezierShape, t: number): Lay
 	];
 }
 
-export function segmentPointAt(segment: DraftSegment, t: number): LayoutVec2 {
+/**
+ * Ordered chain vertices of any sampleable segment, `start … end` inclusive.
+ * One helper so every consumer of the adapter output (face polygons, room
+ * frames, validation outlines) reads the chain through the same seam.
+ */
+export function segmentVertexPoints(segment: SampleableSegment): LayoutVec2[] {
+	if (segment.kind === 'line') {
+		return [[...segment.start] as LayoutVec2, [...segment.end] as LayoutVec2];
+	}
+	if (segment.kind === 'cubic-chain') {
+		return [
+			[...segment.cubics[0]!.start] as LayoutVec2,
+			...segment.cubics.map((cubic) => [...cubic.end] as LayoutVec2)
+		];
+	}
+	return [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
+}
+
+/**
+ * The cubic list of a non-straight segment: stored spans for the canonical
+ * chain, the derived spline for a legacy `auto-bezier` anchor list. The single
+ * place either shape becomes cubics.
+ */
+function curvedCubics(segment: CurvedSampleableSegment): CubicBezierShape[] {
+	return segment.kind === 'cubic-chain'
+		? segment.cubics
+		: compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+}
+
+export function segmentPointAt(segment: SampleableSegment, t: number): LayoutVec2 {
 	if (segment.kind === 'line') {
 		const amount = clamp01(t);
 		return [
@@ -144,17 +235,17 @@ export function segmentPointAt(segment: DraftSegment, t: number): LayoutVec2 {
 	return autoBezierPointAt(segment, t);
 }
 
-export function segmentTangentAt(segment: DraftSegment, t: number): LayoutVec2 {
+export function segmentTangentAt(segment: SampleableSegment, t: number): LayoutVec2 {
 	if (segment.kind === 'line') return normalize([segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]], [1, 0]);
 	return normalize(autoBezierDerivativeAt(segment, t), fallbackTangent(segment));
 }
 
-export function segmentLength(segment: DraftSegment): number {
+export function segmentLength(segment: SampleableSegment): number {
 	return sampleSegment(segment).length;
 }
 
 export function sampleSegment(
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	options: {
 		flatnessTolerance?: number;
 		maxSampleSpan?: number;
@@ -176,7 +267,7 @@ export function sampleSegment(
 		);
 	}
 
-	const cubics = compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+	const cubics = curvedCubics(segment);
 	const pointsWithT: { point: LayoutVec2; t: number }[] = [];
 	for (const [cubicIndex, cubic] of cubics.entries()) {
 		const localParameters = adaptiveParameters(cubic, flatnessTolerance, maxSampleSpan, maxDepth);
@@ -200,7 +291,11 @@ export function sampleSegment(
 		}
 	}
 	if (pointsWithT.length === 0) {
-		pointsWithT.push({ point: [...segment.start], t: 0 }, { point: [...segment.end], t: 1 });
+		const vertices = segmentVertexPoints(segment);
+		pointsWithT.push(
+			{ point: [...vertices[0]!] as LayoutVec2, t: 0 },
+			{ point: [...vertices.at(-1)!] as LayoutVec2, t: 1 }
+		);
 	}
 	return buildSampledSegment(segment.id, pointsWithT, segment, cubics);
 }
@@ -340,7 +435,7 @@ export function sampledPolylineSelfIntersects(
 function buildSampledSegment(
 	segmentId: string,
 	pointsWithT: readonly { point: LayoutVec2; t: number }[],
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	cubics?: readonly CubicBezierShape[]
 ): SampledSegment {
 	const points = pointsWithT.map((entry) => entry.point);
@@ -362,24 +457,32 @@ function buildSampledSegment(
 	return { segmentId, length, samples };
 }
 
-function autoBezierPointAt(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>, t: number): LayoutVec2 {
+function autoBezierPointAt(segment: CurvedSampleableSegment, t: number): LayoutVec2 {
 	const { cubic, localT } = resolveAutoBezierCubic(segment, t);
 	return cubicBezierPoint(cubic, localT);
 }
 
-function autoBezierDerivativeAt(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>, t: number): LayoutVec2 {
+function autoBezierDerivativeAt(segment: CurvedSampleableSegment, t: number): LayoutVec2 {
 	const { cubic, localT } = resolveAutoBezierCubic(segment, t);
 	return cubicBezierDerivative(cubic, localT);
 }
 
 function resolveAutoBezierCubic(
-	segment: Extract<DraftSegment, { kind: 'auto-bezier' }>,
+	segment: CurvedSampleableSegment,
 	t: number
 ): { cubic: CubicBezierShape; localT: number } {
-	const cubics = compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+	const cubics = curvedCubics(segment);
 	if (cubics.length === 0) {
+		const vertices = segmentVertexPoints(segment);
+		const start = vertices[0] ?? ([0, 0] as LayoutVec2);
+		const end = vertices.at(-1) ?? start;
 		return {
-			cubic: { start: [...segment.start], handleOut: [...segment.start], handleIn: [...segment.end], end: [...segment.end] },
+			cubic: {
+				start: [...start] as LayoutVec2,
+				handleOut: [...start] as LayoutVec2,
+				handleIn: [...end] as LayoutVec2,
+				end: [...end] as LayoutVec2
+			},
 			localT: clamp01(t)
 		};
 	}
@@ -436,10 +539,8 @@ function lineParameters(
 	return parameters;
 }
 
-function assertFiniteSamplingInput(segment: DraftSegment): void {
-	const points = segment.kind === 'line'
-		? [segment.start, segment.end]
-		: [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
+function assertFiniteSamplingInput(segment: SampleableSegment): void {
+	const points = segmentVertexPoints(segment);
 	if (!points.every((point) => point.every(Number.isFinite))) {
 		throw new LayoutGeometrySamplingError(
 			'sampling_output_invalid',
@@ -488,12 +589,12 @@ function adaptiveParameters(
 function tangentFromSamples(
 	points: readonly LayoutVec2[],
 	index: number,
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	t: number,
 	cubics?: readonly CubicBezierShape[]
 ): LayoutVec2 {
 	const tangent =
-		cubics && cubics.length > 0 && segment.kind === 'auto-bezier'
+		cubics && cubics.length > 0 && segment.kind !== 'line'
 			? normalize(autoBezierDerivativeAtFromCubics(cubics, t), fallbackTangent(segment))
 			: segmentTangentAt(segment, t);
 	if (length(tangent) > CURVE_ENDPOINT_EPSILON) return tangent;
@@ -501,8 +602,10 @@ function tangentFromSamples(
 	return index + 1 < points.length ? normalize(subtract(points[index + 1]!, points[index]!), [1, 0]) : [1, 0];
 }
 
-function fallbackTangent(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>): LayoutVec2 {
-	return normalize(subtract(segment.end, segment.start), [1, 0]);
+function fallbackTangent(segment: CurvedSampleableSegment): LayoutVec2 {
+	const vertices = segmentVertexPoints(segment);
+	if (vertices.length < 2) return [1, 0];
+	return normalize(subtract(vertices.at(-1)!, vertices[0]!), [1, 0]);
 }
 
 function evaluateCubicBezierPoint(segment: CubicBezierShape, t: number): LayoutVec2 {

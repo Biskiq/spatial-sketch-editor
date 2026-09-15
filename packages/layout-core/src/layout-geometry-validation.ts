@@ -1,5 +1,5 @@
-import type { DraftSegment, LayoutDocument, LayoutFloor, LayoutRoom, LayoutVec2 } from './layout-types';
-import type { LayoutGeometryIssue } from './layout-geometry-types';
+import type { LayoutDocument, LayoutFloor, LayoutRoom, LayoutVec2 } from './layout-types';
+import type { CompilerBoundarySource, LayoutGeometryIssue } from './layout-geometry-types';
 import {
 	CURVE_ENDPOINT_EPSILON,
 	CURVE_SELF_INTERSECTION_TOLERANCE,
@@ -7,11 +7,23 @@ import {
 	sampleSegment,
 	sampledPolylineIntersects,
 	sampledPolylineSelfIntersects,
+	segmentVertexPoints,
+	type SampleableSegment,
 	type SampledSegment
 } from './layout-geometry-curve';
 import { LAYOUT_GEOMETRY_EPSILON, buildArchProfile, openingIntervals } from './layout-geometry-openings';
 
 export type { LayoutGeometryIssue };
+
+/**
+ * First/last chain vertex of any boundary segment, without narrowing on kind.
+ * The canonical wall-first boundary can carry a `cubic-chain` segment, which has
+ * no `start`/`end` fields of its own.
+ */
+function segmentEndpoints(segment: SampleableSegment): { start: LayoutVec2; end: LayoutVec2 } {
+	const points = segmentVertexPoints(segment);
+	return { start: points[0]!, end: points.at(-1)! };
+}
 
 /**
  * Sample each finite boundary segment exactly once into a prepared
@@ -24,7 +36,7 @@ export type PreparedLayoutRoomGeometry = {
 };
 
 export function prepareLayoutRoomSegments(
-	room: Pick<LayoutRoom, 'id' | 'boundary'>,
+	room: { id: string; boundary: CompilerBoundarySource },
 	path = `rooms.${room.id}`
 ): PreparedLayoutRoomGeometry {
 	const issues: LayoutGeometryIssue[] = [];
@@ -60,7 +72,9 @@ export function validateLayoutRoomGeometry(room: LayoutRoom, floor: LayoutFloor,
 }
 
 export function validatePreparedLayoutRoomGeometry(
-	room: Pick<LayoutRoom, 'id' | 'boundary'> & { openings: readonly LayoutRoom['openings'][number][] },
+	room: { id: string; boundary: CompilerBoundarySource } & {
+		openings: readonly LayoutRoom['openings'][number][];
+	},
 	/**
 	 * P23.6I — `height` is now optional: the canonical wall-first Floor has no
 	 * vertical extent at all, while the legacy Room-owned Floor still drives the
@@ -106,7 +120,7 @@ export function validatePreparedLayoutRoomGeometry(
 		for (let index = 0; index < segments.length; index += 1) {
 			const current = segments[index]!;
 			const next = segments[(index + 1) % segments.length]!;
-			if (!pointsEqual(current.end, next.start)) {
+			if (!pointsEqual(segmentEndpoints(current).end, segmentEndpoints(next).start)) {
 				issues.push({ path: `${path}.boundary.segments[${index}].end`, code: 'disconnected_boundary', message: `Segment does not connect to ${next.id}.`, targetId: current.id });
 			}
 		}
@@ -119,8 +133,8 @@ export function validatePreparedLayoutRoomGeometry(
 				const secondSamples = sampled.get(segments[second]!.id)?.samples ?? [];
 				const sharedEndpoint = areAdjacent(first, second, segments.length)
 					? first === 0 && second === segments.length - 1
-						? segments[first]!.start
-						: segments[first]!.end
+						? segmentEndpoints(segments[first]!).start
+						: segmentEndpoints(segments[first]!).end
 					: undefined;
 				if (sampledPolylineIntersects(firstSamples, secondSamples, CURVE_SELF_INTERSECTION_TOLERANCE, sharedEndpoint)) {
 					issues.push({ path: `${path}.boundary.segments`, code: 'self_intersection', message: `Segments ${segments[first]!.id} and ${segments[second]!.id} intersect.`, targetId: room.id });
@@ -191,11 +205,8 @@ export function validateLayoutDocumentGeometry(document: LayoutDocument): Layout
 	return issues;
 }
 
-export function isFiniteSegment(segment: DraftSegment): boolean {
-	const points =
-		segment.kind === 'line'
-			? [segment.start, segment.end]
-			: [segment.start, segment.end, ...segment.interiorAnchors.map((anchor) => anchor.point)];
+export function isFiniteSegment(segment: SampleableSegment): boolean {
+	const points = segmentVertexPoints(segment);
 	return points.every((point) => point.every((value) => Number.isFinite(value)));
 }
 

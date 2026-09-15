@@ -63,32 +63,63 @@ export type LayoutJunction = {
 };
 
 /**
- * One persistent interior curve-control anchor of a curved Wall centerline
- * (P23.11). Anchors are owned by their Wall — they are never Junctions and
- * never participate in connectivity (Junction IDs remain the only topology
- * truth). Anchor order is persisted and deterministic.
+ * One persistent interior bend point of a curved Wall centerline (P23.11).
+ *
+ * Bend points carry identity and their `point` is the authored, user-facing
+ * value. They are owned by their Wall — they are never Junctions and never
+ * participate in connectivity (Junction IDs remain the only topology truth).
+ * Order is persisted and deterministic.
  */
-export type LayoutWallCurveAnchor = {
+export type LayoutWallCurveKnot = {
 	id: string;
 	point: LayoutVec2;
 };
 
 /**
- * Canonical Wall centerline (P23.11). A Wall is either a straight line
- * between its endpoint Junctions (`kind: 'line'`) or an auto-Bézier curve
- * through its endpoint Junctions and its ordered `interiorAnchors`.
+ * Control pair for exactly ONE cubic span of a curved Wall centerline (P23.11).
+ * `handleOut` leaves the span's first point and `handleIn` arrives at its
+ * second point, so one span evaluates to exactly one cubic.
+ *
+ * Spans are derived geometry with no identity of their own: they are owned
+ * positionally by their chain and are never addressed by ID. They exist so a
+ * split can be an exact cubical subdivision instead of a re-interpolation.
+ */
+export type LayoutWallCubicSpan = {
+	handleOut: LayoutVec2;
+	handleIn: LayoutVec2;
+};
+
+/**
+ * Canonical Wall centerline (P23.11). A Wall is either a straight line between
+ * its endpoint Junctions (`kind: 'line'`) or an explicit cubic chain through
+ * its endpoint Junctions and its ordered interior bend points.
+ *
+ * With `P = [startJunction, ...knots, endJunction]`:
+ *
+ * ```text
+ * spans.length === knots.length + 1
+ * cubic i = (P[i], spans[i].handleOut, spans[i].handleIn, P[i + 1])
+ * ```
  *
  * Rules:
- * - endpoints remain owned only by `startJunctionId` / `endJunctionId`;
- * - `auto-bezier` requires at least one interior anchor (deleting the last
- *   anchor converts the Wall back to `line`);
- * - curve anchors are never Junctions and never carry connectivity.
+ * - endpoint positions remain owned only by `startJunctionId` /
+ *   `endJunctionId`; the chain stores no endpoint point, only per-span
+ *   controls;
+ * - `knots.length === 0` is legal and means one cubic between the two
+ *   endpoint Junctions — it is not a flattened Wall;
+ * - `spans.length === knots.length + 1` is a validated invariant, and every
+ *   span is one cubic;
+ * - bend points are never Junctions and never carry connectivity;
+ * - spans carry no identity, no ordering field and no lookup by ID;
+ * - the persisted controls are the only curve authority. Nothing re-derives
+ *   them on the read path, so subdivision and translation are exact.
  */
 export type LayoutWallCenterline =
 	| { kind: 'line' }
 	| {
-			kind: 'auto-bezier';
-			interiorAnchors: LayoutWallCurveAnchor[];
+			kind: 'cubic-chain';
+			knots: LayoutWallCurveKnot[];
+			spans: LayoutWallCubicSpan[];
 	  };
 
 /**
@@ -111,9 +142,9 @@ export type LayoutWallCenterline =
  * face extraction, so a height change alone never alters Room topology.
  *
  * `centerline` is the authoritative P23.11 curve state: `'line'` for straight
- * Walls, an `auto-bezier` anchor list for curved ones. The field is required on
- * every persisted Wall (fresh-authority policy: no migration, no missing-field
- * tolerance).
+ * Walls, a `cubic-chain` of bend points and one control pair per cubic span for
+ * curved ones. The field is required on every persisted Wall (fresh-authority
+ * policy: no migration, no missing-field tolerance).
  */
 export type LayoutWall = {
   id: string;

@@ -24,7 +24,8 @@ import type {
 	LayoutJunction,
 	LayoutWall,
 	LayoutWallCenterline,
-	LayoutWallCurveAnchor,
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot,
 	LayoutWallFirstFloor,
 	LayoutWallFirstRoom,
 	LayoutWallOpening,
@@ -80,8 +81,10 @@ const ROOT_KEYS = [
 const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
 const JUNCTION_KEYS = ['id', 'point'] as const;
 const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height', 'centerline'] as const;
-/** P23.11 — one curve anchor of a Wall `auto-bezier` centerline. */
-const WALL_CURVE_ANCHOR_KEYS = ['id', 'point'] as const;
+/** P23.11 — one bend point of a Wall `cubic-chain` centerline. */
+const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;
+/** P23.11 — one cubic span of a Wall `cubic-chain` centerline: controls only. */
+const WALL_CURVE_SPAN_KEYS = ['handleOut', 'handleIn'] as const;
 const ROOM_KEYS = ['id', 'name', 'boundary', 'floorThickness', 'ceilingThickness'] as const;
 const WALL_REF_KEYS = ['wallId', 'direction'] as const;
 const OPENING_KEYS = [
@@ -478,8 +481,14 @@ function parseWall(
 
 /**
  * P23.11 — parse the canonical Wall centerline union. `line` carries no
- * payload; `auto-bezier` requires at least one interior anchor with stable
- * unique IDs and finite X/Z points.
+ * payload; `cubic-chain` requires ordered bend points with stable unique IDs
+ * and one control pair per cubic span (`spans.length === knots.length + 1`).
+ * An empty knot list is legal and means one cubic between the endpoint
+ * Junctions.
+ *
+ * `auto-bezier` is deliberately no longer accepted here: it is the superseded
+ * anchor-only representation, and the fresh-authority policy decodes only the
+ * current shape.
  */
 function parseWallCenterline(
 	input: unknown,
@@ -495,21 +504,25 @@ function parseWallCenterline(
 		assertAllowedKeys(input, ['kind'], path, issues);
 		return { kind: 'line' };
 	}
-	if (kind === 'auto-bezier') {
-		assertAllowedKeys(input, ['kind', 'interiorAnchors'], path, issues);
-		const anchors = parseArray(input.interiorAnchors, `${path}.interiorAnchors`, issues, parseWallCurveAnchor);
-		if (!anchors) return undefined;
-		validateUniqueIds(anchors, `${path}.interiorAnchors`, issues, (anchor) => anchor.id);
-		if (anchors.length === 0) {
+	if (kind === 'cubic-chain') {
+		assertAllowedKeys(input, ['kind', 'knots', 'spans'], path, issues);
+		const knots = parseArray(input.knots, `${path}.knots`, issues, parseWallCurveKnot);
+		if (!knots) return undefined;
+		validateUniqueIds(knots, `${path}.knots`, issues, (knot) => knot.id);
+		const spans = parseArray(input.spans, `${path}.spans`, issues, parseWallCubicSpan);
+		if (!spans) return undefined;
+		// One span per cubic: `points.length - 1` with
+		// `points = [start, ...knots, end]`.
+		if (spans.length !== knots.length + 1) {
 			addIssue(
 				issues,
-				`${path}.interiorAnchors`,
-				'empty_array',
-				'A curved Wall centerline requires at least one interior anchor'
+				`${path}.spans`,
+				'invalid_value',
+				`A cubic-chain centerline needs exactly one span per cubic: expected ${knots.length + 1} for ${knots.length} knot(s), got ${spans.length}`
 			);
 			return undefined;
 		}
-		return { kind: 'auto-bezier', interiorAnchors: anchors };
+		return { kind: 'cubic-chain', knots, spans };
 	}
 	if (kind !== undefined) {
 		addIssue(issues, `${path}.kind`, 'unsupported_value', `Unsupported wall centerline kind '${kind}'`);
@@ -517,19 +530,38 @@ function parseWallCenterline(
 	return undefined;
 }
 
-/** One `auto-bezier` interior anchor: stable unique ID + finite X/Z point. */
-function parseWallCurveAnchor(
+/** One `cubic-chain` bend point: stable unique ID + finite X/Z point. */
+function parseWallCurveKnot(
 	input: unknown,
 	path: string,
 	issues: LayoutDocumentIssue[]
-): ParsedValue<LayoutWallCurveAnchor> {
+): ParsedValue<LayoutWallCurveKnot> {
 	const record = readRecord(input, path, issues);
 	if (!record) return undefined;
-	assertAllowedKeys(record, WALL_CURVE_ANCHOR_KEYS, path, issues);
+	assertAllowedKeys(record, WALL_CURVE_KNOT_KEYS, path, issues);
 	const id = readId(record.id, `${path}.id`, issues);
 	const point = readVec2(record.point, `${path}.point`, issues);
 	if (!id || !point) return undefined;
 	return { id, point };
+}
+
+/**
+ * One `cubic-chain` span: two finite control points and no identity. The
+ * allowed-key set is what keeps spans unaddressable — a span has no ID field
+ * to round-trip and no ordering field to disagree with its position.
+ */
+function parseWallCubicSpan(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutWallCubicSpan> {
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, WALL_CURVE_SPAN_KEYS, path, issues);
+	const handleOut = readVec2(record.handleOut, `${path}.handleOut`, issues);
+	const handleIn = readVec2(record.handleIn, `${path}.handleIn`, issues);
+	if (!handleOut || !handleIn) return undefined;
+	return { handleOut, handleIn };
 }
 
 function parseRoom(

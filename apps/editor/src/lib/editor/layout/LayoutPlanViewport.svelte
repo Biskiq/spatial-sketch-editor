@@ -723,7 +723,13 @@
 				id: string;
 				startJunctionId: string;
 				endJunctionId: string;
-				centerline: { kind: 'line' } | { kind: 'auto-bezier'; interiorAnchors: { id: string; point: LayoutVec2 }[] };
+				centerline:
+					| { kind: 'line' }
+					| {
+							kind: 'cubic-chain';
+							knots: { id: string; point: LayoutVec2 }[];
+							spans: { handleOut: LayoutVec2; handleIn: LayoutVec2 }[];
+					  };
 			}[];
 			rooms: { id: string; name: string }[];
 		};
@@ -2153,8 +2159,8 @@ const interactionProjection = $derived(
 				?.walls.find((candidate) => candidate.id === target.wallId)
 				?.centerline;
 			const baselineAnchorPoint =
-				anchor?.kind === 'auto-bezier'
-					? anchor.interiorAnchors.find((candidate) => candidate.id === target.anchorId)?.point
+				anchor?.kind === 'cubic-chain'
+					? anchor.knots.find((candidate) => candidate.id === target.anchorId)?.point
 					: undefined;
 			if (!baselineAnchorPoint) return;
 			selectLayoutPhysicalWall(interaction, target.wallId);
@@ -2892,7 +2898,11 @@ const interactionProjection = $derived(
 		id: string;
 		centerline:
 			| { kind: 'line' }
-			| { kind: 'auto-bezier'; interiorAnchors: { id: string; point: LayoutVec2 }[] };
+			| {
+					kind: 'cubic-chain';
+					knots: { id: string; point: LayoutVec2 }[];
+					spans: { handleOut: LayoutVec2; handleIn: LayoutVec2 }[];
+			  };
 	};
 
 	/**
@@ -2912,11 +2922,11 @@ const interactionProjection = $derived(
 		if (selection.kind !== 'physicalWall') return [];
 		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return [];
 		const wall = walls.find((candidate) => candidate.id === selection.wallId);
-		if (!wall || wall.centerline.kind !== 'auto-bezier') return [];
-		return wall.centerline.interiorAnchors.map((anchor) => ({
+		if (!wall || wall.centerline.kind !== 'cubic-chain') return [];
+		return wall.centerline.knots.map((knot) => ({
 			wallId: wall.id,
-			anchorId: anchor.id,
-			point: [anchor.point[0], anchor.point[1]] as LayoutVec2
+			anchorId: knot.id,
+			point: [knot.point[0], knot.point[1]] as LayoutVec2
 		}));
 	}
 

@@ -23,12 +23,19 @@ import type {
 	CompiledSolidSpan,
 	CompiledWall,
 	CompiledWallSection,
+	CompilerBoundarySource,
 	LayoutBounds2,
 	LayoutBounds3,
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
-import { pointAlongSamples, sampleSegment, type SampledSegment } from './layout-geometry-curve';
+import {
+	pointAlongSamples,
+	sampleSegment,
+	segmentVertexPoints,
+	type SampleableSegment,
+	type SampledSegment
+} from './layout-geometry-curve';
 import { wallCenterlineSegment, wallCenterlineSamples } from './layout-wall-centerline';
 import {
 	WALL_OFFSET_FOLD_CODE,
@@ -69,7 +76,7 @@ export type CompilerOpening = LayoutOpening;
  */
 export type CompilerRoomSource = {
 	room: Pick<LayoutRoom, 'id' | 'wallThickness' | 'floorThickness' | 'ceilingThickness'>;
-	boundary: DraftPath;
+	boundary: CompilerBoundarySource;
 	openings: readonly CompilerOpening[];
 	/**
 	 * Per-wall thickness override keyed by boundary segment id (P23.0b: wall
@@ -209,7 +216,7 @@ export function compileWallFirstLayoutGeometry(
 	}
 
 	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
-		const segments: DraftSegment[] = [];
+		const segments: SampleableSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
 		// P23.11 — reverse-ref Opening offsets mirror by the **sampled arc
 		// length** of the host Wall's canonical centerline, never the Euclidean
@@ -1022,7 +1029,7 @@ function isValidObject(object: LayoutObject): boolean {
 function emitRoomQueryRecords(
 	queryBuilder: QueryGeometryBuilder,
 	floor: CompilerFloorSource,
-	room: Pick<LayoutRoom, 'id' | 'boundary'>,
+	room: { id: string; boundary: CompilerBoundarySource },
 	walls: readonly CompiledWall[],
 	floorPolygon: readonly LayoutVec2[],
 	roomBounds3: LayoutBounds3,
@@ -1041,7 +1048,7 @@ function emitRoomQueryRecords(
 				'vertex',
 				segment.id,
 				segmentIndex,
-				[...segment.start] as LayoutVec2,
+				[...segmentVertexPoints(segment)[0]!] as LayoutVec2,
 				wallKey
 			)
 		);

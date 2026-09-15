@@ -357,11 +357,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			? precisionWallEndpoints(wallFirstLayout, selectedWallFirstWall)
 			: null
 	);
-	// P23.11 — the selected Wall's owns curve. Straight Walls expose no
-	// controls, so the panel shows the one Convert action instead.
-	const selectedWallFirstWallAnchors = $derived(
-		selectedWallFirstWall?.centerline.kind === 'auto-bezier'
-			? selectedWallFirstWall.centerline.interiorAnchors
+	// P23.11 — the selected Wall's own curve. Straight Walls expose no bend
+	// points, so the panel shows the one Convert action instead.
+	const selectedWallFirstWallKnots = $derived(
+		selectedWallFirstWall?.centerline.kind === 'cubic-chain'
+			? selectedWallFirstWall.centerline.knots
 			: []
 	);
 	// P23.6 — canonical wall-first Room Inspector target. Read-only identity
@@ -1615,7 +1615,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 
 	function updateSelectedWallCurveAnchor(anchorId: string, index: 0 | 1, event: Event): void {
 		const wall = selectedWallFirstWall;
-		const anchor = selectedWallFirstWallAnchors.find((candidate) => candidate.id === anchorId);
+		const anchor = selectedWallFirstWallKnots.find((candidate) => candidate.id === anchorId);
 		if (!wall || !anchor) return;
 		const previous = anchor.point[index];
 		const value = precisionNumber(event, previous, formatMeters);
@@ -1652,7 +1652,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		store.setStatusMessage(
 			outcome.result.success
-				? selectedWallFirstWallAnchors.length <= 1
+				? selectedWallFirstWallKnots.length <= 1
 					? `Wall ${wall.id} is now straight`
 					: `Removed control ${anchorId}`
 				: `Remove control rejected: ${outcome.result.message}`
@@ -2011,18 +2011,18 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						Convert action; a curved Wall lists its controls as exact X/Z
 						edits plus removal, and removing the last control converts it
 						back to a straight Wall. -->
-					<label><input type="checkbox" checked={selectedWallFirstWall.centerline.kind === 'auto-bezier'} onchange={(event) => setSelectedWallCurved((event.currentTarget as HTMLInputElement).checked)} /> Curved wall</label>
-					{#if selectedWallFirstWallAnchors.length > 0}
-						<div class="object-room-meta"><span>Wall controls</span><strong>{selectedWallFirstWallAnchors.length}</strong></div>
-						{#each selectedWallFirstWallAnchors as anchor (anchor.id)}
-							<label>Control {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 0, event)} /></label>
-							<label>Control {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 1, event)} /></label>
+					<label><input type="checkbox" checked={selectedWallFirstWall.centerline.kind === 'cubic-chain'} onchange={(event) => setSelectedWallCurved((event.currentTarget as HTMLInputElement).checked)} /> Curved wall</label>
+					{#if selectedWallFirstWallKnots.length > 0}
+						<div class="object-room-meta"><span>Bend points</span><strong>{selectedWallFirstWallKnots.length}</strong></div>
+						{#each selectedWallFirstWallKnots as anchor (anchor.id)}
+							<label>Bend point {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 0, event)} /></label>
+							<label>Bend point {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 1, event)} /></label>
 							<div class="layout-opening-actions">
-								<button type="button" onclick={() => deleteSelectedWallCurveAnchor(anchor.id)}>Remove control</button>
+								<button type="button" onclick={() => deleteSelectedWallCurveAnchor(anchor.id)}>Remove bend point</button>
 							</div>
 						{/each}
 						<div class="layout-opening-actions">
-							<button type="button" onclick={addSelectedWallCurveAnchor}>Add control at midpoint</button>
+							<button type="button" onclick={addSelectedWallCurveAnchor}>Add bend point at midpoint</button>
 						</div>
 					{/if}
 					<div class="layout-opening-actions">

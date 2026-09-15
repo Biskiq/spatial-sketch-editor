@@ -6,50 +6,112 @@
  * Opening sets, planners) reads it through this module or the sampled output
  * of {@link wallCenterlineSegment}. Curve evaluation is never duplicated.
  *
- * Deep-clone helpers exist because candidate planners must never share anchor
- * arrays or points with the baseline document.
+ * P23.11 stores the curve as an explicit **cubic chain**: bend points plus one
+ * control pair per cubic span. The read path never re-derives a control, so a
+ * split is an exact cubical subdivision and a rigid move is an exact
+ * translation. `deriveChainSpans` (write path) is the only place the smoothness
+ * rule runs.
+ *
+ * Deep-clone helpers exist because candidate planners must never share knot
+ * arrays, span arrays or points with the baseline document.
  */
 import type { LayoutVec2 } from './layout-types';
 import type {
 	LayoutWall,
 	LayoutWallCenterline,
-	LayoutWallCurveAnchor
+	LayoutWallCubicSpan,
+	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import {
 	sampleSegment,
+	spansToCubics,
+	type CubicBezierShape,
 	type SampledSegment
 } from './layout-geometry-curve';
 
-/** Deep-copy one curve anchor: same stable ID, an independent point array. */
-export function cloneWallCurveAnchor(anchor: LayoutWallCurveAnchor): LayoutWallCurveAnchor {
-	return { id: anchor.id, point: [anchor.point[0], anchor.point[1]] as LayoutVec2 };
+/** Deep-copy one bend point: same stable ID, an independent point array. */
+export function cloneWallCurveKnot(knot: LayoutWallCurveKnot): LayoutWallCurveKnot {
+	return { id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 };
 }
 
-/** Deep-copy one canonical centerline (anchors cloned point-wise). */
+/** Deep-copy one cubic span: both controls become independent arrays. */
+export function cloneWallCubicSpan(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
+	return {
+		handleOut: [span.handleOut[0], span.handleOut[1]] as LayoutVec2,
+		handleIn: [span.handleIn[0], span.handleIn[1]] as LayoutVec2
+	};
+}
+
+/** Deep-copy one canonical centerline (knots and spans cloned point-wise). */
 export function cloneWallCenterline(centerline: LayoutWallCenterline): LayoutWallCenterline {
 	if (centerline.kind === 'line') return { kind: 'line' };
-	return { kind: 'auto-bezier', interiorAnchors: centerline.interiorAnchors.map(cloneWallCurveAnchor) };
+	return {
+		kind: 'cubic-chain',
+		knots: centerline.knots.map(cloneWallCurveKnot),
+		spans: centerline.spans.map(cloneWallCubicSpan)
+	};
 }
 
 /**
- * Deep-copy one canonical centerline with every interior anchor translated by
- * `delta` (document X/Z, meters). A rigid copy of a Wall must move its anchors
- * with its endpoint Junctions — an anchor left at the source position no
- * longer describes the same shape and can swing the curve across neighbouring
- * Walls. Flat `line` centerlines carry no absolute data.
+ * Build one canonical cubic chain from already-resolved knots and spans.
+ * Deep-copies its input so a candidate can never alias the baseline. The
+ * `spans.length === knots.length + 1` invariant is the caller's to uphold —
+ * every construction path derives spans from the same point list.
+ */
+export function wallCubicChain(
+	knots: readonly LayoutWallCurveKnot[],
+	spans: readonly LayoutWallCubicSpan[]
+): LayoutWallCenterline {
+	return {
+		kind: 'cubic-chain',
+		knots: knots.map(cloneWallCurveKnot),
+		spans: spans.map(cloneWallCubicSpan)
+	};
+}
+
+/**
+ * Deep-copy one canonical centerline with every bend point and every span
+ * control translated by `delta` (document X/Z, meters).
+ *
+ * A rigid copy of a Wall must move its bend points with its endpoint Junctions —
+ * a knot left at the source position no longer describes the same curve and can
+ * swing the chain across neighbouring Walls. Moving a Newtonian control point
+ * without its knot would change the shape, so the two move together. Flat
+ * `line` centerlines carry no absolute data.
  */
 export function translateWallCenterline(
 	centerline: LayoutWallCenterline,
 	delta: LayoutVec2
 ): LayoutWallCenterline {
 	if (centerline.kind === 'line') return { kind: 'line' };
+	const shift = (point: LayoutVec2): LayoutVec2 => [
+		point[0] + delta[0],
+		point[1] + delta[1]
+	];
 	return {
-		kind: 'auto-bezier',
-		interiorAnchors: centerline.interiorAnchors.map((anchor) => ({
-			id: anchor.id,
-			point: [anchor.point[0] + delta[0], anchor.point[1] + delta[1]] as LayoutVec2
+		kind: 'cubic-chain',
+		knots: centerline.knots.map((knot) => ({ id: knot.id, point: shift(knot.point) })),
+		spans: centerline.spans.map((span) => ({
+			handleOut: shift(span.handleOut),
+			handleIn: shift(span.handleIn)
 		}))
 	};
+}
+
+/**
+ * Deterministic bend-point ID: `{wallId}:knot:{n}` for the first free `n`.
+ *
+ * Stable across a split because the fragments derive their IDs from their own
+ * canonical Wall ID, and never derived from time, randomness or array order.
+ */
+export function nextWallCurveKnotId(
+	wallId: string,
+	existing: readonly LayoutWallCurveKnot[]
+): string {
+	const used = new Set(existing.map((knot) => knot.id));
+	let index = existing.length + 1;
+	while (used.has(`${wallId}:knot:${index}`)) index += 1;
+	return `${wallId}:knot:${index}`;
 }
 
 /**
@@ -58,25 +120,79 @@ export function translateWallCenterline(
  */
 export type WallCenterlineTraversal = 'forward' | 'reverse';
 
-/** The canonical Wall centerline mapped onto the curve-kernel segment shape. */
+/** The canonical Wall centerline mapped onto the curve kernel's input shapes. */
 export type WallCenterlineSegment =
 	| { id: string; kind: 'line'; start: LayoutVec2; end: LayoutVec2 }
-	| {
-			id: string;
-			kind: 'auto-bezier';
-			start: LayoutVec2;
-			end: LayoutVec2;
-			interiorAnchors: LayoutWallCurveAnchor[];
-	  };
+	| { id: string; kind: 'cubic-chain'; cubics: CubicBezierShape[] };
+
+/** Ascending chain vertices `start … end`, in traversal order. */
+function traversalPoints(
+	centerline: LayoutWallCenterline,
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
+): LayoutVec2[] {
+	if (centerline.kind === 'line') {
+		return traversal === 'reverse'
+			? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
+			: [[...startPoint] as LayoutVec2, [...endPoint] as LayoutVec2];
+	}
+	const knots =
+		traversal === 'reverse' ? [...centerline.knots].reverse() : centerline.knots;
+	const ends: LayoutVec2[] =
+		traversal === 'reverse'
+			? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
+			: [[...startPoint] as LayoutVec2, [...endPoint] as LayoutVec2];
+	return [ends[0]!, ...knots.map((knot) => [...knot.point] as LayoutVec2), ends[1]!];
+}
+
+/**
+ * The chain's cubic list in traversal order. A reverse walk mirrors each cubic
+ * (`start ↔ end`, `handleOut ↔ handleIn`) instead of only swapping endpoints —
+ * swapping endpoints while keeping span order would trace a different curve.
+ */
+export function wallCenterlineCubics(
+	centerline: LayoutWallCenterline,
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
+): CubicBezierShape[] {
+	if (centerline.kind === 'line') return [];
+	// Forward cubic `i` is `points[i] → points[i + 1]` paired with `spans[i]`.
+	const forward = spansToCubics(
+		traversalPoints(centerline, startPoint, endPoint, 'forward'),
+		centerline.spans
+	);
+	if (traversal !== 'reverse') return forward;
+	// A reverse walk visits the cubics backwards and mirrors each one, so every
+	// control keeps the meaning it had in the forward chain.
+	return forward
+		.map((cubic) => ({
+			start: cubic.end,
+			handleOut: cubic.handleIn,
+			handleIn: cubic.handleOut,
+			end: cubic.start
+		}))
+		.reverse();
+}
+
+/** Chain vertices `start … end` in traversal order (line: just the endpoints). */
+export function wallCenterlinePoints(
+	centerline: LayoutWallCenterline,
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
+): LayoutVec2[] {
+	return traversalPoints(centerline, startPoint, endPoint, traversal);
+}
 
 /**
  * Map the canonical Wall representation onto the existing curve kernel.
  *
- * Returns the `DraftSegment`-shaped input `sampleSegment()` consumes: a
- * `line` segment between the resolved endpoint Junction points, or an
- * `auto-bezier` segment carrying the Wall's ordered interior anchors. This is
- * the ONE adapter — no compiler/topology/Opening code builds Wall curve
- * segments by hand.
+ * Returns the segment shape `sampleSegment()` consumes: a `line` between the
+ * resolved endpoint Junctions, or a `cubic-chain` carrying the Wall's explicit
+ * cubics. This is the ONE adapter — no compiler/topology/Opening code builds
+ * Wall curve segments by hand.
  *
  * `traversal` is required rather than defaulted: a reverse walk that forgot it
  * would silently trace a different curve, which is exactly the class of bug
@@ -88,29 +204,18 @@ export function wallCenterlineSegment(
 	endPoint: LayoutVec2,
 	traversal: WallCenterlineTraversal
 ): WallCenterlineSegment {
-	const start = [startPoint[0], startPoint[1]] as LayoutVec2;
-	const end = [endPoint[0], endPoint[1]] as LayoutVec2;
 	if (wall.centerline.kind === 'line') {
-		return { id: wall.id, kind: 'line', start, end };
+		return {
+			id: wall.id,
+			kind: 'line',
+			start: [startPoint[0], startPoint[1]] as LayoutVec2,
+			end: [endPoint[0], endPoint[1]] as LayoutVec2
+		};
 	}
-	// A reverse traversal walks the SAME curve from the end Junction back to
-	// the start, so the interior anchors must be reversed too. Swapping only
-	// the endpoints would chain the anchors in their persisted order and trace
-	// a different curve — with two or more anchors a self-swallowing loop whose
-	// arc length, area and samples are all wrong.
-	const orderedAnchors =
-		traversal === 'reverse'
-			? [...wall.centerline.interiorAnchors].reverse()
-			: wall.centerline.interiorAnchors;
 	return {
 		id: wall.id,
-		kind: 'auto-bezier',
-		start,
-		end,
-		interiorAnchors: orderedAnchors.map((anchor) => ({
-			id: anchor.id,
-			point: [anchor.point[0], anchor.point[1]] as LayoutVec2
-		}))
+		kind: 'cubic-chain',
+		cubics: wallCenterlineCubics(wall.centerline, startPoint, endPoint, traversal)
 	};
 }
 
