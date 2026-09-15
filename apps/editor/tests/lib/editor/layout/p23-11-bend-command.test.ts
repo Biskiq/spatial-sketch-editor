@@ -270,7 +270,8 @@ describe('P23.11 slice 7 — the Bend gesture is frozen at pointer-down', () => 
 		state.architectureEdit!.valid = true;
 		state.architectureEdit!.rejectionCode = 'geometry_invalid';
 		expect(updateLayoutArchitectureEdit(state, [5, 2])).toEqual([5, 2]);
-		expect(state.architectureEdit!.candidatePoint).toEqual([5, 2]);
+		const bent = state.architectureEdit as Extract<LayoutArchitectureEditGesture, { kind: 'wall-bend' }>;
+		expect(bent.candidatePoint).toEqual([5, 2]);
 		// A stale validity can never survive into the release commit.
 		expect(state.architectureEdit!.valid).toBe(false);
 		expect(state.architectureEdit!.rejectionCode).toBeUndefined();
@@ -500,7 +501,7 @@ describe('P23.11 slice 7 — no-keyboard authoring reaches the same planner', ()
 		// no-keyboard path: Convert (Inspector) then Add bend point, no modifier.
 		const { layoutPreview } = makeStore();
 		const refused = insertWallFirstWallCurveKnot(layoutPreview, 'wall-a', 4);
-		expect(refused.success).toBe(false);
+		if (refused.success) throw new Error('expected the straight Wall to refuse insertion');
 		expect(refused.message).toContain('convert it to a curve');
 
 		const converted = updateWallFirstWallBend(layoutPreview, 'wall-a', { distance: 4, point: [4, 0] });
