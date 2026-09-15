@@ -378,12 +378,14 @@ export type WallCurveEditRejection =
  * does not semantically touch (P23.11 blocker 1).
  *
  * The stored chain — not a re-derivation from the remaining points — is the
- * geometry authority. So only the two cubics incident to the moved knot are
- * recomputed (with the same canonical smoothness rule the whole-chain write
- * path applies), so the edited neighbourhood is exactly what a from-scratch
- * chain would produce there. Every other span is copied byte-for-byte: a span
- * produced by an exact de Casteljau subdivision or an identity-preserving
- * insertion survives the edit untouched instead of being silently refit.
+ * geometry authority. The two controls that face the moved knot are derived
+ * from one coherent new target tangent; the controls that face the neighbouring
+ * joins stay fixed. This is the smallest local edit that keeps every
+ * incoming/outgoing tangent vector unchanged at every join, including the two
+ * joins adjacent to the moved knot. Every other span is copied byte-for-byte:
+ * a span produced by an exact de Casteljau subdivision or an
+ * identity-preserving insertion survives the edit untouched instead of being
+ * silently refit.
  *
  * The knot keeps its ID and position in the chain; the invariant
  * `spans.length === knots.length + 1` is preserved. A missing knot, a
@@ -418,23 +420,16 @@ export function moveWallCurveKnot(
 	const points = wallCurveChainPoints(chain);
 	const pointIndex = knotIndex + 1;
 	points[pointIndex] = [point[0], point[1]] as LayoutVec2;
-	// The two spans incident to the moved knot are recomputed from the SAME
-	// canonical smoothness rule a full write would apply, so the edited
-	// neighbourhood matches a from-scratch chain (a one-knot chain is therefore
-	// bit-for-bit what the old whole-chain re-derivation produced). Every other
-	// stored span is copied byte-for-byte, so a split-derived or inserted span
-	// away from the grab survives the edit instead of being silently refit.
+	// Derive only the two controls that face the moved knot from one coherent
+	// target tangent. The opposite controls remain byte-identical, so the
+	// tangent vectors at both neighbouring joins do not change. Updating both
+	// sides of the target tangent together keeps the moved knot smooth without
+	// refitting any stored span outside the genuine local influence region.
 	const incoming = deriveCubicSpanControls(points, pointIndex - 1);
 	const outgoing = deriveCubicSpanControls(points, pointIndex);
 	const spans = chain.spans.map(cloneSpan);
-	spans[pointIndex - 1] = {
-		handleOut: clonePoint(incoming.handleOut),
-		handleIn: clonePoint(incoming.handleIn)
-	};
-	spans[pointIndex] = {
-		handleOut: clonePoint(outgoing.handleOut),
-		handleIn: clonePoint(outgoing.handleIn)
-	};
+	spans[knotIndex]!.handleIn = clonePoint(incoming.handleIn);
+	spans[knotIndex + 1]!.handleOut = clonePoint(outgoing.handleOut);
 	const knots = chain.knots.map((knot, index) =>
 		index === knotIndex
 			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)

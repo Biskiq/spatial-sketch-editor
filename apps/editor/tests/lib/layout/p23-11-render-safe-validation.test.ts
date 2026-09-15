@@ -114,12 +114,15 @@ describe('P23.11 slice 6 — Issue #6 rejects before commit', () => {
 		expect(JSON.stringify(baseline)).toBe(snapshot);
 	});
 
-	it('rejects the edit that necks the Wall into itself', () => {
+	it('rejects the same severe edit through the fold branch', () => {
 		const plan = planMoveWallCurveKnot(thickWallDocument([3, 0.5]), 'wall-p', 'anchor:1', [3, 3]);
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
 		expect(plan.rejection.code).toBe('geometry_invalid');
-		expect(plan.rejection.message.toLowerCase()).toContain('neck');
+		// The blocker-1 local rule preserves the endpoint-facing controls instead
+		// of refitting both incident spans. That exact candidate folds its offset;
+		// the shared predicate is unchanged and its more specific reason is fold.
+		expect(plan.rejection.message.toLowerCase()).toContain('fold');
 	});
 
 	it('routes the Bend gesture through the same refusal', () => {

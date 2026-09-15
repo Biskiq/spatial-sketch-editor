@@ -748,6 +748,11 @@
 		cancelArchitectureEditGesture();
 	}
 
+	/** A window blur is not required to synthesize pointercancel in every browser. */
+	function onWindowBlur(): void {
+		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
+	}
+
 	let previousPlanViewMode = $state<PlanViewMode | null>(null);
 	let stagingGesture = $state<{
 		pointerId: number;
@@ -1125,8 +1130,12 @@ const interactionProjection = $derived(
 		};
 		const observer = new ResizeObserver(resize);
 		observer.observe(svg);
+		window.addEventListener('blur', onWindowBlur);
 		resize();
-		return () => observer.disconnect();
+		return () => {
+			window.removeEventListener('blur', onWindowBlur);
+			observer.disconnect();
+		};
 	});
 
 	onDestroy(() => cancelLocalPlanInteraction());

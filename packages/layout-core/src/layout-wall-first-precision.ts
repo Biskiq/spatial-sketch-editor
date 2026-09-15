@@ -731,10 +731,10 @@ export function planInsertWallCurveKnot(
 /**
  * Move exactly one bend point, preserving its ID and every other knot position.
  *
- * Re-running the canonical smoothness rule over the new point list is the
- * documented reshape: the moved knot's own controls and the two facing controls
- * of its neighbours change, so only the three cubics around the grab are
- * touched and the rest of the chain keeps its stored spans.
+ * The local algebra derives one coherent target tangent for the moved knot,
+ * updates both knot-facing controls, and leaves the neighbour-facing controls
+ * fixed. This preserves every join tangent vector without refitting stored
+ * split/insertion geometry.
  */
 export function planMoveWallCurveKnot(
 	document: LayoutDocumentWallFirst,
@@ -754,9 +754,10 @@ export function planMoveWallCurveKnot(
 		return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
 	}
 
-	// Local reshape: only the two spans incident to the moved knot change, so
-	// every stored span the grab does not touch — including exact split-derived
-	// or inserted spans — survives byte-identically. Never a whole-chain refit.
+	// Local reshape: only the two spans incident to the moved knot change, and
+	// only their knot-facing controls move. Every stored span the grab does not
+	// touch — including exact split-derived or inserted spans — survives
+	// byte-identically. Never a whole-chain refit.
 	const moved = moveWallCurveKnot(chain, knotId, point);
 	if (moved.kind === 'rejected') {
 		return reject(curveEditRejection(moved.code), moved.message, [wallId, knotId]);

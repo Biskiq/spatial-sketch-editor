@@ -21,8 +21,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
+	CURVE_SELF_INTERSECTION_TOLERANCE,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
+	LAYOUT_GEOMETRY_EPSILON,
 	moveWallCurveKnot,
 	planBendWallCurveKnot,
 	planConvertWallToCurve,
@@ -30,6 +32,7 @@ import {
 	planInsertWallCurveKnot,
 	planMoveWallCurveKnot,
 	planWallChain,
+	planWallSegment,
 	proposeWallCurveShape,
 	planWallSplit,
 	sampleSegment,
@@ -46,8 +49,11 @@ import {
 	type LayoutWallCenterline,
 	type LayoutWallCubicSpan,
 	type LayoutWallCurveKnot,
-	type NodingIdAllocator
+	type NodingIdAllocator,
+	type CurveSample
 } from '@portfolio/layout-core';
+import { buildStandaloneWallMesh as buildMuseumStandaloneWallMesh } from '../../../../museum/src/lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh as buildEditorStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 const LINE = { kind: 'line' } as const;
 const CHORD = 12;
@@ -145,6 +151,42 @@ function samplePointsOf(document: LayoutDocumentWallFirst, wallId: string): Layo
 	return sampleSegment(segmentOf(document, wallId)).samples.map((sample) => [...sample.point] as LayoutVec2);
 }
 
+function worstDeviation(points: readonly LayoutVec2[], baseline: readonly LayoutVec2[]): number {
+	return Math.max(...points.map((point) => deviationFrom(point, baseline)));
+}
+
+/** Pure C1 geometric assertion used by every local-edit regression below. */
+function hasTangentContinuity(
+	left: LayoutWallCubicSpan,
+	right: LayoutWallCubicSpan,
+	point: LayoutVec2
+): boolean {
+	const incoming: LayoutVec2 = [point[0] - left.handleIn[0], point[1] - left.handleIn[1]];
+	const outgoing: LayoutVec2 = [right.handleOut[0] - point[0], right.handleOut[1] - point[1]];
+	const cross = incoming[0] * outgoing[1] - incoming[1] * outgoing[0];
+	const incomingLength = Math.hypot(incoming[0], incoming[1]);
+	const outgoingLength = Math.hypot(outgoing[0], outgoing[1]);
+	const dot = incoming[0] * outgoing[0] + incoming[1] * outgoing[1];
+	return Math.abs(cross) <= 1e-9 * Math.max(1, incomingLength * outgoingLength) && dot > 0;
+}
+
+function expectSmoothInteriorJoins(chain: ChainView): void {
+	const points: LayoutVec2[] = [chain.startPoint, ...chain.knots.map((knot) => knot.point), chain.endPoint];
+	for (let join = 1; join < points.length - 1; join += 1) {
+		expect(
+			hasTangentContinuity(chain.spans[join - 1]!, chain.spans[join]!, points[join]!),
+			`interior join ${join} must keep geometric tangent continuity`
+		).toBe(true);
+	}
+}
+
+function expectSmoothSeam(left: ChainView, right: ChainView, point: LayoutVec2): void {
+	expect(
+		hasTangentContinuity(left.spans.at(-1)!, right.spans[0]!, point),
+		'fragment seam must keep geometric tangent continuity'
+	).toBe(true);
+}
+
 function deviationFrom(point: LayoutVec2, polyline: readonly LayoutVec2[]): number {
 	let best = Number.POSITIVE_INFINITY;
 	for (let index = 1; index < polyline.length; index += 1) {
@@ -171,6 +213,40 @@ function fourKnotDocument(): LayoutDocumentWallFirst {
 // ===========================================================================
 
 describe('P23.11 fix 1 — local knot move preserves persisted spans', () => {
+	it('keeps every interior join smooth when the middle knot moves', () => {
+		const baseline = fourKnotDocument();
+		const before = chainViewOf(baseline, 'wall-a');
+		const plan = planMoveWallCurveKnot(baseline, 'wall-a', 'wall-a:knot:2', [6, 2]);
+		if (plan.kind !== 'success') throw new Error('expected the move to succeed');
+		const after = chainViewOf(plan.document, 'wall-a');
+
+		expectSmoothInteriorJoins(before);
+		expectSmoothInteriorJoins(after);
+		// The neighbour-facing controls stay fixed. Only both controls facing the
+		// moved knot may change, so no adjacent join acquires a one-sided tangent.
+		expect(after.spans[0]).toEqual(before.spans[0]);
+		expect(after.spans[1]!.handleOut).toEqual(before.spans[1]!.handleOut);
+		expect(after.spans[2]!.handleIn).toEqual(before.spans[2]!.handleIn);
+		expect(after.spans[3]).toEqual(before.spans[3]);
+	});
+
+	it('keeps joins smooth after moving a knot on an exact split fragment', () => {
+		const baseline = fourKnotDocument();
+		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
+		const split = planWallSplit(baseline, 'wall-a', total * 0.86, allocator());
+		if (split.kind !== 'success') throw new Error('expected the split to succeed');
+		const beforeA = chainViewOf(split.document, 'wall-a');
+		const beforeB = chainViewOf(split.document, split.createdWallIds[0]!);
+		const moved = planMoveWallCurveKnot(split.document, 'wall-a', beforeA.knots[1]!.id, [6, 2]);
+		if (moved.kind !== 'success') throw new Error('expected the fragment move to succeed');
+		const afterA = chainViewOf(moved.document, 'wall-a');
+
+		expectSmoothInteriorJoins(afterA);
+		expectSmoothSeam(afterA, beforeB, afterA.endPoint);
+		// The split's opposite fragment is outside the local influence region.
+		expect(chainViewOf(moved.document, split.createdWallIds[0]!)).toEqual(beforeB);
+	});
+
 	it('leaves every span away from the moved knot byte-identical after a split', () => {
 		const baseline = fourKnotDocument();
 		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
@@ -252,6 +328,19 @@ describe('P23.11 fix 1 — local knot move preserves persisted spans', () => {
 });
 
 describe('P23.11 fix 1 — insertion followed by movement', () => {
+	it('keeps every interior join smooth after identity-preserving knot insertion', () => {
+		const baseline = fourKnotDocument();
+		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
+		const inserted = planInsertWallCurveKnot(baseline, 'wall-a', total * 0.55);
+		if (inserted.kind !== 'success') throw new Error('expected the insertion to succeed');
+		const before = chainViewOf(inserted.document, 'wall-a');
+		expectSmoothInteriorJoins(before);
+		const insertedKnot = before.knots.find((knot) => !chainViewOf(baseline, 'wall-a').knots.some((original) => original.id === knot.id))!;
+		const moved = planMoveWallCurveKnot(inserted.document, 'wall-a', insertedKnot.id, [6, 2]);
+		if (moved.kind !== 'success') throw new Error('expected the inserted-knot move to succeed');
+		expectSmoothInteriorJoins(chainViewOf(moved.document, 'wall-a'));
+	});
+
 	it('keeps the pre-existing spans byte-identical across insert-then-move', () => {
 		const baseline = documentOf(chainOf([0, 0], [CHORD, 0], [3, 2]));
 		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
@@ -288,6 +377,7 @@ describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
 		expect(plan.operation).toBe('wall-curve-knot-bend');
 		expect(plan.changedWallIds).toEqual(['wall-a']);
 		expect(plan.changedJunctionIds).toEqual([]);
+		expectSmoothInteriorJoins(chainViewOf(plan.document, 'wall-a'));
 	});
 
 	it('preserves pre-existing spans away from the grab when bending a curve', () => {
@@ -301,6 +391,20 @@ describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
 		const before = chainViewOf(baseline, 'wall-a');
 		// Spans beyond the inserted knot's two incident spans are byte-identical.
 		expect(after.spans.slice(2)).toEqual(before.spans.slice(1));
+	});
+
+	it('uses the same insertion-plus-local-move result as the explicit planners', () => {
+		const baseline = documentOf(chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1]));
+		const distance = wallCurveChainLength(chainViewOf(baseline, 'wall-a')) * 0.2;
+		const point: LayoutVec2 = [2, 4];
+		const bend = planBendWallCurveKnot(baseline, 'wall-a', { distance, point });
+		const inserted = planInsertWallCurveKnot(baseline, 'wall-a', distance);
+		if (bend.kind !== 'success' || inserted.kind !== 'success') throw new Error('expected Bend insertion to succeed');
+		const insertedView = chainViewOf(inserted.document, 'wall-a');
+		const insertedKnot = insertedView.knots.find((knot) => !chainViewOf(baseline, 'wall-a').knots.some((original) => original.id === knot.id))!;
+		const explicitMove = planMoveWallCurveKnot(inserted.document, 'wall-a', insertedKnot.id, point);
+		if (explicitMove.kind !== 'success') throw new Error('expected explicit local move to succeed');
+		expect(wallOf(bend.document, 'wall-a').centerline).toEqual(wallOf(explicitMove.document, 'wall-a').centerline);
 	});
 });
 
@@ -423,6 +527,69 @@ function curvedWallDocument(): LayoutDocumentWallFirst {
 	return document;
 }
 
+function curvedBoundaryHostDocument(
+	openings: ReadonlyArray<{ id: string; offset: number; width: number }> = []
+): LayoutDocumentWallFirst {
+	const document = curvedWallDocument();
+	document.walls[0]!.role = 'boundary';
+	document.junctions.push(
+		{ id: 'c-c', point: [6, 4] },
+		{ id: 'c-d', point: [0, 4] }
+	);
+	document.walls.push(
+		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+	);
+	document.rooms = [
+		{
+			id: 'room-curved-host',
+			name: 'Curved host room',
+			boundary: [
+				{ wallId: 'curved', direction: 'forward' },
+				{ wallId: 'wall-right', direction: 'forward' },
+				{ wallId: 'wall-top', direction: 'forward' },
+				{ wallId: 'wall-left', direction: 'forward' }
+			],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	];
+	document.openings = openings.map((opening) => ({
+		id: opening.id,
+		wallId: 'curved',
+		kind: 'window' as const,
+		offset: opening.offset,
+		width: opening.width,
+		height: 1.2,
+		sillHeight: 0.9,
+		profile: 'rectangular' as const
+	}));
+	return document;
+}
+
+function compiledWallSample(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	fraction: number
+): { point: LayoutVec2; distance: number } {
+	const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find((candidate) => candidate.wallId === wallId);
+	if (!wall) throw new Error(`missing compiled wall '${wallId}'`);
+	const index = Math.floor(fraction * (wall.samples.length - 1));
+	return {
+		point: [...wall.samples[index]!.point] as LayoutVec2,
+		distance: wall.samples[index]!.distance
+	};
+}
+
+function compiledOpeningCenter(document: LayoutDocumentWallFirst, openingId: string): LayoutVec2 {
+	const opening = compileWallFirstLayoutGeometry(document).geometry.walls
+		.flatMap((wall) => wall.openings)
+		.find((candidate) => candidate.openingId === openingId);
+	if (!opening) throw new Error(`missing compiled opening '${openingId}'`);
+	return [...opening.center.point] as LayoutVec2;
+}
+
 describe('P23.11 fix 3 — authoring rejects a crossing against a curved Wall', () => {
 	it('rejects a straight Wall that crosses the bow while the chord stays clear', () => {
 		const baseline = curvedWallDocument();
@@ -499,6 +666,148 @@ describe('P23.11 fix 3 — authoring rejects a crossing against a curved Wall', 
 		if (plan.kind !== 'success') return;
 		// The X crossing is noded, not rejected.
 		expect(plan.document.walls.length).toBeGreaterThan(2);
+	});
+});
+
+// ===========================================================================
+// Fix 2 — authored endpoint T onto a curved host
+// ===========================================================================
+
+describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
+	it('projects the normal Wall segment endpoint to true host arc distance and splits atomically', () => {
+		const baseline = curvedBoundaryHostDocument();
+		const hit = compiledWallSample(baseline, 'curved', 0.25);
+		const plan = planWallSegment({
+			baseline,
+			start: [hit.point[0], hit.point[1] - 2],
+			end: hit.point,
+			role: 'partition'
+		});
+		if (plan.kind !== 'success') throw new Error(`expected curved T success, got ${JSON.stringify(plan.rejection)}`);
+
+		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
+		const hostA = wallOf(plan.document, 'curved');
+		const hostB = plan.document.walls.find(
+			(wall) => wall.id !== 'curved' && wall.startJunctionId === authored.endJunctionId && wall.endJunctionId === 'c-b'
+		);
+		if (!hostB) throw new Error('expected the curved host continuation');
+		const splitJunctionId = authored.endJunctionId;
+		expect(hostA.endJunctionId).toBe(splitJunctionId);
+		expect(hostB.startJunctionId).toBe(splitJunctionId);
+		expect(plan.splitWallIds).toContain('curved');
+		// The authored endpoint is the one canonical X identity; no duplicate
+		// Junction record is allowed at the normalized curved projection.
+		expect(
+			plan.document.junctions.filter((junction) => junction.id === splitJunctionId)
+		).toHaveLength(1);
+		expect(
+			plan.document.junctions.filter(
+				(junction) => Math.hypot(junction.point[0] - hit.point[0], junction.point[1] - hit.point[1]) < 0.01
+			)
+		).toHaveLength(1);
+
+		const before = samplePointsOf(baseline, 'curved');
+		const after = [...samplePointsOf(plan.document, 'curved'), ...samplePointsOf(plan.document, hostB.id)];
+		expect(worstDeviation(after, before)).toBeLessThan(0.01);
+		expect(
+			wallCurveChainLength(chainViewOf(plan.document, 'curved')) +
+				wallCurveChainLength(chainViewOf(plan.document, hostB.id))
+		).toBeCloseTo(wallCurveChainLength(chainViewOf(baseline, 'curved')), 8);
+	});
+
+	it('preserves Room identity and Opening placement while splitting a boundary host', () => {
+		const seed = curvedBoundaryHostDocument([
+			{ id: 'near', offset: 0.5, width: 0.5 },
+			{ id: 'far', offset: 5, width: 0.5 }
+		]);
+		const hit = compiledWallSample(seed, 'curved', 0.4);
+		const beforeNear = compiledOpeningCenter(seed, 'near');
+		const beforeFar = compiledOpeningCenter(seed, 'far');
+		const plan = planWallChain({
+			baseline: seed,
+			points: [[hit.point[0], hit.point[1] - 2], hit.point],
+			close: false,
+			role: 'partition'
+		});
+		if (plan.kind !== 'success') throw new Error(`expected boundary-host T success, got ${JSON.stringify(plan.rejection)}`);
+		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
+		const hostB = plan.document.walls.find(
+			(wall) => wall.id !== 'curved' && wall.startJunctionId === authored.endJunctionId && wall.endJunctionId === 'c-b'
+		)!;
+
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-curved-host']);
+		expect(plan.document.rooms[0]!.boundary.map((ref) => ref.wallId)).toContain('curved');
+		expect(plan.document.rooms[0]!.boundary.map((ref) => ref.wallId)).toContain(hostB.id);
+		const near = plan.document.openings.find((opening) => opening.id === 'near')!;
+		const far = plan.document.openings.find((opening) => opening.id === 'far')!;
+		expect(near.wallId).toBe('curved');
+		expect(far.wallId).toBe(hostB.id);
+		expect(compiledOpeningCenter(plan.document, 'near')[0]).toBeCloseTo(beforeNear[0], 2);
+		expect(compiledOpeningCenter(plan.document, 'near')[1]).toBeCloseTo(beforeNear[1], 2);
+		expect(compiledOpeningCenter(plan.document, 'far')[0]).toBeCloseTo(beforeFar[0], 2);
+		expect(compiledOpeningCenter(plan.document, 'far')[1]).toBeCloseTo(beforeFar[1], 2);
+	});
+
+	it('rejects a straddling Opening atomically through the existing split gate', () => {
+		const seed = curvedBoundaryHostDocument();
+		const hit = compiledWallSample(seed, 'curved', 0.4);
+		seed.openings = [
+			{
+				id: 'straddle',
+				wallId: 'curved',
+				kind: 'window',
+				offset: hit.distance - 0.25,
+				width: 0.5,
+				height: 1.2,
+				sillHeight: 0.9,
+				profile: 'rectangular'
+			}
+		];
+		const snapshot = JSON.stringify(seed);
+		const plan = planWallSegment({
+			baseline: seed,
+			start: [hit.point[0], hit.point[1] - 2],
+			end: hit.point,
+			role: 'partition'
+		});
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind !== 'rejected') return;
+		expect(plan.rejection.code).toBe('noding_rejected');
+		expect(plan.rejection.message).toMatch(/opening interior/i);
+		expect(JSON.stringify(seed)).toBe(snapshot);
+	});
+
+	it('leaves an endpoint just outside the curved-host tolerance disconnected', () => {
+		const baseline = curvedWallDocument();
+		const hit = compiledWallSample(baseline, 'curved', 0.25);
+		const outside: LayoutVec2 = [hit.point[0], hit.point[1] + 0.02];
+		const plan = planWallSegment({
+			baseline,
+			start: [outside[0] - 0.2, outside[1]],
+			end: outside,
+			role: 'partition'
+		});
+		if (plan.kind !== 'success') throw new Error(`expected disconnected near-miss success, got ${JSON.stringify(plan.rejection)}`);
+		expect(plan.splitWallIds).not.toContain('curved');
+		expect(plan.document.walls.filter((wall) => wall.id === 'curved')).toHaveLength(1);
+		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
+		expect(authored.endJunctionId).not.toBe('c-a');
+		expect(authored.endJunctionId).not.toBe('c-b');
+	});
+
+	it('reuses an authored endpoint that resolves at an existing host Junction', () => {
+		const baseline = curvedWallDocument();
+		const plan = planWallSegment({
+			baseline,
+			start: [-2, 0],
+			end: [5e-10, -5e-10],
+			role: 'partition'
+		});
+		if (plan.kind !== 'success') throw new Error(`expected endpoint adoption, got ${JSON.stringify(plan.rejection)}`);
+		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
+		expect(authored.endJunctionId).toBe('c-a');
+		expect(plan.document.walls.filter((wall) => wall.id === 'curved')).toHaveLength(1);
+		expect(plan.document.junctions.filter((junction) => junction.id === 'c-a')).toHaveLength(1);
 	});
 });
 
@@ -679,6 +988,62 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 		return wallOffsetClearanceFailure(sampled.samples, wall.thickness);
 	}
 
+	function unevenHandleDocument(thickness: number): LayoutDocumentWallFirst {
+		const document = createEmptyWallFirstLayoutDocument();
+		document.formatVersion = LAYOUT_WALL_FIRST_FORMAT_VERSION;
+		document.junctions = [
+			{ id: 'j-u1', point: [0, 0] },
+			{ id: 'j-u2', point: [8, 0] }
+		];
+		document.walls = [
+			{
+				id: 'wall-uneven',
+				startJunctionId: 'j-u1',
+				endJunctionId: 'j-u2',
+				role: 'partition',
+				thickness,
+				height: 3,
+				centerline: wallCubicChain([], [
+					{ handleOut: [0.2, 5], handleIn: [7.2, 1] } satisfies LayoutWallCubicSpan
+				])
+			} as LayoutWall
+		];
+		return document;
+	}
+
+	/** Exact circular U-turn samples with straight arms, at caller-chosen density. */
+	function uTurnSamples(radius: number, arcSteps: number): CurveSample[] {
+		const armLength = 6;
+		const armSteps = Math.max(4, Math.round(arcSteps / 4));
+		const samples: CurveSample[] = [];
+		let distance = 0;
+		const totalSteps = armSteps * 2 + arcSteps;
+		const push = (point: LayoutVec2, tangent: LayoutVec2): void => {
+			if (samples.length > 0) {
+				const previous = samples.at(-1)!.point;
+				distance += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+			}
+			samples.push({
+				point,
+				distance,
+				tangent,
+				normal: [-tangent[1], tangent[0]],
+				t: samples.length / totalSteps
+			});
+		};
+		for (let index = 0; index <= armSteps; index += 1) {
+			push([-armLength + (armLength * index) / armSteps, 0], [1, 0]);
+		}
+		for (let index = 1; index <= arcSteps; index += 1) {
+			const theta = -Math.PI / 2 + (Math.PI * index) / arcSteps;
+			push([radius * Math.cos(theta), radius + radius * Math.sin(theta)], [-Math.sin(theta), Math.cos(theta)]);
+		}
+		for (let index = 1; index <= armSteps; index += 1) {
+			push([-(armLength * index) / armSteps, 2 * radius], [-1, 0]);
+		}
+		return samples;
+	}
+
 	/**
 	 * The invariant: anything canonical validation accepts must be renderable, so
 	 * core's verdict and both mesh builders' verdict cannot disagree. The
@@ -728,19 +1093,69 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 			{ point: [0, gap], distance: 20 + gap, tangent: [-1, 0], normal: [0, -1], t: 1 }
 		];
 		const thickness = 0.4;
-		// Below thickness − ε: the offset regions overlap → a real neck.
-		expect(wallOffsetClearanceFailure(runs(thickness - 0.2), thickness)).toBe('neck');
+		const epsilon = LAYOUT_GEOMETRY_EPSILON;
+		// The predicate's strict boundary is `spacing < thickness - ε`.
+		// Pin both sides of that intentional numerical policy, not a coarse sample.
+		expect(wallOffsetClearanceFailure(runs(thickness - 2 * epsilon), thickness)).toBe('neck');
+		expect(wallOffsetClearanceFailure(runs(thickness - epsilon), thickness)).toBeUndefined();
 		// Exactly thickness: the offset faces touch but do not overlap → clear.
 		expect(wallOffsetClearanceFailure(runs(thickness), thickness)).toBeUndefined();
-		// Above thickness: clear.
-		expect(wallOffsetClearanceFailure(runs(thickness + 0.2), thickness)).toBeUndefined();
+		// Above thickness by the same epsilon: clear.
+		expect(wallOffsetClearanceFailure(runs(thickness + epsilon), thickness)).toBeUndefined();
 	});
 
-	it('does not fold a bend whose radius exceeds half the thickness', () => {
+	it('classifies a tight U-turn at the radius boundary across two sampling densities', () => {
+		const thickness = 1;
+		const halfThickness = thickness / 2;
+		// 0.01 m is small relative to the fixture but safely above the
+		// self-intersection predicate's 1e-4 m segment tolerance.
+		const delta = Math.max(0.01, 20 * CURVE_SELF_INTERSECTION_TOLERANCE);
+		for (const density of [24, 96]) {
+			expect(wallOffsetClearanceFailure(uTurnSamples(halfThickness - delta, density), thickness)).toBe('fold');
+			expect(wallOffsetClearanceFailure(uTurnSamples(halfThickness, density), thickness)).toBe('fold');
+			// The local offset is open above half-thickness, but this tight U-turn
+			// still brings opposing centerline portions within one thickness, so the
+			// separate global-clearance policy correctly reports a neck.
+			expect(wallOffsetClearanceFailure(uTurnSamples(halfThickness + delta, density), thickness), `radius above boundary, density ${density}`).toBe('neck');
+		}
+	});
+
+	it('keeps an uneven-handle and visually severe non-overlapping curve valid', () => {
+		const document = unevenHandleDocument(0.4);
+		const wall = wallOf(document, 'wall-uneven');
+		const segment = wallCenterlineSegment(wall, [0, 0], [8, 0], 'forward');
+		const sparse = sampleSegment(segment, { flatnessTolerance: 0.25, maxSampleSpan: 1 });
+		const dense = sampleSegment(segment, { flatnessTolerance: 0.001, maxSampleSpan: 0.05 });
+		expect(wallOffsetClearanceFailure(sparse.samples, wall.thickness)).toBeUndefined();
+		expect(wallOffsetClearanceFailure(dense.samples, wall.thickness)).toBeUndefined();
+
+		// These are the actual compiled Wall samples passed to the standalone
+		// editor and museum mesh builders, not a second predicate-only verdict.
+		const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
+			(candidate) => candidate.wallId === 'wall-uneven'
+		)!;
+		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0);
+		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0);
+		expect(editorMesh.issues).toEqual([]);
+		expect(editorMesh.mesh).toBeDefined();
+		expect(museumMesh.issues).toEqual([]);
+		expect(museumMesh.mesh).toBeDefined();
+	});
+
+	it('keeps a severe but non-overlapping canonical bend buildable', () => {
 		// Radius ≈ 2 m, thickness 0.4 m: the offset radius (1.8 m) is far above
 		// the fold boundary (half thickness = 0.2 m), so this must be accepted.
 		const document = wallDocument([3, 2], 0.4);
 		expect(clearanceOf(document)).toBeUndefined();
 		expect(blockingCodes(document)).toEqual([]);
+		const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
+			(candidate) => candidate.wallId === 'wall-p'
+		)!;
+		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0);
+		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0);
+		expect(editorMesh.issues).toEqual([]);
+		expect(editorMesh.mesh).toBeDefined();
+		expect(museumMesh.issues).toEqual([]);
+		expect(museumMesh.mesh).toBeDefined();
 	});
 });

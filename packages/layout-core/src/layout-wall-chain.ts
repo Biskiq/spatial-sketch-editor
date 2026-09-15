@@ -39,6 +39,10 @@ import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
+	CURVE_FLATNESS_TOLERANCE,
+	projectPointToSampledSegment
+} from './layout-geometry-curve';
+import {
 	extractBoundaryCandidateFaces,
 	type DerivedCandidateFace,
 	type TopologyDiagnostic
@@ -55,6 +59,8 @@ import { classifyWallIntersection, type TopologySegment } from './layout-wall-to
 import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
+import { wallCenterlineSamples } from './layout-wall-centerline';
+import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
 import type { LayoutDocumentIssue } from './layout-codec';
 import {
 	coincidesAsJunction,
@@ -73,6 +79,15 @@ import {
 export const WALL_CHAIN_DEFAULTS = {
 	thickness: 0.2
 } as const;
+
+/**
+ * A snapped point comes from the canonical sampled Wall path. The sampler's
+ * flatness budget is therefore the only extra world-space error the noder may
+ * absorb before handing the request to the exact cubic split resolver; Junction
+ * identity dust remains covered by the existing identity epsilon.
+ */
+const CURVED_HOST_PROJECTION_TOLERANCE =
+	CURVE_FLATNESS_TOLERANCE + JUNCTION_COINCIDENCE_EPSILON;
 
 /** Why a chain sketch rejected; stable machine codes. */
 export type WallChainRejectionCode =
@@ -775,6 +790,13 @@ function nextNodingFix(
  * by this command may move, and only onto a non-chain host. A chain Wall can
  * reuse a baseline Junction, so Wall lineage alone is not sufficient proof of
  * endpoint ownership.
+ *
+ * Straight hosts retain their existing chord projection. A curved host is a
+ * bounded exception to the straight-only noding rule: the endpoint is first
+ * projected against the canonical sampled centerline, then that sampled arc
+ * distance is resolved once through the exact cubic split authority. The
+ * normalized endpoint and the split distance both come from that resolved
+ * result, so the subsequent split cannot fall back to chord arithmetic.
  */
 function projectedAuthoredEndpointTee(
 	a: LayoutWall,
@@ -789,21 +811,93 @@ function projectedAuthoredEndpointTee(
 	const candidates: Array<{
 		endpointWall: LayoutWall;
 		endpointSegment: TopologySegment;
+		hostWall: LayoutWall;
 		hostSegment: TopologySegment;
 	}> = [];
 	if (chainSet.has(a.id) && !chainSet.has(b.id)) {
-		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostSegment: segmentB });
+		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostWall: b, hostSegment: segmentB });
 	}
 	if (chainSet.has(b.id) && !chainSet.has(a.id)) {
-		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostSegment: segmentA });
+		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostWall: a, hostSegment: segmentA });
 	}
-	for (const { endpointWall, endpointSegment, hostSegment } of candidates) {
+	for (const { endpointWall, endpointSegment, hostWall, hostSegment } of candidates) {
 		const endpoints = [
 			{ junctionId: endpointWall.startJunctionId, point: endpointSegment.start },
 			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
 		];
 		for (const endpoint of endpoints) {
 			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
+			const hostEndpoints = [
+				{ junctionId: hostWall.startJunctionId, point: hostSegment.start },
+				{ junctionId: hostWall.endJunctionId, point: hostSegment.end }
+			];
+			// The editor normally resolves a Junction snap before this planner. Keep
+			// the same identity rule here for a direct/headless caller too: a host
+			// endpoint is adoption, never a tiny fragment.
+			const coincidentHostEndpoint = hostEndpoints.find((hostEndpoint) =>
+				coincidesAsJunction(endpoint.point, hostEndpoint.point)
+			);
+			if (coincidentHostEndpoint) {
+				return {
+					kind: 'adopt',
+					keepJunctionId: coincidentHostEndpoint.junctionId,
+					duplicateJunctionIds: [endpoint.junctionId]
+				};
+			}
+
+			if (hostWall.centerline.kind === 'cubic-chain') {
+				const sampled = wallCenterlineSamples(
+					hostWall,
+					hostSegment.start,
+					hostSegment.end,
+					'forward'
+				);
+				if (!sampled) continue;
+				const projection = projectPointToSampledSegment(endpoint.point, sampled);
+				if (projection.distanceToPath > CURVED_HOST_PROJECTION_TOLERANCE) continue;
+				const resolution = resolveWallCurveSplit(
+					{
+						startPoint: hostSegment.start,
+						endPoint: hostSegment.end,
+						knots: hostWall.centerline.knots,
+						spans: hostWall.centerline.spans
+					},
+					projection.distance
+				);
+				if (resolution.kind === 'rejected') continue;
+				const resolved = resolution.result;
+				// A projection at an existing host endpoint is identity adoption, not
+				// an exact curved split with a near-zero fragment. The direct point
+				// check above handles ordinary snapped endpoints; this also catches a
+				// clamped sampled projection whose arc distance is at the boundary.
+				const hostEndpointAtResolution = hostEndpoints.find((hostEndpoint) =>
+					coincidesAsJunction(resolved.point, hostEndpoint.point)
+				);
+				if (hostEndpointAtResolution) {
+					return {
+						kind: 'adopt',
+						keepJunctionId: hostEndpointAtResolution.junctionId,
+						duplicateJunctionIds: [endpoint.junctionId]
+					};
+				}
+				if (
+					Math.hypot(
+						endpoint.point[0] - resolved.point[0],
+						endpoint.point[1] - resolved.point[1]
+					) > CURVED_HOST_PROJECTION_TOLERANCE
+				) {
+					continue;
+				}
+				return {
+					kind: 'tee',
+					interiorWallId: hostSegment.id,
+					endpointJunctionId: endpoint.junctionId,
+					splitDistance: resolved.distance,
+					point: [resolved.point[0], resolved.point[1]],
+					projectOwnedEndpoint: true
+				};
+			}
+
 			const dx = hostSegment.end[0] - hostSegment.start[0];
 			const dz = hostSegment.end[1] - hostSegment.start[1];
 			const lengthSquared = dx * dx + dz * dz;
