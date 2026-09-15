@@ -495,19 +495,21 @@ describe('P23.11 slice 7 — no-keyboard authoring reaches the same planner', ()
 		).toBeCloseTo(distance, 6);
 	});
 
-	it('leads a straight Wall to the visible Convert action', () => {
-		// Insertion is a chain operation, so a straight Wall refuses it — with a
-		// message naming the visible action that unblocks it. That is the whole
-		// no-keyboard path: Convert (Inspector) then Add bend point, no modifier.
+	it('adds a bend point to a straight Wall with no Convert step (Fix 4)', () => {
+		// The visible context action "Add bend point here" routes to the canonical
+		// insertion planner. A straight Wall converts to a cubic chain and takes
+		// the bend point in the SAME candidate, so the no-keyboard path works
+		// without the user first checking "Curved wall".
 		const { layoutPreview } = makeStore();
-		const refused = insertWallFirstWallCurveKnot(layoutPreview, 'wall-a', 4);
-		if (refused.success) throw new Error('expected the straight Wall to refuse insertion');
-		expect(refused.message).toContain('convert it to a curve');
-
-		const converted = updateWallFirstWallBend(layoutPreview, 'wall-a', { distance: 4, point: [4, 0] });
-		expect(converted.success).toBe(true);
+		const direct = planInsertWallCurveKnot(wallFirstDocument(layoutPreview), 'wall-a', 4);
+		if (direct.kind !== 'success') throw new Error('expected the direct planner to accept');
+		const inserted = insertWallFirstWallCurveKnot(layoutPreview, 'wall-a', 4);
+		expect(inserted.success).toBe(true);
+		expect(JSON.stringify(wallFirstDocument(layoutPreview))).toBe(JSON.stringify(direct.document));
 		const wall = wallFirstDocument(layoutPreview).walls.find((candidate) => candidate.id === 'wall-a')!;
-		expect(wall.centerline.kind).toBe('cubic-chain');
+		if (wall.centerline.kind !== 'cubic-chain') throw new Error('expected a chain');
+		expect(wall.centerline.knots).toHaveLength(1);
+		expect(wall.centerline.knots[0]!.point[0]).toBeCloseTo(4, 9);
 	});
 
 	it('keeps one insertion implementation', () => {

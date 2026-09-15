@@ -452,17 +452,18 @@ export type LayoutArchitectureEditIntent =
 	| { kind: 'junction-move'; point: LayoutVec2 }
 	| { kind: 'wall-move'; start: LayoutVec2; end: LayoutVec2 }
 	/**
-	 * P23.11 — a rejected curve-control drag. The Wall keeps its installed
-	 * shape and only the rejected control point renders, mirroring the
-	 * Junction case: one point, never a fabricated curve.
+	 * P23.11 — a rejected curve-control drag. The baseline stays installed; the
+	 * attempted Wall is drawn from the caller's canonical **proposal** (never a
+	 * fabricated curve), with the rejected control point marked on it.
 	 */
-	| { kind: 'curve-control-move'; point: LayoutVec2 }
+	| { kind: 'curve-control-move'; point: LayoutVec2; shape?: readonly LayoutVec2[] }
 	/**
-	 * P23.11 — a rejected Bend-command drag. Point-anchored for the same reason:
-	 * the baseline stays installed and only the refused bend point renders, so
-	 * the transient layer never invents curve geometry of its own.
+	 * P23.11 — a rejected Bend-command drag. Same contract: the transient layer
+	 * renders the proposal's attempted Wall shape and the refused bend point, so
+	 * the geometry keeps following the cursor instead of snapping back while the
+	 * pointer is still held.
 	 */
-	| { kind: 'wall-bend'; point: LayoutVec2 };
+	| { kind: 'wall-bend'; point: LayoutVec2; shape?: readonly LayoutVec2[] };
 
 /**
  * P23.10 — the transient intent for one live direct edit, or `null` when
@@ -477,13 +478,24 @@ export type LayoutArchitectureEditIntent =
  */
 export function architectureEditIntentFor(
 	gesture: LayoutArchitectureEditGesture | null,
-	moved: boolean
+	moved: boolean,
+	/**
+	 * P23.11 — the caller's canonical curve proposal for a rejected curve drag:
+	 * the attempted Wall centerline, sampled through the one core adapter. It is
+	 * overlay truth only and is never installed, persisted or validated here; an
+	 * absent proposal degrades to the rejected point marker alone.
+	 */
+	proposal?: readonly LayoutVec2[] | null
 ): LayoutArchitectureEditIntent | null {
 	if (!gesture || !moved || gesture.valid) return null;
 	if (gesture.rejectionCode === undefined || gesture.rejectionCode === 'no_op') return null;
 	// Point-anchored gestures render the rejected control/Junction point itself.
 	if (gesture.kind !== 'wall-move') {
-		return { kind: gesture.kind, point: [gesture.candidatePoint[0], gesture.candidatePoint[1]] };
+		const point: LayoutVec2 = [gesture.candidatePoint[0], gesture.candidatePoint[1]];
+		if ((gesture.kind === 'curve-control-move' || gesture.kind === 'wall-bend') && proposal && proposal.length > 1) {
+			return { kind: gesture.kind, point, shape: proposal.map((entry) => [entry[0], entry[1]] as LayoutVec2) };
+		}
+		return { kind: gesture.kind, point };
 	}
 	const [dx, dz] = gesture.candidateDelta;
 	return {
@@ -502,22 +514,40 @@ export function withArchitectureEditIntent(
 	intent: LayoutArchitectureEditIntent | null
 ): PlanInteractionProjection {
 	if (!intent) return projection;
-	const primitive: PlanRenderPrimitive =
-		intent.kind === 'wall-move'
-			? {
-					kind: 'polyline',
-					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
-					points: [intent.start, intent.end],
-					style: 'architecture-edit-intent-invalid'
-			  }
-			: {
-					kind: 'circle',
-					key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
-					center: intent.point,
-					radiusPx: 7,
-					style: 'architecture-edit-intent-invalid'
-			  };
-	return { ...projection, drafts: [...projection.drafts, primitive] };
+	const primitives: PlanRenderPrimitive[] = [];
+	if (intent.kind === 'wall-move') {
+		primitives.push({
+			kind: 'polyline',
+			key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+			points: [intent.start, intent.end],
+			style: 'architecture-edit-intent-invalid'
+		});
+	} else {
+		// P23.11 — a rejected curve drag renders the WHOLE attempted Wall shape
+		// (the proposal's own centerline), not only a point, so the geometry keeps
+		// tracking the cursor while it is invalid. The baseline document is still
+		// what is installed, so no Room/Opening/3D consequence is drawn from it.
+		const shape =
+			intent.kind === 'curve-control-move' || intent.kind === 'wall-bend'
+				? intent.shape
+				: undefined;
+		if (shape && shape.length > 1) {
+			primitives.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'architecture-edit-intent', 'wall']),
+				points: shape.map((entry) => [entry[0], entry[1]] as LayoutVec2),
+				style: 'architecture-edit-intent-invalid'
+			});
+		}
+		primitives.push({
+			kind: 'circle',
+			key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
+			center: intent.point,
+			radiusPx: 7,
+			style: 'architecture-edit-intent-invalid'
+		});
+	}
+	return { ...projection, drafts: [...projection.drafts, ...primitives] };
 }
 
 /**

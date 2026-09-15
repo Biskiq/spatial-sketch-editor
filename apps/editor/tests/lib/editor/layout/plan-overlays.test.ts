@@ -113,6 +113,74 @@ describe('P23.10 architecture-edit intent gate', () => {
 	});
 });
 
+describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', () => {
+	function curveGesture(
+		patch: Partial<Extract<LayoutArchitectureEditGesture, { kind: 'wall-bend' }>> = {}
+	): LayoutArchitectureEditGesture {
+		return {
+			kind: 'wall-bend',
+			command: 'layout.wall.bend',
+			pointerId: 1,
+			wallId: 'wall-a',
+			startPointer: [0, 0],
+			baselineGrabPoint: [3, 0],
+			bendDistance: 3,
+			bendExcludePoints: [],
+			affectedWallIds: ['wall-a'],
+			candidatePoint: [3, 4],
+			valid: false,
+			rejectionCode: 'geometry_invalid',
+			...patch
+		};
+	}
+
+	it('carries the caller proposal into the intent instead of a bare point', () => {
+		const shape: [number, number][] = [[0, 0], [2, 2], [4, 0]];
+		expect(architectureEditIntentFor(curveGesture(), true, shape)).toEqual({
+			kind: 'wall-bend',
+			point: [3, 4],
+			shape
+		});
+		// No proposal degrades to the rejected point marker alone.
+		expect(architectureEditIntentFor(curveGesture(), true)).toEqual({
+			kind: 'wall-bend',
+			point: [3, 4]
+		});
+	});
+
+	it('draws the whole attempted Wall polyline with invalid styling', () => {
+		const base = {
+			selection: [],
+			handles: [],
+			drafts: [],
+			labels: []
+		} as unknown as Parameters<typeof withArchitectureEditIntent>[0];
+		const shape: [number, number][] = [[0, 0], [2, 2], [4, 0]];
+		const drawn = withArchitectureEditIntent(base, {
+			kind: 'curve-control-move',
+			point: [2, 2],
+			shape
+		});
+		expect(drawn.drafts).toHaveLength(2);
+		expect(drawn.drafts[0]).toMatchObject({
+			kind: 'polyline',
+			points: shape,
+			style: 'architecture-edit-intent-invalid'
+		});
+		expect(drawn.drafts[1]).toMatchObject({
+			kind: 'circle',
+			style: 'architecture-edit-intent-invalid'
+		});
+		// A bare point still renders as the single marker (no fabricated curve).
+		const pointOnly = withArchitectureEditIntent(base, {
+			kind: 'curve-control-move',
+			point: [2, 2]
+		});
+		expect(pointOnly.drafts).toHaveLength(1);
+		expect(pointOnly.drafts[0]).toMatchObject({ kind: 'circle' });
+	});
+});
+
 describe('buildPlanInteractionProjection', () => {
 	it('emits only the persistent room name for an idle state on a line room', () => {
 		const document = g2LineRectangleDocument();

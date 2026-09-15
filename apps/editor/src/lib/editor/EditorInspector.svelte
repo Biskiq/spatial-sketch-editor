@@ -2017,10 +2017,15 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 								<button type="button" onclick={() => deleteSelectedWallCurveKnot(anchor.id)}>Remove bend point</button>
 							</div>
 						{/each}
-						<div class="layout-opening-actions">
-							<button type="button" onclick={addSelectedWallCurveKnot}>Add bend point at midpoint</button>
-						</div>
 					{/if}
+					<!-- P23.11 fix 4 — Add is NOT gated on an existing bend point. A
+						knot-less cubic chain (what removing the last bend point leaves) and
+						a straight Wall both accept one through the same canonical insertion
+						planner, so curve authoring never disappears from view. Going
+						straight stays the explicit toggle above, never a side effect. -->
+					<div class="layout-opening-actions">
+						<button type="button" onclick={addSelectedWallCurveKnot}>Add bend point at midpoint</button>
+					</div>
 					<div class="layout-opening-actions">
 						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
 					</div>

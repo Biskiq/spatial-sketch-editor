@@ -559,8 +559,10 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 	});
 
 	it('gates the transient intent through the pure helper, not an inline derivation', () => {
+		// P23.11 fix 5 — the rejected curve intent also receives the caller's pure
+		// core proposal (the attempted Wall shape), still through the one helper.
 		expect(viewport).toContain(
-			'architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)'
+			'architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved, architectureEditProposal)'
 		);
 	});
 });

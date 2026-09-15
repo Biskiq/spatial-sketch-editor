@@ -164,6 +164,7 @@
 	import {
 		LAYOUT_PLAN_GRID_STEP,
 		layoutArchitecturalPreset,
+		proposeWallCurveShape,
 		resolveLayoutSnap,
 		resolveOpeningDragSnap,
 		resolveOpeningDragSnapUseMode,
@@ -1035,8 +1036,34 @@
 	// `architectureEditIntentFor` owns the gate: nothing renders while the press
 	// is still a click, nothing for an accepted candidate (the installed preview
 	// already shows it) and nothing for a silent `no_op`.
+	// P23.11 — a rejected curve drag keeps the immutable baseline installed but
+	// must still show the attempted Wall. The attempted centerline is a pure core
+	// PROPOSAL (the same chain algebra the planners run, without acceptance),
+	// sampled here only for rendering, so no interpolation logic lives in this
+	// Svelte surface and nothing invalid is ever installed or persisted.
+	const architectureEditProposal = $derived.by((): readonly LayoutVec2[] | null => {
+		const gesture = interaction.architectureEdit;
+		if (!gesture || !architectureEditMoved || gesture.valid) return null;
+		const document = wallFirstLayoutDocument();
+		if (!document) return null;
+		if (gesture.kind === 'wall-bend') {
+			return proposeWallCurveShape(document, gesture.wallId, {
+				kind: 'bend',
+				distance: gesture.bendDistance,
+				point: gesture.candidatePoint
+			}) ?? null;
+		}
+		if (gesture.kind === 'curve-control-move') {
+			return proposeWallCurveShape(document, gesture.wallId, {
+				kind: 'knot-move',
+				knotId: gesture.anchorId,
+				point: gesture.candidatePoint
+			}) ?? null;
+		}
+		return null;
+	});
 	const architectureEditIntent = $derived(
-		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)
+		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved, architectureEditProposal)
 	);
 const interactionProjection = $derived(
 		withArchitectureEditIntent(
