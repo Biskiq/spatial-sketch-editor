@@ -220,11 +220,21 @@ describe('P23.11 slice 4 — the resolver is one split-distance authority', () =
 
 	it('rejects a distance outside the open interval', () => {
 		const total = wallCurveChainLength(THREE_SPAN);
-		for (const distance of [0, -1, total, total + 0.5, Number.NaN]) {
+		for (const distance of [-1, total + 0.5, Number.NaN]) {
 			const resolution = resolveWallCurveSplit(THREE_SPAN, distance);
 			expect(resolution.kind, `distance ${distance}`).toBe('rejected');
 			if (resolution.kind === 'rejected') {
 				expect(resolution.code).toBe('split_out_of_range');
+			}
+		}
+		// A distance exactly at either end is not a range error: it names an
+		// existing endpoint, which the noding planner reports as the P23.8
+		// `split_at_existing_endpoint` code.
+		for (const distance of [0, total]) {
+			const resolution = resolveWallCurveSplit(THREE_SPAN, distance);
+			expect(resolution.kind, `distance ${distance}`).toBe('rejected');
+			if (resolution.kind === 'rejected') {
+				expect(resolution.code).toBe('split_at_endpoint');
 			}
 		}
 	});

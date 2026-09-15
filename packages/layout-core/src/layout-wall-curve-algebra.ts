@@ -248,10 +248,18 @@ export function resolveWallCurveSplit(
 	if (!(totalLength > CURVE_ENDPOINT_EPSILON)) {
 		return reject('degenerate_chain', 'Wall centerline has no effective length to split.');
 	}
-	if (!Number.isFinite(distance) || distance <= 0 || distance >= totalLength) {
+	if (!Number.isFinite(distance) || distance < 0 || distance > totalLength) {
 		return reject(
 			'split_out_of_range',
 			`Split distance ${distance} is outside the open interval (0, ${totalLength}).`
+		);
+	}
+	// A request exactly at either end names an existing endpoint rather than a
+	// distance error, so callers keep reporting the P23.8 endpoint code.
+	if (distance === 0 || distance === totalLength) {
+		return reject(
+			'split_at_endpoint',
+			`Split distance ${distance} is an endpoint of the Wall centerline.`
 		);
 	}
 
