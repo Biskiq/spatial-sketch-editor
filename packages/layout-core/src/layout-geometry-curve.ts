@@ -5,6 +5,17 @@ export const CURVE_ENDPOINT_EPSILON = 1e-6;
 export const CURVE_FLATNESS_TOLERANCE = 0.01;
 export const CURVE_MAX_SAMPLE_SPAN = 0.25;
 export const CURVE_SELF_INTERSECTION_TOLERANCE = 1e-4;
+/**
+ * P23.11 — absolute arc-length tolerance in metres for cubic quadrature and
+ * arc-length inversion. It bounds only how faithfully a physical distance maps
+ * to a curve parameter; de Casteljau subdivision at the resolved parameter
+ * stays exact. A cubic's speed is smooth, so 16-point Gauss converges on one
+ * panel for every Wall-scale span this kernel sees; the adaptive split exists
+ * for pathological control polygons only.
+ */
+export const CURVE_ARC_LENGTH_TOLERANCE = 1e-6;
+/** Recursion cap for {@link cubicBezierArcLength} (a guard, not a resolution). */
+export const CURVE_ARC_LENGTH_MAX_DEPTH = 12;
 export const LAYOUT_AUTO_BEZIER_ALPHA = 0.5;
 export const MAX_CURVE_SAMPLES_PER_SEGMENT = 100_000;
 
@@ -184,6 +195,96 @@ export function cubicBezierPoint(segment: CubicBezierShape, t: number): LayoutVe
 		u * u * u * segment.start[0] + 3 * u * u * tt * segment.handleOut[0] + 3 * u * tt * tt * segment.handleIn[0] + tt * tt * tt * segment.end[0],
 		u * u * u * segment.start[1] + 3 * u * u * tt * segment.handleOut[1] + 3 * u * tt * tt * segment.handleIn[1] + tt * tt * tt * segment.end[1]
 	];
+}
+
+/** 16-point Gauss-Legendre abscissae on [-1, 1]. */
+const GAUSS_LEGENDRE_ABSCISSAE = [
+	-0.09501250983763744, 0.09501250983763744, -0.2816035507792589, 0.2816035507792589,
+	-0.4580167776572274, 0.4580167776572274, -0.6178762444026438, 0.6178762444026438,
+	-0.755404408355003, 0.755404408355003, -0.8656312023878318, 0.8656312023878318,
+	-0.9445750230732326, 0.9445750230732326, -0.9894009349916499, 0.9894009349916499
+];
+/** 16-point Gauss-Legendre weights, paired with the abscissae above. */
+const GAUSS_LEGENDRE_WEIGHTS = [
+	0.1894506104550685, 0.1894506104550685, 0.1826034150449236, 0.1826034150449236,
+	0.16915651939500254, 0.16915651939500254, 0.14959598881657673, 0.14959598881657673,
+	0.12462897125553387, 0.12462897125553387, 0.09515851168249278, 0.09515851168249278,
+	0.06225352393864789, 0.06225352393864789, 0.027152459411754096, 0.027152459411754096
+];
+
+/** Cubic speed (|dP/dt|) — the integrand of arc length. */
+function cubicBezierSpeed(segment: CubicBezierShape, t: number): number {
+	const derivative = cubicBezierDerivative(segment, t);
+	return Math.hypot(derivative[0], derivative[1]);
+}
+
+/** One 16-point Gauss-Legendre panel of the cubic's speed over `[t0, t1]`. */
+function gaussSpeedPanel(segment: CubicBezierShape, t0: number, t1: number): number {
+	const half = (t1 - t0) / 2;
+	const middle = (t0 + t1) / 2;
+	let sum = 0;
+	for (let index = 0; index < GAUSS_LEGENDRE_ABSCISSAE.length; index += 1) {
+		sum +=
+			GAUSS_LEGENDRE_WEIGHTS[index]! *
+			cubicBezierSpeed(segment, middle + half * GAUSS_LEGENDRE_ABSCISSAE[index]!);
+	}
+	return sum * half;
+}
+
+function adaptiveArcLength(
+	segment: CubicBezierShape,
+	t0: number,
+	t1: number,
+	whole: number,
+	tolerance: number,
+	depth: number
+): number {
+	const middle = (t0 + t1) / 2;
+	const left = gaussSpeedPanel(segment, t0, middle);
+	const right = gaussSpeedPanel(segment, middle, t1);
+	const refined = left + right;
+	if (depth >= CURVE_ARC_LENGTH_MAX_DEPTH || Math.abs(refined - whole) <= tolerance) return refined;
+	return (
+		adaptiveArcLength(segment, t0, middle, left, tolerance / 2, depth + 1) +
+		adaptiveArcLength(segment, middle, t1, right, tolerance / 2, depth + 1)
+	);
+}
+
+/**
+ * True arc length of one cubic between two parameters. The canonical Wall
+ * chain stores explicit cubics, so chain length, arc-length inversion and
+ * fragment metrics all measure real geometry here rather than a chord or a
+ * flattened polyline.
+ */
+export function cubicBezierArcLengthBetween(
+	segment: CubicBezierShape,
+	t0 = 0,
+	t1 = 1,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	const from = Math.min(t0, t1);
+	const to = Math.max(t0, t1);
+	if (!(to > from)) return 0;
+	const whole = gaussSpeedPanel(segment, from, to);
+	if (!Number.isFinite(whole)) return 0;
+	return adaptiveArcLength(segment, from, to, whole, tolerance, 0);
+}
+
+/** Arc length of one cubic from its start (parameter 0) to `t`. */
+export function cubicBezierArcLengthAt(
+	segment: CubicBezierShape,
+	t: number,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	return cubicBezierArcLengthBetween(segment, 0, clamp01(t), tolerance);
+}
+
+/** Total arc length of one cubic (parameters 0 → 1). */
+export function cubicBezierArcLength(
+	segment: CubicBezierShape,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	return cubicBezierArcLengthBetween(segment, 0, 1, tolerance);
 }
 
 export function cubicBezierDerivative(segment: CubicBezierShape, t: number): LayoutVec2 {
