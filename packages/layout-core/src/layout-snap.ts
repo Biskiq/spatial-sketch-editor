@@ -28,6 +28,7 @@ import type { LayoutVec2 } from './layout-types';
 import type { CompiledLayoutGeometry, CompiledQuerySpan } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { p2311Measure } from './p2311-perf';
 
 /** Centralized default Plan grid step in meters (P23.2 §Grid step). */
 export const LAYOUT_PLAN_GRID_STEP = 0.25;
@@ -482,6 +483,43 @@ export function wallIntersectionSnapCandidates(
 }
 
 /**
+ * Derived Wall snap index — the merged Wall extents of one compiled geometry.
+ *
+ * Every field is a **pure function of the compiled geometry** — no pointer
+ * position, no acquisition radius, no moving-target exclusions, no enabled
+ * candidate families — so it is memoized by geometry object identity, exactly
+ * like the editor's derived Wall-mesh bundle. A compile always produces a new
+ * geometry object, so an entry can never be read for a different document, and
+ * it is released with the geometry that owns it. A direct-edit gesture resolves
+ * every snap against the *same* frozen baseline geometry between moves, so the
+ * merge cost is paid once per geometry instead of once per pointermove.
+ *
+ * Keying on the geometry (never on `geometry.queries.spans.filter(...)`, which
+ * creates a fresh array every call) is what makes the cache hit at all. Only
+ * invariant structure is cached: candidates, exclusions and winners stay
+ * per-call, so no pointer-dependent result can go stale.
+ */
+export type DerivedWallSnapIndex = {
+	/** Merged authored-Wall extents (straight) and sample sets (curved). */
+	walls: readonly MergedWallSpan[];
+};
+
+const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnapIndex>();
+
+/** The memoized Wall snap index of one compiled geometry. */
+export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnapIndex {
+	const cached = derivedWallSnapIndex.get(geometry);
+	if (cached) return cached;
+	const derived: DerivedWallSnapIndex = {
+		walls: p2311Measure('snap-wall-index', () =>
+			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall'))
+		)
+	};
+	derivedWallSnapIndex.set(geometry, derived);
+	return derived;
+}
+
+/**
  * Full resolution over the compiled query geometry: collect candidate
  * families from `geometry.queries`, run the deterministic winner order, and
  * derive the transient guides for the winner. Pure — no mutation, no history.
@@ -528,7 +566,7 @@ export function resolveLayoutSnap(
 	// spans and only provide nearest-point candidates — a chord through a
 	// curve must never masquerade as the wall, and P23.2 midpoint semantics
 	// are straight-wall-scoped.
-	const wallMerges = dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall'));
+	const wallMerges = wallSnapIndex(geometry).walls;
 	const wallOwner = (key: string): string => snapOwnerKey({ kind: 'wall', id: key });
 	for (const merge of wallMerges) {
 		if (merge.straight) {
@@ -1029,6 +1067,17 @@ export type MergedWallSpan = {
  * negative-slope wall `(0,4) → (4,0)` would collapse to the anti-diagonal
  * `(0,0) → (4,4)`.
  *
+ * The extent is recovered in **O(k)** from the compiled distances whenever the
+ * spans prove a traversal ({@link provenTraversalExtent}): among collinear
+ * endpoints the farthest pair is only ever attained by the outermost endpoint
+ * of each traversal frame, so scanning every pair re-derives a result the
+ * distances already state — and on the editor's `$state`-proxied geometry that
+ * scan made Snap the dominant cost of a Plan drag (P23.11 live Snap gate).
+ * Straightness is still the same relative-tolerance collinearity test, just
+ * against the traversed chord. Curved walls, and any group whose metadata
+ * cannot prove a traversal, resolve through the same exact farthest-pair scan
+ * as before — nothing is inferred from a guess.
+ *
  * Curved walls (auto-bezier) are detected geometrically — the sample path
  * is longer than the endpoint chord — and keep their per-sample spans:
  * snapping to a curved wall means nearest-point on the actual curve, never
@@ -1046,58 +1095,166 @@ export function dedupeWallSpans(
 	}
 	const merged: MergedWallSpan[] = [];
 	for (const [key, list] of byWall) {
-		const segmentId = list[0]!.segmentId;
-		const points: LayoutVec2[] = [];
-		for (const span of list) {
-			points.push(span.start, span.end);
-		}
-		// Farthest pair over all span endpoints: for a straight wall this is
-		// the true endpoint pair regardless of slope/direction. Ties break by
-		// lexicographic point order so the result is a pure function of the
-		// geometry (never array order).
-		let best: [LayoutVec2, LayoutVec2] = [points[0]!, points[1] ?? points[0]!];
-		let bestSquared = -1;
-		for (let first = 0; first < points.length; first += 1) {
-			for (let second = first + 1; second < points.length; second += 1) {
-				const a = points[first]!;
-				const b = points[second]!;
-				const dx = a[0] - b[0];
-				const dz = a[1] - b[1];
-				const squared = dx * dx + dz * dz;
-				if (squared > bestSquared || (squared === bestSquared && lexicographicallySmaller(a, b, best[0], best[1]))) {
-					bestSquared = squared;
-					best = [a, b];
-				}
-			}
-		}
-		// Collinearity against the endpoint chord. Path-length comparison
-		// would be wrong for shared walls (every room re-samples the full
-		// wall, so the summed path exceeds the chord even for straight
-		// walls); every sample endpoint must instead lie on the chord line.
-		// The 2D cross product equals chord × perpendicular deviation, so
-		// comparing it against chord² × 1e-6 enforces a RELATIVE
-		// perpendicular tolerance of 1e-6 × wall length (plus a 1e-12 m²
-		// floor that only absorbs float noise on degenerate chords).
-		const chordX = best[1][0] - best[0][0];
-		const chordZ = best[1][1] - best[0][1];
-		const chordLength = Math.hypot(chordX, chordZ);
-		const tolerance = Math.max(1e-12, chordLength * chordLength * 1e-6);
-		const straight = points.every(
-			([x, z]) => Math.abs(chordX * (z - best[0][1]) - chordZ * (x - best[0][0])) <= tolerance
-		);
-		const ordered = lexicographicallySmaller(best[0], best[1], best[1], best[0])
-			? [best[0], best[1]]
-			: [best[1], best[0]];
-		merged.push({
-			key,
-			segmentId,
-			start: [...ordered[0]],
-			end: [...ordered[1]],
-			straight,
-			samples: list
-		});
+		merged.push(mergeWallGroup(key, list[0]!.segmentId, list));
 	}
 	return merged;
+}
+
+/** Merge one wall group — already grouped by `wallKey ?? segmentId` — to its extent. */
+function mergeWallGroup(
+	key: string,
+	segmentId: string,
+	list: readonly CompiledQuerySpan[]
+): MergedWallSpan {
+	const endpoints: LayoutVec2[] = [];
+	for (const span of list) endpoints.push(span.start, span.end);
+
+	// O(k): the extent the compiled distances already prove, when they prove one.
+	const proven = provenTraversalExtent(list);
+	if (proven && withinChordTolerance(endpoints, proven)) {
+		return mergedWall(key, segmentId, proven, true, list);
+	}
+
+	// Exact: farthest true endpoint pair over every span endpoint. Curved walls
+	// keep this pair, and any chord the collinearity test rejects resolves
+	// through this same result — so curved output is unchanged by the fast path.
+	const exact = farthestEndpointPair(endpoints);
+	return mergedWall(key, segmentId, exact, withinChordTolerance(endpoints, exact), list);
+}
+
+function mergedWall(
+	key: string,
+	segmentId: string,
+	pair: [LayoutVec2, LayoutVec2],
+	straight: boolean,
+	samples: readonly CompiledQuerySpan[]
+): MergedWallSpan {
+	const ordered = lexicographicallySmaller(pair[0], pair[1], pair[1], pair[0])
+		? [pair[0], pair[1]]
+		: [pair[1], pair[0]];
+	return {
+		key,
+		segmentId,
+		start: [...ordered[0]],
+		end: [...ordered[1]],
+		straight,
+		samples
+	};
+}
+
+/** One traversal frame's proven extent: the outermost endpoint on each side. */
+type TraversalFrameExtent = {
+	minStartDistance: number;
+	origin: LayoutVec2;
+	maxEndDistance: number;
+	destination: LayoutVec2;
+};
+
+/**
+ * Recover a wall group's authored extent in O(k) from the compiled distances,
+ * or `null` when the spans cannot prove they form a traversal.
+ *
+ * A **frame** is one traversal of the Wall: the physical Wall record (no owning
+ * room) or one incident Room's boundary record. `startDistance`/`endDistance`
+ * are measured from that frame's own segment start, so distances are never
+ * compared across frames — each frame contributes its own origin and
+ * destination, and the extent is the farthest pair among those outermost
+ * endpoints. On a straight wall the outermost endpoint of every frame is an
+ * extreme of the whole endpoint set, so this reproduces the exact scan.
+ *
+ * The metadata must *prove* a traversal before it is trusted: finite forward
+ * distances (`endDistance >= startDistance`), and one single position per
+ * outermost distance — two distinct positions at the same distance are not a
+ * traversal, which is exactly what hand-built spans with placeholder distances
+ * look like. Anything else returns `null` and falls back to the exact scan.
+ */
+function provenTraversalExtent(list: readonly CompiledQuerySpan[]): [LayoutVec2, LayoutVec2] | null {
+	const frames = new Map<string, TraversalFrameExtent>();
+	for (const span of list) {
+		const { startDistance, endDistance } = span;
+		if (!Number.isFinite(startDistance) || !Number.isFinite(endDistance)) return null;
+		if (endDistance < startDistance) return null;
+		const frameKey = `${span.floorId}\u0000${span.roomId ?? ''}`;
+		const frame = frames.get(frameKey);
+		if (!frame) {
+			frames.set(frameKey, {
+				minStartDistance: startDistance,
+				origin: span.start,
+				maxEndDistance: endDistance,
+				destination: span.end
+			});
+			continue;
+		}
+		if (startDistance < frame.minStartDistance) {
+			frame.minStartDistance = startDistance;
+			frame.origin = span.start;
+		} else if (startDistance === frame.minStartDistance && !samePoint(frame.origin, span.start)) {
+			return null;
+		}
+		if (endDistance > frame.maxEndDistance) {
+			frame.maxEndDistance = endDistance;
+			frame.destination = span.end;
+		} else if (endDistance === frame.maxEndDistance && !samePoint(frame.destination, span.end)) {
+			return null;
+		}
+	}
+	if (frames.size === 0) return null;
+	const outermost: LayoutVec2[] = [];
+	for (const frame of frames.values()) outermost.push(frame.origin, frame.destination);
+	return farthestEndpointPair(outermost);
+}
+
+/**
+ * Farthest endpoint pair, ties broken by lexicographic point order so the
+ * result is a pure function of the geometry (never array order). Called with
+ * every span endpoint for the exact path and with the frames' outermost
+ * endpoints for the O(k) path — one implementation, one tie-break.
+ */
+function farthestEndpointPair(points: readonly LayoutVec2[]): [LayoutVec2, LayoutVec2] {
+	let best: [LayoutVec2, LayoutVec2] = [points[0]!, points[1] ?? points[0]!];
+	let bestSquared = -1;
+	for (let first = 0; first < points.length; first += 1) {
+		for (let second = first + 1; second < points.length; second += 1) {
+			const a = points[first]!;
+			const b = points[second]!;
+			const dx = a[0] - b[0];
+			const dz = a[1] - b[1];
+			const squared = dx * dx + dz * dz;
+			if (squared > bestSquared || (squared === bestSquared && lexicographicallySmaller(a, b, best[0], best[1]))) {
+				bestSquared = squared;
+				best = [a, b];
+			}
+		}
+	}
+	return best;
+}
+
+/**
+ * Collinearity against the endpoint chord. Path-length comparison
+ * would be wrong for shared walls (every room re-samples the full
+ * wall, so the summed path exceeds the chord even for straight
+ * walls); every sample endpoint must instead lie on the chord line.
+ * The 2D cross product equals chord × perpendicular deviation, so
+ * comparing it against chord² × 1e-6 enforces a RELATIVE
+ * perpendicular tolerance of 1e-6 × wall length (plus a 1e-12 m²
+ * floor that only absorbs float noise on degenerate chords).
+ */
+function withinChordTolerance(
+	points: readonly LayoutVec2[],
+	chord: readonly [LayoutVec2, LayoutVec2]
+): boolean {
+	const chordX = chord[1][0] - chord[0][0];
+	const chordZ = chord[1][1] - chord[0][1];
+	const chordLength = Math.hypot(chordX, chordZ);
+	const tolerance = Math.max(1e-12, chordLength * chordLength * 1e-6);
+	for (const [x, z] of points) {
+		if (Math.abs(chordX * (z - chord[0][1]) - chordZ * (x - chord[0][0])) > tolerance) return false;
+	}
+	return true;
+}
+
+function samePoint(a: LayoutVec2, b: LayoutVec2): boolean {
+	return a[0] === b[0] && a[1] === b[1];
 }
 
 function lexicographicallySmaller(a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): boolean {
