@@ -35,11 +35,13 @@ import {
 	planWallSubdivision,
 	planConvertWallToCurve,
 	planConvertWallToLine,
-	planDeleteWallCurveAnchor,
-	planInsertWallCurveAnchor,
-	planMoveWallCurveAnchor,
+	planBendWallCurveKnot,
+	planDeleteWallCurveKnot,
+	planInsertWallCurveKnot,
+	planMoveWallCurveKnot,
 	type FixedWallEndpoint,
 	type LayoutArchitecturalPresetId,
+	type WallBendIntent,
 	type LayoutObjectTransformPatch,
 	type PrecisionOperation,
 	type PrecisionPlan,
@@ -1141,35 +1143,57 @@ export function updateWallFirstWallLine(
 	return applyWallFirstPrecisionPlan(state, planConvertWallToLine(layout, wallId));
 }
 
-export function insertWallFirstWallCurveAnchor(
+/**
+ * Insert one bend point at a physical arc distance. `point` is optional: a
+ * caller that has one (a context action at a Wall position) supplies it, and the
+ * adapter projects it to the canonical arc distance; a caller that has only a
+ * distance (the Inspector's Add Bend Point) passes the distance directly.
+ */
+export function insertWallFirstWallCurveKnot(
 	state: LayoutPreviewState,
 	wallId: string,
+	distance: number
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	return applyWallFirstPrecisionPlan(state, planInsertWallCurveKnot(layout, wallId, distance));
+}
+
+export function updateWallFirstWallCurveKnot(
+	state: LayoutPreviewState,
+	wallId: string,
+	knotId: string,
 	point: LayoutVec2
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
-	return applyWallFirstPrecisionPlan(state, planInsertWallCurveAnchor(layout, wallId, point));
+	return applyWallFirstPrecisionPlan(state, planMoveWallCurveKnot(layout, wallId, knotId, point));
 }
 
-export function updateWallFirstWallCurveAnchor(
+export function deleteWallFirstWallCurveKnot(
 	state: LayoutPreviewState,
 	wallId: string,
-	anchorId: string,
-	point: LayoutVec2
+	knotId: string
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
-	return applyWallFirstPrecisionPlan(state, planMoveWallCurveAnchor(layout, wallId, anchorId, point));
+	return applyWallFirstPrecisionPlan(state, planDeleteWallCurveKnot(layout, wallId, knotId));
 }
 
-export function deleteWallFirstWallCurveAnchor(
+/**
+ * P23.11 — one Bend command drag: insert the grabbed position as a bend point
+ * and place it, as ONE candidate and ONE history entry. Thin adapter over the
+ * composite core planner, so the Bend gesture and the visible action surfaces
+ * can never reach acceptance by different routes.
+ */
+export function updateWallFirstWallBend(
 	state: LayoutPreviewState,
 	wallId: string,
-	anchorId: string
+	intent: WallBendIntent
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
-	return applyWallFirstPrecisionPlan(state, planDeleteWallCurveAnchor(layout, wallId, anchorId));
+	return applyWallFirstPrecisionPlan(state, planBendWallCurveKnot(layout, wallId, intent));
 }
 
 export function updateWallFirstWallLength(

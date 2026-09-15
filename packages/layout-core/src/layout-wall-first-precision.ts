@@ -48,7 +48,14 @@ import {
 	wallCenterlineSamples,
 	wallCubicChain
 } from './layout-wall-centerline';
-import { deriveChainSpans, projectPointToSampledSegment } from './layout-geometry-curve';
+import { deriveChainSpans } from './layout-geometry-curve';
+import {
+	deleteWallCurveKnot,
+	insertWallCurveKnot,
+	resolveWallCurveSplit,
+	type WallCurveChain,
+	type WallCurveEditRejection
+} from './layout-wall-curve-algebra';
 import {
 	planWallSplit,
 	type NodingIdAllocator,
@@ -132,12 +139,14 @@ export type PrecisionOperation =
 	| 'room-metadata'
 	/** P23.6d — Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
 	| 'room-remove'
-	/** P23.11 — canonical curve operations (convert / anchor insert / move / delete). */
+	/** P23.11 — canonical curve operations (convert / knot insert / move / delete / bend). */
 	| 'wall-convert-to-curve'
 	| 'wall-convert-to-line'
-	| 'wall-curve-anchor-insert'
-	| 'wall-curve-anchor-move'
-	| 'wall-curve-anchor-delete'
+	| 'wall-curve-knot-insert'
+	| 'wall-curve-knot-move'
+	| 'wall-curve-knot-delete'
+	/** P23.11 — the Bend gesture: insert at a physical arc position and place it. */
+	| 'wall-curve-knot-bend'
 	| 'wall-subdivision'
 	| 'rectangle-dimensions'
 	| 'layout-object-transform'
@@ -441,12 +450,9 @@ export function planWallSubdivision(
 	splitDistance: number,
 	allocator: NodingIdAllocator
 ): PrecisionPlan {
-	// P23.11 — reject a curved target before the noder runs so the UX failure is
-	// reported deterministically even though `planWallSplit` would also refuse
-	// (it stays independently fail-fast for every other caller).
-	const target = document.walls.find((candidate) => candidate.id === wallId);
-	if (target && target.centerline.kind !== 'line') return rejectCurvedWall('subdivision', wallId);
-
+	// P23.11 — curved Walls split exactly through the same noder: the split
+	// measures the canonical arc, resolves once, and hands both fragments their
+	// own partition of the chain, so no flatten can happen here.
 	const planned: NodingPlan = planWallSplit(document, wallId, splitDistance, allocator);
 	if (planned.kind === 'rejected') {
 		return reject(planned.rejection.code, planned.rejection.message, [wallId]);
@@ -487,36 +493,87 @@ function rejectCurvedWall(operation: string, wallId: string): PrecisionPlan {
 	);
 }
 
-/** Resolved inputs shared by the bend-point planners. */
+/**
+ * Resolved inputs shared by the bend-point planners.
+ *
+ * `chain` is the Wall's canonical chain as the algebra primitives see it: its
+ * stored knots and spans, or — for a straight Wall when `allowStraight` is set —
+ * the exact straight cubic on its chord, so the Bend gesture can curve a
+ * straight Wall without a separate "convert first" step.
+ */
 function resolveCurveTarget(
 	document: LayoutDocumentWallFirst,
-	wallId: string
+	wallId: string,
+	options: { allowStraight?: boolean } = {}
 ):
 	| { plan: PrecisionPlan }
 	| {
 			wall: LayoutWall;
 			start: LayoutVec2;
 			end: LayoutVec2;
-			knots: readonly LayoutWallCurveKnot[];
+			chain: WallCurveChain;
 	  } {
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) return { plan: reject('unknown_wall', `Unknown wall '${wallId}'`, [wallId]) };
-	if (wall.centerline.kind !== 'cubic-chain') {
-		return {
-			plan: reject(
-				'unsupported_geometry',
-				`Wall '${wallId}' is straight; convert it to a curve before editing its bend points`,
-				[wallId]
-			)
-		};
-	}
 	const endpoints = wallEndpoints(document, wall);
 	if (!endpoints) {
 		return {
 			plan: reject('unsupported_geometry', `Wall '${wallId}' has unresolved junction geometry`, [wallId])
 		};
 	}
-	return { wall, start: endpoints.start, end: endpoints.end, knots: wall.centerline.knots };
+	if (wall.centerline.kind !== 'cubic-chain') {
+		if (!options.allowStraight) {
+			return {
+				plan: reject(
+					'unsupported_geometry',
+					`Wall '${wallId}' is straight; convert it to a curve before editing its bend points`,
+					[wallId]
+				)
+			};
+		}
+		return {
+			wall,
+			start: endpoints.start,
+			end: endpoints.end,
+			chain: {
+				startPoint: endpoints.start,
+				endPoint: endpoints.end,
+				knots: [],
+				spans: deriveChainSpans([endpoints.start, endpoints.end])
+			}
+		};
+	}
+	return {
+		wall,
+		start: endpoints.start,
+		end: endpoints.end,
+		chain: {
+			startPoint: endpoints.start,
+			endPoint: endpoints.end,
+			knots: wall.centerline.knots,
+			spans: wall.centerline.spans
+		}
+	};
+}
+
+/**
+ * Map the shared curve-algebra rejections onto this module's stable codes. A
+ * caller never sees an algebra-internal code, and every curve planner reports
+ * the same rejection for the same condition.
+ */
+function curveEditRejection(code: WallCurveEditRejection): PrecisionRejection['code'] {
+	switch (code) {
+		case 'knot_not_found':
+			return 'unknown_curve_anchor';
+		case 'knot_already_exists':
+			return 'no_op';
+		case 'split_out_of_range':
+			return 'split_distance_out_of_range';
+		case 'split_at_endpoint':
+			return 'split_at_existing_endpoint';
+		default:
+			return 'unsupported_geometry';
+	}
 }
 
 /**
@@ -624,113 +681,189 @@ export function planConvertWallToLine(
 }
 
 /**
- * Insert one interior control at a position projected onto the sampled Wall.
+ * Insert one bend point at a physical arc distance **without moving the curve**.
  *
- * The pointer is projected to the nearest point on the canonical centerline
- * (the same sampling the compiler and renderers read), which keeps the new
- * control ON the Wall, and the control is placed in the persisted anchor order
- * by its arc distance so the ordering stays deterministic. Insertion may change
- * the interpolation; P23.11 does not promise shape-preserving insertion.
+ * Insertion is the exact de Casteljau cut of the containing cubic, so the two
+ * new spans together are the original span and every other span is untouched:
+ * the Wall keeps its sampled centerline, its length and every hosted Opening
+ * offset until the new bend point is actually dragged. Insertion is therefore
+ * safe to commit on its own (Inspector "Add Bend Point"), and it is also the
+ * first half of the Bend gesture.
  */
-export function planInsertWallCurveAnchor(
+export function planInsertWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	point: LayoutVec2
+	distance: number,
+	options: { knotId?: string } = {}
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { wall, start, end, knots } = target;
-	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId]);
-
-	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
-	if (!sampled) {
-		return reject('unsupported_geometry', `Wall '${wallId}' centerline could not be sampled`, [wallId]);
+	const { chain } = target;
+	if (!Number.isFinite(distance)) {
+		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [wallId]);
 	}
-	const projected = projectPointToSampledSegment(point, sampled);
-	// A control landing on either endpoint would duplicate a Junction-owned
-	// point; the Wall's ends belong to its Junctions, never to its controls.
-	if (
-		projected.distance <= POINT_EPSILON ||
-		sampled.length - projected.distance <= POINT_EPSILON
-	) {
-		return reject(
-			'invalid_value',
-			`Curve control would coincide with an endpoint of Wall '${wallId}'`,
-			[wallId]
-		);
-	}
-
-	const inserted: LayoutWallCurveKnot = {
-		id: nextWallCurveKnotId(wallId, knots),
-		point: [projected.point[0], projected.point[1]]
-	};
-	const ordered = [...knots, inserted].sort(
-		(first, second) =>
-			projectPointToSampledSegment(first.point, sampled).distance -
-			projectPointToSampledSegment(second.point, sampled).distance
+	const insertion = insertWallCurveKnot(
+		chain,
+		distance,
+		options.knotId ?? nextWallCurveKnotId(wallId, chain.knots)
 	);
-	const candidate = withWallCenterline(document, wallId, chainFromKnots(ordered, start, end));
-	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-insert', wallId);
+	if (insertion.kind === 'rejected') {
+		return reject(curveEditRejection(insertion.code), insertion.message, [wallId]);
+	}
+	const candidate = withWallCenterline(
+		document,
+		wallId,
+		wallCubicChain(insertion.knots, insertion.spans)
+	);
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-insert', wallId);
 }
 
-/** Move exactly one interior control, preserving every other ID and position. */
-export function planMoveWallCurveAnchor(
+/**
+ * Move exactly one bend point, preserving its ID and every other knot position.
+ *
+ * Re-running the canonical smoothness rule over the new point list is the
+ * documented reshape: the moved knot's own controls and the two facing controls
+ * of its neighbours change, so only the three cubics around the grab are
+ * touched and the rest of the chain keeps its stored spans.
+ */
+export function planMoveWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	anchorId: string,
+	knotId: string,
 	point: LayoutVec2
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { start, end, knots } = target;
-	const existing = knots.find((knot) => knot.id === anchorId);
+	const { start, end, chain } = target;
+	const existing = chain.knots.find((knot) => knot.id === knotId);
 	if (!existing) {
-		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${anchorId}'`, [wallId, anchorId]);
+		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${knotId}'`, [wallId, knotId]);
 	}
-	if (!finitePoint(point)) return reject('invalid_value', 'Curve control X/Z must be finite', [wallId, anchorId]);
+	if (!finitePoint(point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId, knotId]);
 	if (coincidesAsJunction(existing.point, point)) {
-		return reject('no_op', `Curve control '${anchorId}' is already at that point`, [wallId, anchorId]);
+		return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
 	}
 
-	// Re-deriving the spans around the moved knot is the documented reshape
-	// rule: only the two cubics adjacent to the moved knot change, so the edit
-	// stays local to the grabbed bend point.
-	const moved = knots.map((knot) =>
-		knot.id === anchorId
+	const moved = chain.knots.map((knot) =>
+		knot.id === knotId
 			? ({ id: knot.id, point: [point[0], point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
 			: knot
 	);
 	const candidate = withWallCenterline(document, wallId, chainFromKnots(moved, start, end));
-	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-move', wallId);
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-move', wallId);
 }
 
 /**
- * Delete one interior control. Removing the LAST control converts the Wall to
- * `line` — a curved Wall always keeps at least one interior anchor — so the
- * schema's "`auto-bezier` requires at least one anchor" rule can never be
- * violated by a deletion.
+ * Delete one bend point by merging its two adjacent cubics.
+ *
+ * The merge keeps the surviving outer handles and drops the pair that faced the
+ * deleted knot — an explicit rule, never a refit — and the chain stays a cubic
+ * chain even when it ends up knot-less (one cubic between the endpoints). It is
+ * never collapsed to `line`: turning the Wall straight is a separate,
+ * deliberate `planConvertWallToLine`.
  */
-export function planDeleteWallCurveAnchor(
+export function planDeleteWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	anchorId: string
+	knotId: string
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId);
 	if ('plan' in target) return target.plan;
-	const { start, end, knots } = target;
-	if (!knots.some((knot) => knot.id === anchorId)) {
-		return reject('unknown_curve_anchor', `Wall '${wallId}' has no bend point '${anchorId}'`, [wallId, anchorId]);
+	const { chain } = target;
+	const deletion = deleteWallCurveKnot(chain, knotId);
+	if (deletion.kind === 'rejected') {
+		return reject(curveEditRejection(deletion.code), deletion.message, [wallId, knotId]);
 	}
-	const remaining = knots.filter((knot) => knot.id !== anchorId);
 	const candidate = withWallCenterline(
 		document,
 		wallId,
-		remaining.length === 0
-			? { kind: 'line' }
-			: chainFromKnots(remaining, start, end)
+		wallCubicChain(deletion.knots, deletion.spans)
 	);
-	return finalizeCurveCandidate(document, candidate, 'wall-curve-anchor-delete', wallId);
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-delete', wallId);
 }
+
+/** Target of one Bend gesture: how far along the Wall it was grabbed, and where. */
+export type WallBendIntent = {
+	/** Physical arc distance of the grab point from the Wall's canonical start. */
+	distance: number;
+	/** Where the dragged bend point sits now (document X/Z meters). */
+	point: LayoutVec2;
+};
+
+/**
+ * The composite Bend planner: one grab, one candidate, one history entry.
+ *
+ * A pointer-down on the Wall body resolves to a physical arc distance; by
+ * threshold-crossing time the grabbed position is already a bend point, so this
+ * planner inserts the knot there (exactly, so nothing moves yet) and then places
+ * it at the pointer through the ordinary knot-move reshape. A straight Wall
+ * becomes a chain in the same candidate — no "convert to curve first" step —
+ * and a grab that resolves onto an existing bend point drags that knot instead
+ * of inserting a duplicate.
+ *
+ * Both halves run on the one chain-algebra authority and produce a single
+ * `finalizeWallGeometryCandidate` acceptance, so an invalid release rejects
+ * atomically and a valid one is one Undo entry.
+ */
+export function planBendWallCurveKnot(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	intent: WallBendIntent
+): PrecisionPlan {
+	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
+	if ('plan' in target) return target.plan;
+	const { start, end, chain } = target;
+	if (!Number.isFinite(intent.distance)) {
+		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
+	}
+	if (!finitePoint(intent.point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
+
+	// One resolver call decides both halves: whether the grab promotes an
+	// existing bend point, and where the inserted knot belongs.
+	const resolution = resolveWallCurveSplit(chain, intent.distance);
+	if (resolution.kind === 'rejected') {
+		return reject(
+			resolution.code === 'split_at_endpoint'
+				? 'split_at_existing_endpoint'
+				: resolution.code === 'degenerate_chain'
+					? 'unsupported_geometry'
+					: 'split_distance_out_of_range',
+			resolution.message,
+			[wallId]
+		);
+	}
+
+	const promotedKnotId = resolution.result.promotedKnotId;
+	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	const { fragments } = resolution.result;
+	const insertedKnot: LayoutWallCurveKnot = {
+		id: knotId,
+		point: [resolution.result.point[0], resolution.result.point[1]] as LayoutVec2
+	};
+	const knots = promotedKnotId
+		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
+		: [...fragments.a.knots, insertedKnot, ...fragments.b.knots];
+	const grabbed = knots.find((knot) => knot.id === knotId)!;
+	if (coincidesAsJunction(grabbed.point, intent.point)) {
+		// Released exactly where it was grabbed. A rotated bend point is a real
+		// no-op; a freshly inserted knot is not — the insertion itself is the
+		// edit, and the exact partition must be persisted verbatim rather than
+		// re-derived through the smoothness rule.
+		if (promotedKnotId) {
+			return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
+		}
+		const partition = withWallCenterline(document, wallId, wallCubicChain(fragments.a.knots.concat(insertedKnot, fragments.b.knots), [...fragments.a.spans, ...fragments.b.spans]));
+		return finalizeCurveCandidate(document, partition, 'wall-curve-knot-bend', wallId);
+	}
+	const moved = knots.map((knot) =>
+		knot.id === knotId
+			? ({ id: knot.id, point: [intent.point[0], intent.point[1]] as LayoutVec2 } satisfies LayoutWallCurveKnot)
+			: knot
+	);
+	const candidate = withWallCenterline(document, wallId, chainFromKnots(moved, start, end));
+	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-bend', wallId);
+}
+
 
 /** Resize a four-edge straight Room boundary into an exact rectangle. */
 export function planExactRectangleDimensions(

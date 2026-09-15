@@ -44,10 +44,10 @@
 		updateWallFirstWallLength,
 		updateWallFirstWallHeight,
 		updateWallFirstWallThickness,
-		deleteWallFirstWallCurveAnchor,
-		insertWallFirstWallCurveAnchor,
+		deleteWallFirstWallCurveKnot,
+		insertWallFirstWallCurveKnot,
 		updateWallFirstWallCurve,
-		updateWallFirstWallCurveAnchor,
+		updateWallFirstWallCurveKnot,
 		updateWallFirstWallLine,
 		updateWallFirstRectangle,
 		commitWallRoleChange,
@@ -1580,26 +1580,21 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
-	 * Add one control at the Wall's physical arc midpoint, read from the same
-	 * compiled samples the renderers consume. The planner projects the point onto
-	 * the canonical centerline, so the control lands ON the Wall and no
-	 * midpoint is re-derived here.
+	 * Add one bend point at the Wall's physical ARC midpoint. The distance is the
+	 * only input: the planner resolves it against the canonical chain and inserts
+	 * at the exact de Casteljau cut, so the Wall keeps its shape and nothing is
+	 * re-derived here.
 	 */
-	function addSelectedWallCurveAnchor(): void {
+	function addSelectedWallCurveKnot(): void {
 		const wall = selectedWallFirstWall;
 		if (!wall) return;
 		const compiled = layoutPreview.geometry.walls.find((candidate) => candidate.wallId === wall.id);
-		const samples = compiled?.samples ?? [];
-		if (samples.length === 0) {
+		if (!compiled || !(compiled.length > 0)) {
 			store.setStatusMessage('Wall centerline is unavailable');
 			return;
 		}
-		const half = (compiled?.length ?? 0) / 2;
-		const midpoint = samples.reduce((best, sample) =>
-			Math.abs(sample.distance - half) < Math.abs(best.distance - half) ? sample : best
-		);
 		const outcome = runLayoutMutationGuarded(
-			() => insertWallFirstWallCurveAnchor(layoutPreview, wall.id, [...midpoint.point] as [number, number]),
+			() => insertWallFirstWallCurveKnot(layoutPreview, wall.id, compiled.length / 2),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
@@ -1608,22 +1603,22 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		store.setStatusMessage(
 			outcome.result.success
-				? `Added a control to Wall ${wall.id}`
-				: `Add control rejected: ${outcome.result.message}`
+				? `Added a bend point to Wall ${wall.id}`
+				: `Add bend point rejected: ${outcome.result.message}`
 		);
 	}
 
-	function updateSelectedWallCurveAnchor(anchorId: string, index: 0 | 1, event: Event): void {
+	function updateSelectedWallCurveKnot(knotId: string, index: 0 | 1, event: Event): void {
 		const wall = selectedWallFirstWall;
-		const anchor = selectedWallFirstWallKnots.find((candidate) => candidate.id === anchorId);
-		if (!wall || !anchor) return;
-		const previous = anchor.point[index];
+		const knot = selectedWallFirstWallKnots.find((candidate) => candidate.id === knotId);
+		if (!wall || !knot) return;
+		const previous = knot.point[index];
 		const value = precisionNumber(event, previous, formatMeters);
 		if (value === null) return;
-		const point = [...anchor.point] as [number, number];
+		const point = [...knot.point] as [number, number];
 		point[index] = value;
 		const outcome = runLayoutMutationGuarded(
-			() => updateWallFirstWallCurveAnchor(layoutPreview, wall.id, anchorId, point),
+			() => updateWallFirstWallCurveKnot(layoutPreview, wall.id, knotId, point),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
@@ -1634,16 +1629,16 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
 		store.setStatusMessage(
 			outcome.result.success
-				? `Moved control ${anchorId}`
-				: `Control rejected: ${outcome.result.message}`
+				? `Moved bend point ${knotId}`
+				: `Bend point rejected: ${outcome.result.message}`
 		);
 	}
 
-	function deleteSelectedWallCurveAnchor(anchorId: string): void {
+	function deleteSelectedWallCurveKnot(knotId: string): void {
 		const wall = selectedWallFirstWall;
 		if (!wall) return;
 		const outcome = runLayoutMutationGuarded(
-			() => deleteWallFirstWallCurveAnchor(layoutPreview, wall.id, anchorId),
+			() => deleteWallFirstWallCurveKnot(layoutPreview, wall.id, knotId),
 			(result) => result.success
 		);
 		if (outcome.kind === 'skipped') {
@@ -1653,9 +1648,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		store.setStatusMessage(
 			outcome.result.success
 				? selectedWallFirstWallKnots.length <= 1
-					? `Wall ${wall.id} is now straight`
-					: `Removed control ${anchorId}`
-				: `Remove control rejected: ${outcome.result.message}`
+					? `Wall ${wall.id} has no bend points left`
+					: `Removed bend point ${knotId}`
+				: `Remove bend point rejected: ${outcome.result.message}`
 		);
 	}
 
@@ -2007,22 +2002,23 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
 					<label>Add junction at distance from start (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallJunction} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
-					<!-- P23.11 — the Wall's own curve. Straight Walls get the one
-						Convert action; a curved Wall lists its controls as exact X/Z
-						edits plus removal, and removing the last control converts it
-						back to a straight Wall. -->
+					<!-- P23.11 — the Wall's own curve. The toggle is the one Convert
+						action (straight ⇄ cubic chain); a curved Wall lists its bend points
+						as exact X/Z edits plus removal, and removing the last bend point
+						leaves a knot-less chain — still a curve, and still exactly the
+						shape it had. Going straight is the toggle, never a side effect. -->
 					<label><input type="checkbox" checked={selectedWallFirstWall.centerline.kind === 'cubic-chain'} onchange={(event) => setSelectedWallCurved((event.currentTarget as HTMLInputElement).checked)} /> Curved wall</label>
 					{#if selectedWallFirstWallKnots.length > 0}
 						<div class="object-room-meta"><span>Bend points</span><strong>{selectedWallFirstWallKnots.length}</strong></div>
 						{#each selectedWallFirstWallKnots as anchor (anchor.id)}
-							<label>Bend point {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 0, event)} /></label>
-							<label>Bend point {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveAnchor(anchor.id, 1, event)} /></label>
+							<label>Bend point {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 0, event)} /></label>
+							<label>Bend point {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 1, event)} /></label>
 							<div class="layout-opening-actions">
-								<button type="button" onclick={() => deleteSelectedWallCurveAnchor(anchor.id)}>Remove bend point</button>
+								<button type="button" onclick={() => deleteSelectedWallCurveKnot(anchor.id)}>Remove bend point</button>
 							</div>
 						{/each}
 						<div class="layout-opening-actions">
-							<button type="button" onclick={addSelectedWallCurveAnchor}>Add bend point at midpoint</button>
+							<button type="button" onclick={addSelectedWallCurveKnot}>Add bend point at midpoint</button>
 						</div>
 					{/if}
 					<div class="layout-opening-actions">

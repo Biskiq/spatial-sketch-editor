@@ -32,6 +32,9 @@ import type {
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 import { coincidesAsJunction } from './layout-junction-identity';
+import { CURVE_ARC_LENGTH_TOLERANCE } from './layout-geometry-curve';
+import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
+import { wallCubicChain } from './layout-wall-centerline';
 
 /** Exact straight-segment length between two points. */
 function segmentSpanLength(start: LayoutVec2, end: LayoutVec2): number {
@@ -55,9 +58,10 @@ export type NodingRejection = {
 		| 'unknown_wall'
 		| 'unknown_junction'
 		/**
-		 * P23.11 — the Wall carries a curved centerline. Splitting a curve is
-		 * explicitly deferred: this planner measures in chords, so letting a curved
-		 * Wall through would silently flatten it into straight fragments.
+		 * P23.11 — a curved Wall whose canonical chain cannot be resolved for a
+		 * split (unresolved endpoints, no effective length, or a crossing planner
+		 * that would have to measure it in chords). A resolvable curved Wall splits
+		 * normally and exactly.
 		 */
 		| 'curved_wall_unsupported'
 		| 'junction_point_mismatch';
@@ -133,16 +137,6 @@ function planWallSplitInternal(
 	if (!wall) {
 		return rejected({ code: 'unknown_wall', message: `Unknown wall '${wallId}'`, wallId });
 	}
-	// P23.11 — fail fast before allocating anything. This planner's whole model
-	// (chord length, straight fragments) cannot represent a curve, so pinning it
-	// as straight-only here is what keeps another caller from flattening one.
-	if (wall.centerline.kind !== 'line') {
-		return rejected({
-			code: 'curved_wall_unsupported',
-			message: `Wall '${wallId}' is curved; splitting a curved Wall is unsupported`,
-			wallId
-		});
-	}
 	const startJunction = document.junctions.find((junction) => junction.id === wall.startJunctionId);
 	const endJunction = document.junctions.find((junction) => junction.id === wall.endJunctionId);
 	if (!startJunction || !endJunction) {
@@ -153,21 +147,69 @@ function planWallSplitInternal(
 		});
 	}
 
-	const length = segmentSpanLength(startJunction.point, endJunction.point);
-	if (!(splitDistance > 0) || !(splitDistance < length)) {
-		return rejected({
-			code:
-				splitDistance === 0 || splitDistance === length
-					? 'split_at_existing_endpoint'
-					: 'split_distance_out_of_range',
-			message: `Split distance ${splitDistance} is outside the open interval (0, ${length}) for wall '${wallId}'`,
-			wallId
-		});
+	// P23.11 — one resolved split result decides the split point, the resolved
+	// distance and both fragment chains. A straight Wall's chord IS its arc
+	// length, so the straight path keeps its exact chord arithmetic; a curved
+	// Wall resolves through the canonical chain and never measures a chord.
+	let splitPoint: LayoutVec2;
+	let resolvedDistance: number;
+	let wallLength: number;
+	let fragmentA: LayoutWall['centerline'];
+	let fragmentB: LayoutWall['centerline'];
+	if (wall.centerline.kind === 'line') {
+		const length = segmentSpanLength(startJunction.point, endJunction.point);
+		if (!(splitDistance > 0) || !(splitDistance < length)) {
+			return rejected({
+				code:
+					splitDistance === 0 || splitDistance === length
+						? 'split_at_existing_endpoint'
+						: 'split_distance_out_of_range',
+				message: `Split distance ${splitDistance} is outside the open interval (0, ${length}) for wall '${wallId}'`,
+				wallId
+			});
+		}
+		wallLength = length;
+		resolvedDistance = splitDistance;
+		splitPoint =
+			overridePoint ?? pointAtSpanDistance(startJunction.point, endJunction.point, splitDistance);
+		fragmentA = { kind: 'line' };
+		fragmentB = { kind: 'line' };
+	} else {
+		const resolution = resolveWallCurveSplit(
+			{
+				startPoint: startJunction.point,
+				endPoint: endJunction.point,
+				knots: wall.centerline.knots,
+				spans: wall.centerline.spans
+			},
+			splitDistance
+		);
+		if (resolution.kind === 'rejected') {
+			return rejected({
+				code:
+					resolution.code === 'split_at_endpoint'
+						? 'split_at_existing_endpoint'
+						: resolution.code === 'degenerate_chain'
+							? 'curved_wall_unsupported'
+							: 'split_distance_out_of_range',
+				message: resolution.message,
+				wallId
+			});
+		}
+		const { result } = resolution;
+		wallLength = result.totalLength;
+		resolvedDistance = result.distance;
+		// The curve is the authority for where a curved Wall can be cut: a caller
+		// supplied coordinate cannot move the split off the canonical centerline.
+		splitPoint = result.point;
+		fragmentA = wallCubicChain(result.fragments.a.knots, result.fragments.a.spans);
+		fragmentB = wallCubicChain(result.fragments.b.knots, result.fragments.b.spans);
 	}
 
-	// Opening rebasing on the baseline wall (H5 §5.2). Rejects before any
-	// candidate construction when a split would pass through an opening.
-	const rebased = rebaseOpenings(document.openings, wallId, splitDistance, length);
+	// Opening rebasing on the baseline wall (H5 §5.2), measured against the
+	// RESOLVED distance along the wall's true arc. Rejects before any candidate
+	// construction when a split would pass through an opening.
+	const rebased = rebaseOpenings(document.openings, wallId, resolvedDistance, wallLength);
 	if (typeof rebased === 'string') {
 		return rejected({
 			code: 'split_through_opening_interior',
@@ -176,7 +218,6 @@ function planWallSplitInternal(
 		});
 	}
 
-	const splitPoint = overridePoint ?? pointAtSpanDistance(startJunction.point, endJunction.point, splitDistance);
 	const junctionId = options.existingJunctionId ?? allocator.nextJunctionId(document, `${wallId}-split`);
 	const newWallId = allocator.nextWallId(document, `${wallId}-b`);
 	// Candidate documents: replace W with [W (A→X), W2 (X→B)]. The junction
@@ -212,9 +253,10 @@ function planWallSplitInternal(
 			walls.push(candidate);
 			continue;
 		}
-		// P23.11 — the split primitive stays straight-only: both fragments emit
-		// the canonical straight centerline (curved Walls reject earlier).
-		walls.push({ ...candidate, endJunctionId: junctionId, centerline: { kind: 'line' } });
+		// P23.11 — each fragment takes its chain straight from the resolved
+		// partition: the Wall ID stays on `A → X`, the new ID carries `X → B`,
+		// and a split curve keeps its exact geometry across the two.
+		walls.push({ ...candidate, endJunctionId: junctionId, centerline: fragmentA });
 		walls.push({
 			id: newWallId,
 			startJunctionId: junctionId,
@@ -222,7 +264,7 @@ function planWallSplitInternal(
 			role: candidate.role,
 			thickness: candidate.thickness,
 			height: candidate.height,
-			centerline: { kind: 'line' }
+			centerline: fragmentB
 		});
 	}
 	for (const opening of document.openings) {
@@ -300,6 +342,19 @@ export function planWallCrossing(
 			wallId: !first ? firstId : secondId
 		});
 	}
+	// P23.11 — crossing discovery still measures in chords, so curve
+	// participation keeps rejecting rather than silently mis-placing a node.
+	// (General automatic curve noding stays deferred; the deterministic
+	// split-distance path above is the only curved split.)
+	for (const wall of [first, second]) {
+		if (wall.centerline.kind !== 'line') {
+			return rejected({
+				code: 'curved_wall_unsupported',
+				message: `Wall '${wall.id}' is curved; crossing noding stays straight-only`,
+				wallId: wall.id
+			});
+		}
+	}
 
 	const orderedIds = [firstId, secondId].sort((a, b) => a.localeCompare(b)) as [string, string];
 	// Deterministic seed from the stable Wall-ID order, not input order (H3
@@ -354,6 +409,14 @@ function distanceTo(
  * Opening rebasing classification (P23.8). Returns retained/moved opening
  * descriptors, or the offending opening ID when the split passes through an
  * interior.
+ *
+ * P23.11 — the classification is edge-tolerant. A curved Wall's split distance
+ * is resolved through arc-length inversion, so the resolved distance can sit a
+ * few ulps away from the distance the author placed on the Opening's edge; an
+ * edge within {@link CURVE_ARC_LENGTH_TOLERANCE} therefore counts as that edge.
+ * Without the slack, a split exactly on an Opening's end would be reported as
+ * passing through its interior (and one exactly on its start would be reported
+ * as a straddle) because of a 1e-12 inversion residual.
  */
 function rebaseOpenings(
 	openings: readonly LayoutWallOpening[],
@@ -369,10 +432,12 @@ function rebaseOpenings(
 		if (opening.wallId !== wallId) continue;
 		const start = opening.offset;
 		const end = opening.offset + opening.width;
-		if (start + width(opening) <= splitDistance) {
+		if (end <= splitDistance + CURVE_ARC_LENGTH_TOLERANCE) {
 			retained.push({ id: opening.id });
-		} else if (start >= splitDistance) {
-			moved.push({ id: opening.id, offset: start - splitDistance });
+		} else if (start >= splitDistance - CURVE_ARC_LENGTH_TOLERANCE) {
+			// Clamped: a start-edge split can resolve a hair above the Opening's
+			// own offset, and an Opening offset is canonical non-negative data.
+			moved.push({ id: opening.id, offset: Math.max(0, start - splitDistance) });
 		} else {
 			return opening.id;
 		}
@@ -382,10 +447,6 @@ function rebaseOpenings(
 	}
 	void wallLength;
 	return { retained, moved };
-}
-
-function width(opening: LayoutWallOpening): number {
-	return opening.width;
 }
 
 function rewriteBoundaryForSplit(

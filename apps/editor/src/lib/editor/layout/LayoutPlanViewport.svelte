@@ -87,7 +87,7 @@
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
-		updateWallFirstWallCurveAnchor,
+		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
 		createWallFirstOpening,
 		type LayoutPreviewSnapshot
@@ -448,7 +448,7 @@
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
 				: gesture.kind === 'wall-move'
 					? updateWallFirstWallMove(preview, gesture.wallId, input)
-					: updateWallFirstWallCurveAnchor(preview, gesture.wallId, gesture.anchorId, input);
+					: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input);
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
