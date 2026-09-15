@@ -237,13 +237,11 @@ export function compileWallFirstLayoutGeometry(
 			// the segment, so curved Walls flow through the curve kernel
 			// unchanged (no second sampling path).
 			const reversed = ref.direction === 'reverse';
+			// Canonical endpoints + traversal flag: the adapter alone decides the
+			// walk direction, so a reversed ref cannot pair the chain with the
+			// wrong knot order (P23.11 slice 2).
 			segments.push(
-				wallCenterlineSegment(
-					wall,
-					reversed ? end : start,
-					reversed ? start : end,
-					reversed ? 'reverse' : 'forward'
-				)
+				wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward')
 			);
 			if (!arcLengthByWallId.has(wall.id)) {
 				// Mirroring always measures along the CANONICAL traversal: an

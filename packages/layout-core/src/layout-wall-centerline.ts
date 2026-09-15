@@ -117,8 +117,23 @@ export function nextWallCurveKnotId(
 /**
  * Which way a consumer walks a Wall: `forward` follows
  * `startJunctionId → endJunctionId`, `reverse` walks it back.
+ *
+ * Every adapter entry point takes the Wall's endpoints in **canonical** order
+ * (`startJunctionId` point, then `endJunctionId` point) whatever the traversal;
+ * this flag alone selects the walk direction, so the two can never disagree.
  */
 export type WallCenterlineTraversal = 'forward' | 'reverse';
+
+/** The traversal-ordered endpoints of a Wall walk. */
+function traversalEnds(
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	traversal: WallCenterlineTraversal
+): [LayoutVec2, LayoutVec2] {
+	return traversal === 'reverse'
+		? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
+		: [[...startPoint] as LayoutVec2, [...endPoint] as LayoutVec2];
+}
 
 /** The canonical Wall centerline mapped onto the curve kernel's input shapes. */
 export type WallCenterlineSegment =
@@ -132,24 +147,22 @@ function traversalPoints(
 	endPoint: LayoutVec2,
 	traversal: WallCenterlineTraversal
 ): LayoutVec2[] {
-	if (centerline.kind === 'line') {
-		return traversal === 'reverse'
-			? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
-			: [[...startPoint] as LayoutVec2, [...endPoint] as LayoutVec2];
-	}
+	if (centerline.kind === 'line') return traversalEnds(startPoint, endPoint, traversal);
+	// A chain stores its knots in canonical order, so a reverse walk reverses
+	// the knot sequence and swaps the ends.
 	const knots =
 		traversal === 'reverse' ? [...centerline.knots].reverse() : centerline.knots;
-	const ends: LayoutVec2[] =
-		traversal === 'reverse'
-			? [[...endPoint] as LayoutVec2, [...startPoint] as LayoutVec2]
-			: [[...startPoint] as LayoutVec2, [...endPoint] as LayoutVec2];
-	return [ends[0]!, ...knots.map((knot) => [...knot.point] as LayoutVec2), ends[1]!];
+	const ends = traversalEnds(startPoint, endPoint, traversal);
+	return [ends[0], ...knots.map((knot) => [...knot.point] as LayoutVec2), ends[1]];
 }
 
 /**
  * The chain's cubic list in traversal order. A reverse walk mirrors each cubic
  * (`start ↔ end`, `handleOut ↔ handleIn`) instead of only swapping endpoints —
  * swapping endpoints while keeping span order would trace a different curve.
+ *
+ * `startPoint`/`endPoint` are the canonical endpoints; `traversal` decides the
+ * direction of the returned list (`reverse` starts at `endPoint`).
  */
 export function wallCenterlineCubics(
 	centerline: LayoutWallCenterline,
@@ -158,6 +171,10 @@ export function wallCenterlineCubics(
 	traversal: WallCenterlineTraversal
 ): CubicBezierShape[] {
 	if (centerline.kind === 'line') return [];
+	// Stored spans are authored `startJunction → endJunction`, so the forward
+	// chain is always built from the canonical endpoints. `traversal` alone
+	// selects the walk direction — feeding it swapped endpoints would pair each
+	// span with the wrong knot order.
 	// Forward cubic `i` is `points[i] → points[i + 1]` paired with `spans[i]`.
 	const forward = spansToCubics(
 		traversalPoints(centerline, startPoint, endPoint, 'forward'),
@@ -176,7 +193,10 @@ export function wallCenterlineCubics(
 		.reverse();
 }
 
-/** Chain vertices `start … end` in traversal order (line: just the endpoints). */
+/**
+ * Chain vertices in traversal order (line: just the endpoints). `reverse`
+ * starts at `endPoint`, which is the canonical `endJunctionId` position.
+ */
 export function wallCenterlinePoints(
 	centerline: LayoutWallCenterline,
 	startPoint: LayoutVec2,
@@ -194,6 +214,9 @@ export function wallCenterlinePoints(
  * cubics. This is the ONE adapter — no compiler/topology/Opening code builds
  * Wall curve segments by hand.
  *
+ * `startPoint`/`endPoint` are the Wall's **canonical** endpoint positions
+ * (`startJunctionId`, `endJunctionId`) whatever the traversal, and the returned
+ * segment always walks from the traversal start to the traversal end.
  * `traversal` is required rather than defaulted: a reverse walk that forgot it
  * would silently trace a different curve, which is exactly the class of bug
  * this seam exists to prevent.
@@ -205,12 +228,8 @@ export function wallCenterlineSegment(
 	traversal: WallCenterlineTraversal
 ): WallCenterlineSegment {
 	if (wall.centerline.kind === 'line') {
-		return {
-			id: wall.id,
-			kind: 'line',
-			start: [startPoint[0], startPoint[1]] as LayoutVec2,
-			end: [endPoint[0], endPoint[1]] as LayoutVec2
-		};
+		const [from, to] = traversalEnds(startPoint, endPoint, traversal);
+		return { id: wall.id, kind: 'line', start: from, end: to };
 	}
 	return {
 		id: wall.id,

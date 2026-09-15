@@ -171,11 +171,13 @@ export function extractBoundaryCandidateFaces(
 			polygon.push(junction.point);
 			const wall = wallById.get(half.wallId);
 			if (!wall || wall.centerline.kind === 'line') continue;
-			// The half-edge knows its own traversal, so the adapter reverses the
-			// persisted anchor order for a reverse edge (endpoint swapping alone
-			// would trace a different curve).
-			const start = junctionById.get(half.fromId)!.point;
-			const end = junctionById.get(half.toId)!.point;
+			// The half-edge knows its own traversal, so the adapter mirrors the
+			// chain for a reverse edge (endpoint swapping alone would trace a
+			// different curve). Endpoints are passed canonically — the traversal
+			// flag is the only direction authority.
+			const start = junctionById.get(wall.startJunctionId)?.point;
+			const end = junctionById.get(wall.endJunctionId)?.point;
+			if (!start || !end) continue;
 			const sampled = wallCenterlineSamples(
 				wall,
 				start,
