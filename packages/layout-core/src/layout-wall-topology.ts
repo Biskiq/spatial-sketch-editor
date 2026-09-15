@@ -22,6 +22,12 @@
  *    feeds the separate near-coincident *diagnostic*.
  */
 import type { LayoutVec2 } from './layout-types';
+import {
+	CURVE_SELF_INTERSECTION_TOLERANCE,
+	sampledPolylineIntersects,
+	sampledPolylineSelfIntersects,
+	type CurveSample
+} from './layout-geometry-curve';
 import { orientXZ } from './layout-robust-orientation';
 
 /** Typed intersection classification between two straight wall segments. */
@@ -56,6 +62,63 @@ export type TopologySegment = {
 	start: LayoutVec2;
 	end: LayoutVec2;
 };
+
+/**
+ * P23.11 — a resolved input Wall for curve-level classification: authored
+ * identity, endpoint Junction IDs and the **canonical forward** sampled
+ * centerline (canonical order, i.e. `startJunctionId → endJunctionId`).
+ */
+export type SampledTopologyWall = {
+	id: string;
+	startJunctionId: string;
+	endJunctionId: string;
+	samples: readonly CurveSample[];
+};
+
+/**
+ * P23.11 — does one Wall's sampled centerline cross itself?
+ *
+ * The chord-level classifier cannot see this: a bowed Wall whose endpoints are
+ * far apart still sweeps back through its own path. Direction-independent, so
+ * the canonical sample order is always sufficient.
+ */
+export function sampledWallSelfIntersects(wall: SampledTopologyWall): boolean {
+	return sampledPolylineSelfIntersects(wall.samples, CURVE_SELF_INTERSECTION_TOLERANCE);
+}
+
+/**
+ * P23.11 — do two Walls' sampled centerlines cross?
+ *
+ * `classifyWallIntersection` is exact for straight Walls but blind to curvature:
+ * two Walls whose endpoint chords miss each other can still cross where they
+ * bow, and one curved Wall can cross a straight host its chord never reaches.
+ * This is the curve-level companion, reusing the curve kernel's own polyline
+ * predicate rather than a second intersection recipe.
+ *
+ * When the Walls share an explicit Junction, contact **there** is legal graph
+ * connectivity: both polylines necessarily touch at that point. The shared
+ * traversal is oriented so the shared Junction is `a`'s end and `b`'s start —
+ * the one configuration the kernel's `ignoreSharedEndpoint` seam recognises —
+ * and every other crossing along either curve still rejects.
+ */
+export function sampledWallsCross(
+	a: SampledTopologyWall,
+	b: SampledTopologyWall,
+	sharedJunctionId?: string
+): boolean {
+	if (sharedJunctionId === undefined) {
+		return sampledPolylineIntersects(a.samples, b.samples, CURVE_SELF_INTERSECTION_TOLERANCE);
+	}
+	const reverseFirst = a.endJunctionId !== sharedJunctionId;
+	const reverseSecond = b.startJunctionId !== sharedJunctionId;
+	const first = reverseFirst ? [...a.samples].reverse() : a.samples;
+	const second = reverseSecond ? [...b.samples].reverse() : b.samples;
+	// `first` now ends at the shared Junction and `second` starts there; that
+	// point is the only sample pair the predicate is allowed to ignore.
+	const sharedPoint = first.at(-1)?.point;
+	if (!sharedPoint) return false;
+	return sampledPolylineIntersects(first, second, CURVE_SELF_INTERSECTION_TOLERANCE, sharedPoint);
+}
 
 /**
  * Classify the relationship of two segments. `sharedJunctionIds` carries the

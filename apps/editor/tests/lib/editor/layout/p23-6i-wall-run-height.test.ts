@@ -72,7 +72,8 @@ function tallWallDocument(): LayoutDocumentWallFirst {
 				endJunctionId: 'b',
 				role: 'partition',
 				thickness: 0.2,
-				height: 4
+				height: 4,
+				centerline: { kind: 'line' } as const,
 			}
 		],
 		rooms: [],

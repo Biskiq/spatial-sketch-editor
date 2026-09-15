@@ -56,7 +56,8 @@ function wallDocument(options: { wallHeight: number; elevation?: number; sillHei
 				endJunctionId: 'j2',
 				role: 'partition',
 				thickness: 0.2,
-				height: options.wallHeight
+				height: options.wallHeight,
+				centerline: { kind: 'line' } as const,
 			}
 		],
 		rooms: [],

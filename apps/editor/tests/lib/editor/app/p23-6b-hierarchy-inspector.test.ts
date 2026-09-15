@@ -100,14 +100,14 @@ function makeWallFirstLayout(): LayoutDocumentWallFirst {
 			{ id: 'j5', point: [10, 4] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8 },
+			{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
 			// Shared by both rooms.
-			{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 3.4 },
-			{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w5', startJunctionId: 'j3', endJunctionId: 'j5', role: 'boundary', thickness: 0.15, height: 2.8 },
+			{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 3.4, centerline: { kind: 'line' } as const},
+			{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w5', startJunctionId: 'j3', endJunctionId: 'j5', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
 			// Partition: bounds no room, hosts an opening.
-			{ id: 'w6', startJunctionId: 'j1', endJunctionId: 'j3', role: 'partition', thickness: 0.1, height: 2.2 }
+			{ id: 'w6', startJunctionId: 'j1', endJunctionId: 'j3', role: 'partition', thickness: 0.1, height: 2.2, centerline: { kind: 'line' } as const}
 		],
 		rooms: [
 			{

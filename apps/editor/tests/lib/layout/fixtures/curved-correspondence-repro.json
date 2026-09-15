@@ -1,0 +1,272 @@
+{
+  "units": "meters",
+  "formatVersion": 5,
+  "floor": {
+    "id": "floor",
+    "name": "Floor",
+    "elevation": 0
+  },
+  "junctions": [
+    {
+      "id": "junction-chain-1",
+      "point": [
+        -4.75,
+        -3.5
+      ]
+    },
+    {
+      "id": "junction-chain-2",
+      "point": [
+        5.25,
+        -3.5
+      ]
+    },
+    {
+      "id": "junction-chain-1.2",
+      "point": [
+        3.5,
+        4
+      ]
+    },
+    {
+      "id": "junction-chain-1.3",
+      "point": [
+        -5.5,
+        3
+      ]
+    },
+    {
+      "id": "junction-chain-1.4",
+      "point": [
+        -0.13333333333333286,
+        -3.5
+      ]
+    },
+    {
+      "id": "junction-chain-2.2",
+      "point": [
+        -0.25,
+        0.75
+      ]
+    },
+    {
+      "id": "junction-chain-1.5",
+      "point": [
+        -5.196162669447341,
+        0.36674313521028834
+      ]
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-chain-1",
+      "startJunctionId": "junction-chain-1",
+      "endJunctionId": "junction-chain-1.4",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1-b",
+      "startJunctionId": "junction-chain-1.4",
+      "endJunctionId": "junction-chain-2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1.2",
+      "startJunctionId": "junction-chain-2",
+      "endJunctionId": "junction-chain-1.2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1.3",
+      "startJunctionId": "junction-chain-1.2",
+      "endJunctionId": "junction-chain-1.3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1.4",
+      "startJunctionId": "junction-chain-1.3",
+      "endJunctionId": "junction-chain-1.5",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1.4-b",
+      "startJunctionId": "junction-chain-1.5",
+      "endJunctionId": "junction-chain-1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "wall-chain-1.5",
+      "startJunctionId": "junction-chain-1.4",
+      "endJunctionId": "junction-chain-2.2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.5:knot:1",
+            "point": [
+              -1,
+              -1.75
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -0.15032664201951784,
+              -2.8809580407175495
+            ],
+            "handleIn": [
+              -0.9453935568278145,
+              -2.397099464461786
+            ]
+          },
+          {
+            "handleOut": [
+              -1.0631300912614028,
+              -1.0018932588620686
+            ],
+            "handleIn": [
+              -0.22810441979729593,
+              -0.0476247073842162
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.6",
+      "startJunctionId": "junction-chain-2.2",
+      "endJunctionId": "junction-chain-1.5",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.6:knot:1",
+            "point": [
+              -3.25,
+              -0.25
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -1.2834352190442775,
+              0.6699235511478976
+            ],
+            "handleIn": [
+              -2.356804074763263,
+              -0.24336333062612622
+            ]
+          },
+          {
+            "handleOut": [
+              -3.967673001864511,
+              -0.255332490103633
+            ],
+            "handleIn": [
+              -4.580876998675838,
+              0.4144189746214231
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F",
+      "name": "Draft Room 1",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-b",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.6",
+          "direction": "reverse"
+        },
+        {
+          "wallId": "wall-chain-1.5",
+          "direction": "reverse"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face18:wall-chain-1.4-b-F14:wall-chain-1-F16:wall-chain-1.5-F16:wall-chain-1.6-F",
+      "name": "Draft Room 2",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.5",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.6",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-b",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    }
+  ],
+  "openings": [],
+  "objects": []
+}

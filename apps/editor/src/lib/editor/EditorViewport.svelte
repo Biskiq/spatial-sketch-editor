@@ -145,7 +145,8 @@
 	 */
 	function commitDraftWallSegment(
 		start: [number, number],
-		end: [number, number]
+		end: [number, number],
+		endpointHostWallId?: string
 	): {
 		success: boolean;
 		startJunctionId?: string;
@@ -165,7 +166,8 @@
 					start,
 					end,
 					role,
-					layoutInteraction.wallChainRunHeight ?? undefined
+					layoutInteraction.wallChainRunHeight ?? undefined,
+					endpointHostWallId
 				),
 			(result) => result.success
 		);

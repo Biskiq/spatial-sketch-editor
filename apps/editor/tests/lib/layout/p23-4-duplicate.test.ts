@@ -60,7 +60,8 @@ function shell(options: {
 			endJunctionId: wall.end,
 			role: wall.role ?? ('boundary' as const),
 			thickness: 0.2,
-			height: 3
+			height: 3,
+			centerline: { kind: 'line' } as const,
 		})),
 		rooms: [] as LayoutWallFirstRoom[],
 		openings: options.openings ?? [],
@@ -479,7 +480,8 @@ describe('P23.4 isolated Room duplicate', () => {
 					endJunctionId: 'j-t',
 					role: 'boundary' as const,
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};

@@ -54,7 +54,8 @@ function shell(options: {
 			endJunctionId: wall.end,
 			role: wall.role ?? ('boundary' as const),
 			thickness: wall.thickness ?? 0.2,
-			height: wall.height ?? 3
+			height: wall.height ?? 3,
+			centerline: { kind: 'line' } as const,
 		})),
 		rooms: options.rooms ?? [],
 		openings: options.openings ?? [],
@@ -593,7 +594,8 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 					endJunctionId: 'j-t',
 					role: 'boundary',
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};

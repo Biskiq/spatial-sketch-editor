@@ -1,6 +1,12 @@
 import type { DraftSegment, LayoutOpening, LayoutVec2 } from './layout-types';
 import type { CompiledArchProfile, CompiledWallSection } from './layout-geometry-types';
-import { pointAlongSamples, sampleSegment, type CurveSample, type SampledSegment } from './layout-geometry-curve';
+import {
+	pointAlongSamples,
+	sampleSegment,
+	type CurveSample,
+	type SampledSegment,
+	type SampleableSegment
+} from './layout-geometry-curve';
 
 export const ARCH_PROFILE_EPSILON = 1e-6;
 export const LAYOUT_GEOMETRY_EPSILON = 1e-6;
@@ -77,7 +83,7 @@ export function archProfileTopAt(profile: ArchProfile, x: number): number {
 }
 
 export function openingIntervals(
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	openings: readonly LayoutOpening[]
 ): WallOpeningInterval[] {
 	return openings
@@ -100,7 +106,7 @@ export function openingIntervals(
  * {@link splitSampledWallAroundOpenings} so each segment is sampled once.
  */
 export function splitWallAroundOpenings(
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	openings: readonly LayoutOpening[],
 	wallHeight: number
 ): CompiledWallSection[] {
@@ -109,7 +115,7 @@ export function splitWallAroundOpenings(
 
 export function splitSampledWallAroundOpenings(
 	sampled: SampledSegment,
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	openings: readonly LayoutOpening[],
 	wallHeight: number
 ): CompiledWallSection[] {

@@ -56,7 +56,8 @@ function documentWith(
 			endJunctionId: wall.end,
 			role,
 			thickness: 0.2,
-			height: wall.height
+			height: wall.height,
+			centerline: { kind: 'line' } as const,
 		})),
 		rooms: [],
 		openings: [],

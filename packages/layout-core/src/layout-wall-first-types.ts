@@ -63,6 +63,66 @@ export type LayoutJunction = {
 };
 
 /**
+ * One persistent interior bend point of a curved Wall centerline (P23.11).
+ *
+ * Bend points carry identity and their `point` is the authored, user-facing
+ * value. They are owned by their Wall — they are never Junctions and never
+ * participate in connectivity (Junction IDs remain the only topology truth).
+ * Order is persisted and deterministic.
+ */
+export type LayoutWallCurveKnot = {
+	id: string;
+	point: LayoutVec2;
+};
+
+/**
+ * Control pair for exactly ONE cubic span of a curved Wall centerline (P23.11).
+ * `handleOut` leaves the span's first point and `handleIn` arrives at its
+ * second point, so one span evaluates to exactly one cubic.
+ *
+ * Spans are derived geometry with no identity of their own: they are owned
+ * positionally by their chain and are never addressed by ID. They exist so a
+ * split can be an exact cubical subdivision instead of a re-interpolation.
+ */
+export type LayoutWallCubicSpan = {
+	handleOut: LayoutVec2;
+	handleIn: LayoutVec2;
+};
+
+/**
+ * Canonical Wall centerline (P23.11). A Wall is either a straight line between
+ * its endpoint Junctions (`kind: 'line'`) or an explicit cubic chain through
+ * its endpoint Junctions and its ordered interior bend points.
+ *
+ * With `P = [startJunction, ...knots, endJunction]`:
+ *
+ * ```text
+ * spans.length === knots.length + 1
+ * cubic i = (P[i], spans[i].handleOut, spans[i].handleIn, P[i + 1])
+ * ```
+ *
+ * Rules:
+ * - endpoint positions remain owned only by `startJunctionId` /
+ *   `endJunctionId`; the chain stores no endpoint point, only per-span
+ *   controls;
+ * - `knots.length === 0` is legal and means one cubic between the two
+ *   endpoint Junctions — it is not a flattened Wall;
+ * - `spans.length === knots.length + 1` is a validated invariant, and every
+ *   span is one cubic;
+ * - bend points are never Junctions and never carry connectivity;
+ * - spans carry no identity, no ordering field and no lookup by ID;
+ * - the persisted controls are the only curve authority. Nothing re-derives
+ *   them on the read path, so subdivision and translation are exact.
+ */
+export type LayoutWallCenterline =
+	| { kind: 'line' }
+	| {
+			kind: 'cubic-chain';
+			knots: LayoutWallCurveKnot[];
+			spans: LayoutWallCubicSpan[];
+	  };
+
+/**
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
  *
@@ -80,6 +140,11 @@ export type LayoutJunction = {
  * boundary Wall heights. Wall height is consumed by the canonical compiler,
  * bounds, mesh inputs and Opening fit — and is deliberately **not** part of Plan
  * face extraction, so a height change alone never alters Room topology.
+ *
+ * `centerline` is the authoritative P23.11 curve state: `'line'` for straight
+ * Walls, a `cubic-chain` of bend points and one control pair per cubic span for
+ * curved ones. The field is required on every persisted Wall (fresh-authority
+ * policy: no migration, no missing-field tolerance).
  */
 export type LayoutWall = {
   id: string;
@@ -88,6 +153,7 @@ export type LayoutWall = {
   role: LayoutWallRole;
   thickness: number;
   height: number;
+  centerline: LayoutWallCenterline;
 };
 
 /** Directed Wall reference used by persistent Room boundaries. */

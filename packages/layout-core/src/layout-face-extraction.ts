@@ -29,6 +29,7 @@ import { geometryId } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-types';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import { orientXZ } from './layout-robust-orientation';
+import { wallCenterlineSamples } from './layout-wall-centerline';
 
 export type TopologyDiagnostic = {
 	code:
@@ -75,6 +76,7 @@ export function extractBoundaryCandidateFaces(
 ): FaceExtractionResult {
 	const diagnostics: TopologyDiagnostic[] = [];
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
 	const boundaryWalls = document.walls.filter((wall) => wall.role === 'boundary');
 
 	// --- dangle detection (recursive degree-1 boundary edges) -------------
@@ -157,10 +159,38 @@ export function extractBoundaryCandidateFaces(
 			wallId: half.wallId,
 			direction: half.direction
 		}));
-		const polygon = ring.map((half) => {
+		// P23.11 — the geometric face polygon expands each curved Wall into its
+		// canonical sampled centerline vertices in traversal order (samples
+		// between the ring's junction endpoints; each edge's start junction is
+		// the previous edge's end and is omitted). Straight walls contribute
+		// exactly their start junction, matching the pre-curve polygon. These
+		// sampled vertices are evidence only — never persisted as Room vertices.
+		const polygon: LayoutVec2[] = [];
+		for (const half of ring) {
 			const junction = junctionById.get(half.fromId)!;
-			return junction.point;
-		});
+			polygon.push(junction.point);
+			const wall = wallById.get(half.wallId);
+			if (!wall || wall.centerline.kind === 'line') continue;
+			// The half-edge knows its own traversal, so the adapter mirrors the
+			// chain for a reverse edge (endpoint swapping alone would trace a
+			// different curve). Endpoints are passed canonically — the traversal
+			// flag is the only direction authority.
+			const start = junctionById.get(wall.startJunctionId)?.point;
+			const end = junctionById.get(wall.endJunctionId)?.point;
+			if (!start || !end) continue;
+			const sampled = wallCenterlineSamples(
+				wall,
+				start,
+				end,
+				half.direction === 'reverse' ? 'reverse' : 'forward'
+			);
+			if (!sampled) continue;
+			// Sampled points strictly between the two endpoints (drop both ends:
+			// fromId is this edge's start, toId is the next edge's start).
+			for (const sample of sampled.samples.slice(1, -1)) {
+				polygon.push([...sample.point] as LayoutVec2);
+			}
+		}
 		const signedArea = polygonSignedArea(polygon);
 
 		if (!Number.isFinite(signedArea)) {

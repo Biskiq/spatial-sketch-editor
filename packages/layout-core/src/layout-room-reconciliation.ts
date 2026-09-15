@@ -40,6 +40,7 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
+import { wallCenterlineSamples } from './layout-wall-centerline';
 import {
 	type DerivedCandidateFace,
 	type FaceExtractionResult,
@@ -111,7 +112,8 @@ export const ROOM_CREATION_DEFAULTS = {
  * Predecessor Room boundary as an ordered X/Z polygon, resolved against a
  * complete document (P23.6: shared with the wall role-change planner, which
  * runs the same correspondence as the chain engine). `null` when the
- * boundary is unresolvable — callers reject rather than guess.
+ * boundary is unresolvable — callers reject rather than guess. Curved Walls
+ * contribute their oriented sampled centerline, matching candidate faces.
  */
 export function roomBoundaryPolygon(
 	document: LayoutDocumentWallFirst,
@@ -129,6 +131,20 @@ export function roomBoundaryPolygon(
 		const end = junctionById.get(ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId);
 		if (!start || !end) return null;
 		polygon.push([...start.point] as LayoutVec2);
+		if (wall.centerline.kind === 'line') continue;
+		const canonicalStart = junctionById.get(wall.startJunctionId)?.point;
+		const canonicalEnd = junctionById.get(wall.endJunctionId)?.point;
+		if (!canonicalStart || !canonicalEnd) return null;
+		const sampled = wallCenterlineSamples(
+			wall,
+			canonicalStart,
+			canonicalEnd,
+			ref.direction
+		);
+		if (!sampled) return null;
+		for (const sample of sampled.samples.slice(1, -1)) {
+			polygon.push([...sample.point] as LayoutVec2);
+		}
 	}
 	return polygon;
 }

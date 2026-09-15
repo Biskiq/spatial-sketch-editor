@@ -157,7 +157,12 @@ const DIRECT_WRITE_EXCEPTIONS: Record<string, string> = {
 	// connection.pathAnchors splices (review round 2) — every call site is
 	// wrapped by the guarded layout/scene transaction runner above it.
 	'editor/store/path-anchor-mutator.svelte.ts':
-		'positionPath.anchors splices inside guarded beginDocumentTransaction brackets (anchor domain)'
+		'positionPath.anchors splices inside guarded beginDocumentTransaction brackets (anchor domain)',
+	// P23.11 diagnosis harness — the fixture matrix builds a throwaway
+	// wall-first document locally to feed `importLayoutPreviewJson`; it never
+	// writes a live editor document and never reaches a transaction.
+	'bench/p2311-bend-fixtures.ts':
+		'P23.11 diagnostic fixture factory — builds a throwaway wall-first document; never mutates a live document'
 };
 
 describe('P23.0 F0 stage 1 — central format-dispatch policy tables', () => {
@@ -315,10 +320,10 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 			{ id: 'j-d', point: [0, 4] }
 		],
 		walls: [
-			{ id: 'w-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3 }
+			{ id: 'w-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [],
 		openings: [],

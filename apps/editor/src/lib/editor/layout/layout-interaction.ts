@@ -3,6 +3,7 @@ import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-type
 import type { LayoutRoomUnitTransform } from './layout-room-transform';
 import { createPlanViewportState, snapToGrid, type PlanViewportState } from './layout-plan-transform';
 import { EDITOR_DRAG_THRESHOLD_PX } from '../interaction-constants';
+import type { EditorCommandId } from '../editor-command-intent';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
 import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
@@ -398,6 +399,86 @@ export type LayoutArchitectureEditGesture =
 			valid: boolean;
 			rejectionCode?: string;
 			rejectionMessage?: string;
+	  }
+	| {
+			/**
+			 * P23.11 — drag one interior curve control of a curved Wall.
+			 *
+			 * The control is transient editing state keyed by
+			 * `{ wallId, anchorId }`, never a new `LayoutSelection` variant and never
+			 * a hierarchy row: the Wall stays the durable selection for the whole
+			 * gesture, so no second selection authority exists.
+			 */
+			kind: 'curve-control-move';
+			pointerId: number;
+			wallId: string;
+			anchorId: string;
+			/** World-space pointer at pointer-down (immutable for the gesture). */
+			startPointer: LayoutVec2;
+			/** Canonical anchor point at pointer-down (grab offset preserved). */
+			baselineAnchorPoint: LayoutVec2;
+			/**
+			 * Excluded from the control's own snap for the same reason a Junction
+			 * move excludes them: the canonical planner rejects a control landing on
+			 * a Junction coordinate, so honoring that family would install a
+			 * guaranteed rejection as the winning candidate.
+			 */
+			curveExcludePoints: readonly LayoutVec2[];
+			/**
+			 * The edited Wall alone. A control move leaves both endpoint Junctions
+			 * exactly where they are, so no neighbouring Wall reshapes and only this
+			 * Wall's own geometry may not be its own snap target.
+			 */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate point (baseline + total displacement). */
+			candidatePoint: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
+	  }
+	| {
+			/**
+			 * P23.11 — the Bend-command Wall-body drag.
+			 *
+			 * `command` is the intent resolved at pointer-down and frozen here for
+			 * the whole gesture: nothing re-reads modifiers afterwards, so releasing
+			 * the key mid-drag does not hand the drag to rigid translation and
+			 * pressing it mid-drag does not hand it to bend.
+			 *
+			 * The insert is **deferred**: pointer-down stores only the grabbed
+			 * physical arc distance from the immutable baseline, and the composite
+			 * canonical planner runs once the shared drag threshold is crossed. A
+			 * sub-threshold release therefore stays an ordinary click that selects
+			 * the Wall, and the insert position can never drift because every plan
+			 * resolves that distance against the restored baseline.
+			 */
+			kind: 'wall-bend';
+			command: EditorCommandId;
+			pointerId: number;
+			wallId: string;
+			/** World-space pointer at pointer-down (immutable for the gesture). */
+			startPointer: LayoutVec2;
+			/** The hit projection's world point at pointer-down (grab offset). */
+			baselineGrabPoint: LayoutVec2;
+			/** Grabbed physical arc distance from the Wall's canonical start. */
+			bendDistance: number;
+			/**
+			 * Excluded from the dragged bend point's own snap for the same reason a
+			 * control move excludes them: a bend point landing on a Junction
+			 * coordinate can only be rejected, so honoring that family would install
+			 * a guaranteed rejection as the winning candidate.
+			 */
+			bendExcludePoints: readonly LayoutVec2[];
+			/**
+			 * The bent Wall alone. Inserting one bend point leaves both endpoint
+			 * Junctions exactly where they are, so no neighbouring Wall reshapes.
+			 */
+			affectedWallIds: readonly string[];
+			/** Current raw candidate point (baseline + total displacement). */
+			candidatePoint: LayoutVec2;
+			valid: boolean;
+			rejectionCode?: string;
+			rejectionMessage?: string;
 	  };
 
 /**
@@ -445,7 +526,12 @@ export function architectureEditRawTarget(
 ): LayoutVec2 {
 	const dx = pointer[0] - gesture.startPointer[0];
 	const dz = pointer[1] - gesture.startPointer[1];
-	const anchor = gesture.kind === 'junction-move' ? gesture.baselinePoint : gesture.baselineGrabPoint;
+	const anchor =
+		gesture.kind === 'wall-move' || gesture.kind === 'wall-bend'
+			? gesture.baselineGrabPoint
+			: gesture.kind === 'curve-control-move'
+				? gesture.baselineAnchorPoint
+				: gesture.baselinePoint;
 	return [anchor[0] + dx, anchor[1] + dz];
 }
 
@@ -464,7 +550,11 @@ export function updateLayoutArchitectureEdit(
 	gesture.valid = false;
 	delete gesture.rejectionCode;
 	delete gesture.rejectionMessage;
-	if (gesture.kind === 'junction-move') {
+	if (
+		gesture.kind === 'junction-move' ||
+		gesture.kind === 'curve-control-move' ||
+		gesture.kind === 'wall-bend'
+	) {
 		gesture.candidatePoint = [target[0], target[1]];
 		return [target[0], target[1]];
 	}
@@ -533,9 +623,18 @@ export function architectureEditExclusionOwners(
 export function architectureEditExcludePoints(
 	gesture: LayoutArchitectureEditGesture
 ): LayoutVec2[] {
-	return gesture.kind === 'junction-move'
-		? gesture.junctionExcludePoints.map((point) => [point[0], point[1]] as LayoutVec2)
-		: [];
+	// A rigid Wall move excludes nothing by point — its captured grab point may
+	// legitimately align with a stationary Junction because one translation
+	// merges no endpoint IDs. Both point-anchored gestures do exclude.
+	const points =
+		gesture.kind === 'junction-move'
+			? gesture.junctionExcludePoints
+			: gesture.kind === 'curve-control-move'
+				? gesture.curveExcludePoints
+				: gesture.kind === 'wall-bend'
+					? gesture.bendExcludePoints
+					: [];
+	return points.map((point) => [point[0], point[1]] as LayoutVec2);
 }
 
 /**
@@ -546,7 +645,10 @@ export function architectureEditExcludePoints(
 export function architectureEditAllowedKinds(
 	gesture: LayoutArchitectureEditGesture
 ): readonly SnapFeatureKind[] | undefined {
-	return gesture.kind === 'junction-move' ? LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS : undefined;
+	// Every point-anchored gesture drops the `'junction'` family; only a rigid
+	// Wall move (one delta over two existing endpoint IDs) keeps the full P23.2
+	// ranking.
+	return gesture.kind === 'wall-move' ? undefined : LAYOUT_ARCHITECTURE_JUNCTION_SNAP_KINDS;
 }
 
 export type LayoutInteractionState = {

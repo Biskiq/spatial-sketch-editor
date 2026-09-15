@@ -63,6 +63,10 @@ export type PlanStyleToken =
 	| 'rotation-handle'
 	| 'rotation-feedback'
 	| 'vertex-handle'
+	// P23.11 — one interior control of a curved Wall. Distinct from a Junction
+	// handle because it is transient editing state, not a document vertex.
+	| 'curve-control'
+	| 'curve-control-hovered'
 	| 'interior-anchor'
 	| 'interior-anchor-selected'
 	| 'primitive-ghost'
@@ -84,9 +88,12 @@ export type PlanStyleToken =
 	| 'opening-handle'
 	| 'opening-drag-preview'
 	| 'opening-drag-preview-invalid'
-	// P23.10 — transient direct Wall/Junction edit intent (drawn only while the
-	// canonical planner REJECTS the current candidate: an accepted candidate is
-	// already fully previewed by the installed document).
+	// P23.10 / P23.11 — transient direct Wall/Junction edit intent. Drawn for a
+	// live gesture whose canonical baseline is still installed (the pointermove
+	// proposal), so it is the drag's own feedback rather than a post-hoc refusal:
+	// the plain token is a pending attempt, the invalid token is one a cheap
+	// canonical preflight has already refuted. Acceptance is decided once, at
+	// release, by the canonical planner — never by this style.
 	| 'architecture-edit-intent'
 	| 'architecture-edit-intent-invalid'
 	| 'snap-guide'
@@ -122,7 +129,13 @@ export type PlanHitIdentity =
 	 */
 	| { kind: 'physicalWall'; wallId: string }
 	/** P23.6 — canonical wall-first Junction identity (`junctionId`). */
-	| { kind: 'junction'; junctionId: string };
+	| { kind: 'junction'; junctionId: string }
+	/**
+	 * P23.11 — one interior curve control of a curved Wall, keyed by
+	 * `{ wallId, anchorId }`. Transient editing state: never a `LayoutSelection`
+	 * variant, so this identity only ever styles and targets a control handle.
+	 */
+	| { kind: 'wallCurveControl'; wallId: string; anchorId: string };
 
 /**
  * Renderer-neutral selection descriptor. Mirrors the editor's selection shape

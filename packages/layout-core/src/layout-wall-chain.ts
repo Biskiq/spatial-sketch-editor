@@ -39,6 +39,9 @@ import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
+	projectPointToSampledSegment
+} from './layout-geometry-curve';
+import {
 	extractBoundaryCandidateFaces,
 	type DerivedCandidateFace,
 	type TopologyDiagnostic
@@ -52,8 +55,11 @@ import {
 } from './layout-room-reconciliation';
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
+import { wallCenterlineSamples } from './layout-wall-centerline';
+import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
 import type { LayoutDocumentIssue } from './layout-codec';
 import {
 	coincidesAsJunction,
@@ -72,6 +78,19 @@ import {
 export const WALL_CHAIN_DEFAULTS = {
 	thickness: 0.2
 } as const;
+
+/**
+ * Identity supplied by the authoring snap resolver for one draft point.
+ *
+ * This is relationship acquisition, not geometry: a `wall-span` snap names
+ * the host Wall explicitly. The noder may then normalize the sampled point to
+ * the exact cubic, but it must never turn sampler flatness into a topology
+ * radius for an unsnapped endpoint.
+ */
+export type WallEndpointHostSnap = {
+	pointIndex: number;
+	wallId: string;
+};
 
 /** Why a chain sketch rejected; stable machine codes. */
 export type WallChainRejectionCode =
@@ -187,6 +206,8 @@ export function planWallChain(options: {
 	thickness?: number;
 	height?: number;
 	allocator?: WallChainIdAllocator;
+	/** Existing authoring snap identities, keyed by draft point index. */
+	endpointHostSnaps?: readonly WallEndpointHostSnap[];
 }): WallChainPlan {
 	const allocator = options.allocator ?? defaultChainAllocator();
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
@@ -319,7 +340,10 @@ export function planWallChain(options: {
 			endJunctionId: endId,
 			role: options.role,
 			thickness,
-			height
+			height,
+			// P23.11 — authored chains are straight; curves arrive only through
+			// the canonical curve planners.
+			centerline: { kind: 'line' }
 		};
 		candidate.walls.push(wall);
 		createdWallIds.push(id);
@@ -340,6 +364,11 @@ export function planWallChain(options: {
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
 	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
+	const endpointHostWallIds = new Map<string, string>();
+	for (const snap of options.endpointHostSnaps ?? []) {
+		const junctionId = resolved[snap.pointIndex]?.junctionId;
+		if (junctionId) endpointHostWallIds.set(junctionId, snap.wallId);
+	}
 	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
 	const resolveJunctionId = (junctionId: string): string => {
@@ -360,7 +389,12 @@ export function planWallChain(options: {
 		if (passes > MAX_NODING_PASSES) {
 			return reject({ code: 'noding_rejected', message: 'Chain noding did not converge' });
 		}
-		const fix = nextNodingFix(candidate, [...authoredWallIds], operationOwnedJunctionIds);
+		const fix = nextNodingFix(
+			candidate,
+			[...authoredWallIds],
+			operationOwnedJunctionIds,
+			endpointHostWallIds
+		);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
 		if (fix.kind === 'adopt') {
@@ -643,7 +677,8 @@ function teeThroughJunction(
 function nextNodingFix(
 	document: LayoutDocumentWallFirst,
 	chainDerivedWallIds: readonly string[],
-	operationOwnedJunctionIds: ReadonlySet<string>
+	operationOwnedJunctionIds: ReadonlySet<string>,
+	endpointHostWallIds: ReadonlyMap<string, string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	const segments = new Map<string, TopologySegment>();
@@ -694,6 +729,7 @@ function nextNodingFix(
 				segmentB,
 				chainSet,
 				operationOwnedJunctionIds,
+				endpointHostWallIds,
 				shared
 			);
 			if (projectedTee) return projectedTee;
@@ -771,6 +807,13 @@ function nextNodingFix(
  * by this command may move, and only onto a non-chain host. A chain Wall can
  * reuse a baseline Junction, so Wall lineage alone is not sufficient proof of
  * endpoint ownership.
+ *
+ * Straight hosts retain their existing chord projection. A curved host is a
+ * bounded exception to the straight-only noding rule: the endpoint is first
+ * projected against the canonical sampled centerline, then that sampled arc
+ * distance is resolved once through the exact cubic split authority. The
+ * normalized endpoint and the split distance both come from that resolved
+ * result, so the subsequent split cannot fall back to chord arithmetic.
  */
 function projectedAuthoredEndpointTee(
 	a: LayoutWall,
@@ -779,27 +822,108 @@ function projectedAuthoredEndpointTee(
 	segmentB: TopologySegment,
 	chainSet: ReadonlySet<string>,
 	operationOwnedJunctionIds: ReadonlySet<string>,
+	endpointHostWallIds: ReadonlyMap<string, string>,
 	sharedJunctionIds: readonly string[]
 ): NodingFix | undefined {
 	if (sharedJunctionIds.length > 0) return undefined;
 	const candidates: Array<{
 		endpointWall: LayoutWall;
 		endpointSegment: TopologySegment;
+		hostWall: LayoutWall;
 		hostSegment: TopologySegment;
 	}> = [];
 	if (chainSet.has(a.id) && !chainSet.has(b.id)) {
-		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostSegment: segmentB });
+		candidates.push({ endpointWall: a, endpointSegment: segmentA, hostWall: b, hostSegment: segmentB });
 	}
 	if (chainSet.has(b.id) && !chainSet.has(a.id)) {
-		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostSegment: segmentA });
+		candidates.push({ endpointWall: b, endpointSegment: segmentB, hostWall: a, hostSegment: segmentA });
 	}
-	for (const { endpointWall, endpointSegment, hostSegment } of candidates) {
+	for (const { endpointWall, endpointSegment, hostWall, hostSegment } of candidates) {
 		const endpoints = [
 			{ junctionId: endpointWall.startJunctionId, point: endpointSegment.start },
 			{ junctionId: endpointWall.endJunctionId, point: endpointSegment.end }
 		];
 		for (const endpoint of endpoints) {
 			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
+			const snappedHostWallId = endpointHostWallIds.get(endpoint.junctionId);
+			if (snappedHostWallId !== undefined && snappedHostWallId !== hostWall.id) continue;
+			const hostEndpoints = [
+				{ junctionId: hostWall.startJunctionId, point: hostSegment.start },
+				{ junctionId: hostWall.endJunctionId, point: hostSegment.end }
+			];
+			// The editor normally resolves a Junction snap before this planner. Keep
+			// the same identity rule here for a direct/headless caller too: a host
+			// endpoint is adoption, never a tiny fragment.
+			const coincidentHostEndpoint = hostEndpoints.find((hostEndpoint) =>
+				coincidesAsJunction(endpoint.point, hostEndpoint.point)
+			);
+			if (coincidentHostEndpoint) {
+				return {
+					kind: 'adopt',
+					keepJunctionId: coincidentHostEndpoint.junctionId,
+					duplicateJunctionIds: [endpoint.junctionId]
+				};
+			}
+
+			if (hostWall.centerline.kind === 'cubic-chain') {
+				const sampled = wallCenterlineSamples(
+					hostWall,
+					hostSegment.start,
+					hostSegment.end,
+					'forward'
+				);
+				if (!sampled) continue;
+				const projection = projectPointToSampledSegment(endpoint.point, sampled);
+				// A snapped `wall-span` identity already established the host
+				// relationship. Without that identity, retain only the existing
+				// Junction coincidence tolerance; sampler flatness is normalization
+				// error and must not acquire topology by itself.
+				const hasExplicitHostIdentity = snappedHostWallId === hostWall.id;
+				if (!hasExplicitHostIdentity && projection.distanceToPath > JUNCTION_COINCIDENCE_EPSILON) continue;
+				const resolution = resolveWallCurveSplit(
+					{
+						startPoint: hostSegment.start,
+						endPoint: hostSegment.end,
+						knots: hostWall.centerline.knots,
+						spans: hostWall.centerline.spans
+					},
+					projection.distance
+				);
+				if (resolution.kind === 'rejected') continue;
+				const resolved = resolution.result;
+				// A projection at an existing host endpoint is identity adoption, not
+				// an exact curved split with a near-zero fragment. The direct point
+				// check above handles ordinary snapped endpoints; this also catches a
+				// clamped sampled projection whose arc distance is at the boundary.
+				const hostEndpointAtResolution = hostEndpoints.find((hostEndpoint) =>
+					coincidesAsJunction(resolved.point, hostEndpoint.point)
+				);
+				if (hostEndpointAtResolution) {
+					return {
+						kind: 'adopt',
+						keepJunctionId: hostEndpointAtResolution.junctionId,
+						duplicateJunctionIds: [endpoint.junctionId]
+					};
+				}
+				if (
+					!hasExplicitHostIdentity &&
+					Math.hypot(
+						endpoint.point[0] - resolved.point[0],
+						endpoint.point[1] - resolved.point[1]
+					) > JUNCTION_COINCIDENCE_EPSILON
+				) {
+					continue;
+				}
+				return {
+					kind: 'tee',
+					interiorWallId: hostSegment.id,
+					endpointJunctionId: endpoint.junctionId,
+					splitDistance: resolved.distance,
+					point: [resolved.point[0], resolved.point[1]],
+					projectOwnedEndpoint: true
+				};
+			}
+
 			const dx = hostSegment.end[0] - hostSegment.start[0];
 			const dz = hostSegment.end[1] - hostSegment.start[1];
 			const lengthSquared = dx * dx + dz * dz;
@@ -847,6 +971,32 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 		const end = junctionById.get(wall.endJunctionId);
 		if (!start || !end) continue;
 		entries.push({ wall, segment: { id: wall.id, start: start.point, end: end.point } });
+	}
+	// P23.11 — the chord classifier below is exact for straight/straight
+	// relationships and stays authoritative there. A curved Wall can bow across
+	// a new straight Wall while its endpoint chord never intersects it, so the
+	// canonical sampled crossing authority runs on the built candidate before
+	// commit. It is the SAME gate `validateWallFirstTopology` runs — never a
+	// second crossing algorithm — and any curve crossing that would need
+	// automatic curved noding rejects the whole authoring command.
+	const curveCrossing = detectWallCurveTopologyCrossings(
+		document,
+		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
+	);
+	if (curveCrossing) {
+		return curveCrossing.kind === 'self'
+			? {
+					code: 'self_intersecting_chain',
+					message: `Wall '${curveCrossing.wallId}' centerline intersects itself`,
+					wallIds: [curveCrossing.wallId]
+			  }
+			: {
+					code: 'self_intersecting_chain',
+					message: `Walls '${curveCrossing.wallIds[0]}' and '${curveCrossing.wallIds[1]}' have unsupported ${
+						curveCrossing.sharedJunctionId ? 'crossing away from their shared Junction' : 'centerline crossing'
+					}`,
+					wallIds: [...curveCrossing.wallIds]
+			  };
 	}
 	const segments = entries.map((entry) => entry.segment);
 	for (let first = 0; first < entries.length; first += 1) {
@@ -927,6 +1077,8 @@ export function planWallSegment(options: {
 	thickness?: number;
 	height?: number;
 	allocator?: WallChainIdAllocator;
+	/** Existing `wall-span` snap identity for the authored endpoint. */
+	endpointHostWallId?: string;
 }): WallChainPlan {
 	const startJunction = options.baseline.junctions.find((junction) =>
 		coincidesAsJunction(junction.point, options.start)
@@ -942,6 +1094,9 @@ export function planWallSegment(options: {
 			options.height
 		),
 		...(options.thickness !== undefined ? { thickness: options.thickness } : {}),
+		...(options.endpointHostWallId
+			? { endpointHostSnaps: [{ pointIndex: 1, wallId: options.endpointHostWallId }] }
+			: {}),
 		...(options.allocator !== undefined ? { allocator: options.allocator } : {})
 	});
 }

@@ -73,10 +73,10 @@ function squareDocument(): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3 },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3 }
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [
 			{
@@ -433,7 +433,7 @@ describe('P23.10 gesture — rigid Wall translation', () => {
 		expect(junctionPoint(context, 'A')).toEqual([0, -2]);
 		expect(junctionPoint(context, 'B')).toEqual([4, -2]);
 		const wall = live(context).walls.find((candidate) => candidate.id === 'w1')!;
-		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3 });
+		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const});
 		expect(Math.hypot(4, 0)).toBeCloseTo(baselineLength, 12);
 		expect(live(context).openings).toEqual(squareDocument().openings);
 		// Neighbouring Walls reshape; Room identity is preserved.
@@ -558,10 +558,32 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 		expect(viewport).toContain('layout.junctions.map((junction) => [');
 	});
 
-	it('gates the transient intent through the pure helper, not an inline derivation', () => {
+	it('derives the transient attempt through one pure seam, never inline', () => {
+		// P23.11 transient pass — one pointermove derives the gesture's render-only
+		// attempt from the frozen baseline (`transientArchitectureEdit`, which owns
+		// both the core proposal and the intent gate) and the projection reads the
+		// stored intent. The viewport grows no second derivation of its own.
+		expect(viewport).toContain('architectureEditTransient = transientArchitectureEdit({');
 		expect(viewport).toContain(
-			'architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)'
+			'const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);'
 		);
+		expect(viewport).not.toContain('proposeWallFirstArchitectureGeometry(');
+		expect(viewport).not.toContain('architectureEditIntentFor(');
+	});
+
+	it('runs the canonical planner once per gesture, on release only', () => {
+		// The whole point of the slice: a pointermove may not reach the planner,
+		// the Room/Opening validation, the compile or the installed document.
+		const move = viewport.slice(
+			viewport.indexOf('function previewArchitectureEdit('),
+			viewport.indexOf('function finishArchitectureEditGesture(')
+		);
+		expect(move).not.toContain('planArchitectureEditTarget');
+		expect(move).not.toContain('restoreLayoutPreviewSnapshot');
+		expect(move).not.toContain('updateWallFirst');
+		const release = viewport.slice(viewport.indexOf('function commitArchitectureEditGesture('));
+		expect(release).toContain('releaseArchitectureEdit({');
+		expect(release.split('planArchitectureEditTarget').length - 1).toBe(1);
 	});
 });
 
@@ -677,16 +699,16 @@ describe('P23.10 snapping — baseline geometry, frozen exclusions, family filte
 		).toBe('wall-midpoint');
 	});
 
-	it('renders a rejected candidate as transient intent and a valid one as nothing', () => {
+	it('draws the transient attempt and nothing when there is none', () => {
 		const model = buildLayoutPreviewModel(squareDocument()).model;
 		const base = { drafts: [], selection: [], labels: [] } as unknown as Parameters<
 			typeof withArchitectureEditIntent
 		>[0];
-		const invalid = withArchitectureEditIntent(base, { kind: 'junction-move', point: [9, 9] });
-		expect(invalid.drafts).toHaveLength(1);
-		expect(invalid.drafts[0]).toMatchObject({
+		const attempt = withArchitectureEditIntent(base, { kind: 'junction-move', point: [9, 9] });
+		expect(attempt.drafts).toHaveLength(1);
+		expect(attempt.drafts[0]).toMatchObject({
 			kind: 'circle',
-			style: 'architecture-edit-intent-invalid'
+			style: 'architecture-edit-intent'
 		});
 		const valid = withArchitectureEditIntent(base, null);
 		expect(valid.drafts).toHaveLength(0);

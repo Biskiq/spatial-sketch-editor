@@ -44,6 +44,11 @@
 		updateWallFirstWallLength,
 		updateWallFirstWallHeight,
 		updateWallFirstWallThickness,
+		deleteWallFirstWallCurveKnot,
+		insertWallFirstWallCurveKnot,
+		updateWallFirstWallCurve,
+		updateWallFirstWallCurveKnot,
+		updateWallFirstWallLine,
 		updateWallFirstRectangle,
 		commitWallRoleChange,
 		subdivideWallFirstWall,
@@ -351,6 +356,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		selectedWallFirstWall && wallFirstLayout
 			? precisionWallEndpoints(wallFirstLayout, selectedWallFirstWall)
 			: null
+	);
+	// P23.11 — the selected Wall's own curve. Straight Walls expose no bend
+	// points, so the panel shows the one Convert action instead.
+	const selectedWallFirstWallKnots = $derived(
+		selectedWallFirstWall?.centerline.kind === 'cubic-chain'
+			? selectedWallFirstWall.centerline.knots
+			: []
 	);
 	// P23.6 — canonical wall-first Room Inspector target. Read-only identity
 	// presentation (no wall-first Room metadata operation exists yet);
@@ -1537,6 +1549,112 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	}
 
 	/**
+	 * P23.11 — the selected Wall's own curve, through the same canonical
+	 * planners the Plan control gesture calls (one operation = one history
+	 * entry). Converting plants one control on the exact chord midpoint, so the
+	 * Wall keeps its length, direction and every hosted Opening offset until a
+	 * control is actually moved; deleting the last control converts back to a
+	 * straight Wall rather than leaving an anchor-less curve.
+	 */
+	function setSelectedWallCurved(curved: boolean): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const outcome = runLayoutMutationGuarded(
+			() =>
+				curved
+					? updateWallFirstWallCurve(layoutPreview, wall.id)
+					: updateWallFirstWallLine(layoutPreview, wall.id),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? curved
+					? `Wall ${wall.id} is now curved`
+					: `Wall ${wall.id} is now straight`
+				: `Wall curve rejected: ${outcome.result.message}`
+		);
+	}
+
+	/**
+	 * Add one bend point at the Wall's physical ARC midpoint. The distance is the
+	 * only input: the planner resolves it against the canonical chain and inserts
+	 * at the exact de Casteljau cut, so the Wall keeps its shape and nothing is
+	 * re-derived here.
+	 */
+	function addSelectedWallCurveKnot(): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const compiled = layoutPreview.geometry.walls.find((candidate) => candidate.wallId === wall.id);
+		if (!compiled || !(compiled.length > 0)) {
+			store.setStatusMessage('Wall centerline is unavailable');
+			return;
+		}
+		const outcome = runLayoutMutationGuarded(
+			() => insertWallFirstWallCurveKnot(layoutPreview, wall.id, compiled.length / 2),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? `Added a bend point to Wall ${wall.id}`
+				: `Add bend point rejected: ${outcome.result.message}`
+		);
+	}
+
+	function updateSelectedWallCurveKnot(knotId: string, index: 0 | 1, event: Event): void {
+		const wall = selectedWallFirstWall;
+		const knot = selectedWallFirstWallKnots.find((candidate) => candidate.id === knotId);
+		if (!wall || !knot) return;
+		const previous = knot.point[index];
+		const value = precisionNumber(event, previous, formatMeters);
+		if (value === null) return;
+		const point = [...knot.point] as [number, number];
+		point[index] = value;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstWallCurveKnot(layoutPreview, wall.id, knotId, point),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			(event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+		store.setStatusMessage(
+			outcome.result.success
+				? `Moved bend point ${knotId}`
+				: `Bend point rejected: ${outcome.result.message}`
+		);
+	}
+
+	function deleteSelectedWallCurveKnot(knotId: string): void {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const outcome = runLayoutMutationGuarded(
+			() => deleteWallFirstWallCurveKnot(layoutPreview, wall.id, knotId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		store.setStatusMessage(
+			outcome.result.success
+				? selectedWallFirstWallKnots.length <= 1
+					? `Wall ${wall.id} has no bend points left`
+					: `Removed bend point ${knotId}`
+				: `Remove bend point rejected: ${outcome.result.message}`
+		);
+	}
+
+	/**
 	 * P23.6c — canonical Wall delete through the same planner-backed adapter
 	 * the viewport Delete/Backspace path calls (one operation = one history
 	 * entry). A rejection installs nothing; success clears the canonical
@@ -1884,6 +2002,30 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<label>Height (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWall.height)} onchange={updateSelectedWallHeight} /></label>
 					<label>Add junction at distance from start (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length / 2)} onchange={addSelectedWallJunction} /></label>
 					<label><input type="checkbox" checked={selectedWallFirstWall.role === 'boundary'} onchange={updateSelectedWallRole} /> Defines room boundary</label>
+					<!-- P23.11 — the Wall's own curve. The toggle is the one Convert
+						action (straight ⇄ cubic chain); a curved Wall lists its bend points
+						as exact X/Z edits plus removal, and removing the last bend point
+						leaves a knot-less chain — still a curve, and still exactly the
+						shape it had. Going straight is the toggle, never a side effect. -->
+					<label><input type="checkbox" checked={selectedWallFirstWall.centerline.kind === 'cubic-chain'} onchange={(event) => setSelectedWallCurved((event.currentTarget as HTMLInputElement).checked)} /> Curved wall</label>
+					{#if selectedWallFirstWallKnots.length > 0}
+						<div class="object-room-meta"><span>Bend points</span><strong>{selectedWallFirstWallKnots.length}</strong></div>
+						{#each selectedWallFirstWallKnots as anchor (anchor.id)}
+							<label>Bend point {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 0, event)} /></label>
+							<label>Bend point {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 1, event)} /></label>
+							<div class="layout-opening-actions">
+								<button type="button" onclick={() => deleteSelectedWallCurveKnot(anchor.id)}>Remove bend point</button>
+							</div>
+						{/each}
+					{/if}
+					<!-- P23.11 fix 4 — Add is NOT gated on an existing bend point. A
+						knot-less cubic chain (what removing the last bend point leaves) and
+						a straight Wall both accept one through the same canonical insertion
+						planner, so curve authoring never disappears from view. Going
+						straight stays the explicit toggle above, never a side effect. -->
+					<div class="layout-opening-actions">
+						<button type="button" onclick={addSelectedWallCurveKnot}>Add bend point at midpoint</button>
+					</div>
 					<div class="layout-opening-actions">
 						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
 					</div>

@@ -73,7 +73,8 @@ function documentWithoutRooms(parts: {
 			endJunctionId: end,
 			role: parts.role ?? ('boundary' as const),
 			thickness: 0.2,
-			height: 3
+			height: 3,
+			centerline: { kind: 'line' } as const,
 		})),
 		rooms: [],
 		openings: [],
@@ -292,7 +293,8 @@ describe('P23.0 stage 2 — partition → boundary Room birth', () => {
 					endJunctionId: 'j-c',
 					role: 'partition' as const,
 					thickness: 0.2,
-					height: 3
+					height: 3,
+					centerline: { kind: 'line' } as const,
 				}
 			]
 		};

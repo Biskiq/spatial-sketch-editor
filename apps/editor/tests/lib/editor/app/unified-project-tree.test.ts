@@ -576,12 +576,12 @@ describe('unified project tree — wall-first documents', () => {
 				{ id: 'j4', point: [0, 4] }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8 },
-				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 2.8 },
-				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8 },
-				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8 },
+				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
 				// Partition that bounds no Room; its Opening is not the Room's.
-				{ id: 'w5', startJunctionId: 'j1', endJunctionId: 'j3', role: 'partition', thickness: 0.1, height: 2.8 }
+				{ id: 'w5', startJunctionId: 'j1', endJunctionId: 'j3', role: 'partition', thickness: 0.1, height: 2.8, centerline: { kind: 'line' } as const}
 			],
 			rooms: [
 				{

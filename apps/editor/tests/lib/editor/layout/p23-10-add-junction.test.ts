@@ -74,7 +74,8 @@ function rectangleDocument(): LayoutDocumentWallFirst {
 			endJunctionId,
 			role: 'boundary' as const,
 			thickness: 0.2,
-			height: 3
+			height: 3,
+			centerline: { kind: 'line' } as const
 		})),
 		rooms: [
 			{
@@ -129,7 +130,8 @@ function partitionDocument(direction: 'forward' | 'reverse'): LayoutDocumentWall
 				endJunctionId: end,
 				role: 'partition' as const,
 				thickness: 0.2,
-				height: 3
+				height: 3,
+				centerline: { kind: 'line' } as const,
 			}
 		],
 		rooms: [],

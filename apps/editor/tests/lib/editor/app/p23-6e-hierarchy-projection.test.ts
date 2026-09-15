@@ -86,21 +86,21 @@ function fixtureLayout(): LayoutDocumentWallFirst {
 			{ id: 'j12', point: [3, 1] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8 },
+			{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
 			// Shared by Gallery A, B and C.
-			{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 3.4 },
-			{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w5', startJunctionId: 'j3', endJunctionId: 'j6', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j5', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w7', startJunctionId: 'j5', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w8', startJunctionId: 'j3', endJunctionId: 'j7', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w9', startJunctionId: 'j7', endJunctionId: 'j8', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w10', startJunctionId: 'j8', endJunctionId: 'j9', role: 'boundary', thickness: 0.15, height: 2.8 },
-			{ id: 'w11', startJunctionId: 'j9', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 2.8 },
+			{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 3.4, centerline: { kind: 'line' } as const},
+			{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j1', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w5', startJunctionId: 'j3', endJunctionId: 'j6', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j5', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w7', startJunctionId: 'j5', endJunctionId: 'j2', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w8', startJunctionId: 'j3', endJunctionId: 'j7', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w9', startJunctionId: 'j7', endJunctionId: 'j8', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w10', startJunctionId: 'j8', endJunctionId: 'j9', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
+			{ id: 'w11', startJunctionId: 'j9', endJunctionId: 'j3', role: 'boundary', thickness: 0.15, height: 2.8, centerline: { kind: 'line' } as const},
 			// Partitions: bound no Room; w12 hosts a door.
-			{ id: 'w12', startJunctionId: 'j10', endJunctionId: 'j11', role: 'partition', thickness: 0.1, height: 2.2 },
-			{ id: 'w13', startJunctionId: 'j11', endJunctionId: 'j12', role: 'partition', thickness: 0.1, height: 2.2 }
+			{ id: 'w12', startJunctionId: 'j10', endJunctionId: 'j11', role: 'partition', thickness: 0.1, height: 2.2, centerline: { kind: 'line' } as const},
+			{ id: 'w13', startJunctionId: 'j11', endJunctionId: 'j12', role: 'partition', thickness: 0.1, height: 2.2, centerline: { kind: 'line' } as const}
 		],
 		rooms: [
 			{
@@ -1385,7 +1385,8 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 			endJunctionId: 'j10',
 			role: 'partition',
 			thickness: 0.1,
-			height: 2.2
+			height: 2.2,
+			centerline: { kind: 'line' } as const,
 		});
 		const splitIndex = buildHierarchySourceIndex({ layout: split, scene: fixtureScene() });
 		expect(
@@ -1926,7 +1927,8 @@ describe('P23.6e slice 5 — representation reveal and pinned selection', () => 
 			endJunctionId: `j${index + 2}`,
 			role: 'boundary' as const,
 			thickness: 0.15,
-			height: 2.8
+			height: 2.8,
+			centerline: { kind: 'line' } as const,
 		}));
 		const index = buildHierarchySourceIndex({ layout, scene: fixtureScene() });
 		const walls = buildHierarchyPageProjection(index, { kind: 'walls' });

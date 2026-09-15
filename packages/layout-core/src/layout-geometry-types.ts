@@ -1,5 +1,17 @@
 import type { Vec3 } from './types';
 import type { LayoutOpening, LayoutVec2 } from './layout-types';
+import type { SampleableSegment } from './layout-geometry-curve';
+
+/**
+ * P23.11 — the compiler's room-boundary segment list. Identical to `DraftPath`
+ * for the legacy path, but wide enough to carry the canonical Wall adapter's
+ * `cubic-chain` output, which is derived geometry rather than an authored
+ * `DraftSegment`.
+ */
+export type CompilerBoundarySource = {
+	closed: true;
+	segments: SampleableSegment[];
+};
 
 /**
  * Structured geometry issue. This is the single shared contract between the

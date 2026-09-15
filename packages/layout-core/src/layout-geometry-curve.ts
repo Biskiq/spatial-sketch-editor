@@ -1,10 +1,22 @@
 import type { DraftSegment, LayoutInteriorAnchor, LayoutVec2 } from './layout-types';
 import { coincidesAsJunction } from './layout-junction-identity';
+import { p2311Measure } from './p2311-perf';
 
 export const CURVE_ENDPOINT_EPSILON = 1e-6;
 export const CURVE_FLATNESS_TOLERANCE = 0.01;
 export const CURVE_MAX_SAMPLE_SPAN = 0.25;
 export const CURVE_SELF_INTERSECTION_TOLERANCE = 1e-4;
+/**
+ * P23.11 — absolute arc-length tolerance in metres for cubic quadrature and
+ * arc-length inversion. It bounds only how faithfully a physical distance maps
+ * to a curve parameter; de Casteljau subdivision at the resolved parameter
+ * stays exact. A cubic's speed is smooth, so 16-point Gauss converges on one
+ * panel for every Wall-scale span this kernel sees; the adaptive split exists
+ * for pathological control polygons only.
+ */
+export const CURVE_ARC_LENGTH_TOLERANCE = 1e-6;
+/** Recursion cap for {@link cubicBezierArcLength} (a guard, not a resolution). */
+export const CURVE_ARC_LENGTH_MAX_DEPTH = 12;
 export const LAYOUT_AUTO_BEZIER_ALPHA = 0.5;
 export const MAX_CURVE_SAMPLES_PER_SEGMENT = 100_000;
 
@@ -26,6 +38,37 @@ export type CubicBezierShape = {
 	handleIn: LayoutVec2;
 	end: LayoutVec2;
 };
+
+/**
+ * Control pair for exactly one cubic span: `handleOut` leaves the span's first
+ * point and `handleIn` arrives at its second point, so one span is one cubic.
+ * Structurally identical to the canonical `LayoutWallCubicSpan`, kept general
+ * here so the curve kernel never depends on the canonical Wall schema.
+ */
+export type CubicSpanControls = {
+	handleOut: LayoutVec2;
+	handleIn: LayoutVec2;
+};
+
+/**
+ * P23.11 — the canonical Wall adapter's transient segment shape: explicit
+ * cubic spans already resolved against the Wall's endpoint Junctions. Never
+ * persisted and never a `DraftSegment`: it carries derived geometry, not
+ * authored control points.
+ */
+export type CubicChainSegment = {
+	id: string;
+	kind: 'cubic-chain';
+	cubics: CubicBezierShape[];
+};
+
+/** One non-straight segment shape the sampler understands. */
+export type CurvedSampleableSegment = AutoBezierSegment | CubicChainSegment;
+
+/** Every segment shape the one sampler understands. */
+export type SampleableSegment =
+	| Extract<DraftSegment, { kind: 'line' }>
+	| CurvedSampleableSegment;
 
 export type LegacyBezierSegment = {
 	id: string;
@@ -62,36 +105,102 @@ export function autoBezierAnchorPoints(segment: AutoBezierSegment): LayoutVec2[]
 	return [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
 }
 
-export function compileAutoBezierAnchors(points: readonly LayoutVec2[]): CubicBezierShape[] {
+/**
+ * P23.11 — the one canonical smoothness rule, on the **write** path only.
+ *
+ * Derives one control pair per cubic span from the ordered point sequence:
+ * endpoints get a one-sided tangent, interior points blend both neighbours
+ * centripetally (`LAYOUT_AUTO_BEZIER_ALPHA`). {@link spansToCubics} turns the
+ * result back into cubic geometry.
+ *
+ * The read path never calls this. A canonical Wall persists the derived spans,
+ * so evaluation, subdivision and translation all consume stored controls
+ * exactly — that is what makes an exact split possible. Callers here are the
+ * planners that author or move a bend point.
+ */
+export function deriveChainSpans(points: readonly LayoutVec2[]): CubicSpanControls[] {
 	if (points.length === 0) return [];
 	if (points.length === 1) {
 		const point = clonePoint(points[0]!);
-		return [{ start: point, handleOut: clonePoint(point), handleIn: clonePoint(point), end: clonePoint(point) }];
+		return [{ handleOut: clonePoint(point), handleIn: clonePoint(point) }];
 	}
 	if (points.length === 2 && !coincidesAsJunction(points[0]!, points[1]!)) {
 		const start = clonePoint(points[0]!);
 		const end = clonePoint(points[1]!);
-		return [{ start, handleOut: lerp(start, end, 1 / 3), handleIn: lerp(start, end, 2 / 3), end }];
+		return [{ handleOut: lerp(start, end, 1 / 3), handleIn: lerp(start, end, 2 / 3) }];
 	}
 
 	const tangents = points.map((_point, index) => createAutomaticTangent(points, index));
-	const cubics: CubicBezierShape[] = [];
+	const spans: CubicSpanControls[] = [];
 	for (let index = 0; index < points.length - 1; index += 1) {
-		const start = clonePoint(points[index]!);
-		const end = clonePoint(points[index + 1]!);
-		const interval = centripetalInterval(start, end);
-		if (interval === 0) {
-			cubics.push({ start, handleOut: clonePoint(start), handleIn: clonePoint(end), end });
-			continue;
-		}
-		cubics.push({
-			start,
-			handleOut: addScaled(start, tangents[index]!, interval / 3),
-			handleIn: addScaled(end, tangents[index + 1]!, -interval / 3),
-			end
-		});
+		spans.push(
+			spanControlsFromTangents(points[index]!, points[index + 1]!, tangents[index]!, tangents[index + 1]!)
+		);
 	}
-	return cubics;
+	return spans;
+}
+
+/**
+ * Turn one interval's two endpoint tangents into the stored control pair — the
+ * single place the canonical smoothness rule becomes a cubic span. Both the
+ * whole-chain write path and the single-span local reshape read it, so a local
+ * move cannot drift from a full re-derivation.
+ */
+function spanControlsFromTangents(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	startTangent: LayoutVec2,
+	endTangent: LayoutVec2
+): CubicSpanControls {
+	const interval = centripetalInterval(start, end);
+	if (interval === 0) return { handleOut: clonePoint(start), handleIn: clonePoint(end) };
+	return {
+		handleOut: addScaled(start, startTangent, interval / 3),
+		handleIn: addScaled(end, endTangent, -interval / 3)
+	};
+}
+
+/**
+ * P23.11 — the canonical smoothness rule for exactly one span: the control pair
+ * span `index` would receive on the whole-chain write path.
+ *
+ * Exported so a local bend-point move can reshape only the spans touching the
+ * moved knot without re-deriving the rest of the chain. A persisted chain's
+ * untouched spans may come from an exact de Casteljau subdivision or an
+ * identity-preserving knot insertion, whose controls are **not** what the
+ * smoothness rule would produce from their remaining points — re-deriving them
+ * would silently refit geometry the author never touched.
+ */
+export function deriveCubicSpanControls(
+	points: readonly LayoutVec2[],
+	index: number
+): CubicSpanControls {
+	return spanControlsFromTangents(
+		points[index]!,
+		points[index + 1]!,
+		createAutomaticTangent(points, index),
+		createAutomaticTangent(points, index + 1)
+	);
+}
+
+/**
+ * Pair each span with the points it spans: cubic `i` runs
+ * `points[i] → points[i + 1]`, so `spans.length` is `points.length - 1`.
+ */
+export function spansToCubics(
+	points: readonly LayoutVec2[],
+	spans: readonly CubicSpanControls[]
+): CubicBezierShape[] {
+	return spans.map((span, index) => ({
+		start: clonePoint(points[index]!),
+		handleOut: clonePoint(span.handleOut),
+		handleIn: clonePoint(span.handleIn),
+		end: clonePoint(points[index + 1]!)
+	}));
+}
+
+export function compileAutoBezierAnchors(points: readonly LayoutVec2[]): CubicBezierShape[] {
+	return spansToCubics(points, deriveChainSpans(points));
 }
 
 export function legacyBezierToAutoBezier(segment: LegacyBezierSegment): AutoBezierSegment {
@@ -124,6 +233,96 @@ export function cubicBezierPoint(segment: CubicBezierShape, t: number): LayoutVe
 	];
 }
 
+/** 16-point Gauss-Legendre abscissae on [-1, 1]. */
+const GAUSS_LEGENDRE_ABSCISSAE = [
+	-0.09501250983763744, 0.09501250983763744, -0.2816035507792589, 0.2816035507792589,
+	-0.4580167776572274, 0.4580167776572274, -0.6178762444026438, 0.6178762444026438,
+	-0.755404408355003, 0.755404408355003, -0.8656312023878318, 0.8656312023878318,
+	-0.9445750230732326, 0.9445750230732326, -0.9894009349916499, 0.9894009349916499
+];
+/** 16-point Gauss-Legendre weights, paired with the abscissae above. */
+const GAUSS_LEGENDRE_WEIGHTS = [
+	0.1894506104550685, 0.1894506104550685, 0.1826034150449236, 0.1826034150449236,
+	0.16915651939500254, 0.16915651939500254, 0.14959598881657673, 0.14959598881657673,
+	0.12462897125553387, 0.12462897125553387, 0.09515851168249278, 0.09515851168249278,
+	0.06225352393864789, 0.06225352393864789, 0.027152459411754096, 0.027152459411754096
+];
+
+/** Cubic speed (|dP/dt|) — the integrand of arc length. */
+function cubicBezierSpeed(segment: CubicBezierShape, t: number): number {
+	const derivative = cubicBezierDerivative(segment, t);
+	return Math.hypot(derivative[0], derivative[1]);
+}
+
+/** One 16-point Gauss-Legendre panel of the cubic's speed over `[t0, t1]`. */
+function gaussSpeedPanel(segment: CubicBezierShape, t0: number, t1: number): number {
+	const half = (t1 - t0) / 2;
+	const middle = (t0 + t1) / 2;
+	let sum = 0;
+	for (let index = 0; index < GAUSS_LEGENDRE_ABSCISSAE.length; index += 1) {
+		sum +=
+			GAUSS_LEGENDRE_WEIGHTS[index]! *
+			cubicBezierSpeed(segment, middle + half * GAUSS_LEGENDRE_ABSCISSAE[index]!);
+	}
+	return sum * half;
+}
+
+function adaptiveArcLength(
+	segment: CubicBezierShape,
+	t0: number,
+	t1: number,
+	whole: number,
+	tolerance: number,
+	depth: number
+): number {
+	const middle = (t0 + t1) / 2;
+	const left = gaussSpeedPanel(segment, t0, middle);
+	const right = gaussSpeedPanel(segment, middle, t1);
+	const refined = left + right;
+	if (depth >= CURVE_ARC_LENGTH_MAX_DEPTH || Math.abs(refined - whole) <= tolerance) return refined;
+	return (
+		adaptiveArcLength(segment, t0, middle, left, tolerance / 2, depth + 1) +
+		adaptiveArcLength(segment, middle, t1, right, tolerance / 2, depth + 1)
+	);
+}
+
+/**
+ * True arc length of one cubic between two parameters. The canonical Wall
+ * chain stores explicit cubics, so chain length, arc-length inversion and
+ * fragment metrics all measure real geometry here rather than a chord or a
+ * flattened polyline.
+ */
+export function cubicBezierArcLengthBetween(
+	segment: CubicBezierShape,
+	t0 = 0,
+	t1 = 1,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	const from = Math.min(t0, t1);
+	const to = Math.max(t0, t1);
+	if (!(to > from)) return 0;
+	const whole = gaussSpeedPanel(segment, from, to);
+	if (!Number.isFinite(whole)) return 0;
+	return adaptiveArcLength(segment, from, to, whole, tolerance, 0);
+}
+
+/** Arc length of one cubic from its start (parameter 0) to `t`. */
+export function cubicBezierArcLengthAt(
+	segment: CubicBezierShape,
+	t: number,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	return cubicBezierArcLengthBetween(segment, 0, clamp01(t), tolerance);
+}
+
+/** Total arc length of one cubic (parameters 0 → 1). */
+export function cubicBezierArcLength(
+	segment: CubicBezierShape,
+	tolerance = CURVE_ARC_LENGTH_TOLERANCE
+): number {
+	return cubicBezierArcLengthBetween(segment, 0, 1, tolerance);
+}
+
 export function cubicBezierDerivative(segment: CubicBezierShape, t: number): LayoutVec2 {
 	const u = 1 - clamp01(t);
 	const tt = clamp01(t);
@@ -133,7 +332,36 @@ export function cubicBezierDerivative(segment: CubicBezierShape, t: number): Lay
 	];
 }
 
-export function segmentPointAt(segment: DraftSegment, t: number): LayoutVec2 {
+/**
+ * Ordered chain vertices of any sampleable segment, `start … end` inclusive.
+ * One helper so every consumer of the adapter output (face polygons, room
+ * frames, validation outlines) reads the chain through the same seam.
+ */
+export function segmentVertexPoints(segment: SampleableSegment): LayoutVec2[] {
+	if (segment.kind === 'line') {
+		return [[...segment.start] as LayoutVec2, [...segment.end] as LayoutVec2];
+	}
+	if (segment.kind === 'cubic-chain') {
+		return [
+			[...segment.cubics[0]!.start] as LayoutVec2,
+			...segment.cubics.map((cubic) => [...cubic.end] as LayoutVec2)
+		];
+	}
+	return [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
+}
+
+/**
+ * The cubic list of a non-straight segment: stored spans for the canonical
+ * chain, the derived spline for a legacy `auto-bezier` anchor list. The single
+ * place either shape becomes cubics.
+ */
+function curvedCubics(segment: CurvedSampleableSegment): CubicBezierShape[] {
+	return segment.kind === 'cubic-chain'
+		? segment.cubics
+		: compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+}
+
+export function segmentPointAt(segment: SampleableSegment, t: number): LayoutVec2 {
 	if (segment.kind === 'line') {
 		const amount = clamp01(t);
 		return [
@@ -144,17 +372,29 @@ export function segmentPointAt(segment: DraftSegment, t: number): LayoutVec2 {
 	return autoBezierPointAt(segment, t);
 }
 
-export function segmentTangentAt(segment: DraftSegment, t: number): LayoutVec2 {
+export function segmentTangentAt(segment: SampleableSegment, t: number): LayoutVec2 {
 	if (segment.kind === 'line') return normalize([segment.end[0] - segment.start[0], segment.end[1] - segment.start[1]], [1, 0]);
 	return normalize(autoBezierDerivativeAt(segment, t), fallbackTangent(segment));
 }
 
-export function segmentLength(segment: DraftSegment): number {
+export function segmentLength(segment: SampleableSegment): number {
 	return sampleSegment(segment).length;
 }
 
 export function sampleSegment(
-	segment: DraftSegment,
+	segment: SampleableSegment,
+	options: {
+		flatnessTolerance?: number;
+		maxSampleSpan?: number;
+		maxDepth?: number;
+		maxSamples?: number;
+	} = {}
+): SampledSegment {
+	return p2311Measure('curve-sampling', () => sampleSegmentUnmeasured(segment, options));
+}
+
+function sampleSegmentUnmeasured(
+	segment: SampleableSegment,
 	options: {
 		flatnessTolerance?: number;
 		maxSampleSpan?: number;
@@ -176,7 +416,7 @@ export function sampleSegment(
 		);
 	}
 
-	const cubics = compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+	const cubics = curvedCubics(segment);
 	const pointsWithT: { point: LayoutVec2; t: number }[] = [];
 	for (const [cubicIndex, cubic] of cubics.entries()) {
 		const localParameters = adaptiveParameters(cubic, flatnessTolerance, maxSampleSpan, maxDepth);
@@ -200,7 +440,11 @@ export function sampleSegment(
 		}
 	}
 	if (pointsWithT.length === 0) {
-		pointsWithT.push({ point: [...segment.start], t: 0 }, { point: [...segment.end], t: 1 });
+		const vertices = segmentVertexPoints(segment);
+		pointsWithT.push(
+			{ point: [...vertices[0]!] as LayoutVec2, t: 0 },
+			{ point: [...vertices.at(-1)!] as LayoutVec2, t: 1 }
+		);
 	}
 	return buildSampledSegment(segment.id, pointsWithT, segment, cubics);
 }
@@ -305,18 +549,115 @@ export function projectPointToSampledSegment(point: LayoutVec2, sampled: Sampled
 	return best ?? { ...pointAtDistance(sampled, 0), distanceToPath: distance(point, sampled.samples[0]?.point ?? [0, 0]) };
 }
 
+/**
+ * A sampled segment's tolerance-expanded axis-aligned bounding box. The
+ * expansion is the predicate's own `tolerance`, which is what makes the broad
+ * phase below conservative: every pair the exact predicate can accept has
+ * overlapping expanded boxes (a proper crossing meets inside both boxes, and
+ * the endpoint branches require per-axis proximity within `tolerance`).
+ */
+type SegmentBox = { minX: number; maxX: number; minY: number; maxY: number };
+
+function segmentBoxes(points: readonly LayoutVec2[], tolerance: number): SegmentBox[] {
+	const boxes: SegmentBox[] = [];
+	for (let index = 1; index < points.length; index += 1) {
+		const start = points[index - 1]!;
+		const end = points[index]!;
+		boxes.push({
+			minX: Math.min(start[0], end[0]) - tolerance,
+			maxX: Math.max(start[0], end[0]) + tolerance,
+			minY: Math.min(start[1], end[1]) - tolerance,
+			maxY: Math.max(start[1], end[1]) + tolerance
+		});
+	}
+	return boxes;
+}
+
+/**
+ * The one **candidate-pair sweep** behind both polyline predicates.
+ *
+ * The exact predicates are pairwise over sampled segments, so a long curve
+ * (`~4k` samples for a deep bow) makes the naive double loop quadratic and
+ * dominates a Bend gesture's crossing validation. This sweeps the segments in
+ * ascending lower-X order with an active list, and calls `visit` only for pairs
+ * whose tolerance-expanded boxes overlap in both axes. Box overlap is a
+ * *superset* of the pairs the predicate can accept, so pruning can only remove
+ * pairs that would have been rejected anyway: the answer — and therefore the
+ * crossing classification, rejection and issue — is identical.
+ *
+ * `visit` receives an unordered pair, and stops the sweep by returning `true`.
+ */
+function sweepSegmentPairs(
+	boxes: readonly SegmentBox[],
+	visit: (first: number, second: number) => boolean
+): boolean {
+	const order = boxes.map((_box, index) => index);
+	// Ascending lower X: `sort` is specified stable, so equal spans keep index
+	// order and the candidate sequence stays deterministic between runs.
+	order.sort((a, b) => boxes[a]!.minX - boxes[b]!.minX);
+	const active: number[] = [];
+	for (const index of order) {
+		const box = boxes[index]!;
+		let kept = 0;
+		for (let read = 0; read < active.length; read += 1) {
+			const candidate = active[read]!;
+			if (boxes[candidate]!.maxX >= box.minX) active[kept++] = candidate;
+		}
+		active.length = kept;
+		for (const candidate of active) {
+			const other = boxes[candidate]!;
+			if (other.minY > box.maxY || other.maxY < box.minY) continue;
+			if (visit(candidate, index)) return true;
+		}
+		active.push(index);
+	}
+	return false;
+}
+
 export function sampledPolylineIntersects(
 	first: readonly CurveSample[],
 	second: readonly CurveSample[],
 	tolerance = CURVE_SELF_INTERSECTION_TOLERANCE,
 	ignoreSharedEndpoint?: LayoutVec2
 ): boolean {
-	for (let firstIndex = 1; firstIndex < first.length; firstIndex += 1) {
-		for (let secondIndex = 1; secondIndex < second.length; secondIndex += 1) {
-			const firstStart = first[firstIndex - 1]!.point;
-			const firstEnd = first[firstIndex]!.point;
-			const secondStart = second[secondIndex - 1]!.point;
-			const secondEnd = second[secondIndex]!.point;
+	const firstSegments = first.length - 1;
+	const secondSegments = second.length - 1;
+	if (firstSegments <= 0 || secondSegments <= 0) return false;
+	// Aliased input is the one shape the sweep cannot express (it would pair a
+	// segment with itself); no caller passes one, so it keeps the literal
+	// every-pair loop rather than silently changing its answer.
+	if (first === second) return aliasedPolylineIntersects(first, tolerance, ignoreSharedEndpoint);
+	const firstPoints = first.map((sample) => sample.point);
+	const secondPoints = second.map((sample) => sample.point);
+	const boxes = [...segmentBoxes(firstPoints, tolerance), ...segmentBoxes(secondPoints, tolerance)];
+	return sweepSegmentPairs(boxes, (left, right) => {
+		const leftIsFirst = left < firstSegments;
+		// The canonical loop pairs every first-polyline segment with every
+		// second-polyline segment, and nothing else.
+		if (leftIsFirst === right < firstSegments) return false;
+		const firstIndex = leftIsFirst ? left : right;
+		const secondIndex = (leftIsFirst ? right : left) - firstSegments;
+		const firstStart = firstPoints[firstIndex]!;
+		const firstEnd = firstPoints[firstIndex + 1]!;
+		const secondStart = secondPoints[secondIndex]!;
+		const secondEnd = secondPoints[secondIndex + 1]!;
+		if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) return false;
+		return polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance);
+	});
+}
+
+/** The literal every-pair loop, kept only for aliased `sampledPolylineIntersects`. */
+function aliasedPolylineIntersects(
+	samples: readonly CurveSample[],
+	tolerance: number,
+	ignoreSharedEndpoint?: LayoutVec2
+): boolean {
+	for (let firstIndex = 1; firstIndex < samples.length; firstIndex += 1) {
+		for (let secondIndex = 1; secondIndex < samples.length; secondIndex += 1) {
+			const firstStart = samples[firstIndex - 1]!.point;
+			const firstEnd = samples[firstIndex]!.point;
+			const secondStart = samples[secondIndex - 1]!.point;
+			const secondEnd = samples[secondIndex]!.point;
 			if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) continue;
 			if (polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance)) return true;
 		}
@@ -328,25 +669,93 @@ export function sampledPolylineSelfIntersects(
 	samples: readonly CurveSample[],
 	tolerance = CURVE_SELF_INTERSECTION_TOLERANCE
 ): boolean {
-	for (let firstIndex = 0; firstIndex < samples.length - 1; firstIndex += 1) {
-		for (let secondIndex = firstIndex + 2; secondIndex < samples.length - 1; secondIndex += 1) {
-			if (firstIndex === 0 && secondIndex === samples.length - 2) continue;
-			if (polylineSegmentsIntersect(samples[firstIndex]!.point, samples[firstIndex + 1]!.point, samples[secondIndex]!.point, samples[secondIndex + 1]!.point, tolerance)) return true;
+	// Segments 0..n-2; a segment is never paired with its immediate neighbour
+	// (they share an endpoint by construction) and the (first, last) pair is the
+	// closed-loop return the canonical loop always skipped.
+	const segmentCount = samples.length - 1;
+	if (segmentCount < 3) return false;
+	const points = samples.map((sample) => sample.point);
+	const boxes = segmentBoxes(points, tolerance);
+	return sweepSegmentPairs(boxes, (left, right) => {
+		const low = Math.min(left, right);
+		const high = Math.max(left, right);
+		if (high - low < 2) return false;
+		if (low === 0 && high === segmentCount - 1) return false;
+		return polylineSegmentsIntersect(points[low]!, points[low + 1]!, points[high]!, points[high + 1]!, tolerance);
+	});
+}
+
+/**
+ * P23.11 — the ONE authored Wall-distance metric.
+ *
+ * A sample's `distance` is the **true cubic arc length** from the segment start
+ * to that sample's parameter, not the cumulative chord of the sampled polyline.
+ * The two differ by the sampler's own flatness error, which is large enough to
+ * misplace an authored meter: the editor's Wall hits and the Openings they
+ * place expose these distances, and the exact cubic split resolves a distance
+ * into a subdivision parameter. Measuring one surface in chord-summed metres
+ * and interpreting it as true arc (or vice versa) is what made a bend land
+ * slightly off the grabbed point, an Opening-edge split misclassify as a
+ * straddle and a rebased Opening drift.
+ *
+ * Straight segments and straight cubics are unaffected: their arc length IS
+ * their chord, so line segments keep the exact chord accumulation below and a
+ * collinear chain reports its chord to quadrature tolerance.
+ */
+function trueArcSampleDistances(
+	pointsWithT: readonly { point: LayoutVec2; t: number }[],
+	cubics: readonly CubicBezierShape[]
+): number[] {
+	const distances: number[] = [];
+	let running = 0;
+	let currentIndex = -1;
+	let currentLocal = 0;
+	for (const entry of pointsWithT) {
+		const scaled = clamp01(entry.t) * cubics.length;
+		let index = Math.min(cubics.length - 1, Math.floor(scaled));
+		let local = clamp01(scaled - index);
+		// Guard against global-parameter rounding at a cubic boundary, so a
+		// walk can never step backwards inside one cubic.
+		if (currentIndex >= 0 && (index < currentIndex || (index === currentIndex && local < currentLocal))) {
+			index = currentIndex;
+			local = currentLocal;
 		}
+		if (currentIndex < 0) {
+			running += cubicBezierArcLengthBetween(cubics[0]!, 0, local);
+		} else if (index === currentIndex) {
+			running += cubicBezierArcLengthBetween(cubics[index]!, currentLocal, local);
+		} else {
+			running += cubicBezierArcLengthBetween(cubics[currentIndex]!, currentLocal, 1);
+			for (let skipped = currentIndex + 1; skipped < index; skipped += 1) {
+				running += cubicBezierArcLength(cubics[skipped]!);
+			}
+			running += cubicBezierArcLengthBetween(cubics[index]!, 0, local);
+		}
+		currentIndex = index;
+		currentLocal = local;
+		distances.push(running);
 	}
-	return false;
+	return distances;
 }
 
 function buildSampledSegment(
 	segmentId: string,
 	pointsWithT: readonly { point: LayoutVec2; t: number }[],
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	cubics?: readonly CubicBezierShape[]
 ): SampledSegment {
 	const points = pointsWithT.map((entry) => entry.point);
-	const distances = [0];
-	for (let index = 1; index < points.length; index += 1) {
-		distances.push(distances[index - 1]! + distance(points[index - 1]!, points[index]!));
+	let distances: number[];
+	// Only the canonical cubic-chain segment adopts the true-arc metric. The
+	// legacy Room-owned `auto-bezier` shape keeps its chord accumulation, so
+	// legacy golden output stays byte-identical.
+	if (cubics && cubics.length > 0 && segment.kind === 'cubic-chain') {
+		distances = trueArcSampleDistances(pointsWithT, cubics);
+	} else {
+		distances = [0];
+		for (let index = 1; index < points.length; index += 1) {
+			distances.push(distances[index - 1]! + distance(points[index - 1]!, points[index]!));
+		}
 	}
 	const length = distances.at(-1) ?? 0;
 	const samples = pointsWithT.map((entry, index) => {
@@ -362,24 +771,32 @@ function buildSampledSegment(
 	return { segmentId, length, samples };
 }
 
-function autoBezierPointAt(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>, t: number): LayoutVec2 {
+function autoBezierPointAt(segment: CurvedSampleableSegment, t: number): LayoutVec2 {
 	const { cubic, localT } = resolveAutoBezierCubic(segment, t);
 	return cubicBezierPoint(cubic, localT);
 }
 
-function autoBezierDerivativeAt(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>, t: number): LayoutVec2 {
+function autoBezierDerivativeAt(segment: CurvedSampleableSegment, t: number): LayoutVec2 {
 	const { cubic, localT } = resolveAutoBezierCubic(segment, t);
 	return cubicBezierDerivative(cubic, localT);
 }
 
 function resolveAutoBezierCubic(
-	segment: Extract<DraftSegment, { kind: 'auto-bezier' }>,
+	segment: CurvedSampleableSegment,
 	t: number
 ): { cubic: CubicBezierShape; localT: number } {
-	const cubics = compileAutoBezierAnchors(autoBezierAnchorPoints(segment));
+	const cubics = curvedCubics(segment);
 	if (cubics.length === 0) {
+		const vertices = segmentVertexPoints(segment);
+		const start = vertices[0] ?? ([0, 0] as LayoutVec2);
+		const end = vertices.at(-1) ?? start;
 		return {
-			cubic: { start: [...segment.start], handleOut: [...segment.start], handleIn: [...segment.end], end: [...segment.end] },
+			cubic: {
+				start: [...start] as LayoutVec2,
+				handleOut: [...start] as LayoutVec2,
+				handleIn: [...end] as LayoutVec2,
+				end: [...end] as LayoutVec2
+			},
 			localT: clamp01(t)
 		};
 	}
@@ -436,10 +853,8 @@ function lineParameters(
 	return parameters;
 }
 
-function assertFiniteSamplingInput(segment: DraftSegment): void {
-	const points = segment.kind === 'line'
-		? [segment.start, segment.end]
-		: [segment.start, ...segment.interiorAnchors.map((anchor) => anchor.point), segment.end];
+function assertFiniteSamplingInput(segment: SampleableSegment): void {
+	const points = segmentVertexPoints(segment);
 	if (!points.every((point) => point.every(Number.isFinite))) {
 		throw new LayoutGeometrySamplingError(
 			'sampling_output_invalid',
@@ -488,12 +903,12 @@ function adaptiveParameters(
 function tangentFromSamples(
 	points: readonly LayoutVec2[],
 	index: number,
-	segment: DraftSegment,
+	segment: SampleableSegment,
 	t: number,
 	cubics?: readonly CubicBezierShape[]
 ): LayoutVec2 {
 	const tangent =
-		cubics && cubics.length > 0 && segment.kind === 'auto-bezier'
+		cubics && cubics.length > 0 && segment.kind !== 'line'
 			? normalize(autoBezierDerivativeAtFromCubics(cubics, t), fallbackTangent(segment))
 			: segmentTangentAt(segment, t);
 	if (length(tangent) > CURVE_ENDPOINT_EPSILON) return tangent;
@@ -501,8 +916,10 @@ function tangentFromSamples(
 	return index + 1 < points.length ? normalize(subtract(points[index + 1]!, points[index]!), [1, 0]) : [1, 0];
 }
 
-function fallbackTangent(segment: Extract<DraftSegment, { kind: 'auto-bezier' }>): LayoutVec2 {
-	return normalize(subtract(segment.end, segment.start), [1, 0]);
+function fallbackTangent(segment: CurvedSampleableSegment): LayoutVec2 {
+	const vertices = segmentVertexPoints(segment);
+	if (vertices.length < 2) return [1, 0];
+	return normalize(subtract(vertices.at(-1)!, vertices[0]!), [1, 0]);
 }
 
 function evaluateCubicBezierPoint(segment: CubicBezierShape, t: number): LayoutVec2 {

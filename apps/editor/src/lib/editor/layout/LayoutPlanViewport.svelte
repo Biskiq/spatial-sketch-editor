@@ -1,9 +1,15 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import type { SceneDocument, SceneEntity } from '$lib/content/scene';
 	import type { LayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 	import type { Vec3 } from '$lib/types/scene';
 	import type { LayoutPreviewModel } from './layout-mesh-factory';
+	import {
+		resolveEditorCommandIntent,
+		resolveEditorPlatform,
+		type EditorCommandId,
+		type EditorModifierSnapshot
+	} from '../editor-command-intent';
 	import {
 		addPolygonPoint,
 		advanceWallChainContinuation,
@@ -87,6 +93,8 @@
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
+		updateWallFirstWallBend,
+		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
 		createWallFirstOpening,
 		type LayoutPreviewSnapshot
@@ -114,8 +122,10 @@
 	} from './layout-plan-transform';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
+	import type { PlanCurveControlCandidate } from './plan-hit';
 	import type { PlanHitIdentity } from '$lib/layout/plan-render-model';
 	import { buildPlanSceneFootprintProjection } from './plan-scene-footprint';
 	import { resolvePlanSceneHitAtZoom, PLAN_SCENE_HIT_HALO_PX } from './plan-scene-hit';
@@ -138,7 +148,6 @@
 	import type { PlanViewMode } from './layout-interaction';
 	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
-		architectureEditIntentFor,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
@@ -166,6 +175,12 @@
 		type SnapInputContext,
 		type SnapResolution
 	} from '@portfolio/layout-core';
+	import {
+		releaseArchitectureEdit,
+		restoreTransientArchitectureBaseline,
+		transientArchitectureEdit,
+		type LayoutTransientArchitectureEdit
+	} from './layout-transient-edit';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
 	import { planCameraProjectionForProject } from './plan-camera-projection';
 	import PlanSvg from './PlanSvg.svelte';
@@ -198,6 +213,7 @@
 		onWallOpeningDelete,
 		onWallDelete,
 		onWallJunctionAdd,
+		onWallBendPointAdd,
 		onRoomDelete,
 		onRoomRemove,
 		onLayoutTransactionBegin,
@@ -231,7 +247,7 @@
 		onSceneDelete?: () => boolean;
 		onCommit: (points: LayoutVec2[]) => boolean;
 	/** P23.9 segment-first — commit one Wall/Partition segment (one history entry). Returns the canonical Junctions for continuation. */
-	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2) => {
+	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2, endpointHostWallId?: string) => {
 		success: boolean;
 		startJunctionId?: string;
 		endJunctionId?: string;
@@ -254,6 +270,14 @@
 		 * mounts that cannot subdivide; then no Add-junction item is offered.
 		 */
 		onWallJunctionAdd?: (wallId: string, splitDistance: number) => void;
+		/**
+		 * P23.11 — canonical bend-point insertion from a resolved physical-Wall hit
+		 * (the context-menu **Add bend point here** command). `bendDistance` is the
+		 * same hit projection's canonical-start meters the junction command uses,
+		 * so the menu action and the Bend gesture share one insertion authority.
+		 * Omitted by mounts that cannot insert; then no item is offered.
+		 */
+		onWallBendPointAdd?: (wallId: string, bendDistance: number) => void;
 		onRoomDelete: (roomId: string) => boolean;
 		/**
 		 * P23.6d — canonical wall-first Room removal (guard-railed `planRemoveRoom`).
@@ -307,6 +331,31 @@
 	// computed at the raw pointer world position; null clears feedback.
 	let snapFeedback = $state<SnapResolution | null>(null);
 
+	/**
+	 * P23.11 — the Bend modifier is a **named command**, not a key.
+	 *
+	 * The platform is detected once here (the only impure step, and the only
+	 * place a raw modifier flag is read) and the pointer-down path asks the pure
+	 * resolver which commands are live. Nothing downstream inspects
+	 * `event.metaKey` / `event.altKey`, so remapping the command later is a
+	 * binding-table change with no consumer edit.
+	 */
+	const editorPlatform = resolveEditorPlatform(
+		typeof navigator === 'undefined'
+			? null
+			: { platform: navigator.platform, userAgent: navigator.userAgent }
+	);
+
+	function commandIntentFor(event: PointerEvent): ReadonlySet<EditorCommandId> {
+		const snapshot: EditorModifierSnapshot = {
+			meta: event.metaKey,
+			ctrl: event.ctrlKey,
+			alt: event.altKey,
+			shift: event.shiftKey
+		};
+		return resolveEditorCommandIntent(snapshot, editorPlatform);
+	}
+
 	function clearLayoutSnapFeedback(): void {
 		snapFeedback = null;
 	}
@@ -318,6 +367,35 @@
 	 * exactly like the legacy `snapToGrid` call it replaces. Snap-off returns
 	 * the raw point and clears any live feedback (toggle clear rule).
 	 */
+	function resolveLayoutSnapCandidate(
+		point: LayoutVec2,
+		options: {
+			allowedKinds?: SnapFeatureKind[];
+			excludeOwners?: ReadonlySet<string>;
+			excludePoints?: readonly LayoutVec2[];
+		} = {}
+	): { point: LayoutVec2; resolution: SnapResolution } {
+		if (!interaction.planView.snapEnabled) {
+			clearLayoutSnapFeedback();
+			return { point, resolution: { kind: 'none' } };
+		}
+		const input: SnapInputContext = {};
+		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
+		if (options.excludeOwners) input.excludeOwners = options.excludeOwners;
+		if (options.excludePoints) input.excludePoints = options.excludePoints;
+		const resolution = p2311Measure('snap-resolution', () => resolveLayoutSnap(
+			preview.geometry,
+			point,
+			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
+			input
+		));
+		snapFeedback = resolution;
+		return {
+			point: resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : point,
+			resolution
+		};
+	}
+
 	function applyLayoutSnap(
 		point: LayoutVec2,
 		options: {
@@ -326,22 +404,7 @@
 			excludePoints?: readonly LayoutVec2[];
 		} = {}
 	): LayoutVec2 {
-		if (!interaction.planView.snapEnabled) {
-			clearLayoutSnapFeedback();
-			return point;
-		}
-		const input: SnapInputContext = {};
-		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
-		if (options.excludeOwners) input.excludeOwners = options.excludeOwners;
-		if (options.excludePoints) input.excludePoints = options.excludePoints;
-		const resolution = resolveLayoutSnap(
-			preview.geometry,
-			point,
-			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
-			input
-		);
-		snapFeedback = resolution;
-		return resolution.kind === 'snap' ? [...resolution.candidate.point] as LayoutVec2 : point;
+		return resolveLayoutSnapCandidate(point, options).point;
 	}
 	// ── P23.10 direct architecture editing ──────────────────────────────────
 	// One immutable baseline snapshot and one Layout transaction per gesture.
@@ -353,6 +416,15 @@
 	let architectureEditSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
 	let architectureEditMoved = $state(false);
+	/**
+	 * P23.11 transient pass — the render-only attempt for the gesture's current
+	 * candidate. It is gesture-local (`null` outside a live drag) and replaced
+	 * wholesale on every move, never mutated, so `$state.raw` gives the render
+	 * surfaces a plain object instead of a deep proxy over the proposal's
+	 * sampled coordinates: the proposal is derived data, not canonical state.
+	 */
+	let architectureEditTransient = $state.raw<LayoutTransientArchitectureEdit | null>(null);
+	let lastBendPointerTime: number | null = null;
 	let architectureEditReplacementVersion = $state<number | null>(null);
 
 	/** Every Wall the edit deforms, in document order (frozen at pointer-down). */
@@ -402,6 +474,9 @@
 	): LayoutVec2 {
 		const snapshot = architectureEditSnapshot;
 		if (!interaction.planView.snapEnabled || !snapshot) {
+			if (import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__) {
+				performance.mark(`p2311:snap-bypass:enabled-${interaction.planView.snapEnabled}:snapshot-${Boolean(snapshot)}`);
+			}
 			clearLayoutSnapFeedback();
 			return rawTarget;
 		}
@@ -416,14 +491,39 @@
 		if (allowedKinds) input.allowedKinds = [...allowedKinds];
 		const excludePoints = architectureEditExcludePoints(gesture);
 		if (excludePoints.length > 0) input.excludePoints = excludePoints;
-		const resolution = resolveLayoutSnap(
+		const resolution = p2311Measure('architecture-snap-resolution', () => resolveLayoutSnap(
 			snapshot.geometry,
 			rawTarget,
 			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
 			input
-		);
+		));
 		snapFeedback = resolution;
 		return resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : rawTarget;
+	}
+
+	/**
+	 * P23.11 transient pass — reinstate the frozen baseline, unless the live
+	 * preview already **is** that baseline (see
+	 * `restoreTransientArchitectureBaseline`). A transient drag installs nothing,
+	 * so the ordinary restore would be a full reactive write of a document that
+	 * never changed.
+	 */
+	function restoreArchitectureEditBaseline(): void {
+		const snapshot = architectureEditSnapshot;
+		if (!snapshot) return;
+		restoreTransientArchitectureBaseline(preview, snapshot);
+	}
+
+	/**
+	 * P23.11 transient pass — the frozen pointer-down baseline as a canonical
+	 * wall-first document. The proposal is always derived from this snapshot
+	 * (raw, immutable, never the reactive preview) so a move cannot propose from
+	 * a candidate it has itself already written.
+	 */
+	function architectureEditBaselineDocument(): LayoutDocumentWallFirst | null {
+		const layout = architectureEditSnapshot?.project.layout;
+		if (!layout || !('formatVersion' in layout)) return null;
+		return layout as unknown as LayoutDocumentWallFirst;
 	}
 
 	/**
@@ -431,6 +531,8 @@
 	 * before planning, so a rejected candidate can never leave the previous
 	 * preview installed, and the canonical planner (never the viewport) decides
 	 * whether the snapped target is valid.
+	 *
+	 * Under the transient contract this runs once per gesture, at release.
 	 */
 	function planArchitectureEditTarget(
 		gesture: LayoutArchitectureEditGesture,
@@ -440,11 +542,21 @@
 		if (!snapshot) return { success: false, message: 'No baseline snapshot for the architecture edit' };
 		const input = updateLayoutArchitectureEdit(interaction, target);
 		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
-		restoreLayoutPreviewSnapshot(preview, snapshot);
-		const result =
+		restoreArchitectureEditBaseline();
+		const result = p2311Measure('adapter-plan-apply', () =>
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
-				: updateWallFirstWallMove(preview, gesture.wallId, input);
+				: gesture.kind === 'wall-move'
+					? updateWallFirstWallMove(preview, gesture.wallId, input)
+					: gesture.kind === 'wall-bend'
+						? // One canonical call for one history entry: the composite
+							// planner inserts the grabbed arc position AND places it, with
+							// no surface between the pointer and acceptance.
+							updateWallFirstWallBend(preview, gesture.wallId, {
+								distance: gesture.bendDistance,
+								point: input
+							})
+						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input));
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -473,9 +585,29 @@
 					grabPoint: LayoutVec2;
 					startJunctionId: string;
 					endJunctionId: string;
-					baselineStart: LayoutVec2;
-					baselineEnd: LayoutVec2;
+					baselineStart: LayoutVec2;						baselineEnd: LayoutVec2;
 					affectedWallIds: readonly string[];
+			  }
+			| {
+					kind: 'curve-control-move';
+					wallId: string;
+					anchorId: string;
+					baselineAnchorPoint: LayoutVec2;
+					curveExcludePoints: readonly LayoutVec2[];
+			  }
+			| {
+					/**
+					 * The Bend command, already resolved from the intent at pointer-down.
+					 * `bendDistance` is the grabbed physical arc distance; the insert is
+					 * deferred to the threshold crossing. `command` is stored on the
+					 * gesture so nothing can re-read modifiers mid-drag.
+					 */
+					kind: 'wall-bend';
+					command: EditorCommandId;
+					wallId: string;
+					grabPoint: LayoutVec2;
+					bendDistance: number;
+					bendExcludePoints: readonly LayoutVec2[];
 			  }
 	): boolean {
 		if (!event.isPrimary || !svgElement) return false;
@@ -487,7 +619,42 @@
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
 		const gesture: LayoutArchitectureEditGesture =
-			baseline.kind === 'junction-move'
+			baseline.kind === 'wall-bend'
+				? {
+						kind: 'wall-bend',
+						command: baseline.command,
+						pointerId: event.pointerId,
+						wallId: baseline.wallId,
+						startPointer: [...point] as LayoutVec2,
+						baselineGrabPoint: [...baseline.grabPoint] as LayoutVec2,
+						bendDistance: baseline.bendDistance,
+						bendExcludePoints: baseline.bendExcludePoints.map(
+							(exclude) => [...exclude] as LayoutVec2
+						),
+						// The bent Wall alone: inserting one bend point leaves both
+						// endpoint Junctions in place, so no neighbour reshapes.
+						affectedWallIds: [baseline.wallId],
+						candidatePoint: [...baseline.grabPoint] as LayoutVec2,
+						valid: false
+				  }
+				: baseline.kind === 'curve-control-move'
+				? {
+						kind: 'curve-control-move',
+						pointerId: event.pointerId,
+						wallId: baseline.wallId,
+						anchorId: baseline.anchorId,
+						startPointer: [...point] as LayoutVec2,
+						baselineAnchorPoint: [...baseline.baselineAnchorPoint] as LayoutVec2,
+						curveExcludePoints: baseline.curveExcludePoints.map(
+							(exclude) => [...exclude] as LayoutVec2
+						),
+						// The edited Wall alone: a control move leaves both endpoint
+						// Junctions in place, so no neighbouring Wall reshapes.
+						affectedWallIds: [baseline.wallId],
+						candidatePoint: [...baseline.baselineAnchorPoint] as LayoutVec2,
+						valid: false
+				  }
+				: baseline.kind === 'junction-move'
 				? {
 						kind: 'junction-move',
 						pointerId: event.pointerId,
@@ -521,7 +688,16 @@
 		return true;
 	}
 
-	/** One pointermove: total-delta candidate, baseline snap, canonical plan. */
+	/**
+	 * One pointermove: total-delta candidate, baseline snap, transient attempt.
+	 *
+	 * The canonical document, its compiled geometry, the Room/Opening/portal
+	 * validation and the Layout history are **not touched here**: the candidate
+	 * is written on the gesture and turned into render-only proposal geometry,
+	 * so a move costs one snap, one proposal and one Plan update. Acceptance —
+	 * the canonical planner, the full validation suite and the compile — runs
+	 * exactly once, on release.
+	 */
 	function previewArchitectureEdit(event: PointerEvent): void {
 		const gesture = interaction.architectureEdit;
 		if (!gesture || !architectureEditSnapshot) return;
@@ -529,16 +705,19 @@
 		const screen = screenPoint(event);
 		if (!point || !screen) return;
 		// Below the shared drag threshold the operation is still a click: the
-		// canonical baseline stays installed and nothing is planned or written.
+		// canonical baseline stays installed and nothing is proposed or written.
 		if (!architectureEditMoved) {
 			if (!shouldBeginWallBend(architectureEditStartScreen ?? screen, screen)) return;
 			architectureEditMoved = true;
 		}
 		const target = resolveArchitectureEditSnapTarget(gesture, architectureEditRawTarget(gesture, point));
-		const result = planArchitectureEditTarget(gesture, target);
-		// A rejected candidate keeps the baseline installed; the snapped target
-		// stays visible as an invalid intent and the planner reason is the status.
-		if (!result.success && result.code !== 'no_op') preview.statusMessage = result.message ?? null;
+		const input = updateLayoutArchitectureEdit(interaction, target);
+		if (!input) return;
+		architectureEditTransient = transientArchitectureEdit({
+			gesture: interaction.architectureEdit,
+			baseline: architectureEditBaselineDocument(),
+			moved: true
+		});
 	}
 
 	/**
@@ -549,10 +728,12 @@
 	 * captured.
 	 */
 	function finishArchitectureEditGesture(pointerIdToRelease: number | null): void {
+		lastBendPointerTime = null;
 		cancelLayoutArchitectureEdit(interaction);
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
+		architectureEditTransient = null;
 		clearLayoutSnapFeedback();
 		pointerId = null;
 		if (pointerIdToRelease !== null && svgElement?.hasPointerCapture(pointerIdToRelease)) {
@@ -567,36 +748,31 @@
 	 * or cancelled with the baseline restored. A no-op release stays silent.
 	 */
 	function commitArchitectureEditGesture(event: PointerEvent): void {
-		const gesture = interaction.architectureEdit;
-		const snapshot = architectureEditSnapshot;
-		const moved = architectureEditMoved;
-		let valid = false;
-		let rejectionMessage: string | null = null;
-		if (gesture && snapshot && moved) {
-			const point = worldPoint(event);
-			if (point) {
+		const outcome = releaseArchitectureEdit({
+			gesture: interaction.architectureEdit,
+			moved: architectureEditMoved,
+			// The one canonical planner call for this gesture: the release
+			// coordinate is re-resolved against the frozen baseline, never a
+			// remembered intermediate proposal.
+			plan: () => {
+				const gesture = interaction.architectureEdit;
+				if (!gesture) return { success: false, message: 'Architecture edit gesture was lost' };
+				const point = worldPoint(event);
+				if (!point) {
+					return { success: false, message: 'Could not resolve the release position' };
+				}
 				const target = resolveArchitectureEditSnapTarget(
 					gesture,
 					architectureEditRawTarget(gesture, point)
 				);
-				const result = planArchitectureEditTarget(gesture, target);
-				valid = result.success;
-				if (!result.success && result.code !== 'no_op') rejectionMessage = result.message ?? null;
-			} else {
-				rejectionMessage = 'Could not resolve the release position';
-			}
-		}
-		if (valid) {
-			const changed = onLayoutTransactionCommit();
-			if (changed) {
-				preview.statusMessage = gesture?.kind === 'junction-move' ? 'Moved junction' : 'Moved wall';
-			}
-		} else {
-			onLayoutTransactionCancel();
-			if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
-			if (rejectionMessage) preview.statusMessage = rejectionMessage;
-			suppressNextClick = moved;
-		}
+				return planArchitectureEditTarget(gesture, target);
+			},
+			commit: () => onLayoutTransactionCommit(),
+			cancel: () => onLayoutTransactionCancel(),
+			restoreBaseline: restoreArchitectureEditBaseline
+		});
+		if (outcome.statusMessage) preview.statusMessage = outcome.statusMessage;
+		if (outcome.suppressNextClick) suppressNextClick = true;
 		finishArchitectureEditGesture(event.pointerId);
 	}
 
@@ -610,13 +786,13 @@
 			// the viewport effect runs, but the captured pointer, the open
 			// transaction and the snap feedback are still ours: finish through the
 			// same cleanup instead of leaving a capture (and a transaction) open.
-			restoreLayoutPreviewSnapshot(preview, snapshot);
+			restoreArchitectureEditBaseline();
 			onLayoutTransactionCancel();
 			suppressNextClick = architectureEditMoved;
 			finishArchitectureEditGesture(pointerId);
 			return;
 		}
-		if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+		restoreArchitectureEditBaseline();
 		onLayoutTransactionCancel();
 		suppressNextClick = architectureEditMoved;
 		finishArchitectureEditGesture(gesture.pointerId);
@@ -632,6 +808,11 @@
 	function onLostPointerCapture(event: PointerEvent): void {
 		if (interaction.architectureEdit?.pointerId !== event.pointerId) return;
 		cancelArchitectureEditGesture();
+	}
+
+	/** A window blur is not required to synthesize pointercancel in every browser. */
+	function onWindowBlur(): void {
+		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
 	}
 
 	let previousPlanViewMode = $state<PlanViewMode | null>(null);
@@ -687,7 +868,18 @@
 		if (!('formatVersion' in layout)) return undefined;
 		const document = layout as unknown as {
 			junctions: { id: string; point: LayoutVec2 }[];
-			walls: { id: string; startJunctionId: string; endJunctionId: string }[];
+			walls: {
+				id: string;
+				startJunctionId: string;
+				endJunctionId: string;
+				centerline:
+					| { kind: 'line' }
+					| {
+							kind: 'cubic-chain';
+							knots: { id: string; point: LayoutVec2 }[];
+							spans: { handleOut: LayoutVec2; handleIn: LayoutVec2 }[];
+					  };
+			}[];
 			rooms: { id: string; name: string }[];
 		};
 		const selection = interaction.selection;
@@ -702,6 +894,10 @@
 				point: [...junction.point] as LayoutVec2
 			})),
 			junctionFocus,
+			// P23.11 — the selected curved Wall's controls, read from the live
+			// document. This is the ONE list: it feeds both the rendered handles
+			// and the hit query, so the affordance and its hit region cannot drift.
+			curveControls: selectedCurveControls(document.walls),
 			roomNames: new Map(document.rooms.map((room) => [room.id, room.name] as const)),
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
@@ -902,14 +1098,12 @@
 		if (!footprint || selectedPlacementIds.includes(footprint.entityId)) return null;
 		return { id: footprint.entityId, points: footprint.points };
 	});
-	// P23.10 — a rejected direct-edit candidate installs nothing, so the attempted
-	// geometry is drawn transiently from the gesture's baseline-derived values.
-	// `architectureEditIntentFor` owns the gate: nothing renders while the press
-	// is still a click, nothing for an accepted candidate (the installed preview
-	// already shows it) and nothing for a silent `no_op`.
-	const architectureEditIntent = $derived(
-		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved)
-	);
+	// P23.11 transient pass — the direct-edit drag preview is the gesture's
+	// derived-only attempt (see `transientArchitectureEdit`): the attempted
+	// Wall/Junction geometry follows the pointer as overlay truth while the
+	// canonical baseline stays installed underneath, and the canonical planner
+	// decides on release. Nothing here reads or writes the document.
+	const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);
 const interactionProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
@@ -943,7 +1137,7 @@ const interactionProjection = $derived(
 		)
 	);
 	const planModel = $derived(
-		buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection)
+		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -970,8 +1164,12 @@ const interactionProjection = $derived(
 		};
 		const observer = new ResizeObserver(resize);
 		observer.observe(svg);
+		window.addEventListener('blur', onWindowBlur);
 		resize();
-		return () => observer.disconnect();
+		return () => {
+			window.removeEventListener('blur', onWindowBlur);
+			observer.disconnect();
+		};
 	});
 
 	onDestroy(() => cancelLocalPlanInteraction());
@@ -1125,7 +1323,7 @@ const interactionProjection = $derived(
 		);
 		if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);
 		if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-		if (architectureEditSnapshot) restoreLayoutPreviewSnapshot(preview, architectureEditSnapshot);
+		if (architectureEditSnapshot) restoreArchitectureEditBaseline();
 		if (hadLayoutInteraction) onLayoutTransactionCancel();
 		for (const captured of [
 			pointerId,
@@ -1333,6 +1531,15 @@ const interactionProjection = $derived(
 								? {
 										addJunction: (wallId: string, splitDistance: number) =>
 											onWallJunctionAdd?.(wallId, splitDistance)
+									}
+								: {}),
+							// P23.11 — the no-keyboard authoring path. **Add bend point here**
+							// reaches the same canonical insertion authority the Bend command
+							// uses, so discoverability never costs a second implementation.
+							...(onWallBendPointAdd
+								? {
+										addBendPoint: (wallId: string, bendDistance: number) =>
+											onWallBendPointAdd?.(wallId, bendDistance)
 									}
 								: {}),
 							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
@@ -1986,7 +2193,7 @@ const interactionProjection = $derived(
 			model.queries,
 			point,
 			LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-			planHitEndpointGate()
+			planHitOptions()
 		);
 		if (!target) {
 			// a Plan empty-click deselects whichever domain is active (a
@@ -2084,6 +2291,13 @@ const interactionProjection = $derived(
 		}
 		if (target.kind === 'wall') {
 			selectLayoutWall(interaction, target.roomId, target.segmentId);
+			// P23.11 — the legacy Room-owned Wall no longer bends on a plain body
+			// drag: the same `layout.wall.bend` intent that bends a canonical Wall
+			// owns this gesture too, so the two representations stop contradicting
+			// each other. The legacy writer below is unchanged — only its ownership
+			// moved behind the intent — and legacy Room-owned curves are neither
+			// revived nor promoted to authority. A plain press selects and stops.
+			if (!commandIntentFor(event).has('layout.wall.bend')) return;
 			if (!svgElement) return;
 			const projected = applyLayoutSnap(target.projection.point, {
 				excludeOwners: new Set([
@@ -2101,11 +2315,58 @@ const interactionProjection = $derived(
 			return;
 		}
 
+		// P23.11 — an interior curve control of the selected curved Wall. The
+		// Wall STAYS the selection for the whole gesture: a control is transient
+		// editing state, so no second selection slot is written and no hierarchy
+		// row is invented. A non-primary contact and a second contact during a
+		// live gesture are refused, exactly like the other direct edits.
+		if (target.kind === 'wallCurveControl') {
+			if (!event.isPrimary || interaction.architectureEdit) return;
+			const anchor = wallFirstLayoutDocument()
+				?.walls.find((candidate) => candidate.id === target.wallId)
+				?.centerline;
+			const baselineAnchorPoint =
+				anchor?.kind === 'cubic-chain'
+					? anchor.knots.find((candidate) => candidate.id === target.anchorId)?.point
+					: undefined;
+			if (!baselineAnchorPoint) return;
+			selectLayoutPhysicalWall(interaction, target.wallId);
+			beginArchitectureEditGesture(event, {
+				kind: 'curve-control-move',
+				wallId: target.wallId,
+				anchorId: target.anchorId,
+				baselineAnchorPoint: [...baselineAnchorPoint] as LayoutVec2,
+				// A control may not land on a Junction coordinate: the resulting
+				// degenerate segment can only be rejected, so honoring that snap
+				// family would install a guaranteed rejection as the winner.
+				curveExcludePoints: architectureEditJunctionExcludePoints()
+			});
+			return;
+		}
+
 		// P23.6 — a canonical physical-Wall hit selects the Wall on the one
 		// selection authority (no Room-unit target, no wall bend gesture yet).
 		if (target.kind === 'physicalWall') {
 			if (!event.isPrimary || interaction.architectureEdit) return;
 			selectLayoutPhysicalWall(interaction, target.wallId);
+			// P23.11 — the Bend command owns this press when its intent is live:
+			// the grabbed physical arc position becomes a bend point and the drag
+			// continues as that knot. The intent is resolved at THIS instant and
+			// frozen into the gesture, so releasing the modifier mid-drag keeps the
+			// bend and pressing it mid-drag never steals a rigid move.
+			if (commandIntentFor(event).has('layout.wall.bend')) {
+				beginArchitectureEditGesture(event, {
+					kind: 'wall-bend',
+					command: 'layout.wall.bend',
+					wallId: target.wallId,
+					grabPoint: [...target.projection.point] as LayoutVec2,
+					// Canonical-start metres straight from the hit projection, so the
+					// viewport never re-measures the Wall or guesses a position.
+					bendDistance: target.projection.offset,
+					bendExcludePoints: architectureEditJunctionExcludePoints()
+				});
+				return;
+			}
 			// P23.10 — a body drag translates the Wall rigidly: both endpoint
 			// Junctions move by ONE delta, so the Wall keeps ID, role, thickness,
 			// height, endpoint order, length and angle. An Opening body/handle hit
@@ -2252,7 +2513,7 @@ const interactionProjection = $derived(
 							model.queries,
 							hoverPoint,
 							LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-							planHitEndpointGate()
+							planHitOptions()
 						);
 			layoutHover = toLayoutHover(hoverHit);
 		} else if (layoutHover) {
@@ -2309,7 +2570,27 @@ const interactionProjection = $derived(
 			return;
 		}
 		if (interaction.architectureEdit && interaction.architectureEdit.pointerId === event.pointerId) {
-			previewArchitectureEdit(event);
+			const isBend = interaction.architectureEdit.kind === 'wall-bend';
+			const enabled = import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__;
+			let start = '';
+			if (isBend && enabled) {
+				if (lastBendPointerTime !== null) {
+					performance.measure('p2311:pointer-cadence', { start: lastBendPointerTime, end: event.timeStamp });
+				}
+				lastBendPointerTime = event.timeStamp;
+				start = `p2311:pointer-start:${event.timeStamp}`;
+				performance.mark(start);
+			}
+			p2311Measure(isBend ? 'pointermove-bend' : 'pointermove-rigid', () => previewArchitectureEdit(event));
+			if (start) {
+				void tick().then(() => {
+					performance.measure('p2311:svg-flush-latency', start);
+					requestAnimationFrame(() => {
+						performance.measure('p2311:next-frame-latency', start);
+						performance.clearMarks(start);
+					});
+				});
+			}
 			return;
 		}
 		if (pointerId !== event.pointerId) return;
@@ -2765,10 +3046,10 @@ const interactionProjection = $derived(
 	 * never coordinate proximity and never "a Room appeared".
 	 */
 	function commitWallChainClick(rawPoint: LayoutVec2) {
-		const snapped = applyLayoutSnap(rawPoint);
+		const snapped = resolveLayoutSnapCandidate(rawPoint);
 		if (!hasWallChainRun(interaction)) {
 			preview.statusMessage = null;
-			beginWallChain(interaction, snapped);
+			beginWallChain(interaction, snapped.point);
 			return;
 		}
 		const start = interaction.wallChainStart!;
@@ -2777,7 +3058,11 @@ const interactionProjection = $derived(
 		// version), so re-install the saved run + version to keep the current
 		// start available for correction.
 		const savedRun = captureWallChainRun(interaction);
-		const result = onWallSegmentCommit([...start], [...snapped]);
+		const endpointHostWallId =
+			snapped.resolution.kind === 'snap' && snapped.resolution.candidate.kind === 'wall-span'
+				? snapped.resolution.candidate.wallId
+				: undefined;
+		const result = onWallSegmentCommit([...start], [...snapped.point], endpointHostWallId);
 		if (!result.success) {
 			if (savedRun) restoreWallChainRun(interaction, savedRun);
 			draftedVersion = preview.previewVersion;
@@ -2787,7 +3072,7 @@ const interactionProjection = $derived(
 			cancelWallChainRun(interaction);
 			return;
 		}
-		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped];
+		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped.point];
 		if (result.closedRun) {
 			cancelWallChainRun(interaction);
 		} else {
@@ -2818,6 +3103,61 @@ const interactionProjection = $derived(
 		};
 	}
 
+	type WallFirstCenterlineWall = {
+		id: string;
+		centerline:
+			| { kind: 'line' }
+			| {
+					kind: 'cubic-chain';
+					knots: { id: string; point: LayoutVec2 }[];
+					spans: { handleOut: LayoutVec2; handleIn: LayoutVec2 }[];
+			  };
+	};
+
+	/**
+	 * P23.11 — the transient curve controls of the SELECTED curved Wall, in
+	 * persisted anchor order. Empty for any other selection, for a straight Wall
+	 * and for a legacy document: only the Wall being edited exposes draggable
+	 * controls, so the control affordance never becomes global clutter.
+	 *
+	 * Below the Junction-handle scale floor the controls are not drawn, and they
+	 * must not be hittable either — an invisible affordance outranking the Wall
+	 * body would swallow the click that selects the Wall.
+	 */
+	function selectedCurveControls(
+		walls: readonly WallFirstCenterlineWall[]
+	): PlanCurveControlCandidate[] {
+		const selection = interaction.selection;
+		if (selection.kind !== 'physicalWall') return [];
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return [];
+		const wall = walls.find((candidate) => candidate.id === selection.wallId);
+		if (!wall || wall.centerline.kind !== 'cubic-chain') return [];
+		return wall.centerline.knots.map((knot) => ({
+			wallId: wall.id,
+			anchorId: knot.id,
+			point: [knot.point[0], knot.point[1]] as LayoutVec2
+		}));
+	}
+
+	/**
+	 * P23.11 — the shared hit options for the SELECT and hover paths: the
+	 * endpoint gate plus the selected Wall's controls. The context menu, the
+	 * door/window tool and every non-select path keep `planHitEndpointGate()`:
+	 * a control outranking the Wall body would otherwise remove the Wall's own
+	 * context menu and block Opening placement next to a control.
+	 */
+	function planHitOptions(): {
+		includeEndpoints: boolean;
+		curveControls?: readonly PlanCurveControlCandidate[];
+	} {
+		const layout = wallFirstLayoutDocument();
+		const controls = layout ? selectedCurveControls(layout.walls) : [];
+		return {
+			...planHitEndpointGate(),
+			...(controls.length > 0 ? { curveControls: controls } : {})
+		};
+	}
+
 	/** P23.6 — map a canonical Wall endpoint to its Junction ID (click-select). */
 	function wallEndpointJunctionId(wallId: string, endpoint: 0 | 1): string | null {
 		const layout = preview.project.layout;
@@ -2842,6 +3182,10 @@ const interactionProjection = $derived(
 		switch (hit.kind) {
 			case 'physicalWall':
 				return { kind: 'physicalWall', wallId: hit.wallId };
+			// P23.11 — the hover language is the control's only affordance, so a
+			// control hit must not fall through to the Wall behind it.
+			case 'wallCurveControl':
+				return { kind: 'wallCurveControl', wallId: hit.wallId, anchorId: hit.anchorId };
 			case 'wall':
 				return { kind: 'wall', roomId: hit.roomId, segmentId: hit.segmentId };
 			case 'wallOpening':

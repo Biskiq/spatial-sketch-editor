@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { T } from '@threlte/core';
+	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import { DoubleSide, Shape, type BufferGeometry, type Material } from 'three';
 	import type { LayoutPreviewModel } from './layout-mesh-factory';
 	import type { LayoutInteractionState } from './layout-interaction';
@@ -88,10 +90,10 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 	// Build each room's floor + ceiling Shape once per active geometry.
 	// Selection / drag re-renders must not reallocate shapes or rebuild geometry.
 	const roomShapes = $derived(
-		activeGeometry.rooms.map((room) => ({
+		p2311Measure('3d-room-shapes', () => activeGeometry.rooms.map((room) => ({
 			floor: polygonShape(floorShapePoints(room.floorPolygon)),
 			ceiling: polygonShape(ceilingShapePoints(room.ceilingPolygon))
-		}))
+		})))
 	);
 
 	// Deferred (2026-08-16): the anchor-helper octahedra (yellow dots on
@@ -122,14 +124,17 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 	// generation when the active source (`geometry`/`wallMeshesByRoom` or the
 	// transient bundle) changes or on unmount.
 	$effect(() => {
-		const built = new Map<string, AdaptedRoom>();
-		for (const room of activeGeometry.rooms) {
-			const mesh = activeWallMeshes.get(room.roomId);
-			if (mesh) built.set(room.roomId, toWallBufferGeometry(mesh, wallMaterialFactory));
-		}
+		const built = p2311Measure('3d-room-adapter', () => {
+			const adapted = new Map<string, AdaptedRoom>();
+			for (const room of activeGeometry.rooms) {
+				const mesh = activeWallMeshes.get(room.roomId);
+				if (mesh) adapted.set(room.roomId, toWallBufferGeometry(mesh, wallMaterialFactory));
+			}
+			return adapted;
+		});
 		adaptedRooms = built;
 		return () => {
-			for (const adapted of built.values()) adapted.dispose();
+			p2311Measure('3d-room-dispose', () => { for (const adapted of built.values()) adapted.dispose(); });
 		};
 	});
 
@@ -137,16 +142,29 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 	// identity (no `roomId` userData, so the S6 coordinator ignores them and
 	// clicks pass through). Canonical wall-first 3D picking stays post-P23.
 	let adaptedWalls = $state<Map<string, AdaptedRoom>>(new Map());
+	let p2311WallFlushSequence = 0;
 
 	$effect(() => {
-		const built = new Map<string, AdaptedRoom>();
-		for (const wall of activeGeometry.walls ?? []) {
-			const mesh = activeWallMeshesByWall.get(wall.wallId);
-			if (mesh) built.set(wall.wallId, toWallBufferGeometry(mesh, wallMaterialFactory));
-		}
+		const p2311Enabled = import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__;
+		const flushMark = p2311Enabled ? `p2311:3d-wall-flush-start:${p2311WallFlushSequence++}` : '';
+		if (flushMark) performance.mark(flushMark);
+		const built = p2311Measure('3d-wall-adapter', () => {
+			const adapted = new Map<string, AdaptedRoom>();
+			for (const wall of activeGeometry.walls ?? []) {
+				const mesh = activeWallMeshesByWall.get(wall.wallId);
+				if (mesh) adapted.set(wall.wallId, toWallBufferGeometry(mesh, wallMaterialFactory));
+			}
+			return adapted;
+		});
 		adaptedWalls = built;
+		if (flushMark) {
+			void tick().then(() => {
+				performance.measure('p2311:3d-mesh-flush-latency', flushMark);
+				performance.clearMarks(flushMark);
+			});
+		}
 		return () => {
-			for (const adapted of built.values()) adapted.dispose();
+			p2311Measure('3d-wall-dispose', () => { for (const adapted of built.values()) adapted.dispose(); });
 		};
 	});
 

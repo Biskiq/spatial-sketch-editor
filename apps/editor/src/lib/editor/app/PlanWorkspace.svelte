@@ -12,6 +12,7 @@
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
 		deleteWallFirstWall,
+		insertWallFirstWallCurveKnot,
 		removeWallFirstRoom,
 		subdivideWallFirstWall,
 		wallFirstRoomExclusiveBoundaryWallIds
@@ -151,7 +152,8 @@
 	 */
 	function commitDraftWallSegment(
 		start: [number, number],
-		end: [number, number]
+		end: [number, number],
+		endpointHostWallId?: string
 	): {
 		success: boolean;
 		startJunctionId?: string;
@@ -171,7 +173,8 @@
 					start,
 					end,
 					role,
-					layoutInteraction.wallChainRunHeight ?? undefined
+					layoutInteraction.wallChainRunHeight ?? undefined,
+					endpointHostWallId
 				),
 			(result) => result.success
 		);
@@ -327,6 +330,30 @@
 		}
 		const result = outcome.result;
 		store.setStatusMessage(result.success ? 'Added junction' : `Add junction failed: ${result.message}`);
+	}
+
+	/**
+	 * P23.11 — canonical bend-point insertion from a resolved Plan hit (the
+	 * context-menu **Add bend point here** command): the no-keyboard authoring
+	 * path. It reaches the SAME `planInsertWallCurveKnot` authority the
+	 * Bend-command gesture reaches, so there is one curve-insertion
+	 * implementation, not one per surface. Insertion without a drag is
+	 * identity-preserving — a knot planted exactly on the curve changes nothing,
+	 * which is what makes "click here to add a bend point" safe.
+	 */
+	function addWallBendPoint(wallId: string, bendDistance: number) {
+		const outcome = runLayoutMutationGuarded(
+			() => insertWallFirstWallCurveKnot(layoutPreview, wallId, bendDistance),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		const result = outcome.result;
+		store.setStatusMessage(
+			result.success ? 'Added bend point' : `Add bend point failed: ${result.message}`
+		);
 	}
 
 	/**
@@ -513,6 +540,7 @@
 								onWallOpeningDelete={deleteWallOpening}
 								onWallDelete={deleteWall}
 								onWallJunctionAdd={addWallJunction}
+								onWallBendPointAdd={addWallBendPoint}
 		onRoomDelete={deleteRoom}
 		onRoomRemove={removeRoom}
 		onLayoutTransactionBegin={beginLayoutTransaction}

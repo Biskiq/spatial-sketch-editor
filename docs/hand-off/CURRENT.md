@@ -5,6 +5,10 @@ slice plus one next action only.
 
 ## Working tree
 
+- A focused curved-Room correspondence regression fix now builds predecessor
+  Room polygons from the same oriented centerline samples as candidate faces.
+  The supplied two-Room Layout no longer fuses into a false `2→2` component;
+  adding an independent Wall and splitting the larger Room both commit.
 - A focused P23.9 regression fix is implementation-complete for Wall endpoints
   projected onto oblique host spans: sub-nanometre projection dust no longer
   misses canonical T-noding or creates false Room-correspondence components.
@@ -24,6 +28,10 @@ slice plus one next action only.
 
 ## Verification
 
+- Supplied-layout regressions: 3 passed; focused curved/oblique Layout suites:
+  28 passed. `npm run check:layout-core` and `npm run check` passed. Full editor
+  suite: 3,776 passed / 1 skipped with one bend diagnosis timeout under the
+  concurrent run; that diagnostic passed all 11 tests in isolation.
 - Focused Wall regression suites: 49 passed. The new deterministic matrix
   covers 1,310 candidate operations across false `2→2`, `2→3`, `3→4`, missed
   noding and out-of-tolerance non-connection cases; direct regressions pin

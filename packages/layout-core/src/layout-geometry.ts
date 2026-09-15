@@ -23,12 +23,28 @@ import type {
 	CompiledSolidSpan,
 	CompiledWall,
 	CompiledWallSection,
+	CompilerBoundarySource,
 	LayoutBounds2,
 	LayoutBounds3,
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
-import { pointAlongSamples, sampleSegment, type SampledSegment } from './layout-geometry-curve';
+import { p2311Measure } from './p2311-perf';
+import {
+	pointAlongSamples,
+	sampleSegment,
+	segmentVertexPoints,
+	type SampleableSegment,
+	type SampledSegment
+} from './layout-geometry-curve';
+import { wallCenterlineSegment, wallCenterlineSamples } from './layout-wall-centerline';
+import {
+	WALL_OFFSET_FOLD_CODE,
+	WALL_OFFSET_FOLD_MESSAGE,
+	WALL_OFFSET_OVERLAP_CODE,
+	WALL_OFFSET_OVERLAP_MESSAGE,
+	wallOffsetClearanceFailure
+} from './layout-wall-offset-clearance';
 import {
 	archProfileTopAt,
 	buildArchProfile,
@@ -61,7 +77,7 @@ export type CompilerOpening = LayoutOpening;
  */
 export type CompilerRoomSource = {
 	room: Pick<LayoutRoom, 'id' | 'wallThickness' | 'floorThickness' | 'ceilingThickness'>;
-	boundary: DraftPath;
+	boundary: CompilerBoundarySource;
 	openings: readonly CompilerOpening[];
 	/**
 	 * Per-wall thickness override keyed by boundary segment id (P23.0b: wall
@@ -201,8 +217,12 @@ export function compileWallFirstLayoutGeometry(
 	}
 
 	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
-		const segments: DraftSegment[] = [];
+		const segments: SampleableSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
+		// P23.11 — reverse-ref Opening offsets mirror by the **sampled arc
+		// length** of the host Wall's canonical centerline, never the Euclidean
+		// chord (straight Walls keep the identical chord value).
+		const arcLengthByWallId = new Map<string, number>();
 		for (const ref of room.boundary) {
 			const wall = wallById.get(ref.wallId);
 			if (!wall) continue; // reference integrity is the codec's job
@@ -214,24 +234,29 @@ export function compileWallFirstLayoutGeometry(
 			// The legacy compiler core measures opening offsets from each
 			// boundary segment's start, so reverse refs also mirror offsets
 			// (o' = L − (o + w)) to keep them measured from the canonical
-			// Wall start downstream.
+			// Wall start downstream. P23.11: the centerline adapter supplies
+			// the segment, so curved Walls flow through the curve kernel
+			// unchanged (no second sampling path).
 			const reversed = ref.direction === 'reverse';
-			segments.push({
-				id: wall.id,
-				kind: 'line',
-				start: [...(reversed ? end : start)] as LayoutVec2,
-				end: [...(reversed ? start : end)] as LayoutVec2
-			});
+			// Canonical endpoints + traversal flag: the adapter alone decides the
+			// walk direction, so a reversed ref cannot pair the chain with the
+			// wrong knot order (P23.11 slice 2).
+			segments.push(
+				wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward')
+			);
+			if (!arcLengthByWallId.has(wall.id)) {
+				// Mirroring always measures along the CANONICAL traversal: an
+				// Opening offset is authored from the Wall's own start Junction.
+				const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
+			}
 		}
 		for (const opening of document.openings) {
 			const ref = room.boundary.find((candidate) => candidate.wallId === opening.wallId);
 			if (!ref) continue;
 			if (ref.direction === 'reverse') {
-				const wall = wallById.get(opening.wallId)!;
-				const start = pointById.get(wall.startJunctionId);
-				const end = pointById.get(wall.endJunctionId);
-				if (!start || !end) continue;
-				const length = Math.hypot(end[0] - start[0], end[1] - start[1]);
+				const length = arcLengthByWallId.get(opening.wallId);
+				if (length === undefined) continue;
 				roomOpenings.push({
 					...opening,
 					segmentId: opening.wallId,
@@ -286,7 +311,7 @@ function compileWallFirstWithPhysicalWalls(
 	document: LayoutDocumentWallFirst,
 	source: CompilerSource
 ): CompiledLayoutGeometryResult {
-	const result = compileLayoutGeometrySource(source);
+	const result = p2311Measure('room-geometry-compile', () => compileLayoutGeometrySource(source));
 	const geometry = result.geometry;
 	const floor = document.floor;
 	const floorElevation = floor.elevation;
@@ -305,6 +330,10 @@ function compileWallFirstWithPhysicalWalls(
 		)
 	};
 	const physicalWalls: CompiledPhysicalWall[] = [];
+	// Render-safe acceptance issues (see the per-Wall clearance gate below),
+	// appended to the shared compile result so every caller's existing
+	// blocking-issue check rejects without a second acceptance path.
+	const wallIssues: LayoutGeometryIssue[] = [];
 	let documentMin: Vec3 | null = geometry.bounds ? [...geometry.bounds.min] as Vec3 : null;
 	let documentMax: Vec3 | null = geometry.bounds ? [...geometry.bounds.max] as Vec3 : null;
 	const includePhysicalBounds = (min: Vec3, max: Vec3): void => {
@@ -320,7 +349,9 @@ function compileWallFirstWithPhysicalWalls(
 		const start = pointById.get(wall.startJunctionId);
 		const end = pointById.get(wall.endJunctionId);
 		if (!start || !end) continue;
-		const segment: DraftSegment = { id: wall.id, kind: 'line', start: [...start] as LayoutVec2, end: [...end] as LayoutVec2 };
+		// P23.11 — the canonical centerline adapter maps every Wall (line or
+		// auto-bezier) onto the existing curve kernel; no second sampling path.
+		const segment = wallCenterlineSegment(wall, start, end, 'forward');
 		let sampled: SampledSegment;
 		try {
 			sampled = sampleSegment(segment);
@@ -359,6 +390,24 @@ function compileWallFirstWithPhysicalWalls(
 			bounds2: wallBounds2Value,
 			bounds3: wallBounds3Value
 		};
+		// P23.11 / Issue #6 — render-safe acceptance. A curved Wall whose local
+		// bend is tighter than half its thickness renders as a folded or
+		// overlapping solid. That is a property of the compile output, so it is
+		// decided HERE, from the very samples the renderers consume, and reported
+		// as a blocking issue before any document or history commit. Straight
+		// Walls are skipped: their offsets are two parallel polylines with
+		// identical tangents, so neither branch of the predicate can fire.
+		if (wall.centerline.kind !== 'line') {
+			const clearance = p2311Measure('finite-thickness', () => wallOffsetClearanceFailure(compiled.samples, wall.thickness));
+			if (clearance) {
+				wallIssues.push({
+					path: `walls.${wall.id}`,
+					code: clearance === 'fold' ? WALL_OFFSET_FOLD_CODE : WALL_OFFSET_OVERLAP_CODE,
+					message: clearance === 'fold' ? WALL_OFFSET_FOLD_MESSAGE : WALL_OFFSET_OVERLAP_MESSAGE,
+					targetId: wall.id
+				});
+			}
+		}
 		physicalWalls.push(compiled);
 		emitPhysicalWallQueryRecords(queryBuilder, floor, wall, sampled, compiledOpenings, solidSpans);
 		queryBuilder.aabbs.push(aabbRecord('wall', wall.id, ['wall', floor.id, wall.id], wallBounds3Value.min, wallBounds3Value.max));
@@ -445,7 +494,7 @@ function compileWallFirstWithPhysicalWalls(
 			},
 			bounds
 		},
-		issues: result.issues
+		issues: [...result.issues, ...wallIssues]
 	};
 }
 
@@ -979,7 +1028,7 @@ function isValidObject(object: LayoutObject): boolean {
 function emitRoomQueryRecords(
 	queryBuilder: QueryGeometryBuilder,
 	floor: CompilerFloorSource,
-	room: Pick<LayoutRoom, 'id' | 'boundary'>,
+	room: { id: string; boundary: CompilerBoundarySource },
 	walls: readonly CompiledWall[],
 	floorPolygon: readonly LayoutVec2[],
 	roomBounds3: LayoutBounds3,
@@ -998,7 +1047,7 @@ function emitRoomQueryRecords(
 				'vertex',
 				segment.id,
 				segmentIndex,
-				[...segment.start] as LayoutVec2,
+				[...segmentVertexPoints(segment)[0]!] as LayoutVec2,
 				wallKey
 			)
 		);

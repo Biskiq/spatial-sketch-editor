@@ -37,7 +37,26 @@ export type PlanHitResult =
 	 * `endpoint`); the record itself never carries Room context.
 	 */
 	| { kind: 'wallEndpoint'; wallId: string; endpoint: 0 | 1; point: LayoutVec2 }
+	/**
+	 * P23.11 — one interior control of a curved Wall. Transient editing state
+	 * keyed by `{ wallId, anchorId }`: it is never a durable `LayoutSelection`
+	 * variant and never a hierarchy row, so the Wall stays the selection and
+	 * this hit carries no Room/segment context.
+	 */
+	| { kind: 'wallCurveControl'; wallId: string; anchorId: string; point: LayoutVec2 }
 	| null;
+
+/**
+ * P23.11 — one candidate curve control for the hit query. Controls are
+ * transient editing state owned by the caller (only a selected curved Wall
+ * exposes them), so they are supplied per query rather than derived from
+ * compiled query geometry.
+ */
+export type PlanCurveControlCandidate = {
+	wallId: string;
+	anchorId: string;
+	point: LayoutVec2;
+};
 
 /** Canonical (non-room-derived) span groups keyed by document-global `wallId`. */
 type PhysicalWallSpans = {
@@ -242,6 +261,32 @@ function canonicalWallHit(
 		: null;
 }
 
+/**
+ * P23.11 — nearest curve control within tolerance, or `null`. Ties resolve to
+ * the first candidate in caller order, so the caller's own ordering stays the
+ * authority (never a distance tiebreak the document cannot express).
+ */
+function nearestCurveControlHit(
+	controls: readonly PlanCurveControlCandidate[],
+	point: LayoutVec2,
+	tolerance: number
+): PlanHitResult {
+	let best: { control: PlanCurveControlCandidate; distance: number } | null = null;
+	for (const control of controls) {
+		const span = Math.hypot(control.point[0] - point[0], control.point[1] - point[1]);
+		if (span > tolerance) continue;
+		if (!best || span < best.distance) best = { control, distance: span };
+	}
+	return best
+		? {
+				kind: 'wallCurveControl',
+				wallId: best.control.wallId,
+				anchorId: best.control.anchorId,
+				point: [best.control.point[0], best.control.point[1]]
+			}
+		: null;
+}
+
 function nearestWallHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
@@ -274,13 +319,18 @@ function nearestWallHit(
  * set yields no hit. `options.includeEndpoints` gates canonical endpoint
  * (Junction) hits — below the Junction-handle LOD the invisible endpoint
  * must not outrank its Wall, so callers pass false and the physical Wall
- * wins (default true preserves the full authority).
+ * wins (default true preserves the full authority). `options.curveControls`
+ * are the transient controls of the selected curved Wall (P23.11).
  */
 export function resolvePlanHit(
 	queries: CompiledLayoutQueryGeometry,
 	point: LayoutVec2,
 	tolerance: number,
-	options?: { allowedRoomIds?: ReadonlySet<string>; includeEndpoints?: boolean }
+	options?: {
+		allowedRoomIds?: ReadonlySet<string>;
+		includeEndpoints?: boolean;
+		curveControls?: readonly PlanCurveControlCandidate[];
+	}
 ): PlanHitResult {
 	const vertex = nearestPointHit(queries, point, tolerance, 'vertex');
 	if (vertex) return vertex;
@@ -295,6 +345,14 @@ export function resolvePlanHit(
 	if (opening) return opening;
 	const canonicalOpening = canonicalOpeningHit(queries, point, tolerance);
 	if (canonicalOpening) return canonicalOpening;
+
+	// P23.11 — locked priority: Junction / endpoint > Opening body/handle >
+	// curve control > Wall body. A control outranks the Wall and object body it
+	// sits on (otherwise dragging it would re-select what it belongs to) and
+	// stays below Junction and Opening handles so an overlapping endpoint or
+	// opening edge still wins.
+	const curveControl = nearestCurveControlHit(options?.curveControls ?? [], point, tolerance);
+	if (curveControl) return curveControl;
 
 	const objectPolygon = findPolygonContaining(
 		point,

@@ -753,7 +753,8 @@ function toNodingDocument(
 			endJunctionId: wall.endJunctionId,
 			role: 'boundary' as const,
 			thickness: wall.thickness,
-			height: wall.height
+			height: wall.height,
+			centerline: { kind: 'line' } as const
 		})),
 		rooms: [],
 		openings: walls.flatMap((wall) => wall.openings),
@@ -869,7 +870,8 @@ function dedupeFragments(
 			endJunctionId: canonicalEnd,
 			role: 'boundary',
 			thickness: canonical.thickness,
-			height: floor.height
+			height: floor.height,
+			centerline: { kind: 'line' }
 		});
 		for (const member of group) finalWallIdOfFragment.set(member.id, wallId);
 		wallLineage.push({
