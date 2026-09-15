@@ -188,6 +188,25 @@ prerequisite contract for P23.11–P23.16.
   or other absent architectural meaning. All architecture labels consume the
   P23.12 display-identity contract rather than formatting raw canonical IDs in the
   renderer.
+- **Door swing deferral / research-ratification note (2026-09-15):** Current
+  wall-first code evidence indicates that future authored Door swing semantics
+  can remain deferred without prerequisite architecture work. `LayoutWallOpening`
+  is hosted by stable `wallId`, its `offset` is measured from the canonical Wall
+  start, and compiled Opening geometry already exposes the local tangent, normal
+  and yaw needed to derive a future swing glyph. P23.13 should therefore keep Door
+  treatment neutral and must not fabricate swing from Room side, traversal order
+  or visual convention alone. If the P23.13 architectural precedent research
+  ratifies adding swing later, the likely bounded model is optional Door-only
+  metadata such as `swing: { hinge: 'start' | 'end'; side: 'left' | 'right';
+  angle?: number }`, with `hinge` and `side` defined in the canonical Wall-local
+  frame rather than world X/Z or Room-relative traversal. The Plan glyph remains
+  derived compiler/render-model output, never SVG-owned geometry or topology.
+  For curved Walls, hinge position must be evaluated at the Opening edge's
+  arc-length position (`offset` or `offset + width`), not approximated as center
+  `± width / 2 * tangent`; the Door leaf remains rigid/straight and its swing is
+  circular about that hinge-local frame. This note records a provisional
+  architecture hypothesis for research ratification, not P23.13 implementation
+  scope: research may refine or reject the visual convention or data semantics.
 - **Major dependencies:** Landed P23.10 direct manipulation, P23.11 curves,
   P23.12 final labels, landed P23.6 drafting primitives, P23.2 snaps and P23.3
   Openings.
