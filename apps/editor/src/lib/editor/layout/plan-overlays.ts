@@ -443,17 +443,22 @@ export function withPlanObjectRotationHandle(
 }
 
 /**
- * P23.10 — one transient direct Wall/Junction edit intent: what the pointer
- * asked for while the canonical planner rejects it. An ACCEPTED candidate is
- * already fully previewed by the installed document, so the viewport passes
- * `null` and nothing extra renders.
+ * P23.10/P23.11 — one transient direct Wall/Junction edit intent: the attempt
+ * the pointer is asking for, drawn from the immutable baseline while the
+ * canonical planner has not yet ruled on it.
+ *
+ * Under the P23.11 transient contract this intent **is** the drag preview: the
+ * canonical document stays installed for the whole gesture, so the attempted
+ * geometry is rendered here instead of being installed per pointermove. The
+ * intent is overlay truth only — never persisted, never validated here, and
+ * never a substitute for the planner's verdict at release.
  */
 export type LayoutArchitectureEditOverlayWall = {
 	wallId: string;
 	points: readonly LayoutVec2[];
 };
 
-export type LayoutArchitectureEditIntent =
+type LayoutArchitectureEditIntentBody =
 	| { kind: 'junction-move'; point: LayoutVec2; walls?: readonly LayoutArchitectureEditOverlayWall[] }
 	| {
 			kind: 'wall-move';
@@ -462,9 +467,10 @@ export type LayoutArchitectureEditIntent =
 			walls?: readonly LayoutArchitectureEditOverlayWall[];
 	  }
 	/**
-	 * P23.11 — a rejected curve-control drag. The baseline stays installed; the
-	 * attempted Wall is drawn from the caller's canonical **proposal** (never a
-	 * fabricated curve), with the rejected control point marked on it.
+	 * P23.11 — a curve-control drag. The baseline stays installed; the attempted
+	 * Wall is drawn from the caller's canonical **proposal** (never a fabricated
+	 * curve), with the dragged control point marked on it. The render style
+	 * follows the attempt's live status (`pending` vs `known-invalid`).
 	 */
 	| {
 			kind: 'curve-control-move';
@@ -473,10 +479,9 @@ export type LayoutArchitectureEditIntent =
 			walls?: readonly LayoutArchitectureEditOverlayWall[];
 	  }
 	/**
-	 * P23.11 — a rejected Bend-command drag. Same contract: the transient layer
-	 * renders the proposal's attempted Wall shape and the refused bend point, so
-	 * the geometry keeps following the cursor instead of snapping back while the
-	 * pointer is still held.
+	 * P23.11 — a Bend-command drag. Same contract: the transient layer renders
+	 * the proposal's attempted Wall shape and the dragged bend point, so the
+	 * geometry keeps following the cursor for the whole gesture.
 	 */
 	| {
 			kind: 'wall-bend';
@@ -484,6 +489,30 @@ export type LayoutArchitectureEditIntent =
 			shape?: readonly LayoutVec2[];
 			walls?: readonly LayoutArchitectureEditOverlayWall[];
 	  };
+
+/**
+ * The live state of one direct-edit attempt.
+ *
+ * `known-invalid` means a **canonical, cheap** gate has already refuted the
+ * attempt during the drag (`preflightWallFirstArchitectureCandidate`: crossing,
+ * self-intersection, duplicate Junction point, zero-length Wall, broken Room
+ * boundary) or the intent could not be derived at all. Everything a cheap gate
+ * cannot decide — Room reconciliation, the Opening set, portal relations, the
+ * compile — stays `pending` and is decided once, at release, by the canonical
+ * planner that owns acceptance.
+ */
+export type TransientAttemptStatus = 'pending' | 'known-invalid';
+
+/**
+ * The attempt plus its render style.
+ *
+ * `invalid` renders the existing refused language; it is set from the attempt's
+ * `TransientAttemptStatus`, never from a guess about what the release planner
+ * will decide.
+ */
+export type LayoutArchitectureEditIntent = LayoutArchitectureEditIntentBody & {
+	invalid?: boolean;
+};
 
 type LayoutArchitectureEditProposal =
 	| readonly LayoutVec2[]
@@ -511,29 +540,35 @@ function legacyShapeFromProposal(
  *
  * Nothing renders while the press is still a plain click (`moved === false`):
  * the pointer has not asked for geometry yet, so a press over a Wall must not
- * flash an invalid candidate. Nothing renders for an accepted candidate either
- * — the installed document preview already shows it — and a silent `no_op`
- * release is deliberately not a rejection: drawing it red would report a
- * failure the user never requested.
+ * flash a candidate. After the shared drag threshold every move renders the
+ * attempt the pointer is asking for, because under the transient contract the
+ * canonical document is no longer written to preview it.
  */
 export function architectureEditIntentFor(
 	gesture: LayoutArchitectureEditGesture | null,
 	moved: boolean,
 	/**
-	 * P23.11 — the caller's canonical architecture proposal for a rejected
-	 * direct edit: affected Wall centerlines sampled through the one core
-	 * adapter. It is overlay truth only and is never installed, persisted or
-	 * validated here; an absent proposal degrades to the rejected point marker.
+	 * The caller's canonical architecture proposal for the live attempt:
+	 * affected Wall centerlines sampled through the one core adapter. It is
+	 * overlay truth only and is never installed, persisted or validated here; an
+	 * absent proposal degrades to the attempt's point marker.
 	 */
-	proposal?: LayoutArchitectureEditProposal | null
+	proposal?: LayoutArchitectureEditProposal | null,
+	/**
+	 * P23.11 transient pass — the attempt's live status. A `known-invalid`
+	 * attempt renders the existing refused language; `pending` renders the
+	 * transient attempt language. This is the caller's cheap preflight verdict,
+	 * not acceptance: the canonical planner still decides at release.
+	 */
+	status: TransientAttemptStatus = 'pending'
 ): LayoutArchitectureEditIntent | null {
-	if (!gesture || !moved || gesture.valid) return null;
-	if (gesture.rejectionCode === undefined || gesture.rejectionCode === 'no_op') return null;
+	if (!gesture || !moved) return null;
+	const refused = status === 'known-invalid' ? ({ invalid: true } as const) : {};
 	const walls = overlayWallsFromProposal(proposal);
-	// Point-anchored gestures render the rejected control/Junction point itself.
+	// Point-anchored gestures render the attempted control/Junction point itself.
 	if (gesture.kind !== 'wall-move') {
 		const point: LayoutVec2 = [gesture.candidatePoint[0], gesture.candidatePoint[1]];
-		if (walls) return { kind: gesture.kind, point, walls };
+		if (walls) return { kind: gesture.kind, point, walls, ...refused };
 		const legacyShape = legacyShapeFromProposal(proposal);
 		if (
 			(gesture.kind === 'curve-control-move' || gesture.kind === 'wall-bend') &&
@@ -543,29 +578,36 @@ export function architectureEditIntentFor(
 			return {
 				kind: gesture.kind,
 				point,
-				shape: legacyShape.map((entry) => [entry[0], entry[1]] as LayoutVec2)
+				shape: legacyShape.map((entry) => [entry[0], entry[1]] as LayoutVec2),
+				...refused
 			};
 		}
-		return { kind: gesture.kind, point };
+		return { kind: gesture.kind, point, ...refused };
 	}
 	const [dx, dz] = gesture.candidateDelta;
-	if (walls) return { kind: 'wall-move', walls };
+	if (walls) return { kind: 'wall-move', walls, ...refused };
 	return {
 		kind: 'wall-move',
 		start: [gesture.baselineStart[0] + dx, gesture.baselineStart[1] + dz],
-		end: [gesture.baselineEnd[0] + dx, gesture.baselineEnd[1] + dz]
+		end: [gesture.baselineEnd[0] + dx, gesture.baselineEnd[1] + dz],
+		...refused
 	};
 }
 
 /**
- * P23.10 — draw one rejected direct-edit intent with the existing transient
- * token family (never document truth, never history).
+ * P23.10/P23.11 — draw one transient direct-edit attempt with the existing
+ * token family (never document truth, never history). The style follows the
+ * intent: an underivable attempt renders in the refused language, a derivable
+ * live one in the pending language.
  */
 export function withArchitectureEditIntent(
 	projection: PlanInteractionProjection,
 	intent: LayoutArchitectureEditIntent | null
 ): PlanInteractionProjection {
 	if (!intent) return projection;
+	const style: PlanStyleToken = intent.invalid
+		? 'architecture-edit-intent-invalid'
+		: 'architecture-edit-intent';
 	const primitives: PlanRenderPrimitive[] = [];
 	if (intent.kind === 'wall-move') {
 		if (intent.walls) {
@@ -575,7 +617,7 @@ export function withArchitectureEditIntent(
 					kind: 'polyline',
 					key: geometryId(['plan', 'overlay', 'architecture-edit-intent', wall.wallId]),
 					points: wall.points.map((entry) => [entry[0], entry[1]] as LayoutVec2),
-					style: 'architecture-edit-intent-invalid'
+					style
 				});
 			}
 		} else if (intent.start && intent.end) {
@@ -583,7 +625,7 @@ export function withArchitectureEditIntent(
 				kind: 'polyline',
 				key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
 				points: [intent.start, intent.end],
-				style: 'architecture-edit-intent-invalid'
+				style
 			});
 		}
 	} else {
@@ -603,7 +645,7 @@ export function withArchitectureEditIntent(
 					kind: 'polyline',
 					key: geometryId(['plan', 'overlay', 'architecture-edit-intent', wall.wallId]),
 					points: wall.points.map((entry) => [entry[0], entry[1]] as LayoutVec2),
-					style: 'architecture-edit-intent-invalid'
+					style
 				});
 			}
 		} else if (shape && shape.length > 1) {
@@ -611,7 +653,7 @@ export function withArchitectureEditIntent(
 				kind: 'polyline',
 				key: geometryId(['plan', 'overlay', 'architecture-edit-intent', 'wall']),
 				points: shape.map((entry) => [entry[0], entry[1]] as LayoutVec2),
-				style: 'architecture-edit-intent-invalid'
+				style
 			});
 		}
 		primitives.push({
@@ -619,7 +661,7 @@ export function withArchitectureEditIntent(
 			key: geometryId(['plan', 'overlay', 'architecture-edit-intent']),
 			center: intent.point,
 			radiusPx: 7,
-			style: 'architecture-edit-intent-invalid'
+			style
 		});
 	}
 	return { ...projection, drafts: [...projection.drafts, ...primitives] };

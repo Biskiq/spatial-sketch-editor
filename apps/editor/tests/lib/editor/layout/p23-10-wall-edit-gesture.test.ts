@@ -558,12 +558,32 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 		expect(viewport).toContain('layout.junctions.map((junction) => [');
 	});
 
-	it('gates the transient intent through the pure helper, not an inline derivation', () => {
-		// P23.11 fix 5 — the rejected curve intent also receives the caller's pure
-		// core proposal (the attempted Wall shape), still through the one helper.
+	it('derives the transient attempt through one pure seam, never inline', () => {
+		// P23.11 transient pass — one pointermove derives the gesture's render-only
+		// attempt from the frozen baseline (`transientArchitectureEdit`, which owns
+		// both the core proposal and the intent gate) and the projection reads the
+		// stored intent. The viewport grows no second derivation of its own.
+		expect(viewport).toContain('architectureEditTransient = transientArchitectureEdit({');
 		expect(viewport).toContain(
-			'architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved, architectureEditProposal)'
+			'const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);'
 		);
+		expect(viewport).not.toContain('proposeWallFirstArchitectureGeometry(');
+		expect(viewport).not.toContain('architectureEditIntentFor(');
+	});
+
+	it('runs the canonical planner once per gesture, on release only', () => {
+		// The whole point of the slice: a pointermove may not reach the planner,
+		// the Room/Opening validation, the compile or the installed document.
+		const move = viewport.slice(
+			viewport.indexOf('function previewArchitectureEdit('),
+			viewport.indexOf('function finishArchitectureEditGesture(')
+		);
+		expect(move).not.toContain('planArchitectureEditTarget');
+		expect(move).not.toContain('restoreLayoutPreviewSnapshot');
+		expect(move).not.toContain('updateWallFirst');
+		const release = viewport.slice(viewport.indexOf('function commitArchitectureEditGesture('));
+		expect(release).toContain('releaseArchitectureEdit({');
+		expect(release.split('planArchitectureEditTarget').length - 1).toBe(1);
 	});
 });
 
@@ -679,16 +699,16 @@ describe('P23.10 snapping — baseline geometry, frozen exclusions, family filte
 		).toBe('wall-midpoint');
 	});
 
-	it('renders a rejected candidate as transient intent and a valid one as nothing', () => {
+	it('draws the transient attempt and nothing when there is none', () => {
 		const model = buildLayoutPreviewModel(squareDocument()).model;
 		const base = { drafts: [], selection: [], labels: [] } as unknown as Parameters<
 			typeof withArchitectureEditIntent
 		>[0];
-		const invalid = withArchitectureEditIntent(base, { kind: 'junction-move', point: [9, 9] });
-		expect(invalid.drafts).toHaveLength(1);
-		expect(invalid.drafts[0]).toMatchObject({
+		const attempt = withArchitectureEditIntent(base, { kind: 'junction-move', point: [9, 9] });
+		expect(attempt.drafts).toHaveLength(1);
+		expect(attempt.drafts[0]).toMatchObject({
 			kind: 'circle',
-			style: 'architecture-edit-intent-invalid'
+			style: 'architecture-edit-intent'
 		});
 		const valid = withArchitectureEditIntent(base, null);
 		expect(valid.drafts).toHaveLength(0);

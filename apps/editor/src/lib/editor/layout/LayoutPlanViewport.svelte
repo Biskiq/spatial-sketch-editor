@@ -148,7 +148,6 @@
 	import type { PlanViewMode } from './layout-interaction';
 	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
-		architectureEditIntentFor,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
@@ -165,7 +164,6 @@
 	import {
 		LAYOUT_PLAN_GRID_STEP,
 		layoutArchitecturalPreset,
-		proposeWallFirstArchitectureGeometry,
 		resolveLayoutSnap,
 		resolveOpeningDragSnap,
 		resolveOpeningDragSnapUseMode,
@@ -177,6 +175,12 @@
 		type SnapInputContext,
 		type SnapResolution
 	} from '@portfolio/layout-core';
+	import {
+		releaseArchitectureEdit,
+		restoreTransientArchitectureBaseline,
+		transientArchitectureEdit,
+		type LayoutTransientArchitectureEdit
+	} from './layout-transient-edit';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
 	import { planCameraProjectionForProject } from './plan-camera-projection';
 	import PlanSvg from './PlanSvg.svelte';
@@ -412,6 +416,14 @@
 	let architectureEditSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
 	let architectureEditMoved = $state(false);
+	/**
+	 * P23.11 transient pass — the render-only attempt for the gesture's current
+	 * candidate. It is gesture-local (`null` outside a live drag) and replaced
+	 * wholesale on every move, never mutated, so `$state.raw` gives the render
+	 * surfaces a plain object instead of a deep proxy over the proposal's
+	 * sampled coordinates: the proposal is derived data, not canonical state.
+	 */
+	let architectureEditTransient = $state.raw<LayoutTransientArchitectureEdit | null>(null);
 	let lastBendPointerTime: number | null = null;
 	let architectureEditReplacementVersion = $state<number | null>(null);
 
@@ -490,10 +502,37 @@
 	}
 
 	/**
+	 * P23.11 transient pass — reinstate the frozen baseline, unless the live
+	 * preview already **is** that baseline (see
+	 * `restoreTransientArchitectureBaseline`). A transient drag installs nothing,
+	 * so the ordinary restore would be a full reactive write of a document that
+	 * never changed.
+	 */
+	function restoreArchitectureEditBaseline(): void {
+		const snapshot = architectureEditSnapshot;
+		if (!snapshot) return;
+		restoreTransientArchitectureBaseline(preview, snapshot);
+	}
+
+	/**
+	 * P23.11 transient pass — the frozen pointer-down baseline as a canonical
+	 * wall-first document. The proposal is always derived from this snapshot
+	 * (raw, immutable, never the reactive preview) so a move cannot propose from
+	 * a candidate it has itself already written.
+	 */
+	function architectureEditBaselineDocument(): LayoutDocumentWallFirst | null {
+		const layout = architectureEditSnapshot?.project.layout;
+		if (!layout || !('formatVersion' in layout)) return null;
+		return layout as unknown as LayoutDocumentWallFirst;
+	}
+
+	/**
 	 * Plan one candidate from the immutable baseline. The baseline is restored
 	 * before planning, so a rejected candidate can never leave the previous
 	 * preview installed, and the canonical planner (never the viewport) decides
 	 * whether the snapped target is valid.
+	 *
+	 * Under the transient contract this runs once per gesture, at release.
 	 */
 	function planArchitectureEditTarget(
 		gesture: LayoutArchitectureEditGesture,
@@ -503,7 +542,7 @@
 		if (!snapshot) return { success: false, message: 'No baseline snapshot for the architecture edit' };
 		const input = updateLayoutArchitectureEdit(interaction, target);
 		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
-		restoreLayoutPreviewSnapshot(preview, snapshot);
+		restoreArchitectureEditBaseline();
 		const result = p2311Measure('adapter-plan-apply', () =>
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
@@ -649,7 +688,16 @@
 		return true;
 	}
 
-	/** One pointermove: total-delta candidate, baseline snap, canonical plan. */
+	/**
+	 * One pointermove: total-delta candidate, baseline snap, transient attempt.
+	 *
+	 * The canonical document, its compiled geometry, the Room/Opening/portal
+	 * validation and the Layout history are **not touched here**: the candidate
+	 * is written on the gesture and turned into render-only proposal geometry,
+	 * so a move costs one snap, one proposal and one Plan update. Acceptance —
+	 * the canonical planner, the full validation suite and the compile — runs
+	 * exactly once, on release.
+	 */
 	function previewArchitectureEdit(event: PointerEvent): void {
 		const gesture = interaction.architectureEdit;
 		if (!gesture || !architectureEditSnapshot) return;
@@ -657,16 +705,19 @@
 		const screen = screenPoint(event);
 		if (!point || !screen) return;
 		// Below the shared drag threshold the operation is still a click: the
-		// canonical baseline stays installed and nothing is planned or written.
+		// canonical baseline stays installed and nothing is proposed or written.
 		if (!architectureEditMoved) {
 			if (!shouldBeginWallBend(architectureEditStartScreen ?? screen, screen)) return;
 			architectureEditMoved = true;
 		}
 		const target = resolveArchitectureEditSnapTarget(gesture, architectureEditRawTarget(gesture, point));
-		const result = planArchitectureEditTarget(gesture, target);
-		// A rejected candidate keeps the baseline installed; the snapped target
-		// stays visible as an invalid intent and the planner reason is the status.
-		if (!result.success && result.code !== 'no_op') preview.statusMessage = result.message ?? null;
+		const input = updateLayoutArchitectureEdit(interaction, target);
+		if (!input) return;
+		architectureEditTransient = transientArchitectureEdit({
+			gesture: interaction.architectureEdit,
+			baseline: architectureEditBaselineDocument(),
+			moved: true
+		});
 	}
 
 	/**
@@ -682,6 +733,7 @@
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
+		architectureEditTransient = null;
 		clearLayoutSnapFeedback();
 		pointerId = null;
 		if (pointerIdToRelease !== null && svgElement?.hasPointerCapture(pointerIdToRelease)) {
@@ -696,41 +748,31 @@
 	 * or cancelled with the baseline restored. A no-op release stays silent.
 	 */
 	function commitArchitectureEditGesture(event: PointerEvent): void {
-		const gesture = interaction.architectureEdit;
-		const snapshot = architectureEditSnapshot;
-		const moved = architectureEditMoved;
-		let valid = false;
-		let rejectionMessage: string | null = null;
-		if (gesture && snapshot && moved) {
-			const point = worldPoint(event);
-			if (point) {
+		const outcome = releaseArchitectureEdit({
+			gesture: interaction.architectureEdit,
+			moved: architectureEditMoved,
+			// The one canonical planner call for this gesture: the release
+			// coordinate is re-resolved against the frozen baseline, never a
+			// remembered intermediate proposal.
+			plan: () => {
+				const gesture = interaction.architectureEdit;
+				if (!gesture) return { success: false, message: 'Architecture edit gesture was lost' };
+				const point = worldPoint(event);
+				if (!point) {
+					return { success: false, message: 'Could not resolve the release position' };
+				}
 				const target = resolveArchitectureEditSnapTarget(
 					gesture,
 					architectureEditRawTarget(gesture, point)
 				);
-				const result = planArchitectureEditTarget(gesture, target);
-				valid = result.success;
-				if (!result.success && result.code !== 'no_op') rejectionMessage = result.message ?? null;
-			} else {
-				rejectionMessage = 'Could not resolve the release position';
-			}
-		}
-		if (valid) {
-			const changed = onLayoutTransactionCommit();
-			if (changed) {
-				preview.statusMessage =
-					gesture?.kind === 'junction-move'
-						? 'Moved junction'
-						: gesture?.kind === 'wall-move'
-							? 'Moved wall'
-							: 'Moved wall point';
-			}
-		} else {
-			onLayoutTransactionCancel();
-			if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
-			if (rejectionMessage) preview.statusMessage = rejectionMessage;
-			suppressNextClick = moved;
-		}
+				return planArchitectureEditTarget(gesture, target);
+			},
+			commit: () => onLayoutTransactionCommit(),
+			cancel: () => onLayoutTransactionCancel(),
+			restoreBaseline: restoreArchitectureEditBaseline
+		});
+		if (outcome.statusMessage) preview.statusMessage = outcome.statusMessage;
+		if (outcome.suppressNextClick) suppressNextClick = true;
 		finishArchitectureEditGesture(event.pointerId);
 	}
 
@@ -744,13 +786,13 @@
 			// the viewport effect runs, but the captured pointer, the open
 			// transaction and the snap feedback are still ours: finish through the
 			// same cleanup instead of leaving a capture (and a transaction) open.
-			restoreLayoutPreviewSnapshot(preview, snapshot);
+			restoreArchitectureEditBaseline();
 			onLayoutTransactionCancel();
 			suppressNextClick = architectureEditMoved;
 			finishArchitectureEditGesture(pointerId);
 			return;
 		}
-		if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+		restoreArchitectureEditBaseline();
 		onLayoutTransactionCancel();
 		suppressNextClick = architectureEditMoved;
 		finishArchitectureEditGesture(gesture.pointerId);
@@ -1056,54 +1098,12 @@
 		if (!footprint || selectedPlacementIds.includes(footprint.entityId)) return null;
 		return { id: footprint.entityId, points: footprint.points };
 	});
-	// P23.10 — a rejected direct-edit candidate installs nothing, so the attempted
-	// geometry is drawn transiently from the gesture's baseline-derived values.
-	// `architectureEditIntentFor` owns the gate: nothing renders while the press
-	// is still a click, nothing for an accepted candidate (the installed preview
-	// already shows it) and nothing for a silent `no_op`.
-	// P23.11 — a rejected architecture drag keeps the immutable baseline
-	// installed but must still show the attempted local Wall geometry. The
-	// attempted centerlines are pure core PROPOSALS (the same chain algebra the
-	// planners run, without acceptance), sampled there and passed here only for
-	// rendering, so no interpolation logic lives in this Svelte surface and
-	// nothing invalid is ever installed or persisted.
-	const architectureEditProposal = $derived.by(() => {
-		const gesture = interaction.architectureEdit;
-		if (!gesture || !architectureEditMoved || gesture.valid) return null;
-		const document = wallFirstLayoutDocument();
-		if (!document) return null;
-		if (gesture.kind === 'junction-move') {
-			return proposeWallFirstArchitectureGeometry(document, {
-				kind: 'junction-move',
-				junctionId: gesture.junctionId,
-				point: gesture.candidatePoint
-			});
-		}
-		if (gesture.kind === 'wall-move') {
-			return proposeWallFirstArchitectureGeometry(document, {
-				kind: 'wall-move',
-				wallId: gesture.wallId,
-				delta: gesture.candidateDelta
-			});
-		}
-		if (gesture.kind === 'wall-bend') {
-			return proposeWallFirstArchitectureGeometry(document, {
-				kind: 'wall-bend',
-				wallId: gesture.wallId,
-				distance: gesture.bendDistance,
-				point: gesture.candidatePoint
-			});
-		}
-		return proposeWallFirstArchitectureGeometry(document, {
-			kind: 'curve-control-move',
-			wallId: gesture.wallId,
-			knotId: gesture.anchorId,
-			point: gesture.candidatePoint
-		});
-	});
-	const architectureEditIntent = $derived(
-		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved, architectureEditProposal)
-	);
+	// P23.11 transient pass — the direct-edit drag preview is the gesture's
+	// derived-only attempt (see `transientArchitectureEdit`): the attempted
+	// Wall/Junction geometry follows the pointer as overlay truth while the
+	// canonical baseline stays installed underneath, and the canonical planner
+	// decides on release. Nothing here reads or writes the document.
+	const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);
 const interactionProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
@@ -1323,7 +1323,7 @@ const interactionProjection = $derived(
 		);
 		if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);
 		if (roomUnitSnapshot) restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-		if (architectureEditSnapshot) restoreLayoutPreviewSnapshot(preview, architectureEditSnapshot);
+		if (architectureEditSnapshot) restoreArchitectureEditBaseline();
 		if (hadLayoutInteraction) onLayoutTransactionCancel();
 		for (const captured of [
 			pointerId,
