@@ -1,5 +1,6 @@
 import type { DraftSegment, LayoutInteriorAnchor, LayoutVec2 } from './layout-types';
 import { coincidesAsJunction } from './layout-junction-identity';
+import { p2311Measure } from './p2311-perf';
 
 export const CURVE_ENDPOINT_EPSILON = 1e-6;
 export const CURVE_FLATNESS_TOLERANCE = 0.01;
@@ -389,6 +390,18 @@ export function sampleSegment(
 		maxSamples?: number;
 	} = {}
 ): SampledSegment {
+	return p2311Measure('curve-sampling', () => sampleSegmentUnmeasured(segment, options));
+}
+
+function sampleSegmentUnmeasured(
+	segment: SampleableSegment,
+	options: {
+		flatnessTolerance?: number;
+		maxSampleSpan?: number;
+		maxDepth?: number;
+		maxSamples?: number;
+	} = {}
+): SampledSegment {
 	const flatnessTolerance = options.flatnessTolerance ?? CURVE_FLATNESS_TOLERANCE;
 	const maxSampleSpan = options.maxSampleSpan ?? CURVE_MAX_SAMPLE_SPAN;
 	const maxDepth = options.maxDepth ?? 12;
@@ -536,18 +549,115 @@ export function projectPointToSampledSegment(point: LayoutVec2, sampled: Sampled
 	return best ?? { ...pointAtDistance(sampled, 0), distanceToPath: distance(point, sampled.samples[0]?.point ?? [0, 0]) };
 }
 
+/**
+ * A sampled segment's tolerance-expanded axis-aligned bounding box. The
+ * expansion is the predicate's own `tolerance`, which is what makes the broad
+ * phase below conservative: every pair the exact predicate can accept has
+ * overlapping expanded boxes (a proper crossing meets inside both boxes, and
+ * the endpoint branches require per-axis proximity within `tolerance`).
+ */
+type SegmentBox = { minX: number; maxX: number; minY: number; maxY: number };
+
+function segmentBoxes(points: readonly LayoutVec2[], tolerance: number): SegmentBox[] {
+	const boxes: SegmentBox[] = [];
+	for (let index = 1; index < points.length; index += 1) {
+		const start = points[index - 1]!;
+		const end = points[index]!;
+		boxes.push({
+			minX: Math.min(start[0], end[0]) - tolerance,
+			maxX: Math.max(start[0], end[0]) + tolerance,
+			minY: Math.min(start[1], end[1]) - tolerance,
+			maxY: Math.max(start[1], end[1]) + tolerance
+		});
+	}
+	return boxes;
+}
+
+/**
+ * The one **candidate-pair sweep** behind both polyline predicates.
+ *
+ * The exact predicates are pairwise over sampled segments, so a long curve
+ * (`~4k` samples for a deep bow) makes the naive double loop quadratic and
+ * dominates a Bend gesture's crossing validation. This sweeps the segments in
+ * ascending lower-X order with an active list, and calls `visit` only for pairs
+ * whose tolerance-expanded boxes overlap in both axes. Box overlap is a
+ * *superset* of the pairs the predicate can accept, so pruning can only remove
+ * pairs that would have been rejected anyway: the answer — and therefore the
+ * crossing classification, rejection and issue — is identical.
+ *
+ * `visit` receives an unordered pair, and stops the sweep by returning `true`.
+ */
+function sweepSegmentPairs(
+	boxes: readonly SegmentBox[],
+	visit: (first: number, second: number) => boolean
+): boolean {
+	const order = boxes.map((_box, index) => index);
+	// Ascending lower X: `sort` is specified stable, so equal spans keep index
+	// order and the candidate sequence stays deterministic between runs.
+	order.sort((a, b) => boxes[a]!.minX - boxes[b]!.minX);
+	const active: number[] = [];
+	for (const index of order) {
+		const box = boxes[index]!;
+		let kept = 0;
+		for (let read = 0; read < active.length; read += 1) {
+			const candidate = active[read]!;
+			if (boxes[candidate]!.maxX >= box.minX) active[kept++] = candidate;
+		}
+		active.length = kept;
+		for (const candidate of active) {
+			const other = boxes[candidate]!;
+			if (other.minY > box.maxY || other.maxY < box.minY) continue;
+			if (visit(candidate, index)) return true;
+		}
+		active.push(index);
+	}
+	return false;
+}
+
 export function sampledPolylineIntersects(
 	first: readonly CurveSample[],
 	second: readonly CurveSample[],
 	tolerance = CURVE_SELF_INTERSECTION_TOLERANCE,
 	ignoreSharedEndpoint?: LayoutVec2
 ): boolean {
-	for (let firstIndex = 1; firstIndex < first.length; firstIndex += 1) {
-		for (let secondIndex = 1; secondIndex < second.length; secondIndex += 1) {
-			const firstStart = first[firstIndex - 1]!.point;
-			const firstEnd = first[firstIndex]!.point;
-			const secondStart = second[secondIndex - 1]!.point;
-			const secondEnd = second[secondIndex]!.point;
+	const firstSegments = first.length - 1;
+	const secondSegments = second.length - 1;
+	if (firstSegments <= 0 || secondSegments <= 0) return false;
+	// Aliased input is the one shape the sweep cannot express (it would pair a
+	// segment with itself); no caller passes one, so it keeps the literal
+	// every-pair loop rather than silently changing its answer.
+	if (first === second) return aliasedPolylineIntersects(first, tolerance, ignoreSharedEndpoint);
+	const firstPoints = first.map((sample) => sample.point);
+	const secondPoints = second.map((sample) => sample.point);
+	const boxes = [...segmentBoxes(firstPoints, tolerance), ...segmentBoxes(secondPoints, tolerance)];
+	return sweepSegmentPairs(boxes, (left, right) => {
+		const leftIsFirst = left < firstSegments;
+		// The canonical loop pairs every first-polyline segment with every
+		// second-polyline segment, and nothing else.
+		if (leftIsFirst === right < firstSegments) return false;
+		const firstIndex = leftIsFirst ? left : right;
+		const secondIndex = (leftIsFirst ? right : left) - firstSegments;
+		const firstStart = firstPoints[firstIndex]!;
+		const firstEnd = firstPoints[firstIndex + 1]!;
+		const secondStart = secondPoints[secondIndex]!;
+		const secondEnd = secondPoints[secondIndex + 1]!;
+		if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) return false;
+		return polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance);
+	});
+}
+
+/** The literal every-pair loop, kept only for aliased `sampledPolylineIntersects`. */
+function aliasedPolylineIntersects(
+	samples: readonly CurveSample[],
+	tolerance: number,
+	ignoreSharedEndpoint?: LayoutVec2
+): boolean {
+	for (let firstIndex = 1; firstIndex < samples.length; firstIndex += 1) {
+		for (let secondIndex = 1; secondIndex < samples.length; secondIndex += 1) {
+			const firstStart = samples[firstIndex - 1]!.point;
+			const firstEnd = samples[firstIndex]!.point;
+			const secondStart = samples[secondIndex - 1]!.point;
+			const secondEnd = samples[secondIndex]!.point;
 			if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) continue;
 			if (polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance)) return true;
 		}
@@ -559,13 +669,20 @@ export function sampledPolylineSelfIntersects(
 	samples: readonly CurveSample[],
 	tolerance = CURVE_SELF_INTERSECTION_TOLERANCE
 ): boolean {
-	for (let firstIndex = 0; firstIndex < samples.length - 1; firstIndex += 1) {
-		for (let secondIndex = firstIndex + 2; secondIndex < samples.length - 1; secondIndex += 1) {
-			if (firstIndex === 0 && secondIndex === samples.length - 2) continue;
-			if (polylineSegmentsIntersect(samples[firstIndex]!.point, samples[firstIndex + 1]!.point, samples[secondIndex]!.point, samples[secondIndex + 1]!.point, tolerance)) return true;
-		}
-	}
-	return false;
+	// Segments 0..n-2; a segment is never paired with its immediate neighbour
+	// (they share an endpoint by construction) and the (first, last) pair is the
+	// closed-loop return the canonical loop always skipped.
+	const segmentCount = samples.length - 1;
+	if (segmentCount < 3) return false;
+	const points = samples.map((sample) => sample.point);
+	const boxes = segmentBoxes(points, tolerance);
+	return sweepSegmentPairs(boxes, (left, right) => {
+		const low = Math.min(left, right);
+		const high = Math.max(left, right);
+		if (high - low < 2) return false;
+		if (low === 0 && high === segmentCount - 1) return false;
+		return polylineSegmentsIntersect(points[low]!, points[low + 1]!, points[high]!, points[high + 1]!, tolerance);
+	});
 }
 
 /**

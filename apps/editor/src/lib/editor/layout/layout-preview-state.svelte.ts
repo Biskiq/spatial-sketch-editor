@@ -10,7 +10,12 @@ import {
 	serializeLayoutDocument,
 	validateLayoutDocument
 } from '$lib/layout/layout-codec';
-import { buildLayoutPreviewModel, type LayoutPreviewModel, type LayoutPreviewModelResult } from './layout-mesh-factory';
+import {
+	buildLayoutPreviewModel,
+	projectLayoutPreviewModel,
+	type LayoutPreviewModel,
+	type LayoutPreviewModelResult
+} from './layout-mesh-factory';
 import type { LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
 import type {
 	DraftSegment,
@@ -39,13 +44,15 @@ import {
 	planDeleteWallCurveKnot,
 	planInsertWallCurveKnot,
 	planMoveWallCurveKnot,
+	p2311Measure,
 	type FixedWallEndpoint,
 	type LayoutArchitecturalPresetId,
 	type WallBendIntent,
 	type LayoutObjectTransformPatch,
 	type PrecisionOperation,
 	type PrecisionPlan,
-	type PrecisionRejection
+	type PrecisionRejection,
+	type WallFirstAcceptanceCompile
 } from '$lib/layout/layout-wall-first-precision';
 import {
 	planDeleteWall,
@@ -467,19 +474,121 @@ function buildWallMeshesByRoom(geometry: CompiledLayoutGeometry): {
 }
 
 /**
+ * Derived cache: one prebuilt `IndexedWallMesh` per compiled room plus one per
+ * canonical physical Wall, and the 3D pick index built beside them.
+ *
+ * Every field is a **pure function of one compiled geometry** — no document, no
+ * history, no selection. A direct-edit gesture installs the *same* frozen
+ * baseline geometry on every pointermove (restore) while it derives one fresh
+ * candidate geometry per accepted move, so without this the baseline's meshes
+ * were rebuilt from scratch dozens of times for a document that never changed.
+ *
+ * Keyed by geometry **object identity**: a compile always produces a new
+ * geometry, so an entry can never be read for a different document, and the
+ * entry is released with the geometry that owns it (never a stale cache across
+ * document replacement — a replaced document is a different object). Nothing
+ * here is ever a semantic authority: the document and its validation stay the
+ * only source of truth, and undo/history never see it.
+ */
+const derivedWallMeshes = new WeakMap<
+	CompiledLayoutGeometry,
+	{
+		wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
+		wallMeshesByWall: ReadonlyMap<string, IndexedWallMesh>;
+		layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
+		issues: readonly LayoutGeometryIssue[];
+	}
+>();
+
+/**
+ * Build the wall-mesh / pick-index caches for a compiled geometry, or reuse the
+ * one already derived for that exact geometry object.
+ *
+ * The caller always receives **fresh `Map` instances** wrapping the cached
+ * meshes, so installing a restored baseline still invalidates the reactive
+ * consumers exactly as a rebuild did — the meshes (the expensive part) are
+ * reused, the container never is.
+ */
+function resolveWallMeshes(geometry: CompiledLayoutGeometry): {
+	wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
+	wallMeshesByWall: ReadonlyMap<string, IndexedWallMesh>;
+	layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
+	issues: readonly LayoutGeometryIssue[];
+} {
+	const cached = derivedWallMeshes.get(geometry);
+	if (cached) return cached;
+	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(geometry));
+	derivedWallMeshes.set(geometry, built);
+	return built;
+}
+
+/** Install the derived wall-mesh caches for one geometry onto the live state. */
+function installWallMeshes(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
+	const meshes = resolveWallMeshes(geometry);
+	state.wallMeshesByRoom = new Map(meshes.wallMeshesByRoom);
+	state.wallMeshesByWall = new Map(meshes.wallMeshesByWall);
+	state.layout3dPickIndexByRoom = new Map(meshes.layout3dPickIndexByRoom);
+}
+
+/**
  * Apply a fresh compile result to the state and rebuild the derived wall-mesh
  * cache, merging any mesh issues into `state.issues`.
  */
 function applyCompiledLayout(state: LayoutPreviewState, result: LayoutPreviewModelResult): void {
-	const meshes = buildWallMeshesByRoom(result.geometry);
-	const issues = meshes.issues.length > 0 ? [...result.issues, ...meshes.issues] : result.issues;
+	installWallMeshes(state, result.geometry);
+	const meshIssues = resolveWallMeshes(result.geometry).issues;
+	const issues = meshIssues.length > 0 ? [...result.issues, ...meshIssues] : result.issues;
 	state.model = result.model;
 	state.geometry = result.geometry;
 	state.issues = issues;
 	state.bounds = result.bounds;
-	state.wallMeshesByRoom = meshes.wallMeshesByRoom;
-	state.wallMeshesByWall = meshes.wallMeshesByWall;
-	state.layout3dPickIndexByRoom = meshes.layout3dPickIndexByRoom;
+}
+
+/**
+ * The accepted planner compile a preview install may reuse: the geometry that
+ * acceptance already produced for `documentJson`. It is a *result*, never an
+ * authority — `reusesAcceptedCompile` re-proves the document below before a
+ * single byte of it is installed.
+ */
+export type PreviewCompileReuse = {
+	documentJson: string;
+	geometry: CompiledLayoutGeometry;
+	issues: readonly LayoutGeometryIssue[];
+};
+
+/**
+ * Compile the decoded layout for install, or reuse the accepted planner's own
+ * compile when the document it was accepted for is provably the one about to be
+ * installed.
+ *
+ * The preview compiles the **re-parsed** document (`createPreviewProject`
+ * decodes it), so reuse is sound only if that re-parse preserved the document
+ * acceptance proved. One canonical serialization answers exactly that: the
+ * codec's canonical JSON covers every field the compiler reads, so equal
+ * canonical JSON means the same compile input and therefore the same geometry,
+ * issues and bounds. Anything else falls back to the ordinary compile — one
+ * canonical `compileLayoutGeometry()` authority, one accepted document, same
+ * issue ordering, same Plan/3D/museum geometry.
+ */
+function resolvePreviewCompile(
+	layout: EditorLayoutDocument,
+	reuse: PreviewCompileReuse | undefined
+): LayoutPreviewModelResult {
+	if (reuse && reusesAcceptedCompile(layout, reuse)) {
+		return p2311Measure('preview-compile-reused', () => ({
+			model: projectLayoutPreviewModel(reuse.geometry),
+			geometry: reuse.geometry,
+			issues: [...reuse.issues],
+			bounds: reuse.geometry.bounds
+		}));
+	}
+	return p2311Measure('preview-compile', () => buildLayoutPreviewModel(layout));
+}
+
+function reusesAcceptedCompile(layout: EditorLayoutDocument, reuse: PreviewCompileReuse): boolean {
+	// Only wall-first documents can carry a planner compile.
+	if (!isWallFirstLayoutDocument(layout)) return false;
+	return serializeWallFirstLayoutDocument(layout) === reuse.documentJson;
 }
 
 /**
@@ -493,7 +602,8 @@ export function derivePreviewBundle(
 	projectId: string,
 	projectName: string,
 	layout: EditorLayoutDocument,
-	scene: Project['scene']
+	scene: Project['scene'],
+	reuse?: PreviewCompileReuse
 ): {
 	project: Project;
 	model: LayoutPreviewModel;
@@ -505,15 +615,15 @@ export function derivePreviewBundle(
 	bounds: LayoutPreviewBounds | null;
 } {
 	const project = createPreviewProject({ id: projectId, name: projectName, layout, scene });
-	const result = buildLayoutPreviewModel(project.layout);
-	const meshes = buildWallMeshesByRoom(result.geometry);
+	const result = resolvePreviewCompile(project.layout, reuse);
+	const meshes = resolveWallMeshes(result.geometry);
 	return {
 		project,
 		model: result.model,
 		geometry: result.geometry,
-		wallMeshesByRoom: meshes.wallMeshesByRoom,
-		wallMeshesByWall: meshes.wallMeshesByWall,
-		layout3dPickIndexByRoom: meshes.layout3dPickIndexByRoom,
+		wallMeshesByRoom: new Map(meshes.wallMeshesByRoom),
+		wallMeshesByWall: new Map(meshes.wallMeshesByWall),
+		layout3dPickIndexByRoom: new Map(meshes.layout3dPickIndexByRoom),
 		issues: meshes.issues.length > 0 ? [...result.issues, ...meshes.issues] : result.issues,
 		bounds: result.bounds
 	};
@@ -633,7 +743,7 @@ export function importLayoutPreviewJson(state: LayoutPreviewState, json: string)
 	try {
 		const bundle = derivePreviewBundle(state.project.id, state.project.name, parsed.document, state.project.scene);
 		state.source = 'imported';
-		commitPreviewBundle(state, bundle);
+		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
 		state.reframeVersion += 1;
 		state.baselineLayoutJson = canonicalLayoutJson(parsed.document);
@@ -873,7 +983,7 @@ export function commitLayoutObjectPreset(
 			state.project.scene
 		);
 		state.source = 'draft';
-		commitPreviewBundle(state, bundle);
+		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
@@ -918,28 +1028,35 @@ function applyWallFirstDocumentPlan(
 	state: LayoutPreviewState,
 	document: LayoutDocumentWallFirst,
 	operation: PrecisionOperation | WallOpeningOperation,
-	openingId?: string
+	openingId?: string,
+	acceptance?: WallFirstAcceptanceCompile
 ): WallFirstPrecisionMutationResult;
 function applyWallFirstDocumentPlan(
 	state: LayoutPreviewState,
 	document: LayoutDocumentWallFirst,
-	operation: 'room-move'
+	operation: 'room-move',
+	openingId?: string,
+	acceptance?: WallFirstAcceptanceCompile
 ): WallFirstRoomMoveMutationResult;
 function applyWallFirstDocumentPlan(
 	state: LayoutPreviewState,
 	document: LayoutDocumentWallFirst,
 	operation: PrecisionOperation | WallOpeningOperation | 'room-move',
-	openingId?: string
+	openingId?: string,
+	acceptance?: WallFirstAcceptanceCompile
 ): WallFirstPrecisionMutationResult | WallFirstRoomMoveMutationResult {
 	try {
+		// `acceptance` is the compile this cycle already ran to accept the same
+		// document; the install consumes it instead of compiling it again.
 		const bundle = derivePreviewBundle(
 			state.project.id,
 			state.project.name,
 			document,
-			state.project.scene
+			state.project.scene,
+			acceptance
 		);
 		state.source = 'draft';
-		commitPreviewBundle(state, bundle);
+		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
@@ -964,7 +1081,7 @@ function applyWallFirstPrecisionPlan(
 		state.lastMutationMessage = plan.rejection.message;
 		return { success: false, message: plan.rejection.message, code: plan.rejection.code };
 	}
-	return applyWallFirstDocumentPlan(state, plan.document, plan.operation);
+	return applyWallFirstDocumentPlan(state, plan.document, plan.operation, undefined, plan.acceptance);
 }
 
 /** Apply a P23.3 canonical Opening plan (create/update/move/center/delete). */
@@ -2225,6 +2342,13 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
 export type LayoutPreviewSnapshot = {
 	source: LayoutPreviewState['source'];
 	project: LayoutPreviewState['project'];
+	/**
+	 * The captured preview model — the frozen record of what was on screen. It is
+	 * **not** what a restore installs: the model is a pure projection of
+	 * `geometry` (see `projectLayoutPreviewModel`), so `restore` re-projects it
+	 * from `geometry` instead of deep-cloning this copy. Both describe the same
+	 * state, which is what the capture/restore round-trip tests pin.
+	 */
 	model: LayoutPreviewState['model'];
 	geometry: LayoutPreviewState['geometry'];
 	issues: LayoutPreviewState['issues'];
@@ -2254,27 +2378,43 @@ export function captureLayoutPreviewSnapshot(state: LayoutPreviewState): LayoutP
 }
 
 export function restoreLayoutPreviewSnapshot(state: LayoutPreviewState, snapshot: LayoutPreviewSnapshot): void {
-	state.source = snapshot.source;
-	state.project = cloneJson(snapshot.project);
-	state.model = cloneJson(snapshot.model);
-	state.geometry = snapshot.geometry;
-	// The snapshot's `issues` already includes mesh issues from capture time,
-	// and undo restores the same geometry, so re-deriving would duplicate them.
-	state.issues = cloneJson(snapshot.issues);
+	p2311Measure('baseline-restore', () => restoreLayoutPreviewSnapshotUnmeasured(state, snapshot));
+}
+
+function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snapshot: LayoutPreviewSnapshot): void {
+	// The remaining cost of a restore is the **reactive write path itself**: on a
+	// `$state` preview graph this block measures ~7 ms p50 at 50 Walls (1.3 ms at
+	// 3 Rooms / 12 Walls), while the identical restore against a plain graph
+	// costs 0.07 ms. `state.geometry` is the whole of it — re-assigning a geometry
+	// the reactive graph has already read is what the proxy pays for, and it is
+	// reactive bookkeeping, not Bend work. Nothing here changes it: the writes are
+	// the restore's contract (see the `baseline-restore` investigation).
+	p2311Measure('restore-reactive-write', () => {
+		state.source = snapshot.source;
+		state.project = p2311Measure('restore-project-clone', () => cloneJson(snapshot.project));
+		// The preview model is a pure projection of the compiled geometry (the same
+		// one a fresh install performs), so restoring re-projects it instead of
+		// deep-cloning the captured copy — identical content, none of the JSON cost.
+		state.model = p2311Measure('restore-model-project', () => projectLayoutPreviewModel(snapshot.geometry));
+		state.geometry = snapshot.geometry;
+		// The snapshot's `issues` already includes mesh issues from capture time,
+		// and undo restores the same geometry, so re-deriving would duplicate them.
+		state.issues = p2311Measure('restore-issues-clone', () => cloneJson(snapshot.issues));
+	});
 	// The wall-mesh + pick-index caches are derived and never part of the undo
-	// snapshot: undo restores the document and the caches rebuild from geometry.
-	const meshes = buildWallMeshesByRoom(snapshot.geometry);
-	state.wallMeshesByRoom = meshes.wallMeshesByRoom;
-	state.wallMeshesByWall = meshes.wallMeshesByWall;
-	state.layout3dPickIndexByRoom = meshes.layout3dPickIndexByRoom;
-	state.bounds = snapshot.bounds
-		? {
-				min: [snapshot.bounds.min[0], snapshot.bounds.min[1], snapshot.bounds.min[2]],
-				max: [snapshot.bounds.max[0], snapshot.bounds.max[1], snapshot.bounds.max[2]]
-			}
-		: null;
-	state.previewVersion += 1;
-	state.lastMutationMessage = snapshot.lastMutationMessage;
-	state.statusMessage = snapshot.statusMessage;
-	state.importError = snapshot.importError;
+	// snapshot: undo restores the document and the caches are re-derived from
+	// geometry — reusing the ones already derived for this exact geometry object.
+	p2311Measure('restore-mesh-install', () => installWallMeshes(state, snapshot.geometry));
+	p2311Measure('restore-bookkeeping', () => {
+		state.bounds = snapshot.bounds
+			? {
+					min: [snapshot.bounds.min[0], snapshot.bounds.min[1], snapshot.bounds.min[2]],
+					max: [snapshot.bounds.max[0], snapshot.bounds.max[1], snapshot.bounds.max[2]]
+				}
+			: null;
+		state.previewVersion += 1;
+		state.lastMutationMessage = snapshot.lastMutationMessage;
+		state.statusMessage = snapshot.statusMessage;
+		state.importError = snapshot.importError;
+	});
 }

@@ -65,8 +65,24 @@ export function buildLayoutPreviewModel(
 	const result = isWallFirstLayout(document)
 		? compileWallFirstLayoutGeometry(document)
 		: compileLayoutGeometry(document);
-	const model: LayoutPreviewModel = {
-		rooms: result.geometry.rooms.map((room) => ({
+	return {
+		model: projectLayoutPreviewModel(result.geometry),
+		geometry: result.geometry,
+		issues: result.issues,
+		bounds: result.geometry.bounds
+	};
+}
+
+/**
+ * The one **pure projection** of a compiled layout into the Plan/3D preview
+ * model. Split out of `buildLayoutPreviewModel` so a caller that already holds a
+ * compile result — or a geometry it derived that model from before — projects it
+ * without compiling again. It reads nothing but its argument, so projecting the
+ * same geometry twice always yields the same model.
+ */
+export function projectLayoutPreviewModel(geometry: CompiledLayoutGeometry): LayoutPreviewModel {
+	return {
+		rooms: geometry.rooms.map((room) => ({
 			roomId: room.roomId,
 			floorElevation: room.floorElevation,
 			ceilingElevation: room.ceilingElevation,
@@ -88,10 +104,9 @@ export function buildLayoutPreviewModel(
 				solidCenterlinePolylines: wall.solidCenterlinePolylines
 			}))
 		})),
-		objects: result.geometry.objects,
-		queries: result.geometry.queries
+		objects: geometry.objects,
+		queries: geometry.queries
 	};
-	return { model, geometry: result.geometry, issues: result.issues, bounds: result.geometry.bounds };
 }
 
 function isWallFirstLayout(

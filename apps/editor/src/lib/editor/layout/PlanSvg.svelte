@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { worldToPlanScreen, type PlanViewportState } from './layout-plan-transform';
+	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import type { LayoutVec2 } from '$lib/layout/layout-types';
 	import type {
 		PlanPolylinePrimitive,
@@ -75,10 +76,14 @@
 	}
 
 	function pointsAttr(points: readonly LayoutVec2[]): string {
-		return points.map((point) => worldToPlanScreen(planView, point).join(',')).join(' ');
+		return p2311Measure('svg-attributes', () => points.map((point) => worldToPlanScreen(planView, point).join(',')).join(' '));
 	}
 
 	function polylinePointsAttr(points: readonly LayoutVec2[], endOffsetPx?: readonly [number, number]): string {
+		return p2311Measure('svg-attributes', () => polylinePointsAttrUnmeasured(points, endOffsetPx));
+	}
+
+	function polylinePointsAttrUnmeasured(points: readonly LayoutVec2[], endOffsetPx?: readonly [number, number]): string {
 		const screen = points.map((point) => worldToPlanScreen(planView, point));
 		if (endOffsetPx && screen.length > 0) {
 			const last = screen[screen.length - 1]!;

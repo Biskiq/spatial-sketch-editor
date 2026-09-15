@@ -29,6 +29,7 @@ import type {
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
+import { p2311Measure } from './p2311-perf';
 import {
 	pointAlongSamples,
 	sampleSegment,
@@ -310,7 +311,7 @@ function compileWallFirstWithPhysicalWalls(
 	document: LayoutDocumentWallFirst,
 	source: CompilerSource
 ): CompiledLayoutGeometryResult {
-	const result = compileLayoutGeometrySource(source);
+	const result = p2311Measure('room-geometry-compile', () => compileLayoutGeometrySource(source));
 	const geometry = result.geometry;
 	const floor = document.floor;
 	const floorElevation = floor.elevation;
@@ -397,7 +398,7 @@ function compileWallFirstWithPhysicalWalls(
 		// Walls are skipped: their offsets are two parallel polylines with
 		// identical tangents, so neither branch of the predicate can fire.
 		if (wall.centerline.kind !== 'line') {
-			const clearance = wallOffsetClearanceFailure(compiled.samples, wall.thickness);
+			const clearance = p2311Measure('finite-thickness', () => wallOffsetClearanceFailure(compiled.samples, wall.thickness));
 			if (clearance) {
 				wallIssues.push({
 					path: `walls.${wall.id}`,

@@ -24,6 +24,7 @@ export * from './layout-robust-orientation';
 export * from './layout-types';
 export * from './layout-wall-first-codec';
 export * from './layout-wall-first-precision';
+export * from './p2311-perf';
 export * from './layout-wall-first-types';
 export * from './layout-wall-heights';
 export * from './layout-wall-openings';

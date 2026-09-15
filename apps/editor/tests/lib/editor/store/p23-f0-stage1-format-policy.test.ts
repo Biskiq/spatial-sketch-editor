@@ -157,7 +157,12 @@ const DIRECT_WRITE_EXCEPTIONS: Record<string, string> = {
 	// connection.pathAnchors splices (review round 2) — every call site is
 	// wrapped by the guarded layout/scene transaction runner above it.
 	'editor/store/path-anchor-mutator.svelte.ts':
-		'positionPath.anchors splices inside guarded beginDocumentTransaction brackets (anchor domain)'
+		'positionPath.anchors splices inside guarded beginDocumentTransaction brackets (anchor domain)',
+	// P23.11 diagnosis harness — the fixture matrix builds a throwaway
+	// wall-first document locally to feed `importLayoutPreviewJson`; it never
+	// writes a live editor document and never reaches a transaction.
+	'bench/p2311-bend-fixtures.ts':
+		'P23.11 diagnostic fixture factory — builds a throwaway wall-first document; never mutates a live document'
 };
 
 describe('P23.0 F0 stage 1 — central format-dispatch policy tables', () => {

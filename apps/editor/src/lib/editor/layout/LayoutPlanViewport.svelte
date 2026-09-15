@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import type { SceneDocument, SceneEntity } from '$lib/content/scene';
 	import type { LayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 	import type { Vec3 } from '$lib/types/scene';
@@ -122,6 +122,7 @@
 	} from './layout-plan-transform';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -378,12 +379,12 @@
 		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
 		if (options.excludeOwners) input.excludeOwners = options.excludeOwners;
 		if (options.excludePoints) input.excludePoints = options.excludePoints;
-		const resolution = resolveLayoutSnap(
+		const resolution = p2311Measure('snap-resolution', () => resolveLayoutSnap(
 			preview.geometry,
 			point,
 			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
 			input
-		);
+		));
 		snapFeedback = resolution;
 		return {
 			point: resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : point,
@@ -411,6 +412,7 @@
 	let architectureEditSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
 	let architectureEditMoved = $state(false);
+	let lastBendPointerTime: number | null = null;
 	let architectureEditReplacementVersion = $state<number | null>(null);
 
 	/** Every Wall the edit deforms, in document order (frozen at pointer-down). */
@@ -460,6 +462,9 @@
 	): LayoutVec2 {
 		const snapshot = architectureEditSnapshot;
 		if (!interaction.planView.snapEnabled || !snapshot) {
+			if (import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__) {
+				performance.mark(`p2311:snap-bypass:enabled-${interaction.planView.snapEnabled}:snapshot-${Boolean(snapshot)}`);
+			}
 			clearLayoutSnapFeedback();
 			return rawTarget;
 		}
@@ -474,12 +479,12 @@
 		if (allowedKinds) input.allowedKinds = [...allowedKinds];
 		const excludePoints = architectureEditExcludePoints(gesture);
 		if (excludePoints.length > 0) input.excludePoints = excludePoints;
-		const resolution = resolveLayoutSnap(
+		const resolution = p2311Measure('architecture-snap-resolution', () => resolveLayoutSnap(
 			snapshot.geometry,
 			rawTarget,
 			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
 			input
-		);
+		));
 		snapFeedback = resolution;
 		return resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : rawTarget;
 	}
@@ -499,7 +504,7 @@
 		const input = updateLayoutArchitectureEdit(interaction, target);
 		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
 		restoreLayoutPreviewSnapshot(preview, snapshot);
-		const result =
+		const result = p2311Measure('adapter-plan-apply', () =>
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
 				: gesture.kind === 'wall-move'
@@ -512,7 +517,7 @@
 								distance: gesture.bendDistance,
 								point: input
 							})
-						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input);
+						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input));
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -672,6 +677,7 @@
 	 * captured.
 	 */
 	function finishArchitectureEditGesture(pointerIdToRelease: number | null): void {
+		lastBendPointerTime = null;
 		cancelLayoutArchitectureEdit(interaction);
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
@@ -1131,7 +1137,7 @@ const interactionProjection = $derived(
 		)
 	);
 	const planModel = $derived(
-		buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection)
+		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -2564,7 +2570,27 @@ const interactionProjection = $derived(
 			return;
 		}
 		if (interaction.architectureEdit && interaction.architectureEdit.pointerId === event.pointerId) {
-			previewArchitectureEdit(event);
+			const isBend = interaction.architectureEdit.kind === 'wall-bend';
+			const enabled = import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__;
+			let start = '';
+			if (isBend && enabled) {
+				if (lastBendPointerTime !== null) {
+					performance.measure('p2311:pointer-cadence', { start: lastBendPointerTime, end: event.timeStamp });
+				}
+				lastBendPointerTime = event.timeStamp;
+				start = `p2311:pointer-start:${event.timeStamp}`;
+				performance.mark(start);
+			}
+			p2311Measure(isBend ? 'pointermove-bend' : 'pointermove-rigid', () => previewArchitectureEdit(event));
+			if (start) {
+				void tick().then(() => {
+					performance.measure('p2311:svg-flush-latency', start);
+					requestAnimationFrame(() => {
+						performance.measure('p2311:next-frame-latency', start);
+						performance.clearMarks(start);
+					});
+				});
+			}
 			return;
 		}
 		if (pointerId !== event.pointerId) return;

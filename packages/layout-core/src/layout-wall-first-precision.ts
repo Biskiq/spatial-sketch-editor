@@ -21,8 +21,9 @@
 import type { LayoutDocumentIssue } from './layout-codec';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { p2311Measure } from './p2311-perf';
 import { LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
-import type { LayoutGeometryIssue } from './layout-geometry-types';
+import type { CompiledLayoutGeometryResult, LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstOpeningSet } from './layout-opening-set';
@@ -202,6 +203,26 @@ export type PrecisionRejection = {
 	issues?: readonly (LayoutDocumentIssue | LayoutGeometryIssue)[];
 };
 
+/**
+ * The **acceptance compile** a successful geometry plan already paid for.
+ *
+ * `finalizeWallGeometryCandidate` compiles the accepted candidate to prove it
+ * does not block, and then discards the result while the editor derives the
+ * preview bundle by compiling the same document a second time. Carrying the
+ * result here lets that caller install the identical geometry without a second
+ * compile.
+ *
+ * `documentJson` is the accepted document's own canonical JSON (free — the
+ * codec gate computed it), so a caller that installs a *re-parsed* copy of that
+ * document can prove the re-parse preserved it before reusing anything. It is
+ * never a licence to reuse geometry for a different document.
+ */
+export type WallFirstAcceptanceCompile = {
+	documentJson: string;
+	geometry: CompiledLayoutGeometryResult['geometry'];
+	issues: CompiledLayoutGeometryResult['issues'];
+};
+
 export type PrecisionPlan =
 	| {
 			kind: 'success';
@@ -212,6 +233,11 @@ export type PrecisionPlan =
 			changedObjectIds?: readonly string[];
 			/** P23.5 — the object a preset create birthed (its stored ID). */
 			createdObjectId?: string;
+			/**
+			 * Set only by the wall-geometry path, and only for the document in
+			 * `document`: the compile result acceptance already produced.
+			 */
+			acceptance?: WallFirstAcceptanceCompile;
 		}
 	| {
 			kind: 'rejected';
@@ -850,7 +876,7 @@ export function proposeWallCurveShape(
 		return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
 	}
 	if (!Number.isFinite(intent.distance) || !finitePoint(intent.point)) return undefined;
-	const resolution = resolveWallCurveSplit(chain, intent.distance);
+	const resolution = p2311Measure('proposal-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
 	if (resolution.kind === 'rejected') return undefined;
 	const { fragments, promotedKnotId, point } = resolution.result;
 	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
@@ -862,7 +888,9 @@ export function proposeWallCurveShape(
 				...fragments.b.knots
 		  ];
 	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
-	const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point);
+	const moved = p2311Measure('proposal-curve-algebra', () =>
+		moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point)
+	);
 	if (moved.kind === 'rejected') return undefined;
 	return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
 }
@@ -992,7 +1020,7 @@ export function planBendWallCurveKnot(
 
 	// One resolver call decides both halves: whether the grab promotes an
 	// existing bend point, and where the inserted knot belongs.
-	const resolution = resolveWallCurveSplit(chain, intent.distance);
+	const resolution = p2311Measure('planner-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
 	if (resolution.kind === 'rejected') {
 		return reject(
 			resolution.code === 'split_at_endpoint'
@@ -1033,11 +1061,15 @@ export function planBendWallCurveKnot(
 	// the grab reshape, so every other stored span (including exact
 	// split-derived and previously inserted spans) survives byte-identically.
 	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
-	const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point);
+	const moved = p2311Measure('curve-algebra', () =>
+		moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point)
+	);
 	if (moved.kind === 'rejected') {
 		return reject(curveEditRejection(moved.code), moved.message, [wallId, knotId]);
 	}
-	const candidate = withWallCenterline(document, wallId, wallCubicChain(moved.knots, moved.spans));
+	const candidate = p2311Measure('candidate-clone', () =>
+		withWallCenterline(document, wallId, wallCubicChain(moved.knots, moved.spans))
+	);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-bend', wallId);
 }
 
@@ -1344,7 +1376,7 @@ function finalizeWallGeometryCandidate(options: {
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
 
-	const preStructural = validateWallFirstLayoutDocument(candidate);
+	const preStructural = p2311Measure('structural-pre', () => validateWallFirstLayoutDocument(candidate));
 	if (!preStructural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${preStructural.issues[0]?.message ?? 'unknown issue'}`, undefined, preStructural.issues);
 	}
@@ -1352,7 +1384,7 @@ function finalizeWallGeometryCandidate(options: {
 	// topology helper still validates the same canonical rules, but must defer
 	// translating Opening-set issues or every non-height Opening failure would
 	// be consumed as `topology_invalid` before the explicit gate can classify it.
-	const preTopology = validateWallFirstTopology(preStructural.document, { openingSet: 'defer' });
+	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer' }));
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1363,7 +1395,7 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const document = preStructural.document;
-	const extraction = extractBoundaryCandidateFaces(document);
+	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document));
 	const candidateRoomById = new Map(document.rooms.map((room) => [room.id, room]));
 	const components: ComponentLineage[] = [];
 	for (const room of baseline.rooms) {
@@ -1378,13 +1410,13 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const allocationAttempted = { value: false };
-	const reconciliation: ReconciliationResult = reconcileRooms({
+	const reconciliation: ReconciliationResult = p2311Measure('room-reconciliation', () => reconcileRooms({
 		baseline,
 		candidateDocument: document,
 		extraction,
 		components,
 		allocator: guardedRoomAllocator(allocationAttempted)
-	});
+	}));
 	if (isReconciliationFailure(reconciliation)) {
 		const { rejection } = reconciliation;
 		return reject('room_identity_lost', rejection.message, rejection.roomIds);
@@ -1401,11 +1433,11 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const reconciled = reconciliation.document;
-	const structural = validateWallFirstLayoutDocument(reconciled);
+	const structural = p2311Measure('structural-post', () => validateWallFirstLayoutDocument(reconciled));
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = validateWallFirstTopology(structural.document, { openingSet: 'defer' });
+	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer' }));
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1414,7 +1446,7 @@ function finalizeWallGeometryCandidate(options: {
 			[topologyIssue]
 		);
 	}
-	const setIssues = validateWallFirstOpeningSet(structural.document);
+	const setIssues = p2311Measure('opening-set', () => validateWallFirstOpeningSet(structural.document));
 	if (setIssues.length > 0) {
 		const first = setIssues[0]!;
 		return reject(
@@ -1424,12 +1456,12 @@ function finalizeWallGeometryCandidate(options: {
 			setIssues
 		);
 	}
-	const relationIssues = validateWallFirstPortalRelations(structural.document);
+	const relationIssues = p2311Measure('portal-relations', () => validateWallFirstPortalRelations(structural.document));
 	if (relationIssues.length > 0) {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document));
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}
@@ -1438,7 +1470,12 @@ function finalizeWallGeometryCandidate(options: {
 		document: structural.document,
 		operation,
 		changedJunctionIds: [...changedJunctionIds],
-		changedWallIds: [...new Set([...changedWallIds, ...(options.createdWallIds ?? [])])]
+		changedWallIds: [...new Set([...changedWallIds, ...(options.createdWallIds ?? [])])],
+		acceptance: {
+			documentJson: structural.canonicalJson,
+			geometry: compiled.geometry,
+			issues: compiled.issues
+		}
 	};
 }
 
