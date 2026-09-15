@@ -1040,7 +1040,8 @@ export function commitWallSegment(
 	start: LayoutVec2,
 	end: LayoutVec2,
 	role: ChainWallRole,
-	height?: number
+	height?: number,
+	endpointHostWallId?: string
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
@@ -1049,7 +1050,8 @@ export function commitWallSegment(
 		start,
 		end,
 		role,
-		...(height !== undefined ? { height } : {})
+		...(height !== undefined ? { height } : {}),
+		...(endpointHostWallId !== undefined ? { endpointHostWallId } : {})
 	});
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
@@ -1103,7 +1105,7 @@ export function updateWallFirstJunction(
 }
 
 /**
- * P23.10 — commit one rigid straight-Wall translation as one Layout history
+ * P23.10 — commit one rigid Wall translation as one Layout history
  * entry. Thin adapter over the shared core planner: the same planner the
  * numeric Junction/Wall commands use, so the direct gesture and the Inspector
  * can never reach acceptance by different routes. Rejection installs nothing.

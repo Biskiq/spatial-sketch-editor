@@ -93,7 +93,7 @@ export type WallAngleIntent = {
 };
 
 /**
- * P23.10 — one rigid straight-Wall translation: both endpoint Junctions
+ * P23.10 — one rigid Wall translation: both endpoint Junctions
  * receive the identical X/Z delta. Endpoint order, role, thickness, height,
  * length and angle are all preserved.
  */
@@ -242,7 +242,7 @@ export function planExactJunctionMove(
 }
 
 /**
- * P23.10 — translate one canonical straight Wall rigidly in X/Z: both endpoint
+ * P23.10 — translate one canonical Wall rigidly in X/Z: both endpoint
  * Junctions receive the identical delta, so the Wall keeps its ID, role,
  * thickness, height, endpoint order, length and angle, and every hosted Opening
  * keeps its ID, host, offset, width and vertical/profile fields.
@@ -809,6 +809,19 @@ export type WallCurveProposeIntent =
 	| { kind: 'knot-move'; knotId: string; point: LayoutVec2 }
 	| { kind: 'bend'; distance: number; point: LayoutVec2 };
 
+/** One sampled Wall centerline in a transient direct-edit proposal. */
+export type WallFirstArchitectureProposalWall = {
+	wallId: string;
+	points: LayoutVec2[];
+};
+
+/** Pure direct-edit intent used only to derive invalid-drag overlay geometry. */
+export type WallFirstArchitectureProposalIntent =
+	| { kind: 'junction-move'; junctionId: string; point: LayoutVec2 }
+	| { kind: 'wall-move'; wallId: string; delta: LayoutVec2 }
+	| { kind: 'curve-control-move'; wallId: string; knotId: string; point: LayoutVec2 }
+	| { kind: 'wall-bend'; wallId: string; distance: number; point: LayoutVec2 };
+
 /**
  * P23.11 — pure, non-validating curve **proposal**.
  *
@@ -852,6 +865,81 @@ export function proposeWallCurveShape(
 	const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point);
 	if (moved.kind === 'rejected') return undefined;
 	return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
+}
+
+/**
+ * Derive the complete local geometry requested by one direct architecture
+ * edit, without validating or installing a candidate document.
+ *
+ * Junction moves reshape every incident Wall through the moved shared
+ * Junction. Rigid Wall moves translate the selected Wall's complete centerline
+ * and reshape neighbouring Walls through their moved shared Junctions. Curve
+ * controls and Bend reuse the existing curve proposal authority. The result is
+ * overlay truth only: callers must keep the canonical baseline installed.
+ */
+export function proposeWallFirstArchitectureGeometry(
+	document: LayoutDocumentWallFirst,
+	intent: WallFirstArchitectureProposalIntent
+): WallFirstArchitectureProposalWall[] | undefined {
+	if (intent.kind === 'curve-control-move') {
+		const points = proposeWallCurveShape(document, intent.wallId, {
+			kind: 'knot-move',
+			knotId: intent.knotId,
+			point: intent.point
+		});
+		return points ? [{ wallId: intent.wallId, points }] : undefined;
+	}
+	if (intent.kind === 'wall-bend') {
+		const points = proposeWallCurveShape(document, intent.wallId, {
+			kind: 'bend',
+			distance: intent.distance,
+			point: intent.point
+		});
+		return points ? [{ wallId: intent.wallId, points }] : undefined;
+	}
+	if (!finitePoint(intent.kind === 'junction-move' ? intent.point : intent.delta)) return undefined;
+
+	const candidate = cloneDocument(document);
+	let wallIds: string[];
+	if (intent.kind === 'junction-move') {
+		const junction = candidate.junctions.find((entry) => entry.id === intent.junctionId);
+		if (!junction) return undefined;
+		junction.point = [intent.point[0], intent.point[1]];
+		wallIds = incidentWallIds(document, intent.junctionId);
+	} else {
+		const wall = document.walls.find((entry) => entry.id === intent.wallId);
+		if (!wall) return undefined;
+		const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
+		for (const junction of candidate.junctions) {
+			if (!changedJunctionIds.includes(junction.id)) continue;
+			junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
+		}
+		const moved = candidate.walls.find((entry) => entry.id === intent.wallId);
+		if (!moved) return undefined;
+		moved.centerline = translateWallCenterline(moved.centerline, intent.delta);
+		wallIds = document.walls
+			.filter((entry) =>
+				changedJunctionIds.some(
+					(junctionId) =>
+						entry.startJunctionId === junctionId || entry.endJunctionId === junctionId
+					)
+			)
+			.map((entry) => entry.id);
+	}
+
+	const proposals: WallFirstArchitectureProposalWall[] = [];
+	for (const wallId of wallIds) {
+		const wall = candidate.walls.find((entry) => entry.id === wallId);
+		const endpoints = wall ? wallEndpoints(candidate, wall) : undefined;
+		if (!wall || !endpoints) continue;
+		const sampled = wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward');
+		if (!sampled) continue;
+		proposals.push({
+			wallId,
+			points: sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2)
+		});
+	}
+	return proposals;
 }
 
 /** Sample an attempted centerline through the one canonical Wall adapter. */

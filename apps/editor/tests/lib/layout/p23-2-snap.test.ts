@@ -184,6 +184,7 @@ describe('P23.2 candidate families', () => {
 		const onSpan = spanSnapCandidates(span, [2.5, 0.3], radius);
 		const projected = onSpan.find((candidate) => candidate.kind === 'wall-span');
 		expect(projected?.point).toEqual([2.5, 0]);
+		expect(projected?.wallId).toBe('w1');
 
 		const far = spanSnapCandidates(span, [10, 10], radius);
 		expect(far).toHaveLength(0);
@@ -435,7 +436,7 @@ describe('P23.2 curved wall snapping', () => {
 		const atApex = resolveLayoutSnap(geometry, [1.0, 1.0], { pixelsPerMeter: 50 });
 		expect(atApex.kind).toBe('snap');
 		if (atApex.kind !== 'snap') return;
-		expect(atApex.candidate).toMatchObject({ kind: 'wall-span', point: [1, 1] });
+		expect(atApex.candidate).toMatchObject({ kind: 'wall-span', point: [1, 1], wallId: 'arc' });
 	});
 
 	it('never invents a straight midpoint on a curved wall', () => {

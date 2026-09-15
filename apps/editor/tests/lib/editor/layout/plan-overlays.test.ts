@@ -181,6 +181,58 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 	});
 });
 
+describe('P23.11 follow-up — all invalid architecture edits render proposal geometry', () => {
+	const walls = [
+		{ wallId: 'curved', points: [[0, 0], [2, 1], [4, 0]] as [number, number][] },
+		{ wallId: 'neighbour', points: [[4, 0], [4, 2]] as [number, number][] }
+	];
+
+	it('renders complete Junction-local Wall geometry with one invalid visual language', () => {
+		const intent = architectureEditIntentFor(
+			junctionGesture({ rejectionCode: 'topology_invalid' }),
+			true,
+			walls
+		);
+		expect(intent).toEqual({ kind: 'junction-move', point: [1, 1], walls });
+		const base = { drafts: [], selection: [], labels: [] } as unknown as Parameters<
+			typeof withArchitectureEditIntent
+		>[0];
+		const drawn = withArchitectureEditIntent(base, intent);
+		expect(drawn.drafts).toHaveLength(3);
+		expect(drawn.drafts.slice(0, 2).every((draft) => draft.style === 'architecture-edit-intent-invalid')).toBe(true);
+		expect(drawn.drafts[0]).toMatchObject({ kind: 'polyline', points: walls[0]!.points });
+		expect(drawn.drafts[1]).toMatchObject({ kind: 'polyline', points: walls[1]!.points });
+		expect(drawn.drafts[2]).toMatchObject({ kind: 'circle', style: 'architecture-edit-intent-invalid' });
+	});
+
+	it('renders a curved rigid-move proposal instead of an endpoint chord', () => {
+		const wallGesture: LayoutArchitectureEditGesture = {
+			kind: 'wall-move',
+			pointerId: 1,
+			wallId: 'curved',
+			startPointer: [0, 0],
+			baselineGrabPoint: [2, 0],
+			startJunctionId: 'A',
+			endJunctionId: 'B',
+			baselineStart: [0, 0],
+			baselineEnd: [4, 0],
+			affectedWallIds: ['curved', 'neighbour'],
+			candidateDelta: [1, 1],
+			valid: false,
+			rejectionCode: 'topology_invalid'
+		};
+		const intent = architectureEditIntentFor(wallGesture, true, walls);
+		expect(intent).toEqual({ kind: 'wall-move', walls });
+		const base = { drafts: [], selection: [], labels: [] } as unknown as Parameters<
+			typeof withArchitectureEditIntent
+		>[0];
+		const drawn = withArchitectureEditIntent(base, intent);
+		expect(drawn.drafts).toHaveLength(2);
+		expect(drawn.drafts[0]).toMatchObject({ kind: 'polyline', points: walls[0]!.points });
+		expect(drawn.drafts[1]).toMatchObject({ kind: 'polyline', points: walls[1]!.points });
+	});
+});
+
 describe('buildPlanInteractionProjection', () => {
 	it('emits only the persistent room name for an idle state on a line room', () => {
 		const document = g2LineRectangleDocument();

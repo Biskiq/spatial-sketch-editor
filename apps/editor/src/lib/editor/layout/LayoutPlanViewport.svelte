@@ -164,7 +164,7 @@
 	import {
 		LAYOUT_PLAN_GRID_STEP,
 		layoutArchitecturalPreset,
-		proposeWallCurveShape,
+		proposeWallFirstArchitectureGeometry,
 		resolveLayoutSnap,
 		resolveOpeningDragSnap,
 		resolveOpeningDragSnapUseMode,
@@ -242,7 +242,7 @@
 		onSceneDelete?: () => boolean;
 		onCommit: (points: LayoutVec2[]) => boolean;
 	/** P23.9 segment-first — commit one Wall/Partition segment (one history entry). Returns the canonical Junctions for continuation. */
-	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2) => {
+	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2, endpointHostWallId?: string) => {
 		success: boolean;
 		startJunctionId?: string;
 		endJunctionId?: string;
@@ -362,17 +362,17 @@
 	 * exactly like the legacy `snapToGrid` call it replaces. Snap-off returns
 	 * the raw point and clears any live feedback (toggle clear rule).
 	 */
-	function applyLayoutSnap(
+	function resolveLayoutSnapCandidate(
 		point: LayoutVec2,
 		options: {
 			allowedKinds?: SnapFeatureKind[];
 			excludeOwners?: ReadonlySet<string>;
 			excludePoints?: readonly LayoutVec2[];
 		} = {}
-	): LayoutVec2 {
+	): { point: LayoutVec2; resolution: SnapResolution } {
 		if (!interaction.planView.snapEnabled) {
 			clearLayoutSnapFeedback();
-			return point;
+			return { point, resolution: { kind: 'none' } };
 		}
 		const input: SnapInputContext = {};
 		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
@@ -385,7 +385,21 @@
 			input
 		);
 		snapFeedback = resolution;
-		return resolution.kind === 'snap' ? [...resolution.candidate.point] as LayoutVec2 : point;
+		return {
+			point: resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : point,
+			resolution
+		};
+	}
+
+	function applyLayoutSnap(
+		point: LayoutVec2,
+		options: {
+			allowedKinds?: SnapFeatureKind[];
+			excludeOwners?: ReadonlySet<string>;
+			excludePoints?: readonly LayoutVec2[];
+		} = {}
+	): LayoutVec2 {
+		return resolveLayoutSnapCandidate(point, options).point;
 	}
 	// ── P23.10 direct architecture editing ──────────────────────────────────
 	// One immutable baseline snapshot and one Layout transaction per gesture.
@@ -1041,31 +1055,45 @@
 	// `architectureEditIntentFor` owns the gate: nothing renders while the press
 	// is still a click, nothing for an accepted candidate (the installed preview
 	// already shows it) and nothing for a silent `no_op`.
-	// P23.11 — a rejected curve drag keeps the immutable baseline installed but
-	// must still show the attempted Wall. The attempted centerline is a pure core
-	// PROPOSAL (the same chain algebra the planners run, without acceptance),
-	// sampled here only for rendering, so no interpolation logic lives in this
-	// Svelte surface and nothing invalid is ever installed or persisted.
-	const architectureEditProposal = $derived.by((): readonly LayoutVec2[] | null => {
+	// P23.11 — a rejected architecture drag keeps the immutable baseline
+	// installed but must still show the attempted local Wall geometry. The
+	// attempted centerlines are pure core PROPOSALS (the same chain algebra the
+	// planners run, without acceptance), sampled there and passed here only for
+	// rendering, so no interpolation logic lives in this Svelte surface and
+	// nothing invalid is ever installed or persisted.
+	const architectureEditProposal = $derived.by(() => {
 		const gesture = interaction.architectureEdit;
 		if (!gesture || !architectureEditMoved || gesture.valid) return null;
 		const document = wallFirstLayoutDocument();
 		if (!document) return null;
+		if (gesture.kind === 'junction-move') {
+			return proposeWallFirstArchitectureGeometry(document, {
+				kind: 'junction-move',
+				junctionId: gesture.junctionId,
+				point: gesture.candidatePoint
+			});
+		}
+		if (gesture.kind === 'wall-move') {
+			return proposeWallFirstArchitectureGeometry(document, {
+				kind: 'wall-move',
+				wallId: gesture.wallId,
+				delta: gesture.candidateDelta
+			});
+		}
 		if (gesture.kind === 'wall-bend') {
-			return proposeWallCurveShape(document, gesture.wallId, {
-				kind: 'bend',
+			return proposeWallFirstArchitectureGeometry(document, {
+				kind: 'wall-bend',
+				wallId: gesture.wallId,
 				distance: gesture.bendDistance,
 				point: gesture.candidatePoint
-			}) ?? null;
+			});
 		}
-		if (gesture.kind === 'curve-control-move') {
-			return proposeWallCurveShape(document, gesture.wallId, {
-				kind: 'knot-move',
-				knotId: gesture.anchorId,
-				point: gesture.candidatePoint
-			}) ?? null;
-		}
-		return null;
+		return proposeWallFirstArchitectureGeometry(document, {
+			kind: 'curve-control-move',
+			wallId: gesture.wallId,
+			knotId: gesture.anchorId,
+			point: gesture.candidatePoint
+		});
 	});
 	const architectureEditIntent = $derived(
 		architectureEditIntentFor(interaction.architectureEdit, architectureEditMoved, architectureEditProposal)
@@ -2992,10 +3020,10 @@ const interactionProjection = $derived(
 	 * never coordinate proximity and never "a Room appeared".
 	 */
 	function commitWallChainClick(rawPoint: LayoutVec2) {
-		const snapped = applyLayoutSnap(rawPoint);
+		const snapped = resolveLayoutSnapCandidate(rawPoint);
 		if (!hasWallChainRun(interaction)) {
 			preview.statusMessage = null;
-			beginWallChain(interaction, snapped);
+			beginWallChain(interaction, snapped.point);
 			return;
 		}
 		const start = interaction.wallChainStart!;
@@ -3004,7 +3032,11 @@ const interactionProjection = $derived(
 		// version), so re-install the saved run + version to keep the current
 		// start available for correction.
 		const savedRun = captureWallChainRun(interaction);
-		const result = onWallSegmentCommit([...start], [...snapped]);
+		const endpointHostWallId =
+			snapped.resolution.kind === 'snap' && snapped.resolution.candidate.kind === 'wall-span'
+				? snapped.resolution.candidate.wallId
+				: undefined;
+		const result = onWallSegmentCommit([...start], [...snapped.point], endpointHostWallId);
 		if (!result.success) {
 			if (savedRun) restoreWallChainRun(interaction, savedRun);
 			draftedVersion = preview.previewVersion;
@@ -3014,7 +3046,7 @@ const interactionProjection = $derived(
 			cancelWallChainRun(interaction);
 			return;
 		}
-		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped];
+		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped.point];
 		if (result.closedRun) {
 			cancelWallChainRun(interaction);
 		} else {

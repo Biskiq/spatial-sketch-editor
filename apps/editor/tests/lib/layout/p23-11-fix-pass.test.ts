@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
+	CURVE_FLATNESS_TOLERANCE,
 	CURVE_SELF_INTERSECTION_TOLERANCE,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
@@ -33,6 +34,7 @@ import {
 	planMoveWallCurveKnot,
 	planWallChain,
 	planWallSegment,
+	proposeWallFirstArchitectureGeometry,
 	proposeWallCurveShape,
 	planWallSplit,
 	sampleSegment,
@@ -155,7 +157,7 @@ function worstDeviation(points: readonly LayoutVec2[], baseline: readonly Layout
 	return Math.max(...points.map((point) => deviationFrom(point, baseline)));
 }
 
-/** Pure C1 geometric assertion used by every local-edit regression below. */
+/** Pure G1/tangent-direction assertion used by every local-edit regression below. */
 function hasTangentContinuity(
 	left: LayoutWallCubicSpan,
 	right: LayoutWallCubicSpan,
@@ -681,7 +683,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			role: 'partition'
+			role: 'partition',
+			endpointHostWallId: 'curved'
 		});
 		if (plan.kind !== 'success') throw new Error(`expected curved T success, got ${JSON.stringify(plan.rejection)}`);
 
@@ -727,7 +730,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline: seed,
 			points: [[hit.point[0], hit.point[1] - 2], hit.point],
 			close: false,
-			role: 'partition'
+			role: 'partition',
+			endpointHostSnaps: [{ pointIndex: 1, wallId: 'curved' }]
 		});
 		if (plan.kind !== 'success') throw new Error(`expected boundary-host T success, got ${JSON.stringify(plan.rejection)}`);
 		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
@@ -768,7 +772,8 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			baseline: seed,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			role: 'partition'
+			role: 'partition',
+			endpointHostWallId: 'curved'
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -777,10 +782,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 		expect(JSON.stringify(seed)).toBe(snapshot);
 	});
 
-	it('leaves an endpoint just outside the curved-host tolerance disconnected', () => {
+	it('leaves an unsnapped endpoint inside sampler flatness but outside acquisition disconnected', () => {
 		const baseline = curvedWallDocument();
 		const hit = compiledWallSample(baseline, 'curved', 0.25);
-		const outside: LayoutVec2 = [hit.point[0], hit.point[1] + 0.02];
+		const outside: LayoutVec2 = [hit.point[0], hit.point[1] + CURVE_FLATNESS_TOLERANCE * 0.5];
 		const plan = planWallSegment({
 			baseline,
 			start: [outside[0] - 0.2, outside[1]],
@@ -808,6 +813,43 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 		expect(authored.endJunctionId).toBe('c-a');
 		expect(plan.document.walls.filter((wall) => wall.id === 'curved')).toHaveLength(1);
 		expect(plan.document.junctions.filter((junction) => junction.id === 'c-a')).toHaveLength(1);
+	});
+});
+
+// ===========================================================================
+// Direct-edit proposal follow-up — invalid geometry stays visually live
+// ===========================================================================
+
+describe('P23.11 follow-up — direct-edit geometry proposals', () => {
+	it('moves a Junction and returns complete affected Wall centerlines', () => {
+		const baseline = curvedBoundaryHostDocument();
+		const proposal = proposeWallFirstArchitectureGeometry(baseline, {
+			kind: 'junction-move',
+			junctionId: 'c-b',
+			point: [6.2, 0.4]
+		});
+		if (!proposal) throw new Error('expected a Junction proposal');
+		expect(proposal.map((wall) => wall.wallId)).toEqual(['curved', 'wall-right']);
+		expect(proposal.every((wall) => wall.points.length > 2)).toBe(true);
+		expect(proposal.find((wall) => wall.wallId === 'curved')!.points.at(-1)).toEqual([6.2, 0.4]);
+	});
+
+	it('translates a curved Wall as a curved chain and includes reshaped neighbours', () => {
+		const baseline = curvedBoundaryHostDocument();
+		const proposal = proposeWallFirstArchitectureGeometry(baseline, {
+			kind: 'wall-move',
+			wallId: 'curved',
+			delta: [1, 1]
+		});
+		if (!proposal) throw new Error('expected a Wall proposal');
+		expect(proposal.map((wall) => wall.wallId)).toEqual(['curved', 'wall-right', 'wall-left']);
+		const curved = proposal.find((wall) => wall.wallId === 'curved')!;
+		expect(curved.points.length).toBeGreaterThan(2);
+		expect(curved.points[0]).toEqual([1, 1]);
+		expect(curved.points.at(-1)).toEqual([7, 1]);
+		// The translated bow remains visible; a two-point endpoint chord would
+		// lose the very geometry this proposal exists to communicate.
+		expect(curved.points.some((point) => point[1] > 1)).toBe(true);
 	});
 });
 

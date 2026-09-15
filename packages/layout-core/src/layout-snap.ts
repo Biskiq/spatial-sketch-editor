@@ -123,6 +123,12 @@ export type SnapCandidate = {
 	 * candidates may predate the field and fall back to `sourceId`.
 	 */
 	ownerId?: string;
+	/**
+	 * Canonical Wall identity for a `wall-span` candidate. This is carried
+	 * through authoring so a snapped endpoint can establish a host relationship
+	 * without asking topology to infer one from sampler proximity.
+	 */
+	wallId?: string;
 	/** Distance from the raw pointer, in world units. */
 	distance: number;
 };
@@ -243,7 +249,8 @@ export function spanSnapCandidates(
 	span: { id: string; start: LayoutVec2; end: LayoutVec2 },
 	point: LayoutVec2,
 	radius: number,
-	ownerId = span.id
+	ownerId = span.id,
+	wallId = span.id
 ): SnapCandidate[] {
 	const candidates: SnapCandidate[] = [];
 	const length = Math.hypot(span.end[0] - span.start[0], span.end[1] - span.start[1]);
@@ -292,6 +299,7 @@ export function spanSnapCandidates(
 			kind: 'wall-span',
 			sourceId: span.id,
 			ownerId,
+			wallId,
 			distance: projectedDistance
 		});
 	}
@@ -414,7 +422,8 @@ function curvedSpanNearestCandidates(
 	index: number,
 	point: LayoutVec2,
 	radius: number,
-	ownerId: string
+	ownerId: string,
+	wallId: string
 ): SnapCandidate[] {
 	const dx = sample.end[0] - sample.start[0];
 	const dz = sample.end[1] - sample.start[1];
@@ -431,6 +440,7 @@ function curvedSpanNearestCandidates(
 			kind: 'wall-span',
 			sourceId: `${wallKey}#sample:${index}`,
 			ownerId,
+			wallId,
 			distance
 		}
 	];
@@ -527,13 +537,24 @@ export function resolveLayoutSnap(
 					{ id: merge.key, start: merge.start, end: merge.end },
 					point,
 					radius,
-					wallOwner(merge.key)
+					wallOwner(merge.key),
+					merge.key
 				)
 			);
 			continue;
 		}
 		for (const [index, sample] of merge.samples.entries()) {
-			candidates.push(...curvedSpanNearestCandidates(sample, merge.key, index, point, radius, wallOwner(merge.key)));
+			candidates.push(
+				...curvedSpanNearestCandidates(
+					sample,
+					merge.key,
+					index,
+					point,
+					radius,
+					wallOwner(merge.key),
+					merge.key
+				)
+			);
 		}
 	}
 	// Wall-wall intersections involve straight walls only. Intersection

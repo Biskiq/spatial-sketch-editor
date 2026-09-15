@@ -39,7 +39,6 @@ import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import {
-	CURVE_FLATNESS_TOLERANCE,
 	projectPointToSampledSegment
 } from './layout-geometry-curve';
 import {
@@ -81,13 +80,17 @@ export const WALL_CHAIN_DEFAULTS = {
 } as const;
 
 /**
- * A snapped point comes from the canonical sampled Wall path. The sampler's
- * flatness budget is therefore the only extra world-space error the noder may
- * absorb before handing the request to the exact cubic split resolver; Junction
- * identity dust remains covered by the existing identity epsilon.
+ * Identity supplied by the authoring snap resolver for one draft point.
+ *
+ * This is relationship acquisition, not geometry: a `wall-span` snap names
+ * the host Wall explicitly. The noder may then normalize the sampled point to
+ * the exact cubic, but it must never turn sampler flatness into a topology
+ * radius for an unsnapped endpoint.
  */
-const CURVED_HOST_PROJECTION_TOLERANCE =
-	CURVE_FLATNESS_TOLERANCE + JUNCTION_COINCIDENCE_EPSILON;
+export type WallEndpointHostSnap = {
+	pointIndex: number;
+	wallId: string;
+};
 
 /** Why a chain sketch rejected; stable machine codes. */
 export type WallChainRejectionCode =
@@ -203,6 +206,8 @@ export function planWallChain(options: {
 	thickness?: number;
 	height?: number;
 	allocator?: WallChainIdAllocator;
+	/** Existing authoring snap identities, keyed by draft point index. */
+	endpointHostSnaps?: readonly WallEndpointHostSnap[];
 }): WallChainPlan {
 	const allocator = options.allocator ?? defaultChainAllocator();
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
@@ -359,6 +364,11 @@ export function planWallChain(options: {
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
 	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
+	const endpointHostWallIds = new Map<string, string>();
+	for (const snap of options.endpointHostSnaps ?? []) {
+		const junctionId = resolved[snap.pointIndex]?.junctionId;
+		if (junctionId) endpointHostWallIds.set(junctionId, snap.wallId);
+	}
 	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
 	const resolveJunctionId = (junctionId: string): string => {
@@ -379,7 +389,12 @@ export function planWallChain(options: {
 		if (passes > MAX_NODING_PASSES) {
 			return reject({ code: 'noding_rejected', message: 'Chain noding did not converge' });
 		}
-		const fix = nextNodingFix(candidate, [...authoredWallIds], operationOwnedJunctionIds);
+		const fix = nextNodingFix(
+			candidate,
+			[...authoredWallIds],
+			operationOwnedJunctionIds,
+			endpointHostWallIds
+		);
 		if (!fix) break;
 		if (fix.kind === 'reject') return reject(fix.rejection);
 		if (fix.kind === 'adopt') {
@@ -662,7 +677,8 @@ function teeThroughJunction(
 function nextNodingFix(
 	document: LayoutDocumentWallFirst,
 	chainDerivedWallIds: readonly string[],
-	operationOwnedJunctionIds: ReadonlySet<string>
+	operationOwnedJunctionIds: ReadonlySet<string>,
+	endpointHostWallIds: ReadonlyMap<string, string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
 	const segments = new Map<string, TopologySegment>();
@@ -713,6 +729,7 @@ function nextNodingFix(
 				segmentB,
 				chainSet,
 				operationOwnedJunctionIds,
+				endpointHostWallIds,
 				shared
 			);
 			if (projectedTee) return projectedTee;
@@ -805,6 +822,7 @@ function projectedAuthoredEndpointTee(
 	segmentB: TopologySegment,
 	chainSet: ReadonlySet<string>,
 	operationOwnedJunctionIds: ReadonlySet<string>,
+	endpointHostWallIds: ReadonlyMap<string, string>,
 	sharedJunctionIds: readonly string[]
 ): NodingFix | undefined {
 	if (sharedJunctionIds.length > 0) return undefined;
@@ -827,6 +845,8 @@ function projectedAuthoredEndpointTee(
 		];
 		for (const endpoint of endpoints) {
 			if (!operationOwnedJunctionIds.has(endpoint.junctionId)) continue;
+			const snappedHostWallId = endpointHostWallIds.get(endpoint.junctionId);
+			if (snappedHostWallId !== undefined && snappedHostWallId !== hostWall.id) continue;
 			const hostEndpoints = [
 				{ junctionId: hostWall.startJunctionId, point: hostSegment.start },
 				{ junctionId: hostWall.endJunctionId, point: hostSegment.end }
@@ -854,7 +874,12 @@ function projectedAuthoredEndpointTee(
 				);
 				if (!sampled) continue;
 				const projection = projectPointToSampledSegment(endpoint.point, sampled);
-				if (projection.distanceToPath > CURVED_HOST_PROJECTION_TOLERANCE) continue;
+				// A snapped `wall-span` identity already established the host
+				// relationship. Without that identity, retain only the existing
+				// Junction coincidence tolerance; sampler flatness is normalization
+				// error and must not acquire topology by itself.
+				const hasExplicitHostIdentity = snappedHostWallId === hostWall.id;
+				if (!hasExplicitHostIdentity && projection.distanceToPath > JUNCTION_COINCIDENCE_EPSILON) continue;
 				const resolution = resolveWallCurveSplit(
 					{
 						startPoint: hostSegment.start,
@@ -881,10 +906,11 @@ function projectedAuthoredEndpointTee(
 					};
 				}
 				if (
+					!hasExplicitHostIdentity &&
 					Math.hypot(
 						endpoint.point[0] - resolved.point[0],
 						endpoint.point[1] - resolved.point[1]
-					) > CURVED_HOST_PROJECTION_TOLERANCE
+					) > JUNCTION_COINCIDENCE_EPSILON
 				) {
 					continue;
 				}
@@ -1051,6 +1077,8 @@ export function planWallSegment(options: {
 	thickness?: number;
 	height?: number;
 	allocator?: WallChainIdAllocator;
+	/** Existing `wall-span` snap identity for the authored endpoint. */
+	endpointHostWallId?: string;
 }): WallChainPlan {
 	const startJunction = options.baseline.junctions.find((junction) =>
 		coincidesAsJunction(junction.point, options.start)
@@ -1066,6 +1094,9 @@ export function planWallSegment(options: {
 			options.height
 		),
 		...(options.thickness !== undefined ? { thickness: options.thickness } : {}),
+		...(options.endpointHostWallId
+			? { endpointHostSnaps: [{ pointIndex: 1, wallId: options.endpointHostWallId }] }
+			: {}),
 		...(options.allocator !== undefined ? { allocator: options.allocator } : {})
 	});
 }
