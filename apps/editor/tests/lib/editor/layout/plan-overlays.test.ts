@@ -91,7 +91,7 @@ describe('P23.10 architecture-edit intent gate', () => {
 		});
 	});
 
-	it('draws a live attempt pending, and the refused token only for an underivable one', () => {
+	it('draws a live attempt pending, and the refused token for a known-invalid one', () => {
 		const document = g2LineRectangleDocument();
 		const model = buildLayoutPreviewModel(document).model;
 		const base = {
@@ -111,11 +111,13 @@ describe('P23.10 architecture-edit intent gate', () => {
 			kind: 'circle',
 			style: 'architecture-edit-intent'
 		});
-		// The one refused fact a move does know: the attempt could not be derived
-		// at all, so only its marker renders — in the existing refused language.
+		// A known-invalid attempt (the caller's cheap canonical preflight refuted
+		// it, or — as here, with no proposal — it could not be derived at all)
+		// renders in the existing refused language while still following the
+		// pointer.
 		const refused = withArchitectureEditIntent(
 			base,
-			architectureEditIntentFor(junctionGesture(), true, null, true)
+			architectureEditIntentFor(junctionGesture(), true, null, 'known-invalid')
 		);
 		expect(refused.drafts).toHaveLength(1);
 		expect(refused.drafts[0]).toMatchObject({

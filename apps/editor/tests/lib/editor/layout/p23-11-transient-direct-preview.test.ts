@@ -197,13 +197,6 @@ function junctionPoint(context: Context, junctionId: string): LayoutVec2 {
 	return [junction.point[0], junction.point[1]] as LayoutVec2;
 }
 
-function wallIdList(incidentTo: readonly string[]): string[] {
-	const owned = new Set(incidentTo);
-	return live({} as Context).walls
-		.filter((wall) => owned.has(wall.startJunctionId) || owned.has(wall.endJunctionId))
-		.map((wall) => wall.id);
-}
-
 // ---------------------------------------------------------------------------
 // gesture primitives, mirroring the viewport
 // ---------------------------------------------------------------------------
@@ -472,6 +465,9 @@ describe('P23.11 transient pass — a pointermove writes nothing', () => {
 	}
 
 	it('derives a curve-control attempt from the frozen baseline too', () => {
+		// A curve-control move inside the Wall's own span is a plain pending
+		// attempt: nothing cheap refutes it.
+
 		const context = makeStore(squareDocument(curvedCenterline()));
 		const before = JSON.stringify(live(context));
 		expect(startGesture(context, curveGesture(context, 'w1', 'w1:knot:1'))).toBe(true);
@@ -512,6 +508,9 @@ describe('P23.11 transient pass — a pointermove writes nothing', () => {
 	});
 
 	it('follows the pointer into a position the planner refuses', () => {
+		// The live refusal is cheap and canonical: the same gate the planner runs
+		// before Room reconciliation, so the drag shows red geometry the release
+		// is certain to reject — never a guess.
 		const context = makeStore();
 		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
 		// Junction merging is out of scope: A onto C's coordinate is always
@@ -523,7 +522,11 @@ describe('P23.11 transient pass — a pointermove writes nothing', () => {
 		const moved = attempt!.walls!.find((wall) => wall.wallId === 'w1');
 		expect(moved?.points[0]).toEqual([4, 3]);
 		expect(attempt!.intent).toMatchObject({ kind: 'junction-move', point: [4, 3] });
-		expect(attempt!.intent.invalid).toBeUndefined();
+		// Junction merging is out of scope, and the canonical gate the planner
+		// runs first says so: the drag is refused *while* it follows the pointer.
+		expect(attempt!.status).toBe('known-invalid');
+		expect(attempt!.failure?.code).toBe('duplicate_junction_point');
+		expect(attempt!.intent.invalid).toBe(true);
 
 		const outcome = release(context, [4, 3]);
 		expect(outcome.kind).toBe('rejected');
@@ -695,6 +698,132 @@ describe('P23.11 transient pass — the attempt and the commit agree', () => {
 		expect(live(context).junctions).toEqual(squareDocument().junctions);
 		expect(context.store.undo()).toBe(true);
 		expect(JSON.stringify(live(context))).toBe(before);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 3b. live feedback is three-state: pending, or canonically known-invalid
+// ---------------------------------------------------------------------------
+
+/**
+ * Two 4×3 m Rooms in a row with a 2 m gap between them: bowing Room 1's east
+ * Wall towards Room 2 is the canonical "attempt crosses a neighbour" case, and
+ * the only thing between a legal near-miss and an illegal crossing is 2 m.
+ */
+function twoRoomDocument(): LayoutDocumentWallFirst {
+	// Room 1's east Wall is the fixture's own `w2` (B → C at x = 4).
+	const document = squareDocument();
+	document.junctions = [
+		...document.junctions,
+		{ id: 'E', point: [6, 0] },
+		{ id: 'F', point: [10, 0] },
+		{ id: 'G', point: [10, 3] },
+		{ id: 'H', point: [6, 3] }
+	];
+	document.walls = [
+		...document.walls,
+		{ id: 'w-r2-north', startJunctionId: 'E', endJunctionId: 'F', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'w-r2-east', startJunctionId: 'F', endJunctionId: 'G', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'w-r2-south', startJunctionId: 'G', endJunctionId: 'H', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'w-r2-west', startJunctionId: 'H', endJunctionId: 'E', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+	];
+	document.rooms = [
+		document.rooms[0]!,
+		{
+			id: 'room-2',
+			name: 'Room 2',
+			boundary: [
+				{ wallId: 'w-r2-north', direction: 'forward' },
+				{ wallId: 'w-r2-east', direction: 'forward' },
+				{ wallId: 'w-r2-south', direction: 'forward' },
+				{ wallId: 'w-r2-west', direction: 'forward' }
+			],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	];
+	return document;
+}
+
+describe('P23.11 transient pass — cheap canonical refusal during the drag', () => {
+	it('marks a Bend that would cross a neighbouring Wall known-invalid', () => {
+		const baseline = twoRoomDocument();
+		const context = makeStore(baseline);
+		const geometry = context.layoutPreview.geometry;
+		expect(startGesture(context, bendGesture(context, 'w2', [4, 1.5], 1.5))).toBe(true);
+
+		// A 0.5 m bow stays in the gap: nothing cheap refutes it.
+		const nearMiss = move(context, [4.5, 1.5]);
+		expect(nearMiss!.status).toBe('pending');
+		expect(nearMiss!.failure).toBeUndefined();
+		expect(nearMiss!.intent.invalid).toBeUndefined();
+
+		// A 2.5 m bow reaches Room 2's west Wall: the canonical crossing gate the
+		// planner runs first refuses it, and the drag says so while it follows.
+		const crossing = move(context, [6.5, 1.5]);
+		expect(crossing!.status).toBe('known-invalid');
+		expect(crossing!.intent.invalid).toBe(true);
+		expect(crossing!.failure?.message).toMatch(/cross/i);
+		// Red or not, the attempt still tracks the pointer.
+		const moved = crossing!.walls!.find((wall) => wall.wallId === 'w2')!;
+		expect(moved.points.length).toBeGreaterThan(2);
+		expect(Math.max(...moved.points.map((point) => point[0]))).toBeCloseTo(6.5, 6);
+
+		// A refutation is still not a write: the canonical document and its
+		// compiled geometry are byte-identical to the frozen baseline.
+		expect(JSON.stringify(live(context))).toBe(JSON.stringify(baseline));
+		expect(context.layoutPreview.geometry).toBe(geometry);
+		expect(context.store.canUndo).toBe(false);
+	});
+
+	it('leaves everything after the cheap gate pending, and the release decides it', () => {
+		// `w1` hosts the fixture's door (arc 1–2 m of a 4 m Wall). Moving Junction
+		// `B` in shortens it to 1.5 m, so the canonical **Opening set** rejects the
+		// candidate — a stage the planner runs *after* topology, and exactly the
+		// kind of verdict a pointermove must not pretend to know.
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startGesture(context, junctionGesture(context, 'B'))).toBe(true);
+		const watched = [
+			'room-reconciliation',
+			'face-extraction',
+			'opening-set',
+			'portal-relations',
+			'acceptance-compile',
+			'preview-compile'
+		] as const;
+		const counts = new Map(watched.map((name) => [name, stageCount(name)]));
+		const attempt = move(context, [1.5, 0]);
+		expect(attempt!.status).toBe('pending');
+		expect(attempt!.failure).toBeUndefined();
+		expect(attempt!.intent.invalid).toBeUndefined();
+
+		// Nothing downstream of the cheap gate ran, so every verdict that only
+		// exists there stayed pending — the release is what decides it.
+		for (const name of watched) {
+			expect(`${name}:${stageCount(name) - counts.get(name)!}`).toBe(`${name}:0`);
+		}
+
+		const outcome = release(context, [1.5, 0]);
+		expect(outcome.kind).toBe('rejected');
+		expect(context.plans).toBe(1);
+		finish(context);
+		expect(JSON.stringify(live(context))).toBe(before);
+		expect(context.store.canUndo).toBe(false);
+	});
+
+	it('keeps a legal attempt pending and commits it on release', () => {
+		const context = makeStore(twoRoomDocument());
+		expect(startGesture(context, bendGesture(context, 'w2', [4, 1.5], 1.5))).toBe(true);
+		const attempt = move(context, [4.6, 1.5]);
+		expect(attempt!.status).toBe('pending');
+		expect(attempt!.failure).toBeUndefined();
+		const outcome = release(context, [4.6, 1.5]);
+		expect(outcome.kind).toBe('committed');
+		expect(context.commits).toBe(1);
+		finish(context);
+		const wall = live(context).walls.find((candidate) => candidate.id === 'w2')!;
+		expect(wall.centerline.kind).toBe('cubic-chain');
 	});
 });
 

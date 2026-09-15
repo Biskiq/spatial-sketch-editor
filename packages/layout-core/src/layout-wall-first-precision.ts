@@ -857,15 +857,20 @@ export type WallFirstArchitectureProposalIntent =
  * transiently. It installs no document, validates nothing and persists nothing:
  * the caller keeps the immutable baseline and draws this only as overlay truth.
  *
- * Returns the attempted centerline as a sampled polyline in canonical order, or
- * `undefined` when the intent cannot even be proposed (unknown Wall or knot, a
- * non-finite point, an out-of-range bend distance).
+ * Returns the attempted centerline plus the endpoints it spans, or `undefined`
+ * when the intent cannot even be proposed (unknown Wall or knot, a non-finite
+ * point, an out-of-range bend distance, a split that resolves onto an
+ * endpoint).
+ *
+ * It is the single intent→curve mapping: `proposeWallCurveShape` samples what
+ * it returns, and `architectureCandidatePatch` below splices it, so the drawn
+ * attempt and any preflight can never describe different geometry.
  */
-export function proposeWallCurveShape(
+export function resolveProposedCurveChain(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
 	intent: WallCurveProposeIntent
-): LayoutVec2[] | undefined {
+): { start: LayoutVec2; end: LayoutVec2; centerline: LayoutWallCenterline } | undefined {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return undefined;
 	const { start, end, chain } = target;
@@ -873,7 +878,7 @@ export function proposeWallCurveShape(
 		if (!finitePoint(intent.point)) return undefined;
 		const moved = moveWallCurveKnot(chain, intent.knotId, intent.point);
 		if (moved.kind === 'rejected') return undefined;
-		return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
+		return { start, end, centerline: wallCubicChain(moved.knots, moved.spans) };
 	}
 	if (!Number.isFinite(intent.distance) || !finitePoint(intent.point)) return undefined;
 	const resolution = p2311Measure('proposal-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
@@ -892,7 +897,23 @@ export function proposeWallCurveShape(
 		moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point)
 	);
 	if (moved.kind === 'rejected') return undefined;
-	return sampleProposedChain(wallId, start, end, wallCubicChain(moved.knots, moved.spans));
+	return { start, end, centerline: wallCubicChain(moved.knots, moved.spans) };
+}
+
+/**
+ * P23.11 — sample a proposed curve intent through the one canonical Wall
+ * adapter, without acceptance. A thin sampler over `resolveProposedCurveChain`,
+ * so the drawn attempt and the preflight below can never describe different
+ * geometry.
+ */
+export function proposeWallCurveShape(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	intent: WallCurveProposeIntent
+): LayoutVec2[] | undefined {
+	const proposed = resolveProposedCurveChain(document, wallId, intent);
+	if (!proposed) return undefined;
+	return sampleProposedChain(wallId, proposed.start, proposed.end, proposed.centerline);
 }
 
 /**
@@ -904,59 +925,15 @@ export function proposeWallCurveShape(
  * and reshape neighbouring Walls through their moved shared Junctions. Curve
  * controls and Bend reuse the existing curve proposal authority. The result is
  * overlay truth only: callers must keep the canonical baseline installed.
- */
-export function proposeWallFirstArchitectureGeometry(
+ */export function proposeWallFirstArchitectureGeometry(
 	document: LayoutDocumentWallFirst,
 	intent: WallFirstArchitectureProposalIntent
 ): WallFirstArchitectureProposalWall[] | undefined {
-	if (intent.kind === 'curve-control-move') {
-		const points = proposeWallCurveShape(document, intent.wallId, {
-			kind: 'knot-move',
-			knotId: intent.knotId,
-			point: intent.point
-		});
-		return points ? [{ wallId: intent.wallId, points }] : undefined;
-	}
-	if (intent.kind === 'wall-bend') {
-		const points = proposeWallCurveShape(document, intent.wallId, {
-			kind: 'bend',
-			distance: intent.distance,
-			point: intent.point
-		});
-		return points ? [{ wallId: intent.wallId, points }] : undefined;
-	}
-	if (!finitePoint(intent.kind === 'junction-move' ? intent.point : intent.delta)) return undefined;
-
-	const candidate = cloneDocument(document);
-	let wallIds: string[];
-	if (intent.kind === 'junction-move') {
-		const junction = candidate.junctions.find((entry) => entry.id === intent.junctionId);
-		if (!junction) return undefined;
-		junction.point = [intent.point[0], intent.point[1]];
-		wallIds = incidentWallIds(document, intent.junctionId);
-	} else {
-		const wall = document.walls.find((entry) => entry.id === intent.wallId);
-		if (!wall) return undefined;
-		const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
-		for (const junction of candidate.junctions) {
-			if (!changedJunctionIds.includes(junction.id)) continue;
-			junction.point = [junction.point[0] + intent.delta[0], junction.point[1] + intent.delta[1]];
-		}
-		const moved = candidate.walls.find((entry) => entry.id === intent.wallId);
-		if (!moved) return undefined;
-		moved.centerline = translateWallCenterline(moved.centerline, intent.delta);
-		wallIds = document.walls
-			.filter((entry) =>
-				changedJunctionIds.some(
-					(junctionId) =>
-						entry.startJunctionId === junctionId || entry.endJunctionId === junctionId
-					)
-			)
-			.map((entry) => entry.id);
-	}
-
+	const patch = architectureCandidatePatch(document, intent);
+	if (!patch) return undefined;
+	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
 	const proposals: WallFirstArchitectureProposalWall[] = [];
-	for (const wallId of wallIds) {
+	for (const wallId of patch.affectedWallIds) {
 		const wall = candidate.walls.find((entry) => entry.id === wallId);
 		const endpoints = wall ? wallEndpoints(candidate, wall) : undefined;
 		if (!wall || !endpoints) continue;
@@ -968,6 +945,162 @@ export function proposeWallFirstArchitectureGeometry(
 		});
 	}
 	return proposals;
+}
+
+/**
+ * One intent's structural effect on the baseline: the records it changes and
+ * the Walls whose geometry it reshapes. Nothing here is validated, and nothing
+ * is written back — this is the **single** intent→candidate mapping shared by
+ * the render proposal and the preflight below, so neither can invent geometry
+ * the other does not have.
+ */
+type ArchitectureCandidatePatch = {
+	/** Junction point overrides, by Junction ID. */
+	junctionPoints: ReadonlyMap<string, LayoutVec2>;
+	/** Wall centerline overrides, by Wall ID. */
+	wallCenterlines: ReadonlyMap<string, LayoutWallCenterline>;
+	/** The Walls the intent reshapes, in document order. */
+	affectedWallIds: readonly string[];
+};
+
+function architectureCandidatePatch(
+	document: LayoutDocumentWallFirst,
+	intent: WallFirstArchitectureProposalIntent
+): ArchitectureCandidatePatch | undefined {
+	if (intent.kind === 'curve-control-move') {
+		const proposed = resolveProposedCurveChain(document, intent.wallId, {
+			kind: 'knot-move',
+			knotId: intent.knotId,
+			point: intent.point
+		});
+		if (!proposed) return undefined;
+		return {
+			junctionPoints: new Map(),
+			wallCenterlines: new Map([[intent.wallId, proposed.centerline]]),
+			affectedWallIds: [intent.wallId]
+		};
+	}
+	if (intent.kind === 'wall-bend') {
+		const proposed = resolveProposedCurveChain(document, intent.wallId, {
+			kind: 'bend',
+			distance: intent.distance,
+			point: intent.point
+		});
+		if (!proposed) return undefined;
+		return {
+			junctionPoints: new Map(),
+			wallCenterlines: new Map([[intent.wallId, proposed.centerline]]),
+			affectedWallIds: [intent.wallId]
+		};
+	}
+	if (!finitePoint(intent.kind === 'junction-move' ? intent.point : intent.delta)) return undefined;
+
+	if (intent.kind === 'junction-move') {
+		const junction = document.junctions.find((entry) => entry.id === intent.junctionId);
+		if (!junction) return undefined;
+		return {
+			junctionPoints: new Map([[intent.junctionId, [intent.point[0], intent.point[1]] as LayoutVec2]]),
+			// A Junction move leaves every Wall's own anchors alone: a straight Wall
+			// follows its shared endpoint, and a curved Wall's anchors are absolute.
+			wallCenterlines: new Map(),
+			affectedWallIds: incidentWallIds(document, intent.junctionId)
+		};
+	}
+	const wall = document.walls.find((entry) => entry.id === intent.wallId);
+	if (!wall) return undefined;
+	const changedJunctionIds = [...new Set([wall.startJunctionId, wall.endJunctionId])];
+	const junctionPoints = new Map<string, LayoutVec2>();
+	for (const junctionId of changedJunctionIds) {
+		const junction = document.junctions.find((entry) => entry.id === junctionId);
+		if (!junction) continue;
+		junctionPoints.set(junctionId, [
+			junction.point[0] + intent.delta[0],
+			junction.point[1] + intent.delta[1]
+		]);
+	}
+	return {
+		junctionPoints,
+		// The moved Wall's own curve anchors are absolute document X/Z and receive
+		// the identical rigid delta, or the Wall would change SHAPE.
+		wallCenterlines: new Map([[wall.id, translateWallCenterline(wall.centerline, intent.delta)]]),
+		affectedWallIds: document.walls
+			.filter((entry) =>
+				changedJunctionIds.some(
+					(junctionId) =>
+						entry.startJunctionId === junctionId || entry.endJunctionId === junctionId
+				)
+			)
+			.map((entry) => entry.id)
+	};
+}
+
+/**
+ * Apply a patch as a **shallow** splice of the baseline: changed records are
+ * replaced, everything else is shared.
+ *
+ * Sharing is deliberate and safe: the only consumers are the read-only
+ * canonical gates below (and the render sampler), which read the document and
+ * never write it. The deep clone the planner builds exists because planners
+ * hand the candidate on to further mutation — a preflight does not.
+ */
+function spliceWallFirstArchitectureCandidate(
+	document: LayoutDocumentWallFirst,
+	patch: ArchitectureCandidatePatch
+): LayoutDocumentWallFirst {
+	return {
+		...document,
+		junctions: document.junctions.map((junction) => {
+			const point = patch.junctionPoints.get(junction.id);
+			return point ? { ...junction, point: [point[0], point[1]] as LayoutVec2 } : junction;
+		}),
+		walls: document.walls.map((wall) => {
+			const centerline = patch.wallCenterlines.get(wall.id);
+			return centerline ? { ...wall, centerline } : wall;
+		})
+	};
+}
+
+/** One cheap, canonical refutation of a live direct-edit attempt. */
+export type WallFirstArchitecturePreflightFailure = {
+	code: string;
+	message: string;
+};
+
+/**
+ * P23.11 — the **cheap canonical prefix** of the direct-edit transaction, for
+ * live feedback. It applies the intent's patch and runs exactly one canonical
+ * gate — `validateWallFirstTopology(..., { openingSet: 'defer' })`, the stage
+ * the planner itself runs before Room reconciliation — then stops.
+ *
+ * Scope is the point:
+ *
+ * - it decides **unsupported crossing, self-intersection, duplicate Junction
+ *   points, zero-length Walls and broken Room boundary structure** — the
+ *   geometric rejections a pointermove can honestly know;
+ * - it deliberately does **not** reconcile Rooms, validate the Opening set, the
+ *   portal relations or compile, so anything that could only fail there stays
+ *   *pending* and is decided by the release planner;
+ * - it is **sound by construction**: it is the same function the planner calls
+ *   with the same values (the splice preserves every field the gate reads, and
+ *   the planner's own re-parse before it is value-preserving), so a failure
+ *   here is a failure at release too. A miss is merely pending, never wrong.
+ *
+ * Returns the canonical issue, or `undefined` when nothing cheap rejects the
+ * attempt (including when the intent cannot be derived at all — that is the
+ * caller's own "underivable" state, not a verdict here).
+ */
+export function preflightWallFirstArchitectureCandidate(
+	document: LayoutDocumentWallFirst,
+	intent: WallFirstArchitectureProposalIntent
+): WallFirstArchitecturePreflightFailure | undefined {
+	const patch = architectureCandidatePatch(document, intent);
+	if (!patch) return undefined;
+	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
+	const failure = p2311Measure('preflight-topology', () =>
+		validateWallFirstTopology(candidate, { openingSet: 'defer' })
+	);
+	if (!failure) return undefined;
+	return { code: failure.code, message: failure.message };
 }
 
 /** Sample an attempted centerline through the one canonical Wall adapter. */

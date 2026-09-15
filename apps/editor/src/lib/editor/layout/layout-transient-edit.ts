@@ -8,8 +8,9 @@
  *
  * ```
  * pointerdown   → capture the immutable canonical baseline + one transaction
- * pointermove   → derive a PROPOSAL from baseline + current intent, render it
- *                 transiently, install nothing, validate nothing, write no history
+ * pointermove   → derive a PROPOSAL from baseline + current intent, run the
+ *                 cheap canonical preflight, render it transiently, install
+ *                 nothing, write no history
  * pointerup     → one canonical planner call, full topology / Room / Opening /
  *                 portal / render-safe validation, compile, then either one
  *                 Layout history entry or an exact baseline
@@ -18,12 +19,18 @@
  *
  * Nothing here is an acceptance authority. The proposal runs the same core
  * chain algebra the planners run, without acceptance, and returns overlay
- * geometry only; every validity decision stays with the canonical planner on
- * release (see `releaseArchitectureEdit`, which calls it at most once).
+ * geometry only; the preflight is the single cheap canonical gate the planner
+ * itself runs first (crossing / self-intersection / duplicate Junction /
+ * zero-length / Room boundary structure), used for live feedback only. Every
+ * acceptance decision still belongs to the release planner (see
+ * `releaseArchitectureEdit`, which calls it at most once) — the preflight can
+ * refute an attempt early but never accept one.
  */
 import {
+	preflightWallFirstArchitectureCandidate,
 	proposeWallFirstArchitectureGeometry,
 	type LayoutDocumentWallFirst,
+	type WallFirstArchitecturePreflightFailure,
 	type WallFirstArchitectureProposalIntent,
 	type WallFirstArchitectureProposalWall
 } from '@portfolio/layout-core';
@@ -38,8 +45,11 @@ import {
 } from './layout-preview-state.svelte';
 import {
 	architectureEditIntentFor,
-	type LayoutArchitectureEditIntent
+	type LayoutArchitectureEditIntent,
+	type TransientAttemptStatus
 } from './plan-overlays';
+
+export type { TransientAttemptStatus };
 
 /**
  * The render-only attempt one pointermove is asking for.
@@ -58,6 +68,14 @@ export type LayoutTransientArchitectureEdit = {
 	 * still renders as its point marker.
 	 */
 	walls: readonly WallFirstArchitectureProposalWall[] | undefined;
+	/**
+	 * `known-invalid` when the cheap canonical preflight already refuted the
+	 * attempt (or it could not be derived), `pending` otherwise. This is live
+	 * feedback, never acceptance: the release planner decides.
+	 */
+	status: TransientAttemptStatus;
+	/** The canonical issue behind a `known-invalid` status, when a gate found it. */
+	failure?: WallFirstArchitecturePreflightFailure;
 	/** The same attempt as the Plan overlay intent (style + candidate marker). */
 	intent: LayoutArchitectureEditIntent;
 };
@@ -117,16 +135,27 @@ export function transientArchitectureEdit(input: {
 }): LayoutTransientArchitectureEdit | null {
 	const { gesture, baseline, moved } = input;
 	if (!gesture || !baseline || !moved) return null;
+	const coreIntent = architectureEditProposalIntent(gesture);
 	const walls = p2311Measure('proposal-derive', () =>
-		proposeWallFirstArchitectureGeometry(baseline, architectureEditProposalIntent(gesture))
+		proposeWallFirstArchitectureGeometry(baseline, coreIntent)
 	);
+	// Only a derivable attempt can be refuted by a gate; an underivable one is
+	// already known-invalid (the planner cannot accept an intent it cannot even
+	// build), so a failed proposal skips the preflight entirely.
+	const failure = walls === undefined
+		? undefined
+		: p2311Measure('preflight', () =>
+				preflightWallFirstArchitectureCandidate(baseline, coreIntent)
+			);
+	const status: TransientAttemptStatus =
+		walls === undefined || failure ? 'known-invalid' : 'pending';
 	// A live gesture past the drag threshold is exactly the intent gate's own
 	// precondition, so the attempt always renders: there is no "proposal exists
 	// but nothing is drawn" state, which is what keeps the drag's feedback
-	// independent of the planner's verdict.
-	const intent = architectureEditIntentFor(gesture, moved, walls, walls === undefined);
+	// independent of the release planner's verdict.
+	const intent = architectureEditIntentFor(gesture, moved, walls, status);
 	if (!intent) return null;
-	return { walls, intent };
+	return { walls, status, ...(failure ? { failure } : {}), intent };
 }
 
 /**

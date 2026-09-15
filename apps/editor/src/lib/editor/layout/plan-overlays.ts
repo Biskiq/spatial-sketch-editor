@@ -467,9 +467,10 @@ type LayoutArchitectureEditIntentBody =
 			walls?: readonly LayoutArchitectureEditOverlayWall[];
 	  }
 	/**
-	 * P23.11 — a rejected curve-control drag. The baseline stays installed; the
-	 * attempted Wall is drawn from the caller's canonical **proposal** (never a
-	 * fabricated curve), with the rejected control point marked on it.
+	 * P23.11 — a curve-control drag. The baseline stays installed; the attempted
+	 * Wall is drawn from the caller's canonical **proposal** (never a fabricated
+	 * curve), with the dragged control point marked on it. The render style
+	 * follows the attempt's live status (`pending` vs `known-invalid`).
 	 */
 	| {
 			kind: 'curve-control-move';
@@ -478,10 +479,9 @@ type LayoutArchitectureEditIntentBody =
 			walls?: readonly LayoutArchitectureEditOverlayWall[];
 	  }
 	/**
-	 * P23.11 — a rejected Bend-command drag. Same contract: the transient layer
-	 * renders the proposal's attempted Wall shape and the refused bend point, so
-	 * the geometry keeps following the cursor instead of snapping back while the
-	 * pointer is still held.
+	 * P23.11 — a Bend-command drag. Same contract: the transient layer renders
+	 * the proposal's attempted Wall shape and the dragged bend point, so the
+	 * geometry keeps following the cursor for the whole gesture.
 	 */
 	| {
 			kind: 'wall-bend';
@@ -491,15 +491,24 @@ type LayoutArchitectureEditIntentBody =
 	  };
 
 /**
+ * The live state of one direct-edit attempt.
+ *
+ * `known-invalid` means a **canonical, cheap** gate has already refuted the
+ * attempt during the drag (`preflightWallFirstArchitectureCandidate`: crossing,
+ * self-intersection, duplicate Junction point, zero-length Wall, broken Room
+ * boundary) or the intent could not be derived at all. Everything a cheap gate
+ * cannot decide — Room reconciliation, the Opening set, portal relations, the
+ * compile — stays `pending` and is decided once, at release, by the canonical
+ * planner that owns acceptance.
+ */
+export type TransientAttemptStatus = 'pending' | 'known-invalid';
+
+/**
  * The attempt plus its render style.
  *
- * `invalid` is **only** for an attempt that could not be derived at all, which
- * is the sole refused fact a pointermove can honestly know: whether the
- * canonical planner will accept the geometry is decided exactly once, at
- * release, by the planner that owns validation. A derivable live attempt is
- * therefore PENDING and renders in the transient attempt language; a released
- * refusal is reported by the release path (status message plus an exact
- * baseline), not by a red preview the user cannot act on.
+ * `invalid` renders the existing refused language; it is set from the attempt's
+ * `TransientAttemptStatus`, never from a guess about what the release planner
+ * will decide.
  */
 export type LayoutArchitectureEditIntent = LayoutArchitectureEditIntentBody & {
 	invalid?: boolean;
@@ -546,15 +555,15 @@ export function architectureEditIntentFor(
 	 */
 	proposal?: LayoutArchitectureEditProposal | null,
 	/**
-	 * P23.11 transient pass — `true` only when the attempt could not be derived
-	 * at all (the core proposal returned nothing), so nothing but a refused
-	 * point marker can be drawn. It is NOT a validity verdict: those belong to
-	 * the canonical planner at release.
+	 * P23.11 transient pass — the attempt's live status. A `known-invalid`
+	 * attempt renders the existing refused language; `pending` renders the
+	 * transient attempt language. This is the caller's cheap preflight verdict,
+	 * not acceptance: the canonical planner still decides at release.
 	 */
-	attemptRefused = false
+	status: TransientAttemptStatus = 'pending'
 ): LayoutArchitectureEditIntent | null {
 	if (!gesture || !moved) return null;
-	const refused = attemptRefused ? ({ invalid: true } as const) : {};
+	const refused = status === 'known-invalid' ? ({ invalid: true } as const) : {};
 	const walls = overlayWallsFromProposal(proposal);
 	// Point-anchored gestures render the attempted control/Junction point itself.
 	if (gesture.kind !== 'wall-move') {

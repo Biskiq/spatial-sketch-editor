@@ -1,0 +1,977 @@
+{
+  "units": "meters",
+  "formatVersion": 5,
+  "floor": {
+    "id": "floor",
+    "name": "Floor",
+    "elevation": 0
+  },
+  "junctions": [
+    {
+      "id": "r0j0",
+      "point": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "r0j1",
+      "point": [
+        12,
+        0
+      ]
+    },
+    {
+      "id": "r0j2",
+      "point": [
+        12,
+        10
+      ]
+    },
+    {
+      "id": "r0j3",
+      "point": [
+        0,
+        10
+      ]
+    },
+    {
+      "id": "r1j0",
+      "point": [
+        0,
+        20
+      ]
+    },
+    {
+      "id": "r1j1",
+      "point": [
+        12,
+        20
+      ]
+    },
+    {
+      "id": "r1j2",
+      "point": [
+        12,
+        30
+      ]
+    },
+    {
+      "id": "r1j3",
+      "point": [
+        0,
+        30
+      ]
+    },
+    {
+      "id": "r2j0",
+      "point": [
+        0,
+        40
+      ]
+    },
+    {
+      "id": "r2j1",
+      "point": [
+        12,
+        40
+      ]
+    },
+    {
+      "id": "r2j2",
+      "point": [
+        12,
+        50
+      ]
+    },
+    {
+      "id": "r2j3",
+      "point": [
+        0,
+        50
+      ]
+    },
+    {
+      "id": "r3j0",
+      "point": [
+        0,
+        60
+      ]
+    },
+    {
+      "id": "r3j1",
+      "point": [
+        12,
+        60
+      ]
+    },
+    {
+      "id": "r3j2",
+      "point": [
+        12,
+        70
+      ]
+    },
+    {
+      "id": "r3j3",
+      "point": [
+        0,
+        70
+      ]
+    },
+    {
+      "id": "r4j0",
+      "point": [
+        0,
+        80
+      ]
+    },
+    {
+      "id": "r4j1",
+      "point": [
+        12,
+        80
+      ]
+    },
+    {
+      "id": "r4j2",
+      "point": [
+        12,
+        90
+      ]
+    },
+    {
+      "id": "r4j3",
+      "point": [
+        0,
+        90
+      ]
+    },
+    {
+      "id": "r5j0",
+      "point": [
+        0,
+        100
+      ]
+    },
+    {
+      "id": "r5j1",
+      "point": [
+        12,
+        100
+      ]
+    },
+    {
+      "id": "r5j2",
+      "point": [
+        12,
+        110
+      ]
+    },
+    {
+      "id": "r5j3",
+      "point": [
+        0,
+        110
+      ]
+    },
+    {
+      "id": "r6j0",
+      "point": [
+        0,
+        120
+      ]
+    },
+    {
+      "id": "r6j1",
+      "point": [
+        12,
+        120
+      ]
+    },
+    {
+      "id": "r6j2",
+      "point": [
+        12,
+        130
+      ]
+    },
+    {
+      "id": "r6j3",
+      "point": [
+        0,
+        130
+      ]
+    },
+    {
+      "id": "r7j0",
+      "point": [
+        0,
+        140
+      ]
+    },
+    {
+      "id": "r7j1",
+      "point": [
+        12,
+        140
+      ]
+    },
+    {
+      "id": "r7j2",
+      "point": [
+        12,
+        150
+      ]
+    },
+    {
+      "id": "r7j3",
+      "point": [
+        0,
+        150
+      ]
+    },
+    {
+      "id": "r8j0",
+      "point": [
+        0,
+        160
+      ]
+    },
+    {
+      "id": "r8j1",
+      "point": [
+        12,
+        160
+      ]
+    },
+    {
+      "id": "r8j2",
+      "point": [
+        12,
+        170
+      ]
+    },
+    {
+      "id": "r8j3",
+      "point": [
+        0,
+        170
+      ]
+    },
+    {
+      "id": "r9j0",
+      "point": [
+        0,
+        180
+      ]
+    },
+    {
+      "id": "r9j1",
+      "point": [
+        12,
+        180
+      ]
+    },
+    {
+      "id": "r9j2",
+      "point": [
+        12,
+        190
+      ]
+    },
+    {
+      "id": "r9j3",
+      "point": [
+        0,
+        190
+      ]
+    }
+  ],
+  "walls": [
+    {
+      "id": "w0",
+      "startJunctionId": "r0j0",
+      "endJunctionId": "r0j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w1",
+      "startJunctionId": "r0j1",
+      "endJunctionId": "r0j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w2",
+      "startJunctionId": "r0j2",
+      "endJunctionId": "r0j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w3",
+      "startJunctionId": "r0j3",
+      "endJunctionId": "r0j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w4",
+      "startJunctionId": "r1j0",
+      "endJunctionId": "r1j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w5",
+      "startJunctionId": "r1j1",
+      "endJunctionId": "r1j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w6",
+      "startJunctionId": "r1j2",
+      "endJunctionId": "r1j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w7",
+      "startJunctionId": "r1j3",
+      "endJunctionId": "r1j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w8",
+      "startJunctionId": "r2j0",
+      "endJunctionId": "r2j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w9",
+      "startJunctionId": "r2j1",
+      "endJunctionId": "r2j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w10",
+      "startJunctionId": "r2j2",
+      "endJunctionId": "r2j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w11",
+      "startJunctionId": "r2j3",
+      "endJunctionId": "r2j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w12",
+      "startJunctionId": "r3j0",
+      "endJunctionId": "r3j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w13",
+      "startJunctionId": "r3j1",
+      "endJunctionId": "r3j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w14",
+      "startJunctionId": "r3j2",
+      "endJunctionId": "r3j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w15",
+      "startJunctionId": "r3j3",
+      "endJunctionId": "r3j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w16",
+      "startJunctionId": "r4j0",
+      "endJunctionId": "r4j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w17",
+      "startJunctionId": "r4j1",
+      "endJunctionId": "r4j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w18",
+      "startJunctionId": "r4j2",
+      "endJunctionId": "r4j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w19",
+      "startJunctionId": "r4j3",
+      "endJunctionId": "r4j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w20",
+      "startJunctionId": "r5j0",
+      "endJunctionId": "r5j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w21",
+      "startJunctionId": "r5j1",
+      "endJunctionId": "r5j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w22",
+      "startJunctionId": "r5j2",
+      "endJunctionId": "r5j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w23",
+      "startJunctionId": "r5j3",
+      "endJunctionId": "r5j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w24",
+      "startJunctionId": "r6j0",
+      "endJunctionId": "r6j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w25",
+      "startJunctionId": "r6j1",
+      "endJunctionId": "r6j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w26",
+      "startJunctionId": "r6j2",
+      "endJunctionId": "r6j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w27",
+      "startJunctionId": "r6j3",
+      "endJunctionId": "r6j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w28",
+      "startJunctionId": "r7j0",
+      "endJunctionId": "r7j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w29",
+      "startJunctionId": "r7j1",
+      "endJunctionId": "r7j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w30",
+      "startJunctionId": "r7j2",
+      "endJunctionId": "r7j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w31",
+      "startJunctionId": "r7j3",
+      "endJunctionId": "r7j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w32",
+      "startJunctionId": "r8j0",
+      "endJunctionId": "r8j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w33",
+      "startJunctionId": "r8j1",
+      "endJunctionId": "r8j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w34",
+      "startJunctionId": "r8j2",
+      "endJunctionId": "r8j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w35",
+      "startJunctionId": "r8j3",
+      "endJunctionId": "r8j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w36",
+      "startJunctionId": "r9j0",
+      "endJunctionId": "r9j1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w37",
+      "startJunctionId": "r9j1",
+      "endJunctionId": "r9j2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w38",
+      "startJunctionId": "r9j2",
+      "endJunctionId": "r9j3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    },
+    {
+      "id": "w39",
+      "startJunctionId": "r9j3",
+      "endJunctionId": "r9j0",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "line"
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room0",
+      "name": "Room 0",
+      "boundary": [
+        {
+          "wallId": "w0",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w1",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w2",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w3",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room1",
+      "name": "Room 1",
+      "boundary": [
+        {
+          "wallId": "w4",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w5",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w6",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w7",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room2",
+      "name": "Room 2",
+      "boundary": [
+        {
+          "wallId": "w8",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w9",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w10",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w11",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room3",
+      "name": "Room 3",
+      "boundary": [
+        {
+          "wallId": "w12",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w13",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w14",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w15",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room4",
+      "name": "Room 4",
+      "boundary": [
+        {
+          "wallId": "w16",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w17",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w18",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w19",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room5",
+      "name": "Room 5",
+      "boundary": [
+        {
+          "wallId": "w20",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w21",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w22",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w23",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room6",
+      "name": "Room 6",
+      "boundary": [
+        {
+          "wallId": "w24",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w25",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w26",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w27",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room7",
+      "name": "Room 7",
+      "boundary": [
+        {
+          "wallId": "w28",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w29",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w30",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w31",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room8",
+      "name": "Room 8",
+      "boundary": [
+        {
+          "wallId": "w32",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w33",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w34",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w35",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room9",
+      "name": "Room 9",
+      "boundary": [
+        {
+          "wallId": "w36",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w37",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w38",
+          "direction": "forward"
+        },
+        {
+          "wallId": "w39",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    }
+  ],
+  "openings": [],
+  "objects": []
+}

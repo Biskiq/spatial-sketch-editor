@@ -88,9 +88,12 @@ export type PlanStyleToken =
 	| 'opening-handle'
 	| 'opening-drag-preview'
 	| 'opening-drag-preview-invalid'
-	// P23.10 — transient direct Wall/Junction edit intent (drawn only while the
-	// canonical planner REJECTS the current candidate: an accepted candidate is
-	// already fully previewed by the installed document).
+	// P23.10 / P23.11 — transient direct Wall/Junction edit intent. Drawn for a
+	// live gesture whose canonical baseline is still installed (the pointermove
+	// proposal), so it is the drag's own feedback rather than a post-hoc refusal:
+	// the plain token is a pending attempt, the invalid token is one a cheap
+	// canonical preflight has already refuted. Acceptance is decided once, at
+	// release, by the canonical planner — never by this style.
 	| 'architecture-edit-intent'
 	| 'architecture-edit-intent-invalid'
 	| 'snap-guide'
