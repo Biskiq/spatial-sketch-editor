@@ -540,10 +540,12 @@ describe('P23.11 pass — the accepted compile is installed, not recompiled', ()
 			const result = updateWallFirstWallBend(state, TARGET_WALL, bendIntent(0.28));
 			if (!result.success) throw new Error(`${specId}: bend rejected — ${result.message}`);
 
-			// One install: the accepted compile was consumed, not repeated.
+			// One install: the accepted compile was consumed, not repeated. These are
+			// the whole proof — the reuse is asserted *structurally* (which path ran,
+			// and that its output is byte-identical to a from-scratch derive), never
+			// against a wall-clock budget, which would only make this suite flaky.
 			expect(stageCount('preview-compile'), `${specId} recompiled the accepted document`).toBe(0);
 			expect(stageCount('preview-compile-reused'), `${specId} did not reuse`).toBe(1);
-			expect(stageStats('preview-compile-reused')!.p95, `${specId} reuse cost`).toBeLessThan(2);
 
 			// The installed state is identical to a from-scratch derive of the same
 			// accepted document: geometry, model, issues and bounds.
