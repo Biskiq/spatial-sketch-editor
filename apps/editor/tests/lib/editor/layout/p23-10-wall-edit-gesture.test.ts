@@ -29,6 +29,7 @@ import {
 	architectureEditAllowedKinds,
 	architectureEditExcludePoints,
 	architectureEditExclusionOwners,
+	architectureEditMovedOnRelease,
 	architectureEditRawTarget,
 	beginLayoutArchitectureEdit,
 	cancelLayoutArchitectureEdit,
@@ -42,6 +43,7 @@ import {
 	type LayoutArchitectureEditGesture,
 	type LayoutInteractionState
 } from '$lib/editor/layout/layout-interaction';
+import { releaseArchitectureEdit } from '$lib/editor/layout/layout-transient-edit';
 import { withArchitectureEditIntent } from '$lib/editor/layout/plan-overlays';
 import {
 	buildLayoutPreviewModel
@@ -506,8 +508,9 @@ function readLibSource(relativePath: string): string {
 	return fs.readFileSync(path.join(LIB_DIR, relativePath), 'utf8');
 }
 
+const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+
 describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
-	const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 
 	it('refuses a non-primary contact before it can change the selection', () => {
 		// A second finger used to reach `selectLayoutJunction`/'physicalWall'
@@ -716,5 +719,112 @@ describe('P23.10 snapping — baseline geometry, frozen exclusions, family filte
 		// writes, no history): the baseline document is byte-identical.
 		expect(JSON.stringify(squareDocument())).toBe(JSON.stringify(squareDocument()));
 		expect(model.rooms.map((room) => room.roomId)).toEqual(['room']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Fast-release gate — the viewport must derive moved from screen displacement
+// ---------------------------------------------------------------------------
+
+describe('P23.10 fast-release gate', () => {
+	it('viewport uses architectureEditMovedOnRelease, not inline shouldBeginWallBend', () => {
+		// The release path must delegate to the pure gate; it must NOT recompute
+		// the threshold inline — that would bypass the shared authority.
+		const release = viewport.slice(viewport.indexOf('function commitArchitectureEditGesture('));
+		expect(release).toContain('architectureEditMovedOnRelease(');
+		// No inline threshold computation in the release gate.
+		expect(release).not.toMatch(/architectureEditMoved\s*\|\|\s*\(/);
+	});
+
+	it('architectureEditMovedOnRelease passes through pointermove-crossed threshold', () => {
+		expect(architectureEditMovedOnRelease(true, null, null)).toBe(true);
+		expect(architectureEditMovedOnRelease(true, [0, 0], [0.1, 0.1])).toBe(true);
+	});
+
+	it('architectureEditMovedOnRelease commits on release displacement beyond threshold', () => {
+		// Fast drag: no pointermove, but release is far from start.
+		expect(architectureEditMovedOnRelease(false, [0, 0], [10, 10])).toBe(true);
+	});
+
+	it('architectureEditMovedOnRelease stays idle for sub-threshold release', () => {
+		expect(architectureEditMovedOnRelease(false, [0, 0], [0.1, 0.1])).toBe(false);
+	});
+
+	it('architectureEditMovedOnRelease stays idle when startScreen is null', () => {
+		expect(architectureEditMovedOnRelease(false, null, [10, 10])).toBe(false);
+	});
+
+	it('architectureEditMovedOnRelease stays idle when releaseScreen is null', () => {
+		expect(architectureEditMovedOnRelease(false, [0, 0], null)).toBe(false);
+	});
+
+	it('fast release commits via releaseArchitectureEdit when gate says moved', () => {
+		// Full integration: gate derives moved → releaseArchitectureEdit commits.
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startJunctionEdit(context, 'A')).toBe(true);
+
+		const gesture = context.interaction.architectureEdit;
+		if (!gesture || !context.snapshot) throw new Error('no gesture');
+		if (gesture.kind !== 'junction-move') throw new Error('expected junction-move gesture');
+
+		// Simulate the viewport's fast-release path: no pointermove, but
+		// release position is beyond the drag threshold from the start.
+		const releaseScreen: LayoutVec2 = [-5, 5];
+		const movedOnRelease = architectureEditMovedOnRelease(false, context.startScreen, releaseScreen);
+
+		const outcome = releaseArchitectureEdit({
+			gesture,
+			moved: movedOnRelease,
+			plan: () => {
+				const input = updateLayoutArchitectureEdit(
+					context.interaction,
+					architectureEditRawTarget(gesture, releaseScreen)
+				);
+				if (!input) return { success: false, message: 'gesture lost' };
+				const result = updateWallFirstJunction(context.layoutPreview, gesture.junctionId, input);
+				return result.success
+					? { success: true }
+					: { success: false, message: result.message, code: result.code };
+			},
+			commit: () => context.store.commitLayoutTransaction(captureLayoutPreviewSnapshot(context.layoutPreview)),
+			cancel: () => context.store.cancelLayoutTransaction(),
+			restoreBaseline: () => {
+				if (context.snapshot) restoreLayoutPreviewSnapshot(context.layoutPreview, context.snapshot);
+			}
+		});
+
+		expect(movedOnRelease).toBe(true);
+		expect(outcome.kind).toBe('committed');
+		expect(junctionPoint(context, 'A')).toEqual([-5, 5]);
+		expect(JSON.stringify(live(context))).not.toBe(before);
+	});
+
+	it('fast sub-threshold release stays idle via releaseArchitectureEdit', () => {
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startJunctionEdit(context, 'A')).toBe(true);
+
+		const gesture = context.interaction.architectureEdit;
+		if (!gesture || !context.snapshot) throw new Error('no gesture');
+
+		const releaseScreen: LayoutVec2 = [0.1, 0.1];
+		const movedOnRelease = architectureEditMovedOnRelease(false, context.startScreen, releaseScreen);
+
+		const outcome = releaseArchitectureEdit({
+			gesture,
+			moved: movedOnRelease,
+			plan: () => ({ success: true }),
+			commit: () => true,
+			cancel: () => context.store.cancelLayoutTransaction(),
+			restoreBaseline: () => {
+				if (context.snapshot) restoreLayoutPreviewSnapshot(context.layoutPreview, context.snapshot);
+			}
+		});
+
+		expect(movedOnRelease).toBe(false);
+		expect(outcome.kind).toBe('idle');
+		// No planner call, no commit, exact baseline.
+		expect(JSON.stringify(live(context))).toBe(before);
 	});
 });
