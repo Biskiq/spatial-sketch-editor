@@ -51,16 +51,44 @@ import {
 	updateLayoutWallInteriorAnchor
 } from '$lib/editor/layout/layout-preview-state.svelte';
 import {
+	LAYOUT_PLAN_GRID_STEP,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
+	resolveLayoutSnap,
 	wallCubicChain,
 	wallCenterlineSegment,
+	wallOwnerKey,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+import {
+	LAYOUT_WALL_BEND_DRAG_THRESHOLD_PX,
+	shouldBeginWallBend
+} from '$lib/editor/layout/layout-interaction';
+import { LAYOUT_PLAN_HIT_RADIUS_PX } from '$lib/editor/layout/layout-opening-editing';
+import {
+	createPlanViewportState,
+	planScreenToWorld
+} from '$lib/editor/layout/layout-plan-transform';
 
 const ANCHOR_BASELINE: LayoutVec2 = [2, -1];
+
+/** The real plan viewport state (snap on, real scale): the release pipeline's input. */
+const PLAN_VIEW = createPlanViewportState();
+
+/**
+ * The canvas screen position of a world point — the inverse of the viewport's
+ * `worldPoint()` conversion (`planScreenToWorld`), so a screen displacement here
+ * is the same displacement a real pointer would produce.
+ */
+function screenPointOf(world: LayoutVec2): LayoutVec2 {
+	const { center, width, height, pixelsPerMeter } = PLAN_VIEW;
+	return [
+		(world[0] - center[0]) * pixelsPerMeter + width / 2,
+		(world[1] - center[1]) * pixelsPerMeter + height / 2
+	];
+}
 
 /** The legacy curved room both suites target: one `auto-bezier` boundary segment. */
 const LEGACY_SEGMENTS = [
@@ -105,6 +133,30 @@ function anchorPoint(state: ReturnType<typeof legacyCurvedState>['state'], targe
 	const segment = room.boundary.segments.find((candidate) => candidate.id === target.segmentId)!;
 	if (segment.kind !== 'auto-bezier') throw new Error('segment is no longer curved');
 	return [...segment.interiorAnchors.find((anchor) => anchor.id === target.anchorId)!.point] as LayoutVec2;
+}
+
+/**
+ * The viewport's RELEASE snap, called exactly as `applyLayoutSnap()` calls it: the
+ * compiled geometry, the real scale and grid step, the moving anchor's own
+ * room-qualified segment excluded, and the anchor's own point excluded. The grid
+ * fallback is unconditional, which is why an unguarded release could nudge an
+ * off-grid anchor merely by clicking it.
+ */
+function snapRelease(
+	state: ReturnType<typeof legacyCurvedState>['state'],
+	target: Target,
+	raw: LayoutVec2
+): LayoutVec2 {
+	const resolution = resolveLayoutSnap(
+		state.geometry,
+		raw,
+		{ pixelsPerMeter: PLAN_VIEW.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
+		{
+			excludeOwners: new Set([wallOwnerKey(state.geometry, target.roomId, target.segmentId)]),
+			excludePoints: [anchorPoint(state, target)]
+		}
+	);
+	return resolution.kind === 'snap' ? ([...resolution.candidate.point] as LayoutVec2) : raw;
 }
 
 /** Legacy preview + a store wired to it exactly as `EditorApp` wires the host. */
@@ -409,13 +461,15 @@ describe('interior-anchor release semantics', () => {
 		expect(anchorPoint(state, target)).toEqual([2, -2]);
 	});
 
-	it('a no-op click writes no history entry — the controller already suppresses unchanged commits', () => {
+	it('writes no history entry for an unchanged commit — the controller suppresses it', () => {
 		const { store, state, target } = makeLegacyStore();
 		const baselineJson = layoutPreviewCanonicalJson(state);
 
 		expect(store.beginLayoutTransaction()).toBe(true);
-		// A press/release that never moved: the release re-derives the anchor at
-		// its own current point, which is the identical value.
+		// The anchor re-derived at its own point is the identical value. This is a
+		// CONTRACT ON THE CONTROLLER, not the gesture's gate (the gate is below):
+		// `commitLayout` compares the committed snapshot against the begin-time
+		// `before` and reports `changed: false` without pushing.
 		expect(
 			updateLayoutWallInteriorAnchor(
 				state,
@@ -425,12 +479,166 @@ describe('interior-anchor release semantics', () => {
 				anchorPoint(state, target)
 			)
 		).toEqual({ success: true });
-
-		// `commitLayout` compares the committed snapshot against the begin-time
-		// `before` and reports `changed: false` without pushing, so the gesture
-		// writes nothing.
 		expect(store.commitLayoutTransaction(captureLayoutPreviewSnapshot(state))).toBe(false);
 		expect(layoutPreviewCanonicalJson(state)).toBe(baselineJson);
+		expect(store.canUndo).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// The click-vs-drag gate — a press is not a drag
+//
+// The gesture used to treat EVERY release as a drag, so a plain click could move
+// the anchor: the interior-anchor *hit* has a radius (the pointer never has to be
+// on the anchor's exact centre) and the release resolver snaps, with the grid as
+// an unconditional fallback candidate. These tests drive the REAL pipeline —
+// `planScreenToWorld` → `resolveLayoutSnap` (self-exclusion included) →
+// `updateLayoutWallInteriorAnchor()` — rather than feeding the anchor's own
+// coordinate, which is what the first revision of this suite did.
+// ---------------------------------------------------------------------------
+
+describe('interior-anchor release gate — real release pipeline', () => {
+	it('does not treat a click beside the anchor as a drag (the raw release would move it)', () => {
+		const { store, state, target } = makeLegacyStore();
+		const baseline = anchorPoint(state, target);
+		const baselineJson = layoutPreviewCanonicalJson(state);
+		// The Band: the anchor's acquisition radius is LARGER than the drag
+		// threshold, so a press inside the radius is a valid hit that is not a
+		// drag — which is how the unconditional release moved anchors.
+		expect(LAYOUT_PLAN_HIT_RADIUS_PX).toBeGreaterThan(LAYOUT_WALL_BEND_DRAG_THRESHOLD_PX);
+
+		// The press: one transaction, one frozen origin, one snapshot.
+		expect(store.beginLayoutTransaction()).toBe(true);
+		const snapshot = captureLayoutPreviewSnapshot(state);
+		const origin = screenPointOf(baseline);
+		// A CLICK 3 px off the anchor's centre — a valid hit, not a drag — with no
+		// `pointermove` at all, so the release IS the whole gesture.
+		const releaseScreen: LayoutVec2 = [origin[0] + 3, origin[1]];
+		const rawRelease = planScreenToWorld(PLAN_VIEW, releaseScreen);
+		expect(shouldBeginWallBend(origin, releaseScreen)).toBe(false);
+		expect(rawRelease).not.toEqual(baseline);
+
+		// The hazard is real: with snapping off the release resolver applies the
+		// raw release point, so the old unconditional release moved the anchor by
+		// the full 3 px of world distance.
+		const hazard = makeLegacyStore();
+		expect(
+			updateLayoutWallInteriorAnchor(
+				hazard.state,
+				target.roomId,
+				target.segmentId,
+				target.anchorId,
+				rawRelease
+			)
+		).toEqual({ success: true });
+		expect(anchorPoint(hazard.state, target)).toEqual(rawRelease);
+
+		// The gate is what prevents it: below the threshold the release is a
+		// click, so the viewport cancels the transaction and restores the baseline
+		// instead of calling the resolver at all.
+		expect(store.cancelLayoutTransaction()).toBe(true);
+		restoreLayoutPreviewSnapshot(state, snapshot);
+
+		expect(anchorPoint(state, target)).toEqual(baseline);
+		expect(layoutPreviewCanonicalJson(state)).toBe(baselineJson);
+		expect(store.canUndo).toBe(false);
+	});
+
+	it('does not nudge an off-grid anchor onto the grid fallback by clicking it', () => {
+		const { store, state, target } = makeLegacyStore();
+		// An authored anchor is rarely grid-aligned: put it off-grid first.
+		expect(
+			updateLayoutWallInteriorAnchor(state, target.roomId, target.segmentId, target.anchorId, [
+				2.1, -1.1
+			])
+		).toEqual({ success: true });
+		const baseline = anchorPoint(state, target);
+		expect(baseline).toEqual([2.1, -1.1]);
+
+		expect(store.beginLayoutTransaction()).toBe(true);
+		const snapshot = captureLayoutPreviewSnapshot(state);
+		const origin = screenPointOf(baseline);
+		const releaseScreen: LayoutVec2 = [origin[0] + 3, origin[1]];
+		const rawRelease = planScreenToWorld(PLAN_VIEW, releaseScreen);
+		expect(shouldBeginWallBend(origin, releaseScreen)).toBe(false);
+
+		// The grid is an unconditional fallback candidate inside the acquisition
+		// radius, so the same pipeline that serves a real drag would pull the
+		// off-grid anchor onto the grid — from a click that never moved.
+		const snapped = snapRelease(state, target, rawRelease);
+		expect(snapped).not.toEqual(baseline);
+		const hazard = makeLegacyStore();
+		expect(
+			updateLayoutWallInteriorAnchor(hazard.state, target.roomId, target.segmentId, target.anchorId, [
+				2.1, -1.1
+			])
+		).toEqual({ success: true });
+		expect(
+			updateLayoutWallInteriorAnchor(
+				hazard.state,
+				target.roomId,
+				target.segmentId,
+				target.anchorId,
+				snapped
+			)
+		).toEqual({ success: true });
+		expect(anchorPoint(hazard.state, target)).toEqual(snapped);
+
+		// Gated: the release is a click, so the baseline stands.
+		expect(store.cancelLayoutTransaction()).toBe(true);
+		restoreLayoutPreviewSnapshot(state, snapshot);
+		expect(anchorPoint(state, target)).toEqual(baseline);
+		expect(store.canUndo).toBe(false);
+	});
+
+	it('commits the snapped release point exactly once for a real drag', () => {
+		const { store, state, target } = makeLegacyStore();
+		expect(store.beginLayoutTransaction()).toBe(true);
+
+		const origin = screenPointOf(anchorPoint(state, target));
+		// Beyond the shared drag threshold: a drag, so the release is authoritative.
+		const releaseScreen: LayoutVec2 = [origin[0] + 12, origin[1] + 12];
+		expect(shouldBeginWallBend(origin, releaseScreen)).toBe(true);
+
+		const snapped = snapRelease(state, target, planScreenToWorld(PLAN_VIEW, releaseScreen));
+		expect(snapped).not.toEqual(ANCHOR_BASELINE);
+		expect(
+			updateLayoutWallInteriorAnchor(
+				state,
+				target.roomId,
+				target.segmentId,
+				target.anchorId,
+				snapped
+			)
+		).toEqual({ success: true });
+		expect(store.commitLayoutTransaction(captureLayoutPreviewSnapshot(state))).toBe(true);
+
+		expect(anchorPoint(state, target)).toEqual(snapped);
+		// One entry for the whole gesture.
+		expect(store.undo()).toBe(true);
+		expect(anchorPoint(state, target)).toEqual(ANCHOR_BASELINE);
+		expect(store.canUndo).toBe(false);
+	});
+
+	it('ends the gesture on window blur on the same baseline-restore path', () => {
+		const { store, state, target } = makeLegacyStore();
+		const baselineJson = layoutPreviewCanonicalJson(state);
+
+		expect(store.beginLayoutTransaction()).toBe(true);
+		const snapshot = captureLayoutPreviewSnapshot(state);
+		expect(
+			updateLayoutWallInteriorAnchor(state, target.roomId, target.segmentId, target.anchorId, [
+				3, -2
+			])
+		).toEqual({ success: true });
+		expect(layoutPreviewCanonicalJson(state)).not.toBe(baselineJson);
+
+		// `onWindowBlur()` → `cancelActiveLayoutDrag()`: restore, then cancel.
+		restoreLayoutPreviewSnapshot(state, snapshot);
+		expect(store.cancelLayoutTransaction()).toBe(true);
+
+		expect(layoutPreviewCanonicalJson(state)).toBe(baselineJson);
+		expect(anchorPoint(state, target)).toEqual(ANCHOR_BASELINE);
 		expect(store.canUndo).toBe(false);
 	});
 });
@@ -478,10 +686,64 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 		const moveStart = source.indexOf(
 			'interiorAnchorPointerId === event.pointerId && draggedInteriorAnchor'
 		);
-		const moveBranch = source.slice(moveStart, moveStart + 260);
+		const moveBranch = source.slice(moveStart, moveStart + 480);
 		expect(moveBranch).toContain('planInteriorAnchorDrag(draggedInteriorAnchor, point);');
 		expect(moveBranch).not.toContain('updateLayoutWallInteriorAnchor');
 		expect(releaseBranch()).not.toContain('updateLayoutWallInteriorAnchor');
+	});
+
+	it('gates the press on the shared drag threshold before proposing anything', () => {
+		// The gesture-agnostic rule the direct architecture edits use: below the
+		// threshold the press is a plain click, so nothing is proposed.
+		const moveStart = source.indexOf(
+			'interiorAnchorPointerId === event.pointerId && draggedInteriorAnchor'
+		);
+		const moveBranch = source.slice(moveStart, moveStart + 480);
+		const gate = moveBranch.indexOf(
+			'shouldBeginWallBend(interiorAnchorStartScreen ?? screen, screen)'
+		);
+		expect(gate).toBeGreaterThan(-1);
+		expect(gate).toBeLessThan(
+			moveBranch.indexOf('planInteriorAnchorDrag(draggedInteriorAnchor, point);')
+		);
+		expect(moveBranch).toContain('return;');
+
+		// The pointer-down origin is frozen where the anchor is acquired, and the
+		// moved flag starts false on every press.
+		const beginStart = source.indexOf('function beginInteriorAnchorDrag(');
+		const begin = source.slice(beginStart, beginStart + 700);
+		expect(begin).toContain('interiorAnchorStartScreen = screenPoint(event);');
+		expect(begin).toContain('interiorAnchorMoved = false;');
+
+		// Both halves of the drag state are cleared on every exit.
+		const clearStart = source.indexOf('function clearActiveLayoutDrag()');
+		const clear = source.slice(clearStart, source.indexOf('function cancelActiveLayoutDrag()'));
+		expect(clear).toContain('interiorAnchorStartScreen = null;');
+		expect(clear).toContain('interiorAnchorMoved = false;');
+	});
+
+	it('applies the click-vs-drag gate to the release BEFORE the resolver', () => {
+		const branch = releaseBranch();
+
+		// `moved` is the same shared-threshold rule: a `pointermove` already
+		// crossed it, or the release displacement from the pointer-down origin
+		// does. The release screen point is read while the gesture state is still
+		// live.
+		const gate = branch.indexOf('shouldBeginWallBend(startScreen, releaseScreen)');
+		expect(gate).toBeGreaterThan(-1);
+		expect(branch).toContain('const startScreen = interiorAnchorStartScreen;');
+		expect(branch).toContain('const releaseScreen = screenPoint(event);');
+		expect(branch).toContain('interiorAnchorMoved ||');
+
+		// A click returns from the `!moved` block — cancel plus baseline restore —
+		// so the resolver is unreachable for it.
+		const clickReturn = branch.indexOf('if (!moved) {');
+		const resolver = branch.indexOf('planInteriorAnchorDrag(drag, point)');
+		expect(clickReturn).toBeGreaterThan(gate);
+		expect(resolver).toBeGreaterThan(clickReturn);
+		const blocked = branch.slice(clickReturn, resolver);
+		expect(blocked).toContain('onLayoutTransactionCancel();');
+		expect(blocked).toContain('if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);');
 	});
 
 	it('re-derives the release coordinate BEFORE deciding the transaction outcome', () => {
@@ -502,11 +764,13 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 	it('cancels and restores the baseline when the release is rejected', () => {
 		const branch = releaseBranch();
 
-		// Cancel sits on the reject side of the commit, so it is reached only
-		// when the release derivation failed.
-		expect(branch.indexOf('onLayoutTransactionCommit()')).toBeLessThan(
-			branch.indexOf('onLayoutTransactionCancel();')
-		);
+		// The reject side of the commit: the cancel that follows it is reached
+		// only when the release derivation failed. (The click gate cancels BEFORE
+		// the commit, which the gate test above covers.)
+		const commit = branch.indexOf('onLayoutTransactionCommit()');
+		const rejectCancel = branch.indexOf('onLayoutTransactionCancel();', commit);
+		expect(commit).toBeGreaterThan(-1);
+		expect(rejectCancel).toBeGreaterThan(commit);
 		expect(branch).toContain('if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);');
 		// The rejection reason is re-applied after the restore, because both the
 		// cancel and the restore replace `statusMessage`.
@@ -526,6 +790,22 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 		const handler = viewport.slice(start, viewport.indexOf('function onWindowBlur()'));
 		expect(handler).toContain('interiorAnchorPointerId === event.pointerId');
 		expect(handler).toContain('cancelActiveLayoutDrag();');
+	});
+
+	it('ends the gesture on window blur through the same cancel path', () => {
+		// Blur is the browser-cancellation fallback the editor cannot rely on
+		// implicitly (`pointercancel` is not guaranteed). The gesture owns an open
+		// Layout transaction, so a blur closes it the same way a lost capture
+		// does.
+		const start = viewport.indexOf('function onWindowBlur(): void {');
+		expect(start).toBeGreaterThan(-1);
+		const handler = viewport.slice(start, viewport.indexOf('let previousPlanViewMode'));
+		expect(handler).toContain('interiorAnchorPointerId !== null');
+		expect(handler).toContain('cancelActiveLayoutDrag();');
+		// The architecture-edit cancel stays first and untouched.
+		expect(handler.indexOf('cancelArchitectureEditGesture();')).toBeGreaterThan(-1);
+		// Blur is actually wired to the window.
+		expect(viewport).toContain("window.addEventListener('blur', onWindowBlur);");
 	});
 
 	it('keeps the shared cancel path restoring the snapshot and closing the transaction', () => {
