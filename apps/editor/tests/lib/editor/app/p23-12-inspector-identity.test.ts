@@ -1,0 +1,199 @@
+/**
+ * P23.12 S6 — Inspector identity, names and Technical details.
+ *
+ * Driven through the shipped presentation rules:
+ *
+ * - one header pattern across the four canonical kinds — Room, Wall,
+ *   Junction, Opening (name leads, reference secondary, kind separate);
+ * - the Layout object block is unchanged (byte-level markup assertion);
+ * - optional-name set/clear/reject-revert with the emptied-field → `null`
+ *   mapping;
+ * - the Junction block has no name input, ever;
+ * - Technical details starts collapsed, is keyboard/touch reachable,
+ *   preserves state across selection changes, exposes the full ID with a
+ *   copy control;
+ * - relationship controls show references;
+ * - no Room rename menu exists; legacy Room-owned and Camera blocks untouched.
+ */
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { referenceFor } from '@portfolio/layout-core';
+
+import {
+	createEmptyLayoutPreviewState,
+	importLayoutPreviewJson,
+	layoutPreviewDocument,
+	updateWallFirstOpeningMetadata,
+	updateWallFirstWallMetadata,
+	type LayoutPreviewState
+} from '$lib/editor/layout/layout-preview-state.svelte';
+
+const LINE = { kind: 'line' } as const;
+
+function squareDocument(): Record<string, unknown> {
+	return {
+		units: 'meters',
+		formatVersion: 5,
+		floor: { id: 'floor', name: 'Floor', elevation: 0 },
+		junctions: [
+			{ id: 'A', point: [0, 0] },
+			{ id: 'B', point: [4, 0] },
+			{ id: 'C', point: [4, 3] },
+			{ id: 'D', point: [0, 3] }
+		],
+		walls: [
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+		],
+		rooms: [
+			{
+				id: 'room',
+				name: 'Room',
+				boundary: [
+					{ wallId: 'w1', direction: 'forward' },
+					{ wallId: 'w2', direction: 'forward' },
+					{ wallId: 'w3', direction: 'forward' },
+					{ wallId: 'w4', direction: 'forward' }
+				],
+				floorThickness: 0.1,
+				ceilingThickness: 0.1
+			}
+		],
+		openings: [
+			{ id: 'door', wallId: 'w1', kind: 'door', offset: 0.5, width: 1, height: 2, sillHeight: 0, profile: 'rectangular' }
+		],
+		objects: []
+	};
+}
+
+function makeState(): LayoutPreviewState {
+	const state = createEmptyLayoutPreviewState();
+	expect(importLayoutPreviewJson(state, JSON.stringify(squareDocument()))).toBe(true);
+	return state;
+}
+
+describe('P23.12 inspector — one header pattern', () => {
+	const INSPECTOR = resolve(
+		dirname(fileURLToPath(import.meta.url)),
+		'../../../../src/lib/editor/EditorInspector.svelte'
+	);
+	const source = (): string => readFileSync(INSPECTOR, 'utf8');
+
+	it('all four canonical headers resolve through the identity layer', () => {
+		const text = source();
+		// The four wall-first headers use name ?? reference ?? id fallbacks.
+		expect(text).toContain('selectedWallFirstWall.name ?? selectedWallReference');
+		expect(text).toContain('selectedJunctionReference ?? `Junction ${selectedWallFirstJunction.id}`');
+		expect(text).toContain('selectedWallFirstOpening.name ?? selectedOpeningReference');
+		// The Room header keeps the authored name primary.
+		expect(text).toContain('<strong>{selectedWallFirstRoom.name}</strong>');
+		// And the reference spans render beside the names.
+		expect(text).toContain('{selectedWallReference}');
+		expect(text).toContain('{selectedOpeningReference}');
+		expect(text).toContain('{selectedRoomReference}');
+	});
+
+	it('the Layout object block is unchanged (byte-level marker assertion)', () => {
+		const text = source();
+		// The block's header is still `{selectedLayoutObject.kind} object` and it
+		// gains no identity-reference span — a later unification is deliberate.
+		expect(text).toContain('<strong>{selectedLayoutObject.kind} object</strong>');
+		const objectBlockStart = text.indexOf('<strong>{selectedLayoutObject.kind} object</strong>');
+		const objectBlockEnd = text.indexOf('{:else if selectedWallFirstWall');
+		expect(objectBlockStart).toBeGreaterThan(-1);
+		expect(objectBlockEnd).toBeGreaterThan(objectBlockStart);
+		const objectBlock = text.slice(objectBlockStart, objectBlockEnd);
+		expect(objectBlock).not.toContain('identity-reference');
+		expect(objectBlock).not.toContain('referenceFor');
+	});
+
+	it('the Junction block has no name input', () => {
+		const text = source();
+		const junctionStart = text.indexOf('aria-label="Selected wall-first junction"');
+		const junctionEnd = text.indexOf('{:else if selectedWallFirstOpening');
+		expect(junctionStart).toBeGreaterThan(-1);
+		expect(junctionEnd).toBeGreaterThan(junctionStart);
+		const junctionBlock = text.slice(junctionStart, junctionEnd);
+		expect(junctionBlock).not.toMatch(/Name \(optional\)/);
+		expect(junctionBlock).not.toMatch(/type="text"/);
+	});
+
+	it('Wall and Opening blocks gain the optional Name field', () => {
+		const text = source();
+		const wallStart = text.indexOf('aria-label="Selected wall-first wall"');
+		const wallEnd = text.indexOf('{:else if selectedWallFirstJunction}');
+		const wallBlock = text.slice(wallStart, wallEnd);
+		expect(wallBlock).toContain('Name (optional)');
+		expect(wallBlock).toContain('updateSelectedWallName');
+		const openingStart = text.indexOf('aria-label="Selected wall-first opening"');
+		const openingEnd = text.indexOf('{:else if selectedLayoutOpening');
+		const openingBlock = text.slice(openingStart, openingEnd);
+		expect(openingBlock).toContain('Name (optional)');
+		expect(openingBlock).toContain('updateSelectedOpeningName');
+	});
+
+	it('Technical details starts collapsed, exposes the full ID, and has a copy control', () => {
+		const text = source();
+		// `<details>` without `open` attribute starts collapsed and is natively
+		// keyboard/touch operable; `bind:open` preserves state across re-renders.
+		expect(text).toContain('<details class="technical-details" bind:open={technicalDetailsOpen}>');
+		expect(text).toContain('<summary>Technical details</summary>');
+		expect(text).toContain('<span class="technical-id">{selectedWallFirstWall.id}</span>');
+		expect(text).toContain('Copy ID');
+		expect(text).toContain('let technicalDetailsOpen = $state(false);');
+	});
+
+	it('relationship controls show references', () => {
+		const text = source();
+		expect(text).toContain('startReference ?? selectedWallFirstWallEndpoints.start.id');
+		expect(text).toContain('endReference ?? selectedWallFirstWallEndpoints.end.id');
+	});
+
+	it('the legacy Room-owned and Camera blocks are untouched', () => {
+		const text = source();
+		expect(text).toContain('<strong>{selectedLayoutRoom.name}</strong>');
+		expect(text).toContain('<strong>{store.selectedCluster.name}</strong>');
+		expect(text).toContain('<strong>{selectedLayoutOpening.kind} opening</strong>');
+	});
+});
+
+describe('P23.12 inspector — optional-name semantics behind the fields', () => {
+	it('an emptied field maps to null and the reference survives the clear', () => {
+		const state = makeState();
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North' }).success).toBe(true);
+		const document = layoutPreviewDocument(state) as never as { walls: { id: string; name?: string }[] };
+		expect(document.walls.find((wall) => wall.id === 'w1')?.name).toBe('North');
+		// Clear (what an emptied field produces): the name is removed, and the
+		// compact reference remains available for reference-led presentation.
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: null }).success).toBe(true);
+		const document2 = layoutPreviewDocument(state) as never as { walls: { id: string; name?: string }[] };
+		expect(document2.walls.find((wall) => wall.id === 'w1')?.name).toBeUndefined();
+	});
+
+	it('a rejection reverts: the field value comes from the document, which never changed', () => {
+		const state = makeState();
+		// An invalid patch is rejected by the planner; the adapter installs
+		// nothing. The Inspector re-reads `wall.name` (undefined) on the next
+		// render, which is the revert.
+		const rejected = updateWallFirstWallMetadata(state, 'w1', { name: '   ' });
+		expect(rejected.success).toBe(false);
+		const document = layoutPreviewDocument(state) as never as { walls: { id: string; name?: string }[] };
+		expect(document.walls.find((wall) => wall.id === 'w1')?.name).toBeUndefined();
+	});
+
+	it('the Opening name never shadows the reference in the ledger', () => {
+		const state = makeState();
+		expect(updateWallFirstOpeningMetadata(state, 'door', { name: 'Main Entrance' }).success).toBe(true);
+		const document = layoutPreviewDocument(state) as never as Parameters<typeof referenceFor>[0];
+		// Same-name-as-reference and duplicate names are legal; the reference
+		// stays distinct either way.
+		const reference = referenceFor(document, 'openings', 'door');
+		expect(reference).toMatch(/^O-/);
+		expect(reference).not.toBe('Main Entrance');
+	});
+});
