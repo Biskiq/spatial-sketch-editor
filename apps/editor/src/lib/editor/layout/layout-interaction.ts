@@ -1432,6 +1432,23 @@ export function shouldBeginWallBend(
 	return screenDistance(originScreen, currentScreen) >= thresholdPx;
 }
 
+/**
+ * The viewport's release-time drag gate. A gesture counts as "moved" either
+ * when pointermove already crossed the threshold, or when the release screen
+ * displacement from the frozen pointer-down origin exceeds it. Re-uses the
+ * shared drag threshold authority (shouldBeginWallBend).
+ */
+export function architectureEditMovedOnRelease(
+	movedDuringDrag: boolean,
+	startScreen: LayoutVec2 | null,
+	releaseScreen: LayoutVec2 | null
+): boolean {
+	return (
+		movedDuringDrag ||
+		(startScreen !== null && releaseScreen !== null && shouldBeginWallBend(startScreen, releaseScreen))
+	);
+}
+
 // =====================================================================
 // layout selection reconcile (pure).
 //

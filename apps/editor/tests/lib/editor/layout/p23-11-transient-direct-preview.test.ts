@@ -612,6 +612,62 @@ describe('P23.11 transient pass — the release is the only canonical step', () 
 		expect(JSON.stringify(live(context))).toBe(before);
 	});
 
+	it('commits when release displaces beyond threshold even without pointermove', () => {
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		// Simulate: pointerdown at A, no pointermove, release far enough to
+		// cross the drag threshold. The viewport derives movedOnRelease from
+		// screen distance; we pass moved: true to simulate that derivation.
+		const outcome = release(context, [-1.5, 0.5], { moved: true });
+		expect(outcome.kind).toBe('committed');
+		expect(context.plans).toBe(1);
+		expect(context.commits).toBe(1);
+		expect(JSON.stringify(live(context))).not.toBe(before);
+		expect(junctionPoint(context, 'A')).toEqual([-1.5, 0.5]);
+		finish(context);
+	});
+
+	it('stays idle when release displacement is under threshold and no pointermove', () => {
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		// moved: false AND release position is near start → idle
+		const outcome = release(context, [1.1, 1.1], { moved: false });
+		expect(outcome).toEqual({ kind: 'idle', statusMessage: null, suppressNextClick: false });
+		expect(context.plans).toBe(0);
+		expect(context.cancels).toBe(1);
+		expect(JSON.stringify(live(context))).toBe(before);
+		finish(context);
+	});
+
+	it('restores baseline when release beyond threshold planner rejects', () => {
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		// moved: true (derived from screen displacement), but planner rejects
+		const outcome = release(context, null, { moved: true });
+		expect(outcome.kind).toBe('rejected');
+		expect(context.plans).toBe(1);
+		expect(context.cancels).toBe(1);
+		expect(context.restores).toBe(1);
+		finish(context);
+		expect(JSON.stringify(live(context))).toBe(before);
+	});
+
+	it('still commits normally when pointermove crosses threshold', () => {
+		const context = makeStore();
+		const before = JSON.stringify(live(context));
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		move(context, [-0.4, 0.2]);
+		const outcome = release(context, [-1.5, 0.5]);
+		expect(outcome.kind).toBe('committed');
+		expect(context.plans).toBe(1);
+		expect(context.commits).toBe(1);
+		expect(JSON.stringify(live(context))).not.toBe(before);
+		finish(context);
+	});
+
 	it('stays silent for a no_op release and reports nothing as a failure', () => {
 		const calls: string[] = [];
 		const outcome = releaseArchitectureEdit({

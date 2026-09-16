@@ -60,6 +60,7 @@
 		isLayoutPresetTool,
 		wallChainRoleForTool,
 		shouldBeginWallBend,
+		architectureEditMovedOnRelease,
 		updateRectangle,
 		updateLayoutObjectDrag,
 		updateLayoutRoomUnitDrag,
@@ -748,9 +749,14 @@
 	 * or cancelled with the baseline restored. A no-op release stays silent.
 	 */
 	function commitArchitectureEditGesture(event: PointerEvent): void {
+		const movedOnRelease = architectureEditMovedOnRelease(
+			architectureEditMoved,
+			architectureEditStartScreen,
+			screenPoint(event)
+		);
 		const outcome = releaseArchitectureEdit({
 			gesture: interaction.architectureEdit,
-			moved: architectureEditMoved,
+			moved: movedOnRelease,
 			// The one canonical planner call for this gesture: the release
 			// coordinate is re-resolved against the frozen baseline, never a
 			// remembered intermediate proposal.
@@ -3544,7 +3550,7 @@ const interactionProjection = $derived(
 <style>
 	.plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-bg-app); }
 	/* P3.2 §9 — the plan is a bright drafting surface against the dark shell. */
-	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-plan-canvas-bg); }
+	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-plan-canvas-bg); user-select: none; -webkit-user-select: none; }
 	/* P23.6 — keyboard focus stays visible on the drafting surface. */
 	.plan-canvas:focus-visible { outline: 2px solid var(--editor-plan-selection); outline-offset: -2px; }
 	.plan-canvas.rotation-handle-hover { cursor: grab; }
