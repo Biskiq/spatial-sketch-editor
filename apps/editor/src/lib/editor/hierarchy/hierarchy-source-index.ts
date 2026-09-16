@@ -27,6 +27,14 @@ import type {
   LayoutWallRole,
   OrientedWallRef
 } from '$lib/layout/layout-wall-first-types';
+// P23.12 D5 — identity is resolved by the shared display-identity layer, never
+// by this module asking the ledger directly. The index only carries the result.
+import {
+	junctionIdentity,
+	openingIdentity,
+	roomIdentity,
+	wallIdentity
+} from '../identity/layout-identity-view';
 import type { SceneDocument } from '$lib/content/scene';
 
 /**
@@ -118,6 +126,11 @@ export type HierarchyRoomSource = {
 	roomId: string;
 	name: string;
 	/**
+	 * P23.12 — the compact reference from the document's identity ledger, or
+	 * `null` when the document carries no ledger (legacy / pre-normalization).
+	 */
+	reference: string | null;
+	/**
 	 * `room.boundary[]` in its exact authoritative order and direction. Refs
 	 * that name a missing Wall are dropped: a dangling ref cannot be rendered
 	 * or selected, and the Navigator never fabricates a row for it.
@@ -135,6 +148,10 @@ export type HierarchyWallSource = {
 	height: number;
 	startJunctionId: string;
 	endJunctionId: string;
+	/** P23.12 — compact reference, or `null` without a ledger. */
+	reference: string | null;
+	/** P23.12 — optional authored name; absence is the only unnamed state. */
+	name: string | null;
 };
 
 /** One canonical Opening, hosted by exactly one Wall. */
@@ -143,12 +160,18 @@ export type HierarchyOpeningSource = {
 	openingId: string;
 	wallId: string;
 	openingKind: LayoutWallOpening['kind'];
+	/** P23.12 — compact reference, or `null` without a ledger. */
+	reference: string | null;
+	/** P23.12 — optional authored name; absence is the only unnamed state. */
+	name: string | null;
 };
 
 export type HierarchyJunctionSource = {
 	entity: HierarchyEntityKey;
 	junctionId: string;
 	point: LayoutVec2;
+	/** P23.12 — compact reference, or `null` without a ledger. */
+	reference: string | null;
 };
 
 /** One document-level Layout Object; `roomId` is the explicit semantic assignment only. */
@@ -267,35 +290,44 @@ export function buildHierarchySourceIndex(input: {
 	if ('formatVersion' in layout) {
 		const wallIdsInDocument = new Set(layout.walls.map((wall) => wall.id));
 		for (const wall of layout.walls) {
+			const identity = wallIdentity(layout, wall.id);
 			orderedWalls.push({
 				entity: wallEntityKey(wall.id),
 				wallId: wall.id,
 				role: wall.role,
 				height: wall.height,
 				startJunctionId: wall.startJunctionId,
-				endJunctionId: wall.endJunctionId
+				endJunctionId: wall.endJunctionId,
+				reference: identity.reference,
+				name: identity.name
 			});
 		}
 		for (const junction of layout.junctions) {
 			orderedJunctions.push({
 				entity: junctionEntityKey(junction.id),
 				junctionId: junction.id,
-				point: [junction.point[0], junction.point[1]] as LayoutVec2
+				point: [junction.point[0], junction.point[1]] as LayoutVec2,
+				reference: junctionIdentity(layout, junction.id).reference
 			});
 		}
 		for (const opening of layout.openings) {
+			const identity = openingIdentity(layout, opening.id);
 			orderedOpenings.push({
 				entity: openingEntityKey(opening.wallId, opening.id),
 				openingId: opening.id,
 				wallId: opening.wallId,
-				openingKind: opening.kind
+				openingKind: opening.kind,
+				reference: identity.reference,
+				name: identity.name
 			});
 		}
 		for (const room of layout.rooms) {
+			const identity = roomIdentity(layout, room.id);
 			orderedRooms.push({
 				entity: roomEntityKey(room.id),
 				roomId: room.id,
-				name: room.name,
+				name: identity.name ?? room.name,
+				reference: identity.reference,
 				boundary: room.boundary
 					.filter((ref) => wallIdsInDocument.has(ref.wallId))
 					.map((ref) => ({ wallId: ref.wallId, direction: ref.direction })),

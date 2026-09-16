@@ -50,12 +50,18 @@
 		createEmptyWallFirstLayoutPreviewState,
 		derivePreviewBundle,
 		installLayoutPreviewBundle,
-		layoutPreviewCanonicalJson,
+		layoutAuthoredJsonOf,
+		layoutPreviewAuthoredJson,
 		layoutPreviewIsDirty,
 		layoutPreviewSnapshotMatchesLive,
 		markLayoutPreviewSaved,
-		restoreLayoutPreviewSnapshot
+		normalizeIncomingLayout,
+		promoteLayoutPreviewIdentity,
+		replacementIdentityBase,
+		restoreLayoutPreviewSnapshot,
+		type EditorLayoutDocument
 	} from '$lib/editor/layout/layout-preview-state.svelte';
+	import { layoutAuthoredCanonicalJson, type LayoutDocumentWallFirst } from '$lib/layout/layout-identity';
 	import { deleteArrangeSelection as runArrangeDelete } from '$lib/editor/layout/arrange-delete';
 	import { useEditorShellBoot } from '$lib/editor/hooks/editor-shell-boot.svelte';
 	import { initTheme } from '$lib/editor/theme.svelte';
@@ -288,7 +294,16 @@
 			}
 			restoreLayoutPreviewSnapshot(layoutPreview, typed);
 		},
-		matches: (a, b) => JSON.stringify((a as { project: { layout: unknown } }).project.layout) === JSON.stringify((b as { project: { layout: unknown } }).project.layout)
+		// P23.12 — the authored fingerprint: the reference cursor is allocation
+		// bookkeeping, so a cursor-only difference must never produce a history
+		// entry. Undo/Redo still restore assignments and content exactly.
+		matches: (a, b) =>
+			layoutAuthoredCanonicalJson(
+				(a as { project: { layout: LayoutDocumentWallFirst } }).project.layout
+			) ===
+			layoutAuthoredCanonicalJson(
+				(b as { project: { layout: LayoutDocumentWallFirst } }).project.layout
+			)
 	});
 	// P23.0 F0 stage 1 — point the central format-dispatch guard at the live
 	// layout preview so `beginLayoutTransaction` classifies the document the
@@ -493,7 +508,9 @@
 	function currentProjectFingerprint() {
 		return projectFingerprint(
 			store.canonicalJson ?? JSON.stringify(store.document),
-			layoutPreviewCanonicalJson(layoutPreview),
+			// P23.12 — the authored layout form: the reference cursor is bookkeeping,
+			// so pure allocation movement never invalidates an in-flight load guard.
+			layoutPreviewAuthoredJson(layoutPreview),
 			projectName
 		);
 	}
@@ -1205,6 +1222,12 @@
 
 	function captureValidatedSaveSnapshot(): SaveSnapshot | null {
 		if (!canCaptureProjectSnapshot()) return null;
+		// P23.12 — promote **before** the payload is built: this is where the layout
+		// document becomes the document of record, so the serialized cursor is
+		// always at or above the session mark and a later Load cannot reissue a
+		// committed reference. Promotion writes the identity block only, so the
+		// installed compile stays valid.
+		promoteLayoutPreviewIdentity(layoutPreview);
 		const name = projectName.trim();
 		if (!name) {
 			setCloudError('Project name cannot be empty');
@@ -1270,7 +1293,13 @@
 			savedProjectName = snapshot.project.name;
 			if (projectName.trim() === snapshot.project.name) projectName = snapshot.project.name;
 			store.markSaved(snapshot.sceneCanonicalJson);
-			markLayoutPreviewSaved(layoutPreview, snapshot.layoutCanonicalJson);
+			// Baseline only — and computed from the **snapshot that was sent**, not
+			// the live document: an edit made while the request was in flight must
+			// stay dirty, because it is not in the persisted payload.
+			markLayoutPreviewSaved(
+				layoutPreview,
+				layoutAuthoredJsonOf(snapshot.project.layout as unknown as EditorLayoutDocument)
+			);
 			ownedProjects = [
 				{ id: saved.projectId, name: saved.name, version: saved.version, updatedAt: saved.updatedAt },
 				...ownedProjects.filter((project) => project.id !== saved.projectId)
@@ -1401,11 +1430,18 @@
 
 		let bundle: ReturnType<typeof derivePreviewBundle>;
 		try {
+			// P23.12 — the resumed draft is a wholesale replacement: normalize and
+			// resolve it from its own cursor, exactly like cloud Load.
+			const incomingLayout = normalizeIncomingLayout(
+				pending.project.layout as unknown as EditorLayoutDocument
+			);
 			bundle = derivePreviewBundle(
 				pending.project.id,
 				pending.project.name,
-				pending.project.layout,
-				pending.project.scene
+				incomingLayout,
+				pending.project.scene,
+				undefined,
+				replacementIdentityBase(incomingLayout)
 			);
 		} catch {
 			clearPendingCloudSave();
@@ -1440,11 +1476,16 @@
 		projectName = pending.project.name;
 		projectVersion = null;
 		pendingSaveActive = true;
-		await submitSaveSnapshot({
-			project: pending.project,
-			sceneCanonicalJson: serializeSceneDocument(pending.project.scene),
-			layoutCanonicalJson: serializeActiveLayout(pending.project.layout)
-		});
+		// P23.12 — the submitted payload must be the **installed, promoted**
+		// snapshot, never the raw pending payload: promotion acts on
+		// `layoutPreview.project.layout`, so hand-building from `pending.project`
+		// would let the submitted `layout` and its `layoutCanonicalJson` disagree.
+		const resumed = captureValidatedSaveSnapshot();
+		if (!resumed) {
+			setCloudError('Could not prepare the pending save draft');
+			return;
+		}
+		await submitSaveSnapshot(resumed);
 	}
 
 	async function loadProject(selectedProjectId: string): Promise<void> {
@@ -1467,11 +1508,21 @@
 			if (!validation.success || validation.project.id !== selectedProjectId) {
 				throw new ProjectPersistenceError('invalid', 'Loaded project failed validation');
 			}
+			// P23.12 — a loaded project is a wholesale replacement: normalize it
+			// (repair a stale cursor, then resolve references from its own cursor)
+			// **before** the install bundle is derived, so a pre-P23.12 project
+			// loads with references instead of staying ledger-less until the next
+			// mutation or Save.
+			const incomingLayout = normalizeIncomingLayout(
+				validation.project.layout as unknown as EditorLayoutDocument
+			);
 			const bundle = derivePreviewBundle(
 				validation.project.id,
 				validation.project.name,
-				validation.project.layout,
-				validation.project.scene
+				incomingLayout,
+				validation.project.scene,
+				undefined,
+				replacementIdentityBase(incomingLayout)
 			);
 			if (hasBlockingLayoutIssues(bundle.issues)) {
 				throw new ProjectPersistenceError('invalid', 'Loaded project has invalid layout geometry');
@@ -1521,7 +1572,7 @@
 			cancelWallChainRun(layoutInteraction);
 			setLayoutViewMode(layoutInteraction, viewState.activeView === 'plan' ? 'plan' : '3d');
 			store.markSaved(serializeSceneDocument(validation.project.scene));
-			markLayoutPreviewSaved(layoutPreview, serializeActiveLayout(validation.project.layout));
+			markLayoutPreviewSaved(layoutPreview, layoutPreviewAuthoredJson(layoutPreview));
 			resetDocumentScopedState();
 			projectId = loaded.projectId;
 			projectName = validation.project.name;

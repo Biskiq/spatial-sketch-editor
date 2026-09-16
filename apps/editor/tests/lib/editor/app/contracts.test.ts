@@ -2503,10 +2503,53 @@ describe('P19 project persistence coordinator contracts', () => {
 		);
 		expect(save).toContain('if (projectName.trim() === snapshot.project.name) projectName = snapshot.project.name;');
 		expect(save).toContain('store.markSaved(snapshot.sceneCanonicalJson)');
-		expect(save).toContain('markLayoutPreviewSaved(layoutPreview, snapshot.layoutCanonicalJson)');
+		// P23.12 — the baseline is the authored layout form (the reference cursor is
+		// bookkeeping), and promotion ran before the payload was built.
+		expect(save).toContain('promoteLayoutPreviewIdentity(layoutPreview);');
+		// P23.12 review fix — and it is the authored form of the **snapshot that was
+		// sent**, never the live document: an edit made while the request is in
+		// flight is not in the persisted payload, so it must stay dirty.
+		expect(save).toContain(
+			'layoutAuthoredJsonOf(snapshot.project.layout as unknown as EditorLayoutDocument)'
+		);
+		const baselineCall = save.indexOf('markLayoutPreviewSaved(');
+		expect(baselineCall).toBeGreaterThan(-1);
+		expect(save.slice(baselineCall, baselineCall + 200)).not.toContain('layoutPreviewAuthoredJson');
 		expect(save).toContain(
 			'{ id: saved.projectId, name: saved.name, version: saved.version, updatedAt: saved.updatedAt },'
 		);
+	});
+
+	it('normalizes a wholesale replacement before install and re-derives the resumed payload', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		// P23.12 review fix — a pre-P23.12 project must install with references
+		// instead of staying ledger-less until the next mutation or Save, so both
+		// Load and the resumed draft normalize the incoming document and derive the
+		// bundle from its own repaired cursor.
+		const loadStart = app.indexOf('async function loadProject');
+		const load = app.slice(loadStart, app.indexOf('async function signOutFromProjects', loadStart));
+		expect(load).toContain('normalizeIncomingLayout(');
+		expect(load).toContain('replacementIdentityBase(incomingLayout)');
+		// Normalization happens on the loaded payload, after the request resolves
+		// and before the install bundle is derived.
+		expect(load.indexOf('await projectApi!.loadProject')).toBeLessThan(
+			load.indexOf('normalizeIncomingLayout(')
+		);
+		expect(load.indexOf('normalizeIncomingLayout(')).toBeLessThan(
+			load.indexOf('const bundle = derivePreviewBundle(')
+		);
+		expect(load).toContain('markLayoutPreviewSaved(layoutPreview, layoutPreviewAuthoredJson(layoutPreview))');
+
+		const resumeStart = app.indexOf('async function resumePendingCloudSave');
+		const resume = app.slice(resumeStart, app.indexOf('async function loadProject', resumeStart));
+		expect(resume).toContain('normalizeIncomingLayout(');
+		expect(resume).toContain('replacementIdentityBase(incomingLayout)');
+		// The submitted payload is the installed, promoted snapshot — never the raw
+		// pending payload, which would let `layout` and `layoutCanonicalJson`
+		// disagree once promotion wrote the identity block.
+		expect(resume).toContain('const resumed = captureValidatedSaveSnapshot();');
+		expect(resume).toContain('await submitSaveSnapshot(resumed);');
+		expect(resume).not.toContain('await submitSaveSnapshot({');
 	});
 
 	it('drops stale project lists around mutations and keeps project replacement guarded', () => {

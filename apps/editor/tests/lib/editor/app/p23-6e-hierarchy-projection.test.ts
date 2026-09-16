@@ -567,7 +567,10 @@ describe('P23.6e slice 1 — Room page', () => {
 			'room:room-a:wall:w1:opening:op-door-1',
 			'room:room-a:wall:w1:ends'
 		]);
-		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:opening:op-door-1').secondary).toBe('Door');
+		// P23.12 D8 — kind + host, never a bare kind restatement.
+		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:opening:op-door-1').secondary).toBe(
+			'Door · on W1'
+		);
 		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:ends').label).toBe('Ends J1 · J2');
 		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:ends').kind).toBe('relation');
 		expect(isHierarchyRowSelectable(rowByKey(projection.rows, 'room:room-a:wall:w1:ends'))).toBe(
@@ -667,8 +670,16 @@ describe('P23.6e slice 1 — Walls page and facets', () => {
 				(wallId) => `walls:wall:${wallId}`
 			)
 		);
-		expect(rowByKey(projection.rows, 'walls:wall:w1').secondary).toBe('▸ 1 opening');
-		expect(rowByKey(projection.rows, 'walls:wall:w12').secondary).toBe('▸ 1 opening');
+		// P23.12 D8 — the `▸ N openings` inventory count is gone; the row's own
+		// disclosure lists the openings instead.
+		expect(rowByKey(projection.rows, 'walls:wall:w1').children!.map((row) => row.canonicalId)).toEqual([
+			'op-door-1'
+		]);
+		expect(rowByKey(projection.rows, 'walls:wall:w1').secondary).toBeUndefined();
+		expect(rowByKey(projection.rows, 'walls:wall:w12').children!.map((row) => row.canonicalId)).toEqual([
+			'op-door-3'
+		]);
+		expect(rowByKey(projection.rows, 'walls:wall:w12').secondary).toBeUndefined();
 		expect(rowByKey(projection.rows, 'walls:wall:w3').secondary).toBeUndefined();
 		expect(rowByKey(projection.rows, 'walls:wall:w2').facet).toBe('boundary');
 		expect(rowByKey(projection.rows, 'walls:wall:w12').facet).toBe('partition');
@@ -708,11 +719,11 @@ describe('P23.6e slice 1 — Walls page and facets', () => {
 
 	it('spells out room participation only under the multiple-Room facet', () => {
 		const multiple = project({ kind: 'walls' }, { wallFilter: 'multiple-rooms' });
-		expect(rowByKey(multiple.rows, 'walls:wall:w2').secondary).toBe(
-			'in Gallery A, Gallery B, +1 · ▸ 1 opening'
-		);
+		// Participation is kept; the routine opening count is not.
+		expect(rowByKey(multiple.rows, 'walls:wall:w2').secondary).toBe('in Gallery A, Gallery B, +1');
 		const all = project({ kind: 'walls' });
-		expect(rowByKey(all.rows, 'walls:wall:w2').secondary).not.toContain('in Gallery');
+		// Resting rows say nothing: no participation, and no routine count either.
+		expect(rowByKey(all.rows, 'walls:wall:w2').secondary).toBeUndefined();
 	});
 
 	it('reports filtered-out entities as represented at the calm filters', () => {
@@ -746,8 +757,8 @@ describe('P23.6e slice 1 — Openings page', () => {
 			'openings:opening:op-win-2',
 			'openings:opening:op-door-3'
 		]);
-		expect(rowByKey(projection.rows, 'openings:opening:op-win-2').secondary).toBe('Window on W2');
-		expect(rowByKey(projection.rows, 'openings:opening:op-door-1').secondary).toBe('Door on W1');
+		expect(rowByKey(projection.rows, 'openings:opening:op-win-2').secondary).toBe('Window · on W2');
+		expect(rowByKey(projection.rows, 'openings:opening:op-door-1').secondary).toBe('Door · on W1');
 		expect([...projection.representations.keys()].sort()).toEqual(
 			[openingEntityKey('w1', 'op-door-1').id, openingEntityKey('w2', 'op-win-2').id, openingEntityKey('w12', 'op-door-3').id].sort()
 		);

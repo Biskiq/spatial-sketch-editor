@@ -8,6 +8,7 @@ import { buildPlanSceneFootprintProjection } from './plan-scene-footprint';
 import {
 	captureLayoutPreviewSnapshot,
 	deleteLayoutObject,
+	promoteLayoutPreviewIdentity,
 	type LayoutPreviewState
 } from './layout-preview-state.svelte';
 import {
@@ -80,6 +81,8 @@ export function deleteArrangeSelection(input: {
 		}
 		const result = deleteLayoutObject(layoutPreview, target.objectId);
 		if (result.success) {
+			// P23.12 — promote before the history boundary is captured.
+			promoteLayoutPreviewIdentity(layoutPreview);
 			store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
 			clearLayoutSelection(layoutInteraction);
 		} else {

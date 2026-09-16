@@ -5,33 +5,83 @@ slice plus one next action only.
 
 ## Working tree
 
-- A focused curved-Room correspondence regression fix now builds predecessor
-  Room polygons from the same oriented centerline samples as candidate faces.
-  The supplied two-Room Layout no longer fuses into a false `2→2` component;
-  adding an independent Wall and splitting the larger Room both commit.
-- A focused P23.9 regression fix is implementation-complete for Wall endpoints
-  projected onto oblique host spans: sub-nanometre projection dust no longer
-  misses canonical T-noding or creates false Room-correspondence components.
-  The child brief is
-  `docs/plans/2026-09-14-P23.9-wall-span-topology-regression.md`; review is
-  [PR #50](https://github.com/toni8699/spatial-sketch-editor/pull/50).
+- **P23.12 (names and stable display identity) is implemented on branch
+  `P23.12-names-and-stable-display-identity`** (S1–S8 landed 2026-09-15,
+  commit checkpoints `810bc8c` S1 → `c3fce4b` S2 → `cd7bec2` S3 → `2e015da`
+  S4 → `d696e87` S5 → `9b2bce4` S6 → `c83f3b7` S7 → S8 closeout): persisted
+  compact-reference ledger (`R/W/O/J-####`) in layout-core with
+  provisional-mint/durable-promote/exact-restore/pure-read seams and a session
+  high-water mark outside the history snapshot; optional Wall/Opening names
+  through `planWallMetadataUpdate`/`planOpeningMetadataUpdate`; Navigator,
+  search, Inspector and Plan consume one identity vocabulary; the C11 visitor
+  isolation checks pass. **Remaining: owner review of the branch and merge.**
+- **P23.11 (canonical curved Walls) is merged on `main`** through PR #51
+  (`9118696`, 2026-09-15): `LayoutWall.centerline` cubic chain, exact curved
+  splitting, bend controls and render-safe curve validation. PR #50 (endpoint
+  noding) and PR #53 (transient direct-manipulation preview) are merged too.
+- The P23.12 design authorities and its implementation-ready child plan are new
+  docs on the working tree (docs-only, no code):
+  [design context](../design/P23-design-context.md) ·
+  [designer brief](../design/P23.12-designer-brief.md) ·
+  [final design contract](../design/P23.12-final-design-contract.md) ·
+  [P23.12 plan](../plans/2026-09-15-P23.12-names-and-stable-display-identity.md).
+  The plan ratifies the compact-reference mechanism (persisted identity ledger
+  allocated from a cursor, with a **monotone high-water mark held outside the
+  history snapshot** — a canonical-ID derivative is rejected because the authoring
+  allocators recycle canonical IDs) and records the code-verified starting point,
+  eleven design-vs-code conflicts with their smallest resolutions, and eight
+  dependency-ordered slices. Owner review (2026-09-15) approved the direction and
+  required five changes — the monotone-mark resolution for Undo branching, the
+  visitor criterion as code/consumption rather than data-absence, the optional
+  Navigator context line, the optional-name clear patch locked as `name: null`, and
+  dropping Layout object Inspector unification. A follow-up review then required
+  **transient/rejected/cancelled derivation to consume no allocation** (and the
+  next committed reference to be independent of pointermove history), one
+  durable-vs-transient rule at the shared seams, and cursor-consistency validation:
+  the plan now classifies every seam as durable-promote / provisional / exact-restore
+  / pure-read, **deletes the restore-seam cursor clamp**, promotes only at the five
+  `commitLayoutTransaction(capture…)` sites plus the **three persistence seams**
+  (before the payload is built), and validates the persisted cursor against every
+  live ledger token. A third round then fixed four pre-implementation defects: the
+  allocation base is **latched per operation** as
+  `max(baseline.cursor, identityHighWater)` so `create A → Undo → create B` cannot
+  hand A's reference to B, promotion is **nondecreasing** in the mark (including
+  commits that mint nothing), Save/export therefore always serialize a cursor ≥ the
+  mark, cancelled **assignments** (not token values) are what must never leak, the
+  seam check is scoped per function, pre-gesture captures are pure reads, and the
+  Navigator keeps Opening kind/shared-Wall participation **visible** with the pinned
+  strip showing **name + complete reference**. A fourth round closed the remaining
+  persistence seams: the Layout **Copy JSON / Download JSON** commands in
+  `EditorProjectMenu.svelte` (`copyLayoutJson` ~196, `downloadLayoutJson` ~211)
+  serialize the live layout directly and bypass `captureValidatedSaveSnapshot`, so
+  promotion now precedes them too; and the **resumed save** (`resumePendingCloudSave`
+  ~1380) must submit the installed, promoted snapshot rather than hand-building
+  `{ project: pending.project, … }` (~1443), so its `layout` and
+  `layoutCanonicalJson` cannot disagree. The plan's allocation rule was then
+  implemented as ratified, closing S1's gate; see the Working tree entry above.
 - [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
-  landed on `main`/`origin/main` at `c401e2f`. It sets the credible good-enough
-  wall-first architectural Plan-editor boundary and the dependency sequence
-  P23.10–P23.16.
+  remains the remaining-scope authority for P23.12–P23.16.
 
 ## Next action
 
-- Review and merge PR #50, the focused P23.9 wall-span topology regression fix;
-  afterward the roadmap next action remains owner review of the tightened P23
-  boundaries before P23.10 implementation.
+- Owner review of the implemented [P23.12 branch](../plans/2026-09-15-P23.12-names-and-stable-display-identity.md)
+  (all slices landed with their pinned suites; the plan's §10 slice register
+  records the per-slice checkpoints), then merge and move the remaining-scope
+  authority to P23.13.
 
 ## Verification
 
+- Working tree on this branch carries the P23.12 implementation (see Working
+  tree above); the S8 closeout numbers below are from the implemented branch.
 - Supplied-layout regressions: 3 passed; focused curved/oblique Layout suites:
-  28 passed. `npm run check:layout-core` and `npm run check` passed. Full editor
-  suite: 3,776 passed / 1 skipped with one bend diagnosis timeout under the
-  concurrent run; that diagnostic passed all 11 tests in isolation.
+  28 passed. `npm run check:layout-core` and `npm run check` passed.
+- **P23.12 branch verification (2026-09-15):** `check:layout-core`,
+  `check:project-model` and the editor `check` clean; full editor suite
+  **3,930 passed / 1 skipped**; new suites — `p23-12-identity` (18),
+  `p23-12-lifecycle` + `p23-12-undo-branch`, `p23-12-transient-allocation`
+  (61), `p23-12-names` (68), `p23-12-lifecycle-semantics` (65),
+  `p23-12-navigator-identity` (66), `p23-12-inspector-identity`,
+  `p23-12-plan-identity`, and the C11 visitor isolation checks.
 - Focused Wall regression suites: 49 passed. The new deterministic matrix
   covers 1,310 candidate operations across false `2→2`, `2→3`, `3→4`, missed
   noding and out-of-tolerance non-connection cases; direct regressions pin
@@ -61,6 +111,29 @@ slice plus one next action only.
 
 - New editor projects already boot `createEmptyWallFirstProject()`; do not revive
   the obsolete “legacy boot decision still open” narrative.
+- The “canonical **268 px** Navigator rail” figure in planning docs has no code
+  constant; the shipped rail is `minmax(15rem, --editor-left-width: 300px)`
+  (240–300 px). Design to that range and treat `268` as stale.
+- Earlier tracker/hand-off text said “P23.11 is next” and “PR #50 awaiting
+  review”; both are superseded — P23.11 is merged (PR #51) and P23.12 is the next
+  slice.
+- The P23.12 plan's earlier restore-seam cursor clamp is **deleted, not deferred**: a
+  clamp there lets a cancelled/rejected pointermove candidate permanently consume
+  reference allocations. Monotonicity now lives in the preview state's
+  high-water mark, which is *not* part of `LayoutPreviewSnapshot`; do not
+  reintroduce a clamp in `restoreLayoutPreviewSnapshotUnmeasured`, and do not call
+  `promoteLayoutIdentity` from a transient path (C6/C10/D1 rule T1–T6).
+- Three P23.12 persistence traps: (i) `markLayoutPreviewSaved` runs **after**
+  `projectApi.saveProject` (`EditorApp.svelte` ~1266/~1273), so it cannot be the
+  promotion seam — promote before `captureValidatedSaveSnapshot()` (~1205);
+  (ii) `copyLayoutJson`/`downloadLayoutJson` in `EditorProjectMenu.svelte`
+  (~196/~211) are the real Layout export paths and never pass through the save
+  seam; (iii) `resumePendingCloudSave()` (~1443) submits the pending payload while
+  promotion acts on `layoutPreview.project.layout` — it must submit the installed,
+  promoted snapshot so `layout` and `layoutCanonicalJson` agree. And allocation
+  must read `max(document cursor, identityHighWater)` **latched at operation
+  start**, never the live document cursor alone: after Undo that cursor is rewound
+  and would reissue a retired reference.
 - P23.6a–P23.6e are merged, not branch-only future work.
 - The former P23.7's detailed 3D-junction and compatibility sections were removed
   from the live gate; they remain recoverable in Git history. The 2026-09-14

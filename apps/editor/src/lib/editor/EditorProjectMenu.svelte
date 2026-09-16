@@ -5,6 +5,7 @@
 		layoutPreviewCanonicalJson,
 		layoutPreviewIsDirty,
 		layoutPreviewStatusLabel,
+		promoteLayoutPreviewIdentity,
 		resetLayoutPreview,
 		setLayoutPreviewImportError,
 		type LayoutPreviewState
@@ -193,6 +194,10 @@
 	}
 
 	async function copyLayoutJson() {
+		// P23.12 — an exported payload is a document of record: promote first, so it
+		// always carries a cursor at or above the session mark. Copy/Download JSON is
+		// the real Layout export path and never passes through the Save seam.
+		promoteLayoutPreviewIdentity(layoutPreview);
 		const json = layoutPreviewCanonicalJson(layoutPreview);
 		if (!navigator.clipboard?.writeText) {
 			layoutPreview.statusMessage = 'Copy failed: Clipboard API is unavailable';
@@ -208,6 +213,8 @@
 
 	function downloadLayoutJson() {
 		try {
+			// P23.12 — promote before serializing (see `copyLayoutJson`).
+			promoteLayoutPreviewIdentity(layoutPreview);
 			const json = layoutPreviewCanonicalJson(layoutPreview);
 			const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
 			const anchor = document.createElement('a');

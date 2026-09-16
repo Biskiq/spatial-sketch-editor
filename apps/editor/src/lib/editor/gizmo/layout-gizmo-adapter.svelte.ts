@@ -26,7 +26,9 @@ import type { LayoutInteractionState } from '../layout/layout-interaction';
 import type { LayoutPreviewState } from '../layout/layout-preview-state.svelte';
 import {
 	captureLayoutPreviewSnapshot,
-	commitLayoutCandidate
+	commitLayoutCandidate,
+	layoutPreviewIdentityBase,
+	promoteLayoutPreviewIdentity
 } from '../layout/layout-preview-state.svelte';
 import { snapToGrid } from '../layout/layout-plan-transform';
 import type {
@@ -214,7 +216,11 @@ function previewLayoutSession(input: LayoutGizmoAdapterInput, session: LayoutDra
 		input.layoutPreview.project.scene,
 		input.layoutPreview.geometry,
 		input.layoutPreview.project.id,
-		input.layoutPreview.project.name
+		input.layoutPreview.project.name,
+		// The latched base is `max(document cursor, session high-water)`: reading
+		// the document cursor alone would hand a retired reference to a new entity
+		// after an Undo branch.
+		layoutPreviewIdentityBase(input.layoutPreview, input.layoutPreview.project.layout)
 	);
 	if (result.bundle) {
 		session.lastValid = result.bundle;
@@ -254,6 +260,11 @@ function commitLayoutSession(input: LayoutGizmoAdapterInput, session: LayoutDrag
 	// `layout` history entry. The history controller's JSON `matches` makes a
 	// no-op commit add no entry, so its `false` return is expected.
 	commitLayoutCandidate(input.layoutPreview, session.lastValid);
+	// P23.12 — promote the candidate's provisional references to durable ones
+	// immediately before the history boundary is captured: this is the seam where
+	// the gesture's content becomes the document of record. It writes the identity
+	// block only, so the installed compile stays valid.
+	promoteLayoutPreviewIdentity(input.layoutPreview);
 	input.store.commitLayoutTransaction(captureLayoutPreviewSnapshot(input.layoutPreview));
 	input.store.setTransformInteractionActive(false);
 	input.store.setStatusMessage(null);

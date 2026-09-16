@@ -154,6 +154,13 @@ export type LayoutWall = {
   thickness: number;
   height: number;
   centerline: LayoutWallCenterline;
+  /**
+   * P23.12 — optional authored Wall name. Absence is the only representation of
+   * "unnamed" (a present-but-blank name is `invalid_value`), duplicates are
+   * legal, and a name is never display identity: the reference is. Wall naming
+   * does not touch canonical IDs, connectivity or geometry.
+   */
+  name?: string;
 };
 
 /** Directed Wall reference used by persistent Room boundaries. */
@@ -180,6 +187,12 @@ export type LayoutWallOpening = {
   sillHeight: number;
   profile: 'rectangular' | 'rounded' | 'pointed';
   connectsRoomIds?: [string, string];
+  /**
+   * P23.12 — optional authored Opening name, same policy as `LayoutWall.name`.
+   * The reference, not the name, is display identity, and a kind flip
+   * (door ↔ window) never changes either one.
+   */
+  name?: string;
 };/**
  * Floor descriptor — **canonical current (format 5)** shape after P23.6I.
  *
@@ -216,10 +229,52 @@ export type LayoutWallFirstRoom = {
 };
 
 /**
+ * P23.12 — the entity collections a reference can be allocated for. These are
+ * the ledger keys, and they are the **only** families: a Junction is never
+ * named, and Door/Window share the `openings` family because kind is mutable.
+ */
+export type LayoutIdentityFamily = 'rooms' | 'junctions' | 'walls' | 'openings';
+
+/** Ledger key order for allocation and for canonical serialization. */
+export const LAYOUT_IDENTITY_FAMILIES = [
+	'rooms',
+	'junctions',
+	'walls',
+	'openings'
+] as const satisfies readonly LayoutIdentityFamily[];
+
+/**
+ * P23.12 — one compact reference per entity, keyed by **canonical ID**.
+ *
+ * References are presentation identity only and live here rather than on the
+ * entity records: a document-level ledger removes the spread-copy hazard
+ * (`{...source, id}` would duplicate an entity-level reference), survives every
+ * planner that copies a Wall or an Opening, and makes assignment a single
+ * allocation site. Junctions stay unnamed and unreferenced by name.
+ *
+ * `cursor` is allocation bookkeeping, not authored content: it is persisted (so
+ * Save/Load continues from it) but excluded from every authored-change
+ * comparison. Assignments themselves **are** authored — Undo/Redo restore them
+ * exactly, and a retired reference is never reassigned to another entity.
+ */
+export type LayoutIdentityLedger = {
+	cursor: number;
+	rooms: Record<string, string>;
+	junctions: Record<string, string>;
+	walls: Record<string, string>;
+	openings: Record<string, string>;
+};
+
+/**
  * Wall-first Layout document root. `objects` keeps the existing
  * `LayoutObject[]` record type: Layout objects remain document-level and
  * project/world-local; P23.0a does not move them under Floors and does not
  * change their transform ownership.
+ *
+ * `identity` is the P23.12 reference ledger. It is **optional on read**: every
+ * already-saved project and every already-published release predates it, and the
+ * visitor path re-validates released documents with the same codec, so absence
+ * must stay acceptable. The canonical writers always emit it.
  */export type LayoutDocumentWallFirst = {
 	units: 'meters';
 	/**
@@ -239,4 +294,5 @@ export type LayoutWallFirstRoom = {
   rooms: LayoutWallFirstRoom[];
   openings: LayoutWallOpening[];
   objects: LayoutObject[];
+  identity?: LayoutIdentityLedger;
 };

@@ -1,5 +1,6 @@
 import {
 	captureLayoutPreviewSnapshot,
+	promoteLayoutPreviewIdentity,
 	type LayoutPreviewState
 } from './layout-preview-state.svelte';
 
@@ -61,7 +62,13 @@ export function layoutMutationRunnerFor(
 ): LayoutMutationRunner {
 	return {
 		begin: () => host.beginLayoutTransaction(),
-		commit: () => host.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview)),
+		// P23.12 — promote before the history boundary is captured: this is where the
+		// mutation's provisional references become durable. A rejected mutation never
+		// reaches `commit`, so it consumes nothing.
+		commit: () => {
+			promoteLayoutPreviewIdentity(layoutPreview);
+			return host.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
+		},
 		cancel: () => host.cancelLayoutTransaction()
 	};
 }

@@ -291,7 +291,13 @@ export function deriveLayoutCandidate(
 	scene: Project['scene'],
 	geometry: CompiledLayoutGeometry,
 	projectId: string,
-	projectName: string
+	projectName: string,
+	/**
+	 * P23.12 — the operation's latched allocation base, so the candidate renders
+	 * honest references for entities it creates without consuming anything: the
+	 * mint is provisional and lives in the candidate copy only.
+	 */
+	identityBase?: number
 ): { bundle: LayoutGizmoCandidateBundle | null; issue: string | null } {
 	const built = buildCandidateDocument(descriptor, delta, layout, geometry);
 	if (!built.document) {
@@ -306,7 +312,14 @@ export function deriveLayoutCandidate(
 		return { bundle: null, issue: geometryIssues[0]?.message ?? 'Candidate layout has invalid geometry' };
 	}
 	try {
-		const preview = derivePreviewBundle(projectId, projectName, structural.document, scene);
+		const preview = derivePreviewBundle(
+			projectId,
+			projectName,
+			structural.document,
+			scene,
+			undefined,
+			identityBase
+		);
 		return {
 			bundle: {
 				project: preview.project,
