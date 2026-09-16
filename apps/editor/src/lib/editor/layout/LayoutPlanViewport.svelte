@@ -1899,6 +1899,7 @@ const interactionProjection = $derived(
 	}
 
 	function cancelActiveLayoutDrag() {
+		clearLayoutSnapFeedback();
 		if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);
 		onLayoutTransactionCancel();
 		clearActiveLayoutDrag();

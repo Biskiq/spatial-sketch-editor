@@ -828,6 +828,10 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 		const start = viewport.indexOf('function cancelActiveLayoutDrag()');
 		expect(start).toBeGreaterThan(-1);
 		const cancel = viewport.slice(start, viewport.indexOf('function beginRoomUnitDrag'));
+		expect(cancel).toContain('clearLayoutSnapFeedback();');
+		expect(cancel.indexOf('clearLayoutSnapFeedback();')).toBeLessThan(
+			cancel.indexOf('restoreLayoutPreviewSnapshot')
+		);
 		expect(cancel).toContain('if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);');
 		expect(cancel).toContain('onLayoutTransactionCancel();');
 	});
