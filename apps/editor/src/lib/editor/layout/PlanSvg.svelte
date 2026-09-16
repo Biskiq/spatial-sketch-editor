@@ -465,8 +465,13 @@
 	.draft-outline-partition { fill: rgb(201 134 31 / 10%); stroke: #c9861f; stroke-width: 2; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 	/* P23.6 — degenerate candidate leg: invalid before commit, never committed. */
 	.draft-outline-invalid { fill: rgb(239 98 108 / 10%); stroke: var(--editor-danger); stroke-width: 2; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
-	/* P23.6 — persistent Room names: quiet metadata labels, never interactive. */
+	/* P23.6/P23.13 S3 — persistent Room label stack: quiet metadata, never
+	   interactive. Name / reference / derived area share one world anchor and a
+	   screen-constant baseline offset resolved by the placer; the subordinate
+	   lines are never wrapped, shrunk or letter-spaced. */
 	.room-name { fill: var(--editor-plan-label); font: 600 11px var(--editor-font); text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+	.room-reference { fill: var(--editor-plan-muted); font: 500 10px var(--editor-font); text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+	.room-area { fill: var(--editor-plan-muted); font: 500 10px var(--editor-font); font-variant-numeric: tabular-nums; text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
 	/* P23.6 — committed diagnostic state marker; the reason lives in Inspector. */
 	.layout-diagnostic { fill: rgb(239 98 108 / 14%); stroke: var(--editor-danger); stroke-width: 2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.vertex-handle.selected, .vertex-handle-selected { fill: var(--editor-plan-selection); stroke: var(--editor-plan-canvas-bg); }

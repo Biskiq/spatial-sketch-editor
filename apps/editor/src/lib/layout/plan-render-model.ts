@@ -104,6 +104,11 @@ export type PlanStyleToken =
 	// P23.6 — persistent Room name (presentation of Room metadata, never a
 	// separately persisted annotation).
 	| 'room-name'
+	// P23.13 S3 — the subordinate lines of the Room label stack (spec §4): the
+	// compact reference and the derived area. Never wrapped or shrunk, and never
+	// the line a duplicate pair may drop.
+	| 'room-reference'
+	| 'room-area'
 	// P23.6 — committed topology/geometry diagnostic marker (state, not
 	// transient preview: distinct from draft/invalid blue/red language below).
 	| 'layout-diagnostic'
@@ -438,6 +443,17 @@ export type PlanInteractionProjection = {
 	roomOverrides?: readonly { roomId: string; points: LayoutVec2[] }[];
 	/** Transient replacements for committed object footprints (object drag). */
 	objectOverrides?: readonly { objectId: string; points: LayoutVec2[] }[];
+	/**
+	 * P23.13 S3 — the fixed canvas readout for the selected Room (spec §4, A4):
+	 * the non-mutating fallback when the resting label cannot carry the Room's
+	 * complete identity. Read-only, bounded, and never a second Inspector.
+	 */
+	roomLabelReadout?: {
+		roomId: string;
+		primary: string;
+		reference: string | null;
+		area: string | null;
+	};
 };
 
 export type PlanRenderModel = {

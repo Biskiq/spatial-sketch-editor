@@ -263,7 +263,7 @@ describe('P23.11 follow-up — all invalid architecture edits render proposal ge
 });
 
 describe('buildPlanInteractionProjection', () => {
-	it('emits only the persistent room name for an idle state on a line room', () => {
+	it('emits only the persistent Room label stack for an idle state on a line room', () => {
 		const document = g2LineRectangleDocument();
 		const model = buildLayoutPreviewModel(document).model;
 		const projection = buildPlanInteractionProjection(createLayoutInteractionState(), document.floors[0]!.rooms, model);
@@ -271,8 +271,13 @@ describe('buildPlanInteractionProjection', () => {
 		expect(projection.selection).toEqual([]);
 		expect(projection.handles).toEqual([]);
 		expect(projection.drafts).toEqual([]);
-		// P23.6 — the idle Plan still presents the persistent Room name.
-		expect(projection.labels).toHaveLength(1);
+		// P23.13 S3 — the idle Plan presents the Room's name and its derived area
+		// as one stacked free-space label (reference line absent: this fixture's
+		// Rooms carry no ledger reference).
+		expect(projection.labels.map((primitive) => (primitive.kind === 'text' ? primitive.style : null))).toEqual([
+			'room-name',
+			'room-area'
+		]);
 		expect(projection.labels[0]).toMatchObject({
 			kind: 'text',
 			style: 'room-name',
@@ -324,8 +329,10 @@ describe('buildPlanInteractionProjection', () => {
 			'4.00 m',
 			'6.00 m',
 			'4.00 m',
-			// P23.6 — the persistent Room name rides the labels layer last.
-			document.floors[0]!.rooms[0]!.name
+			// P23.13 S3 — the persistent Room label stack rides the labels layer
+			// last, name first and the derived area beneath it.
+			document.floors[0]!.rooms[0]!.name,
+			'24.0 m²'
 		]);
 	});
 
@@ -336,8 +343,12 @@ describe('buildPlanInteractionProjection', () => {
 		selectLayoutWall(state, 'room-rectangle', 'room-rectangle:wall:0');
 		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
 		expect(projection.selection).toEqual([]);
-		// P23.6 — only the persistent Room name remains on the labels layer.
-		expect(projection.labels.map((primitive) => primitive.style)).toEqual(['room-name']);
+		// P23.13 S3 — only the persistent Room label stack remains on the labels
+		// layer (name + derived area for this reference-less fixture).
+		expect(projection.labels.map((primitive) => primitive.style)).toEqual([
+			'room-name',
+			'room-area'
+		]);
 		expect(projection.handles.map((primitive) => primitive.style)).toEqual([]);
 	});
 

@@ -133,10 +133,20 @@
 // P23.12 D5 — the Plan's selection feedback asks the shared display-identity
 // layer how an entity reads; it never queries the ledger itself.
 import {
+	identityLabelPair,
 	identityPrimaryLabel,
 	layoutSelectionLabel,
-	openingIdentity
+	openingIdentity,
+	roomIdentity
 } from '../identity/layout-identity-view';
+import { formatPlacementLabel } from '../editor-outliner';
+import {
+	roomFloorAreaM2,
+	ROOM_LABEL_SETTLE_DELAY_MS,
+	type RoomLabelMemory,
+	type RoomLabelReconsiderReason
+} from './plan-room-labels';
+import { createBrowserTextMeasure } from './plan-text-measure';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -917,6 +927,101 @@ import {
 			: interaction.polygonPoints
 	);
 	const rooms = $derived('floors' in preview.project.layout ? preview.project.layout.floors.flatMap((floor) => floor.rooms) : []);
+	/**
+	 * P23.13 S3 — per compiled Room: the resolved display-identity pair (authored
+	 * name → compact reference → raw-ID label, duplicate-collapse included) and
+	 * the derived floor area. Identity comes from the P23.12 resolver and area from
+	 * the canonical compiled floor polygon — the label path invents neither.
+	 */
+	const roomLabelFacts = $derived.by(() => {
+		const layout = preview.project.layout;
+		const facts = new Map<
+			string,
+			{ name: string | null; reference: string | null; areaM2: number | null }
+		>();
+		for (const room of model.rooms) {
+			const pair = identityLabelPair(
+				roomIdentity(layout, room.roomId),
+				formatPlacementLabel(room.roomId)
+			);
+			facts.set(room.roomId, {
+				name: pair.label,
+				reference: pair.reference,
+				areaM2: roomFloorAreaM2(room.floorPolygon)
+			});
+		}
+		return facts;
+	});
+	/**
+	 * P23.13 S3 — the browser text-measure seam for Room label placement, plus the
+	 * sticky placement memo and the settle generation. All three are presentation
+	 * machinery: the memo is never document state, history or a persisted value.
+	 */
+	const roomLabelText = createBrowserTextMeasure();
+	const roomLabelMemory: RoomLabelMemory = new Map();
+	/**
+	 * Advanced 150 ms after zoom/gesture activity stops. The placer's reappearance
+	 * gate reads it, so hysteresis is expressed as a deterministic generation
+	 * rather than a wall-clock read inside the projection.
+	 */
+	let roomLabelSettleGeneration = $state(0);
+	let roomLabelSettleTimer: ReturnType<typeof setTimeout> | null = null;
+	// The projection memo reads the previous geometry identity to decide whether a
+	// resolution may relocate freely (`geometry`) or must stay sticky (`lod`).
+	let roomLabelGeometryKey: string | null = null;
+	/**
+	 * Why the label placer is being consulted: a live gesture freezes the accepted
+	 * candidates, a geometry change may relocate freely, and any other re-resolve
+	 * (zoom, pan, resize) must stay sticky. Recorded from the previous frame's
+	 * geometry identity, never persisted.
+	 */
+	const planGestureActive = $derived(
+		interaction.editing !== null ||
+			interaction.objectDrag !== null ||
+			interaction.roomUnitDrag !== null ||
+			interaction.wallOpeningDrag !== null ||
+			interaction.architectureEdit !== null
+	);
+	const roomLabelReconsiderReason: RoomLabelReconsiderReason = $derived(
+		planGestureActive
+			? 'frozen'
+			: roomLabelGeometryKey !== null && roomLabelGeometryKey === `${preview.previewVersion}`
+				? 'lod'
+				: 'geometry'
+	);
+	$effect(() => {
+		void interaction.planView.pixelsPerMeter;
+		void interaction.planView.center[0];
+		void interaction.planView.center[1];
+		void interaction.planView.width;
+		void interaction.planView.height;
+		void planGestureActive;
+		if (roomLabelSettleTimer !== null) clearTimeout(roomLabelSettleTimer);
+		roomLabelSettleTimer = setTimeout(() => {
+			roomLabelSettleTimer = null;
+			roomLabelSettleGeneration += 1;
+		}, ROOM_LABEL_SETTLE_DELAY_MS);
+		return () => {
+			if (roomLabelSettleTimer !== null) {
+				clearTimeout(roomLabelSettleTimer);
+				roomLabelSettleTimer = null;
+			}
+		};
+	});
+	onMount(() => {
+		// Label extents depend on the real font, so both the cache and the memoized
+		// placements must be dropped when the font actually loads.
+		const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+		const dropMetrics = () => {
+			roomLabelText.invalidate();
+			// Memoized placements were fitted against the old metrics: both the cache
+			// and the accepted candidates it produced are invalid.
+			roomLabelMemory.clear();
+		};
+		void fonts?.ready.then(dropMetrics);
+		fonts?.addEventListener?.('loadingdone', dropMetrics);
+		return () => fonts?.removeEventListener?.('loadingdone', dropMetrics);
+	});
 	// P23.6 — wall-first presentation context (Junction handles, Room names,
 	// run-closure cue, diagnostic markers). Derived from the live document;
 	// nothing here is authored truth.
@@ -956,11 +1061,29 @@ import {
 			// and the hit query, so the affordance and its hit region cannot drift.
 			curveControls: selectedCurveControls(document.walls),
 			roomNames: new Map(document.rooms.map((room) => [room.id, room.name] as const)),
+			// P23.13 S3 — resolved display identity (name → reference → raw-ID label)
+			// and derived area per compiled Room, the real text metrics, the sticky
+			// placement memo and the reconsideration/settle signals.
+			roomLabels: {
+				facts: roomLabelFacts,
+				measure: roomLabelText.measure,
+				memory: roomLabelMemory,
+				reason: roomLabelReconsiderReason,
+				settleGeneration: roomLabelSettleGeneration
+			},
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
 				: null,
 			issues: preview.issues
 		};
+	});
+	// Recorded after `wallFirstContext` is read (a memo, not state): the next
+	// resolution compares against it to tell a geometry change from a pure
+	// scale/pan re-resolve. Pan alone never invalidates an accepted candidate —
+	// its world anchor moves with the Room.
+	$effect(() => {
+		void wallFirstContext;
+		roomLabelGeometryKey = `${preview.previewVersion}`;
 	});
 	const baseInteractionProjection = $derived(
 		buildPlanInteractionProjection(
@@ -1241,6 +1364,11 @@ const interactionProjection = $derived(
 	const planSelectionLabel = $derived(
 		layoutSelectionLabel(preview.project.layout, interaction.selection)
 	);
+	/**
+	 * P23.13 S3 — the fixed canvas readout, resolved by the same placer that laid
+	 * the resting labels out, so it can never disagree with what is on the paper.
+	 */
+	const roomLabelReadout = $derived(baseInteractionProjection.roomLabelReadout ?? null);
 	const rotationHandleHovered = $derived.by(() => {
 		if (interaction.tool !== 'select' || !rotationHoverScreen) return false;
 		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
@@ -3702,6 +3830,24 @@ const interactionProjection = $derived(
 		{/if}
 
 	</svg>
+	<!--
+		P23.13 S3 / §4 A4 — the fixed canvas identity readout. It appears only when
+		the selected Room's resting label cannot carry its complete identity (a tiny
+		or obstructed face, or a name the two-line 160 px budget cannot hold).
+		Read-only, non-mutating and temporary: never a second Inspector, never a
+		rename field, and never a reason to force an overlap into the drawing.
+	-->
+	{#if roomLabelReadout}
+		<div class="plan-readout" role="note" aria-label="Selected room identity">
+			<span class="plan-readout-primary">{roomLabelReadout.primary}</span>
+			{#if roomLabelReadout.reference}
+				<span class="plan-readout-reference">{roomLabelReadout.reference}</span>
+			{/if}
+			{#if roomLabelReadout.area}
+				<span class="plan-readout-area">{roomLabelReadout.area}</span>
+			{/if}
+		</div>
+	{/if}
 	{#if preview.statusMessage}
 		<p class="plan-status" role="status">{preview.statusMessage}</p>
 	{/if}
@@ -3723,7 +3869,7 @@ const interactionProjection = $derived(
 </div>
 
 <style>
-	.plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-bg-app); }
+	.plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-bg-app); container-type: inline-size; }
 	/* P3.2 §9 — the plan is a bright drafting surface against the dark shell. */
 	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-plan-canvas-bg); user-select: none; -webkit-user-select: none; }
 	/* P23.6 — keyboard focus stays visible on the drafting surface. */
@@ -3746,6 +3892,15 @@ const interactionProjection = $derived(
 	.plan-actions button { padding: 0.44rem 0.6rem; border: 1px solid var(--editor-accent-border); border-radius: 0.32rem; background: var(--editor-bg-selected); color: var(--editor-text-primary); font: 600 0.7rem/1 var(--editor-font); cursor: pointer; }
 	.plan-actions button.secondary { border-color: var(--editor-border-normal); background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); }
 	.plan-meta { position: absolute; left: 0.8rem; bottom: 0.8rem; z-index: 2; display: flex; gap: 0.7rem; color: var(--editor-plan-muted); font: 0.68rem/1 var(--editor-font); pointer-events: none; }
+	/* P23.13 S3 — bounded readout: inset 12px from the viewport safe corner,
+	   ≤280px (or the available width), wrapping rather than truncating, with a
+	   bounded scroll so a pathological name cannot cover the drawing. */
+	.plan-readout { position: absolute; top: 12px; right: 12px; z-index: 11; box-sizing: border-box; display: grid; gap: 0.15rem; max-width: min(280px, calc(100% - 24px)); max-height: min(40%, 9rem); overflow-y: auto; padding: 0.4rem 0.55rem; border: 1px solid var(--editor-plan-grid-major); border-radius: 0.35rem; background: rgb(255 255 255 / 92%); color: var(--editor-plan-label); font: 500 0.72rem/1.25 var(--editor-font); text-align: left; box-shadow: var(--editor-shadow-popover); }
+	.plan-readout-primary { font-weight: 650; overflow-wrap: anywhere; }
+	.plan-readout-reference,
+	.plan-readout-area { color: var(--editor-plan-muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+	/* Narrow drawings reflow the readout above the plan instead of over it. */
+	@container (max-width: 720px) { .plan-readout { left: 12px; right: 12px; max-width: none; } }
 	.plan-meta .warning { color: var(--editor-danger-fg); }
 	@media (max-width: 44rem) {
 		.staging-selection-warning { top: 8rem; }

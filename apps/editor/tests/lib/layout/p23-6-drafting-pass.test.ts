@@ -204,13 +204,18 @@ describe('P23.6 room name labels', () => {
 		return { document, model, names };
 	}
 
-	it('labels the Room with its persisted name at the face centroid', () => {
+	it('labels the Room with its persisted name inside the free space of its face', () => {
 		const { document, model, names } = roomed();
 		const state = createLayoutInteractionState();
 		const projection = buildPlanInteractionProjection(state, [], model, emptyContext({ roomNames: names }));
 		const label = textsOf(projection).find((primitive) => primitive.style === 'room-name');
 		expect(label?.text).toBe(document.rooms[0]!.name);
-		expect(label).toMatchObject({ anchor: [2, 1.5] });
+		// P23.13 S3 replaced the point anchor with a free-space candidate: the
+		// anchor must still land inside the Room, near its semantic center (the
+		// mask grid quantizes it to a cell centre, so no exact centroid equality).
+		const anchor = label!.anchor;
+		expect(pointStrictlyInsidePolygon(RECT, anchor)).toBe(true);
+		expect(Math.hypot(anchor[0] - 2, anchor[1] - 1.5)).toBeLessThan(0.25);
 	});
 
 	it('hides Room labels below the legibility zoom floor', () => {

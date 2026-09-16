@@ -19,6 +19,24 @@ import {
 	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
 	PLAN_ROOM_LABELS_MIN_PX_PER_M
 } from './plan-salience';
+import {
+	APPROXIMATE_TEXT_MEASURE,
+	placeRoomLabels,
+	roomFloorAreaM2,
+	ROOM_LABEL_ACQUISITION_RESERVE_PX,
+	ROOM_LABEL_ACTIVE_TEXT_RESERVE_PX,
+	ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX,
+	type RoomLabelAcquisitionZone,
+	type RoomLabelActiveText,
+	type RoomLabelFacts,
+	type RoomLabelMask,
+	type RoomLabelMemory,
+	type RoomLabelObstacle,
+	type RoomLabelProtectedEdge,
+	type RoomLabelReadout,
+	type RoomLabelReconsiderReason,
+	type TextMeasure
+} from './plan-room-labels';
 import type {
 	PlanHitIdentity,
 	PlanInteractionProjection,
@@ -26,6 +44,11 @@ import type {
 	PlanSelection,
 	PlanStyleToken
 } from '$lib/layout/plan-render-model';
+
+// The P23.6 interior-anchor helper now lives in the S3 label module (it is the
+// candidate-ranking semantic center, no longer a placement anchor); re-exported
+// here so existing consumers keep one import site.
+export { interiorLabelPoint } from './plan-room-labels';
 
 /**
  * Transient interaction overlays, derived editor-side into world-space
@@ -39,6 +62,25 @@ const SNAP_MARKER_RADIUS_PX = 4;
 const ROTATION_HANDLE_OFFSET_PX = 28;
 const ROTATION_FEEDBACK_OFFSET_PX = 40;
 const DIMENSION_LABEL_OFFSET_PX = 5;
+
+/**
+ * P23.13 S3 — the presentation-only inputs the Room label placer needs from the
+ * viewport: resolved identity + derived area per compiled `roomId`, the text
+ * measurement seam (real browser metrics in production), the sticky placement
+ * memo and the reconsideration/settle signals.
+ */
+export type PlanRoomLabelContext = {
+	facts: ReadonlyMap<
+		string,
+		{ name: string | null; reference: string | null; areaM2: number | null }
+	>;
+	/** Omitted in pure tests: placement then uses deterministic stand-in metrics. */
+	measure?: TextMeasure;
+	/** Memo of accepted candidates/hysteresis. Never document state. */
+	memory?: RoomLabelMemory;
+	reason?: RoomLabelReconsiderReason;
+	settleGeneration?: number;
+};
 
 /**
  * P23.6 — wall-first Plan context for presentation-only projections. Every
@@ -62,90 +104,18 @@ export type PlanWallFirstContext = {
 	junctionFocus: ReadonlySet<string> | null;
 	/** Room display names by compiled `roomId` (presentation of Room metadata). */
 	roomNames: ReadonlyMap<string, string>;
+	/**
+	 * P23.13 S3 — Room label inputs beyond the name: the resolved display
+	 * identity pair (name → reference → raw-ID label) and the derived area, plus
+	 * the text-measurement seam and the sticky placement memo. All presentation:
+	 * the document, the compile result and history are never written.
+	 */
+	roomLabels?: PlanRoomLabelContext;
 	/** Resolved run-start Junction point for the closure cue (`null` when none). */
 	runStartPoint: LayoutVec2 | null;
 	/** Committed compiler issues with positioned targets for diagnostic markers. */
 	issues: readonly { code: string; message: string; targetId?: string; path?: string }[];
 };
-
-/**
- * P23.6 — guaranteed-interior Room label anchor. The area centroid is exact
- * for convex faces; on concave faces it can land in a notch/outside, so fall
- * back to the largest ear-triangle centroid (ear clipping over the simple
- * polygon — always strictly inside the face). Deterministic: ties keep the
- * lowest vertex order. Never a general annotation solver.
- */
-export function interiorLabelPoint(polygon: readonly LayoutVec2[]): LayoutVec2 {
-	const mean: LayoutVec2 = [
-		polygon.reduce((sum, point) => sum + point[0], 0) / polygon.length,
-		polygon.reduce((sum, point) => sum + point[1], 0) / polygon.length
-	];
-	let twiceArea = 0;
-	let cx = 0;
-	let cz = 0;
-	for (let index = 0; index < polygon.length; index += 1) {
-		const current = polygon[index]!;
-		const next = polygon[(index + 1) % polygon.length]!;
-		const cross = current[0] * next[1] - next[0] * current[1];
-		twiceArea += cross;
-		cx += (current[0] + next[0]) * cross;
-		cz += (current[1] + next[1]) * cross;
-	}
-	const centroid: LayoutVec2 =
-		Math.abs(twiceArea) > 1e-12
-			? [cx / (3 * twiceArea), cz / (3 * twiceArea)]
-			: mean;
-	if (pointStrictlyInsidePolygon(polygon, centroid)) return centroid;
-	// Concave face with an exterior centroid: largest ear wins.
-	const orient = twiceArea >= 0 ? 1 : -1;
-	const remaining = polygon.map((_, index) => index);
-	let best: { area: number; point: LayoutVec2 } | null = null;
-	const triArea2 = (a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): number =>
-		(b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-	const triCentroid = (a: LayoutVec2, b: LayoutVec2, c: LayoutVec2): LayoutVec2 => [
-		(a[0] + b[0] + c[0]) / 3,
-		(a[1] + b[1] + c[1]) / 3
-	];
-	for (let guard = 0; guard < polygon.length * polygon.length && remaining.length > 3; guard += 1) {
-		let clipAt = -1;
-		let clipArea = Number.POSITIVE_INFINITY;
-		for (let slot = 0; slot < remaining.length; slot += 1) {
-			const a = polygon[remaining[(slot + remaining.length - 1) % remaining.length]!]!;
-			const b = polygon[remaining[slot]!]!;
-			const c = polygon[remaining[(slot + 1) % remaining.length]!]!;
-			// Convex under the face orientation?
-			if (triArea2(a, b, c) * orient <= 0) continue;
-			// Ear: no other vertex strictly inside the candidate triangle.
-			let blocked = false;
-			for (const other of remaining) {
-				const p = polygon[other]!;
-				if (p === a || p === b || p === c) continue;
-				const s1 = triArea2(a, b, p) * orient;
-				const s2 = triArea2(b, c, p) * orient;
-				const s3 = triArea2(c, a, p) * orient;
-				if (s1 > 0 && s2 > 0 && s3 > 0) {
-					blocked = true;
-					break;
-				}
-			}
-			if (blocked) continue;
-			const area = Math.abs(triArea2(a, b, c)) / 2;
-			if (!best || area > best.area) best = { area, point: triCentroid(a, b, c) };
-			if (area < clipArea) {
-				clipArea = area;
-				clipAt = slot;
-			}
-		}
-		if (clipAt < 0) break;
-		remaining.splice(clipAt, 1);
-	}
-	if (remaining.length === 3) {
-		const [a, b, c] = remaining.map((index) => polygon[index]!) as [LayoutVec2, LayoutVec2, LayoutVec2];
-		const area = Math.abs(triArea2(a, b, c)) / 2;
-		if (!best || area > best.area) best = { area, point: triCentroid(a, b, c) };
-	}
-	return best?.point ?? mean;
-}
 
 /** P23.6 — snap marker radius per winning family (screen-constant, zoom-stable). */
 export function snapMarkerRadiusPx(kind: string): number {
@@ -160,24 +130,16 @@ export function snapMarkerRadiusPx(kind: string): number {
 	}
 }
 
-/** P23.6 — legibility floors for persistent Room name labels. */
-export const ROOM_LABEL_MIN_AREA_M2 = 1;
 /**
- * P23.13 S2 — the two Plan scale floors are *re-exported* from the one gate
- * table in `plan-salience.ts` rather than defined here, so the overlay and the
- * salience policy can never drift into two different floors. Values, and the
- * deliberate paint/hit coupling they carry, are unchanged.
+ * P23.13 S2 — the Plan scale floor is *re-exported* from the one gate table in
+ * `plan-salience.ts` rather than defined here, so the overlay and the salience
+ * policy can never drift into two different floors. The S3 placer replaced the
+ * P23.6 area floor and point-suppression radius with text-box fitting and the
+ * ratified obstacle reserves; §5's global `6 px/m` vocabulary floor stays.
  */
 export const ROOM_LABEL_MIN_PX_PER_M = PLAN_ROOM_LABELS_MIN_PX_PER_M;
 /** Junction handles hide below this Plan scale (mirrors grid-minor culling). */
 export const JUNCTION_HANDLES_MIN_PX_PER_M = PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M;
-/**
- * P23.6 — label suppression radius in screen px. A Room-name candidate whose
- * anchor falls inside this radius of a higher-priority label/marker (or an
- * already accepted Room label) is hidden. Screen-constant so the density
- * rule is zoom-stable; document order wins ties deterministically.
- */
-export const ROOM_LABEL_SUPPRESSION_RADIUS_PX = 24;
 
 function roomVertices(room: LayoutRoom): LayoutVec2[] {
 	return room.boundary.segments.map((segment) => [...segment.start] as LayoutVec2);
@@ -1121,12 +1083,10 @@ export function buildPlanInteractionProjection(
 	// the concise reason lives in the Inspector topology section. Issues
 	// without a resolvable target keep their count only — never a guess.
 	// Markers land before Room labels so diagnostics outrank names.
-	const diagnosticPoints: LayoutVec2[] = [];
 	if (wallFirst) {
 		for (const issue of wallFirst.issues) {
 			const point = diagnosticPoint(model, issue.targetId);
 			if (!point) continue;
-			diagnosticPoints.push(point);
 			handles.push({
 				kind: 'circle',
 				key: geometryId(['plan', 'overlay', 'diagnostic', issue.code, issue.targetId ?? 'document']),
@@ -1137,55 +1097,189 @@ export function buildPlanInteractionProjection(
 		}
 	}
 
-	// P23.6 — persistent Room names as presentation-only labels (never
-	// separately persisted annotations). Bounded density, lowest priority:
-	// legible face area + Plan scale floor, a guaranteed-interior anchor, and
-	// deterministic suppression inside the screen-constant radius of any
-	// higher-priority label/marker (dimensions, selection feedback,
-	// diagnostics) or already accepted Room label — document order wins.
+	let roomLabelReadout: RoomLabelReadout | undefined;
+	// P23.13 S3 — persistent Room labels are a free-space layout problem (spec
+	// §4), not a point anchor: `placeRoomLabels` derives large free-space
+	// candidates from the projected Room polygon minus an eligibility mask,
+	// tests the *complete* text rectangle (concave-aware), reduces tiers in the
+	// ratified drop order and keeps the accepted candidate sticky. This
+	// projection supplies only the canonical inputs — compiled floor polygons,
+	// resolved display identity, derived area — plus the mask, and never invents
+	// geometry, identity or area.
 	{
-		const legacyNames = new Map(rooms.map((room) => [room.id, room.name] as const));
-		const pixelsPerMeter = Math.max(interaction.planView.pixelsPerMeter, 1e-6);
-		const suppressionRadius = ROOM_LABEL_SUPPRESSION_RADIUS_PX / pixelsPerMeter;
-		const blockers: LayoutVec2[] = [...diagnosticPoints];
-		for (const primitive of labels) {
-			if (primitive.kind === 'text' && primitive.style !== 'room-name') blockers.push(primitive.anchor);
-		}
-		for (const primitive of [...selection, ...handles, ...drafts]) {
-			if (primitive.kind === 'circle') blockers.push(primitive.center);
-		}
-		for (const room of model.rooms) {
-			const name = wallFirst?.roomNames.get(room.roomId) ?? legacyNames.get(room.roomId) ?? room.roomId;
-			const polygon = room.floorPolygon;
-			if (polygon.length < 3) continue;
-			let twiceArea = 0;
-			for (let index = 0; index < polygon.length; index += 1) {
-				const current = polygon[index]!;
-				const next = polygon[(index + 1) % polygon.length]!;
-				twiceArea += current[0] * next[1] - next[0] * current[1];
+		// §5 still owns the global vocabulary floor: below it no resting Room label
+		// exists at all (read from the one S2 gate table, never a second copy).
+		if (interaction.planView.pixelsPerMeter >= ROOM_LABEL_MIN_PX_PER_M) {
+			const legacyNames = new Map(rooms.map((room) => [room.id, room.name] as const));
+			const labelContext = wallFirst?.roomLabels;
+			const facts: RoomLabelFacts[] = [];
+			for (const room of model.rooms) {
+				if (room.floorPolygon.length < 3) continue;
+				const identity = labelContext?.facts.get(room.roomId);
+				facts.push({
+					roomId: room.roomId,
+					polygon: room.floorPolygon,
+					// D2 tier order: authored name → compact reference → raw-ID label.
+					name:
+						identity?.name ??
+						wallFirst?.roomNames.get(room.roomId) ??
+						legacyNames.get(room.roomId) ??
+						room.roomId,
+					reference: identity?.reference ?? null,
+					// Compiled floor polygon is the canonical area source (§4).
+					areaM2: identity?.areaM2 ?? roomFloorAreaM2(room.floorPolygon)
+				});
 			}
-			if (Math.abs(twiceArea) / 2 < ROOM_LABEL_MIN_AREA_M2) continue;
-			if (interaction.planView.pixelsPerMeter < ROOM_LABEL_MIN_PX_PER_M) continue;
-			const anchor = interiorLabelPoint(polygon);
-			if (
-				blockers.some(
-					(blocked) => Math.hypot(blocked[0] - anchor[0], blocked[1] - anchor[1]) <= suppressionRadius
-				)
-			) {
-				continue;
-			}
-			blockers.push(anchor);
-			labels.push({
-				kind: 'text',
-				key: geometryId(['plan', 'overlay', 'room-name', room.roomId]),
-				anchor,
-				text: name,
-				style: 'room-name'
+			const placement = placeRoomLabels({
+				rooms: facts,
+				planView: interaction.planView,
+				measure: labelContext?.measure,
+				mask: buildRoomLabelMask(model, interaction, selection, handles, drafts, labels),
+				selectedRoomId:
+					interaction.tool === 'select' && interaction.selection.kind === 'room'
+						? interaction.selection.roomId
+						: null,
+				reason: labelContext?.reason,
+				settleGeneration: labelContext?.settleGeneration,
+				memory: labelContext?.memory
 			});
+			for (const placed of placement.labels) {
+				for (const [index, line] of placed.lines.entries()) {
+					labels.push({
+						kind: 'text',
+						key:
+							index === 0
+								? geometryId(['plan', 'overlay', 'room-name', placed.roomId])
+								: geometryId(['plan', 'overlay', 'room-label', line.style, placed.roomId, String(index)]),
+						anchor: placed.anchorWorld,
+						text: line.text,
+						// Screen-constant stacked lines: the placer's baselines are already
+						// relative to the shared anchor.
+						offsetPx: [0, line.baselineOffsetPx],
+						style: line.style
+					});
+				}
+			}
+			roomLabelReadout = placement.readout ?? undefined;
 		}
 	}
 
-	return { selected: toPlanSelection(interaction.selection), hovered, selection, handles, drafts, labels, roomOverrides, objectOverrides };
+	return {
+		selected: toPlanSelection(interaction.selection),
+		hovered,
+		selection,
+		handles,
+		drafts,
+		labels,
+		roomOverrides,
+		objectOverrides,
+		...(roomLabelReadout ? { roomLabelReadout } : {})
+	};
+}
+
+/**
+ * P23.13 S3 — the Room label eligibility mask. Only the mask is affected:
+ * eligible area loses core wall/opening bands (8 px beyond the authored band
+ * half-thickness), authored object footprints, active annotation/control bounds
+ * (12 px) and active text (24 px). Geometry, Room boundaries and topology are
+ * untouched, and *unselected* passive Scene never blocks text — it yields.
+ */
+function buildRoomLabelMask(
+	model: LayoutPreviewModel,
+	interaction: LayoutInteractionState,
+	selection: readonly PlanRenderPrimitive[],
+	handles: readonly PlanRenderPrimitive[],
+	drafts: readonly PlanRenderPrimitive[],
+	labels: readonly PlanRenderPrimitive[]
+): RoomLabelMask {
+	const pixelsPerMeter = Math.max(interaction.planView.pixelsPerMeter, 1e-6);
+	const protectedEdges: RoomLabelProtectedEdge[] = [];
+	for (const room of model.rooms) {
+		for (const wall of room.walls) {
+			const clearancePx = (wall.thickness / 2) * pixelsPerMeter + ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
+			for (const polyline of wall.solidCenterlinePolylines) {
+				if (polyline.length > 1) protectedEdges.push({ points: polyline, clearancePx });
+			}
+		}
+	}
+	const obstacles: RoomLabelObstacle[] = [];
+	for (const object of model.objects) {
+		if (object.planFootprint.length < 3) continue;
+		obstacles.push({
+			polygon: object.planFootprint,
+			clearancePx: ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX
+		});
+	}
+	const acquisitionZones: RoomLabelAcquisitionZone[] = [];
+	for (const primitive of [...selection, ...drafts]) {
+		if (primitive.kind === 'circle') {
+			acquisitionZones.push({
+				center: primitive.center,
+				radiusPx: primitive.radiusPx,
+				clearancePx: ROOM_LABEL_ACQUISITION_RESERVE_PX
+			});
+			continue;
+		}
+		if (primitive.kind === 'polygon' && primitive.points.length >= 3) {
+			if (primitive.style === 'selection-bounds') {
+				// The selected Room's own outline traces geometry: it reserves a band,
+				// never its interior — filling it would forbid the very face the label
+				// belongs to. A selected Room therefore uses the same placer and mask
+				// classes as any other, with no centroid override and no tier bias.
+				protectedEdges.push({
+					points: [...primitive.points, primitive.points[0]!],
+					clearancePx: ROOM_LABEL_ACQUISITION_RESERVE_PX
+				});
+				continue;
+			}
+			// A region annotation (draft outline, transient intent, ghost footprint):
+			// text inside it would sit on a live control, so the region is reserved.
+			obstacles.push({
+				polygon: primitive.points,
+				clearancePx: ROOM_LABEL_ACQUISITION_RESERVE_PX
+			});
+			continue;
+		}
+		if (primitive.kind === 'polyline' && primitive.points.length > 1) {
+			// An outline that traces geometry (e.g. a selected Room's own boundary,
+			// a closure/moat path) reserves a band, not its interior: filling it
+			// would forbid the very face the label belongs to.
+			protectedEdges.push({
+				points: primitive.points,
+				clearancePx: ROOM_LABEL_ACQUISITION_RESERVE_PX
+			});
+		}
+	}
+	for (const primitive of handles) {
+		if (primitive.kind !== 'circle') continue;
+		acquisitionZones.push({
+			center: primitive.center,
+			radiusPx: primitive.radiusPx,
+			clearancePx: ROOM_LABEL_ACQUISITION_RESERVE_PX
+		});
+	}
+	// Active text (dimensions, transform feedback, selected-target readouts) is
+	// reserved at 24 px. Non-Room text roles are measured with the nearest role's
+	// metrics — a readability apron, never a claim about that text's exact box.
+	const activeText: RoomLabelActiveText[] = [];
+	for (const primitive of labels) {
+		if (primitive.kind !== 'text') continue;
+		const role = primitive.style === 'dimension-label' ? 'room-reference' : 'room-name';
+		const extent = APPROXIMATE_TEXT_MEASURE(primitive.text, role);
+		const screen = worldToPlanScreen(interaction.planView, primitive.anchor);
+		const offset = primitive.offsetPx ?? [0, 0];
+		const anchorX = screen[0] + offset[0];
+		const anchorY = screen[1] + offset[1];
+		activeText.push({
+			rect: {
+				minX: anchorX - extent.width / 2,
+				minY: anchorY - extent.height,
+				maxX: anchorX + extent.width / 2,
+				maxY: anchorY
+			},
+			clearancePx: ROOM_LABEL_ACTIVE_TEXT_RESERVE_PX
+		});
+	}	return { protectedEdges, obstacles, acquisitionZones, activeText };
 }
 
 /**
