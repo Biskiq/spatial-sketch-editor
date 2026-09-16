@@ -36,6 +36,7 @@
 		layoutPreviewSnapshotMatchesLive,
 		restoreLayoutPreviewSnapshot
 	} from './layout/layout-preview-state.svelte';
+	import { layoutAuthoredCanonicalJson, type LayoutDocumentWallFirst } from '$lib/layout/layout-identity';
 	// P7.3 — the relic is the one editor-domain site that seeds Chopin
 	// explicitly (document + rooms + layout preview); everything else boots
 	// empty or from an imported project.
@@ -75,7 +76,15 @@
 				}
 				restoreLayoutPreviewSnapshot(layoutPreview, typed);
 			},
-			matches: (a, b) => JSON.stringify((a as { project: { layout: unknown } }).project.layout) === JSON.stringify((b as { project: { layout: unknown } }).project.layout)
+			// P23.12 — same authored comparison as EditorApp: the reference cursor is
+			// bookkeeping and must never produce a history entry on its own.
+			matches: (a, b) =>
+				layoutAuthoredCanonicalJson(
+					(a as { project: { layout: LayoutDocumentWallFirst } }).project.layout
+				) ===
+				layoutAuthoredCanonicalJson(
+					(b as { project: { layout: LayoutDocumentWallFirst } }).project.layout
+				)
 		});
 	}
 	// Phase 6.1 — single shared FSM sub-store. Set on context so every editor

@@ -38,6 +38,9 @@ import {
 } from '@portfolio/layout-core';
 
 import { buildLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
+// P23.12 — an installed document is normalized with its reference ledger, so
+// "reimports to the same document" is a content claim (see the helper).
+import { documentContentJson } from './__fixtures__/p23-12-content';
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
@@ -250,7 +253,9 @@ describe('P23.11 slice 8 — Save/Load preserves the chain exactly', () => {
 		// actually edits from.
 		const layoutPreview = createEmptyLayoutPreviewState();
 		expect(importLayoutPreviewJson(layoutPreview, serializeWallFirstLayoutDocument(document))).toBe(true);
-		expect(JSON.stringify(layoutPreviewDocument(layoutPreview))).toBe(JSON.stringify(document));
+		expect(documentContentJson(layoutPreviewDocument(layoutPreview))).toBe(
+			documentContentJson(document)
+		);
 	});
 });
 

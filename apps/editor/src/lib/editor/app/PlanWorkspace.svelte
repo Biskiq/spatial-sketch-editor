@@ -3,6 +3,7 @@
 	import type { LayoutPreviewState } from '$lib/editor/layout/layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
+		promoteLayoutPreviewIdentity,
 		commitLayoutDraftRoom,
 		commitLayoutOpening,
 		commitWallChain,
@@ -388,6 +389,9 @@
 	}
 
 	function commitLayoutTransaction(): boolean {
+		// P23.12 — promote the layout's provisional references before the history
+		// boundary is captured (identity-only write; nothing is recompiled).
+		promoteLayoutPreviewIdentity(layoutPreview);
 		return store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
 	}
 
