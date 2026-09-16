@@ -196,12 +196,27 @@ export function buildHierarchySearchProjection(
 
 	const directRoomIds = index.orderedRooms
 		.filter((room) =>
-			hierarchySearchMatches(normalizedQuery, room.name, room.roomId, formatPlacementLabel(room.roomId))
+			hierarchySearchMatches(
+				normalizedQuery,
+				room.name,
+				room.roomId,
+				formatPlacementLabel(room.roomId),
+				room.reference ?? undefined
+			)
 		)
 		.map((room) => room.roomId);
 	const directWallIds = index.orderedWalls
 		.filter((wall) =>
-			hierarchySearchMatches(normalizedQuery, wall.wallId, formatPlacementLabel(wall.wallId), wall.role)
+			hierarchySearchMatches(
+				normalizedQuery,
+				wall.wallId,
+				formatPlacementLabel(wall.wallId),
+				wall.role,
+				// P23.12 — authored names and compact references are first-class
+				// search fields alongside the raw ID and kind/role terms.
+				wall.name ?? undefined,
+				wall.reference ?? undefined
+			)
 		)
 		.map((wall) => wall.wallId);
 	const directOpeningIds = index.orderedOpenings
@@ -210,7 +225,9 @@ export function buildHierarchySearchProjection(
 				normalizedQuery,
 				opening.openingId,
 				formatPlacementLabel(opening.openingId),
-				opening.openingKind
+				opening.openingKind,
+				opening.name ?? undefined,
+				opening.reference ?? undefined
 			)
 		)
 		.map((opening) => opening.openingId);
@@ -219,7 +236,8 @@ export function buildHierarchySearchProjection(
 			hierarchySearchMatches(
 				normalizedQuery,
 				junction.junctionId,
-				formatPlacementLabel(junction.junctionId)
+				formatPlacementLabel(junction.junctionId),
+				junction.reference ?? undefined
 			)
 		)
 		.map((junction) => junction.junctionId);

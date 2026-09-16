@@ -292,12 +292,15 @@ export function hierarchyRoomRow(
 ): HierarchyProjectedRow | null {
 	const room = index.roomById.get(roomId);
 	if (!room) return null;
+	// P23.12 — the authored Room name stays primary; its reference is the
+	// secondary identity span (never replaces the name).
+	const referenceSecondary = room.reference ?? undefined;
 	return entityRow({
 		rowKey,
 		label: room.name,
 		entity: room.entity,
 		canonicalId: room.roomId,
-		secondary: options.secondary,
+		secondary: options.secondary ?? referenceSecondary,
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -314,13 +317,17 @@ export function hierarchyWallRow(
 ): HierarchyProjectedRow | null {
 	const wall = index.wallById.get(wallId);
 	if (!wall) return null;
+	// P23.12 identity: authored name leads; an unnamed Wall is reference-led.
+	// The reference never truncates; the name is the truncating tier.
+	const label = wall.name ?? wall.reference ?? formatPlacementLabel(wall.wallId);
+	const referenceSecondary = wall.name !== null && wall.reference !== null ? wall.reference : undefined;
 	return entityRow({
 		rowKey,
-		label: formatPlacementLabel(wall.wallId),
+		label,
 		entity: wall.entity,
 		canonicalId: wall.wallId,
 		facet: wall.role,
-		secondary: options.secondary,
+		secondary: options.secondary ?? referenceSecondary,
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -337,13 +344,16 @@ export function hierarchyOpeningRow(
 ): HierarchyProjectedRow | null {
 	const opening = index.openingById.get(openingId);
 	if (!opening) return null;
+	// P23.12 identity: authored name leads; an unnamed Opening is reference-led.
+	const label = opening.name ?? opening.reference ?? formatPlacementLabel(opening.openingId);
+	const referenceSecondary = opening.name !== null && opening.reference !== null ? opening.reference : undefined;
 	return entityRow({
 		rowKey,
-		label: formatPlacementLabel(opening.openingId),
+		label,
 		entity: opening.entity,
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
-		secondary: options.secondary ?? hierarchyKindLabel(opening.openingKind),
+		secondary: options.secondary ?? referenceSecondary ?? hierarchyKindLabel(opening.openingKind),
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -361,9 +371,11 @@ export function hierarchyJunctionRow(
 	const junction = index.junctionById.get(junctionId);
 	if (!junction) return null;
 	const incident = index.incidentWallIdsByJunctionId.get(junctionId) ?? [];
+	// P23.12 — Junctions are reference-only: the compact reference is the
+	// primary label (never a name), with the incident count as context.
 	return entityRow({
 		rowKey,
-		label: formatPlacementLabel(junction.junctionId),
+		label: junction.reference ?? formatPlacementLabel(junction.junctionId),
 		entity: junction.entity,
 		canonicalId: junction.junctionId,
 		secondary:
@@ -495,10 +507,14 @@ export function hierarchyEndsRow(
 	if (!wall) return null;
 	const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
 	const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
+	// P23.12 — endpoint identity is the compact reference when the ledger has
+	// one, falling back to the raw-ID display label for ledger-less documents.
+	const startRef = index.junctionById.get(start)?.reference ?? formatPlacementLabel(start);
+	const endRef = index.junctionById.get(end)?.reference ?? formatPlacementLabel(end);
 	return {
 		rowKey,
 		kind: 'relation',
-		label: `Ends ${formatPlacementLabel(start)} · ${formatPlacementLabel(end)}`
+		label: `Ends ${startRef} · ${endRef}`
 	};
 }
 
