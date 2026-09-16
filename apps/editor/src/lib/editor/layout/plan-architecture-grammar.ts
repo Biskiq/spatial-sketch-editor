@@ -10,8 +10,10 @@
  * resolution, snapping, measurement or validation, and no cue geometry is ever
  * emitted into `PlanRenderModel`. Projected-size *decisions* (with hysteresis)
  * belong to transient salience (S2) and arrive as injected
- * `PlanPresentationDecisions`; the structural thresholds below are only the
- * wiring stub used until S2 owns them.
+ * `PlanPresentationDecisions`. The thresholds that remain here are *shape*
+ * rules — a band below 2 px is not a band, two frames 3 px apart are one frame
+ * — so they stay with the shapes; S2 owns when they apply, and its `decide`
+ * reads them rather than restating the numbers.
  *
  * The band is a stroke projection from the compiled centerline, not a
  * junction-correct polygon: joins are left truthful for P23.15, never repaired
@@ -48,10 +50,12 @@ export const WINDOW_STROKE_MIN_EDGE_MARGIN_PX = 1;
 /**
  * Exact canonical physical-width projection in screen pixels. Never clamped and
  * never widened for legibility: the band is a measurement, the ink is a mark.
+ * Takes the scale alone so callers that only project a thickness (salience,
+ * tests) do not have to invent a viewport.
  */
-export function architectureBandPx(planView: PlanViewportState, thicknessMeters: number): number {
-	if (!Number.isFinite(thicknessMeters)) return 0;
-	return Math.max(0, thicknessMeters * planView.pixelsPerMeter);
+export function architectureBandPx(pixelsPerMeter: number, thicknessMeters: number): number {
+	if (!Number.isFinite(thicknessMeters) || !Number.isFinite(pixelsPerMeter)) return 0;
+	return Math.max(0, thicknessMeters * pixelsPerMeter);
 }
 
 /**

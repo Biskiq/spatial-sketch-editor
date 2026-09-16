@@ -122,6 +122,11 @@
 		setPlanViewportSize,
 		zoomPlanViewport
 	} from './layout-plan-transform';
+	import {
+		createPlanSalienceMemory,
+		resolvePlanSalience,
+		type PlanSalience
+	} from './plan-salience';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -435,6 +440,12 @@ import {
 	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
 	let architectureEditMoved = $state(false);
 	/**
+	 * P23.13 S2 — the resolved salience vocabulary held for the gesture. Freezing
+	 * the snapshot (not the scale) keeps the control set, lane and gate decisions
+	 * stable while the pointer moves, and restores live resolution at gesture end.
+	 */
+	let salienceFreeze: PlanSalience | null = $state.raw<PlanSalience | null>(null);
+	/**
 	 * P23.11 transient pass — the render-only attempt for the gesture's current
 	 * candidate. It is gesture-local (`null` outside a live drag) and replaced
 	 * wholesale on every move, never mutated, so `$state.raw` gives the render
@@ -636,6 +647,8 @@ import {
 		architectureEditSnapshot = captureLayoutPreviewSnapshot(preview);
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
+		// P23.13 S2 — hold the acquisition/control vocabulary for this gesture.
+		salienceFreeze = planSalience;
 		const gesture: LayoutArchitectureEditGesture =
 			baseline.kind === 'wall-bend'
 				? {
@@ -748,6 +761,7 @@ import {
 	function finishArchitectureEditGesture(pointerIdToRelease: number | null): void {
 		lastBendPointerTime = null;
 		cancelLayoutArchitectureEdit(interaction);
+		salienceFreeze = null;
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
@@ -1181,6 +1195,16 @@ const interactionProjection = $derived(
 	);
 	const planModel = $derived(
 		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
+	);
+	/**
+	 * P23.13 S2 — semantic zoom, resolved once per frame. The hysteresis memory
+	 * lives outside the derived value so regime and per-Opening gates keep their
+	 * history across frames, and a live gesture reads its frozen snapshot instead.
+	 */
+	const salienceMemory = createPlanSalienceMemory();
+	const planSalience = $derived(
+		salienceFreeze ??
+			resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -3664,7 +3688,7 @@ const interactionProjection = $derived(
 		{#if ghostVisible}
 			<PlanEmptyGhost planView={interaction.planView} />
 		{/if}
-		<PlanSvg model={planModel} planView={interaction.planView} />
+		<PlanSvg model={planModel} planView={interaction.planView} presentation={planSalience} />
 		<PlanCanvasChrome layer="overlay" planView={interaction.planView} />
 		{#if selectedOpening}
 			<!-- P23.12 — selected-target feedback consumes the identity contract:

@@ -6,9 +6,11 @@
  */
 
 :root {
+	/* `--editor-plan-grid-major` / `--editor-plan-grid-minor` are NOT redefined
+	   here: `tokens.css` owns them (P23.13 S2 moved them to the ratified cool
+	   greys) and a second definition in this later-loaded file silently won,
+	   leaving the warm grid on the new cool paper. Roles below alias them. */
 	--editor-plan-canvas-bg: var(--editor-plan-bg);
-	--editor-plan-grid-major: #d2cec5;
-	--editor-plan-grid-minor: #e4e0d9;
 	--editor-plan-room-bg: #fffdfa;
 	--editor-plan-room-selected-bg: color-mix(in srgb, var(--editor-plan-room-bg) 88%, var(--editor-plan-selection) 12%);
 	/* One centralized subdued Camera Plan variant derived from the same palette

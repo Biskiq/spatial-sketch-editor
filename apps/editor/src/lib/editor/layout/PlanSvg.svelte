@@ -3,9 +3,10 @@
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import type { LayoutVec2 } from '$lib/layout/layout-types';
 	import {
-		PLAN_PRESENTATION_DEFAULTS,
+		PLAN_PRESENTATION_SOURCE_DEFAULT,
 		type PlanPolylinePrimitive,
 		type PlanPresentationDecisions,
+		type PlanPresentationSource,
 		type PlanRenderModel,
 		type PlanStyleToken
 	} from '$lib/layout/plan-render-model';
@@ -25,16 +26,16 @@
 	let {
 		model,
 		planView,
-		presentation = PLAN_PRESENTATION_DEFAULTS
+		presentation = PLAN_PRESENTATION_SOURCE_DEFAULT
 	}: {
 		model: PlanRenderModel;
 		planView: PlanViewportState;
 		/**
-		 * P23.13 S0 — resolved screen-presentation decisions (S2 salience output).
-		 * The adapter paints from these; it never re-derives them and never writes
-		 * them back into the render model.
+		 * P23.13 S0/S2 — resolved screen-presentation decisions (S2 salience output).
+		 * The adapter asks per primitive and paints the answer; it never resolves a
+		 * projected-size gate itself and never writes one back into the model.
 		 */
-		presentation?: PlanPresentationDecisions;
+		presentation?: PlanPresentationSource;
 	} = $props();
 
 	const TOKEN_CLASSES: Partial<Record<PlanStyleToken, string>> = {
@@ -178,7 +179,7 @@
 		if (!architecture || architecture.kind === 'wall' || primitive.points.length < 2) return null;
 		const normal = architecture.inwardNormal;
 		const thickness = architecture.wallThicknessMeters;
-		const thicknessPx = architectureBandPx(planView, thickness);
+		const thicknessPx = architectureBandPx(planView.pixelsPerMeter, thickness);
 		const symbol: OpeningSymbol = {
 			bandPx: thicknessPx,
 			span: primitive.points,
@@ -189,10 +190,7 @@
 		};
 
 		if (architecture.kind === 'window') {
-			const strokeCount = resolveWindowStrokeCount(
-				decisions.windowFrameCount ?? PLAN_PRESENTATION_DEFAULTS.windowFrameCount ?? 2,
-				thicknessPx
-			);
+			const strokeCount = resolveWindowStrokeCount(decisions.windowFrameCount ?? 2, thicknessPx);
 			const centerline = primitive.points.map((point) => worldToPlanScreen(planView, point));
 			symbol.windowStrokes = windowStrokeLayout(thicknessPx, strokeCount).offsetsPx.map((offset) =>
 				offsetScreenPolyline(centerline, offset)
@@ -218,6 +216,16 @@
 		return [screen[0] + (offsetPx?.[0] ?? 0), screen[1] + (offsetPx?.[1] ?? 0)];
 	}
 
+	/**
+	 * P23.13 S2 — passive Scene context ink (30% normal/near, 15% far, spec §5).
+	 * Only the *resting* Scene footprint is dimmed: active, hovered and selected
+	 * Scene entities keep full ink, because that ink is feedback and must not
+	 * fade with the context it sits on.
+	 */
+	function contextInkStyle(style: PlanStyleToken): string | undefined {
+		return style === 'scene-footprint' ? `opacity: ${presentation.sceneInk}` : undefined;
+	}
+
 	/** Screen-space points are already projected: no transform, no measure bucket. */
 	function screenPointsAttr(points: readonly LayoutVec2[]): string {
 		return points.map((point) => point.join(',')).join(' ');
@@ -228,11 +236,12 @@
 	{#each model.layers as layer (layer.order)}
 		{#each layer.primitives as primitive (primitive.key)}
 			{#if primitive.kind === 'polygon'}
-				<polygon class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)} />
+				<polygon class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)} style={contextInkStyle(primitive.style)} />
 			{:else if primitive.kind === 'polyline'}
 				{#if primitive.architecture?.kind === 'wall'}
-					{@const bandPx = architectureBandPx(planView, primitive.architecture.thicknessMeters)}
-					{@const inkAid = resolveWallInkAid(presentation.wallInkAid, bandPx)}
+					{@const decisions = presentation.decisionsFor(primitive)}
+					{@const bandPx = architectureBandPx(planView.pixelsPerMeter, primitive.architecture.thicknessMeters)}
+					{@const inkAid = resolveWallInkAid(decisions.wallInkAid, bandPx)}
 					{@const wallPoints = polylinePointsAttr(primitive.points, primitive.endOffsetPx)}
 					{#if inkAid !== 'dense'}
 						<polyline
@@ -251,7 +260,7 @@
 						<polyline class="wall-silhouette" points={wallPoints} />
 					{/if}
 				{:else if primitive.architecture?.kind === 'door' || primitive.architecture?.kind === 'window'}
-					{@const symbol = openingSymbol(primitive, presentation)}
+					{@const symbol = openingSymbol(primitive, presentation.decisionsFor(primitive))}
 					{#if symbol}
 						<polyline
 							class="opening-void"

@@ -394,6 +394,29 @@ export const PLAN_PRESENTATION_DEFAULTS: PlanPresentationDecisions = {
 };
 
 /**
+ * P23.13 S2 — how the adapter *asks* for resolved decisions, one primitive at a
+ * time. Salience owns the projected-size gates, their hysteresis and the
+ * gesture freeze behind this call; the adapter only paints what it is told and
+ * never resolves a gate itself.
+ */
+export type PlanPresentationSource = {
+	decisionsFor: (primitive: PlanPolylinePrimitive) => PlanPresentationDecisions;
+	/**
+	 * Passive Scene ink fraction for the current zoom regime (spec §5: 30%
+	 * normal/near, 15% far). Passive context only — active/selected/hovered Scene
+	 * entities keep full ink so selection feedback never dims with the context it
+	 * sits on. An unwired source paints at token strength.
+	 */
+	sceneInk: number;
+};
+
+/** No salience wired: the structural stubs in the grammar still apply. */
+export const PLAN_PRESENTATION_SOURCE_DEFAULT: PlanPresentationSource = {
+	decisionsFor: () => PLAN_PRESENTATION_DEFAULTS,
+	sceneInk: 1
+};
+
+/**
  * Transient interaction overlays produced editor-side by `plan-overlays.ts`
  * (step 5). World-space primitives only; the builder assigns them to fixed
  * layers and never reorders committed content.

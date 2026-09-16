@@ -158,10 +158,13 @@
 	--editor-orientation-edge-solid: #1e2c3a;
 	--editor-orientation-face-label-size: 8.5px;
 
-	/* ── DS §9 — plan surfaces (bright drafting paper on dark shell) ── */
-	--editor-plan-bg: #f5f3ee;
-	--editor-plan-grid-major: #d2cec5;
-	--editor-plan-grid-minor: #e4e0d9;
+	/* ── DS §9 + P23.13 §2 — plan surfaces (bright drafting paper on dark shell).
+	   A6 ratifies one cool paper across all seven themes: the warm `#f5f3ee` and
+	   its warm grid greys are replaced together, because paper and grid read as
+	   one surface. Token change only — no shell chrome is affected. ── */
+	--editor-plan-bg: #f5f7f8;
+	--editor-plan-grid-major: #ced6dd;
+	--editor-plan-grid-minor: #e4e9ed;
 	--editor-plan-wall: #625f59;
 	--editor-plan-wall-fill: #d5d1c8;
 	--editor-plan-object: #b7b2a8;

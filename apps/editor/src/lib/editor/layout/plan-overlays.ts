@@ -15,6 +15,10 @@ import { layoutArchitecturalPreset } from '$lib/layout/layout-wall-first-precisi
 import { isLayoutPresetTool, type LayoutPresetTool } from './layout-interaction';
 import type { LayoutArchitecturalPresetId, SnapResolution } from '@portfolio/layout-core';
 import type { PlanCurveControlCandidate } from './plan-hit';
+import {
+	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
+	PLAN_ROOM_LABELS_MIN_PX_PER_M
+} from './plan-salience';
 import type {
 	PlanHitIdentity,
 	PlanInteractionProjection,
@@ -158,9 +162,15 @@ export function snapMarkerRadiusPx(kind: string): number {
 
 /** P23.6 — legibility floors for persistent Room name labels. */
 export const ROOM_LABEL_MIN_AREA_M2 = 1;
-export const ROOM_LABEL_MIN_PX_PER_M = 6;
-/** P23.6 — Junction handles hide below this Plan scale (mirrors grid-minor culling). */
-export const JUNCTION_HANDLES_MIN_PX_PER_M = 6;
+/**
+ * P23.13 S2 — the two Plan scale floors are *re-exported* from the one gate
+ * table in `plan-salience.ts` rather than defined here, so the overlay and the
+ * salience policy can never drift into two different floors. Values, and the
+ * deliberate paint/hit coupling they carry, are unchanged.
+ */
+export const ROOM_LABEL_MIN_PX_PER_M = PLAN_ROOM_LABELS_MIN_PX_PER_M;
+/** Junction handles hide below this Plan scale (mirrors grid-minor culling). */
+export const JUNCTION_HANDLES_MIN_PX_PER_M = PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M;
 /**
  * P23.6 — label suppression radius in screen px. A Room-name candidate whose
  * anchor falls inside this radius of a higher-priority label/marker (or an

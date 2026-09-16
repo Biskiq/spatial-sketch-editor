@@ -123,14 +123,13 @@ function distance(a: LayoutVec2, b: LayoutVec2): number {
 
 describe('P23.13 S1 — canonical band projection', () => {
 	it('is the exact authored thickness times the scale, never a paint clamp', () => {
-		const view = viewAt(50);
-		expect(architectureBandPx(view, 0.2)).toBeCloseTo(10, 9);
-		expect(architectureBandPx(view, 0.05)).toBeCloseTo(2.5, 9);
+		expect(architectureBandPx(50, 0.2)).toBeCloseTo(10, 9);
+		expect(architectureBandPx(50, 0.05)).toBeCloseTo(2.5, 9);
 		// A thin or distant Wall is allowed to project below the readability mark:
 		// the projection is a measurement and is never widened into a lie.
-		expect(architectureBandPx(viewAt(8), 0.2)).toBeCloseTo(1.6, 9);
-		expect(architectureBandPx(viewAt(100), 0.35)).toBeCloseTo(35, 9);
-		expect(architectureBandPx(view, 0)).toBe(0);
+		expect(architectureBandPx(8, 0.2)).toBeCloseTo(1.6, 9);
+		expect(architectureBandPx(100, 0.35)).toBeCloseTo(35, 9);
+		expect(architectureBandPx(50, 0)).toBe(0);
 	});
 
 	it('resolves the ink aid from the decision, and structurally only as the stub', () => {
@@ -200,7 +199,7 @@ describe('P23.13 S1 — Door type cue (A2)', () => {
 	it('protrudes symmetrically past a thin band instead of being compressed', () => {
 		const door = openingFacts('door');
 		const view = viewAt(8);
-		const bandPx = architectureBandPx(view, door.wallThicknessMeters);
+		const bandPx = architectureBandPx(view.pixelsPerMeter, door.wallThicknessMeters);
 		expect(bandPx).toBeLessThan(DOOR_TYPE_CUE_LENGTH_PX);
 		expect(resolveWallInkAid(undefined, bandPx)).toBe('silhouette');
 		const [from, to] = doorTypeCueScreenPoints(view, door.centerPoint, door.centerTangent);
@@ -253,7 +252,7 @@ describe('P23.13 S1 — Door type cue (A2)', () => {
 		expect(resolveDoorCueShape('displaced', 200)).toBe('displaced');
 		expect(resolveDoorCueShape('full', 1)).toBe('full');
 
-		const bandPx = architectureBandPx(view, door.wallThicknessMeters);
+		const bandPx = architectureBandPx(view.pixelsPerMeter, door.wallThicknessMeters);
 		const [from, to] = doorTypeCueDisplacedScreenPoints(view, door.centerPoint, door.centerTangent, bandPx);
 		const cueLength = distance(from, to);
 		expect(cueLength).toBeCloseTo(DOOR_TYPE_CUE_DISPLACED_LENGTH_PX, 9);
@@ -276,8 +275,7 @@ describe('P23.13 S1 — Window strokes', () => {
 			{ pixelsPerMeter: 100, count: 2 as const }
 		];
 		for (const { pixelsPerMeter, count } of expected) {
-			const view = viewAt(pixelsPerMeter);
-			const thicknessPx = architectureBandPx(view, window.wallThicknessMeters);
+			const thicknessPx = architectureBandPx(pixelsPerMeter, window.wallThicknessMeters);
 			expect(resolveWindowStrokeCount(2, thicknessPx)).toBe(count);
 			const layout = windowStrokeLayout(thicknessPx, resolveWindowStrokeCount(2, thicknessPx));
 			expect(layout.offsetsPx).toHaveLength(count);
