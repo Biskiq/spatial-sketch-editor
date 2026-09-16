@@ -27,7 +27,14 @@ import type {
   LayoutWallRole,
   OrientedWallRef
 } from '$lib/layout/layout-wall-first-types';
-import { referenceFor } from '$lib/layout/layout-identity';
+// P23.12 D5 — identity is resolved by the shared display-identity layer, never
+// by this module asking the ledger directly. The index only carries the result.
+import {
+	junctionIdentity,
+	openingIdentity,
+	roomIdentity,
+	wallIdentity
+} from '../identity/layout-identity-view';
 import type { SceneDocument } from '$lib/content/scene';
 
 /**
@@ -283,6 +290,7 @@ export function buildHierarchySourceIndex(input: {
 	if ('formatVersion' in layout) {
 		const wallIdsInDocument = new Set(layout.walls.map((wall) => wall.id));
 		for (const wall of layout.walls) {
+			const identity = wallIdentity(layout, wall.id);
 			orderedWalls.push({
 				entity: wallEntityKey(wall.id),
 				wallId: wall.id,
@@ -290,8 +298,8 @@ export function buildHierarchySourceIndex(input: {
 				height: wall.height,
 				startJunctionId: wall.startJunctionId,
 				endJunctionId: wall.endJunctionId,
-				reference: referenceFor(layout, 'walls', wall.id) ?? null,
-				name: wall.name ?? null
+				reference: identity.reference,
+				name: identity.name
 			});
 		}
 		for (const junction of layout.junctions) {
@@ -299,25 +307,27 @@ export function buildHierarchySourceIndex(input: {
 				entity: junctionEntityKey(junction.id),
 				junctionId: junction.id,
 				point: [junction.point[0], junction.point[1]] as LayoutVec2,
-				reference: referenceFor(layout, 'junctions', junction.id) ?? null
+				reference: junctionIdentity(layout, junction.id).reference
 			});
 		}
 		for (const opening of layout.openings) {
+			const identity = openingIdentity(layout, opening.id);
 			orderedOpenings.push({
 				entity: openingEntityKey(opening.wallId, opening.id),
 				openingId: opening.id,
 				wallId: opening.wallId,
 				openingKind: opening.kind,
-				reference: referenceFor(layout, 'openings', opening.id) ?? null,
-				name: opening.name ?? null
+				reference: identity.reference,
+				name: identity.name
 			});
 		}
 		for (const room of layout.rooms) {
+			const identity = roomIdentity(layout, room.id);
 			orderedRooms.push({
 				entity: roomEntityKey(room.id),
 				roomId: room.id,
-				name: room.name,
-				reference: referenceFor(layout, 'rooms', room.id) ?? null,
+				name: identity.name ?? room.name,
+				reference: identity.reference,
 				boundary: room.boundary
 					.filter((ref) => wallIdsInDocument.has(ref.wallId))
 					.map((ref) => ({ wallId: ref.wallId, direction: ref.direction })),

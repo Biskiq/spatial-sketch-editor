@@ -24,6 +24,7 @@
 		type LayoutOpeningKind
 	} from '$lib/editor/layout/layout-opening-editing';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
+	import { roomIdentityText } from '$lib/editor/identity/layout-identity-view';
 	import type { EditorStore } from '$lib/editor/editor-store.svelte';
 	import type { EditorContextMenuStore } from '$lib/editor/context-menu/context-menu-state.svelte';
 	import {
@@ -104,7 +105,8 @@
 		}
 		const result = outcome.result;
 		if (result.success) {
-			store.setStatusMessage(`Created ${result.roomId}`);
+			// P23.12 D6 — creation copy names the Room by identity, never by raw ID.
+			store.setStatusMessage(`Created ${roomIdentityText(layoutPreview.project.layout, result.roomId)}`);
 		} else {
 			store.setStatusMessage(`Room draft rejected: ${result.message}`);
 		}

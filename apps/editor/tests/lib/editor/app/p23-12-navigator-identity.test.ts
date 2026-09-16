@@ -194,7 +194,9 @@ describe('P23.12 navigator — row identity', () => {
 		const unnamed = hierarchyOpeningRow(index, 'k', 'door');
 		expect(unnamed?.label).toMatch(/^O-/);
 		expect(unnamed?.reference).toBeUndefined();
-		expect(unnamed?.secondary).toBe('Door');
+		// P23.12 D8 — an Opening's context is **kind + host**, never a bare kind
+		// restatement; the host is named by its identity, not its raw ID.
+		expect(unnamed?.secondary).toMatch(/^Door · on W-/);
 		expect(updateWallFirstOpeningMetadata(state, 'door', { name: 'Main Entrance' }).success).toBe(true);
 		const index2 = indexOf(state);
 		const named = hierarchyOpeningRow(index2, 'k', 'door');
@@ -207,7 +209,31 @@ describe('P23.12 navigator — row identity', () => {
 		const index = indexOf(state);
 		const row = hierarchyJunctionRow(index, 'k', 'A');
 		expect(row?.label).toMatch(/^J-/);
-		expect(row?.secondary).toBe('2 walls');
+		// P23.12 D8 — the routine inline count is inventory, not disambiguation.
+		expect(row?.secondary).toBeUndefined();
+	});
+
+	it('renders a name that equals the reference exactly once (duplicate-collapse)', () => {
+		// A user may author the compact reference *as* the name; compact
+		// presentation then has one token, not the same string in both the label
+		// and the protected span. The shared layer owns that rule and the
+		// Navigator consumes it — this used to be possible duplicate identity text.
+		const state = makeState(squareDocument());
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'Party Wall' }).success).toBe(true);
+		const reference = hierarchyWallRow(indexOf(state), 'k', 'w1')!.reference!;
+		expect(reference).toMatch(/^W-/);
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: reference }).success).toBe(true);
+		const wall = hierarchyWallRow(indexOf(state), 'k', 'w1')!;
+		expect(wall.label).toBe(reference);
+		expect(wall.reference).toBeUndefined();
+
+		// An unnamed Opening is reference-led, so its token is the label.
+		const openingRef = hierarchyOpeningRow(indexOf(state), 'k', 'door')!.label;
+		expect(openingRef).toMatch(/^O-/);
+		expect(updateWallFirstOpeningMetadata(state, 'door', { name: openingRef }).success).toBe(true);
+		const opening = hierarchyOpeningRow(indexOf(state), 'k', 'door')!;
+		expect(opening.label).toBe(openingRef);
+		expect(opening.reference).toBeUndefined();
 	});
 
 	it('a Room row keeps the authored name primary with its reference secondary', () => {
@@ -453,7 +479,24 @@ describe('P23.12 navigator — source-level constraints', () => {
 
 	it('the identity composition reads from the source index, not a hard-wired meta slot', () => {
 		const sourceIndex = source('editor/hierarchy/hierarchy-source-index.ts');
-		expect(sourceIndex).toContain('referenceFor');
+		// P23.12 D5 — the index resolves through the SHARED display-identity layer;
+		// it never queries the ledger itself, and the composition lives in the
+		// projection (which is why no meta slot is hard-wired here).
+		expect(sourceIndex).toContain("from '../identity/layout-identity-view'");
+		expect(sourceIndex).toContain('wallIdentity(layout, wall.id)');
+		expect(sourceIndex).toContain('junctionIdentity(layout, junction.id)');
+		expect(sourceIndex).toContain('openingIdentity(layout, opening.id)');
+		expect(sourceIndex).toContain('roomIdentity(layout, room.id)');
+		expect(sourceIndex).not.toContain('referenceFor');
+	});
+
+	it('composes label and secondary through the shared identity helpers', () => {
+		const projection = source('editor/hierarchy/hierarchy-page-projection.ts');
+		// D5 — one tier order (name → reference → fallback) and one
+		// duplicate-collapse rule, both owned by the shared layer.
+		expect(projection).toContain('identityPrimaryLabel');
+		expect(projection).toContain('identitySecondaryReference');
+		expect(projection).toContain('identityCollapsesToSingleLabel');
 	});
 });
 

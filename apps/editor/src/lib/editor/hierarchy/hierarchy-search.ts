@@ -39,6 +39,7 @@ import {
 	hierarchyRoomName,
 	hierarchyRoomRow,
 	hierarchySceneEntityRow,
+	hierarchyWallIdentityLabel,
 	hierarchyWallRow,
 	type HierarchyDestination,
 	type HierarchyMatchField,
@@ -573,7 +574,8 @@ export function buildHierarchySearchProjection(
 			pushUniqueRow(
 				directRows,
 				hierarchyOpeningRow(index, `search:openings:opening:${opening.openingId}`, opening.openingId, {
-					secondary: `on ${formatPlacementLabel(host?.wallId ?? opening.wallId)}`,
+					// The host's *identity*, not its raw canonical ID.
+					secondary: `on ${hierarchyWallIdentityLabel(index, opening.wallId)}`,
 					actions: openingActions(index, opening.openingId)
 				})
 			);

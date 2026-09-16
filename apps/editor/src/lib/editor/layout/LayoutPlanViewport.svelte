@@ -123,7 +123,13 @@
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
-import { referenceFor } from '$lib/layout/layout-identity';
+// P23.12 D5 — the Plan's selection feedback asks the shared display-identity
+// layer how an entity reads; it never queries the ledger itself.
+import {
+	identityPrimaryLabel,
+	layoutSelectionLabel,
+	openingIdentity
+} from '../identity/layout-identity-view';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -1149,13 +1155,32 @@ const interactionProjection = $derived(
 			(opening) => opening.id === selectedOpeningSelection.openingId
 		);
 	});
-	// P23.12 — the selection label's identity tier: the compact reference of
-	// the selected Opening (wall-first documents only), if the ledger has one.
-	const selectedOpeningReference = $derived.by(() => {
-		const layout = preview.project.layout;
-		if (!selectedOpeningSelection || !('floor' in layout && 'walls' in layout)) return null;
-		return referenceFor(layout as unknown as LayoutDocumentWallFirst, 'openings', selectedOpeningSelection.openingId) ?? null;
-	});
+	// P23.12 — the selection label's identity tier, resolved by the shared
+	// display-identity layer (same vocabulary as the Navigator and Inspector).
+	const selectedOpeningIdentity = $derived.by(() =>
+		selectedOpeningSelection
+			? openingIdentity(preview.project.layout, selectedOpeningSelection.openingId)
+			: null
+	);
+	/**
+	 * The D2 tier order for the canvas selection label: authored name first, else
+	 * the compact reference, else the kind. A named Opening used to be labelled by
+	 * its reference or kind alone, which dropped the authored name entirely.
+	 */
+	const selectedOpeningLabel = $derived(
+		selectedOpening && selectedOpeningIdentity
+			? identityPrimaryLabel(selectedOpeningIdentity, selectedOpening.kind)
+			: (selectedOpening?.kind ?? null)
+	);
+	/**
+	 * P23.12 D5/S7 — `.plan-meta` selection feedback, composed by the shared
+	 * display-identity layer. It never prints the internal `selection.kind` token
+	 * (`physicalWall`, `wallOpening`, `interiorAnchor`), which no other product
+	 * surface exposes.
+	 */
+	const planSelectionLabel = $derived(
+		layoutSelectionLabel(preview.project.layout, interaction.selection)
+	);
 	const rotationHandleHovered = $derived.by(() => {
 		if (interaction.tool !== 'select' || !rotationHoverScreen) return false;
 		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
@@ -3527,7 +3552,7 @@ const interactionProjection = $derived(
 		{#if selectedOpening}
 			<!-- P23.12 — selected-target feedback consumes the identity contract:
 				name/reference when the ledger has one, kind + metrics always. -->
-			<text class="selection-label" x="16" y="24">{selectedOpeningReference ?? selectedOpening.kind} · {selectedOpening.width.toFixed(2)} m × {selectedOpening.height.toFixed(2)} m</text>
+			<text class="selection-label" x="16" y="24">{selectedOpeningLabel} · {selectedOpening.width.toFixed(2)} m × {selectedOpening.height.toFixed(2)} m</text>
 		{/if}
 
 	</svg>
@@ -3546,7 +3571,7 @@ const interactionProjection = $derived(
 		<span>{preview.model.rooms.length} rooms</span>
 		<span>{preview.model.objects.length} objects</span>
 		<span>{preview.issues.length} geometry warnings</span>
-		{#if interaction.planViewMode === 'staging' && selectedPlacementIds.length > 0 && interaction.arrangeOwner !== 'layout-object'}<span>Selected: {selectedPlacementIds.length} scene item{selectedPlacementIds.length === 1 ? '' : 's'}</span>{:else if interaction.selection.kind !== 'none'}<span>Selected: {interaction.selection.kind}</span>{/if}
+		{#if interaction.planViewMode === 'staging' && selectedPlacementIds.length > 0 && interaction.arrangeOwner !== 'layout-object'}<span>Selected: {selectedPlacementIds.length} scene item{selectedPlacementIds.length === 1 ? '' : 's'}</span>{:else if planSelectionLabel}<span>Selected: {planSelectionLabel}</span>{/if}
 		{#if preview.lastMutationMessage}<span class="warning">{preview.lastMutationMessage}</span>{/if}
 	</div>
 </div>

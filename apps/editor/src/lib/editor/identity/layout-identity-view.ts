@@ -24,6 +24,9 @@ import {
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import type { LayoutDocument } from '$lib/layout/layout-types';
+// The D5 third tier is the raw-ID *display* label (`W1`), not the bare ID.
+import { formatPlacementLabel } from '../editor-outliner';
+import type { LayoutSelection } from '../layout/layout-interaction';
 
 /** The identity presentation for one entity, resolved from the document. */
 export type IdentityView = {
@@ -115,6 +118,43 @@ export function identityPrimaryLabel(
 }
 
 /**
+ * The D2 tier order as one call, for copy that is read aloud to the user:
+ * authored name → compact reference → raw-ID display label.
+ *
+ * Every surface that states an entity inside a sentence goes through these, so
+ * the fallback tier cannot drift between the Inspector, the Plan and the
+ * creation messages. A legacy document has no ledger and resolves to the
+ * display label, never to the bare canonical ID.
+ */
+export function wallIdentityText(
+	layout: LayoutDocument | LayoutDocumentWallFirst,
+	wallId: string
+): string {
+	return identityPrimaryLabel(wallIdentity(layout, wallId), formatPlacementLabel(wallId));
+}
+
+export function openingIdentityText(
+	layout: LayoutDocument | LayoutDocumentWallFirst,
+	openingId: string
+): string {
+	return identityPrimaryLabel(openingIdentity(layout, openingId), formatPlacementLabel(openingId));
+}
+
+export function roomIdentityText(
+	layout: LayoutDocument | LayoutDocumentWallFirst,
+	roomId: string
+): string {
+	return identityPrimaryLabel(roomIdentity(layout, roomId), formatPlacementLabel(roomId));
+}
+
+export function junctionIdentityText(
+	layout: LayoutDocument | LayoutDocumentWallFirst,
+	junctionId: string
+): string {
+	return identityPrimaryLabel(junctionIdentity(layout, junctionId), formatPlacementLabel(junctionId));
+}
+
+/**
  * The secondary identity span: the compact reference beside a primary name.
  * `null` when there is nothing subordinate to show (unnamed entity — the
  * reference is already the primary label — or no reference at all).
@@ -132,4 +172,58 @@ export function identitySecondaryReference(
  */
 export function identityCollapsesToSingleLabel(identity: IdentityView): boolean {
 	return identity.name !== null && identity.reference !== null && identity.name === identity.reference;
+}
+
+/**
+ * P23.12 D5/S7 — how the active Layout selection reads to a user: the human
+ * kind plus the entity's identity (authored name → compact reference → raw-ID
+ * display label).
+ *
+ * It never prints the internal `selection.kind` token — `physicalWall`,
+ * `wallOpening`, `interiorAnchor` — which no other product surface exposes, and
+ * it is the one place the Plan meta strip and the selected-target feedback
+ * derive from, so the two cannot drift apart.
+ */
+export function layoutSelectionLabel(
+	layout: LayoutDocument | LayoutDocumentWallFirst,
+	selection: LayoutSelection
+): string | null {
+	switch (selection.kind) {
+		case 'none':
+			return null;
+		case 'room':
+			return `Room ${identityPrimaryLabel(
+				roomIdentity(layout, selection.roomId),
+				formatPlacementLabel(selection.roomId)
+			)}`;
+		case 'wall':
+			// Legacy room-owned segment: the reference lookup simply misses and the
+			// raw-ID display label carries the identity instead.
+			return `Wall ${identityPrimaryLabel(
+				wallIdentity(layout, selection.segmentId),
+				formatPlacementLabel(selection.segmentId)
+			)}`;
+		case 'physicalWall':
+			return `Wall ${identityPrimaryLabel(
+				wallIdentity(layout, selection.wallId),
+				formatPlacementLabel(selection.wallId)
+			)}`;
+		case 'junction':
+			return `Junction ${identityPrimaryLabel(
+				junctionIdentity(layout, selection.junctionId),
+				formatPlacementLabel(selection.junctionId)
+			)}`;
+		case 'opening':
+		case 'wallOpening':
+			return `Opening ${identityPrimaryLabel(
+				openingIdentity(layout, selection.openingId),
+				formatPlacementLabel(selection.openingId)
+			)}`;
+		case 'interiorAnchor':
+			// Legacy room-owned curve anchor: no ledger identity of its own.
+			return 'Wall bend point';
+		case 'object':
+			// Layout objects are outside the `R/W/O/J` family: no reference exists.
+			return 'Layout object';
+	}
 }

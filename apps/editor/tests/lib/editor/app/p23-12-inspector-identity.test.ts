@@ -20,7 +20,13 @@ import { describe, expect, it } from 'vitest';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { referenceFor } from '@portfolio/layout-core';
+import { referenceFor, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+
+import { formatPlacementLabel } from '$lib/editor/editor-outliner';
+import {
+	identityPrimaryLabel,
+	wallIdentity
+} from '$lib/editor/identity/layout-identity-view';
 
 import {
 	createEmptyLayoutPreviewState,
@@ -186,6 +192,82 @@ describe('P23.12 inspector — one header pattern', () => {
 		expect(text).toContain('<strong>{selectedLayoutRoom.name}</strong>');
 		expect(text).toContain('<strong>{store.selectedCluster.name}</strong>');
 		expect(text).toContain('<strong>{selectedLayoutOpening.kind} opening</strong>');
+	});
+});
+
+describe('P23.12 inspector — user copy carries identity, never a canonical ID', () => {
+	const INSPECTOR = resolve(
+		dirname(fileURLToPath(import.meta.url)),
+		'../../../../src/lib/editor/EditorInspector.svelte'
+	);
+	const source = (): string => readFileSync(INSPECTOR, 'utf8');
+
+	it('wall and room status copy resolves through the identity helpers', () => {
+		const text = source();
+		expect(text).toContain(
+			"`Wall ${wallIdentityText(layoutDocument, wall.id)} ${role === 'boundary' ? 'defines' : 'no longer defines'} a room boundary`"
+		);
+		expect(text).toContain('`Added a bend point to Wall ${wallIdentityText(layoutDocument, wall.id)}`');
+		expect(text).toContain('`Wall ${wallIdentityText(layoutDocument, wall.id)} has no bend points left`');
+		expect(text).toContain('`Updated Room ${roomIdentityText(layoutDocument, room.id)} ${metric}`');
+		// The raw-ID forms are gone: the composers are the only route into copy.
+		expect(text).not.toContain('`Wall ${wall.id}');
+		expect(text).not.toContain('`Updated Room ${room.id}');
+	});
+
+	it('the tier order is not re-implemented here: the shared composers are the authority', () => {
+		const text = source();
+		// D5 — no surface-local copy helper. If this file defined its own
+		// `wallIdentityText`/`roomIdentityText` the fallback tier could drift from
+		// the Navigator's and the Plan's.
+		expect(text).not.toMatch(/function (wall|junction|room|opening)IdentityText/);
+		expect(text).toContain('\twallIdentityText\n} from \'./identity/layout-identity-view\'');
+	});
+
+	it('Align option labels state the display label, not the raw content ID', () => {
+		const text = source();
+		// The picked `id` stays the raw key the planner consumes; only the option
+		// text is presentation (D6 — `{kind} · {raw id}` was the leak).
+		expect(text).toContain('label: `${object.kind} · ${formatPlacementLabel(object.id)}`');
+		expect(text).toContain('label: `Room bounds · ${formatPlacementLabel(selectedLayoutObject.roomId)}`');
+		expect(text).toContain('label: `Wall · ${formatPlacementLabel(segment.id)}`');
+	});
+
+	it('bend-point copy uses the chain ordinal, never the canonical knot ID', () => {
+		const text = source();
+		// `Bend point ${knotId}` printed `w1:knot:2` — the knot ID embeds the raw
+		// Wall ID, so it is chain data, not copy.
+		expect(text).not.toContain('${knotId}');
+		expect(text).not.toContain('{anchor.id} X (m)');
+		expect(text).toContain('{bendPointLabel(anchor.id)} X (m)');
+		expect(text).toContain('`Moved ${bendPointLabel(knotId).toLowerCase()}`');
+		expect(text).toContain('`Removed ${bendPointLabel(knotId).toLowerCase()}`');
+	});
+
+	it('a geometry warning names its target by identity and keeps the raw ID out of copy', () => {
+		const text = source();
+		expect(text).toContain('{issue.targetId ? diagnosticTargetIdentityText(issue.targetId) : issue.path}');
+		// The raw ID survives as the diagnostic tooltip (D6: diagnosis belongs in
+		// Technical details / title attributes, never in the sentence).
+		expect(text).toContain('title={issue.targetId ?? undefined}');
+	});
+
+	it('the copy tier prints the ledger reference or the name, and never the bare ID', () => {
+		const state = makeState();
+		const layout = layoutPreviewDocument(state) as unknown as LayoutDocumentWallFirst;
+		// Tier 2: the ledger's compact reference, not `w1`.
+		const reference = identityPrimaryLabel(wallIdentity(layout, 'w1'), 'w1');
+		expect(reference).toMatch(/^W-/);
+		expect(reference).not.toBe('w1');
+		// Tier 1: an authored name leads.
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North' }).success).toBe(true);
+		const named = layoutPreviewDocument(state) as unknown as LayoutDocumentWallFirst;
+		expect(identityPrimaryLabel(wallIdentity(named, 'w1'), 'w1')).toBe('North');
+		// Tier 3: with no ledger entry the raw-ID *display* label is used, not the
+		// bare canonical ID — which is the fallback the shared composers pass.
+		expect(identityPrimaryLabel(wallIdentity(named, 'unledgered'), formatPlacementLabel('unledgered'))).toBe(
+			'Unledgered'
+		);
 	});
 });
 
