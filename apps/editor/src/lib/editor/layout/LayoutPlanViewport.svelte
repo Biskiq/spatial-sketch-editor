@@ -98,7 +98,8 @@
 		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
 		createWallFirstOpening,
-		type LayoutPreviewSnapshot
+		type LayoutPreviewSnapshot,
+		type LayoutRoomEditResult
 	} from './layout-preview-state.svelte';
 	import {
 		snapSegmentOffset,
@@ -321,6 +322,15 @@ import {
 	let lastPanScreen = $state<LayoutVec2 | null>(null);
 	let interiorAnchorPointerId = $state<number | null>(null);
 	let draggedInteriorAnchor = $state<{ roomId: string; segmentId: string; anchorId: string } | null>(null);
+	/**
+	 * P23.2 legacy interior-anchor drag — the frozen pointer-down origin and the
+	 * shared drag threshold, read exactly the way the direct architecture edits
+	 * read them. An interior-anchor *hit* has a radius, and the release resolver
+	 * snaps (grid included), so without this gate a plain click beside an anchor
+	 * would move it by the hit radius and write history.
+	 */
+	let interiorAnchorStartScreen = $state<LayoutVec2 | null>(null);
+	let interiorAnchorMoved = $state(false);
 	let pendingWallBend = $state<{
 		pointerId: number;
 		roomId: string;
@@ -814,18 +824,38 @@ import {
 	/**
 	 * P23.10 — a capture lost to the browser (context menu, window blur, element
 	 * removal, OS gesture) still ends the gesture: restore the canonical baseline
-	 * and cancel the open Layout transaction exactly once. Our own release in
-	 * `finishArchitectureEditGesture` runs after the gesture state is cleared, so
-	 * this is a no-op on every normal exit.
+	 * and cancel the open Layout transaction exactly once. Our own releases
+	 * (`finishArchitectureEditGesture`, and the legacy interior-anchor
+	 * `onPointerUp` branch) run with the gesture state already cleared, so this is
+	 * a no-op on every normal exit.
 	 */
 	function onLostPointerCapture(event: PointerEvent): void {
-		if (interaction.architectureEdit?.pointerId !== event.pointerId) return;
-		cancelArchitectureEditGesture();
+		if (interaction.architectureEdit?.pointerId === event.pointerId) {
+			cancelArchitectureEditGesture();
+			return;
+		}
+		// The legacy interior-anchor drag owns its pointer the same way: a capture
+		// lost to the browser ends the gesture on the exact pointer-down baseline
+		// with no history. `onPointerUp` clears the drag state before it releases
+		// the capture, so this is a no-op on every normal exit.
+		if (interiorAnchorPointerId === event.pointerId) cancelActiveLayoutDrag();
 	}
 
 	/** A window blur is not required to synthesize pointercancel in every browser. */
 	function onWindowBlur(): void {
 		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
+		// The legacy interior-anchor drag owns an open Layout transaction the same
+		// way, so a blur closes it through the same baseline-restore/cancel path
+		// instead of leaving the gesture live with the transaction open.
+		const interiorAnchorPointerIdToRelease = interiorAnchorPointerId;
+		if (interiorAnchorPointerIdToRelease !== null) {
+			cancelActiveLayoutDrag();
+			if (
+				svgElement?.hasPointerCapture(interiorAnchorPointerIdToRelease)
+			) {
+				svgElement.releasePointerCapture(interiorAnchorPointerIdToRelease);
+			}
+		}
 	}
 
 	let previousPlanViewMode = $state<PlanViewMode | null>(null);
@@ -1380,6 +1410,8 @@ const interactionProjection = $derived(
 		lastPanScreen = null;
 		interiorAnchorPointerId = null;
 		draggedInteriorAnchor = null;
+		interiorAnchorStartScreen = null;
+		interiorAnchorMoved = false;
 		pendingWallBend = null;
 		openingDrag = null;
 		dragSnapshot = null;
@@ -1818,16 +1850,50 @@ const interactionProjection = $derived(
 		updateLayoutPrimitiveDraft(interaction, point, room?.roomId);
 	}
 
-	/** P23.2 — the moving interior anchor's current world point (self-snap exclusion). */
-	function movingInteriorAnchorPoint(): LayoutVec2 | null {
-		const dragged = draggedInteriorAnchor;
-		if (!dragged) return null;
-		const room = findLayoutRoom(rooms, dragged.roomId);
-		const segment = room?.boundary.segments.find((candidate) => candidate.id === dragged.segmentId);
+	/** P23.2 — a moving interior anchor's current world point (self-snap exclusion). */
+	function movingInteriorAnchorPoint(drag: {
+		roomId: string;
+		segmentId: string;
+		anchorId: string;
+	}): LayoutVec2 | null {
+		const room = findLayoutRoom(rooms, drag.roomId);
+		const segment = room?.boundary.segments.find((candidate) => candidate.id === drag.segmentId);
 		if (!segment || segment.kind !== 'auto-bezier') return null;
 		return (
-			segment.interiorAnchors.find((candidate) => candidate.id === dragged.anchorId)?.point ?? null
+			segment.interiorAnchors.find((candidate) => candidate.id === drag.anchorId)?.point ?? null
 		);
+	}
+
+	/**
+	 * P23.2 — the ONE legacy interior-anchor drag resolver.
+	 *
+	 * `pointermove` previews through it and `pointerup` re-runs it with the
+	 * RELEASE coordinate, so the committed candidate is always the output of the
+	 * same snap + `updateLayoutWallInteriorAnchor()` path that produced the
+	 * preview — never a second planner and never a re-implementation. The moving
+	 * anchor excludes its own room-qualified segment (spans + endpoints) and its
+	 * own current point so it cannot self-snap; other walls and junctions stay
+	 * valid semantic targets.
+	 *
+	 * Legacy-only by construction: the target can exist only while the compiler
+	 * emits `interior-anchor` query points, which it does solely for an
+	 * `auto-bezier` room-boundary segment, and the mutation itself refuses a
+	 * wall-first document (`wallFirstLegacyEditMessage()`). Canonical Walls
+	 * compile to `line`/`cubic-chain` segments, so no canonical curved Wall can
+	 * reach this gesture.
+	 */
+	function planInteriorAnchorDrag(
+		drag: { roomId: string; segmentId: string; anchorId: string },
+		point: LayoutVec2
+	): LayoutRoomEditResult {
+		const anchorPoint = movingInteriorAnchorPoint(drag);
+		const next = applyLayoutSnap(point, {
+			// Typed, room-qualified wall ownership: moving this room's
+			// segment never suppresses another room's same-named wall.
+			excludeOwners: new Set([wallOwnerKey(preview.geometry, drag.roomId, drag.segmentId)]),
+			...(anchorPoint ? { excludePoints: [anchorPoint] } : {})
+		});
+		return updateLayoutWallInteriorAnchor(preview, drag.roomId, drag.segmentId, drag.anchorId, next);
 	}
 
 	function beginInteriorAnchorDrag(
@@ -1841,12 +1907,19 @@ const interactionProjection = $derived(
 		selectLayoutInteriorAnchor(interaction, roomId, segmentId, anchorId);
 		interiorAnchorPointerId = event.pointerId;
 		draggedInteriorAnchor = { roomId, segmentId, anchorId };
+		// The press only *acquires* the anchor (the hit has a radius): the
+		// pointer-down screen origin is frozen here, and below the shared drag
+		// threshold nothing is proposed.
+		interiorAnchorStartScreen = screenPoint(event);
+		interiorAnchorMoved = false;
 		svgElement.setPointerCapture(event.pointerId);
 	}
 
 	function clearActiveLayoutDrag() {
 		interiorAnchorPointerId = null;
 		draggedInteriorAnchor = null;
+		interiorAnchorStartScreen = null;
+		interiorAnchorMoved = false;
 		pendingWallBend = null;
 		openingDrag = null;
 		cancelLayoutWallOpeningDrag(interaction);
@@ -1857,6 +1930,7 @@ const interactionProjection = $derived(
 	}
 
 	function cancelActiveLayoutDrag() {
+		clearLayoutSnapFeedback();
 		if (dragSnapshot) restoreLayoutPreviewSnapshot(preview, dragSnapshot);
 		onLayoutTransactionCancel();
 		clearActiveLayoutDrag();
@@ -2585,27 +2659,16 @@ const interactionProjection = $derived(
 		}
 		if (interiorAnchorPointerId === event.pointerId && draggedInteriorAnchor) {
 			const point = worldPoint(event);
-			if (!point) return;
-			// P23.2 — the moving anchor snaps like any drag path: its own
-			// segment (spans + endpoints) and its own current point are
-			// excluded so it cannot self-snap; other walls/junctions stay
-			// valid semantic targets.
-			const anchorPoint = movingInteriorAnchorPoint();
-			const next = applyLayoutSnap(point, {
-				// Typed, room-qualified wall ownership: moving this room's
-				// segment never suppresses another room's same-named wall.
-				excludeOwners: new Set([
-					wallOwnerKey(preview.geometry, draggedInteriorAnchor.roomId, draggedInteriorAnchor.segmentId)
-				]),
-				...(anchorPoint ? { excludePoints: [anchorPoint] } : {})
-			});
-			updateLayoutWallInteriorAnchor(
-				preview,
-				draggedInteriorAnchor.roomId,
-				draggedInteriorAnchor.segmentId,
-				draggedInteriorAnchor.anchorId,
-				next
-			);
+			const screen = screenPoint(event);
+			if (!point || !screen) return;
+			// Below the shared drag threshold the press is still a plain click: the
+			// anchor must not drift by its own hit radius, so nothing is proposed.
+			if (!interiorAnchorMoved) {
+				if (!shouldBeginWallBend(interiorAnchorStartScreen ?? screen, screen)) return;
+				interiorAnchorMoved = true;
+			}
+			// P23.2 — preview and release share one resolver.
+			planInteriorAnchorDrag(draggedInteriorAnchor, point);
 			return;
 		}
 		if (interaction.architectureEdit && interaction.architectureEdit.pointerId === event.pointerId) {
@@ -2810,12 +2873,60 @@ const interactionProjection = $derived(
 			return;
 		}
 		if (interiorAnchorPointerId === event.pointerId) {
+			const drag = draggedInteriorAnchor;
+			const snapshot = dragSnapshot;
+			const startScreen = interiorAnchorStartScreen;
+			const releaseScreen = screenPoint(event);
+			// The one click-vs-drag gate for this gesture, on the same shared drag
+			// threshold the direct architecture edits use: a gesture counts as a
+			// drag when a `pointermove` already crossed the threshold, or when the
+			// release displacement from the pointer-down origin does. Without it
+			// every release was a drag, so a click 3 px beside an anchor committed
+			// a move of 3 px (or snapped an off-grid anchor onto the grid fallback).
+			const moved =
+				interiorAnchorMoved ||
+				(startScreen !== null &&
+					releaseScreen !== null &&
+					shouldBeginWallBend(startScreen, releaseScreen));
+			// The gesture is cleared BEFORE the capture is released, so the
+			// `lostpointercapture` that follows our own release cannot re-enter
+			// the cancel path (the rule the direct architecture edits use too).
 			interiorAnchorPointerId = null;
 			draggedInteriorAnchor = null;
+			interiorAnchorStartScreen = null;
+			interiorAnchorMoved = false;
 			dragSnapshot = null;
-			onLayoutTransactionCommit();
 			suppressNextClick = true;
 			svgElement?.releasePointerCapture(event.pointerId);
+			// A click is not a drag: the pointer-down baseline is restored and the
+			// open transaction cancelled with zero history, exactly like a no-op
+			// architecture-edit release. The selection made on press stays.
+			if (!moved) {
+				onLayoutTransactionCancel();
+				if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+				return;
+			}
+			// The RELEASE coordinate is authoritative: re-run the drag resolver
+			// one final time, so a gesture whose last `pointermove` landed
+			// somewhere else can never commit that stale candidate, and a release
+			// the legacy planner rejects restores the pointer-down baseline
+			// instead of committing it. `updateLayoutWallInteriorAnchor()` is the
+			// only writer either way.
+			const point = drag ? worldPoint(event) : null;
+			const applied = drag && point ? planInteriorAnchorDrag(drag, point) : null;
+			clearLayoutSnapFeedback();
+			if (applied?.success) {
+				const changed = onLayoutTransactionCommit();
+				if (!changed && snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+				return;
+			}
+			// Rejected (or unresolvable) release: the exact baseline is restored
+			// and zero history is written. Cancel and the snapshot restore both
+			// replace `statusMessage`, so the reason is re-applied after them.
+			onLayoutTransactionCancel();
+			if (snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);
+			if (applied && !applied.success) preview.statusMessage = applied.message;
+			else if (drag) preview.statusMessage = 'Could not resolve the release position';
 			return;
 		}
 		if (interaction.architectureEdit?.pointerId === event.pointerId) {
