@@ -1,4 +1,5 @@
 import type { LayoutVec2 } from '$lib/layout/layout-types';
+import type { PlanControlAuthority } from '$lib/layout/plan-control-grammar';
 import type { CompiledLayoutQueryGeometry, CompiledQuerySpan } from '$lib/layout/layout-geometry-types';
 import { findPolygonContaining, projectPointToSpans } from '$lib/layout/layout-geometry-queries';
 
@@ -321,6 +322,17 @@ function nearestWallHit(
  * must not outrank its Wall, so callers pass false and the physical Wall
  * wins (default true preserves the full authority). `options.curveControls`
  * are the transient controls of the selected curved Wall (P23.11).
+ * `options.controlAuthority` is the verdict of the P23.13 S4 owner-aware
+ * acquisition pre-pass (§6). It names a control by canonical identity; this
+ * resolver still builds the record, so acquisition changes *which* target wins
+ * and never *what* a target means. With no verdict the class fallback below is
+ * untouched, so an uncontested pointer behaves exactly as before.
+ *
+ * The verdict reorders exactly two things, both required by §6:
+ * - a curve control whose owner is the selected Wall outranks a co-located
+ *   Junction/endpoint ("a curve point owned by the selected Wall beats an
+ *   unrelated co-located Opening or Junction"), and
+ * - a Junction verdict keeps the default order, i.e. the endpoint still wins.
  */
 export function resolvePlanHit(
 	queries: CompiledLayoutQueryGeometry,
@@ -330,12 +342,35 @@ export function resolvePlanHit(
 		allowedRoomIds?: ReadonlySet<string>;
 		includeEndpoints?: boolean;
 		curveControls?: readonly PlanCurveControlCandidate[];
+		controlAuthority?: PlanControlAuthority | null;
 	}
 ): PlanHitResult {
+	const authority = options?.controlAuthority ?? null;
+	if (authority?.kind === 'curve-control') {
+		// Resolve the *named* control rather than the nearest one: the tier engine
+		// already applied the 24/44 px acquisition radius that the tiny control
+		// hit tolerance does not cover, so re-measuring here would undo it.
+		const owned = (options?.curveControls ?? []).find(
+			(control) => control.wallId === authority.ownerId && control.anchorId === authority.id
+		);
+		if (owned) {
+			return {
+				kind: 'wallCurveControl',
+				wallId: owned.wallId,
+				anchorId: owned.anchorId,
+				point: owned.point
+			};
+		}
+	}
 	const vertex = nearestPointHit(queries, point, tolerance, 'vertex');
 	if (vertex) return vertex;
+	// §6 — a control the pointer actually owns suppresses the co-located
+	// Junction. The endpoint tier is the *fallback's* first choice, not an
+	// authority over owner intent, so it stands down when the verdict names a
+	// different control and the record is produced by the tier below.
+	const endpointTierAvailable = authority === null || authority.kind === 'junction';
 	const endpoint =
-		options?.includeEndpoints === false
+		options?.includeEndpoints === false || !endpointTierAvailable
 			? null
 			: nearestCanonicalEndpointHit(queries, point, tolerance);
 	if (endpoint) return endpoint;

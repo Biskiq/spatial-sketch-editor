@@ -15,6 +15,7 @@ import { layoutArchitecturalPreset } from '$lib/layout/layout-wall-first-precisi
 import { isLayoutPresetTool, type LayoutPresetTool } from './layout-interaction';
 import type { LayoutArchitecturalPresetId, SnapResolution } from '@portfolio/layout-core';
 import type { PlanCurveControlCandidate } from './plan-hit';
+import { PLAN_CONTROL_MARKS, type PlanFocusGeometry } from './plan-acquisition';
 import {
 	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
 	PLAN_ROOM_LABELS_MIN_PX_PER_M
@@ -59,6 +60,24 @@ export { interiorLabelPoint } from './plan-room-labels';
  */
 
 const SNAP_MARKER_RADIUS_PX = 4;
+/**
+ * P23.13 S4 / §6 — the Opening slide grip: two bars perpendicular to the host,
+ * 9 px long, centred 4 px either side of the symbol center. Screen-constant
+ * marks, so they never scale with zoom or Wall thickness.
+ */
+const OPENING_SLIDE_GRIP_HALF_LENGTH_PX = 4.5;
+const OPENING_SLIDE_GRIP_OFFSET_PX = 4;
+/**
+ * P23.13 S4 / §6 focus ring geometry. `CLEARANCE_FACTOR` is just above √2, so the
+ * innermost ring clears the circumscribed corner of a square/diamond mark as
+ * well as the edge of a circle; `GAP` is the paper gap that makes the two rings
+ * read as two instead of one thick ring.
+ */
+const FOCUS_RING_CLEARANCE_FACTOR = 1.45;
+const FOCUS_RING_OFFSET_PX = 1;
+const FOCUS_RING_GAP_PX = 2.5;
+/** Octagonal stop mark diameter of a refused proposal (spec §6). */
+const REFUSAL_STOP_RADIUS_PX = 7;
 const ROTATION_HANDLE_OFFSET_PX = 28;
 const ROTATION_FEEDBACK_OFFSET_PX = 40;
 const DIMENSION_LABEL_OFFSET_PX = 5;
@@ -111,6 +130,21 @@ export type PlanWallFirstContext = {
 	 * the document, the compile result and history are never written.
 	 */
 	roomLabels?: PlanRoomLabelContext;
+	/**
+	 * P23.13 S4 / §6 — the focused Plan control and its owner's control
+	 * geometry. Focus is presentation/routing state only; it never touches
+	 * selection, geometry or history. `geometry` is resolved by
+	 * `plan-acquisition.planFocusGeometry` from canonical compiled samples, so a
+	 * curve keeps its curve and the overlay never invents a centerline.
+	 */
+	focus?: {
+		/** World center of the focused control's visible mark. */
+		point: LayoutVec2;
+		/** Mark radius in CSS px (the ring sits outside it). */
+		radiusPx: number;
+		/** Owner control net (1 px broken polygon) + true reference centerline. */
+		geometry: PlanFocusGeometry | null;
+	} | null;
 	/** Resolved run-start Junction point for the closure cue (`null` when none). */
 	runStartPoint: LayoutVec2 | null;
 	/** Committed compiler issues with positioned targets for diagnostic markers. */
@@ -244,27 +278,67 @@ export function wallOpeningEdgeWorldPoints(
 function pushWallOpeningAffordances(
 	selection: { openingId: string },
 	model: LayoutPreviewModel,
+	planView: PlanViewportState,
 	handles: PlanRenderPrimitive[],
 	labels: PlanRenderPrimitive[]
 ): void {
-	const edges = wallOpeningEdgeWorldPoints(model, selection.openingId);
+		const edges = wallOpeningEdgeWorldPoints(model, selection.openingId);
 	if (!edges) return;
+	// P23.13 S4 / §6 — width edges are squares straddling the jamb (7 px), never
+	// circles: shape carries the role so a Junction diamond, a width square and a
+	// bend circle stay distinguishable in grayscale.
+	const mark = PLAN_CONTROL_MARKS['opening-edge'];
 	handles.push(
 		{
 			kind: 'circle',
 			key: geometryId(['plan', 'overlay', 'opening-handle', selection.openingId, 'start']),
 			center: edges.start,
-			radiusPx: 6,
+			radiusPx: mark.radiusPx,
+			shape: mark.shape,
 			style: 'opening-handle'
 		},
 		{
 			kind: 'circle',
 			key: geometryId(['plan', 'overlay', 'opening-handle', selection.openingId, 'end']),
 			center: edges.end,
-			radiusPx: 6,
+			radiusPx: mark.radiusPx,
+			shape: mark.shape,
 			style: 'opening-handle'
 		}
 	);
+	// §6 — the slide grip: a short PAIRED mark across the symbol center, so the
+	// body drag reads as its own affordance rather than a third width handle.
+	// Two bars perpendicular to the host, one either side of the center. This is
+	// a screen-constant mark, so the world length is derived from the live scale
+	// here (the overlay owns px thresholds) rather than baked into the model.
+	const mid: LayoutVec2 = [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2];
+	const dx = edges.end[0] - edges.start[0];
+	const dz = edges.end[1] - edges.start[1];
+	const span = Math.hypot(dx, dz);
+	const pixelsPerMeter = planView.pixelsPerMeter;
+	if (span > 0 && pixelsPerMeter > 0) {
+		const alongX = dx / span;
+		const alongZ = dz / span;
+		// Perpendicular to the host in Plan space (x, z), same convention as the
+		// rest of the overlay's world math.
+		const perpX = -alongZ;
+		const perpZ = alongX;
+		const offset = OPENING_SLIDE_GRIP_OFFSET_PX / pixelsPerMeter;
+		const halfLength = OPENING_SLIDE_GRIP_HALF_LENGTH_PX / pixelsPerMeter;
+		for (const side of [-1, 1]) {
+			const centerX = mid[0] + alongX * offset * side;
+			const centerZ = mid[1] + alongZ * offset * side;
+			handles.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'opening-slide-grip', selection.openingId, String(side)]),
+				points: [
+					[centerX - perpX * halfLength, centerZ - perpZ * halfLength],
+					[centerX + perpX * halfLength, centerZ + perpZ * halfLength]
+				] as LayoutVec2[],
+				style: 'opening-slide-grip'
+			});
+		}
+	}
 	labels.push({
 		kind: 'text',
 		key: geometryId(['plan', 'overlay', 'opening-handle-label', selection.openingId]),
@@ -581,6 +655,22 @@ export function withArchitectureEditIntent(
 		? 'architecture-edit-intent-invalid'
 		: 'architecture-edit-intent';
 	const primitives: PlanRenderPrimitive[] = [];
+	/**
+	 * Where the refusal mark belongs. Every intent kind has an attempted locus:
+	 * a junction/curve control point, or — for a whole-Wall move — the middle of
+	 * the attempted Wall. A `wall-move` carries no single point, so it is derived
+	 * rather than invented (the mark never appears at an arbitrary place).
+	 */
+	const refusalPoint = (): LayoutVec2 | null => {
+		if (intent.kind !== 'wall-move') return intent.point;
+		const points = intent.walls?.[0]?.points ?? [];
+		if (points.length >= 2) {
+			const first = points[0];
+			const last = points[points.length - 1];
+			return [(first[0] + last[0]) / 2, (first[1] + last[1]) / 2];
+		}
+		return intent.start ?? null;
+	};
 	if (intent.kind === 'wall-move') {
 		if (intent.walls) {
 			for (const wall of intent.walls) {
@@ -635,6 +725,31 @@ export function withArchitectureEditIntent(
 			radiusPx: 7,
 			style
 		});
+	}
+	// §6 — a known-invalid proposal carries its own refusal: an octagonal stop
+	// mark with an x at the attempted point, so refusal is legible in grayscale
+	// and the proposal never asserts a success-coloured continuation. The mark is
+	// local to the attempt; the owned geometry keeps its committed ink.
+	const stopPoint = refusalPoint();
+	if (intent.invalid && stopPoint) {
+		primitives.push(
+			{
+				kind: 'circle',
+				key: geometryId(['plan', 'overlay', 'refusal-stop']),
+				center: stopPoint,
+				radiusPx: REFUSAL_STOP_RADIUS_PX,
+				shape: 'octagon',
+				style: 'refusal-stop'
+			},
+			{
+				kind: 'circle',
+				key: geometryId(['plan', 'overlay', 'refusal-cross']),
+				center: stopPoint,
+				radiusPx: REFUSAL_STOP_RADIUS_PX,
+				shape: 'cross',
+				style: 'refusal-cross'
+			}
+		);
 	}
 	return { ...projection, drafts: [...projection.drafts, ...primitives] };
 }
@@ -973,8 +1088,14 @@ export function buildPlanInteractionProjection(
 
 	// P23.3 — canonical Opening affordances + transient drag preview. Both are
 	// session-only projections: no document write ever happens during a drag.
-	if (activeSelection.kind === 'wallOpening') {
-		pushWallOpeningAffordances(activeSelection, model, handles, labels);
+	// P23.13 S4 / §5 — they are §6 controls like any other, so they stand down
+	// under the same Plan vocabulary floor: an affordance below it is not drawn
+	// and therefore must not be a pointer target either.
+	if (
+		activeSelection.kind === 'wallOpening' &&
+		interaction.planView.pixelsPerMeter >= JUNCTION_HANDLES_MIN_PX_PER_M
+	) {
+		pushWallOpeningAffordances(activeSelection, model, interaction.planView, handles, labels);
 	}
 	pushWallOpeningDragPreview(interaction.wallOpeningDrag, model, drafts, labels);
 
@@ -1035,7 +1156,8 @@ export function buildPlanInteractionProjection(
 					kind: 'circle',
 					key: geometryId(['plan', 'overlay', 'curve-control', control.wallId, control.anchorId]),
 					center: [control.point[0], control.point[1]] as LayoutVec2,
-					radiusPx: 5,
+					radiusPx: PLAN_CONTROL_MARKS['curve-control'].radiusPx,
+					shape: PLAN_CONTROL_MARKS['curve-control'].shape,
 					style: active ? 'curve-control-hovered' : 'curve-control',
 					hit: {
 						kind: 'wallCurveControl',
@@ -1066,7 +1188,10 @@ export function buildPlanInteractionProjection(
 					kind: 'circle',
 					key: geometryId(['plan', 'overlay', 'junction-handle', junction.id]),
 					center: [...junction.point] as LayoutVec2,
-					radiusPx: 5,
+					radiusPx: PLAN_CONTROL_MARKS.junction.radiusPx,
+					// §6 — the diamond is the topology affordance: a Junction or a Wall
+					// endpoint is a topology point, so it must not read as a bend circle.
+					shape: PLAN_CONTROL_MARKS.junction.shape,
 					style: selected
 						? 'vertex-handle-selected'
 						: hovered?.kind === 'junction' && hovered.junctionId === junction.id
@@ -1075,6 +1200,52 @@ export function buildPlanInteractionProjection(
 					hit: { kind: 'junction', junctionId: junction.id }
 				});
 			}
+		}
+	}
+
+	// P23.13 S4 / §6 — control focus. Painted over every other state (last in
+	// the handle layer): a paper moat, then a dark double ring. Drawn only; no
+	// hit path reads it, and it never changes selection or history. The owner's
+	// control net and true reference centerline come with it, so focus/drag shows
+	// the geometry the control actually governs.
+	if (wallFirst?.focus) {
+		const focus = wallFirst.focus;
+		const center = focus.point;
+		if (focus.geometry && focus.geometry.controlPoints.length > 1) {
+			handles.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'control-polygon']),
+				points: focus.geometry.controlPoints.map((point) => [...point] as LayoutVec2),
+				style: 'control-polygon'
+			});
+		}
+		if (focus.geometry && focus.geometry.centerline.length > 1) {
+			handles.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'control-centerline']),
+				points: focus.geometry.centerline.map((point) => [...point] as LayoutVec2),
+				style: 'control-centerline'
+			});
+		}
+		// §6 — "dark double ring with paper moat". Two dark rings separated by a
+		// paper gap, and the whole system clear of the mark's own outline, so the
+		// focused control stays legible *inside* its ring rather than being erased
+		// by it. Radii are derived from the mark's circumscribed radius, so a
+		// square/diamond corner is cleared exactly like a circle's edge.
+		const clearance = focus.radiusPx * FOCUS_RING_CLEARANCE_FACTOR + FOCUS_RING_OFFSET_PX;
+		for (const [suffix, radiusPx, style] of [
+			['moat', clearance, 'focus-moat'],
+			['ring-inner', clearance + FOCUS_RING_GAP_PX, 'focus-ring'],
+			['moat-inner', clearance + FOCUS_RING_GAP_PX * 2, 'focus-moat'],
+			['ring-outer', clearance + FOCUS_RING_GAP_PX * 3, 'focus-ring']
+		] as const) {
+			handles.push({
+				kind: 'circle',
+				key: geometryId(['plan', 'overlay', 'focus', suffix]),
+				center: [...center] as LayoutVec2,
+				radiusPx,
+				style
+			});
 		}
 	}
 

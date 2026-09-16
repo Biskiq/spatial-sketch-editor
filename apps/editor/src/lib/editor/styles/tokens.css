@@ -165,11 +165,17 @@
 	--editor-plan-bg: #f5f7f8;
 	--editor-plan-grid-major: #ced6dd;
 	--editor-plan-grid-minor: #e4e9ed;
-	--editor-plan-wall: #625f59;
-	--editor-plan-wall-fill: #d5d1c8;
+	/* P23.13 S4 — the §2 mark palette. Ink/cut mass is one graphite for the
+	   bounding Wall body, its 1 px exterior profile, the Room outline and the
+	   main labels; secondary ink carries dimensions, references, areas, frame
+	   lines and the neutral hover contour. Migrated here with the paper: leaving
+	   the warm `#625f59`/`#d5d1c8`/`#292d31`/`#77766f` behind would have put a
+	   warm mass under cool paper. */
+	--editor-plan-wall: #343c43;
+	--editor-plan-wall-fill: #343c43;
 	--editor-plan-object: #b7b2a8;
-	--editor-plan-label: #292d31;
-	--editor-plan-muted: #77766f;
+	--editor-plan-label: #343c43;
+	--editor-plan-muted: #596570;
 	--editor-plan-measure: #2f8cff;
 	--editor-plan-selection: #2f8cff;
 	--editor-plan-readonly: #92908a;

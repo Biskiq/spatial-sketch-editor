@@ -11,7 +11,11 @@
 	   greys) and a second definition in this later-loaded file silently won,
 	   leaving the warm grid on the new cool paper. Roles below alias them. */
 	--editor-plan-canvas-bg: var(--editor-plan-bg);
-	--editor-plan-room-bg: #fffdfa;
+	/* §2/§6 "no room fill at rest": a Room rests as the drafting surface. The
+	   fill stays opaque (it must still occlude 3D-ish content behind the paper),
+	   it just stops tinting the face warm. `--editor-camera-plan-room-bg` keeps
+	   its distinct value, so a Camera Plan Room still reads against its canvas. */
+	--editor-plan-room-bg: var(--editor-plan-bg);
 	--editor-plan-room-selected-bg: color-mix(in srgb, var(--editor-plan-room-bg) 88%, var(--editor-plan-selection) 12%);
 	/* One centralized subdued Camera Plan variant derived from the same palette
 	   (no third hex); keeps room paper readable against the canvas. */
@@ -37,6 +41,12 @@
 	--editor-plan-silhouette: var(--editor-plan-secondary-ink);
 	--editor-plan-partition-body: #adb6bd;
 	--editor-plan-door-cue: var(--editor-plan-secondary-ink);
+	/* P23.13 S4 — compositional state colours. Neither is the mass: a selected
+	   Wall gains a separated blue perimeter (§2 "1.5 px blue outer contour, 2 px
+	   paper separation") and a hovered Wall a 1 px neutral contour 3 px outside
+	   the body. Hover is never blue. */
+	--editor-plan-wall-contour-selected: var(--editor-plan-selection);
+	--editor-plan-wall-contour-neutral: var(--editor-plan-secondary-ink);
 	/* The opening punch erases ink over the authored cut, so it must match the
 	   drafting surface — never a room background, which does not exist for a
 	   wall-first Wall outside any Room. */

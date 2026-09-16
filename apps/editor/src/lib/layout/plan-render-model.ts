@@ -86,6 +86,8 @@ export type PlanStyleToken =
 	| 'vertex-handle-hovered'
 	// P23.3 — canonical Opening width-handle affordances + transient drag preview.
 	| 'opening-handle'
+	// P23.13 S4 / §6 — the paired body-drag grip across the Opening center.
+	| 'opening-slide-grip'
 	| 'opening-drag-preview'
 	| 'opening-drag-preview-invalid'
 	// P23.10 / P23.11 — transient direct Wall/Junction edit intent. Drawn for a
@@ -112,6 +114,18 @@ export type PlanStyleToken =
 	// P23.6 — committed topology/geometry diagnostic marker (state, not
 	// transient preview: distinct from draft/invalid blue/red language below).
 	| 'layout-diagnostic'
+	// P23.13 S4 — control-focus vocabulary (spec §6). The focused control takes a
+	// dark double ring with a paper moat over every other state, and a focus or
+	// drag also reveals the owner's broken 1 px control polygon plus its true
+	// reference centerline. All three are presentation: drawn, never queried.
+	| 'focus-ring'
+	| 'focus-moat'
+	| 'control-polygon'
+	| 'control-centerline'
+	// P23.13 S4 / §6 — the refusal vocabulary of a known-invalid proposal: a
+	// filled octagonal stop mark carrying an ×, so refusal reads without colour.
+	| 'refusal-stop'
+	| 'refusal-cross'
 	| 'scale-label';
 
 export type PlanHitIdentity =
@@ -221,6 +235,16 @@ export type PlanCirclePrimitive = {
 	center: LayoutVec2;
 	/** Screen-space size hint in CSS px; zoom-independent sizing is the adapter's job. */
 	radiusPx: number;
+	/**
+	 * P23.13 S4 — mark shape (spec §6 control table). A control's *shape* is its
+	 * non-colour identity, so it is part of the primitive rather than a paint
+	 * detail: `diamond` a Junction/Wall endpoint, `square` an Opening width edge
+	 * straddling its jamb, `octagon` the stop mark of a refused proposal and
+	 * `cross` its x. A hollow bend point, a focus ring and every pre-S4 handle
+	 * stay `circle` (the default). Every non-circle shape is generated in screen
+	 * space around the projected center, so no mark scales with zoom.
+	 */
+	shape?: 'circle' | 'diamond' | 'square' | 'octagon' | 'cross';
 	/** Screen-constant offset (CSS px) applied by the adapter after the view transform. */
 	offsetPx?: readonly [number, number];
 	style: PlanStyleToken;

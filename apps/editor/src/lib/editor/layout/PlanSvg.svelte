@@ -59,11 +59,21 @@
 		'vertex-handle-hovered': 'vertex-handle hovered',
 		// P23.11 — interior curve controls of a selected curved Wall.
 		'curve-control-hovered': 'curve-control hovered',
+		// P23.13 S4 — control focus and owner control geometry (spec §6).
+		'focus-ring': 'focus-ring',
+		'focus-moat': 'focus-moat',
+		'control-polygon': 'control-polygon',
+		'control-centerline': 'control-centerline',
+		// P23.13 S4 — refusal mark of a known-invalid proposal.
+		'refusal-stop': 'refusal-stop',
+		'refusal-cross': 'refusal-cross',
 		'primitive-ghost-circle': 'primitive-ghost circle',
 		'primitive-ghost-sphere': 'primitive-ghost sphere',
 		'primitive-ghost-invalid': 'primitive-ghost invalid',
 		// P23.3 — canonical Opening handles + drag preview.
 		'opening-handle': 'opening-handle',
+		// P23.13 S4 — paired body-drag grip across the Opening symbol center.
+		'opening-slide-grip': 'opening-slide-grip',
 		'opening-drag-preview': 'opening-drag-preview',
 		'opening-drag-preview-invalid': 'opening-drag-preview invalid',
 		// P23.10 — transient direct Wall/Junction edit intent.
@@ -230,6 +240,45 @@
 	function screenPointsAttr(points: readonly LayoutVec2[]): string {
 		return points.map((point) => point.join(',')).join(' ');
 	}
+
+	/**
+	 * P23.13 S4 / §6 — a control's *shape* is its non-colour identity, so the mark
+	 * follows from the primitive rather than from the token class. A diamond is
+	 * the Junction/Wall endpoint, a square an Opening width edge straddling its
+	 * jamb; everything else is the hollow circle (curve bend point, focus ring).
+	 */
+	function controlMarkPointsAttr(center: LayoutVec2, radius: number): string {
+		const [cx, cy] = center;
+		return [
+			[cx, cy - radius],
+			[cx + radius, cy],
+			[cx, cy + radius],
+			[cx - radius, cy]
+		]
+			.map((point) => point.join(','))
+			.join(' ');
+	}
+
+	/** Eight-point stop mark, flat-topped like a traffic sign, in screen space. */
+	function stopMarkPointsAttr(center: LayoutVec2, radius: number): string {
+		const [cx, cy] = center;
+		const points: string[] = [];
+		for (let index = 0; index < 8; index += 1) {
+			const angle = (Math.PI / 4) * (index + 0.5);
+			points.push(`${cx + Math.cos(angle) * radius},${cy + Math.sin(angle) * radius}`);
+		}
+		return points.join(' ');
+	}
+
+	/** The refusal x as one path: two screen-space diagonals, no world scaling. */
+	function crossPath(center: LayoutVec2, radius: number): string {
+		const [cx, cy] = center;
+		const r = radius * 0.55;
+		return [
+			`M ${cx - r} ${cy - r} L ${cx + r} ${cy + r}`,
+			`M ${cx - r} ${cy + r} L ${cx + r} ${cy - r}`
+		].join(' ');
+	}
 </script>
 
 <g class="plan-model">
@@ -243,9 +292,27 @@
 					{@const bandPx = architectureBandPx(planView.pixelsPerMeter, primitive.architecture.thicknessMeters)}
 					{@const inkAid = resolveWallInkAid(decisions.wallInkAid, bandPx)}
 					{@const wallPoints = polylinePointsAttr(primitive.points, primitive.endOffsetPx)}
+					{@const wallState = wallStateClass(primitive.style)}
+					<!--
+						P23.13 S4 / §2+§6 — compositional state. The Wall's mass NEVER takes a
+						state colour and stays graphite: selection adds a separated blue
+						perimeter *outside* the profile, hover a neutral one, and both sit
+						behind a paper moat so the pair reads as a detached silhouette rather
+						than a thicker Wall. Order is the composition: contour (widest) →
+						moat → profile casing → band, so the Wall's own ink is never cut.
+						`opening-selected` is the hover contour with no blue: the Opening
+						owns that selection, the Wall is only its host.
+					-->
+					{#if wallState === 'selected'}
+						<polyline class="wall-contour selected" points={wallPoints} style={architectureWidthStyle(bandPx)} />
+						<polyline class="wall-contour-moat selected" points={wallPoints} style={architectureWidthStyle(bandPx)} />
+					{:else if wallState === 'hovered' || wallState === 'opening-selected'}
+						<polyline class="wall-contour neutral" points={wallPoints} style={architectureWidthStyle(bandPx)} />
+						<polyline class="wall-contour-moat neutral" points={wallPoints} style={architectureWidthStyle(bandPx)} />
+					{/if}
 					{#if inkAid !== 'dense'}
 						<polyline
-							class={`wall-casing ${wallStateClass(primitive.style)} ${wallPartitionClass(primitive)}`}
+							class={`wall-casing ${wallPartitionClass(primitive)}`}
 							points={wallPoints}
 							style={architectureWidthStyle(bandPx)}
 						/>
@@ -289,7 +356,23 @@
 				{/if}
 			{:else if primitive.kind === 'circle'}
 				{@const screen = screenAt(primitive.center, primitive.offsetPx)}
-				<circle class={tokenClass(primitive.style)} cx={screen[0]} cy={screen[1]} r={primitive.radiusPx} />
+				{#if primitive.shape === 'diamond'}
+					<polygon class={tokenClass(primitive.style)} points={controlMarkPointsAttr(screen, primitive.radiusPx)} />
+				{:else if primitive.shape === 'square'}
+					<rect
+						class={tokenClass(primitive.style)}
+						x={screen[0] - primitive.radiusPx}
+						y={screen[1] - primitive.radiusPx}
+						width={primitive.radiusPx * 2}
+						height={primitive.radiusPx * 2}
+					/>
+				{:else if primitive.shape === 'octagon'}
+					<polygon class={tokenClass(primitive.style)} points={stopMarkPointsAttr(screen, primitive.radiusPx)} />
+				{:else if primitive.shape === 'cross'}
+					<path class={tokenClass(primitive.style)} d={crossPath(screen, primitive.radiusPx)} />
+				{:else}
+					<circle class={tokenClass(primitive.style)} cx={screen[0]} cy={screen[1]} r={primitive.radiusPx} />
+				{/if}
 			{:else if primitive.pill}
 				{@const screen = screenAt(primitive.anchor, primitive.offsetPx)}
 				{@const pill = primitive.pill}
@@ -346,21 +429,26 @@
 	   casing is the 1 px exterior profile (a mark). Square caps close a free end
 	   and let touching spans read as one mass at a join — no invented union,
 	   bevel or bridge, so an insufficient-junction seam stays truthful for P23.15. */
+	/* The profile is the ink for BOTH roles: a non-bounding Wall keeps the same
+	   continuous dark perimeter and only its solid body is lighter (§2). */
 	.wall-casing { stroke: var(--editor-plan-wall-ink); stroke-width: calc(var(--architecture-band-width) + 2px); stroke-linecap: square; stroke-linejoin: miter; }
-	/* P23.6 — non-room-bounding Walls stay physical and wall-like with a subtle
-	   muted distinction (same selection language; `.selected` below wins). */
-	.wall-casing.partition { stroke: var(--editor-plan-muted); }
-	/* P23.6 — hover uses the hover language, never selection blue; states below win ties. */
-	.wall-casing.hovered { stroke: var(--editor-plan-hover-stroke); }
-	.wall-casing.selected { stroke: var(--editor-plan-selection); stroke-width: calc(var(--architecture-band-width) + 4px); }
-	.wall-casing.opening-selected { stroke: var(--editor-plan-hover-stroke); }
 	.wall-line { stroke: var(--editor-plan-wall-band); stroke-width: var(--architecture-band-width); stroke-linecap: square; stroke-linejoin: miter; }
 	/* P23.13 S1 — non-bounding body gets its own token (lighter solid body, same
 	   dark continuous perimeter as a bounding Wall). */
 	.wall-line.partition { stroke: var(--editor-plan-partition-body); }
-	.wall-line.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 42%, var(--editor-plan-wall-band)); }
-	.wall-line.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 42%, var(--editor-plan-wall-band)); }
-	.wall-line.opening-selected { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 34%, var(--editor-plan-wall-band)); }
+	/* P23.13 S4 — the state perimeter. Widths are relative to the band so the gap
+	   stays screen-constant: 2 px separation to the 1.5 px blue contour when
+	   selected, 3 px to the 1 px neutral contour when hovered. */
+	.wall-contour { fill: none; stroke-linecap: square; stroke-linejoin: miter; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.wall-contour.selected { stroke: var(--editor-plan-wall-contour-selected); stroke-width: calc(var(--architecture-band-width) + 7px); }
+	.wall-contour.neutral { stroke: var(--editor-plan-wall-contour-neutral); stroke-width: calc(var(--architecture-band-width) + 8px); }
+	/* The paper separation §6 asks for: painted over whatever sits around the Wall
+	   (paint order, so the Wall's own profile and band are drawn after and stay
+	   untouched). Visible widths are therefore the contour widths minus this —
+	   1.5 px blue at a 2 px gap when selected, 1 px neutral at 3 px when hovered. */
+	.wall-contour-moat { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-linecap: square; stroke-linejoin: miter; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.wall-contour-moat.selected { stroke-width: calc(var(--architecture-band-width) + 4px); }
+	.wall-contour-moat.neutral { stroke-width: calc(var(--architecture-band-width) + 6px); }
 	/* P23.13 S1 — centered readability ink below 2 px projected band. Excluded
 	   from hit, snap and measurement truth: it is drawn, never queried. */
 	.wall-silhouette { stroke: var(--editor-plan-silhouette); stroke-width: 1; stroke-linecap: butt; }
@@ -450,13 +538,32 @@
 	.vertex-handle { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; }
 	/* P23.3 — canonical Opening width handles (edge-fixed resize affordances). */
 	.opening-handle { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; }
+	/* P23.13 S4 / §6 — the slide grip is ink-only: it must not read as a filled
+	   mark, because it slides the whole Opening rather than one edge. */
+	.opening-slide-grip { fill: none; stroke: var(--editor-plan-handle-stroke); stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 	/* P23.3 — transient Opening drag preview; invalid stays red and never commits. */
 	.opening-drag-preview { fill: rgb(47 140 255 / 18%); stroke: var(--editor-plan-selection); stroke-width: 2; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.opening-drag-preview.invalid { fill: rgb(239 98 108 / 20%); stroke: var(--editor-danger); }
 	/* P23.10 — direct Wall/Junction edit intent. An invalid candidate never
 	   installs; only this transient outline shows what the pointer asked for. */
 	.architecture-edit-intent { fill: rgb(47 140 255 / 18%); stroke: var(--editor-plan-selection); stroke-width: 2; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; }
-	.architecture-edit-intent.invalid { fill: rgb(239 98 108 / 20%); stroke: var(--editor-danger); }
+	/* P23.13 S4 / §6 — a pending proposal is a *continuous* candidate; a refused
+	   one breaks into the ratified 4/3 rhythm so pending vs refused reads without
+	   colour. The installed geometry is never recoloured or moved. */
+	.architecture-edit-intent.invalid { fill: rgb(239 98 108 / 20%); stroke: var(--editor-danger); stroke-dasharray: 4 3; }
+	/* P23.13 S4 / §6 — focus language: a dark double ring with a paper moat,
+	   painted over every other state. Drawn, never queried: no hit path reads it. */
+	/* Widths are fixed so the moat under a ring erases exactly the ring's own
+	   band and never the focused mark it surrounds (§6). */
+	.focus-moat { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-width: 3.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.focus-ring { fill: none; stroke: var(--editor-plan-label); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S4 / §6 — focus/drag reveals the owner's broken 1 px control polygon
+	   and its true reference centerline. Marks, not measurements. */
+	.control-polygon { fill: none; stroke: var(--editor-plan-secondary-ink); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.control-centerline { fill: none; stroke: var(--editor-plan-secondary-ink); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S4 / §6 — the refusal mark of a known-invalid proposal. */
+	.refusal-stop { fill: var(--editor-danger); stroke: var(--editor-plan-canvas-bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.refusal-cross { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-arm { fill: none; stroke: var(--editor-accent-pressed); stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-handle { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-feedback { fill: var(--editor-plan-label); font: 700 11px var(--editor-font); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; user-select: none; }

@@ -119,10 +119,27 @@ describe('P23.10 architecture-edit intent gate', () => {
 			base,
 			architectureEditIntentFor(junctionGesture(), true, null, 'known-invalid')
 		);
-		expect(refused.drafts).toHaveLength(1);
+		// P23.13 S4 / §6 — a known-invalid attempt now carries its own refusal:
+		// the proposal marker plus the octagonal stop mark and its ×.
+		expect(refused.drafts).toHaveLength(3);
 		expect(refused.drafts[0]).toMatchObject({
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
+		});
+		// Both marks land on the attempt's own locus — the same point the proposal
+		// marker drew — so the refusal can never float away from what it refuses.
+		const locus = (refused.drafts[0] as { center: [number, number] }).center;
+		expect(refused.drafts[1]).toMatchObject({
+			kind: 'circle',
+			center: locus,
+			shape: 'octagon',
+			style: 'refusal-stop'
+		});
+		expect(refused.drafts[2]).toMatchObject({
+			kind: 'circle',
+			center: locus,
+			shape: 'cross',
+			style: 'refusal-cross'
 		});
 		expect(withArchitectureEditIntent(base, null).drafts).toHaveLength(0);
 		expect(model.rooms.map((room) => room.roomId)).toEqual(['room-rectangle']);
@@ -195,7 +212,10 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			shape,
 			invalid: true
 		});
-		expect(refused.drafts).toHaveLength(2);
+		// P23.13 S4 / §6 — the refused attempt adds the stop mark and its × after
+		// the proposal. A pending attempt never does: refusal is a state, not a
+		// decoration every attempt wears.
+		expect(refused.drafts).toHaveLength(4);
 		expect(refused.drafts[0]).toMatchObject({
 			kind: 'polyline',
 			style: 'architecture-edit-intent-invalid'
@@ -204,6 +224,8 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
 		});
+		expect(refused.drafts[2]).toMatchObject({ shape: 'octagon', style: 'refusal-stop' });
+		expect(refused.drafts[3]).toMatchObject({ shape: 'cross', style: 'refusal-cross' });
 		// A bare point still renders as the single marker (no fabricated curve).
 		const pointOnly = withArchitectureEditIntent(base, {
 			kind: 'curve-control-move',

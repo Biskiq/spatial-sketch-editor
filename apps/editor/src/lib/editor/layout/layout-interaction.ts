@@ -7,6 +7,7 @@ import type { EditorCommandId } from '../editor-command-intent';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
 import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
+import type { PlanControlKind } from './plan-acquisition';
 export type LayoutViewMode = 'plan' | '3d';
 /** Scene → Plan's local authoring authority. Camera Plan never reads this. */
 export type PlanViewMode = 'layout' | 'staging';
@@ -712,7 +713,47 @@ export type LayoutInteractionState = {
 		originalPoints: LayoutVec2[];
 		currentPoints: LayoutVec2[];
 	} | null;
+	/**
+	 * P23.13 S4 — the focused Plan control (spec §6). Focus is *presentation and
+	 * routing* state only: it is never a selection, never history, and moving it
+	 * must not change either. It survives other states ("the focused handle ring
+	 * survives every other state") and it is what makes the keyboard able to
+	 * reach both members of an overlap without moving geometry.
+	 */
+	planFocus: PlanFocusTarget | null;
 };
+
+/**
+ * P23.13 S4 — one focused Plan control. `kind` mirrors the control grammar
+ * (spec §6's control table); `id` is the control's canonical identity, and
+ * `ownerId` is the entity whose control it is, so the acquisition pre-pass can
+ * tell a focused control of the selected owner from an unrelated one.
+ */
+export type PlanFocusTarget = {
+	/** One source of truth for the control vocabulary (spec §6 control table). */
+	kind: PlanControlKind;
+	id: string;
+	ownerId: string;
+};
+
+/**
+ * Move Plan focus. Never touches selection, geometry or history — focus is not
+ * an edit (spec §6: "Merely moving focus never changes selection or history").
+ */
+export function setPlanFocus(state: LayoutInteractionState, target: PlanFocusTarget | null): void {
+	if (target === null) {
+		state.planFocus = null;
+		return;
+	}
+	const current = state.planFocus;
+	if (current && current.kind === target.kind && current.id === target.id) return;
+	state.planFocus = { ...target };
+}
+
+/** Drop Plan focus when its control can no longer be drawn or owned. */
+export function clearPlanFocus(state: LayoutInteractionState): void {
+	state.planFocus = null;
+}
 
 export function createLayoutInteractionState(): LayoutInteractionState {
 	return {
@@ -739,7 +780,8 @@ export function createLayoutInteractionState(): LayoutInteractionState {
 		arrangeOwner: null,
 		accordions: { place: true, objects: true, selection: true },
 		planView: createPlanViewportState(),
-		editing: null
+		editing: null,
+		planFocus: null
 	};
 }
 

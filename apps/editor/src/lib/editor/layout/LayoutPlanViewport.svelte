@@ -59,6 +59,8 @@
 		resolveArrangeScenePick,
 		isLayoutPresetTool,
 		wallChainRoleForTool,
+		clearPlanFocus,
+		setPlanFocus,
 		shouldBeginWallBend,
 		architectureEditMovedOnRelease,
 		updateRectangle,
@@ -112,7 +114,8 @@
 		findPlanHitRoom,
 		projectPointToPhysicalWall,
 		projectPointToWall,
-		resolvePlanHit
+		resolvePlanHit,
+		type PlanHitResult
 	} from './plan-hit';
 	import {
 		constrainToAngle,
@@ -146,7 +149,15 @@ import {
 	type RoomLabelMemory,
 	type RoomLabelReconsiderReason
 } from './plan-room-labels';
-import { createBrowserTextMeasure } from './plan-text-measure';
+import { createBrowserTextMeasure } from './plan-text-measure';	import {
+		PLAN_CONTROL_MARKS,
+		planControlTargetRadiusPx,
+	planFocusGeometry,
+	resolvePlanAcquisition,
+	type PlanControlAuthority,
+	type PlanControlCandidate,
+	type PlanControlKind
+} from './plan-acquisition';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -781,9 +792,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';
 		if (pointerIdToRelease !== null && svgElement?.hasPointerCapture(pointerIdToRelease)) {
 			svgElement.releasePointerCapture(pointerIdToRelease);
 		}
-	}
-
-	/**
+	}		/**
 	 * P23.10 — cancel/commit the direct edit at release. The candidate is
 	 * re-derived once from the ACTUAL release coordinate against the immutable
 	 * baseline (never a remembered last-valid intermediate), then committed once
@@ -975,11 +984,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';
 	// so the extra pass converges.
 	let roomLabelGeometryKey = $state<string | null>(null);
 	/**
-	 * Why the label placer is being consulted: a live gesture freezes the accepted
-	 * candidates, a geometry change may relocate freely, and any other re-resolve
-	 * (zoom, pan, resize) must stay sticky. Recorded from the previous frame's
-	 * geometry identity, never persisted.
+	 * P23.13 S4 / §6 — control targets grow to 44×44 on a coarse pointer. Read
+	 * once per pointer-type change (never per pointermove) and kept as state so
+	 * the acquisition verdict stays reactive to a hybrid device switching input.
 	 */
+	let planCoarsePointer = $state(false);
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+		const query = window.matchMedia('(pointer: coarse)');
+		const update = () => {
+			planCoarsePointer = query.matches;
+		};
+		update();
+		query.addEventListener('change', update);
+		return () => query.removeEventListener('change', update);
+	});
 	const planGestureActive = $derived(
 		interaction.editing !== null ||
 			interaction.objectDrag !== null ||
@@ -987,6 +1006,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';
 			interaction.wallOpeningDrag !== null ||
 			interaction.architectureEdit !== null
 	);
+	/**
+	 * Why the label placer is being consulted: a live gesture freezes the accepted
+	 * candidates, a geometry change may relocate freely, and any other re-resolve
+	 * (zoom, pan, resize) must stay sticky. Recorded from the previous frame's
+	 * geometry identity, never persisted.
+	 */
 	const roomLabelReconsiderReason: RoomLabelReconsiderReason = $derived(
 		planGestureActive
 			? 'frozen'
@@ -1076,6 +1101,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';
 				reason: roomLabelReconsiderReason,
 				settleGeneration: roomLabelSettleGeneration
 			},
+			// P23.13 S4 — the focused control's ring and its owner's control net +
+			// true reference centerline. Geometry comes from canonical compiled
+			// samples, so a curve keeps its curve; a missing owner draws nothing.
+			focus: planFocusOverlay(),
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
 				: null,
@@ -1582,6 +1611,11 @@ const interactionProjection = $derived(
 		// be released with the baseline it was captured against.
 		salienceFreeze = null;
 		cancelLayoutArchitectureEdit(interaction);
+		// P23.13 S4 / §6 — "mode changes cancel capture and clear the prior owner's
+		// instrument". Releasing focus with the gesture is part of that: a cancel
+		// removes the whole instrument rather than leaving a ring on a control no
+		// longer under edit.
+		clearPlanFocus(interaction);
 		rotationHoverScreen = null;
 		stagingRotationHoverScreen = null;
 		arrangeLayoutRotationHoverScreen = null;
@@ -2158,8 +2192,13 @@ const interactionProjection = $derived(
 	function wallOpeningHandleHit(screen: LayoutVec2): 'start-edge' | 'end-edge' | null {
 		const handles = wallOpeningHandleScreenPoints();
 		if (!handles) return null;
-		if (distance(handles.start, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX) return 'start-edge';
-		if (distance(handles.end, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX) return 'end-edge';
+		// P23.13 S4 / §6 — width edges are controls, so they are acquired at the
+		// ratified 24 px target (44 px coarse), not at the entity radius. Before
+		// this, the drawn 7 px square had to be hit almost exactly even though the
+		// acquisition target was supposed to be larger than the mark.
+		const radius = planControlTargetRadiusPx(planCoarsePointer);
+		if (distance(handles.start, screen) <= radius) return 'start-edge';
+		if (distance(handles.end, screen) <= radius) return 'end-edge';
 		return null;
 	}
 
@@ -2265,6 +2304,18 @@ const interactionProjection = $derived(
 		const screen = screenPoint(event);
 		if (!point || !screen) return;
 		dismissSceneBridge();
+		// P23.13 S4 / §6 — focus follows the control the pointer actually took:
+		// acquiring a control focuses it (which is what reveals its owner's
+		// control polygon and reference centerline), and a press that acquires no
+		// control moves the instrument away and drops the ring. Focus is never
+		// selection and never history — moving it changes nothing else.
+		if (interaction.planViewMode === 'layout') {
+			const authority = planAcquiredControl(point);
+			setPlanFocus(
+				interaction,
+				authority ? { kind: authority.kind, id: authority.id, ownerId: authority.ownerId } : null
+			);
+		}
 
 		if (interaction.planViewMode === 'staging') {
 			if (interaction.tool !== 'select') return;
@@ -2467,8 +2518,10 @@ const interactionProjection = $derived(
 		const target = resolvePlanHit(
 			model.queries,
 			point,
-			LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-			planHitOptions()
+			// S4 — the acquisition radius when a control has claimed the pointer,
+			// otherwise the unchanged entity radius.
+			planHitTolerance(point),
+			planHitOptions(point)
 		);
 		if (!target) {
 			// a Plan empty-click deselects whichever domain is active (a
@@ -2787,8 +2840,10 @@ const interactionProjection = $derived(
 					: resolvePlanHit(
 							model.queries,
 							hoverPoint,
-							LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-							planHitOptions()
+							// S4 — owner intent above entity class, on hover too, so the
+							// affordance the pointer is actually on is the one that lights up.
+							planHitTolerance(hoverPoint),
+							planHitOptions(hoverPoint)
 						);
 			layoutHover = toLayoutHover(hoverHit);
 		} else if (layoutHover) {
@@ -3452,21 +3507,201 @@ const interactionProjection = $derived(
 	}
 
 	/**
-	 * P23.11 — the shared hit options for the SELECT and hover paths: the
-	 * endpoint gate plus the selected Wall's controls. The context menu, the
+	 * P23.13 S4 / §6 — the controls the pointer may acquire right now, built from
+	 * the SAME gating the overlay draws them with, so an affordance that is not
+	 * visible can never outrank one that is. Ownership is what decides the tier:
+	 * a control of the selected owner (or the focused one, or a captured
+	 * gesture's) beats the canonical entity fallback.
+	 */
+	function planAcquisitionCandidates(): PlanControlCandidate[] {
+		const candidates: PlanControlCandidate[] = [];
+		// Below the control LOD nothing is drawn, so nothing is acquirable.
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return candidates;
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return candidates;
+		const selection = interaction.selection;
+		const focus = interaction.planFocus;
+
+		// P23.11 — curve controls exist only while the selected Wall is curved, and
+		// they outrank an unrelated co-located Opening or Junction (§6).
+		for (const control of selectedCurveControls(layout.walls)) {
+			candidates.push({
+				id: control.anchorId,
+				ownerId: control.wallId,
+				kind: 'curve-control',
+				point: control.point,
+				ownerSelected: selection.kind === 'physicalWall' && selection.wallId === control.wallId,
+				focused: focus?.kind === 'curve-control' && focus.id === control.anchorId
+			});
+		}
+
+		// Junction handles: an edit context only (the same gate the overlay draws
+		// with). An ordinary hover reveals no new controls, so a hovered Junction
+		// that is not revealed is not acquirable either.
+		const chainArmed = wallChainRoleForTool(interaction.tool) !== null;
+		const junctionSelection = selection.kind === 'junction' ? selection : null;
+		const editContext =
+			chainArmed ||
+			selection.kind === 'physicalWall' ||
+			selection.kind === 'wallOpening' ||
+			junctionSelection !== null;
+		if (editContext) {
+			const focusedJunctions = junctionFocusIds();
+			for (const junction of layout.junctions) {
+				if (focusedJunctions && !focusedJunctions.has(junction.id)) continue;
+				candidates.push({
+					id: junction.id,
+					ownerId: junction.id,
+					kind: 'junction',
+					point: [junction.point[0], junction.point[1]] as LayoutVec2,
+					// §6 — a Junction is a *selected-owner* control only when it is the
+					// selection (or one of the selected Wall's endpoints); a tool-armed
+					// chain is a tool-eligible target, not owner intent.
+					ownerSelected:
+						junctionSelection?.junctionId === junction.id ||
+						selection.kind === 'physicalWall' ||
+						selection.kind === 'wallOpening',
+					toolEligible: chainArmed,
+					focused: focus?.kind === 'junction' && focus.id === junction.id
+				});
+			}
+		}
+
+		// §6 — the selected Opening's width edges and slide grip. They are owner
+		// controls of the selection, which is what lets "an active Opening width
+		// square beat its host Wall" hold when a Junction sits on the same jamb.
+		if (selection.kind === 'wallOpening') {
+			const edges = wallOpeningEdgeWorldPoints(model, selection.openingId);
+			if (edges) {
+				candidates.push(
+					{
+						id: `${selection.openingId}:start`,
+						ownerId: selection.openingId,
+						kind: 'opening-edge',
+						point: edges.start,
+						ownerSelected: true,
+						focused: focus?.kind === 'opening-edge' && focus.id === `${selection.openingId}:start`
+					},
+					{
+						id: `${selection.openingId}:end`,
+						ownerId: selection.openingId,
+						kind: 'opening-edge',
+						point: edges.end,
+						ownerSelected: true,
+						focused: focus?.kind === 'opening-edge' && focus.id === `${selection.openingId}:end`
+					}
+				);
+				// The grip sits at the symbol center and is deliberately a *lower*
+				// priority than the two edges: an edge must never be stolen by the
+				// body mark between them. Equal tier, larger distance loses.
+				candidates.push({
+					id: `${selection.openingId}:slide`,
+					ownerId: selection.openingId,
+					kind: 'opening-slide',
+					point: [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2],
+					ownerSelected: true
+				});
+			}
+		}
+		return candidates;
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the focus overlay payload for the current `planFocus`:
+	 * the mark center, its radius and the owner geometry focus/drag reveals.
+	 * Returns `null` when there is no focus, so nothing is drawn at rest.
+	 */
+	function planFocusOverlay() {
+		const focus = interaction.planFocus;
+		if (!focus) return null;
+		const candidates = planAcquisitionCandidates();
+		const match = candidates.find(
+			(candidate) => candidate.kind === focus.kind && candidate.id === focus.id
+		);
+		if (!match) return null;
+		return {
+			point: match.point,
+			radiusPx: planFocusMarkRadiusPx(match.kind),
+			geometry: planFocusGeometry(
+				{ ownerId: match.ownerId, point: match.point },
+				preview.geometry.walls
+			)
+		};
+	}
+
+	/** The visible mark radius of a control kind (spec §6 control table). */
+	function planFocusMarkRadiusPx(kind: PlanControlKind): number {
+		switch (kind) {
+			case 'junction':
+				return PLAN_CONTROL_MARKS.junction.radiusPx;
+			case 'curve-control':
+				return PLAN_CONTROL_MARKS['curve-control'].radiusPx;
+			case 'opening-edge':
+				return PLAN_CONTROL_MARKS['opening-edge'].radiusPx;
+			default:
+				return 4;
+		}
+	}
+
+	/** The Junction IDs an edit context focuses (`null` = every Junction). */
+	function junctionFocusIds(): ReadonlySet<string> | null {
+		const selection = interaction.selection;
+		if (selection.kind !== 'physicalWall' && selection.kind !== 'wallOpening') return null;
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		const wall = layout.walls.find((candidate) => candidate.id === selection.wallId);
+		return new Set(wall ? [wall.startJunctionId, wall.endJunctionId] : []);
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the owner-aware acquisition verdict for one pointer
+	 * position, or `null` when no tier claims it and the canonical entity
+	 * resolver decides alone. A coarse pointer gets the 44 px target.
+	 */
+	function planAcquiredControl(point: LayoutVec2): PlanControlAuthority | null {
+		return resolvePlanAcquisition({
+			candidates: planAcquisitionCandidates(),
+			point,
+			planView: interaction.planView,
+			coarsePointer: planCoarsePointer
+		});
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the hit tolerance for one pointer position. A control the
+	 * engine claimed is acquired at the ratified 24/44 px target, not at the
+	 * entity radius: the whole point of a bigger target is that the pointer need
+	 * not land on the visible mark. Uncontested pointers keep the entity radius,
+	 * so ordinary selection is unchanged.
+	 */
+	function planHitTolerance(point: LayoutVec2): number {
+		const authority = planAcquiredControl(point);
+		const radiusPx = authority
+			? planControlTargetRadiusPx(planCoarsePointer)
+			: LAYOUT_PLAN_HIT_RADIUS_PX;
+		return radiusPx / interaction.planView.pixelsPerMeter;
+	}
+
+	/**
+	 * P23.11/S4 — the shared hit options for the SELECT and hover paths: the
+	 * endpoint gate, the selected Wall's controls, and — when a pointer position
+	 * is supplied — the owner-aware acquisition verdict. The context menu, the
 	 * door/window tool and every non-select path keep `planHitEndpointGate()`:
 	 * a control outranking the Wall body would otherwise remove the Wall's own
 	 * context menu and block Opening placement next to a control.
 	 */
-	function planHitOptions(): {
+	function planHitOptions(point?: LayoutVec2): {
 		includeEndpoints: boolean;
 		curveControls?: readonly PlanCurveControlCandidate[];
+		controlAuthority?: PlanControlAuthority | null;
 	} {
 		const layout = wallFirstLayoutDocument();
 		const controls = layout ? selectedCurveControls(layout.walls) : [];
+		const authority = point ? planAcquiredControl(point) : null;
 		return {
 			...planHitEndpointGate(),
-			...(controls.length > 0 ? { curveControls: controls } : {})
+			...(controls.length > 0 ? { curveControls: controls } : {}),
+			...(authority ? { controlAuthority: authority } : {})
 		};
 	}
 
