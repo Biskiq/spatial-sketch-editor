@@ -502,6 +502,21 @@ describe('P23.13 S3 — long names and the fallback readout', () => {
 		expect(linesOf(selected.labels[0]!)).toEqual(['room-name:Gallery', 'room-reference:R-7K3M']);
 		expect(selected.readout).toBeNull();
 
+		// Area is *supplementary* (§4): a selected Room that had to drop the area
+		// still shows its complete identity at rest, so no readout is summoned.
+		const noArea = [rectRoom('room-area-less', [0, 0], [1.6, 1], { reference: 'R-7K3M' })];
+		const selectedNoArea = placeRoomLabels({
+			rooms: noArea,
+			planView: view(),
+			measure: fixtureMeasure,
+			selectedRoomId: 'room-area-less'
+		});
+		expect(selectedNoArea.labels[0]!.lines.map((line) => line.style)).toEqual([
+			'room-name',
+			'room-reference'
+		]);
+		expect(selectedNoArea.readout).toBeNull();
+
 		// Too short for even the name+reference pair: suppressed, readout carries it.
 		const shorter = [rectRoom('room-tiny', [0, 0], [1.6, 0.7], { name: 'Nook', reference: 'R-7K3M' })];
 		const tinySelected = placeRoomLabels({
@@ -749,6 +764,46 @@ describe('P23.13 S3 — placement never animates and never depends on host fonts
 			APPROXIMATE_TEXT_MEASURE('Gallery', 'room-name').width
 		);
 		expect(withFallback.labels).toHaveLength(1);
+	});
+});
+
+describe('P23.13 S3 — viewport wiring', () => {
+	it('keeps the reconsider reason reactive so stickiness cannot latch on `geometry`', () => {
+		const source = readSource('src/lib/editor/layout/LayoutPlanViewport.svelte');
+		// The reason is read inside a derived, so the geometry key it compares has to
+		// be reactive: a plain `let` would never invalidate that derived and every
+		// later zoom would keep relocating labels instead of holding the accepted
+		// candidate. Structural tripwire — there is no unit seam for viewport state.
+		expect(source).toMatch(/let roomLabelGeometryKey = \$state<string \| null>\(null\);/);
+		const reasonDerived = source.slice(
+			source.indexOf('const roomLabelReconsiderReason'),
+			source.indexOf('const roomLabelReadout')
+		);
+		expect(reasonDerived).toContain('roomLabelGeometryKey !== null');
+	});
+
+	it('never re-optimizes every pointermove: a live gesture resolves as frozen', () => {
+		const source = readSource('src/lib/editor/layout/LayoutPlanViewport.svelte');
+		const gesturePredicate = source.slice(
+			source.indexOf('const planGestureActive'),
+			source.indexOf('const roomLabelReconsiderReason')
+		);
+		for (const session of [
+			'interaction.editing',
+			'interaction.objectDrag',
+			'interaction.roomUnitDrag',
+			'interaction.wallOpeningDrag',
+			'interaction.architectureEdit'
+		]) {
+			expect(gesturePredicate).toContain(session);
+		}
+	});
+
+	it('invalidates label metrics on font readiness, not on every frame', () => {
+		const source = readSource('src/lib/editor/layout/LayoutPlanViewport.svelte');
+		expect(source).toContain("'loadingdone'");
+		expect(source).toContain('roomLabelText.invalidate()');
+		expect(source).toContain('roomLabelMemory.clear()');
 	});
 });
 

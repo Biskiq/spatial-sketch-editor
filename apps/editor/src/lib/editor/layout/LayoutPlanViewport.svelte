@@ -966,9 +966,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';
 	 */
 	let roomLabelSettleGeneration = $state(0);
 	let roomLabelSettleTimer: ReturnType<typeof setTimeout> | null = null;
-	// The projection memo reads the previous geometry identity to decide whether a
-	// resolution may relocate freely (`geometry`) or must stay sticky (`lod`).
-	let roomLabelGeometryKey: string | null = null;
+	// The projection reads the previous geometry identity to decide whether a
+	// resolution may relocate freely (`geometry`) or must stay sticky (`lod`). It
+	// has to be `$state`: the reason is computed inside a derived, so a plain
+	// write would never invalidate that derived and the reason would latch on
+	// `geometry` — relocating freely on every later zoom, which is exactly the
+	// stickiness the slice promises. The post-effect same-value write is a no-op,
+	// so the extra pass converges.
+	let roomLabelGeometryKey = $state<string | null>(null);
 	/**
 	 * Why the label placer is being consulted: a live gesture freezes the accepted
 	 * candidates, a geometry change may relocate freely, and any other re-resolve

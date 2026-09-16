@@ -664,7 +664,6 @@ type FreeCandidate = { point: LayoutVec2; clearance: number };
 function freeSpaceCandidates(
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask,
-	measure: TextMeasure,
 	centerScreen: LayoutVec2
 ): FreeCandidate[] {
 	const minX = Math.min(...polygonScreen.map(([x]) => x));
@@ -871,12 +870,7 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 				anchorScreen = anchor;
 			}
 		} else {
-			const candidates: FreeCandidate[] = freeSpaceCandidates(
-				polygonScreen,
-				mask,
-				measure,
-				centerScreen
-			);
+			const candidates: FreeCandidate[] = freeSpaceCandidates(polygonScreen, mask, centerScreen);
 			// 1) the sticky candidate first — tier reduction at the existing
 			// candidate is preferred over relocating to a distant pocket.
 			if (relocated) {
@@ -990,9 +984,11 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 				};
 			}
 		}
-		// A selected Room whose resting stack cannot carry the reference (or its
-		// area) gets the fixed readout as the honest completion, never a forced
-		// overlap and never a centroid override.
+		// A selected Room whose resting stack cannot carry its **complete identity**
+		// gets the fixed readout as the honest completion, never a forced overlap
+		// and never a centroid override. Complete identity is the authored name
+		// plus the reference (§4): area is supplementary, so losing it never
+		// summons the readout by itself.
 		if (selectedRoomId === facts.roomId && readout === null && resolved) {
 			const carried = new Set(resolved.stack.map((line) => line.style));
 			if (facts.reference !== null && !carried.has('room-reference')) {
