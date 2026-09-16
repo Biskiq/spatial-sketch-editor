@@ -175,6 +175,33 @@ export function identityCollapsesToSingleLabel(identity: IdentityView): boolean 
 }
 
 /**
+ * The ONE presentation pair for a row or a pinned selection: the primary label
+ * (authored name → compact reference → raw-ID display label) and the optional
+ * secondary reference span.
+ *
+ * `reference` is `null` whenever nothing is subordinate: the identity collapses
+ * (the authored name IS the reference, so the string renders once — D8
+ * duplicate-collapse) or the reference already carries the label (an unnamed
+ * entity is reference-led). Rows, the pin and the Inspector all compose from
+ * this, so the collapse rule cannot be forgotten on one surface — which is
+ * exactly how the pin could render a repeated token while its row was correct.
+ */
+export function identityLabelPair(
+	identity: IdentityView,
+	fallback: string
+): { label: string; reference: string | null; referenceLed: boolean } {
+	return {
+		label: identityPrimaryLabel(identity, fallback),
+		reference: identityCollapsesToSingleLabel(identity)
+			? null
+			: identitySecondaryReference(identity),
+		// `referenceLed`: the label IS the six-character reference (an unnamed
+		// entity), so the label needs the reference's no-truncation protection.
+		referenceLed: identity.name === null && identity.reference !== null
+	};
+}
+
+/**
  * P23.12 D5/S7 — how the active Layout selection reads to a user: the human
  * kind plus the entity's identity (authored name → compact reference → raw-ID
  * display label).

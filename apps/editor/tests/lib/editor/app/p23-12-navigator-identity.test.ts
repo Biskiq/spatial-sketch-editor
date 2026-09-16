@@ -20,6 +20,7 @@ import {
 	buildHierarchySourceIndex,
 	junctionEntityKey,
 	openingEntityKey,
+	roomEntityKey,
 	wallEntityKey
 } from '$lib/editor/hierarchy/hierarchy-source-index';
 import {
@@ -30,6 +31,7 @@ import {
 	hierarchyJunctionRow,
 	hierarchyRoomRow,
 	hierarchyEntityLabel,
+	hierarchyEntityPresentation,
 	hierarchyEntityReference
 } from '$lib/editor/hierarchy/hierarchy-page-projection';
 import { buildHierarchySearchProjection } from '$lib/editor/hierarchy/hierarchy-search';
@@ -39,7 +41,7 @@ import {
 	identitySegments
 } from '$lib/editor/hierarchy/hierarchy-identity-presentation';
 import type { HierarchyProjectedRow } from '$lib/editor/hierarchy/hierarchy-page-projection';
-import { updateWallFirstWallMetadata, updateWallFirstOpeningMetadata, createEmptyLayoutPreviewState, importLayoutPreviewJson, layoutPreviewDocument } from '$lib/editor/layout/layout-preview-state.svelte';
+import { updateWallFirstWallMetadata, updateWallFirstOpeningMetadata, updateWallFirstRoomMetadata, createEmptyLayoutPreviewState, importLayoutPreviewJson, layoutPreviewDocument } from '$lib/editor/layout/layout-preview-state.svelte';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -492,11 +494,88 @@ describe('P23.12 navigator — source-level constraints', () => {
 
 	it('composes label and secondary through the shared identity helpers', () => {
 		const projection = source('editor/hierarchy/hierarchy-page-projection.ts');
-		// D5 — one tier order (name → reference → fallback) and one
-		// duplicate-collapse rule, both owned by the shared layer.
+		// D5 — the tier order, the duplicate-collapse rule and the reference-led
+		// flag all come from ONE shared composition, so a row and the pin cannot
+		// derive them differently. Re-deriving either rule here is the regression.
+		expect(projection).toContain('identityLabelPair');
 		expect(projection).toContain('identityPrimaryLabel');
-		expect(projection).toContain('identitySecondaryReference');
-		expect(projection).toContain('identityCollapsesToSingleLabel');
+		expect(projection).not.toContain('identityCollapsesToSingleLabel');
+		expect(projection).not.toContain('identitySecondaryReference');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// one presentation for rows AND the pinned selection
+// ---------------------------------------------------------------------------
+
+/**
+ * The duplicate the row builders already collapsed but the pin did not: an
+ * entity whose authored name IS its own reference must render that token once,
+ * wherever it is shown. A Room is the third case — its name is always present,
+ * so it can collide with its reference exactly like an optional name can.
+ */
+describe('P23.12 navigator — the pin uses the row presentation', () => {
+	it('collapses a Wall named exactly its own reference', () => {
+		const state = makeState(squareDocument());
+		const reference = indexOf(state).wallById.get('w1')!.reference!;
+		expect(reference).toMatch(/^W-/);
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: reference }).success).toBe(true);
+		const index = indexOf(state);
+
+		const row = hierarchyWallRow(index, 'k', 'w1');
+		expect(row?.label).toBe(reference);
+		expect(row?.reference).toBeUndefined();
+
+		const pinned = hierarchyEntityPresentation(index, wallEntityKey('w1'));
+		expect(pinned.label).toBe(reference);
+		expect(pinned.reference).toBeNull();
+	});
+
+	it('collapses an Opening named exactly its own reference', () => {
+		const state = makeState(squareDocument());
+		const reference = indexOf(state).openingById.get('door')!.reference!;
+		expect(reference).toMatch(/^O-/);
+		expect(updateWallFirstOpeningMetadata(state, 'door', { name: reference }).success).toBe(true);
+		const index = indexOf(state);
+
+		const row = hierarchyOpeningRow(index, 'k', 'door');
+		expect(row?.label).toBe(reference);
+		expect(row?.reference).toBeUndefined();
+
+		const pinned = hierarchyEntityPresentation(index, openingEntityKey('w1', 'door'));
+		expect(pinned.label).toBe(reference);
+		expect(pinned.reference).toBeNull();
+	});
+
+	it('collapses a Room whose name is its own reference', () => {
+		const state = makeState(squareDocument());
+		const reference = indexOf(state).roomById.get('room')!.reference!;
+		expect(reference).toMatch(/^R-/);
+		expect(updateWallFirstRoomMetadata(state, 'room', { name: reference }).success).toBe(true);
+		const index = indexOf(state);
+
+		// The Room row rendered name + reference unconditionally before, so this
+		// is the third place the same token could appear twice.
+		const row = hierarchyRoomRow(index, 'k', 'room');
+		expect(row?.label).toBe(reference);
+		expect(row?.reference).toBeUndefined();
+
+		const pinned = hierarchyEntityPresentation(index, roomEntityKey('room'));
+		expect(pinned.label).toBe(reference);
+		expect(pinned.reference).toBeNull();
+	});
+
+	it('a distinct name still shows its reference in both places', () => {
+		const state = makeState(squareDocument());
+		const reference = indexOf(state).wallById.get('w1')!.reference!;
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const index = indexOf(state);
+
+		expect(hierarchyWallRow(index, 'k', 'w1')?.reference).toBe(reference);
+		expect(hierarchyEntityPresentation(index, wallEntityKey('w1'))).toEqual({
+			label: 'North Gallery Wall',
+			reference
+		});
 	});
 });
 

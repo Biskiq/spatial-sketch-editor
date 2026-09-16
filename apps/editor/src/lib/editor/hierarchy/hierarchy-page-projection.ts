@@ -34,9 +34,8 @@ import { formatPlacementLabel } from '../editor-outliner';
 // label and secondary reference below comes from these three functions, so the
 // tier order (name → reference → raw-ID fallback) exists in exactly one place.
 import {
-	identityCollapsesToSingleLabel,
+	identityLabelPair,
 	identityPrimaryLabel,
-	identitySecondaryReference,
 	type IdentityView
 } from '../identity/layout-identity-view';
 import type { LayoutSelection } from '../layout/layout-interaction';
@@ -383,13 +382,18 @@ export function hierarchyRoomRow(
 	const room = index.roomById.get(roomId);
 	if (!room) return null;
 	// P23.12 — the authored Room name stays primary; its reference is the
-	// protected secondary identity span (never replaces the name).
+	// protected secondary identity span (never replaces the name), and the
+	// shared pair drops that span when the name already IS the reference.
+	const { label, reference } = identityLabelPair(
+		sourceIdentity(room),
+		formatPlacementLabel(room.roomId)
+	);
 	return entityRow({
 		rowKey,
-		label: room.name,
+		label,
 		entity: room.entity,
 		canonicalId: room.roomId,
-		...(room.reference ? { reference: room.reference } : {}),
+		...(reference ? { reference } : {}),
 		secondary: options.secondary,
 		children: options.children,
 		actions: options.actions,
@@ -410,13 +414,13 @@ export function hierarchyWallRow(
 	// P23.12 identity: authored name leads; an unnamed Wall is reference-led.
 	// The reference is the protected tier (its own span, no truncation), while
 	// relationship context keeps its own slot — context never hides identity.
-	const identity = sourceIdentity(wall);
-	const label = identityPrimaryLabel(identity, formatPlacementLabel(wall.wallId));
 	// A name that already *is* the reference renders once (D8 duplicate-collapse),
-	// so the protected span only appears when it adds a second token.
-	const reference = identityCollapsesToSingleLabel(identity)
-		? null
-		: identitySecondaryReference(identity);
+	// so the protected span only appears when it adds a second token — the shared
+	// pair owns that rule for every surface.
+	const { label, reference, referenceLed } = identityLabelPair(
+		sourceIdentity(wall),
+		formatPlacementLabel(wall.wallId)
+	);
 	return entityRow({
 		rowKey,
 		label,
@@ -424,7 +428,7 @@ export function hierarchyWallRow(
 		canonicalId: wall.wallId,
 		facet: wall.role,
 		...(reference ? { reference } : {}),
-		...(identity.name === null && identity.reference !== null ? { referenceLed: true } : {}),
+		...(referenceLed ? { referenceLed: true } : {}),
 		secondary: options.secondary,
 		children: options.children,
 		actions: options.actions,
@@ -443,11 +447,10 @@ export function hierarchyOpeningRow(
 	const opening = index.openingById.get(openingId);
 	if (!opening) return null;
 	// P23.12 identity: authored name leads; an unnamed Opening is reference-led.
-	const identity = sourceIdentity(opening);
-	const label = identityPrimaryLabel(identity, formatPlacementLabel(opening.openingId));
-	const reference = identityCollapsesToSingleLabel(identity)
-		? null
-		: identitySecondaryReference(identity);
+	const { label, reference, referenceLed } = identityLabelPair(
+		sourceIdentity(opening),
+		formatPlacementLabel(opening.openingId)
+	);
 	return entityRow({
 		rowKey,
 		label,
@@ -455,7 +458,7 @@ export function hierarchyOpeningRow(
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
 		...(reference ? { reference } : {}),
-		...(identity.name === null && identity.reference !== null ? { referenceLed: true } : {}),
+		...(referenceLed ? { referenceLed: true } : {}),
 		// D8 — kind + host, never a bare kind restatement.
 		secondary: options.secondary ?? hierarchyOpeningContext(index, openingId),
 		children: options.children,
@@ -1098,33 +1101,73 @@ export function hierarchyEntityLabel(
 	index: HierarchySourceIndex,
 	entity: HierarchyEntityKey
 ): string {
+	return hierarchyEntityPresentation(index, entity).label;
+}
+
+/**
+ * The pin's two fields, taken from the one shared pair (the row-only
+ * `referenceLed` flag stays out of this shape).
+ */
+function presentationPair(
+	identity: IdentityView,
+	fallback: string
+): { label: string; reference: string | null } {
+	const { label, reference } = identityLabelPair(identity, fallback);
+	return { label, reference };
+}
+
+/**
+ * P23.12 D5 — the ONE identity presentation for an entity key: the same
+ * `identityLabelPair` composition the row builders use, so a pinned selection
+ * and its row can never disagree about the tier order or about the
+ * duplicate-collapse rule. A row and the pin previously re-derived the tiers
+ * separately, which is how a Wall/Opening/Room whose name equals its own
+ * reference rendered the token twice in the pin while the row was correct.
+ */
+export function hierarchyEntityPresentation(
+	index: HierarchySourceIndex,
+	entity: HierarchyEntityKey
+): { label: string; reference: string | null } {
 	switch (entity.kind) {
-		case 'room':
-			return index.roomById.get(entity.roomId)?.name ?? formatPlacementLabel(entity.roomId);
+		case 'room': {
+			const room = index.roomById.get(entity.roomId);
+			if (!room) return { label: formatPlacementLabel(entity.roomId), reference: null };
+			return presentationPair(sourceIdentity(room), formatPlacementLabel(room.roomId));
+		}
 		case 'wall': {
-			// P23.12 — the pin reads the same identity vocabulary as a row:
-			// authored name leads, an unnamed Wall is reference-led.
+			// Authored name leads; an unnamed Wall is reference-led.
 			const wall = index.wallById.get(entity.wallId);
-			return wall?.name ?? wall?.reference ?? formatPlacementLabel(entity.wallId);
+			if (!wall) return { label: formatPlacementLabel(entity.wallId), reference: null };
+			return presentationPair(sourceIdentity(wall), formatPlacementLabel(wall.wallId));
 		}
 		case 'opening': {
 			const opening = index.openingById.get(entity.openingId);
-			return opening?.name ?? opening?.reference ?? formatPlacementLabel(entity.openingId);
+			if (!opening) {
+				return { label: formatPlacementLabel(entity.openingId), reference: null };
+			}
+			return presentationPair(sourceIdentity(opening), formatPlacementLabel(opening.openingId));
 		}
 		case 'junction': {
+			// Reference-only: the label already IS the reference.
 			const junction = index.junctionById.get(entity.junctionId);
-			return junction?.reference ?? formatPlacementLabel(entity.junctionId);
+			return {
+				label: junction?.reference ?? formatPlacementLabel(entity.junctionId),
+				reference: null
+			};
 		}
 		case 'object':
-			return formatPlacementLabel(entity.objectId);
-		case 'cluster':
-			return (
-				index.sceneClusterById.get(entity.clusterId)?.name ?? formatPlacementLabel(entity.clusterId)
-			);
-		case 'entity':
-			return (
-				index.sceneEntityById.get(entity.entityId)?.name ?? formatPlacementLabel(entity.entityId)
-			);
+			return { label: formatPlacementLabel(entity.objectId), reference: null };
+		case 'cluster': {
+			const cluster = index.sceneClusterById.get(entity.clusterId);
+			return { label: cluster?.name ?? formatPlacementLabel(entity.clusterId), reference: null };
+		}
+		case 'entity': {
+			const sceneEntity = index.sceneEntityById.get(entity.entityId);
+			return {
+				label: sceneEntity?.name ?? formatPlacementLabel(entity.entityId),
+				reference: null
+			};
+		}
 	}
 }
 
@@ -1138,25 +1181,7 @@ export function hierarchyEntityReference(
 	index: HierarchySourceIndex,
 	entity: HierarchyEntityKey
 ): string | null {
-	switch (entity.kind) {
-		case 'room': {
-			const room = index.roomById.get(entity.roomId);
-			return room?.reference ?? null;
-		}
-		case 'wall': {
-			const wall = index.wallById.get(entity.wallId);
-			return wall?.name != null ? (wall.reference ?? null) : null;
-		}
-		case 'opening': {
-			const opening = index.openingById.get(entity.openingId);
-			return opening?.name != null ? (opening.reference ?? null) : null;
-		}
-		case 'junction':
-			// Junctions are reference-only: the label already is the reference.
-			return null;
-		default:
-			return null;
-	}
+	return hierarchyEntityPresentation(index, entity).reference;
 }
 
 /** The human name of a canonical `Show in…` home (`Walls`, `Junctions`, …). */

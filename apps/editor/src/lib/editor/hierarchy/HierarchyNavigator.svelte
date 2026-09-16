@@ -41,8 +41,7 @@
 		evaluateHierarchyReveal,
 		explainHierarchyExclusion,
 		findHierarchyRepresentation,
-		hierarchyEntityLabel,
-	hierarchyEntityReference,
+		hierarchyEntityPresentation,
 		hierarchyHomeLabel,
 		OPENING_FILTER_LABELS,
 		WALL_FILTER_LABELS,
@@ -144,10 +143,10 @@
 		if (!home) return null;
 		return {
 			entity,
-			// P23.12 — the pin uses the same name/reference presentation as a
-			// row: the protected reference sits beside a primary authored name.
-			label: hierarchyEntityLabel(index, entity),
-			reference: hierarchyEntityReference(index, entity),
+			// P23.12 D5 — the pin composes through the SAME presentation the row
+			// builders use (one call, one pair), so a pinned selection cannot render
+			// a reference the row collapsed away.
+			...hierarchyEntityPresentation(index, entity),
 			reason,
 			home,
 			homeLabel: hierarchyHomeLabel(home)
