@@ -18,4 +18,7 @@ vite.config.ts.timestamp-*
 .freebuff/
 .cursor/
 .opencode/
+# P23.13 visual-QA plate: local scratch tooling, out of plan scope, delete when
+# the P23.13 visual passes are finished. Never commit it.
+apps/editor/src/routes/dev/plan/
 .env
