@@ -5,6 +5,16 @@ slice plus one next action only.
 
 ## Working tree
 
+- **P23.12 (names and stable display identity) is implemented on branch
+  `P23.12-names-and-stable-display-identity`** (S1–S8 landed 2026-09-15,
+  commit checkpoints `810bc8c` S1 → `c3fce4b` S2 → `cd7bec2` S3 → `2e015da`
+  S4 → `d696e87` S5 → `9b2bce4` S6 → `c83f3b7` S7 → S8 closeout): persisted
+  compact-reference ledger (`R/W/O/J-####`) in layout-core with
+  provisional-mint/durable-promote/exact-restore/pure-read seams and a session
+  high-water mark outside the history snapshot; optional Wall/Opening names
+  through `planWallMetadataUpdate`/`planOpeningMetadataUpdate`; Navigator,
+  search, Inspector and Plan consume one identity vocabulary; the C11 visitor
+  isolation checks pass. **Remaining: owner review of the branch and merge.**
 - **P23.11 (canonical curved Walls) is merged on `main`** through PR #51
   (`9118696`, 2026-09-15): `LayoutWall.centerline` cubic chain, exact curved
   splitting, bend controls and render-safe curve validation. PR #50 (endpoint
@@ -47,30 +57,31 @@ slice plus one next action only.
   promotion now precedes them too; and the **resumed save** (`resumePendingCloudSave`
   ~1380) must submit the installed, promoted snapshot rather than hand-building
   `{ project: pending.project, … }` (~1443), so its `layout` and
-  `layoutCanonicalJson` cannot disagree. Doc status is **revised four times,
-  awaiting re-approval**, with S1 gated on the allocation rule (C6/C10/D1).
+  `layoutCanonicalJson` cannot disagree. The plan's allocation rule was then
+  implemented as ratified, closing S1's gate; see the Working tree entry above.
 - [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
   remains the remaining-scope authority for P23.12–P23.16.
 
 ## Next action
 
-- Re-approve the thrice-revised [P23.12 plan](../plans/2026-09-15-P23.12-names-and-stable-display-identity.md)
-  after the owner's five required changes, the allocation reconciliation and the
-  four pre-implementation fixes plus the two persistence-seam corrections (`§0`
-  records each resolution; nine small sign-off items remain, none blocking), then
-  implement slice S1 (identity ledger
-  primitives — provisional mint / promote / invertible mapping / cursor
-  consistency — and schema in `layout-core`).
+- Owner review of the implemented [P23.12 branch](../plans/2026-09-15-P23.12-names-and-stable-display-identity.md)
+  (all slices landed with their pinned suites; the plan's §10 slice register
+  records the per-slice checkpoints), then merge and move the remaining-scope
+  authority to P23.13.
 
 ## Verification
 
-- Working tree is docs-only (P23.12 design authorities + child plan, tracker and
-  hand-off rows); no source or test file changed, so the numbers below remain the
-  last code baseline.
+- Working tree on this branch carries the P23.12 implementation (see Working
+  tree above); the S8 closeout numbers below are from the implemented branch.
 - Supplied-layout regressions: 3 passed; focused curved/oblique Layout suites:
-  28 passed. `npm run check:layout-core` and `npm run check` passed. Full editor
-  suite: 3,776 passed / 1 skipped with one bend diagnosis timeout under the
-  concurrent run; that diagnostic passed all 11 tests in isolation.
+  28 passed. `npm run check:layout-core` and `npm run check` passed.
+- **P23.12 branch verification (2026-09-15):** `check:layout-core`,
+  `check:project-model` and the editor `check` clean; full editor suite
+  **3,930 passed / 1 skipped**; new suites — `p23-12-identity` (18),
+  `p23-12-lifecycle` + `p23-12-undo-branch`, `p23-12-transient-allocation`
+  (61), `p23-12-names` (68), `p23-12-lifecycle-semantics` (65),
+  `p23-12-navigator-identity` (66), `p23-12-inspector-identity`,
+  `p23-12-plan-identity`, and the C11 visitor isolation checks.
 - Focused Wall regression suites: 49 passed. The new deterministic matrix
   covers 1,310 candidate operations across false `2→2`, `2→3`, `3→4`, missed
   noding and out-of-tolerance non-connection cases; direct regressions pin
