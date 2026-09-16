@@ -532,8 +532,13 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 		const handler = viewport.indexOf('function onLostPointerCapture(event: PointerEvent)');
 		expect(handler).toBeGreaterThan(-1);
 		const body = viewport.slice(handler, handler + 400);
-		expect(body).toContain('interaction.architectureEdit?.pointerId !== event.pointerId');
-		expect(body).toContain('cancelArchitectureEditGesture();');
+		// The handler owns more than one gesture now; the architecture-edit branch
+		// is still keyed on the pointer that opened it, and it cancels first.
+		const architectureBranch = body.indexOf(
+			'interaction.architectureEdit?.pointerId === event.pointerId'
+		);
+		expect(architectureBranch).toBeGreaterThan(-1);
+		expect(body.indexOf('cancelArchitectureEditGesture();')).toBeGreaterThan(architectureBranch);
 	});
 
 	it('finishes the snapshot-only cancel through the common cleanup', () => {
