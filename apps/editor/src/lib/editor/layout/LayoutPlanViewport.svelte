@@ -835,7 +835,15 @@ import { referenceFor } from '$lib/layout/layout-identity';
 		// The legacy interior-anchor drag owns an open Layout transaction the same
 		// way, so a blur closes it through the same baseline-restore/cancel path
 		// instead of leaving the gesture live with the transaction open.
-		if (interiorAnchorPointerId !== null) cancelActiveLayoutDrag();
+		const interiorAnchorPointerIdToRelease = interiorAnchorPointerId;
+		if (interiorAnchorPointerIdToRelease !== null) {
+			cancelActiveLayoutDrag();
+			if (
+				svgElement?.hasPointerCapture(interiorAnchorPointerIdToRelease)
+			) {
+				svgElement.releasePointerCapture(interiorAnchorPointerIdToRelease);
+			}
+		}
 	}
 
 	let previousPlanViewMode = $state<PlanViewMode | null>(null);
@@ -2874,6 +2882,7 @@ const interactionProjection = $derived(
 			// only writer either way.
 			const point = drag ? worldPoint(event) : null;
 			const applied = drag && point ? planInteriorAnchorDrag(drag, point) : null;
+			clearLayoutSnapFeedback();
 			if (applied?.success) {
 				const changed = onLayoutTransactionCommit();
 				if (!changed && snapshot) restoreLayoutPreviewSnapshot(preview, snapshot);

@@ -750,9 +750,12 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 		const branch = releaseBranch();
 
 		const derive = branch.indexOf('planInteriorAnchorDrag(drag, point)');
+		const clearFeedback = branch.indexOf('clearLayoutSnapFeedback();', derive);
 		const outcome = branch.indexOf('applied?.success');
 		const commit = branch.indexOf('onLayoutTransactionCommit()');
 		expect(derive).toBeGreaterThan(-1);
+		expect(clearFeedback).toBeGreaterThan(derive);
+		expect(clearFeedback).toBeLessThan(outcome);
 		expect(outcome).toBeGreaterThan(derive);
 		expect(commit).toBeGreaterThan(outcome);
 	});
@@ -800,12 +803,25 @@ describe('interior-anchor drag — viewport pointer-lifecycle wiring', () => {
 		const start = viewport.indexOf('function onWindowBlur(): void {');
 		expect(start).toBeGreaterThan(-1);
 		const handler = viewport.slice(start, viewport.indexOf('let previousPlanViewMode'));
-		expect(handler).toContain('interiorAnchorPointerId !== null');
+		expect(handler).toContain('interiorAnchorPointerIdToRelease !== null');
 		expect(handler).toContain('cancelActiveLayoutDrag();');
 		// The architecture-edit cancel stays first and untouched.
 		expect(handler.indexOf('cancelArchitectureEditGesture();')).toBeGreaterThan(-1);
 		// Blur is actually wired to the window.
 		expect(viewport).toContain("window.addEventListener('blur', onWindowBlur);");
+	});
+
+	it('releases interior-anchor pointer capture after blur cancellation', () => {
+		const start = viewport.indexOf('function onWindowBlur(): void {');
+		const handler = viewport.slice(start, viewport.indexOf('let previousPlanViewMode'));
+		const captureId = handler.indexOf('const interiorAnchorPointerIdToRelease = interiorAnchorPointerId;');
+		const cancel = handler.indexOf('cancelActiveLayoutDrag();');
+		const release = handler.indexOf('releasePointerCapture(interiorAnchorPointerIdToRelease)');
+
+		expect(captureId).toBeGreaterThan(-1);
+		expect(cancel).toBeGreaterThan(captureId);
+		expect(release).toBeGreaterThan(cancel);
+		expect(handler).toContain('hasPointerCapture(interiorAnchorPointerIdToRelease)');
 	});
 
 	it('keeps the shared cancel path restoring the snapshot and closing the transaction', () => {
