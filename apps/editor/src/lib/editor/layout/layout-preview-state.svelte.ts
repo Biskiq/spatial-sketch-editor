@@ -441,6 +441,15 @@ export function layoutPreviewAuthoredJson(state: LayoutPreviewState): string {
 }
 
 /**
+ * P23.12 — the authored form of an **arbitrary** layout (used by the Save
+ * success callback to baseline the snapshot that was sent, never the live
+ * document, so an edit made during the request stays dirty).
+ */
+export function layoutAuthoredJsonOf(layout: EditorLayoutDocument): string {
+	return authoredLayoutJson(layout);
+}
+
+/**
  * Full canonical JSON, **including** the allocation cursor — the Save/export
  * payload form. Promotion runs before any caller serializes this, so a saved or
  * exported payload can never sit below the session mark.
@@ -464,6 +473,26 @@ export function layoutPreviewIdentityBase(
 ): number {
 	const cursor = isWallFirstLayoutDocument(layout) ? layoutIdentityCursor(layout) : 0;
 	return Math.max(cursor, state.identityHighWater);
+}
+
+/**
+ * The allocation base for a wholesale replacement: the incoming document's own
+ * cursor (the caller repairs it upward first when a live token sits at or
+ * above it). Legacy documents resolve at 0.
+ */
+export function replacementIdentityBase(layout: EditorLayoutDocument): number {
+	return isWallFirstLayoutDocument(layout) ? layoutIdentityCursor(layout) : 0;
+}
+
+/**
+ * Normalize an incoming replacement document (cloud Load / resumed save):
+ * repair a stale cursor upward against the payload's own ledger so the
+ * document can be resolved and installed ledger-complete.
+ */
+export function normalizeIncomingLayout(layout: EditorLayoutDocument): EditorLayoutDocument {
+	return isWallFirstLayoutDocument(layout)
+		? (repairLayoutIdentityCursor(layout) as unknown as EditorLayoutDocument)
+		: layout;
 }
 
 /**
@@ -765,15 +794,27 @@ function deriveInstallBundle(
 	state: LayoutPreviewState,
 	layout: EditorLayoutDocument,
 	projectName: string = state.project.name,
-	reuse?: PreviewCompileReuse
+	reuse?: PreviewCompileReuse,
+	/**
+	 * P23.12 — a **wholesale replacement** (import / load / resumed save) passes
+	 * `replacement: true`: the incoming document is a different document of
+	 * record, so its allocation base is its own repaired cursor — never the
+	 * previous document's high-water mark, which would leak this session's
+	 * retired allocations into the replacement and make two imports of the
+	 * same ledger-less payload resolve differently.
+	 */
+	replacement = false
 ): ReturnType<typeof derivePreviewBundle> {
+	const identityBase = replacement
+		? replacementIdentityBase(layout)
+		: layoutPreviewIdentityBase(state, layout);
 	return derivePreviewBundle(
 		state.project.id,
 		projectName,
 		layout,
 		state.project.scene,
 		reuse,
-		layoutPreviewIdentityBase(state, layout)
+		identityBase
 	);
 }
 
@@ -918,7 +959,11 @@ export function importLayoutPreviewJson(state: LayoutPreviewState, json: string)
 			parsed.kind === 'wall-first'
 				? (repairLayoutIdentityCursor(parsed.document) as unknown as EditorLayoutDocument)
 				: (parsed.document as unknown as EditorLayoutDocument);
-		const bundle = deriveInstallBundle(state, incoming);
+		// P23.12 — a replacement derives from its own repaired cursor, never the
+		// previous document's mark (two imports of the same ledger-less payload
+		// must resolve identically), and the mark is then re-seeded from the
+		// installed document.
+		const bundle = deriveInstallBundle(state, incoming, state.project.name, undefined, true);
 		state.source = 'imported';
 		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
@@ -927,7 +972,7 @@ export function importLayoutPreviewJson(state: LayoutPreviewState, json: string)
 		// payload: otherwise identity resolution would make the session read dirty
 		// immediately after a successful import.
 		state.baselineLayoutJson = authoredLayoutJson(bundle.project.layout);
-		state.identityHighWater = layoutPreviewIdentityBase(state, bundle.project.layout);
+		state.identityHighWater = replacementIdentityBase(bundle.project.layout as unknown as EditorLayoutDocument);
 		state.baselineKind = 'imported';
 		state.lastMutationMessage = null;
 		state.statusMessage = 'Imported layout JSON';

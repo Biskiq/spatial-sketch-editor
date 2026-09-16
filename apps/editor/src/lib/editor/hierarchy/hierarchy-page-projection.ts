@@ -104,6 +104,24 @@ export type HierarchyRowAction = {
 
 export type HierarchyRowKind = 'heading' | 'destination' | 'section' | 'entity' | 'relation';
 
+/** Which field of an entity a search query hit, strongest first. */
+export type HierarchyMatchField = 'name' | 'reference' | 'id' | 'role' | 'kind' | 'label';
+
+/** The explanation carried by a direct search result row. */
+export type HierarchyRowMatch = {
+	field: HierarchyMatchField;
+	/** The normalized query text that produced the hit. */
+	query: string;
+	/** Short human explanation rendered beside the row (`Matched ID w1`). */
+	text: string;
+	/**
+	 * True when the query equals this entity's reference exactly: the reference
+	 * is the identity the user typed, so the renderer emphasises it rather than
+	 * presenting the authored name as a coincidence.
+	 */
+	exactReference: boolean;
+};
+
 export type HierarchyProjectedRow = {
 	rowKey: string;
 	kind: HierarchyRowKind;
@@ -114,8 +132,23 @@ export type HierarchyProjectedRow = {
 	canonicalId?: string;
 	/** Authoritative sub-kind text (wall role, door/window, object kind, …). */
 	facet?: string;
-	/** Factual secondary text (`also in …`, `Door on W1`, `1 opening`). */
+	/**
+	 * P23.12 — the **protected** secondary identity span: the compact reference
+	 * beside a primary authored name. Never truncated, never overridden by
+	 * relationship context (that is `secondary`), and absent when the reference
+	 * already is the label or the document carries no ledger.
+	 */
+	reference?: string;/**
+ * Relationship context (`also in …`, `Door · on W-7K3M`, `3 walls`).
+ * This is the tier that shortens or ellipsises under width pressure.
+ */
 	secondary?: string;
+	/**
+	 * P23.12 — why a *search* row is present. A raw-ID query can surface a row
+	 * whose authored name looks unrelated, so the row must say what matched
+	 * instead of leaving the user to guess. Page rows never carry this.
+	 */
+	match?: HierarchyRowMatch;
 	tooltip?: string;
 	count?: number;
 	/** Destination rows (Navigator root inventory) only. */
@@ -293,14 +326,14 @@ export function hierarchyRoomRow(
 	const room = index.roomById.get(roomId);
 	if (!room) return null;
 	// P23.12 — the authored Room name stays primary; its reference is the
-	// secondary identity span (never replaces the name).
-	const referenceSecondary = room.reference ?? undefined;
+	// protected secondary identity span (never replaces the name).
 	return entityRow({
 		rowKey,
 		label: room.name,
 		entity: room.entity,
 		canonicalId: room.roomId,
-		secondary: options.secondary ?? referenceSecondary,
+		...(room.reference ? { reference: room.reference } : {}),
+		secondary: options.secondary,
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -318,16 +351,18 @@ export function hierarchyWallRow(
 	const wall = index.wallById.get(wallId);
 	if (!wall) return null;
 	// P23.12 identity: authored name leads; an unnamed Wall is reference-led.
-	// The reference never truncates; the name is the truncating tier.
+	// The reference is the protected tier (its own span, no truncation), while
+	// relationship context keeps its own slot — context never hides identity.
 	const label = wall.name ?? wall.reference ?? formatPlacementLabel(wall.wallId);
-	const referenceSecondary = wall.name !== null && wall.reference !== null ? wall.reference : undefined;
+	const reference = wall.name !== null && wall.reference !== null ? wall.reference : undefined;
 	return entityRow({
 		rowKey,
 		label,
 		entity: wall.entity,
 		canonicalId: wall.wallId,
 		facet: wall.role,
-		secondary: options.secondary ?? referenceSecondary,
+		...(reference ? { reference } : {}),
+		secondary: options.secondary,
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -346,14 +381,15 @@ export function hierarchyOpeningRow(
 	if (!opening) return null;
 	// P23.12 identity: authored name leads; an unnamed Opening is reference-led.
 	const label = opening.name ?? opening.reference ?? formatPlacementLabel(opening.openingId);
-	const referenceSecondary = opening.name !== null && opening.reference !== null ? opening.reference : undefined;
+	const reference = opening.name !== null && opening.reference !== null ? opening.reference : undefined;
 	return entityRow({
 		rowKey,
 		label,
 		entity: opening.entity,
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
-		secondary: options.secondary ?? referenceSecondary ?? hierarchyKindLabel(opening.openingKind),
+		...(reference ? { reference } : {}),
+		secondary: options.secondary ?? hierarchyKindLabel(opening.openingKind),
 		children: options.children,
 		actions: options.actions,
 		disclosureKey: options.disclosureKey,
@@ -993,12 +1029,20 @@ export function hierarchyEntityLabel(
 	switch (entity.kind) {
 		case 'room':
 			return index.roomById.get(entity.roomId)?.name ?? formatPlacementLabel(entity.roomId);
-		case 'wall':
-			return formatPlacementLabel(entity.wallId);
-		case 'opening':
-			return formatPlacementLabel(entity.openingId);
-		case 'junction':
-			return formatPlacementLabel(entity.junctionId);
+		case 'wall': {
+			// P23.12 — the pin reads the same identity vocabulary as a row:
+			// authored name leads, an unnamed Wall is reference-led.
+			const wall = index.wallById.get(entity.wallId);
+			return wall?.name ?? wall?.reference ?? formatPlacementLabel(entity.wallId);
+		}
+		case 'opening': {
+			const opening = index.openingById.get(entity.openingId);
+			return opening?.name ?? opening?.reference ?? formatPlacementLabel(entity.openingId);
+		}
+		case 'junction': {
+			const junction = index.junctionById.get(entity.junctionId);
+			return junction?.reference ?? formatPlacementLabel(entity.junctionId);
+		}
 		case 'object':
 			return formatPlacementLabel(entity.objectId);
 		case 'cluster':
@@ -1009,6 +1053,37 @@ export function hierarchyEntityLabel(
 			return (
 				index.sceneEntityById.get(entity.entityId)?.name ?? formatPlacementLabel(entity.entityId)
 			);
+	}
+}
+
+/**
+ * P23.12 — the protected reference span for a pinned selection: the same
+ * compact token a row shows beside a primary authored name. `null` when the
+ * label already *is* the reference (unnamed Wall/Opening, Junction) or when
+ * the document carries no ledger, so the pin never repeats itself.
+ */
+export function hierarchyEntityReference(
+	index: HierarchySourceIndex,
+	entity: HierarchyEntityKey
+): string | null {
+	switch (entity.kind) {
+		case 'room': {
+			const room = index.roomById.get(entity.roomId);
+			return room?.reference ?? null;
+		}
+		case 'wall': {
+			const wall = index.wallById.get(entity.wallId);
+			return wall?.name != null ? (wall.reference ?? null) : null;
+		}
+		case 'opening': {
+			const opening = index.openingById.get(entity.openingId);
+			return opening?.name != null ? (opening.reference ?? null) : null;
+		}
+		case 'junction':
+			// Junctions are reference-only: the label already is the reference.
+			return null;
+		default:
+			return null;
 	}
 }
 

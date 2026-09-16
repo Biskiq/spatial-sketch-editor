@@ -16,14 +16,21 @@ import { describe, expect, it } from 'vitest';
 import { serializeWallFirstLayoutDocument, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
 
 import { createEmptySceneDocument } from '$lib/content/scene';
-import { buildHierarchySourceIndex } from '$lib/editor/hierarchy/hierarchy-source-index';
+import {
+	buildHierarchySourceIndex,
+	junctionEntityKey,
+	openingEntityKey,
+	wallEntityKey
+} from '$lib/editor/hierarchy/hierarchy-source-index';
 import {
 	buildHierarchyPageProjection,
 	hierarchyEndsRow,
 	hierarchyWallRow,
 	hierarchyOpeningRow,
 	hierarchyJunctionRow,
-	hierarchyRoomRow
+	hierarchyRoomRow,
+	hierarchyEntityLabel,
+	hierarchyEntityReference
 } from '$lib/editor/hierarchy/hierarchy-page-projection';
 import { buildHierarchySearchProjection } from '$lib/editor/hierarchy/hierarchy-search';
 import { updateWallFirstWallMetadata, updateWallFirstOpeningMetadata, createEmptyLayoutPreviewState, importLayoutPreviewJson, layoutPreviewDocument } from '$lib/editor/layout/layout-preview-state.svelte';
@@ -151,7 +158,19 @@ describe('P23.12 navigator — row identity', () => {
 		const index = indexOf(state);
 		const row = hierarchyWallRow(index, 'k', 'w1');
 		expect(row?.label).toBe('North Gallery Wall');
-		expect(row?.secondary).toMatch(/^W-/);
+		// The reference lives in its own protected span, not the context slot.
+		expect(row?.reference).toMatch(/^W-/);
+		expect(row?.secondary).toBeUndefined();
+	});
+
+	it('relationship context never displaces a named entity reference', () => {
+		const state = makeState(twoRoomDocument());
+		expect(updateWallFirstWallMetadata(state, 'wA2', { name: 'Party Wall' }).success).toBe(true);
+		const index = indexOf(state);
+		const row = hierarchyWallRow(index, 'k', 'wA2', { secondary: 'also in Room B' });
+		expect(row?.label).toBe('Party Wall');
+		expect(row?.reference).toMatch(/^W-/);
+		expect(row?.secondary).toBe('also in Room B');
 	});
 
 	it('an unnamed Wall is reference-led with no invented name', () => {
@@ -159,7 +178,8 @@ describe('P23.12 navigator — row identity', () => {
 		const index = indexOf(state);
 		const row = hierarchyWallRow(index, 'k', 'w1');
 		expect(row?.label).toMatch(/^W-/);
-		expect(row?.label).not.toBe(row?.secondary);
+		// The label already is the reference: no duplicate protected span.
+		expect(row?.reference).toBeUndefined();
 	});
 
 	it('a named Opening leads with the name; an unnamed one is reference-led', () => {
@@ -167,11 +187,13 @@ describe('P23.12 navigator — row identity', () => {
 		const index = indexOf(state);
 		const unnamed = hierarchyOpeningRow(index, 'k', 'door');
 		expect(unnamed?.label).toMatch(/^O-/);
+		expect(unnamed?.reference).toBeUndefined();
+		expect(unnamed?.secondary).toBe('Door');
 		expect(updateWallFirstOpeningMetadata(state, 'door', { name: 'Main Entrance' }).success).toBe(true);
 		const index2 = indexOf(state);
 		const named = hierarchyOpeningRow(index2, 'k', 'door');
 		expect(named?.label).toBe('Main Entrance');
-		expect(named?.secondary).toMatch(/^O-/);
+		expect(named?.reference).toMatch(/^O-/);
 	});
 
 	it('a Junction is reference-only and never carries a name', () => {
@@ -187,7 +209,7 @@ describe('P23.12 navigator — row identity', () => {
 		const index = indexOf(state);
 		const row = hierarchyRoomRow(index, 'k', 'room');
 		expect(row?.label).toBe('Room');
-		expect(row?.secondary).toMatch(/^R-/);
+		expect(row?.reference).toMatch(/^R-/);
 	});
 
 	it('the same Wall shows the same identity in every Room context', () => {
@@ -198,7 +220,7 @@ describe('P23.12 navigator — row identity', () => {
 		const roomBRow = hierarchyWallRow(index, 'room-b-page', 'wA2');
 		expect(wallsPage?.label).toBe(roomARow?.label);
 		expect(roomARow?.label).toBe(roomBRow?.label);
-		expect(wallsPage?.secondary).toBe(roomARow?.secondary);
+		expect(wallsPage?.reference).toBe(roomARow?.reference);
 	});
 
 	it('the shared Wall shows both Rooms as participation context', () => {
@@ -233,8 +255,101 @@ describe('P23.12 navigator — row identity', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Pinned strip identity
+// ---------------------------------------------------------------------------
+
+describe('P23.12 navigator — pinned strip identity', () => {
+	it('a pinned named Wall shows the name with its protected reference', () => {
+		const state = makeState(squareDocument());
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const index = indexOf(state);
+		const entity = wallEntityKey('w1');
+		expect(hierarchyEntityLabel(index, entity)).toBe('North Gallery Wall');
+		expect(hierarchyEntityReference(index, entity)).toMatch(/^W-/);
+	});
+
+	it('an unnamed Wall pins reference-led and does not repeat the token', () => {
+		const state = makeState(squareDocument());
+		const index = indexOf(state);
+		const entity = wallEntityKey('w1');
+		expect(hierarchyEntityLabel(index, entity)).toMatch(/^W-/);
+		expect(hierarchyEntityReference(index, entity)).toBeNull();
+	});
+
+	it('a Junction pins reference-only and never shows a name', () => {
+		const state = makeState(squareDocument());
+		const index = indexOf(state);
+		const entity = junctionEntityKey('A');
+		expect(hierarchyEntityLabel(index, entity)).toMatch(/^J-/);
+		expect(hierarchyEntityReference(index, entity)).toBeNull();
+	});
+
+	it('a pinned Opening uses the same vocabulary as its row', () => {
+		const state = makeState(squareDocument());
+		expect(updateWallFirstOpeningMetadata(state, 'door', { name: 'Main Entrance' }).success).toBe(true);
+		const index = indexOf(state);
+		const entity = openingEntityKey('w1', 'door');
+		expect(hierarchyEntityLabel(index, entity)).toBe('Main Entrance');
+		expect(hierarchyEntityReference(index, entity)).toMatch(/^O-/);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Search identity
 // ---------------------------------------------------------------------------
+
+describe('P23.12 search — match explanations', () => {
+	function directRows(state: Parameters<typeof indexOf>[0], query: string) {
+		const projection = buildHierarchySearchProjection(indexOf(state), query);
+		return projection.blocks.flatMap((block) =>
+			block.groups.filter((group) => group.kind === 'direct').flatMap((group) => group.rows)
+		);
+	}
+
+	it('a raw-ID query explains the hit instead of showing a bare authored name', () => {
+		const state = makeState(squareDocument());
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const row = directRows(state, 'w1').find((candidate) => candidate.canonicalId === 'w1');
+		expect(row?.label).toBe('North Gallery Wall');
+		expect(row?.match?.field).toBe('id');
+		expect(row?.match?.text).toContain('w1');
+		expect(row?.match?.exactReference).toBe(false);
+	});
+
+	it('a reference query explains the hit and marks the exact reference', () => {
+		const state = makeState(squareDocument());
+		const reference = indexOf(state).wallById.get('w1')?.reference ?? '';
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const row = directRows(state, reference).find((candidate) => candidate.canonicalId === 'w1');
+		expect(row?.match?.field).toBe('reference');
+		expect(row?.match?.exactReference).toBe(true);
+		expect(row?.match?.text).toContain(reference);
+	});
+
+	it('a name query explains the hit as a name match', () => {
+		const state = makeState(squareDocument());
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const row = directRows(state, 'north gallery').find((candidate) => candidate.canonicalId === 'w1');
+		expect(row?.match?.field).toBe('name');
+	});
+
+	it('a role query explains that the role matched, not the identity', () => {
+		const state = makeState(squareDocument());
+		const row = directRows(state, 'boundary').find((candidate) => candidate.canonicalId === 'w1');
+		expect(row?.match?.field).toBe('role');
+		expect(row?.match?.text).toContain('boundary');
+	});
+
+	it('related and topology rows claim no match of their own', () => {
+		const state = makeState(twoRoomDocument());
+		const projection = buildHierarchySearchProjection(indexOf(state), 'Room A');
+		const nonDirect = projection.blocks.flatMap((block) =>
+			block.groups.filter((group) => group.kind !== 'direct').flatMap((group) => group.rows)
+		);
+		expect(nonDirect.length).toBeGreaterThan(0);
+		for (const row of nonDirect) expect(row.match).toBeUndefined();
+	});
+});
 
 describe('P23.12 search — identity retrieval', () => {
 	it('retrieves walls by reference and by authored name', () => {

@@ -466,12 +466,29 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	function copyTechnicalId(): void {
 		void navigator.clipboard?.writeText(technicalDetailsId);
 	}
+	function copyTechnicalReference(): void {
+		if (technicalDetailsReference) void navigator.clipboard?.writeText(technicalDetailsReference);
+	}
 	const technicalDetailsId = $derived(
 		selectedWallFirstWall?.id ??
 			selectedWallFirstJunction?.id ??
 			selectedWallFirstOpening?.id ??
 			selectedWallFirstRoom?.id ??
 			''
+	);
+	// P23.12 D6 — every entity kind exposes the same technical identity block:
+	// the full canonical ID plus the compact reference, both copyable. Reference
+	// may be absent (no ledger yet), so its copy control is conditional.
+	const technicalDetailsReference = $derived(
+		selectedWallFirstWall
+			? selectedWallReference
+			: selectedWallFirstJunction
+				? selectedJunctionReference
+				: selectedWallFirstOpening
+					? selectedOpeningReference
+					: selectedWallFirstRoom
+						? selectedRoomReference
+						: null
 	);
 	// P23.6b — aliases over the canonical targets above: the retired
 	// `precisionTarget` machinery keeps its helper names, now bound to the one
@@ -2164,6 +2181,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<summary>Technical details</summary>
 						<span class="technical-id">{selectedWallFirstWall.id}</span>
 						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedWallReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
 					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
@@ -2173,6 +2191,14 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<span>Connected Wall geometry follows this Junction.</span>
 					<label>X (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[0])} onchange={(event) => updateSelectedJunction(0, event)} /></label>
 					<label>Z (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[1])} onchange={(event) => updateSelectedJunction(1, event)} /></label>
+					<!-- D6 — the same disclosure the Wall branch offers, so identity
+						debugging does not depend on which entity kind is selected. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstJunction.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedJunctionReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstOpening && selectedWallFirstOpeningMetrics}
@@ -2234,6 +2260,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" onclick={repeatSelectedWallOpening}>Repeat ×{openingRepeatCount}</button>
 						<button type="button" class="layout-danger" onclick={removeSelectedWallFirstOpening}>Delete opening</button>
 					</div>
+					<!-- D6 — every entity kind exposes the same technical identity block. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstOpening.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedOpeningReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 				</div>
 			{:else if selectedLayoutOpening && selectedLayoutSegment && selectedLayoutRoom}
 				<div class="layout-selected-room" aria-label="Selected layout opening">
@@ -2337,6 +2370,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 							<button type="button" class="layout-danger" disabled title="No Room-exclusive boundary wall">Remove room</button>
 						{/if}
 					</fieldset>
+					<!-- D6 — every entity kind exposes the same technical identity block. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstRoom.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedRoomReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedLayoutRoom && selectedLayoutBounds}

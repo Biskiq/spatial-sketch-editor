@@ -110,6 +110,7 @@
 					type="button"
 					class="tree-row hierarchy-entity"
 					class:tree-row--selected={selected}
+					class:tree-row--match-reference={row.match?.exactReference === true}
 					aria-disabled={!interactive}
 					title={row.tooltip ?? row.canonicalId}
 					onclick={interactive ? (event) => onSelect(row, event) : undefined}
@@ -120,6 +121,12 @@
 					onblur={() => onEmphasisLeave?.(row)}
 				>
 					<span class="tree-row__label">{row.label}</span>
+					<!-- P23.12 — the reference is the protected identity span: it never
+						truncates and relationship context never displaces it. -->
+					{#if row.reference}<span class="tree-row__reference">{row.reference}</span>{/if}
+					<!-- P23.12 — a search hit states *why* it is here: a raw-ID query
+						can surface a row whose authored name looks unrelated. -->
+					{#if row.match}<span class="tree-row__match">{row.match.text}</span>{/if}
 					{#if row.secondary}<span class="tree-row__meta">{row.secondary}</span>{/if}
 				</button>
 			{:else}
@@ -266,6 +273,29 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	.tree-row__reference {
+		/* Protected: no shrink, no ellipsis — four glyphs plus prefix always fit. */
+		flex: 0 0 auto;
+		color: var(--editor-text-muted);
+		font-family: var(--editor-font-mono, ui-monospace, monospace);
+		font-size: 0.62rem;
+		letter-spacing: 0.01em;
+		white-space: nowrap;
+	}
+	/* P23.12 — the search match explanation: subordinate to identity, never the
+		primary label, and the first tier to ellipsise under width pressure. */
+	.tree-row__match {
+		min-width: 0;
+		overflow: hidden;
+		color: var(--editor-text-muted);
+		font-size: 0.6rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tree-row--match-reference .tree-row__reference {
+		color: var(--editor-text-primary);
+		font-weight: 600;
+	}
 	.tree-row__meta {
 		min-width: 0;
 		margin-left: auto;
@@ -275,5 +305,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.tree-row--selected .tree-row__meta { color: var(--editor-text-primary); }
+	.tree-row--selected .tree-row__meta,
+	.tree-row--selected .tree-row__reference { color: var(--editor-text-primary); }
 </style>

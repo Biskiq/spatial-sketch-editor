@@ -500,6 +500,9 @@ export function planDuplicateIsolatedRoom(
 			role: wall.role,
 			thickness: wall.thickness,
 			height: wall.height,
+			// P23.12 — explicit duplicate copies the optional authored name
+			// unchanged (new references are minted at the install seam).
+			...(wall.name !== undefined ? { name: wall.name } : {}),
 			// P23.11 — the cloned Wall keeps its centerline shape with a deep
 			// anchor copy so the copy never shares arrays/points with the source,
 			// translated by the same delta as its Junctions. Anchors are absolute
@@ -521,6 +524,8 @@ export function planDuplicateIsolatedRoom(
 			id: newId,
 			wallId: wallIdMap.get(opening.wallId)!,
 			kind: opening.kind,
+			// P23.12 — the optional authored name copies unchanged.
+			...(opening.name !== undefined ? { name: opening.name } : {}),
 			// Cloned wall geometry moves with the copy: offsets stay unchanged.
 			offset: opening.offset,
 			width: opening.width,

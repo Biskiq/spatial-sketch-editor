@@ -148,6 +148,33 @@ describe('P23.12 inspector — one header pattern', () => {
 		expect(text).toContain('let technicalDetailsOpen = $state(false);');
 	});
 
+	it('all four entity kinds expose the technical identity block', () => {
+		const text = source();
+		// The review fix: Technical details and Copy ID exist for Walls *and*
+		// Junctions, Openings and Rooms — one shared disclosure state, so the
+		// panel does not collapse when selection changes kind.
+		expect(text.match(/<details class="technical-details" bind:open=\{technicalDetailsOpen\}>/g)).toHaveLength(4);
+		expect(text).toContain('<span class="technical-id">{selectedWallFirstWall.id}</span>');
+		expect(text).toContain('<span class="technical-id">{selectedWallFirstJunction.id}</span>');
+		expect(text).toContain('<span class="technical-id">{selectedWallFirstOpening.id}</span>');
+		expect(text).toContain('<span class="technical-id">{selectedWallFirstRoom.id}</span>');
+		expect(text.match(/>Copy ID<\/button>/g)).toHaveLength(4);
+	});
+
+	it('every kind can copy its compact reference, not just its raw ID', () => {
+		const text = source();
+		// The reference is conditional: an entity without a resolved ledger entry
+		// has nothing to copy, so the control is absent rather than broken.
+		expect(text.match(/>Copy reference<\/button>/g)).toHaveLength(4);
+		expect(text).toContain('{#if selectedWallReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}');
+		expect(text).toContain('{#if selectedJunctionReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}');
+		expect(text).toContain('{#if selectedOpeningReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}');
+		expect(text).toContain('{#if selectedRoomReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}');
+		expect(text).toContain(
+			'if (technicalDetailsReference) void navigator.clipboard?.writeText(technicalDetailsReference);'
+		);
+	});
+
 	it('relationship controls show references', () => {
 		const text = source();
 		expect(text).toContain('startReference ?? selectedWallFirstWallEndpoints.start.id');

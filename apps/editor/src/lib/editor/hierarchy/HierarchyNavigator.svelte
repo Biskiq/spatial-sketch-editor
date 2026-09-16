@@ -42,6 +42,7 @@
 		explainHierarchyExclusion,
 		findHierarchyRepresentation,
 		hierarchyEntityLabel,
+	hierarchyEntityReference,
 		hierarchyHomeLabel,
 		OPENING_FILTER_LABELS,
 		WALL_FILTER_LABELS,
@@ -143,7 +144,10 @@
 		if (!home) return null;
 		return {
 			entity,
+			// P23.12 — the pin uses the same name/reference presentation as a
+			// row: the protected reference sits beside a primary authored name.
 			label: hierarchyEntityLabel(index, entity),
+			reference: hierarchyEntityReference(index, entity),
 			reason,
 			home,
 			homeLabel: hierarchyHomeLabel(home)
@@ -645,7 +649,9 @@
 		<div class="hierarchy-pin" role="status">
 			<span class="hierarchy-pin__text">
 				<span class="hierarchy-pin__title" title={pinned.entity.id}>
-					Selected {pinned.label}
+					Selected {pinned.label}{#if pinned.reference}<span class="hierarchy-pin__reference"
+							>{pinned.reference}</span
+						>{/if}
 				</span>
 				<span class="hierarchy-pin__reason">{pinned.reason.text}</span>
 			</span>
@@ -813,6 +819,14 @@
 		font-size: 0.68rem;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	/* P23.12 — protected identity span: never truncates, never displaced. */
+	.hierarchy-pin__reference {
+		margin-left: 0.3rem;
+		color: var(--editor-text-muted);
+		font-family: var(--editor-font-mono, ui-monospace, monospace);
+		font-size: 0.62rem;
+		letter-spacing: 0.01em;
 	}
 	.hierarchy-pin__reason {
 		min-width: 0;
