@@ -16,6 +16,16 @@
  * back to a single neutral mark with their own plain word, recorded as
  * `UNRATIFIED_SNAP_FAMILIES` so the gap is visible rather than papered over.
  *
+ * **Reachability (S5 review).** Two families in this table cannot win today,
+ * because nothing produces them: `orthogonal-guide`'s only producer,
+ * `layout-core`'s `orthogonalGuideCandidates`, has zero production callers, and
+ * `extension-guide` is never constructed at all. The `right-angle` glyph is
+ * therefore **ratified-but-dormant** ink — kept, because §7 ratifies the
+ * relation and the family is wired rather than removed, but not to be mistaken
+ * for a mark a user can currently see. Owner for "wire it or retire it": **S8**
+ * (see the plan's S5 Deferred note); until then neither the glyph nor the guide
+ * it would carry should be cited as evidence that §7's guide requirement is met.
+ *
  * §7's third item — "a 2 px source accent if useful" — is **deliberately not
  * drawn**. An accent means picking which existing geometry to highlight as the
  * relation's source, and `SnapCandidate` carries `sourceId` without the identity
