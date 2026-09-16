@@ -191,6 +191,11 @@ export type PlanPolylinePrimitive = {
 				centerTangent: LayoutVec2;
 				/** Canonical host normal (unsigned, unlike `inwardNormal`). */
 				centerNormal: LayoutVec2;
+				/**
+				 * P23.13 S1 — canonical world center of the authored cut, so the cue is
+				 * centered on the Opening rather than on the chord midpoint.
+				 */
+				centerPoint: LayoutVec2;
 				/** Canonical Three.js positive-Y yaw of the host tangent. */
 				yaw: number;
 				/**
@@ -365,16 +370,27 @@ export type PlanPresentationDecisions = {
 	 */
 	windowFrameCount?: 1 | 2;
 	/**
-	 * Centered 1 px readability ink for a band projected below 2 px. Excluded
-	 * from hit/snap/measurement truth; paint only.
+	 * Door type cue shape: `full` (the perpendicular three-dash cue at Normal/
+	 * Near and at Far while it stays legible) or `displaced` (the small-opening
+	 * fallback next to a sub-8px cut). Never a compressed cue.
 	 */
-	wallSilhouetteAid?: boolean;
+	doorCueShape?: 'full' | 'displaced';
+	/**
+	 * Wall ink aid: `silhouette` below 2px projected band (centered 1px
+	 * readability line), `dense` where parallel edges collapse under 1.5px
+	 * apart (one neutral aid line over the preserved band), `none` otherwise.
+	 * Excluded from hit/snap/measurement truth — paint only.
+	 */
+	wallInkAid?: 'none' | 'silhouette' | 'dense';
 };
 
-/** Defaults preserve the ratified resting grammar when no salience is wired. */
-export const PLAN_PRESENTATION_DEFAULTS: Required<PlanPresentationDecisions> = {
-	windowFrameCount: 2,
-	wallSilhouetteAid: false
+/**
+ * Defaults preserve the ratified resting grammar when no salience is wired.
+ * The projected-size decisions stay absent so the adapter's structural stub
+ * applies rather than a decision masquerading as resolved (S2 owns them).
+ */
+export const PLAN_PRESENTATION_DEFAULTS: PlanPresentationDecisions = {
+	windowFrameCount: 2
 };
 
 /**
@@ -655,6 +671,7 @@ export function buildPlanRenderModel(
 					],
 					centerTangent: [...opening.center.tangent] as LayoutVec2,
 					centerNormal: [...opening.center.normal] as LayoutVec2,
+					centerPoint: [...opening.center.point] as LayoutVec2,
 					yaw: opening.center.yaw,
 					offsetMeters: opening.offset
 				},
@@ -704,6 +721,7 @@ export function buildPlanRenderModel(
 					inwardNormal: [...opening.center.normal] as LayoutVec2,
 					centerTangent: [...opening.center.tangent] as LayoutVec2,
 					centerNormal: [...opening.center.normal] as LayoutVec2,
+					centerPoint: [...opening.center.point] as LayoutVec2,
 					yaw: opening.center.yaw,
 					offsetMeters: opening.offset
 				},

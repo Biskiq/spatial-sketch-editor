@@ -9,6 +9,18 @@
 		type PlanRenderModel,
 		type PlanStyleToken
 	} from '$lib/layout/plan-render-model';
+	import {
+		architectureBandPx,
+		DOOR_TYPE_CUE_DASHARRAY,
+		doorTypeCueDisplacedScreenPoints,
+		doorTypeCueScreenPoints,
+		offsetScreenPolyline,
+		resolveDoorCueShape,
+		resolveWallInkAid,
+		resolveWindowStrokeCount,
+		wallJambWorldPoints,
+		windowStrokeLayout
+	} from './plan-architecture-grammar';
 
 	let {
 		model,
@@ -102,25 +114,16 @@
 	}
 
 	/**
-	 * P23.13 S0 — the band/ink split, at the paint boundary.
+	 * P23.13 S0/S1 — the band/ink split at the paint boundary.
 	 *
 	 * `--architecture-band-width` is the exact canonical physical-width
-	 * projection (authored thickness × px/m): geometry truth, never clamped, so
-	 * a thin or distant Wall can no longer be widened into a lie. `--architecture-ink-width`
-	 * carries the temporary S0 visual floor that keeps today's appearance while
-	 * the clamp stops being geometry — S1 paints the band from the projection and
-	 * replaces the floor with the centered silhouette aid (S2 supplies the need).
+	 * projection (authored thickness × px/m): geometry truth, never clamped, so a
+	 * thin or distant Wall can no longer be widened into a lie. Readability is a
+	 * *separate* mark — the profile casing, the centered silhouette aid and the
+	 * dense-ink collapse — none of which changes the band.
 	 */
-	// TEMPORARY (S0) — removed by S1 when the silhouette aid replaces it.
-	const ARCHITECTURE_TEMPORARY_INK_FLOOR_PX = 7;
-
-	function architecturalStrokeStyle(primitive: PlanPolylinePrimitive): string {
-		const thickness = primitive.architecture?.kind === 'wall'
-			? primitive.architecture.thicknessMeters
-			: primitive.architecture?.wallThicknessMeters;
-		const bandWidth = Math.max(0, (thickness ?? 0.2) * planView.pixelsPerMeter);
-		const inkWidth = Math.max(bandWidth, ARCHITECTURE_TEMPORARY_INK_FLOOR_PX);
-		return `--architecture-band-width: ${bandWidth}px; --architecture-ink-width: ${inkWidth}px;`;
+	function architectureWidthStyle(bandPx: number): string {
+		return `--architecture-band-width: ${bandPx}px;`;
 	}
 
 	function wallStateClass(style: PlanStyleToken): string {
@@ -151,60 +154,73 @@
 	}
 
 	type OpeningSymbol = {
+		/** Exact projected host thickness, so the void erases only real ink. */
+		bandPx: number;
 		span: LayoutVec2[];
 		jambStart: LayoutVec2[];
 		jambEnd: LayoutVec2[];
-		windowFrames?: LayoutVec2[][];
+		/** Screen-space Window strokes (0, 1 or 2 of them — never three). */
+		windowStrokes: LayoutVec2[][];
+		/** Screen-space Door type cue, already dashed by CSS. */
+		doorCue: LayoutVec2[] | null;
 	};
 
 	/**
-	 * P23.13 S0 — Window frames are at most two parallel strokes. The world-space
-	 * starting separation is `0.36 · t`; S2 clamps the *projected* separation to
-	 * the ratified screen budget (`min(4px, 0.36t)`, ≥3px apart, ≥1px edge margin)
-	 * and collapses to a single stroke when the gate fails. The third frame is
-	 * retired here. Door keeps no host-parallel cue: S1 adds the shared
-	 * perpendicular three-dash type cue from the render-model source facts, so
-	 * this adapter holds no second ink path for it.
+	 * P23.13 S1 — the opening symbol. The void and the jambs stay world-based (the
+	 * authored cut is never re-derived from screen ink); the Window strokes and the
+	 * Door type cue are fixed screen-px ink from `plan-architecture-grammar`.
 	 */
-	const WINDOW_FRAME_RATIO = 0.18;
-
-	function openingSymbol(primitive: PlanPolylinePrimitive, windowFrameCount: 1 | 2): OpeningSymbol | null {
+	function openingSymbol(
+		primitive: PlanPolylinePrimitive,
+		decisions: PlanPresentationDecisions
+	): OpeningSymbol | null {
 		const architecture = primitive.architecture;
 		if (!architecture || architecture.kind === 'wall' || primitive.points.length < 2) return null;
-		const start = primitive.points[0]!;
-		const end = primitive.points.at(-1)!;
 		const normal = architecture.inwardNormal;
-		const halfWall = architecture.wallThicknessMeters / 2;
-		const jamb = (point: LayoutVec2): LayoutVec2[] => [
-			[point[0] - normal[0] * halfWall, point[1] - normal[1] * halfWall],
-			[point[0] + normal[0] * halfWall, point[1] + normal[1] * halfWall]
-		];
+		const thickness = architecture.wallThicknessMeters;
+		const thicknessPx = architectureBandPx(planView, thickness);
 		const symbol: OpeningSymbol = {
+			bandPx: thicknessPx,
 			span: primitive.points,
-			jambStart: jamb(start),
-			jambEnd: jamb(end)
+			jambStart: wallJambWorldPoints(primitive.points[0]!, normal, thickness),
+			jambEnd: wallJambWorldPoints(primitive.points.at(-1)!, normal, thickness),
+			windowStrokes: [],
+			doorCue: null
 		};
 
 		if (architecture.kind === 'window') {
-			const offsets = windowFrameCount === 1
-				? [0]
-				: [-WINDOW_FRAME_RATIO, WINDOW_FRAME_RATIO].map((ratio) => ratio * architecture.wallThicknessMeters);
-			symbol.windowFrames = offsets.map((offset) => primitive.points.map((point) => [
-				point[0] + normal[0] * offset,
-				point[1] + normal[1] * offset
-			] as LayoutVec2));
+			const strokeCount = resolveWindowStrokeCount(
+				decisions.windowFrameCount ?? PLAN_PRESENTATION_DEFAULTS.windowFrameCount ?? 2,
+				thicknessPx
+			);
+			const centerline = primitive.points.map((point) => worldToPlanScreen(planView, point));
+			symbol.windowStrokes = windowStrokeLayout(thicknessPx, strokeCount).offsetsPx.map((offset) =>
+				offsetScreenPolyline(centerline, offset)
+			);
 			return symbol;
 		}
 
 		// P23.6 — neutral door treatment: the authored state carries no hinge
-		// side, handedness or swing direction, so none is drawn. Doors read as
-		// intentional Wall gaps (true authored void + jambs) like windows.
+		// side, handedness or swing direction, so none is drawn. P23.13 A2 adds
+		// one dashed type cue perpendicular to the host: symbolic ink centered on
+		// the cut and symmetric about the Wall centerline, which may protrude
+		// beyond the band and never modifies the cut, jambs, hit, snap, measure
+		// or validation.
+		const widthPx = architecture.widthMeters * planView.pixelsPerMeter;
+		symbol.doorCue = [...resolveDoorCueShape(decisions.doorCueShape, widthPx) === 'full'
+			? doorTypeCueScreenPoints(planView, architecture.centerPoint, architecture.centerTangent)
+			: doorTypeCueDisplacedScreenPoints(planView, architecture.centerPoint, architecture.centerTangent, thicknessPx)];
 		return symbol;
 	}
 
 	function screenAt(point: LayoutVec2, offsetPx?: readonly [number, number]): LayoutVec2 {
 		const screen = worldToPlanScreen(planView, point);
 		return [screen[0] + (offsetPx?.[0] ?? 0), screen[1] + (offsetPx?.[1] ?? 0)];
+	}
+
+	/** Screen-space points are already projected: no transform, no measure bucket. */
+	function screenPointsAttr(points: readonly LayoutVec2[]): string {
+		return points.map((point) => point.join(',')).join(' ');
 	}
 </script>
 
@@ -215,32 +231,48 @@
 				<polygon class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)} />
 			{:else if primitive.kind === 'polyline'}
 				{#if primitive.architecture?.kind === 'wall'}
-					<polyline
-						class={`wall-casing ${wallStateClass(primitive.style)} ${wallPartitionClass(primitive)}`}
-						points={polylinePointsAttr(primitive.points, primitive.endOffsetPx)}
-						style={architecturalStrokeStyle(primitive)}
-					/>
+					{@const bandPx = architectureBandPx(planView, primitive.architecture.thicknessMeters)}
+					{@const inkAid = resolveWallInkAid(presentation.wallInkAid, bandPx)}
+					{@const wallPoints = polylinePointsAttr(primitive.points, primitive.endOffsetPx)}
+					{#if inkAid !== 'dense'}
+						<polyline
+							class={`wall-casing ${wallStateClass(primitive.style)} ${wallPartitionClass(primitive)}`}
+							points={wallPoints}
+							style={architectureWidthStyle(bandPx)}
+						/>
+					{/if}
 					<polyline
 						class={`${tokenClass(primitive.style)} ${wallPartitionClass(primitive)}`}
-						points={polylinePointsAttr(primitive.points, primitive.endOffsetPx)}
-						style={architecturalStrokeStyle(primitive)}
+						points={wallPoints}
+						style={architectureWidthStyle(bandPx)}
 					/>
+					{#if inkAid !== 'none'}
+						<!-- P23.13 S1 — centered 1 px readability ink. A mark, never a measurement. -->
+						<polyline class="wall-silhouette" points={wallPoints} />
+					{/if}
 				{:else if primitive.architecture?.kind === 'door' || primitive.architecture?.kind === 'window'}
-					{@const symbol = openingSymbol(primitive, presentation.windowFrameCount ?? PLAN_PRESENTATION_DEFAULTS.windowFrameCount)}
+					{@const symbol = openingSymbol(primitive, presentation)}
 					{#if symbol}
 						<polyline
 							class="opening-void"
 							class:selected={openingSelected(primitive.style)}
 							class:hovered={openingHovered(primitive.style)}
 							points={pointsAttr(symbol.span)}
-							style={architecturalStrokeStyle(primitive)}
+							style={architectureWidthStyle(symbol.bandPx)}
 						/>
 						<polyline class="opening-jamb" class:selected={openingSelected(primitive.style)} class:hovered={openingHovered(primitive.style)} points={pointsAttr(symbol.jambStart)} />
 						<polyline class="opening-jamb" class:selected={openingSelected(primitive.style)} class:hovered={openingHovered(primitive.style)} points={pointsAttr(symbol.jambEnd)} />
-						{#if symbol.windowFrames}
-							{#each symbol.windowFrames as frame, index (`${primitive.key}:window-frame:${index}`)}
-								<polyline class="window-frame" class:selected={openingSelected(primitive.style)} class:hovered={openingHovered(primitive.style)} points={pointsAttr(frame)} />
-							{/each}
+						{#each symbol.windowStrokes as stroke, index (`${primitive.key}:window-frame:${index}`)}
+							<polyline class="window-frame" class:selected={openingSelected(primitive.style)} class:hovered={openingHovered(primitive.style)} points={screenPointsAttr(stroke)} />
+						{/each}
+						{#if symbol.doorCue}
+							<polyline
+								class="door-cue"
+								class:selected={openingSelected(primitive.style)}
+								class:hovered={openingHovered(primitive.style)}
+								points={screenPointsAttr(symbol.doorCue)}
+								stroke-dasharray={DOOR_TYPE_CUE_DASHARRAY}
+							/>
 						{/if}
 					{/if}
 				{:else}
@@ -298,30 +330,48 @@
 	.wall-line,
 	.opening-void,
 	.opening-jamb,
-	.window-frame { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
-	.wall-casing { stroke: var(--editor-plan-wall-ink); stroke-width: calc(var(--architecture-ink-width) + 2px); stroke-linecap: square; stroke-linejoin: miter; }
+	.window-frame,
+	.wall-silhouette,
+	.door-cue { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* The band is the canonical physical-width projection (a measurement); the
+	   casing is the 1 px exterior profile (a mark). Square caps close a free end
+	   and let touching spans read as one mass at a join — no invented union,
+	   bevel or bridge, so an insufficient-junction seam stays truthful for P23.15. */
+	.wall-casing { stroke: var(--editor-plan-wall-ink); stroke-width: calc(var(--architecture-band-width) + 2px); stroke-linecap: square; stroke-linejoin: miter; }
 	/* P23.6 — non-room-bounding Walls stay physical and wall-like with a subtle
 	   muted distinction (same selection language; `.selected` below wins). */
 	.wall-casing.partition { stroke: var(--editor-plan-muted); }
 	/* P23.6 — hover uses the hover language, never selection blue; states below win ties. */
 	.wall-casing.hovered { stroke: var(--editor-plan-hover-stroke); }
-	.wall-casing.selected { stroke: var(--editor-plan-selection); stroke-width: calc(var(--architecture-ink-width) + 4px); }
+	.wall-casing.selected { stroke: var(--editor-plan-selection); stroke-width: calc(var(--architecture-band-width) + 4px); }
 	.wall-casing.opening-selected { stroke: var(--editor-plan-hover-stroke); }
-	.wall-line { stroke: var(--editor-plan-wall-band); stroke-width: var(--architecture-ink-width); stroke-linecap: square; stroke-linejoin: miter; }
-	/* P23.13 S1 wires the dedicated partition body token below. */
-	.wall-line.partition { stroke: color-mix(in srgb, var(--editor-plan-muted) 38%, var(--editor-plan-wall-band)); }
+	.wall-line { stroke: var(--editor-plan-wall-band); stroke-width: var(--architecture-band-width); stroke-linecap: square; stroke-linejoin: miter; }
+	/* P23.13 S1 — non-bounding body gets its own token (lighter solid body, same
+	   dark continuous perimeter as a bounding Wall). */
+	.wall-line.partition { stroke: var(--editor-plan-partition-body); }
 	.wall-line.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 42%, var(--editor-plan-wall-band)); }
 	.wall-line.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 42%, var(--editor-plan-wall-band)); }
 	.wall-line.opening-selected { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 34%, var(--editor-plan-wall-band)); }
-	.opening-void { stroke: var(--editor-plan-opening-void); stroke-width: calc(var(--architecture-ink-width) + 4px); }
+	/* P23.13 S1 — centered readability ink below 2 px projected band. Excluded
+	   from hit, snap and measurement truth: it is drawn, never queried. */
+	.wall-silhouette { stroke: var(--editor-plan-silhouette); stroke-width: 1; stroke-linecap: butt; }
+	/* The void erases the band's cap bleed and profile across the exact authored
+	   interval, so the cut reads as a true gap on paper and off it. */
+	.opening-void { stroke: var(--editor-plan-opening-void); stroke-width: calc(var(--architecture-band-width) + 2px); }
 	.opening-void.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 14%, var(--editor-plan-opening-void)); }
 	.opening-void.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 14%, var(--editor-plan-opening-void)); }
-	.opening-jamb { stroke: var(--editor-plan-wall-ink); stroke-width: 2; }
-	.window-frame { stroke: var(--editor-plan-wall-ink); stroke-width: 1.35; }
+	.opening-jamb { stroke: var(--editor-plan-wall-ink); stroke-width: 1.25; }
+	.window-frame { stroke: var(--editor-plan-secondary-ink); stroke-width: 1; }
+	/* P23.13 A2 — the Door type cue: 1 px secondary ink, `2 2`, symmetric about the
+	   Wall centerline and free to protrude beyond the band. Symbolic only: no
+	   hinge, leaf, handing, swing, opening side, sill, threshold or animation. */
+	.door-cue { stroke: var(--editor-plan-door-cue); stroke-width: 1; stroke-linecap: butt; }
 	.opening-jamb.hovered,
-	.window-frame.hovered { stroke: var(--editor-plan-hover-stroke); }
+	.window-frame.hovered,
+	.door-cue.hovered { stroke: var(--editor-plan-hover-stroke); }
 	.opening-jamb.selected,
-	.window-frame.selected { stroke: var(--editor-plan-selection); }
+	.window-frame.selected,
+	.door-cue.selected { stroke: var(--editor-plan-selection); }
 	/* Fallback for renderer-neutral projections without architecture metadata. */
 	.opening-line { stroke: var(--editor-plan-object); stroke-width: 7; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.opening-line.hovered { stroke: var(--editor-plan-hover-stroke); stroke-width: 8; }

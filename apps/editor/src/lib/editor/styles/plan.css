@@ -23,21 +23,22 @@
 	--editor-plan-object-stroke: #92908a;
 	--editor-plan-readonly-fill: rgb(146 144 138 / 40%);
 
-	/* P23.13 S0 — band / ink / opening-cue role tokens.
+	/* P23.13 S0/S1 — band / ink / opening-cue role tokens.
 	   The Plan paints a Wall as two independent roles: the physical-width band
 	   (canonical thickness projection, never widened for legibility) and the
-	   drafting ink (profile, termination, silhouette aid). S0 converts the paint
-	   path to these roles at today's values, so the split is real before S1/S2
-	   change what is drawn. `silhouette` / `partition-body` / `door-cue` carry the
-	   ratified P23.13 palette and are painted from S1 (needs resolved in S2). */
+	   drafting ink (profile, termination, silhouette aid). Secondary ink is the
+	   one mark colour for dimensions, references, Window frames and the Door type
+	   cue (spec §2), so those marks can never drift into separate greys. */
 	--editor-plan-wall-band: var(--editor-plan-wall-fill);
 	--editor-plan-wall-ink: var(--editor-plan-wall);
-	--editor-plan-silhouette: #596570;
+	--editor-plan-secondary-ink: #596570;
+	--editor-plan-silhouette: var(--editor-plan-secondary-ink);
 	--editor-plan-partition-body: #adb6bd;
-	--editor-plan-door-cue: #596570;
-	/* S1 replaces the room-background punch with true paper; the actual authored
-	   cut is already exact, only the erase colour is provisional. */
-	--editor-plan-opening-void: var(--editor-plan-room-bg);
+	--editor-plan-door-cue: var(--editor-plan-secondary-ink);
+	/* The opening punch erases ink over the authored cut, so it must match the
+	   drafting surface — never a room background, which does not exist for a
+	   wall-first Wall outside any Room. */
+	--editor-plan-opening-void: var(--editor-plan-canvas-bg);
 
 	/* Selection language (blue = selected, both owners; DS §28A table). */
 	--editor-plan-selected-fill: rgb(47 140 255 / 24%);

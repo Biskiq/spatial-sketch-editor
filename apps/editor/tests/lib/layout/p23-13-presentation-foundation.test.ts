@@ -143,6 +143,7 @@ describe('P23.13 S0 — opening source facts', () => {
 				} else {
 					expect(keys).toEqual([
 						'centerNormal',
+						'centerPoint',
 						'centerTangent',
 						'inwardNormal',
 						'kind',
@@ -158,7 +159,10 @@ describe('P23.13 S0 — opening source facts', () => {
 	});
 
 	it('resolves presentation decisions outside the model, with ratified defaults', () => {
-		expect(PLAN_PRESENTATION_DEFAULTS).toEqual({ windowFrameCount: 2, wallSilhouetteAid: false });
+		// The projected-size decisions stay absent until S2 resolves them with
+		// hysteresis, so the adapter's structural stub applies instead of a value
+		// that would masquerade as a resolved decision.
+		expect(PLAN_PRESENTATION_DEFAULTS).toEqual({ windowFrameCount: 2 });
 	});
 });
 
@@ -166,23 +170,24 @@ describe('P23.13 S0 — adapter paint contract', () => {
 	const plan = readLibSource('editor/layout/PlanSvg.svelte');
 	const tokens = readLibSource('editor/styles/plan.css');
 
-	it('projects the canonical band width and keeps the ink floor out of geometry', () => {
-		expect(plan).toContain('const ARCHITECTURE_TEMPORARY_INK_FLOOR_PX = 7;');
-		expect(plan).toContain('--architecture-band-width: ${bandWidth}px; --architecture-ink-width: ${inkWidth}px;');
-		// The clamp is no longer the geometry truth it used to be.
+	it('projects the canonical band width with no paint floor left in the path', () => {
+		expect(plan).toContain('--architecture-band-width: ${bandPx}px;');
+		// The clamp is no longer geometry, and the S0 temporary ink floor is gone:
+		// readability is the separate silhouette aid now.
 		expect(plan).not.toContain('Math.max(7,');
-		expect(plan).toContain('stroke-width: var(--architecture-ink-width);');
-		expect(plan).toContain('stroke-width: calc(var(--architecture-ink-width) + 2px);');
-		expect(plan).not.toContain('--architecture-width');
+		expect(plan).not.toContain('ARCHITECTURE_TEMPORARY_INK_FLOOR_PX');
+		expect(plan).not.toContain('--architecture-ink-width');
+		expect(plan).toContain('stroke-width: var(--architecture-band-width);');
+		expect(plan).toContain('stroke-width: calc(var(--architecture-band-width) + 2px);');
+		expect(plan).not.toContain('--architecture-width:');
 	});
 
 	it('paints at most two Window strokes and never the retired third frame', () => {
-		expect(plan).toContain('const WINDOW_FRAME_RATIO = 0.18;');
-		expect(plan).toContain('? [0]');
-		expect(plan).toContain('[-WINDOW_FRAME_RATIO, WINDOW_FRAME_RATIO]');
 		expect(plan).not.toContain('0.28');
-		// The injected count is the S2 salience decision, consumed as input.
-		expect(plan).toContain('presentation.windowFrameCount ?? PLAN_PRESENTATION_DEFAULTS.windowFrameCount');
+		// Shape and count both come from the shared grammar, with the injected
+		// count as the S2 salience decision.
+		expect(plan).toContain('resolveWindowStrokeCount');
+		expect(plan).toContain('windowStrokeLayout(thicknessPx, strokeCount)');
 	});
 
 	it('retires the host-parallel Door threshold and leaves no second ink path', () => {
@@ -195,6 +200,7 @@ describe('P23.13 S0 — adapter paint contract', () => {
 		for (const token of [
 			'--editor-plan-wall-band',
 			'--editor-plan-wall-ink',
+			'--editor-plan-secondary-ink',
 			'--editor-plan-silhouette',
 			'--editor-plan-partition-body',
 			'--editor-plan-door-cue',
@@ -202,10 +208,11 @@ describe('P23.13 S0 — adapter paint contract', () => {
 		]) {
 			expect(tokens).toContain(`${token}:`);
 		}
-		// S0 converts the paint path at today's values: no visual drift.
+		// Band and ink keep the pre-P23.13 values; the punch no longer assumes a
+		// room background (a wall-first Wall may sit outside every Room).
 		expect(tokens).toContain('--editor-plan-wall-band: var(--editor-plan-wall-fill);');
 		expect(tokens).toContain('--editor-plan-wall-ink: var(--editor-plan-wall);');
-		expect(tokens).toContain('--editor-plan-opening-void: var(--editor-plan-room-bg);');
+		expect(tokens).toContain('--editor-plan-opening-void: var(--editor-plan-canvas-bg);');
 		expect(plan).toContain('stroke: var(--editor-plan-wall-band);');
 		expect(plan).toContain('stroke: var(--editor-plan-wall-ink);');
 		expect(plan).toContain('stroke: var(--editor-plan-opening-void);');
