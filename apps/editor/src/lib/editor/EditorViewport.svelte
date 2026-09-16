@@ -24,6 +24,7 @@
 	import type { LayoutPreviewState } from './layout/layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
+		promoteLayoutPreviewIdentity,
 		commitLayoutDraftRoom,
 		commitLayoutOpening,
 		commitWallChain,
@@ -42,6 +43,7 @@
 		type LayoutOpeningKind
 	} from './layout/layout-opening-editing';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
+	import { roomIdentityText } from './identity/layout-identity-view';
 	import type { EditorStore } from './editor-store.svelte';
 	import { resolveEditorPlacementScale } from './scale-vector';
 	import type { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
@@ -101,7 +103,8 @@
 		}
 		const result = outcome.result;
 		if (result.success) {
-			store.setStatusMessage(`Created ${result.roomId}`);
+			// P23.12 D6 — creation copy names the Room by identity, never by raw ID.
+			store.setStatusMessage(`Created ${roomIdentityText(layoutPreview.project.layout, result.roomId)}`);
 		} else {
 			store.setStatusMessage(`Room draft rejected: ${result.message}`);
 		}
@@ -324,6 +327,9 @@
 	}
 
 	function commitLayoutTransaction(): boolean {
+		// P23.12 — promote the layout's provisional references before the history
+		// boundary is captured (identity-only write; nothing is recompiled).
+		promoteLayoutPreviewIdentity(layoutPreview);
 		return store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
 	}
 

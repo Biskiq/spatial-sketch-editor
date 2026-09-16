@@ -22,6 +22,7 @@ export * from './layout-room-move';
 export * from './layout-room-reconciliation';
 export * from './layout-robust-orientation';
 export * from './layout-types';
+export * from './layout-identity';
 export * from './layout-wall-first-codec';
 export * from './layout-wall-first-precision';
 export * from './p2311-perf';

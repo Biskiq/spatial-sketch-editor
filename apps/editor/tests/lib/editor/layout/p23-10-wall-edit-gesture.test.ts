@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
+// P23.12 — references are presentation identity, not content (see the helper).
+import { documentContentJson } from '../../layout/__fixtures__/p23-12-content';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -367,7 +369,7 @@ describe('P23.10 gesture — Junction move/endpoint reshape', () => {
 		// The viewport gates every candidate behind the shared drag threshold.
 		expect(shouldBeginWallBend(context.startScreen, [2, 1])).toBe(false);
 		expect(context.interaction.architectureEdit).toMatchObject({ valid: false });
-		expect(JSON.stringify(live(context))).toBe(JSON.stringify(squareDocument()));
+		expect(documentContentJson(live(context))).toBe(documentContentJson(squareDocument()));
 		cancelEdit(context);
 		expect(store.canUndo).toBe(false);
 		expect(context.interaction.selection).toEqual({ kind: 'junction', junctionId: 'A' });
@@ -533,8 +535,13 @@ describe('P23.10 gesture — viewport pointer-lifecycle wiring', () => {
 		const handler = viewport.indexOf('function onLostPointerCapture(event: PointerEvent)');
 		expect(handler).toBeGreaterThan(-1);
 		const body = viewport.slice(handler, handler + 400);
-		expect(body).toContain('interaction.architectureEdit?.pointerId !== event.pointerId');
-		expect(body).toContain('cancelArchitectureEditGesture();');
+		// The handler owns more than one gesture now; the architecture-edit branch
+		// is still keyed on the pointer that opened it, and it cancels first.
+		const architectureBranch = body.indexOf(
+			'interaction.architectureEdit?.pointerId === event.pointerId'
+		);
+		expect(architectureBranch).toBeGreaterThan(-1);
+		expect(body.indexOf('cancelArchitectureEditGesture();')).toBeGreaterThan(architectureBranch);
 	});
 
 	it('finishes the snapshot-only cancel through the common cleanup', () => {

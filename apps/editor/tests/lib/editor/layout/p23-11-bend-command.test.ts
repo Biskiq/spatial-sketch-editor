@@ -34,6 +34,9 @@ import {
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
+// P23.12 — the installed document carries a reference ledger; these assertions are
+// about the document's content (see the helper).
+import { documentContentJson } from '../../layout/__fixtures__/p23-12-content';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import {
 	heldEditorModifiers,
@@ -373,7 +376,7 @@ describe('P23.11 slice 7 — Bend drag through the app adapter', () => {
 		expect(insertedPoint).toHaveLength(1);
 
 		expect(store.undo()).toBe(true);
-		expect(JSON.stringify(layoutPreviewDocument(layoutPreview))).toBe(JSON.stringify(seed));
+		expect(documentContentJson(layoutPreviewDocument(layoutPreview))).toBe(documentContentJson(seed));
 	});
 
 	it('restores the exact baseline and writes nothing for an invalid release', () => {
@@ -470,7 +473,9 @@ describe('P23.11 slice 7 — no-keyboard authoring reaches the same planner', ()
 		expect(inserted.success).toBe(true);
 		// The adapter is a pass-through: the same document the planner produced,
 		// so the context action, the Inspector and the gesture cannot diverge.
-		expect(JSON.stringify(wallFirstDocument(layoutPreview))).toBe(JSON.stringify(direct.document));
+		expect(documentContentJson(wallFirstDocument(layoutPreview))).toBe(
+			documentContentJson(direct.document)
+		);
 
 		const wall = wallFirstDocument(layoutPreview).walls.find((candidate) => candidate.id === 'wall-a')!;
 		if (wall.centerline.kind !== 'cubic-chain') throw new Error('expected a chain');
@@ -505,7 +510,9 @@ describe('P23.11 slice 7 — no-keyboard authoring reaches the same planner', ()
 		if (direct.kind !== 'success') throw new Error('expected the direct planner to accept');
 		const inserted = insertWallFirstWallCurveKnot(layoutPreview, 'wall-a', 4);
 		expect(inserted.success).toBe(true);
-		expect(JSON.stringify(wallFirstDocument(layoutPreview))).toBe(JSON.stringify(direct.document));
+		expect(documentContentJson(wallFirstDocument(layoutPreview))).toBe(
+			documentContentJson(direct.document)
+		);
 		const wall = wallFirstDocument(layoutPreview).walls.find((candidate) => candidate.id === 'wall-a')!;
 		if (wall.centerline.kind !== 'cubic-chain') throw new Error('expected a chain');
 		expect(wall.centerline.knots).toHaveLength(1);

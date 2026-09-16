@@ -41,7 +41,7 @@
 		evaluateHierarchyReveal,
 		explainHierarchyExclusion,
 		findHierarchyRepresentation,
-		hierarchyEntityLabel,
+		hierarchyEntityPresentation,
 		hierarchyHomeLabel,
 		OPENING_FILTER_LABELS,
 		WALL_FILTER_LABELS,
@@ -143,7 +143,10 @@
 		if (!home) return null;
 		return {
 			entity,
-			label: hierarchyEntityLabel(index, entity),
+			// P23.12 D5 — the pin composes through the SAME presentation the row
+			// builders use (one call, one pair), so a pinned selection cannot render
+			// a reference the row collapsed away.
+			...hierarchyEntityPresentation(index, entity),
 			reason,
 			home,
 			homeLabel: hierarchyHomeLabel(home)
@@ -644,8 +647,14 @@
 		<!-- Neutral, in-place pinned selection: no icon, colour or animation. -->
 		<div class="hierarchy-pin" role="status">
 			<span class="hierarchy-pin__text">
-				<span class="hierarchy-pin__title" title={pinned.entity.id}>
-					Selected {pinned.label}
+				<!-- P23.12 — the name and the reference are separate flex items: the
+					name takes the ellipsis, the reference never does. Nesting the
+					reference inside the truncating title let a long name clip it away. -->
+				<span class="hierarchy-pin__identity">
+					<span class="hierarchy-pin__title" title={pinned.entity.id}>
+						Selected {pinned.label}
+					</span>
+					{#if pinned.reference}<span class="hierarchy-pin__reference">{pinned.reference}</span>{/if}
 				</span>
 				<span class="hierarchy-pin__reason">{pinned.reason.text}</span>
 			</span>
@@ -806,12 +815,29 @@
 		background: var(--editor-bg-panel);
 	}
 	.hierarchy-pin__text { display: flex; min-width: 0; flex-direction: column; }
+	.hierarchy-pin__identity {
+		display: flex;
+		min-width: 0;
+		align-items: baseline;
+		gap: 0.3rem;
+	}
 	.hierarchy-pin__title {
+		/* The only truncating tier of the pin's identity line. */
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-secondary);
 		font-size: 0.68rem;
 		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	/* P23.12 — protected identity span: never shrinks, never truncates, and
+		never sits inside an `overflow: hidden` container. */
+	.hierarchy-pin__reference {
+		flex: 0 0 auto;
+		color: var(--editor-text-muted);
+		font-family: var(--editor-font-mono, ui-monospace, monospace);
+		font-size: 0.62rem;
+		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
 	.hierarchy-pin__reason {

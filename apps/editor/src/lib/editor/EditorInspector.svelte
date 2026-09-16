@@ -33,6 +33,8 @@
 		repeatWallFirstOpening,
 		updateWallFirstOpening,
 		updateWallFirstRoomMetadata,
+		updateWallFirstWallMetadata,
+		updateWallFirstOpeningMetadata,
 		wallFirstRoomExclusiveBoundaryWallIds,
 		updateLayoutObjectFields,
 		layoutPreviewDocument,
@@ -100,6 +102,20 @@ import {
 	type AlignReference
 } from '$lib/layout/layout-wall-first-precision';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall, LayoutWallFirstRoom } from '$lib/layout/layout-wall-first-types';
+// P23.12 D5 — the Inspector asks the shared display-identity layer how an
+// entity reads; it never queries the ledger itself and never formats a raw
+// canonical ID into user-facing copy.
+import {
+	junctionIdentity,
+	junctionIdentityText,
+	openingIdentity,
+	openingIdentityText,
+	roomIdentity,
+	roomIdentityText,
+	wallIdentity,
+	wallIdentityText
+} from './identity/layout-identity-view';
+import { formatPlacementLabel } from './editor-outliner';
 import type { WallFirstDuplicateMutationResult } from './layout/layout-preview-state.svelte';
 
 /** Gap between an opening and its duplicate (meters) — clear, canonical spacing. */
@@ -258,6 +274,52 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	const canDuplicateSelection = $derived(store.selectedPlacementIds.length > 0);
 	const layoutDocument = $derived(layoutPreviewDocument(layoutPreview));
 	const wallFirstLayout = $derived('formatVersion' in layoutDocument ? layoutDocument : null);
+
+	/** P23.12 — optional-name edit: an emptied field maps to `null` (clear). */
+	function updateSelectedWallName(event: Event) {
+		const wall = selectedWallFirstWall;
+		if (!wall) return;
+		const input = event.currentTarget as HTMLInputElement;
+		const previous = wall.name ?? '';
+		const raw = input.value;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstWallMetadata(layoutPreview, wall.id, { name: raw === '' ? null : raw }),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			input.value = previous;
+			return;
+		}
+		const result = outcome.result;
+		if (!result.success) {
+			input.value = previous;
+			store.setStatusMessage(result.message);
+		}
+	}
+
+	/** P23.12 — optional-name edit for the selected Opening, same mapping. */
+	function updateSelectedOpeningName(event: Event) {
+		const opening = selectedWallFirstOpening;
+		if (!opening) return;
+		const input = event.currentTarget as HTMLInputElement;
+		const previous = opening.name ?? '';
+		const raw = input.value;
+		const outcome = runLayoutMutationGuarded(
+			() => updateWallFirstOpeningMetadata(layoutPreview, opening.id, { name: raw === '' ? null : raw }),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			input.value = previous;
+			return;
+		}
+		const result = outcome.result;
+		if (!result.success) {
+			input.value = previous;
+			store.setStatusMessage(result.message);
+		}
+	}
 	const isWallFirstLayout = $derived(wallFirstLayout !== null);
 	const layoutRooms = $derived('floors' in layoutDocument ? layoutDocument.floors.flatMap((floor) => floor.rooms) : []);
 	// P23.6b — room-name lookup that works for BOTH formats: a wall-first
@@ -375,6 +437,24 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			? (wallFirstLayout.rooms.find((room) => room.id === selectedWallFirstRoomSelection.roomId) ?? null)
 			: null
 	);
+
+	// P23.12 — the compact references of the selected entities, read from the
+	// document's identity ledger. `null` when the document carries no ledger.
+	const selectedWallReference = $derived(
+		wallFirstLayout && selectedWallFirstWall
+			? wallIdentity(wallFirstLayout, selectedWallFirstWall.id).reference
+			: null
+	);
+	const selectedOpeningReference = $derived(
+		wallFirstLayout && selectedWallFirstOpening
+			? openingIdentity(wallFirstLayout, selectedWallFirstOpening.id).reference
+			: null
+	);
+	const selectedRoomReference = $derived(
+		wallFirstLayout && selectedWallFirstRoom
+			? roomIdentity(wallFirstLayout, selectedWallFirstRoom.id).reference
+			: null
+	);
 	// P23.6 — canonical wall-first Junction Inspector target (coordinate
 	// readout + exact X/Z editing through the same guarded mutation path).
 	const selectedWallFirstJunctionSelection = $derived(
@@ -386,6 +466,78 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					(junction) => junction.id === selectedWallFirstJunctionSelection.junctionId
 				) ?? null)
 			: null
+	);
+	const selectedJunctionReference = $derived(
+		wallFirstLayout && selectedWallFirstJunction
+			? junctionIdentity(wallFirstLayout, selectedWallFirstJunction.id).reference
+			: null
+	);
+	// P23.12 D2/D5/D6 — copy that names an entity inside a sentence is composed by
+	// the shared display-identity layer (`*IdentityText`), never here: the tier
+	// order (authored name → compact reference → raw-ID display label) and its
+	// fallback live in exactly one module. The full canonical ID stays in
+	// Technical details, which is where diagnosis belongs.
+	/**
+	 * P23.12 D6 — a bend point reads by its ordinal in the selected Wall's own
+	 * chain. Its canonical knot ID (`{wallId}:knot:{n}`) embeds the raw Wall ID,
+	 * so it stays in the chain data and out of user copy.
+	 *
+	 * A status message that reports on a mutation MUST read the chain BEFORE it
+	 * runs (via `bendPointLabelAt` with the pre-mutation index and count):
+	 * afterwards the removed knot has no ordinal to find, and the remaining count
+	 * is one lower than the chain the user actually acted on.
+	 */
+	function bendPointLabel(knotId: string): string {
+		const index = selectedWallFirstWallKnots.findIndex((knot) => knot.id === knotId);
+		return index >= 0 ? bendPointLabelAt(index) : 'Bend point';
+	}
+	function bendPointLabelAt(index: number): string {
+		return `Bend point ${index + 1}`;
+	}
+	/**
+	 * A diagnostic's affected source, named by identity rather than by raw ID.
+	 * With no ledger entry for either family the third tier applies — the raw-ID
+	 * display label, never the bare canonical ID; the row keeps the raw ID in its
+	 * `title` instead.
+	 */
+	function diagnosticTargetIdentityText(targetId: string): string {
+		const layout = layoutDocument;
+		const wall = wallIdentity(layout, targetId);
+		if (wall.name !== null || wall.reference !== null) return wallIdentityText(layout, targetId);
+		const junction = junctionIdentity(layout, targetId);
+		if (junction.reference !== null) return junctionIdentityText(layout, targetId);
+		return formatPlacementLabel(targetId);
+	}
+	// Technical details (D6): collapsed by default, state kept across selection
+	// changes, exposing the full canonical ID with a copy control. All four
+	// selection targets are declared above by here.
+	let technicalDetailsOpen = $state(false);
+	function copyTechnicalId(): void {
+		void navigator.clipboard?.writeText(technicalDetailsId);
+	}
+	function copyTechnicalReference(): void {
+		if (technicalDetailsReference) void navigator.clipboard?.writeText(technicalDetailsReference);
+	}
+	const technicalDetailsId = $derived(
+		selectedWallFirstWall?.id ??
+			selectedWallFirstJunction?.id ??
+			selectedWallFirstOpening?.id ??
+			selectedWallFirstRoom?.id ??
+			''
+	);
+	// P23.12 D6 — every entity kind exposes the same technical identity block:
+	// the full canonical ID plus the compact reference, both copyable. Reference
+	// may be absent (no ledger yet), so its copy control is conditional.
+	const technicalDetailsReference = $derived(
+		selectedWallFirstWall
+			? selectedWallReference
+			: selectedWallFirstJunction
+				? selectedJunctionReference
+				: selectedWallFirstOpening
+					? selectedOpeningReference
+					: selectedWallFirstRoom
+						? selectedRoomReference
+						: null
 	);
 	// P23.6b — aliases over the canonical targets above: the retired
 	// `precisionTarget` machinery keeps its helper names, now bound to the one
@@ -460,6 +612,18 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			: { movable: false, rejection: { code: 'unknown_room', message: 'No wall-first layout', targetIds: [room.id] }, hint: 'Room move requires a wall-first layout' };
 		return { area, perimeter, ceilingElevation: compiled?.ceilingElevation ?? null, boundaryWallIds, eligibility };
 	});
+	/**
+	 * P23.12 D6 — the Room's boundary members read as identity, the same tier
+	 * order every other surface uses; the canonical Wall IDs stay in each Wall's
+	 * own Technical details block.
+	 */
+	const selectedWallFirstRoomBoundaryLabel = $derived(
+		selectedWallFirstRoomFacts && selectedWallFirstRoomFacts.boundaryWallIds.length > 0
+			? selectedWallFirstRoomFacts.boundaryWallIds
+					.map((wallId) => wallIdentityText(layoutDocument, wallId))
+					.join(', ')
+			: 'none'
+	);
 	const selectedLayoutSegment = $derived(
 		selectedLayoutWallSelection && selectedLayoutRoom
 			? selectedLayoutRoom.boundary.segments.find((segment) => segment.id === selectedLayoutWallSelection.segmentId)
@@ -1046,12 +1210,14 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		if (!selectedLayoutObject || selectedLayoutObject.kind === 'profile') return [];
 		return layoutPreview.project.layout.objects
 			.filter((object) => object.id !== selectedLayoutObject.id && object.kind !== 'profile')
-			.map((object) => ({ kind: 'object' as const, id: object.id, label: `${object.kind} · ${object.id}` }));
+			// D6 — the option states the display label, not the raw content ID; the
+			// picked `id` stays the raw reference key the planner consumes.
+			.map((object) => ({ kind: 'object' as const, id: object.id, label: `${object.kind} · ${formatPlacementLabel(object.id)}` }));
 	});
 
 	const alignRoomOptions = $derived.by<AlignReferenceOption[]>(() => {
 		if (!selectedLayoutObject?.roomId) return [];
-		return [{ kind: 'room' as const, id: selectedLayoutObject.roomId, label: `Room bounds · ${selectedLayoutObject.roomId}` }];
+		return [{ kind: 'room' as const, id: selectedLayoutObject.roomId, label: `Room bounds · ${formatPlacementLabel(selectedLayoutObject.roomId)}` }];
 	});
 
 	const alignWallOptions = $derived.by<AlignReferenceOption[]>(() => {
@@ -1061,7 +1227,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		return room.boundary.segments.map((segment) => ({
 			kind: 'wall' as const,
 			id: segment.id,
-			label: `Wall · ${segment.id}`
+			label: `Wall · ${formatPlacementLabel(segment.id)}`
 		}));
 	});
 
@@ -1424,7 +1590,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} length` : `Wall rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wallIdentityText(layoutDocument, wall.id)} length` : `Wall rejected: ${outcome.result.message}`);
 	}
 
 	function updateSelectedWallAngle(event: Event): void {
@@ -1444,7 +1610,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatDegrees(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} angle` : `Wall rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wallIdentityText(layoutDocument, wall.id)} angle` : `Wall rejected: ${outcome.result.message}`);
 	}
 
 	function updateSelectedWallThickness(event: Event): void {
@@ -1463,7 +1629,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} thickness` : `Wall rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wallIdentityText(layoutDocument, wall.id)} thickness` : `Wall rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1488,7 +1654,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wall.id} height` : `Wall rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Wall ${wallIdentityText(layoutDocument, wall.id)} height` : `Wall rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1515,7 +1681,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			store.setStatusMessage('Finish the current layout interaction first');
 			return;
 		}
-		store.setStatusMessage(outcome.result.success ? `Added junction to Wall ${wall.id}` : `Add junction rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Added junction to Wall ${wallIdentityText(layoutDocument, wall.id)}` : `Add junction rejected: ${outcome.result.message}`);
 	}
 
 	/**
@@ -1543,7 +1709,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		if (!outcome.result.success) input.checked = wall.role === 'boundary';
 		store.setStatusMessage(
 			outcome.result.success
-				? `Wall ${wall.id} ${role === 'boundary' ? 'defines' : 'no longer defines'} a room boundary`
+				? `Wall ${wallIdentityText(layoutDocument, wall.id)} ${role === 'boundary' ? 'defines' : 'no longer defines'} a room boundary`
 				: `Wall role rejected: ${outcome.result.message}`
 		);
 	}
@@ -1573,8 +1739,8 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		store.setStatusMessage(
 			outcome.result.success
 				? curved
-					? `Wall ${wall.id} is now curved`
-					: `Wall ${wall.id} is now straight`
+					? `Wall ${wallIdentityText(layoutDocument, wall.id)} is now curved`
+					: `Wall ${wallIdentityText(layoutDocument, wall.id)} is now straight`
 				: `Wall curve rejected: ${outcome.result.message}`
 		);
 	}
@@ -1603,7 +1769,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		store.setStatusMessage(
 			outcome.result.success
-				? `Added a bend point to Wall ${wall.id}`
+				? `Added a bend point to Wall ${wallIdentityText(layoutDocument, wall.id)}`
 				: `Add bend point rejected: ${outcome.result.message}`
 		);
 	}
@@ -1612,6 +1778,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		const wall = selectedWallFirstWall;
 		const knot = selectedWallFirstWallKnots.find((candidate) => candidate.id === knotId);
 		if (!wall || !knot) return;
+		const knotIndex = selectedWallFirstWallKnots.indexOf(knot);
 		const previous = knot.point[index];
 		const value = precisionNumber(event, previous, formatMeters);
 		if (value === null) return;
@@ -1627,9 +1794,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+		// Captured before the mutation: the ordinal belongs to the chain the user
+		// acted on, not to whatever the planner leaves behind.
 		store.setStatusMessage(
 			outcome.result.success
-				? `Moved bend point ${knotId}`
+				? `Moved ${bendPointLabelAt(knotIndex).toLowerCase()}`
 				: `Bend point rejected: ${outcome.result.message}`
 		);
 	}
@@ -1637,6 +1806,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	function deleteSelectedWallCurveKnot(knotId: string): void {
 		const wall = selectedWallFirstWall;
 		if (!wall) return;
+		// Both facts the message reports on are read BEFORE the mutation. Reading
+		// them afterwards is wrong twice over: the deleted knot is gone from the
+		// chain, so its ordinal cannot resolve, and the remaining count is one
+		// lower — a Wall with two bend points would announce that it has none
+		// left after removing one.
+		const knotIndex = selectedWallFirstWallKnots.findIndex((knot) => knot.id === knotId);
+		const knotsBefore = selectedWallFirstWallKnots.length;
 		const outcome = runLayoutMutationGuarded(
 			() => deleteWallFirstWallCurveKnot(layoutPreview, wall.id, knotId),
 			(result) => result.success
@@ -1647,9 +1823,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		store.setStatusMessage(
 			outcome.result.success
-				? selectedWallFirstWallKnots.length <= 1
-					? `Wall ${wall.id} has no bend points left`
-					: `Removed bend point ${knotId}`
+				? knotsBefore <= 1
+					? `Wall ${wallIdentityText(layoutDocument, wall.id)} has no bend points left`
+					: `Removed ${knotIndex >= 0 ? bendPointLabelAt(knotIndex).toLowerCase() : 'bend point'}`
 				: `Remove bend point rejected: ${outcome.result.message}`
 		);
 	}
@@ -1694,7 +1870,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Junction ${junction.id}` : `Junction rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Junction ${junctionIdentityText(layoutDocument, junction.id)}` : `Junction rejected: ${outcome.result.message}`);
 	}
 
 	/** P23.6 — focus a diagnostic's affected source on the one selection authority. */
@@ -1729,10 +1905,15 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = String(previous);
-		store.setStatusMessage(outcome.result.success ? `Updated Room ${room.id} ${metric}` : `Rectangle rejected: ${outcome.result.message}`);
+		store.setStatusMessage(outcome.result.success ? `Updated Room ${roomIdentityText(layoutDocument, room.id)} ${metric}` : `Rectangle rejected: ${outcome.result.message}`);
 	}
 
-	function precisionWallEndpoints(layout: LayoutDocumentWallFirst, wall: LayoutWall): { start: LayoutJunction; end: LayoutJunction; length: number; angleDegrees: number } | null {
+	function precisionWallEndpoints(layout: LayoutDocumentWallFirst, wall: LayoutWall): {
+		start: LayoutJunction;
+		end: LayoutJunction;
+		length: number;
+		angleDegrees: number;
+	} | null {
 		const start = layout.junctions.find((junction) => junction.id === wall.startJunctionId);
 		const end = layout.junctions.find((junction) => junction.id === wall.endJunctionId);
 		if (!start || !end) return null;
@@ -1892,9 +2073,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<div class="layout-object-list" aria-label="Topology diagnostics">
 							{#each layoutPreview.issues as issue (issue.code + (issue.targetId ?? ''))}
 								{#if issue.targetId && wallFirstLayout && (wallFirstLayout.walls.some((wall) => wall.id === issue.targetId) || wallFirstLayout.junctions.some((junction) => junction.id === issue.targetId))}
-									<button type="button" class="object-row-select" onclick={() => selectDiagnosticTarget(issue.targetId!)}><strong>{issue.code}</strong><span>{issue.targetId} · {issue.message}</span></button>
+									<button type="button" class="object-row-select" title={issue.targetId} onclick={() => selectDiagnosticTarget(issue.targetId!)}><strong>{issue.code}</strong><span>{diagnosticTargetIdentityText(issue.targetId)} · {issue.message}</span></button>
 								{:else}
-									<span class="layout-empty">{issue.code}{issue.targetId ? ` · ${issue.targetId}` : ''} · {issue.message}</span>
+									<span class="layout-empty" title={issue.targetId ?? undefined}>{issue.code}{issue.targetId ? ` · ${diagnosticTargetIdentityText(issue.targetId)}` : ''} · {issue.message}</span>
 								{/if}
 							{/each}
 						</div>
@@ -1992,9 +2173,18 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				</div>
 			{:else if selectedWallFirstWall && selectedWallFirstWallEndpoints}
 				<div class="layout-selected-room" aria-label="Selected wall-first wall">
-					<strong>Wall {selectedWallFirstWall.id}</strong>
+					<!-- P23.12 — one header pattern: name (or reference) primary, the
+						other secondary, kind stated separately, Technical details below. -->
+					<strong>{selectedWallFirstWall.name ?? selectedWallReference ?? `Wall ${formatPlacementLabel(selectedWallFirstWall.id)}`}</strong>
+					{#if selectedWallFirstWall.name && selectedWallReference}<span>{selectedWallReference}</span>{/if}
 					<span>{selectedWallFirstWall.role === 'boundary' ? 'Defines a room boundary' : 'Partition — does not divide rooms'}</span>
-					<span>{selectedWallFirstWallEndpoints.start.id} → {selectedWallFirstWallEndpoints.end.id} · {selectedWallFirstWallEndpoints.length.toFixed(2)} m</span>
+					<span>
+						{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)} → {junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)}
+						· {selectedWallFirstWallEndpoints.length.toFixed(2)} m
+					</span>
+					<!-- P23.12 S3/S6 — optional authored name through the one planner;
+						an emptied field maps to `null` (clear), a rejection reverts. -->
+					<label>Name (optional)<input type="text" value={selectedWallFirstWall.name ?? ''} onchange={updateSelectedWallName} /></label>
 					<label>Fixed endpoint<select value={precisionFixedEndpoint} onchange={(event) => precisionFixedEndpoint = (event.currentTarget as HTMLSelectElement).value as 'start' | 'end'}><option value="start">Start</option><option value="end">End</option></select></label>
 					<label>Length (m)<input type="number" step="any" value={formatMeters(selectedWallFirstWallEndpoints.length)} onchange={updateSelectedWallLength} /></label>
 					<label>Angle (°)<input type="number" step="any" value={formatDegrees(selectedWallFirstWallEndpoints.angleDegrees)} onchange={updateSelectedWallAngle} /></label>
@@ -2011,8 +2201,8 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					{#if selectedWallFirstWallKnots.length > 0}
 						<div class="object-room-meta"><span>Bend points</span><strong>{selectedWallFirstWallKnots.length}</strong></div>
 						{#each selectedWallFirstWallKnots as anchor (anchor.id)}
-							<label>Bend point {anchor.id} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 0, event)} /></label>
-							<label>Bend point {anchor.id} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 1, event)} /></label>
+							<label>{bendPointLabel(anchor.id)} X (m)<input type="number" step="any" value={formatMeters(anchor.point[0])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 0, event)} /></label>
+							<label>{bendPointLabel(anchor.id)} Z (m)<input type="number" step="any" value={formatMeters(anchor.point[1])} onchange={(event) => updateSelectedWallCurveKnot(anchor.id, 1, event)} /></label>
 							<div class="layout-opening-actions">
 								<button type="button" onclick={() => deleteSelectedWallCurveKnot(anchor.id)}>Remove bend point</button>
 							</div>
@@ -2035,7 +2225,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<div class="object-room-meta"><span>Hosted openings</span>
 							<span class="relation-links">
 								{#each selectedWallFirstHostedOpenings as hostedOpening (hostedOpening.id)}
-									<button type="button" class="object-row-select" onclick={() => selectLayoutWallOpening(layoutInteraction, selectedWallFirstWall!.id, hostedOpening.id)}>{hostedOpening.kind} · {hostedOpening.id}</button>
+									<button type="button" class="object-row-select" onclick={() => selectLayoutWallOpening(layoutInteraction, selectedWallFirstWall!.id, hostedOpening.id)}>{hostedOpening.kind} · {openingIdentityText(layoutDocument, hostedOpening.id)}</button>
 								{/each}
 							</span>
 						</div>
@@ -2045,26 +2235,46 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					{/if}
 					<div class="object-room-meta"><span>Endpoints</span>
 						<span class="relation-links">
-							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.start.id)}>{selectedWallFirstWallEndpoints.start.id}</button>
-							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.end.id)}>{selectedWallFirstWallEndpoints.end.id}</button>
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.start.id)}>{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)}</button>
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.end.id)}>{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)}</button>
 						</span>
 					</div>
+					<!-- D6 — Technical details: collapsed by default, keyboard- and
+						touch-reachable, state preserved across selection changes. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstWall.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedWallReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstJunction}
 				<div class="layout-selected-room" aria-label="Selected wall-first junction">
-					<strong>Junction {selectedWallFirstJunction.id}</strong>
+					<strong>{selectedJunctionReference ?? `Junction ${formatPlacementLabel(selectedWallFirstJunction.id)}`}</strong>
 					<span>Connected Wall geometry follows this Junction.</span>
 					<label>X (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[0])} onchange={(event) => updateSelectedJunction(0, event)} /></label>
 					<label>Z (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[1])} onchange={(event) => updateSelectedJunction(1, event)} /></label>
+					<!-- D6 — the same disclosure the Wall branch offers, so identity
+						debugging does not depend on which entity kind is selected. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstJunction.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedJunctionReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstOpening && selectedWallFirstOpeningMetrics}
 				<div class="layout-selected-room" aria-label="Selected wall-first opening">
-					<strong>{selectedWallFirstOpening.kind} opening</strong>
-					<span>Opening: {selectedWallFirstOpening.id}</span>
+					<!-- P23.12 — same header pattern as Wall: name leads, reference
+						secondary; the kind stays a separate statement. -->
+					<strong>{selectedWallFirstOpening.name ?? selectedOpeningReference ?? formatPlacementLabel(selectedWallFirstOpening.id)}</strong>
+					{#if selectedWallFirstOpening.name && selectedOpeningReference}<span class="identity-reference">{selectedOpeningReference}</span>{/if}
+					<span>{selectedWallFirstOpening.kind} opening</span>
+					<label>Name (optional)<input type="text" value={selectedWallFirstOpening.name ?? ''} onchange={updateSelectedOpeningName} placeholder="Unnamed — reference is the label" /></label>
 					<span>
-						Wall: {selectedWallFirstOpening.wallId} · {selectedWallFirstOpeningMetrics.wallLength.toFixed(2)} m{#if selectedWallFirstHostingWall}
+						Wall: {wallIdentityText(layoutDocument, selectedWallFirstOpening.wallId)} · {selectedWallFirstOpeningMetrics.wallLength.toFixed(2)} m{#if selectedWallFirstHostingWall}
 							· {selectedWallFirstHostingWall.role}{/if}
 					</span>
 					<label>Offset from wall start (m)<input type="number" min="0" step="0.05" value={selectedWallFirstOpening.offset.toFixed(2)} onchange={(event) => updateWallFirstOpeningField('offset', event)} /></label>
@@ -2114,6 +2324,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" onclick={repeatSelectedWallOpening}>Repeat ×{openingRepeatCount}</button>
 						<button type="button" class="layout-danger" onclick={removeSelectedWallFirstOpening}>Delete opening</button>
 					</div>
+					<!-- D6 — every entity kind exposes the same technical identity block. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstOpening.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedOpeningReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 				</div>
 			{:else if selectedLayoutOpening && selectedLayoutSegment && selectedLayoutRoom}
 				<div class="layout-selected-room" aria-label="Selected layout opening">
@@ -2155,8 +2372,10 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				</div>
 			{:else if selectedWallFirstRoom && selectedWallFirstRoomFacts}
 				<div class="layout-selected-room" aria-label="Selected wall-first room">
+					<!-- P23.12 — the Room's authored name stays primary and its edit
+						field stays the one rename authority; the reference is secondary. -->
 					<strong>{selectedWallFirstRoom.name}</strong>
-					<span>{selectedWallFirstRoom.id}</span>
+					{#if selectedRoomReference}<span class="identity-reference">{selectedRoomReference}</span>{/if}
 					<!-- P23.6d — authoritative canonical Room metadata (name and the
 						two surface thicknesses) through `planRoomMetadataUpdate`;
 						the Room survives the edit, so selection is preserved. -->
@@ -2186,8 +2405,10 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<fieldset class="staging-transform-fields">
 							<legend>Exact dimensions</legend>
 							<span>Four boundary Walls · shared-boundary edits reject when ambiguous.</span>
-							<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{id}</option>{/each}</select></label>
-							<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallId}</option>{/each}</select></label>
+							<!-- D6 — the option VALUE stays the canonical ID the planner consumes;
+								only the option TEXT is presentation. -->
+							<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{junctionIdentityText(layoutDocument, id)}</option>{/each}</select></label>
+							<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallIdentityText(layoutDocument, wallId)}</option>{/each}</select></label>
 							<label>Width (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.width} onchange={(event) => updatePrecisionRectangle('width', event)} /></label>
 							<label>Depth (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.depth} onchange={(event) => updatePrecisionRectangle('depth', event)} /></label>
 						</fieldset>
@@ -2198,7 +2419,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 							<button type="button" onclick={duplicateSelectedPrecisionRoom}>Duplicate room</button>
 						</fieldset>
 					{/if}
-					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
+					<span>Boundary walls: {selectedWallFirstRoomBoundaryLabel}</span>
 					<!-- P23.6d — Room removal is a named, deliberate command that deletes
 						the Room's WHOLE boundary (its exclusive boundary Walls) in one atomic
 						operation, so no open shell of leftover Walls survives. Walls shared
@@ -2214,6 +2435,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 							<button type="button" class="layout-danger" disabled title="No Room-exclusive boundary wall">Remove room</button>
 						{/if}
 					</fieldset>
+					<!-- D6 — every entity kind exposes the same technical identity block. -->
+					<details class="technical-details" bind:open={technicalDetailsOpen}>
+						<summary>Technical details</summary>
+						<span class="technical-id">{selectedWallFirstRoom.id}</span>
+						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
+						{#if selectedRoomReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
+					</details>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedLayoutRoom && selectedLayoutBounds}
@@ -2251,7 +2479,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<strong>Geometry warnings</strong>
 					<ul>
 						{#each layoutPreview.issues as issue (`${issue.path}:${issue.code}`)}
-							<li><code>{issue.targetId ?? issue.path}</code> — {issue.message}</li>
+							<li><code title={issue.targetId ?? undefined}>{issue.targetId ? diagnosticTargetIdentityText(issue.targetId) : issue.path}</code> — {issue.message}</li>
 						{/each}
 					</ul>
 				</div>

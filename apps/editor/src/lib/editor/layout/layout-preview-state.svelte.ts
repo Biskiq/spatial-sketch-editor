@@ -27,6 +27,13 @@ import type {
 } from '$lib/layout/layout-types';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 import {
+	layoutAuthoredCanonicalJson,
+	layoutIdentityCursor,
+	promoteLayoutIdentity,
+	repairLayoutIdentityCursor,
+	withLayoutIdentity
+} from '$lib/layout/layout-identity';
+import {
 	planExactJunctionMove,
 	planDeleteLayoutObject,
 	planCommitLayoutObjectPreset,
@@ -58,9 +65,12 @@ import {
 	planDeleteWall,
 	planRemoveRoom,
 	planRoomMetadataUpdate,
+	planWallMetadataUpdate,
+	planOpeningMetadataUpdate,
 	planWallRoleChange,
 	roomExclusiveBoundaryWallIds,
 	type LayoutWallRole as WallRoleChangeRole,
+	type OptionalNamePatch,
 	type RoomMetadataPatch
 } from '$lib/layout/layout-wall-topology-ops';
 import type { NodingIdAllocator } from '$lib/layout/layout-wall-noding';
@@ -171,6 +181,18 @@ export type LayoutPreviewState = {
 	importError: string | null;
 	baselineLayoutJson: string;
 	baselineKind: LayoutBaselineKind;
+	/**
+	 * P23.12 — the session **allocation high-water mark** for compact references.
+	 *
+	 * Allocation bookkeeping, not authored content: it is *not* part of
+	 * `LayoutPreviewSnapshot`, so Undo/Redo cannot rewind it, and it is excluded
+	 * from every change comparison (dirty state, snapshot-matches-live, history
+	 * `matches`, the project fingerprint). It only ever moves forward, at the
+	 * seams where a live state becomes the document of record, which is why a
+	 * reference retired by a delete or an Undo branch can never be handed to a
+	 * different entity.
+	 */
+	identityHighWater: number;
 };
 
 export type LayoutDraftCommitResult =
@@ -363,7 +385,7 @@ export function layoutPreviewSourceLabel(source: LayoutPreviewSource): string {
 
 /** Derived — do not store on `$state` objects (getters break Svelte 5 proxies). */
 export function layoutPreviewIsDirty(state: LayoutPreviewState): boolean {
-	return canonicalLayoutJson(state.project.layout) !== state.baselineLayoutJson;
+	return authoredLayoutJson(state.project.layout) !== state.baselineLayoutJson;
 }
 
 export function layoutPreviewSessionStatus(state: LayoutPreviewState): LayoutSessionStatus {
@@ -398,8 +420,116 @@ function canonicalLayoutJson(layout: EditorLayoutDocument): string {
 		: serializeLayoutDocument(layout);
 }
 
+/**
+ * P23.12 — the **authored** canonical JSON: the canonical form with
+ * `identity.cursor` omitted.
+ *
+ * The cursor is allocation bookkeeping, so it must never take part in a change
+ * comparison: a cursor that moved (or was rewound by Undo) would otherwise
+ * report the document as unsaved or create a phantom history entry. The
+ * reference ledger itself is authored and stays in the comparison, as does every
+ * Wall/Opening name.
+ */
+function authoredLayoutJson(layout: EditorLayoutDocument): string {
+	return isWallFirstLayoutDocument(layout)
+		? layoutAuthoredCanonicalJson(layout)
+		: serializeLayoutDocument(layout);
+}
+
+export function layoutPreviewAuthoredJson(state: LayoutPreviewState): string {
+	return authoredLayoutJson(state.project.layout);
+}
+
+/**
+ * P23.12 — the authored form of an **arbitrary** layout (used by the Save
+ * success callback to baseline the snapshot that was sent, never the live
+ * document, so an edit made during the request stays dirty).
+ */
+export function layoutAuthoredJsonOf(layout: EditorLayoutDocument): string {
+	return authoredLayoutJson(layout);
+}
+
+/**
+ * Full canonical JSON, **including** the allocation cursor — the Save/export
+ * payload form. Promotion runs before any caller serializes this, so a saved or
+ * exported payload can never sit below the session mark.
+ */
 export function layoutPreviewCanonicalJson(state: LayoutPreviewState): string {
 	return canonicalLayoutJson(state.project.layout);
+}
+
+/**
+ * The allocation base for a provisional derivation of `layout`, latched as
+ * `max(document cursor, session high-water)`.
+ *
+ * Reading the document cursor **alone** is what would break the never-reassigned
+ * guarantee: after `create A → undo` the document cursor is legitimately rewound
+ * while the mark is not, and a fresh allocation would hand A's retired reference
+ * to a different entity.
+ */
+export function layoutPreviewIdentityBase(
+	state: LayoutPreviewState,
+	layout: EditorLayoutDocument
+): number {
+	const cursor = isWallFirstLayoutDocument(layout) ? layoutIdentityCursor(layout) : 0;
+	return Math.max(cursor, state.identityHighWater);
+}
+
+/**
+ * The allocation base for a wholesale replacement: the incoming document's own
+ * cursor (the caller repairs it upward first when a live token sits at or
+ * above it). Legacy documents resolve at 0.
+ */
+export function replacementIdentityBase(layout: EditorLayoutDocument): number {
+	return isWallFirstLayoutDocument(layout) ? layoutIdentityCursor(layout) : 0;
+}
+
+/**
+ * Normalize an incoming replacement document (cloud Load / resumed save):
+ * repair a stale cursor upward against the payload's own ledger so the
+ * document can be resolved and installed ledger-complete.
+ */
+export function normalizeIncomingLayout(layout: EditorLayoutDocument): EditorLayoutDocument {
+	return isWallFirstLayoutDocument(layout)
+		? (repairLayoutIdentityCursor(layout) as unknown as EditorLayoutDocument)
+		: layout;
+}
+
+/**
+ * **Provisional** identity resolution for a candidate document: mint into the
+ * copy only, never advancing anything in `state`.
+ *
+ * Called by every derivation, so a pointermove candidate renders honest
+ * references; a candidate that is rolled back consumed nothing, and the tokens it
+ * displayed are exactly the tokens a later commit keeps.
+ */
+function withProvisionalLayoutIdentity(
+	layout: EditorLayoutDocument,
+	identityBase: number
+): EditorLayoutDocument {
+	if (!isWallFirstLayoutDocument(layout)) return layout;
+	return withLayoutIdentity(layout, { base: identityBase });
+}
+
+/**
+ * **Durable** promotion at a seam where the live state becomes the document of
+ * record (a transaction commit, a Save/export payload).
+ *
+ * Writes the `identity` block only: geometry, issues and bounds are already
+ * compiled from this document and `identity` is not an input to the compiler, so
+ * nothing is recompiled and the installed bundle stays valid. The mark never
+ * moves backwards, including when there is nothing to mint, which is what keeps a
+ * serialized cursor at or above the mark.
+ */
+export function promoteLayoutPreviewIdentity(state: LayoutPreviewState): void {
+	const layout = state.project.layout as unknown as EditorLayoutDocument;
+	if (!isWallFirstLayoutDocument(layout)) return;
+	const base = layoutPreviewIdentityBase(state, layout);
+	const promoted = promoteLayoutIdentity(layout, { base });
+	if (promoted.document !== layout) {
+		state.project = { ...state.project, layout: promoted.document as unknown as Project['layout'] };
+	}
+	state.identityHighWater = Math.max(state.identityHighWater, promoted.cursor);
 }
 
 /**
@@ -418,7 +548,10 @@ export function layoutPreviewSnapshotMatchesLive(
 	snapshot: LayoutPreviewSnapshot
 ): boolean {
 	try {
-		return JSON.stringify(state.project.layout) === JSON.stringify(snapshot.project.layout);
+		return (
+			authoredLayoutJson(state.project.layout as unknown as EditorLayoutDocument) ===
+			authoredLayoutJson(snapshot.project.layout as unknown as EditorLayoutDocument)
+		);
 	} catch {
 		return false;
 	}
@@ -603,7 +736,15 @@ export function derivePreviewBundle(
 	projectName: string,
 	layout: EditorLayoutDocument,
 	scene: Project['scene'],
-	reuse?: PreviewCompileReuse
+	reuse?: PreviewCompileReuse,
+	/**
+	 * P23.12 — the operation's latched allocation base (`max(document cursor,
+	 * session high-water)`). Omitted means "do not resolve references here":
+	 * pure readers such as the 3D preview coordinator must not pay for minting,
+	 * and a caller that installs always passes it (see
+	 * `deriveInstallBundle`).
+	 */
+	identityBase?: number
 ): {
 	project: Project;
 	model: LayoutPreviewModel;
@@ -615,10 +756,25 @@ export function derivePreviewBundle(
 	bounds: LayoutPreviewBounds | null;
 } {
 	const project = createPreviewProject({ id: projectId, name: projectName, layout, scene });
+	// The compile runs **before** identity resolution on purpose: the accepted
+	// planner's compile is reused when its canonical JSON still matches
+	// (`reusesAcceptedCompile`), and the accepted document has no identity block.
+	// Minting first would miss that fast path on every install and silently
+	// recompile on the pointermove path.
 	const result = resolvePreviewCompile(project.layout, reuse);
+	const resolvedLayout =
+		identityBase === undefined
+			? project.layout
+			: withProvisionalLayoutIdentity(project.layout, identityBase);
+	// `identity` is not an input to the compiler, so reusing the compiled model,
+	// geometry and bounds for the identity-resolved document is exact.
+	const installedProject =
+		resolvedLayout === project.layout
+			? project
+			: { ...project, layout: resolvedLayout as unknown as Project['layout'] };
 	const meshes = resolveWallMeshes(result.geometry);
 	return {
-		project,
+		project: installedProject,
 		model: result.model,
 		geometry: result.geometry,
 		wallMeshesByRoom: new Map(meshes.wallMeshesByRoom),
@@ -627,6 +783,39 @@ export function derivePreviewBundle(
 		issues: meshes.issues.length > 0 ? [...result.issues, ...meshes.issues] : result.issues,
 		bounds: result.bounds
 	};
+}
+
+/**
+ * Derive the bundle this state would install for `layout` — the ordinary
+ * derivation plus **provisional** reference resolution for this state's latched
+ * allocation base (P23.12).
+ */
+function deriveInstallBundle(
+	state: LayoutPreviewState,
+	layout: EditorLayoutDocument,
+	projectName: string = state.project.name,
+	reuse?: PreviewCompileReuse,
+	/**
+	 * P23.12 — a **wholesale replacement** (import / load / resumed save) passes
+	 * `replacement: true`: the incoming document is a different document of
+	 * record, so its allocation base is its own repaired cursor — never the
+	 * previous document's high-water mark, which would leak this session's
+	 * retired allocations into the replacement and make two imports of the
+	 * same ledger-less payload resolve differently.
+	 */
+	replacement = false
+): ReturnType<typeof derivePreviewBundle> {
+	const identityBase = replacement
+		? replacementIdentityBase(layout)
+		: layoutPreviewIdentityBase(state, layout);
+	return derivePreviewBundle(
+		state.project.id,
+		projectName,
+		layout,
+		state.project.scene,
+		reuse,
+		identityBase
+	);
 }
 
 /** Install a derived bundle in one shot; never partially mutates committed state. */
@@ -653,14 +842,29 @@ export function installLayoutPreviewBundle(
 	state.lastMutationMessage = null;
 	state.statusMessage = null;
 	state.importError = null;
+	// P23.12 — a wholesale replacement (import/load/reset/resumed save) re-seeds
+	// the allocation mark from the payload, exactly as it adopts the payload's
+	// canonical IDs and Rooms. This is the documented scope boundary of the
+	// never-reassigned guarantee; the assertion in the caller is that the payload
+	// really is a different document.
+	state.identityHighWater = layoutIdentityCursor(
+		bundle.project.layout as unknown as LayoutDocumentWallFirst
+	);
 }
 
-/** Save baseline only; unlike import/reset this preserves selection and history. */
+/**
+ * Save baseline only; unlike import/reset this preserves selection and history.
+ *
+ * P23.12 — the default baseline is the **authored** canonical JSON (cursor
+ * omitted), and callers that pass an explicit string must pass the same form
+ * (`layoutPreviewAuthoredJson`), so a cursor that moved during Save cannot make
+ * the session read dirty immediately afterwards.
+ */
 export function markLayoutPreviewSaved(
 	state: LayoutPreviewState,
-	canonicalJson = canonicalLayoutJson(state.project.layout)
+	authoredJson = layoutPreviewAuthoredJson(state)
 ): void {
-	state.baselineLayoutJson = canonicalJson;
+	state.baselineLayoutJson = authoredJson;
 	state.baselineKind = 'imported';
 }
 
@@ -686,6 +890,13 @@ export function commitLayoutCandidate(
 	state.lastMutationMessage = null;
 	state.statusMessage = null;
 	state.importError = null;
+	// P23.12 — the candidate bundle was never installed during the drag, so this
+	// is the first time its provisional references reach live state. Nothing is
+	// minted here (only promotion mints durably) and the mark never moves back.
+	state.identityHighWater = Math.max(
+		state.identityHighWater,
+		layoutIdentityCursor(bundle.project.layout as unknown as LayoutDocumentWallFirst)
+	);
 }
 
 /** Report a failed layout import without changing the committed preview or baseline. */
@@ -741,12 +952,27 @@ export function importLayoutPreviewJson(state: LayoutPreviewState, json: string)
 		return false;
 	}
 	try {
-		const bundle = derivePreviewBundle(state.project.id, state.project.name, parsed.document, state.project.scene);
+		// P23.12 — a document replacement re-seeds the allocation mark from the
+		// payload's cursor, and a stale/short payload cursor is repaired upward
+		// before anything is minted.
+		const incoming =
+			parsed.kind === 'wall-first'
+				? (repairLayoutIdentityCursor(parsed.document) as unknown as EditorLayoutDocument)
+				: (parsed.document as unknown as EditorLayoutDocument);
+		// P23.12 — a replacement derives from its own repaired cursor, never the
+		// previous document's mark (two imports of the same ledger-less payload
+		// must resolve identically), and the mark is then re-seeded from the
+		// installed document.
+		const bundle = deriveInstallBundle(state, incoming, state.project.name, undefined, true);
 		state.source = 'imported';
 		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
 		state.reframeVersion += 1;
-		state.baselineLayoutJson = canonicalLayoutJson(parsed.document);
+		// The baseline is the **installed, normalized** document, never the raw
+		// payload: otherwise identity resolution would make the session read dirty
+		// immediately after a successful import.
+		state.baselineLayoutJson = authoredLayoutJson(bundle.project.layout);
+		state.identityHighWater = replacementIdentityBase(bundle.project.layout as unknown as EditorLayoutDocument);
 		state.baselineKind = 'imported';
 		state.lastMutationMessage = null;
 		state.statusMessage = 'Imported layout JSON';
@@ -976,12 +1202,7 @@ export function commitLayoutObjectPreset(
 		return { success: false, message: 'Preset create returned no object ID' };
 	}
 	try {
-		const bundle = derivePreviewBundle(
-			state.project.id,
-			state.project.name,
-			plan.document,
-			state.project.scene
-		);
+		const bundle = deriveInstallBundle(state, plan.document);
 		state.source = 'draft';
 		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
@@ -1048,13 +1269,7 @@ function applyWallFirstDocumentPlan(
 	try {
 		// `acceptance` is the compile this cycle already ran to accept the same
 		// document; the install consumes it instead of compiling it again.
-		const bundle = derivePreviewBundle(
-			state.project.id,
-			state.project.name,
-			document,
-			state.project.scene,
-			acceptance
-		);
+		const bundle = deriveInstallBundle(state, document, state.project.name, acceptance);
 		state.source = 'draft';
 		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
 		state.previewVersion += 1;
@@ -1120,12 +1335,7 @@ export function commitWallChain(
 		return { success: false, message: plan.rejection.message };
 	}
 	try {
-		const bundle = derivePreviewBundle(
-			state.project.id,
-			state.project.name,
-			plan.document,
-			state.project.scene
-		);
+		const bundle = deriveInstallBundle(state, plan.document);
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -1175,12 +1385,7 @@ export function commitWallSegment(
 		return { success: false, message: plan.rejection.message };
 	}
 	try {
-		const bundle = derivePreviewBundle(
-			state.project.id,
-			state.project.name,
-			plan.document,
-			state.project.scene
-		);
+		const bundle = deriveInstallBundle(state, plan.document);
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -1601,6 +1806,51 @@ export function updateWallFirstRoomMetadata(
 }
 
 /**
+ * P23.12 — canonical wall-first Wall metadata update (optional name) through
+ * the one planner. A sibling of `updateWallFirstRoomMetadata`: the Wall
+ * survives the edit, so its reference and topology are untouched, and one
+ * accepted plan is one history entry at the caller. The Inspector maps an
+ * emptied text field to `null` (never `''`), so a clear removes the property.
+ */
+export function updateWallFirstWallMetadata(
+	state: LayoutPreviewState,
+	wallId: string,
+	patch: OptionalNamePatch
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planWallMetadataUpdate(layout, wallId, patch);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'wall-metadata');
+}
+
+/**
+ * P23.12 — canonical wall-first Opening metadata update (optional name)
+ * through the one planner. Same contract as `updateWallFirstWallMetadata`.
+ */
+export function updateWallFirstOpeningMetadata(
+	state: LayoutPreviewState,
+	openingId: string,
+	patch: OptionalNamePatch
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planOpeningMetadataUpdate(layout, openingId, patch);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'opening-metadata');
+}
+
+/**
  * P23.6d — canonical Room removal: `planRemoveRoom` removes the Room and its
  * exclusive enclosure Walls while preserving shared physical Walls required by
  * adjacent Rooms (the shared Wall-removal pipeline), so the Room retires
@@ -1700,12 +1950,7 @@ function applyWallFirstDuplicatePlan(
 		return { success: false, message: plan.rejection.message };
 	}
 	try {
-		const bundle = derivePreviewBundle(
-			state.project.id,
-			state.project.name,
-			plan.document,
-			state.project.scene
-		);
+		const bundle = deriveInstallBundle(state, plan.document);
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -2049,7 +2294,7 @@ export function commitLayoutPathRoom(
 	if (hasBlockingLayoutIssues(geometryIssues)) return { success: false, message: geometryIssues[0]!.message };
 	floor.rooms = [...floor.rooms, room];
 	try {
-		const bundle = derivePreviewBundle(state.project.id, 'Draft Layout Preview', layout, state.project.scene);
+		const bundle = deriveInstallBundle(state, layout, 'Draft Layout Preview');
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -2167,7 +2412,7 @@ export function commitLayoutDraftRoom(
 	floor.rooms = [...floor.rooms, room];
 
 	try {
-		const bundle = derivePreviewBundle(state.project.id, 'Draft Layout Preview', layout, state.project.scene);
+		const bundle = deriveInstallBundle(state, layout, 'Draft Layout Preview');
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -2210,13 +2455,20 @@ function createState(
 	scene: Project['scene'],
 	previousVersion: number
 ): LayoutPreviewState {
+	// P23.12 — the boot/load path is a wholesale document install, so references
+	// are resolved here and the session mark starts from the installed document.
+	const identityBase = isWallFirstLayoutDocument(layout as unknown as EditorLayoutDocument)
+		? layoutIdentityCursor(layout as unknown as LayoutDocumentWallFirst)
+		: 0;
 	const bundle = derivePreviewBundle(
 		'project:layout-preview',
 		source === 'chopin-fixture' ? 'Chopin Layout Preview' : 'Empty Layout Preview',
 		layout,
-		scene
+		scene,
+		undefined,
+		identityBase
 	);
-	const baselineLayoutJson = canonicalLayoutJson(bundle.project.layout);
+	const baselineLayoutJson = authoredLayoutJson(bundle.project.layout);
 	const baselineKind: LayoutBaselineKind = source === 'empty' ? 'blank' : 'imported';
 	return {
 		source,
@@ -2235,7 +2487,10 @@ function createState(
 		statusMessage: null,
 		importError: null,
 		baselineLayoutJson,
-		baselineKind
+		baselineKind,
+		identityHighWater: layoutIdentityCursor(
+			bundle.project.layout as unknown as LayoutDocumentWallFirst
+		)
 	};
 }
 
@@ -2264,7 +2519,7 @@ function applyLayoutMutation(
 		const decoded = decodeLayoutValueCompatible(layout);
 		if (decoded.kind === 'unrecognized') return failOpeningMutation(state, decoded.issues[0]?.message ?? 'Invalid layout document');
 		if (decoded.kind === 'wall-first') {
-			const bundle = derivePreviewBundle(state.project.id, 'Draft Layout Preview', decoded.document, state.project.scene);
+			const bundle = deriveInstallBundle(state, decoded.document, 'Draft Layout Preview');
 			state.source = 'draft';
 			commitPreviewBundle(state, bundle);
 			state.previewVersion += 1;
@@ -2279,7 +2534,7 @@ function applyLayoutMutation(
 		if (hasBlockingLayoutIssues(geometryIssues)) {
 			return failOpeningMutation(state, geometryIssues[0]!.message);
 		}
-		const bundle = derivePreviewBundle(state.project.id, 'Draft Layout Preview', structural.document, state.project.scene);
+		const bundle = deriveInstallBundle(state, structural.document, 'Draft Layout Preview');
 		state.source = 'draft';
 		commitPreviewBundle(state, bundle);
 		state.previewVersion += 1;
@@ -2337,6 +2592,8 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
 	target.importError = null;
 	target.baselineLayoutJson = next.baselineLayoutJson;
 	target.baselineKind = next.baselineKind;
+	// A document replacement re-seeds the allocation mark from the new document.
+	target.identityHighWater = next.identityHighWater;
 }
 
 export type LayoutPreviewSnapshot = {

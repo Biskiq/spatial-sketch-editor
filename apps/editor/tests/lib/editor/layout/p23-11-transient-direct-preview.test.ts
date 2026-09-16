@@ -44,6 +44,9 @@ import {
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
+// P23.12 — a ledger is minted at the install seam, so "wrote nothing" about a
+// command is a *content* claim; references themselves are pinned in p23-12-*.
+import { documentContentJson } from '../../layout/__fixtures__/p23-12-content';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -532,7 +535,7 @@ describe('P23.11 transient pass — a pointermove writes nothing', () => {
 		expect(outcome.kind).toBe('rejected');
 		expect(outcome.statusMessage).not.toBeNull();
 		// The refusal restored the exact baseline and wrote no history.
-		expect(JSON.stringify(live(context))).toBe(JSON.stringify(squareDocument()));
+		expect(documentContentJson(live(context))).toBe(documentContentJson(squareDocument()));
 		expect(context.store.canUndo).toBe(false);
 		expect(context.plans).toBe(1);
 	});
@@ -827,7 +830,7 @@ describe('P23.11 transient pass — cheap canonical refusal during the drag', ()
 
 		// A refutation is still not a write: the canonical document and its
 		// compiled geometry are byte-identical to the frozen baseline.
-		expect(JSON.stringify(live(context))).toBe(JSON.stringify(baseline));
+		expect(documentContentJson(live(context))).toBe(documentContentJson(baseline));
 		expect(context.layoutPreview.geometry).toBe(geometry);
 		expect(context.store.canUndo).toBe(false);
 	});

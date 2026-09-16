@@ -39,13 +39,17 @@ import {
 	hierarchyRoomName,
 	hierarchyRoomRow,
 	hierarchySceneEntityRow,
+	hierarchyWallIdentityLabel,
 	hierarchyWallRow,
 	type HierarchyDestination,
+	type HierarchyMatchField,
 	type HierarchyProjectedRow,
-	type HierarchyRepresentation
+	type HierarchyRepresentation,
+	type HierarchyRowMatch
 } from './hierarchy-page-projection';
 import {
 	roomEntityKey,
+	type HierarchyEntityKey,
 	type HierarchySourceIndex
 } from './hierarchy-source-index';
 
@@ -108,6 +112,153 @@ export function hierarchySearchMatches(
 ): boolean {
 	if (!normalizedQuery) return false;
 	return texts.some((text) => text !== undefined && text.toLowerCase().includes(normalizedQuery));
+}
+
+/**
+ * P23.12 — why a direct result is present.
+ *
+ * The index now retrieves authored names and compact references alongside raw
+ * canonical IDs, so a hit can look arbitrary: typing `w1` surfaces a row
+ * labelled `North Gallery Wall`. Rows therefore carry the field they matched
+ * and a short explanation the renderer shows. Priority mirrors the retrieval
+ * order — authored name, reference, raw ID, role, then kind — so the strongest
+ * identity claim is the one explained.
+ */
+export function explainHierarchySearchMatch(
+	index: HierarchySourceIndex,
+	entity: HierarchyEntityKey,
+	normalizedQuery: string
+): HierarchyRowMatch | null {
+	if (!normalizedQuery) return null;
+	const candidates: { field: HierarchyMatchField; value: string | null; term?: string }[] = [];
+	switch (entity.kind) {
+		case 'room': {
+			const room = index.roomById.get(entity.roomId);
+			if (!room) return null;
+			candidates.push(
+				{ field: 'name', value: room.name },
+				{ field: 'reference', value: room.reference },
+				{ field: 'id', value: room.roomId },
+				{ field: 'kind', value: 'room' }
+			);
+			break;
+		}
+		case 'wall': {
+			const wall = index.wallById.get(entity.wallId);
+			if (!wall) return null;
+			candidates.push(
+				{ field: 'name', value: wall.name },
+				{ field: 'reference', value: wall.reference },
+				{ field: 'id', value: wall.wallId },
+				{ field: 'role', value: wall.role },
+				{ field: 'kind', value: 'wall' }
+			);
+			break;
+		}
+		case 'opening': {
+			const opening = index.openingById.get(entity.openingId);
+			if (!opening) return null;
+			candidates.push(
+				{ field: 'name', value: opening.name },
+				{ field: 'reference', value: opening.reference },
+				{ field: 'id', value: opening.openingId },
+				{ field: 'kind', value: opening.openingKind }
+			);
+			break;
+		}
+		case 'junction': {
+			const junction = index.junctionById.get(entity.junctionId);
+			if (!junction) return null;
+			candidates.push(
+				{ field: 'reference', value: junction.reference },
+				{ field: 'id', value: junction.junctionId },
+				{ field: 'kind', value: 'junction' }
+			);
+			break;
+		}
+		case 'object': {
+			const object = index.objectById.get(entity.objectId);
+			if (!object) return null;
+			candidates.push(
+				{ field: 'id', value: object.objectId },
+				{ field: 'kind', value: object.objectKind }
+			);
+			break;
+		}
+		case 'cluster': {
+			const cluster = index.sceneClusterById.get(entity.clusterId);
+			if (!cluster) return null;
+			candidates.push(
+				{ field: 'name', value: cluster.name },
+				{ field: 'id', value: cluster.clusterId }
+			);
+			break;
+		}
+		case 'entity': {
+			const sceneEntity = index.sceneEntityById.get(entity.entityId);
+			if (!sceneEntity) return null;
+			candidates.push(
+				{ field: 'name', value: sceneEntity.name },
+				{ field: 'id', value: sceneEntity.entityId }
+			);
+			break;
+		}
+	}
+	for (const candidate of candidates) {
+		if (candidate.value === null || candidate.value === undefined) continue;
+		const value = candidate.value;
+		const label = formatPlacementLabel(value);
+		const hit =
+			value.toLowerCase().includes(normalizedQuery) ||
+			label.toLowerCase().includes(normalizedQuery);
+		if (!hit) continue;
+		return {
+			field: candidate.field,
+			query: normalizedQuery,
+			text: searchMatchText(candidate.field, candidate.term ?? value),
+			exactReference: candidate.field === 'reference' && value.toLowerCase() === normalizedQuery
+		};
+	}
+	return null;
+}
+
+function searchMatchText(field: HierarchyMatchField, term: string): string {
+	switch (field) {
+		case 'name':
+			return 'Matched name';
+		case 'reference':
+			return `Matched reference ${term}`;
+		case 'id':
+			return `Matched ID ${term}`;
+		case 'role':
+			return `Matched role “${term}”`;
+		case 'kind':
+			return `Matched kind “${term}”`;
+		case 'label':
+			return 'Matched label';
+	}
+}
+
+/**
+ * Annotate the top-level rows of every `direct` group. Nested children (an
+ * Opening hosted by a matched Wall, `Ends`) inherit their parent's presence and
+ * must not claim a hit of their own.
+ */
+function applySearchMatchExplanations(
+	index: HierarchySourceIndex,
+	blocks: HierarchySearchBlock[],
+	normalizedQuery: string
+): void {
+	for (const block of blocks) {
+		for (const group of block.groups) {
+			if (group.kind !== 'direct') continue;
+			for (const row of group.rows) {
+				if (!row.entity || row.match) continue;
+				const match = explainHierarchySearchMatch(index, row.entity, normalizedQuery);
+				if (match) row.match = match;
+			}
+		}
+	}
 }
 
 function pushUniqueRow(rows: HierarchyProjectedRow[], row: HierarchyProjectedRow | null): void {
@@ -196,12 +347,27 @@ export function buildHierarchySearchProjection(
 
 	const directRoomIds = index.orderedRooms
 		.filter((room) =>
-			hierarchySearchMatches(normalizedQuery, room.name, room.roomId, formatPlacementLabel(room.roomId))
+			hierarchySearchMatches(
+				normalizedQuery,
+				room.name,
+				room.roomId,
+				formatPlacementLabel(room.roomId),
+				room.reference ?? undefined
+			)
 		)
 		.map((room) => room.roomId);
 	const directWallIds = index.orderedWalls
 		.filter((wall) =>
-			hierarchySearchMatches(normalizedQuery, wall.wallId, formatPlacementLabel(wall.wallId), wall.role)
+			hierarchySearchMatches(
+				normalizedQuery,
+				wall.wallId,
+				formatPlacementLabel(wall.wallId),
+				wall.role,
+				// P23.12 — authored names and compact references are first-class
+				// search fields alongside the raw ID and kind/role terms.
+				wall.name ?? undefined,
+				wall.reference ?? undefined
+			)
 		)
 		.map((wall) => wall.wallId);
 	const directOpeningIds = index.orderedOpenings
@@ -210,7 +376,9 @@ export function buildHierarchySearchProjection(
 				normalizedQuery,
 				opening.openingId,
 				formatPlacementLabel(opening.openingId),
-				opening.openingKind
+				opening.openingKind,
+				opening.name ?? undefined,
+				opening.reference ?? undefined
 			)
 		)
 		.map((opening) => opening.openingId);
@@ -219,7 +387,8 @@ export function buildHierarchySearchProjection(
 			hierarchySearchMatches(
 				normalizedQuery,
 				junction.junctionId,
-				formatPlacementLabel(junction.junctionId)
+				formatPlacementLabel(junction.junctionId),
+				junction.reference ?? undefined
 			)
 		)
 		.map((junction) => junction.junctionId);
@@ -405,7 +574,8 @@ export function buildHierarchySearchProjection(
 			pushUniqueRow(
 				directRows,
 				hierarchyOpeningRow(index, `search:openings:opening:${opening.openingId}`, opening.openingId, {
-					secondary: `on ${formatPlacementLabel(host?.wallId ?? opening.wallId)}`,
+					// The host's *identity*, not its raw canonical ID.
+					secondary: `on ${hierarchyWallIdentityLabel(index, opening.wallId)}`,
 					actions: openingActions(index, opening.openingId)
 				})
 			);
@@ -501,6 +671,8 @@ export function buildHierarchySearchProjection(
 			blocks.push({ category: 'scene', label: HIERARCHY_SEARCH_BLOCK_LABELS.scene, groups });
 		}
 	}
+
+	applySearchMatchExplanations(index, blocks, normalizedQuery);
 
 	const allRows = blocks.flatMap((block) => block.groups.flatMap((group) => group.rows));
 	return {

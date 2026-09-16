@@ -21,6 +21,8 @@
 import type {
 	LayoutDocumentWallFirst,
 	LayoutFormatVersion,
+	LayoutIdentityFamily,
+	LayoutIdentityLedger,
 	LayoutJunction,
 	LayoutWall,
 	LayoutWallCenterline,
@@ -32,9 +34,15 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import {
+	LAYOUT_IDENTITY_FAMILIES,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	KNOWN_LAYOUT_FORMAT_VERSIONS
 } from './layout-wall-first-types';
+import {
+	LAYOUT_REFERENCE_PREFIX,
+	emptyLayoutIdentityLedger,
+	parseLayoutReference
+} from './layout-identity';
 import type { LayoutDocumentIssue } from './layout-codec';
 import { LayoutDocumentValidationError } from './layout-codec';
 import type { LayoutObject, LayoutVec2 } from './layout-types';
@@ -72,15 +80,27 @@ const ROOT_KEYS = [
 	'walls',
 	'rooms',
 	'openings',
-	'objects'
+	'objects',
+	'identity'
 ] as const;
+/** P23.12 — the reference ledger's key set. */
+const IDENTITY_KEYS = ['cursor', 'rooms', 'junctions', 'walls', 'openings'] as const;
 /**
  * Canonical Floor key set (P23.6I). The current Floor has no vertical extent, so a
  * present `height` is `unknown_key`.
  */
 const FLOOR_KEYS_V5 = ['id', 'name', 'elevation'] as const;
 const JUNCTION_KEYS = ['id', 'point'] as const;
-const WALL_KEYS = ['id', 'startJunctionId', 'endJunctionId', 'role', 'thickness', 'height', 'centerline'] as const;
+const WALL_KEYS = [
+	'id',
+	'startJunctionId',
+	'endJunctionId',
+	'role',
+	'thickness',
+	'height',
+	'centerline',
+	'name'
+] as const;
 /** P23.11 — one bend point of a Wall `cubic-chain` centerline. */
 const WALL_CURVE_KNOT_KEYS = ['id', 'point'] as const;
 /** P23.11 — one cubic span of a Wall `cubic-chain` centerline: controls only. */
@@ -96,7 +116,8 @@ const OPENING_KEYS = [
 	'height',
 	'sillHeight',
 	'profile',
-	'connectsRoomIds'
+	'connectsRoomIds',
+	'name'
 ] as const;
 const OBJECT_KEYS = ['id', 'kind', 'position', 'rotation', 'dimensions', 'profile', 'roomId'] as const;
 const PATH_KEYS = ['closed', 'segments'] as const;
@@ -118,7 +139,10 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
 		walls: [],
 		rooms: [],
 		openings: [],
-		objects: []
+		objects: [],
+		// P23.12 — the canonical writers always emit the ledger; it stays optional
+		// on read because every pre-P23.12 document lacks it.
+		identity: emptyLayoutIdentityLedger()
 	};
 }
 
@@ -240,6 +264,11 @@ function parseDocument(
 	const rooms = parseArray(record.rooms, `${path}.rooms`, issues, parseRoom);
 	const openings = parseArray(record.openings, `${path}.openings`, issues, parseOpening);
 	const objects = parseArray(record.objects, `${path}.objects`, issues, parseObject);
+	// P23.12 — the reference ledger is optional on read (pre-P23.12 documents and
+	// already-published releases have none) but strict when present: malformed
+	// tokens and duplicate values reject.
+	const identity = parseIdentityLedger(record.identity, `${path}.identity`, issues);
+	if (record.identity !== undefined && !identity) return undefined;
 	if (
 		!floor ||
 		!junctions ||
@@ -379,8 +408,94 @@ function parseDocument(
 		walls,
 		rooms,
 		openings,
-		objects
+		objects,
+		...(identity ? { identity } : {})
 	};
+}
+
+/**
+ * P23.12 — parse the optional reference ledger.
+ *
+ * `undefined` means "absent", which is legal (pre-P23.12 payloads). A present but
+ * malformed ledger reports issues and returns `undefined`, so the caller can fail
+ * closed: tokens must be well-formed for their own family, and no token value may
+ * appear twice anywhere in the ledger (a duplicate can only come from a
+ * hand-edited or corrupted payload, and it would make two entities
+ * indistinguishable).
+ *
+ * Cursor consistency against the live ledger is **not** a validity rule here: a
+ * short cursor is repaired deterministically at the install seam
+ * (`repairLayoutIdentityCursor`), because rejecting a whole document over
+ * bookkeeping would make an already-saved project unloadable.
+ */
+function parseIdentityLedger(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): ParsedValue<LayoutIdentityLedger> {
+	if (input === undefined) return undefined;
+	const record = readRecord(input, path, issues);
+	if (!record) return undefined;
+	assertAllowedKeys(record, IDENTITY_KEYS, path, issues);
+
+	const cursor = readNonNegativeInteger(record.cursor, `${path}.cursor`, issues);
+	if (cursor === undefined) return undefined;
+
+	const seen = new Map<string, string>();
+	const assignments: Record<LayoutIdentityFamily, Record<string, string>> = {
+		rooms: {},
+		junctions: {},
+		walls: {},
+		openings: {}
+	};
+	let failed = false;
+	for (const family of LAYOUT_IDENTITY_FAMILIES) {
+		const familyPath = `${path}.${family}`;
+		const familyRecord = readRecord(record[family], familyPath, issues);
+		if (!familyRecord) {
+			failed = true;
+			continue;
+		}
+		for (const [id, token] of Object.entries(familyRecord)) {
+			const entryPath = `${familyPath}.${id}`;
+			const parsed = typeof token === 'string' ? parseLayoutReference(token) : undefined;
+			if (typeof token !== 'string' || !parsed || parsed.family !== family) {
+				addIssue(
+					issues,
+					entryPath,
+					'invalid_value',
+					`Expected a ${LAYOUT_REFERENCE_PREFIX[family]} reference (e.g. ${LAYOUT_REFERENCE_PREFIX[family]}-2QUS)`
+				);
+				failed = true;
+				continue;
+			}
+			const previous = seen.get(token);
+			if (previous !== undefined) {
+				addIssue(
+					issues,
+					entryPath,
+					'duplicate_reference',
+					`Reference '${token}' is already assigned to '${previous}'`
+				);
+				failed = true;
+				continue;
+			}
+			seen.set(token, `${family}.${id}`);
+			assignments[family][id] = token;
+		}
+	}
+	if (failed) return undefined;
+	return { cursor, ...assignments };
+}
+
+/** Optional authored name (P23.12): absent means unnamed, blank rejects. */
+function parseOptionalName(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): string | undefined {
+	if (input === undefined) return undefined;
+	return readNonEmptyString(input, path, issues);
 }
 
 function readFormatVersion(
@@ -457,6 +572,9 @@ function parseWall(
 	// P23.11 — the centerline is required on every Wall (fresh-authority
 	// policy: no migration, no missing-field tolerance).
 	const centerline = parseWallCenterline(record.centerline, `${path}.centerline`, issues);
+	// P23.12 — an authored name is optional; present-but-blank is invalid, which
+	// makes absence the only representation of "unnamed".
+	const name = parseOptionalName(record.name, `${path}.name`, issues);
 	if (
 		!id ||
 		!startJunctionId ||
@@ -464,7 +582,8 @@ function parseWall(
 		!role ||
 		thickness === undefined ||
 		height === undefined ||
-		!centerline
+		!centerline ||
+		(record.name !== undefined && name === undefined)
 	) {
 		return undefined;
 	}
@@ -476,7 +595,16 @@ function parseWall(
 			'A Wall must reference two distinct Junctions'
 		);
 	}
-	return { id, startJunctionId, endJunctionId, role, thickness, height, centerline };
+	return {
+		id,
+		startJunctionId,
+		endJunctionId,
+		role,
+		thickness,
+		height,
+		centerline,
+		...(name !== undefined ? { name } : {})
+	};
 }
 
 /**
@@ -654,6 +782,7 @@ function parseOpening(
 		issues
 	);
 	const connectsRoomIds = parsePortalRoomIds(record.connectsRoomIds, `${path}.connectsRoomIds`, issues);
+	const name = parseOptionalName(record.name, `${path}.name`, issues);
 	if (
 		!id ||
 		!wallId ||
@@ -662,7 +791,8 @@ function parseOpening(
 		width === undefined ||
 		height === undefined ||
 		sillHeight === undefined ||
-		!profile
+		!profile ||
+		(record.name !== undefined && name === undefined)
 	) {
 		return undefined;
 	}
@@ -675,7 +805,8 @@ function parseOpening(
 		height,
 		sillHeight,
 		profile,
-		...(connectsRoomIds ? { connectsRoomIds } : {})
+		...(connectsRoomIds ? { connectsRoomIds } : {}),
+		...(name !== undefined ? { name } : {})
 	};
 }
 
@@ -901,6 +1032,19 @@ function readNumber(
 ): number | undefined {
 	if (typeof input !== 'number' || !Number.isFinite(input)) {
 		addIssue(issues, path, 'invalid_number', 'Expected a finite number');
+		return undefined;
+	}
+	return input;
+}
+
+/** P23.12 — the ledger cursor is a non-negative integer (allocation index). */
+function readNonNegativeInteger(
+	input: unknown,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): number | undefined {
+	if (typeof input !== 'number' || !Number.isInteger(input) || input < 0) {
+		addIssue(issues, path, 'invalid_value', 'Expected a non-negative integer');
 		return undefined;
 	}
 	return input;
