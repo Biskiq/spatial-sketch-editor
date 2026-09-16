@@ -2,18 +2,27 @@
 	import { worldToPlanScreen, type PlanViewportState } from './layout-plan-transform';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import type { LayoutVec2 } from '$lib/layout/layout-types';
-	import type {
-		PlanPolylinePrimitive,
-		PlanRenderModel,
-		PlanStyleToken
+	import {
+		PLAN_PRESENTATION_DEFAULTS,
+		type PlanPolylinePrimitive,
+		type PlanPresentationDecisions,
+		type PlanRenderModel,
+		type PlanStyleToken
 	} from '$lib/layout/plan-render-model';
 
 	let {
 		model,
-		planView
+		planView,
+		presentation = PLAN_PRESENTATION_DEFAULTS
 	}: {
 		model: PlanRenderModel;
 		planView: PlanViewportState;
+		/**
+		 * P23.13 S0 — resolved screen-presentation decisions (S2 salience output).
+		 * The adapter paints from these; it never re-derives them and never writes
+		 * them back into the render model.
+		 */
+		presentation?: PlanPresentationDecisions;
 	} = $props();
 
 	const TOKEN_CLASSES: Partial<Record<PlanStyleToken, string>> = {
@@ -92,12 +101,26 @@
 		return screen.map((point) => point.join(',')).join(' ');
 	}
 
+	/**
+	 * P23.13 S0 — the band/ink split, at the paint boundary.
+	 *
+	 * `--architecture-band-width` is the exact canonical physical-width
+	 * projection (authored thickness × px/m): geometry truth, never clamped, so
+	 * a thin or distant Wall can no longer be widened into a lie. `--architecture-ink-width`
+	 * carries the temporary S0 visual floor that keeps today's appearance while
+	 * the clamp stops being geometry — S1 paints the band from the projection and
+	 * replaces the floor with the centered silhouette aid (S2 supplies the need).
+	 */
+	// TEMPORARY (S0) — removed by S1 when the silhouette aid replaces it.
+	const ARCHITECTURE_TEMPORARY_INK_FLOOR_PX = 7;
+
 	function architecturalStrokeStyle(primitive: PlanPolylinePrimitive): string {
 		const thickness = primitive.architecture?.kind === 'wall'
 			? primitive.architecture.thicknessMeters
 			: primitive.architecture?.wallThicknessMeters;
-		const width = Math.max(7, (thickness ?? 0.2) * planView.pixelsPerMeter);
-		return `--architecture-width: ${width}px;`;
+		const bandWidth = Math.max(0, (thickness ?? 0.2) * planView.pixelsPerMeter);
+		const inkWidth = Math.max(bandWidth, ARCHITECTURE_TEMPORARY_INK_FLOOR_PX);
+		return `--architecture-band-width: ${bandWidth}px; --architecture-ink-width: ${inkWidth}px;`;
 	}
 
 	function wallStateClass(style: PlanStyleToken): string {
@@ -134,7 +157,18 @@
 		windowFrames?: LayoutVec2[][];
 	};
 
-	function openingSymbol(primitive: PlanPolylinePrimitive): OpeningSymbol | null {
+	/**
+	 * P23.13 S0 — Window frames are at most two parallel strokes. The world-space
+	 * starting separation is `0.36 · t`; S2 clamps the *projected* separation to
+	 * the ratified screen budget (`min(4px, 0.36t)`, ≥3px apart, ≥1px edge margin)
+	 * and collapses to a single stroke when the gate fails. The third frame is
+	 * retired here. Door keeps no host-parallel cue: S1 adds the shared
+	 * perpendicular three-dash type cue from the render-model source facts, so
+	 * this adapter holds no second ink path for it.
+	 */
+	const WINDOW_FRAME_RATIO = 0.18;
+
+	function openingSymbol(primitive: PlanPolylinePrimitive, windowFrameCount: 1 | 2): OpeningSymbol | null {
 		const architecture = primitive.architecture;
 		if (!architecture || architecture.kind === 'wall' || primitive.points.length < 2) return null;
 		const start = primitive.points[0]!;
@@ -152,7 +186,9 @@
 		};
 
 		if (architecture.kind === 'window') {
-			const offsets = [-0.28, 0, 0.28].map((ratio) => ratio * architecture.wallThicknessMeters);
+			const offsets = windowFrameCount === 1
+				? [0]
+				: [-WINDOW_FRAME_RATIO, WINDOW_FRAME_RATIO].map((ratio) => ratio * architecture.wallThicknessMeters);
 			symbol.windowFrames = offsets.map((offset) => primitive.points.map((point) => [
 				point[0] + normal[0] * offset,
 				point[1] + normal[1] * offset
@@ -162,7 +198,7 @@
 
 		// P23.6 — neutral door treatment: the authored state carries no hinge
 		// side, handedness or swing direction, so none is drawn. Doors read as
-		// intentional Wall gaps (void + jambs + threshold) like windows.
+		// intentional Wall gaps (true authored void + jambs) like windows.
 		return symbol;
 	}
 
@@ -190,7 +226,7 @@
 						style={architecturalStrokeStyle(primitive)}
 					/>
 				{:else if primitive.architecture?.kind === 'door' || primitive.architecture?.kind === 'window'}
-					{@const symbol = openingSymbol(primitive)}
+					{@const symbol = openingSymbol(primitive, presentation.windowFrameCount ?? PLAN_PRESENTATION_DEFAULTS.windowFrameCount)}
 					{#if symbol}
 						<polyline
 							class="opening-void"
@@ -205,8 +241,6 @@
 							{#each symbol.windowFrames as frame, index (`${primitive.key}:window-frame:${index}`)}
 								<polyline class="window-frame" class:selected={openingSelected(primitive.style)} class:hovered={openingHovered(primitive.style)} points={pointsAttr(frame)} />
 							{/each}
-						{:else}
-							<polyline class="door-threshold" class:hovered={openingHovered(primitive.style)} points={pointsAttr(symbol.span)} />
 						{/if}
 					{/if}
 				{:else}
@@ -256,34 +290,36 @@
 	.scene-footprint.bridge-hover { fill: rgb(47 140 255 / 16%); stroke: var(--editor-plan-hover-stroke); stroke-width: 2.5; }
 	.scene-footprint.selected { fill: rgb(47 140 255 / 24%); stroke: var(--editor-plan-selection); stroke-width: 3; }
 	.selection-bounds { fill: none; stroke: var(--editor-plan-selection); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S0 — the band (physical-width body) and the ink (drafting profile)
+	   are separate paint roles now. `--editor-plan-wall-band` carries the exact
+	   canonical projection, `--editor-plan-wall-ink` the outline/termination ink;
+	   selection blue stays an overlay on top of both and never recolours the mass. */
 	.wall-casing,
 	.wall-line,
 	.opening-void,
 	.opening-jamb,
-	.window-frame,
-	.door-threshold { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
-	.wall-casing { stroke: var(--editor-plan-wall); stroke-width: calc(var(--architecture-width) + 2px); stroke-linecap: square; stroke-linejoin: miter; }
+	.window-frame { fill: none; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.wall-casing { stroke: var(--editor-plan-wall-ink); stroke-width: calc(var(--architecture-ink-width) + 2px); stroke-linecap: square; stroke-linejoin: miter; }
 	/* P23.6 — non-room-bounding Walls stay physical and wall-like with a subtle
 	   muted distinction (same selection language; `.selected` below wins). */
 	.wall-casing.partition { stroke: var(--editor-plan-muted); }
 	/* P23.6 — hover uses the hover language, never selection blue; states below win ties. */
 	.wall-casing.hovered { stroke: var(--editor-plan-hover-stroke); }
-	.wall-casing.selected { stroke: var(--editor-plan-selection); stroke-width: calc(var(--architecture-width) + 4px); }
+	.wall-casing.selected { stroke: var(--editor-plan-selection); stroke-width: calc(var(--architecture-ink-width) + 4px); }
 	.wall-casing.opening-selected { stroke: var(--editor-plan-hover-stroke); }
-	.wall-line { stroke: var(--editor-plan-wall-fill); stroke-width: var(--architecture-width); stroke-linecap: square; stroke-linejoin: miter; }
-	.wall-line.partition { stroke: color-mix(in srgb, var(--editor-plan-muted) 38%, var(--editor-plan-wall-fill)); }
-	.wall-line.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 42%, var(--editor-plan-wall-fill)); }
-	.wall-line.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 42%, var(--editor-plan-wall-fill)); }
-	.wall-line.opening-selected { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 34%, var(--editor-plan-wall-fill)); }
-	.opening-void { stroke: var(--editor-plan-room-bg); stroke-width: calc(var(--architecture-width) + 4px); }
-	.opening-void.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 14%, var(--editor-plan-room-bg)); }
-	.opening-void.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 14%, var(--editor-plan-room-bg)); }
-	.opening-jamb { stroke: var(--editor-plan-wall); stroke-width: 2; }
-	.window-frame { stroke: var(--editor-plan-wall); stroke-width: 1.35; }
-	.door-threshold { stroke: var(--editor-plan-object-stroke); stroke-width: 1; }
+	.wall-line { stroke: var(--editor-plan-wall-band); stroke-width: var(--architecture-ink-width); stroke-linecap: square; stroke-linejoin: miter; }
+	/* P23.13 S1 wires the dedicated partition body token below. */
+	.wall-line.partition { stroke: color-mix(in srgb, var(--editor-plan-muted) 38%, var(--editor-plan-wall-band)); }
+	.wall-line.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 42%, var(--editor-plan-wall-band)); }
+	.wall-line.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 42%, var(--editor-plan-wall-band)); }
+	.wall-line.opening-selected { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 34%, var(--editor-plan-wall-band)); }
+	.opening-void { stroke: var(--editor-plan-opening-void); stroke-width: calc(var(--architecture-ink-width) + 4px); }
+	.opening-void.hovered { stroke: color-mix(in srgb, var(--editor-plan-hover-stroke) 14%, var(--editor-plan-opening-void)); }
+	.opening-void.selected { stroke: color-mix(in srgb, var(--editor-plan-selection) 14%, var(--editor-plan-opening-void)); }
+	.opening-jamb { stroke: var(--editor-plan-wall-ink); stroke-width: 2; }
+	.window-frame { stroke: var(--editor-plan-wall-ink); stroke-width: 1.35; }
 	.opening-jamb.hovered,
-	.window-frame.hovered,
-	.door-threshold.hovered { stroke: var(--editor-plan-hover-stroke); }
+	.window-frame.hovered { stroke: var(--editor-plan-hover-stroke); }
 	.opening-jamb.selected,
 	.window-frame.selected { stroke: var(--editor-plan-selection); }
 	/* Fallback for renderer-neutral projections without architecture metadata. */

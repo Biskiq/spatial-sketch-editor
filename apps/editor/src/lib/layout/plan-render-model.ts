@@ -181,6 +181,23 @@ export type PlanPolylinePrimitive = {
 				wallThicknessMeters: number;
 				/** Unit vector pointing from the opening into its room. */
 				inwardNormal: LayoutVec2;
+				/**
+				 * P23.13 S0 — canonical host orientation at the opening center
+				 * (`CompiledOpening.center`), copied verbatim. The adapter paints the
+				 * Door type cue perpendicular to `centerTangent` and never re-derives
+				 * orientation from the flattened `centerPolyline`. Source fact only:
+				 * no CSS px, zoom regime, or hysteresis enters the model.
+				 */
+				centerTangent: LayoutVec2;
+				/** Canonical host normal (unsigned, unlike `inwardNormal`). */
+				centerNormal: LayoutVec2;
+				/** Canonical Three.js positive-Y yaw of the host tangent. */
+				yaw: number;
+				/**
+				 * P23.13 — authored opening extent in meters along the compiled arc
+				 * (canonical cut truth; presentation never widens it).
+				 */
+				offsetMeters: number;
 		  };
 	/** Screen-constant offset (CSS px) applied to the final point after the transform (rotation arm). */
 	endOffsetPx?: readonly [number, number];
@@ -330,6 +347,34 @@ export type PlanCameraAuthoringProjection = {
 	labels: readonly PlanRenderPrimitive[];
 	/** Transient interaction primitives (rubber band, placement feedback). */
 	interaction: readonly PlanRenderPrimitive[];
+};
+
+/**
+ * P23.13 S0 — resolved screen-presentation decisions for the Plan adapter.
+ *
+ * This is the *input* seam owned by transient salience (S2): projected-size
+ * gates, hysteresis, and gesture freezing resolve there and are handed to the
+ * presentation layer. None of it is stored in `PlanRenderModel` — the model
+ * only carries renderer-neutral source facts, so "how big is this on screen
+ * right now" can never become document or history state.
+ */
+export type PlanPresentationDecisions = {
+	/**
+	 * Window symbolic strokes: 2 at Normal/Near (the limit — never 3), 1 when
+	 * the projected separation or edge margin gate collapses the second stroke.
+	 */
+	windowFrameCount?: 1 | 2;
+	/**
+	 * Centered 1 px readability ink for a band projected below 2 px. Excluded
+	 * from hit/snap/measurement truth; paint only.
+	 */
+	wallSilhouetteAid?: boolean;
+};
+
+/** Defaults preserve the ratified resting grammar when no salience is wired. */
+export const PLAN_PRESENTATION_DEFAULTS: Required<PlanPresentationDecisions> = {
+	windowFrameCount: 2,
+	wallSilhouetteAid: false
 };
 
 /**
@@ -607,7 +652,11 @@ export function buildPlanRenderModel(
 					inwardNormal: [
 						opening.center.normal[0] * normalSign,
 						opening.center.normal[1] * normalSign
-					]
+					],
+					centerTangent: [...opening.center.tangent] as LayoutVec2,
+					centerNormal: [...opening.center.normal] as LayoutVec2,
+					yaw: opening.center.yaw,
+					offsetMeters: opening.offset
 				},
 				style: selectedStyle(
 					'opening-line',
@@ -652,7 +701,11 @@ export function buildPlanRenderModel(
 					kind: opening.kind,
 					widthMeters: opening.width,
 					wallThicknessMeters: wall.thickness,
-					inwardNormal: [...opening.center.normal] as LayoutVec2
+					inwardNormal: [...opening.center.normal] as LayoutVec2,
+					centerTangent: [...opening.center.tangent] as LayoutVec2,
+					centerNormal: [...opening.center.normal] as LayoutVec2,
+					yaw: opening.center.yaw,
+					offsetMeters: opening.offset
 				},
 				style: selectedStyle('opening-line', openingHit, interaction?.selected, interaction?.hovered),
 				hit: { kind: 'wallOpening', wallId: wall.wallId, openingId: opening.openingId }
