@@ -13,9 +13,18 @@ import { worldToPlanScreen, type PlanViewportState } from './layout-plan-transfo
 import { geometryId } from '$lib/layout/layout-geometry-types';
 import { layoutArchitecturalPreset } from '$lib/layout/layout-wall-first-precision';
 import { isLayoutPresetTool, type LayoutPresetTool } from './layout-interaction';
-import type { LayoutArchitecturalPresetId, SnapResolution } from '@portfolio/layout-core';
+import type {
+	LayoutArchitecturalPresetId,
+	SnapFeatureKind,
+	SnapResolution
+} from '@portfolio/layout-core';
 import type { PlanCurveControlCandidate } from './plan-hit';
 import { PLAN_CONTROL_MARKS, type PlanFocusGeometry } from './plan-acquisition';
+import {
+	PLAN_SNAP_EXACT_VALUE_LABEL,
+	planSnapGlyph,
+	planSnapRelationLabelExtentPx
+} from './plan-snap-grammar';
 import {
 	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
 	PLAN_ROOM_LABELS_MIN_PX_PER_M
@@ -59,7 +68,49 @@ export { interiorLabelPoint } from './plan-room-labels';
  * into this projection instead of computing overlay screen coordinates.
  */
 
-const SNAP_MARKER_RADIUS_PX = 4;
+/** Label offset from the winner mark, so the word never sits on the relation. */
+const SNAP_RELATION_LABEL_OFFSET_PX = 10;
+/** The word keeps this much clear of the canvas edge before it flips side. */
+export const SNAP_RELATION_LABEL_INSET_PX = 4;
+
+/**
+ * P23.13 S5 — where the winner's relation word goes, given the canvas it is on.
+ *
+ * The word is anchored to the live pointer, so the preferred placement is up and
+ * to the right of the mark; near an edge that placement clips, and a half-drawn
+ * relation word is worse than no word at all. The side is therefore chosen from
+ * the only data that can answer it — the caller's viewport — and the *extent* is
+ * the glyph table's own typography. Stateless by construction: the winner is
+ * recomputed every pointer event, so there is nothing to freeze, and a pointer
+ * near an edge simply reads the other way round.
+ *
+ * Without a view (a pure caller, a unit test) the preferred side is returned, so
+ * this adds a placement rule rather than a requirement on callers.
+ */
+export function planSnapRelationLabelOffsetPx(
+	text: string,
+	point: LayoutVec2,
+	view: PlanViewportState | undefined
+): readonly [number, number] {
+	const preferred: readonly [number, number] = [
+		SNAP_RELATION_LABEL_OFFSET_PX,
+		-SNAP_RELATION_LABEL_OFFSET_PX
+	];
+	if (!view) return preferred;
+	const [screenX, screenY] = worldToPlanScreen(view, point);
+	const extent = planSnapRelationLabelExtentPx(text);
+	const inset = SNAP_RELATION_LABEL_INSET_PX;
+	// Above the mark unless the word's own box would cross the top edge.
+	const above = screenY - SNAP_RELATION_LABEL_OFFSET_PX - extent.height >= inset;
+	// Right of the mark unless the word would run past the right edge. Flipping
+	// moves the word's *anchor* by its width, because the paint layer lays the
+	// text out from its anchor to the right.
+	const toTheRight = screenX + SNAP_RELATION_LABEL_OFFSET_PX + extent.width < view.width - inset;
+	return [
+		toTheRight ? preferred[0] : -SNAP_RELATION_LABEL_OFFSET_PX - extent.width,
+		above ? preferred[1] : SNAP_RELATION_LABEL_OFFSET_PX + extent.height
+	];
+}
 /**
  * P23.13 S4 / §6 — the Opening slide grip: two bars perpendicular to the host,
  * 9 px long, centred 4 px either side of the symbol center. Screen-constant
@@ -151,17 +202,14 @@ export type PlanWallFirstContext = {
 	issues: readonly { code: string; message: string; targetId?: string; path?: string }[];
 };
 
-/** P23.6 — snap marker radius per winning family (screen-constant, zoom-stable). */
+/**
+ * P23.6/P23.13 S5 — snap marker radius per winning family (screen-constant,
+ * zoom-stable). Kept as the numeric seam the P23.2 pins read; the mark's
+ * *shape* and relation word come from `plan-snap-grammar`, so this and the
+ * glyph table are the same numbers by construction.
+ */
 export function snapMarkerRadiusPx(kind: string): number {
-	switch (kind) {
-		case 'junction':
-		case 'wall-intersection':
-			return 5;
-		case 'grid':
-			return 3;
-		default:
-			return SNAP_MARKER_RADIUS_PX;
-	}
+	return planSnapGlyph(kind as SnapFeatureKind).radiusPx;
 }
 
 /**
@@ -755,31 +803,81 @@ export function withArchitectureEditIntent(
 }
 
 /**
- * P23.2 — transient snap feedback as render primitives. Session state only:
- * the resolution is recomputed per pointer event and never mutates the
- * document or history. Guides render as thin dashed screen-space lines; the
- * marker shows the resolved point, muted for the grid fallback so semantic
- * candidates are visually distinct.
+ * P23.2 / P23.13 S5 — transient snap feedback as render primitives. Session
+ * state only: the resolution is recomputed per pointer event and never mutates
+ * the document or history.
+ *
+ * §7 asks for exactly three things and no more: **one** winner mark (shape +
+ * short relation word), **at most one** guide, and a 2 px source accent. There
+ * is no candidate cloud: the resolver's winner is the only point this draws, so
+ * a pointer near three candidates still shows one relation.
+ *
+ * `options.explicitValue` is §7's precedence rule: an explicit numeric value
+ * outranks a conflicting snap, so the winner mark is removed and the relation
+ * is reported as `Exact value` instead. S7 owns the numeric editor that sets
+ * it; S5 owns what the Plan then paints.
  */
 export function withLayoutSnapFeedback(
 	projection: PlanInteractionProjection,
-	resolution: SnapResolution | null
+	resolution: SnapResolution | null,
+	options: { explicitValue?: boolean; view?: PlanViewportState } = {}
 ): PlanInteractionProjection {
 	if (!resolution || resolution.kind !== 'snap') return projection;
 	const { candidate, guides } = resolution;
-	const primitives: PlanRenderPrimitive[] = guides.map((guide, index) => ({
-		kind: 'polyline',
-		key: geometryId(['plan', 'snap-feedback', 'guide', candidate.sourceId, String(index)]),
-		points: [guide.start, guide.end],
-		style: 'snap-guide'
-	}));
-	primitives.push({
-		kind: 'circle',
-		key: geometryId(['plan', 'snap-feedback', 'marker', candidate.sourceId]),
-		center: candidate.point,
-		radiusPx: snapMarkerRadiusPx(candidate.kind),
-		style: candidate.kind === 'grid' ? 'snap-marker-grid' : 'snap-marker'
-	});
+	const primitives: PlanRenderPrimitive[] = [];
+	if (options.explicitValue) {
+		// The relation is reported, the claim is withdrawn: no mark, no guide, so
+		// nothing on the canvas asserts an honoured snap. The word still says why.
+		primitives.push({
+			kind: 'text',
+			key: geometryId(['plan', 'snap-feedback', 'exact-value', candidate.sourceId]),
+			anchor: candidate.point,
+			text: PLAN_SNAP_EXACT_VALUE_LABEL,
+			offsetPx: planSnapRelationLabelOffsetPx(
+				PLAN_SNAP_EXACT_VALUE_LABEL,
+				candidate.point,
+				options.view
+			),
+			style: 'snap-relation-label'
+		});
+		return { ...projection, drafts: [...projection.drafts, ...primitives] };
+	}
+	const glyph = planSnapGlyph(candidate.kind);
+	// §7 allows one guide. The resolver already emits at most one for a winner
+	// (`guidesForCandidate`), and this cap keeps that a presentation guarantee
+	// rather than a property the overlay merely inherits: a caller passing a
+	// hand-built resolution cannot turn the canvas into a candidate cloud.
+	const [guide] = guides;
+	if (guide) {
+		primitives.push({
+			kind: 'polyline',
+			key: geometryId(['plan', 'snap-feedback', 'guide', candidate.sourceId]),
+			points: [guide.start, guide.end],
+			style: 'snap-guide'
+		});
+	}
+	primitives.push(
+		{
+			kind: 'circle',
+			key: geometryId(['plan', 'snap-feedback', 'marker', candidate.sourceId]),
+			center: candidate.point,
+			radiusPx: glyph.radiusPx,
+			shape: glyph.shape === 'dot' ? 'circle' : glyph.shape,
+			// The glyph's own ink, not a per-family exception: an open shape needs
+			// the snap ink as a stroke, a closed one as a fill. Choosing by kind
+			// here is what let the grid fallback and the bracket diverge from the
+			// rest of the table.
+			style: glyph.ink === 'stroke' ? 'snap-glyph-stroke' : 'snap-marker'
+		},
+		{
+			kind: 'text',
+			key: geometryId(['plan', 'snap-feedback', 'relation', candidate.sourceId]),
+			anchor: candidate.point,
+			text: glyph.label,
+			offsetPx: planSnapRelationLabelOffsetPx(glyph.label, candidate.point, options.view),
+			style: 'snap-relation-label'
+		}
+	);
 	return { ...projection, drafts: [...projection.drafts, ...primitives] };
 }
 

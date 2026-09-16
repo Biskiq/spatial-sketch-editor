@@ -99,8 +99,18 @@ export type PlanStyleToken =
 	| 'architecture-edit-intent'
 	| 'architecture-edit-intent-invalid'
 	| 'snap-guide'
+	/** Filled snap glyph: a closed silhouette (square, disc, triangle). */
 	| 'snap-marker'
-	| 'snap-marker-grid'
+	/**
+	 * P23.13 S5 — stroked snap glyph: an open path (bracket, right angle, cross)
+	 * has no area to fill, so it takes the snap ink as its stroke. Replaces
+	 * P23.2's `snap-marker-grid`, which was the same treatment hard-coded for the
+	 * single grid family before §7 gave every family a shape.
+	 */
+	| 'snap-glyph-stroke'
+	// P23.13 S5 / §7 — the winning relation's short word. Snap is presented by
+	// shape + word (§6 non-colour identity), never by colour alone.
+	| 'snap-relation-label'
 	| 'dimension-label'
 	| 'selection-label'
 	// P23.6 — persistent Room name (presentation of Room metadata, never a
@@ -244,7 +254,25 @@ export type PlanCirclePrimitive = {
 	 * stay `circle` (the default). Every non-circle shape is generated in screen
 	 * space around the projected center, so no mark scales with zoom.
 	 */
-	shape?: 'circle' | 'diamond' | 'square' | 'octagon' | 'cross';
+	shape?:
+		| 'circle'
+		| 'diamond'
+		| 'square'
+		| 'octagon'
+		| 'cross'
+		/** P23.13 S5 — the ratified snap glyphs (§7), all screen-space marks. */
+		| 'triangle'
+		| 'right-angle'
+		| 'bracket'
+		| 'circle-cross'
+		/**
+		 * P23.13 S5 — the upright cross of the grid fallback. Distinct from
+		 * `cross` (the refusal ×) so no snap winner and no refused proposal ever
+		 * share a mark: §7's "grid = small cross" is the `+`, while the diagonal ×
+		 * belongs to intersection and to refusal.
+		 */
+		| 'plus'
+		| 'dot';
 	/** Screen-constant offset (CSS px) applied by the adapter after the view transform. */
 	offsetPx?: readonly [number, number];
 	style: PlanStyleToken;

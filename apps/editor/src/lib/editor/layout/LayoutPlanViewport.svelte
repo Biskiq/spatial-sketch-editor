@@ -1318,7 +1318,18 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// canonical baseline stays installed underneath, and the canonical planner
 	// decides on release. Nothing here reads or writes the document.
 	const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);
-const interactionProjection = $derived(
+	/**
+	 * P23.13 S5 / §7 — an explicit numeric value outranks a conflicting snap.
+	 *
+	 * S7 owns the numeric editor that sets this: it is the only producer, and
+	 * until it exists nothing suppresses a snap, so the value is the identity
+	 * `false` rather than a fabricated flag. The wiring lives here (not in S7)
+	 * because it is a statement about *presentation precedence*, which is exactly
+	 * what this slice owns: when a value is explicit, the winner marker is
+	 * removed and the relation reports `Exact value` instead.
+	 */
+	const snapSuppressedByExplicitValue = $derived(false);
+	const interactionProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
 				withArrangeHoverOutline(
@@ -1343,10 +1354,14 @@ const interactionProjection = $derived(
 							: null,
 						objectRotateFeedback
 					),
-					arrangeHoverOutline
-				),
-				snapFeedback
+				arrangeHoverOutline
 			),
+			snapFeedback,
+			// The view is passed so the relation word can pick the side that has
+			// room: the winner is anchored to the pointer, and a word clipped by the
+			// canvas edge reports a relation nobody can read.
+			{ explicitValue: snapSuppressedByExplicitValue, view: interaction.planView }
+		),
 			architectureEditIntent
 		)
 	);

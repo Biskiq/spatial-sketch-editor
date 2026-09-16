@@ -279,6 +279,42 @@
 			`M ${cx - r} ${cy + r} L ${cx + r} ${cy - r}`
 		].join(' ');
 	}
+
+	/**
+	 * P23.13 S5 / §7 — the ratified snap glyphs. All are generated in screen
+	 * space from the projected winner, so a snap mark never scales with zoom and
+	 * never becomes a hit target (the mark carries no `hit` record at all).
+	 *
+	 * `triangle` is a midpoint mark pointing along +y, `right-angle` an open
+	 * corner, `bracket` the two ticks of an Opening edge straddling the jamb,
+	 * `circle-cross` the intersection's × inside a ring, and `plus` the grid
+	 * fallback's upright cross.
+	 *
+	 * `plus` is deliberately NOT `crossPath`: that path is the refusal ×, and a
+	 * snap winner must never share a mark with a refused proposal. §7 says "grid
+	 * = small cross", which in plan language is the upright `+` — the diagonal ×
+	 * already belongs to intersection (and to refusal), so a diagonal grid mark
+	 * would give one stroke two meanings and break §6's non-colour identity rule.
+	 */
+	function snapGlyphPath(shape: string, center: LayoutVec2, radius: number): string {
+		const [cx, cy] = center;
+		switch (shape) {
+			case 'triangle':
+				return `M ${cx} ${cy - radius} L ${cx + radius} ${cy + radius * 0.75} L ${cx - radius} ${cy + radius * 0.75} Z`;
+			case 'right-angle':
+				return `M ${cx - radius} ${cy + radius} L ${cx - radius} ${cy - radius} M ${cx - radius} ${cy + radius} L ${cx + radius} ${cy + radius}`;
+			case 'bracket':
+				return `M ${cx - radius} ${cy - radius} L ${cx - radius} ${cy + radius} M ${cx + radius} ${cy - radius} L ${cx + radius} ${cy + radius}`;
+			case 'circle-cross':
+				return `${crossPath(center, radius)}`;
+			case 'plus':
+				return `M ${cx - radius} ${cy} L ${cx + radius} ${cy} M ${cx} ${cy - radius} L ${cx} ${cy + radius}`;
+			case 'dot':
+				return `M ${cx} ${cy} m ${-radius} 0 a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 ${-radius * 2} 0`;
+			default:
+				return '';
+		}
+	}
 </script>
 
 <g class="plan-model">
@@ -370,6 +406,25 @@
 					<polygon class={tokenClass(primitive.style)} points={stopMarkPointsAttr(screen, primitive.radiusPx)} />
 				{:else if primitive.shape === 'cross'}
 					<path class={tokenClass(primitive.style)} d={crossPath(screen, primitive.radiusPx)} />
+				{:else if primitive.shape === 'triangle'}
+					<path class={tokenClass(primitive.style)} d={snapGlyphPath('triangle', screen, primitive.radiusPx)} />
+				{:else if primitive.style === 'snap-glyph-stroke'}
+					<!-- An open-path glyph has no silhouette to separate it from the Wall
+					     mass, so it takes the same paper separation every other state mark
+					     has (the filled markers get it as their own paper stroke, and the
+					     intersection's x as the paper stroke inside its disc). The token
+					     comes from the glyph's own ink, so the paint layer is told which
+					     treatment applies rather than re-deriving it from the shape. An
+					     absent shape draws nothing rather than a guessed mark. -->
+					{@const glyphPath = snapGlyphPath(primitive.shape ?? '', screen, primitive.radiusPx)}
+					<path class="snap-glyph-halo" d={glyphPath} />
+					<path class={tokenClass(primitive.style)} d={glyphPath} />
+				{:else if primitive.shape === 'circle-cross'}
+					<circle class={tokenClass(primitive.style)} cx={screen[0]} cy={screen[1]} r={primitive.radiusPx} />
+					<path
+						class="snap-glyph-cross"
+						d={snapGlyphPath('circle-cross', screen, primitive.radiusPx)}
+					/>
 				{:else}
 					<circle class={tokenClass(primitive.style)} cx={screen[0]} cy={screen[1]} r={primitive.radiusPx} />
 				{/if}
@@ -589,7 +644,25 @@
 	.curve-control.hovered, .curve-control-hovered { fill: var(--editor-plan-hover-stroke); stroke: var(--editor-plan-canvas-bg); }
 	.draft-point { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; }
 	/* P23.2 — session-only snap feedback (semantic rank above grid fallback). */
-	.snap-guide { fill: none; stroke: var(--editor-plan-selection); stroke-width: 1.25; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
-	.snap-marker { fill: var(--editor-plan-selection); stroke: var(--editor-plan-canvas-bg); stroke-width: 1.25; vector-effect: non-scaling-stroke; pointer-events: none; }
-	.snap-marker-grid { fill: var(--editor-plan-muted); stroke: var(--editor-plan-canvas-bg); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S5 / §2 — Snap is its own ink (`#146D68`), not the selection blue.
+	   A snap winner is a *relation*, and presenting it in the selection colour
+	   made "the pointer is aligned" read as "this is selected". The 2 px paper
+	   stroke is the same separation §6 gives every state mark — it is not §7's
+	   "2 px source accent", which is deliberately not drawn (the winner's
+	   `sourceId` carries no paintable source; see the plan). The grid fallback
+	   keeps the same ink because §7 distinguishes it by its glyph, not by
+	   going quieter. */
+	.snap-guide { fill: none; stroke: var(--editor-plan-snap); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+	.snap-marker { fill: var(--editor-plan-snap); stroke: var(--editor-plan-canvas-bg); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* An open-path glyph has no area to fill: the snap ink *is* its stroke. Using
+	   the filled marker token here painted the bracket and the right angle as a
+	   paper-coloured notch in the Wall band. */
+	.snap-glyph-stroke { fill: none; stroke: var(--editor-plan-snap); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S5 — the paper separation an open-path snap glyph would otherwise
+	   lack, painted under the ink so the mark never sits directly on the Wall. */
+	.snap-glyph-halo { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-width: 3.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* §6 — snap is glyph + word. The word is the relation's non-colour identity. */
+	.snap-relation-label { fill: var(--editor-plan-snap); font: 600 10px var(--editor-font); paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; user-select: none; }
+	/* The intersection's × inside its ring, painted over the ring's own fill. */
+	.snap-glyph-cross { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 </style>

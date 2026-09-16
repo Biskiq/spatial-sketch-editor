@@ -187,8 +187,12 @@ describe('P23.6 snap vocabulary', () => {
 				candidate: { point: [1, 1], kind: kind as never, sourceId: 's', distance: 0 },
 				guides: []
 			}).drafts.find((primitive) => primitive.kind === 'circle');
+		// P23.13 S5 kept the P23.6 weights and re-expressed the one-family
+		// exception as the glyph's own ink: the grid fallback is still the family
+		// painted as a stroke rather than a fill, now under the shared
+		// `snap-glyph-stroke` token that §7's other open-path glyphs also use.
 		expect(marker('junction')).toMatchObject({ radiusPx: 5, style: 'snap-marker' });
-		expect(marker('grid')).toMatchObject({ radiusPx: 3, style: 'snap-marker-grid' });
+		expect(marker('grid')).toMatchObject({ radiusPx: 3, style: 'snap-glyph-stroke' });
 	});
 });
 

@@ -176,6 +176,9 @@
 	--editor-plan-object: #b7b2a8;
 	--editor-plan-label: #343c43;
 	--editor-plan-muted: #596570;
+	/* P23.13 S5 — §2 mark palette: Snap has its own ink so an honoured relation
+	   can never be mistaken for a selection (blue) or for committed geometry. */
+	--editor-plan-snap: #146d68;
 	--editor-plan-measure: #2f8cff;
 	--editor-plan-selection: #2f8cff;
 	--editor-plan-readonly: #92908a;

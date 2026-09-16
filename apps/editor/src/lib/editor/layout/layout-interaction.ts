@@ -6,7 +6,7 @@ import { EDITOR_DRAG_THRESHOLD_PX } from '../interaction-constants';
 import type { EditorCommandId } from '../editor-command-intent';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
-import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
+import { snapOwnerKey, snapToGridStep, type SnapFeatureKind } from '@portfolio/layout-core';
 import type { PlanControlKind } from './plan-acquisition';
 export type LayoutViewMode = 'plan' | '3d';
 /** Scene → Plan's local authoring authority. Camera Plan never reads this. */
@@ -1356,9 +1356,16 @@ export function updateLayoutObjectDrag(
 	const drag = state.objectDrag;
 	if (!drag) return;
 	if (drag.mode === 'translate') {
-		const x = snapEnabled ? Math.round(point[0] / LAYOUT_PLAN_GRID_STEP) * LAYOUT_PLAN_GRID_STEP : point[0];
-		const z = snapEnabled ? Math.round(point[1] / LAYOUT_PLAN_GRID_STEP) * LAYOUT_PLAN_GRID_STEP : point[1];
-		drag.candidatePosition = [x, drag.originalPosition[1], z];
+		// P23.13 S5 — grid-only, and deliberately NOT the semantic snap resolver:
+		// an object transform has no family the object owner can honour (its rows
+		// are limited to supported size/delta/yaw), so letting it claim a junction
+		// or midpoint relation would present a winner the owner cannot keep. The
+		// step comes from the shared helper rather than a second inlined formula,
+		// so "which grid" has one answer. Recorded as a scope decision in the
+		// plan: routing this through `resolveLayoutSnap` is a product call, not a
+		// presentation one.
+		const snapped = snapEnabled ? snapToGridStep(point, LAYOUT_PLAN_GRID_STEP) : point;
+		drag.candidatePosition = [snapped[0], drag.originalPosition[1], snapped[1]];
 		return;
 	}
 	// Plan rotation-handle convention (matches the shipped Scene staging
