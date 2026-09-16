@@ -139,6 +139,10 @@ export type PrecisionOperation =
 	| 'wall-delete'
 	/** P23.6d — canonical Room metadata update (planner: `planRoomMetadataUpdate`). */
 	| 'room-metadata'
+	/** P23.12 — canonical Wall metadata update (planner: `planWallMetadataUpdate`). */
+	| 'wall-metadata'
+	/** P23.12 — canonical Opening metadata update (planner: `planOpeningMetadataUpdate`). */
+	| 'opening-metadata'
 	/** P23.6d — Room removal through the Wall pipeline (planner: `planRemoveRoom`). */
 	| 'room-remove'
 	/** P23.11 — canonical curve operations (convert / knot insert / move / delete / bend). */
