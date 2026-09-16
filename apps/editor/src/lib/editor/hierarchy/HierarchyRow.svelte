@@ -11,6 +11,11 @@
 		HierarchyDestination,
 		HierarchyProjectedRow
 	} from './hierarchy-page-projection';
+	import {
+		exactReferenceEmphasis,
+		identityMatchTargets,
+		identitySegments
+	} from './hierarchy-identity-presentation';
 	import HierarchyRow from './HierarchyRow.svelte';
 
 	let {
@@ -51,6 +56,34 @@
 	const interactive = $derived(isInteractive(row));
 	const open = $derived(isOpen(row));
 	const hasChildren = $derived((row.children?.length ?? 0) > 0);
+
+	// ── P23.12 identity presentation ──────────────────────────────────────
+
+	/**
+	 * A reference-led label *is* the reference, so the whole six-character token
+	 * is the entity's identity and must never be clipped.
+	 */
+	const referenceLed = $derived(row.referenceLed === true);
+
+	/**
+	 * A search hit emphasises the identity the user actually typed, and an exact
+	 * reference match is the strongest claim: it emphasises whichever span renders
+	 * that token (the module decides, so the rule is testable).
+	 */
+	const matchEmphasis = $derived(exactReferenceEmphasis(row));
+
+	// Which visible span may highlight the hit, and how the matched substring is
+	// marked — both answered by the pure presentation module.
+	const matchTargets = $derived(identityMatchTargets(row));
+	const labelSegments = $derived(
+		identitySegments(row.label, row.match?.query, matchTargets.label)
+	);
+	const referenceSegments = $derived(
+		row.reference === undefined
+			? []
+			: identitySegments(row.reference, row.match?.query, matchTargets.reference)
+	);
+
 </script>
 
 <li
@@ -110,7 +143,8 @@
 					type="button"
 					class="tree-row hierarchy-entity"
 					class:tree-row--selected={selected}
-					class:tree-row--match-reference={row.match?.exactReference === true}
+					class:tree-row--match-reference={matchEmphasis === 'reference'}
+					class:tree-row--match-label={matchEmphasis === 'label'}
 					aria-disabled={!interactive}
 					title={row.tooltip ?? row.canonicalId}
 					onclick={interactive ? (event) => onSelect(row, event) : undefined}
@@ -120,10 +154,20 @@
 					onfocus={() => onEmphasis?.(row)}
 					onblur={() => onEmphasisLeave?.(row)}
 				>
-					<span class="tree-row__label">{row.label}</span>
+					<!-- P23.12 — a reference-led label is protected exactly like the
+						reference span: six characters always fit, and an ellipsised token is
+						an unreadable identity. Named and fallback labels stay truncatable. -->
+					<span
+						class="tree-row__label"
+						class:tree-row__label--reference={referenceLed}
+					>{#each labelSegments as segment, index (index)}{#if segment.hit}<mark
+									class="tree-row__hit">{segment.text}</mark
+								>{:else}{segment.text}{/if}{/each}</span>
 					<!-- P23.12 — the reference is the protected identity span: it never
 						truncates and relationship context never displaces it. -->
-					{#if row.reference}<span class="tree-row__reference">{row.reference}</span>{/if}
+					{#if row.reference}<span class="tree-row__reference">{#each referenceSegments as segment, index (index)}{#if segment.hit}<mark
+									class="tree-row__hit">{segment.text}</mark
+								>{:else}{segment.text}{/if}{/each}</span>{/if}
 					<!-- P23.12 — a search hit states *why* it is here: a raw-ID query
 						can surface a row whose authored name looks unrelated. -->
 					{#if row.match}<span class="tree-row__match">{row.match.text}</span>{/if}
@@ -273,6 +317,22 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	/* P23.12 — a reference-led label is the identity, not prose: it never
+		shrinks and never ellipsises, so a narrow Navigator cannot turn `W-7K3M`
+		into `W-7…`. */
+	.tree-row__label--reference {
+		flex: 0 0 auto;
+		overflow: visible;
+		text-overflow: clip;
+		white-space: nowrap;
+	}
+	.tree-row__hit {
+		/* Highlighting must not change a row's metrics: no background bleed, no
+			weight change, and inheriting colour keeps the selected-state rules. */
+		background: transparent;
+		color: var(--editor-accent);
+		font-weight: 700;
+	}
 	.tree-row__reference {
 		/* Protected: no shrink, no ellipsis — four glyphs plus prefix always fit. */
 		flex: 0 0 auto;
@@ -292,7 +352,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.tree-row--match-reference .tree-row__reference {
+	/* P23.12 — an exact-reference hit emphasises whichever span renders the
+		token, so an unnamed (reference-led) entity's exact match is never left
+		unstyled just because it has no separate reference span. */
+	.tree-row--match-reference .tree-row__reference,
+	.tree-row--match-label .tree-row__label {
 		color: var(--editor-text-primary);
 		font-weight: 600;
 	}

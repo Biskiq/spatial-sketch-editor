@@ -33,6 +33,12 @@ import {
 	hierarchyEntityReference
 } from '$lib/editor/hierarchy/hierarchy-page-projection';
 import { buildHierarchySearchProjection } from '$lib/editor/hierarchy/hierarchy-search';
+import {
+	exactReferenceEmphasis,
+	identityMatchTargets,
+	identitySegments
+} from '$lib/editor/hierarchy/hierarchy-identity-presentation';
+import type { HierarchyProjectedRow } from '$lib/editor/hierarchy/hierarchy-page-projection';
 import { updateWallFirstWallMetadata, updateWallFirstOpeningMetadata, createEmptyLayoutPreviewState, importLayoutPreviewJson, layoutPreviewDocument } from '$lib/editor/layout/layout-preview-state.svelte';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -448,5 +454,250 @@ describe('P23.12 navigator — source-level constraints', () => {
 	it('the identity composition reads from the source index, not a hard-wired meta slot', () => {
 		const sourceIndex = source('editor/hierarchy/hierarchy-source-index.ts');
 		expect(sourceIndex).toContain('referenceFor');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// presentation: protected references, highlighting, exact-match emphasis
+// ---------------------------------------------------------------------------
+
+/**
+ * Measured evidence (240 px Navigator column, long name + long context, real
+ * `<style>` blocks from these two components, `getBoundingClientRect`):
+ *
+ * | element                     | before            | after      |
+ * |-----------------------------|-------------------|------------|
+ * | unnamed Wall label          | 19 px, clipped    | 50 px OK   |
+ * | pinned reference            | clipped away      | 36 px OK   |
+ * | named row reference         | 36 px OK          | 36 px OK   |
+ * | Junction label              | 45 px OK          | 45 px OK   |
+ * | truncating name (unchanged) | 69 px, clipped    | 69 px, clipped |
+ * | truncating pin title        | 119 px, clipped   | 78 px, clipped |
+ *
+ * The layout assertions below pin the rules that produced the fix; the numbers
+ * themselves need a browser (the suite runs in `node`).
+ */
+describe('P23.12 presentation — the label that IS the reference is protected', () => {
+	it('unnamed Wall and Opening rows are reference-led', () => {
+		const state = makeState(squareDocument());
+		const index = indexOf(state);
+		const wall = hierarchyWallRow(index, 'k', 'w1');
+		expect(wall?.referenceLed).toBe(true);
+		expect(wall?.label).toBe(wall?.reference === undefined ? wall?.label : wall.label);
+		expect(wall?.reference).toBeUndefined();
+		const opening = hierarchyOpeningRow(index, 'k', 'door');
+		expect(opening?.referenceLed).toBe(true);
+	});
+
+	it('a named Wall keeps its name label unprotected and its reference separate', () => {
+		const state = makeState(squareDocument());
+		expect(updateWallFirstWallMetadata(state, 'w1', { name: 'North Gallery Wall' }).success).toBe(true);
+		const wall = hierarchyWallRow(indexOf(state), 'k', 'w1');
+		expect(wall?.label).toBe('North Gallery Wall');
+		expect(wall?.reference).toMatch(/^W-/);
+		expect(wall?.referenceLed).toBeUndefined();
+	});
+
+	it('every Junction row is reference-led (reference-only, never a name)', () => {
+		const state = makeState(squareDocument());
+		const junction = hierarchyJunctionRow(indexOf(state), 'k', 'A');
+		expect(junction?.referenceLed).toBe(true);
+		expect(junction?.label).toMatch(/^J-/);
+	});
+
+	it('a legacy document without a ledger keeps its fallback label unprotected', () => {
+		// `formatPlacementLabel('w1')` is a raw-ID display label, not a reference:
+		// protecting it would claim an identity the document does not have.
+		const legacy: LayoutDocumentWallFirst = { ...squareDocument(), identity: undefined } as never;
+		const index = buildHierarchySourceIndex({
+			layout: legacy,
+			scene: createEmptySceneDocument()
+		} as never);
+		const wall = hierarchyWallRow(index, 'k', 'w1');
+		expect(wall?.reference).toBeUndefined();
+		expect(wall?.referenceLed).toBeUndefined();
+	});
+});
+
+describe('P23.12 presentation — search highlighting and exact-match emphasis', () => {
+	function row(overrides: Partial<HierarchyProjectedRow>): HierarchyProjectedRow {
+		return { rowKey: 'k', kind: 'entity', label: 'North Gallery Wall', ...overrides };
+	}
+
+	it('a name match highlights the label; a reference match highlights the span that renders it', () => {
+		expect(
+			identityMatchTargets(row({ match: { field: 'name', query: 'north', text: '', exactReference: false } }))
+		).toEqual({ label: 'name', reference: null });
+		// Named row: the reference has its own span, so the hit goes there.
+		expect(
+			identityMatchTargets(
+				row({ match: { field: 'reference', query: 'w-7k3m', text: '', exactReference: true } })
+			)
+		).toEqual({ label: null, reference: 'reference' });
+		// Reference-led row: the label IS the reference, so the hit goes there.
+		expect(
+			identityMatchTargets(
+				row({
+					label: 'W-7K3M',
+					referenceLed: true,
+					match: { field: 'reference', query: 'w-7k3m', text: '', exactReference: true }
+				})
+			)
+		).toEqual({ label: 'reference', reference: null });
+	});
+
+	it('raw-ID, role and kind matches are explained, never highlighted', () => {
+		for (const field of ['id', 'role', 'kind', 'label'] as const) {
+			expect(
+				identityMatchTargets(
+					row({ match: { field, query: 'boundary', text: 'Matched', exactReference: false } })
+				)
+			).toEqual({ label: null, reference: null });
+		}
+		expect(identityMatchTargets(row({}))).toEqual({ label: null, reference: null });
+	});
+
+	it('an exact-reference match emphasises the reference-led label too', () => {
+		const exact = { field: 'reference', query: 'w-7k3m', text: '', exactReference: true } as const;
+		// The reported defect: `tree-row__reference` is never rendered for an
+		// unnamed entity, so exact matches received no emphasis at all.
+		expect(exactReferenceEmphasis(row({ label: 'W-7K3M', referenceLed: true, match: exact }))).toBe('label');
+		expect(
+			exactReferenceEmphasis(row({ label: 'North Gallery Wall', match: exact }))
+		).toBe('reference');
+		expect(
+			exactReferenceEmphasis(
+				row({ match: { ...exact, exactReference: false } })
+			)
+		).toBeNull();
+		expect(exactReferenceEmphasis(row({}))).toBeNull();
+	});
+
+	it('the matched substring is marked once, case-insensitively', () => {
+		expect(identitySegments('North Gallery Wall', 'gallery', 'name')).toEqual([
+			{ text: 'North ', hit: false },
+			{ text: 'Gallery', hit: true },
+			{ text: ' Wall', hit: false }
+		]);
+		// Prefix and suffix runs are dropped when empty, never rendered as "".
+		expect(identitySegments('W-7K3M', 'w-7k3m', 'reference')).toEqual([
+			{ text: 'W-7K3M', hit: true }
+		]);
+		expect(identitySegments('W-7K3M', '7k3', 'reference')).toEqual([
+			{ text: 'W-', hit: false },
+			{ text: '7K3', hit: true },
+			{ text: 'M', hit: false }
+		]);
+	});
+
+	it('nothing to highlight yields the whole text unmarked', () => {
+		expect(identitySegments('North Gallery Wall', 'zzz', 'name')).toEqual([
+			{ text: 'North Gallery Wall', hit: false }
+		]);
+		expect(identitySegments('North Gallery Wall', undefined, 'name')).toEqual([
+			{ text: 'North Gallery Wall', hit: false }
+		]);
+		// A non-highlightable field must not mark text the user did not type.
+		expect(identitySegments('North Gallery Wall', 'north', null)).toEqual([
+			{ text: 'North Gallery Wall', hit: false }
+		]);
+	});
+
+	it('a real search projection feeds the renderer a highlightable match', () => {
+		const state = makeState(squareDocument());
+		const index = indexOf(state);
+		const reference = index.wallById.get('w1')?.reference ?? '';
+		const projection = buildHierarchySearchProjection(index, reference);
+		const directRow = projection.blocks
+			.flatMap((block) => block.groups)
+			.filter((group) => group.kind === 'direct')
+			.flatMap((group) => group.rows)
+			.find((candidate) => candidate.canonicalId === 'w1')!;
+		const targets = identityMatchTargets(directRow);
+		// An unnamed Wall: the hit must land on the label, and it is the exact token.
+		expect(targets.label).toBe('reference');
+		expect(exactReferenceEmphasis(directRow)).toBe('label');
+		expect(identitySegments(directRow.label, directRow.match?.query, targets.label)[0]).toEqual({
+			text: reference,
+			hit: true
+		});
+	});
+});
+
+describe('P23.12 presentation — source-level protections', () => {
+	const LIB = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../src/lib');
+
+	function source(relative: string): string {
+		return readFileSync(resolve(LIB, relative), 'utf8');
+	}
+
+	it('the reference-led label never shrinks and never ellipsises', () => {
+		const row = source('editor/hierarchy/HierarchyRow.svelte');
+		const rule = row.slice(
+			row.indexOf('.tree-row__label--reference {'),
+			row.indexOf('}', row.indexOf('.tree-row__label--reference {'))
+		);
+		expect(rule).toContain('flex: 0 0 auto');
+		expect(rule).toContain('overflow: visible');
+		expect(rule).toContain('text-overflow: clip');
+		// The class is applied from the projected flag, not from string sniffing.
+		expect(row).toContain('class:tree-row__label--reference={referenceLed}');
+		expect(row).toContain('const referenceLed = $derived(row.referenceLed === true);');
+	});
+
+	it('the reference span and its highlight carry the same protections', () => {
+		const row = source('editor/hierarchy/HierarchyRow.svelte');
+		const rule = row.slice(
+			row.indexOf('.tree-row__reference {'),
+			row.indexOf('}', row.indexOf('.tree-row__reference {'))
+		);
+		expect(rule).toContain('flex: 0 0 auto');
+		expect(rule).toContain('white-space: nowrap');
+		expect(row).toContain('class="tree-row__hit"');
+	});
+
+	it('exact-reference emphasis reaches the reference-led label', () => {
+		const row = source('editor/hierarchy/HierarchyRow.svelte');
+		expect(row).toContain('class:tree-row--match-label={matchEmphasis === \'label\'}');
+		expect(row).toContain('class:tree-row--match-reference={matchEmphasis === \'reference\'}');
+		const style = row.slice(row.indexOf('<style>'), row.indexOf('</style>'));
+		expect(style).toContain('.tree-row--match-label .tree-row__label');
+		expect(style).toContain('.tree-row--match-reference .tree-row__reference');
+	});
+
+	it('the pin separates the truncating name from the protected reference', () => {
+		const navigator = source('editor/hierarchy/HierarchyNavigator.svelte');
+		// Structure: name and reference are sibling flex items inside one identity row.
+		const identityStart = navigator.indexOf('<span class="hierarchy-pin__identity">');
+		const titleStart = navigator.indexOf('<span class="hierarchy-pin__title"');
+		const referenceStart = navigator.indexOf('<span class="hierarchy-pin__reference">');
+		expect(identityStart).toBeGreaterThan(-1);
+		expect(titleStart).toBeGreaterThan(identityStart);
+		expect(referenceStart).toBeGreaterThan(titleStart);
+		// The reference is NOT nested inside the ellipsising title.
+		const titleBlock = navigator.slice(
+			titleStart,
+			navigator.indexOf('</span>', titleStart)
+		);
+		expect(titleBlock).not.toContain('hierarchy-pin__reference');
+		expect(titleBlock).toContain('Selected {pinned.label}');
+	});
+
+	it('the pin reference never shrinks and never sits in a clipping container', () => {
+		const navigator = source('editor/hierarchy/HierarchyNavigator.svelte');
+		const style = navigator.slice(navigator.indexOf('<style>'), navigator.indexOf('</style>'));
+		const referenceRule = style.slice(
+			style.indexOf('.hierarchy-pin__reference {'),
+			style.indexOf('}', style.indexOf('.hierarchy-pin__reference {'))
+		);
+		expect(referenceRule).toContain('flex: 0 0 auto');
+		expect(referenceRule).toContain('white-space: nowrap');
+		expect(referenceRule).not.toContain('overflow: hidden');
+		// The only truncating tier of the pin identity line.
+		const titleRule = style.slice(
+			style.indexOf('.hierarchy-pin__title {'),
+			style.indexOf('}', style.indexOf('.hierarchy-pin__title {'))
+		);
+		expect(titleRule).toContain('text-overflow: ellipsis');
 	});
 });

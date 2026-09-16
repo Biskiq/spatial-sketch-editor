@@ -648,10 +648,14 @@
 		<!-- Neutral, in-place pinned selection: no icon, colour or animation. -->
 		<div class="hierarchy-pin" role="status">
 			<span class="hierarchy-pin__text">
-				<span class="hierarchy-pin__title" title={pinned.entity.id}>
-					Selected {pinned.label}{#if pinned.reference}<span class="hierarchy-pin__reference"
-							>{pinned.reference}</span
-						>{/if}
+				<!-- P23.12 — the name and the reference are separate flex items: the
+					name takes the ellipsis, the reference never does. Nesting the
+					reference inside the truncating title let a long name clip it away. -->
+				<span class="hierarchy-pin__identity">
+					<span class="hierarchy-pin__title" title={pinned.entity.id}>
+						Selected {pinned.label}
+					</span>
+					{#if pinned.reference}<span class="hierarchy-pin__reference">{pinned.reference}</span>{/if}
 				</span>
 				<span class="hierarchy-pin__reason">{pinned.reason.text}</span>
 			</span>
@@ -812,7 +816,14 @@
 		background: var(--editor-bg-panel);
 	}
 	.hierarchy-pin__text { display: flex; min-width: 0; flex-direction: column; }
+	.hierarchy-pin__identity {
+		display: flex;
+		min-width: 0;
+		align-items: baseline;
+		gap: 0.3rem;
+	}
 	.hierarchy-pin__title {
+		/* The only truncating tier of the pin's identity line. */
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-secondary);
@@ -820,13 +831,15 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	/* P23.12 — protected identity span: never truncates, never displaced. */
+	/* P23.12 — protected identity span: never shrinks, never truncates, and
+		never sits inside an `overflow: hidden` container. */
 	.hierarchy-pin__reference {
-		margin-left: 0.3rem;
+		flex: 0 0 auto;
 		color: var(--editor-text-muted);
 		font-family: var(--editor-font-mono, ui-monospace, monospace);
 		font-size: 0.62rem;
 		letter-spacing: 0.01em;
+		white-space: nowrap;
 	}
 	.hierarchy-pin__reason {
 		min-width: 0;

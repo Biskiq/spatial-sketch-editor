@@ -138,10 +138,20 @@ export type HierarchyProjectedRow = {
 	 * relationship context (that is `secondary`), and absent when the reference
 	 * already is the label or the document carries no ledger.
 	 */
-	reference?: string;/**
- * Relationship context (`also in …`, `Door · on W-7K3M`, `3 walls`).
- * This is the tier that shortens or ellipsises under width pressure.
- */
+	reference?: string;
+	/**
+	 * P23.12 — `true` when `label` **is** the compact reference: an unnamed Wall
+	 * or Opening, or a Junction (reference-only). A reference is six characters
+	 * and always fits, so the renderer protects it from shrinking or ellipsising;
+	 * a truncating reference is worse than a truncating name, because the token
+	 * is the entity's only identity. `undefined` for named entities and for the
+	 * raw-ID fallback label of a document without a ledger.
+	 */
+	referenceLed?: boolean;
+	/**
+	 * Relationship context (`also in …`, `Door · on W-7K3M`, `3 walls`).
+	 * This is the tier that shortens or ellipsises under width pressure.
+	 */
 	secondary?: string;
 	/**
 	 * P23.12 — why a *search* row is present. A raw-ID query can surface a row
@@ -362,6 +372,7 @@ export function hierarchyWallRow(
 		canonicalId: wall.wallId,
 		facet: wall.role,
 		...(reference ? { reference } : {}),
+		...(wall.name === null && wall.reference !== null ? { referenceLed: true } : {}),
 		secondary: options.secondary,
 		children: options.children,
 		actions: options.actions,
@@ -389,6 +400,7 @@ export function hierarchyOpeningRow(
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
 		...(reference ? { reference } : {}),
+		...(opening.name === null && opening.reference !== null ? { referenceLed: true } : {}),
 		secondary: options.secondary ?? hierarchyKindLabel(opening.openingKind),
 		children: options.children,
 		actions: options.actions,
@@ -414,6 +426,8 @@ export function hierarchyJunctionRow(
 		label: junction.reference ?? formatPlacementLabel(junction.junctionId),
 		entity: junction.entity,
 		canonicalId: junction.junctionId,
+		// Reference-only rows are always reference-led when the token resolved.
+		...(junction.reference !== null ? { referenceLed: true } : {}),
 		secondary:
 			options.secondary ?? `${incident.length} wall${incident.length === 1 ? '' : 's'}`,
 		children: options.children,
