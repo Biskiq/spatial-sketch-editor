@@ -109,6 +109,7 @@ import {
 	junctionIdentity,
 	junctionIdentityText,
 	openingIdentity,
+	openingIdentityText,
 	roomIdentity,
 	roomIdentityText,
 	wallIdentity,
@@ -480,10 +481,18 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	 * P23.12 D6 — a bend point reads by its ordinal in the selected Wall's own
 	 * chain. Its canonical knot ID (`{wallId}:knot:{n}`) embeds the raw Wall ID,
 	 * so it stays in the chain data and out of user copy.
+	 *
+	 * A status message that reports on a mutation MUST read the chain BEFORE it
+	 * runs (via `bendPointLabelAt` with the pre-mutation index and count):
+	 * afterwards the removed knot has no ordinal to find, and the remaining count
+	 * is one lower than the chain the user actually acted on.
 	 */
 	function bendPointLabel(knotId: string): string {
 		const index = selectedWallFirstWallKnots.findIndex((knot) => knot.id === knotId);
-		return index >= 0 ? `Bend point ${index + 1}` : 'Bend point';
+		return index >= 0 ? bendPointLabelAt(index) : 'Bend point';
+	}
+	function bendPointLabelAt(index: number): string {
+		return `Bend point ${index + 1}`;
 	}
 	/**
 	 * A diagnostic's affected source, named by identity rather than by raw ID.
@@ -603,6 +612,18 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			: { movable: false, rejection: { code: 'unknown_room', message: 'No wall-first layout', targetIds: [room.id] }, hint: 'Room move requires a wall-first layout' };
 		return { area, perimeter, ceilingElevation: compiled?.ceilingElevation ?? null, boundaryWallIds, eligibility };
 	});
+	/**
+	 * P23.12 D6 — the Room's boundary members read as identity, the same tier
+	 * order every other surface uses; the canonical Wall IDs stay in each Wall's
+	 * own Technical details block.
+	 */
+	const selectedWallFirstRoomBoundaryLabel = $derived(
+		selectedWallFirstRoomFacts && selectedWallFirstRoomFacts.boundaryWallIds.length > 0
+			? selectedWallFirstRoomFacts.boundaryWallIds
+					.map((wallId) => wallIdentityText(layoutDocument, wallId))
+					.join(', ')
+			: 'none'
+	);
 	const selectedLayoutSegment = $derived(
 		selectedLayoutWallSelection && selectedLayoutRoom
 			? selectedLayoutRoom.boundary.segments.find((segment) => segment.id === selectedLayoutWallSelection.segmentId)
@@ -1757,6 +1778,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		const wall = selectedWallFirstWall;
 		const knot = selectedWallFirstWallKnots.find((candidate) => candidate.id === knotId);
 		if (!wall || !knot) return;
+		const knotIndex = selectedWallFirstWallKnots.indexOf(knot);
 		const previous = knot.point[index];
 		const value = precisionNumber(event, previous, formatMeters);
 		if (value === null) return;
@@ -1772,9 +1794,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			return;
 		}
 		if (!outcome.result.success) (event.currentTarget as HTMLInputElement).value = formatMeters(previous);
+		// Captured before the mutation: the ordinal belongs to the chain the user
+		// acted on, not to whatever the planner leaves behind.
 		store.setStatusMessage(
 			outcome.result.success
-				? `Moved ${bendPointLabel(knotId).toLowerCase()}`
+				? `Moved ${bendPointLabelAt(knotIndex).toLowerCase()}`
 				: `Bend point rejected: ${outcome.result.message}`
 		);
 	}
@@ -1782,6 +1806,13 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	function deleteSelectedWallCurveKnot(knotId: string): void {
 		const wall = selectedWallFirstWall;
 		if (!wall) return;
+		// Both facts the message reports on are read BEFORE the mutation. Reading
+		// them afterwards is wrong twice over: the deleted knot is gone from the
+		// chain, so its ordinal cannot resolve, and the remaining count is one
+		// lower — a Wall with two bend points would announce that it has none
+		// left after removing one.
+		const knotIndex = selectedWallFirstWallKnots.findIndex((knot) => knot.id === knotId);
+		const knotsBefore = selectedWallFirstWallKnots.length;
 		const outcome = runLayoutMutationGuarded(
 			() => deleteWallFirstWallCurveKnot(layoutPreview, wall.id, knotId),
 			(result) => result.success
@@ -1792,9 +1823,9 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		}
 		store.setStatusMessage(
 			outcome.result.success
-				? selectedWallFirstWallKnots.length <= 1
+				? knotsBefore <= 1
 					? `Wall ${wallIdentityText(layoutDocument, wall.id)} has no bend points left`
-					: `Removed ${bendPointLabel(knotId).toLowerCase()}`
+					: `Removed ${knotIndex >= 0 ? bendPointLabelAt(knotIndex).toLowerCase() : 'bend point'}`
 				: `Remove bend point rejected: ${outcome.result.message}`
 		);
 	}
@@ -1880,9 +1911,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	function precisionWallEndpoints(layout: LayoutDocumentWallFirst, wall: LayoutWall): {
 		start: LayoutJunction;
 		end: LayoutJunction;
-		/** P23.12 — the endpoint's compact reference, when the ledger has one. */
-		startReference: string | null;
-		endReference: string | null;
 		length: number;
 		angleDegrees: number;
 	} | null {
@@ -1892,8 +1920,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		return {
 			start,
 			end,
-			startReference: junctionIdentity(layout, start.id).reference,
-			endReference: junctionIdentity(layout, end.id).reference,
 			length: Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]),
 			angleDegrees: radiansToDegrees(Math.atan2(end.point[1] - start.point[1], end.point[0] - start.point[0]))
 		};
@@ -2149,15 +2175,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				<div class="layout-selected-room" aria-label="Selected wall-first wall">
 					<!-- P23.12 — one header pattern: name (or reference) primary, the
 						other secondary, kind stated separately, Technical details below. -->
-					<strong>{selectedWallFirstWall.name ?? selectedWallReference ?? `Wall ${selectedWallFirstWall.id}`}</strong>
+					<strong>{selectedWallFirstWall.name ?? selectedWallReference ?? `Wall ${formatPlacementLabel(selectedWallFirstWall.id)}`}</strong>
 					{#if selectedWallFirstWall.name && selectedWallReference}<span>{selectedWallReference}</span>{/if}
 					<span>{selectedWallFirstWall.role === 'boundary' ? 'Defines a room boundary' : 'Partition — does not divide rooms'}</span>
 					<span>
-						{#if selectedWallFirstWallEndpoints.startReference && selectedWallFirstWallEndpoints.endReference}
-							{selectedWallFirstWallEndpoints.startReference} → {selectedWallFirstWallEndpoints.endReference}
-						{:else}
-							{selectedWallFirstWallEndpoints.start.id} → {selectedWallFirstWallEndpoints.end.id}
-						{/if}
+						{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)} → {junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)}
 						· {selectedWallFirstWallEndpoints.length.toFixed(2)} m
 					</span>
 					<!-- P23.12 S3/S6 — optional authored name through the one planner;
@@ -2203,7 +2225,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<div class="object-room-meta"><span>Hosted openings</span>
 							<span class="relation-links">
 								{#each selectedWallFirstHostedOpenings as hostedOpening (hostedOpening.id)}
-									<button type="button" class="object-row-select" onclick={() => selectLayoutWallOpening(layoutInteraction, selectedWallFirstWall!.id, hostedOpening.id)}>{hostedOpening.kind} · {hostedOpening.id}</button>
+									<button type="button" class="object-row-select" onclick={() => selectLayoutWallOpening(layoutInteraction, selectedWallFirstWall!.id, hostedOpening.id)}>{hostedOpening.kind} · {openingIdentityText(layoutDocument, hostedOpening.id)}</button>
 								{/each}
 							</span>
 						</div>
@@ -2213,8 +2235,8 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					{/if}
 					<div class="object-room-meta"><span>Endpoints</span>
 						<span class="relation-links">
-							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.start.id)}>{selectedWallFirstWallEndpoints.startReference ?? selectedWallFirstWallEndpoints.start.id}</button>
-							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.end.id)}>{selectedWallFirstWallEndpoints.endReference ?? selectedWallFirstWallEndpoints.end.id}</button>
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.start.id)}>{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)}</button>
+							<button type="button" class="object-row-select" onclick={() => selectLayoutJunction(layoutInteraction, selectedWallFirstWallEndpoints!.end.id)}>{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)}</button>
 						</span>
 					</div>
 					<!-- D6 — Technical details: collapsed by default, keyboard- and
@@ -2229,7 +2251,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				</div>
 			{:else if selectedWallFirstJunction}
 				<div class="layout-selected-room" aria-label="Selected wall-first junction">
-					<strong>{selectedJunctionReference ?? `Junction ${selectedWallFirstJunction.id}`}</strong>
+					<strong>{selectedJunctionReference ?? `Junction ${formatPlacementLabel(selectedWallFirstJunction.id)}`}</strong>
 					<span>Connected Wall geometry follows this Junction.</span>
 					<label>X (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[0])} onchange={(event) => updateSelectedJunction(0, event)} /></label>
 					<label>Z (m)<input type="number" step="any" value={formatMeters(selectedWallFirstJunction.point[1])} onchange={(event) => updateSelectedJunction(1, event)} /></label>
@@ -2247,12 +2269,12 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				<div class="layout-selected-room" aria-label="Selected wall-first opening">
 					<!-- P23.12 — same header pattern as Wall: name leads, reference
 						secondary; the kind stays a separate statement. -->
-					<strong>{selectedWallFirstOpening.name ?? selectedOpeningReference ?? selectedWallFirstOpening.id}</strong>
+					<strong>{selectedWallFirstOpening.name ?? selectedOpeningReference ?? formatPlacementLabel(selectedWallFirstOpening.id)}</strong>
 					{#if selectedWallFirstOpening.name && selectedOpeningReference}<span class="identity-reference">{selectedOpeningReference}</span>{/if}
 					<span>{selectedWallFirstOpening.kind} opening</span>
 					<label>Name (optional)<input type="text" value={selectedWallFirstOpening.name ?? ''} onchange={updateSelectedOpeningName} placeholder="Unnamed — reference is the label" /></label>
 					<span>
-						Wall: {selectedWallFirstOpening.wallId} · {selectedWallFirstOpeningMetrics.wallLength.toFixed(2)} m{#if selectedWallFirstHostingWall}
+						Wall: {wallIdentityText(layoutDocument, selectedWallFirstOpening.wallId)} · {selectedWallFirstOpeningMetrics.wallLength.toFixed(2)} m{#if selectedWallFirstHostingWall}
 							· {selectedWallFirstHostingWall.role}{/if}
 					</span>
 					<label>Offset from wall start (m)<input type="number" min="0" step="0.05" value={selectedWallFirstOpening.offset.toFixed(2)} onchange={(event) => updateWallFirstOpeningField('offset', event)} /></label>
@@ -2354,7 +2376,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						field stays the one rename authority; the reference is secondary. -->
 					<strong>{selectedWallFirstRoom.name}</strong>
 					{#if selectedRoomReference}<span class="identity-reference">{selectedRoomReference}</span>{/if}
-					<span>{selectedWallFirstRoom.id}</span>
 					<!-- P23.6d — authoritative canonical Room metadata (name and the
 						two surface thicknesses) through `planRoomMetadataUpdate`;
 						the Room survives the edit, so selection is preserved. -->
@@ -2384,8 +2405,10 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<fieldset class="staging-transform-fields">
 							<legend>Exact dimensions</legend>
 							<span>Four boundary Walls · shared-boundary edits reject when ambiguous.</span>
-							<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{id}</option>{/each}</select></label>
-							<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallId}</option>{/each}</select></label>
+							<!-- D6 — the option VALUE stays the canonical ID the planner consumes;
+								only the option TEXT is presentation. -->
+							<label>Anchor Junction<select value={precisionRectangleAnchor ?? selectedPrecisionRectangle.anchorId} onchange={(event) => precisionRectangleAnchor = (event.currentTarget as HTMLSelectElement).value || null}>{#each selectedPrecisionRectangle.cornerIds as id}<option value={id}>{junctionIdentityText(layoutDocument, id)}</option>{/each}</select></label>
+							<label>Width Wall<select value={precisionRectangleWidthWall ?? selectedPrecisionRectangle.widthWallId} onchange={(event) => precisionRectangleWidthWall = (event.currentTarget as HTMLSelectElement).value || null}>{#each precisionRectangleWidthWallOptions as wallId}<option value={wallId}>{wallIdentityText(layoutDocument, wallId)}</option>{/each}</select></label>
 							<label>Width (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.width} onchange={(event) => updatePrecisionRectangle('width', event)} /></label>
 							<label>Depth (m)<input type="number" min="0.001" step="0.01" value={selectedPrecisionRectangle.depth} onchange={(event) => updatePrecisionRectangle('depth', event)} /></label>
 						</fieldset>
@@ -2396,7 +2419,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 							<button type="button" onclick={duplicateSelectedPrecisionRoom}>Duplicate room</button>
 						</fieldset>
 					{/if}
-					<span>Boundary walls: {selectedWallFirstRoomFacts.boundaryWallIds.length > 0 ? selectedWallFirstRoomFacts.boundaryWallIds.join(', ') : 'none'}</span>
+					<span>Boundary walls: {selectedWallFirstRoomBoundaryLabel}</span>
 					<!-- P23.6d — Room removal is a named, deliberate command that deletes
 						the Room's WHOLE boundary (its exclusive boundary Walls) in one atomic
 						operation, so no open shell of leftover Walls survives. Walls shared

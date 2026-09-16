@@ -20,16 +20,24 @@ import { describe, expect, it } from 'vitest';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { referenceFor, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import {
+	createEmptyWallFirstLayoutDocument,
+	referenceFor,
+	deriveChainSpans,
+	wallCubicChain,
+	type LayoutDocumentWallFirst
+} from '@portfolio/layout-core';
 
 import { formatPlacementLabel } from '$lib/editor/editor-outliner';
 import {
 	identityPrimaryLabel,
 	wallIdentity
 } from '$lib/editor/identity/layout-identity-view';
+import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 
 import {
 	createEmptyLayoutPreviewState,
+	deleteWallFirstWallCurveKnot,
 	importLayoutPreviewJson,
 	layoutPreviewDocument,
 	updateWallFirstOpeningMetadata,
@@ -92,10 +100,17 @@ describe('P23.12 inspector — one header pattern', () => {
 
 	it('all four canonical headers resolve through the identity layer', () => {
 		const text = source();
-		// The four wall-first headers use name ?? reference ?? id fallbacks.
-		expect(text).toContain('selectedWallFirstWall.name ?? selectedWallReference');
-		expect(text).toContain('selectedJunctionReference ?? `Junction ${selectedWallFirstJunction.id}`');
-		expect(text).toContain('selectedWallFirstOpening.name ?? selectedOpeningReference');
+		// The four wall-first headers use name ?? reference ?? raw-ID *display
+		// label* fallbacks — never a bare canonical ID.
+		expect(text).toContain(
+			'selectedWallFirstWall.name ?? selectedWallReference ?? `Wall ${formatPlacementLabel(selectedWallFirstWall.id)}`'
+		);
+		expect(text).toContain(
+			'selectedJunctionReference ?? `Junction ${formatPlacementLabel(selectedWallFirstJunction.id)}`'
+		);
+		expect(text).toContain(
+			'selectedWallFirstOpening.name ?? selectedOpeningReference ?? formatPlacementLabel(selectedWallFirstOpening.id)'
+		);
 		// The Room header keeps the authored name primary.
 		expect(text).toContain('<strong>{selectedWallFirstRoom.name}</strong>');
 		// And the reference spans render beside the names.
@@ -183,8 +198,16 @@ describe('P23.12 inspector — one header pattern', () => {
 
 	it('relationship controls show references', () => {
 		const text = source();
-		expect(text).toContain('startReference ?? selectedWallFirstWallEndpoints.start.id');
-		expect(text).toContain('endReference ?? selectedWallFirstWallEndpoints.end.id');
+		// The endpoint controls name the Junction by identity (reference, else
+		// the display label) — not by its canonical ID.
+		expect(text).toContain('junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)');
+		expect(text).toContain('junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)');
+		// The Wall header names the same endpoints, and its former raw-ID branch is
+		// gone: `start.id → end.id` was the leak the copy guard caught.
+		expect(text).not.toContain(
+			'{selectedWallFirstWallEndpoints.start.id} → {selectedWallFirstWallEndpoints.end.id}'
+		);
+		expect(text).toContain('{junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.start.id)} → {junctionIdentityText(layoutDocument, selectedWallFirstWallEndpoints.end.id)}');
 	});
 
 	it('the legacy Room-owned and Camera blocks are untouched', () => {
@@ -240,8 +263,45 @@ describe('P23.12 inspector — user copy carries identity, never a canonical ID'
 		expect(text).not.toContain('${knotId}');
 		expect(text).not.toContain('{anchor.id} X (m)');
 		expect(text).toContain('{bendPointLabel(anchor.id)} X (m)');
-		expect(text).toContain('`Moved ${bendPointLabel(knotId).toLowerCase()}`');
-		expect(text).toContain('`Removed ${bendPointLabel(knotId).toLowerCase()}`');
+		expect(text).toContain('`Moved ${bendPointLabelAt(knotIndex).toLowerCase()}`');
+		expect(text).toContain('bendPointLabelAt(knotIndex)');
+	});
+
+	it('reads the bend-point ordinal and count BEFORE the delete mutates the chain', () => {
+		const text = source();
+		const start = text.indexOf('function deleteSelectedWallCurveKnot(');
+		expect(start).toBeGreaterThan(-1);
+		const handler = text.slice(start, text.indexOf('function deleteSelectedWallFirstWall'));
+
+		const indexCapture = handler.indexOf(
+			'const knotIndex = selectedWallFirstWallKnots.findIndex((knot) => knot.id === knotId);'
+		);
+		const countCapture = handler.indexOf(
+			'const knotsBefore = selectedWallFirstWallKnots.length;'
+		);
+		const mutation = handler.indexOf('runLayoutMutationGuarded(');
+		expect(indexCapture).toBeGreaterThan(-1);
+		expect(countCapture).toBeGreaterThan(indexCapture);
+		expect(mutation).toBeGreaterThan(countCapture);
+
+		// The message answers from the captured chain: the removed knot is gone
+		// afterwards, so a post-mutation ordinal lookup finds nothing and a
+		// post-mutation count is one lower — a Wall with two bend points would
+		// announce that it has none left after one removal.
+		expect(handler).toContain('knotsBefore <= 1');
+		expect(handler).not.toContain('selectedWallFirstWallKnots.length <= 1');
+		expect(handler).not.toMatch(/bendPointLabel\(knotId\)/);
+	});
+
+	it('a Knot-move message also reads the ordinal from before the mutation', () => {
+		const text = source();
+		const start = text.indexOf('function updateSelectedWallCurveKnot(');
+		const handler = text.slice(start, text.indexOf('function deleteSelectedWallCurveKnot('));
+		const capture = handler.indexOf('const knotIndex = selectedWallFirstWallKnots.indexOf(knot);');
+		const mutation = handler.indexOf('runLayoutMutationGuarded(');
+		expect(capture).toBeGreaterThan(-1);
+		expect(mutation).toBeGreaterThan(capture);
+		expect(handler).toContain('bendPointLabelAt(knotIndex)');
 	});
 
 	it('a geometry warning names its target by identity and keeps the raw ID out of copy', () => {
@@ -268,6 +328,62 @@ describe('P23.12 inspector — user copy carries identity, never a canonical ID'
 		expect(identityPrimaryLabel(wallIdentity(named, 'unledgered'), formatPlacementLabel('unledgered'))).toBe(
 			'Unledgered'
 		);
+	});
+
+	/**
+	 * The canonical (wall-first) selection blocks: Wall → Junction → Opening, and
+	 * the wall-first Room. The legacy room-owned Opening/Wall/Room blocks sit
+	 * between them and are out of scope (their content IDs are a documented
+	 * residual), so the slice stops at the first legacy branch each time.
+	 */
+	function canonicalInspectorCopy(text: string): string {
+		const wallFirstStart = text.indexOf('aria-label="Selected wall-first wall"');
+		const legacyStart = text.indexOf('{:else if selectedLayoutOpening && selectedLayoutSegment');
+		const wallFirstRoomStart = text.indexOf('aria-label="Selected wall-first room"');
+		const legacyRoomStart = text.indexOf('{:else if selectedLayoutRoom && selectedLayoutBounds}');
+		expect(wallFirstStart).toBeGreaterThan(-1);
+		expect(legacyStart).toBeGreaterThan(wallFirstStart);
+		expect(wallFirstRoomStart).toBeGreaterThan(legacyStart);
+		expect(legacyRoomStart).toBeGreaterThan(wallFirstRoomStart);
+		const canonical =
+			text.slice(wallFirstStart, legacyStart) + text.slice(wallFirstRoomStart, legacyRoomStart);
+		// Copy, not machinery: the Technical details spans, the event handlers and
+		// the canonical-ID VALUES an operation consumes are not user-visible text.
+		return canonical
+			.replace(/<span class="technical-id">[^<]*<\/span>/g, '')
+			.replace(/(?:onclick|onchange|bind:[a-z]+)=\{[^}]*\}/g, '')
+			.replace(/value=\{[^}]*\}/g, '')
+			.replace(/\{#each [^}]*\}/g, '');
+	}
+
+	it('no wall-first Inspector block prints a raw canonical ID in copy', () => {
+		// Every interpolation that *ends* in a canonical-ID field is a raw ID
+		// printed as text: `{hostedOpening.id}`, `{selectedWallFirstOpening.wallId}`,
+		// `{selectedWallFirstRoom.id}`, … A call that merely takes one as an
+		// argument (`bendPointLabel(anchor.id)`) does not match, and the canonical
+		// ID each operation needs is still in `value=`/handlers, which are not copy.
+		expect(canonicalInspectorCopy(source())).not.toMatch(
+			/\{[^{}]*\.(id|wallId|junctionId|roomId|openingId|segmentId)\}/
+		);
+	});
+
+	it('the wall-first relational controls name entities by identity', () => {
+		const text = source();
+		// Hosted openings on the selected Wall.
+		expect(text).toContain(
+			'{hostedOpening.kind} · {openingIdentityText(layoutDocument, hostedOpening.id)}'
+		);
+		// The selected Opening's host Wall.
+		expect(text).toContain('Wall: {wallIdentityText(layoutDocument, selectedWallFirstOpening.wallId)}');
+		// The Room's boundary membership.
+		expect(text).toContain('<span>Boundary walls: {selectedWallFirstRoomBoundaryLabel}</span>');
+		// The exact-dimension selects: the option VALUE stays the canonical ID the
+		// planner consumes, the option TEXT is identity.
+		expect(text).toContain('<option value={id}>{junctionIdentityText(layoutDocument, id)}</option>');
+		expect(text).toContain('<option value={wallId}>{wallIdentityText(layoutDocument, wallId)}</option>');
+		// The Room header no longer repeats the raw ID beside name + reference (the
+		// Technical details block still exposes it).
+		expect(text).not.toContain('<span>{selectedWallFirstRoom.id}</span>');
 	});
 });
 
@@ -304,5 +420,90 @@ describe('P23.12 inspector — optional-name semantics behind the fields', () =>
 		const reference = referenceFor(document, 'openings', 'door');
 		expect(reference).toMatch(/^O-/);
 		expect(reference).not.toBe('Main Entrance');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Bend-point removal — the message reports on the chain the user acted on
+// ---------------------------------------------------------------------------
+
+const LINE_SEGMENT = { kind: 'line' } as const;
+
+/** A wall-first 4×3 Room whose `w1` carries a TWO-knot cubic chain. */
+function twoKnotDocument(): LayoutDocumentWallFirst {
+	const document = createEmptyWallFirstLayoutDocument();
+	document.junctions = [
+		{ id: 'A', point: [0, 0] },
+		{ id: 'B', point: [4, 0] },
+		{ id: 'C', point: [4, 3] },
+		{ id: 'D', point: [0, 3] }
+	];
+	document.walls = [
+		{
+			id: 'w1',
+			startJunctionId: 'A',
+			endJunctionId: 'B',
+			role: 'boundary',
+			thickness: 0.2,
+			height: 3,
+			centerline: wallCubicChain(
+				[
+					{ id: 'w1:knot:1', point: [1, 1] },
+					{ id: 'w1:knot:2', point: [3, -1] }
+				],
+				deriveChainSpans([
+					[0, 0],
+					[1, 1],
+					[3, -1],
+					[4, 0]
+				])
+			)
+		},
+		{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_SEGMENT },
+		{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_SEGMENT },
+		{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_SEGMENT }
+	];
+	document.rooms = [
+		{
+			id: 'room',
+			name: 'Room',
+			boundary: [
+				{ wallId: 'w1', direction: 'forward' },
+				{ wallId: 'w2', direction: 'forward' },
+				{ wallId: 'w3', direction: 'forward' },
+				{ wallId: 'w4', direction: 'forward' }
+			],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	];
+	document.openings = [];
+	return document;
+}
+
+function curvedWallKnots(state: LayoutPreviewState) {
+	const document = layoutPreviewDocument(state) as unknown as LayoutDocumentWallFirst;
+	const centerline = document.walls.find((wall) => wall.id === 'w1')!.centerline;
+	if (centerline.kind !== 'cubic-chain') throw new Error('fixture Wall is not curved');
+	return centerline.knots;
+}
+
+describe('P23.12 inspector — bend-point removal reports on the acted chain', () => {
+	it('removing one of two bend points leaves one, so only the pre-mutation chain answers', () => {
+		const state = createEmptyLayoutPreviewState();
+		expect(importLayoutPreviewJson(state, serializeWallFirstLayoutDocument(twoKnotDocument()))).toBe(true);
+
+		const before = curvedWallKnots(state);
+		expect(before).toHaveLength(2);
+		const removed = before[0]!;
+		expect(deleteWallFirstWallCurveKnot(state, 'w1', removed.id).success).toBe(true);
+
+		const after = curvedWallKnots(state);
+		// ONE bend point remains. A post-mutation `length <= 1` test would have
+		// announced "has no bend points left" for a Wall that still has one, and a
+		// post-mutation `bendPointLabel(knotId)` would have found no ordinal at all
+		// — which is why the handler reads both facts before the mutation.
+		expect(after).toHaveLength(1);
+		expect(after.some((knot) => knot.id === removed.id)).toBe(false);
 	});
 });
