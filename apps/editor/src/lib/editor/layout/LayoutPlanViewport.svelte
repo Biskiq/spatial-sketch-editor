@@ -123,6 +123,7 @@
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
+import { referenceFor } from '$lib/layout/layout-identity';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -1147,6 +1148,13 @@ const interactionProjection = $derived(
 		return findLayoutRoom(rooms, selectedOpeningSelection.roomId)?.openings.find(
 			(opening) => opening.id === selectedOpeningSelection.openingId
 		);
+	});
+	// P23.12 — the selection label's identity tier: the compact reference of
+	// the selected Opening (wall-first documents only), if the ledger has one.
+	const selectedOpeningReference = $derived.by(() => {
+		const layout = preview.project.layout;
+		if (!selectedOpeningSelection || !('floor' in layout && 'walls' in layout)) return null;
+		return referenceFor(layout as unknown as LayoutDocumentWallFirst, 'openings', selectedOpeningSelection.openingId) ?? null;
 	});
 	const rotationHandleHovered = $derived.by(() => {
 		if (interaction.tool !== 'select' || !rotationHoverScreen) return false;
@@ -3517,7 +3525,9 @@ const interactionProjection = $derived(
 		<PlanSvg model={planModel} planView={interaction.planView} />
 		<PlanCanvasChrome layer="overlay" planView={interaction.planView} />
 		{#if selectedOpening}
-			<text class="selection-label" x="16" y="24">{selectedOpening.kind} · {selectedOpening.width.toFixed(2)} m × {selectedOpening.height.toFixed(2)} m</text>
+			<!-- P23.12 — selected-target feedback consumes the identity contract:
+				name/reference when the ledger has one, kind + metrics always. -->
+			<text class="selection-label" x="16" y="24">{selectedOpeningReference ?? selectedOpening.kind} · {selectedOpening.width.toFixed(2)} m × {selectedOpening.height.toFixed(2)} m</text>
 		{/if}
 
 	</svg>
