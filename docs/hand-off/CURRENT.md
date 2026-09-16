@@ -5,22 +5,22 @@ slice plus one next action only.
 
 ## Working tree
 
-- **P23.12 (names and stable display identity) is implemented on branch
-  `P23.12-names-and-stable-display-identity`** (S1–S8 landed 2026-09-15,
-  commit checkpoints `810bc8c` S1 → `c3fce4b` S2 → `cd7bec2` S3 → `2e015da`
-  S4 → `d696e87` S5 → `9b2bce4` S6 → `c83f3b7` S7 → S8 closeout): persisted
-  compact-reference ledger (`R/W/O/J-####`) in layout-core with
-  provisional-mint/durable-promote/exact-restore/pure-read seams and a session
-  high-water mark outside the history snapshot; optional Wall/Opening names
-  through `planWallMetadataUpdate`/`planOpeningMetadataUpdate`; Navigator,
-  search, Inspector and Plan consume one identity vocabulary; the C11 visitor
-  isolation checks pass. **Remaining: owner review of the branch and merge.**
+- **P23.12 (names and stable display identity) is merged on `main`** through
+  PR #55 (`f3efed9`, 2026-09-15): persisted compact-reference ledger
+  (`R/W/O/J-####`) in layout-core with provisional-mint/durable-promote/
+  exact-restore/pure-read seams and a session high-water mark outside the
+  history snapshot; optional Wall/Opening names through
+  `planWallMetadataUpdate`/`planOpeningMetadataUpdate`; Navigator, search,
+  Inspector and Plan consume one identity vocabulary; the C11 visitor
+  isolation checks pass. Follow-up fix PR #56 (`8a5a87f`, anchor drag
+  re-derive at release) is also on `main`. HEAD is `c2a2404`, clean and
+  synced with `origin/main`.
 - **P23.11 (canonical curved Walls) is merged on `main`** through PR #51
   (`9118696`, 2026-09-15): `LayoutWall.centerline` cubic chain, exact curved
   splitting, bend controls and render-safe curve validation. PR #50 (endpoint
   noding) and PR #53 (transient direct-manipulation preview) are merged too.
-- The P23.12 design authorities and its implementation-ready child plan are new
-  docs on the working tree (docs-only, no code):
+- The P23.12 design authorities and its implementation-ready child plan landed
+  with the slice (docs-only, no code):
   [design context](../design/P23-design-context.md) ·
   [designer brief](../design/P23.12-designer-brief.md) ·
   [final design contract](../design/P23.12-final-design-contract.md) ·
@@ -60,19 +60,24 @@ slice plus one next action only.
   `layoutCanonicalJson` cannot disagree. The plan's allocation rule was then
   implemented as ratified, closing S1's gate; see the Working tree entry above.
 - [The P23 remaining-roadmap reconciliation](../plans/2026-09-14-P23-remaining-roadmap-reconciliation.md)
-  remains the remaining-scope authority for P23.12–P23.16.
+  remains the remaining-scope authority for P23.13–P23.16. P23.13 evidence on
+  the tree: [precedent research](../Deep-research/P23-Staging-Research/P23.13-architectural-plan-drafting-precedent-research.md)
+  plus the door-swing deferral note in the roadmap; no P23.13 child plan is
+  implementation-ready yet.
 
 ## Next action
 
-- Owner review of the implemented [P23.12 branch](../plans/2026-09-15-P23.12-names-and-stable-display-identity.md)
-  (all slices landed with their pinned suites; the plan's §10 slice register
-  records the per-slice checkpoints), then merge and move the remaining-scope
-  authority to P23.13.
+- Open P23.13 (Architectural Plan drafting finish): reconcile an
+  implementation-ready child plan against the landed baseline (P23.11 curves,
+  P23.12 identity, PR #56 anchor release) using the precedent research and the
+  roadmap's door-swing deferral note — no P23.13 code until that child plan is
+  ratified. Remaining sequence after it: P23.14 → P23.15 → P23.16 final closeout.
 
 ## Verification
 
-- Working tree on this branch carries the P23.12 implementation (see Working
-  tree above); the S8 closeout numbers below are from the implemented branch.
+- `main` at `c2a2404` carries the merged P23.12 implementation (PR #55) plus
+  the PR #56 anchor-release fix (see Working tree above); the numbers below are
+  the last full runs reported on the P23.12 branch / its PRs.
 - Supplied-layout regressions: 3 passed; focused curved/oblique Layout suites:
   28 passed. `npm run check:layout-core` and `npm run check` passed.
 - **P23.12 branch verification (2026-09-15):** `check:layout-core`,
@@ -115,8 +120,8 @@ slice plus one next action only.
   constant; the shipped rail is `minmax(15rem, --editor-left-width: 300px)`
   (240–300 px). Design to that range and treat `268` as stale.
 - Earlier tracker/hand-off text said “P23.11 is next” and “PR #50 awaiting
-  review”; both are superseded — P23.11 is merged (PR #51) and P23.12 is the next
-  slice.
+  review”; both are superseded — P23.11 is merged (PR #51), P23.12 is merged
+  (PR #55 + #56 fix), and P23.13 is the next slice.
 - The P23.12 plan's earlier restore-seam cursor clamp is **deleted, not deferred**: a
   clamp there lets a cancelled/rejected pointermove candidate permanently consume
   reference allocations. Monotonicity now lives in the preview state's

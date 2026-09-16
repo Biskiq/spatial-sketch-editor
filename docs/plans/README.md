@@ -93,8 +93,8 @@ in progress
 shipped / archived
 ```
 
-Applied: P23 umbrella with P23.0–P23.6e and P23.10 landed; the remaining
-sequence is P23.11–P23.15 → P23.16, and no remaining child plan is
+Applied: P23 umbrella with P23.0–P23.6e, P23.10, P23.11 and P23.12 landed; the remaining
+sequence is P23.13–P23.15 → P23.16, and no remaining child plan is
 implementation-ready. Completed H1/H2/H3/H5 and the existing curve machinery
 inform the bounded P23.11 curve slice; no broad research gate is implied. The
 completed Pascal harvest is optional bounded evidence, not an execution gate.
@@ -133,7 +133,7 @@ Policy rules:
 | # | Plan | Status | Depends on | Doc |
 |---|------|--------|------------|-----|
 | P13 | Sequence stop-at-node playback | proposed — nice-to-have, unscheduled (owner 2026-08-27) | P12 | [2026-08-27-P13-stop-at-node-playback.md](2026-08-27-P13-stop-at-node-playback.md) |
-| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 implemented on branch `P23.12-names-and-stable-display-identity` (S1–S8 landed 2026-09-15, full checks green, awaiting merge/review)** and later slices still child-plan-pending | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
+| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 merged through PR #55** (`f3efed9`, 2026-09-15, S1–S8) plus the PR #56 anchor-release fix (`8a5a87f`) and later slices still child-plan-pending | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
 | P24 | Scene / Staging Depth — P24A supply + P24B authoring | proposed — **R0–R9 planning complete; minimum frozen; P24.0–P24.5 implementation-ready for owner review.** Execution waits for accepted P23 minimum and approval; implementation/ship gates open. | P23 | [freeze](2026-09-10-P24-R9-minimum-freeze.md) · [child briefs](2026-09-10-P24-minimum-child-plans.md) · [umbrella](2026-09-08-P24-scene-staging-depth-umbrella.md) · [annex](2026-09-08-P24A-asset-supply-canonical-ingest-annex.md) |
 | P25 | Experience Foundation umbrella | proposed — focused research reconciled 2026-09-09: Destination + guided Stop/occurrence + Content/Info Panel + bounded Interaction + visitor/a11y product semantics closed; implementation remains blocked on targeted post-F0/P24 seam rechecks, E5 reference integrity and E6 persistence/operations; no P25.x implementation-ready child plans yet | P24 | [umbrella](2026-09-08-P25-experience-foundation-umbrella.md) |
 | — | Branch rejoin — experiment, no schedule | proposed | P8 conceptually | [2026-08-21-branch-rejoin-experiment.md](2026-08-21-branch-rejoin-experiment.md) |
@@ -192,9 +192,10 @@ gate) now lives in the archived docs, not here.
   direct-manipulation preview, and **P23.11 (canonical curved Walls) merged
   through PR #51 (`9118696`, 2026-09-15)**. The revised good-enough architectural
   Plan-editor boundary is recorded by the [remaining P23 roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md).
-  **P23.12 (names and stable display identity) is implemented on branch
-  `P23.12-names-and-stable-display-identity` (S1–S8 landed 2026-09-15, full
-  checks green); the plan text records the implementation status**
+  **P23.12 (names and stable display identity) merged through PR #55**
+  (`f3efed9`, 2026-09-15, S1–S8); the PR #56 anchor-release fix (`8a5a87f`)
+  and the PR #54 text-selection/fast-drag fix (`45187ab`) are also on `main`.
+  The plan text records the implementation status
   ([names and stable display identity](2026-09-15-P23.12-names-and-stable-display-identity.md),
   which ratifies the compact-reference mechanism, resolves the Undo-branching
   reference-reuse blocker with a mark held outside the history snapshot, makes

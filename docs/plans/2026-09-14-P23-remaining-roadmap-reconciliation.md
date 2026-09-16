@@ -1,13 +1,14 @@
 # P23 remaining roadmap — credible wall-first architectural Plan editor
 
-**Status:** active umbrella reconciliation. P23.10 is delivered through PR #49;
-P23.11–P23.16 remain prerequisite/final-gate work and are not implementation-ready
+**Status:** active umbrella reconciliation. P23.10 delivered through PR #49,
+P23.11 through PR #51 and P23.12 through PR #55 (plus PR #56 anchor-release
+fix); P23.13–P23.16 remain prerequisite/final-gate work and are not implementation-ready
 until their child plans are reconciled against the landed baseline.
 
 **Parent:** [P23 — Layout Depth umbrella](2026-09-07-P23-layout-depth-minimum-build.md)
 
-**Baseline:** `main` at `ca66be80` after PR #50 (`10156009`, projected Wall-endpoint
-noding hardening) and PR #49 (P23.10 direct Wall/Junction editing).
+**Baseline:** `main` at `c2a2404` after PR #55 (P23.12), PR #56
+(anchor-release fix), PR #54 (text-selection/fast-drag fix) and PR #51 (P23.11).
 
 **Authority:** this document supersedes the previous remaining-scope, ordering,
 deferral and closeout-readiness statements in the P23 umbrella and the former
