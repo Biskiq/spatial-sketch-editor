@@ -1443,6 +1443,11 @@ const interactionProjection = $derived(
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
+		// P23.13 S2 — clearing the snapshot here bypasses the tool-change effect
+		// below (it early-returns on a null snapshot) and therefore
+		// `finishArchitectureEditGesture`, so the frozen salience snapshot has to
+		// be released with the baseline it was captured against.
+		salienceFreeze = null;
 		cancelLayoutArchitectureEdit(interaction);
 		rotationHoverScreen = null;
 		stagingRotationHoverScreen = null;

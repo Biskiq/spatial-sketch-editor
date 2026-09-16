@@ -316,7 +316,7 @@ const SHARED_ENDPOINT_EPSILON_M = 1e-6;
  * inside `DENSE_INK_SEPARATION_PX` of each other get the neutral single aid
  * instead of two competing exterior ink strokes (the band itself is preserved).
  * Corners and split continuations are excluded: those are joins, and a join is
- * never repaired here (P23.15 owns seam truth). Bucketed by screen cell, so the
+ * never repaired here (P23.15 owns seam truth). Bucketed by screen cell, and the
  * cost stays ~linear in the number of Walls rather than quadratic.
  */
 function projectDenseInk(input: PlanSalienceInput): PlanProjectedInk {
@@ -331,8 +331,6 @@ function projectDenseInk(input: PlanSalienceInput): PlanProjectedInk {
 			if (architecture?.kind !== 'wall') continue;
 			if (primitive.points.length < 2) continue;
 			const bandPx = architecture.thicknessMeters * pixelsPerMeter;
-			// A band too thin to stack ink cannot collide visibly.
-			if (bandPx + WALL_PROFILE_INK_PX * 2 <= DENSE_INK_SEPARATION_PX) continue;
 			const worldFrom = primitive.points[0]!;
 			const worldTo = primitive.points.at(-1)!;
 			walls.push({
@@ -353,7 +351,7 @@ function projectDenseInk(input: PlanSalienceInput): PlanProjectedInk {
 		Math.floor(point[1] / DENSE_INK_BUCKET_PX)
 	];
 	walls.forEach((wall, index) => {
-		for (const point of [wall.from, wall.to]) {
+		for (const point of densitySamples(wall)) {
 			const [cx, cy] = cellOf(point);
 			for (let dx = -1; dx <= 1; dx += 1) {
 				for (let dy = -1; dy <= 1; dy += 1) {
@@ -393,6 +391,34 @@ function projectDenseInk(input: PlanSalienceInput): PlanProjectedInk {
 		}
 	}
 	return { denseKeys, separationPx };
+}
+
+/** Bound the sampling cost on a very long Wall. */
+const DENSE_INK_MAX_SAMPLES_PER_WALL = 128;
+
+/**
+ * Endpoints alone are not enough: two staggered parallel Walls overlap in their
+ * middles while every endpoint sits in an unrelated cell, so the pair would
+ * never share a bucket and their stacked profiles would both keep their ink.
+ * Sampling along the Wall at (at most) a three-cell stride keeps the ±1-cell
+ * neighbourhood contiguous, so an overlapping middle always meets.
+ */
+function densitySamples(wall: WallSegment): LayoutVec2[] {
+	const dx = wall.to[0] - wall.from[0];
+	const dz = wall.to[1] - wall.from[1];
+	const length = Math.hypot(dx, dz);
+	if (!(length > DENSE_INK_BUCKET_PX)) return [wall.from, wall.to];
+	const stride = Math.min(
+		DENSE_INK_BUCKET_PX * 3,
+		Math.max(DENSE_INK_BUCKET_PX, length / DENSE_INK_MAX_SAMPLES_PER_WALL)
+	);
+	const steps = Math.ceil(length / stride);
+	const points: LayoutVec2[] = [];
+	for (let step = 0; step <= steps; step += 1) {
+		const t = step / steps;
+		points.push([wall.from[0] + dx * t, wall.from[1] + dz * t]);
+	}
+	return points;
 }
 
 function areParallelWalls(a: WallSegment, b: WallSegment): boolean {

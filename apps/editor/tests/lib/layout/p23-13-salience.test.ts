@@ -150,6 +150,28 @@ function splitWallDocument(): LayoutDocumentWallFirst {
 	};
 }
 
+/** Two long parallel Walls 0.06 m apart whose *middles* overlap only. */
+function staggeredParallelWallsDocument(): LayoutDocumentWallFirst {
+	return {
+		units: 'meters',
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
+		junctions: [
+			{ id: 'q-1', point: [0, 0] },
+			{ id: 'q-2', point: [20, 0] },
+			{ id: 'q-3', point: [10, 0.06] },
+			{ id: 'q-4', point: [30, 0.06] }
+		],
+		walls: [
+			{ id: 'wall-lower', startJunctionId: 'q-1', endJunctionId: 'q-2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const },
+			{ id: 'wall-upper', startJunctionId: 'q-3', endJunctionId: 'q-4', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const }
+		],
+		openings: [],
+		rooms: [],
+		objects: []
+	};
+}
+
 function modelFor(document: LayoutDocumentWallFirst) {
 	const { geometry } = compileWallFirstLayoutGeometry(document);
 	return buildPlanRenderModel(geometry);
@@ -398,6 +420,24 @@ describe('P23.13 S2 — Wall ink aid resolution', () => {
 		}
 	});
 
+	it('finds a staggered parallel pair whose overlap lives in the middles', () => {
+		// Endpoints alone would bucket these two 20 m Walls in unrelated cells, so
+		// the pass samples along the Wall instead of trusting its ends.
+		const model = modelFor(staggeredParallelWallsDocument());
+		const salience = resolvePlanSalience({ model, view: viewAt(100) });
+		const walls = model.layers
+			.flatMap((layer) => layer.primitives)
+			.filter(
+				(primitive): primitive is PlanPolylinePrimitive =>
+					primitive.kind === 'polyline' && primitive.architecture?.kind === 'wall'
+			);
+		expect(walls).toHaveLength(2);
+		for (const wall of walls) {
+			expect(salience.projectedInk.denseKeys.has(wall.key)).toBe(true);
+			expect(salience.decisionsFor(wall).wallInkAid).toBe('dense');
+		}
+	});
+
 	it('passes passive Scene ink and leaves feedback ink alone', () => {
 		const plan = readLibSource('editor/layout/PlanSvg.svelte');
 		expect(plan).toContain("return style === 'scene-footprint' ? `opacity: ${presentation.sceneInk}` : undefined;");
@@ -440,6 +480,21 @@ describe('P23.13 S2 — gesture freeze', () => {
 		// The fallback path resolved at the frozen scale and wrote nothing.
 		expect(memory.doorCueShape.has('gesture-new-door')).toBe(false);
 		expect(frozen.decisionsFor(newDoor).doorCueShape).toBe('full');
+	});
+
+	it('releases the freeze wherever the gesture baseline is released', () => {
+		// The capture/clear pair lives in the viewport, outside these unit seams.
+		// Every path that drops the baseline must drop the frozen vocabulary with
+		// it: `cancelLocalPlanInteraction` clears the snapshot directly, which
+		// bypasses the tool-change effect that otherwise closes the transaction.
+		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+		const cancelStart = viewport.indexOf('function cancelLocalPlanInteraction');
+		expect(cancelStart).toBeGreaterThan(-1);
+		const cancelBody = viewport.slice(cancelStart, cancelStart + 2600);
+		expect(cancelBody).toContain('salienceFreeze = null;');
+		const clears = (pattern: RegExp) => viewport.match(pattern)?.length ?? 0;
+		expect(clears(/salienceFreeze = null;/g)).toBe(clears(/architectureEditSnapshot = null;/g));
+		expect(clears(/salienceFreeze = planSalience;/g)).toBe(1);
 	});
 
 	it('never walks the regime forward twice for the same scale', () => {
