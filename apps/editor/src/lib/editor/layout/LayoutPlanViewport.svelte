@@ -3623,10 +3623,36 @@ const interactionProjection = $derived(
 			point: match.point,
 			radiusPx: planFocusMarkRadiusPx(match.kind),
 			geometry: planFocusGeometry(
-				{ ownerId: match.ownerId, point: match.point },
+				{
+					ownerId: match.ownerId,
+					point: match.point,
+					controlNet: planFocusControlNet(match.ownerId)
+				},
 				preview.geometry.walls
 			)
 		};
+	}
+
+	/**
+	 * P23.13 S4 — the owner Wall's authored control net, read from the document:
+	 * its two junctions for a straight Wall, its authored bend knots for a cubic
+	 * chain. This is the one thing the compiled centerline cannot supply — a
+	 * flattened curve knows nothing about where its bends were — so the caller
+	 * that owns the document resolves it and the helper refuses to guess.
+	 */
+	function planFocusControlNet(wallId: string): LayoutVec2[] {
+		const layout = wallFirstLayoutDocument();
+		const wall = layout?.walls.find((candidate) => candidate.id === wallId);
+		if (!wall) return [];
+		if (wall.centerline.kind === 'cubic-chain') {
+			return wall.centerline.knots.map((knot) => [knot.point[0], knot.point[1]] as LayoutVec2);
+		}
+		// A straight Wall's net IS the endpoints of its canonical centerline.
+		const span = preview.geometry.walls.find((candidate) => candidate.wallId === wallId);
+		const first = span?.solidCenterlinePolylines[0]?.[0];
+		const lastSpans = span?.solidCenterlinePolylines.at(-1);
+		const last = lastSpans?.[lastSpans.length - 1];
+		return first && last ? [[first[0], first[1]], [last[0], last[1]]] : [];
 	}
 
 	/** The visible mark radius of a control kind (spec §6 control table). */

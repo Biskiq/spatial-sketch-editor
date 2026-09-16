@@ -1254,6 +1254,13 @@ export function selectLayoutJunction(state: LayoutInteractionState, junctionId: 
 
 export function clearLayoutSelection(state: LayoutInteractionState): void {
 	state.selection = { kind: 'none' };
+	// P23.13 S4 / §6 — focus is an *instrument*, not a selection, but a control
+	// whose owner is deleted must not keep a ring. The overlay self-heals by
+	// dropping a focus whose candidate is absent, and that is not enough on its
+	// own: P23.12 recycles canonical IDs, so a reissued Junction/Opening id could
+	// resurrect the ring on an entity the user never pressed. Clearing here is
+	// consistent with the pointerdown-to-empty path, which already clears both.
+	clearPlanFocus(state);
 	cancelRoomEdit(state);
 }
 

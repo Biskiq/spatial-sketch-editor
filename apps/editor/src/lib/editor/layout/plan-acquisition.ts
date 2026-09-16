@@ -139,17 +139,20 @@ export type PlanFocusGeometry = {
 	/** World center of the focused control's visible mark. */
 	point: LayoutVec2;
 	/**
-	 * Owner control points in canonical order — drawn as the 1 px broken control
-	 * polygon. For a straight Wall that is its two endpoints, so the polygon is
-	 * the owner's real control net and never a bounding box.
+	 * The owner's authored control net, exactly as the caller supplied it, drawn
+	 * as the 1 px broken control polygon. Never derived here: a straight Wall's
+	 * net is its two endpoints, but a curve's net is its bend knots, and only the
+	 * caller can tell those apart. Empty means "draw no polygon".
 	 */
 	controlPoints: readonly LayoutVec2[];
 	/**
 	 * The owner's true reference centerline from canonical compiled samples
-	 * (`CompiledPhysicalWall.solidCenterlinePolylines`). A curve keeps its curve
-	 * here; the overlay never substitutes a chord.
+	 * (`CompiledPhysicalWall.solidCenterlinePolylines`), kept as **separate
+	 * opening-free spans**. A Wall is split around its authored cuts, so these
+	 * must be painted individually: flattening them would draw a phantom segment
+	 * straight across every Opening on the host. A curve keeps its curve here.
 	 */
-	centerline: readonly LayoutVec2[];
+	centerlineSpans: readonly (readonly LayoutVec2[])[];
 };
 
 /**
@@ -161,7 +164,12 @@ export type PlanFocusGeometry = {
  * already has.
  */
 export function planFocusGeometry(
-	focus: { ownerId: string; point?: LayoutVec2 } | null,
+	focus: {
+		ownerId: string;
+		point?: LayoutVec2;
+		/** Authored control net (start, bend knots…, end) when the caller has it. */
+		controlNet?: readonly LayoutVec2[];
+	} | null,
 	compiledWalls: readonly {
 		wallId: string;
 		solidCenterlinePolylines: readonly (readonly LayoutVec2[])[];
@@ -170,11 +178,13 @@ export function planFocusGeometry(
 	if (!focus) return null;
 	const wall = compiledWalls.find((candidate) => candidate.wallId === focus.ownerId);
 	if (!wall) return null;
-	const centerline = wall.solidCenterlinePolylines.flat().map((point) => [...point] as LayoutVec2);
-	if (centerline.length < 2) return null;
+	const centerlineSpans = wall.solidCenterlinePolylines
+		.filter((span) => span.length > 1)
+		.map((span) => span.map((point) => [...point] as LayoutVec2));
+	if (centerlineSpans.length === 0) return null;
 	return {
-		point: focus.point ? ([...focus.point] as LayoutVec2) : centerline[0],
-		controlPoints: [centerline[0], centerline[centerline.length - 1]],
-		centerline
+		point: focus.point ? ([...focus.point] as LayoutVec2) : centerlineSpans[0]![0]!,
+		controlPoints: (focus.controlNet ?? []).map((point) => [...point] as LayoutVec2),
+		centerlineSpans
 	};
 }

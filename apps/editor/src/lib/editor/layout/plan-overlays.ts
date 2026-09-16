@@ -1211,6 +1211,9 @@ export function buildPlanInteractionProjection(
 	if (wallFirst?.focus) {
 		const focus = wallFirst.focus;
 		const center = focus.point;
+		// The owner's authored control net. For a curve this is the bend net, so it
+		// must come from the document — never from a flattened centerline, which
+		// would render the net as a straight chord over the curve it describes.
 		if (focus.geometry && focus.geometry.controlPoints.length > 1) {
 			handles.push({
 				kind: 'polyline',
@@ -1219,14 +1222,18 @@ export function buildPlanInteractionProjection(
 				style: 'control-polygon'
 			});
 		}
-		if (focus.geometry && focus.geometry.centerline.length > 1) {
+		// One primitive per opening-free span. The compiled centerline is split
+		// around authored cuts, so a single flattened polyline would draw a phantom
+		// segment straight across every Opening on the host Wall.
+		focus.geometry?.centerlineSpans.forEach((span, index) => {
+			if (span.length < 2) return;
 			handles.push({
 				kind: 'polyline',
-				key: geometryId(['plan', 'overlay', 'control-centerline']),
-				points: focus.geometry.centerline.map((point) => [...point] as LayoutVec2),
+				key: geometryId(['plan', 'overlay', 'control-centerline', String(index)]),
+				points: span.map((point) => [...point] as LayoutVec2),
 				style: 'control-centerline'
 			});
-		}
+		});
 		// §6 — "dark double ring with paper moat". Two dark rings separated by a
 		// paper gap, and the whole system clear of the mark's own outline, so the
 		// focused control stays legible *inside* its ring rather than being erased

@@ -24,6 +24,7 @@ import {
 	type PlanWallFirstContext
 } from '$lib/editor/layout/plan-overlays';
 import {
+	clearLayoutSelection,
 	clearPlanFocus,
 	createLayoutInteractionState,
 	selectLayoutPhysicalWall,
@@ -417,9 +418,15 @@ describe('P23.13 S4 focus — ring, owner control net and the true centerline', 
 		expect(projection.handles.some((handle) => handle.style === 'focus-ring')).toBe(true);
 	});
 
-	it('adds the owner control net and its true reference centerline when they exist', () => {
+	it('paints the reference centerline per opening-free span, never across the void', () => {
+		// The door splits the host Wall's canonical centerline into two spans. One
+		// flattened polyline would draw a phantom segment straight through the
+		// authored cut — wrong ink in a helper whose contract is "never invent a
+		// centerline".
 		const document = doorDocument();
-		const wall = document.walls[0]!;
+		const spans = compileWallFirstLayoutGeometry(document).geometry.walls[0]!
+			.solidCenterlinePolylines;
+		expect(spans.length).toBeGreaterThan(1);
 		const projection = focusContext(document, {
 			point: [0, 0],
 			radiusPx: 3.5,
@@ -429,41 +436,62 @@ describe('P23.13 S4 focus — ring, owner control net and the true centerline', 
 					[0, 0],
 					[6, 0]
 				],
-				centerline: [
-					[0, 0],
-					[2, 0],
-					[3, 0],
-					[6, 0]
-				]
+				centerlineSpans: spans
 			}
 		});
-		const polygon = projection.handles.find((handle) => handle.style === 'control-polygon');
-		const centerline = projection.handles.find((handle) => handle.style === 'control-centerline');
-		expect(polygon).toMatchObject({ kind: 'polyline' });
-		// The reference centerline is the compiled sample chain — including the
-		// authored cut — and never a two-point chord across the Opening.
-		expect(centerline).toMatchObject({ kind: 'polyline' });
-		if (centerline?.kind !== 'polyline') throw new Error('expected polyline');
-		expect(centerline.points.length).toBeGreaterThan(2);
-		// The polygon is the owner's control net, drawn over the same Wall.
-		expect(document.walls[0]!.id).toBe(wall.id);
+		const centerlines = projection.handles.filter(
+			(handle) => handle.style === 'control-centerline'
+		);
+		expect(centerlines).toHaveLength(spans.length);
+		for (const span of centerlines) {
+			if (span.kind !== 'polyline') throw new Error('expected polyline');
+			// Each painted span is one of the compiled spans, order preserved.
+			expect(spans.some((candidate) => candidate.length === span.points.length)).toBe(true);
+		}
 	});
 
-	it('derives focus geometry from canonical samples, and refuses when the owner is absent', () => {
-		const geometry = planFocusGeometry({ ownerId: 'wall-a', point: [1, 0] }, [
-			{ wallId: 'wall-a', solidCenterlinePolylines: [[[0, 0], [1, 1], [2, 0]]] }
-		]);
-		expect(geometry).toMatchObject({
-			point: [1, 0],
-			controlPoints: [
-				[0, 0],
-				[2, 0]
-			]
+	it('draws the owner control net from the caller, so a curve never becomes a chord', () => {
+		const document = doorDocument();
+		const bendNet: [number, number][] = [
+			[0, 0],
+			[2, 1],
+			[4, 0],
+			[6, 1]
+		];
+		const projection = focusContext(document, {
+			point: [0, 0],
+			radiusPx: 3.5,
+			geometry: planFocusGeometry(
+				{ ownerId: document.walls[0]!.id, point: [0, 0], controlNet: bendNet },
+				compileWallFirstLayoutGeometry(document).geometry.walls
+			)
 		});
-		expect(geometry).not.toBeNull();
+		const polygon = projection.handles.find((handle) => handle.style === 'control-polygon');
+		if (polygon?.kind !== 'polyline') throw new Error('expected polyline');
+		// The net follows the bends, so it is not the end-to-end chord.
+		expect(polygon.points).toEqual(bendNet);
+	});
+
+	it('refuses focus geometry when the owner is absent, unspanned, or has no net', () => {
+		const walls = [
+			{
+				wallId: 'wall-a',
+				solidCenterlinePolylines: [[[0, 0], [1, 1], [2, 0]]] as [number, number][][]
+			}
+		];
+		const geometry = planFocusGeometry({ ownerId: 'wall-a', point: [1, 0] }, walls);
+		expect(geometry).toMatchObject({ point: [1, 0], controlPoints: [] });
 		// A curve keeps every sample: no chord substitution.
-		expect(geometry?.centerline).toHaveLength(3);
-		expect(planFocusGeometry({ ownerId: 'missing' }, [{ wallId: 'wall-a', solidCenterlinePolylines: [[[0, 0], [1, 0]]] }])).toBeNull();
+		expect(geometry?.centerlineSpans[0]).toHaveLength(3);
+		expect(planFocusGeometry({ ownerId: 'missing' }, walls)).toBeNull();
+		expect(
+			planFocusGeometry({ ownerId: 'wall-a', point: [0, 0] }, [
+				{
+					wallId: 'wall-a',
+					solidCenterlinePolylines: [[[1, 1]]] as [number, number][][]
+				}
+			])
+		).toBeNull();
 		expect(planFocusGeometry(null, [])).toBeNull();
 	});
 });
@@ -488,16 +516,30 @@ describe('P23.13 S4 paint composition — the Wall state never becomes the Wall'
 		expect(band).toBeGreaterThan(casing);
 	});
 
-	it('separates the state contour from the band with a real paper stroke', () => {
-		// §6 asks for a separated perimeter, not a thicker Wall. The moat must be
-		// a paper stroke narrower than the contour it shelters, which is what
-		// leaves a 1.5 px selected / 1 px hovered edge visible outside a 2/3 px gap.
-		const moatRule = /\.wall-contour-moat \{([^}]*)\}/u.exec(source)?.[1] ?? '';
-		expect(moatRule).toContain('stroke: var(--editor-plan-canvas-bg)');
-		const selected = /\.wall-contour-moat\.selected \{([^}]*)\}/u.exec(source)?.[1] ?? '';
-		const selectedContour = /\.wall-contour\.selected \{([^}]*)\}/u.exec(source)?.[1] ?? '';
-		expect(selected).toContain('+ 4px');
-		expect(selectedContour).toContain('+ 7px');
+	it('separates the state contour from the band by the §2 figure, measured from the band edge', () => {
+		// §2: "Hover | 1 px neutral contour, 3 px outside body" and
+		// "Selected | 1.5 px blue outer contour, 2 px paper separation". The atlas
+		// draws the same thing as a rect offset 4 px (hover, 1 px stroke) and 3 px
+		// (selected, 1.5 px stroke) from the band edge. Both figures are measured
+		// from the BAND edge, which is why the visible gap from the 1 px profile is
+		// one pixel smaller — the profile is 1 px of that distance.
+		const strokeOf = (selector: string): number => {
+			const start = source.indexOf(`${selector} {`);
+			if (start < 0) return Number.NaN;
+			const rule = source.slice(start, source.indexOf('}', start));
+			const match = /band-width\) \+ ([\d.]+)px/u.exec(rule);
+			return match ? Number(match[1]) : Number.NaN;
+		};
+		// Ink extends (stroke/2) outside the band; the moat erases everything
+		// inside its own extent, so the visible band is the difference.
+		const selectedInk = strokeOf('.wall-contour.selected') / 2;
+		const selectedMoat = strokeOf('.wall-contour-moat.selected') / 2;
+		const hoverInk = strokeOf('.wall-contour.neutral') / 2;
+		const hoverMoat = strokeOf('.wall-contour-moat.neutral') / 2;
+		expect(selectedMoat).toBeCloseTo(2, 6);
+		expect(selectedInk - selectedMoat).toBeCloseTo(1.5, 6);
+		expect(hoverMoat).toBeCloseTo(3, 6);
+		expect(hoverInk - hoverMoat).toBeCloseTo(1, 6);
 	});
 
 	it('never recolours the Wall mass with a state token', () => {
@@ -532,5 +574,17 @@ describe('P23.13 S4 focus lifecycle', () => {
 		clearPlanFocus(state);
 		expect(state.planFocus).toBeNull();
 		expect(state.selection).toEqual({ kind: 'physicalWall', wallId: 'wall-a' });
+	});
+
+	it('releases focus with the selection it belongs to', () => {
+		// A delete clears the selection; P23.12 recycles canonical ids, so a focus
+		// left behind could reattach a ring (and its owner control net) to a
+		// reissued Junction/Opening the user never pressed.
+		const state = createLayoutInteractionState();
+		selectLayoutPhysicalWall(state, 'wall-a');
+		setPlanFocus(state, { kind: 'junction', id: 'j1', ownerId: 'j1' });
+		clearLayoutSelection(state);
+		expect(state.selection).toEqual({ kind: 'none' });
+		expect(state.planFocus).toBeNull();
 	});
 });
