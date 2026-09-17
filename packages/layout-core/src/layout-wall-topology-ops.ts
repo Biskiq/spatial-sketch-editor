@@ -207,12 +207,19 @@ function runRoomBirthOperation(options: {
 	}));
 }
 
-/** Final canonical gates shared by every planner: codec → compile. */
-function validateAndCompile(
+/**
+ * Final canonical gates shared by every planner: codec → compile.
+ *
+ * Generic over the planner's own plan shape so topology operations and the
+ * Junction-dissolve planner share one gate implementation: existing callers
+ * instantiate `T = WallFirstOpPlan` with identical behavior, dissolve uses its
+ * own plan type. Shared authority — never copied per planner.
+ */
+export function validateAndCompile<T>(
 	document: LayoutDocumentWallFirst,
-	reject: (rejection: WallFirstOpRejection) => WallFirstOpPlan,
-	success: (document: LayoutDocumentWallFirst) => WallFirstOpPlan
-): WallFirstOpPlan {
+	reject: (rejection: WallFirstOpRejection) => T,
+	success: (document: LayoutDocumentWallFirst) => T
+): T {
 	const validated = validateWallFirstLayoutDocument(document);
 	if (!validated.success) {
 		return reject({

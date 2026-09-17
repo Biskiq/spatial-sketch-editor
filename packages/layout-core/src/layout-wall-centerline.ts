@@ -148,12 +148,77 @@ function traversalPoints(
 	traversal: WallCenterlineTraversal
 ): LayoutVec2[] {
 	if (centerline.kind === 'line') return traversalEnds(startPoint, endPoint, traversal);
-	// A chain stores its knots in canonical order, so a reverse walk reverses
-	// the knot sequence and swaps the ends.
-	const knots =
-		traversal === 'reverse' ? [...centerline.knots].reverse() : centerline.knots;
+	// Read path borrows knot order from the single orientation owner below and
+	// copies only the point arrays it returns — no span work, no knot-object
+	// clones. (`spansToCubics` clones everything it consumes, so the borrowed
+	// order can never alias the baseline.)
+	const knots = orientedKnotRefs(centerline, traversal);
 	const ends = traversalEnds(startPoint, endPoint, traversal);
 	return [ends[0], ...knots.map((knot) => [...knot.point] as LayoutVec2), ends[1]];
+}
+
+/**
+ * Single owner of reverse-orientation handle semantics: the control leaving a
+ * span's first point in reverse is the stored control arriving at it, and vice
+ * versa. Returns a read-only view borrowing the stored coordinate arrays (no
+ * deep copy) — callers that persist a chain must clone (see
+ * {@link orientedWallChainKnotsAndSpans} / `wallCubicChain`). Every reverse
+ * consumer goes through {@link orientedSpanViews} below.
+ */
+function mirrorSpanView(span: LayoutWallCubicSpan): LayoutWallCubicSpan {
+	return { handleOut: span.handleIn, handleIn: span.handleOut };
+}
+
+/**
+ * Stored knots in traversal order, borrowed (reverse = reversed reference
+ * order). Single owner of knot-order logic: {@link traversalPoints} reads
+ * through it, {@link orientedWallChainKnotsAndSpans} clones through it.
+ */
+function orientedKnotRefs(
+	centerline: LayoutWallCenterline,
+	traversal: WallCenterlineTraversal
+): readonly LayoutWallCurveKnot[] {
+	if (centerline.kind === 'line') return [];
+	return traversal === 'reverse' ? [...centerline.knots].reverse() : centerline.knots;
+}
+
+/**
+ * Stored spans in traversal order as read-only views (reverse = mirrored in
+ * reversed span order, borrowing the stored coordinate arrays). Single owner
+ * of span-order logic: {@link wallCenterlineCubics} reads through it,
+ * {@link orientedWallChainKnotsAndSpans} clones through it.
+ */
+function orientedSpanViews(
+	centerline: LayoutWallCenterline,
+	traversal: WallCenterlineTraversal
+): readonly LayoutWallCubicSpan[] {
+	if (centerline.kind === 'line') return [];
+	if (traversal !== 'reverse') return centerline.spans;
+	return centerline.spans.map(mirrorSpanView).reverse();
+}
+
+/**
+ * Stored knots and spans in traversal order (P23 Junction-dissolve join seam).
+ *
+ * Owned-clone wrapper over the traversal views above for planners that
+ * persist a joined chain (dissolve clones again through `wallCubicChain`, so
+ * the candidate can never alias the baseline). Forward returns deep clones in
+ * stored order; reverse returns the knots in reversed order with every span
+ * mirrored (`handleOut ↔ handleIn`) in reversed span order — the same
+ * transform {@link wallCenterlineCubics} applies to cubics. A `line`
+ * centerline carries no chain data and yields empty arrays. Read paths
+ * (`traversalPoints`, `wallCenterlineCubics`) consume the views directly and
+ * never pay this cloning cost.
+ */
+export function orientedWallChainKnotsAndSpans(
+	centerline: LayoutWallCenterline,
+	traversal: WallCenterlineTraversal
+): { knots: LayoutWallCurveKnot[]; spans: LayoutWallCubicSpan[] } {
+	if (centerline.kind === 'line') return { knots: [], spans: [] };
+	return {
+		knots: orientedKnotRefs(centerline, traversal).map(cloneWallCurveKnot),
+		spans: orientedSpanViews(centerline, traversal).map(cloneWallCubicSpan)
+	};
 }
 
 /**
@@ -176,21 +241,18 @@ export function wallCenterlineCubics(
 	// selects the walk direction — feeding it swapped endpoints would pair each
 	// span with the wrong knot order.
 	// Forward cubic `i` is `points[i] → points[i + 1]` paired with `spans[i]`.
-	const forward = spansToCubics(
+	// Each direction builds only its own cubics through the single orientation
+	// owner (views borrow; `spansToCubics` clones everything it consumes).
+	if (traversal === 'reverse') {
+		return spansToCubics(
+			traversalPoints(centerline, startPoint, endPoint, 'reverse'),
+			orientedSpanViews(centerline, 'reverse')
+		);
+	}
+	return spansToCubics(
 		traversalPoints(centerline, startPoint, endPoint, 'forward'),
-		centerline.spans
+		orientedSpanViews(centerline, 'forward')
 	);
-	if (traversal !== 'reverse') return forward;
-	// A reverse walk visits the cubics backwards and mirrors each one, so every
-	// control keeps the meaning it had in the forward chain.
-	return forward
-		.map((cubic) => ({
-			start: cubic.end,
-			handleOut: cubic.handleIn,
-			handleIn: cubic.handleOut,
-			end: cubic.start
-		}))
-		.reverse();
 }
 
 /**

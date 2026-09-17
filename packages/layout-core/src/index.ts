@@ -36,3 +36,4 @@ export * from './layout-wall-offset-clearance';
 export * from './layout-wall-chain';
 export * from './layout-wall-topology';
 export * from './layout-wall-topology-ops';
+export * from './layout-wall-dissolve';

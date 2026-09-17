@@ -221,6 +221,7 @@ import {
 		onWallOpeningCreate,
 		onWallOpeningDelete,
 		onWallDelete,
+		onJunctionDissolve,
 		onWallJunctionAdd,
 		onWallBendPointAdd,
 		onRoomDelete,
@@ -272,6 +273,8 @@ import {
 		onWallOpeningDelete?: (openingId: string) => void;
 		/** P23.6c — delete the selected canonical Wall by document-global `wallId`. */
 		onWallDelete?: (wallId: string) => void;
+		/** P23 Junction dissolve — delete the selected degree-2 Junction by joining its two incident Walls. */
+		onJunctionDissolve?: (junctionId: string) => void;
 		/**
 		 * P23.10 — canonical Wall subdivision from a resolved physical-Wall hit.
 		 * `splitDistance` is the hit projection's physical meters from the canonical
@@ -3520,6 +3523,21 @@ const interactionProjection = $derived(
 		) {
 			event.preventDefault();
 			onWallDelete?.(interaction.selection.wallId);
+			return;
+		}
+		// P23 Junction dissolve: Delete/Backspace on a selected Junction joins
+		// its two incident Walls (degree-2 only — anything else rejects through
+		// the planner with a status message). Same Layout-authority gate as the
+		// Wall branch above: in Arrange, Delete routes to the active owner
+		// only, never to a remembered Layout selection.
+		if (
+			(event.key === 'Delete' || event.key === 'Backspace') &&
+			interaction.tool === 'select' &&
+			interaction.selection.kind === 'junction' &&
+			interaction.planViewMode === 'layout'
+		) {
+			event.preventDefault();
+			onJunctionDissolve?.(interaction.selection.junctionId);
 			return;
 		}
 		if (
