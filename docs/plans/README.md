@@ -96,7 +96,7 @@ shipped / archived
 Applied: P23 umbrella with P23.0–P23.6e, P23.10, P23.11, P23.12 and P23.13 landed; the
 remaining sequence is P23.14–P23.15 → P23.16, and no remaining child plan is
 implementation-ready (P23.13 shipped 2026-09-17 with S7's three rows carried to
-P23.14). Completed H1/H2/H3/H5 and the existing curve machinery
+P23.14, plus the selected-Room rotation row the post-PR review added). Completed H1/H2/H3/H5 and the existing curve machinery
 inform the bounded P23.11 curve slice; no broad research gate is implied. The
 completed Pascal harvest is optional bounded evidence, not an execution gate.
 P24 umbrella has the P24A annex at `minimum frozen — implementation pending` after R9 closed 2026-09-10, plus the completed
@@ -134,7 +134,7 @@ Policy rules:
 | # | Plan | Status | Depends on | Doc |
 |---|------|--------|------------|-----|
 | P13 | Sequence stop-at-node playback | proposed — nice-to-have, unscheduled (owner 2026-08-27) | P12 | [2026-08-27-P13-stop-at-node-playback.md](2026-08-27-P13-stop-at-node-playback.md) |
-| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 merged through PR #55** (`f3efed9`, 2026-09-15, S1–S8) plus the PR #56 anchor-release fix (`8a5a87f`); **P23.13 shipped on branch `P23.13` (S0–S10 across `27372a0`/`619d6ce`/`4904eb0`/`43931d2`), awaiting its PR** | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
+| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 merged through PR #55** (`f3efed9`, 2026-09-15, S1–S8) plus the PR #56 anchor-release fix (`8a5a87f`); **P23.13 shipped on branch `P23.13` (S0–S10 across `27372a0`/`619d6ce`/`4904eb0`/`43931d2` plus the post-PR review fix), PR #58 open** | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
 | P24 | Scene / Staging Depth — P24A supply + P24B authoring | proposed — **R0–R9 planning complete; minimum frozen; P24.0–P24.5 implementation-ready for owner review.** Execution waits for accepted P23 minimum and approval; implementation/ship gates open. | P23 | [freeze](2026-09-10-P24-R9-minimum-freeze.md) · [child briefs](2026-09-10-P24-minimum-child-plans.md) · [umbrella](2026-09-08-P24-scene-staging-depth-umbrella.md) · [annex](2026-09-08-P24A-asset-supply-canonical-ingest-annex.md) |
 | P25 | Experience Foundation umbrella | proposed — focused research reconciled 2026-09-09: Destination + guided Stop/occurrence + Content/Info Panel + bounded Interaction + visitor/a11y product semantics closed; implementation remains blocked on targeted post-F0/P24 seam rechecks, E5 reference integrity and E6 persistence/operations; no P25.x implementation-ready child plans yet | P24 | [umbrella](2026-09-08-P25-experience-foundation-umbrella.md) |
 | — | Branch rejoin — experiment, no schedule | proposed | P8 conceptually | [2026-08-21-branch-rejoin-experiment.md](2026-08-21-branch-rejoin-experiment.md) |
@@ -204,20 +204,25 @@ gate) now lives in the archived docs, not here.
   latched allocation base, and promotes before every persistence seam — cloud Save,
   resumed save and the Layout **Copy JSON / Download JSON** exports — so no saved or
   exported payload can sit below the session mark). **P23.13 (Architectural Plan
-  drafting finish) is complete on branch `P23.13` and awaits its PR** — S0–S10
+  drafting finish) is complete on branch `P23.13` with PR #58 open** — S0–S10
   landed across `27372a0` (S9 step 1), `619d6ce` (S9 steps 2–4: empty/dense
   states, the icon family under the 2026-09-17 ruling, the seven surrounds),
   `4904eb0` (S10 steps 1–2: control-group keyboard traversal and announcements,
-  the thin-wall pins, D5) and `43931d2` (the driven acceptance pass and the
-  spec-vs-atlas sweep). **Gate: 4350 passed / 1 skipped, `svelte-check` 0/0,
+  the thin-wall pins, D5), `43931d2` (the driven acceptance pass and the
+  spec-vs-atlas sweep) and the post-PR review-fix commit (the announcement's
+  missing value+units per §9, arrow keys no longer entering the control group
+  without Enter, the readout released with its focus, and two record
+  corrections). **Gate: 4358 passed / 1 skipped, `svelte-check` 0/0,
   `check:layout-core` clean**, and `619d6ce` was verified **standalone** at 4333
   passed with the S10 half held aside, so every commit on the branch is green.
   Both open owner decisions are ruled — **D5** names `layout-core` as the
   extension-guide predicate's owner (deferred, guide-less close) and the
   S9-step-1 Scene-ink eyeball is accepted pinned-not-looked-at. P23.13 closes
-  carrying S7's three rows by owner ruling (the Opening-insert gesture, the
-  undo-while-the-field-is-open display question, the coarse-pointer visual pass —
-  all three to P23.14, with the 44 px coarse target as P23.14's to meet). Then
+  carrying four rows by owner ruling: S7's three (the Opening-insert gesture, the
+  undo-while-the-field-is-open display question, the coarse-pointer visual pass,
+  with the 44 px coarse target as P23.14's to meet) plus the **selected Room's
+  rotation handle** (painted and draggable, no keyboard path, a silent no-op drag
+  in wall-first documents) added by the post-PR review. Then
   P23.14 → P23.15 → P23.16 final closeout remain child-plan-pending. P24 remains blocked on accepted P23
   completion.
 - Long-term tiers renumbered 2026-09-05 (owner): P23 Layout Depth, P24
@@ -247,7 +252,7 @@ gate) now lives in the archived docs, not here.
 
 ## Archived plans (recent 5 only)
 
-- `archived → [2026-09-16-P23.13-architectural-plan-drafting-finish.md](../archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md)` (shipped 2026-09-17 — S0–S10: wall/opening/room/label/state/snap/dimension/preview ink, keyboard and announcements, icons, empty/dense and seven-surround QA; D1–D5 ruled; carries S7's three rows to P23.14)
+- `archived → [2026-09-16-P23.13-architectural-plan-drafting-finish.md](../archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md)` (shipped 2026-09-17 — S0–S10: wall/opening/room/label/state/snap/dimension/preview ink, keyboard and announcements, icons, empty/dense and seven-surround QA; D1–D5 ruled; carries S7's three rows to P23.14 plus the selected-Room rotation row found by the PR review)
 - `archived → [2026-09-07-P22-basic-publish-visitor-runtime.md](../archive/plans/2026-09-07-P22-basic-publish-visitor-runtime.md)` (shipped 2026-09-08 — P22.1–P22.5 + hosted acceptance incl. public-route untrack fix)
 - `archived → [2026-09-04-P21-unified-project-shell-spatial-reconciliation.md](../archive/plans/2026-09-04-P21-unified-project-shell-spatial-reconciliation.md)` (shipped 2026-09-08 — P21.1–P21.6 + final acceptance gate; set includes P21.4, P21.5, P21.6, slice-2B annex)
 - `archived → [2026-08-19-P20-Project-assets-registry-R2.md](../archive/plans/2026-08-19-P20-Project-assets-registry-R2.md)` (shipped 2026-09-04 — local live smoke vs real R2; set includes S2/S3/S4 briefs)

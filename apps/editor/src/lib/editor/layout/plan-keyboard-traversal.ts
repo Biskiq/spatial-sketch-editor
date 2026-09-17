@@ -93,34 +93,50 @@ export function planTraversalGroup(
 
 /**
  * Step within a group in canonical order with wrap. `direction` is +1
- * (ArrowRight/ArrowDown) or −1 (ArrowLeft/ArrowUp). A current id outside the
- * group focuses the group's first (forward) or last (backward) control, so an
- * arrow with no focus enters the group at the pressed end — the roving
- * convention — rather than doing nothing.
+ * (ArrowRight/ArrowDown) or −1 (ArrowLeft/ArrowUp).
+ *
+ * A step is only ever a step *inside* a group the user has already entered, so
+ * a `currentId` that is not in `group` (including `null`) answers `null` and the
+ * caller leaves the key alone. That is A5's state machine verbatim — "Enter on a
+ * selected entity enters its control group; arrow keys traverse controls" — and
+ * the earlier cut of this module, which let an arrow enter the group at the
+ * pressed end, was wrong in a way that reached the user: a selected Wall
+ * swallowed ArrowRight/ArrowLeft/ArrowUp (and their scrolling) before anything
+ * had been entered, which is exactly the arrow-key theft a roving convention is
+ * meant to avoid.
  */
 export function planTraversalStep(
 	group: readonly PlanTraversalControl[],
 	currentId: string | null,
 	direction: 1 | -1
 ): PlanTraversalControl | null {
-	if (group.length === 0) return null;
-	const index = currentId === null ? -1 : group.findIndex((control) => control.id === currentId);
-	if (index === -1) return direction === 1 ? (group[0] ?? null) : (group[group.length - 1] ?? null);
+	if (group.length === 0 || currentId === null) return null;
+	const index = group.findIndex((control) => control.id === currentId);
+	if (index === -1) return null;
 	return group[(index + direction + group.length) % group.length] ?? null;
 }
 
 /**
  * Announcement text for a keyboard focus move: control role, position in the
- * group, and the owner's identity label the caller resolved. Pointer moves
- * never announce — the ring is feedback the eye already has, and a live
- * region per pointermove is exactly what §9 forbids.
+ * group, the owner's identity label the caller resolved, and — when the focused
+ * control carries one — the current value and units §9's readout owes
+ * ("name/reference, control role, current value and units").
+ *
+ * `valueText` is composed by the caller from canonical facts (the same fields
+ * the numeric door seeds from), so this stays pure text: no measurement model,
+ * no second rounding. `null` is a real answer — a control with no canonical
+ * value to report announces no value rather than inventing one. Pointer moves
+ * never announce: the ring is feedback the eye already has, and a live region
+ * per pointermove is exactly what §9 forbids.
  */
 export function planTraversalAnnouncement(
 	control: PlanTraversalControl,
 	index: number,
 	groupSize: number,
-	ownerLabel: string
+	ownerLabel: string,
+	valueText: string | null = null
 ): string {
 	const word = PLAN_TRAVERSAL_KIND_WORDS[control.kind];
-	return `${word} ${index + 1} of ${groupSize} — ${ownerLabel}`;
+	const value = valueText ? ` — ${valueText}` : '';
+	return `${word} ${index + 1} of ${groupSize} — ${ownerLabel}${value}`;
 }

@@ -412,6 +412,45 @@ export function planNumericFieldText(value: number | null | undefined, field: Pl
 }
 
 /**
+ * §9's readout text for one field of a host: `Width 0.90 m`, `Rotation 45.0°`.
+ *
+ * The keyboard readout must announce "name/reference, control role, current
+ * value and units", and the value it announces has to be the one the same field
+ * shows when Enter opens it — same label, same decimals, same unit — so
+ * `planNumericFieldText` stays the one formatter rather than gaining a
+ * differently-rounded sibling. `null` (no canonical value yet) announces *no*
+ * value rather than a fabricated zero, the same rule a blank field keeps.
+ */
+export function planNumericFieldReadout(
+	value: number | null | undefined,
+	field: PlanNumericField
+): string | null {
+	const text = planNumericFieldText(value, field);
+	if (!text) return null;
+	return `${field.label} ${text}${field.unit === 'angle' ? '°' : ' m'}`;
+}
+
+/**
+ * The readout for a host's field set, in the host's own Tab order, joined for
+ * one utterance: a Junction or curve point reads `X 3.20 m, Z 1.40 m`, an
+ * Opening width edge reads `Width 0.90 m` on its own. A host is only ever asked
+ * for the field(s) the control actually owns, so a caller passing one candidate
+ * gets one measure instead of every field the host could offer; `null` when none
+ * of them has a canonical value.
+ */
+export function planNumericHostReadout(
+	host: PlanNumericHost,
+	candidates: PlanNumericCandidates
+): string | null {
+	const parts: string[] = [];
+	for (const field of planNumericFields(host)) {
+		const part = planNumericFieldReadout(candidates[field.id], field);
+		if (part) parts.push(part);
+	}
+	return parts.length > 0 ? parts.join(', ') : null;
+}
+
+/**
  * Degrees → the canonical unit direction. `planExactWallAngle` sets
  * `direction = [cos θ, sin θ]` in (x, z) radians, so this is the one place the
  * editor converts a typed angle into the same vector the planner would derive.

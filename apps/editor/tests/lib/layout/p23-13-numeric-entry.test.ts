@@ -17,8 +17,10 @@ import {
 	planNumericEntrySubmit,
 	planNumericEntryTab,
 	planNumericEntryTrigger,
+	planNumericFieldReadout,
 	planNumericFieldText,
 	planNumericFields,
+	planNumericHostReadout,
 	planNumericInvalidMessage,
 	planNumericPointerUp,
 	type PlanNumericDomain,
@@ -627,6 +629,37 @@ describe('explicit value', () => {
 				planNumericEntryInput(planNumericEntryTrigger(KEY('-'), { host: 'junction' })!, '-2.5')
 			)
 		).toBe(true);
+	});
+});
+
+/**
+ * S10's readout: §9 requires the keyboard announcement to carry the focused
+ * control's *current value and units*. The value has to be the one the field
+ * shows when Enter opens it — same label, same decimals — so these pin the
+ * shared formatter rather than a second spelling of the same number.
+ */
+describe('field readout (§9 keyboard announcement)', () => {
+	it('spells a length with its label, its decimals and meters', () => {
+		const [width] = planNumericFields('opening-resize');
+		expect(planNumericFieldReadout(0.9, width!)).toBe('Width 0.90 m');
+		expect(planNumericFieldReadout(2.3, planNumericFields('opening-slide')[0]!)).toBe('Offset 2.30 m');
+	});
+
+	it('spells an angle in degrees, at the field’s own precision', () => {
+		const yaw = planNumericFields('object-transform').find((field) => field.id === 'yaw')!;
+		expect(planNumericFieldReadout(45, yaw)).toBe('Rotation 45.0°');
+	});
+
+	it('announces no value rather than a fabricated zero', () => {
+		const [width] = planNumericFields('opening-resize');
+		expect(planNumericFieldReadout(null, width!)).toBeNull();
+		expect(planNumericFieldReadout(Number.NaN, width!)).toBeNull();
+		expect(planNumericHostReadout('opening-resize', { width: null })).toBeNull();
+	});
+
+	it('joins a host’s own fields in Tab order, and reports only the measures it was given', () => {
+		expect(planNumericHostReadout('junction', { x: 3.2, z: 1.4 })).toBe('X 3.20 m, Z 1.40 m');
+		expect(planNumericHostReadout('junction', { x: 3.2 })).toBe('X 3.20 m');
 	});
 });
 

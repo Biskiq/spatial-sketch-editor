@@ -6,14 +6,17 @@ slice plus one next action only.
 ## Working tree
 
 - **Clean — nothing uncommitted.** P23.13 (Architectural Plan drafting finish) is
-  **shipped on branch `P23.13`** and awaits its PR. The branch carries `27372a0`
+  **shipped on branch `P23.13`** with its PR open. The branch carries `27372a0`
   (S9 step 1 — passive Scene as fill-free ink), `619d6ce` (S9 steps 2–4 —
   empty/dense states, the repo-SVG icon family under the 2026-09-17 ruling, the
   seven-surround pins), `4904eb0` (S10 steps 1–2 — control-group keyboard
-  traversal and announcements, the thin-wall pins, D5) and `43931d2` (the driven
-  acceptance pass and the spec-vs-atlas sweep). Every commit on the branch is
-  green, not just the tip: `619d6ce` was verified **standalone** at 4333 passed
-  with the S10 half held aside.
+  traversal and announcements, the thin-wall pins, D5), `43931d2` (the driven
+  acceptance pass and the spec-vs-atlas sweep) and the **post-PR review-fix
+  commit** (2026-09-17, `fix(plan): announce control value, gate arrows`): the
+  announcement's missing value+units, the arrow-key
+  group entry, the readout outliving its focus, and the two record corrections
+  below. Every commit on the branch is green, not just the tip: `619d6ce` was
+  verified **standalone** at 4333 passed with the S10 half held aside.
 - **Shipped narrative lives in the archive**, not here:
   [`archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md`](../archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md)
   holds the full S0–S10 record, the D1–D5 rulings and §11's close record.
@@ -34,15 +37,24 @@ slice plus one next action only.
   was opened with, so it can display a stale number (the commit stays honest);
   the principled fix is to cancel the entry on an external history transaction;
   (iii) the **coarse-pointer visual pass**, including the 44 px coarse target
-  (24 px is met on the Plan surface). Then P23.15 → P23.16 final closeout.
+  (the 24 px canvas acquisition target is met by S4's pinned
+  `PLAN_CONTROL_TARGET_PX`). **(iv)** — added by the 2026-09-17 post-PR review and
+  carried by owner ruling — the **selected Room's rotation handle**: painted and
+  draggable in the Plan, not keyboard-reachable, and a **silent no-op** drag in
+  wall-first documents (the move preview passes translation only, and `no_op`
+  says nothing). The fix is either gating the mark to owners that support yaw
+  (§6: *only where owner supports rotation*) or giving wall-first Rooms real
+  rotation — a behaviour decision, not a patch. Then P23.15 → P23.16 final
+  closeout.
 
 ## Verification
 
-- **P23.13 branch (2026-09-17).** Full editor suite **4350 passed / 1 skipped**
-  (291 files, 1 skipped), `svelte-check` **0 errors / 0 warnings**,
-  `check:layout-core` clean. `619d6ce` alone: **4333 passed / 1 skipped**. The
-  five new S9/S10 suites (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard`
-  13, `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 28/28.
+- **P23.13 branch after the review fix (2026-09-17).** Full editor suite
+  **4358 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
+  0 warnings**, `check:layout-core` clean. Before the review fix: 4350 passed;
+  `619d6ce` alone: **4333 passed / 1 skipped**. The five new S9/S10 suites
+  (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard` 17,
+  `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 32/32.
 - **Acceptance rows driven live 2026-09-17** (real editor, guest project, one
   4-Wall room + a Door + a bend, 12.2 px/m): keyboard on the **Wall** group
   (\"Junction 1 of 2 — Wall W-7V24\", wrap, Escape unwinds, `.focus-ring` moves
@@ -52,7 +64,9 @@ slice plus one next action only.
   Offset 2.30 → Escape closes, counts unchanged); **grayscale** (viewport
   filtered: walls, grid, selection, ring, dims and labels all still separable);
   **contrast** (focus ring/wall 10.43:1, selection 3.09:1, muted small text
-  5.55:1 on paper `#f5f7f8`); **targets** (every ribbon button 24 px tall);
+  5.55:1 on paper `#f5f7f8`); **targets** (the canvas acquisition target is
+  S4's `PLAN_CONTROL_TARGET_PX = 24`, pinned in `p23-13-state-controls`; ribbon
+  buttons measured 24 px tall, which is the shell row, not §9's target);
   **200 % text zoom** (root 32 px, no horizontal overflow); **seven themes**
   (one computed plan token set across all seven); **thin walls** (~3.95 px/m,
   0.79 px band → four 1 px `.wall-silhouette` aids, Camera Plan unaffected);
@@ -100,8 +114,15 @@ slice plus one next action only.
 - **The whole test suite is described as 291 files; the keyboard/traversal
   contracts in `p23-13-keyboard` are partly *source-string* pins** (they slice
   `LayoutPlanViewport.svelte` and assert text). They are weaker than they look —
-  driving the path live is what caught nothing wrong, but re-check live before
+  they passed while the announcement was missing §9's required value and units,
+  because they pinned the announcement's *shape* and never asked what a keyboard
+  user actually hears. Drive the path live (or assert the composed string) before
   trusting a refactor that renames or reorders those handlers.
+- **Arrows must not enter the control group** (A5: Enter enters, arrows traverse).
+  `planTraversalStep` answers `null` for a focus outside the group, and that is
+  load-bearing: the earlier cut let a selected Wall swallow ArrowRight/Left/Up
+  and their scrolling before the user entered anything. Do not "fix" it back to
+  the roving-tabindex convention.
 - A drawing gesture on Plan needs `setPointerCapture` stubbed for synthetic
   pointers; that is the only platform call QA has ever stubbed, and no app
   gesture logic is touched by it.

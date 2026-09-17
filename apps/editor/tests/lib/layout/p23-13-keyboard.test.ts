@@ -15,6 +15,7 @@ import {
 	planTraversalStep,
 	type PlanTraversalLayout
 } from '$lib/editor/layout/plan-keyboard-traversal';
+import { PLAN_CONTROL_MARKS } from '$lib/layout/plan-control-grammar';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -93,25 +94,58 @@ describe('P23.13 S10 traversal stepping (§9)', () => {
 		expect(planTraversalStep(group, 'op-1:slide', -1)?.id).toBe('j-a');
 	});
 
-	it('enters at the pressed end with no focus, and stays on a single control', () => {
-		expect(planTraversalStep(group, null, 1)?.id).toBe('j-a');
-		expect(planTraversalStep(group, null, -1)?.id).toBe('j-b');
-		expect(planTraversalStep(group, 'elsewhere', 1)?.id).toBe('j-a');
+	it('is a no-op unless the focus is inside this group (A5: Enter enters, arrows traverse)', () => {
+		// The earlier cut of this module entered the group at the pressed end, which
+		// let a selected Wall swallow ArrowRight/ArrowUp — and their scrolling —
+		// before the user had entered anything. Absence is the enforcement.
+		expect(planTraversalStep(group, null, 1)).toBeNull();
+		expect(planTraversalStep(group, null, -1)).toBeNull();
+		expect(planTraversalStep(group, 'elsewhere', 1)).toBeNull();
+		expect(planTraversalStep(group, 'elsewhere', -1)).toBeNull();
+	});
+
+	it('stays on a single control and answers null for an empty group', () => {
 		expect(planTraversalStep([group[0]!], 'j-a', 1)?.id).toBe('j-a');
 		expect(planTraversalStep([], 'j-a', 1)).toBeNull();
 	});
 });
 
 describe('P23.13 S10 traversal announcements (§9)', () => {
-	it('names role, position and owner for a keyboard move', () => {
+	it('names role, position, owner, current value and units for a keyboard move', () => {
 		expect(
 			planTraversalAnnouncement(
 				{ kind: 'opening-slide', id: 'op-1:slide', ownerId: 'op-1' },
 				1,
 				3,
-				'Door D-0007 · 0.90 m'
+				'Door D-0007',
+				'Offset 2.30 m'
 			)
-		).toBe('Opening slide 2 of 3 — Door D-0007 · 0.90 m');
+		).toBe('Opening slide 2 of 3 — Door D-0007 — Offset 2.30 m');
+	});
+
+	it('announces role, position and owner with no value clause where the control has no canonical value', () => {
+		expect(
+			planTraversalAnnouncement(
+				{ kind: 'junction', id: 'j-a', ownerId: 'j-a' },
+				0,
+				1,
+				'Wall W-7V24',
+				null
+			)
+		).toBe('Junction 1 of 1 — Wall W-7V24');
+	});
+
+	it('reaches every control kind the layout surface paints, and only those', () => {
+		// §14's own evidence: the shared marks table is the *layout* vocabulary the
+		// traversal can be asked to reach. `object-rotation` / `room-rotation` are
+		// declared in `PlanControlKind` for the Arrange owner pipeline, which §6/§8
+		// leave to its existing pipeline — no control of either kind carries a mark
+		// here, so there is nothing for the keyboard to focus.
+		expect(Object.keys(PLAN_CONTROL_MARKS).sort()).toEqual([
+			'curve-control',
+			'junction',
+			'opening-edge'
+		]);
 	});
 });
 
@@ -121,7 +155,7 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 	it('walks the group on arrows only on a quiet layout canvas', () => {
 		expect(viewport).toContain("event.key === 'ArrowRight'");
 		expect(viewport).toContain("event.key === 'ArrowLeft'");
-		expect(viewport).toContain('planTraversalStep(group, current, direction');
+		expect(viewport).toContain('planTraversalStep(\n\t\t\t\t\tgroup,\n\t\t\t\t\tinteraction.planFocus?.id ?? null,\n\t\t\t\t\tdirection as 1 | -1\n\t\t\t\t');
 		expect(viewport).toContain('planTraversalGestureQuiet()');
 		// Same LOD gate the overlay draws controls with: invisible controls
 		// are never focused.
@@ -137,8 +171,13 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(numericAt).toBeGreaterThan(enterAt);
 	});
 
-	it('unwinds focus on Escape without touching selection or history', () => {
-		const dropAt = viewport.indexOf('clearPlanFocus(interaction);\n\t\t\t\tplanFocusAnnouncement = null;');
+	it('unwinds focus and its readout together on Escape, without touching selection or history', () => {
+		// One instrument: the ring and the announcement are released by one helper,
+		// so no path can drop the ring and keep speaking about the control.
+		expect(viewport).toContain(
+			'function clearPlanKeyboardFocus(): void {\n\t\tclearPlanFocus(interaction);\n\t\tplanAnnouncedFocus = null;\n\t}'
+		);
+		const dropAt = viewport.indexOf('clearPlanKeyboardFocus();\n\t\t\t\treturn;');
 		expect(dropAt).toBeGreaterThan(-1);
 		// After every gesture/draft branch (which return above), before the
 		// coarse tail clears drafts.
@@ -146,12 +185,28 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(tailAt).toBeGreaterThan(dropAt);
 	});
 
+	it('releases the readout wherever focus is invalidated, including outside this component', () => {
+		// The mode/tool cancel path (which clears focus for "mode changes cancel
+		// capture and clear the prior owner's instrument") uses the same helper…
+		expect(viewport).toContain('clearPlanKeyboardFocus();\n\t\trotationHoverScreen = null;');
+		// …and the stored announcement is reconciled against the live focus, because
+		// `clearLayoutSelection` releases the instrument from `layout-interaction`,
+		// where this component cannot hook it.
+		expect(viewport).toContain(
+			'planAnnouncedFocus && planAnnouncedFocus.controlId !== focusId'
+		);
+		expect(viewport).toContain('interaction.planFocus?.id ?? null');
+	});
+
 	it('moves focus without ever writing selection or history', () => {
 		const focusAt = viewport.indexOf('function focusPlanControlByKeyboard');
 		const endAt = viewport.indexOf('/**\n\t * Close the field.', focusAt);
 		const body = viewport.slice(focusAt, endAt);
 		expect(body).toContain('setPlanFocus(interaction,');
-		expect(body).toContain('planFocusAnnouncement = planTraversalAnnouncement(');
+		expect(body).toContain('planTraversalAnnouncement(');
+		// §9's readout owes the current value and units, resolved from canonical
+		// facts by the same module the numeric door seeds from.
+		expect(body).toContain('planKeyboardControlReadout(control)');
 		for (const writer of [
 			'selectLayout',
 			'clearLayoutSelection',
@@ -166,11 +221,16 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 	it('announces keyboard moves once, and never pointer focus', () => {
 		expect(viewport).toContain('<div class="plan-focus-announcement" role="status">{planFocusAnnouncement}</div>');
 		expect(viewport).toContain('.plan-focus-announcement { position: absolute; width: 1px;');
-		// Exactly two assignments beyond the declaration: announce on a
-		// keyboard move, clear on unwind. The pointer path focuses silently.
-		const assignments = viewport.split('planFocusAnnouncement =').length - 1;
-		expect(assignments).toBe(3);
-		expect(viewport).toContain('planFocusAnnouncement = planTraversalAnnouncement(');
-		expect(viewport).toContain('planFocusAnnouncement = null;');
+		// The region's text is derived, and only from the announcement that names
+		// the control the ring is on: a pointer press sets focus silently, so its
+		// id can never match a stored announcement's.
+		expect(viewport).toContain(
+			'planAnnouncedFocus && interaction.planFocus?.id === planAnnouncedFocus.controlId'
+		);
+		// Four writes to the announcement and no more: the declaration, the
+		// keyboard move, the release helper, and the reconciliation that clears it
+		// when the focus moved without the keyboard. The pointer path writes none.
+		const assignments = viewport.split('planAnnouncedFocus = ').length - 1;
+		expect(assignments).toBe(4);
 	});
 });

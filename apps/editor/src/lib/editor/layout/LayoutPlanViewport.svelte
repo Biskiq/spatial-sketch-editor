@@ -167,6 +167,7 @@
 		planNumericEntrySubmit,
 		planNumericEntryTab,
 		planNumericEntryTrigger,
+		planNumericHostReadout,
 		planNumericInvalidMessage,
 		planNumericPointerUp,
 		planNumericRestingEntryTarget,
@@ -1214,11 +1215,25 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// open-corner sketch unmounts once the project is non-empty, or for the
 	// remainder of the session upon first tool use.
 	let ghostDismissed = $state(false);
-	// P23.13 S10 / §9 — keyboard focus announcements. Set only by keyboard
-	// traversal moves (never by pointer, never per pointermove): the live
-	// region below speaks control role + position + owner identity once per
-	// meaningful change, and stays empty otherwise.
-	let planFocusAnnouncement = $state<string | null>(null);
+	// P23.13 S10 / §9 — keyboard focus announcements. Written only by keyboard
+	// traversal moves (never by pointer, never per pointermove). The last
+	// announcement is kept as data and the region's *text* is derived from it
+	// against the live focus, so the region cannot describe a control the user is
+	// no longer on — including when focus is released by code this component does
+	// not own (`clearLayoutSelection` drops the instrument with a deleted owner).
+	let planAnnouncedFocus = $state<{ controlId: string; text: string } | null>(null);
+	const planFocusAnnouncement = $derived(
+		planAnnouncedFocus && interaction.planFocus?.id === planAnnouncedFocus.controlId
+			? planAnnouncedFocus.text
+			: null
+	);
+	// …and the stored announcement is released with the focus, so a *later* focus
+	// on the same control (a pointer press, or a P23.12-recycled canonical id)
+	// cannot resurrect text the keyboard has already finished with.
+	$effect(() => {
+		const focusId = interaction.planFocus?.id ?? null;
+		if (planAnnouncedFocus && planAnnouncedFocus.controlId !== focusId) planAnnouncedFocus = null;
+	});
 
 	const viewBox = $derived(`0 0 ${interaction.planView.width} ${interaction.planView.height}`);
 	const draftPolygon = $derived(
@@ -2019,7 +2034,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// instrument". Releasing focus with the gesture is part of that: a cancel
 		// removes the whole instrument rather than leaving a ring on a control no
 		// longer under edit.
-		clearPlanFocus(interaction);
+		clearPlanKeyboardFocus();
 		rotationHoverScreen = null;
 		stagingRotationHoverScreen = null;
 		arrangeLayoutRotationHoverScreen = null;
@@ -4202,18 +4217,74 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	/**
+	 * P23.13 S10 / §9 — the focused control's own current value and units, read
+	 * from the canonical facts its numeric door already seeds from: a Junction or
+	 * curve point is its document coordinate, an Opening width edge its width and
+	 * the slide grip its offset. `null` where the document holds no value (a legacy
+	 * draft has no canonical Junction; a control with no measure of its own has
+	 * none), which announces role and owner without a number rather than a
+	 * fabricated zero.
+	 */
+	function planKeyboardControlReadout(control: PlanTraversalControl): string | null {
+		if (control.kind === 'junction') {
+			const point = resolveJunctionPoint(control.id);
+			return point ? planNumericHostReadout('junction', { x: point[0], z: point[1] }) : null;
+		}
+		if (control.kind === 'curve-control') {
+			const knot = wallFirstKnotPoint(control.id);
+			return knot ? planNumericHostReadout('curve-point', { x: knot[0], z: knot[1] }) : null;
+		}
+		if (control.kind === 'opening-edge' || control.kind === 'opening-slide') {
+			const opening = wallFirstOpeningById(control.ownerId);
+			if (!opening) return null;
+			// One field each: the width edge is the width's handle and the paired grip
+			// the offset's (§7), so an edge never reports the grip's number too.
+			return control.kind === 'opening-edge'
+				? planNumericHostReadout('opening-resize', { width: opening.width })
+				: planNumericHostReadout('opening-slide', { offset: opening.offset });
+		}
+		return null;
+	}
+
+	/** The authored bend knot's canonical coordinate, or `null` when no Wall owns it. */
+	function wallFirstKnotPoint(knotId: string): LayoutVec2 | null {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		for (const wall of layout.walls) {
+			if (wall.centerline.kind !== 'cubic-chain') continue;
+			const knot = wall.centerline.knots.find((candidate) => candidate.id === knotId);
+			if (knot) return [knot.point[0], knot.point[1]] as LayoutVec2;
+		}
+		return null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — release the keyboard instrument. The ring and its readout
+	 * are one thing: nothing may drop one without the other.
+	 */
+	function clearPlanKeyboardFocus(): void {
+		clearPlanFocus(interaction);
+		planAnnouncedFocus = null;
+	}
+
+	/**
 	 * P23.13 S10 / §9 — focus one control by keyboard. Focus is never
 	 * selection and never history; the announcement names role + position +
-	 * owner once for this move, and pointer focus stays silent.
+	 * owner + the control's current value and units once for this move, and
+	 * pointer focus stays silent.
 	 */
 	function focusPlanControlByKeyboard(control: PlanTraversalControl, index: number, groupSize: number): void {
 		setPlanFocus(interaction, { kind: control.kind, id: control.id, ownerId: control.ownerId });
-		planFocusAnnouncement = planTraversalAnnouncement(
-			control,
-			index,
-			groupSize,
-			planSelectionLabel ?? 'Selection'
-		);
+		planAnnouncedFocus = {
+			controlId: control.id,
+			text: planTraversalAnnouncement(
+				control,
+				index,
+				groupSize,
+				planSelectionLabel ?? 'Selection',
+				planKeyboardControlReadout(control)
+			)
+		};
 	}
 
 	/**
@@ -5053,8 +5124,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// here means no gesture or draft is live (every one returned
 			// above), so this branch can never swallow a gesture cancel.
 			if (interaction.planFocus) {
-				clearPlanFocus(interaction);
-				planFocusAnnouncement = null;
+				clearPlanKeyboardFocus();
 				return;
 			}
 			onLayoutTransactionCancel();
@@ -5078,9 +5148,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return;
 		}
 		// P23.13 S10 / §9 — arrows walk the selected owner's control group in
-		// canonical endpoint/arc order with wrap. No group (or a live gesture,
-		// or another mode/tool) leaves the key alone, so page scroll and every
-		// other surface keep their arrows.
+		// canonical endpoint/arc order with wrap. No group, a live gesture, another
+		// mode/tool, or a group the user has not entered with Enter all leave the
+		// key alone, so page scroll and every other surface keep their arrows.
 		if (
 			(event.key === 'ArrowRight' ||
 				event.key === 'ArrowLeft' ||
@@ -5096,10 +5166,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			const group = planKeyboardGroup();
 			if (group && group.length > 0) {
 				const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
-				const focus = interaction.planFocus;
-				const current =
-					focus && group.some((control) => control.id === focus.id) ? focus.id : null;
-				const next = planTraversalStep(group, current, direction as 1 | -1);
+				// A5 — arrows traverse the group the user entered; they never enter it.
+				// `planTraversalStep` answers `null` for a focus outside this group, so
+				// an unentered selection leaves the arrow to the page rather than
+				// swallowing a key the user has not asked this instrument to use.
+				const next = planTraversalStep(
+					group,
+					interaction.planFocus?.id ?? null,
+					direction as 1 | -1
+				);
 				if (next) {
 					event.preventDefault();
 					focusPlanControlByKeyboard(next, group.indexOf(next), group.length);
@@ -5291,8 +5366,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	{/if}
 	{#if planFocusAnnouncement}
 		<!-- P23.13 S10 / §9 — keyboard focus announcements: role + position +
-		     owner, once per keyboard move. Pointer focus stays silent, and the
-		     region is empty the rest of the time, so nothing speaks per
+		     owner + current value and units, once per keyboard move, and only while
+		     the ring is still on the announced control. Pointer focus stays silent,
+		     and the region is empty the rest of the time, so nothing speaks per
 		     pointermove. Visually hidden; never a second status channel. -->
 		<div class="plan-focus-announcement" role="status">{planFocusAnnouncement}</div>
 	{/if}
