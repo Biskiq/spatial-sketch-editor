@@ -5,9 +5,12 @@ slice plus one next action only.
 
 ## Working tree
 
-- **Clean — nothing uncommitted.** P23.13 (Architectural Plan drafting finish) is
-  **shipped on branch `P23.13`** with its PR open. The branch carries `27372a0`
-  (S9 step 1 — passive Scene as fill-free ink), `619d6ce` (S9 steps 2–4 —
+- **`main` @ `5cfe4d0` ("P23.14 design context docs and png") is the stable tip, with
+  every P23 slice to date merged**, plus an **uncommitted documentation pass** in the
+  working tree (2026-09-17: the P23.14 re-scope and the PR-status reconciliation across
+  the roadmap, tracker, design context and this file). P23.13 (Architectural Plan
+  drafting finish) is **merged through PR #58** (`368a799`, 2026-09-17). The branch carried
+  `27372a0` (S9 step 1 — passive Scene as fill-free ink), `619d6ce` (S9 steps 2–4 —
   empty/dense states, the repo-SVG icon family under the 2026-09-17 ruling, the
   seven-surround pins), `4904eb0` (S10 steps 1–2 — control-group keyboard
   traversal and announcements, the thin-wall pins, D5), `43931d2` (the driven
@@ -17,18 +20,38 @@ slice plus one next action only.
   group entry, the readout outliving its focus, and the two record corrections
   below. Every commit on the branch is green, not just the tip: `619d6ce` was
   verified **standalone** at 4333 passed with the S10 half held aside.
+- **The concurrent P23 child slice is also merged.** **Junction dissolve / Wall join
+  merged through PR #57** (`2716f61`, implementation `e43ecf4`, 2026-09-17). It consumed
+  no tracker P-number (child-plan exception) and its plan file stays live in
+  [`plans/`](../plans/2026-09-17-P23-junction-dissolve-wall-join.md) pending archival. Its
+  shipped entry point is Delete/Backspace on a selected degree-2 Junction in the Plan;
+  its **Inspector / Navigator-row / Plan-menu entry points were deferred to P23.14**.
 - **Shipped narrative lives in the archive**, not here:
   [`archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md`](../archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md)
   holds the full S0–S10 record, the D1–D5 rulings and §11's close record.
 - **Immediate previous slice.** P23.12 (names and stable display identity) merged
-  on `main` through PR #55 (`f3efed9`, 2026-09-15) with the PR #56 anchor-release
-  fix (`8a5a87f`); `main` HEAD is `c2a2404`. P23.11 (canonical curved Walls)
+  on `main` through PR #55  (`f3efed9`, 2026-09-15) with the PR #56 anchor-release fix (`8a5a87f`); `main` HEAD was
+  `c2a2404` at that point and is now `5cfe4d0`. P23.11 (canonical curved Walls)
   merged through PR #51.
 
 ## Next action
 
-- **Open P23.14 (build shell, Navigator and Inspector finish)** against `main`
-  once P23.13's PR merges. It owns, in addition to its own scope, **three rows
+- **Open P23.14 (*Editor Shell & Visual System Foundation*)** against `main` — P23.13 is
+  merged (PR #58), so nothing blocks it. **Owner review, 2026-09-17 re-scoped this slice** from
+  *build shell, Navigator and Inspector finish*: it is now the slice that
+  establishes the shell's visual system and interaction grammar, with a ceiling high
+  enough that P23.15/P24/P26 extend it rather than each introducing their own
+  language. Its slice context is
+  [`../design/P23.14-shell-design-context.md`](../design/P23.14-shell-design-context.md)
+  (durability map, P23.15/P24/P26 forward-compatibility, the five-capture evidence
+  set), and the roadmap entry carries the scope-change record. Still out of scope:
+  product/domain architecture, document ownership, selection/history authority,
+  navigation/camera systems, visitor runtime, and P24/P26 capability semantics — the
+  old "wholesale shell redesign" non-goal is superseded by that narrower boundary.
+  The concurrent Junction-dissolve slice is **merged** (PR #57) and **defers its
+  Inspector, Navigator-row and Plan-menu entry points into P23.14's shell finish**, so
+  P23.14's Inspector grammar must host a reason-coded destructive action. It owns, in addition to its own scope,
+  **three rows
   P23.13 deliberately carried** by owner ruling: (i) §7's **Opening-insert**
   numeric row — a toolbar/menu insert commits on click and the viewport holds no
   transient insert candidate, so wiring the field set means inventing an insert
@@ -49,7 +72,7 @@ slice plus one next action only.
 
 ## Verification
 
-- **P23.13 branch after the review fixes (2026-09-17).** Full editor suite
+- **P23.13, merged to `main` as `368a799` (2026-09-17), after the review fixes.** Full editor suite
   **4362 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
   0 warnings**, `check:layout-core` clean. Before the review fixes: 4350 passed;
   `619d6ce` alone: **4333 passed / 1 skipped**. The five new S9/S10 suites
@@ -80,8 +103,9 @@ slice plus one next action only.
   the 21-entity Chopin scene imported and validated but never painted a
   footprint), the coarse-pointer layout, and the legacy inert-smoke surface
   (D2, unit-pinned only).
-- `main` at `c2a2404` carries the merged P23.12 implementation (PR #55) plus the
-  PR #56 anchor-release fix; the last reported full runs on it were
+- `main` at `c2a2404` carried the merged P23.12 implementation (PR #55) plus the
+  PR #56 anchor-release fix — **superseded by `368a799`/`5cfe4d0`, whose gate numbers are
+  the P23.13 ones above**; the last reported full runs on `c2a2404` were
   `npm test` 3,510 passed / 1 skipped, `npm run check` editor + museum 0 errors /
   0 warnings, and `npm run build` editor + museum passed.
 

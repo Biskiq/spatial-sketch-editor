@@ -1,10 +1,10 @@
 # Museum docs — context router
 
-**Audience:** agents + humans. **Last reviewed:** 2026-09-17 (P23.13 shipped — S0–S10 landed on branch `P23.13`, its plan archived and the tracker's recent-5 rotated; P23.14–P23.16 remain).
+**Audience:** agents + humans. **Last reviewed:** 2026-09-17 (all P23 work to date merged on `main` @ `5cfe4d0` — P23.13 merged through PR #58 and the concurrent Junction-dissolve child slice through PR #57; P23.13's plan archived and the tracker's recent-5 rotated; **P23.14 re-scoped by owner review to *Editor Shell & Visual System Foundation*** with its own [slice design context](./design/P23.14-shell-design-context.md); P23.14–P23.16 remain).
 **Bootstrap (hard rules):** [`../AGENTS.md`](../AGENTS.md) ·
 **Plan status / what's next:** [`plans/README.md`](./plans/README.md) (tracker) ·
 **Live working-tree state:** [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) ·
-**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped (P22 on 2026-09-08 — hosted cold-visitor acceptance incl. public-route untrack fix, deployed as `f46e8f3`). **P23 is in flight:** P23.0–P23.13 are landed (P23.13 on 2026-09-17, on branch `P23.13` awaiting its PR), with P23.14 → P23.15 → P23.16 remaining. P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
+**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped (P22 on 2026-09-08 — hosted cold-visitor acceptance incl. public-route untrack fix, deployed as `f46e8f3`). **P23 is in flight:** P23.0–P23.13 are landed on `main` (P23.13 merged 2026-09-17 via PR #58), plus the concurrent Junction-dissolve child slice (merged via PR #57), with P23.14 (re-scoped 2026-09-17 to *Editor Shell & Visual System Foundation*) → P23.15 → P23.16 remaining. P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
 
 ## Context discipline (progressive disclosure)
 

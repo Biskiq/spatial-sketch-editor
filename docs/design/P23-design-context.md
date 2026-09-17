@@ -6,8 +6,11 @@ is **persistent context**, not a slice brief and not an implementation plan.
 **Compiled:** 2026-09-15 against `main` @ `9118696` (P23.11 merged, PR #51).
 **Shell/visual successor (P23.14):** [`P23.14-shell-design-context.md`](./P23.14-shell-design-context.md)
 — compiled 2026-09-17 against `main` @ `368a799` (P23.13 merged). It narrows to shell
-structure, the durability map and P24/P26 forward-compatibility. Where this file's shell
-and Plan-presentation claims disagree with it, that file is fresher.
+structure, the durability map, and P23.15/P24/P26 forward-compatibility. Where this file's
+shell and Plan-presentation claims disagree with it, that file is fresher. **Note
+(2026-09-17):** P23.14 was re-scoped by owner review from bounded shell polish to
+**Editor Shell & Visual System Foundation** — this file's "P23.14" rows and its §6
+"broad shell redesign" deferral were updated to match.
 **Authority order used here:** source code + tests → `docs/hand-off/CURRENT.md` →
 active plan → component contract → `docs/architecture.md` → `docs/north-star.md`
 (`AGENTS.md` §10).
@@ -144,9 +147,10 @@ implicitly**. **[C]**
   — i.e. **240 px floor, 300 px default**, collapsible to 0. (`EditorApp.svelte`
   ~2191; `tokens.css`; §15 of `docs/Design-specs/Design-specs.md` documents
   "Left sidebar 300px / minimum 240px".)
-  **Mismatch to know:** the P23 roadmap and the P23.6e directive both call this
-  the "canonical **268 px** Navigator rail" (roadmap lines 147, 231, 260, 416;
-  `docs/plans/P23.6e-directive.md:141`). **`268` appears nowhere in the code.**
+  **Mismatch to know:** the P23.6e directive calls this the "canonical **268 px**
+  Navigator rail" (`docs/plans/P23.6e-directive.md:141`), and the P23 roadmap said the
+  same until its P23.14 references were corrected to 240–300 px on 2026-09-17.
+  **`268` appears nowhere in the code.**
   Treat "one narrow fixed rail, ~240–300 px" as the real constraint and flag the
   exact number as unresolved **[Q]**.
 - Collapsed panels clip to a zero-width track and go `inert`; focus returns to
@@ -444,7 +448,7 @@ decisions instead of re-deciding them**:
 
 ```text
 P23.11 (landed) → P23.12 identity → P23.13 Plan drafting finish
-              → P23.14 shell/Navigator/Inspector finish
+              → P23.14 editor shell & visual system foundation
               → P23.15 junction-correct 3D → P23.16 closeout gate
 ```
 
@@ -547,12 +551,22 @@ Future design surface — record the decisions, do not make them here:
 annotation authoring, DXF/PDF export, construction-document standards,
 Canvas/WebGL Plan, whole-app visual redesign. **[D]**
 
-### P23.14 — Build shell, Navigator and Inspector finish **[P]**
+### P23.14 — Editor Shell & Visual System Foundation **[P]**
 
-**Outcome:** the complete Layout workflow is coherent and keyboard-usable across
-toolbar, Navigator, Inspector, context menus, status and Document controls.
+*(Re-scoped by owner review, 2026-09-17; formerly "Build shell, Navigator and Inspector
+finish". The bounded work below is retained inside the larger outcome. The slice's own
+context is [`P23.14-shell-design-context.md`](./P23.14-shell-design-context.md).)*
 
-Planned UX/IA work:
+**Outcome:** establish one coherent, extensible editor-shell visual system and interaction
+grammar — with a high enough ceiling that future P24, P26 and later capability can
+normally enter through the same language without a new shell redesign — while the complete
+Layout workflow stays coherent and keyboard-usable across toolbar, Navigator, Inspector,
+context menus, status and Document controls. P23.14 owns the *visual operating system*: it
+does not implement P24 multi-selection, material/light/environment or placement semantics,
+P26 Section/Wall Elevation/Ceiling Focus or crop/reveal behavior, or P23.15's junction
+geometry — it must leave each a path through the same grammar.
+
+Planned UX/IA work (retained inside the larger scope):
 
 - **Navigator density and disclosure hierarchy** — the final rail at its real
   width, with real names/references instead of raw-ID placeholders.
@@ -586,10 +600,15 @@ Designer reading: this is a *planned preferred default*, with the final call
 inside P23.14 **[P]** — and the anti-goal (a second Junction-selection surface) is
 **[C]**.
 
-**Deferred inside P23.14:** wholesale shell redesign, asset-library redesign,
-Camera sidebar redesign, 3D control popovers, material authoring, auth or
-persistence changes, multi-select, new editor-local entity truth, or a topology
-tree that explodes every Wall/Junction relationship. **[D]**
+**Deferred inside P23.14:** later slices' *capabilities* and any architecture change —
+not the shell presentation. Specifically: asset-library redesign, Camera sidebar
+redesign, 3D control popovers, material authoring, auth or persistence changes,
+multi-select *capability*, new editor-local entity truth, a topology tree that explodes
+every Wall/Junction relationship, P24/P26 feature semantics, P23.15 junction geometry, and
+speculative future view controls. The former "no wholesale shell redesign" non-goal is
+**superseded** (owner review, 2026-09-17): P23.14 may substantially revise shell
+presentation and interaction grammar while preserving the §5 architecture and ownership
+contracts. **[D]**
 
 ### P23.15 — Junction-correct wall-first 3D **[P]**
 
@@ -664,7 +683,9 @@ breaking one needs an owner decision, not a design choice. **[C]**
 11. **Current shell/domain/view ownership holds.** `Scene | Camera` and
     `Plan | 3D` stay the canonical axes; `Layout | Arrange` stays a Scene-Plan
     local mode; Camera Plan stays a camera-graph surface; the Inspector is not a
-    document inventory; there is no second nav graph or motion authority.
+    document inventory; there is no second nav graph or motion authority. There is
+    **one selection authority** — Layout stays single-target, and future Scene staging
+    may hold an ordered set with one primary entity, but no second selection truth.
 
 ---
 
@@ -680,7 +701,9 @@ Listed so the designer can confidently *ignore* them while working on P23.12–P
 - Authored Junction names (Junctions stay reference-only).
 - General CAD annotation and print tooling: dimensions authoring, print sheets,
   scale output, DXF/PDF export, construction documents.
-- Broad shell redesign / wholesale visual redesign of the application.
+- **Product/domain architecture** redesign, document-ownership change, or a second
+  selection/history/navigation/camera authority — as distinct from **shell presentation and
+  interaction grammar**, which P23.14 now owns (re-scoped 2026-09-17).
 - 3D Wall/Opening picking and highlighting; 3D utility popovers (issues #32, #36).
 - Material authoring / the Material Choice dialog lifecycle (issue #37, P24).
 - New topology behavior: general curve intersection/noding, NURBS, constraint
@@ -743,7 +766,7 @@ For every subsequent brief (start with P23.12):
 | # | Document says | Code says | Effect on design work |
 |---|---|---|---|
 | 1 | `docs/plans/README.md:136,193` and `docs/hand-off/CURRENT.md` — P23.11 is next; PR #50 awaiting review | P23.11 merged on `main` (PR #51, `9118696`, 2026-09-15); `LayoutWall.centerline` + curve UX shipped | Treat curve editing as **shipped**; P23.12–P23.16 as remaining |
-| 2 | Roadmap/P23.6e directive — "canonical **268 px** Navigator rail" | No `268` in code; left rail is `minmax(15rem, 300px)`, i.e. 240–300 px | Design to a narrow ~240–300 px rail; flag the exact number as open |
+| 2 | `plans/P23.6e-directive.md` — "canonical **268 px** Navigator rail" (the roadmap's own figure was corrected to 240–300 px on 2026-09-17) | No `268` in code; left rail is `minmax(15rem, 300px)`, i.e. 240–300 px | Design to ~240–300 px, including the 240 px minimum |
 | 3 | `components/shell.md` header — "pre-P21 stacked scaffold + `EditorAppBar` remains in the tree" | The P21+ shell is the live one: `ProjectRow` + `WorkspaceRibbon` + 24 px `StatusBar`, 36/32 px rows; `EditorAppBar.svelte` still exists but is not the mounted chrome | Use `EditorApp.svelte`/`ProjectRow`/`WorkspaceRibbon` as current-state truth; `shell.md`'s "current implementation" section is stale |
 | 4 | `Shell-scene-workspaces.md` §6 "Room drag behavior" — Scene content follows a moved Room frame | Canonical wall-first Scene/Camera placement is **world-local**; the roadmap marks that prose as compatibility-path prose | Do not design Room drag as implicit Scene movement |
 | 5 | `Design-specs.md` §15 — runtime tokens still carry `appbar 56px` / `status 32px` | `.project-editor` overrides to `36px` / `24px` (Row 1 36 + Row 2 32 = 68 top chrome) | Use the 36/32/24 shell metrics from `tokens.css`, not §15's values |

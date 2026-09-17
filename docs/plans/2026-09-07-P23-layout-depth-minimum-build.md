@@ -646,7 +646,7 @@ P23.12 — Architectural names and stable display identity
       ↓
 P23.13 — Architectural Plan drafting finish
       ↓
-P23.14 — Build shell, Navigator and Inspector finish
+P23.14 — Editor Shell & Visual System Foundation
       ↓
 P23.15 — Junction-correct wall-first 3D
       ↓

@@ -1,17 +1,20 @@
 # P23 concurrent slice — Delete Junction as Junction Dissolve / Wall Join
 
-**Status:** implemented and verified on `feat/p23-junction-dissolve` — full suite
-275 files / 4074 passed, editor+museum checks clean, editor+museum builds pass,
-visitor-bundle verifier ok (3 server + 9 client entries). Review gaps closed:
+**Status:** **shipped — merged to `main` through PR #57** (merge commit `2716f61`,
+implementation `e43ecf4`, 2026-09-17). Verified before merge: full suite 275 files /
+4074 passed, editor+museum checks clean, editor+museum builds pass, visitor-bundle
+verifier ok (3 server + 9 client entries). Review gaps closed:
 room_identity_lost tripwire, codec round trip, 179° case, reverse-order
 mixed-kind, degree-0, Arrange-gate + wiring source contracts, per-code
-messages, §4 locked order, candidate copy-on-write. Ready for tracker
-registration.
+messages, §4 locked order, candidate copy-on-write. **Not shipped — carried to P23.14:**
+§8's optional entry points (Inspector dissolve action, Navigator/tree row action, Plan
+context-menu item); the shipped entry point is the Plan keyboard one only.
 **Scope:** small concurrent P23 feature slice — the smallest robust inverse of Wall subdivision.
-**Tracker note:** this file carries no tracker P-number yet. Per `docs/plans/README.md`
-Rule 1, numbers are assigned on registration; the child-plan exception covers the
-`P23.*` working title. Rename on registration; do not consume a number here.
-**Branch:** `feat/p23-junction-dissolve`.
+**Tracker note:** merged **without consuming a tracker P-number** — per `docs/plans/README.md`
+Rule 1, the child-plan exception covers the `P23.*` working title, and this slice closed before
+registration, so no number is assigned and none is owed. It is recorded in the tracker's P23
+row and listed there under *pending archival* (the live file has not been moved yet).
+**Branch:** `feat/p23-junction-dissolve` — **merged via PR #57**; branch retained.
 **Baseline:** `main` at P23.12 merged + PR #56 anchor-release fix (HEAD `c2a2404`
 at plan time; rebase onto the P23.13-ready tree before implementation).
 

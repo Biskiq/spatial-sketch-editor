@@ -145,7 +145,8 @@ prerequisite contract for P23.11–P23.16.
   vocabulary.
 - **GitHub issues absorbed or explicitly deferred:** No current issue fully owns
   this gap. Resolves P23.6e's documented unavailable short-reference gate and the
-  real-browser raw-ID legibility problem it leaves in the 268 px Navigator rail.
+  real-browser raw-ID legibility problem it leaves in the narrow Navigator rail
+  (supported range 240–300 px).
   Explicitly defers a general tagging/taxonomy system and building/storey/zone IA.
 - **Key architecture invariants:** Display name/reference is never canonical
   identity or connectivity; canonical IDs remain the only identity/connectivity
@@ -234,29 +235,67 @@ prerequisite contract for P23.11–P23.16.
   the complete direct-edit, curve and identity vocabulary instead of being redone
   after each capability lands.
 
-### P23.14 — Build shell, Navigator and Inspector finish
+### P23.14 — Editor Shell & Visual System Foundation
 
-- **Purpose / product outcome:** Make the complete Layout workflow coherent and
-  keyboard-usable across toolbar, Hierarchy/Navigator, Inspector, context menus,
-  status and Document controls.
-- **Scope:** Bounded polish of the Scene Plan Build journey: consistent selected
-  headers/names/references and property grouping, clear enabled/disabled reasons,
+> **Scope change (owner review, 2026-09-17).** This slice was registered on
+> 2026-09-14 as *"Build shell, Navigator and Inspector finish"* with bounded polish
+> scope, and **wholesale shell redesign** was listed as a non-goal. That framing is
+> superseded. P23.14 is now the slice that establishes the shell's visual system and
+> interaction grammar. The previously bounded work is **retained inside** the larger
+> outcome (not dropped), and the old non-goal is replaced by a narrower boundary:
+> product/domain architecture, document ownership, selection/history authority,
+> navigation and camera systems, visitor runtime, and future P24/P26 capability
+> semantics stay out of scope. Slice design context:
+> [`design/P23.14-shell-design-context.md`](../design/P23.14-shell-design-context.md).
+
+- **Purpose / product outcome:** Establish one coherent, extensible editor-shell
+  **visual system and interaction grammar** — across Scene/Camera, Plan/3D,
+  Navigator/hierarchy, Inspector, workspace ribbon and toolbars, Timeline, status
+  surfaces, menus and popovers, overlays, and focus/selection/error states — with a
+  high enough ceiling that future P24, P26 and later capability can normally enter
+  through the same language without a new shell redesign. The complete Layout
+  workflow stays coherent and keyboard-usable across toolbar, Hierarchy/Navigator,
+  Inspector, context menus, status and Document controls.
+- **Scope:** The shell may substantially revise shell presentation, hierarchy, layout
+  composition, control grouping, density, typography, iconography, surfaces, borders
+  and elevation, visual state treatment, panel composition, timeline integration, and
+  the canvas/chrome relationship — plus the reusable grammar other surfaces inherit:
+  property-section and property-row grammar, toolbar groups, segmented selectors,
+  mode/tool treatment, panel headers, status/warning/refusal treatments, contextual
+  instrument framing, selection/focus/hover/disabled states, hierarchy rows,
+  menu/popover grammar, Timeline shell grammar, and the spacing/type/icon/token
+  systems. **Architecture and ownership contracts are preserved**: domain/view
+  authority, one selection authority and one history stack, document ownership,
+  navigation and camera systems, visitor isolation. **Retained bounded work**
+  (formerly the whole slice): consistent selected headers/names/references and
+  property grouping, clear enabled/disabled reasons,
   action and destructive-action placement, focus continuity between Plan,
   Navigator and Inspector, accessible tablists/context menus/Document and Project
   Row popovers, semantic color-token cleanup, and status-hint contrast. Preserve
   P23.6e page/history/reveal state and canonical selection routing. Reconcile the
   real-browser P23.6e density issue exposed by expanded Room Wall rows: today each
   Wall can render a non-selectable `Ends <junction> · <junction>` relation row.
-  After P23.12 compact references land, evaluate the final rail at its canonical
-  268 px width with the **preferred default of removing that `Ends` row from
+  After P23.12 compact references land, evaluate the final rail across its
+  supported **240–300 px range, including the 240 px minimum**, with the
+  **preferred default of removing that `Ends` row from
   normal Room Wall disclosures**. A Wall disclosure should normally show hosted
   Openings; `Boundary Junctions (n)` remains the Room-context Junction inventory
   and the global Junctions page remains the architecture-wide index. Do not solve
   the density/affordance problem by making `Ends` another Junction-selection
   surface. If final usability review retains the relation, it must use compact
   references and unmistakable non-entity metadata styling.
+- **Future-feature boundary:** P23.14 builds the visual operating system, not
+  speculative future functionality. It may establish the grammar P24/P26 capabilities
+  will inhabit and must leave each a clear extension path, but it does **not**
+  implement P24 multi-selection capability, material/light/environment workflows or
+  placement/support semantics, and does not implement P26 Section, Wall Elevation,
+  Ceiling Focus or crop/depth/reveal behavior — no fake mixed-value UI, no placeholder
+  Section controls, no unused Reveal affordances shipped to claim readiness. A later
+  feature may introduce a genuinely new primitive, but that requires explicit
+  justification rather than creating a parallel UI language by default.
 - **Major dependencies:** Merged P23.6e Navigator; P23.12 naming; P23.13 final
-  Plan affordances; existing shell and Inspector contracts.
+  Plan affordances; existing shell and Inspector contracts; the P23.14 shell design
+  context referenced above.
 - **GitHub issues absorbed or explicitly deferred:** Absorbs #34, #35, #38, #39,
   #40 and #41. Also owns the bounded P23.6e Navigator-density follow-up above;
   this is presentation/IA polish, not a new topology or selection feature. Defers
@@ -269,22 +308,44 @@ prerequisite contract for P23.11–P23.16.
   representations but Wall accordions do not become a second Junction-selection
   authority; accessibility work changes semantics/focus, not Camera graph/motion,
   persistence or authored ownership; visitor bundles import no editor shell code.
-- **Clear non-goals:** Wholesale shell redesign, asset-library redesign, Camera
-  sidebar redesign, 3D control-popover remediation, material authoring, auth or
-  persistence changes, multi-selection, new editor-local entity truth, or a
-  topology-explorer tree that explodes every Wall/Junction relationship.
+- **Clear non-goals:** P23.14 does not redesign product or domain architecture,
+  document ownership, selection/history authority, the navigation or camera systems,
+  the visitor runtime, or future P24/P26 capability semantics — those contracts are
+  preserved and must be *hosted*, not re-decided. Also out of scope: asset-library
+  redesign, Camera sidebar redesign, 3D control-popover remediation, material
+  authoring, auth or persistence changes, multi-selection *capability*, new
+  editor-local entity truth, a topology-explorer tree that explodes every
+  Wall/Junction relationship, P23.15's junction geometry, and speculative future view
+  controls. P23.14 must make the shell *able* to host the P26 view-taxonomy answer; it
+  does not decide it.
 - **Exit criteria:** The core Build loop is usable by pointer and keyboard;
   relevant popovers/menus/tabs enter, navigate, dismiss and restore focus
   correctly; P23.6e page/search/filter/reveal state survives shell changes;
   Inspector fields/actions are comprehensible and use the P23.12 identity
-  contract; the 268 px Navigator remains calm with real names/references and does
+  contract; the Navigator remains calm across the supported **240–300 px range,
+  including the 240 px minimum**, with real names/references and does
   not present inert endpoint metadata as a competing selectable entity surface;
   `Boundary Junctions` and the global Junctions page remain the Junction inventory
   surfaces; a focused Scene Plan accessibility pass has no known blocking
-  violations in the included surfaces.
+  violations in the included surfaces. Added by the 2026-09-17 re-scope:
+  - the shell reads as **one system** across Scene/Camera and Plan/3D — same
+    primitives, same state semantics, same selection identity, differentiated only
+    where domain ownership genuinely differs;
+  - the selected shell grammar demonstrates a **credible extension path** for the
+    P24/P26-sensitive content classes named in the design context, **without
+    pre-implementing them** — a new state or action enters through that grammar
+    instead of creating a parallel one;
+  - **one deterministic selection authority** survives the shell change (Layout stays
+    single-target; an ordered selection set with one primary/active entity must be
+    able to extend it without a second selection truth);
+  - P23.15's derived 3D wall/junction geometry is **not** compensated for in shell
+    presentation.
 - **Ordering rationale:** It follows final Plan and naming decisions so shell
   polish can integrate the real end-state controls once; it remains separate from
-  Plan rendering and domain semantics to keep the change bounded.
+  Plan rendering and domain semantics to keep the change bounded. It now also sits
+  immediately before P23.15 and P24, which is why it owns the visual system rather
+  than local polish: those slices should **extend this grammar** instead of each
+  introducing their own.
 
 ### P23.15 — Junction-correct wall-first 3D
 
@@ -368,7 +429,7 @@ P23.10 merged baseline
   → P23.11 Canonical curved Walls and render-safe validation
   → P23.12 Architectural names and stable display identity
   → P23.13 Architectural Plan drafting finish
-  → P23.14 Build shell, Navigator and Inspector finish
+  → P23.14 Editor Shell & Visual System Foundation
   → P23.15 Junction-correct wall-first 3D
   → P23.16 Final whole-product integration and P23 closeout gate
 ```
@@ -433,7 +494,8 @@ repository; they therefore have no disposition.
    Room-owned curve editing into the P23 product contract.
 9. P23.6e documented stable short architecture references as unavailable and
    fell back to formatted raw IDs. Real-browser review now confirms that fallback
-   is materially noisy in the canonical 268 px rail: for example, the intentional
+   is materially noisy in the canonical rail at its supported 240–300 px range: for
+   example, the intentional
    non-selectable Wall relation row renders long endpoint labels as
    `Ends Junction Chain … · Junction Chain …`. P23.12 closes the identity/reference
    gap; P23.14 owns the final density/affordance decision and must not turn that
@@ -462,7 +524,7 @@ P23.10 is now landed; the remaining implementation sequence begins at P23.11:
 | P23.11 | Canonical curved Walls and render-safe validation |
 | P23.12 | Architectural names and stable display identity |
 | P23.13 | Architectural Plan drafting finish |
-| P23.14 | Build shell, Navigator and Inspector finish |
+| P23.14 | Editor Shell & Visual System Foundation (re-scoped 2026-09-17; formerly "Build shell, Navigator and Inspector finish") |
 | P23.15 | Junction-correct wall-first 3D |
 | P23.16 | Final whole-product integration and P23 closeout gate |
 
