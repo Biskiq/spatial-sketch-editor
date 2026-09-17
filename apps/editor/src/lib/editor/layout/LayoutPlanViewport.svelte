@@ -130,6 +130,7 @@
 		resolvePlanSalience,
 		type PlanSalience
 	} from './plan-salience';
+	import { createPlanDimensionMemory } from './plan-dimensions';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -1101,6 +1102,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				reason: roomLabelReconsiderReason,
 				settleGeneration: roomLabelSettleGeneration
 			},
+			// P23.13 S6 / §7 — the dimension lane freeze. One memory per viewport,
+			// like the salience hysteresis: §7 freezes the side at gesture start, so
+			// the decision has to outlive a frame without ever entering the document.
+			dimensions: { memory: planDimensionMemory },
 			// P23.13 S4 — the focused control's ring and its owner's control net +
 			// true reference centerline. Geometry comes from canonical compiled
 			// samples, so a curve keeps its curve; a missing owner draws nothing.
@@ -1374,6 +1379,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * history across frames, and a live gesture reads its frozen snapshot instead.
 	 */
 	const salienceMemory = createPlanSalienceMemory();
+	/**
+	 * P23.13 S6 — spec §7's dimension lane freeze. Session state only, never
+	 * persisted and never part of history; cleared with the component.
+	 */
+	const planDimensionMemory = createPlanDimensionMemory();
 	const planSalience = $derived(
 		salienceFreeze ??
 			resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
@@ -1418,6 +1428,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * the resting labels out, so it can never disagree with what is on the paper.
 	 */
 	const roomLabelReadout = $derived(baseInteractionProjection.roomLabelReadout ?? null);
+	/**
+	 * P23.13 S6 — §7's last resort for a working dimension: a measure that could
+	 * not be drawn where it was taken (a span too short to hold its own text, or
+	 * text that would leave the canvas) reports here instead of shrinking. It
+	 * shares the one fixed readout surface, so the viewport still has exactly one
+	 * place that can hold text which has nowhere else to go.
+	 */
+	const measureReadout = $derived(baseInteractionProjection.measureReadout ?? null);
 	const rotationHandleHovered = $derived.by(() => {
 		if (interaction.tool !== 'select' || !rotationHoverScreen) return false;
 		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
@@ -4118,14 +4136,28 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		Read-only, non-mutating and temporary: never a second Inspector, never a
 		rename field, and never a reason to force an overlap into the drawing.
 	-->
-	{#if roomLabelReadout}
-		<div class="plan-readout" role="note" aria-label="Selected room identity">
-			<span class="plan-readout-primary">{roomLabelReadout.primary}</span>
-			{#if roomLabelReadout.reference}
-				<span class="plan-readout-reference">{roomLabelReadout.reference}</span>
+	{#if roomLabelReadout || measureReadout}
+		<div
+			class="plan-readout"
+			role="note"
+			aria-label={measureReadout && !roomLabelReadout ? 'Working measurements' : 'Selected room identity'}
+		>
+			{#if roomLabelReadout}
+				<span class="plan-readout-primary">{roomLabelReadout.primary}</span>
+				{#if roomLabelReadout.reference}
+					<span class="plan-readout-reference">{roomLabelReadout.reference}</span>
+				{/if}
+				{#if roomLabelReadout.area}
+					<span class="plan-readout-area">{roomLabelReadout.area}</span>
+				{/if}
 			{/if}
-			{#if roomLabelReadout.area}
-				<span class="plan-readout-area">{roomLabelReadout.area}</span>
+			{#if measureReadout}
+				{#each measureReadout as entry (entry.key)}
+					<span class="plan-readout-measure">
+						<span class="plan-readout-measure-name">{entry.measure}</span>
+						{entry.value}
+					</span>
+				{/each}
 			{/if}
 		</div>
 	{/if}
@@ -4180,6 +4212,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	.plan-readout-primary { font-weight: 650; overflow-wrap: anywhere; }
 	.plan-readout-reference,
 	.plan-readout-area { color: var(--editor-plan-muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+	/* P23.13 S6 — a detached measure still has to name itself (§7: the number is
+	   working information, not a value the geometry makes obvious any more). */
+	.plan-readout-measure { display: flex; gap: 0.35rem; align-items: baseline; color: var(--editor-plan-label); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+	.plan-readout-measure-name { color: var(--editor-plan-muted); }
 	/* Narrow drawings reflow the readout above the plan instead of over it. */
 	@container (max-width: 720px) { .plan-readout { left: 12px; right: 12px; max-width: none; } }
 	.plan-meta .warning { color: var(--editor-danger-fg); }

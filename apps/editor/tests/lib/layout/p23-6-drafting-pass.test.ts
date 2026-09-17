@@ -26,6 +26,7 @@ import {
 	updateWallChainCursor
 } from '$lib/editor/layout/layout-interaction';
 import {
+	PLAN_CLOSE_AT_JUNCTION_COPY,
 	buildPlanInteractionProjection,
 	interiorLabelPoint,
 	withLayoutSnapFeedback,
@@ -139,8 +140,13 @@ describe('P23.6 wall-drawing candidate feedback', () => {
 			model,
 			emptyContext({ runStartPoint: [0, 0] })
 		);
-		const readout = textsOf(projection).find((label) => label.style === 'dimension-label');
-		expect(readout?.text).toBe('Close · 1.95 m');
+		// P23.13 S6 — §3 ratifies the closure copy and makes it *the cue's* own
+		// words: `Close at junction`, anchored on the run start. The leg's length is
+		// a separate measure now, so one label no longer answers two questions.
+		const labels = textsOf(projection).filter((label) => label.style === 'dimension-label');
+		const cueLabel = labels.find((label) => label.text === PLAN_CLOSE_AT_JUNCTION_COPY);
+		expect(cueLabel).toMatchObject({ anchor: [0, 0] });
+		expect(labels.map((label) => label.text)).toContain('1.95 m');
 		const cue = projection.drafts.find(
 			(primitive) => primitive.kind === 'circle' && primitive.style === 'snap-marker'
 		);
@@ -689,11 +695,17 @@ describe('P23.6 room label interior anchors and suppression', () => {
 		const dimensions = (projection: ReturnType<typeof buildPlanInteractionProjection>) =>
 			textsOf(projection).filter((primitive) => primitive.style === 'dimension-label');
 		const near = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
-		expect(dimensions(near).length).toBeGreaterThan(0);
+		// P23.13 S6 — §7's Rect Room row: "Room area, no permanent dimension chain"
+		// at rest, and a selected Room is at rest. The old pin here asserted that a
+		// selected Room's four edge labels outranked its name; that chain is exactly
+		// what §7 retires, so the pin now holds the replacement: identity only.
+		expect(dimensions(near)).toHaveLength(0);
 		expect(roomName(near)).toHaveLength(1);
 		state.planView.pixelsPerMeter = 6;
 		const far = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
-		expect(dimensions(far).length).toBeGreaterThan(0);
+		// Zoom changes nothing about the rule — a chain that is not drawn near is
+		// not drawn far, which is the point of retiring it rather than gating it.
+		expect(dimensions(far)).toHaveLength(0);
 		expect(roomName(far)).toHaveLength(0);
 	});
 });

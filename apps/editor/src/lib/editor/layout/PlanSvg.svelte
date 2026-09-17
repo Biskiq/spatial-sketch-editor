@@ -622,7 +622,17 @@
 	.rotation-arm { fill: none; stroke: var(--editor-accent-pressed); stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-handle { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-feedback { fill: var(--editor-plan-label); font: 700 11px var(--editor-font); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; user-select: none; }
-	.dimension-label { fill: var(--editor-plan-muted); font: 10px var(--editor-font); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+	/* P23.13 S6 / §7 — "0.75 px witnesses, 4 px slanted ticks and horizontal
+	   11 px mono text on a small paper knockout". One ink for the whole
+	   instrument (line, witnesses, ticks) so a witness can never be mistaken for
+	   cut geometry, and mono so digits cannot shift the text box the placer
+	   already measured. */
+	.dimension-witness { fill: none; stroke: var(--editor-plan-muted); stroke-width: 0.75; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S6 / §7 — the placer measures the text box to place it: the value is
+	   centred on the lane point and baseline-sits on the line, so the paint layer
+	   must anchor it at the middle. A start-anchored label would drift right by
+	   half its own width and make the placer's fits/readout arithmetic a lie. */
+	.dimension-label { fill: var(--editor-plan-muted); font: 11px var(--editor-font-mono, ui-monospace), SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
 	.draft-outline { fill: rgb(47 140 255 / 10%); stroke: var(--editor-plan-selection); stroke-width: 2; stroke-dasharray: 8 4; vector-effect: non-scaling-stroke; }
 	.draft-outline-partition { fill: rgb(201 134 31 / 10%); stroke: #c9861f; stroke-width: 2; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 	/* P23.6 — degenerate candidate leg: invalid before commit, never committed. */

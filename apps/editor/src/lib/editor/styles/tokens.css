@@ -250,6 +250,9 @@
 	--editor-font:
 		'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
 		sans-serif;
+	/* P23.13 S6 / §7 — working dimensions are set in a mono face: digits must not
+	   reflow the text box the dimension placer already measured. */
+	--editor-font-mono: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
 	--editor-font-size-title: 16px;
 	--editor-font-size-panel-title: 14px;
 	--editor-font-size-toolbar: 13px;

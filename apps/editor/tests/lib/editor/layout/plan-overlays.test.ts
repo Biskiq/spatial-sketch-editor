@@ -20,6 +20,7 @@ import {
 	withArchitectureEditIntent
 } from '$lib/editor/layout/plan-overlays';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
+import { worldToPlanScreen } from '$lib/editor/layout/layout-plan-transform';
 
 /** One live Junction-move gesture, with the fields the intent gate reads. */
 function junctionGesture(
@@ -346,13 +347,12 @@ describe('buildPlanInteractionProjection', () => {
 			'vertex-handle',
 			'vertex-handle'
 		]);
+		// P23.13 S6 — §7's Rect Room row: "Room area, no permanent dimension
+		// chain". The four edge labels this pin used to measure are the chain §7
+		// retires, so the label layer holds the identity stack and nothing else.
 		expect(projection.labels.map((primitive) => (primitive.kind === 'text' ? primitive.text : null))).toEqual([
-			'6.00 m',
-			'4.00 m',
-			'6.00 m',
-			'4.00 m',
-			// P23.13 S3 — the persistent Room label stack rides the labels layer
-			// last, name first and the derived area beneath it.
+			// P23.13 S3 — the persistent Room label stack rides the labels layer,
+			// name first and the derived area beneath it.
 			document.floors[0]!.rooms[0]!.name,
 			'24.0 m²'
 		]);
@@ -421,13 +421,64 @@ describe('buildPlanInteractionProjection', () => {
 		beginRectangle(state, [0, 0]);
 		updateRectangle(state, [2, 2]);
 		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
-		expect(projection.drafts.map((primitive) => primitive.style)).toEqual([
+		const styles = projection.drafts.map((primitive) => primitive.style);
+		expect(styles.slice(0, 5)).toEqual([
 			'draft-outline',
 			'draft-point',
 			'draft-point',
 			'draft-point',
 			'draft-point'
 		]);
+		// P23.13 S6 — §7's Rect Room row also draws Width + depth around the
+		// candidate enclosure, so the draft layer carries the instrument with the
+		// outline: per face two witnesses, the dimension line, two 4 px ticks.
+		expect(styles.slice(5)).toEqual(Array(10).fill('dimension-witness'));
+		expect(
+			projection.labels
+				.filter((primitive) => primitive.style === 'dimension-label')
+				.map((primitive) => (primitive.kind === 'text' ? primitive.text : null))
+		).toEqual(['2.00 m', '2.00 m']);
+	});
+
+	it('hands the dimension instrument over as world geometry, on §7s lanes', () => {
+		// The paint layer projects every primitive with `worldToPlanScreen`, and
+		// the placer measures in screen pixels. A witness pushed in screen space
+		// would therefore be projected a *second* time and land pixelsPerMeter×
+		// away — ink the user never sees, while the text (which round-trips through
+		// its world anchor) stayed put and made the mistake look like "no
+		// witnesses". So the instrument is pinned twice: on the paper at all, and
+		// 18 px from the face it measures.
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [2, 2]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		const instrument = projection.drafts.filter(
+			(primitive) => primitive.kind === 'polyline' && primitive.style === 'dimension-witness'
+		);
+		expect(instrument).toHaveLength(10);
+		const screen = (key: string): [number, number][] => {
+			const primitive = instrument.find((candidate) => candidate.key.includes(key));
+			if (primitive?.kind !== 'polyline') throw new Error(`missing ${key}`);
+			return primitive.points.map((point) => worldToPlanScreen(view, point));
+		};
+		for (const primitive of instrument) {
+			if (primitive.kind !== 'polyline') continue;
+			for (const [x, y] of primitive.points.map((point) => worldToPlanScreen(view, point))) {
+				expect(x).toBeGreaterThanOrEqual(0);
+				expect(x).toBeLessThanOrEqual(view.width);
+				expect(y).toBeGreaterThanOrEqual(0);
+				expect(y).toBeLessThanOrEqual(view.height);
+			}
+		}
+		// Width face is the candidate's top edge (world z = 0 → screen y = 300);
+		// its lane sits 18 px outside the enclosure, where the centroid is not.
+		for (const point of screen('dimension-line')) {
+			expect(Math.abs(point[1] - (300 - 18))).toBeLessThan(1e-6);
+		}
 	});
 
 	it('emits rotation feedback while dragging a rotation', () => {

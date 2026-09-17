@@ -111,6 +111,12 @@ export type PlanStyleToken =
 	// P23.13 S5 / §7 — the winning relation's short word. Snap is presented by
 	// shape + word (§6 non-colour identity), never by colour alone.
 	| 'snap-relation-label'
+	/**
+	 * P23.13 S6 / §7 — a dimension's witness line, its 4 px slanted end ticks and
+	 * the stubs from the measured ends: one 0.75 px secondary ink for the whole
+	 * instrument, so a witness can never be mistaken for cut geometry.
+	 */
+	| 'dimension-witness'
 	| 'dimension-label'
 	| 'selection-label'
 	// P23.6 — persistent Room name (presentation of Room metadata, never a
@@ -506,6 +512,13 @@ export type PlanInteractionProjection = {
 		reference: string | null;
 		area: string | null;
 	};
+	/**
+	 * P23.13 S6 / §7 — dimension measures that could not be shown where they
+	 * belong: a short span pushes its text outward, and what still will not fit
+	 * moves here rather than being shrunk or dropped. Working information, not an
+	 * annotation: read-only, never persisted, and never a second Inspector.
+	 */
+	measureReadout?: readonly { key: string; measure: string; value: string }[];
 };
 
 export type PlanRenderModel = {

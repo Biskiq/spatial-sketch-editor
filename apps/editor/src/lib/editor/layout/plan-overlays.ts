@@ -1,5 +1,9 @@
 import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
-import { LAYOUT_PLAN_SNAP_RADIUS_CSS_PX, pointStrictlyInsidePolygon } from '@portfolio/layout-core';
+import {
+	dedupeWallSpans,
+	LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
+	pointStrictlyInsidePolygon
+} from '@portfolio/layout-core';
 import type { LayoutPreviewModel } from './layout-mesh-factory';
 import {
 	primitiveDraftFootprint,
@@ -9,7 +13,7 @@ import {
 	type LayoutInteractionState,
 	type LayoutSelection
 } from './layout-interaction';
-import { worldToPlanScreen, type PlanViewportState } from './layout-plan-transform';
+import { planScreenToWorld, worldToPlanScreen, type PlanViewportState } from './layout-plan-transform';
 import { geometryId } from '$lib/layout/layout-geometry-types';
 import { layoutArchitecturalPreset } from '$lib/layout/layout-wall-first-precision';
 import { isLayoutPresetTool, type LayoutPresetTool } from './layout-interaction';
@@ -18,13 +22,18 @@ import type {
 	SnapFeatureKind,
 	SnapResolution
 } from '@portfolio/layout-core';
-import type { PlanCurveControlCandidate } from './plan-hit';
+import { compiledPhysicalWallLength, type PlanCurveControlCandidate } from './plan-hit';
 import { PLAN_CONTROL_MARKS, type PlanFocusGeometry } from './plan-acquisition';
+import { PLAN_SNAP_EXACT_VALUE_LABEL, planSnapGlyph, planSnapRelationLabelExtentPx } from './plan-snap-grammar';
 import {
-	PLAN_SNAP_EXACT_VALUE_LABEL,
-	planSnapGlyph,
-	planSnapRelationLabelExtentPx
-} from './plan-snap-grammar';
+	derivePlanDimensions,
+	placePlanDimensions,
+	planDimensionGestureKey,
+	planDimensionText,
+	planSidesWithRoom,
+	type PlanDimensionFacts,
+	type PlanDimensionMemory
+} from './plan-dimensions';
 import {
 	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
 	PLAN_ROOM_LABELS_MIN_PX_PER_M
@@ -86,6 +95,13 @@ export const SNAP_RELATION_LABEL_INSET_PX = 4;
  *
  * Without a view (a pure caller, a unit test) the preferred side is returned, so
  * this adds a placement rule rather than a requirement on callers.
+ *
+ * The room on each side comes from `planSidesWithRoom`, the same measurement
+ * §7's frozen dimension lane reads, so no two side policies in the Plan can
+ * disagree about how much space a side actually has. What differs is the policy:
+ * a lane is *offset* to the roomier side and frozen for the gesture, while this
+ * pointer-anchored word reads the roomier side per event, because the winner is
+ * recomputed on every pointer move and there is nothing to hold.
  */
 export function planSnapRelationLabelOffsetPx(
 	text: string,
@@ -100,12 +116,26 @@ export function planSnapRelationLabelOffsetPx(
 	const [screenX, screenY] = worldToPlanScreen(view, point);
 	const extent = planSnapRelationLabelExtentPx(text);
 	const inset = SNAP_RELATION_LABEL_INSET_PX;
-	// Above the mark unless the word's own box would cross the top edge.
-	const above = screenY - SNAP_RELATION_LABEL_OFFSET_PX - extent.height >= inset;
-	// Right of the mark unless the word would run past the right edge. Flipping
-	// moves the word's *anchor* by its width, because the paint layer lays the
-	// text out from its anchor to the right.
-	const toTheRight = screenX + SNAP_RELATION_LABEL_OFFSET_PX + extent.width < view.width - inset;
+	const room = planSidesWithRoom(
+		{
+			minX: screenX,
+			maxX: screenX + extent.width,
+			minY: screenY - extent.height,
+			maxY: screenY
+		},
+		view
+	);
+	// How much a placement would overrun the canvas on that side: positive means
+	// the word's own box still has that much clear. The preferred side keeps the
+	// word while it fits; otherwise the roomier side takes it, so a winner in a
+	// corner lands on the side with space instead of on the other clipped one.
+	const needed = (span: number) => SNAP_RELATION_LABEL_OFFSET_PX + span;
+	const aboveSlack = room.abovePx - needed(extent.height);
+	const belowSlack = room.belowPx - needed(extent.height);
+	const rightSlack = room.rightPx - needed(extent.width);
+	const leftSlack = room.leftPx - needed(extent.width);
+	const above = aboveSlack >= inset || aboveSlack >= belowSlack;
+	const toTheRight = rightSlack >= inset || rightSlack >= leftSlack;
 	return [
 		toTheRight ? preferred[0] : -SNAP_RELATION_LABEL_OFFSET_PX - extent.width,
 		above ? preferred[1] : SNAP_RELATION_LABEL_OFFSET_PX + extent.height
@@ -127,6 +157,13 @@ const OPENING_SLIDE_GRIP_OFFSET_PX = 4;
 const FOCUS_RING_CLEARANCE_FACTOR = 1.45;
 const FOCUS_RING_OFFSET_PX = 1;
 const FOCUS_RING_GAP_PX = 2.5;
+/**
+ * P23.13 S6 — spec §7's ratified copy for a candidate that closes on the run
+ * start ("otherwise say `Close at junction`"). S8 owns gating the closure cue
+ * on canonical face evidence; S6 owns not printing a length under its name.
+ */
+export const PLAN_CLOSE_AT_JUNCTION_COPY = 'Close at junction';
+
 /** Octagonal stop mark diameter of a refused proposal (spec §6). */
 const REFUSAL_STOP_RADIUS_PX = 7;
 const ROTATION_HANDLE_OFFSET_PX = 28;
@@ -150,6 +187,17 @@ export type PlanRoomLabelContext = {
 	memory?: RoomLabelMemory;
 	reason?: RoomLabelReconsiderReason;
 	settleGeneration?: number;
+};
+
+/**
+ * P23.13 S6 — the dimension instrument's state (spec §7). §7 freezes the lane
+ * side at gesture start, so the freeze has to outlive a frame; it is passed in
+ * exactly like the Room label memo rather than held as module state, and
+ * omitting it simply means each frame decides its own side (what a pure test
+ * wants).
+ */
+export type PlanDimensionContext = {
+	memory?: PlanDimensionMemory;
 };
 
 /**
@@ -181,6 +229,8 @@ export type PlanWallFirstContext = {
 	 * the document, the compile result and history are never written.
 	 */
 	roomLabels?: PlanRoomLabelContext;
+	/** P23.13 S6 — dimension instrumentation state (the §7 lane freeze). */
+	dimensions?: PlanDimensionContext;
 	/**
 	 * P23.13 S4 / §6 — the focused Plan control and its owner's control
 	 * geometry. Focus is presentation/routing state only; it never touches
@@ -387,14 +437,10 @@ function pushWallOpeningAffordances(
 			});
 		}
 	}
-	labels.push({
-		kind: 'text',
-		key: geometryId(['plan', 'overlay', 'opening-handle-label', selection.openingId]),
-		anchor: [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2],
-		text: `${Math.hypot(edges.end[0] - edges.start[0], edges.end[1] - edges.start[1]).toFixed(2)} m`,
-		offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
-		style: 'dimension-label'
-	});
+	// P23.13 S6 — the width readout that used to sit here is now derived: §7
+	// gives a selected Opening its width as the selected-idle measure, so the
+	// label comes from the dimension set with the witnesses that explain it
+	// instead of from an ad-hoc string beside the handles.
 }
 
 /**
@@ -418,14 +464,9 @@ function pushWallOpeningDragPreview(
 		points: [pointAtWallOffset(span, drag.candidateOffset), pointAtWallOffset(span, drag.candidateOffset + width)],
 		style: drag.valid ? 'opening-drag-preview' : 'opening-drag-preview-invalid'
 	});
-	labels.push({
-		kind: 'text',
-		key: geometryId(['plan', 'overlay', 'opening-drag-label']),
-		anchor: pointAtWallOffset(span, drag.candidateOffset + width / 2),
-		text: `${drag.candidateOffset.toFixed(2)} m`,
-		offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
-		style: 'dimension-label'
-	});
+	// P23.13 S6 — the candidate's offset lives in the derived dimension set (§7's
+	// Opening row: width plus offset and clearance), so this preview no longer
+	// prints a second, differently-rounded copy of the same number.
 }
 
 /** Screen position of the rotation handle (top-center + 28px vertical offset). */
@@ -881,6 +922,185 @@ export function withLayoutSnapFeedback(
 	return { ...projection, drafts: [...projection.drafts, ...primitives] };
 }
 
+/**
+ * P23.13 S6 — the canonical numeric truth the dimension derivation reads (spec
+ * §7). Every answer comes from the compiled model the projection already has:
+ *
+ * - **Arc length**, straight or curved, is `compiledPhysicalWallLength` — the
+ *   last compiled span's `endDistance`. One number, one source, so a curved
+ *   Wall's length can never become the chord between its endpoints.
+ * - **Whether the host is straight** is `dedupeWallSpans`' `straight` flag, the
+ *   compiled-geometry answer the snap engine already relies on, rather than a
+ *   heuristic over how many samples happened to be emitted.
+ * - **The bracketable span** is only offered for a straight Wall: a curved
+ *   Wall's own start/end is its chord, and bracketing it would publish a shorter
+ *   wall than the one that exists.
+ * - **Clearance** is passive working information (§7): the smallest gap from the
+ *   Opening to a host end or a neighbouring Opening, and `null` when the host
+ *   has neither.
+ */
+function planDimensionFacts(model: LayoutPreviewModel): PlanDimensionFacts {
+	const merges = new Map(
+		dedupeWallSpans(model.queries.spans.filter((span) => span.kind === 'wall')).map((merge) => [
+			merge.key,
+			merge
+		])
+	);
+	const openingSpans = model.queries.spans.filter(
+		(span) => span.kind === 'opening' && span.openingId !== undefined
+	);
+	return {
+		wallLength: (wallKey) =>
+			merges.has(wallKey) ? compiledPhysicalWallLength(model.queries, wallKey) : null,
+		wallIsStraight: (wallKey) => merges.get(wallKey)?.straight ?? true,
+		wallSpan: (wallKey) => {
+			const merge = merges.get(wallKey);
+			if (!merge || !merge.straight) return null;
+			return [merge.start, merge.end] as const;
+		},
+		wallAnchor: (wallKey) => {
+			const merge = merges.get(wallKey);
+			if (!merge) return null;
+			if (merge.straight) return midpointOf(merge.start, merge.end);
+			// A curved host's label sits on the curve, not on the chord: walk the
+			// canonical spans to the half-arc point.
+			const spans = model.queries.spans
+				.filter(
+					(span) => span.kind === 'wall' && (span.wallKey ?? span.segmentId) === wallKey
+				)
+				.sort((a, b) => a.startDistance - b.startDistance);
+			let total = 0;
+			for (const span of spans) total += Math.hypot(span.end[0] - span.start[0], span.end[1] - span.start[1]);
+			let walked = 0;
+			for (const span of spans) {
+				const length = Math.hypot(span.end[0] - span.start[0], span.end[1] - span.start[1]);
+				if (walked + length >= total / 2) {
+					const t = length > 0 ? (total / 2 - walked) / length : 0;
+					return [span.start[0] + (span.end[0] - span.start[0]) * t, span.start[1] + (span.end[1] - span.start[1]) * t] as LayoutVec2;
+				}
+				walked += length;
+			}
+			return spans.length > 0 ? ([...spans[spans.length - 1]!.end] as LayoutVec2) : null;
+		},
+		opening: (wallKey, openingId) => {
+			const edges = wallOpeningEdgeWorldPoints(model, openingId);
+			const spans = openingSpans.filter((span) => span.openingId === openingId);
+			const first = spans[0];
+			if (!edges || !first) return null;
+			const width = Math.hypot(edges.end[0] - edges.start[0], edges.end[1] - edges.start[1]);
+			const offset = first.startDistance;
+			const hostLength = compiledPhysicalWallLength(model.queries, wallKey);
+			const gaps: number[] = [offset, hostLength - (offset + width)];
+			for (const span of openingSpans) {
+				if (span.openingId === openingId) continue;
+				if (span.roomId !== undefined) continue;
+				if ((span.wallKey ?? span.segmentId) !== wallKey) continue;
+				const spanWidth = Math.hypot(span.end[0] - span.start[0], span.end[1] - span.start[1]);
+				gaps.push(Math.abs(span.startDistance - (offset + width)));
+				gaps.push(Math.abs(offset - (span.startDistance + spanWidth)));
+			}
+			const finite = gaps.filter((gap) => Number.isFinite(gap) && gap >= 0);
+			return {
+				width,
+				offset,
+				span: [edges.start, edges.end] as const,
+				anchor: midpointOf(edges.start, edges.end),
+				clearance: finite.length > 0 ? Math.min(...finite) : null
+			};
+		}
+	};
+}
+
+function midpointOf(a: LayoutVec2, b: LayoutVec2): LayoutVec2 {
+	return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+}
+
+/**
+ * P23.13 S6 — derive §7's dimension set from the live gesture, place it on the
+ * canvas (lanes, frozen side, witnesses, ticks, text) and hand back whatever had
+ * to move to the readout. Presentation only: nothing here is document state,
+ * history, or an input to any planner.
+ */
+function pushPlanDimensions(
+	interaction: LayoutInteractionState,
+	model: LayoutPreviewModel,
+	context: PlanDimensionContext | undefined,
+	drafts: PlanRenderPrimitive[],
+	labels: PlanRenderPrimitive[]
+): { readout: { key: string; measure: string; value: string }[] } {
+	const dimensions = derivePlanDimensions(interaction, planDimensionFacts(model));
+	if (dimensions.length === 0) return { readout: [] };
+	const view = interaction.planView;
+	const outcome = placePlanDimensions(dimensions, view, {
+		memory: context?.memory,
+		gestureKey: planDimensionGestureKey(interaction)
+	});
+	/**
+	 * Placement works in screen pixels — lanes, witnesses, ticks and the text
+	 * push-out are px measurements — but a render primitive is world geometry the
+	 * paint layer projects (the plan pans and zooms under a live dimension). So
+	 * every placed point is converted back through the same transform it was
+	 * measured in, which is exactly the round trip the text anchor already uses:
+	 * one instrument, one space, no second scale to keep in sync.
+	 */
+	const toWorld = (point: LayoutVec2): LayoutVec2 => planScreenToWorld(view, point);
+	for (const placement of outcome.placed) {
+		for (const [index, witness] of placement.witnesses.entries()) {
+			drafts.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'dimension-witness', placement.key, String(index)]),
+				points: [toWorld(witness[0]), toWorld(witness[1])],
+				style: 'dimension-witness'
+			});
+		}
+		if (placement.line) {
+			drafts.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'dimension-line', placement.key]),
+				points: [toWorld(placement.line[0]), toWorld(placement.line[1])],
+				style: 'dimension-witness'
+			});
+		}
+		for (const [index, tick] of placement.ticks.entries()) {
+			drafts.push({
+				kind: 'polyline',
+				key: geometryId(['plan', 'overlay', 'dimension-tick', placement.key, String(index)]),
+				points: [toWorld(tick[0]), toWorld(tick[1])],
+				style: 'dimension-witness'
+			});
+		}
+		const dimension = dimensions.find((candidate) => candidate.key === placement.key);
+		if (!dimension) continue;
+		// The paint layer lays text out from its anchor and applies the offset, so
+		// the placed screen point is converted back into a world anchor plus a
+		// screen offset — the same mechanism every other label uses, which keeps
+		// the dimension on the paper scale (§7: never scale text).
+		const anchor = worldToPlanAnchor(placement.text, view);
+		labels.push({
+			kind: 'text',
+			key: geometryId(['plan', 'overlay', 'dimension-text', placement.key]),
+			anchor: anchor.point,
+			offsetPx: anchor.offsetPx,
+			text: planDimensionText(dimension),
+			style: 'dimension-label'
+		});
+	}
+	return { readout: [...outcome.readout] };
+}
+
+/**
+ * Screen point → (world anchor, screen offset) so a placed label rides the same
+ * offset mechanism as every other Plan label instead of escaping the transform.
+ */
+function worldToPlanAnchor(
+	screen: LayoutVec2,
+	view: PlanViewportState
+): { point: LayoutVec2; offsetPx: readonly [number, number] } {
+	const point = planScreenToWorld(view, screen);
+	const projected = worldToPlanScreen(view, point);
+	return { point, offsetPx: [screen[0] - projected[0], screen[1] - projected[1]] };
+}
+
 /** Shared `+NN°` gesture feedback formatting (matches the room label). */
 export function yawFeedbackText(yaw: number): string {
 	const degrees = Math.round((yaw * 180) / Math.PI);
@@ -1056,22 +1276,10 @@ export function buildPlanInteractionProjection(
 				hit: { kind: 'vertex', roomId: selectedRoom.id, vertexIndex: index } satisfies PlanHitIdentity
 			});
 		}
-		for (let edgeIndex = 0; edgeIndex < points.length; edgeIndex += 1) {
-			const start = points[edgeIndex]!;
-			const end = points[(edgeIndex + 1) % points.length]!;
-			const edgeLength = model.rooms.find((room) => room.roomId === selectedRoom.id)?.walls[edgeIndex]?.length;
-			const text = edgeLength === undefined
-				? Math.hypot(end[0] - start[0], end[1] - start[1]).toFixed(2)
-				: edgeLength.toFixed(2);
-			labels.push({
-				kind: 'text',
-				key: geometryId(['plan', 'overlay', 'dimension-label', selectedRoom.id, String(edgeIndex)]),
-				anchor: [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2],
-				text: `${text} m`,
-				offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
-				style: 'dimension-label'
-			});
-		}
+		// P23.13 S6 / §7 — a selected Room shows **no dimension chain**. Its area
+		// belongs to the S3 identity stack and its edges are not working
+		// information once nothing is being edited, so the old per-edge labels are
+		// replaced rather than restyled: a selected Room is not a measured one.
 	}
 
 	for (const record of model.queries.points) {
@@ -1159,28 +1367,26 @@ export function buildPlanInteractionProjection(
 				style: 'draft-point'
 			});
 		}
-		if (chainLeg && !degenerate) {
-			const midpoint: LayoutVec2 = [
-				(chainLeg.start[0] + chainLeg.cursor[0]) / 2,
-				(chainLeg.start[1] + chainLeg.cursor[1]) / 2
-			];
+		if (chainLeg && !degenerate && closing && wallFirst?.runStartPoint) {
+			// P23.13 S6 — the closure cue is not a dimension, so it no longer rides
+			// on the leg's length string (the old `Close · 4.00 m` made one label
+			// answer two questions). §7 ratifies the copy: when the candidate closes
+			// on the run start, the cue *says* so.
+			drafts.push({
+				kind: 'circle',
+				key: geometryId(['plan', 'overlay', 'closure-cue']),
+				center: [...wallFirst.runStartPoint] as LayoutVec2,
+				radiusPx: 6,
+				style: 'snap-marker'
+			});
 			labels.push({
 				kind: 'text',
-				key: geometryId(['plan', 'overlay', 'candidate-length']),
-				anchor: midpoint,
-				text: closing ? `Close · ${chainLeg.length.toFixed(2)} m` : `${chainLeg.length.toFixed(2)} m`,
+				key: geometryId(['plan', 'overlay', 'closure-cue-label']),
+				anchor: [...wallFirst.runStartPoint] as LayoutVec2,
+				text: PLAN_CLOSE_AT_JUNCTION_COPY,
 				offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
 				style: 'dimension-label'
 			});
-			if (closing && wallFirst?.runStartPoint) {
-				drafts.push({
-					kind: 'circle',
-					key: geometryId(['plan', 'overlay', 'closure-cue']),
-					center: [...wallFirst.runStartPoint] as LayoutVec2,
-					radiusPx: 6,
-					style: 'snap-marker'
-				});
-			}
 		}
 	}
 
@@ -1440,6 +1646,19 @@ export function buildPlanInteractionProjection(
 		}
 	}
 
+	// P23.13 S6 — the working dimension set (spec §7), derived from the live
+	// gesture and placed last so its witnesses and text read over the preview
+	// scaffolding they measure. An empty readout is omitted rather than sent as
+	// an empty list, so "no measure had to move" and "the host says nothing" are
+	// the same absence everywhere downstream.
+	const dimensions = pushPlanDimensions(
+		interaction,
+		model,
+		wallFirst?.dimensions,
+		drafts,
+		labels
+	);
+
 	return {
 		selected: toPlanSelection(interaction.selection),
 		hovered,
@@ -1449,7 +1668,8 @@ export function buildPlanInteractionProjection(
 		labels,
 		roomOverrides,
 		objectOverrides,
-		...(roomLabelReadout ? { roomLabelReadout } : {})
+		...(roomLabelReadout ? { roomLabelReadout } : {}),
+		...(dimensions.readout.length > 0 ? { measureReadout: dimensions.readout } : {})
 	};
 }
 
