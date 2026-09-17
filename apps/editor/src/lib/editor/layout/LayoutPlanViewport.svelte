@@ -482,6 +482,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			allowedKinds?: SnapFeatureKind[];
 			excludeOwners?: ReadonlySet<string>;
 			excludePoints?: readonly LayoutVec2[];
+			anchor?: LayoutVec2 | null;
 		} = {}
 	): { point: LayoutVec2; resolution: SnapResolution } {
 		if (!interaction.planView.snapEnabled) {
@@ -492,10 +493,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
 		if (options.excludeOwners) input.excludeOwners = options.excludeOwners;
 		if (options.excludePoints) input.excludePoints = options.excludePoints;
+		const anchor = options.anchor ?? null;
 		const resolution = p2311Measure('snap-resolution', () => resolveLayoutSnap(
 			preview.geometry,
 			point,
-			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
+			{
+				pixelsPerMeter: interaction.planView.pixelsPerMeter,
+				gridStep: LAYOUT_PLAN_GRID_STEP,
+				...(anchor ? { anchor } : {})
+			},
 			input
 		));
 		snapFeedback = resolution;
@@ -511,9 +517,27 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			allowedKinds?: SnapFeatureKind[];
 			excludeOwners?: ReadonlySet<string>;
 			excludePoints?: readonly LayoutVec2[];
+			anchor?: LayoutVec2 | null;
 		} = {}
 	): LayoutVec2 {
 		return resolveLayoutSnapCandidate(point, options).point;
+	}
+
+	/**
+	 * P23.13 S8 / §7 — the anchor the draft's axis family is relative to: the Wall
+	 * run's own start, and nothing else.
+	 *
+	 * One function for both paths that matter, because the guide is only honest if
+	 * the *preview* and the *commit* agree on the anchor. The commit re-resolves at
+	 * the click point (never a remembered candidate), so passing the same anchor
+	 * from the same source is what makes the released Wall exactly the one the
+	 * guide promised. A Rect Room deliberately does not call this: its corner is
+	 * axis-aligned by construction, and an axis lock there would only outrank the
+	 * geometry snaps a rectangle corner actually wants.
+	 */
+	function wallChainSnapAnchor(): LayoutVec2 | null {
+		if (!hasWallChainRun(interaction)) return null;
+		return interaction.wallChainStart ?? null;
 	}
 	// ── P23.10 direct architecture editing ──────────────────────────────────
 	// One immutable baseline snapshot and one Layout transaction per gesture.
@@ -2941,7 +2965,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		) {
 			if (hasWallChainRun(interaction)) {
 				const point = worldPoint(event);
-				updateWallChainCursor(interaction, point ? applyLayoutSnap(point) : null);
+				updateWallChainCursor(
+					interaction,
+					point ? applyLayoutSnap(point, { anchor: wallChainSnapAnchor() }) : null
+				);
 			} else if (interaction.wallChainCursor) {
 				updateWallChainCursor(interaction, null);
 			}
@@ -3616,7 +3643,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * never coordinate proximity and never "a Room appeared".
 	 */
 	function commitWallChainClick(rawPoint: LayoutVec2) {
-		const snapped = resolveLayoutSnapCandidate(rawPoint);
+		// Release truth (S8): the click re-resolves against the live anchor rather
+		// than trusting the hover's remembered candidate, so what the guide showed
+		// is exactly what commits — and a click with no run yet has no anchor, so
+		// the first leg of a chain is never axis-locked to a start that does not
+		// exist.
+		const snapped = resolveLayoutSnapCandidate(rawPoint, { anchor: wallChainSnapAnchor() });
 		if (!hasWallChainRun(interaction)) {
 			preview.statusMessage = null;
 			beginWallChain(interaction, snapped.point);

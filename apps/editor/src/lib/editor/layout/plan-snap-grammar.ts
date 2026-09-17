@@ -16,15 +16,23 @@
  * back to a single neutral mark with their own plain word, recorded as
  * `UNRATIFIED_SNAP_FAMILIES` so the gap is visible rather than papered over.
  *
- * **Reachability (S5 review).** Two families in this table cannot win today,
- * because nothing produces them: `orthogonal-guide`'s only producer,
- * `layout-core`'s `orthogonalGuideCandidates`, has zero production callers, and
- * `extension-guide` is never constructed at all. The `right-angle` glyph is
- * therefore **ratified-but-dormant** ink — kept, because §7 ratifies the
- * relation and the family is wired rather than removed, but not to be mistaken
- * for a mark a user can currently see. Owner for "wire it or retire it": **S8**
- * (see the plan's S5 Deferred note); until then neither the glyph nor the guide
- * it would carry should be cited as evidence that §7's guide requirement is met.
+ * **Reachability (S5 review, closed in S8).** The S5 review found two families
+ * in this table with no producer at all. `orthogonal-guide` is now **wired**:
+ * `layout-core`'s `resolveLayoutSnap` emits the family whenever the caller names
+ * a draft anchor, and the Wall draw does (`wallChainSnapAnchor`), so the
+ * `right-angle` mark and the guide it carries are marks a user can actually see
+ * — and the guide is no longer the zero-length stub it was, so §7's "at most one
+ * guide" now has a real producer to count. Note the family's rank: 7 sits above
+ * the grid fallback and below every geometry family, so wiring it can replace a
+ * grid snap but never a join to real geometry.
+ *
+ * `extension-guide` remains **ratified-but-dormant** ink, and deliberately so:
+ * it is declared and ranked (8) in `layout-core` and never constructed, because
+ * no `layout-core` predicate expresses "you are extending this wall's line".
+ * Unlike the orthogonal family it is not wireable from presentation code — the
+ * missing piece is a geometry producer, which is P23.2's domain. Kept visible
+ * here rather than removed so the gap is readable; §7 gives the family no glyph
+ * of its own, so it also presents as the neutral mark.
  *
  * §7's third item — "a 2 px source accent if useful" — is **deliberately not
  * drawn**. An accent means picking which existing geometry to highlight as the

@@ -151,8 +151,31 @@ export type SnapQueryContext = {
 	pixelsPerMeter: number;
 	/** Acquisition radius override in CSS pixels (default 8). */
 	snapRadiusCssPx?: number;
-	/** Grid step override in meters (default 0.25). */
+	/**
+	 * Grid step override in meters (default 0.25). One step value for the whole
+	 * resolution: the grid fallback steps with it *and* the orthogonal guide
+	 * quantizes its free coordinate to it, so grid and guide can never disagree
+	 * about where the lattice is.
+	 */
 	gridStep?: number;
+	/**
+	 * P23.13 S8 — the live draft anchor, when the caller has one.
+	 *
+	 * The `orthogonal-guide` family is **anchor-relative**: it says "hold this
+	 * coordinate equal to the anchor's", which is a statement about a draft, not
+	 * about the document. So the family exists exactly when a caller names its
+	 * anchor, and every caller that does not (selection, hover, object
+	 * placement, the Opening drag) resolves the candidate set it resolved before
+	 * this field existed. That is the whole difference between waking a dormant
+	 * family and changing snapping everywhere.
+	 *
+	 * Only a draft whose *direction* is at stake should pass one: for the Wall
+	 * draw, locking the axis is the point. A Rect Room corner is already
+	 * axis-aligned by construction, so an axis lock would add nothing there while
+	 * outranking the geometry snaps (rank 7 beats wall spans and object bounds)
+	 * that are the useful targets for a rectangle corner.
+	 */
+	anchor?: LayoutVec2;
 };
 
 export type SnapResolution =
@@ -387,31 +410,78 @@ export function objectBoundsSnapCandidates(
 	return candidates;
 }
 
-/** Orthogonal guide candidates relative to the active draft anchor. */
+/**
+ * Orthogonal guide candidates relative to the active draft anchor.
+ *
+ * `orthogonal-x` holds the anchor's **Z** for the candidate (so the leg from the
+ * anchor to the candidate runs along X); `orthogonal-z` holds its **X**. Both are
+ * emitted whenever the pointer is off that coordinate at all, and the acquisition
+ * radius is what keeps the family from winning when the draft is nowhere near an
+ * axis — the resolver filters by `distance` before ranking.
+ *
+ * **Locked *and* stepped (P23.13 S8 owner decision).** The candidate's free
+ * coordinate is quantized to `step` — the same value the grid fallback reads, so
+ * the lattice is stated once — while the held coordinate stays *exactly* the
+ * anchor's. That is the point of the family: with Snap on the draft must never
+ * glide, so an axis lock lands on an exact point (the anchor's axis crossed with
+ * a grid line) instead of sweeping continuously with the pointer, and near-axis
+ * drawing — where most drawing happens, and where the lock wins most of the time
+ * — still steps through subdivisions. `distance` deliberately stays the **raw**
+ * perpendicular offset to the axis line: acquisition is a property of the pointer,
+ * not of the lattice, so which probe wins where is unchanged by the stepping, and
+ * a winner's committed coordinate moves by at most half a step.
+ *
+ * A candidate is declined when it would not be a lock at all: when it **is the
+ * anchor** (a "lock" that would collapse the leg to zero length and, at rank 7,
+ * outrank the grid point that would have produced a real wall) or when it **is
+ * the pointer** (nothing to acquire). The order is load-bearing — quantize
+ * **first**, decline **second** — because rounding can collapse a short leg onto
+ * the anchor, so the coincident check must see the *final* point. The
+ * collinearity check is the same rule read before the stepping: a pointer already
+ * on the anchor's own line has its projection *be* the anchor, and locking the
+ * other axis there would drag the point off the line being drawn.
+ */
 export function orthogonalGuideCandidates(
 	anchor: LayoutVec2,
-	point: LayoutVec2
+	point: LayoutVec2,
+	step = LAYOUT_PLAN_GRID_STEP
 ): SnapCandidate[] {
-	const orthoX: LayoutVec2 = [point[0], anchor[1]];
-	const orthoZ: LayoutVec2 = [anchor[0], point[1]];
-	const distanceX = Math.hypot(orthoX[0] - point[0], orthoX[1] - point[1]);
-	const distanceZ = Math.hypot(orthoZ[0] - point[0], orthoZ[1] - point[1]);
+	// Quantize the free coordinate (the lock is exact), keep the held one exactly
+	// as the anchor states it.
+	const stepped = snapToGridStep(point, step);
+	const orthoX: LayoutVec2 = [stepped[0]!, anchor[1]];
+	const orthoZ: LayoutVec2 = [anchor[0], stepped[1]!];
+	// The raw perpendicular offsets: the acquisition and rank-contention measure,
+	// never recomputed against the stepped point.
+	const offsetX = Math.abs(point[1] - anchor[1]);
+	const offsetZ = Math.abs(point[0] - anchor[0]);
 	const candidates: SnapCandidate[] = [];
-	if (Number.isFinite(distanceX) && distanceX > 0) {			candidates.push({
-				point: orthoX,
-				kind: 'orthogonal-guide',
-				sourceId: 'orthogonal-x',
-				ownerId: 'orthogonal-x',
-				distance: distanceX
-			});
+	// `orthoX`'s raw projection is `[point[0], anchor[1]]` and its final point is
+	// `[stepped[0], anchor[1]]`; it is a lock only when the pointer is off the
+	// anchor's Z line (`offsetX`), the pointer is not on the anchor's X line, and
+	// stepping did not land the free coordinate back on the anchor. Symmetric for
+	// `orthoZ`.
+	const lockX =
+		Number.isFinite(offsetX) && offsetX > 0 && point[0] !== anchor[0] && orthoX[0] !== anchor[0];
+	const lockZ =
+		Number.isFinite(offsetZ) && offsetZ > 0 && point[1] !== anchor[1] && orthoZ[1] !== anchor[1];
+	if (lockX) {
+		candidates.push({
+			point: orthoX,
+			kind: 'orthogonal-guide',
+			sourceId: 'orthogonal-x',
+			ownerId: 'orthogonal-x',
+			distance: offsetX
+		});
 	}
-	if (Number.isFinite(distanceZ) && distanceZ > 0) {			candidates.push({
-				point: orthoZ,
-				kind: 'orthogonal-guide',
-				sourceId: 'orthogonal-z',
-				ownerId: 'orthogonal-z',
-				distance: distanceZ
-			});
+	if (lockZ) {
+		candidates.push({
+			point: orthoZ,
+			kind: 'orthogonal-guide',
+			sourceId: 'orthogonal-z',
+			ownerId: 'orthogonal-z',
+			distance: offsetZ
+		});
 	}
 	return candidates;
 }
@@ -644,20 +714,61 @@ export function resolveLayoutSnap(
 		});
 	}
 
+	// P23.13 S8 — the draft-anchor axis family (rank 7, ratified in P23.2 and
+	// dormant until now because nothing produced it). It is emitted *after* the
+	// geometry candidates and *before* the winner is picked, so the family
+	// competes through the ratified rank order rather than being special-cased.
+	// Read that order carefully, because it *is* the behaviour decision: lower
+	// rank wins, so rank 7 sits **below every geometry family** (junction 0 …
+	// object-bounds-center 6) and **above the grid fallback** (9). Wiring the
+	// family therefore cannot displace a join to real geometry — it can only take
+	// an outcome that used to be "snapped to the grid", which is exactly the
+	// draft the axis lock is for. Distance is the perpendicular offset to the axis
+	// line, so the family enters contention only inside the acquisition radius.
+	// The free coordinate is quantized to the *same* `step` the grid fallback
+	// above used, so the axis lock is exact rather than a glide.
+	const anchor = context.anchor;
+	if (anchor && Number.isFinite(anchor[0]) && Number.isFinite(anchor[1])) {
+		for (const candidate of orthogonalGuideCandidates(anchor, point, step)) {
+			if (candidate.distance > radius) continue;
+			candidates.push(candidate);
+		}
+	}
+
 	const winner = pickSnapWinner(candidates, input);
 	if (!winner) return { kind: 'none' };
-	return { kind: 'snap', candidate: winner, guides: guidesForCandidate(winner) };
+	return { kind: 'snap', candidate: winner, guides: guidesForCandidate(winner, anchor ?? null) };
 }
 
-function guidesForCandidate(candidate: SnapCandidate): SnapGuide[] {
-	if (candidate.kind === 'orthogonal-guide') {
-		return [
-			candidate.sourceId === 'orthogonal-x'
-				? { kind: 'orthogonal-z', start: [...candidate.point] as LayoutVec2, end: [...candidate.point] as LayoutVec2 }
-				: { kind: 'orthogonal-x', start: [...candidate.point] as LayoutVec2, end: [...candidate.point] as LayoutVec2 }
-		];
-	}
-	return [];
+/**
+ * The alignment line the winner is *about*: at most one, and never degenerate.
+ *
+ * The orthogonal guide is the alignment through the draft anchor whose
+ * coordinate the candidate holds, so its extent is the anchor-to-locked-point
+ * span, overshot by the candidate's own perpendicular offset so a short leg — the
+ * stepped leg is one grid subdivision or more, while the pointer may be further
+ * off the axis than that — still reads as a line rather than a dot. The previous
+ * answer was start === end at the candidate point, which is invisible: a guide
+ * nobody can see satisfies "at most one guide" in the letter and fails it in fact.
+ *
+ * The `kind` names the **held** coordinate (`orthogonal-z` for a candidate that
+ * holds Z and therefore runs its leg along X), matching the convention the
+ * family has carried since P23.2. The paint layer draws `start`/`end` and does
+ * not branch on `kind`; it is kept accurate for identification.
+ */
+function guidesForCandidate(candidate: SnapCandidate, anchor: LayoutVec2 | null): SnapGuide[] {
+	if (candidate.kind !== 'orthogonal-guide' || !anchor) return [];
+	const holdsZ = candidate.sourceId === 'orthogonal-x';
+	const leg = holdsZ ? candidate.point[0] - anchor[0] : candidate.point[1] - anchor[1];
+	// A candidate coincident with the anchor is never produced (see the
+	// generator's guard), so the leg always has a direction. The overshoot is
+	// what keeps a millimetre leg from drawing as an invisible dot.
+	const direction = leg < 0 ? -1 : 1;
+	const reach = Math.max(Math.abs(leg), candidate.distance);
+	const end: LayoutVec2 = holdsZ
+		? [anchor[0] + reach * direction, anchor[1]]
+		: [anchor[0], anchor[1] + reach * direction];
+	return [{ kind: holdsZ ? 'orthogonal-z' : 'orthogonal-x', start: [...anchor], end }];
 }
 
 /** Semantic rank per candidate family in the opening-drag context — lower wins. */
