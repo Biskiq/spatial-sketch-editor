@@ -1202,9 +1202,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// P3.3 — live yaw readout while a Scene rotate gesture is in progress
 	// (same feedback language as room rotation).
 	let stagingYawFeedback = $state<number | null>(null);
-	// P21.2 — ghost blueprint session dismissal (not serialized): the 10×8m
-	// watermark unmounts once the project is non-empty, or for the remainder
-	// of the session upon first tool use.
+	// P21.2 — ghost blueprint session dismissal (not serialized): the neutral
+	// open-corner sketch unmounts once the project is non-empty, or for the
+	// remainder of the session upon first tool use.
 	let ghostDismissed = $state(false);
 
 	const viewBox = $derived(`0 0 ${interaction.planView.width} ${interaction.planView.height}`);
@@ -5164,12 +5164,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		<div class="arrange-empty" role="status">No movable objects here yet — create them in Layout or place them in Scene 3D.</div>
 	{/if}
 	{#if planEmpty && !ghostVisible}
-		<!-- P3.3 — canonical empty-plan onboarding treatment (scene-empty-plan.png).
-		     P21.2 ghost takes precedence in Layout; the card remains for the
-		     dismissed-but-still-empty session tail and non-Layout empty states. -->
+		<!-- P23.13 S9 / §8 — empty-state copy agreement: exact toolbar labels
+		     (Wall, Rect Room, Poly Room), zoom/pan hint, no dimension promise.
+		     Card remains for the dismissed-but-still-empty session tail and
+		     non-Layout empty states; one committed wall removes it. -->
 		<div class="plan-empty-state" role="status">
-			<strong>Empty floor plan</strong>
-			<span>Pick the Room tool to draft your first room, or place an asset from the sidebar.</span>
+			<strong>Start your plan</strong>
+			<span>Draw connected walls with Wall, or start with Rect Room or Poly Room.</span>
+			<span>Scroll to zoom · Middle-drag to pan.</span>
 		</div>
 	{/if}
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (plan surface owns keyboard focus) -->

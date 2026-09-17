@@ -619,15 +619,21 @@ describe('P21.2 scene reconciliation', () => {
 		expect(inspector).not.toContain('{#if readOnly && !scenePlanStaging}');
 	});
 
-	it('renders the session-scoped ghost blueprint (10×8m, slate, non-interactive, unserialized)', () => {
+	it('renders the session-scoped open-corner sketch (neutral, non-interactive, unserialized)', () => {
 		const ghost = readLibSource('editor/layout/PlanEmptyGhost.svelte');
-		expect(ghost).toContain('[-5, -4]');
-		expect(ghost).toContain('[5, 4]');
-		expect(ghost).toContain('#64748b');
-		expect(ghost).toContain('stroke-opacity: 0.2');
+		expect(ghost).toContain('ghost-corner');
+		expect(ghost).toContain('<polyline');
+		expect(ghost).toContain('Start your plan');
+		expect(ghost).toContain('Rect Room or Poly Room');
+		expect(ghost).toContain('Scroll to zoom');
+		expect(ghost).toContain('#adb6bd');
 		expect(ghost).toContain('pointer-events: none');
-		expect(ghost).toContain('10.0m');
-		expect(ghost).toContain('8.0m');
+		expect(ghost).toContain('aria-hidden="true"');
+		// No fake dimension promise, no closed rect.
+		expect(ghost).not.toContain('10.0m');
+		expect(ghost).not.toContain('8.0m');
+		expect(ghost).not.toContain('<rect');
+		expect(ghost).not.toContain('ghost-dims');
 		expect(ghost).not.toContain('<button');
 		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 		expect(viewport).toContain('PlanEmptyGhost');
@@ -635,6 +641,10 @@ describe('P21.2 scene reconciliation', () => {
 		expect(viewport).toContain('ghostVisible');
 		expect(viewport).toContain("planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed");
 		expect(viewport).toContain('planEmpty && !ghostVisible');
+		// Empty card carries the same §8 copy agreement.
+		expect(viewport).toContain('Start your plan');
+		expect(viewport).toContain('Draw connected walls with Wall, or start with Rect Room or Poly Room.');
+		expect(viewport).toContain('Scroll to zoom · Middle-drag to pan.');
 	});
 
 	it('shows the Layout primer while selection is zero (guidance only, no dead controls)', () => {

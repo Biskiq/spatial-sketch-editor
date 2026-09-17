@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { BrickWall, DoorOpen, Grid2x2, MousePointer2, Pentagon, Square, Trash2, X } from 'lucide-svelte';
+	import { BrickWall, DoorOpen, Grid2x2, Pentagon, Square, Trash2, X } from 'lucide-svelte';
+	import PlanDraftIcon from './PlanDraftIcon.svelte';
 	import {
 		cancelLayoutPresetDraft,
 		cancelLayoutPrimitiveDraft,
@@ -128,7 +129,7 @@
 		</div>
 	{/if}
 	<div class="tool-group" aria-label="Room drafting tool">
-		<button type="button" class:active={interaction.tool === 'select'} aria-pressed={interaction.tool === 'select'} onclick={() => chooseTool('select')}><MousePointer2 size={14} aria-hidden="true" /> Select</button>
+		<button type="button" class:active={interaction.tool === 'select'} aria-pressed={interaction.tool === 'select'} onclick={() => chooseTool('select')}><PlanDraftIcon name="select" /> Select</button>
 		{#if interaction.planViewMode === 'layout'}
 			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Wall sketching requires a wall-first layout' : undefined} class:active={interaction.tool === 'wall-chain'} aria-pressed={interaction.tool === 'wall-chain'} onclick={() => chooseTool('wall-chain')}><BrickWall size={14} aria-hidden="true" /> Wall</button>
 			<!-- P23.6 — no separate Partition primary button: one Wall concept.
@@ -139,17 +140,17 @@
 			<button type="button" title={wallFirstLayout ? 'Draws one closed boundary chain of canonical Walls' : undefined} class:active={interaction.tool === 'polygon'} aria-pressed={interaction.tool === 'polygon'} onclick={() => chooseTool('polygon')}><Pentagon size={14} aria-hidden="true" /> Poly Room</button>
 			<button type="button" title={wallFirstLayout ? 'Places one canonical Opening on the clicked Wall' : undefined} class:active={interaction.tool === 'door'} aria-pressed={interaction.tool === 'door'} onclick={() => chooseTool('door')}><DoorOpen size={14} aria-hidden="true" /> Door</button>
 			<button type="button" title={wallFirstLayout ? 'Places one canonical Opening on the clicked Wall' : undefined} class:active={interaction.tool === 'window'} aria-pressed={interaction.tool === 'window'} onclick={() => chooseTool('window')}><Grid2x2 size={14} aria-hidden="true" /> Window</button>
-			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Column object (cylinder creation default)'} class:active={interaction.tool === 'preset-column'} aria-pressed={interaction.tool === 'preset-column'} onclick={() => chooseTool('preset-column')}>Column</button>
-			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Platform object (box creation default)'} class:active={interaction.tool === 'preset-platform'} aria-pressed={interaction.tool === 'preset-platform'} onclick={() => chooseTool('preset-platform')}>Platform</button>
-			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Plinth object (box creation default)'} class:active={interaction.tool === 'preset-plinth'} aria-pressed={interaction.tool === 'preset-plinth'} onclick={() => chooseTool('preset-plinth')}>Plinth</button>
+			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Column object (cylinder creation default)'} class:active={interaction.tool === 'preset-column'} aria-pressed={interaction.tool === 'preset-column'} onclick={() => chooseTool('preset-column')}><PlanDraftIcon name="column-preset" /> Column</button>
+			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Platform object (box creation default)'} class:active={interaction.tool === 'preset-platform'} aria-pressed={interaction.tool === 'preset-platform'} onclick={() => chooseTool('preset-platform')}><PlanDraftIcon name="platform-preset" /> Platform</button>
+			<button type="button" disabled={!wallFirstLayout} title={!wallFirstLayout ? 'Preset placement requires a wall-first layout' : 'Places one ordinary Plinth object (box creation default)'} class:active={interaction.tool === 'preset-plinth'} aria-pressed={interaction.tool === 'preset-plinth'} onclick={() => chooseTool('preset-plinth')}><PlanDraftIcon name="plinth-preset" /> Plinth</button>
 		{:else if onDeleteArrange}
 			<button type="button" aria-label="Delete arrange selection" onclick={() => onDeleteArrange?.()}><Trash2 size={14} aria-hidden="true" /> Delete</button>
 		{/if}
 	</div>
 	{#if ribbon || interaction.viewMode === 'plan'}
 		<div class="tool-group options" aria-label="Plan options">
-			<button type="button" class:active={interaction.planView.snapEnabled} aria-pressed={interaction.planView.snapEnabled} onclick={() => togglePlanViewportOption(interaction, 'snapEnabled')}>Snap {gridStepLabel}</button>
-			<button type="button" class:active={interaction.planView.gridEnabled} aria-pressed={interaction.planView.gridEnabled} onclick={() => togglePlanViewportOption(interaction, 'gridEnabled')}>Grid</button>
+			<button type="button" class:active={interaction.planView.snapEnabled} aria-pressed={interaction.planView.snapEnabled} onclick={() => togglePlanViewportOption(interaction, 'snapEnabled')}><PlanDraftIcon name="snap" /> Snap {gridStepLabel}</button>
+			<button type="button" class:active={interaction.planView.gridEnabled} aria-pressed={interaction.planView.gridEnabled} onclick={() => togglePlanViewportOption(interaction, 'gridEnabled')}><PlanDraftIcon name="grid" /> Grid</button>
 			{#if interaction.planViewMode === 'layout'}
 				<button type="button" class:active={interaction.planView.showTourOverlay} aria-pressed={interaction.planView.showTourOverlay} onclick={() => togglePlanViewportOption(interaction, 'showTourOverlay')}>Tour</button>
 			{/if}
