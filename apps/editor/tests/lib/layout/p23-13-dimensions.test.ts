@@ -14,8 +14,6 @@ import {
 	planDimensionPreferredSide,
 	planDimensionText,
 	planDimensionTextExtentPx,
-	planDimensionValueBoxPx,
-	planDimensionValueHit,
 	planSidesWithRoom,
 	type PlanDimension,
 	type PlanDimensionFacts
@@ -25,82 +23,6 @@ import {
 	worldToPlanScreen
 } from '$lib/editor/layout/layout-plan-transform';
 
-/**
- * §7's other use for a value: a click target. "Click on its underlined value is
- * the pointer alternative" — so the value has to be hittable, and only where it
- * is actually drawn. These tests pin the box (centred on the ink, floored so a
- * short value is still reachable, padded but not greedy) and the identity a hit
- * resolves to, including the two ways this can go quietly wrong: a tie between
- * the stacked lanes, and a measure that moved to the readout and is therefore no
- * longer on the drawing.
- */
-describe('P23.13 S7 — the value as a pointer target', () => {
-	const measure = (key: string, value: string, lane: 1 | 2 = 1): PlanDimension => ({
-		key,
-		label: null,
-		measure: 'Length',
-		value,
-		span: null,
-		anchor: [0, 0],
-		lane
-	});
-
-	it('centres the box on the ink and floors it to a reachable target', () => {
-		const box = planDimensionValueBoxPx('1 m', [100, 200]);
-		expect(box.minX).toBeLessThan(100);
-		expect(box.maxX).toBeGreaterThan(100);
-		expect(box.minY).toBeLessThan(200);
-		expect(box.maxY).toBeGreaterThan(200);
-		// Symmetric about the anchor: §7 draws the value centred, so the target is
-		// the number, not the number plus its length to the right.
-		expect(100 - box.minX).toBeCloseTo(box.maxX - 100, 6);
-		expect(200 - box.minY).toBeCloseTo(box.maxY - 200, 6);
-		// A one-character value would otherwise be a sliver: the floor is what makes
-		// §6's "targets are larger than their marks" true for the ink here.
-		const narrow = planDimensionValueBoxPx('5', [100, 200]);
-		expect(narrow.maxX - narrow.minX).toBeGreaterThanOrEqual(26);
-		expect(narrow.maxY - narrow.minY).toBeGreaterThanOrEqual(16);
-	});
-
-	it('resolves the placed value under the point, and nothing off it', () => {
-		const entries = [{ key: 'selected-wall:W-1', text: '3.37 m', anchorPx: [120, 240] as [number, number] }];
-		expect(planDimensionValueHit(entries, [120, 240])).toBe('selected-wall:W-1');
-		expect(planDimensionValueHit(entries, [120, 240 - 6])).toBe('selected-wall:W-1');
-		expect(planDimensionValueHit(entries, [120, 400])).toBeNull();
-		expect(planDimensionValueHit(entries, [400, 240])).toBeNull();
-	});
-
-	it('gives a tie to the ink drawn on top', () => {
-		// Lane 1 and lane 2 of one host can land on the same point on a short span;
-		// the entries arrive in draw order, so the later measure — the one visibly on
-		// top — has to win, or the click edits a number the user cannot see.
-		const entries = [
-			{ key: 'lane-1', text: '1.00 m', anchorPx: [50, 50] as [number, number] },
-			{ key: 'lane-2', text: '2.00 m', anchorPx: [50, 50] as [number, number] }
-		];
-		expect(planDimensionValueHit(entries, [50, 50])).toBe('lane-2');
-	});
-
-	it('cannot hit a value that is not on the drawing', () => {
-		// A measure that did not fit locally moved to the readout, so it has no ink
-		// and must not keep a hit target where its text used to be: an empty entry
-		// list is every measure that is not drawn.
-		expect(planDimensionValueHit([], [0, 0])).toBeNull();
-		expect(planDimensionValueHit([], [100, 100])).toBeNull();
-	});
-
-	it('makes the pad, not the glyph, the edge of the target', () => {
-		const text = '3.37 m';
-		const anchor: [number, number] = [300, 300];
-		const entries = [{ key: 'selected-wall:W-1', text, anchorPx: anchor }];
-		const extent = planDimensionTextExtentPx(text);
-		const justOutsideText = 300 + extent.width / 2 + 1;
-		expect(planDimensionValueHit(entries, [justOutsideText, 300])).toBe('selected-wall:W-1');
-		// ...and it stops: a hit several px clear of the value belongs to the
-		// drawing, not to the number.
-		expect(planDimensionValueHit(entries, [justOutsideText + 40, 300])).toBeNull();
-	});
-});
 
 /**
  * P23.13 S6 — working dimensions (spec §7).
@@ -425,6 +347,30 @@ describe('P23.13 S6 placement — lanes, freeze, push-out, readout', () => {
 		expect(Math.hypot(tick[1][0] - tick[0][0], tick[1][1] - tick[0][1])).toBeCloseTo(4, 6);
 	});
 
+	it('stacks the angle over the length when the band is vertical (§7 lanes must not collide)', () => {
+		// Drawing straight up: the band's normal is horizontal, so §7's 18 px and
+		// 34 px lanes sit 16 px apart *side by side* — narrower than the 11 px numbers
+		// are wide. The live pass caught the result as `90.0°7.50 m`: one number where
+		// two belong. The step past the first lane now goes straight up, which is the
+		// clearance a horizontal band already gets from its own lanes.
+		const vertical = derivePlanDimensions(
+			state({ wallChainStart: p(0, -3), wallChainCursor: p(0, 3) }),
+			facts()
+		);
+		const outcome = placePlanDimensions(vertical, VIEW, { side: 'negative' });
+		const length = outcome.placed.find((placement) => placement.key === 'leg:length')!;
+		const angle = outcome.placed.find((placement) => placement.key === 'leg:angle')!;
+		// One lane column, so the second number cannot drift sideways...
+		expect(angle.text[0]).toBeCloseTo(length.text[0], 6);
+		// ...and a full text line between them, so neither can print through the other.
+		expect(Math.abs(angle.text[1] - length.text[1])).toBeGreaterThanOrEqual(
+			PLAN_DIMENSION_TEXT.lineHeightPx
+		);
+		// The stack is a *lane* step, not a re-side: both measures keep the side the
+		// freeze chose.
+		expect(angle.side).toBe(length.side);
+	});
+
 	it('freezes the chosen side for the gesture and re-decides for the next one', () => {
 		// §7: "Choose the side with more space once at gesture start; freeze it
 		// until end." Pan far enough that a fresh choice would flip the lane, and
@@ -551,7 +497,10 @@ describe('P23.13 S6 placement — lanes, freeze, push-out, readout', () => {
 	it('offsets a band-less measure along the band normal, not always vertically', () => {
 		// A vertical leg's lanes leave sideways. The angle must follow the band it
 		// measures rather than take a vertical lane of its own, or it would sit on
-		// the leg's axis — the one place a lane must never be.
+		// the leg's axis — the one place a lane must never be. What it takes is the
+		// *first* lane's column, on the length's own side: the step beyond that lane
+		// stacks instead of stepping sideways (a 16 px sideways step cannot separate
+		// two horizontal numbers — see the collision pin in the placement suite).
 		const vertical = derivePlanDimensions(
 			state({ wallChainStart: p(-3, -3), wallChainCursor: p(-3, 3) }),
 			facts()
@@ -559,8 +508,8 @@ describe('P23.13 S6 placement — lanes, freeze, push-out, readout', () => {
 		const outcome = placePlanDimensions(vertical, VIEW);
 		const [length, angle] = outcome.placed;
 		const bandX = worldToPlanScreen(VIEW, p(-3, 0))[0];
-		expect(Math.abs(angle!.text[0] - bandX)).toBeCloseTo(PLAN_DIMENSION_LANES_PX.second, 6);
-		expect(angle!.text[1]).toBeCloseTo(length!.text[1], 6);
+		expect(Math.abs(angle!.text[0] - bandX)).toBeCloseTo(PLAN_DIMENSION_LANES_PX.first, 6);
+		expect(Math.sign(angle!.text[0] - bandX)).toBe(Math.sign(length!.line![0][0] - bandX));
 	});
 
 	it('puts a measure with no band at all on the roomier side of its locus', () => {

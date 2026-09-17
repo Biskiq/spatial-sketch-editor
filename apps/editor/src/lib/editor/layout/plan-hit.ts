@@ -425,20 +425,6 @@ export function findPlanHitRoom(
 	return roomPolygon?.roomId ? { roomId: roomPolygon.roomId } : null;
 }
 
-/** Project a point onto one wall segment's compiled spans (linear reference). */
-export function projectPointToWall(
-	queries: CompiledLayoutQueryGeometry,
-	roomId: string,
-	segmentId: string,
-	point: LayoutVec2
-): PlanWallProjection | null {
-	const spans = wallSpansByRoomSegment(queries).get(roomId)?.get(segmentId) ?? [];
-	const projection = projectPointToSpans(point, spans);
-	return projection
-		? { point: projection.point, offset: projection.offset, distance: projection.distance, t: projection.t }
-		: null;
-}
-
 /**
  * Project a point onto one canonical physical Wall's compiled spans, keyed by
  * document-global `wallId` (no `roomId`). Returns the unclamped linear offset
@@ -462,13 +448,4 @@ export function compiledPhysicalWallLength(
 	wallId: string
 ): number {
 	return physicalSpansByWall(queries).get(wallId)?.wallSpans.at(-1)?.endDistance ?? 0;
-}
-
-/** Total compiled arc length of one wall segment. */
-export function compiledWallLength(
-	queries: CompiledLayoutQueryGeometry,
-	roomId: string,
-	segmentId: string
-): number {
-	return wallSpansByRoomSegment(queries).get(roomId)?.get(segmentId)?.at(-1)?.endDistance ?? 0;
 }

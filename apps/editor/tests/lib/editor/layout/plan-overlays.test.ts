@@ -17,7 +17,6 @@ import {
 import {
 	buildPlanInteractionProjection,
 	architectureEditIntentFor,
-	planDimensionValueHitAt,
 	planNumericEntryAnchorPx,
 	withArchitectureEditIntent
 } from '$lib/editor/layout/plan-overlays';
@@ -534,7 +533,12 @@ describe('buildPlanInteractionProjection', () => {
 		expect(planNumericEntryAnchorPx(view, projection.labels, { measureKey: null, fallbackWorld: null })).toBeNull();
 	});
 
-	it('P23.13 S7 — reads the placed value back as the click target §7 grants it', () => {
+	it('paints every dimension value as plain ink, with no editor affordance (D1)', () => {
+		// D1 retire: a value on the drawing is ink, not a target. The pointer door is
+		// gone — no underlined value, so nothing on the drawing invites a click and no
+		// field can open under the pointer. Values are read here and edited in the
+		// Inspector; the keyboard door (Enter on the selection's own measure) is a
+		// viewport concern and is pinned where it lives.
 		const document = g2LineRectangleDocument();
 		const model = buildLayoutPreviewModel(document).model;
 		const state = createLayoutInteractionState();
@@ -542,30 +546,11 @@ describe('buildPlanInteractionProjection', () => {
 		beginRectangle(state, [0, 0]);
 		updateRectangle(state, [4, 3]);
 		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
-		const view = state.planView;
-		const ink = projection.labels.find(
+		const values = projection.labels.filter(
 			(primitive) => primitive.kind === 'text' && primitive.key.includes('dimension-text')
 		);
-		if (ink?.kind !== 'text') throw new Error('missing placed dimension text');
-		// The Rect Room candidate's own measure key (§7's `Rectangle / polygon` row),
-		// which is what the label the paint layer just drew was placed for.
-		const drawn = worldToPlanScreen(view, ink.anchor);
-		const onTheValue: [number, number] = [
-			drawn[0] + (ink.offsetPx?.[0] ?? 0),
-			drawn[1] + (ink.offsetPx?.[1] ?? 0)
-		];
-		expect(planDimensionValueHitAt(view, projection.labels, ['rect:width'], onTheValue)).toBe('rect:width');
-		// A few px away is the drawing, not the number: the target is the value's own
-		// box, not the whole instrument.
-		expect(
-			planDimensionValueHitAt(view, projection.labels, ['rect:width'], [onTheValue[0] + 80, onTheValue[1]])
-		).toBeNull();
-		// And a measure with no ink is simply not there, even at a point another
-		// measure occupies — nothing can be clicked where a value is not drawn.
-		expect(planDimensionValueHitAt(view, projection.labels, ['leg:length'], onTheValue)).toBeNull();
-		expect(
-			planDimensionValueHitAt(view, projection.labels, ['leg:length', 'rect:width'], onTheValue)
-		).toBe('rect:width');
+		expect(values.length).toBeGreaterThan(0);
+		for (const value of values) expect(value.style).toBe('dimension-label');
 	});
 
 	it('emits rotation feedback while dragging a rotation', () => {

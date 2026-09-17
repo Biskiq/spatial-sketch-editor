@@ -99,7 +99,6 @@
 		updateLayoutObjectFields,
 		updateLayoutRoomFields,
 		updateLayoutWallInteriorAnchor,
-		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
 		updateWallFirstWallAngle,
@@ -111,17 +110,11 @@
 		type LayoutPreviewSnapshot,
 		type LayoutRoomEditResult
 	} from './layout-preview-state.svelte';
-	import {
-		snapSegmentOffset,
-		LAYOUT_PLAN_HIT_RADIUS_PX,
-		type LayoutOpeningKind
-	} from './layout-opening-editing';
+	import { LAYOUT_PLAN_HIT_RADIUS_PX, type LayoutOpeningKind } from './layout-opening-editing';
 	import {
 		compiledPhysicalWallLength,
-		compiledWallLength,
 		findPlanHitRoom,
 		projectPointToPhysicalWall,
-		projectPointToWall,
 		resolvePlanHit,
 		type PlanHitResult
 	} from './plan-hit';
@@ -218,7 +211,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
-		planDimensionValueHitAt,
 		planHandleScreenPoints,
 		planNumericEntryAnchorPx,
 		presetIdForTool,
@@ -235,7 +227,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		LAYOUT_PLAN_GRID_STEP,
 		layoutArchitecturalPreset,
 		resolveLayoutSnap,
-		resolveOpeningDragSnap,
 		resolveOpeningDragSnapUseMode,
 		snapOwnerKey,
 		wallOwnerKey,
@@ -399,7 +390,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		projectionPoint: LayoutVec2;
 		originScreen: LayoutVec2;
 	} | null>(null);
-	let openingDrag = $state<{ roomId: string; segmentId: string; openingId: string; width: number } | null>(null);
 	let dragSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let suppressNextClick = $state(false);
 	/**
@@ -1747,7 +1737,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			dragSnapshot ||
 			roomUnitSnapshot ||
 			architectureEditSnapshot ||
-			openingDrag ||
 			pendingWallBend ||
 			draggedInteriorAnchor ||
 			pointerId !== null ||
@@ -1777,7 +1766,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		interiorAnchorStartScreen = null;
 		interiorAnchorMoved = false;
 		pendingWallBend = null;
-		openingDrag = null;
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
 		architectureEditSnapshot = null;
@@ -2158,7 +2146,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			panPointerId === null &&
 			pendingWallBend === null &&
 			interiorAnchorPointerId === null &&
-			openingDrag === null &&
 			interaction.primitiveDraft === null &&
 			interaction.objectDrag === null &&
 			interaction.roomUnitDrag === null &&
@@ -2295,7 +2282,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		interiorAnchorStartScreen = null;
 		interiorAnchorMoved = false;
 		pendingWallBend = null;
-		openingDrag = null;
 		cancelLayoutWallOpeningDrag(interaction);
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
@@ -2413,6 +2399,27 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			snapOffset: useMode?.snappedOffset ?? null,
 			wallLength
 		});
+	}
+
+	/**
+	 * P23.13 S8 — one mechanism for where a canonical Opening drag lands at one
+	 * world point: project onto the host Wall, then resolve that offset through the
+	 * P23.2 raw/snap use-mode. Returns `false` when the point has no honest
+	 * projection onto the host — nothing is invented to replace it.
+	 *
+	 * The **hover and the release both run this**, which is what makes release truth
+	 * true: the commit re-derives at the pointer-up's own point instead of writing
+	 * whatever the last preview frame happened to leave in the drag. The two paths
+	 * cannot drift because there is only one of them.
+	 */
+	function applyWallOpeningDragPoint(drag: LayoutWallOpeningDrag, point: LayoutVec2): boolean {
+		const projection = projectPointToPhysicalWall(model.queries, drag.wallId, point);
+		if (!projection) return false;
+		const wallLength =
+			wallFirstWallLengthFor(drag.wallId) ??
+			compiledPhysicalWallLength(model.queries, drag.wallId);
+		resolveWallOpeningDragUpdate(drag, projection.offset, wallLength);
+		return true;
 	}
 
 	/**
@@ -2777,21 +2784,16 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return;
 		}
 		if (target.kind === 'opening') {
-			const room = findLayoutRoom(rooms, target.roomId);
-			const opening = room?.openings.find((candidate) => candidate.id === target.openingId);
+			// P23.13 S8 / D2 — a legacy room-owned Opening span is **select-only**.
+			// The room-owned drag was a second mechanism for a question the
+			// wall-first gesture already answers (where an Opening sits on its host),
+			// with no canonical command behind it and no release-truth contract, and
+			// its document format is read-only-in-practice. Gating the whole legacy
+			// document at load was the alternative and is not cheap — the legacy
+			// room/opening surfaces are deliberately still editable — so the drag
+			// branch is removed instead of half-specified. Values are edited in the
+			// Inspector, which is where every other legacy number already lives.
 			selectLayoutOpening(interaction, target.roomId, target.segmentId, target.openingId);
-			if (svgElement) {
-				if (!onLayoutTransactionBegin()) return;
-				dragSnapshot = captureLayoutPreviewSnapshot(preview);
-				openingDrag = {
-					roomId: target.roomId,
-					segmentId: target.segmentId,
-					openingId: target.openingId,
-					width: opening?.width ?? 0
-				};
-				pointerId = event.pointerId;
-				svgElement.setPointerCapture(event.pointerId);
-			}
 			return;
 		}
 		if (target.kind === 'object') {
@@ -3028,7 +3030,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			!interaction.architectureEdit &&
 			!interaction.editing &&
 			!interaction.wallOpeningDrag &&
-			!openingDrag &&
 			!pendingWallBend
 		) {
 			const hoverPoint = worldPoint(event);
@@ -3179,55 +3180,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// P23.3 — transient only: the pointer resolves a raw candidate (plus an
 			// optional honest snap win); nothing is written to the document here.
 			const point = worldPoint(event);
-			if (!point) return;
-			const drag = interaction.wallOpeningDrag;
-			const projection = projectPointToPhysicalWall(model.queries, drag.wallId, point);
-			if (!projection) return;
-			const wallLength =
-				wallFirstWallLengthFor(drag.wallId) ??
-				compiledPhysicalWallLength(model.queries, drag.wallId);
-			resolveWallOpeningDragUpdate(drag, projection.offset, wallLength);
-			return;
-		}
-		if (openingDrag) {
-			const point = worldPoint(event);
-			if (!point) return;
-			const room = findLayoutRoom(rooms, openingDrag.roomId);
-			const segment = room?.boundary.segments.find((candidate) => candidate.id === openingDrag!.segmentId);
-			const projection = room && segment
-				? projectPointToWall(model.queries, room.id, segment.id, point)
-				: null;
-			if (!room || !segment || !projection) return;
-			const length = compiledWallLength(model.queries, room.id, segment.id);
-			const width = openingDrag.width;
-			const maxOffset = Math.max(0, length - width);
-			const centered = projection.offset - width / 2;
-			let offset: number;
-			if (!interaction.planView.snapEnabled) {
-				offset = Math.min(Math.max(0, centered), maxOffset);
-			} else if (segment.kind === 'line') {
-				// P23.2 — straight-wall opening drag resolves through the
-				// offset-space semantic resolver (host-wall junctions,
-				// midpoint, other openings' edges, grid fallback). The dragged
-				// opening's own spans are skipped so its own edges can never
-				// act as external snap targets; grid candidates snap the
-				// opening center like opening creation. Curved (auto-bezier)
-				// segments keep the legacy linear grid snap.
-				const resolution = resolveOpeningDragSnap(
-					preview.geometry,
-					{ segmentId: segment.id, roomId: openingDrag.roomId, start: segment.start, end: segment.end },
-					openingDrag.openingId,
-					projection.offset,
-					width,
-					{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP }
-				);
-				offset = resolution?.kind === 'snap'
-					? resolution.candidate.offset
-					: Math.min(Math.max(0, centered), maxOffset);
-			} else {
-				offset = snapSegmentOffset(centered, maxOffset);
-			}
-			updateLayoutOpeningFields(preview, openingDrag.roomId, openingDrag.openingId, { offset });
+			if (point) applyWallOpeningDragPoint(interaction.wallOpeningDrag, point);
 			return;
 		}
 		if (interaction.tool === 'rectangle') {
@@ -3483,6 +3436,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// past the Wall end) rejects with no history — it never becomes an
 			// end-flush placement, because clamping is not validity.
 			const drag = interaction.wallOpeningDrag;
+			// P23.13 S8 release truth — re-derive at the pointer-up's own point through
+			// the same instrument the hover used, so the Opening that commits is the one
+			// the release promised rather than the last preview frame's. A release with
+			// no honest projection (off-canvas, off the host Wall) leaves the live
+			// candidate standing, exactly as the hover left it.
+			const release = worldPoint(event);
+			if (release) applyWallOpeningDragPoint(drag, release);
 			if (!drag.valid) {
 				preview.statusMessage = 'Opening does not fit on this wall';
 				onLayoutTransactionCancel();
@@ -3509,16 +3469,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			svgElement?.releasePointerCapture(event.pointerId);
 			return;
 		}
-		if (openingDrag) {
-			onLayoutTransactionCommit();
-			openingDrag = null;
-			dragSnapshot = null;
-			pointerId = null;
-			svgElement?.releasePointerCapture(event.pointerId);
-			return;
-		}
 		pointerId = null;
-		openingDrag = null;
 		dragSnapshot = null;
 		svgElement?.releasePointerCapture(event.pointerId);
 		if (interaction.tool === 'rectangle') {
@@ -3569,7 +3520,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		}
 		if (
 			interiorAnchorPointerId === event.pointerId ||
-			(openingDrag && pointerId === event.pointerId) ||
 			(interaction.wallOpeningDrag && pointerId === event.pointerId)
 		) {
 			cancelActiveLayoutDrag();
@@ -3590,31 +3540,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23.13 S7 — a field owns the gesture: a click while one is open never
 		// commits a pointer-positioned segment behind the typed value.
 		if (numericEntry) return;
-		// P23.13 S7 step 2 / A5 — an explicit click on a resting value opens the
-		// editor *on* it: "click on its underlined value is the pointer alternative".
-		// Only while the drafting surface is idle, so a click that belongs to a
-		// draft, a drag or a focused-edit intent is never stolen by a number that
-		// happens to sit under it.
-		if (
-			interaction.tool === 'select' &&
-			interaction.planViewMode === 'layout' &&
-			!planGestureActive &&
-			!interaction.wallChainStart &&
-			!interaction.rectangleStart
-		) {
-			const screen = screenPoint(event);
-			const key = screen
-				? planDimensionValueHitAt(
-						interaction.planView,
-						baseInteractionProjection.labels,
-						numericRestingMeasures.map((measure) => measure.key),
-						screen
-					)
-				: null;
-			const measure = key ? numericRestingMeasures.find((candidate) => candidate.key === key) : null;
-			const target = measure ? planNumericRestingEntryTarget(measure) : null;
-			if (target && openNumericEntryAt(target)) return;
-		}
+		// P23.13 S8 / D1 — the pointer alternative to A5's second reach is **retired**:
+		// nothing on the drawing opens an editor, so no click is ever consumed here.
+		// The keyboard door stands — Enter on the selection's own primary measure
+		// (`beginNumericEntryFromFocus`), Enter on a focused control, and typing
+		// during a gesture — and exact values are otherwise the Inspector's.
 		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return;
 		const point = worldPoint(event);
 		if (!point) return;
@@ -3805,11 +3735,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 
 	/**
 	 * A5's second reach: the resting measures the selection offers an editor for,
-	 * in §7's order. This is exactly what the paint layer underlines — both call
-	 * `planNumericRestingEntryTarget`, so the affordance and the target are one
-	 * decision — and it deliberately contains only §7's *selected, idle* measures:
-	 * the angle, the deltas and the coordinates §7 gives to a gesture or a focused
-	 * handle are not in it.
+	 * in §7's order — the single rule Enter on the selection reads
+	 * (`beginNumericEntryFromFocus`) and the one the target table answers.
+	 *
+	 * P23.13 S8 / D1: this used to be shared with the paint layer, which underlined
+	 * the same measures and hit-tested their ink; both of those are retired with the
+	 * pointer door, so there is no affordance to keep in step any more — only the
+	 * keyboard door reads it. It deliberately contains only §7's *selected, idle*
+	 * measures: the angle, the deltas and the coordinates §7 gives to a gesture or a
+	 * focused control are not in it.
 	 */
 	const numericRestingMeasures = $derived.by(() => {
 		const selection = interaction.selection as {
@@ -4739,7 +4673,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				pointerId = null;
 				return;
 			}
-			if (dragSnapshot || draggedInteriorAnchor || openingDrag) {
+			if (dragSnapshot || draggedInteriorAnchor) {
 				cancelActiveLayoutDrag();
 				return;
 			}

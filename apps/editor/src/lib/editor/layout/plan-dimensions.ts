@@ -230,81 +230,6 @@ export function planDimensionTextExtentPx(text: string): { width: number; height
 }
 
 /** The drawn string: `Width 1.00 m`, `Arc 7.24 m`, or a bare `4.00 m`. */
-/**
- * §7's value is a pointer target, and §6's own rule is that a target is larger
- * than its mark: the ink is an 11 px number, the acquisition box is padded and
- * floored so a short value (`0 m`, `Arc 3.2 m` on a small screen) is still
- * clickable without the padding swallowing a neighbouring measure.
- */
-export const PLAN_DIMENSION_VALUE_HIT_PAD_PX = 3;
-export const PLAN_DIMENSION_VALUE_MIN_HIT_PX = { width: 26, height: 16 } as const;
-
-export type PlanDimensionHitBox = {
-	minX: number;
-	minY: number;
-	maxX: number;
-	maxY: number;
-};
-
-/**
- * The box a placed value occupies on screen. §7 draws the value centred
- * (`text-anchor: middle`) and vertically centred on its line, so its box is the
- * measured text extent about the anchor — read from the same typography constants
- * placement used, never from a second guess at the font.
- */
-export function planDimensionValueBoxPx(
-	text: string,
-	anchorPx: LayoutVec2,
-	padPx = PLAN_DIMENSION_VALUE_HIT_PAD_PX
-): PlanDimensionHitBox {
-	const extent = planDimensionTextExtentPx(text);
-	const halfWidth = Math.max(extent.width, PLAN_DIMENSION_VALUE_MIN_HIT_PX.width) / 2 + padPx;
-	const halfHeight = Math.max(extent.height, PLAN_DIMENSION_VALUE_MIN_HIT_PX.height) / 2 + padPx;
-	return {
-		minX: anchorPx[0] - halfWidth,
-		minY: anchorPx[1] - halfHeight,
-		maxX: anchorPx[0] + halfWidth,
-		maxY: anchorPx[1] + halfHeight
-	};
-}
-
-/** One placed value, as it appears on screen: what it is, what it says, where it is. */
-export type PlanPlacedValue = {
-	/** Canonical measure key — the identity the caller maps to an editor. */
-	readonly key: string;
-	/** The text actually drawn, so the box is measured off the ink. */
-	readonly text: string;
-	readonly anchorPx: LayoutVec2;
-};
-
-/**
- * Which placed value a screen point is on, or `null`.
- *
- * Entries are what is *drawn*, so a measure that had to move to the readout is
- * simply absent: what is not on the drawing is not clickable, which is how §7's
- * "idle dimensions remain passive unless explicitly focused" stays true without a
- * separate bookkeeping of what is inert. Later entries win a tie, because the
- * list arrives in draw order — the ink the user can see on top is the ink they
- * are pointing at.
- *
- * Screen space in, identity out: no transform happens here, which is what keeps
- * the viewport's render boundary intact while the target lives on the drawing.
- */
-export function planDimensionValueHit(
-	entries: readonly PlanPlacedValue[],
-	screen: LayoutVec2,
-	padPx = PLAN_DIMENSION_VALUE_HIT_PAD_PX
-): string | null {
-	for (let index = entries.length - 1; index >= 0; index -= 1) {
-		const entry = entries[index];
-		const box = planDimensionValueBoxPx(entry.text, entry.anchorPx, padPx);
-		if (screen[0] < box.minX || screen[0] > box.maxX) continue;
-		if (screen[1] < box.minY || screen[1] > box.maxY) continue;
-		return entry.key;
-	}
-	return null;
-}
-
 export function planDimensionText(dimension: PlanDimension): string {
 	const label = dimension.arc ? PLAN_DIMENSION_ARC_TAG : dimension.label;
 	return label ? `${label} ${dimension.value}` : dimension.value;
@@ -762,6 +687,35 @@ function planDimensionLocusDirection(
 }
 
 /**
+ * How far a span-less measure's text sits from its own locus: §7's lane offset
+ * along the band it rides, except that the steps *past* the first lane are
+ * stacked vertically when the band's own direction cannot separate two lines of
+ * horizontal text.
+ *
+ * §7's lanes exist to keep two numbers readable, and the text is horizontal and
+ * 11 px on one 13 px line whatever the geometry does. A vertical draft's band
+ * normal is horizontal, so 18 px and 34 px along it put the length and the angle
+ * 16 px apart *side by side* — narrower than the numbers are wide, which is why a
+ * vertical draft read `90.0°7.50 m` as one value. The only step that separates
+ * two horizontal texts is a vertical one, and that is what the step past the
+ * first lane takes. A band whose normal is already vertical (any horizontal
+ * draft) is untouched: its own lanes are 16 px apart vertically, which is exactly
+ * the clearance this rule restores.
+ */
+function planSpanlessLaneOffset(direction: LayoutVec2, lane: number): LayoutVec2 {
+	const first = PLAN_DIMENSION_LANES_PX.first;
+	const base: LayoutVec2 = [direction[0] * first, direction[1] * first];
+	const extra = lane - first;
+	if (extra <= 0) return base;
+	// A step whose vertical component already clears a text line is a lane like
+	// any other; one that does not is a collision dressed as a lane.
+	if (Math.abs(direction[1]) * extra >= PLAN_DIMENSION_TEXT.lineHeightPx) {
+		return [base[0] + direction[0] * extra, base[1] + direction[1] * extra];
+	}
+	return [base[0], base[1] - extra];
+}
+
+/**
  * Place the derived set: lane offsets, the frozen side, the 0.75 px witnesses,
  * the 4 px ticks and the text, with §7's short-span push-out and readout
  * fallback. Pure — the only state is the frozen side the caller hands in.
@@ -810,9 +764,14 @@ export function placePlanDimensions(
 				band ?? planDimensionLocusDirection(dimension, anchor, view, options);
 			const direction = resolvedLane.direction;
 			const laneAt = (along: LayoutVec2): LayoutVec2 => [
-				anchor[0] + along[0] * lane,
-				anchor[1] + along[1] * lane
+				anchor[0] + along[0],
+				anchor[1] + along[1]
 			];
+			// The lane offset is a *vector*, not `direction * lane`: on a vertical
+			// band the step past the first lane is stacked instead of taken sideways
+			// (`planSpanlessLaneOffset`), so a level draft stops printing its angle
+			// through its length.
+			const offset = planSpanlessLaneOffset(direction, lane);
 			// §7: the text is centred on the line and baseline-sits on it, so its
 			// box is half a width either side of the lane point and one line above.
 			const inPaper = (point: LayoutVec2): boolean =>
@@ -823,8 +782,8 @@ export function placePlanDimensions(
 			// A lane that would leave the paper mirrors before it gives up: the
 			// mirror of a lane is still that measure's lane, whereas the readout is
 			// the last resort.
-			const mirrored = !inPaper(laneAt(direction));
-			const position = laneAt(mirrored ? [-direction[0], -direction[1]] : direction);
+			const mirrored = !inPaper(laneAt(offset));
+			const position = laneAt(mirrored ? [-offset[0], -offset[1]] : offset);
 			if (!inPaper(position)) {
 				push(readout, dimension, text);
 				continue;

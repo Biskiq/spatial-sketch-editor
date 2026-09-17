@@ -633,14 +633,6 @@
 	   must anchor it at the middle. A start-anchored label would drift right by
 	   half its own width and make the placer's fits/readout arithmetic a lie. */
 	.dimension-label { fill: var(--editor-plan-muted); font: 11px var(--editor-font-mono, ui-monospace), SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
-	/* P23.13 S7 / A5 — §7 underlines the values that carry an exact-entry editor
-	   ("click on its underlined value is the pointer alternative"). The typography
-	   is the dimension label's, and the underline is the mark that says the number
-	   is editable; the fill brightens to the label ink as a second, redundant
-	   affordance — a resting dimension stays muted until it can be typed into.
-	   The hit target itself is the value's measured box, owned by the dimensions
-	   module. */
-	.dimension-label-editable { fill: var(--editor-plan-label); font: 11px var(--editor-font-mono, ui-monospace), SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; text-anchor: middle; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; pointer-events: none; }
 	.draft-outline { fill: rgb(47 140 255 / 10%); stroke: var(--editor-plan-selection); stroke-width: 2; stroke-dasharray: 8 4; vector-effect: non-scaling-stroke; }
 	.draft-outline-partition { fill: rgb(201 134 31 / 10%); stroke: #c9861f; stroke-width: 2; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 	/* P23.6 — degenerate candidate leg: invalid before commit, never committed. */

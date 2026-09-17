@@ -10,7 +10,7 @@ import {
 	g2ProfileMatrixDocument,
 	resolveG2ReferenceHit
 } from '../../layout/__fixtures__/layout-g2-fixtures';
-import { compiledWallLength, findPlanHitRoom, projectPointToWall, resolvePlanHit, type PlanHitResult } from '$lib/editor/layout/plan-hit';
+import { findPlanHitRoom, resolvePlanHit, type PlanHitResult } from '$lib/editor/layout/plan-hit';
 
 function stripProjection(result: PlanHitResult) {
 	if (result && (result.kind === 'opening' || result.kind === 'wall')) {
@@ -91,16 +91,5 @@ describe('plan-hit', () => {
 
 		expect(findPlanHitRoom(geometry.queries, [3, 2], { allowedRoomIds: new Set(['room-other']) })).toBeNull();
 		expect(findPlanHitRoom(geometry.queries, [99, 99])).toBeNull();
-	});
-
-	it('projects onto a wall segment and reports its compiled length', () => {
-		const { geometry } = compileLayoutGeometry(g2MultipleOpeningsDocument());
-		const queries = geometry.queries;
-		const projection = projectPointToWall(queries, 'room-openings', 'room-openings:wall:0', [1.45, 0.05])!;
-		expect(projection.offset).toBeCloseTo(1.45, 6);
-		expect(projection.point).toEqual([1.45, 0]);
-		expect(projection.distance).toBeCloseTo(0.05, 6);
-		expect(compiledWallLength(queries, 'room-openings', 'room-openings:wall:0')).toBeCloseTo(10, 6);
-		expect(compiledWallLength(queries, 'room-openings', 'missing-wall')).toBe(0);
 	});
 });
