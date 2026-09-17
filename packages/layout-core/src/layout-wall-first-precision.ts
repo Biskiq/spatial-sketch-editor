@@ -137,6 +137,8 @@ export type PrecisionOperation =
 	| 'wall-role'
 	/** P23.6c — canonical Wall deletion (planner: `planDeleteWall`). */
 	| 'wall-delete'
+	/** P23 Junction dissolve — degree-2 Junction deletion via Wall join (planner: `planDissolveJunction`). */
+	| 'junction-dissolve'
 	/** P23.6d — canonical Room metadata update (planner: `planRoomMetadataUpdate`). */
 	| 'room-metadata'
 	/** P23.12 — canonical Wall metadata update (planner: `planWallMetadataUpdate`). */

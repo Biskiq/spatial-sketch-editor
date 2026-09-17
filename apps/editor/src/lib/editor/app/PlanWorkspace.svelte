@@ -13,6 +13,7 @@
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
 		deleteWallFirstWall,
+		dissolveWallFirstJunction,
 		insertWallFirstWallCurveKnot,
 		removeWallFirstRoom,
 		subdivideWallFirstWall,
@@ -315,6 +316,25 @@
 		store.setStatusMessage(result.success ? 'Deleted wall' : `Wall delete failed: ${result.message}`);
 	}
 
+	/** P23 Junction dissolve: one history entry, post-dissolve selection fixed to `none` (the Junction is gone). */
+	function dissolveJunction(junctionId: string) {
+		const outcome = runLayoutMutationGuarded(
+			() => dissolveWallFirstJunction(layoutPreview, junctionId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		const result = outcome.result;
+		if (result.success) {
+			// Fixed policy — the dissolved Junction cannot stay selected, and
+			// the survivor Wall is never auto-selected.
+			layoutInteraction.selection = { kind: 'none' };
+		}
+		store.setStatusMessage(result.success ? 'Dissolved junction' : `Junction dissolve failed: ${result.message}`);
+	}
+
 	/**
 	 * P23.10 — canonical Wall subdivision from a resolved Plan hit (the
 	 * context-menu **Add junction here** command). One guarded Layout mutation;
@@ -545,6 +565,7 @@
 		onOpeningDelete={deleteOpening}								onWallOpeningCreate={createWallOpening}
 								onWallOpeningDelete={deleteWallOpening}
 								onWallDelete={deleteWall}
+								onJunctionDissolve={dissolveJunction}
 								onWallJunctionAdd={addWallJunction}
 								onWallBendPointAdd={addWallBendPoint}
 		onRoomDelete={deleteRoom}

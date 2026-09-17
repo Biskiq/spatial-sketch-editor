@@ -63,6 +63,7 @@ import {
 } from '$lib/layout/layout-wall-first-precision';
 import {
 	planDeleteWall,
+	planDissolveJunction,
 	planRemoveRoom,
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
@@ -1779,6 +1780,33 @@ export function deleteWallFirstWall(
 		return { success: false, message: plan.rejection.message };
 	}
 	return applyWallFirstDocumentPlan(state, plan.document, 'wall-delete');
+}
+
+/**
+ * P23 Junction dissolve — delete a degree-2 Junction by joining its two
+ * incident Walls into one canonical Wall (the exact inverse of Wall
+ * subdivision; one history entry at the caller). The planner merges the pair
+ * into the deterministic survivor, rebases hosted Openings, reconciles Rooms
+ * through the P23.8 machinery with a no-birth/no-retire assert, and runs the
+ * shared canonical gates before anything installs. A rejection leaves the
+ * document and history untouched. Post-dissolve selection is the callers'
+ * fixed policy (canonical selection becomes `none`) — this adapter owns
+ * document state only.
+ */
+export function dissolveWallFirstJunction(
+	state: LayoutPreviewState,
+	junctionId: string
+): WallFirstPrecisionMutationResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) {
+		return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	}
+	const plan = planDissolveJunction(layout, junctionId);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return { success: false, message: plan.rejection.message };
+	}
+	return applyWallFirstDocumentPlan(state, plan.document, 'junction-dissolve');
 }
 
 /**
