@@ -202,6 +202,25 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(viewport).toContain('if (group && group.length > 0 && (!entered || !focusInGroup)) {');
 	});
 
+	it('retires the readout on a successful exact edit, keeping focus and the entry', () => {
+		// The control's value just changed while the ring stayed on it, so a cached
+		// announcement would describe a number the document no longer has. Sliced as
+		// a composition pin rather than a string: the successful branch must retire
+		// the *readout only* — not the focus, not the entry — because the user is
+		// still standing on that control with the group entered.
+		const fnAt = viewport.indexOf('function applyNumericEdit(');
+		expect(fnAt).toBeGreaterThan(-1);
+		const fnEnd = viewport.indexOf('/** A rejected exact edit', fnAt);
+		expect(fnEnd).toBeGreaterThan(fnAt);
+		const body = viewport.slice(fnAt, fnEnd);
+		expect(body).toContain('onLayoutTransactionCommit();');
+		expect(body).toContain('planAnnouncedFocus = null;');
+		expect(body).not.toContain('planKeyboardGroupKey');
+		for (const keeper of ['setPlanFocus', 'clearPlanFocus', 'clearPlanKeyboardFocus']) {
+			expect(body, keeper).not.toContain(keeper);
+		}
+	});
+
 	it('hands the instrument back on a primary press that reaches the canvas', () => {
 		expect(viewport).toContain(
 			'function releasePlanKeyboardInstrument(): void {\n\t\tplanKeyboardGroupKey = null;\n\t\tplanAnnouncedFocus = null;\n\t}'
@@ -270,11 +289,11 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(viewport).toContain(
 			'planAnnouncedFocus && interaction.planFocus?.id === planAnnouncedFocus.controlId'
 		);
-		// Five writes to the announcement and no more: the declaration, the keyboard
+		// Six writes to the announcement and no more: the declaration, the keyboard
 		// move, the two release paths (focus unwind, pointer taking the instrument
-		// back), and the reconciliation that clears it when the focus moved without
-		// the keyboard.
+		// back), the successful exact edit that changed the announced value, and the
+		// reconciliation that clears it when the focus moved without the keyboard.
 		const assignments = viewport.split('planAnnouncedFocus = ').length - 1;
-		expect(assignments).toBe(5);
+		expect(assignments).toBe(6);
 	});
 });

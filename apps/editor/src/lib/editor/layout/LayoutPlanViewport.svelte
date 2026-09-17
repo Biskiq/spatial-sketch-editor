@@ -4529,6 +4529,16 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * an edit installed; both the Wall length/angle pair and the Opening's
 	 * width/offset patch land in the *same* entry, because §7 says Enter submits one
 	 * canonical operation and one edit should not cost the user two undos.
+	 *
+	 * A successful edit also retires the keyboard's cached readout. The control's
+	 * value has just changed, the ring is still on it (focus is deliberately
+	 * untouched) and the entry is deliberately kept — so without this the region
+	 * would go on holding the number the document no longer has, e.g. `Width 0.90 m`
+	 * after the user typed `1.20`. It is **cleared, not recomputed**: re-deriving it
+	 * here would read the value at whatever moment this happens to run, and a
+	 * readout that refreshes itself on every change is exactly the chatter §9 forbids
+	 * ("once per meaningful change, not each pointermove"). The user just typed the
+	 * number, so nothing is owed to them; the next arrow re-announces fresh.
 	 */
 	function applyNumericEdit(
 		apply: () => { success: boolean; message?: string }
@@ -4537,8 +4547,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return { success: false, message: 'Finish the current layout interaction first' };
 		}
 		const result = apply();
-		if (result.success) onLayoutTransactionCommit();
-		else onLayoutTransactionCancel();
+		if (result.success) {
+			onLayoutTransactionCommit();
+			planAnnouncedFocus = null;
+		} else onLayoutTransactionCancel();
 		return result;
 	}
 

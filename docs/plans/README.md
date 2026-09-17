@@ -212,7 +212,7 @@ gate) now lives in the archived docs, not here.
   spec-vs-atlas sweep) and the post-PR review-fix commit (the announcement's
   missing value+units per §9, arrow keys no longer entering the control group
   without Enter, the readout released with its focus, and two record
-  corrections). **Gate: 4361 passed / 1 skipped, `svelte-check` 0/0,
+  corrections). **Gate: 4362 passed / 1 skipped, `svelte-check` 0/0,
   `check:layout-core` clean**, and `619d6ce` was verified **standalone** at 4333
   passed with the S10 half held aside, so every commit on the branch is green.
   Both open owner decisions are ruled — **D5** names `layout-core` as the

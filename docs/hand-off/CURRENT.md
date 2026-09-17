@@ -50,11 +50,11 @@ slice plus one next action only.
 ## Verification
 
 - **P23.13 branch after the review fixes (2026-09-17).** Full editor suite
-  **4361 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
+  **4362 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
   0 warnings**, `check:layout-core` clean. Before the review fixes: 4350 passed;
   `619d6ce` alone: **4333 passed / 1 skipped**. The five new S9/S10 suites
-  (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard` 20,
-  `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 35/35.
+  (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard` 21,
+  `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 36/36.
 - **Acceptance rows driven live 2026-09-17** (real editor, guest project, one
   4-Wall room + a Door + a bend, 12.2 px/m): keyboard on the **Wall** group
   (\"Junction 1 of 2 — Wall W-7V24\", wrap, Escape unwinds, `.focus-ring` moves
@@ -126,12 +126,15 @@ slice plus one next action only.
   `planFocus` let a click unlock the arrows and steal ArrowRight/Left/Up and
   their scrolling. Do not "fix" it back to the roving-tabindex convention.
 - **The keyboard readout is a keyboard instrument**: it is retired by Escape, by
-  a mode/tool cancel, and by a primary press that reaches the canvas — never by
-  pointer focus alone, which stays silent. A **known residue**: an Undo that
-  moves the focused control changes its value with no pointer and no keyboard
-  move, so the region can hold the previous coordinates (same family as the
-  carried undo-with-field-open row; closing it needs a history hook the viewport
-  does not own).
+  a mode/tool cancel, by a primary press that reaches the canvas, and by a
+  **successful exact edit** (which changed the value the region was holding) —
+  never by pointer focus alone, which stays silent. Clear it, do **not** recompute
+  it on every change: §9 allows one announcement per meaningful change, and a
+  self-refreshing readout is the per-change chatter it forbids. A **known
+  residue**: an Undo that moves the focused control changes its value with no
+  pointer and no keyboard move, so the region can hold the previous coordinates
+  (same family as the carried undo-with-field-open row; closing it needs a
+  history hook the viewport does not own).
 - A drawing gesture on Plan needs `setPointerCapture` stubbed for synthetic
   pointers; that is the only platform call QA has ever stubbed, and no app
   gesture logic is touched by it.
