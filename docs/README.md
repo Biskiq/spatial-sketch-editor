@@ -1,10 +1,10 @@
 # Museum docs — context router
 
-**Audience:** agents + humans. **Last reviewed:** 2026-09-08 (P22 shipped — gate passed, P22 doc set archived; docs pruned: tracker recent-5, model-assessment P20-onward, archive README fixed).
+**Audience:** agents + humans. **Last reviewed:** 2026-09-17 (P23.13 shipped — S0–S10 landed on branch `P23.13`, its plan archived and the tracker's recent-5 rotated; P23.14–P23.16 remain).
 **Bootstrap (hard rules):** [`../AGENTS.md`](../AGENTS.md) ·
 **Plan status / what's next:** [`plans/README.md`](./plans/README.md) (tracker) ·
 **Live working-tree state:** [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) ·
-**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped (P22 on 2026-09-08 — hosted cold-visitor acceptance incl. public-route untrack fix, deployed as `f46e8f3`). P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
+**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped (P22 on 2026-09-08 — hosted cold-visitor acceptance incl. public-route untrack fix, deployed as `f46e8f3`). **P23 is in flight:** P23.0–P23.13 are landed (P23.13 on 2026-09-17, on branch `P23.13` awaiting its PR), with P23.14 → P23.15 → P23.16 remaining. P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
 
 ## Context discipline (progressive disclosure)
 
