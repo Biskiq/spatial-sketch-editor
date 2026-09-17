@@ -86,6 +86,8 @@ export type PlanStyleToken =
 	| 'vertex-handle-hovered'
 	// P23.3 — canonical Opening width-handle affordances + transient drag preview.
 	| 'opening-handle'
+	// P23.13 S4 / §6 — the paired body-drag grip across the Opening center.
+	| 'opening-slide-grip'
 	| 'opening-drag-preview'
 	| 'opening-drag-preview-invalid'
 	// P23.10 / P23.11 — transient direct Wall/Junction edit intent. Drawn for a
@@ -97,16 +99,62 @@ export type PlanStyleToken =
 	| 'architecture-edit-intent'
 	| 'architecture-edit-intent-invalid'
 	| 'snap-guide'
+	/** Filled snap glyph: a closed silhouette (square, disc, triangle). */
 	| 'snap-marker'
-	| 'snap-marker-grid'
+	/**
+	 * P23.13 S5 — stroked snap glyph: an open path (bracket, right angle, cross)
+	 * has no area to fill, so it takes the snap ink as its stroke. Replaces
+	 * P23.2's `snap-marker-grid`, which was the same treatment hard-coded for the
+	 * single grid family before §7 gave every family a shape.
+	 */
+	| 'snap-glyph-stroke'
+	// P23.13 S5 / §7 — the winning relation's short word. Snap is presented by
+	// shape + word (§6 non-colour identity), never by colour alone.
+	| 'snap-relation-label'
+	/**
+	 * P23.13 S6 / §7 — a dimension's witness line, its 4 px slanted end ticks and
+	 * the stubs from the measured ends: one 0.75 px secondary ink for the whole
+	 * instrument, so a witness can never be mistaken for cut geometry.
+	 */
+	| 'dimension-witness'
 	| 'dimension-label'
 	| 'selection-label'
 	// P23.6 — persistent Room name (presentation of Room metadata, never a
 	// separately persisted annotation).
 	| 'room-name'
+	// P23.13 S3 — the subordinate lines of the Room label stack (spec §4): the
+	// compact reference and the derived area. Never wrapped or shrunk, and never
+	// the line a duplicate pair may drop.
+	| 'room-reference'
+	| 'room-area'
 	// P23.6 — committed topology/geometry diagnostic marker (state, not
 	// transient preview: distinct from draft/invalid blue/red language below).
 	| 'layout-diagnostic'
+	// P23.13 S4 — control-focus vocabulary (spec §6). The focused control takes a
+	// dark double ring with a paper moat over every other state, and a focus or
+	// drag also reveals the owner's broken 1 px control polygon plus its true
+	// reference centerline. All three are presentation: drawn, never queried.
+	| 'focus-ring'
+	| 'focus-moat'
+	| 'control-polygon'
+	| 'control-centerline'
+	// P23.13 S4 / §6 — the refusal vocabulary of a known-invalid proposal: a
+	// filled octagonal stop mark carrying an ×, so refusal reads without colour.
+	| 'refusal-stop'
+	| 'refusal-cross'
+	/**
+	 * P23.13 S8 / §6 — the *persisted* refusal's own reason line: the same
+	 * stop/× vocabulary kept on the drawing for the bounded-feedback lifetime,
+	 * with the planner's own words beside it so the mark is answered rather than
+	 * merely asserted.
+	 */
+	| 'refusal-reason'
+	/**
+	 * P23.13 S8 / §7 — the faint Room wash a candidate closure earns only when the
+	 * closing leg's own canonical plan yields a face. Never a promise: without the
+	 * plan's face polygon this token is never painted at all.
+	 */
+	| 'closure-wash'
 	| 'scale-label';
 
 export type PlanHitIdentity =
@@ -181,6 +229,28 @@ export type PlanPolylinePrimitive = {
 				wallThicknessMeters: number;
 				/** Unit vector pointing from the opening into its room. */
 				inwardNormal: LayoutVec2;
+				/**
+				 * P23.13 S0 — canonical host orientation at the opening center
+				 * (`CompiledOpening.center`), copied verbatim. The adapter paints the
+				 * Door type cue perpendicular to `centerTangent` and never re-derives
+				 * orientation from the flattened `centerPolyline`. Source fact only:
+				 * no CSS px, zoom regime, or hysteresis enters the model.
+				 */
+				centerTangent: LayoutVec2;
+				/** Canonical host normal (unsigned, unlike `inwardNormal`). */
+				centerNormal: LayoutVec2;
+				/**
+				 * P23.13 S1 — canonical world center of the authored cut, so the cue is
+				 * centered on the Opening rather than on the chord midpoint.
+				 */
+				centerPoint: LayoutVec2;
+				/** Canonical Three.js positive-Y yaw of the host tangent. */
+				yaw: number;
+				/**
+				 * P23.13 — authored opening extent in meters along the compiled arc
+				 * (canonical cut truth; presentation never widens it).
+				 */
+				offsetMeters: number;
 		  };
 	/** Screen-constant offset (CSS px) applied to the final point after the transform (rotation arm). */
 	endOffsetPx?: readonly [number, number];
@@ -194,6 +264,34 @@ export type PlanCirclePrimitive = {
 	center: LayoutVec2;
 	/** Screen-space size hint in CSS px; zoom-independent sizing is the adapter's job. */
 	radiusPx: number;
+	/**
+	 * P23.13 S4 — mark shape (spec §6 control table). A control's *shape* is its
+	 * non-colour identity, so it is part of the primitive rather than a paint
+	 * detail: `diamond` a Junction/Wall endpoint, `square` an Opening width edge
+	 * straddling its jamb, `octagon` the stop mark of a refused proposal and
+	 * `cross` its x. A hollow bend point, a focus ring and every pre-S4 handle
+	 * stay `circle` (the default). Every non-circle shape is generated in screen
+	 * space around the projected center, so no mark scales with zoom.
+	 */
+	shape?:
+		| 'circle'
+		| 'diamond'
+		| 'square'
+		| 'octagon'
+		| 'cross'
+		/** P23.13 S5 — the ratified snap glyphs (§7), all screen-space marks. */
+		| 'triangle'
+		| 'right-angle'
+		| 'bracket'
+		| 'circle-cross'
+		/**
+		 * P23.13 S5 — the upright cross of the grid fallback. Distinct from
+		 * `cross` (the refusal ×) so no snap winner and no refused proposal ever
+		 * share a mark: §7's "grid = small cross" is the `+`, while the diagonal ×
+		 * belongs to intersection and to refusal.
+		 */
+		| 'plus'
+		| 'dot';
 	/** Screen-constant offset (CSS px) applied by the adapter after the view transform. */
 	offsetPx?: readonly [number, number];
 	style: PlanStyleToken;
@@ -333,6 +431,76 @@ export type PlanCameraAuthoringProjection = {
 };
 
 /**
+ * P23.13 S0 — resolved screen-presentation decisions for the Plan adapter.
+ *
+ * This is the *input* seam owned by transient salience (S2): projected-size
+ * gates, hysteresis, and gesture freezing resolve there and are handed to the
+ * presentation layer. None of it is stored in `PlanRenderModel` — the model
+ * only carries renderer-neutral source facts, so "how big is this on screen
+ * right now" can never become document or history state.
+ */
+export type PlanPresentationDecisions = {
+	/**
+	 * Window symbolic strokes: 2 at Normal/Near (the limit — never 3), 1 when
+	 * the projected separation or edge margin gate collapses the second stroke.
+	 */
+	windowFrameCount?: 1 | 2;
+	/**
+	 * Door type cue shape: `full` (the perpendicular three-dash cue at Normal/
+	 * Near and at Far while it stays legible) or `displaced` (the small-opening
+	 * fallback next to a sub-8px cut). Never a compressed cue.
+	 */
+	doorCueShape?: 'full' | 'displaced';
+	/**
+	 * Wall ink aid: `silhouette` below 2px projected band (centered 1px
+	 * readability line), `dense` where parallel edges collapse under 1.5px
+	 * apart (one neutral aid line over the preserved band), `none` otherwise.
+	 * Excluded from hit/snap/measurement truth — paint only.
+	 */
+	wallInkAid?: 'none' | 'silhouette' | 'dense';
+};
+
+/**
+ * Defaults preserve the ratified resting grammar when no salience is wired.
+ * The projected-size decisions stay absent so the adapter's structural stub
+ * applies rather than a decision masquerading as resolved (S2 owns them).
+ */
+export const PLAN_PRESENTATION_DEFAULTS: PlanPresentationDecisions = {
+	windowFrameCount: 2
+};
+
+/**
+ * P23.13 S2 — how the adapter *asks* for resolved decisions, one primitive at a
+ * time. Salience owns the projected-size gates, their hysteresis and the
+ * gesture freeze behind this call; the adapter only paints what it is told and
+ * never resolves a gate itself.
+ */
+export type PlanPresentationSource = {
+	decisionsFor: (primitive: PlanPolylinePrimitive) => PlanPresentationDecisions;
+	/**
+	 * Passive Scene ink fraction for the current zoom regime (spec §5: 30%
+	 * normal/near, 15% far). Passive context only — active/selected/hovered Scene
+	 * entities keep full ink so selection feedback never dims with the context it
+	 * sits on. An unwired source paints at token strength.
+	 */
+	sceneInk: number;
+	/**
+	 * P23.13 S8 / §1.12 — region-scoped override of the passive Scene ink, for one
+	 * footprint at a time. The instrument zone is local by definition, so "Scene
+	 * → 10% *inside the zone*" cannot be expressed as one number for the whole
+	 * plan: a wrapper answers per primitive, and an absent override means the
+	 * regime value stands. Omitted by every source that has no zone.
+	 */
+	sceneInkFor?: (primitive: PlanPolygonPrimitive) => number;
+};
+
+/** No salience wired: the structural stubs in the grammar still apply. */
+export const PLAN_PRESENTATION_SOURCE_DEFAULT: PlanPresentationSource = {
+	decisionsFor: () => PLAN_PRESENTATION_DEFAULTS,
+	sceneInk: 1
+};
+
+/**
  * Transient interaction overlays produced editor-side by `plan-overlays.ts`
  * (step 5). World-space primitives only; the builder assigns them to fixed
  * layers and never reorders committed content.
@@ -354,6 +522,24 @@ export type PlanInteractionProjection = {
 	roomOverrides?: readonly { roomId: string; points: LayoutVec2[] }[];
 	/** Transient replacements for committed object footprints (object drag). */
 	objectOverrides?: readonly { objectId: string; points: LayoutVec2[] }[];
+	/**
+	 * P23.13 S3 — the fixed canvas readout for the selected Room (spec §4, A4):
+	 * the non-mutating fallback when the resting label cannot carry the Room's
+	 * complete identity. Read-only, bounded, and never a second Inspector.
+	 */
+	roomLabelReadout?: {
+		roomId: string;
+		primary: string;
+		reference: string | null;
+		area: string | null;
+	};
+	/**
+	 * P23.13 S6 / §7 — dimension measures that could not be shown where they
+	 * belong: a short span pushes its text outward, and what still will not fit
+	 * moves here rather than being shrunk or dropped. Working information, not an
+	 * annotation: read-only, never persisted, and never a second Inspector.
+	 */
+	measureReadout?: readonly { key: string; measure: string; value: string }[];
 };
 
 export type PlanRenderModel = {
@@ -607,7 +793,12 @@ export function buildPlanRenderModel(
 					inwardNormal: [
 						opening.center.normal[0] * normalSign,
 						opening.center.normal[1] * normalSign
-					]
+					],
+					centerTangent: [...opening.center.tangent] as LayoutVec2,
+					centerNormal: [...opening.center.normal] as LayoutVec2,
+					centerPoint: [...opening.center.point] as LayoutVec2,
+					yaw: opening.center.yaw,
+					offsetMeters: opening.offset
 				},
 				style: selectedStyle(
 					'opening-line',
@@ -652,7 +843,12 @@ export function buildPlanRenderModel(
 					kind: opening.kind,
 					widthMeters: opening.width,
 					wallThicknessMeters: wall.thickness,
-					inwardNormal: [...opening.center.normal] as LayoutVec2
+					inwardNormal: [...opening.center.normal] as LayoutVec2,
+					centerTangent: [...opening.center.tangent] as LayoutVec2,
+					centerNormal: [...opening.center.normal] as LayoutVec2,
+					centerPoint: [...opening.center.point] as LayoutVec2,
+					yaw: opening.center.yaw,
+					offsetMeters: opening.offset
 				},
 				style: selectedStyle('opening-line', openingHit, interaction?.selected, interaction?.hovered),
 				hit: { kind: 'wallOpening', wallId: wall.wallId, openingId: opening.openingId }

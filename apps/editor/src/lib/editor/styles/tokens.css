@@ -158,15 +158,27 @@
 	--editor-orientation-edge-solid: #1e2c3a;
 	--editor-orientation-face-label-size: 8.5px;
 
-	/* ── DS §9 — plan surfaces (bright drafting paper on dark shell) ── */
-	--editor-plan-bg: #f5f3ee;
-	--editor-plan-grid-major: #d2cec5;
-	--editor-plan-grid-minor: #e4e0d9;
-	--editor-plan-wall: #625f59;
-	--editor-plan-wall-fill: #d5d1c8;
+	/* ── DS §9 + P23.13 §2 — plan surfaces (bright drafting paper on dark shell).
+	   A6 ratifies one cool paper across all seven themes: the warm `#f5f3ee` and
+	   its warm grid greys are replaced together, because paper and grid read as
+	   one surface. Token change only — no shell chrome is affected. ── */
+	--editor-plan-bg: #f5f7f8;
+	--editor-plan-grid-major: #ced6dd;
+	--editor-plan-grid-minor: #e4e9ed;
+	/* P23.13 S4 — the §2 mark palette. Ink/cut mass is one graphite for the
+	   bounding Wall body, its 1 px exterior profile, the Room outline and the
+	   main labels; secondary ink carries dimensions, references, areas, frame
+	   lines and the neutral hover contour. Migrated here with the paper: leaving
+	   the warm `#625f59`/`#d5d1c8`/`#292d31`/`#77766f` behind would have put a
+	   warm mass under cool paper. */
+	--editor-plan-wall: #343c43;
+	--editor-plan-wall-fill: #343c43;
 	--editor-plan-object: #b7b2a8;
-	--editor-plan-label: #292d31;
-	--editor-plan-muted: #77766f;
+	--editor-plan-label: #343c43;
+	--editor-plan-muted: #596570;
+	/* P23.13 S5 — §2 mark palette: Snap has its own ink so an honoured relation
+	   can never be mistaken for a selection (blue) or for committed geometry. */
+	--editor-plan-snap: #146d68;
 	--editor-plan-measure: #2f8cff;
 	--editor-plan-selection: #2f8cff;
 	--editor-plan-readonly: #92908a;
@@ -238,6 +250,9 @@
 	--editor-font:
 		'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
 		sans-serif;
+	/* P23.13 S6 / §7 — working dimensions are set in a mono face: digits must not
+	   reflow the text box the dimension placer already measured. */
+	--editor-font-mono: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
 	--editor-font-size-title: 16px;
 	--editor-font-size-panel-title: 14px;
 	--editor-font-size-toolbar: 13px;

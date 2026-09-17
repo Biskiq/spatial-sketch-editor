@@ -39,6 +39,35 @@ export type PlanScaleSegment = {
 	value: number;
 };
 
+/*
+ * P23.13 S2 — chrome gates (spec §5). Grid *detail* is a presentation gate, so
+ * it lives with the grid builder; `plan-salience.ts` re-exposes these as its
+ * grid gates rather than inventing a second set.
+ *
+ * Grid visibility and the snap step stay independent: dropping 0.25 m minor
+ * lines never changes 0.25 m snapping.
+ */
+export const PLAN_GRID_MAJOR_SPACING_M = 1;
+export const PLAN_GRID_MINOR_SPACING_M = 0.25;
+/** A 1 m major line needs this much room before it is drawn. */
+export const PLAN_GRID_MAJOR_MIN_SPACING_PX = 16;
+/** A 0.25 m minor line needs this much room before it is drawn. */
+export const PLAN_GRID_MINOR_MIN_SPACING_PX = 12;
+/** Ruler labels are never closer than this, whatever the 1/2/5 step lands on. */
+export const PLAN_RULER_MIN_LABEL_SPACING_PX = 48;
+
+/** Grid detail for one scale: which lines are worth drawing. */
+export function planGridDetail(
+	pixelsPerMeter: number,
+	minorSpacing = PLAN_GRID_MINOR_SPACING_M,
+	majorSpacing = PLAN_GRID_MAJOR_SPACING_M
+): { minor: boolean; major: boolean } {
+	return {
+		minor: minorSpacing * pixelsPerMeter >= PLAN_GRID_MINOR_MIN_SPACING_PX,
+		major: majorSpacing * pixelsPerMeter >= PLAN_GRID_MAJOR_MIN_SPACING_PX
+	};
+}
+
 function niceStep(raw: number): number {
 	if (!Number.isFinite(raw) || raw <= 0) return 1;
 	const exponent = Math.floor(Math.log10(raw));
@@ -48,8 +77,26 @@ function niceStep(raw: number): number {
 	return base * magnitude;
 }
 
+function nextNiceStep(step: number): number {
+	const exponent = Math.floor(Math.log10(step));
+	const magnitude = 10 ** exponent;
+	const normalized = Math.round(step / magnitude);
+	if (normalized < 2) return 2 * magnitude;
+	if (normalized < 5) return 5 * magnitude;
+	return 10 * magnitude;
+}
+
 export function planRulerStep(pixelsPerMeter: number, targetPixels = 80): number {
-	return niceStep(targetPixels / Math.max(pixelsPerMeter, Number.EPSILON));
+	const scale = Math.max(pixelsPerMeter, Number.EPSILON);
+	let step = niceStep(targetPixels / scale);
+	// The step only ever *grows*: `niceStep` may round down below the target, so
+	// promote along the 1/2/5 progression until the labels clear the floor
+	// instead of crowding. The default 80 px target already clears it; a caller
+	// asking for tighter labels is what the promotion protects.
+	for (let guard = 0; guard < 8 && step * scale < PLAN_RULER_MIN_LABEL_SPACING_PX; guard += 1) {
+		step = nextNiceStep(step);
+	}
+	return step;
 }
 
 export function buildPlanRulerTicks(
@@ -218,8 +265,11 @@ export function buildPlanGrid(
 	if (!state.gridEnabled) return [];
 	const bounds = visiblePlanBounds(state);
 	const lines: PlanGridLine[] = [];
-	const minorPixelSpacing = minorSpacing * state.pixelsPerMeter;
-	const renderMinor = minorPixelSpacing >= 6;
+	// P23.13 S2 — detail is gated per line class: major below 16px and minor
+	// below 12px both stop being drawn, without touching the snap step.
+	const detail = planGridDetail(state.pixelsPerMeter, minorSpacing, majorSpacing);
+	if (!detail.major && !detail.minor) return [];
+	const renderMinor = detail.minor;
 	const startX = Math.floor(bounds.minX / minorSpacing) * minorSpacing;
 	const endX = Math.ceil(bounds.maxX / minorSpacing) * minorSpacing;
 	const startZ = Math.floor(bounds.minZ / minorSpacing) * minorSpacing;
@@ -227,6 +277,7 @@ export function buildPlanGrid(
 	for (let x = startX; x <= endX + minorSpacing / 2; x += minorSpacing) {
 		const major = Math.abs(x / majorSpacing - Math.round(x / majorSpacing)) < 1e-6;
 		if (!major && !renderMinor) continue;
+		if (major && !detail.major) continue;
 		lines.push({
 			id: `v:${x}`,
 			start: worldToPlanScreen(state, [x, bounds.minZ]),
@@ -238,6 +289,7 @@ export function buildPlanGrid(
 	for (let z = startZ; z <= endZ + minorSpacing / 2; z += minorSpacing) {
 		const major = Math.abs(z / majorSpacing - Math.round(z / majorSpacing)) < 1e-6;
 		if (!major && !renderMinor) continue;
+		if (major && !detail.major) continue;
 		lines.push({
 			id: `h:${z}`,
 			start: worldToPlanScreen(state, [bounds.minX, z]),

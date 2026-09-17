@@ -6,7 +6,8 @@ import { EDITOR_DRAG_THRESHOLD_PX } from '../interaction-constants';
 import type { EditorCommandId } from '../editor-command-intent';
 import type { Vec3 } from '$lib/types/scene';
 import { LAYOUT_PLAN_GRID_STEP } from '$lib/layout/layout-wall-first-precision';
-import { snapOwnerKey, type SnapFeatureKind } from '@portfolio/layout-core';
+import { snapOwnerKey, snapToGridStep, type SnapFeatureKind } from '@portfolio/layout-core';
+import type { PlanControlKind } from './plan-acquisition';
 export type LayoutViewMode = 'plan' | '3d';
 /** Scene → Plan's local authoring authority. Camera Plan never reads this. */
 export type PlanViewMode = 'layout' | 'staging';
@@ -712,7 +713,47 @@ export type LayoutInteractionState = {
 		originalPoints: LayoutVec2[];
 		currentPoints: LayoutVec2[];
 	} | null;
+	/**
+	 * P23.13 S4 — the focused Plan control (spec §6). Focus is *presentation and
+	 * routing* state only: it is never a selection, never history, and moving it
+	 * must not change either. It survives other states ("the focused handle ring
+	 * survives every other state") and it is what makes the keyboard able to
+	 * reach both members of an overlap without moving geometry.
+	 */
+	planFocus: PlanFocusTarget | null;
 };
+
+/**
+ * P23.13 S4 — one focused Plan control. `kind` mirrors the control grammar
+ * (spec §6's control table); `id` is the control's canonical identity, and
+ * `ownerId` is the entity whose control it is, so the acquisition pre-pass can
+ * tell a focused control of the selected owner from an unrelated one.
+ */
+export type PlanFocusTarget = {
+	/** One source of truth for the control vocabulary (spec §6 control table). */
+	kind: PlanControlKind;
+	id: string;
+	ownerId: string;
+};
+
+/**
+ * Move Plan focus. Never touches selection, geometry or history — focus is not
+ * an edit (spec §6: "Merely moving focus never changes selection or history").
+ */
+export function setPlanFocus(state: LayoutInteractionState, target: PlanFocusTarget | null): void {
+	if (target === null) {
+		state.planFocus = null;
+		return;
+	}
+	const current = state.planFocus;
+	if (current && current.kind === target.kind && current.id === target.id) return;
+	state.planFocus = { ...target };
+}
+
+/** Drop Plan focus when its control can no longer be drawn or owned. */
+export function clearPlanFocus(state: LayoutInteractionState): void {
+	state.planFocus = null;
+}
 
 export function createLayoutInteractionState(): LayoutInteractionState {
 	return {
@@ -739,7 +780,8 @@ export function createLayoutInteractionState(): LayoutInteractionState {
 		arrangeOwner: null,
 		accordions: { place: true, objects: true, selection: true },
 		planView: createPlanViewportState(),
-		editing: null
+		editing: null,
+		planFocus: null
 	};
 }
 
@@ -1212,6 +1254,13 @@ export function selectLayoutJunction(state: LayoutInteractionState, junctionId: 
 
 export function clearLayoutSelection(state: LayoutInteractionState): void {
 	state.selection = { kind: 'none' };
+	// P23.13 S4 / §6 — focus is an *instrument*, not a selection, but a control
+	// whose owner is deleted must not keep a ring. The overlay self-heals by
+	// dropping a focus whose candidate is absent, and that is not enough on its
+	// own: P23.12 recycles canonical IDs, so a reissued Junction/Opening id could
+	// resurrect the ring on an entity the user never pressed. Clearing here is
+	// consistent with the pointerdown-to-empty path, which already clears both.
+	clearPlanFocus(state);
 	cancelRoomEdit(state);
 }
 
@@ -1307,9 +1356,16 @@ export function updateLayoutObjectDrag(
 	const drag = state.objectDrag;
 	if (!drag) return;
 	if (drag.mode === 'translate') {
-		const x = snapEnabled ? Math.round(point[0] / LAYOUT_PLAN_GRID_STEP) * LAYOUT_PLAN_GRID_STEP : point[0];
-		const z = snapEnabled ? Math.round(point[1] / LAYOUT_PLAN_GRID_STEP) * LAYOUT_PLAN_GRID_STEP : point[1];
-		drag.candidatePosition = [x, drag.originalPosition[1], z];
+		// P23.13 S5 — grid-only, and deliberately NOT the semantic snap resolver:
+		// an object transform has no family the object owner can honour (its rows
+		// are limited to supported size/delta/yaw), so letting it claim a junction
+		// or midpoint relation would present a winner the owner cannot keep. The
+		// step comes from the shared helper rather than a second inlined formula,
+		// so "which grid" has one answer. Recorded as a scope decision in the
+		// plan: routing this through `resolveLayoutSnap` is a product call, not a
+		// presentation one.
+		const snapped = snapEnabled ? snapToGridStep(point, LAYOUT_PLAN_GRID_STEP) : point;
+		drag.candidatePosition = [snapped[0], drag.originalPosition[1], snapped[1]];
 		return;
 	}
 	// Plan rotation-handle convention (matches the shipped Scene staging

@@ -17,9 +17,12 @@ import {
 import {
 	buildPlanInteractionProjection,
 	architectureEditIntentFor,
+	planNumericEntryAnchorPx,
 	withArchitectureEditIntent
 } from '$lib/editor/layout/plan-overlays';
+import { PLAN_DIMENSION_LANES_PX } from '$lib/editor/layout/plan-dimensions';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
+import { worldToPlanScreen } from '$lib/editor/layout/layout-plan-transform';
 
 /** One live Junction-move gesture, with the fields the intent gate reads. */
 function junctionGesture(
@@ -119,10 +122,27 @@ describe('P23.10 architecture-edit intent gate', () => {
 			base,
 			architectureEditIntentFor(junctionGesture(), true, null, 'known-invalid')
 		);
-		expect(refused.drafts).toHaveLength(1);
+		// P23.13 S4 / §6 — a known-invalid attempt now carries its own refusal:
+		// the proposal marker plus the octagonal stop mark and its ×.
+		expect(refused.drafts).toHaveLength(3);
 		expect(refused.drafts[0]).toMatchObject({
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
+		});
+		// Both marks land on the attempt's own locus — the same point the proposal
+		// marker drew — so the refusal can never float away from what it refuses.
+		const locus = (refused.drafts[0] as { center: [number, number] }).center;
+		expect(refused.drafts[1]).toMatchObject({
+			kind: 'circle',
+			center: locus,
+			shape: 'octagon',
+			style: 'refusal-stop'
+		});
+		expect(refused.drafts[2]).toMatchObject({
+			kind: 'circle',
+			center: locus,
+			shape: 'cross',
+			style: 'refusal-cross'
 		});
 		expect(withArchitectureEditIntent(base, null).drafts).toHaveLength(0);
 		expect(model.rooms.map((room) => room.roomId)).toEqual(['room-rectangle']);
@@ -195,7 +215,10 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			shape,
 			invalid: true
 		});
-		expect(refused.drafts).toHaveLength(2);
+		// P23.13 S4 / §6 — the refused attempt adds the stop mark and its × after
+		// the proposal. A pending attempt never does: refusal is a state, not a
+		// decoration every attempt wears.
+		expect(refused.drafts).toHaveLength(4);
 		expect(refused.drafts[0]).toMatchObject({
 			kind: 'polyline',
 			style: 'architecture-edit-intent-invalid'
@@ -204,6 +227,8 @@ describe('P23.11 fix 5 — an invalid curve drag renders the attempted Wall', ()
 			kind: 'circle',
 			style: 'architecture-edit-intent-invalid'
 		});
+		expect(refused.drafts[2]).toMatchObject({ shape: 'octagon', style: 'refusal-stop' });
+		expect(refused.drafts[3]).toMatchObject({ shape: 'cross', style: 'refusal-cross' });
 		// A bare point still renders as the single marker (no fabricated curve).
 		const pointOnly = withArchitectureEditIntent(base, {
 			kind: 'curve-control-move',
@@ -263,7 +288,7 @@ describe('P23.11 follow-up — all invalid architecture edits render proposal ge
 });
 
 describe('buildPlanInteractionProjection', () => {
-	it('emits only the persistent room name for an idle state on a line room', () => {
+	it('emits only the persistent Room label stack for an idle state on a line room', () => {
 		const document = g2LineRectangleDocument();
 		const model = buildLayoutPreviewModel(document).model;
 		const projection = buildPlanInteractionProjection(createLayoutInteractionState(), document.floors[0]!.rooms, model);
@@ -271,8 +296,13 @@ describe('buildPlanInteractionProjection', () => {
 		expect(projection.selection).toEqual([]);
 		expect(projection.handles).toEqual([]);
 		expect(projection.drafts).toEqual([]);
-		// P23.6 — the idle Plan still presents the persistent Room name.
-		expect(projection.labels).toHaveLength(1);
+		// P23.13 S3 — the idle Plan presents the Room's name and its derived area
+		// as one stacked free-space label (reference line absent: this fixture's
+		// Rooms carry no ledger reference).
+		expect(projection.labels.map((primitive) => (primitive.kind === 'text' ? primitive.style : null))).toEqual([
+			'room-name',
+			'room-area'
+		]);
 		expect(projection.labels[0]).toMatchObject({
 			kind: 'text',
 			style: 'room-name',
@@ -319,13 +349,14 @@ describe('buildPlanInteractionProjection', () => {
 			'vertex-handle',
 			'vertex-handle'
 		]);
+		// P23.13 S6 — §7's Rect Room row: "Room area, no permanent dimension
+		// chain". The four edge labels this pin used to measure are the chain §7
+		// retires, so the label layer holds the identity stack and nothing else.
 		expect(projection.labels.map((primitive) => (primitive.kind === 'text' ? primitive.text : null))).toEqual([
-			'6.00 m',
-			'4.00 m',
-			'6.00 m',
-			'4.00 m',
-			// P23.6 — the persistent Room name rides the labels layer last.
-			document.floors[0]!.rooms[0]!.name
+			// P23.13 S3 — the persistent Room label stack rides the labels layer,
+			// name first and the derived area beneath it.
+			document.floors[0]!.rooms[0]!.name,
+			'24.0 m²'
 		]);
 	});
 
@@ -336,8 +367,12 @@ describe('buildPlanInteractionProjection', () => {
 		selectLayoutWall(state, 'room-rectangle', 'room-rectangle:wall:0');
 		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
 		expect(projection.selection).toEqual([]);
-		// P23.6 — only the persistent Room name remains on the labels layer.
-		expect(projection.labels.map((primitive) => primitive.style)).toEqual(['room-name']);
+		// P23.13 S3 — only the persistent Room label stack remains on the labels
+		// layer (name + derived area for this reference-less fixture).
+		expect(projection.labels.map((primitive) => primitive.style)).toEqual([
+			'room-name',
+			'room-area'
+		]);
 		expect(projection.handles.map((primitive) => primitive.style)).toEqual([]);
 	});
 
@@ -388,13 +423,134 @@ describe('buildPlanInteractionProjection', () => {
 		beginRectangle(state, [0, 0]);
 		updateRectangle(state, [2, 2]);
 		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
-		expect(projection.drafts.map((primitive) => primitive.style)).toEqual([
+		const styles = projection.drafts.map((primitive) => primitive.style);
+		expect(styles.slice(0, 5)).toEqual([
 			'draft-outline',
 			'draft-point',
 			'draft-point',
 			'draft-point',
 			'draft-point'
 		]);
+		// P23.13 S6 — §7's Rect Room row also draws Width + depth around the
+		// candidate enclosure, so the draft layer carries the instrument with the
+		// outline: per face two witnesses, the dimension line, two 4 px ticks.
+		expect(styles.slice(5)).toEqual(Array(10).fill('dimension-witness'));
+		expect(
+			projection.labels
+				.filter((primitive) => primitive.style === 'dimension-label')
+				.map((primitive) => (primitive.kind === 'text' ? primitive.text : null))
+		).toEqual(['2.00 m', '2.00 m']);
+	});
+
+	it('hands the dimension instrument over as world geometry, on §7s lanes', () => {
+		// The paint layer projects every primitive with `worldToPlanScreen`, and
+		// the placer measures in screen pixels. A witness pushed in screen space
+		// would therefore be projected a *second* time and land pixelsPerMeter×
+		// away — ink the user never sees, while the text (which round-trips through
+		// its world anchor) stayed put and made the mistake look like "no
+		// witnesses". So the instrument is pinned twice: on the paper at all, and
+		// 18 px from the face it measures.
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [2, 2]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		const instrument = projection.drafts.filter(
+			(primitive) => primitive.kind === 'polyline' && primitive.style === 'dimension-witness'
+		);
+		expect(instrument).toHaveLength(10);
+		const screen = (key: string): [number, number][] => {
+			const primitive = instrument.find((candidate) => candidate.key.includes(key));
+			if (primitive?.kind !== 'polyline') throw new Error(`missing ${key}`);
+			return primitive.points.map((point) => worldToPlanScreen(view, point));
+		};
+		for (const primitive of instrument) {
+			if (primitive.kind !== 'polyline') continue;
+			for (const [x, y] of primitive.points.map((point) => worldToPlanScreen(view, point))) {
+				expect(x).toBeGreaterThanOrEqual(0);
+				expect(x).toBeLessThanOrEqual(view.width);
+				expect(y).toBeGreaterThanOrEqual(0);
+				expect(y).toBeLessThanOrEqual(view.height);
+			}
+		}
+		// Width face is the candidate's top edge (world z = 0 → screen y = 300);
+		// its lane sits 18 px outside the enclosure, where the centroid is not.
+		for (const point of screen('dimension-line')) {
+			expect(Math.abs(point[1] - (300 - 18))).toBeLessThan(1e-6);
+		}
+	});
+
+	it('P23.13 S7 — lands the numeric field on the value it replaces, not near it', () => {
+		// §7: "Entry replaces the displayed value with a small input at the same
+		// location." The location is read back from the primitive that draws that
+		// value (its world anchor plus the screen offset the paint layer applies),
+		// so a field can never sit on a stale second placement — and because the
+		// viewport is forbidden the world→screen transform, this is the only place
+		// the field's screen position can honestly come from.
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [2, 2]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		const label = projection.labels.find(
+			(primitive) => primitive.kind === 'text' && primitive.key.includes('rect:width')
+		);
+		if (label?.kind !== 'text') throw new Error('missing width dimension text');
+		const drawn = worldToPlanScreen(view, label.anchor);
+		const expected: [number, number] = [
+			drawn[0] + (label.offsetPx?.[0] ?? 0),
+			drawn[1] + (label.offsetPx?.[1] ?? 0)
+		];
+		const anchor = planNumericEntryAnchorPx(view, projection.labels, {
+			measureKey: 'rect:width',
+			fallbackWorld: [9, 9]
+		});
+		expect(anchor).toEqual(expected);
+		expect(anchor![0]).toBeLessThan(view.width);
+		expect(anchor![1]).toBeLessThan(view.height);
+	});
+
+	it('P23.13 S7 — falls back to §7s first lane above the pending origin when no ink carries the measure', () => {
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		// A Wall-chain field while no leg is drawn: nothing carries `leg:length`, so
+		// the field lands on the pending origin rather than at (0, 0) or nowhere.
+		const origin = worldToPlanScreen(view, [1, 1]);
+		const anchor = planNumericEntryAnchorPx(view, projection.labels, {
+			measureKey: 'leg:length',
+			fallbackWorld: [1, 1]
+		});
+		expect(anchor).toEqual([origin[0], origin[1] - PLAN_DIMENSION_LANES_PX.first]);
+		expect(planNumericEntryAnchorPx(view, projection.labels, { measureKey: null, fallbackWorld: null })).toBeNull();
+	});
+
+	it('paints every dimension value as plain ink, with no editor affordance (D1)', () => {
+		// D1 retire: a value on the drawing is ink, not a target. The pointer door is
+		// gone — no underlined value, so nothing on the drawing invites a click and no
+		// field can open under the pointer. Values are read here and edited in the
+		// Inspector; the keyboard door (Enter on the selection's own measure) is a
+		// viewport concern and is pinned where it lives.
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [4, 3]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const values = projection.labels.filter(
+			(primitive) => primitive.kind === 'text' && primitive.key.includes('dimension-text')
+		);
+		expect(values.length).toBeGreaterThan(0);
+		for (const value of values) expect(value.style).toBe('dimension-label');
 	});
 
 	it('emits rotation feedback while dragging a rotation', () => {

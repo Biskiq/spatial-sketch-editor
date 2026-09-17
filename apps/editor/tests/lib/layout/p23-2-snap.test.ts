@@ -210,12 +210,26 @@ describe('P23.2 candidate families', () => {
 		expect(center.some((candidate) => candidate.kind === 'object-bounds-center')).toBe(true);
 	});
 
-	it('emits orthogonal guide candidates relative to the active anchor', () => {
-		const candidates = orthogonalGuideCandidates([1, 1], [3, 1.1]);
+	it('emits orthogonal guide candidates relative to the active anchor, stepping the free coordinate', () => {
+		// P23.13 S8 ("locked *and* stepped"): the held coordinate is *exactly* the
+		// anchor's, while the free coordinate is quantized to the step (0.25 by
+		// default), so a guide winner lands on the axis crossed with a grid line
+		// instead of gliding with the pointer.
+		const candidates = orthogonalGuideCandidates([1, 1], [3.1, 1.6]);
 		const x = candidates.find((candidate) => candidate.sourceId === 'orthogonal-x');
 		const z = candidates.find((candidate) => candidate.sourceId === 'orthogonal-z');
 		expect(x?.point).toEqual([3, 1]);
-		expect(z?.point).toEqual([1, 1.1]);
+		expect(z?.point).toEqual([1, 1.5]);
+		expect(orthogonalGuideCandidates([1, 1], [3.1, 1.6], 1).map((candidate) => candidate.point)).toEqual(
+			[
+				[3, 1],
+				[1, 2]
+			]
+		);
+		// Acquisition still reads the raw perpendicular offset, never the stepped
+		// one, so which probe wins where is unchanged by the stepping.
+		expect(x?.distance).toBeCloseTo(0.6, 9);
+		expect(z?.distance).toBeCloseTo(2.1, 9);
 	});
 
 	it('emits valid wall-wall intersections only for endpoint-on-interior and proper-crossing', () => {

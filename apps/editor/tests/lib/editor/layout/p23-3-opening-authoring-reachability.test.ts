@@ -104,6 +104,57 @@ describe('P23.3 wall-first room drafting stays reachable', () => {
 });
 
 /**
+ * P23.13 S8 — **release truth on the canonical Opening drag.** The commit must
+ * re-derive the placement at the pointer-up's own point through the same
+ * instrument the hover used, instead of writing whatever the last preview frame
+ * left in the drag: a release 4 px past the last move must not commit the move's
+ * number. Step 1 of the slice asked whether the legacy room-owned drag was dead;
+ * **D2** ruled that it gets no contract at all, so its half of that rule was
+ * pruned rather than specified — the checks below pin the canonical path and the
+ * prune, and nothing more (legacy keeps inert smoke only). These are source
+ * contracts for the same reason the checks above are: the handlers are component
+ * event handlers, and the editor has no component-render harness.
+ */
+describe('P23.13 S8 — the Opening drag commits the release point, not the last frame', () => {
+	const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+	const move = functionBody(viewport, 'onPointerMove');
+	const up = functionBody(viewport, 'onPointerUp');
+
+	it('re-derives the canonical drag at the pointer-up point', () => {
+		expect(up).toContain('applyWallOpeningDragPoint(drag, release)');
+		// The hover runs the same function, so preview and release cannot drift.
+		expect(move).toContain('applyWallOpeningDragPoint(interaction.wallOpeningDrag, point)');
+		// One instrument behind both: project onto the host Wall, then the shared
+		// P23.2 raw/snap use-mode. No second offset rule grew here.
+		const apply = functionBody(viewport, 'applyWallOpeningDragPoint');
+		expect(apply).toContain('projectPointToPhysicalWall(model.queries, drag.wallId, point)');
+		expect(apply).toContain('resolveWallOpeningDragUpdate(drag, projection.offset, wallLength)');
+	});
+
+	it('leaves the legacy room-owned Opening select-only, with one drag mechanism gone', () => {
+		// The step-1 verdict was *reachable*, and D2's ruling was that reachable
+		// surface gets no contract: gating the whole legacy document read-only at
+		// load was the alternative and is not cheap (the legacy room/opening
+		// surfaces are deliberately still editable), so the branch came out. What
+		// remains of a legacy Opening is selection — the hit still resolves and
+		// still selects, because `resolvePlanHit` still returns `{ kind: 'opening' }`
+		// for room-scoped spans.
+		expect(viewport).toContain("if (target.kind === 'opening') {");
+		expect(viewport).toContain(
+			'selectLayoutOpening(interaction, target.roomId, target.segmentId, target.openingId);'
+		);
+		// No drag state, no drag branches, and no second projector: the pointer-down
+		// that selects cannot begin a gesture, so the pointer can never move a legacy
+		// Opening. Values stay editable in the Inspector.
+		expect(viewport).not.toContain('openingDrag');
+		expect(viewport).not.toContain('resolveOpeningDragSnap(');
+		expect(viewport).not.toContain('projectPointToWall');
+		expect(up).not.toContain('applyLegacyOpeningDragPoint');
+		expect(move).not.toContain('applyLegacyOpeningDragPoint');
+	});
+});
+
+/**
  * P23.3 requires `Escape / pointer-cancel → restore baseline, no history` for
  * the canonical Opening drag, plus wall/room draft Escape and Delete. Those
  * handlers live on the Plan SVG's `onkeydown`, so the keydown has to survive

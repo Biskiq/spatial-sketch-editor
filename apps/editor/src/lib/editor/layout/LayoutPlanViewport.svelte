@@ -56,9 +56,17 @@
 		type LayoutDraftTool,
 		removeLastPolygonPoint,
 		updateWallChainCursor,
+		// P23.13 S7 — the exact-entry direction memory and its typed-length
+		// resolver. Both were written for §7's Length form in P23.9 and had no
+		// production caller until S7's numeric editor arrived; typed length now
+		// goes through the same resolver the plan always named.
+		wallChainPendingDirection,
+		resolveWallChainEndpointAtLength,
 		resolveArrangeScenePick,
 		isLayoutPresetTool,
 		wallChainRoleForTool,
+		clearPlanFocus,
+		setPlanFocus,
 		shouldBeginWallBend,
 		architectureEditMovedOnRelease,
 		updateRectangle,
@@ -91,9 +99,10 @@
 		updateLayoutObjectFields,
 		updateLayoutRoomFields,
 		updateLayoutWallInteriorAnchor,
-		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
+		updateWallFirstWallAngle,
+		updateWallFirstWallLength,
 		updateWallFirstWallBend,
 		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
@@ -101,18 +110,13 @@
 		type LayoutPreviewSnapshot,
 		type LayoutRoomEditResult
 	} from './layout-preview-state.svelte';
-	import {
-		snapSegmentOffset,
-		LAYOUT_PLAN_HIT_RADIUS_PX,
-		type LayoutOpeningKind
-	} from './layout-opening-editing';
+	import { LAYOUT_PLAN_HIT_RADIUS_PX, type LayoutOpeningKind } from './layout-opening-editing';
 	import {
 		compiledPhysicalWallLength,
-		compiledWallLength,
 		findPlanHitRoom,
 		projectPointToPhysicalWall,
-		projectPointToWall,
-		resolvePlanHit
+		resolvePlanHit,
+		type PlanHitResult
 	} from './plan-hit';
 	import {
 		constrainToAngle,
@@ -122,16 +126,93 @@
 		setPlanViewportSize,
 		zoomPlanViewport
 	} from './layout-plan-transform';
+	import {
+		createPlanSalienceMemory,
+		resolvePlanSalience,
+		type PlanSalience
+	} from './plan-salience';
+	import { createPlanDimensionMemory } from './plan-dimensions';
+	// P23.13 S8 — the instrument zone (§1.12), the canonical closure evidence for
+	// the Wall draw's cue (§7), and the bounded lifetime of a refused attempt (§6).
+	import {
+		PLAN_ATTENTION_RESTORE_MS,
+		planAttentionLabelTierDrop,
+		planAttentionZoneAt,
+		resolvePlanAttentionZone,
+		withPlanAttentionSceneInk,
+		type PlanAttentionZone
+	} from './plan-attention';
+	import { wallChainClosureEvidence, wallChainClosureProbeKey } from './layout-wall-chain-closure';
+	import {
+		PLAN_REFUSAL_PERSISTENCE_MS,
+		beginPlanRefusal,
+		planRefusalAt,
+		withPlanRefusalAnnotation,
+		type PlanRefusal,
+		type PlanRefusalKind
+	} from './plan-refusal';
+	// P23.13 S7 — the ratified type-to-enter lifecycle (§7, A5). Every decision the
+	// input element depends on lives in that module; this component owns only the
+	// element, the plumbing and the canonical commit.
+	import {
+		planNumericAngleDegrees,
+		planNumericAngleDirection,
+		planNumericEntryBlur,
+		planNumericEntryEscape,
+		planNumericEntryField,
+		planNumericEntryHoldsExplicitValue,
+		planNumericControlEntryTarget,
+		planNumericEntryInput,
+		planNumericEntryOpen,
+		planNumericEntrySubmit,
+		planNumericEntryTab,
+		planNumericEntryTrigger,
+		planNumericHostReadout,
+		planNumericInvalidMessage,
+		planNumericPointerUp,
+		planNumericRestingEntryTarget,
+		type PlanNumericCandidates,
+		type PlanNumericEntryState,
+		type PlanNumericEntryTarget,
+		type PlanNumericSubmitOutcome
+	} from './plan-numeric-entry';
+	import {
+		planTraversalAnnouncement,
+		planTraversalEnteredFor,
+		planTraversalGroup,
+		planTraversalStep,
+		type PlanTraversalControl,
+		type PlanTraversalLayout,
+		type PlanTraversalSelection
+	} from './plan-keyboard-traversal';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 // P23.12 D5 — the Plan's selection feedback asks the shared display-identity
 // layer how an entity reads; it never queries the ledger itself.
 import {
+	identityLabelPair,
 	identityPrimaryLabel,
 	layoutSelectionLabel,
-	openingIdentity
+	openingIdentity,
+	roomIdentity
 } from '../identity/layout-identity-view';
+import { formatPlacementLabel } from '../editor-outliner';
+import {
+	roomFloorAreaM2,
+	ROOM_LABEL_SETTLE_DELAY_MS,
+	type RoomLabelMemory,
+	type RoomLabelReconsiderReason
+} from './plan-room-labels';
+import { createBrowserTextMeasure } from './plan-text-measure';	import {
+		PLAN_CONTROL_MARKS,
+		planControlTargetRadiusPx,
+	planFocusGeometry,
+	resolvePlanAcquisition,
+	type PlanControlAuthority,
+	type PlanControlCandidate,
+	type PlanControlKind
+} from './plan-acquisition';
 	import { layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
@@ -157,9 +238,12 @@ import {
 	import type { PlanViewMode } from './layout-interaction';
 	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
+		architectureEditIntentLocus,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
+		planNumericEntryAnchorPx,
+		pointAtWallOffset,
 		presetIdForTool,
 		rotationHandleScreenPoint,
 		wallOpeningEdgeWorldPoints,
@@ -172,9 +256,9 @@ import {
 	} from './plan-overlays';
 	import {
 		LAYOUT_PLAN_GRID_STEP,
+		LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
 		layoutArchitecturalPreset,
 		resolveLayoutSnap,
-		resolveOpeningDragSnap,
 		resolveOpeningDragSnapUseMode,
 		snapOwnerKey,
 		wallOwnerKey,
@@ -341,9 +425,15 @@ import {
 		projectionPoint: LayoutVec2;
 		originScreen: LayoutVec2;
 	} | null>(null);
-	let openingDrag = $state<{ roomId: string; segmentId: string; openingId: string; width: number } | null>(null);
 	let dragSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let suppressNextClick = $state(false);
+	/**
+	 * P23.13 S7 — whether a pointer button is currently down. Chain tools never take
+	 * pointer capture (they commit on *click*), so `pointerId` cannot answer this,
+	 * and a typed commit that lands mid-press has to know whether the release about
+	 * to arrive belongs to the press that predates it.
+	 */
+	let planPointerButtonDown = false;
 	let framedReplacementVersion = $state<number | null>(null);
 	let roomUnitSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let rotationHoverScreen = $state<LayoutVec2 | null>(null);
@@ -351,6 +441,29 @@ import {
 	// P23.2 — transient snap resolution (session-only). The resolution was
 	// computed at the raw pointer world position; null clears feedback.
 	let snapFeedback = $state<SnapResolution | null>(null);
+	/**
+	 * P23.13 S7 — the one open numeric field, or `null`. The state object is the
+	 * ratified lifecycle (field set, text, refusal reason, whether a drag's
+	 * pointer-up is still owed); this component only mirrors it into an input.
+	 */
+	let numericEntry = $state<PlanNumericEntryState | null>(null);
+	/**
+	 * What the open field is editing, in canonical terms. A gesture entry (the Wall
+	 * draw) accepts the segment the live run would commit; an explicit focus (A5's
+	 * second reach) names a canonical owner instead, so one lifecycle can edit an
+	 * existing Wall, an Opening or a Junction through that owner's own command —
+	 * never through a second solver.
+	 */
+	let numericEntrySubject = $state<PlanNumericSubject | null>(null);
+	let numericEntryElement = $state<HTMLInputElement | null>(null);
+	/** Plain (non-reactive) tool memory for §7's "tool change cancels". */
+	let numericEntryTool: LayoutDraftTool = 'select';
+	type PlanNumericSubject =
+		| { kind: 'wall-chain' }
+		| { kind: 'rectangle' }
+		| { kind: 'wall'; wallId: string }
+		| { kind: 'opening'; openingId: string }
+		| { kind: 'junction'; junctionId: string };
 
 	/**
 	 * P23.11 — the Bend modifier is a **named command**, not a key.
@@ -394,6 +507,7 @@ import {
 			allowedKinds?: SnapFeatureKind[];
 			excludeOwners?: ReadonlySet<string>;
 			excludePoints?: readonly LayoutVec2[];
+			anchor?: LayoutVec2 | null;
 		} = {}
 	): { point: LayoutVec2; resolution: SnapResolution } {
 		if (!interaction.planView.snapEnabled) {
@@ -404,10 +518,15 @@ import {
 		if (options.allowedKinds) input.allowedKinds = options.allowedKinds;
 		if (options.excludeOwners) input.excludeOwners = options.excludeOwners;
 		if (options.excludePoints) input.excludePoints = options.excludePoints;
+		const anchor = options.anchor ?? null;
 		const resolution = p2311Measure('snap-resolution', () => resolveLayoutSnap(
 			preview.geometry,
 			point,
-			{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP },
+			{
+				pixelsPerMeter: interaction.planView.pixelsPerMeter,
+				gridStep: LAYOUT_PLAN_GRID_STEP,
+				...(anchor ? { anchor } : {})
+			},
 			input
 		));
 		snapFeedback = resolution;
@@ -423,9 +542,27 @@ import {
 			allowedKinds?: SnapFeatureKind[];
 			excludeOwners?: ReadonlySet<string>;
 			excludePoints?: readonly LayoutVec2[];
+			anchor?: LayoutVec2 | null;
 		} = {}
 	): LayoutVec2 {
 		return resolveLayoutSnapCandidate(point, options).point;
+	}
+
+	/**
+	 * P23.13 S8 / §7 — the anchor the draft's axis family is relative to: the Wall
+	 * run's own start, and nothing else.
+	 *
+	 * One function for both paths that matter, because the guide is only honest if
+	 * the *preview* and the *commit* agree on the anchor. The commit re-resolves at
+	 * the click point (never a remembered candidate), so passing the same anchor
+	 * from the same source is what makes the released Wall exactly the one the
+	 * guide promised. A Rect Room deliberately does not call this: its corner is
+	 * axis-aligned by construction, and an axis lock there would only outrank the
+	 * geometry snaps a rectangle corner actually wants.
+	 */
+	function wallChainSnapAnchor(): LayoutVec2 | null {
+		if (!hasWallChainRun(interaction)) return null;
+		return interaction.wallChainStart ?? null;
 	}
 	// ── P23.10 direct architecture editing ──────────────────────────────────
 	// One immutable baseline snapshot and one Layout transaction per gesture.
@@ -438,6 +575,12 @@ import {
 	let architectureEditStartScreen = $state<LayoutVec2 | null>(null);
 	let architectureEditMoved = $state(false);
 	/**
+	 * P23.13 S2 — the resolved salience vocabulary held for the gesture. Freezing
+	 * the snapshot (not the scale) keeps the control set, lane and gate decisions
+	 * stable while the pointer moves, and restores live resolution at gesture end.
+	 */
+	let salienceFreeze: PlanSalience | null = $state.raw<PlanSalience | null>(null);
+	/**
 	 * P23.11 transient pass — the render-only attempt for the gesture's current
 	 * candidate. It is gesture-local (`null` outside a live drag) and replaced
 	 * wholesale on every move, never mutated, so `$state.raw` gives the render
@@ -445,6 +588,34 @@ import {
 	 * sampled coordinates: the proposal is derived data, not canonical state.
 	 */
 	let architectureEditTransient = $state.raw<LayoutTransientArchitectureEdit | null>(null);
+	/**
+	 * P23.13 S8 / §6 — the persisted refusal: a refused release's own mark, kept on
+	 * the drawing for the bounded-feedback lifetime instead of vanishing with the
+	 * drag that produced it. Bounded feedback is its own lifetime (§2), so it is
+	 * state with a timer rather than a derived value, and `planRefusalAt` is the
+	 * one expiry rule — the timer only tells the view to re-render once it passes.
+	 */
+	let planRefusal = $state.raw<PlanRefusal | null>(null);
+	let planRefusalTimer: ReturnType<typeof setTimeout> | null = null;
+	const activePlanRefusal = $derived(planRefusalAt(planRefusal, Date.now()));
+	/**
+	 * P23.13 S8 / §1.12 — the live instrument zone (gesture-lifetime): derived from
+	 * the active handle's own locus and cleared one settle window after the last
+	 * frame that touched it, so the suppression restores itself without any page-scale
+	 * dimming ever existing.
+	 */
+	let attentionZone = $state.raw<PlanAttentionZone | null>(null);
+	let attentionTimer: ReturnType<typeof setTimeout> | null = null;
+	const activeAttentionZone = $derived(planAttentionZoneAt(attentionZone, Date.now()));
+	/**
+	 * P23.13 S8 / §7 — the closure-probe memo. Deliberately non-reactive: it caches
+	 * a *plan*, not a rendering decision. Keyed on the run's canonical junction
+	 * identities (`wallChainClosureProbeKey`), so the closing leg is planned once
+	 * per closure rather than once per pointermove while the pointer sits on the
+	 * run's own start junction.
+	 */
+	let closureProbeKey: string | null = null;
+	let closureProbeFaces: readonly (readonly LayoutVec2[])[] = [];
 	let lastBendPointerTime: number | null = null;
 	let architectureEditReplacementVersion = $state<number | null>(null);
 
@@ -456,6 +627,127 @@ import {
 		return layout.walls
 			.filter((wall) => owned.has(wall.startJunctionId) || owned.has(wall.endJunctionId))
 			.map((wall) => wall.id);
+	}
+
+	function clearPlanRefusal(): void {
+		if (planRefusalTimer !== null) {
+			clearTimeout(planRefusalTimer);
+			planRefusalTimer = null;
+		}
+		planRefusal = null;
+	}
+
+	/**
+	 * P23.13 S8 / §6 — record a refused release. Silent refusals (`no_op`) are
+	 * dropped by `beginPlanRefusal` itself: a mark that answers nothing is worse
+	 * than no mark, which is the same rule the status line already follows.
+	 */
+	function armPlanRefusal(input: {
+		kind: PlanRefusalKind;
+		locus: LayoutVec2 | null;
+		reason: string | null;
+		ownerKey: string;
+	}): void {
+		clearPlanRefusal();
+		const refusal = beginPlanRefusal({ ...input, atMs: Date.now() });
+		if (!refusal) return;
+		planRefusal = refusal;
+		planRefusalTimer = setTimeout(() => {
+			planRefusalTimer = null;
+			planRefusal = null;
+		}, PLAN_REFUSAL_PERSISTENCE_MS);
+	}
+
+	/** The canonical owner of the live direct edit (the refusal's identity). */
+	function architectureEditOwnerKey(): string {
+		const gesture = interaction.architectureEdit;
+		if (!gesture) return 'architecture-edit';
+		return gesture.kind === 'junction-move' ? gesture.junctionId : gesture.wallId;
+	}
+
+	/**
+	 * P23.13 S8 / §1.12 — one frame of instrument attention. The zone is the active
+	 * handle's own locus: §1.12's "annotation bounds" are deliberately not
+	 * supplied here because the annotation a drag carries (its dimension set) is
+	 * already inside the same locus radius, and widening the zone to a whole
+	 * readout would make it a spotlight rather than an instrument.
+	 */
+	function touchPlanAttention(locus: LayoutVec2 | null): void {
+		if (!locus) return;
+		attentionZone = resolvePlanAttentionZone({
+			view: interaction.planView,
+			locus,
+			atMs: Date.now()
+		});
+		if (attentionTimer !== null) clearTimeout(attentionTimer);
+		attentionTimer = setTimeout(() => {
+			attentionTimer = null;
+			attentionZone = null;
+		}, PLAN_ATTENTION_RESTORE_MS);
+	}
+
+	/** The attempted Opening center of the live drag (its own locus, not the pointer). */
+	function wallOpeningDragLocus(): LayoutVec2 | null {
+		const drag = interaction.wallOpeningDrag;
+		if (!drag) return null;
+		const span = physicalWallSpan(model, drag.wallId);
+		if (!span) return null;
+		return pointAtWallOffset(span, drag.candidateOffset + drag.candidateWidth / 2);
+	}
+
+	/**
+	 * P23.13 S8 / §7 — canonical face evidence for the live run's closure.
+	 *
+	 * The probe gate is deliberately *wider* than the cue's own condition (a 4×
+	 * snap radius around the run start): it decides only whether it is worth
+	 * planning, never whether the cue is drawn — that stays one rule, in the
+	 * overlay — so a generous gate can never show a cue the closing rule refuses,
+	 * and the memo key keeps the plan a single call per closure.
+	 */
+	function wallChainClosureFaces(): readonly (readonly LayoutVec2[])[] {
+		const layout = wallFirstLayoutDocument();
+		const start = interaction.wallChainStart;
+		const cursor = interaction.wallChainCursor;
+		const runStartJunctionId = interaction.wallChainRunStartJunctionId;
+		const runStart = runStartJunctionId ? resolveJunctionPoint(runStartJunctionId) : null;
+		if (!layout || !start || !cursor || !runStart) {
+			// No live run: drop the memo, so the next run re-plans rather than
+			// inheriting a face computed against a document that may have changed
+			// since (a memo is only valid inside the run it was computed for).
+			closureProbeKey = null;
+			closureProbeFaces = [];
+			return [];
+		}
+		const scale = Math.max(interaction.planView.pixelsPerMeter, 1e-6);
+		const gate = (LAYOUT_PLAN_SNAP_RADIUS_CSS_PX * 4) / scale;
+		if (Math.hypot(cursor[0] - runStart[0], cursor[1] - runStart[1]) > gate) {
+			closureProbeKey = null;
+			closureProbeFaces = [];
+			return [];
+		}
+		const role = wallChainRoleForTool(interaction.tool);
+		if (!role) return [];
+		const key = wallChainClosureProbeKey({
+			startJunctionId: interaction.wallChainStartJunctionId,
+			start,
+			runStartJunctionId,
+			end: runStart,
+			role,
+			height: interaction.wallChainRunHeight
+		});
+		if (key !== closureProbeKey) {
+			closureProbeKey = key;
+			closureProbeFaces = wallChainClosureEvidence({
+				baseline: layout,
+				start,
+				end: runStart,
+				role,
+				...(interaction.wallChainRunHeight !== null
+					? { height: interaction.wallChainRunHeight }
+					: {})
+			}).faces;
+		}
+		return closureProbeFaces;
 	}
 
 	/**
@@ -639,6 +931,8 @@ import {
 		architectureEditSnapshot = captureLayoutPreviewSnapshot(preview);
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
+		// P23.13 S2 — hold the acquisition/control vocabulary for this gesture.
+		salienceFreeze = planSalience;
 		const gesture: LayoutArchitectureEditGesture =
 			baseline.kind === 'wall-bend'
 				? {
@@ -739,6 +1033,14 @@ import {
 			baseline: architectureEditBaselineDocument(),
 			moved: true
 		});
+		// P23.13 S8 / §1.12 — the dragged control is the instrument: its own locus
+		// (the attempt's, read through the same helper the refusal mark uses, so a
+		// whole-Wall drag zones its own Wall rather than needing a point it has not
+		// got) is the zone, re-stamped every frame and restored one settle window
+		// after the pointer stops.
+		touchPlanAttention(
+			architectureEditTransient ? architectureEditIntentLocus(architectureEditTransient.intent) : null
+		);
 	}
 
 	/**
@@ -751,6 +1053,7 @@ import {
 	function finishArchitectureEditGesture(pointerIdToRelease: number | null): void {
 		lastBendPointerTime = null;
 		cancelLayoutArchitectureEdit(interaction);
+		salienceFreeze = null;
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
@@ -760,9 +1063,7 @@ import {
 		if (pointerIdToRelease !== null && svgElement?.hasPointerCapture(pointerIdToRelease)) {
 			svgElement.releasePointerCapture(pointerIdToRelease);
 		}
-	}
-
-	/**
+	}		/**
 	 * P23.10 — cancel/commit the direct edit at release. The candidate is
 	 * re-derived once from the ACTUAL release coordinate against the immutable
 	 * baseline (never a remembered last-valid intermediate), then committed once
@@ -774,6 +1075,14 @@ import {
 			architectureEditStartScreen,
 			screenPoint(event)
 		);
+		// P23.13 S8 / §6 — the refused release's own mark, kept past the gesture.
+		// The locus is read from the live attempt (the same helper the invalid
+		// proposal marks) *before* the gesture is finished, so the persisted mark
+		// and the live one can never land on two different points.
+		const refusedLocus = architectureEditTransient?.intent
+			? architectureEditIntentLocus(architectureEditTransient.intent)
+			: null;
+		const ownerKey = architectureEditOwnerKey();
 		const outcome = releaseArchitectureEdit({
 			gesture: interaction.architectureEdit,
 			moved: movedOnRelease,
@@ -798,12 +1107,24 @@ import {
 			restoreBaseline: restoreArchitectureEditBaseline
 		});
 		if (outcome.statusMessage) preview.statusMessage = outcome.statusMessage;
+		if (outcome.kind === 'rejected') {
+			armPlanRefusal({
+				kind: 'architecture-edit',
+				locus: refusedLocus,
+				reason: outcome.statusMessage,
+				ownerKey
+			});
+		}
 		if (outcome.suppressNextClick) suppressNextClick = true;
 		finishArchitectureEditGesture(event.pointerId);
 	}
 
 	/** Escape / pointer-cancel / mode change: restore the baseline, cancel once. */
 	function cancelArchitectureEditGesture(): void {
+		// Escape clears the persisted refusal (§2's bounded-feedback lifetime): the
+		// user has answered the mark by dismissing it, so it does not outlive the
+		// keypress by even the rest of its 1.2 s.
+		clearPlanRefusal();
 		const gesture = interaction.architectureEdit;
 		const snapshot = architectureEditSnapshot;
 		if (!gesture) {
@@ -894,10 +1215,37 @@ import {
 	// P3.3 — live yaw readout while a Scene rotate gesture is in progress
 	// (same feedback language as room rotation).
 	let stagingYawFeedback = $state<number | null>(null);
-	// P21.2 — ghost blueprint session dismissal (not serialized): the 10×8m
-	// watermark unmounts once the project is non-empty, or for the remainder
-	// of the session upon first tool use.
+	// P21.2 — ghost blueprint session dismissal (not serialized): the neutral
+	// open-corner sketch unmounts once the project is non-empty, or for the
+	// remainder of the session upon first tool use.
 	let ghostDismissed = $state(false);
+	// P23.13 S10 / §9 — keyboard focus announcements. Written only by keyboard
+	// traversal moves (never by pointer, never per pointermove). The last
+	// announcement is kept as data and the region's *text* is derived from it
+	// against the live focus, so the region cannot describe a control the user is
+	// no longer on — including when focus is released by code this component does
+	// not own (`clearLayoutSelection` drops the instrument with a deleted owner).
+	let planAnnouncedFocus = $state<{ controlId: string; text: string } | null>(null);
+	const planFocusAnnouncement = $derived(
+		planAnnouncedFocus && interaction.planFocus?.id === planAnnouncedFocus.controlId
+			? planAnnouncedFocus.text
+			: null
+	);
+	// …and the stored announcement is released with the focus, so a *later* focus
+	// on the same control (a pointer press, or a P23.12-recycled canonical id)
+	// cannot resurrect text the keyboard has already finished with.
+	$effect(() => {
+		const focusId = interaction.planFocus?.id ?? null;
+		if (planAnnouncedFocus && planAnnouncedFocus.controlId !== focusId) planAnnouncedFocus = null;
+	});
+	// P23.13 S10 / A5 — **Enter entering the group is state, not focus.** The
+	// pointer focuses a control by pressing it (`planAcquiredControl` →
+	// `setPlanFocus`), so "the ring is on a member of the selected owner's group"
+	// is true without Enter ever being pressed; inferring the entry from
+	// `planFocus` therefore let a pointer press unlock arrow traversal. This holds
+	// *which selection* the keyboard entered, and `planTraversalEnteredFor`
+	// requires the selection to still be that one.
+	let planKeyboardGroupKey = $state<string | null>(null);
 
 	const viewBox = $derived(`0 0 ${interaction.planView.width} ${interaction.planView.height}`);
 	const draftPolygon = $derived(
@@ -906,6 +1254,122 @@ import {
 			: interaction.polygonPoints
 	);
 	const rooms = $derived('floors' in preview.project.layout ? preview.project.layout.floors.flatMap((floor) => floor.rooms) : []);
+	/**
+	 * P23.13 S3 — per compiled Room: the resolved display-identity pair (authored
+	 * name → compact reference → raw-ID label, duplicate-collapse included) and
+	 * the derived floor area. Identity comes from the P23.12 resolver and area from
+	 * the canonical compiled floor polygon — the label path invents neither.
+	 */
+	const roomLabelFacts = $derived.by(() => {
+		const layout = preview.project.layout;
+		const facts = new Map<
+			string,
+			{ name: string | null; reference: string | null; areaM2: number | null }
+		>();
+		for (const room of model.rooms) {
+			const pair = identityLabelPair(
+				roomIdentity(layout, room.roomId),
+				formatPlacementLabel(room.roomId)
+			);
+			facts.set(room.roomId, {
+				name: pair.label,
+				reference: pair.reference,
+				areaM2: roomFloorAreaM2(room.floorPolygon)
+			});
+		}
+		return facts;
+	});
+	/**
+	 * P23.13 S3 — the browser text-measure seam for Room label placement, plus the
+	 * sticky placement memo and the settle generation. All three are presentation
+	 * machinery: the memo is never document state, history or a persisted value.
+	 */
+	const roomLabelText = createBrowserTextMeasure();
+	const roomLabelMemory: RoomLabelMemory = new Map();
+	/**
+	 * Advanced 150 ms after zoom/gesture activity stops. The placer's reappearance
+	 * gate reads it, so hysteresis is expressed as a deterministic generation
+	 * rather than a wall-clock read inside the projection.
+	 */
+	let roomLabelSettleGeneration = $state(0);
+	let roomLabelSettleTimer: ReturnType<typeof setTimeout> | null = null;
+	// The projection reads the previous geometry identity to decide whether a
+	// resolution may relocate freely (`geometry`) or must stay sticky (`lod`). It
+	// has to be `$state`: the reason is computed inside a derived, so a plain
+	// write would never invalidate that derived and the reason would latch on
+	// `geometry` — relocating freely on every later zoom, which is exactly the
+	// stickiness the slice promises. The post-effect same-value write is a no-op,
+	// so the extra pass converges.
+	let roomLabelGeometryKey = $state<string | null>(null);
+	/**
+	 * P23.13 S4 / §6 — control targets grow to 44×44 on a coarse pointer. Read
+	 * once per pointer-type change (never per pointermove) and kept as state so
+	 * the acquisition verdict stays reactive to a hybrid device switching input.
+	 */
+	let planCoarsePointer = $state(false);
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+		const query = window.matchMedia('(pointer: coarse)');
+		const update = () => {
+			planCoarsePointer = query.matches;
+		};
+		update();
+		query.addEventListener('change', update);
+		return () => query.removeEventListener('change', update);
+	});
+	const planGestureActive = $derived(
+		interaction.editing !== null ||
+			interaction.objectDrag !== null ||
+			interaction.roomUnitDrag !== null ||
+			interaction.wallOpeningDrag !== null ||
+			interaction.architectureEdit !== null
+	);
+	/**
+	 * Why the label placer is being consulted: a live gesture freezes the accepted
+	 * candidates, a geometry change may relocate freely, and any other re-resolve
+	 * (zoom, pan, resize) must stay sticky. Recorded from the previous frame's
+	 * geometry identity, never persisted.
+	 */
+	const roomLabelReconsiderReason: RoomLabelReconsiderReason = $derived(
+		planGestureActive
+			? 'frozen'
+			: roomLabelGeometryKey !== null && roomLabelGeometryKey === `${preview.previewVersion}`
+				? 'lod'
+				: 'geometry'
+	);
+	$effect(() => {
+		void interaction.planView.pixelsPerMeter;
+		void interaction.planView.center[0];
+		void interaction.planView.center[1];
+		void interaction.planView.width;
+		void interaction.planView.height;
+		void planGestureActive;
+		if (roomLabelSettleTimer !== null) clearTimeout(roomLabelSettleTimer);
+		roomLabelSettleTimer = setTimeout(() => {
+			roomLabelSettleTimer = null;
+			roomLabelSettleGeneration += 1;
+		}, ROOM_LABEL_SETTLE_DELAY_MS);
+		return () => {
+			if (roomLabelSettleTimer !== null) {
+				clearTimeout(roomLabelSettleTimer);
+				roomLabelSettleTimer = null;
+			}
+		};
+	});
+	onMount(() => {
+		// Label extents depend on the real font, so both the cache and the memoized
+		// placements must be dropped when the font actually loads.
+		const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+		const dropMetrics = () => {
+			roomLabelText.invalidate();
+			// Memoized placements were fitted against the old metrics: both the cache
+			// and the accepted candidates it produced are invalid.
+			roomLabelMemory.clear();
+		};
+		void fonts?.ready.then(dropMetrics);
+		fonts?.addEventListener?.('loadingdone', dropMetrics);
+		return () => fonts?.removeEventListener?.('loadingdone', dropMetrics);
+	});
 	// P23.6 — wall-first presentation context (Junction handles, Room names,
 	// run-closure cue, diagnostic markers). Derived from the live document;
 	// nothing here is authored truth.
@@ -945,11 +1409,45 @@ import {
 			// and the hit query, so the affordance and its hit region cannot drift.
 			curveControls: selectedCurveControls(document.walls),
 			roomNames: new Map(document.rooms.map((room) => [room.id, room.name] as const)),
+			// P23.13 S3 — resolved display identity (name → reference → raw-ID label)
+			// and derived area per compiled Room, the real text metrics, the sticky
+			// placement memo and the reconsideration/settle signals.
+			roomLabels: {
+				facts: roomLabelFacts,
+				measure: roomLabelText.measure,
+				memory: roomLabelMemory,
+				reason: roomLabelReconsiderReason,
+				settleGeneration: roomLabelSettleGeneration,
+				// P23.13 S8 / §1.12 — the live instrument zone's tier ceiling. Absent
+				// (no instrument being worked) means every label keeps its own tier.
+				tierDropZone: planAttentionLabelTierDrop(activeAttentionZone) ?? undefined
+			},
+			// P23.13 S6 / §7 — the dimension lane freeze. One memory per viewport,
+			// like the salience hysteresis: §7 freezes the side at gesture start, so
+			// the decision has to outlive a frame without ever entering the document.
+			dimensions: { memory: planDimensionMemory },
+			// P23.13 S4 — the focused control's ring and its owner's control net +
+			// true reference centerline. Geometry comes from canonical compiled
+			// samples, so a curve keeps its curve; a missing owner draws nothing.
+			focus: planFocusOverlay(),
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
 				: null,
+			// P23.13 S8 / §7 — canonical face evidence for the live run's closure:
+			// the closing leg's own plan already produced these polygons, so the
+			// overlay may show a face without ever claiming one. Empty outside a
+			// closing run (and outside a run altogether).
+			closureFaces: wallChainClosureFaces(),
 			issues: preview.issues
 		};
+	});
+	// Recorded after `wallFirstContext` is read (a memo, not state): the next
+	// resolution compares against it to tell a geometry change from a pure
+	// scale/pan re-resolve. Pan alone never invalidates an accepted candidate —
+	// its world anchor moves with the Room.
+	$effect(() => {
+		void wallFirstContext;
+		roomLabelGeometryKey = `${preview.previewVersion}`;
 	});
 	const baseInteractionProjection = $derived(
 		buildPlanInteractionProjection(
@@ -961,6 +1459,58 @@ import {
 			layoutHover ?? hierarchyEmphasis ?? undefined
 		)
 	);
+	/**
+	 * P23.13 S7 / §7 — where the numeric field sits: on the value it replaces.
+	 *
+	 * It is read back from the very primitive that draws that value (the placed
+	 * dimension text's world anchor plus the screen offset the paint layer applies),
+	 * so the field cannot drift from the instrument it edits — the same round trip
+	 * every other label uses, and no second placement to keep in sync. A field whose
+	 * host has no live measure (or whose measure had to move to the readout) falls
+	 * back to the pending leg's start on the §7 lane offset rather than guessing a
+	 * location: an editor with no value to sit on still has to appear somewhere.
+	 */
+	const numericEntryAnchorPx = $derived.by(() => {
+		const state = numericEntry;
+		if (!state) return null;
+		return planNumericEntryAnchorPx(interaction.planView, baseInteractionProjection.labels, {
+			measureKey: numericEntryMeasureKey(state),
+			fallbackWorld: numericEntryFallbackWorld()
+		});
+	});
+
+	/**
+	 * §7: "Tool change cancels the whole proposal." The tool change cancels the run
+	 * itself; the field has to go with it, or the next keystroke would be editing a
+	 * gesture that no longer exists.
+	 */
+	$effect(() => {
+		const tool = interaction.tool;
+		if (tool !== numericEntryTool) {
+			numericEntryTool = tool;
+			numericEntry = null;
+		}
+	});
+
+	/**
+	 * The field takes the keyboard as it appears, with its text selected, so the
+	 * first keystroke *replaces* the displayed value (§7) instead of appending to
+	 * it — and Tab re-selects, because the newly focused field is a different
+	 * number, not more of the same one.
+	 */
+	let numericEntryFocusKey: string | null = null;
+	$effect(() => {
+		const state = numericEntry;
+		if (!state || !numericEntryElement) {
+			numericEntryFocusKey = null;
+			return;
+		}
+		const key = `${state.host}:${state.fieldIndex}`;
+		if (numericEntryFocusKey === key && document.activeElement === numericEntryElement) return;
+		numericEntryFocusKey = key;
+		numericEntryElement.focus();
+		numericEntryElement.select();
+	});
 	const cameraProjection = $derived.by(() => {
 		if (interaction.planViewMode !== 'layout' || !interaction.planView.showTourOverlay) return undefined;
 		try {
@@ -1150,7 +1700,23 @@ import {
 	// canonical baseline stays installed underneath, and the canonical planner
 	// decides on release. Nothing here reads or writes the document.
 	const architectureEditIntent = $derived(architectureEditTransient?.intent ?? null);
-const interactionProjection = $derived(
+	/**
+	 * P23.13 S5 / §7 — an explicit numeric value outranks a conflicting snap.
+	 *
+	 * S7 owns the numeric editor that sets this: it is the only producer, and
+	 * until it exists nothing suppresses a snap, so the value is the identity
+	 * `false` rather than a fabricated flag. The wiring lives here (not in S7)
+	 * because it is a statement about *presentation precedence*, which is exactly
+	 * what this slice owns: when a value is explicit, the winner marker is
+	 * removed and the relation reports `Exact value` instead.
+	 */
+	/**
+	 * P23.13 S7 / §7 — "Explicit values outrank a conflicting snap: remove its
+	 * winner marker and report `Exact value`." S5 shipped that presentation and
+	 * left the flag for S7; an open field holding a *valid* value is what sets it.
+	 */
+	const snapSuppressedByExplicitValue = $derived(planNumericEntryHoldsExplicitValue(numericEntry));
+	const architectureEditProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
 				withArrangeHoverOutline(
@@ -1175,15 +1741,52 @@ const interactionProjection = $derived(
 							: null,
 						objectRotateFeedback
 					),
-					arrangeHoverOutline
-				),
-				snapFeedback
+				arrangeHoverOutline
 			),
+			snapFeedback,
+			// The view is passed so the relation word can pick the side that has
+			// room: the winner is anchored to the pointer, and a word clipped by the
+			// canvas edge reports a relation nobody can read.
+			{ explicitValue: snapSuppressedByExplicitValue, view: interaction.planView }
+		),
 			architectureEditIntent
 		)
 	);
+	/**
+	 * P23.13 S8 / §6 — the persisted refusal composes **over** the live proposal
+	 * and never replaces it: the original geometry keeps its committed
+	 * position/ink/opacity (nothing was installed), the refused attempt is gone
+	 * with its gesture, and what stays is the mark and the planner's own reason.
+	 */
+	const interactionProjection = $derived(
+		withPlanRefusalAnnotation(architectureEditProjection, activePlanRefusal)
+	);
 	const planModel = $derived(
 		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
+	);
+	/**
+	 * P23.13 S2 — semantic zoom, resolved once per frame. The hysteresis memory
+	 * lives outside the derived value so regime and per-Opening gates keep their
+	 * history across frames, and a live gesture reads its frozen snapshot instead.
+	 */
+	const salienceMemory = createPlanSalienceMemory();
+	/**
+	 * P23.13 S6 — spec §7's dimension lane freeze. Session state only, never
+	 * persisted and never part of history; cleared with the component.
+	 */
+	const planDimensionMemory = createPlanDimensionMemory();
+	const planSalience = $derived(
+		salienceFreeze ??
+			resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
+	);
+	/**
+	 * P23.13 S8 / §1.12 — the resolved presentation the paint layer reads. The
+	 * instrument zone adds its region-scoped Scene dim here and nowhere else: S2's
+	 * snapshot is wrapped, never rewritten, so the regime value is still the one
+	 * source for every footprint outside the zone.
+	 */
+	const planPresentation = $derived(
+		withPlanAttentionSceneInk(planSalience, interaction.planView, activeAttentionZone)
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -1220,6 +1823,19 @@ const interactionProjection = $derived(
 	const planSelectionLabel = $derived(
 		layoutSelectionLabel(preview.project.layout, interaction.selection)
 	);
+	/**
+	 * P23.13 S3 — the fixed canvas readout, resolved by the same placer that laid
+	 * the resting labels out, so it can never disagree with what is on the paper.
+	 */
+	const roomLabelReadout = $derived(baseInteractionProjection.roomLabelReadout ?? null);
+	/**
+	 * P23.13 S6 — §7's last resort for a working dimension: a measure that could
+	 * not be drawn where it was taken (a span too short to hold its own text, or
+	 * text that would leave the canvas) reports here instead of shrinking. It
+	 * shares the one fixed readout surface, so the viewport still has exactly one
+	 * place that can hold text which has nowhere else to go.
+	 */
+	const measureReadout = $derived(baseInteractionProjection.measureReadout ?? null);
 	const rotationHandleHovered = $derived.by(() => {
 		if (interaction.tool !== 'select' || !rotationHoverScreen) return false;
 		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
@@ -1386,7 +2002,6 @@ const interactionProjection = $derived(
 			dragSnapshot ||
 			roomUnitSnapshot ||
 			architectureEditSnapshot ||
-			openingDrag ||
 			pendingWallBend ||
 			draggedInteriorAnchor ||
 			pointerId !== null ||
@@ -1416,13 +2031,22 @@ const interactionProjection = $derived(
 		interiorAnchorStartScreen = null;
 		interiorAnchorMoved = false;
 		pendingWallBend = null;
-		openingDrag = null;
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
 		architectureEditSnapshot = null;
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
+		// P23.13 S2 — clearing the snapshot here bypasses the tool-change effect
+		// below (it early-returns on a null snapshot) and therefore
+		// `finishArchitectureEditGesture`, so the frozen salience snapshot has to
+		// be released with the baseline it was captured against.
+		salienceFreeze = null;
 		cancelLayoutArchitectureEdit(interaction);
+		// P23.13 S4 / §6 — "mode changes cancel capture and clear the prior owner's
+		// instrument". Releasing focus with the gesture is part of that: a cancel
+		// removes the whole instrument rather than leaving a ring on a control no
+		// longer under edit.
+		clearPlanKeyboardFocus();
 		rotationHoverScreen = null;
 		stagingRotationHoverScreen = null;
 		arrangeLayoutRotationHoverScreen = null;
@@ -1787,7 +2411,6 @@ const interactionProjection = $derived(
 			panPointerId === null &&
 			pendingWallBend === null &&
 			interiorAnchorPointerId === null &&
-			openingDrag === null &&
 			interaction.primitiveDraft === null &&
 			interaction.objectDrag === null &&
 			interaction.roomUnitDrag === null &&
@@ -1924,7 +2547,6 @@ const interactionProjection = $derived(
 		interiorAnchorStartScreen = null;
 		interiorAnchorMoved = false;
 		pendingWallBend = null;
-		openingDrag = null;
 		cancelLayoutWallOpeningDrag(interaction);
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
@@ -1999,8 +2621,13 @@ const interactionProjection = $derived(
 	function wallOpeningHandleHit(screen: LayoutVec2): 'start-edge' | 'end-edge' | null {
 		const handles = wallOpeningHandleScreenPoints();
 		if (!handles) return null;
-		if (distance(handles.start, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX) return 'start-edge';
-		if (distance(handles.end, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX) return 'end-edge';
+		// P23.13 S4 / §6 — width edges are controls, so they are acquired at the
+		// ratified 24 px target (44 px coarse), not at the entity radius. Before
+		// this, the drawn 7 px square had to be hit almost exactly even though the
+		// acquisition target was supposed to be larger than the mark.
+		const radius = planControlTargetRadiusPx(planCoarsePointer);
+		if (distance(handles.start, screen) <= radius) return 'start-edge';
+		if (distance(handles.end, screen) <= radius) return 'end-edge';
 		return null;
 	}
 
@@ -2037,6 +2664,27 @@ const interactionProjection = $derived(
 			snapOffset: useMode?.snappedOffset ?? null,
 			wallLength
 		});
+	}
+
+	/**
+	 * P23.13 S8 — one mechanism for where a canonical Opening drag lands at one
+	 * world point: project onto the host Wall, then resolve that offset through the
+	 * P23.2 raw/snap use-mode. Returns `false` when the point has no honest
+	 * projection onto the host — nothing is invented to replace it.
+	 *
+	 * The **hover and the release both run this**, which is what makes release truth
+	 * true: the commit re-derives at the pointer-up's own point instead of writing
+	 * whatever the last preview frame happened to leave in the drag. The two paths
+	 * cannot drift because there is only one of them.
+	 */
+	function applyWallOpeningDragPoint(drag: LayoutWallOpeningDrag, point: LayoutVec2): boolean {
+		const projection = projectPointToPhysicalWall(model.queries, drag.wallId, point);
+		if (!projection) return false;
+		const wallLength =
+			wallFirstWallLengthFor(drag.wallId) ??
+			compiledPhysicalWallLength(model.queries, drag.wallId);
+		resolveWallOpeningDragUpdate(drag, projection.offset, wallLength);
+		return true;
 	}
 
 	/**
@@ -2090,6 +2738,11 @@ const interactionProjection = $derived(
 	}
 
 	function onPointerDown(event: PointerEvent) {
+		// P23.13 S8 / §6 — "until the next deliberate action": any new press clears
+		// the persisted refusal, so a mark can never sit under a gesture the user
+		// has already moved on to.
+		clearPlanRefusal();
+		planPointerButtonDown = true;
 		if (event.button === 1) {
 			dismissSceneBridge();
 			const screen = screenPoint(event);
@@ -2101,11 +2754,37 @@ const interactionProjection = $derived(
 			return;
 		}
 		if (event.button !== 0) return;
+		// P23.13 S7 / §7 — while a numeric field is open the canvas belongs to it:
+		// the press starts no gesture and does not blur the input (preventing the
+		// pointerdown default keeps focus), so a click can never discard a typed
+		// value and commit the pointer-positioned segment in its place. Enter
+		// submits, Escape restores.
+		if (numericEntry) {
+			event.preventDefault();
+			return;
+		}
+		// A press that actually reaches the canvas takes the keyboard instrument
+		// back (see `releasePlanKeyboardInstrument`). A press swallowed by an open
+		// field above deliberately does not: it changes nothing, so it must not end
+		// the keyboard's claim on the group.
+		releasePlanKeyboardInstrument();
 		svgElement?.focus();
 		const point = worldPoint(event);
 		const screen = screenPoint(event);
 		if (!point || !screen) return;
 		dismissSceneBridge();
+		// P23.13 S4 / §6 — focus follows the control the pointer actually took:
+		// acquiring a control focuses it (which is what reveals its owner's
+		// control polygon and reference centerline), and a press that acquires no
+		// control moves the instrument away and drops the ring. Focus is never
+		// selection and never history — moving it changes nothing else.
+		if (interaction.planViewMode === 'layout') {
+			const authority = planAcquiredControl(point);
+			setPlanFocus(
+				interaction,
+				authority ? { kind: authority.kind, id: authority.id, ownerId: authority.ownerId } : null
+			);
+		}
 
 		if (interaction.planViewMode === 'staging') {
 			if (interaction.tool !== 'select') return;
@@ -2308,8 +2987,10 @@ const interactionProjection = $derived(
 		const target = resolvePlanHit(
 			model.queries,
 			point,
-			LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-			planHitOptions()
+			// S4 — the acquisition radius when a control has claimed the pointer,
+			// otherwise the unchanged entity radius.
+			planHitTolerance(point),
+			planHitOptions(point)
 		);
 		if (!target) {
 			// a Plan empty-click deselects whichever domain is active (a
@@ -2377,21 +3058,16 @@ const interactionProjection = $derived(
 			return;
 		}
 		if (target.kind === 'opening') {
-			const room = findLayoutRoom(rooms, target.roomId);
-			const opening = room?.openings.find((candidate) => candidate.id === target.openingId);
+			// P23.13 S8 / D2 — a legacy room-owned Opening span is **select-only**.
+			// The room-owned drag was a second mechanism for a question the
+			// wall-first gesture already answers (where an Opening sits on its host),
+			// with no canonical command behind it and no release-truth contract, and
+			// its document format is read-only-in-practice. Gating the whole legacy
+			// document at load was the alternative and is not cheap — the legacy
+			// room/opening surfaces are deliberately still editable — so the drag
+			// branch is removed instead of half-specified. Values are edited in the
+			// Inspector, which is where every other legacy number already lives.
 			selectLayoutOpening(interaction, target.roomId, target.segmentId, target.openingId);
-			if (svgElement) {
-				if (!onLayoutTransactionBegin()) return;
-				dragSnapshot = captureLayoutPreviewSnapshot(preview);
-				openingDrag = {
-					roomId: target.roomId,
-					segmentId: target.segmentId,
-					openingId: target.openingId,
-					width: opening?.width ?? 0
-				};
-				pointerId = event.pointerId;
-				svgElement.setPointerCapture(event.pointerId);
-			}
 			return;
 		}
 		if (target.kind === 'object') {
@@ -2555,10 +3231,20 @@ const interactionProjection = $derived(
 		// P23.9 segment-first — pending segment preview follows the snapped
 		// cursor once a run has started. `pointerleave` clears only the
 		// cursor/snap preview, never the run (click-click needs SVG exit).
-		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
+		// P23.13 S7 / §7 — an open numeric field freezes the proposal: the pending
+		// leg must not follow the pointer while its length is being typed, or the
+		// value being edited would move out from under the caret.
+		if (
+			!numericEntry &&
+			wallChainRoleForTool(interaction.tool) !== null &&
+			interaction.planViewMode === 'layout'
+		) {
 			if (hasWallChainRun(interaction)) {
 				const point = worldPoint(event);
-				updateWallChainCursor(interaction, point ? applyLayoutSnap(point) : null);
+				updateWallChainCursor(
+					interaction,
+					point ? applyLayoutSnap(point, { anchor: wallChainSnapAnchor() }) : null
+				);
 			} else if (interaction.wallChainCursor) {
 				updateWallChainCursor(interaction, null);
 			}
@@ -2618,7 +3304,6 @@ const interactionProjection = $derived(
 			!interaction.architectureEdit &&
 			!interaction.editing &&
 			!interaction.wallOpeningDrag &&
-			!openingDrag &&
 			!pendingWallBend
 		) {
 			const hoverPoint = worldPoint(event);
@@ -2628,8 +3313,10 @@ const interactionProjection = $derived(
 					: resolvePlanHit(
 							model.queries,
 							hoverPoint,
-							LAYOUT_PLAN_HIT_RADIUS_PX / interaction.planView.pixelsPerMeter,
-							planHitOptions()
+							// S4 — owner intent above entity class, on hover too, so the
+							// affordance the pointer is actually on is the one that lights up.
+							planHitTolerance(hoverPoint),
+							planHitOptions(hoverPoint)
 						);
 			layoutHover = toLayoutHover(hoverHit);
 		} else if (layoutHover) {
@@ -2767,55 +3454,9 @@ const interactionProjection = $derived(
 			// P23.3 — transient only: the pointer resolves a raw candidate (plus an
 			// optional honest snap win); nothing is written to the document here.
 			const point = worldPoint(event);
-			if (!point) return;
-			const drag = interaction.wallOpeningDrag;
-			const projection = projectPointToPhysicalWall(model.queries, drag.wallId, point);
-			if (!projection) return;
-			const wallLength =
-				wallFirstWallLengthFor(drag.wallId) ??
-				compiledPhysicalWallLength(model.queries, drag.wallId);
-			resolveWallOpeningDragUpdate(drag, projection.offset, wallLength);
-			return;
-		}
-		if (openingDrag) {
-			const point = worldPoint(event);
-			if (!point) return;
-			const room = findLayoutRoom(rooms, openingDrag.roomId);
-			const segment = room?.boundary.segments.find((candidate) => candidate.id === openingDrag!.segmentId);
-			const projection = room && segment
-				? projectPointToWall(model.queries, room.id, segment.id, point)
-				: null;
-			if (!room || !segment || !projection) return;
-			const length = compiledWallLength(model.queries, room.id, segment.id);
-			const width = openingDrag.width;
-			const maxOffset = Math.max(0, length - width);
-			const centered = projection.offset - width / 2;
-			let offset: number;
-			if (!interaction.planView.snapEnabled) {
-				offset = Math.min(Math.max(0, centered), maxOffset);
-			} else if (segment.kind === 'line') {
-				// P23.2 — straight-wall opening drag resolves through the
-				// offset-space semantic resolver (host-wall junctions,
-				// midpoint, other openings' edges, grid fallback). The dragged
-				// opening's own spans are skipped so its own edges can never
-				// act as external snap targets; grid candidates snap the
-				// opening center like opening creation. Curved (auto-bezier)
-				// segments keep the legacy linear grid snap.
-				const resolution = resolveOpeningDragSnap(
-					preview.geometry,
-					{ segmentId: segment.id, roomId: openingDrag.roomId, start: segment.start, end: segment.end },
-					openingDrag.openingId,
-					projection.offset,
-					width,
-					{ pixelsPerMeter: interaction.planView.pixelsPerMeter, gridStep: LAYOUT_PLAN_GRID_STEP }
-				);
-				offset = resolution?.kind === 'snap'
-					? resolution.candidate.offset
-					: Math.min(Math.max(0, centered), maxOffset);
-			} else {
-				offset = snapSegmentOffset(centered, maxOffset);
-			}
-			updateLayoutOpeningFields(preview, openingDrag.roomId, openingDrag.openingId, { offset });
+			if (point) applyWallOpeningDragPoint(interaction.wallOpeningDrag, point);
+			// P23.13 S8 / §1.12 — the dragged Opening is the instrument.
+			touchPlanAttention(wallOpeningDragLocus());
 			return;
 		}
 		if (interaction.tool === 'rectangle') {
@@ -2846,9 +3487,23 @@ const interactionProjection = $derived(
 	}
 
 	function onPointerUp(event: PointerEvent) {
+		planPointerButtonDown = false;
 		// P23.2 clear rule — a released pointer ends feedback; commits consume
 		// the already-resolved candidate positions captured during the drag.
 		clearLayoutSnapFeedback();
+		// P23.13 S7 / §7 — typing during an active pointer drag freezes the proposal
+		// and consumes that drag's pointer-up without committing, so the release can
+		// never place the pointer-positioned candidate the user just replaced with a
+		// number. The chain tools commit on *click*, so that click is suppressed with
+		// it — one interaction, one consumption.
+		const numericPointerUp = planNumericPointerUp(numericEntry);
+		if (numericPointerUp.consumed) {
+			numericEntry = numericPointerUp.state;
+			suppressNextClick = true;
+			pointerId = null;
+			svgElement?.releasePointerCapture(event.pointerId);
+			return;
+		}
 		if (stagingGesture?.pointerId === event.pointerId) {
 			const gesture = stagingGesture;
 			previewStagingGesture(event);
@@ -3057,8 +3712,24 @@ const interactionProjection = $derived(
 			// past the Wall end) rejects with no history — it never becomes an
 			// end-flush placement, because clamping is not validity.
 			const drag = interaction.wallOpeningDrag;
+			// P23.13 S8 release truth — re-derive at the pointer-up's own point through
+			// the same instrument the hover used, so the Opening that commits is the one
+			// the release promised rather than the last preview frame's. A release with
+			// no honest projection (off-canvas, off the host Wall) leaves the live
+			// candidate standing, exactly as the hover left it.
+			const release = worldPoint(event);
+			if (release) applyWallOpeningDragPoint(drag, release);
 			if (!drag.valid) {
 				preview.statusMessage = 'Opening does not fit on this wall';
+				// P23.13 S8 / §6 — the refused Opening keeps its mark on the drawing,
+				// at the candidate's own attempted center (the position it was refused),
+				// while the committed Opening stays exactly where it was.
+				armPlanRefusal({
+					kind: 'opening-drag',
+					locus: wallOpeningDragLocus(),
+					reason: 'Opening does not fit on this wall',
+					ownerKey: drag.openingId
+				});
 				onLayoutTransactionCancel();
 			} else {
 				const result = updateWallFirstOpening(
@@ -3075,6 +3746,12 @@ const interactionProjection = $derived(
 				} else {
 					onLayoutTransactionCancel();
 					preview.statusMessage = result.message;
+					armPlanRefusal({
+						kind: 'opening-drag',
+						locus: wallOpeningDragLocus(),
+						reason: result.message ?? null,
+						ownerKey: drag.openingId
+					});
 				}
 			}
 			cancelLayoutWallOpeningDrag(interaction);
@@ -3083,31 +3760,11 @@ const interactionProjection = $derived(
 			svgElement?.releasePointerCapture(event.pointerId);
 			return;
 		}
-		if (openingDrag) {
-			onLayoutTransactionCommit();
-			openingDrag = null;
-			dragSnapshot = null;
-			pointerId = null;
-			svgElement?.releasePointerCapture(event.pointerId);
-			return;
-		}
 		pointerId = null;
-		openingDrag = null;
 		dragSnapshot = null;
 		svgElement?.releasePointerCapture(event.pointerId);
 		if (interaction.tool === 'rectangle') {
-			// P23.9 — on a wall-first document Rectangle is the bounded four-Wall
-			// chain frontend: same canonical graph as an equivalent chain. The
-			// legacy Room-polygon commit stays for legacy documents.
-			if ('formatVersion' in preview.project.layout) {
-				const points = rectanglePoints(interaction);
-				if (points && onCommit(points)) clearLayoutDraft(interaction);
-				else clearLayoutDraft(interaction);
-				return;
-			}
-			const points = rectanglePoints(interaction);
-			if (points && onCommit(points)) clearLayoutDraft(interaction);
-			else if (!points) clearLayoutDraft(interaction);
+			commitRectangleDraft();
 			return;
 		}
 		if (interaction.tool === 'select' && interaction.editing) {
@@ -3120,6 +3777,7 @@ const interactionProjection = $derived(
 	}
 
 	function onPointerCancel(event: PointerEvent) {
+		planPointerButtonDown = false;
 		if (stagingGesture?.pointerId === event.pointerId) cancelStagingGesture();
 		arrangeLayoutRotationHoverScreen = null;
 		clearLayoutSnapFeedback();
@@ -3153,7 +3811,6 @@ const interactionProjection = $derived(
 		}
 		if (
 			interiorAnchorPointerId === event.pointerId ||
-			(openingDrag && pointerId === event.pointerId) ||
 			(interaction.wallOpeningDrag && pointerId === event.pointerId)
 		) {
 			cancelActiveLayoutDrag();
@@ -3171,6 +3828,14 @@ const interactionProjection = $derived(
 			suppressNextClick = false;
 			return;
 		}
+		// P23.13 S7 — a field owns the gesture: a click while one is open never
+		// commits a pointer-positioned segment behind the typed value.
+		if (numericEntry) return;
+		// P23.13 S8 / D1 — the pointer alternative to A5's second reach is **retired**:
+		// nothing on the drawing opens an editor, so no click is ever consumed here.
+		// The keyboard door stands — Enter on the selection's own primary measure
+		// (`beginNumericEntryFromFocus`), Enter on a focused control, and typing
+		// during a gesture — and exact values are otherwise the Inspector's.
 		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return;
 		const point = worldPoint(event);
 		if (!point) return;
@@ -3199,7 +3864,12 @@ const interactionProjection = $derived(
 	 * never coordinate proximity and never "a Room appeared".
 	 */
 	function commitWallChainClick(rawPoint: LayoutVec2) {
-		const snapped = resolveLayoutSnapCandidate(rawPoint);
+		// Release truth (S8): the click re-resolves against the live anchor rather
+		// than trusting the hover's remembered candidate, so what the guide showed
+		// is exactly what commits — and a click with no run yet has no anchor, so
+		// the first leg of a chain is never axis-locked to a start that does not
+		// exist.
+		const snapped = resolveLayoutSnapCandidate(rawPoint, { anchor: wallChainSnapAnchor() });
 		if (!hasWallChainRun(interaction)) {
 			preview.statusMessage = null;
 			beginWallChain(interaction, snapped.point);
@@ -3221,11 +3891,31 @@ const interactionProjection = $derived(
 			draftedVersion = preview.previewVersion;
 			return;
 		}
+		finishWallChainSegment(result, snapped.point);
+	}
+
+	/**
+	 * P23.13 S7 — the continuation half of a segment commit, shared by the pointed
+	 * and the typed path so a typed segment advances the run exactly like a clicked
+	 * one (a second rule here would be a second run semantics).
+	 *
+	 * The guard for a success that reports no canonical junction ids lives *here*,
+	 * for both callers: `success` and "has junctions" are separately checked, so two
+	 * callers each checking the same result is precisely how they drift. Without ids
+	 * there is no canonical end to continue from, and inventing one from the
+	 * fallback point would seed the next segment on a coordinate the document never
+	 * accepted — the run is cancelled instead, exactly as the pointed path always
+	 * did.
+	 */
+	function finishWallChainSegment(
+		result: { startJunctionId?: string; endJunctionId?: string; closedRun?: boolean; wallHeight?: number },
+		fallbackPoint: LayoutVec2
+	) {
 		if (result.startJunctionId === undefined || result.endJunctionId === undefined) {
 			cancelWallChainRun(interaction);
 			return;
 		}
-		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped.point];
+		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...fallbackPoint];
 		if (result.closedRun) {
 			cancelWallChainRun(interaction);
 		} else {
@@ -3237,6 +3927,834 @@ const interactionProjection = $derived(
 			});
 		}
 		draftedVersion = preview.previewVersion;
+	}
+
+	// -----------------------------------------------------------------------
+	// P23.13 S7 — exact numeric entry (§7 "Adopt optional type-to-enter", A5)
+	// -----------------------------------------------------------------------
+
+	/**
+	 * The live values the field is seeded from, read from the same gesture state the
+	 * dimension instrument measures — the pending leg's length and angle. Both are
+	 * canonical numbers, never the *formatted* strings §7 warns about: the field
+	 * seeds from what the planner would see, and only ever displays two decimals.
+	 */
+	function pendingWallChainCandidates(): PlanNumericCandidates {
+		const start = interaction.wallChainStart;
+		if (!start) return { length: null, angle: null };
+		const cursor = interaction.wallChainCursor;
+		const length = cursor ? distance(start, cursor) : null;
+		// `wallChainPendingDirection` is the plan's own direction memory (live cursor,
+		// else last hover, else last committed segment, else +X); the typed length
+		// uses it too, so the field and the commit agree on "which way".
+		const direction = wallChainPendingDirection(interaction);
+		return {
+			length: length !== null && length > 1e-6 ? length : null,
+			angle: planNumericAngleDegrees(direction[0], direction[1])
+		};
+	}
+
+	/** The pending leg's length, or `null` when the run has no direction yet. */
+	function pendingWallChainLength(): number | null {
+		const start = interaction.wallChainStart;
+		const cursor = interaction.wallChainCursor;
+		if (!start || !cursor) return null;
+		const length = distance(start, cursor);
+		return length > 1e-6 ? length : null;
+	}
+
+	/**
+	 * §7's measure key for the field being edited, i.e. the value the field sits on.
+	 * A field whose host has no live instrument returns `null` here and lands on its
+	 * fallback instead (see `numericEntryFallbackWorld`) — a Junction's coordinate
+	 * entry sits on a handle, not on a number the drawing carries.
+	 */
+	function numericEntryMeasureKey(state: PlanNumericEntryState): string | null {
+		const field = planNumericEntryField(state);
+		if (state.host === 'wall-chain') {
+			if (field.id === 'length') return 'leg:length';
+			if (field.id === 'angle') return 'leg:angle';
+			return null;
+		}
+		const subject = numericEntrySubject;
+		if (!subject) return null;
+		// The measures §6/S6 already draw, so the field lands on the number the user
+		// clicked rather than near it. Every key here is one the derivation produces;
+		// a subject with no ink of its own (a Junction's coordinates) answers `null`
+		// and lands on its anchor instead (see `numericEntryFallbackWorld`).
+		if (subject.kind === 'rectangle') {
+			return field.id === 'depth' ? 'rect:depth' : 'rect:width';
+		}
+		if (subject.kind === 'wall' && state.host === 'wall-edit') {
+			return `selected-wall:${subject.wallId}`;
+		}
+		if (subject.kind === 'opening' && field.id === 'offset') {
+			return `selected-opening-offset:${subject.openingId}`;
+		}
+		if (subject.kind === 'opening') {
+			return `selected-opening:${subject.openingId}`;
+		}
+		return null;
+	}
+
+	/**
+	 * Where a field with no measure of its own appears. §7's anchor rule is "the
+	 * value it replaces", and a host whose value is not drawn as a measurement (a
+	 * Junction's coordinates, a measure whose text moved to the readout) still has
+	 * an *owner* whose locus the user is looking at — so the field lands there, on
+	 * the lane offset the placement module owns, rather than at the container
+	 * origin where it would look like a stray input floating over the drawing.
+	 */
+	function numericEntryFallbackWorld(): LayoutVec2 | null {
+		const subject = numericEntrySubject;
+		if (!subject || subject.kind === 'wall-chain') {
+			return interaction.wallChainStart ?? interaction.wallChainCursor;
+		}
+		if (subject.kind === 'rectangle') {
+			return interaction.rectangleCurrent ?? interaction.rectangleStart;
+		}
+		if (subject.kind === 'junction') return resolveJunctionPoint(subject.junctionId);
+		if (subject.kind === 'wall') {
+			const span = physicalWallSpan(model, subject.wallId);
+			return span ? [(span.start[0] + span.end[0]) / 2, (span.start[1] + span.end[1]) / 2] : null;
+		}
+		const edges = wallOpeningEdgeWorldPoints(model, subject.openingId);
+		return edges
+			? [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2]
+			: null;
+	}
+
+	/**
+	 * A5's second reach: the resting measures the selection offers an editor for,
+	 * in §7's order — the single rule Enter on the selection reads
+	 * (`beginNumericEntryFromFocus`) and the one the target table answers.
+	 *
+	 * P23.13 S8 / D1: this used to be shared with the paint layer, which underlined
+	 * the same measures and hit-tested their ink; both of those are retired with the
+	 * pointer door, so there is no affordance to keep in step any more — only the
+	 * keyboard door reads it. It deliberately contains only §7's *selected, idle*
+	 * measures: the angle, the deltas and the coordinates §7 gives to a gesture or a
+	 * focused control are not in it.
+	 */
+	const numericRestingMeasures = $derived.by(() => {
+		const selection = interaction.selection as {
+			kind: string;
+			wallId?: string;
+			openingId?: string;
+		};
+		const measures: { key: string; arc: boolean }[] = [];
+		if (selection.kind === 'physicalWall' && selection.wallId) {
+			const wall = wallFirstLayoutDocument()?.walls.find((entry) => entry.id === selection.wallId);
+			if (wall) {
+				measures.push({ key: `selected-wall:${wall.id}`, arc: wall.centerline.kind !== 'line' });
+			}
+		}
+		if (selection.kind === 'wallOpening' && selection.openingId) {
+			measures.push({ key: `selected-opening:${selection.openingId}`, arc: false });
+			// §7 grants the offset to focus: a focused width edge is what asks the
+			// Opening about its position, and the derivation draws the offset only then.
+			if (interaction.planFocus?.kind === 'opening-edge') {
+				measures.push({ key: `selected-opening-offset:${selection.openingId}`, arc: false });
+			}
+		}
+		return measures.filter((measure) => planNumericRestingEntryTarget(measure) !== null);
+	});
+
+	/** The live Rect Room candidate's extents, or `null`s when there is no draft yet. */
+	function rectangleDraftCandidates(): PlanNumericCandidates {
+		const start = interaction.rectangleStart;
+		const current = interaction.rectangleCurrent;
+		if (!start || !current) return { width: null, depth: null };
+		return {
+			width: Math.abs(current[0] - start[0]) || null,
+			depth: Math.abs(current[1] - start[1]) || null
+		};
+	}
+
+	/**
+	 * The live candidates for **whatever the open field edits**. §7's Tab refreshes a
+	 * newly focused field from the gesture as it stands, so the seed has to follow
+	 * the subject and not the host the editor happened to be built for: a Depth field
+	 * that came up blank beside a drawn rectangle would be reporting that nothing is
+	 * being drawn.
+	 */
+	function numericEntryCandidates(): PlanNumericCandidates {
+		const subject = numericEntrySubject;
+		if (!subject) return {};
+		if (subject.kind === 'wall-chain') return pendingWallChainCandidates();
+		if (subject.kind === 'rectangle') return rectangleDraftCandidates();
+		if (subject.kind === 'wall') {
+			return restingMeasureCandidates({ host: 'wall-edit', fieldId: 'length', ownerId: subject.wallId });
+		}
+		if (subject.kind === 'junction') {
+			return restingMeasureCandidates({ host: 'junction', fieldId: 'x', ownerId: subject.junctionId });
+		}
+		const drag = interaction.wallOpeningDrag;
+		if (drag && drag.openingId === subject.openingId) {
+			return { width: drag.candidateWidth, offset: drag.candidateOffset };
+		}
+		return restingMeasureCandidates({ host: 'opening-resize', fieldId: 'width', ownerId: subject.openingId });
+	}
+
+	/** The canonical numbers a resting measure is seeded from, read from the document. */
+	function restingMeasureCandidates(target: PlanNumericEntryTarget): PlanNumericCandidates {
+		if (target.host === 'wall-edit') {
+			const wall = wallFirstLayoutDocument()?.walls.find((entry) => entry.id === target.ownerId);
+			const start = wall ? resolveJunctionPoint(wall.startJunctionId) : null;
+			const end = wall ? resolveJunctionPoint(wall.endJunctionId) : null;
+			return {
+				length: wallFirstWallLengthFor(target.ownerId),
+				angle: start && end ? planNumericAngleDegrees(end[0] - start[0], end[1] - start[1]) : null
+			};
+		}
+		if (target.host === 'opening-resize' || target.host === 'opening-slide') {
+			const opening = wallFirstOpeningById(target.ownerId);
+			return {
+				width: opening?.width ?? null,
+				offset: opening?.offset ?? null
+			};
+		}
+		if (target.host === 'junction') {
+			const point = resolveJunctionPoint(target.ownerId);
+			return { x: point?.[0] ?? null, z: point?.[1] ?? null };
+		}
+		return {};
+	}
+
+	/**
+	 * The subject an entry target edits, so submission knows which command it owes.
+	 * `null` for a host this component has no command for — unreachable through the
+	 * mapping tables (they only ever name hosts wired below), and deliberately not
+	 * defaulted to one of them: a future host falling through to *some* command would
+	 * edit the wrong thing rather than decline to open.
+	 */
+	function entrySubjectFor(target: PlanNumericEntryTarget): PlanNumericSubject | null {
+		switch (target.host) {
+			case 'wall-edit':
+				return { kind: 'wall', wallId: target.ownerId };
+			case 'junction':
+				return { kind: 'junction', junctionId: target.ownerId };
+			case 'opening-resize':
+			case 'opening-slide':
+				return { kind: 'opening', openingId: target.ownerId };
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Open the field on a value the user explicitly focused, with no keystroke to
+	 * start it (§7: "Entry replaces the displayed value with a small input at the
+	 * same location"). It shows the canonical value, selected, so the first
+	 * keystroke replaces it; a measure with no canonical value opens blank and
+	 * refused rather than pretending to hold a zero.
+	 */
+	function openNumericEntryAt(target: PlanNumericEntryTarget): boolean {
+		const subject = entrySubjectFor(target);
+		if (!subject) return false;
+		preview.statusMessage = null;
+		numericEntrySubject = subject;
+		numericEntry = planNumericEntryOpen(target, restingMeasureCandidates(target));
+		return true;
+	}
+
+	/**
+	 * §7's keyboard alternative to clicking a value: "keyboard-focused control +
+	 * Enter". A focused control wins over the selection's own measure, because the
+	 * user put the focus there on purpose.
+	 */
+	function beginNumericEntryFromFocus(): boolean {
+		if (numericEntry) return false;
+		const focus = interaction.planFocus;
+		if (focus) {
+			const target = planNumericControlEntryTarget(focus.kind, focus.ownerId);
+			if (target) return openNumericEntryAt(target);
+		}
+		const measure = numericRestingMeasures[0];
+		const resting = measure ? planNumericRestingEntryTarget(measure) : null;
+		return resting ? openNumericEntryAt(resting) : false;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — the selected owner's keyboard control group. Same LOD
+	 * gate the overlay draws controls with: below it the affordances are not
+	 * visible, so the keyboard must not focus what the eye cannot see. `null`
+	 * is a real answer (no group for this selection), and the caller falls
+	 * through to S7's resting-measure door instead.
+	 */
+	function planKeyboardTraversalFacts(): PlanTraversalLayout | null {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		const walls = new Map<string, { startJunctionId: string; endJunctionId: string; knotIds: readonly string[] }>();
+		for (const wall of layout.walls) {
+			walls.set(wall.id, {
+				startJunctionId: wall.startJunctionId,
+				endJunctionId: wall.endJunctionId,
+				knotIds:
+					wall.centerline.kind === 'cubic-chain'
+						? wall.centerline.knots.map((knot) => knot.id)
+						: []
+			});
+		}
+		return { walls, junctions: new Set(layout.junctions.map((junction) => junction.id)) };
+	}
+
+	function planKeyboardGroup(): readonly PlanTraversalControl[] | null {
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return null;
+		const facts = planKeyboardTraversalFacts();
+		if (!facts) return null;
+		const selection = interaction.selection;
+		let traversal: PlanTraversalSelection;
+		if (selection.kind === 'physicalWall') traversal = { kind: 'physicalWall', wallId: selection.wallId };
+		else if (selection.kind === 'wallOpening') traversal = { kind: 'wallOpening', openingId: selection.openingId };
+		else if (selection.kind === 'junction') traversal = { kind: 'junction', junctionId: selection.junctionId };
+		else return null;
+		return planTraversalGroup(traversal, facts);
+	}
+
+	/**
+	 * P23.13 S10 / §9 — traversal runs only on a quiet canvas: no open field,
+	 * no live gesture or draft that owns the keyboard. A traversal move is
+	 * never an edit, so it must never interleave one.
+	 */
+	function planTraversalGestureQuiet(): boolean {
+		return (
+			!numericEntry &&
+			!interaction.architectureEdit &&
+			!architectureEditSnapshot &&
+			!interaction.roomUnitDrag &&
+			!interaction.objectDrag &&
+			!interaction.wallOpeningDrag &&
+			!dragSnapshot &&
+			!draggedInteriorAnchor &&
+			!pendingWallBend &&
+			!interaction.primitiveDraft &&
+			!interaction.presetDraft
+		);
+	}
+
+	/**
+	 * P23.13 S10 / §9 — the focused control's own current value and units, read
+	 * from the canonical facts its numeric door already seeds from: a Junction or
+	 * curve point is its document coordinate, an Opening width edge its width and
+	 * the slide grip its offset. `null` where the document holds no value (a legacy
+	 * draft has no canonical Junction; a control with no measure of its own has
+	 * none), which announces role and owner without a number rather than a
+	 * fabricated zero.
+	 */
+	function planKeyboardControlReadout(control: PlanTraversalControl): string | null {
+		if (control.kind === 'junction') {
+			const point = resolveJunctionPoint(control.id);
+			return point ? planNumericHostReadout('junction', { x: point[0], z: point[1] }) : null;
+		}
+		if (control.kind === 'curve-control') {
+			const knot = wallFirstKnotPoint(control.id);
+			return knot ? planNumericHostReadout('curve-point', { x: knot[0], z: knot[1] }) : null;
+		}
+		if (control.kind === 'opening-edge' || control.kind === 'opening-slide') {
+			const opening = wallFirstOpeningById(control.ownerId);
+			if (!opening) return null;
+			// One field each: the width edge is the width's handle and the paired grip
+			// the offset's (§7), so an edge never reports the grip's number too.
+			return control.kind === 'opening-edge'
+				? planNumericHostReadout('opening-resize', { width: opening.width })
+				: planNumericHostReadout('opening-slide', { offset: opening.offset });
+		}
+		return null;
+	}
+
+	/** The authored bend knot's canonical coordinate, or `null` when no Wall owns it. */
+	function wallFirstKnotPoint(knotId: string): LayoutVec2 | null {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		for (const wall of layout.walls) {
+			if (wall.centerline.kind !== 'cubic-chain') continue;
+			const knot = wall.centerline.knots.find((candidate) => candidate.id === knotId);
+			if (knot) return [knot.point[0], knot.point[1]] as LayoutVec2;
+		}
+		return null;
+	}
+
+	/**
+	 * The selection identity the keyboard's control group belongs to, or `null`
+	 * when the selection owns no group. Mirrors `planKeyboardGroup`'s mapping.
+	 */
+	function planKeyboardSelectionKey(): string | null {
+		const selection = interaction.selection;
+		if (selection.kind === 'physicalWall') return `physicalWall:${selection.wallId}`;
+		if (selection.kind === 'wallOpening') return `wallOpening:${selection.openingId}`;
+		if (selection.kind === 'junction') return `junction:${selection.junctionId}`;
+		return null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — release the keyboard instrument. The ring, the entry and
+	 * the readout are one thing: nothing may drop one without the others.
+	 */
+	function clearPlanKeyboardFocus(): void {
+		clearPlanFocus(interaction);
+		planKeyboardGroupKey = null;
+		planAnnouncedFocus = null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — a primary press takes the instrument back. It is not a
+	 * traversal: the keyboard's claim on the group ends (so merely clicking a
+	 * control can never unlock the arrows — that is what Enter is for) and the
+	 * spoken readout is retired, which is how "pointer focus stays silent" holds for
+	 * the region too, including when the pointer edits the *same* control the
+	 * keyboard had announced (same id, different value). Focus itself is the
+	 * pointer's to set a few lines later, so this deliberately does not touch it.
+	 */
+	function releasePlanKeyboardInstrument(): void {
+		planKeyboardGroupKey = null;
+		planAnnouncedFocus = null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — focus one control by keyboard. Focus is never
+	 * selection and never history; the announcement names role + position +
+	 * owner + the control's current value and units once for this move, and
+	 * pointer focus stays silent.
+	 */
+	function focusPlanControlByKeyboard(control: PlanTraversalControl, index: number, groupSize: number): void {
+		setPlanFocus(interaction, { kind: control.kind, id: control.id, ownerId: control.ownerId });
+		planAnnouncedFocus = {
+			controlId: control.id,
+			text: planTraversalAnnouncement(
+				control,
+				index,
+				groupSize,
+				planSelectionLabel ?? 'Selection',
+				planKeyboardControlReadout(control)
+			)
+		};
+	}
+
+	/**
+	 * Close the field. `focusCanvas` returns the keyboard to the drafting surface,
+	 * which is what Escape and a successful Enter mean (A5: "Escape exits edit, then
+	 * group" — the user is back in the drawing, and the next digit must start the
+	 * next exact value rather than land on `body`). Blur deliberately does not: focus
+	 * went somewhere the user chose, and stealing it back would fight them.
+	 */
+	function closeNumericEntry(options: { focusCanvas?: boolean } = {}) {
+		numericEntry = null;
+		numericEntrySubject = null;
+		if (options.focusCanvas) svgElement?.focus();
+	}
+
+	/**
+	 * Commit the live Rect Room candidate through the path a release uses: the four
+	 * corners come from `rectanglePoints`, so a typed rectangle and a dragged one are
+	 * the same canonical graph. P23.9 — on a wall-first document Rectangle is the
+	 * bounded four-Wall chain frontend; the legacy Room-polygon commit stays for
+	 * legacy documents.
+	 *
+	 * The two formats differ on **refusal**, and that difference is pre-existing
+	 * rather than something this helper chose: the wall-first branch clears the draft
+	 * either way, while the legacy branch keeps a refused sketch so it can be
+	 * corrected. Reproduced exactly, because quietly unifying them would change the
+	 * only commit path a legacy document has, and that is not a numeric-entry
+	 * decision.
+	 */
+	function commitRectangleDraft(): void {
+		const points = rectanglePoints(interaction);
+		if ('formatVersion' in preview.project.layout) {
+			if (points && onCommit(points)) clearLayoutDraft(interaction);
+			else clearLayoutDraft(interaction);
+			return;
+		}
+		if (points && onCommit(points)) clearLayoutDraft(interaction);
+		else if (!points) clearLayoutDraft(interaction);
+	}
+
+	/**
+	 * §7's trigger, applied to the live gesture. Returns true when the keystroke
+	 * became a field (so the canvas handler must not also read it).
+	 */
+	function beginNumericEntryFromKey(event: KeyboardEvent): boolean {
+		if (numericEntry) return false;
+		// §7's Opening rows first: an active slide/resize drag is the surface the
+		// pointer is already on, and typing there means the width/offset the drag is
+		// proposing — §7's "in an active pointer drag, typing freezes the proposal,
+		// transfers to numeric editing, and consumes the eventual pointer-up".
+		const drag = interaction.wallOpeningDrag;
+		if (drag) {
+			const started = planNumericEntryTrigger(event, {
+				host: drag.mode === 'body' ? 'opening-slide' : 'opening-resize',
+				candidates: { width: drag.candidateWidth, offset: drag.candidateOffset },
+				dragActive: pointerId !== null
+			});
+			if (started) {
+				preview.statusMessage = null;
+				numericEntrySubject = { kind: 'opening', openingId: drag.openingId };
+				numericEntry = started;
+				return true;
+			}
+			return false;
+		}
+		// §7's Rect Room row: a live candidate offers "Width + depth", seeded from the
+		// rectangle the pointer has already sketched.
+		const rectangleStart = interaction.rectangleStart;
+		const rectangleCurrent = interaction.rectangleCurrent;
+		if (interaction.tool === 'rectangle' && rectangleStart && rectangleCurrent) {
+			const started = planNumericEntryTrigger(event, {
+				host: 'rectangle',
+				candidates: rectangleDraftCandidates(),
+				dragActive: pointerId !== null
+			});
+			if (!started) return false;
+			preview.statusMessage = null;
+			numericEntrySubject = { kind: 'rectangle' };
+			numericEntry = started;
+			return true;
+		}
+		if (wallChainRoleForTool(interaction.tool) === null || !hasWallChainRun(interaction)) return false;
+		const started = planNumericEntryTrigger(event, {
+			host: 'wall-chain',
+			candidates: pendingWallChainCandidates(),
+			// A chain commit is a *click*, not a release, and chain tools never take
+			// pointer capture — so a drag is only in flight when the platform says a
+			// button is still down.
+			dragActive: pointerId !== null
+		});
+		if (!started) return false;
+		preview.statusMessage = null;
+		numericEntrySubject = { kind: 'wall-chain' };
+		numericEntry = started;
+		return true;
+	}
+
+	/**
+	 * The field's own keyboard. The module decides what each key means; this only
+	 * routes. Tab/Shift+Tab wrap inside the field set, Enter submits once, Escape
+	 * restores the pre-entry candidate. Composition events are the IME's and are
+	 * passed straight through, and Backspace/Delete belong to the caret rather than
+	 * to the document while a field is open (§7's delete paths are for a *selected*
+	 * entity, and the input is the only focused thing that is editable).
+	 */
+	function onNumericEntryKeyDown(event: KeyboardEvent) {
+		const state = numericEntry;
+		if (!state || event.isComposing) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			if (planNumericEntryEscape(state) === 'restore') {
+				// Restoring needs no arithmetic: the proposal was frozen while the field
+				// was open, so the canonical candidate was never mutated.
+				closeNumericEntry({ focusCanvas: true });
+				preview.statusMessage = null;
+			}
+			return;
+		}
+		if (event.key === 'Tab') {
+			event.preventDefault();
+			event.stopPropagation();
+			numericEntry = planNumericEntryTab(
+				state,
+				event.shiftKey ? 'backward' : 'forward',
+				numericEntryCandidates()
+			);
+			return;
+		}
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			event.stopPropagation();
+			submitNumericEntry();
+			return;
+		}
+		if (event.key === 'Backspace' || event.key === 'Delete') event.stopPropagation();
+	}
+
+	function onNumericEntryInput(event: Event) {
+		if (!numericEntry) return;
+		const target = event.currentTarget as HTMLInputElement;
+		numericEntry = planNumericEntryInput(numericEntry, target.value);
+	}
+
+	/** §7: "Blur never silently commits." The field closes; nothing is written. */
+	function onNumericEntryBlur() {
+		if (!numericEntry) return;
+		if (planNumericEntryBlur(numericEntry) === 'discard') closeNumericEntry();
+	}
+
+	/**
+	 * Enter. A valid value goes to the canonical command its subject owes, and a
+	 * refusal keeps the field open with the planner's own reason and writes no
+	 * history — §7's "invalid values stay editable with a reason; no history or
+	 * allocation" extended to the release validator it also demands.
+	 *
+	 * One submit, one command: the subject decides *which*, so the lifecycle never
+	 * learns geometry and the component never grows a second solver.
+	 */
+	function submitNumericEntry() {
+		const state = numericEntry;
+		if (!state) return;
+		const outcome = planNumericEntrySubmit(state);
+		if (outcome.kind === 'ignored') return;
+		if (outcome.kind === 'refuse') {
+			numericEntry = outcome.state;
+			preview.statusMessage = planNumericInvalidMessage(outcome.reason, outcome.field);
+			return;
+		}
+		const subject = numericEntrySubject;
+		if (!subject) {
+			closeNumericEntry();
+			return;
+		}
+		if (subject.kind === 'wall-chain') return submitWallChainEntry(outcome);
+		if (subject.kind === 'wall') return submitWallEditEntry(outcome, subject.wallId);
+		if (subject.kind === 'opening') return submitOpeningEditEntry(outcome, subject.openingId);
+		if (subject.kind === 'junction') return submitJunctionEntry(outcome, subject.junctionId);
+		if (subject.kind === 'rectangle') return submitRectangleEntry(outcome);
+	}
+
+	/**
+	 * A field opened on a value shows the value it replaces, so Enter without
+	 * editing submits the number the document already holds. That is not an edit:
+	 * the planner's own `no_op` says the same thing, and closing quietly means the
+	 * user does not get a refusal message for a keystroke that changed nothing.
+	 * Only fields the user actually typed into are compared — an untouched field
+	 * rides the live value, which is always in agreement with itself.
+	 */
+	function numericEntryUnchanged(
+		typed: number | undefined,
+		live: number | null | undefined
+	): boolean {
+		if (typed === undefined) return true;
+		return typeof live === 'number' && Math.abs(typed - live) < 1e-9;
+	}
+
+	/**
+	 * Run one exact edit as exactly one history entry, or leave the document alone.
+	 * The transaction is opened here so a rejection cancels rather than leaving half
+	 * an edit installed; both the Wall length/angle pair and the Opening's
+	 * width/offset patch land in the *same* entry, because §7 says Enter submits one
+	 * canonical operation and one edit should not cost the user two undos.
+	 *
+	 * A successful edit also retires the keyboard's cached readout. The control's
+	 * value has just changed, the ring is still on it (focus is deliberately
+	 * untouched) and the entry is deliberately kept — so without this the region
+	 * would go on holding the number the document no longer has, e.g. `Width 0.90 m`
+	 * after the user typed `1.20`. It is **cleared, not recomputed**: re-deriving it
+	 * here would read the value at whatever moment this happens to run, and a
+	 * readout that refreshes itself on every change is exactly the chatter §9 forbids
+	 * ("once per meaningful change, not each pointermove"). The user just typed the
+	 * number, so nothing is owed to them; the next arrow re-announces fresh.
+	 */
+	function applyNumericEdit(
+		apply: () => { success: boolean; message?: string }
+	): { success: boolean; message?: string } {
+		if (!onLayoutTransactionBegin()) {
+			return { success: false, message: 'Finish the current layout interaction first' };
+		}
+		const result = apply();
+		if (result.success) {
+			onLayoutTransactionCommit();
+			planAnnouncedFocus = null;
+		} else onLayoutTransactionCancel();
+		return result;
+	}
+
+	/** A rejected exact edit: the field stays open with the planner's own reason. */
+	function holdNumericEntryOpen(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		result: { success: boolean; message?: string }
+	) {
+		numericEntry = { ...outcome.state, submitted: false };
+		preview.statusMessage = result.message ?? 'That value was refused';
+	}
+
+	/**
+	 * §7's "Selected, idle" reach for a straight Wall: a typed Length and/or Angle
+	 * applied to the Wall the user focused, in one history entry, with the Wall's
+	 * start held — the endpoint the author never moved is the one that stays put.
+	 * A curve has no exact-length command and its measure is not offered one, so
+	 * this path is straight Walls only.
+	 */
+	function submitWallEditEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		wallId: string
+	): void {
+		const values = outcome.values;
+		const live = restingMeasureCandidates({ host: 'wall-edit', fieldId: 'length', ownerId: wallId });
+		if (numericEntryUnchanged(values.length, live.length) && numericEntryUnchanged(values.angle, live.angle)) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const result = applyNumericEdit(() => {
+			let last: { success: boolean; message?: string } = { success: true };
+			if (values.length !== undefined) {
+				last = updateWallFirstWallLength(preview, wallId, values.length, 'start');
+				if (!last.success) return last;
+			}
+			if (values.angle !== undefined) {
+				// The canonical planner takes radians and the field is degrees (§7).
+				last = updateWallFirstWallAngle(preview, wallId, (values.angle * Math.PI) / 180, 'start');
+			}
+			return last;
+		});
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/**
+	 * §7's Opening rows: "Width; offset on focus" — one patch through the canonical
+	 * Opening command, which validates the whole hosting-Wall set and rejects rather
+	 * than clamping.
+	 */
+	function submitOpeningEditEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		openingId: string
+	): void {
+		const values = outcome.values;
+		const drag = interaction.wallOpeningDrag;
+		if (drag && drag.openingId === openingId) {
+			// §7's transfer: typing during a drag freezes the proposal and hands it to
+			// the field, so the typed numbers replace the candidate and the *drag's own*
+			// commit path finishes the gesture — the same code a release runs, which is
+			// what makes the transfer a transfer rather than a second commit route. The
+			// drag already owns the open transaction (the pointer-down began it) and the
+			// pointer-up that follows was consumed without committing.
+			const patch: Parameters<typeof updateWallFirstOpening>[2] = {
+				offset: values.offset ?? drag.candidateOffset
+			};
+			if (drag.mode !== 'body' || values.width !== undefined) {
+				patch.width = values.width ?? drag.candidateWidth;
+			}
+			const result = updateWallFirstOpening(preview, openingId, patch);
+			if (result.success) {
+				onLayoutTransactionCommit();
+				preview.statusMessage = drag.mode === 'body' ? 'Moved opening' : 'Resized opening';
+			} else {
+				onLayoutTransactionCancel();
+				preview.statusMessage = result.message;
+			}
+			cancelLayoutWallOpeningDrag(interaction);
+			dragSnapshot = null;
+			pointerId = null;
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const live = restingMeasureCandidates({ host: 'opening-resize', fieldId: 'width', ownerId: openingId });
+		if (numericEntryUnchanged(values.width, live.width) && numericEntryUnchanged(values.offset, live.offset)) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const patch: Parameters<typeof updateWallFirstOpening>[2] = {};
+		if (values.width !== undefined) patch.width = values.width;
+		if (values.offset !== undefined) patch.offset = values.offset;
+		const result = applyNumericEdit(() => updateWallFirstOpening(preview, openingId, patch));
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/** §7's "Coordinates on focused handle": one absolute X/Z move of the Junction. */
+	function submitJunctionEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		junctionId: string
+	): void {
+		const current = resolveJunctionPoint(junctionId);
+		if (!current) {
+			closeNumericEntry();
+			return;
+		}
+		const values = outcome.values;
+		const point: LayoutVec2 = [values.x ?? current[0], values.z ?? current[1]];
+		if (numericEntryUnchanged(values.x, current[0]) && numericEntryUnchanged(values.z, current[1])) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const result = applyNumericEdit(() => updateWallFirstJunction(preview, junctionId, point));
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/**
+	 * §7's Rect Room row: a typed Width/Depth sets the live candidate and then
+	 * commits it exactly as releasing the pointer there would, through the same
+	 * `rectanglePoints` → `onCommit` path. The drawn direction is kept, so typing the
+	 * width of a rectangle sketched up-left does not flip it across its start corner.
+	 */
+	function submitRectangleEntry(outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>): void {
+		const start = interaction.rectangleStart;
+		const current = interaction.rectangleCurrent;
+		if (!start || !current) {
+			closeNumericEntry();
+			return;
+		}
+		const width = outcome.values.width ?? Math.abs(current[0] - start[0]);
+		const depth = outcome.values.depth ?? Math.abs(current[1] - start[1]);
+		const signX = current[0] < start[0] ? -1 : 1;
+		const signZ = current[1] < start[1] ? -1 : 1;
+		updateRectangle(interaction, [start[0] + signX * width, start[1] + signZ * depth]);
+		closeNumericEntry({ focusCanvas: true });
+		commitRectangleDraft();
+	}
+
+	/**
+	 * The Wall-chain subject: a typed Length goes to `resolveWallChainEndpointAtLength`
+	 * — the resolver P23.9 wrote for §7's Length form and never wired — and the same
+	 * resolver with the typed *direction* for an angle.
+	 */
+	function submitWallChainEntry(outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>) {
+		const start = interaction.wallChainStart;
+		if (!start) {
+			closeNumericEntry();
+			return;
+		}
+		// §7's explicit values resolve *together*: a typed Length pins the distance, a
+		// typed Angle pins the direction, and every field the user left alone rides the
+		// live leg — so typing a length, Tab, then an angle is one segment in one
+		// commit rather than a segment plus a discarded number.
+		const length = outcome.values.length ?? pendingWallChainLength();
+		if (length === null) {
+			// A direction with no distance is not a segment, and §7 forbids inventing
+			// one: the field stays editable and says what is missing.
+			numericEntry = { ...outcome.state, submitted: false };
+			preview.statusMessage = 'Type a length, then the angle';
+			return;
+		}
+		const typedAngle = outcome.values.angle;
+		const endpoint = resolveWallChainEndpointAtLength(
+			interaction,
+			length,
+			typedAngle !== undefined ? planNumericAngleDirection(typedAngle) : undefined
+		);
+		if (!endpoint) {
+			numericEntry = { ...outcome.state, submitted: false };
+			preview.statusMessage = `${planNumericEntryField(outcome.state).label} was refused`;
+			return;
+		}
+		const savedRun = captureWallChainRun(interaction);
+		const result = onWallSegmentCommit([...start], [...endpoint]);
+		if (!result.success) {
+			// A rejection rolls its history transaction back through snapshot restore,
+			// which clears transient state; re-install the saved run so the run is still
+			// there to correct. The planner refused the *candidate*, not the typing, so
+			// the field stays open and unsubmitted for a corrected Enter.
+			if (savedRun) restoreWallChainRun(interaction, savedRun);
+			draftedVersion = preview.previewVersion;
+			numericEntry = { ...outcome.state, submitted: false };
+			return;
+		}
+		// A typed commit can land mid-press (typing one-handed with the button
+		// held): the release that follows belongs to the press that predates this
+		// Enter, so its click must not also draw a pointer-positioned segment —
+		// one press, one segment.
+		if (planPointerButtonDown) suppressNextClick = true;
+		closeNumericEntry({ focusCanvas: true });
+		finishWallChainSegment(result, endpoint);
 	}
 
 	/** Resolve a canonical Junction point from the live wall-first document. */
@@ -3293,21 +4811,227 @@ const interactionProjection = $derived(
 	}
 
 	/**
-	 * P23.11 — the shared hit options for the SELECT and hover paths: the
-	 * endpoint gate plus the selected Wall's controls. The context menu, the
+	 * P23.13 S4 / §6 — the controls the pointer may acquire right now, built from
+	 * the SAME gating the overlay draws them with, so an affordance that is not
+	 * visible can never outrank one that is. Ownership is what decides the tier:
+	 * a control of the selected owner (or the focused one, or a captured
+	 * gesture's) beats the canonical entity fallback.
+	 */
+	function planAcquisitionCandidates(): PlanControlCandidate[] {
+		const candidates: PlanControlCandidate[] = [];
+		// Below the control LOD nothing is drawn, so nothing is acquirable.
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return candidates;
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return candidates;
+		const selection = interaction.selection;
+		const focus = interaction.planFocus;
+
+		// P23.11 — curve controls exist only while the selected Wall is curved, and
+		// they outrank an unrelated co-located Opening or Junction (§6).
+		for (const control of selectedCurveControls(layout.walls)) {
+			candidates.push({
+				id: control.anchorId,
+				ownerId: control.wallId,
+				kind: 'curve-control',
+				point: control.point,
+				ownerSelected: selection.kind === 'physicalWall' && selection.wallId === control.wallId,
+				focused: focus?.kind === 'curve-control' && focus.id === control.anchorId
+			});
+		}
+
+		// Junction handles: an edit context only (the same gate the overlay draws
+		// with). An ordinary hover reveals no new controls, so a hovered Junction
+		// that is not revealed is not acquirable either.
+		const chainArmed = wallChainRoleForTool(interaction.tool) !== null;
+		const junctionSelection = selection.kind === 'junction' ? selection : null;
+		const editContext =
+			chainArmed ||
+			selection.kind === 'physicalWall' ||
+			selection.kind === 'wallOpening' ||
+			junctionSelection !== null;
+		if (editContext) {
+			const focusedJunctions = junctionFocusIds();
+			for (const junction of layout.junctions) {
+				if (focusedJunctions && !focusedJunctions.has(junction.id)) continue;
+				candidates.push({
+					id: junction.id,
+					ownerId: junction.id,
+					kind: 'junction',
+					point: [junction.point[0], junction.point[1]] as LayoutVec2,
+					// §6 — a Junction is a *selected-owner* control only when it is the
+					// selection (or one of the selected Wall's endpoints); a tool-armed
+					// chain is a tool-eligible target, not owner intent.
+					ownerSelected:
+						junctionSelection?.junctionId === junction.id ||
+						selection.kind === 'physicalWall' ||
+						selection.kind === 'wallOpening',
+					toolEligible: chainArmed,
+					focused: focus?.kind === 'junction' && focus.id === junction.id
+				});
+			}
+		}
+
+		// §6 — the selected Opening's width edges and slide grip. They are owner
+		// controls of the selection, which is what lets "an active Opening width
+		// square beat its host Wall" hold when a Junction sits on the same jamb.
+		if (selection.kind === 'wallOpening') {
+			const edges = wallOpeningEdgeWorldPoints(model, selection.openingId);
+			if (edges) {
+				candidates.push(
+					{
+						id: `${selection.openingId}:start`,
+						ownerId: selection.openingId,
+						kind: 'opening-edge',
+						point: edges.start,
+						ownerSelected: true,
+						focused: focus?.kind === 'opening-edge' && focus.id === `${selection.openingId}:start`
+					},
+					{
+						id: `${selection.openingId}:end`,
+						ownerId: selection.openingId,
+						kind: 'opening-edge',
+						point: edges.end,
+						ownerSelected: true,
+						focused: focus?.kind === 'opening-edge' && focus.id === `${selection.openingId}:end`
+					}
+				);
+				// The grip sits at the symbol center and is deliberately a *lower*
+				// priority than the two edges: an edge must never be stolen by the
+				// body mark between them. Equal tier, larger distance loses.
+				candidates.push({
+					id: `${selection.openingId}:slide`,
+					ownerId: selection.openingId,
+					kind: 'opening-slide',
+					point: [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2],
+					ownerSelected: true
+				});
+			}
+		}
+		return candidates;
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the focus overlay payload for the current `planFocus`:
+	 * the mark center, its radius and the owner geometry focus/drag reveals.
+	 * Returns `null` when there is no focus, so nothing is drawn at rest.
+	 */
+	function planFocusOverlay() {
+		const focus = interaction.planFocus;
+		if (!focus) return null;
+		const candidates = planAcquisitionCandidates();
+		const match = candidates.find(
+			(candidate) => candidate.kind === focus.kind && candidate.id === focus.id
+		);
+		if (!match) return null;
+		return {
+			point: match.point,
+			radiusPx: planFocusMarkRadiusPx(match.kind),
+			geometry: planFocusGeometry(
+				{
+					ownerId: match.ownerId,
+					point: match.point,
+					controlNet: planFocusControlNet(match.ownerId)
+				},
+				preview.geometry.walls
+			)
+		};
+	}
+
+	/**
+	 * P23.13 S4 — the owner Wall's authored control net, read from the document:
+	 * its two junctions for a straight Wall, its authored bend knots for a cubic
+	 * chain. This is the one thing the compiled centerline cannot supply — a
+	 * flattened curve knows nothing about where its bends were — so the caller
+	 * that owns the document resolves it and the helper refuses to guess.
+	 */
+	function planFocusControlNet(wallId: string): LayoutVec2[] {
+		const layout = wallFirstLayoutDocument();
+		const wall = layout?.walls.find((candidate) => candidate.id === wallId);
+		if (!wall) return [];
+		if (wall.centerline.kind === 'cubic-chain') {
+			return wall.centerline.knots.map((knot) => [knot.point[0], knot.point[1]] as LayoutVec2);
+		}
+		// A straight Wall's net IS the endpoints of its canonical centerline.
+		const span = preview.geometry.walls.find((candidate) => candidate.wallId === wallId);
+		const first = span?.solidCenterlinePolylines[0]?.[0];
+		const lastSpans = span?.solidCenterlinePolylines.at(-1);
+		const last = lastSpans?.[lastSpans.length - 1];
+		return first && last ? [[first[0], first[1]], [last[0], last[1]]] : [];
+	}
+
+	/** The visible mark radius of a control kind (spec §6 control table). */
+	function planFocusMarkRadiusPx(kind: PlanControlKind): number {
+		switch (kind) {
+			case 'junction':
+				return PLAN_CONTROL_MARKS.junction.radiusPx;
+			case 'curve-control':
+				return PLAN_CONTROL_MARKS['curve-control'].radiusPx;
+			case 'opening-edge':
+				return PLAN_CONTROL_MARKS['opening-edge'].radiusPx;
+			default:
+				return 4;
+		}
+	}
+
+	/** The Junction IDs an edit context focuses (`null` = every Junction). */
+	function junctionFocusIds(): ReadonlySet<string> | null {
+		const selection = interaction.selection;
+		if (selection.kind !== 'physicalWall' && selection.kind !== 'wallOpening') return null;
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		const wall = layout.walls.find((candidate) => candidate.id === selection.wallId);
+		return new Set(wall ? [wall.startJunctionId, wall.endJunctionId] : []);
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the owner-aware acquisition verdict for one pointer
+	 * position, or `null` when no tier claims it and the canonical entity
+	 * resolver decides alone. A coarse pointer gets the 44 px target.
+	 */
+	function planAcquiredControl(point: LayoutVec2): PlanControlAuthority | null {
+		return resolvePlanAcquisition({
+			candidates: planAcquisitionCandidates(),
+			point,
+			planView: interaction.planView,
+			coarsePointer: planCoarsePointer
+		});
+	}
+
+	/**
+	 * P23.13 S4 / §6 — the hit tolerance for one pointer position. A control the
+	 * engine claimed is acquired at the ratified 24/44 px target, not at the
+	 * entity radius: the whole point of a bigger target is that the pointer need
+	 * not land on the visible mark. Uncontested pointers keep the entity radius,
+	 * so ordinary selection is unchanged.
+	 */
+	function planHitTolerance(point: LayoutVec2): number {
+		const authority = planAcquiredControl(point);
+		const radiusPx = authority
+			? planControlTargetRadiusPx(planCoarsePointer)
+			: LAYOUT_PLAN_HIT_RADIUS_PX;
+		return radiusPx / interaction.planView.pixelsPerMeter;
+	}
+
+	/**
+	 * P23.11/S4 — the shared hit options for the SELECT and hover paths: the
+	 * endpoint gate, the selected Wall's controls, and — when a pointer position
+	 * is supplied — the owner-aware acquisition verdict. The context menu, the
 	 * door/window tool and every non-select path keep `planHitEndpointGate()`:
 	 * a control outranking the Wall body would otherwise remove the Wall's own
 	 * context menu and block Opening placement next to a control.
 	 */
-	function planHitOptions(): {
+	function planHitOptions(point?: LayoutVec2): {
 		includeEndpoints: boolean;
 		curveControls?: readonly PlanCurveControlCandidate[];
+		controlAuthority?: PlanControlAuthority | null;
 	} {
 		const layout = wallFirstLayoutDocument();
 		const controls = layout ? selectedCurveControls(layout.walls) : [];
+		const authority = point ? planAcquiredControl(point) : null;
 		return {
 			...planHitEndpointGate(),
-			...(controls.length > 0 ? { curveControls: controls } : {})
+			...(controls.length > 0 ? { curveControls: controls } : {}),
+			...(authority ? { controlAuthority: authority } : {})
 		};
 	}
 
@@ -3408,7 +5132,7 @@ const interactionProjection = $derived(
 				pointerId = null;
 				return;
 			}
-			if (dragSnapshot || draggedInteriorAnchor || openingDrag) {
+			if (dragSnapshot || draggedInteriorAnchor) {
 				cancelActiveLayoutDrag();
 				return;
 			}
@@ -3451,10 +5175,110 @@ const interactionProjection = $derived(
 				cancelWallChainRun(interaction);
 				return;
 			}
+			// P23.13 S10 / §9 — Esc unwinds keyboard focus before anything
+			// coarser: the ring drops, selection and history stand. Reaching
+			// here means no gesture or draft is live (every one returned
+			// above), so this branch can never swallow a gesture cancel.
+			if (interaction.planFocus) {
+				clearPlanKeyboardFocus();
+				return;
+			}
 			onLayoutTransactionCancel();
 			clearLayoutDraft(interaction);
 			cancelRoomEdit(interaction);
 			return;
+		}
+		// P23.13 S7 / §7 — during an active creation gesture a digit or decimal
+		// separator starts exact entry (and `-` where the field's canonical domain
+		// allows it). No other binding claims those keys, so this cannot steal one;
+		// Escape above still exits the gesture, and every key the open field owns is
+		// routed by its own input element below.
+		if (
+			event.key.length === 1 &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			beginNumericEntryFromKey(event)
+		) {
+			event.preventDefault();
+			return;
+		}
+		// P23.13 S10 / §9 — arrows walk the selected owner's control group in
+		// canonical endpoint/arc order with wrap. No group, a live gesture, another
+		// mode/tool, or a group the user has not entered with Enter all leave the
+		// key alone, so page scroll and every other surface keep their arrows.
+		if (
+			(event.key === 'ArrowRight' ||
+				event.key === 'ArrowLeft' ||
+				event.key === 'ArrowDown' ||
+				event.key === 'ArrowUp') &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			interaction.planViewMode === 'layout' &&
+			interaction.tool === 'select' &&
+			// A5 — arrows traverse a group the keyboard has *entered*: a pointer press
+			// focuses controls without entering anything, so membership alone would let
+			// a click unlock the arrows.
+			planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey()) &&
+			planTraversalGestureQuiet()
+		) {
+			const group = planKeyboardGroup();
+			if (group && group.length > 0) {
+				const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+				// A5 — arrows traverse the group the user entered; they never enter it.
+				// `planTraversalStep` answers `null` for a focus outside this group, so
+				// an unentered selection leaves the arrow to the page rather than
+				// swallowing a key the user has not asked this instrument to use.
+				const next = planTraversalStep(
+					group,
+					interaction.planFocus?.id ?? null,
+					direction as 1 | -1
+				);
+				if (next) {
+					event.preventDefault();
+					focusPlanControlByKeyboard(next, group.indexOf(next), group.length);
+					return;
+				}
+			}
+		}
+		// P23.13 S7 step 2 / S10 / A5 — Enter first enters the selected owner's
+		// control group (the ring lands on its first control, announced once),
+		// and a focused control's Enter reaches S7's numeric door as before. A
+		// selection with no group keeps the resting-measure door directly. A
+		// field that is already open owns Enter through its own input, so this
+		// can never steal a submit.
+		if (
+			event.key === 'Enter' &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!numericEntry &&
+			interaction.planViewMode === 'layout' &&
+			interaction.tool === 'select'
+		) {
+			const group = planTraversalGestureQuiet() ? planKeyboardGroup() : null;
+			const entered = planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey());
+			const focus = interaction.planFocus;
+			const focusInGroup =
+				!!group && !!focus && group.some((control) => control.id === focus.id);
+			// Enter enters the group, and only a second Enter (with the entry held and
+			// the ring already on a member) reaches the numeric door — so the chain is
+			// the same whether the ring got there by keyboard or by a pointer press,
+			// and a pointer-focused control cannot skip the entry.
+			if (group && group.length > 0 && (!entered || !focusInGroup)) {
+				const first = group[0];
+				if (first) {
+					event.preventDefault();
+					planKeyboardGroupKey = planKeyboardSelectionKey();
+					focusPlanControlByKeyboard(first, 0, group.length);
+					return;
+				}
+			}
+			if (beginNumericEntryFromFocus()) {
+				event.preventDefault();
+				return;
+			}
 		}
 		if (
 			interaction.planViewMode === 'staging' &&
@@ -3621,6 +5445,14 @@ const interactionProjection = $derived(
 	{#if stagingSelectionMessage}
 		<div class="staging-selection-warning" role="status">{stagingSelectionMessage}</div>
 	{/if}
+	{#if planFocusAnnouncement}
+		<!-- P23.13 S10 / §9 — keyboard focus announcements: role + position +
+		     owner + current value and units, once per keyboard move, and only while
+		     the ring is still on the announced control. Pointer focus stays silent,
+		     and the region is empty the rest of the time, so nothing speaks per
+		     pointermove. Visually hidden; never a second status channel. -->
+		<div class="plan-focus-announcement" role="status">{planFocusAnnouncement}</div>
+	{/if}
 	{#if sceneBridgeHover}
 		<button
 			type="button"
@@ -3634,12 +5466,14 @@ const interactionProjection = $derived(
 		<div class="arrange-empty" role="status">No movable objects here yet — create them in Layout or place them in Scene 3D.</div>
 	{/if}
 	{#if planEmpty && !ghostVisible}
-		<!-- P3.3 — canonical empty-plan onboarding treatment (scene-empty-plan.png).
-		     P21.2 ghost takes precedence in Layout; the card remains for the
-		     dismissed-but-still-empty session tail and non-Layout empty states. -->
+		<!-- P23.13 S9 / §8 — empty-state copy agreement: exact toolbar labels
+		     (Wall, Rect Room, Poly Room), zoom/pan hint, no dimension promise.
+		     Card remains for the dismissed-but-still-empty session tail and
+		     non-Layout empty states; one committed wall removes it. -->
 		<div class="plan-empty-state" role="status">
-			<strong>Empty floor plan</strong>
-			<span>Pick the Room tool to draft your first room, or place an asset from the sidebar.</span>
+			<strong>Start your plan</strong>
+			<span>Draw connected walls with Wall, or start with Rect Room or Poly Room.</span>
+			<span>Scroll to zoom · Middle-drag to pan.</span>
 		</div>
 	{/if}
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (plan surface owns keyboard focus) -->
@@ -3666,6 +5500,11 @@ const interactionProjection = $derived(
 		onkeydown={onKeyDown}
 		oncontextmenu={onPlanContextMenu}
 		onpointerleave={() => {
+			// P23.13 S7 — a press released off-canvas fires neither pointerup nor
+			// pointercancel here (chain tools take no capture, so nothing retargets
+			// it). Leaving is the "pointer is gone" signal: without this the flag
+			// stays down forever and every later typed commit eats its next click.
+			planPointerButtonDown = false;
 			rotationHoverScreen = null;
 			arrangeLayoutRotationHoverScreen = null;
 			arrangeHover = null;
@@ -3682,7 +5521,7 @@ const interactionProjection = $derived(
 		{#if ghostVisible}
 			<PlanEmptyGhost planView={interaction.planView} />
 		{/if}
-		<PlanSvg model={planModel} planView={interaction.planView} />
+		<PlanSvg model={planModel} planView={interaction.planView} presentation={planPresentation} />
 		<PlanCanvasChrome layer="overlay" planView={interaction.planView} />
 		{#if selectedOpening}
 			<!-- P23.12 — selected-target feedback consumes the identity contract:
@@ -3691,6 +5530,81 @@ const interactionProjection = $derived(
 		{/if}
 
 	</svg>
+	<!--
+		P23.13 S3 / §4 A4 — the fixed canvas identity readout. It appears only when
+		the selected Room's resting label cannot carry its complete identity (a tiny
+		or obstructed face, or a name the two-line 160 px budget cannot hold).
+		Read-only, non-mutating and temporary: never a second Inspector, never a
+		rename field, and never a reason to force an overlap into the drawing.
+	-->
+	<!--
+		P23.13 S7 / §7 — the transient numeric field, on the value it replaces. It is
+		never a second Inspector: one field at a time, seeded from the canonical
+		candidate, and gone the moment it is submitted, restored or blurred. A coarse
+		pointer gets the fallback layout (a bar across the canvas) because a 66 px
+		field under a finger is not an editor.
+	-->
+	{#if numericEntry}
+		{@const entryField = planNumericEntryField(numericEntry)}
+		<div
+			class="plan-numeric-entry"
+			class:plan-numeric-entry-coarse={planCoarsePointer}
+			class:plan-numeric-entry-invalid={numericEntry.invalidReason !== null}
+			style={!planCoarsePointer && numericEntryAnchorPx
+				? `left: ${Math.round(numericEntryAnchorPx[0])}px; top: ${Math.round(numericEntryAnchorPx[1])}px;`
+				: undefined}
+			data-host={numericEntry.host}
+			data-field={entryField.id}
+		>
+			<span class="plan-numeric-entry-label">{entryField.label}</span>
+			<input
+				bind:this={numericEntryElement}
+				class="plan-numeric-entry-input"
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				spellcheck="false"
+				aria-label={`${entryField.label} exact value`}
+				aria-invalid={numericEntry.invalidReason !== null}
+				value={numericEntry.text}
+				oninput={onNumericEntryInput}
+				onkeydown={onNumericEntryKeyDown}
+				onblur={onNumericEntryBlur}
+			/>
+			{#if numericEntry.invalidReason}
+				<span class="plan-numeric-entry-reason" role="status">
+					{planNumericInvalidMessage(numericEntry.invalidReason, entryField)}
+				</span>
+			{:else}
+				<span class="plan-numeric-entry-unit">{entryField.unit === 'angle' ? '°' : 'm'}</span>
+			{/if}
+		</div>
+	{/if}
+	{#if roomLabelReadout || measureReadout}
+		<div
+			class="plan-readout"
+			role="note"
+			aria-label={measureReadout && !roomLabelReadout ? 'Working measurements' : 'Selected room identity'}
+		>
+			{#if roomLabelReadout}
+				<span class="plan-readout-primary">{roomLabelReadout.primary}</span>
+				{#if roomLabelReadout.reference}
+					<span class="plan-readout-reference">{roomLabelReadout.reference}</span>
+				{/if}
+				{#if roomLabelReadout.area}
+					<span class="plan-readout-area">{roomLabelReadout.area}</span>
+				{/if}
+			{/if}
+			{#if measureReadout}
+				{#each measureReadout as entry (entry.key)}
+					<span class="plan-readout-measure">
+						<span class="plan-readout-measure-name">{entry.measure}</span>
+						{entry.value}
+					</span>
+				{/each}
+			{/if}
+		</div>
+	{/if}
 	{#if preview.statusMessage}
 		<p class="plan-status" role="status">{preview.statusMessage}</p>
 	{/if}
@@ -3712,7 +5626,7 @@ const interactionProjection = $derived(
 </div>
 
 <style>
-	.plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-bg-app); }
+	.plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-bg-app); container-type: inline-size; }
 	/* P3.2 §9 — the plan is a bright drafting surface against the dark shell. */
 	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-plan-canvas-bg); user-select: none; -webkit-user-select: none; }
 	/* P23.6 — keyboard focus stays visible on the drafting surface. */
@@ -3730,11 +5644,45 @@ const interactionProjection = $derived(
 	.plan-empty-state { position: absolute; top: 50%; left: 50%; z-index: 5; transform: translate(-50%, -50%); display: grid; gap: 0.45rem; max-width: min(24rem, calc(100% - 4rem)); padding: var(--editor-space-4) var(--editor-space-5); border: 1px solid var(--editor-plan-grid-major); border-radius: var(--editor-radius-lg); background: rgb(255 255 255 / 72%); color: var(--editor-plan-label); text-align: center; pointer-events: none; box-shadow: var(--editor-shadow-popover); }
 	.plan-empty-state strong { font-size: 0.86rem; font-weight: 650; }
 	.plan-empty-state span { font-size: 0.74rem; line-height: 1.45; color: var(--editor-plan-muted); }
+	/* P23.13 S10 / §9 — keyboard focus live region. Visually hidden (clip
+	   pattern, so 200% text zoom cannot clip or overlap it into view); the
+	   announcement is speech only, never layout. */
+	.plan-focus-announcement { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 	.plan-status { position: absolute; left: 0.8rem; bottom: 0.8rem; z-index: 10; max-width: 60%; margin: 0; padding: 0.34rem 0.5rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: 500 0.7rem/1.25 var(--editor-font); pointer-events: none; }
 	.plan-actions { position: absolute; right: 0.8rem; bottom: 0.8rem; z-index: 10; display: flex; gap: 0.4rem; pointer-events: auto; }
 	.plan-actions button { padding: 0.44rem 0.6rem; border: 1px solid var(--editor-accent-border); border-radius: 0.32rem; background: var(--editor-bg-selected); color: var(--editor-text-primary); font: 600 0.7rem/1 var(--editor-font); cursor: pointer; }
 	.plan-actions button.secondary { border-color: var(--editor-border-normal); background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); }
 	.plan-meta { position: absolute; left: 0.8rem; bottom: 0.8rem; z-index: 2; display: flex; gap: 0.7rem; color: var(--editor-plan-muted); font: 0.68rem/1 var(--editor-font); pointer-events: none; }
+	/* P23.13 S3 — bounded readout: inset 12px from the viewport safe corner,
+	   ≤280px (or the available width), wrapping rather than truncating, with a
+	   bounded scroll so a pathological name cannot cover the drawing. */
+	.plan-readout { position: absolute; top: 12px; right: 12px; z-index: 11; box-sizing: border-box; display: grid; gap: 0.15rem; max-width: min(280px, calc(100% - 24px)); max-height: min(40%, 9rem); overflow-y: auto; padding: 0.4rem 0.55rem; border: 1px solid var(--editor-plan-grid-major); border-radius: 0.35rem; background: rgb(255 255 255 / 92%); color: var(--editor-plan-label); font: 500 0.72rem/1.25 var(--editor-font); text-align: left; box-shadow: var(--editor-shadow-popover); }
+	/* P23.13 S7 / §7 — the numeric field sits on the value it edits. Monospace
+	   tabular digits at the readout's own scale, so the number the user types and
+	   the number they were reading are the same shape. */
+	/* Opaque on purpose: §7 says the field *replaces* the value it sits on, and the
+	   value's own dimension text is what it is anchored to — a translucent field
+	   would show two numbers for one measurement. */
+	.plan-numeric-entry { position: absolute; z-index: 12; display: inline-flex; gap: 0.3rem; align-items: center; transform: translate(-50%, -50%); padding: 0.16rem 0.34rem; border: 1px solid var(--editor-accent-border); border-radius: 0.3rem; background: var(--editor-plan-canvas-bg); color: var(--editor-plan-label); font: 600 0.68rem/1.2 var(--editor-font); box-shadow: var(--editor-shadow-popover); }
+	.plan-numeric-entry-invalid { border-color: var(--editor-danger-border); }
+	.plan-numeric-entry-label { color: var(--editor-plan-muted); font-weight: 500; }
+	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+	.plan-numeric-entry-input:focus { border-bottom-color: var(--editor-accent); }
+	.plan-numeric-entry-unit { color: var(--editor-plan-muted); font-weight: 500; }
+	.plan-numeric-entry-reason { color: var(--editor-danger-fg); font-weight: 500; }
+	/* Coarse pointers get the fallback layout: a full-width bar above the action
+	   row, where a finger can actually reach the field it is editing. */
+	.plan-numeric-entry-coarse { left: 12px; right: 12px; top: auto; bottom: 3.4rem; transform: none; }
+	.plan-numeric-entry-coarse .plan-numeric-entry-input { flex: 1; width: auto; }
+	.plan-readout-primary { font-weight: 650; overflow-wrap: anywhere; }
+	.plan-readout-reference,
+	.plan-readout-area { color: var(--editor-plan-muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+	/* P23.13 S6 — a detached measure still has to name itself (§7: the number is
+	   working information, not a value the geometry makes obvious any more). */
+	.plan-readout-measure { display: flex; gap: 0.35rem; align-items: baseline; color: var(--editor-plan-label); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
+	.plan-readout-measure-name { color: var(--editor-plan-muted); }
+	/* Narrow drawings reflow the readout above the plan instead of over it. */
+	@container (max-width: 720px) { .plan-readout { left: 12px; right: 12px; max-width: none; } }
 	.plan-meta .warning { color: var(--editor-danger-fg); }
 	@media (max-width: 44rem) {
 		.staging-selection-warning { top: 8rem; }

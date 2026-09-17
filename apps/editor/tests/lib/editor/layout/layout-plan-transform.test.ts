@@ -48,12 +48,23 @@ describe('layout plan transform', () => {
 		expect(grid.some((line) => !line.major)).toBe(true);
 	});
 
-	it('lods minor grid lines when they would be visually dense', () => {
+	it('gates grid detail per line class (P23.13 S2: major ≥16px, minor ≥12px)', () => {
 		const state = createPlanViewportState();
+		// 1 m major projects at 10 px and 0.25 m minor at 2.5 px: neither clears
+		// its floor, so the overview carries no grid at all.
 		state.pixelsPerMeter = 10;
-		const grid = buildPlanGrid(state);
-		expect(grid.some((line) => !line.major)).toBe(false);
-		expect(grid.some((line) => line.major)).toBe(true);
+		expect(buildPlanGrid(state)).toEqual([]);
+
+		// 1 m major at 20 px clears 16 px; 0.25 m minor at 5 px does not.
+		state.pixelsPerMeter = 20;
+		const majorOnly = buildPlanGrid(state);
+		expect(majorOnly.some((line) => line.major)).toBe(true);
+		expect(majorOnly.some((line) => !line.major)).toBe(false);
+
+		// 0.25 m minor at 12.5 px clears 12 px.
+		state.pixelsPerMeter = 50;
+		const detailed = buildPlanGrid(state);
+		expect(detailed.some((line) => !line.major)).toBe(true);
 	});
 
 	it('builds readable X/Z ruler ticks', () => {

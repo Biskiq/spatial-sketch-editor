@@ -6,10 +6,16 @@
  */
 
 :root {
+	/* `--editor-plan-grid-major` / `--editor-plan-grid-minor` are NOT redefined
+	   here: `tokens.css` owns them (P23.13 S2 moved them to the ratified cool
+	   greys) and a second definition in this later-loaded file silently won,
+	   leaving the warm grid on the new cool paper. Roles below alias them. */
 	--editor-plan-canvas-bg: var(--editor-plan-bg);
-	--editor-plan-grid-major: #d2cec5;
-	--editor-plan-grid-minor: #e4e0d9;
-	--editor-plan-room-bg: #fffdfa;
+	/* §2/§6 "no room fill at rest": a Room rests as the drafting surface. The
+	   fill stays opaque (it must still occlude 3D-ish content behind the paper),
+	   it just stops tinting the face warm. `--editor-camera-plan-room-bg` keeps
+	   its distinct value, so a Camera Plan Room still reads against its canvas. */
+	--editor-plan-room-bg: var(--editor-plan-bg);
 	--editor-plan-room-selected-bg: color-mix(in srgb, var(--editor-plan-room-bg) 88%, var(--editor-plan-selection) 12%);
 	/* One centralized subdued Camera Plan variant derived from the same palette
 	   (no third hex); keeps room paper readable against the canvas. */
@@ -22,6 +28,29 @@
 	--editor-plan-object-fill: rgb(183 178 168 / 62%);
 	--editor-plan-object-stroke: #92908a;
 	--editor-plan-readonly-fill: rgb(146 144 138 / 40%);
+
+	/* P23.13 S0/S1 — band / ink / opening-cue role tokens.
+	   The Plan paints a Wall as two independent roles: the physical-width band
+	   (canonical thickness projection, never widened for legibility) and the
+	   drafting ink (profile, termination, silhouette aid). Secondary ink is the
+	   one mark colour for dimensions, references, Window frames and the Door type
+	   cue (spec §2), so those marks can never drift into separate greys. */
+	--editor-plan-wall-band: var(--editor-plan-wall-fill);
+	--editor-plan-wall-ink: var(--editor-plan-wall);
+	--editor-plan-secondary-ink: #596570;
+	--editor-plan-silhouette: var(--editor-plan-secondary-ink);
+	--editor-plan-partition-body: #adb6bd;
+	--editor-plan-door-cue: var(--editor-plan-secondary-ink);
+	/* P23.13 S4 — compositional state colours. Neither is the mass: a selected
+	   Wall gains a separated blue perimeter (§2 "1.5 px blue outer contour, 2 px
+	   paper separation") and a hovered Wall a 1 px neutral contour 3 px outside
+	   the body. Hover is never blue. */
+	--editor-plan-wall-contour-selected: var(--editor-plan-selection);
+	--editor-plan-wall-contour-neutral: var(--editor-plan-secondary-ink);
+	/* The opening punch erases ink over the authored cut, so it must match the
+	   drafting surface — never a room background, which does not exist for a
+	   wall-first Wall outside any Room. */
+	--editor-plan-opening-void: var(--editor-plan-canvas-bg);
 
 	/* Selection language (blue = selected, both owners; DS §28A table). */
 	--editor-plan-selected-fill: rgb(47 140 255 / 24%);

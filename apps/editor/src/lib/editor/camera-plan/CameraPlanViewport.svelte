@@ -826,6 +826,6 @@
 
 <style>
 	.camera-plan-viewport { position: absolute; inset: 0; z-index: 3; background: var(--editor-camera-plan-canvas-bg); }
-	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-camera-plan-canvas-bg); user-select: none; -webkit-user-select: none; --editor-plan-room-bg: var(--editor-camera-plan-room-bg); --plan-footprint-stroke: var(--editor-camera-footprint-stroke); --plan-footprint-fill: var(--editor-camera-footprint-fill); --plan-layout-object-stroke: var(--editor-camera-footprint-stroke); --plan-layout-object-fill: var(--editor-camera-footprint-fill); --plan-layout-object-dasharray: 5 4; }
+	.plan-canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; outline: none; background: var(--editor-camera-plan-canvas-bg); user-select: none; -webkit-user-select: none; --editor-plan-room-bg: var(--editor-camera-plan-room-bg); --plan-footprint-stroke: var(--editor-camera-footprint-stroke); --plan-footprint-fill: var(--editor-camera-footprint-fill); --plan-footprint-dasharray: 5 4; --plan-layout-object-stroke: var(--editor-camera-footprint-stroke); --plan-layout-object-fill: var(--editor-camera-footprint-fill); --plan-layout-object-dasharray: 5 4; }
 	.plan-meta { position: absolute; left: 0.8rem; bottom: 0.8rem; z-index: 2; display: flex; gap: 0.7rem; color: var(--editor-plan-muted); font: 0.68rem/1 var(--editor-font); pointer-events: none; }
 </style>
