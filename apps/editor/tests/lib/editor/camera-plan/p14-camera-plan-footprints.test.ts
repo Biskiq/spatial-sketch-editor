@@ -31,7 +31,14 @@ describe('P14 Camera Plan passive footprints', () => {
 		expect(cameraPlan).toContain('--plan-layout-object-stroke: var(--editor-camera-footprint-stroke)');
 		expect(cameraPlan).toContain('--plan-layout-object-fill: var(--editor-camera-footprint-fill)');
 		expect(cameraPlan).toContain('--plan-layout-object-dasharray: 5 4');
-		expect(planSvg).toContain('var(--plan-footprint-fill, rgb(146 144 138 / 12%))');
+		// P23.13 S9 changed the *Layout* defaults behind these hooks (the passive
+		// Scene there is continuous, fill-free ink) and put the shared class's
+		// dashes behind a hook. What this test protects is the Camera Plan's own
+		// footprint look, so the Camera canvas is pinned as setting every hook it
+		// relies on — fill, stroke and dash.
+		expect(cameraPlan).toContain('--plan-footprint-dasharray: 5 4');
+		expect(planSvg).toContain('var(--plan-footprint-fill, none)');
+		expect(planSvg).toContain('var(--plan-footprint-dasharray, none)');
 		expect(planSvg).toContain('var(--plan-footprint-stroke, var(--editor-plan-muted))');
 		expect(planSvg).toContain('var(--plan-layout-object-fill, var(--editor-plan-object-fill))');
 		expect(planSvg).toContain('var(--plan-layout-object-stroke, var(--editor-plan-object-stroke))');

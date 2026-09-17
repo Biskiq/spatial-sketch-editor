@@ -473,7 +473,15 @@
 	.room-fill.selected { fill: var(--editor-plan-room-selected-bg); fill-opacity: 1; }
 	.room-outline { fill: none; stroke: var(--editor-plan-wall); stroke-width: 1; vector-effect: non-scaling-stroke; }
 	.room-outline.selected { stroke: var(--editor-plan-selection); stroke-width: 3; }
-	.scene-footprint { fill: var(--plan-footprint-fill, rgb(146 144 138 / 12%)); stroke: var(--plan-footprint-stroke, var(--editor-plan-muted)); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S9 / §1.12 — passive Scene context is *continuous light ink and no
+	   fill*: a footprint reads as the outline of what the plan sits on, never as
+	   an authored area, and its weight is S2's regime fraction applied as
+	   per-primitive opacity (30% normal-near, 15% far, 10% inside a live
+	   instrument zone) by `contextInkStyle`. The state variants keep their fills
+	   because that ink is feedback, not passive context. Both values stay hooked
+	   so the Camera Plan keeps its own dashed, filled footprints (P14) without
+	   the Layout Plan inheriting them. */
+	.scene-footprint { fill: var(--plan-footprint-fill, none); stroke: var(--plan-footprint-stroke, var(--editor-plan-muted)); stroke-width: 1.5; stroke-dasharray: var(--plan-footprint-dasharray, none); vector-effect: non-scaling-stroke; pointer-events: none; }
 	.scene-footprint.active { fill: rgb(47 140 255 / 10%); stroke: var(--editor-plan-hover-stroke); stroke-width: 2; }
 	.scene-footprint.bridge-hover { fill: rgb(47 140 255 / 16%); stroke: var(--editor-plan-hover-stroke); stroke-width: 2.5; }
 	.scene-footprint.selected { fill: rgb(47 140 255 / 24%); stroke: var(--editor-plan-selection); stroke-width: 3; }
