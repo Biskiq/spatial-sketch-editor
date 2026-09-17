@@ -79,6 +79,15 @@ function degrees(id: PlanNumericFieldId, label: string, domain: PlanNumericDomai
 export type PlanNumericHost =
 	/** Straight Wall draw: "Length, angle" (§7 row 1). */
 	| 'wall-chain'
+	/**
+	 * An *existing* Wall, reached from explicit focus (A5's "focused selected
+	 * primary dimension"): the same Length/Angle pair §7 grants the draw, but the
+	 * command is an edit of that Wall rather than a new segment. One host per
+	 * *command*, never one per field set — the field sets are where the spec's
+	 * table lives, and two commands that offer the same fields are still two
+	 * commands.
+	 */
+	| 'wall-edit'
 	/** Rect Room: "Width + depth" (§7 row Rect Room). */
 	| 'rectangle'
 	/** Opening insert: type-to-enter "width/offset". */
@@ -103,6 +112,7 @@ export type PlanNumericHost =
  */
 export const PLAN_NUMERIC_FIELD_SETS = {
 	'wall-chain': [meters('length', 'Length', 'positive'), degrees('angle', 'Angle')],
+	'wall-edit': [meters('length', 'Length', 'positive'), degrees('angle', 'Angle')],
 	rectangle: [meters('width', 'Width', 'positive'), meters('depth', 'Depth', 'positive')],
 	'opening-insert': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
 	'opening-slide': [meters('offset', 'Offset', 'nonnegative'), meters('width', 'Width', 'positive')],
@@ -129,6 +139,170 @@ export function planNumericFields(host: PlanNumericHost): readonly PlanNumericFi
  * — the same rule the Inspector's precision editors already keep.
  */
 export type PlanNumericCandidates = Partial<Record<PlanNumericFieldId, number | null>>;
+
+// ---------------------------------------------------------------------------
+// Explicit focus (A5's second reach)
+// ---------------------------------------------------------------------------
+
+/**
+ * Where an *explicit* focus opens the editor — §7's "typing while drafting;
+ * explicit click/focus otherwise", ratified as A5: "numeric editing during
+ * gestures **and** from explicitly focused selected primary dimensions". The
+ * spec gives two ways in: "click on its underlined value is the pointer
+ * alternative; keyboard-focused control + Enter is the discoverable
+ * alternative", and "Idle dimensions remain passive unless explicitly
+ * focused".
+ *
+ * A target therefore names three things and nothing else: which host's fields
+ * are being edited, which field the caret starts in, and which canonical owner
+ * the number belongs to. It carries no value and no geometry — the caller seeds
+ * it from canonical state exactly as it seeds a gesture-driven entry, so an
+ * explicit focus cannot become a second route to acceptance either.
+ */
+export type PlanNumericEntryTarget = {
+	readonly host: PlanNumericHost;
+	readonly fieldId: PlanNumericFieldId;
+	readonly ownerId: string;
+};
+
+/**
+ * The resting dimension keys that carry an entry, and the field each one means.
+ * The keys are §7's measures as the Plan already derives them (`plan-dimensions`),
+ * so the mapping cannot drift from the instrument: a dimension the derivation
+ * stops producing simply has no target.
+ */
+const PLAN_NUMERIC_DIMENSION_TARGETS: readonly {
+	readonly prefix: string;
+	readonly host: PlanNumericHost;
+	readonly fieldId: PlanNumericFieldId;
+}[] = [
+	// §7's "Selected, idle" row for a straight Wall: "Length only; angle through
+	// focused precision" — the focus opens the Length, and the Angle is one Tab
+	// away rather than a second resting measure.
+	{ prefix: 'selected-wall:', host: 'wall-edit', fieldId: 'length' },
+	// Offset before Width: `selected-opening-offset:` reads as
+	// `selected-opening:` with a suffix, and matching the shorter prefix first
+	// would open the editor on the wrong number of the same Opening.
+	{ prefix: 'selected-opening-offset:', host: 'opening-resize', fieldId: 'offset' },
+	{ prefix: 'selected-opening:', host: 'opening-resize', fieldId: 'width' }
+];
+
+/**
+ * The entry a resting dimension carries, or `null` when it carries none. Null is
+ * a real answer and the common one: a measure the spec leaves passive is not
+ * offered an editor, so a Room's identity label or an arc length never acquires
+ * an affordance it cannot honour.
+ */
+export function planNumericDimensionEntryTarget(dimensionKey: string): PlanNumericEntryTarget | null {
+	for (const target of PLAN_NUMERIC_DIMENSION_TARGETS) {
+		if (!dimensionKey.startsWith(target.prefix)) continue;
+		const ownerId = dimensionKey.slice(target.prefix.length);
+		if (!ownerId) continue;
+		return { host: target.host, fieldId: target.fieldId, ownerId };
+	}
+	return null;
+}
+
+/**
+ * The entry a **resting** measure offers, or `null`. This is the rule both
+ * consumers of A5's second reach apply, so the affordance and the target cannot
+ * disagree: the paint layer underlines exactly the values this answers a target
+ * for, and the viewport hit-tests exactly the same ones.
+ *
+ * A curved host's length is the case the rule exists for. §7 measures it
+ * canonically ("curves use canonical arc length, explicitly identified"), but
+ * setting an exact length on a curve is a chord solve the canonical planner
+ * refuses as unsupported — so the measure is *not* offered an editor rather than
+ * offered and then refused. §7's "invalid values stay editable with a reason" is
+ * about a value the user typed; an invitation the Plan knows it cannot honour is
+ * a different thing, and §7 asks for quiet.
+ */
+export function planNumericRestingEntryTarget(measure: {
+	readonly key: string;
+	readonly arc?: boolean;
+}): PlanNumericEntryTarget | null {
+	if (measure.arc) return null;
+	return planNumericDimensionEntryTarget(measure.key);
+}
+
+/**
+ * The entry a focused *control* carries — §7's "keyboard-focused control + Enter
+ * is the discoverable alternative", read against the control vocabulary §6
+ * already ratifies.
+ *
+ * Only a control whose canonical command exists is a target. `curve-control`
+ * ("active point X/Z on focus") and the two rotation controls have no exact
+ * command wired here, and a control with nothing to reach is left unoffered
+ * rather than opened onto a second solver — the same "absence is the
+ * enforcement" rule the field sets keep. `null` is that answer.
+ */
+const PLAN_NUMERIC_CONTROL_TARGETS: Readonly<Record<string, { host: PlanNumericHost; fieldId: PlanNumericFieldId }>> = {
+	// §7: "Junction move … Coordinates on focused handle".
+	junction: { host: 'junction', fieldId: 'x' },
+	// §7: "Opening insert / slide | Width; offset on focus" and "Opening resize |
+	// Width" — the width edge is the handle §7 grants the width to.
+	'opening-edge': { host: 'opening-resize', fieldId: 'width' },
+	// The paired body grip is the offset's own handle (§7: "offset on focus").
+	'opening-slide': { host: 'opening-slide', fieldId: 'offset' }
+};
+
+export function planNumericControlEntryTarget(
+	control: string,
+	ownerId: string
+): PlanNumericEntryTarget | null {
+	const target = PLAN_NUMERIC_CONTROL_TARGETS[control];
+	if (!target || !ownerId) return null;
+	return { host: target.host, fieldId: target.fieldId, ownerId };
+}
+
+/**
+ * Open the editor **on the value it replaces**, with no keystroke to start it:
+ * §7's "Entry replaces the displayed value with a small input at the same
+ * location", reached by clicking the underlined value rather than by typing.
+ *
+ * The difference from the digit trigger is exactly what the user has said so
+ * far. A digit *is* an explicit value — it replaces the candidate outright — so
+ * the trigger seeds `typed` with the keystroke and the candidate is only a
+ * placeholder. Clicking the value says "edit this number", not "this number":
+ * the field opens showing the canonical value, editable and selected, and a field
+ * with no canonical value opens blank and refused (`Exact value is blank`) rather
+ * than pretending to hold a zero.
+ *
+ * What the user has *not* said is the number itself, so `typed` stays **empty**.
+ * Seeding it with the displayed text would be a value the user never chose — and
+ * worse, a *rounded* one: the field shows two decimals, so an untouched submit of
+ * a 2.675 m Wall would compare 2.68 against 2.675, decide the field had changed,
+ * and write 5 mm of geometry plus a history entry for a keystroke that said
+ * nothing. `display rounding ≠ precision` is S6's invariant for this same
+ * instrument; keeping `typed` empty is what keeps it true here. It also keeps
+ * §7's suppression rule honest: "showing the candidate is not choosing it", so
+ * the snap winner stays until the first keystroke, and an untouched Enter reaches
+ * the caller with no values at all, which is a fact it can act on structurally
+ * rather than by comparing floats.
+ */
+export function planNumericEntryOpen(
+	target: PlanNumericEntryTarget,
+	candidates: PlanNumericCandidates = {}
+): PlanNumericEntryState {
+	const fields = planNumericFields(target.host);
+	const found = fields.findIndex((field) => field.id === target.fieldId);
+	const fieldIndex = found < 0 ? 0 : found;
+	const text = planNumericFieldText(candidates[fields[fieldIndex].id] ?? null, fields[fieldIndex]);
+	return {
+		host: target.host,
+		fields,
+		fieldIndex,
+		candidates,
+		text,
+		// Empty on purpose, not because no value is shown: the text above *is* the
+		// value, and the first keystroke replaces it (`planNumericEntryInput`).
+		typed: {},
+		dragActive: false,
+		pointerUpConsumed: false,
+		submitted: false,
+		invalidReason: text === '' ? 'blank' : null
+	};
+}
 
 // ---------------------------------------------------------------------------
 // Parsing

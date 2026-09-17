@@ -14,6 +14,8 @@ import {
 	planDimensionPreferredSide,
 	planDimensionText,
 	planDimensionTextExtentPx,
+	planDimensionValueBoxPx,
+	planDimensionValueHit,
 	planSidesWithRoom,
 	type PlanDimension,
 	type PlanDimensionFacts
@@ -22,6 +24,83 @@ import {
 	createPlanViewportState,
 	worldToPlanScreen
 } from '$lib/editor/layout/layout-plan-transform';
+
+/**
+ * §7's other use for a value: a click target. "Click on its underlined value is
+ * the pointer alternative" — so the value has to be hittable, and only where it
+ * is actually drawn. These tests pin the box (centred on the ink, floored so a
+ * short value is still reachable, padded but not greedy) and the identity a hit
+ * resolves to, including the two ways this can go quietly wrong: a tie between
+ * the stacked lanes, and a measure that moved to the readout and is therefore no
+ * longer on the drawing.
+ */
+describe('P23.13 S7 — the value as a pointer target', () => {
+	const measure = (key: string, value: string, lane: 1 | 2 = 1): PlanDimension => ({
+		key,
+		label: null,
+		measure: 'Length',
+		value,
+		span: null,
+		anchor: [0, 0],
+		lane
+	});
+
+	it('centres the box on the ink and floors it to a reachable target', () => {
+		const box = planDimensionValueBoxPx('1 m', [100, 200]);
+		expect(box.minX).toBeLessThan(100);
+		expect(box.maxX).toBeGreaterThan(100);
+		expect(box.minY).toBeLessThan(200);
+		expect(box.maxY).toBeGreaterThan(200);
+		// Symmetric about the anchor: §7 draws the value centred, so the target is
+		// the number, not the number plus its length to the right.
+		expect(100 - box.minX).toBeCloseTo(box.maxX - 100, 6);
+		expect(200 - box.minY).toBeCloseTo(box.maxY - 200, 6);
+		// A one-character value would otherwise be a sliver: the floor is what makes
+		// §6's "targets are larger than their marks" true for the ink here.
+		const narrow = planDimensionValueBoxPx('5', [100, 200]);
+		expect(narrow.maxX - narrow.minX).toBeGreaterThanOrEqual(26);
+		expect(narrow.maxY - narrow.minY).toBeGreaterThanOrEqual(16);
+	});
+
+	it('resolves the placed value under the point, and nothing off it', () => {
+		const entries = [{ key: 'selected-wall:W-1', text: '3.37 m', anchorPx: [120, 240] as [number, number] }];
+		expect(planDimensionValueHit(entries, [120, 240])).toBe('selected-wall:W-1');
+		expect(planDimensionValueHit(entries, [120, 240 - 6])).toBe('selected-wall:W-1');
+		expect(planDimensionValueHit(entries, [120, 400])).toBeNull();
+		expect(planDimensionValueHit(entries, [400, 240])).toBeNull();
+	});
+
+	it('gives a tie to the ink drawn on top', () => {
+		// Lane 1 and lane 2 of one host can land on the same point on a short span;
+		// the entries arrive in draw order, so the later measure — the one visibly on
+		// top — has to win, or the click edits a number the user cannot see.
+		const entries = [
+			{ key: 'lane-1', text: '1.00 m', anchorPx: [50, 50] as [number, number] },
+			{ key: 'lane-2', text: '2.00 m', anchorPx: [50, 50] as [number, number] }
+		];
+		expect(planDimensionValueHit(entries, [50, 50])).toBe('lane-2');
+	});
+
+	it('cannot hit a value that is not on the drawing', () => {
+		// A measure that did not fit locally moved to the readout, so it has no ink
+		// and must not keep a hit target where its text used to be: an empty entry
+		// list is every measure that is not drawn.
+		expect(planDimensionValueHit([], [0, 0])).toBeNull();
+		expect(planDimensionValueHit([], [100, 100])).toBeNull();
+	});
+
+	it('makes the pad, not the glyph, the edge of the target', () => {
+		const text = '3.37 m';
+		const anchor: [number, number] = [300, 300];
+		const entries = [{ key: 'selected-wall:W-1', text, anchorPx: anchor }];
+		const extent = planDimensionTextExtentPx(text);
+		const justOutsideText = 300 + extent.width / 2 + 1;
+		expect(planDimensionValueHit(entries, [justOutsideText, 300])).toBe('selected-wall:W-1');
+		// ...and it stops: a hit several px clear of the value belongs to the
+		// drawing, not to the number.
+		expect(planDimensionValueHit(entries, [justOutsideText + 40, 300])).toBeNull();
+	});
+});
 
 /**
  * P23.13 S6 — working dimensions (spec §7).

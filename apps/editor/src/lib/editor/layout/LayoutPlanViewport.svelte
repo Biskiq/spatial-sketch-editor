@@ -102,6 +102,8 @@
 		updateLayoutOpeningFields,
 		updateWallFirstOpening,
 		updateWallFirstJunction,
+		updateWallFirstWallAngle,
+		updateWallFirstWallLength,
 		updateWallFirstWallBend,
 		updateWallFirstWallCurveKnot,
 		updateWallFirstWallMove,
@@ -147,14 +149,19 @@
 		planNumericEntryEscape,
 		planNumericEntryField,
 		planNumericEntryHoldsExplicitValue,
+		planNumericControlEntryTarget,
 		planNumericEntryInput,
+		planNumericEntryOpen,
 		planNumericEntrySubmit,
 		planNumericEntryTab,
 		planNumericEntryTrigger,
 		planNumericInvalidMessage,
 		planNumericPointerUp,
+		planNumericRestingEntryTarget,
 		type PlanNumericCandidates,
-		type PlanNumericEntryState
+		type PlanNumericEntryState,
+		type PlanNumericEntryTarget,
+		type PlanNumericSubmitOutcome
 	} from './plan-numeric-entry';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
@@ -211,6 +218,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
+		planDimensionValueHitAt,
 		planHandleScreenPoints,
 		planNumericEntryAnchorPx,
 		presetIdForTool,
@@ -414,9 +422,23 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * pointer-up is still owed); this component only mirrors it into an input.
 	 */
 	let numericEntry = $state<PlanNumericEntryState | null>(null);
+	/**
+	 * What the open field is editing, in canonical terms. A gesture entry (the Wall
+	 * draw) accepts the segment the live run would commit; an explicit focus (A5's
+	 * second reach) names a canonical owner instead, so one lifecycle can edit an
+	 * existing Wall, an Opening or a Junction through that owner's own command —
+	 * never through a second solver.
+	 */
+	let numericEntrySubject = $state<PlanNumericSubject | null>(null);
 	let numericEntryElement = $state<HTMLInputElement | null>(null);
 	/** Plain (non-reactive) tool memory for §7's "tool change cancels". */
 	let numericEntryTool: LayoutDraftTool = 'select';
+	type PlanNumericSubject =
+		| { kind: 'wall-chain' }
+		| { kind: 'rectangle' }
+		| { kind: 'wall'; wallId: string }
+		| { kind: 'opening'; openingId: string }
+		| { kind: 'junction'; junctionId: string };
 
 	/**
 	 * P23.11 — the Bend modifier is a **named command**, not a key.
@@ -1192,7 +1214,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (!state) return null;
 		return planNumericEntryAnchorPx(interaction.planView, baseInteractionProjection.labels, {
 			measureKey: numericEntryMeasureKey(state),
-			fallbackWorld: interaction.wallChainStart ?? interaction.wallChainCursor
+			fallbackWorld: numericEntryFallbackWorld()
 		});
 	});
 
@@ -3473,18 +3495,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		dragSnapshot = null;
 		svgElement?.releasePointerCapture(event.pointerId);
 		if (interaction.tool === 'rectangle') {
-			// P23.9 — on a wall-first document Rectangle is the bounded four-Wall
-			// chain frontend: same canonical graph as an equivalent chain. The
-			// legacy Room-polygon commit stays for legacy documents.
-			if ('formatVersion' in preview.project.layout) {
-				const points = rectanglePoints(interaction);
-				if (points && onCommit(points)) clearLayoutDraft(interaction);
-				else clearLayoutDraft(interaction);
-				return;
-			}
-			const points = rectanglePoints(interaction);
-			if (points && onCommit(points)) clearLayoutDraft(interaction);
-			else if (!points) clearLayoutDraft(interaction);
+			commitRectangleDraft();
 			return;
 		}
 		if (interaction.tool === 'select' && interaction.editing) {
@@ -3552,6 +3563,31 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23.13 S7 — a field owns the gesture: a click while one is open never
 		// commits a pointer-positioned segment behind the typed value.
 		if (numericEntry) return;
+		// P23.13 S7 step 2 / A5 — an explicit click on a resting value opens the
+		// editor *on* it: "click on its underlined value is the pointer alternative".
+		// Only while the drafting surface is idle, so a click that belongs to a
+		// draft, a drag or a focused-edit intent is never stolen by a number that
+		// happens to sit under it.
+		if (
+			interaction.tool === 'select' &&
+			interaction.planViewMode === 'layout' &&
+			!planGestureActive &&
+			!interaction.wallChainStart &&
+			!interaction.rectangleStart
+		) {
+			const screen = screenPoint(event);
+			const key = screen
+				? planDimensionValueHitAt(
+						interaction.planView,
+						baseInteractionProjection.labels,
+						numericRestingMeasures.map((measure) => measure.key),
+						screen
+					)
+				: null;
+			const measure = key ? numericRestingMeasures.find((candidate) => candidate.key === key) : null;
+			const target = measure ? planNumericRestingEntryTarget(measure) : null;
+			if (target && openNumericEntryAt(target)) return;
+		}
 		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return;
 		const point = worldPoint(event);
 		if (!point) return;
@@ -3676,15 +3712,210 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 
 	/**
 	 * §7's measure key for the field being edited, i.e. the value the field sits on.
-	 * A field whose host has no live instrument (the focused-control hosts, S7 step
-	 * 2) simply has no anchor and says so by returning `null`.
+	 * A field whose host has no live instrument returns `null` here and lands on its
+	 * fallback instead (see `numericEntryFallbackWorld`) — a Junction's coordinate
+	 * entry sits on a handle, not on a number the drawing carries.
 	 */
 	function numericEntryMeasureKey(state: PlanNumericEntryState): string | null {
 		const field = planNumericEntryField(state);
-		if (state.host !== 'wall-chain') return null;
-		if (field.id === 'length') return 'leg:length';
-		if (field.id === 'angle') return 'leg:angle';
+		if (state.host === 'wall-chain') {
+			if (field.id === 'length') return 'leg:length';
+			if (field.id === 'angle') return 'leg:angle';
+			return null;
+		}
+		const subject = numericEntrySubject;
+		if (!subject) return null;
+		// The measures §6/S6 already draw, so the field lands on the number the user
+		// clicked rather than near it. Every key here is one the derivation produces;
+		// a subject with no ink of its own (a Junction's coordinates) answers `null`
+		// and lands on its anchor instead (see `numericEntryFallbackWorld`).
+		if (subject.kind === 'rectangle') {
+			return field.id === 'depth' ? 'rect:depth' : 'rect:width';
+		}
+		if (subject.kind === 'wall' && state.host === 'wall-edit') {
+			return `selected-wall:${subject.wallId}`;
+		}
+		if (subject.kind === 'opening' && field.id === 'offset') {
+			return `selected-opening-offset:${subject.openingId}`;
+		}
+		if (subject.kind === 'opening') {
+			return `selected-opening:${subject.openingId}`;
+		}
 		return null;
+	}
+
+	/**
+	 * Where a field with no measure of its own appears. §7's anchor rule is "the
+	 * value it replaces", and a host whose value is not drawn as a measurement (a
+	 * Junction's coordinates, a measure whose text moved to the readout) still has
+	 * an *owner* whose locus the user is looking at — so the field lands there, on
+	 * the lane offset the placement module owns, rather than at the container
+	 * origin where it would look like a stray input floating over the drawing.
+	 */
+	function numericEntryFallbackWorld(): LayoutVec2 | null {
+		const subject = numericEntrySubject;
+		if (!subject || subject.kind === 'wall-chain') {
+			return interaction.wallChainStart ?? interaction.wallChainCursor;
+		}
+		if (subject.kind === 'rectangle') {
+			return interaction.rectangleCurrent ?? interaction.rectangleStart;
+		}
+		if (subject.kind === 'junction') return resolveJunctionPoint(subject.junctionId);
+		if (subject.kind === 'wall') {
+			const span = physicalWallSpan(model, subject.wallId);
+			return span ? [(span.start[0] + span.end[0]) / 2, (span.start[1] + span.end[1]) / 2] : null;
+		}
+		const edges = wallOpeningEdgeWorldPoints(model, subject.openingId);
+		return edges
+			? [(edges.start[0] + edges.end[0]) / 2, (edges.start[1] + edges.end[1]) / 2]
+			: null;
+	}
+
+	/**
+	 * A5's second reach: the resting measures the selection offers an editor for,
+	 * in §7's order. This is exactly what the paint layer underlines — both call
+	 * `planNumericRestingEntryTarget`, so the affordance and the target are one
+	 * decision — and it deliberately contains only §7's *selected, idle* measures:
+	 * the angle, the deltas and the coordinates §7 gives to a gesture or a focused
+	 * handle are not in it.
+	 */
+	const numericRestingMeasures = $derived.by(() => {
+		const selection = interaction.selection as {
+			kind: string;
+			wallId?: string;
+			openingId?: string;
+		};
+		const measures: { key: string; arc: boolean }[] = [];
+		if (selection.kind === 'physicalWall' && selection.wallId) {
+			const wall = wallFirstLayoutDocument()?.walls.find((entry) => entry.id === selection.wallId);
+			if (wall) {
+				measures.push({ key: `selected-wall:${wall.id}`, arc: wall.centerline.kind !== 'line' });
+			}
+		}
+		if (selection.kind === 'wallOpening' && selection.openingId) {
+			measures.push({ key: `selected-opening:${selection.openingId}`, arc: false });
+			// §7 grants the offset to focus: a focused width edge is what asks the
+			// Opening about its position, and the derivation draws the offset only then.
+			if (interaction.planFocus?.kind === 'opening-edge') {
+				measures.push({ key: `selected-opening-offset:${selection.openingId}`, arc: false });
+			}
+		}
+		return measures.filter((measure) => planNumericRestingEntryTarget(measure) !== null);
+	});
+
+	/** The live Rect Room candidate's extents, or `null`s when there is no draft yet. */
+	function rectangleDraftCandidates(): PlanNumericCandidates {
+		const start = interaction.rectangleStart;
+		const current = interaction.rectangleCurrent;
+		if (!start || !current) return { width: null, depth: null };
+		return {
+			width: Math.abs(current[0] - start[0]) || null,
+			depth: Math.abs(current[1] - start[1]) || null
+		};
+	}
+
+	/**
+	 * The live candidates for **whatever the open field edits**. §7's Tab refreshes a
+	 * newly focused field from the gesture as it stands, so the seed has to follow
+	 * the subject and not the host the editor happened to be built for: a Depth field
+	 * that came up blank beside a drawn rectangle would be reporting that nothing is
+	 * being drawn.
+	 */
+	function numericEntryCandidates(): PlanNumericCandidates {
+		const subject = numericEntrySubject;
+		if (!subject) return {};
+		if (subject.kind === 'wall-chain') return pendingWallChainCandidates();
+		if (subject.kind === 'rectangle') return rectangleDraftCandidates();
+		if (subject.kind === 'wall') {
+			return restingMeasureCandidates({ host: 'wall-edit', fieldId: 'length', ownerId: subject.wallId });
+		}
+		if (subject.kind === 'junction') {
+			return restingMeasureCandidates({ host: 'junction', fieldId: 'x', ownerId: subject.junctionId });
+		}
+		const drag = interaction.wallOpeningDrag;
+		if (drag && drag.openingId === subject.openingId) {
+			return { width: drag.candidateWidth, offset: drag.candidateOffset };
+		}
+		return restingMeasureCandidates({ host: 'opening-resize', fieldId: 'width', ownerId: subject.openingId });
+	}
+
+	/** The canonical numbers a resting measure is seeded from, read from the document. */
+	function restingMeasureCandidates(target: PlanNumericEntryTarget): PlanNumericCandidates {
+		if (target.host === 'wall-edit') {
+			const wall = wallFirstLayoutDocument()?.walls.find((entry) => entry.id === target.ownerId);
+			const start = wall ? resolveJunctionPoint(wall.startJunctionId) : null;
+			const end = wall ? resolveJunctionPoint(wall.endJunctionId) : null;
+			return {
+				length: wallFirstWallLengthFor(target.ownerId),
+				angle: start && end ? planNumericAngleDegrees(end[0] - start[0], end[1] - start[1]) : null
+			};
+		}
+		if (target.host === 'opening-resize' || target.host === 'opening-slide') {
+			const opening = wallFirstOpeningById(target.ownerId);
+			return {
+				width: opening?.width ?? null,
+				offset: opening?.offset ?? null
+			};
+		}
+		if (target.host === 'junction') {
+			const point = resolveJunctionPoint(target.ownerId);
+			return { x: point?.[0] ?? null, z: point?.[1] ?? null };
+		}
+		return {};
+	}
+
+	/**
+	 * The subject an entry target edits, so submission knows which command it owes.
+	 * `null` for a host this component has no command for — unreachable through the
+	 * mapping tables (they only ever name hosts wired below), and deliberately not
+	 * defaulted to one of them: a future host falling through to *some* command would
+	 * edit the wrong thing rather than decline to open.
+	 */
+	function entrySubjectFor(target: PlanNumericEntryTarget): PlanNumericSubject | null {
+		switch (target.host) {
+			case 'wall-edit':
+				return { kind: 'wall', wallId: target.ownerId };
+			case 'junction':
+				return { kind: 'junction', junctionId: target.ownerId };
+			case 'opening-resize':
+			case 'opening-slide':
+				return { kind: 'opening', openingId: target.ownerId };
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Open the field on a value the user explicitly focused, with no keystroke to
+	 * start it (§7: "Entry replaces the displayed value with a small input at the
+	 * same location"). It shows the canonical value, selected, so the first
+	 * keystroke replaces it; a measure with no canonical value opens blank and
+	 * refused rather than pretending to hold a zero.
+	 */
+	function openNumericEntryAt(target: PlanNumericEntryTarget): boolean {
+		const subject = entrySubjectFor(target);
+		if (!subject) return false;
+		preview.statusMessage = null;
+		numericEntrySubject = subject;
+		numericEntry = planNumericEntryOpen(target, restingMeasureCandidates(target));
+		return true;
+	}
+
+	/**
+	 * §7's keyboard alternative to clicking a value: "keyboard-focused control +
+	 * Enter". A focused control wins over the selection's own measure, because the
+	 * user put the focus there on purpose.
+	 */
+	function beginNumericEntryFromFocus(): boolean {
+		if (numericEntry) return false;
+		const focus = interaction.planFocus;
+		if (focus) {
+			const target = planNumericControlEntryTarget(focus.kind, focus.ownerId);
+			if (target) return openNumericEntryAt(target);
+		}
+		const measure = numericRestingMeasures[0];
+		const resting = measure ? planNumericRestingEntryTarget(measure) : null;
+		return resting ? openNumericEntryAt(resting) : false;
 	}
 
 	/**
@@ -3696,7 +3927,33 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	function closeNumericEntry(options: { focusCanvas?: boolean } = {}) {
 		numericEntry = null;
+		numericEntrySubject = null;
 		if (options.focusCanvas) svgElement?.focus();
+	}
+
+	/**
+	 * Commit the live Rect Room candidate through the path a release uses: the four
+	 * corners come from `rectanglePoints`, so a typed rectangle and a dragged one are
+	 * the same canonical graph. P23.9 — on a wall-first document Rectangle is the
+	 * bounded four-Wall chain frontend; the legacy Room-polygon commit stays for
+	 * legacy documents.
+	 *
+	 * The two formats differ on **refusal**, and that difference is pre-existing
+	 * rather than something this helper chose: the wall-first branch clears the draft
+	 * either way, while the legacy branch keeps a refused sketch so it can be
+	 * corrected. Reproduced exactly, because quietly unifying them would change the
+	 * only commit path a legacy document has, and that is not a numeric-entry
+	 * decision.
+	 */
+	function commitRectangleDraft(): void {
+		const points = rectanglePoints(interaction);
+		if ('formatVersion' in preview.project.layout) {
+			if (points && onCommit(points)) clearLayoutDraft(interaction);
+			else clearLayoutDraft(interaction);
+			return;
+		}
+		if (points && onCommit(points)) clearLayoutDraft(interaction);
+		else if (!points) clearLayoutDraft(interaction);
 	}
 
 	/**
@@ -3705,6 +3962,41 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	function beginNumericEntryFromKey(event: KeyboardEvent): boolean {
 		if (numericEntry) return false;
+		// §7's Opening rows first: an active slide/resize drag is the surface the
+		// pointer is already on, and typing there means the width/offset the drag is
+		// proposing — §7's "in an active pointer drag, typing freezes the proposal,
+		// transfers to numeric editing, and consumes the eventual pointer-up".
+		const drag = interaction.wallOpeningDrag;
+		if (drag) {
+			const started = planNumericEntryTrigger(event, {
+				host: drag.mode === 'body' ? 'opening-slide' : 'opening-resize',
+				candidates: { width: drag.candidateWidth, offset: drag.candidateOffset },
+				dragActive: pointerId !== null
+			});
+			if (started) {
+				preview.statusMessage = null;
+				numericEntrySubject = { kind: 'opening', openingId: drag.openingId };
+				numericEntry = started;
+				return true;
+			}
+			return false;
+		}
+		// §7's Rect Room row: a live candidate offers "Width + depth", seeded from the
+		// rectangle the pointer has already sketched.
+		const rectangleStart = interaction.rectangleStart;
+		const rectangleCurrent = interaction.rectangleCurrent;
+		if (interaction.tool === 'rectangle' && rectangleStart && rectangleCurrent) {
+			const started = planNumericEntryTrigger(event, {
+				host: 'rectangle',
+				candidates: rectangleDraftCandidates(),
+				dragActive: pointerId !== null
+			});
+			if (!started) return false;
+			preview.statusMessage = null;
+			numericEntrySubject = { kind: 'rectangle' };
+			numericEntry = started;
+			return true;
+		}
 		if (wallChainRoleForTool(interaction.tool) === null || !hasWallChainRun(interaction)) return false;
 		const started = planNumericEntryTrigger(event, {
 			host: 'wall-chain',
@@ -3716,6 +4008,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		});
 		if (!started) return false;
 		preview.statusMessage = null;
+		numericEntrySubject = { kind: 'wall-chain' };
 		numericEntry = started;
 		return true;
 	}
@@ -3748,7 +4041,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			numericEntry = planNumericEntryTab(
 				state,
 				event.shiftKey ? 'backward' : 'forward',
-				pendingWallChainCandidates()
+				numericEntryCandidates()
 			);
 			return;
 		}
@@ -3774,13 +4067,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	/**
-	 * Enter. A valid value goes to the canonical planner the pointer path uses:
-	 * `resolveWallChainEndpointAtLength` for a typed length — the resolver P23.9
-	 * wrote for §7's Length form and never wired — and the same resolver with the
-	 * typed *direction* for an angle. A refusal keeps the field open with the
-	 * planner's own reason and writes no history, which is §7's "invalid values stay
-	 * editable with a reason; no history or allocation" extended to the release
-	 * validator it also demands.
+	 * Enter. A valid value goes to the canonical command its subject owes, and a
+	 * refusal keeps the field open with the planner's own reason and writes no
+	 * history — §7's "invalid values stay editable with a reason; no history or
+	 * allocation" extended to the release validator it also demands.
+	 *
+	 * One submit, one command: the subject decides *which*, so the lifecycle never
+	 * learns geometry and the component never grows a second solver.
 	 */
 	function submitNumericEntry() {
 		const state = numericEntry;
@@ -3792,6 +4085,204 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			preview.statusMessage = planNumericInvalidMessage(outcome.reason, outcome.field);
 			return;
 		}
+		const subject = numericEntrySubject;
+		if (!subject) {
+			closeNumericEntry();
+			return;
+		}
+		if (subject.kind === 'wall-chain') return submitWallChainEntry(outcome);
+		if (subject.kind === 'wall') return submitWallEditEntry(outcome, subject.wallId);
+		if (subject.kind === 'opening') return submitOpeningEditEntry(outcome, subject.openingId);
+		if (subject.kind === 'junction') return submitJunctionEntry(outcome, subject.junctionId);
+		if (subject.kind === 'rectangle') return submitRectangleEntry(outcome);
+	}
+
+	/**
+	 * A field opened on a value shows the value it replaces, so Enter without
+	 * editing submits the number the document already holds. That is not an edit:
+	 * the planner's own `no_op` says the same thing, and closing quietly means the
+	 * user does not get a refusal message for a keystroke that changed nothing.
+	 * Only fields the user actually typed into are compared — an untouched field
+	 * rides the live value, which is always in agreement with itself.
+	 */
+	function numericEntryUnchanged(
+		typed: number | undefined,
+		live: number | null | undefined
+	): boolean {
+		if (typed === undefined) return true;
+		return typeof live === 'number' && Math.abs(typed - live) < 1e-9;
+	}
+
+	/**
+	 * Run one exact edit as exactly one history entry, or leave the document alone.
+	 * The transaction is opened here so a rejection cancels rather than leaving half
+	 * an edit installed; both the Wall length/angle pair and the Opening's
+	 * width/offset patch land in the *same* entry, because §7 says Enter submits one
+	 * canonical operation and one edit should not cost the user two undos.
+	 */
+	function applyNumericEdit(
+		apply: () => { success: boolean; message?: string }
+	): { success: boolean; message?: string } {
+		if (!onLayoutTransactionBegin()) {
+			return { success: false, message: 'Finish the current layout interaction first' };
+		}
+		const result = apply();
+		if (result.success) onLayoutTransactionCommit();
+		else onLayoutTransactionCancel();
+		return result;
+	}
+
+	/** A rejected exact edit: the field stays open with the planner's own reason. */
+	function holdNumericEntryOpen(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		result: { success: boolean; message?: string }
+	) {
+		numericEntry = { ...outcome.state, submitted: false };
+		preview.statusMessage = result.message ?? 'That value was refused';
+	}
+
+	/**
+	 * §7's "Selected, idle" reach for a straight Wall: a typed Length and/or Angle
+	 * applied to the Wall the user focused, in one history entry, with the Wall's
+	 * start held — the endpoint the author never moved is the one that stays put.
+	 * A curve has no exact-length command and its measure is not offered one, so
+	 * this path is straight Walls only.
+	 */
+	function submitWallEditEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		wallId: string
+	): void {
+		const values = outcome.values;
+		const live = restingMeasureCandidates({ host: 'wall-edit', fieldId: 'length', ownerId: wallId });
+		if (numericEntryUnchanged(values.length, live.length) && numericEntryUnchanged(values.angle, live.angle)) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const result = applyNumericEdit(() => {
+			let last: { success: boolean; message?: string } = { success: true };
+			if (values.length !== undefined) {
+				last = updateWallFirstWallLength(preview, wallId, values.length, 'start');
+				if (!last.success) return last;
+			}
+			if (values.angle !== undefined) {
+				// The canonical planner takes radians and the field is degrees (§7).
+				last = updateWallFirstWallAngle(preview, wallId, (values.angle * Math.PI) / 180, 'start');
+			}
+			return last;
+		});
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/**
+	 * §7's Opening rows: "Width; offset on focus" — one patch through the canonical
+	 * Opening command, which validates the whole hosting-Wall set and rejects rather
+	 * than clamping.
+	 */
+	function submitOpeningEditEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		openingId: string
+	): void {
+		const values = outcome.values;
+		const drag = interaction.wallOpeningDrag;
+		if (drag && drag.openingId === openingId) {
+			// §7's transfer: typing during a drag freezes the proposal and hands it to
+			// the field, so the typed numbers replace the candidate and the *drag's own*
+			// commit path finishes the gesture — the same code a release runs, which is
+			// what makes the transfer a transfer rather than a second commit route. The
+			// drag already owns the open transaction (the pointer-down began it) and the
+			// pointer-up that follows was consumed without committing.
+			const patch: Parameters<typeof updateWallFirstOpening>[2] = {
+				offset: values.offset ?? drag.candidateOffset
+			};
+			if (drag.mode !== 'body' || values.width !== undefined) {
+				patch.width = values.width ?? drag.candidateWidth;
+			}
+			const result = updateWallFirstOpening(preview, openingId, patch);
+			if (result.success) {
+				onLayoutTransactionCommit();
+				preview.statusMessage = drag.mode === 'body' ? 'Moved opening' : 'Resized opening';
+			} else {
+				onLayoutTransactionCancel();
+				preview.statusMessage = result.message;
+			}
+			cancelLayoutWallOpeningDrag(interaction);
+			dragSnapshot = null;
+			pointerId = null;
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const live = restingMeasureCandidates({ host: 'opening-resize', fieldId: 'width', ownerId: openingId });
+		if (numericEntryUnchanged(values.width, live.width) && numericEntryUnchanged(values.offset, live.offset)) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const patch: Parameters<typeof updateWallFirstOpening>[2] = {};
+		if (values.width !== undefined) patch.width = values.width;
+		if (values.offset !== undefined) patch.offset = values.offset;
+		const result = applyNumericEdit(() => updateWallFirstOpening(preview, openingId, patch));
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/** §7's "Coordinates on focused handle": one absolute X/Z move of the Junction. */
+	function submitJunctionEntry(
+		outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>,
+		junctionId: string
+	): void {
+		const current = resolveJunctionPoint(junctionId);
+		if (!current) {
+			closeNumericEntry();
+			return;
+		}
+		const values = outcome.values;
+		const point: LayoutVec2 = [values.x ?? current[0], values.z ?? current[1]];
+		if (numericEntryUnchanged(values.x, current[0]) && numericEntryUnchanged(values.z, current[1])) {
+			closeNumericEntry({ focusCanvas: true });
+			return;
+		}
+		const result = applyNumericEdit(() => updateWallFirstJunction(preview, junctionId, point));
+		if (!result.success) {
+			holdNumericEntryOpen(outcome, result);
+			return;
+		}
+		closeNumericEntry({ focusCanvas: true });
+	}
+
+	/**
+	 * §7's Rect Room row: a typed Width/Depth sets the live candidate and then
+	 * commits it exactly as releasing the pointer there would, through the same
+	 * `rectanglePoints` → `onCommit` path. The drawn direction is kept, so typing the
+	 * width of a rectangle sketched up-left does not flip it across its start corner.
+	 */
+	function submitRectangleEntry(outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>): void {
+		const start = interaction.rectangleStart;
+		const current = interaction.rectangleCurrent;
+		if (!start || !current) {
+			closeNumericEntry();
+			return;
+		}
+		const width = outcome.values.width ?? Math.abs(current[0] - start[0]);
+		const depth = outcome.values.depth ?? Math.abs(current[1] - start[1]);
+		const signX = current[0] < start[0] ? -1 : 1;
+		const signZ = current[1] < start[1] ? -1 : 1;
+		updateRectangle(interaction, [start[0] + signX * width, start[1] + signZ * depth]);
+		closeNumericEntry({ focusCanvas: true });
+		commitRectangleDraft();
+	}
+
+	/**
+	 * The Wall-chain subject: a typed Length goes to `resolveWallChainEndpointAtLength`
+	 * — the resolver P23.9 wrote for §7's Length form and never wired — and the same
+	 * resolver with the typed *direction* for an angle.
+	 */
+	function submitWallChainEntry(outcome: Extract<PlanNumericSubmitOutcome, { kind: 'commit' }>) {
 		const start = interaction.wallChainStart;
 		if (!start) {
 			closeNumericEntry();
@@ -4275,6 +4766,25 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			!event.ctrlKey &&
 			!event.altKey &&
 			beginNumericEntryFromKey(event)
+		) {
+			event.preventDefault();
+			return;
+		}
+		// P23.13 S7 step 2 / A5 — §7's keyboard alternative to clicking a value:
+		// "keyboard-focused control + Enter is the discoverable alternative". Enter
+		// opens the editor on the focused control's own measure, or on the selected
+		// entity's resting primary measure when the focus is not on a control that
+		// carries one. A field that is already open owns Enter through its own input,
+		// so this can never steal a submit.
+		if (
+			event.key === 'Enter' &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!numericEntry &&
+			interaction.planViewMode === 'layout' &&
+			interaction.tool === 'select' &&
+			beginNumericEntryFromFocus()
 		) {
 			event.preventDefault();
 			return;

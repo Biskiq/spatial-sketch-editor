@@ -118,6 +118,13 @@ export type PlanStyleToken =
 	 */
 	| 'dimension-witness'
 	| 'dimension-label'
+	/**
+	 * P23.13 S7 / A5 — a value that carries an exact-entry editor (§7: "click on its
+	 * underlined value is the pointer alternative"). A dimension label in the
+	 * label ink, underlined: the drawing says which numbers are editable, and only
+	 * the ones a canonical command can actually accept.
+	 */
+	| 'dimension-label-editable'
 	| 'selection-label'
 	// P23.6 — persistent Room name (presentation of Room metadata, never a
 	// separately persisted annotation).

@@ -22,6 +22,7 @@ import type {
 	SnapFeatureKind,
 	SnapResolution
 } from '@portfolio/layout-core';
+import { planNumericRestingEntryTarget } from './plan-numeric-entry';
 import { compiledPhysicalWallLength, type PlanCurveControlCandidate } from './plan-hit';
 import { PLAN_CONTROL_MARKS, type PlanFocusGeometry } from './plan-acquisition';
 import { PLAN_SNAP_EXACT_VALUE_LABEL, planSnapGlyph, planSnapRelationLabelExtentPx } from './plan-snap-grammar';
@@ -31,9 +32,11 @@ import {
 	placePlanDimensions,
 	planDimensionGestureKey,
 	planDimensionText,
+	planDimensionValueHit,
 	planSidesWithRoom,
 	type PlanDimensionFacts,
-	type PlanDimensionMemory
+	type PlanDimensionMemory,
+	type PlanPlacedValue
 } from './plan-dimensions';
 import {
 	PLAN_ARCHITECTURE_CONTROLS_MIN_PX_PER_M,
@@ -1077,13 +1080,17 @@ function pushPlanDimensions(
 		// screen offset — the same mechanism every other label uses, which keeps
 		// the dimension on the paper scale (§7: never scale text).
 		const anchor = worldToPlanAnchor(placement.text, view);
+		// §7 / A5 — the value that carries an editor is drawn underlined, because
+		// "click on its underlined value is the pointer alternative". The style comes
+		// from the same rule the viewport hit-tests with, so the affordance and the
+		// target are one decision rather than two that can drift.
 		labels.push({
 			kind: 'text',
 			key: geometryId(['plan', 'overlay', 'dimension-text', placement.key]),
 			anchor: anchor.point,
 			offsetPx: anchor.offsetPx,
 			text: planDimensionText(dimension),
-			style: 'dimension-label'
+			style: planNumericRestingEntryTarget(dimension) ? 'dimension-label-editable' : 'dimension-label'
 		});
 	}
 	return { readout: [...outcome.readout] };
@@ -1127,6 +1134,45 @@ export function planNumericEntryAnchorPx(
 	if (!options.fallbackWorld) return null;
 	const projected = worldToPlanScreen(view, options.fallbackWorld);
 	return [projected[0], projected[1] - PLAN_DIMENSION_LANES_PX.first];
+}
+
+/**
+ * P23.13 S7 — which placed value a screen point is on, for the click target §7
+ * grants it ("click on its underlined value is the pointer alternative").
+ *
+ * The caller names the measures it would accept an editor for; this reads back
+ * where each one's ink actually is. Read back rather than re-derived for the same
+ * reason the entry anchor is: the placement decided where the value went, and a
+ * second derivation could disagree with what the user is looking at. A measure
+ * whose text moved to the readout has no primitive here and is therefore absent —
+ * what is not drawn on the drawing is not clickable, which is also how §7's "idle
+ * dimensions remain passive unless explicitly focused" stays honest.
+ */
+export function planDimensionValueHitAt(
+	view: PlanViewportState,
+	labels: readonly PlanRenderPrimitive[],
+	keys: readonly string[],
+	screen: LayoutVec2
+): string | null {
+	const byKey = new Map<string, PlanRenderPrimitive>();
+	for (const primitive of labels) {
+		if (primitive.kind === 'text') byKey.set(primitive.key, primitive);
+	}
+	const placed: PlanPlacedValue[] = [];
+	for (const key of keys) {
+		const label = byKey.get(geometryId(['plan', 'overlay', 'dimension-text', key]));
+		if (!label || label.kind !== 'text') continue;
+		const projected = worldToPlanScreen(view, label.anchor);
+		placed.push({
+			key,
+			text: label.text,
+			anchorPx: [
+				projected[0] + (label.offsetPx?.[0] ?? 0),
+				projected[1] + (label.offsetPx?.[1] ?? 0)
+			]
+		});
+	}
+	return planDimensionValueHit(placed, screen);
 }
 
 /**
@@ -1801,7 +1847,13 @@ function buildRoomLabelMask(
 	const activeText: RoomLabelActiveText[] = [];
 	for (const primitive of labels) {
 		if (primitive.kind !== 'text') continue;
-		const role = primitive.style === 'dimension-label' ? 'room-reference' : 'room-name';
+		// An editable value is the same ink as any other dimension: the placer must
+		// measure it with the dimension typography, not with the Room name's, or the
+		// collision math would be computed against the wrong text box.
+		const role =
+			primitive.style === 'dimension-label' || primitive.style === 'dimension-label-editable'
+				? 'room-reference'
+				: 'room-name';
 		const extent = APPROXIMATE_TEXT_MEASURE(primitive.text, role);
 		const screen = worldToPlanScreen(interaction.planView, primitive.anchor);
 		const offset = primitive.offsetPx ?? [0, 0];

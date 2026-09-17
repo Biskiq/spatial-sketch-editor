@@ -17,6 +17,7 @@ import {
 import {
 	buildPlanInteractionProjection,
 	architectureEditIntentFor,
+	planDimensionValueHitAt,
 	planNumericEntryAnchorPx,
 	withArchitectureEditIntent
 } from '$lib/editor/layout/plan-overlays';
@@ -531,6 +532,40 @@ describe('buildPlanInteractionProjection', () => {
 		});
 		expect(anchor).toEqual([origin[0], origin[1] - PLAN_DIMENSION_LANES_PX.first]);
 		expect(planNumericEntryAnchorPx(view, projection.labels, { measureKey: null, fallbackWorld: null })).toBeNull();
+	});
+
+	it('P23.13 S7 — reads the placed value back as the click target §7 grants it', () => {
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [4, 3]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		const ink = projection.labels.find(
+			(primitive) => primitive.kind === 'text' && primitive.key.includes('dimension-text')
+		);
+		if (ink?.kind !== 'text') throw new Error('missing placed dimension text');
+		// The Rect Room candidate's own measure key (§7's `Rectangle / polygon` row),
+		// which is what the label the paint layer just drew was placed for.
+		const drawn = worldToPlanScreen(view, ink.anchor);
+		const onTheValue: [number, number] = [
+			drawn[0] + (ink.offsetPx?.[0] ?? 0),
+			drawn[1] + (ink.offsetPx?.[1] ?? 0)
+		];
+		expect(planDimensionValueHitAt(view, projection.labels, ['rect:width'], onTheValue)).toBe('rect:width');
+		// A few px away is the drawing, not the number: the target is the value's own
+		// box, not the whole instrument.
+		expect(
+			planDimensionValueHitAt(view, projection.labels, ['rect:width'], [onTheValue[0] + 80, onTheValue[1]])
+		).toBeNull();
+		// And a measure with no ink is simply not there, even at a point another
+		// measure occupies — nothing can be clicked where a value is not drawn.
+		expect(planDimensionValueHitAt(view, projection.labels, ['leg:length'], onTheValue)).toBeNull();
+		expect(
+			planDimensionValueHitAt(view, projection.labels, ['leg:length', 'rect:width'], onTheValue)
+		).toBe('rect:width');
 	});
 
 	it('emits rotation feedback while dragging a rotation', () => {

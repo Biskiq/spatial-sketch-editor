@@ -230,6 +230,81 @@ export function planDimensionTextExtentPx(text: string): { width: number; height
 }
 
 /** The drawn string: `Width 1.00 m`, `Arc 7.24 m`, or a bare `4.00 m`. */
+/**
+ * §7's value is a pointer target, and §6's own rule is that a target is larger
+ * than its mark: the ink is an 11 px number, the acquisition box is padded and
+ * floored so a short value (`0 m`, `Arc 3.2 m` on a small screen) is still
+ * clickable without the padding swallowing a neighbouring measure.
+ */
+export const PLAN_DIMENSION_VALUE_HIT_PAD_PX = 3;
+export const PLAN_DIMENSION_VALUE_MIN_HIT_PX = { width: 26, height: 16 } as const;
+
+export type PlanDimensionHitBox = {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+};
+
+/**
+ * The box a placed value occupies on screen. §7 draws the value centred
+ * (`text-anchor: middle`) and vertically centred on its line, so its box is the
+ * measured text extent about the anchor — read from the same typography constants
+ * placement used, never from a second guess at the font.
+ */
+export function planDimensionValueBoxPx(
+	text: string,
+	anchorPx: LayoutVec2,
+	padPx = PLAN_DIMENSION_VALUE_HIT_PAD_PX
+): PlanDimensionHitBox {
+	const extent = planDimensionTextExtentPx(text);
+	const halfWidth = Math.max(extent.width, PLAN_DIMENSION_VALUE_MIN_HIT_PX.width) / 2 + padPx;
+	const halfHeight = Math.max(extent.height, PLAN_DIMENSION_VALUE_MIN_HIT_PX.height) / 2 + padPx;
+	return {
+		minX: anchorPx[0] - halfWidth,
+		minY: anchorPx[1] - halfHeight,
+		maxX: anchorPx[0] + halfWidth,
+		maxY: anchorPx[1] + halfHeight
+	};
+}
+
+/** One placed value, as it appears on screen: what it is, what it says, where it is. */
+export type PlanPlacedValue = {
+	/** Canonical measure key — the identity the caller maps to an editor. */
+	readonly key: string;
+	/** The text actually drawn, so the box is measured off the ink. */
+	readonly text: string;
+	readonly anchorPx: LayoutVec2;
+};
+
+/**
+ * Which placed value a screen point is on, or `null`.
+ *
+ * Entries are what is *drawn*, so a measure that had to move to the readout is
+ * simply absent: what is not on the drawing is not clickable, which is how §7's
+ * "idle dimensions remain passive unless explicitly focused" stays true without a
+ * separate bookkeeping of what is inert. Later entries win a tie, because the
+ * list arrives in draw order — the ink the user can see on top is the ink they
+ * are pointing at.
+ *
+ * Screen space in, identity out: no transform happens here, which is what keeps
+ * the viewport's render boundary intact while the target lives on the drawing.
+ */
+export function planDimensionValueHit(
+	entries: readonly PlanPlacedValue[],
+	screen: LayoutVec2,
+	padPx = PLAN_DIMENSION_VALUE_HIT_PAD_PX
+): string | null {
+	for (let index = entries.length - 1; index >= 0; index -= 1) {
+		const entry = entries[index];
+		const box = planDimensionValueBoxPx(entry.text, entry.anchorPx, padPx);
+		if (screen[0] < box.minX || screen[0] > box.maxX) continue;
+		if (screen[1] < box.minY || screen[1] > box.maxY) continue;
+		return entry.key;
+	}
+	return null;
+}
+
 export function planDimensionText(dimension: PlanDimension): string {
 	const label = dimension.arc ? PLAN_DIMENSION_ARC_TAG : dimension.label;
 	return label ? `${label} ${dimension.value}` : dimension.value;

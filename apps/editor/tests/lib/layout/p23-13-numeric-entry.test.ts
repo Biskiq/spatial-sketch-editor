@@ -10,7 +10,10 @@ import {
 	planNumericEntryEscape,
 	planNumericEntryField,
 	planNumericEntryHoldsExplicitValue,
+	planNumericDimensionEntryTarget,
+	planNumericControlEntryTarget,
 	planNumericEntryInput,
+	planNumericEntryOpen,
 	planNumericEntrySubmit,
 	planNumericEntryTab,
 	planNumericEntryTrigger,
@@ -41,6 +44,183 @@ const KEY = (key: string, extras: Partial<Parameters<typeof planNumericEntryTrig
 	key,
 	...extras
 });
+
+/**
+ * The other half of §7's reach: "typing while drafting; explicit click/focus
+ * otherwise" (A5). Here the entry is not started by a keystroke but by the user
+ * pointing at a value that is already on the drawing — the resting primary
+ * dimension of a selected entity, or a focused control — so these tests pin what
+ * an *explicit* focus means: which host it opens, which field the caret lands in,
+ * and that an opened field holds the value it replaced rather than an invention.
+ */
+describe('P23.13 S7 — explicit focus opens the editor (A5)', () => {
+	it('maps a resting Wall measure to the Wall edit host, in its Length field', () => {
+		expect(planNumericDimensionEntryTarget('selected-wall:W-7K3M')).toEqual({
+			host: 'wall-edit',
+			fieldId: 'length',
+			ownerId: 'W-7K3M'
+		});
+	});
+
+	it('reads an Opening offset as the offset, never as its width', () => {
+		// `selected-opening-offset:` begins with `selected-opening:` as text, so a
+		// shortest-prefix-first match would silently open the width field on an
+		// offset measure — one number edited in place of another.
+		expect(planNumericDimensionEntryTarget('selected-opening-offset:O-2Q9K')).toEqual({
+			host: 'opening-resize',
+			fieldId: 'offset',
+			ownerId: 'O-2Q9K'
+		});
+		expect(planNumericDimensionEntryTarget('selected-opening:O-2Q9K')).toEqual({
+			host: 'opening-resize',
+			fieldId: 'width',
+			ownerId: 'O-2Q9K'
+		});
+	});
+
+	it('offers no editor for a measure §7 leaves passive', () => {
+		expect(planNumericDimensionEntryTarget('leg:length')).toBeNull();
+		expect(planNumericDimensionEntryTarget('leg:angle')).toBeNull();
+		expect(planNumericDimensionEntryTarget('selected-wall:')).toBeNull();
+		expect(planNumericDimensionEntryTarget('')).toBeNull();
+	});
+
+	it('maps only the focused controls whose canonical command exists', () => {
+		expect(planNumericControlEntryTarget('junction', 'J-AEM9')).toEqual({
+			host: 'junction',
+			fieldId: 'x',
+			ownerId: 'J-AEM9'
+		});
+		expect(planNumericControlEntryTarget('opening-edge', 'O-2Q9K')).toEqual({
+			host: 'opening-resize',
+			fieldId: 'width',
+			ownerId: 'O-2Q9K'
+		});
+		expect(planNumericControlEntryTarget('opening-slide', 'O-2Q9K')).toEqual({
+			host: 'opening-slide',
+			fieldId: 'offset',
+			ownerId: 'O-2Q9K'
+		});
+		// A control with nothing to reach is not offered an editor rather than opened
+		// onto a second solver; the rotation controls and curve knots are those cases
+		// until their commands are wired.
+		expect(planNumericControlEntryTarget('curve-control', 'K-1')).toBeNull();
+		expect(planNumericControlEntryTarget('object-rotation', 'OBJ-1')).toBeNull();
+		expect(planNumericControlEntryTarget('room-rotation', 'R-1')).toBeNull();
+		expect(planNumericControlEntryTarget('junction', '')).toBeNull();
+	});
+
+	it('every target field belongs to the host it opens', () => {
+		// A target that named a field its host does not offer would open the editor
+		// on field 0 through the `findIndex < 0` fallback and quietly edit another
+		// number; this pins the two tables against each other.
+		const targets = [
+			planNumericDimensionEntryTarget('selected-wall:W-1'),
+			planNumericDimensionEntryTarget('selected-opening:O-1'),
+			planNumericDimensionEntryTarget('selected-opening-offset:O-1'),
+			planNumericControlEntryTarget('junction', 'J-1'),
+			planNumericControlEntryTarget('opening-edge', 'O-1'),
+			planNumericControlEntryTarget('opening-slide', 'O-1')
+		];
+		for (const target of targets) {
+			expect(target).not.toBeNull();
+			const ids = planNumericFields(target!.host).map((field) => field.id);
+			expect(ids).toContain(target!.fieldId);
+		}
+	});
+
+	it('opens on the value it replaces without claiming the user chose it', () => {
+		const target = planNumericDimensionEntryTarget('selected-wall:W-1')!;
+		const state = planNumericEntryOpen(target, { length: 3.372, angle: -46.31 });
+		expect(planNumericEntryField(state)).toMatchObject({ id: 'length', label: 'Length', unit: 'length' });
+		// The field shows the value it replaces, at its own display precision.
+		expect(state.text).toBe('3.37');
+		expect(state.invalidReason).toBeNull();
+		// ...but showing it is not choosing it: nothing is typed, so the snap is not
+		// suppressed and §7's "explicit values outrank a conflicting snap" has not
+		// been invoked yet.
+		expect(state.typed).toEqual({});
+		expect(planNumericEntryHoldsExplicitValue(state)).toBe(false);
+		const outcome = planNumericEntrySubmit(state);
+		expect(outcome.kind).toBe('commit');
+		if (outcome.kind !== 'commit') return;
+		// An untouched Enter submits *no values*: the caller sees "nothing was typed"
+		// structurally. Seeding `typed` with the displayed text instead would submit a
+		// rounded 3.37 for a 3.372 Wall — 2 mm of author-visible geometry, and a
+		// history entry, for a keystroke that said nothing.
+		expect(outcome.values).toEqual({});
+	});
+
+	it('submits the value once the user types one, at full precision', () => {
+		const target = planNumericDimensionEntryTarget('selected-wall:W-1')!;
+		const opened = planNumericEntryOpen(target, { length: 3.372, angle: -46.31 });
+		const typed = planNumericEntryInput(opened, '3.372');
+		expect(planNumericEntryHoldsExplicitValue(typed)).toBe(true);
+		const outcome = planNumericEntrySubmit(typed);
+		expect(outcome.kind).toBe('commit');
+		if (outcome.kind !== 'commit') return;
+		expect(outcome.values.length).toBeCloseTo(3.372, 9);
+	});
+
+	it('opens in the field the focus named, not in the host primary', () => {
+		const target = planNumericDimensionEntryTarget('selected-opening-offset:O-1')!;
+		const state = planNumericEntryOpen(target, { width: 0.9, offset: 1.25 });
+		expect(planNumericEntryField(state).id).toBe('offset');
+		expect(state.text).toBe('1.25');
+	});
+
+	it('opens blank and refused when the value does not exist yet', () => {
+		const target = planNumericEntryTargetForBlankTest();
+		const state = planNumericEntryOpen(target, { length: null });
+		expect(state.text).toBe('');
+		expect(state.invalidReason).toBe('blank');
+		// Nothing typed, so Enter cannot smuggle a blank past the blank check.
+		expect(state.typed).toEqual({});
+		expect(planNumericEntryHoldsExplicitValue(state)).toBe(false);
+		const outcome = planNumericEntrySubmit(state);
+		expect(outcome.kind).toBe('commit');
+		if (outcome.kind !== 'commit') return;
+		expect(outcome.values).toEqual({});
+	});
+
+	it('keeps the opened value across Tab without promoting the next field', () => {
+		const target = planNumericDimensionEntryTarget('selected-wall:W-1')!;
+		const opened = planNumericEntryOpen(target, { length: 3.372, angle: -46.31 });
+		const tabbed = planNumericEntryTab(opened, 'forward', { length: 3.372, angle: -46.31 });
+		expect(planNumericEntryField(tabbed).id).toBe('angle');
+		// The Angle shows the Wall's own canonical angle — the number the user would
+		// read on the leg — but showing it is not choosing it.
+		expect(tabbed.text).toBe('-46.3');
+		// Tab is not a submit and not a keystroke: what follows the user is what they
+		// *typed*, so neither field is promoted. The opened value is still displayed,
+		// which is why this asserts through `typed` and through the submission rather
+		// than through `text` alone.
+		expect(tabbed.typed).toEqual({});
+		const outcome = planNumericEntrySubmit(tabbed);
+		expect(outcome.kind).toBe('commit');
+		if (outcome.kind !== 'commit') return;
+		// Neither value goes in. This is Finding 1 of the step-2 review, as a pin: had
+		// the open seeded `typed` with the displayed text, this Enter would submit the
+		// rounded 3.37 for a 3.372 Wall — 2 mm of author-visible geometry and a history
+		// entry, from the very submit §7 promises closes silently.
+		expect(outcome.values).toEqual({});
+	});
+
+	it('offers the same field pair for an existing Wall as it does for the draw', () => {
+		// Same fields, different command: the pair is §7's, and the *host* is what
+		// tells the caller whether acceptance creates a segment or edits one.
+		expect(planNumericFields('wall-edit')).toEqual(planNumericFields('wall-chain'));
+	});
+});
+
+/** The Wall edit target, spelled once so the blank test reads as the point. */
+function planNumericEntryTargetForBlankTest(): Parameters<typeof planNumericEntryOpen>[0] {
+	const target = planNumericDimensionEntryTarget('selected-wall:W-1');
+	if (!target) throw new Error('expected a target for the selected Wall');
+	return target;
+}
+
+
 
 /** Open an entry in `host` the way a keystroke would, for the exit tests. */
 function open(host: PlanNumericHost, key = '5', candidates = {}): PlanNumericEntryState {
