@@ -308,6 +308,35 @@ describe('P23.13 S5 relation word placement — the side that has room', () => {
 		expect(rightEdge[1]).toBe(-OFFSET);
 	});
 
+	it('hands the word to the roomier side when neither side fits at all', () => {
+		// The corner the S6 review asked to pin twice: on a shallow canvas *both*
+		// sides of the mark are too small for the word, so "preferred unless it
+		// clips" has no answer at all. The rule is then the roomier side — never the
+		// shorter one — and an exact tie keeps the preference rather than pivoting on
+		// a difference of zero.
+		const view = { ...VIEW, height: 40 };
+		const extent = planSnapRelationLabelExtentPx('Endpoint');
+		const needed = OFFSET + extent.height;
+		const worldIn = (screenY: number): [number, number] => [
+			view.center[0] + (160 - view.width / 2) / view.pixelsPerMeter,
+			view.center[1] + (screenY - view.height / 2) / view.pixelsPerMeter
+		];
+		// 16 px above the mark, 24 below; the word needs its own height plus the
+		// offset, so *neither* side clears it and the flip can only be the rule.
+		expect(16 - needed).toBeLessThan(SNAP_RELATION_LABEL_INSET_PX);
+		expect(40 - 16 - needed).toBeLessThan(SNAP_RELATION_LABEL_INSET_PX);
+		const roomier = planSnapRelationLabelOffsetPx('Endpoint', worldIn(16), view);
+		expect(roomier[1]).toBe(OFFSET + extent.height);
+
+		// The *box* is what gets measured (above is counted from the word's own top
+		// edge), so the two sides are equal exactly when that box splits the canvas
+		// evenly — and there the preferred side survives a case it does not fit
+		// either, rather than pivoting on a difference of zero.
+		const tiedScreenY = (view.height + extent.height) / 2;
+		const tie = planSnapRelationLabelOffsetPx('Endpoint', worldIn(tiedScreenY), view);
+		expect(tie[1]).toBe(-OFFSET);
+	});
+
 	it('never leaves a relation word outside the canvas, in any corner', () => {
 		const words = ['Endpoint', 'Midpoint', 'Intersection', 'Right angle', 'Opening edge', 'Exact value'];
 		const corners: [number, number][] = [

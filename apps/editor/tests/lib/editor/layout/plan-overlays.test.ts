@@ -17,8 +17,10 @@ import {
 import {
 	buildPlanInteractionProjection,
 	architectureEditIntentFor,
+	planNumericEntryAnchorPx,
 	withArchitectureEditIntent
 } from '$lib/editor/layout/plan-overlays';
+import { PLAN_DIMENSION_LANES_PX } from '$lib/editor/layout/plan-dimensions';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
 import { worldToPlanScreen } from '$lib/editor/layout/layout-plan-transform';
 
@@ -479,6 +481,56 @@ describe('buildPlanInteractionProjection', () => {
 		for (const point of screen('dimension-line')) {
 			expect(Math.abs(point[1] - (300 - 18))).toBeLessThan(1e-6);
 		}
+	});
+
+	it('P23.13 S7 — lands the numeric field on the value it replaces, not near it', () => {
+		// §7: "Entry replaces the displayed value with a small input at the same
+		// location." The location is read back from the primitive that draws that
+		// value (its world anchor plus the screen offset the paint layer applies),
+		// so a field can never sit on a stale second placement — and because the
+		// viewport is forbidden the world→screen transform, this is the only place
+		// the field's screen position can honestly come from.
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		setLayoutDraftTool(state, 'rectangle');
+		beginRectangle(state, [0, 0]);
+		updateRectangle(state, [2, 2]);
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		const label = projection.labels.find(
+			(primitive) => primitive.kind === 'text' && primitive.key.includes('rect:width')
+		);
+		if (label?.kind !== 'text') throw new Error('missing width dimension text');
+		const drawn = worldToPlanScreen(view, label.anchor);
+		const expected: [number, number] = [
+			drawn[0] + (label.offsetPx?.[0] ?? 0),
+			drawn[1] + (label.offsetPx?.[1] ?? 0)
+		];
+		const anchor = planNumericEntryAnchorPx(view, projection.labels, {
+			measureKey: 'rect:width',
+			fallbackWorld: [9, 9]
+		});
+		expect(anchor).toEqual(expected);
+		expect(anchor![0]).toBeLessThan(view.width);
+		expect(anchor![1]).toBeLessThan(view.height);
+	});
+
+	it('P23.13 S7 — falls back to §7s first lane above the pending origin when no ink carries the measure', () => {
+		const document = g2LineRectangleDocument();
+		const model = buildLayoutPreviewModel(document).model;
+		const state = createLayoutInteractionState();
+		const projection = buildPlanInteractionProjection(state, document.floors[0]!.rooms, model);
+		const view = state.planView;
+		// A Wall-chain field while no leg is drawn: nothing carries `leg:length`, so
+		// the field lands on the pending origin rather than at (0, 0) or nowhere.
+		const origin = worldToPlanScreen(view, [1, 1]);
+		const anchor = planNumericEntryAnchorPx(view, projection.labels, {
+			measureKey: 'leg:length',
+			fallbackWorld: [1, 1]
+		});
+		expect(anchor).toEqual([origin[0], origin[1] - PLAN_DIMENSION_LANES_PX.first]);
+		expect(planNumericEntryAnchorPx(view, projection.labels, { measureKey: null, fallbackWorld: null })).toBeNull();
 	});
 
 	it('emits rotation feedback while dragging a rotation', () => {

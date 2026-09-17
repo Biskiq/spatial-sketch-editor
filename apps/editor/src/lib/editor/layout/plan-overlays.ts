@@ -26,6 +26,7 @@ import { compiledPhysicalWallLength, type PlanCurveControlCandidate } from './pl
 import { PLAN_CONTROL_MARKS, type PlanFocusGeometry } from './plan-acquisition';
 import { PLAN_SNAP_EXACT_VALUE_LABEL, planSnapGlyph, planSnapRelationLabelExtentPx } from './plan-snap-grammar';
 import {
+	PLAN_DIMENSION_LANES_PX,
 	derivePlanDimensions,
 	placePlanDimensions,
 	planDimensionGestureKey,
@@ -1086,6 +1087,46 @@ function pushPlanDimensions(
 		});
 	}
 	return { readout: [...outcome.readout] };
+}
+
+/**
+ * P23.13 S7 — where a numeric field has to sit: **on the value it replaces**.
+ *
+ * §7 says "Entry replaces the displayed value with a small input at the same
+ * location". That location is a screen point, and the only honest way to know it
+ * is to read it back from the primitive that draws it — the placed dimension
+ * text's world anchor plus the screen offset the paint layer applies — rather
+ * than to re-derive a second placement that can drift from the instrument. The
+ * conversion lives here, next to the placement that produced the ink, because the
+ * viewport is forbidden the world→screen transform by construction (see
+ * `plan-render-boundary.test.ts`): the paint layer and this module place; the
+ * viewport only hosts.
+ *
+ * `fallbackWorld` covers the cases where the measure has no live ink — a span so
+ * short its text moved to the readout, or a host whose instrument does not exist
+ * yet — by landing on the pending origin at §7's first lane offset, because an
+ * editor with nothing to sit on still has to appear somewhere rather than at
+ * (0, 0).
+ */
+export function planNumericEntryAnchorPx(
+	view: PlanViewportState,
+	labels: readonly PlanRenderPrimitive[],
+	options: { measureKey: string | null; fallbackWorld: LayoutVec2 | null }
+): LayoutVec2 | null {
+	if (options.measureKey) {
+		const key = geometryId(['plan', 'overlay', 'dimension-text', options.measureKey]);
+		const label = labels.find((primitive) => primitive.kind === 'text' && primitive.key === key);
+		if (label && label.kind === 'text') {
+			const projected = worldToPlanScreen(view, label.anchor);
+			return [
+				projected[0] + (label.offsetPx?.[0] ?? 0),
+				projected[1] + (label.offsetPx?.[1] ?? 0)
+			];
+		}
+	}
+	if (!options.fallbackWorld) return null;
+	const projected = worldToPlanScreen(view, options.fallbackWorld);
+	return [projected[0], projected[1] - PLAN_DIMENSION_LANES_PX.first];
 }
 
 /**

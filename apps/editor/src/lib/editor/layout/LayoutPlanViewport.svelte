@@ -56,6 +56,12 @@
 		type LayoutDraftTool,
 		removeLastPolygonPoint,
 		updateWallChainCursor,
+		// P23.13 S7 — the exact-entry direction memory and its typed-length
+		// resolver. Both were written for §7's Length form in P23.9 and had no
+		// production caller until S7's numeric editor arrived; typed length now
+		// goes through the same resolver the plan always named.
+		wallChainPendingDirection,
+		resolveWallChainEndpointAtLength,
 		resolveArrangeScenePick,
 		isLayoutPresetTool,
 		wallChainRoleForTool,
@@ -131,6 +137,25 @@
 		type PlanSalience
 	} from './plan-salience';
 	import { createPlanDimensionMemory } from './plan-dimensions';
+	// P23.13 S7 — the ratified type-to-enter lifecycle (§7, A5). Every decision the
+	// input element depends on lives in that module; this component owns only the
+	// element, the plumbing and the canonical commit.
+	import {
+		planNumericAngleDegrees,
+		planNumericAngleDirection,
+		planNumericEntryBlur,
+		planNumericEntryEscape,
+		planNumericEntryField,
+		planNumericEntryHoldsExplicitValue,
+		planNumericEntryInput,
+		planNumericEntrySubmit,
+		planNumericEntryTab,
+		planNumericEntryTrigger,
+		planNumericInvalidMessage,
+		planNumericPointerUp,
+		type PlanNumericCandidates,
+		type PlanNumericEntryState
+	} from './plan-numeric-entry';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -187,6 +212,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
+		planNumericEntryAnchorPx,
 		presetIdForTool,
 		rotationHandleScreenPoint,
 		wallOpeningEdgeWorldPoints,
@@ -368,6 +394,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	let openingDrag = $state<{ roomId: string; segmentId: string; openingId: string; width: number } | null>(null);
 	let dragSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let suppressNextClick = $state(false);
+	/**
+	 * P23.13 S7 — whether a pointer button is currently down. Chain tools never take
+	 * pointer capture (they commit on *click*), so `pointerId` cannot answer this,
+	 * and a typed commit that lands mid-press has to know whether the release about
+	 * to arrive belongs to the press that predates it.
+	 */
+	let planPointerButtonDown = false;
 	let framedReplacementVersion = $state<number | null>(null);
 	let roomUnitSnapshot = $state<LayoutPreviewSnapshot | null>(null);
 	let rotationHoverScreen = $state<LayoutVec2 | null>(null);
@@ -375,6 +408,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// P23.2 — transient snap resolution (session-only). The resolution was
 	// computed at the raw pointer world position; null clears feedback.
 	let snapFeedback = $state<SnapResolution | null>(null);
+	/**
+	 * P23.13 S7 — the one open numeric field, or `null`. The state object is the
+	 * ratified lifecycle (field set, text, refusal reason, whether a drag's
+	 * pointer-up is still owed); this component only mirrors it into an input.
+	 */
+	let numericEntry = $state<PlanNumericEntryState | null>(null);
+	let numericEntryElement = $state<HTMLInputElement | null>(null);
+	/** Plain (non-reactive) tool memory for §7's "tool change cancels". */
+	let numericEntryTool: LayoutDraftTool = 'select';
 
 	/**
 	 * P23.11 — the Bend modifier is a **named command**, not a key.
@@ -1134,6 +1176,58 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			layoutHover ?? hierarchyEmphasis ?? undefined
 		)
 	);
+	/**
+	 * P23.13 S7 / §7 — where the numeric field sits: on the value it replaces.
+	 *
+	 * It is read back from the very primitive that draws that value (the placed
+	 * dimension text's world anchor plus the screen offset the paint layer applies),
+	 * so the field cannot drift from the instrument it edits — the same round trip
+	 * every other label uses, and no second placement to keep in sync. A field whose
+	 * host has no live measure (or whose measure had to move to the readout) falls
+	 * back to the pending leg's start on the §7 lane offset rather than guessing a
+	 * location: an editor with no value to sit on still has to appear somewhere.
+	 */
+	const numericEntryAnchorPx = $derived.by(() => {
+		const state = numericEntry;
+		if (!state) return null;
+		return planNumericEntryAnchorPx(interaction.planView, baseInteractionProjection.labels, {
+			measureKey: numericEntryMeasureKey(state),
+			fallbackWorld: interaction.wallChainStart ?? interaction.wallChainCursor
+		});
+	});
+
+	/**
+	 * §7: "Tool change cancels the whole proposal." The tool change cancels the run
+	 * itself; the field has to go with it, or the next keystroke would be editing a
+	 * gesture that no longer exists.
+	 */
+	$effect(() => {
+		const tool = interaction.tool;
+		if (tool !== numericEntryTool) {
+			numericEntryTool = tool;
+			numericEntry = null;
+		}
+	});
+
+	/**
+	 * The field takes the keyboard as it appears, with its text selected, so the
+	 * first keystroke *replaces* the displayed value (§7) instead of appending to
+	 * it — and Tab re-selects, because the newly focused field is a different
+	 * number, not more of the same one.
+	 */
+	let numericEntryFocusKey: string | null = null;
+	$effect(() => {
+		const state = numericEntry;
+		if (!state || !numericEntryElement) {
+			numericEntryFocusKey = null;
+			return;
+		}
+		const key = `${state.host}:${state.fieldIndex}`;
+		if (numericEntryFocusKey === key && document.activeElement === numericEntryElement) return;
+		numericEntryFocusKey = key;
+		numericEntryElement.focus();
+		numericEntryElement.select();
+	});
 	const cameraProjection = $derived.by(() => {
 		if (interaction.planViewMode !== 'layout' || !interaction.planView.showTourOverlay) return undefined;
 		try {
@@ -1333,7 +1427,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * what this slice owns: when a value is explicit, the winner marker is
 	 * removed and the relation reports `Exact value` instead.
 	 */
-	const snapSuppressedByExplicitValue = $derived(false);
+	/**
+	 * P23.13 S7 / §7 — "Explicit values outrank a conflicting snap: remove its
+	 * winner marker and report `Exact value`." S5 shipped that presentation and
+	 * left the flag for S7; an open field holding a *valid* value is what sets it.
+	 */
+	const snapSuppressedByExplicitValue = $derived(planNumericEntryHoldsExplicitValue(numericEntry));
 	const interactionProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
@@ -2321,6 +2420,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerDown(event: PointerEvent) {
+		planPointerButtonDown = true;
 		if (event.button === 1) {
 			dismissSceneBridge();
 			const screen = screenPoint(event);
@@ -2332,6 +2432,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return;
 		}
 		if (event.button !== 0) return;
+		// P23.13 S7 / §7 — while a numeric field is open the canvas belongs to it:
+		// the press starts no gesture and does not blur the input (preventing the
+		// pointerdown default keeps focus), so a click can never discard a typed
+		// value and commit the pointer-positioned segment in its place. Enter
+		// submits, Escape restores.
+		if (numericEntry) {
+			event.preventDefault();
+			return;
+		}
 		svgElement?.focus();
 		const point = worldPoint(event);
 		const screen = screenPoint(event);
@@ -2800,7 +2909,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23.9 segment-first — pending segment preview follows the snapped
 		// cursor once a run has started. `pointerleave` clears only the
 		// cursor/snap preview, never the run (click-click needs SVG exit).
-		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
+		// P23.13 S7 / §7 — an open numeric field freezes the proposal: the pending
+		// leg must not follow the pointer while its length is being typed, or the
+		// value being edited would move out from under the caret.
+		if (
+			!numericEntry &&
+			wallChainRoleForTool(interaction.tool) !== null &&
+			interaction.planViewMode === 'layout'
+		) {
 			if (hasWallChainRun(interaction)) {
 				const point = worldPoint(event);
 				updateWallChainCursor(interaction, point ? applyLayoutSnap(point) : null);
@@ -3093,9 +3209,23 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerUp(event: PointerEvent) {
+		planPointerButtonDown = false;
 		// P23.2 clear rule — a released pointer ends feedback; commits consume
 		// the already-resolved candidate positions captured during the drag.
 		clearLayoutSnapFeedback();
+		// P23.13 S7 / §7 — typing during an active pointer drag freezes the proposal
+		// and consumes that drag's pointer-up without committing, so the release can
+		// never place the pointer-positioned candidate the user just replaced with a
+		// number. The chain tools commit on *click*, so that click is suppressed with
+		// it — one interaction, one consumption.
+		const numericPointerUp = planNumericPointerUp(numericEntry);
+		if (numericPointerUp.consumed) {
+			numericEntry = numericPointerUp.state;
+			suppressNextClick = true;
+			pointerId = null;
+			svgElement?.releasePointerCapture(event.pointerId);
+			return;
+		}
 		if (stagingGesture?.pointerId === event.pointerId) {
 			const gesture = stagingGesture;
 			previewStagingGesture(event);
@@ -3367,6 +3497,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerCancel(event: PointerEvent) {
+		planPointerButtonDown = false;
 		if (stagingGesture?.pointerId === event.pointerId) cancelStagingGesture();
 		arrangeLayoutRotationHoverScreen = null;
 		clearLayoutSnapFeedback();
@@ -3418,6 +3549,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			suppressNextClick = false;
 			return;
 		}
+		// P23.13 S7 — a field owns the gesture: a click while one is open never
+		// commits a pointer-positioned segment behind the typed value.
+		if (numericEntry) return;
 		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return;
 		const point = worldPoint(event);
 		if (!point) return;
@@ -3468,11 +3602,31 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			draftedVersion = preview.previewVersion;
 			return;
 		}
+		finishWallChainSegment(result, snapped.point);
+	}
+
+	/**
+	 * P23.13 S7 — the continuation half of a segment commit, shared by the pointed
+	 * and the typed path so a typed segment advances the run exactly like a clicked
+	 * one (a second rule here would be a second run semantics).
+	 *
+	 * The guard for a success that reports no canonical junction ids lives *here*,
+	 * for both callers: `success` and "has junctions" are separately checked, so two
+	 * callers each checking the same result is precisely how they drift. Without ids
+	 * there is no canonical end to continue from, and inventing one from the
+	 * fallback point would seed the next segment on a coordinate the document never
+	 * accepted — the run is cancelled instead, exactly as the pointed path always
+	 * did.
+	 */
+	function finishWallChainSegment(
+		result: { startJunctionId?: string; endJunctionId?: string; closedRun?: boolean; wallHeight?: number },
+		fallbackPoint: LayoutVec2
+	) {
 		if (result.startJunctionId === undefined || result.endJunctionId === undefined) {
 			cancelWallChainRun(interaction);
 			return;
 		}
-		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...snapped.point];
+		const endPoint = resolveJunctionPoint(result.endJunctionId) ?? [...fallbackPoint];
 		if (result.closedRun) {
 			cancelWallChainRun(interaction);
 		} else {
@@ -3484,6 +3638,207 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			});
 		}
 		draftedVersion = preview.previewVersion;
+	}
+
+	// -----------------------------------------------------------------------
+	// P23.13 S7 — exact numeric entry (§7 "Adopt optional type-to-enter", A5)
+	// -----------------------------------------------------------------------
+
+	/**
+	 * The live values the field is seeded from, read from the same gesture state the
+	 * dimension instrument measures — the pending leg's length and angle. Both are
+	 * canonical numbers, never the *formatted* strings §7 warns about: the field
+	 * seeds from what the planner would see, and only ever displays two decimals.
+	 */
+	function pendingWallChainCandidates(): PlanNumericCandidates {
+		const start = interaction.wallChainStart;
+		if (!start) return { length: null, angle: null };
+		const cursor = interaction.wallChainCursor;
+		const length = cursor ? distance(start, cursor) : null;
+		// `wallChainPendingDirection` is the plan's own direction memory (live cursor,
+		// else last hover, else last committed segment, else +X); the typed length
+		// uses it too, so the field and the commit agree on "which way".
+		const direction = wallChainPendingDirection(interaction);
+		return {
+			length: length !== null && length > 1e-6 ? length : null,
+			angle: planNumericAngleDegrees(direction[0], direction[1])
+		};
+	}
+
+	/** The pending leg's length, or `null` when the run has no direction yet. */
+	function pendingWallChainLength(): number | null {
+		const start = interaction.wallChainStart;
+		const cursor = interaction.wallChainCursor;
+		if (!start || !cursor) return null;
+		const length = distance(start, cursor);
+		return length > 1e-6 ? length : null;
+	}
+
+	/**
+	 * §7's measure key for the field being edited, i.e. the value the field sits on.
+	 * A field whose host has no live instrument (the focused-control hosts, S7 step
+	 * 2) simply has no anchor and says so by returning `null`.
+	 */
+	function numericEntryMeasureKey(state: PlanNumericEntryState): string | null {
+		const field = planNumericEntryField(state);
+		if (state.host !== 'wall-chain') return null;
+		if (field.id === 'length') return 'leg:length';
+		if (field.id === 'angle') return 'leg:angle';
+		return null;
+	}
+
+	/**
+	 * Close the field. `focusCanvas` returns the keyboard to the drafting surface,
+	 * which is what Escape and a successful Enter mean (A5: "Escape exits edit, then
+	 * group" — the user is back in the drawing, and the next digit must start the
+	 * next exact value rather than land on `body`). Blur deliberately does not: focus
+	 * went somewhere the user chose, and stealing it back would fight them.
+	 */
+	function closeNumericEntry(options: { focusCanvas?: boolean } = {}) {
+		numericEntry = null;
+		if (options.focusCanvas) svgElement?.focus();
+	}
+
+	/**
+	 * §7's trigger, applied to the live gesture. Returns true when the keystroke
+	 * became a field (so the canvas handler must not also read it).
+	 */
+	function beginNumericEntryFromKey(event: KeyboardEvent): boolean {
+		if (numericEntry) return false;
+		if (wallChainRoleForTool(interaction.tool) === null || !hasWallChainRun(interaction)) return false;
+		const started = planNumericEntryTrigger(event, {
+			host: 'wall-chain',
+			candidates: pendingWallChainCandidates(),
+			// A chain commit is a *click*, not a release, and chain tools never take
+			// pointer capture — so a drag is only in flight when the platform says a
+			// button is still down.
+			dragActive: pointerId !== null
+		});
+		if (!started) return false;
+		preview.statusMessage = null;
+		numericEntry = started;
+		return true;
+	}
+
+	/**
+	 * The field's own keyboard. The module decides what each key means; this only
+	 * routes. Tab/Shift+Tab wrap inside the field set, Enter submits once, Escape
+	 * restores the pre-entry candidate. Composition events are the IME's and are
+	 * passed straight through, and Backspace/Delete belong to the caret rather than
+	 * to the document while a field is open (§7's delete paths are for a *selected*
+	 * entity, and the input is the only focused thing that is editable).
+	 */
+	function onNumericEntryKeyDown(event: KeyboardEvent) {
+		const state = numericEntry;
+		if (!state || event.isComposing) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			if (planNumericEntryEscape(state) === 'restore') {
+				// Restoring needs no arithmetic: the proposal was frozen while the field
+				// was open, so the canonical candidate was never mutated.
+				closeNumericEntry({ focusCanvas: true });
+				preview.statusMessage = null;
+			}
+			return;
+		}
+		if (event.key === 'Tab') {
+			event.preventDefault();
+			event.stopPropagation();
+			numericEntry = planNumericEntryTab(
+				state,
+				event.shiftKey ? 'backward' : 'forward',
+				pendingWallChainCandidates()
+			);
+			return;
+		}
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			event.stopPropagation();
+			submitNumericEntry();
+			return;
+		}
+		if (event.key === 'Backspace' || event.key === 'Delete') event.stopPropagation();
+	}
+
+	function onNumericEntryInput(event: Event) {
+		if (!numericEntry) return;
+		const target = event.currentTarget as HTMLInputElement;
+		numericEntry = planNumericEntryInput(numericEntry, target.value);
+	}
+
+	/** §7: "Blur never silently commits." The field closes; nothing is written. */
+	function onNumericEntryBlur() {
+		if (!numericEntry) return;
+		if (planNumericEntryBlur(numericEntry) === 'discard') closeNumericEntry();
+	}
+
+	/**
+	 * Enter. A valid value goes to the canonical planner the pointer path uses:
+	 * `resolveWallChainEndpointAtLength` for a typed length — the resolver P23.9
+	 * wrote for §7's Length form and never wired — and the same resolver with the
+	 * typed *direction* for an angle. A refusal keeps the field open with the
+	 * planner's own reason and writes no history, which is §7's "invalid values stay
+	 * editable with a reason; no history or allocation" extended to the release
+	 * validator it also demands.
+	 */
+	function submitNumericEntry() {
+		const state = numericEntry;
+		if (!state) return;
+		const outcome = planNumericEntrySubmit(state);
+		if (outcome.kind === 'ignored') return;
+		if (outcome.kind === 'refuse') {
+			numericEntry = outcome.state;
+			preview.statusMessage = planNumericInvalidMessage(outcome.reason, outcome.field);
+			return;
+		}
+		const start = interaction.wallChainStart;
+		if (!start) {
+			closeNumericEntry();
+			return;
+		}
+		// §7's explicit values resolve *together*: a typed Length pins the distance, a
+		// typed Angle pins the direction, and every field the user left alone rides the
+		// live leg — so typing a length, Tab, then an angle is one segment in one
+		// commit rather than a segment plus a discarded number.
+		const length = outcome.values.length ?? pendingWallChainLength();
+		if (length === null) {
+			// A direction with no distance is not a segment, and §7 forbids inventing
+			// one: the field stays editable and says what is missing.
+			numericEntry = { ...outcome.state, submitted: false };
+			preview.statusMessage = 'Type a length, then the angle';
+			return;
+		}
+		const typedAngle = outcome.values.angle;
+		const endpoint = resolveWallChainEndpointAtLength(
+			interaction,
+			length,
+			typedAngle !== undefined ? planNumericAngleDirection(typedAngle) : undefined
+		);
+		if (!endpoint) {
+			numericEntry = { ...outcome.state, submitted: false };
+			preview.statusMessage = `${planNumericEntryField(outcome.state).label} was refused`;
+			return;
+		}
+		const savedRun = captureWallChainRun(interaction);
+		const result = onWallSegmentCommit([...start], [...endpoint]);
+		if (!result.success) {
+			// A rejection rolls its history transaction back through snapshot restore,
+			// which clears transient state; re-install the saved run so the run is still
+			// there to correct. The planner refused the *candidate*, not the typing, so
+			// the field stays open and unsubmitted for a corrected Enter.
+			if (savedRun) restoreWallChainRun(interaction, savedRun);
+			draftedVersion = preview.previewVersion;
+			numericEntry = { ...outcome.state, submitted: false };
+			return;
+		}
+		// A typed commit can land mid-press (typing one-handed with the button
+		// held): the release that follows belongs to the press that predates this
+		// Enter, so its click must not also draw a pointer-positioned segment —
+		// one press, one segment.
+		if (planPointerButtonDown) suppressNextClick = true;
+		closeNumericEntry({ focusCanvas: true });
+		finishWallChainSegment(result, endpoint);
 	}
 
 	/** Resolve a canonical Junction point from the live wall-first document. */
@@ -3909,6 +4264,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			cancelRoomEdit(interaction);
 			return;
 		}
+		// P23.13 S7 / §7 — during an active creation gesture a digit or decimal
+		// separator starts exact entry (and `-` where the field's canonical domain
+		// allows it). No other binding claims those keys, so this cannot steal one;
+		// Escape above still exits the gesture, and every key the open field owns is
+		// routed by its own input element below.
+		if (
+			event.key.length === 1 &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			beginNumericEntryFromKey(event)
+		) {
+			event.preventDefault();
+			return;
+		}
 		if (
 			interaction.planViewMode === 'staging' &&
 			(event.key === 'Delete' || event.key === 'Backspace') &&
@@ -4104,6 +4474,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		onkeydown={onKeyDown}
 		oncontextmenu={onPlanContextMenu}
 		onpointerleave={() => {
+			// P23.13 S7 — a press released off-canvas fires neither pointerup nor
+			// pointercancel here (chain tools take no capture, so nothing retargets
+			// it). Leaving is the "pointer is gone" signal: without this the flag
+			// stays down forever and every later typed commit eats its next click.
+			planPointerButtonDown = false;
 			rotationHoverScreen = null;
 			arrangeLayoutRotationHoverScreen = null;
 			arrangeHover = null;
@@ -4136,6 +4511,49 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		Read-only, non-mutating and temporary: never a second Inspector, never a
 		rename field, and never a reason to force an overlap into the drawing.
 	-->
+	<!--
+		P23.13 S7 / §7 — the transient numeric field, on the value it replaces. It is
+		never a second Inspector: one field at a time, seeded from the canonical
+		candidate, and gone the moment it is submitted, restored or blurred. A coarse
+		pointer gets the fallback layout (a bar across the canvas) because a 66 px
+		field under a finger is not an editor.
+	-->
+	{#if numericEntry}
+		{@const entryField = planNumericEntryField(numericEntry)}
+		<div
+			class="plan-numeric-entry"
+			class:plan-numeric-entry-coarse={planCoarsePointer}
+			class:plan-numeric-entry-invalid={numericEntry.invalidReason !== null}
+			style={!planCoarsePointer && numericEntryAnchorPx
+				? `left: ${Math.round(numericEntryAnchorPx[0])}px; top: ${Math.round(numericEntryAnchorPx[1])}px;`
+				: undefined}
+			data-host={numericEntry.host}
+			data-field={entryField.id}
+		>
+			<span class="plan-numeric-entry-label">{entryField.label}</span>
+			<input
+				bind:this={numericEntryElement}
+				class="plan-numeric-entry-input"
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				spellcheck="false"
+				aria-label={`${entryField.label} exact value`}
+				aria-invalid={numericEntry.invalidReason !== null}
+				value={numericEntry.text}
+				oninput={onNumericEntryInput}
+				onkeydown={onNumericEntryKeyDown}
+				onblur={onNumericEntryBlur}
+			/>
+			{#if numericEntry.invalidReason}
+				<span class="plan-numeric-entry-reason" role="status">
+					{planNumericInvalidMessage(numericEntry.invalidReason, entryField)}
+				</span>
+			{:else}
+				<span class="plan-numeric-entry-unit">{entryField.unit === 'angle' ? '°' : 'm'}</span>
+			{/if}
+		</div>
+	{/if}
 	{#if roomLabelReadout || measureReadout}
 		<div
 			class="plan-readout"
@@ -4209,6 +4627,23 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	   ≤280px (or the available width), wrapping rather than truncating, with a
 	   bounded scroll so a pathological name cannot cover the drawing. */
 	.plan-readout { position: absolute; top: 12px; right: 12px; z-index: 11; box-sizing: border-box; display: grid; gap: 0.15rem; max-width: min(280px, calc(100% - 24px)); max-height: min(40%, 9rem); overflow-y: auto; padding: 0.4rem 0.55rem; border: 1px solid var(--editor-plan-grid-major); border-radius: 0.35rem; background: rgb(255 255 255 / 92%); color: var(--editor-plan-label); font: 500 0.72rem/1.25 var(--editor-font); text-align: left; box-shadow: var(--editor-shadow-popover); }
+	/* P23.13 S7 / §7 — the numeric field sits on the value it edits. Monospace
+	   tabular digits at the readout's own scale, so the number the user types and
+	   the number they were reading are the same shape. */
+	/* Opaque on purpose: §7 says the field *replaces* the value it sits on, and the
+	   value's own dimension text is what it is anchored to — a translucent field
+	   would show two numbers for one measurement. */
+	.plan-numeric-entry { position: absolute; z-index: 12; display: inline-flex; gap: 0.3rem; align-items: center; transform: translate(-50%, -50%); padding: 0.16rem 0.34rem; border: 1px solid var(--editor-accent-border); border-radius: 0.3rem; background: var(--editor-plan-canvas-bg); color: var(--editor-plan-label); font: 600 0.68rem/1.2 var(--editor-font); box-shadow: var(--editor-shadow-popover); }
+	.plan-numeric-entry-invalid { border-color: var(--editor-danger-border); }
+	.plan-numeric-entry-label { color: var(--editor-plan-muted); font-weight: 500; }
+	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+	.plan-numeric-entry-input:focus { border-bottom-color: var(--editor-accent); }
+	.plan-numeric-entry-unit { color: var(--editor-plan-muted); font-weight: 500; }
+	.plan-numeric-entry-reason { color: var(--editor-danger-fg); font-weight: 500; }
+	/* Coarse pointers get the fallback layout: a full-width bar above the action
+	   row, where a finger can actually reach the field it is editing. */
+	.plan-numeric-entry-coarse { left: 12px; right: 12px; top: auto; bottom: 3.4rem; transform: none; }
+	.plan-numeric-entry-coarse .plan-numeric-entry-input { flex: 1; width: auto; }
 	.plan-readout-primary { font-weight: 650; overflow-wrap: anywhere; }
 	.plan-readout-reference,
 	.plan-readout-area { color: var(--editor-plan-muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
