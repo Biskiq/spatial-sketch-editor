@@ -4,6 +4,10 @@
 **Purpose:** durable product/UX baseline for P23.12–P23.16 slice briefs. This file
 is **persistent context**, not a slice brief and not an implementation plan.
 **Compiled:** 2026-09-15 against `main` @ `9118696` (P23.11 merged, PR #51).
+**Shell/visual successor (P23.14):** [`P23.14-shell-design-context.md`](./P23.14-shell-design-context.md)
+— compiled 2026-09-17 against `main` @ `368a799` (P23.13 merged). It narrows to shell
+structure, the durability map and P24/P26 forward-compatibility. Where this file's shell
+and Plan-presentation claims disagree with it, that file is fresher.
 **Authority order used here:** source code + tests → `docs/hand-off/CURRENT.md` →
 active plan → component contract → `docs/architecture.md` → `docs/north-star.md`
 (`AGENTS.md` §10).

@@ -87,6 +87,12 @@ slice plus one next action only.
 
 ## Known bugs / deferred
 
+- **TD-1 (open — deferred to P24): floor-supported placement is unreachable in canonical
+  wall-first projects.** No camera node, Scene primitive, light or asset can be placed:
+  the placement acceptance predicate still requires membership of the room registry that
+  a wall-first document deliberately leaves empty, and the placement command itself is
+  room-first. Found 2026-09-17, introduced by the P23.0 F0 stage-4 / P23.3 format cutover.
+  Full diagnosis, evidence and options: [`../tech-debt/README.md`](../tech-debt/README.md).
 - P23.13's three carried rows (Opening-insert, undo-with-field-open,
   coarse-pointer) — see Next action.
 - Issue #26: retire the legacy Room-owned Layout stack after P23; P23 closeout

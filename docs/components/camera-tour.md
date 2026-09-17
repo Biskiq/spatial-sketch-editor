@@ -73,6 +73,9 @@ Plan ↔ 3D; a persisted view-keyframe selection gets only a passive
 - **Backdrop:** live compiled geometry, subdued, never selectable — Camera
   Plan contains no `selectLayout*`/`clearLayoutSelection`/`layoutInteraction`
   path (source-asserted). Add Camera needs a room-floor hit.
+  **Known defect (open, deferred to P24):** in canonical wall-first projects that
+  floor hit is refused, so no camera node can be placed at all —
+  [`../tech-debt/README.md`](../tech-debt/README.md) TD-1.
 - **Hit priority:** camera node → visible interior anchor → connection curve →
   empty (deselects the active camera selection). Tolerances are screen-px
   constants divided by `pixelsPerMeter`.

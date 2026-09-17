@@ -38,6 +38,7 @@ conflicts — never "resolve" a product question by doc order.
 | Architecture / ownership question | [`architecture.md`](./architecture.md) → relevant component |
 | Product / design question | [`north-star.md`](./north-star.md) → relevant component |
 | UI / shell / workspace spec | [`Design-specs/Design-specs.md`](./Design-specs/Design-specs.md) (visual) · [`Design-specs/Design-shell-specs.md`](./Design-specs/Design-shell-specs.md) (global/cross-domain) · [`Shell-scene-workspaces.md`](./Design-specs/Shell-scene-workspaces.md) · [`Shell-camera-workspaces.md`](./Design-specs/Shell-camera-workspaces.md) (per-domain §6–§13) · [`Designer-brieft-box.md`](./Design-specs/Designer-brieft-box.md) + [`Orientation-box-render-brief.md`](./Design-specs/Orientation-box-render-brief.md) (orientation widget) |
+| Bug report / "is this already known?" | [`tech-debt/README.md`](./tech-debt/README.md) (deferred defects, reproduced + diagnosed) → [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) (`Known bugs`) |
 | Historical question | [`archive/`](./archive/) (opt-in; nothing here is current truth) |
 
 ## Folder map
@@ -48,6 +49,7 @@ docs/
   plans/README.md        ← plan tracker (status, order, archive stubs)
   plans/                 ← active (post-renewal) plans only
   hand-off/CURRENT.md    ← live working-tree delta
+  tech-debt/README.md    ← deferred defects (reproduced + diagnosed), one entry each
   Design-specs/          ← canonical UI design system + shell/workspace specs
   components/            ← one contract per surface
   architecture.md        ← ownership / boundaries + pointers
