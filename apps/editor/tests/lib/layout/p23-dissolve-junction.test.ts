@@ -485,6 +485,106 @@ describe('straight dissolve', () => {
 		expect([joinedWest.startJunctionId, joinedWest.endJunctionId]).toEqual(['a', 'd']);
 	});
 
+	it('dissolves the shared wall itself, rehosting its door onto the survivor', () => {
+		// Two rooms sharing wall-e, pre-split at S into wall-ea (m→S) +
+		// wall-eb (S→n) with a door on the retiring fragment. Through-
+		// configuration survivor is wall-ea; the door must ride the join.
+		const document = buildDocument({
+			junctions: [
+				['a', 0, 0],
+				['w', 0, 2],
+				['d', 0, 4],
+				['n', 3, 4],
+				['c', 6, 4],
+				['b', 6, 0],
+				['m', 3, 0],
+				['s', 3, 2]
+			],
+			walls: [
+				{ id: 'wall-w1', start: 'a', end: 'w' },
+				{ id: 'wall-w2', start: 'w', end: 'd' },
+				{ id: 'wall-n1', start: 'd', end: 'n' },
+				{ id: 'wall-n2', start: 'n', end: 'c' },
+				{ id: 'wall-e1', start: 'c', end: 'b' },
+				{ id: 'wall-s1', start: 'b', end: 'm' },
+				{ id: 'wall-s2', start: 'm', end: 'a' },
+				{ id: 'wall-ea', start: 'm', end: 's' },
+				{ id: 'wall-eb', start: 's', end: 'n' }
+			],
+			rooms: [
+				{
+					id: 'left',
+					name: 'Left',
+					boundary: [
+						{ wallId: 'wall-w1', direction: 'forward' },
+						{ wallId: 'wall-w2', direction: 'forward' },
+						{ wallId: 'wall-n1', direction: 'forward' },
+						{ wallId: 'wall-eb', direction: 'reverse' },
+						{ wallId: 'wall-ea', direction: 'reverse' },
+						{ wallId: 'wall-s2', direction: 'forward' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				},
+				{
+					id: 'right',
+					name: 'Right',
+					boundary: [
+						{ wallId: 'wall-s1', direction: 'forward' },
+						{ wallId: 'wall-e1', direction: 'forward' },
+						{ wallId: 'wall-n2', direction: 'forward' },
+						{ wallId: 'wall-ea', direction: 'forward' },
+						{ wallId: 'wall-eb', direction: 'forward' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
+			],
+			openings: [
+				{
+					id: 'portal',
+					wallId: 'wall-eb',
+					kind: 'door',
+					offset: 0.5,
+					width: 1,
+					height: 2,
+					sillHeight: 0,
+					profile: 'rectangular',
+					connectsRoomIds: ['left', 'right']
+				}
+			]
+		});
+		const plan = planDissolveJunction(document, 's');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') throw new Error('unreachable');
+		expect(plan.survivorWallId).toBe('wall-ea');
+		expect(plan.retiredWallId).toBe('wall-eb');
+		expect(plan.retiredJunctionId).toBe('s');
+
+		// Both rooms survive; the rejoined shared wall serves both faces in
+		// opposite traversal directions (order-insensitive: winding is
+		// reconciliation-owned — the extractor emits left forward / right
+		// reverse here).
+		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['left', 'right']);
+		const left = plan.document.rooms.find((room) => room.id === 'left')!;
+		const right = plan.document.rooms.find((room) => room.id === 'right')!;
+		expect(left.boundary).toContainEqual({ wallId: 'wall-ea', direction: 'forward' });
+		expect(right.boundary).toContainEqual({ wallId: 'wall-ea', direction: 'reverse' });
+		expect(left.boundary.some((ref) => ref.wallId === 'wall-eb')).toBe(false);
+		expect(right.boundary.some((ref) => ref.wallId === 'wall-eb')).toBe(false);
+
+		const joined = plan.document.walls.find((wall) => wall.id === 'wall-ea')!;
+		expect([joined.startJunctionId, joined.endJunctionId]).toEqual(['m', 'n']);
+		expect(plan.document.walls.some((wall) => wall.id === 'wall-eb')).toBe(false);
+
+		// wall-eb occupies [2,4] forward: offset' = 2 + 0.5 = 2.5 on the
+		// 4-long survivor, portal relation intact.
+		const portal = plan.document.openings.find((opening) => opening.id === 'portal')!;
+		expect(portal.wallId).toBe('wall-ea');
+		expect(portal.offset).toBeCloseTo(2.5, 12);
+		expect(portal.connectsRoomIds).toEqual(['left', 'right']);
+	});
+
 	it('joins roomless partition walls with no rooms', () => {
 		const document = buildDocument({
 			junctions: [
