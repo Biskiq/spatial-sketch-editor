@@ -34,6 +34,14 @@
  * here rather than removed so the gap is readable; §7 gives the family no glyph
  * of its own, so it also presents as the neutral mark.
  *
+ * **Owner (D5, ruled 2026-09-17): `layout-core`.** The predicate is that
+ * package's to produce, deferred post-P23.13: emitting a new candidate family
+ * changes what a live gesture snaps to, so it lands in a slice with a
+ * per-gesture behaviour mandate and release-truth tests (the D3 precondition),
+ * never as presentation smuggling. P23.13 therefore closes guide-less by
+ * explicit record — the neutral presentation above is the whole claim — with
+ * the owner named and the deferral *ruled*, not carried as an open question.
+ *
  * §7's third item — "a 2 px source accent if useful" — is **deliberately not
  * drawn**. An accent means picking which existing geometry to highlight as the
  * relation's source, and `SnapCandidate` carries `sourceId` without the identity

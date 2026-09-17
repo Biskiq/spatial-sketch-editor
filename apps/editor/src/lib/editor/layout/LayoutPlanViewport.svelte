@@ -175,6 +175,14 @@
 		type PlanNumericEntryTarget,
 		type PlanNumericSubmitOutcome
 	} from './plan-numeric-entry';
+	import {
+		planTraversalAnnouncement,
+		planTraversalGroup,
+		planTraversalStep,
+		type PlanTraversalControl,
+		type PlanTraversalLayout,
+		type PlanTraversalSelection
+	} from './plan-keyboard-traversal';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -1206,6 +1214,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// open-corner sketch unmounts once the project is non-empty, or for the
 	// remainder of the session upon first tool use.
 	let ghostDismissed = $state(false);
+	// P23.13 S10 / §9 — keyboard focus announcements. Set only by keyboard
+	// traversal moves (never by pointer, never per pointermove): the live
+	// region below speaks control role + position + owner identity once per
+	// meaningful change, and stays empty otherwise.
+	let planFocusAnnouncement = $state<string | null>(null);
 
 	const viewBox = $derived(`0 0 ${interaction.planView.width} ${interaction.planView.height}`);
 	const draftPolygon = $derived(
@@ -4131,6 +4144,79 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	/**
+	 * P23.13 S10 / §9 — the selected owner's keyboard control group. Same LOD
+	 * gate the overlay draws controls with: below it the affordances are not
+	 * visible, so the keyboard must not focus what the eye cannot see. `null`
+	 * is a real answer (no group for this selection), and the caller falls
+	 * through to S7's resting-measure door instead.
+	 */
+	function planKeyboardTraversalFacts(): PlanTraversalLayout | null {
+		const layout = wallFirstLayoutDocument();
+		if (!layout) return null;
+		const walls = new Map<string, { startJunctionId: string; endJunctionId: string; knotIds: readonly string[] }>();
+		for (const wall of layout.walls) {
+			walls.set(wall.id, {
+				startJunctionId: wall.startJunctionId,
+				endJunctionId: wall.endJunctionId,
+				knotIds:
+					wall.centerline.kind === 'cubic-chain'
+						? wall.centerline.knots.map((knot) => knot.id)
+						: []
+			});
+		}
+		return { walls, junctions: new Set(layout.junctions.map((junction) => junction.id)) };
+	}
+
+	function planKeyboardGroup(): readonly PlanTraversalControl[] | null {
+		if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return null;
+		const facts = planKeyboardTraversalFacts();
+		if (!facts) return null;
+		const selection = interaction.selection;
+		let traversal: PlanTraversalSelection;
+		if (selection.kind === 'physicalWall') traversal = { kind: 'physicalWall', wallId: selection.wallId };
+		else if (selection.kind === 'wallOpening') traversal = { kind: 'wallOpening', openingId: selection.openingId };
+		else if (selection.kind === 'junction') traversal = { kind: 'junction', junctionId: selection.junctionId };
+		else return null;
+		return planTraversalGroup(traversal, facts);
+	}
+
+	/**
+	 * P23.13 S10 / §9 — traversal runs only on a quiet canvas: no open field,
+	 * no live gesture or draft that owns the keyboard. A traversal move is
+	 * never an edit, so it must never interleave one.
+	 */
+	function planTraversalGestureQuiet(): boolean {
+		return (
+			!numericEntry &&
+			!interaction.architectureEdit &&
+			!architectureEditSnapshot &&
+			!interaction.roomUnitDrag &&
+			!interaction.objectDrag &&
+			!interaction.wallOpeningDrag &&
+			!dragSnapshot &&
+			!draggedInteriorAnchor &&
+			!pendingWallBend &&
+			!interaction.primitiveDraft &&
+			!interaction.presetDraft
+		);
+	}
+
+	/**
+	 * P23.13 S10 / §9 — focus one control by keyboard. Focus is never
+	 * selection and never history; the announcement names role + position +
+	 * owner once for this move, and pointer focus stays silent.
+	 */
+	function focusPlanControlByKeyboard(control: PlanTraversalControl, index: number, groupSize: number): void {
+		setPlanFocus(interaction, { kind: control.kind, id: control.id, ownerId: control.ownerId });
+		planFocusAnnouncement = planTraversalAnnouncement(
+			control,
+			index,
+			groupSize,
+			planSelectionLabel ?? 'Selection'
+		);
+	}
+
+	/**
 	 * Close the field. `focusCanvas` returns the keyboard to the drafting surface,
 	 * which is what Escape and a successful Enter mean (A5: "Escape exits edit, then
 	 * group" — the user is back in the drawing, and the next digit must start the
@@ -4962,6 +5048,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				cancelWallChainRun(interaction);
 				return;
 			}
+			// P23.13 S10 / §9 — Esc unwinds keyboard focus before anything
+			// coarser: the ring drops, selection and history stand. Reaching
+			// here means no gesture or draft is live (every one returned
+			// above), so this branch can never swallow a gesture cancel.
+			if (interaction.planFocus) {
+				clearPlanFocus(interaction);
+				planFocusAnnouncement = null;
+				return;
+			}
 			onLayoutTransactionCancel();
 			clearLayoutDraft(interaction);
 			cancelRoomEdit(interaction);
@@ -4982,12 +5077,42 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			event.preventDefault();
 			return;
 		}
-		// P23.13 S7 step 2 / A5 — §7's keyboard alternative to clicking a value:
-		// "keyboard-focused control + Enter is the discoverable alternative". Enter
-		// opens the editor on the focused control's own measure, or on the selected
-		// entity's resting primary measure when the focus is not on a control that
-		// carries one. A field that is already open owns Enter through its own input,
-		// so this can never steal a submit.
+		// P23.13 S10 / §9 — arrows walk the selected owner's control group in
+		// canonical endpoint/arc order with wrap. No group (or a live gesture,
+		// or another mode/tool) leaves the key alone, so page scroll and every
+		// other surface keep their arrows.
+		if (
+			(event.key === 'ArrowRight' ||
+				event.key === 'ArrowLeft' ||
+				event.key === 'ArrowDown' ||
+				event.key === 'ArrowUp') &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			interaction.planViewMode === 'layout' &&
+			interaction.tool === 'select' &&
+			planTraversalGestureQuiet()
+		) {
+			const group = planKeyboardGroup();
+			if (group && group.length > 0) {
+				const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+				const focus = interaction.planFocus;
+				const current =
+					focus && group.some((control) => control.id === focus.id) ? focus.id : null;
+				const next = planTraversalStep(group, current, direction as 1 | -1);
+				if (next) {
+					event.preventDefault();
+					focusPlanControlByKeyboard(next, group.indexOf(next), group.length);
+					return;
+				}
+			}
+		}
+		// P23.13 S7 step 2 / S10 / A5 — Enter first enters the selected owner's
+		// control group (the ring lands on its first control, announced once),
+		// and a focused control's Enter reaches S7's numeric door as before. A
+		// selection with no group keeps the resting-measure door directly. A
+		// field that is already open owns Enter through its own input, so this
+		// can never steal a submit.
 		if (
 			event.key === 'Enter' &&
 			!event.metaKey &&
@@ -4995,11 +5120,24 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			!event.altKey &&
 			!numericEntry &&
 			interaction.planViewMode === 'layout' &&
-			interaction.tool === 'select' &&
-			beginNumericEntryFromFocus()
+			interaction.tool === 'select'
 		) {
-			event.preventDefault();
-			return;
+			const group = planTraversalGestureQuiet() ? planKeyboardGroup() : null;
+			const focus = interaction.planFocus;
+			const focusInGroup =
+				!!group && !!focus && group.some((control) => control.id === focus.id);
+			if (group && group.length > 0 && !focusInGroup) {
+				const first = group[0];
+				if (first) {
+					event.preventDefault();
+					focusPlanControlByKeyboard(first, 0, group.length);
+					return;
+				}
+			}
+			if (beginNumericEntryFromFocus()) {
+				event.preventDefault();
+				return;
+			}
 		}
 		if (
 			interaction.planViewMode === 'staging' &&
@@ -5150,6 +5288,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	<!-- P21.5 §2.1 — no floating .plan-help pill; hints live in the status bar. -->
 	{#if stagingSelectionMessage}
 		<div class="staging-selection-warning" role="status">{stagingSelectionMessage}</div>
+	{/if}
+	{#if planFocusAnnouncement}
+		<!-- P23.13 S10 / §9 — keyboard focus announcements: role + position +
+		     owner, once per keyboard move. Pointer focus stays silent, and the
+		     region is empty the rest of the time, so nothing speaks per
+		     pointermove. Visually hidden; never a second status channel. -->
+		<div class="plan-focus-announcement" role="status">{planFocusAnnouncement}</div>
 	{/if}
 	{#if sceneBridgeHover}
 		<button
@@ -5342,6 +5487,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	.plan-empty-state { position: absolute; top: 50%; left: 50%; z-index: 5; transform: translate(-50%, -50%); display: grid; gap: 0.45rem; max-width: min(24rem, calc(100% - 4rem)); padding: var(--editor-space-4) var(--editor-space-5); border: 1px solid var(--editor-plan-grid-major); border-radius: var(--editor-radius-lg); background: rgb(255 255 255 / 72%); color: var(--editor-plan-label); text-align: center; pointer-events: none; box-shadow: var(--editor-shadow-popover); }
 	.plan-empty-state strong { font-size: 0.86rem; font-weight: 650; }
 	.plan-empty-state span { font-size: 0.74rem; line-height: 1.45; color: var(--editor-plan-muted); }
+	/* P23.13 S10 / §9 — keyboard focus live region. Visually hidden (clip
+	   pattern, so 200% text zoom cannot clip or overlap it into view); the
+	   announcement is speech only, never layout. */
+	.plan-focus-announcement { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 	.plan-status { position: absolute; left: 0.8rem; bottom: 0.8rem; z-index: 10; max-width: 60%; margin: 0; padding: 0.34rem 0.5rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: 500 0.7rem/1.25 var(--editor-font); pointer-events: none; }
 	.plan-actions { position: absolute; right: 0.8rem; bottom: 0.8rem; z-index: 10; display: flex; gap: 0.4rem; pointer-events: auto; }
 	.plan-actions button { padding: 0.44rem 0.6rem; border: 1px solid var(--editor-accent-border); border-radius: 0.32rem; background: var(--editor-bg-selected); color: var(--editor-text-primary); font: 600 0.7rem/1 var(--editor-font); cursor: pointer; }

@@ -399,6 +399,10 @@ describe('P23.13 S5 snap ink — its own colour, the adapters own it', () => {
 		resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/lib/editor/styles/tokens.css'),
 		'utf8'
 	);
+	const grammarSource = readFileSync(
+		resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/lib/editor/layout/plan-snap-grammar.ts'),
+		'utf8'
+	);
 
 	it('paints the winner and the relation word in the ratified snap ink', () => {
 		// §2: "Snap | #146D68 | Winning marker plus relation shape/text". Presenting
@@ -439,6 +443,16 @@ describe('P23.13 S5 snap ink — its own colour, the adapters own it', () => {
 		// The neutral fallback is a filled dot, so an unratified family still
 		// paints in the snap ink rather than as a hole.
 		expect(planSnapGlyph('extension-guide').ink).toBe('fill');
+	});
+
+	it('names layout-core as the extension-guide predicate owner, deferred post-P23.13', () => {
+		// D5 (ruled 2026-09-17) closes the ownerless predicate by explicit
+		// record: the geometry producer is layout-core's to build (no predicate
+		// there expresses "you are extending this wall's line"), and P23.13
+		// ships guide-less — the neutral presentation above is the whole claim
+		// — with the owner named and the deferral ruled.
+		expect(grammarSource).toContain('Owner (D5, ruled 2026-09-17): `layout-core`');
+		expect(grammarSource).toContain('UNRATIFIED_SNAP_FAMILIES');
 	});
 
 	it('generates every glyph mark in screen space, so a snap never scales with zoom', () => {

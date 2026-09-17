@@ -133,7 +133,7 @@ Policy rules:
 | # | Plan | Status | Depends on | Doc |
 |---|------|--------|------------|-----|
 | P13 | Sequence stop-at-node playback | proposed — nice-to-have, unscheduled (owner 2026-08-27) | P12 | [2026-08-27-P13-stop-at-node-playback.md](2026-08-27-P13-stop-at-node-playback.md) |
-| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 merged through PR #55** (`f3efed9`, 2026-09-15, S1–S8) plus the PR #56 anchor-release fix (`8a5a87f`) and later slices still child-plan-pending | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
+| P23 | Layout Depth — credible wall-first architectural Plan editor | active — P23.0/P23.8 and P23.1–P23.6e merged on `main` through PR #47; PR #48 merged the independent wall-engine split; P23.10 landed through PR #49, PR #50/#53 landed endpoint-noding hardening and transient direct-manipulation preview, and **P23.11 merged through PR #51** (`9118696`, 2026-09-15); remaining sequence is **P23.13 → P23.14 → P23.15 → P23.16 final closeout**, with **P23.12 merged through PR #55** (`f3efed9`, 2026-09-15, S1–S8) plus the PR #56 anchor-release fix (`8a5a87f`); **P23.13 is the active slice on branch `P23.13` — S9 steps 2–4 committed as `619d6ce`, S10 steps 1–2 uncommitted on top** and still owes the rest of its acceptance-map pass | P22 | [remaining roadmap](2026-09-14-P23-remaining-roadmap-reconciliation.md) · [P23.12 plan](2026-09-15-P23.12-names-and-stable-display-identity.md) · [umbrella](2026-09-07-P23-layout-depth-minimum-build.md) |
 | P24 | Scene / Staging Depth — P24A supply + P24B authoring | proposed — **R0–R9 planning complete; minimum frozen; P24.0–P24.5 implementation-ready for owner review.** Execution waits for accepted P23 minimum and approval; implementation/ship gates open. | P23 | [freeze](2026-09-10-P24-R9-minimum-freeze.md) · [child briefs](2026-09-10-P24-minimum-child-plans.md) · [umbrella](2026-09-08-P24-scene-staging-depth-umbrella.md) · [annex](2026-09-08-P24A-asset-supply-canonical-ingest-annex.md) |
 | P25 | Experience Foundation umbrella | proposed — focused research reconciled 2026-09-09: Destination + guided Stop/occurrence + Content/Info Panel + bounded Interaction + visitor/a11y product semantics closed; implementation remains blocked on targeted post-F0/P24 seam rechecks, E5 reference integrity and E6 persistence/operations; no P25.x implementation-ready child plans yet | P24 | [umbrella](2026-09-08-P25-experience-foundation-umbrella.md) |
 | — | Branch rejoin — experiment, no schedule | proposed | P8 conceptually | [2026-08-21-branch-rejoin-experiment.md](2026-08-21-branch-rejoin-experiment.md) |
@@ -202,9 +202,21 @@ gate) now lives in the archived docs, not here.
   transient/rejected/cancelled derivation allocation-free with a per-operation
   latched allocation base, and promotes before every persistence seam — cloud Save,
   resumed save and the Layout **Copy JSON / Download JSON** exports — so no saved or
-  exported payload can sit below the session mark); P23.13 → P23.14 →
-  P23.15 → P23.16 final closeout
-  remain child-plan-pending. P24 remains blocked on accepted P23 completion.
+  exported payload can sit below the session mark). **P23.13 (Architectural Plan
+  drafting finish) is the active slice**: its child plan is implementation-ready
+  with S0–S8 closed and D1–D4 ruled, and S9 steps 2–4 plus S10 steps 1–2 are
+  implemented **uncommitted on branch `P23.13`** — so nothing is shipped and
+  `main` is unchanged. It is now **sliced across commits: S9 is committed as
+  `619d6ce`** (green standalone at 4333 passed) and **S10 is uncommitted on top**.
+  Both former open owner decisions are ruled — **D5** names `layout-core` as the
+  extension-guide predicate's owner (deferred, guide-less close) and the
+  S9-step-1 Scene-ink eyeball is accepted pinned-not-looked-at — and the
+  acceptance map's keyboard row is **driven live**. Still open inside S10 step 4:
+  the Opening group, curved-Wall knots and the Enter→numeric-field leg pressed
+  rather than pinned; the grayscale proof; the spec-vs-atlas sweep (the 24/44 px
+  and 200 % zoom rows are P23.14's to solve). Then P23.14 → P23.15 → P23.16 final
+  closeout remain child-plan-pending. P24 remains blocked on accepted P23
+  completion.
 - Long-term tiers renumbered 2026-09-05 (owner): P23 Layout Depth, P24
   Scene/Staging Depth, P25 Experience Foundation, P26+ platform expansion;
   typed DB is conditional infrastructure, not a tier. Owner reconciliation

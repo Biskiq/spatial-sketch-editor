@@ -5,6 +5,41 @@ slice plus one next action only.
 
 ## Working tree
 
+- **P23.13 (Architectural Plan drafting finish) is the active slice, and its work
+  is uncommitted on branch `P23.13`** (tip `27372a0`, tree dirty). The
+  [child plan](../plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md)
+  is implementation-ready and carries S0–S8 closed with D1–D4 ruled. **A second
+  agent's pass on this same hand-off was interrupted mid-edit and has been
+  resumed**, which is why the delta is larger than the "one uncommitted file"
+  any earlier note says: what landed uncommitted in that pass is the **icon
+  ruling** (owner, 2026-09-17 — Wall, Rect Room, Poly Room, Door and Window keep
+  their originals, marked owner-ratified; a new repo-SVG family covers the rest;
+  the Door 3-dash / Window-parallel redesigns are explicitly **not** adopted),
+  **S9 steps 2–4** (empty/dense copy + the neutral open-corner sketch, the
+  toolbar icon family, the seven-surround check) and **S10 steps 1–2**
+  (`plan-keyboard-traversal.ts` plus the viewport's control-group focus and
+  announcement wiring, and the thin-wall-at-zoom pass). New modules:  `PlanDraftIcon.svelte` and `plan-keyboard-traversal.ts`; rewritten:
+  `PlanEmptyGhost.svelte`; new suites `p23-13-empty` (4), `p23-13-icons` (5),
+  `p23-13-keyboard` (13), `p23-13-surrounds` (3), `p23-13-thin-wall` (3).
+- **The slice is now split across a commit boundary, so read the log before you
+  trust the tree.** **S9 is committed as `619d6ce`** ("feat(plan): finish
+  empty/dense states and the icon family") — steps 2–4: empty/dense copy with the
+  neutral open-corner sketch, the repo-SVG icon family with the five kept
+  originals untouched, the seven-surround pins, and their plan/icon-ruling
+  records. It is a **green, self-consistent state on its own** (verified with the
+  S10 artifacts held aside: **4333 passed / 1 skipped**, `svelte-check` 0/0) —
+  the five S10 files are deliberately absent from it. **S10 is uncommitted** on
+  top of that commit. Note this means `LayoutPlanViewport.svelte` and the active
+  plan doc were **hunk-split by hand** (S9 hunks into `619d6ce`, S10 hunks left
+  in the tree); if you diff the viewport against `27372a0` you will see both
+  slices at once, and against `619d6ce` you will see exactly S10.
+- **Bootstrap note (resolved, kept for the pattern):** the resumed pass left a
+  hard break at its interruption point — `p23-13-snap-grammar.test.ts` referenced
+  an undefined `grammarSource`, which failed one test and two `svelte-check`
+  errors, and the tree looked complete at a glance. Fixed in the uncommitted S10
+  half (the const reads `plan-snap-grammar.ts`). The lesson worth keeping: on
+  this branch, **run the gate before believing the tree** — an interrupted agent
+  can leave a file edited but not coherent.
 - **P23.12 (names and stable display identity) is merged on `main`** through
   PR #55 (`f3efed9`, 2026-09-15): persisted compact-reference ledger
   (`R/W/O/J-####`) in layout-core with provisional-mint/durable-promote/
@@ -67,14 +102,50 @@ slice plus one next action only.
 
 ## Next action
 
-- Open P23.13 (Architectural Plan drafting finish): reconcile an
-  implementation-ready child plan against the landed baseline (P23.11 curves,
-  P23.12 identity, PR #56 anchor release) using the precedent research and the
-  roadmap's door-swing deferral note — no P23.13 code until that child plan is
-  ratified. Remaining sequence after it: P23.14 → P23.15 → P23.16 final closeout.
+- **Finish P23.13 S10 step 4 (the acceptance-map pass) and close the slice.**
+  Both blocking owner decisions are now **ruled**: **D5** names `layout-core` as
+  the extension-guide predicate's owner, deferred post-P23.13, with P23.13
+  closing guide-less by explicit record (the source comment and its pin now read
+  `Owner (D5, ruled 2026-09-17)`); and the S9-step-1 Scene-ink eyeball is
+  **accepted pinned-not-looked-at**, recorded with its reason. The keyboard row of
+  step 4 is **now driven live and green** (see Verification — focus ring, wrap,
+  Escape unwind, no history). What is left in step 4 is smaller and named: the
+  **Opening group**, a **curved Wall's knot controls**, and the
+  **Enter-on-a-focused-control → numeric-field** leg are pinned but not pressed;
+  the **grayscale proof** has not been run; the 24/44 px target and 200 %
+  text-zoom rows are **stated, not solved** (shell/legibility, P23.14's); and the
+  **spec-vs-atlas conflict sweep** is undone. Then the S10 commit, then
+  P23.14 → P23.15 → P23.16 final closeout.
 
 ## Verification
 
+- **P23.13 branch (2026-09-17).** S9 commit `619d6ce` verified standalone:
+  **4333 passed / 1 skipped**, `svelte-check` 0/0. Full tree with the S10 half on
+  top: **4350 passed / 1 skipped**, `svelte-check` **0 errors / 0 warnings**,
+  `check:layout-core` clean. Focused: the five S9/S10 suites pass 28/28.
+- **S10 keyboard acceptance, driven live (2026-09-17):** one 4-Wall room at
+  12.2 px/m, Wall selected, canvas focused. **Enter** → live region read
+  "Junction 1 of 2 — Wall W-7V24" and the `.focus-ring` overlay painted two
+  circles (r 8.575 / 13.575) on that control; **ArrowRight** moved both the
+  announcement and the same two circles to the other endpoint; a second
+  ArrowRight **wrapped** to "Junction 1 of 2", ArrowLeft walked back; **Escape**
+  cleared ring and region with the selection still `Layout selection`; and after
+  four focus moves one **Undo** reverted the *geometry* (1 room → 0), i.e. focus
+  had written no history. Not yet pressed: the Opening group, a curved Wall's
+  knot controls, and Enter-on-a-focused-control → numeric field.
+- **Live QA run on this branch (real editor, same working tree, dev server on
+  `127.0.0.1:5173`):** empty state (ghost **and** its dismissed card, copy
+  agreement, no self-collision — polyline y 339–362 vs first text line y 382);
+  the icon ruling read off the DOM (five kept originals at `viewBox 0 0 24 24`,
+  the seven new marks at `0 0 20 20`); thin walls at the shell's minimum zoom
+  (~3.95 px/m, band ≈ 0.79 px) carrying **four** 1 px `.wall-silhouette` aids in
+  `rgb(89, 101, 112)` with the Camera Plan canvas carrying none; all seven
+  themes resolving to **one** computed plan token set (paper `#f5f7f8`,
+  selection `#2f8cff`), eyeballed at Electric Plum and Porcelain Atelier; a dense
+  21-room / 48-wall / 28-junction plan showing **no label pileup** at minimum
+  zoom with a legible refusal ("Wall rejected: Unsupported correspondence
+  component 2→2") and a `Cancel draft` action. Not observed: any Scene content
+  on the Layout Plan (see the plan's carried item).
 - `main` at `c2a2404` carries the merged P23.12 implementation (PR #55) plus
   the PR #56 anchor-release fix (see Working tree above); the numbers below are
   the last full runs reported on the P23.12 branch / its PRs.
@@ -116,6 +187,20 @@ slice plus one next action only.
 
 - New editor projects already boot `createEmptyWallFirstProject()`; do not revive
   the obsolete “legacy boot decision still open” narrative.
+- **There is no live route to Scene content on a wall-first guest project, which
+  is the whole reason the S9-step-1 Scene-ink eyeball is still owed.** Tried and
+  failed on 2026-09-17 with no code changes: the 3D view's `Place in room` left
+  *Scene Content 0* after a synthetic placement click, and pasting
+  `/src/lib/content/chopin-project.json`'s 21-entity scene into the Document
+  menu's Scene-JSON import validated ("Scene document is valid.") while the
+  hierarchy still read *Scene Content 0* and no footprint painted. Do not record
+  the ink as *eyeballed* on the strength of the source pins alone; and do not
+  bolt a `__qa-*` plate into the tree to fake it (a `__`-prefixed plate runs
+  inside the suite via vitest `include` and writes into the tree).
+- **`echo ===` breaks this shell wrapper.** Use a quoted marker or `printf`.
+- The resumed pass's tests reflect the DOM/source of the **uncommitted** tree;
+  if you check out the tip `27372a0` to compare, expect the five new suites and
+  the two new modules to be absent rather than failing.
 - The “canonical **268 px** Navigator rail” figure in planning docs has no code
   constant; the shipped rail is `minmax(15rem, --editor-left-width: 300px)`
   (240–300 px). Design to that range and treat `268` as stale.
