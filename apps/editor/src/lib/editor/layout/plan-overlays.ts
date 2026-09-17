@@ -55,8 +55,10 @@ import {
 	type RoomLabelProtectedEdge,
 	type RoomLabelReadout,
 	type RoomLabelReconsiderReason,
+	type RoomLabelTierDropZone,
 	type TextMeasure
 } from './plan-room-labels';
+import { resolvePlanClosureCue } from './plan-preview';
 import type {
 	PlanHitIdentity,
 	PlanInteractionProjection,
@@ -176,8 +178,7 @@ const DIMENSION_LABEL_OFFSET_PX = 5;
  * viewport: resolved identity + derived area per compiled `roomId`, the text
  * measurement seam (real browser metrics in production), the sticky placement
  * memo and the reconsideration/settle signals.
- */
-export type PlanRoomLabelContext = {
+ */	export type PlanRoomLabelContext = {
 	facts: ReadonlyMap<
 		string,
 		{ name: string | null; reference: string | null; areaM2: number | null }
@@ -188,6 +189,13 @@ export type PlanRoomLabelContext = {
 	memory?: RoomLabelMemory;
 	reason?: RoomLabelReconsiderReason;
 	settleGeneration?: number;
+	/**
+	 * P23.13 S8 / §1.12 — the live instrument zone, when one is being worked: a
+	 * label whose accepted anchor falls inside it drops to its tier ceiling
+	 * (area → reference, pair-safe). Region-scoped by construction, so nothing
+	 * outside the zone changes its tier.
+	 */
+	tierDropZone?: RoomLabelTierDropZone;
 };
 
 /**
@@ -249,6 +257,18 @@ export type PlanWallFirstContext = {
 	} | null;
 	/** Resolved run-start Junction point for the closure cue (`null` when none). */
 	runStartPoint: LayoutVec2 | null;
+	/**
+	 * P23.13 S8 / §7 — the canonical face evidence for the live run's closure,
+	 * produced by the viewport (the only layer holding the baseline document)
+	 * through `wallChainClosureEvidence`: it plans the closing leg exactly as the
+	 * click would and hands back the face that plan creates.
+	 *
+	 * Evidence only — the *decision* stays here, where the run's own closing rule
+	 * already lives, so the cue's condition and its evidence cannot be answered by
+	 * two different readings of "the candidate is closing". Empty/absent means no
+	 * canonically proved face, which is the ordinary case for most frames.
+	 */
+	closureFaces?: readonly (readonly LayoutVec2[])[];
 	/** Committed compiler issues with positioned targets for diagnostic markers. */
 	issues: readonly { code: string; message: string; targetId?: string; path?: string }[];
 };
@@ -731,6 +751,31 @@ export function architectureEditIntentFor(
 }
 
 /**
+ * Where an attempt's refusal belongs.
+ *
+ * Every intent kind has an attempted locus: a junction/curve control point, or —
+ * for a whole-Wall move — the middle of the attempted Wall. A `wall-move` carries
+ * no single point, so it is derived from the attempt's own centerline rather than
+ * invented (the mark never appears at an arbitrary place).
+ *
+ * Exported because the **persisted** refusal annotation (S8) marks the same
+ * point: the live invalid proposal and the mark that outlives it must not drift
+ * to two different loci for one refused gesture, so both read this one function.
+ */
+export function architectureEditIntentLocus(
+	intent: LayoutArchitectureEditIntent
+): LayoutVec2 | null {
+	if (intent.kind !== 'wall-move') return intent.point;
+	const points = intent.walls?.[0]?.points ?? [];
+	if (points.length >= 2) {
+		const first = points[0];
+		const last = points[points.length - 1];
+		return [(first[0] + last[0]) / 2, (first[1] + last[1]) / 2];
+	}
+	return intent.start ?? null;
+}
+
+/**
  * P23.10/P23.11 — draw one transient direct-edit attempt with the existing
  * token family (never document truth, never history). The style follows the
  * intent: an underivable attempt renders in the refused language, a derivable
@@ -745,22 +790,6 @@ export function withArchitectureEditIntent(
 		? 'architecture-edit-intent-invalid'
 		: 'architecture-edit-intent';
 	const primitives: PlanRenderPrimitive[] = [];
-	/**
-	 * Where the refusal mark belongs. Every intent kind has an attempted locus:
-	 * a junction/curve control point, or — for a whole-Wall move — the middle of
-	 * the attempted Wall. A `wall-move` carries no single point, so it is derived
-	 * rather than invented (the mark never appears at an arbitrary place).
-	 */
-	const refusalPoint = (): LayoutVec2 | null => {
-		if (intent.kind !== 'wall-move') return intent.point;
-		const points = intent.walls?.[0]?.points ?? [];
-		if (points.length >= 2) {
-			const first = points[0];
-			const last = points[points.length - 1];
-			return [(first[0] + last[0]) / 2, (first[1] + last[1]) / 2];
-		}
-		return intent.start ?? null;
-	};
 	if (intent.kind === 'wall-move') {
 		if (intent.walls) {
 			for (const wall of intent.walls) {
@@ -820,7 +849,7 @@ export function withArchitectureEditIntent(
 	// mark with an x at the attempted point, so refusal is legible in grayscale
 	// and the proposal never asserts a success-coloured continuation. The mark is
 	// local to the attempt; the owned geometry keeps its committed ink.
-	const stopPoint = refusalPoint();
+	const stopPoint = architectureEditIntentLocus(intent);
 	if (intent.invalid && stopPoint) {
 		primitives.push(
 			{
@@ -1413,26 +1442,49 @@ export function buildPlanInteractionProjection(
 				style: 'draft-point'
 			});
 		}
-		if (chainLeg && !degenerate && closing && wallFirst?.runStartPoint) {
-			// P23.13 S6 — the closure cue is not a dimension, so it no longer rides
-			// on the leg's length string (the old `Close · 4.00 m` made one label
-			// answer two questions). §7 ratifies the copy: when the candidate closes
-			// on the run start, the cue *says* so.
+		// P23.13 S8 / §7 — the cue is decided by canonical evidence, not by
+		// proximity. `closing` stays this layer's own rule; the *face* can only
+		// come from the viewport's plan of the closing leg, so a `room-face` cue
+		// cannot exist unless the planner produced that face, and a candidate with
+		// no evidence says `Close at junction` and promises no Room at all.
+		const closureCue = resolvePlanClosureCue({
+			tool: wallChainRoleForTool(interaction.tool) === 'partition' ? 'partition-draw' : 'wall-draw',
+			closing,
+			yieldsFace: (wallFirst?.closureFaces?.length ?? 0) > 0
+		});
+		if (chainLeg && !degenerate && closureCue !== 'none' && wallFirst?.runStartPoint) {
+			const runStart = [...wallFirst.runStartPoint] as LayoutVec2;
+			if (closureCue === 'room-face') {
+				for (const [index, face] of (wallFirst?.closureFaces ?? []).entries()) {
+					if (face.length < 3) continue;
+					drafts.push({
+						kind: 'polygon',
+						key: geometryId(['plan', 'overlay', 'closure-wash', String(index)]),
+						points: face.map((point) => [point[0], point[1]] as LayoutVec2),
+						style: 'closure-wash'
+					});
+				}
+			}
+			// P23.13 S6 — the closure cue is not a dimension, so it never rides on the
+			// leg's length string (the old `Close · 4.00 m` made one label answer two
+			// questions).
 			drafts.push({
 				kind: 'circle',
 				key: geometryId(['plan', 'overlay', 'closure-cue']),
-				center: [...wallFirst.runStartPoint] as LayoutVec2,
+				center: runStart,
 				radiusPx: 6,
 				style: 'snap-marker'
 			});
-			labels.push({
-				kind: 'text',
-				key: geometryId(['plan', 'overlay', 'closure-cue-label']),
-				anchor: [...wallFirst.runStartPoint] as LayoutVec2,
-				text: PLAN_CLOSE_AT_JUNCTION_COPY,
-				offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
-				style: 'dimension-label'
-			});
+			if (closureCue === 'close-at-junction') {
+				labels.push({
+					kind: 'text',
+					key: geometryId(['plan', 'overlay', 'closure-cue-label']),
+					anchor: runStart,
+					text: PLAN_CLOSE_AT_JUNCTION_COPY,
+					offsetPx: [0, -DIMENSION_LABEL_OFFSET_PX],
+					style: 'dimension-label'
+				});
+			}
 		}
 	}
 
@@ -1669,6 +1721,7 @@ export function buildPlanInteractionProjection(
 						: null,
 				reason: labelContext?.reason,
 				settleGeneration: labelContext?.settleGeneration,
+				tierDropZone: labelContext?.tierDropZone,
 				memory: labelContext?.memory
 			});
 			for (const placed of placement.labels) {

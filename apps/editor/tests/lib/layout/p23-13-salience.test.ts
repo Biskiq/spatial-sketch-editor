@@ -440,7 +440,12 @@ describe('P23.13 S2 — Wall ink aid resolution', () => {
 
 	it('passes passive Scene ink and leaves feedback ink alone', () => {
 		const plan = readLibSource('editor/layout/PlanSvg.svelte');
-		expect(plan).toContain("return style === 'scene-footprint' ? `opacity: ${presentation.sceneInk}` : undefined;");
+		// P23.13 S8 relaxed the *shape* of this line, not its rule: the resting
+		// footprint still takes `presentation.sceneInk`, but the source may answer
+		// per footprint first (the S8 instrument zone dims one footprint inside its
+		// own bounds). The exemption below is the part S2 owns and it is unchanged.
+		expect(plan).toContain('opacity: ${presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk}');
+		expect(plan).toContain("if (primitive.style !== 'scene-footprint') return undefined;");
 		// Active / hovered / selected Scene entities are exempt by construction.
 		expect(plan).not.toContain("style === 'scene-footprint-selected'");
 		expect(PLAN_PRESENTATION_SOURCE_DEFAULT.sceneInk).toBe(1);

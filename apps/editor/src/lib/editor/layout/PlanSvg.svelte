@@ -4,6 +4,7 @@
 	import type { LayoutVec2 } from '$lib/layout/layout-types';
 	import {
 		PLAN_PRESENTATION_SOURCE_DEFAULT,
+		type PlanPolygonPrimitive,
 		type PlanPolylinePrimitive,
 		type PlanPresentationDecisions,
 		type PlanPresentationSource,
@@ -67,6 +68,9 @@
 		// P23.13 S4 — refusal mark of a known-invalid proposal.
 		'refusal-stop': 'refusal-stop',
 		'refusal-cross': 'refusal-cross',
+		// P23.13 S8 — the persisted refusal's reason + the earned closure wash.
+		'refusal-reason': 'refusal-reason',
+		'closure-wash': 'closure-wash',
 		'primitive-ghost-circle': 'primitive-ghost circle',
 		'primitive-ghost-sphere': 'primitive-ghost sphere',
 		'primitive-ghost-invalid': 'primitive-ghost invalid',
@@ -232,8 +236,13 @@
 	 * Scene entities keep full ink, because that ink is feedback and must not
 	 * fade with the context it sits on.
 	 */
-	function contextInkStyle(style: PlanStyleToken): string | undefined {
-		return style === 'scene-footprint' ? `opacity: ${presentation.sceneInk}` : undefined;
+	function contextInkStyle(primitive: PlanPolygonPrimitive): string | undefined {
+		if (primitive.style !== 'scene-footprint') return undefined;
+		// P23.13 S8 / §1.12 — the instrument zone may dim one footprint without
+		// touching the rest of the passive Scene, so a source that has a zone
+		// answers per primitive; without one the regime value stands, which is
+		// every frame outside a live instrument.
+		return `opacity: ${presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk}`;
 	}
 
 	/** Screen-space points are already projected: no transform, no measure bucket. */
@@ -321,7 +330,7 @@
 	{#each model.layers as layer (layer.order)}
 		{#each layer.primitives as primitive (primitive.key)}
 			{#if primitive.kind === 'polygon'}
-				<polygon class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)} style={contextInkStyle(primitive.style)} />
+				<polygon class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)} style={contextInkStyle(primitive)} />
 			{:else if primitive.kind === 'polyline'}
 				{#if primitive.architecture?.kind === 'wall'}
 					{@const decisions = presentation.decisionsFor(primitive)}
@@ -619,6 +628,15 @@
 	/* P23.13 S4 / §6 — the refusal mark of a known-invalid proposal. */
 	.refusal-stop { fill: var(--editor-danger); stroke: var(--editor-plan-canvas-bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.refusal-cross { fill: none; stroke: var(--editor-plan-canvas-bg); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+	/* P23.13 S8 / §6 — the *persisted* refusal keeps the same stop/× on the
+	   drawing for its bounded lifetime and answers it with the planner's own
+	   words, knocked out of the band it refused to modify. */
+	.refusal-reason { fill: var(--editor-danger); font: 11px var(--editor-font); paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; user-select: none; }
+	/* P23.13 S8 / §7 — the closure wash: the faintest Room ink, and only ever
+	   painted from a face the closing leg's own canonical plan produced. No
+	   stroke, because it is a wash and not an enclosure outline; nothing here is
+	   hit-testable or measurable. */
+	.closure-wash { fill: rgb(47 140 255 / 7%); stroke: none; pointer-events: none; }
 	.rotation-arm { fill: none; stroke: var(--editor-accent-pressed); stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-handle { fill: var(--editor-plan-handle-fill); stroke: var(--editor-plan-handle-stroke); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 	.rotation-feedback { fill: var(--editor-plan-label); font: 700 11px var(--editor-font); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--editor-plan-canvas-bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; user-select: none; }

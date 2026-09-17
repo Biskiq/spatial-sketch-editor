@@ -142,6 +142,19 @@ export type PlanStyleToken =
 	// filled octagonal stop mark carrying an ×, so refusal reads without colour.
 	| 'refusal-stop'
 	| 'refusal-cross'
+	/**
+	 * P23.13 S8 / §6 — the *persisted* refusal's own reason line: the same
+	 * stop/× vocabulary kept on the drawing for the bounded-feedback lifetime,
+	 * with the planner's own words beside it so the mark is answered rather than
+	 * merely asserted.
+	 */
+	| 'refusal-reason'
+	/**
+	 * P23.13 S8 / §7 — the faint Room wash a candidate closure earns only when the
+	 * closing leg's own canonical plan yields a face. Never a promise: without the
+	 * plan's face polygon this token is never painted at all.
+	 */
+	| 'closure-wash'
 	| 'scale-label';
 
 export type PlanHitIdentity =
@@ -471,6 +484,14 @@ export type PlanPresentationSource = {
 	 * sits on. An unwired source paints at token strength.
 	 */
 	sceneInk: number;
+	/**
+	 * P23.13 S8 / §1.12 — region-scoped override of the passive Scene ink, for one
+	 * footprint at a time. The instrument zone is local by definition, so "Scene
+	 * → 10% *inside the zone*" cannot be expressed as one number for the whole
+	 * plan: a wrapper answers per primitive, and an absent override means the
+	 * regime value stands. Omitted by every source that has no zone.
+	 */
+	sceneInkFor?: (primitive: PlanPolygonPrimitive) => number;
 };
 
 /** No salience wired: the structural stubs in the grammar still apply. */

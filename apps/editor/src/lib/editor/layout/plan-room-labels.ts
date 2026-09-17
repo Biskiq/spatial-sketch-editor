@@ -137,6 +137,15 @@ export type RoomLabelMask = {
 /** Why this resolution is happening. Only `geometry` permits free relocation. */
 export type RoomLabelReconsiderReason = 'geometry' | 'lod' | 'frozen';
 
+/** Screen-space instrument zone plus the tier ceiling it imposes (S8 / §1.12). */
+export type RoomLabelTierDropZone = {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+	ceiling: RoomLabelTier;
+};
+
 /** One resolved resting label, in screen space, ready for the paint adapter. */
 export type PlacedRoomLabel = {
 	roomId: string;
@@ -178,6 +187,18 @@ export type RoomLabelPlacementInput = {
 	planView: PlanViewportState;
 	measure?: TextMeasure;
 	mask?: RoomLabelMask;
+	/**
+	 * P23.13 S8 / §1.12 — the instrument zone (see `plan-attention.ts`): inside
+	 * these screen bounds a label may not rest at a tier above `ceiling`.
+	 *
+	 * The test is on the *accepted anchor*, so the rule is region-scoped on its
+	 * own terms: a label outside the zone keeps its full stack, and the zone
+	 * cannot quietly re-tier the whole plan. The ceiling is a preference, not a
+	 * truth — if the reduced stack does not fit the anchor that the fuller one
+	 * fits, the fuller one stays, because a label that fits beats a label that is
+	 * merely quieter.
+	 */
+	tierDropZone?: RoomLabelTierDropZone;
 	/** The selected Room, when the selection is a Room (never a placement bias). */
 	selectedRoomId?: string | null;
 	reason?: RoomLabelReconsiderReason;
@@ -386,6 +407,13 @@ function tierOfStack(stack: readonly RoomLabelLine[]): RoomLabelTier {
 	if (stack.some((line) => line.style === 'room-reference')) return 'name-reference';
 	return 'name';
 }
+
+/** Drop order, richest first: a higher rank is *less* identity, not more. */
+const TIER_RANK: Readonly<Record<RoomLabelTier, number>> = {
+	full: 0,
+	'name-reference': 1,
+	name: 2
+};
 
 /* ------------------------------------------------------------------ *
  * Geometry helpers (screen space)
@@ -925,6 +953,29 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 						else resolved = atCandidate;
 					}
 				}
+			}
+		}
+
+		// P23.13 S8 / §1.12 — the instrument zone's tier ceiling. Applied to the
+		// accepted anchor and only when it would actually lower the tier, so a
+		// label already below the ceiling is untouched and a label outside the
+		// zone never notices the zone exists.
+		const zone = input.tierDropZone;
+		if (resolved && anchorScreen && zone) {
+			const inZone =
+				anchorScreen[0] >= zone.minX &&
+				anchorScreen[0] <= zone.maxX &&
+				anchorScreen[1] >= zone.minY &&
+				anchorScreen[1] <= zone.maxY;
+			const acceptedStack = resolved;
+			if (inZone && TIER_RANK[tierOfStack(acceptedStack.stack)] < TIER_RANK[zone.ceiling]) {
+				const capped = eligible.filter(
+					(stack) => TIER_RANK[tierOfStack(stack)] >= TIER_RANK[zone.ceiling]
+				);
+				const atAnchor = capped.length > 0 ? resolve(anchorScreen, capped) : null;
+				// The reduced stack has to fit where the fuller one fits; a zone is a
+				// quieting preference and never a licence to drop a Room's label.
+				if (atAnchor) resolved = atAnchor;
 			}
 		}
 

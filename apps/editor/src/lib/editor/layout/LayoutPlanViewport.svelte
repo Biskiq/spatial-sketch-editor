@@ -132,6 +132,25 @@
 		type PlanSalience
 	} from './plan-salience';
 	import { createPlanDimensionMemory } from './plan-dimensions';
+	// P23.13 S8 — the instrument zone (§1.12), the canonical closure evidence for
+	// the Wall draw's cue (§7), and the bounded lifetime of a refused attempt (§6).
+	import {
+		PLAN_ATTENTION_RESTORE_MS,
+		planAttentionLabelTierDrop,
+		planAttentionZoneAt,
+		resolvePlanAttentionZone,
+		withPlanAttentionSceneInk,
+		type PlanAttentionZone
+	} from './plan-attention';
+	import { wallChainClosureEvidence, wallChainClosureProbeKey } from './layout-wall-chain-closure';
+	import {
+		PLAN_REFUSAL_PERSISTENCE_MS,
+		beginPlanRefusal,
+		planRefusalAt,
+		withPlanRefusalAnnotation,
+		type PlanRefusal,
+		type PlanRefusalKind
+	} from './plan-refusal';
 	// P23.13 S7 — the ratified type-to-enter lifecycle (§7, A5). Every decision the
 	// input element depends on lives in that module; this component owns only the
 	// element, the plumbing and the canonical commit.
@@ -209,10 +228,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	import type { PlanViewMode } from './layout-interaction';
 	import {
 		JUNCTION_HANDLES_MIN_PX_PER_M,
+		architectureEditIntentLocus,
 		buildPlanInteractionProjection,
 		physicalWallSpan,
 		planHandleScreenPoints,
 		planNumericEntryAnchorPx,
+		pointAtWallOffset,
 		presetIdForTool,
 		rotationHandleScreenPoint,
 		wallOpeningEdgeWorldPoints,
@@ -225,6 +246,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	} from './plan-overlays';
 	import {
 		LAYOUT_PLAN_GRID_STEP,
+		LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
 		layoutArchitecturalPreset,
 		resolveLayoutSnap,
 		resolveOpeningDragSnapUseMode,
@@ -553,6 +575,34 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * sampled coordinates: the proposal is derived data, not canonical state.
 	 */
 	let architectureEditTransient = $state.raw<LayoutTransientArchitectureEdit | null>(null);
+	/**
+	 * P23.13 S8 / §6 — the persisted refusal: a refused release's own mark, kept on
+	 * the drawing for the bounded-feedback lifetime instead of vanishing with the
+	 * drag that produced it. Bounded feedback is its own lifetime (§2), so it is
+	 * state with a timer rather than a derived value, and `planRefusalAt` is the
+	 * one expiry rule — the timer only tells the view to re-render once it passes.
+	 */
+	let planRefusal = $state.raw<PlanRefusal | null>(null);
+	let planRefusalTimer: ReturnType<typeof setTimeout> | null = null;
+	const activePlanRefusal = $derived(planRefusalAt(planRefusal, Date.now()));
+	/**
+	 * P23.13 S8 / §1.12 — the live instrument zone (gesture-lifetime): derived from
+	 * the active handle's own locus and cleared one settle window after the last
+	 * frame that touched it, so the suppression restores itself without any page-scale
+	 * dimming ever existing.
+	 */
+	let attentionZone = $state.raw<PlanAttentionZone | null>(null);
+	let attentionTimer: ReturnType<typeof setTimeout> | null = null;
+	const activeAttentionZone = $derived(planAttentionZoneAt(attentionZone, Date.now()));
+	/**
+	 * P23.13 S8 / §7 — the closure-probe memo. Deliberately non-reactive: it caches
+	 * a *plan*, not a rendering decision. Keyed on the run's canonical junction
+	 * identities (`wallChainClosureProbeKey`), so the closing leg is planned once
+	 * per closure rather than once per pointermove while the pointer sits on the
+	 * run's own start junction.
+	 */
+	let closureProbeKey: string | null = null;
+	let closureProbeFaces: readonly (readonly LayoutVec2[])[] = [];
 	let lastBendPointerTime: number | null = null;
 	let architectureEditReplacementVersion = $state<number | null>(null);
 
@@ -564,6 +614,127 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		return layout.walls
 			.filter((wall) => owned.has(wall.startJunctionId) || owned.has(wall.endJunctionId))
 			.map((wall) => wall.id);
+	}
+
+	function clearPlanRefusal(): void {
+		if (planRefusalTimer !== null) {
+			clearTimeout(planRefusalTimer);
+			planRefusalTimer = null;
+		}
+		planRefusal = null;
+	}
+
+	/**
+	 * P23.13 S8 / §6 — record a refused release. Silent refusals (`no_op`) are
+	 * dropped by `beginPlanRefusal` itself: a mark that answers nothing is worse
+	 * than no mark, which is the same rule the status line already follows.
+	 */
+	function armPlanRefusal(input: {
+		kind: PlanRefusalKind;
+		locus: LayoutVec2 | null;
+		reason: string | null;
+		ownerKey: string;
+	}): void {
+		clearPlanRefusal();
+		const refusal = beginPlanRefusal({ ...input, atMs: Date.now() });
+		if (!refusal) return;
+		planRefusal = refusal;
+		planRefusalTimer = setTimeout(() => {
+			planRefusalTimer = null;
+			planRefusal = null;
+		}, PLAN_REFUSAL_PERSISTENCE_MS);
+	}
+
+	/** The canonical owner of the live direct edit (the refusal's identity). */
+	function architectureEditOwnerKey(): string {
+		const gesture = interaction.architectureEdit;
+		if (!gesture) return 'architecture-edit';
+		return gesture.kind === 'junction-move' ? gesture.junctionId : gesture.wallId;
+	}
+
+	/**
+	 * P23.13 S8 / §1.12 — one frame of instrument attention. The zone is the active
+	 * handle's own locus: §1.12's "annotation bounds" are deliberately not
+	 * supplied here because the annotation a drag carries (its dimension set) is
+	 * already inside the same locus radius, and widening the zone to a whole
+	 * readout would make it a spotlight rather than an instrument.
+	 */
+	function touchPlanAttention(locus: LayoutVec2 | null): void {
+		if (!locus) return;
+		attentionZone = resolvePlanAttentionZone({
+			view: interaction.planView,
+			locus,
+			atMs: Date.now()
+		});
+		if (attentionTimer !== null) clearTimeout(attentionTimer);
+		attentionTimer = setTimeout(() => {
+			attentionTimer = null;
+			attentionZone = null;
+		}, PLAN_ATTENTION_RESTORE_MS);
+	}
+
+	/** The attempted Opening center of the live drag (its own locus, not the pointer). */
+	function wallOpeningDragLocus(): LayoutVec2 | null {
+		const drag = interaction.wallOpeningDrag;
+		if (!drag) return null;
+		const span = physicalWallSpan(model, drag.wallId);
+		if (!span) return null;
+		return pointAtWallOffset(span, drag.candidateOffset + drag.candidateWidth / 2);
+	}
+
+	/**
+	 * P23.13 S8 / §7 — canonical face evidence for the live run's closure.
+	 *
+	 * The probe gate is deliberately *wider* than the cue's own condition (a 4×
+	 * snap radius around the run start): it decides only whether it is worth
+	 * planning, never whether the cue is drawn — that stays one rule, in the
+	 * overlay — so a generous gate can never show a cue the closing rule refuses,
+	 * and the memo key keeps the plan a single call per closure.
+	 */
+	function wallChainClosureFaces(): readonly (readonly LayoutVec2[])[] {
+		const layout = wallFirstLayoutDocument();
+		const start = interaction.wallChainStart;
+		const cursor = interaction.wallChainCursor;
+		const runStartJunctionId = interaction.wallChainRunStartJunctionId;
+		const runStart = runStartJunctionId ? resolveJunctionPoint(runStartJunctionId) : null;
+		if (!layout || !start || !cursor || !runStart) {
+			// No live run: drop the memo, so the next run re-plans rather than
+			// inheriting a face computed against a document that may have changed
+			// since (a memo is only valid inside the run it was computed for).
+			closureProbeKey = null;
+			closureProbeFaces = [];
+			return [];
+		}
+		const scale = Math.max(interaction.planView.pixelsPerMeter, 1e-6);
+		const gate = (LAYOUT_PLAN_SNAP_RADIUS_CSS_PX * 4) / scale;
+		if (Math.hypot(cursor[0] - runStart[0], cursor[1] - runStart[1]) > gate) {
+			closureProbeKey = null;
+			closureProbeFaces = [];
+			return [];
+		}
+		const role = wallChainRoleForTool(interaction.tool);
+		if (!role) return [];
+		const key = wallChainClosureProbeKey({
+			startJunctionId: interaction.wallChainStartJunctionId,
+			start,
+			runStartJunctionId,
+			end: runStart,
+			role,
+			height: interaction.wallChainRunHeight
+		});
+		if (key !== closureProbeKey) {
+			closureProbeKey = key;
+			closureProbeFaces = wallChainClosureEvidence({
+				baseline: layout,
+				start,
+				end: runStart,
+				role,
+				...(interaction.wallChainRunHeight !== null
+					? { height: interaction.wallChainRunHeight }
+					: {})
+			}).faces;
+		}
+		return closureProbeFaces;
 	}
 
 	/**
@@ -849,6 +1020,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			baseline: architectureEditBaselineDocument(),
 			moved: true
 		});
+		// P23.13 S8 / §1.12 — the dragged control is the instrument: its own locus
+		// (the attempt's, read through the same helper the refusal mark uses, so a
+		// whole-Wall drag zones its own Wall rather than needing a point it has not
+		// got) is the zone, re-stamped every frame and restored one settle window
+		// after the pointer stops.
+		touchPlanAttention(
+			architectureEditTransient ? architectureEditIntentLocus(architectureEditTransient.intent) : null
+		);
 	}
 
 	/**
@@ -883,6 +1062,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			architectureEditStartScreen,
 			screenPoint(event)
 		);
+		// P23.13 S8 / §6 — the refused release's own mark, kept past the gesture.
+		// The locus is read from the live attempt (the same helper the invalid
+		// proposal marks) *before* the gesture is finished, so the persisted mark
+		// and the live one can never land on two different points.
+		const refusedLocus = architectureEditTransient?.intent
+			? architectureEditIntentLocus(architectureEditTransient.intent)
+			: null;
+		const ownerKey = architectureEditOwnerKey();
 		const outcome = releaseArchitectureEdit({
 			gesture: interaction.architectureEdit,
 			moved: movedOnRelease,
@@ -907,12 +1094,24 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			restoreBaseline: restoreArchitectureEditBaseline
 		});
 		if (outcome.statusMessage) preview.statusMessage = outcome.statusMessage;
+		if (outcome.kind === 'rejected') {
+			armPlanRefusal({
+				kind: 'architecture-edit',
+				locus: refusedLocus,
+				reason: outcome.statusMessage,
+				ownerKey
+			});
+		}
 		if (outcome.suppressNextClick) suppressNextClick = true;
 		finishArchitectureEditGesture(event.pointerId);
 	}
 
 	/** Escape / pointer-cancel / mode change: restore the baseline, cancel once. */
 	function cancelArchitectureEditGesture(): void {
+		// Escape clears the persisted refusal (§2's bounded-feedback lifetime): the
+		// user has answered the mark by dismissing it, so it does not outlive the
+		// keypress by even the rest of its 1.2 s.
+		clearPlanRefusal();
 		const gesture = interaction.architectureEdit;
 		const snapshot = architectureEditSnapshot;
 		if (!gesture) {
@@ -1178,7 +1377,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				measure: roomLabelText.measure,
 				memory: roomLabelMemory,
 				reason: roomLabelReconsiderReason,
-				settleGeneration: roomLabelSettleGeneration
+				settleGeneration: roomLabelSettleGeneration,
+				// P23.13 S8 / §1.12 — the live instrument zone's tier ceiling. Absent
+				// (no instrument being worked) means every label keeps its own tier.
+				tierDropZone: planAttentionLabelTierDrop(activeAttentionZone) ?? undefined
 			},
 			// P23.13 S6 / §7 — the dimension lane freeze. One memory per viewport,
 			// like the salience hysteresis: §7 freezes the side at gesture start, so
@@ -1191,6 +1393,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			runStartPoint: interaction.wallChainRunStartJunctionId
 				? resolveJunctionPoint(interaction.wallChainRunStartJunctionId)
 				: null,
+			// P23.13 S8 / §7 — canonical face evidence for the live run's closure:
+			// the closing leg's own plan already produced these polygons, so the
+			// overlay may show a face without ever claiming one. Empty outside a
+			// closing run (and outside a run altogether).
+			closureFaces: wallChainClosureFaces(),
 			issues: preview.issues
 		};
 	});
@@ -1469,7 +1676,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * left the flag for S7; an open field holding a *valid* value is what sets it.
 	 */
 	const snapSuppressedByExplicitValue = $derived(planNumericEntryHoldsExplicitValue(numericEntry));
-	const interactionProjection = $derived(
+	const architectureEditProjection = $derived(
 		withArchitectureEditIntent(
 			withLayoutSnapFeedback(
 				withArrangeHoverOutline(
@@ -1505,6 +1712,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			architectureEditIntent
 		)
 	);
+	/**
+	 * P23.13 S8 / §6 — the persisted refusal composes **over** the live proposal
+	 * and never replaces it: the original geometry keeps its committed
+	 * position/ink/opacity (nothing was installed), the refused attempt is gone
+	 * with its gesture, and what stays is the mark and the planner's own reason.
+	 */
+	const interactionProjection = $derived(
+		withPlanRefusalAnnotation(architectureEditProjection, activePlanRefusal)
+	);
 	const planModel = $derived(
 		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
 	);
@@ -1522,6 +1738,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	const planSalience = $derived(
 		salienceFreeze ??
 			resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
+	);
+	/**
+	 * P23.13 S8 / §1.12 — the resolved presentation the paint layer reads. The
+	 * instrument zone adds its region-scoped Scene dim here and nowhere else: S2's
+	 * snapshot is wrapped, never rewritten, so the regime value is still the one
+	 * source for every footprint outside the zone.
+	 */
+	const planPresentation = $derived(
+		withPlanAttentionSceneInk(planSalience, interaction.planView, activeAttentionZone)
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -2473,6 +2698,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerDown(event: PointerEvent) {
+		// P23.13 S8 / §6 — "until the next deliberate action": any new press clears
+		// the persisted refusal, so a mark can never sit under a gesture the user
+		// has already moved on to.
+		clearPlanRefusal();
 		planPointerButtonDown = true;
 		if (event.button === 1) {
 			dismissSceneBridge();
@@ -3181,6 +3410,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// optional honest snap win); nothing is written to the document here.
 			const point = worldPoint(event);
 			if (point) applyWallOpeningDragPoint(interaction.wallOpeningDrag, point);
+			// P23.13 S8 / §1.12 — the dragged Opening is the instrument.
+			touchPlanAttention(wallOpeningDragLocus());
 			return;
 		}
 		if (interaction.tool === 'rectangle') {
@@ -3445,6 +3676,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			if (release) applyWallOpeningDragPoint(drag, release);
 			if (!drag.valid) {
 				preview.statusMessage = 'Opening does not fit on this wall';
+				// P23.13 S8 / §6 — the refused Opening keeps its mark on the drawing,
+				// at the candidate's own attempted center (the position it was refused),
+				// while the committed Opening stays exactly where it was.
+				armPlanRefusal({
+					kind: 'opening-drag',
+					locus: wallOpeningDragLocus(),
+					reason: 'Opening does not fit on this wall',
+					ownerKey: drag.openingId
+				});
 				onLayoutTransactionCancel();
 			} else {
 				const result = updateWallFirstOpening(
@@ -3461,6 +3701,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				} else {
 					onLayoutTransactionCancel();
 					preview.statusMessage = result.message;
+					armPlanRefusal({
+						kind: 'opening-drag',
+						locus: wallOpeningDragLocus(),
+						reason: result.message ?? null,
+						ownerKey: drag.openingId
+					});
 				}
 			}
 			cancelLayoutWallOpeningDrag(interaction);
@@ -4971,7 +5217,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		{#if ghostVisible}
 			<PlanEmptyGhost planView={interaction.planView} />
 		{/if}
-		<PlanSvg model={planModel} planView={interaction.planView} presentation={planSalience} />
+		<PlanSvg model={planModel} planView={interaction.planView} presentation={planPresentation} />
 		<PlanCanvasChrome layer="overlay" planView={interaction.planView} />
 		{#if selectedOpening}
 			<!-- P23.12 — selected-target feedback consumes the identity contract:
