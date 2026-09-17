@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
 	planTraversalAnnouncement,
+	planTraversalEnteredFor,
 	planTraversalGroup,
 	planTraversalStep,
 	type PlanTraversalLayout
@@ -110,6 +111,22 @@ describe('P23.13 S10 traversal stepping (§9)', () => {
 	});
 });
 
+describe('P23.13 S10 keyboard group entry (A5)', () => {
+	it('is entered only for the selection the keyboard entered', () => {
+		expect(planTraversalEnteredFor('physicalWall:w-1', 'physicalWall:w-1')).toBe(true);
+	});
+
+	it('is not entered before Enter, and not after the selection moves on', () => {
+		// `null` is "the keyboard has entered nothing": a pointer press focuses a
+		// control but enters no group, so arrows must still belong to the page.
+		expect(planTraversalEnteredFor(null, 'physicalWall:w-1')).toBe(false);
+		expect(planTraversalEnteredFor(null, null)).toBe(false);
+		// Selecting something else drops the entry by itself — no clear to remember.
+		expect(planTraversalEnteredFor('physicalWall:w-1', 'physicalWall:w-2')).toBe(false);
+		expect(planTraversalEnteredFor('physicalWall:w-1', null)).toBe(false);
+	});
+});
+
 describe('P23.13 S10 traversal announcements (§9)', () => {
 	it('names role, position, owner, current value and units for a keyboard move', () => {
 		expect(
@@ -135,17 +152,22 @@ describe('P23.13 S10 traversal announcements (§9)', () => {
 		).toBe('Junction 1 of 1 — Wall W-7V24');
 	});
 
-	it('reaches every control kind the layout surface paints, and only those', () => {
-		// §14's own evidence: the shared marks table is the *layout* vocabulary the
-		// traversal can be asked to reach. `object-rotation` / `room-rotation` are
-		// declared in `PlanControlKind` for the Arrange owner pipeline, which §6/§8
-		// leave to its existing pipeline — no control of either kind carries a mark
-		// here, so there is nothing for the keyboard to focus.
+	it('pins the control kinds the shared point-mark table represents', () => {
+		// This is a *shape* pin of one table, not a completeness proof for every
+		// control the surface paints, and it must not be read as one: the table's own
+		// contract is that an absent kind "draws no mark of its own", and two painted
+		// controls are absent from it — the Opening slide grip (a paired polyline) and
+		// the selected Room's rotation arm + ring (S10's review follow-up, carried to
+		// P23.14). The traversal group's vocabulary is instead pinned by
+		// `planTraversalGroup` above: the four kinds the layout candidate table
+		// produces.
 		expect(Object.keys(PLAN_CONTROL_MARKS).sort()).toEqual([
 			'curve-control',
 			'junction',
 			'opening-edge'
 		]);
+		expect(PLAN_CONTROL_MARKS).not.toHaveProperty('opening-slide');
+		expect(PLAN_CONTROL_MARKS).not.toHaveProperty('room-rotation');
 	});
 });
 
@@ -157,6 +179,11 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(viewport).toContain("event.key === 'ArrowLeft'");
 		expect(viewport).toContain('planTraversalStep(\n\t\t\t\t\tgroup,\n\t\t\t\t\tinteraction.planFocus?.id ?? null,\n\t\t\t\t\tdirection as 1 | -1\n\t\t\t\t');
 		expect(viewport).toContain('planTraversalGestureQuiet()');
+		// …and only once the keyboard has *entered* the group: the pointer focuses
+		// controls by pressing them, so membership alone would be an unlocked door.
+		expect(viewport).toContain(
+			'planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey())'
+		);
 		// Same LOD gate the overlay draws controls with: invisible controls
 		// are never focused.
 		expect(viewport).toContain(
@@ -169,13 +196,29 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(enterAt).toBeGreaterThan(-1);
 		const numericAt = viewport.indexOf('beginNumericEntryFromFocus()', enterAt);
 		expect(numericAt).toBeGreaterThan(enterAt);
+		// The entry is recorded as state next to the focus move, and only a second
+		// Enter (entry held + ring already on a member) reaches the field.
+		expect(viewport).toContain('planKeyboardGroupKey = planKeyboardSelectionKey();');
+		expect(viewport).toContain('if (group && group.length > 0 && (!entered || !focusInGroup)) {');
+	});
+
+	it('hands the instrument back on a primary press that reaches the canvas', () => {
+		expect(viewport).toContain(
+			'function releasePlanKeyboardInstrument(): void {\n\t\tplanKeyboardGroupKey = null;\n\t\tplanAnnouncedFocus = null;\n\t}'
+		);
+		// After the open-field swallow (which changes nothing and returns above) and
+		// before the pointer sets its own focus.
+		const pressAt = viewport.indexOf('releasePlanKeyboardInstrument();\n\t\tsvgElement?.focus();');
+		expect(pressAt).toBeGreaterThan(-1);
+		const fieldAt = viewport.indexOf('if (numericEntry) {');
+		expect(pressAt).toBeGreaterThan(fieldAt);
 	});
 
 	it('unwinds focus and its readout together on Escape, without touching selection or history', () => {
 		// One instrument: the ring and the announcement are released by one helper,
 		// so no path can drop the ring and keep speaking about the control.
 		expect(viewport).toContain(
-			'function clearPlanKeyboardFocus(): void {\n\t\tclearPlanFocus(interaction);\n\t\tplanAnnouncedFocus = null;\n\t}'
+			'function clearPlanKeyboardFocus(): void {\n\t\tclearPlanFocus(interaction);\n\t\tplanKeyboardGroupKey = null;\n\t\tplanAnnouncedFocus = null;\n\t}'
 		);
 		const dropAt = viewport.indexOf('clearPlanKeyboardFocus();\n\t\t\t\treturn;');
 		expect(dropAt).toBeGreaterThan(-1);
@@ -227,10 +270,11 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		expect(viewport).toContain(
 			'planAnnouncedFocus && interaction.planFocus?.id === planAnnouncedFocus.controlId'
 		);
-		// Four writes to the announcement and no more: the declaration, the
-		// keyboard move, the release helper, and the reconciliation that clears it
-		// when the focus moved without the keyboard. The pointer path writes none.
+		// Five writes to the announcement and no more: the declaration, the keyboard
+		// move, the two release paths (focus unwind, pointer taking the instrument
+		// back), and the reconciliation that clears it when the focus moved without
+		// the keyboard.
 		const assignments = viewport.split('planAnnouncedFocus = ').length - 1;
-		expect(assignments).toBe(4);
+		expect(assignments).toBe(5);
 	});
 });

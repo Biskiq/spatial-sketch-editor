@@ -49,12 +49,12 @@ slice plus one next action only.
 
 ## Verification
 
-- **P23.13 branch after the review fix (2026-09-17).** Full editor suite
-  **4358 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
-  0 warnings**, `check:layout-core` clean. Before the review fix: 4350 passed;
+- **P23.13 branch after the review fixes (2026-09-17).** Full editor suite
+  **4361 passed / 1 skipped** (291 files, 1 skipped), `svelte-check` **0 errors /
+  0 warnings**, `check:layout-core` clean. Before the review fixes: 4350 passed;
   `619d6ce` alone: **4333 passed / 1 skipped**. The five new S9/S10 suites
-  (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard` 17,
-  `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 32/32.
+  (`p23-13-empty` 4, `p23-13-icons` 5, `p23-13-keyboard` 20,
+  `p23-13-surrounds` 3, `p23-13-thin-wall` 3) pass 35/35.
 - **Acceptance rows driven live 2026-09-17** (real editor, guest project, one
   4-Wall room + a Door + a bend, 12.2 px/m): keyboard on the **Wall** group
   (\"Junction 1 of 2 — Wall W-7V24\", wrap, Escape unwinds, `.focus-ring` moves
@@ -119,10 +119,19 @@ slice plus one next action only.
   user actually hears. Drive the path live (or assert the composed string) before
   trusting a refactor that renames or reorders those handlers.
 - **Arrows must not enter the control group** (A5: Enter enters, arrows traverse).
-  `planTraversalStep` answers `null` for a focus outside the group, and that is
-  load-bearing: the earlier cut let a selected Wall swallow ArrowRight/Left/Up
-  and their scrolling before the user entered anything. Do not "fix" it back to
-  the roving-tabindex convention.
+  Two halves, and both are load-bearing: `planTraversalStep` answers `null` for a
+  focus outside the group, and `planTraversalEnteredFor` requires the keyboard to
+  have *entered* that selection — because the **pointer also focuses controls**
+  (`planAcquiredControl` → `setPlanFocus`), so inferring the entry from
+  `planFocus` let a click unlock the arrows and steal ArrowRight/Left/Up and
+  their scrolling. Do not "fix" it back to the roving-tabindex convention.
+- **The keyboard readout is a keyboard instrument**: it is retired by Escape, by
+  a mode/tool cancel, and by a primary press that reaches the canvas — never by
+  pointer focus alone, which stays silent. A **known residue**: an Undo that
+  moves the focused control changes its value with no pointer and no keyboard
+  move, so the region can hold the previous coordinates (same family as the
+  carried undo-with-field-open row; closing it needs a history hook the viewport
+  does not own).
 - A drawing gesture on Plan needs `setPointerCapture` stubbed for synthetic
   pointers; that is the only platform call QA has ever stubbed, and no app
   gesture logic is touched by it.

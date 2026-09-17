@@ -117,6 +117,25 @@ export function planTraversalStep(
 }
 
 /**
+ * A5's entry rule as one predicate: arrow traversal runs only inside a group the
+ * keyboard has entered *for the selection that is still selected*.
+ *
+ * `planTraversalStep` already refuses a focus outside the group, and that is not
+ * the same thing: the pointer can focus a control by pressing it, so "focus is on
+ * a member of the selected owner's group" is reachable without Enter ever being
+ * pressed. Keeping the *entered* selection separately, and requiring the current
+ * selection to still match it, is what makes Enter the only way in — and it drops
+ * the entry by itself when the selection moves on, so no clear has to be
+ * remembered for every way a selection can change.
+ */
+export function planTraversalEnteredFor(
+	enteredSelectionKey: string | null,
+	selectionKey: string | null
+): boolean {
+	return enteredSelectionKey !== null && enteredSelectionKey === selectionKey;
+}
+
+/**
  * Announcement text for a keyboard focus move: control role, position in the
  * group, the owner's identity label the caller resolved, and — when the focused
  * control carries one — the current value and units §9's readout owes

@@ -178,6 +178,7 @@
 	} from './plan-numeric-entry';
 	import {
 		planTraversalAnnouncement,
+		planTraversalEnteredFor,
 		planTraversalGroup,
 		planTraversalStep,
 		type PlanTraversalControl,
@@ -1234,6 +1235,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		const focusId = interaction.planFocus?.id ?? null;
 		if (planAnnouncedFocus && planAnnouncedFocus.controlId !== focusId) planAnnouncedFocus = null;
 	});
+	// P23.13 S10 / A5 — **Enter entering the group is state, not focus.** The
+	// pointer focuses a control by pressing it (`planAcquiredControl` →
+	// `setPlanFocus`), so "the ring is on a member of the selected owner's group"
+	// is true without Enter ever being pressed; inferring the entry from
+	// `planFocus` therefore let a pointer press unlock arrow traversal. This holds
+	// *which selection* the keyboard entered, and `planTraversalEnteredFor`
+	// requires the selection to still be that one.
+	let planKeyboardGroupKey = $state<string | null>(null);
 
 	const viewBox = $derived(`0 0 ${interaction.planView.width} ${interaction.planView.height}`);
 	const draftPolygon = $derived(
@@ -2751,6 +2760,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			event.preventDefault();
 			return;
 		}
+		// A press that actually reaches the canvas takes the keyboard instrument
+		// back (see `releasePlanKeyboardInstrument`). A press swallowed by an open
+		// field above deliberately does not: it changes nothing, so it must not end
+		// the keyboard's claim on the group.
+		releasePlanKeyboardInstrument();
 		svgElement?.focus();
 		const point = worldPoint(event);
 		const screen = screenPoint(event);
@@ -4259,11 +4273,38 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	/**
-	 * P23.13 S10 / §9 — release the keyboard instrument. The ring and its readout
-	 * are one thing: nothing may drop one without the other.
+	 * The selection identity the keyboard's control group belongs to, or `null`
+	 * when the selection owns no group. Mirrors `planKeyboardGroup`'s mapping.
+	 */
+	function planKeyboardSelectionKey(): string | null {
+		const selection = interaction.selection;
+		if (selection.kind === 'physicalWall') return `physicalWall:${selection.wallId}`;
+		if (selection.kind === 'wallOpening') return `wallOpening:${selection.openingId}`;
+		if (selection.kind === 'junction') return `junction:${selection.junctionId}`;
+		return null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — release the keyboard instrument. The ring, the entry and
+	 * the readout are one thing: nothing may drop one without the others.
 	 */
 	function clearPlanKeyboardFocus(): void {
 		clearPlanFocus(interaction);
+		planKeyboardGroupKey = null;
+		planAnnouncedFocus = null;
+	}
+
+	/**
+	 * P23.13 S10 / §9 — a primary press takes the instrument back. It is not a
+	 * traversal: the keyboard's claim on the group ends (so merely clicking a
+	 * control can never unlock the arrows — that is what Enter is for) and the
+	 * spoken readout is retired, which is how "pointer focus stays silent" holds for
+	 * the region too, including when the pointer edits the *same* control the
+	 * keyboard had announced (same id, different value). Focus itself is the
+	 * pointer's to set a few lines later, so this deliberately does not touch it.
+	 */
+	function releasePlanKeyboardInstrument(): void {
+		planKeyboardGroupKey = null;
 		planAnnouncedFocus = null;
 	}
 
@@ -5161,6 +5202,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			!event.altKey &&
 			interaction.planViewMode === 'layout' &&
 			interaction.tool === 'select' &&
+			// A5 — arrows traverse a group the keyboard has *entered*: a pointer press
+			// focuses controls without entering anything, so membership alone would let
+			// a click unlock the arrows.
+			planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey()) &&
 			planTraversalGestureQuiet()
 		) {
 			const group = planKeyboardGroup();
@@ -5198,13 +5243,19 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			interaction.tool === 'select'
 		) {
 			const group = planTraversalGestureQuiet() ? planKeyboardGroup() : null;
+			const entered = planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey());
 			const focus = interaction.planFocus;
 			const focusInGroup =
 				!!group && !!focus && group.some((control) => control.id === focus.id);
-			if (group && group.length > 0 && !focusInGroup) {
+			// Enter enters the group, and only a second Enter (with the entry held and
+			// the ring already on a member) reaches the numeric door — so the chain is
+			// the same whether the ring got there by keyboard or by a pointer press,
+			// and a pointer-focused control cannot skip the entry.
+			if (group && group.length > 0 && (!entered || !focusInGroup)) {
 				const first = group[0];
 				if (first) {
 					event.preventDefault();
+					planKeyboardGroupKey = planKeyboardSelectionKey();
 					focusPlanControlByKeyboard(first, 0, group.length);
 					return;
 				}
