@@ -481,7 +481,7 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 		// The canonical writers are current-format strict: a payload declaring any
 		// other version fails closed rather than being persisted as if it were
 		// current. P23.6I recognizes exactly one wall-first version, so `4` is an
-		// unsupported version (`docs/north-star.md` → Development-stage schema
+		// unsupported version (`docs/reference/north-star.md` → Development-stage schema
 		// compatibility) and no read-side normalization could make it writable.
 		const payload = {
 			...wallFirstProjectPayload(),

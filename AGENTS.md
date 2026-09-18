@@ -1,8 +1,9 @@
 # Agent context — Personal / Museum
 
-**Bootstrap only.** Durable hub: [`docs/README.md`](./docs/README.md) (**routing table — do not load every component file**). Live slice: [`docs/hand-off/CURRENT.md`](./docs/hand-off/CURRENT.md). Human overview: [`README.md`](./README.md).
+**Bootstrap only.** Durable hub: [`docs/README.md`](./docs/README.md) (router — start here).
+Human overview: [`README.md`](./README.md).
 
-Conflict: **`docs/` component files + hub win** over this file for product detail; **this file wins** for hard rules below.
+Conflict: **`docs/` reference files + router win** over this file for product detail; **this file wins** for hard rules below.
 
 ## Repo facts
 
@@ -20,24 +21,32 @@ Conflict: **`docs/` component files + hub win** over this file for product detai
 6. No nav arrays in `rooms.ts`; no second graph/motion; prefer Floor/Wall/Ceiling planes.
 7. Svelte 5 runes; Threlte patterns; `scroll-travel` unused.
 8. **No commits** unless user asks.
-9. **Token discipline (progressive disclosure)** — read `docs/README.md`
-   (the context router), then **only** the referenced file(s) required for the
-   task. Never preload the tree; archive is historical evidence, not current
-   product truth. A task should need 80–200 relevant lines.
+9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum necessary context. Never preload the tree; archive is opt-in historical evidence, not current truth.
 10. **Truth precedence** — when live docs conflict, highest wins:
-    `source code + tests → hand-off/CURRENT.md → active plan → component
-    contract → architecture.md → north-star.md → archive`. Status authority
-    (what's next) is the tracker's job; direction/priority conflicts are
-    owner decisions, not doc conflicts.
+    `source code + tests → operations/current.md → active plan → component
+    contract → reference/architecture.md → reference/north-star.md → archive`.
+
+## Boot contract
+
+1. Start documentation work at `docs/README.md`.
+2. Do not recursively scan `docs/` by default.
+3. Follow router links and read minimum necessary context.
+4. Archive is opt-in, never current authority.
+5. For "what's next?", read `docs/roadmap/README.md`; do not rescan plans.
+6. For implementation, follow roadmap → phase → slice → plan → affected reference docs.
+7. Expand investigation only when bounded reading cannot answer the task or the user explicitly requests deeper exploration.
+8. Source/tests remain implementation reality.
+9. Preserve Museum Editor architecture invariants.
+10. On completion, use the documented slice-closeout procedure (`.agents/skills/slice-closeout/SKILL.md`).
 
 ## Where to look
 
 | Need | File |
 |------|------|
 | Which doc to open | [`docs/README.md`](./docs/README.md) (router) |
-| Plan status / what's next | [`docs/plans/README.md`](./docs/plans/README.md) (tracker) |
-| Live working-tree state | [`docs/hand-off/CURRENT.md`](./docs/hand-off/CURRENT.md) |
-| Vision | [`docs/north-star.md`](./docs/north-star.md) |
-| Ownership / boundaries | [`docs/architecture.md`](./docs/architecture.md) |
-| Component contracts | [`docs/components/`](./docs/components/) (one file) |
+| Plan status / what's next | [`docs/roadmap/README.md`](./docs/roadmap/README.md) (tracker) |
+| Live working-tree state | [`docs/operations/current.md`](./docs/operations/current.md) |
+| Vision | [`docs/reference/north-star.md`](./docs/reference/north-star.md) |
+| Ownership / boundaries | [`docs/reference/architecture.md`](./docs/reference/architecture.md) |
+| Component contracts | [`docs/reference/components/`](./docs/reference/components/) (one file) |
 | Historical (opt-in) | [`docs/archive/`](./docs/archive/) |

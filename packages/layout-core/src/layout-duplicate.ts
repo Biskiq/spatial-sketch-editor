@@ -2,7 +2,7 @@
  * `layout-duplicate.ts` — P23.4 duplicate and linear repeat.
  *
  * Deterministic two-pass clone/remap planners over an immutable wall-first
- * document ([P23.4 plan](../../../../docs/plans/2026-09-08-P23.4-duplicate-and-linear-repeat.md)):
+ * document ([P23.4 plan](../../../../docs/roadmap/p23-layout-depth/2026-09-08-P23.4-duplicate-and-linear-repeat.md)):
  *
  * ```text
  * collect source graph in stable order

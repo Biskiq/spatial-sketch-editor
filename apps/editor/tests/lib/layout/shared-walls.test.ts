@@ -6,7 +6,7 @@ import type { DraftSegment, LayoutDocument, LayoutVec2 } from '$lib/layout/layou
 
 /**
  * Deterministic guard for the G4 "no coincident cross-room walls" claim in
- * `docs/hand-off/CURRENT.md`. Two walls from different rooms that lie on the
+ * `docs/operations/current.md`. Two walls from different rooms that lie on the
  * same line with overlapping intervals render coincident faces → z-fighting.
  * This scans every cross-room wall pair and fails on the first coincident
  * pair, so a future data edit cannot silently reintroduce z-fighting.

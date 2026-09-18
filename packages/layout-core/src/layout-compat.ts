@@ -18,7 +18,7 @@
  * **There is no `4` branch.** P23.6I is a pre-Compatibility-Baseline slice, so the
  * wall-first `4` generation that reached `main` before this branch is not
  * migrated: a `4` payload is simply an unrecognized version (see
- * `docs/north-star.md` → *Development-stage schema compatibility*). Every
+ * `docs/reference/north-star.md` → *Development-stage schema compatibility*). Every
  * `kind: 'wall-first'` result is therefore canonical current-format state and no
  * caller branches on the version.
  *

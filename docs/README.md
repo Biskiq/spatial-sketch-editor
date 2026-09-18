@@ -1,31 +1,61 @@
 # Museum docs — context router
 
-**Audience:** agents + humans. **Last reviewed:** 2026-09-17 (all P23 work to date merged on `main` @ `5cfe4d0` — P23.13 merged through PR #58 and the concurrent Junction-dissolve child slice through PR #57; P23.13's plan archived and the tracker's recent-5 rotated; **P23.14 re-scoped by owner review to *Editor Shell & Visual System Foundation*** with its own [slice design context](./design/P23.14-shell-design-context.md); P23.14–P23.16 remain).
-**Bootstrap (hard rules):** [`../AGENTS.md`](../AGENTS.md) ·
-**Plan status / what's next:** [`plans/README.md`](./plans/README.md) (tracker) ·
-**Live working-tree state:** [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) ·
-**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped (P22 on 2026-09-08 — hosted cold-visitor acceptance incl. public-route untrack fix, deployed as `f46e8f3`). **P23 is in flight:** P23.0–P23.13 are landed on `main` (P23.13 merged 2026-09-17 via PR #58), plus the concurrent Junction-dissolve child slice (merged via PR #57), with P23.14 (re-scoped 2026-09-17 to *Editor Shell & Visual System Foundation*) → P23.15 → P23.16 remaining. P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
+**Audience:** agents + humans.
+**Bootstrap:** [`../AGENTS.md`](../AGENTS.md) ·
+**Plan status / what's next:** [`roadmap/README.md`](./roadmap/README.md) ·
+**Live working-tree state:** [`operations/current.md`](./operations/current.md) ·
+**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped. **P23 is in flight** (P23.0–P23.13 landed; P23.14 → P23.15 → P23.16 remaining). P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
 
 ## Context discipline (progressive disclosure)
 
 Do not preload the documentation tree. Start here, identify the task surface,
-then read **only the referenced documents required for that task**. Archive is
-historical evidence, not current product truth. A task should need 80–200
-relevant lines, not the whole live tree.
+then read **only the referenced documents required for that task**.
+
+> Stop reading once the routed files answer the task. Do not recursively scan adjacent documentation merely because it exists.
+
+### Reading depths
+
+```text
+L0 — ROUTING
+Read AGENTS.md + docs/README.md.
+
+L1 — NORMAL TASK
+Read only:
+- routed roadmap manifest if relevant;
+- active phase/slice manifest;
+- active plan;
+- directly affected reference contracts.
+
+L2 — BOUNDED INVESTIGATION
+Search exact terms/symbols/paths.
+Open only matching docs/code needed to resolve question.
+
+L3 — DEEP EXPLORATION
+Allowed only when:
+- user explicitly requests deep research/audit;
+- a bug remains unresolved after bounded investigation;
+- active plan requires a harvest/spike;
+- architecture cannot be resolved from routed current authority.
+
+Never escalate automatically because more documents exist.
+```
+
+For code implementation, this rule applies to docs first. Normal code search may
+inspect required source files; avoid broad repository archaeology without a reason.
 
 ## Truth precedence — when live docs conflict, highest wins
 
 ```text
 source code + tests      → enforced reality
-hand-off/CURRENT.md      → current working-tree state (uncommitted)
+operations/current.md    → current working-tree state (uncommitted)
 active plan              → intended current change
 component contract       → stable subsystem behavior
-architecture.md          → ownership / boundaries
-north-star.md            → product direction
-archive/                 → rationale only
+reference/architecture.md → ownership / boundaries
+reference/north-star.md  → product direction
+archive/                 → rationale only (opt-in)
 ```
 
-Two separations: **status authority** (what's next) is the tracker's job, not
+Two separations: **status authority** (what's next) is the roadmap tracker's job, not
 this chain's; **direction/priority conflicts are owner decisions**, not doc
 conflicts — never "resolve" a product question by doc order.
 
@@ -33,32 +63,43 @@ conflicts — never "resolve" a product question by doc order.
 
 | Task | Read |
 |------|------|
-| Implement current slice | [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) → [`plans/README.md`](./plans/README.md) → active plan → relevant component |
-| Work on a surface | relevant `components/<surface>.md` (`CURRENT.md` only if it touches current work) |
-| Architecture / ownership question | [`architecture.md`](./architecture.md) → relevant component |
-| Product / design question | [`north-star.md`](./north-star.md) → relevant component |
-| UI / shell / workspace spec | [`Design-specs/Design-specs.md`](./Design-specs/Design-specs.md) (visual) · [`Design-specs/Design-shell-specs.md`](./Design-specs/Design-shell-specs.md) (global/cross-domain) · [`Shell-scene-workspaces.md`](./Design-specs/Shell-scene-workspaces.md) · [`Shell-camera-workspaces.md`](./Design-specs/Shell-camera-workspaces.md) (per-domain §6–§13) · [`Designer-brieft-box.md`](./Design-specs/Designer-brieft-box.md) + [`Orientation-box-render-brief.md`](./Design-specs/Orientation-box-render-brief.md) (orientation widget) |
-| Bug report / "is this already known?" | [`tech-debt/README.md`](./tech-debt/README.md) (deferred defects, reproduced + diagnosed) → [`hand-off/CURRENT.md`](./hand-off/CURRENT.md) (`Known bugs`) |
-| Historical question | [`archive/`](./archive/) (opt-in; nothing here is current truth) |
+| What's next? | [`roadmap/README.md`](./roadmap/README.md), then STOP |
+| Implement current slice | [`roadmap/README.md`](./roadmap/README.md) → phase README → slice README → implementation plan |
+| Architecture/ownership question | [`reference/architecture.md`](./reference/architecture.md) |
+| Current subsystem behavior | `reference/components/<surface>.md` |
+| Current product direction | [`reference/north-star.md`](./reference/north-star.md) |
+| Current worktree/handoff | [`operations/current.md`](./operations/current.md) |
+| Known bug / tech debt | [`operations/tech-debt/`](./operations/tech-debt/) |
+| Design current slice | slice README → routed design files |
+| Research current slice | slice README → routed research files |
+| Historical rationale | [`archive/`](./archive/) (opt-in; nothing here is current truth) |
 
 ## Folder map
 
 ```text
 docs/
   README.md              ← this router (navigation, rules, meta)
-  plans/README.md        ← plan tracker (status, order, archive stubs)
-  plans/                 ← active (post-renewal) plans only
-  hand-off/CURRENT.md    ← live working-tree delta
-  tech-debt/README.md    ← deferred defects (reproduced + diagnosed), one entry each
-  Design-specs/          ← canonical UI design system + shell/workspace specs
-  components/            ← one contract per surface
-  architecture.md        ← ownership / boundaries + pointers
-  north-star.md          ← final product vision only
-  archive/               ← cold storage; linked only from here + tracker stubs
+  reference/             ← what is true now (durable truth)
+    architecture.md      ← ownership / boundaries
+    north-star.md        ← final product vision
+    components/          ← one contract per surface
+    design-system/       ← canonical UI/design contracts + visual registry
+  roadmap/               ← what are we changing, and what comes next
+    README.md            ← status authority (current phase/slice/next)
+    p23-layout-depth/    ← active phase
+    p24-scene-staging/   ← proposed phase
+    p25-experience/      ← proposed phase
+    p26-spatial-depth/   ← research-stage phase
+    backlog/             ← proposed/unscheduled (P13, branch rejoin)
+    model-assessment.md  ← per-increment model routing
+  operations/            ← what is happening right now
+    current.md           ← live working-tree delta (baton, not history)
+    tech-debt/           ← deferred defects (reproduced + diagnosed)
+  archive/               ← why did old work happen (opt-in evidence only)
 ```
 
-**Archive:** the only reference points are this folder link and the tracker's
-one-line `archived → <path>` stubs. No live doc explains what is archived.
+**Archive:** live routers never treat archived material as authority. Enter only
+when the task explicitly requires historical rationale.
 
 ## Product surface
 
@@ -84,19 +125,22 @@ list and versioned saves.
 
 | Surface | Contract doc | Key source |
 |---------|--------------|------------|
-| Shell / workspaces / timeline | [`components/shell.md`](./components/shell.md) · [`Design-specs/Design-shell-specs.md`](./Design-specs/Design-shell-specs.md) (+ per-domain [`Shell-scene-workspaces.md`](./Design-specs/Shell-scene-workspaces.md) / [`Shell-camera-workspaces.md`](./Design-specs/Shell-camera-workspaces.md)) | `apps/editor/src/lib/editor/app/` |
-| Scene entities / materials / lights | [`components/scene-content.md`](./components/scene-content.md) | app-local `src/lib/content/` facades |
-| Gizmo / placement / transforms | [`components/placement.md`](./components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
-| Camera / tour / motion | [`components/camera-tour.md`](./components/camera-tour.md) | `packages/camera-core/src/` · visitor components in `apps/museum/src/lib/museum/navigation/` |
-| Persistence / schema / history | [`components/persistence.md`](./components/persistence.md) | `packages/project-model/src/` · `packages/layout-core/src/` · app facades |
-| Scene codec internals | [`components/scene-codec.md`](./components/scene-codec.md) | `packages/project-model/src/scene-codec/` · app facade |
-| Assets / catalogue | [`components/assets.md`](./components/assets.md) | app-local `src/lib/content/assets.ts` |
-| Themes | [`components/theme.md`](./components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
+| Shell / workspaces / timeline | [`reference/components/shell.md`](./reference/components/shell.md) · [`reference/design-system/design-shell-specs.md`](./reference/design-system/design-shell-specs.md) (+ per-domain [`reference/design-system/shell-scene-workspaces.md`](./reference/design-system/shell-scene-workspaces.md) / [`reference/design-system/shell-camera-workspaces.md`](./reference/design-system/shell-camera-workspaces.md)) | `apps/editor/src/lib/editor/app/` |
+| Scene entities / materials / lights | [`reference/components/scene-content.md`](./reference/components/scene-content.md) | app-local `src/lib/content/` facades |
+| Gizmo / placement / transforms | [`reference/components/placement.md`](./reference/components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
+| Camera / tour / motion | [`reference/components/camera-tour.md`](./reference/components/camera-tour.md) | `packages/camera-core/src/` · visitor components in `apps/museum/src/lib/museum/navigation/` |
+| Persistence / schema / history | [`reference/components/persistence.md`](./reference/components/persistence.md) | `packages/project-model/src/` · `packages/layout-core/src/` · app facades |
+| Scene codec internals | [`reference/components/scene-codec.md`](./reference/components/scene-codec.md) | `packages/project-model/src/scene-codec/` · app facade |
+| Assets / catalogue | [`reference/components/assets.md`](./reference/components/assets.md) | app-local `src/lib/content/assets.ts` |
+| Themes | [`reference/components/theme.md`](./reference/components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | |
 
-## Meta — how to write the hand-off and the next plan
+Docs = WHAT is true + WHERE truth lives. Skills = HOW to perform an occasional
+workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
-**Hand-off (`hand-off/CURRENT.md`)** — strict template, live delta only:
+## Meta — how to write the handoff and the next plan
+
+**Handoff (`operations/current.md`)** — strict template, live delta only:
 
 ```text
 ## Working tree    — what is in the tree right now (uncommitted)
@@ -108,34 +152,35 @@ list and versioned saves.
 ```
 
 Lifecycle: on **slice open**, update Working tree + Next action. On **slice
-close**, mark the tracker `shipped`, move the plan doc to `archive/plans/`,
-keep the tracker's one-line stub, advance CURRENT's Status + Next action.
-**Shipped narrative → archive, never CURRENT** (archive owns history).
+close**, follow `.agents/skills/slice-closeout/SKILL.md`: verify acceptance,
+update affected reference contracts, write closeout evidence, mark slice shipped
+in phase README, advance `roadmap/README.md`, update `operations/current.md`,
+archive the completed bundle when appropriate, prune transients, repair links,
+verify no live router treats archived material as authority.
+**Shipped narrative → archive, never current** (archive owns history).
 
-**Sliding window:** CURRENT references only the **immediate previous slice**
+**Sliding window:** `current.md` references only the **immediate previous slice**
 (one back-pointer) and the **single next action** — never enumerate shipped
-slices or the full plan sequence. History is chased backward through the
-tracker's depends-on column (and each archived plan's own prerequisites);
-archaeology follows the chain, it is not pre-loaded. Keep **Known bugs** /
-**Traps** bounded — delete entries when resolved or deferred elsewhere.
+slices or the full plan sequence. History is chased backward through the phase
+README and each archived plan's own prerequisites; archaeology follows the chain,
+it is not pre-loaded. Keep **Known bugs** / **Traps** bounded — delete entries
+when resolved or deferred elsewhere.
 
-**Next plan** — file `docs/plans/YYYY-MM-DD-P<number>-<slug>.md` — the
-P-number is assigned on registration and carried in the filename (e.g.
-`2026-08-18-P1-camera-overhaul.md`); the tracker
-([`plans/README.md`](./plans/README.md)) owns its status, order, and
-depends-on. Before implementing any increment,
-write a brief covering: (1) user outcome and out-of-scope behavior, (2) source
-components and existing APIs to reuse, (3) new props/state/dependencies, (4)
-mount/unmount and selection semantics, (5) exact acceptance tests and manual
-scenarios, (6) relic/Plan/visitor boundaries, and (7) rollback or fallback
-split if the increment expands.
+**Next plan** — file `docs/roadmap/<phase>/YYYY-MM-DD-P<number>-<slug>.md` — the
+P-number is assigned on registration and carried in the filename; the roadmap
+tracker ([`roadmap/README.md`](./roadmap/README.md)) owns its status, order, and
+depends-on. Before implementing any increment, write a brief covering: (1) user
+outcome and out-of-scope behavior, (2) source components and existing APIs to
+reuse, (3) new props/state/dependencies, (4) mount/unmount and selection
+semantics, (5) exact acceptance tests and manual scenarios, (6) relic/Plan/visitor
+boundaries, and (7) rollback or fallback split if the increment expands.
 
 ## Update rules
 
-- Contract change → matching `components/*.md` or `architecture.md`.
-- Plan status / order → [`plans/README.md`](./plans/README.md) (tracker).
-- Working-tree delta → `hand-off/CURRENT.md`.
+- Contract change → matching `reference/components/*.md` or `reference/architecture.md`.
+- Plan status / order → [`roadmap/README.md`](./roadmap/README.md) (tracker).
+- Working-tree delta → `operations/current.md`.
 - Direction / priority change → owner decision, recorded as a scope decision
   and reflected in the tracker.
-- Archive reference → only this router's link + tracker stubs; never explain
+- Archive reference → only this router's link + phase README stubs; never explain
   what is archived inline.

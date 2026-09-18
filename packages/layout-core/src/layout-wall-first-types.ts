@@ -2,7 +2,7 @@
  * `layout-wall-first-types.ts` — P23.0a wall-first Layout schema types.
  *
  * These types are the wall-first `LayoutDocument` shape ratified by
- * the P23 umbrella ([P23 umbrella §F0.1](../../../../docs/plans/2026-09-07-P23-layout-depth-minimum-build.md))
+ * the P23 umbrella ([P23 umbrella §F0.1](../../../../docs/roadmap/p23-layout-depth/2026-09-07-P23-layout-depth-minimum-build.md))
  * and the P23.0 child plan. The Foundation Gate is closed; these records are
  * now consumed by the wall-first Save and P23.1 precise semantic operations.
  * Legacy Room-owned records remain available through the compatibility path.
@@ -41,7 +41,7 @@ import type { LayoutObject, LayoutVec2 } from './layout-types';
  * pre-Compatibility-Baseline slice, so the wall-first `4` generation that reached
  * `main` before this branch is deliberately *not* migrated: having existed on
  * `main` does not by itself create a backward-compatibility obligation before the
- * Compatibility Baseline (`docs/north-star.md` → *Development-stage schema
+ * Compatibility Baseline (`docs/reference/north-star.md` → *Development-stage schema
  * compatibility*). A payload declaring `4` therefore fails as
  * `unsupported_format_version` instead of being silently reinterpreted as `5`.
  * There is no `4`→`5` cutover, no historical document type, no `6`/`7`.

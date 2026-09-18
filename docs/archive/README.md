@@ -7,10 +7,10 @@ Historical plans, handoffs, specs, and deep guides. **Not active implementation 
 | Doc | Role |
 |-----|------|
 | [`../README.md`](../README.md) | Context router (navigation, rules, meta) |
-| [`../plans/README.md`](../plans/README.md) | Plan tracker (status, order — authoritative) |
-| [`../hand-off/CURRENT.md`](../hand-off/CURRENT.md) | Live working-tree delta |
-| [`../north-star.md`](../north-star.md) | Product vision |
-| [`../architecture.md`](../architecture.md) | Ownership / boundaries |
+| [`../roadmap/README.md`](../roadmap/README.md) | Roadmap tracker (status, order — authoritative) |
+| [`../operations/current.md`](../operations/current.md) | Live working-tree delta |
+| [`../reference/north-star.md`](../reference/north-star.md) | Product vision |
+| [`../reference/architecture.md`](../reference/architecture.md) | Ownership / boundaries |
 
 If archive conflicts with live tree, **live tree wins**. Pre-2026-09-05
 versions of this table (which named a "P0" plan and a README layout from
@@ -33,6 +33,17 @@ Former sectioned durable context (north-star, shell, scene, …). Folded into [`
 
 Shipped phase diaries (workspace 1–3, phases 0–7, 4–5, 6.x, full-track Phase 1, complete-refactor slices).
 
+### `roadmap/`
+
+Completed modern roadmap bundles, grouped by phase/slice (post-migration
+closeouts land here with a one-line stub in their phase README).
+
+### `legacy/`
+
+Retired global buckets and superseded trackers: the pre-migration plan
+tracker, superseded brief stubs, advisory audits, cross-cutting strategy
+snapshots.
+
 ### `plans/`
 
 Completed workspace / phase-4 / phase-5 plans; old camera authoring plans; workspace release index.
@@ -51,4 +62,4 @@ Jul 28 museum-editor audit + 9-slice refactor plan. Done.
 
 ## How to read
 
-Handoffs = post-ship diaries. Plans = pre-implementation roadmaps. Specs = design for that phase. Prefer live `plans/` when a merged active file exists.
+Handoffs = post-ship diaries. Plans = pre-implementation roadmaps. Specs = design for that phase. Prefer the live roadmap (`../roadmap/`) when a merged active file exists.

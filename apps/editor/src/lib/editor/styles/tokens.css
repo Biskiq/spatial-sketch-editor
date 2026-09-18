@@ -7,7 +7,7 @@
  * `src/lib/editor/styles/scene-palette.ts` (Three.js materials cannot read
  * CSS variables); a contract test pins the two in sync.
  *
- * Section references: DS = docs/Design-specs/Design-specs.md.
+ * Section references: DS = docs/reference/design-system/design-specs.md.
  *
  * Theme layer — `:root` below is the canonical navy-blue theme and keeps the
  * FIRST declaration of every token (the scene-palette contract test matches

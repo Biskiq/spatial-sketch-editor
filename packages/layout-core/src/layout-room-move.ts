@@ -1,6 +1,6 @@
 /**
  * `layout-room-move.ts` — P23.6a: rigid Room-unit translation for wall-first
- * Layout documents ([P23.6a plan](../../../../docs/plans/2026-09-12-P23.6a-wall-first-room-unit-move.md)).
+ * Layout documents ([P23.6a plan](../../../../docs/roadmap/p23-layout-depth/2026-09-12-P23.6a-wall-first-room-unit-move.md)).
  *
  * In wall-first Layout a Room is persistent semantic identity reconciled from
  * topology, not an authored polygon, so a whole-Room move translates canonical
