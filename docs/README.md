@@ -66,7 +66,7 @@ archive = history
 | Scene codec internals | [`reference/components/scene-codec.md`](./reference/components/scene-codec.md) | `packages/project-model/src/scene-codec/` · app facade |
 | Assets / catalogue | [`reference/components/assets.md`](./reference/components/assets.md) | app-local `src/lib/content/assets.ts` |
 | Themes | [`reference/components/theme.md`](./reference/components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
-| Current worktree | [`operations/current.md`](./operations/current.md) | — |
+| Current work / baton | [`operations/current.md`](./operations/current.md) | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
@@ -93,24 +93,13 @@ PHASE: create README first; umbrella starts build program after discovery/design
 SHIP: use slice-closeout skill.
 ```
 
-**Next plan** — the slice README owns the exact plan path; the phase README
-owns child order/status. Before implementing any increment, write a brief
-covering: (1) user outcome and out-of-scope behavior, (2) source components
-and existing APIs to reuse, (3) new props/state/dependencies, (4)
-mount/unmount and selection semantics, (5) exact acceptance tests and manual
-scenarios, (6) relic/Plan/visitor boundaries, and (7) rollback or fallback
-split if the increment expands.
-
-New phase → folder + README; discovery/design as needed; umbrella marks
-transition to build program.
-
 ## Update rules
 
 ```text
 UPDATE:
 - P-level state/order → roadmap/README.md
 - phase/slice state → owning README
-- live worktree → operations/current.md
+- current work baton → operations/current.md
 - landed truth → reference/*
 - deferred bug → operations/tech-debt/
 - slice ship → slice-closeout skill

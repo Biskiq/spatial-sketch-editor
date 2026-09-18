@@ -17,7 +17,7 @@ PIPELINE: P23 → P26 → P24 → P25
 
 ```text
 BACKLOG: P13 proposed/unscheduled; branch-rejoin experiment, no schedule → backlog/
-OPS: live worktree → ../operations/current.md
+OPS: current work baton → ../operations/current.md
 MODEL: per-increment routing → model-assessment.md
 ```
 
