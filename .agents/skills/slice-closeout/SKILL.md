@@ -15,7 +15,7 @@ Deterministic slice lifecycle: plan → implementation → QA → reference upda
    proposals must never silently become reference truth; only landed behavior moves.
 3. Write/update slice closeout evidence (acceptance record, rulings, residuals).
 4. Mark slice shipped in its phase README (`docs/roadmap/<phase>/README.md`).
-5. Advance `docs/roadmap/README.md` pointer (current phase/slice/status/next action).
+5. Update `docs/roadmap/README.md` only if P-level execution/planning/order changed.
 6. Update `docs/operations/current.md` to the next work item (baton, not history).
 7. Archive the whole completed slice bundle under `docs/archive/roadmap/...`
    and leave a one-line stub in the phase README. Archive is opt-in evidence only.

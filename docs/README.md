@@ -6,7 +6,7 @@
 **Live working-tree state:** [`operations/current.md`](./operations/current.md) ·
 **Roadmap gate:** P12, core P3B, P14–P22 shipped. **P23 in flight.**
 P3B.7b deferred non-blocking; P13 proposed/unscheduled.
-See tracker for current phase/slice.
+See tracker for P-level pipeline/order.
 
 ## Context discipline (progressive disclosure)
 
@@ -57,8 +57,8 @@ reference/north-star.md  → product direction
 archive/                 → rationale only (opt-in)
 ```
 
-Two separations: **status authority** (what's next) is the roadmap tracker's job, not
-this chain's; **direction/priority conflicts are owner decisions**, not doc
+Two separations: **P-level status** is the roadmap tracker's job (slice status
+lives in phase/slice READMEs), not this chain's; **direction/priority conflicts are owner decisions**, not doc
 conflicts — never "resolve" a product question by doc order.
 
 ## Decide what to read
@@ -87,7 +87,7 @@ docs/
     components/          ← one contract per surface
     design-system/       ← canonical UI/design contracts + visual registry
   roadmap/               ← what are we changing, and what comes next
-    README.md            ← status authority (current phase/slice/next)
+    README.md            ← P-level pipeline/order (slices live in phase folders)
     p23-layout-depth/    ← active phase
     p24-scene-staging/   ← proposed phase
     p25-experience/      ← proposed phase
@@ -146,7 +146,7 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
 ```text
 ## Working tree    — what is in the tree right now (uncommitted)
-## Next action     — tracker pointer + immediate artifact + any gate
+## Next action     — phase README pointer + immediate artifact + any gate
 ## Verification    — test count, svelte-check, build state
 ## Known bugs      — live defects, one line each
 ## Traps           — terse gotchas that cost debugging time
@@ -156,7 +156,8 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 Lifecycle: on **slice open**, update Working tree + Next action. On **slice
 close**, follow `.agents/skills/slice-closeout/SKILL.md`: verify acceptance,
 update affected reference contracts, write closeout evidence, mark slice shipped
-in phase README, advance `roadmap/README.md`, update `operations/current.md`,
+in phase README, update `roadmap/README.md` only if P-level
+execution/planning/order changed, update `operations/current.md`,
 archive the completed bundle when appropriate, prune transients, repair links,
 verify no live router treats archived material as authority.
 **Shipped narrative → archive, never current** (archive owns history).
@@ -168,19 +169,22 @@ README and each archived plan's own prerequisites; archaeology follows the chain
 it is not pre-loaded. Keep **Known bugs** / **Traps** bounded — delete entries
 when resolved or deferred elsewhere.
 
-**Next plan** — file `docs/roadmap/<phase>/YYYY-MM-DD-P<number>-<slug>.md` — the
-P-number is assigned on registration and carried in the filename; the roadmap
-tracker ([`roadmap/README.md`](./roadmap/README.md)) owns its status, order, and
-depends-on. Before implementing any increment, write a brief covering: (1) user
-outcome and out-of-scope behavior, (2) source components and existing APIs to
-reuse, (3) new props/state/dependencies, (4) mount/unmount and selection
-semantics, (5) exact acceptance tests and manual scenarios, (6) relic/Plan/visitor
-boundaries, and (7) rollback or fallback split if the increment expands.
+**Next plan** — the slice README owns the exact plan path; the phase README
+owns child order/status. Before implementing any increment, write a brief
+covering: (1) user outcome and out-of-scope behavior, (2) source components
+and existing APIs to reuse, (3) new props/state/dependencies, (4)
+mount/unmount and selection semantics, (5) exact acceptance tests and manual
+scenarios, (6) relic/Plan/visitor boundaries, and (7) rollback or fallback
+split if the increment expands.
+
+New phase → folder + README; discovery/design as needed; umbrella marks
+transition to build program.
 
 ## Update rules
 
 - Contract change → matching `reference/components/*.md` or `reference/architecture.md`.
-- Plan status / order → [`roadmap/README.md`](./roadmap/README.md) (tracker).
+- P-level status / order → [`roadmap/README.md`](./roadmap/README.md) (tracker);
+  slice status/order → owning phase README.
 - Working-tree delta → `operations/current.md`.
 - Direction / priority change → owner decision, recorded as a scope decision
   and reflected in the tracker.

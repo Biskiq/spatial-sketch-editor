@@ -14,8 +14,7 @@ P26 — Spatial Depth
 → p26-spatial-depth/README.md
 
 PIPELINE
-P23 → P24 → P25
-P26 research parallel
+P23 → P26 → P24 → P25
 
 STATUS
 P23 in-progress
@@ -33,37 +32,26 @@ For P26 stage: open `p26-spatial-depth/README.md`.
 
 - Active phase: [`p23-layout-depth/README.md`](./p23-layout-depth/README.md)
 - Live worktree: [`../operations/current.md`](../operations/current.md)
+- P26 (planning): [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md)
 - P24 (proposed): [`p24-scene-staging/README.md`](./p24-scene-staging/README.md)
 - P25 (proposed): [`p25-experience/README.md`](./p25-experience/README.md)
-- P26 (planning): [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md)
 - Backlog (proposed/unscheduled): [`backlog/`](./backlog/)
 - Model routing: [`model-assessment.md`](./model-assessment.md)
 
 ## Long-term direction (tiers only; registered plans own P-numbers)
 
 - **P23 — Layout Depth** (active): wall-first architectural Plan editor minimum.
+- **P26 — Evidence-led platform expansion** (planning): vertical structure +
+  orthographic precision over one wall-first model.
 - **P24 — Scene / Staging Depth** (proposed): asset supply + staging authoring.
 - **P25 — Experience Foundation** (proposed): destination + stop + panel + interaction.
-- **P26+ — Evidence-led platform expansion** (planning): vertical structure +
-  orthographic precision over one wall-first model.
 - **Typed DB layer** — conditional infrastructure, not a numbered milestone.
 
 Status enum: `proposed | approved | in-progress | shipped | archived`.
 This tracker is authoritative when a plan doc's `**Status:**` drifts.
 Execution order is pinned by phase README depends-on, not by P-number order.
 
-## Slice closeout rule (deterministic)
+## Lifecycle
 
-New closeouts: promote landed behavior to reference, archive slice bundle
-under `docs/archive/roadmap/...`, leave one-line stub in phase README.
-Procedure: `.agents/skills/slice-closeout/SKILL.md`.
-
-## Planning procedure
-
-- **New P phase** → folder + phase README + umbrella plan.
-- **Child slice** → folder + slice README + `plan/` (+ `context/` / `research/` /
-  `design/` / `qa/` only when real artifacts exist).
-- **Evidence only when a gate requires it.** Evidence never overrides umbrella
-  contracts — conflicts go to owner review. Do not reopen broad research when
-  prior discovery already selected the references.
-- Child plan existing ≠ implementation-ready. Statuses live in phase README.
+Slice closeout: `.agents/skills/slice-closeout/SKILL.md`.
+Child plan existing ≠ implementation-ready. Slice statuses live in phase READMEs.

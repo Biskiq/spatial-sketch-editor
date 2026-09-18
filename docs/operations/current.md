@@ -27,34 +27,27 @@ slice plus one next action only.
 
 ## Verification
 
-- P23.13 merged as `368a799` (2026-09-17, after review fixes). Full editor suite
-  **4362 passed / 1 skipped** (291 files), `svelte-check` **0 errors /
-  0 warnings**, `check:layout-core` clean. Five new S9/S10 suites pass 36/36.
-- Acceptance rows driven live 2026-09-17 (keyboard groups, Enter→numeric,
-  grayscale, contrast, targets, 200% zoom, seven themes, thin walls, empty,
-  dense). Full rows in archive record above.
+- P23.13 merged as `368a799` (2026-09-17, after review fixes): **4362 passed /
+  1 skipped** (291 files), `svelte-check` **0 errors / 0 warnings**,
+  `check:layout-core` clean, S9/S10 suites 36/36. Acceptance driven live;
+  full rows in archive record above.
 - Not observed (pinned, not eyeballed): Scene ink on wall-first Plan,
   coarse-pointer layout, legacy inert-smoke surface (D2, unit-pinned only).
 
 ## Known bugs / deferred
 
-- **TD-1 (open — deferred to P24): floor-supported placement is unreachable in canonical
-  wall-first projects.** No camera node, Scene primitive, light or asset can be placed:
-  the placement acceptance predicate still requires membership of the room registry that
-  a wall-first document deliberately leaves empty, and the placement command itself is
-  room-first. Found 2026-09-17, introduced by the P23.0 F0 stage-4 / P23.3 format cutover.
-  Full diagnosis, evidence and options: [`docs/operations/tech-debt/README.md`](./tech-debt/README.md).
+- **TD-1 (open — deferred to P24): floor-supported placement unreachable in
+  canonical wall-first projects** (placement predicate + command still
+  room-first; registry empty by design). Full diagnosis + options:
+  [`docs/operations/tech-debt/README.md`](./tech-debt/README.md).
 - P23.13's 4 carried rows (Opening-insert, undo-with-field-open,
   coarse-pointer, Room rotation-handle) — see slice README Carried rows.
-- Issue #26: retire the legacy Room-owned Layout stack after P23; P23 closeout
-  keeps only internal-dependency smoke and adds no compatibility behavior.
-- Issue #28: Layout Room/mixed multi-select remains post-P23.
-- Canonical wall-first 3D Wall/Opening picking + highlighting remains post-P23;
-  P23.15 owns junction-correct rendering only.
-- General curved intersections/noding, NURBS, constraints, construction-document
-  output and CAD/BIM depth remain outside the revised P23 minimum.
-- Issues #32, #36 and #37 are valid post-P23 3D/material accessibility debt;
-  #31, #33 and #44 are unrelated to the P23 Layout closeout boundary.
+- Post-P23 scope: Issue #26 (retire Room-owned Layout stack; closeout keeps
+  internal-dependency smoke only), #28 (Room/mixed multi-select), 3D
+  Wall/Opening picking (P23.15 owns junction-correct rendering only), curved /
+  NURBS / constraints / construction-document output outside P23 minimum.
+- Issues #32, #36, #37 valid post-P23 3D/material debt; #31, #33, #44
+  unrelated to Layout closeout.
 
 ## Traps
 
@@ -68,30 +61,21 @@ slice plus one next action only.
   *eyeballed* on the strength of source pins, and do not bolt a `__qa-*` plate
   into the tree to fake it (a `__`-prefixed plate runs inside the suite via
   vitest `include` and writes into the tree).
-- **The whole test suite is described as 291 files; the keyboard/traversal
-  contracts in `p23-13-keyboard` are partly *source-string* pins** (they slice
-  `LayoutPlanViewport.svelte` and assert text). They are weaker than they look —
-  they passed while the announcement was missing §9's required value and units,
-  because they pinned the announcement's *shape* and never asked what a keyboard
-  user actually hears. Drive the path live (or assert the composed string) before
-  trusting a refactor that renames or reorders those handlers.
-- **Arrows must not enter the control group** (A5: Enter enters, arrows traverse).
-  Two halves, and both are load-bearing: `planTraversalStep` answers `null` for a
-  focus outside the group, and `planTraversalEnteredFor` requires the keyboard to
-  have *entered* that selection — because the **pointer also focuses controls**
-  (`planAcquiredControl` → `setPlanFocus`), so inferring the entry from
-  `planFocus` let a click unlock the arrows and steal ArrowRight/Left/Up and
-  their scrolling. Do not "fix" it back to the roving-tabindex convention.
-- **The keyboard readout is a keyboard instrument**: it is retired by Escape, by
-  a mode/tool cancel, by a primary press that reaches the canvas, and by a
-  **successful exact edit** (which changed the value the region was holding) —
-  never by pointer focus alone, which stays silent. Clear it, do **not** recompute
-  it on every change: §9 allows one announcement per meaningful change, and a
-  self-refreshing readout is the per-change chatter it forbids. A **known
-  residue**: an Undo that moves the focused control changes its value with no
-  pointer and no keyboard move, so the region can hold the previous coordinates
-  (same family as the carried undo-with-field-open row; closing it needs a
-  history hook the viewport does not own).
+- **The keyboard/traversal contracts in `p23-13-keyboard` are partly
+  *source-string* pins** (slice `LayoutPlanViewport.svelte`, assert text). They
+  passed while the announcement missed §9's value+units — drive the path live
+  before trusting refactors that rename/reorder those handlers.
+- **Arrows must not enter the control group** (A5: Enter enters, arrows
+  traverse). `planTraversalStep` returns `null` outside the group;
+  `planTraversalEnteredFor` requires keyboard entry — pointer focus also sets
+  `planFocus`, so entry-from-focus let clicks steal arrows/scrolling. Do not
+  "fix" back to roving-tabindex.
+- **The keyboard readout is a keyboard instrument**: retired by Escape,
+  mode/tool cancel, canvas-reaching primary press, or successful exact edit —
+  never by pointer focus alone. Clear it, do **not** recompute per change (§9:
+  one announcement per meaningful change). **Known residue**: Undo moving the
+  focused control leaves stale coordinates (needs a history hook the viewport
+  does not own; same family as the carried undo-with-field-open row).
 - A drawing gesture on Plan needs `setPointerCapture` stubbed for synthetic
   pointers; that is the only platform call QA has ever stubbed, and no app
   gesture logic is touched by it.
