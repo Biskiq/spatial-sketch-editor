@@ -19,9 +19,8 @@ NEXT: write implementation-ready child plan from context + final-direction below
 
 ## DESIGN
 
-- [`context/shell-design-context.md`](./context/shell-design-context.md)
-- [`design/final-direction.md`](./design/final-direction.md)
 - [`design/briefs/p23.14-designer-brief.md`](./design/briefs/p23.14-designer-brief.md) (assignment, not authority)
+- Context + final-direction: see IMPLEMENT above.
 
 ## EVIDENCE — read only if needed
 

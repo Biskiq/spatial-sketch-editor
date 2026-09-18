@@ -61,81 +61,43 @@ Two separations: **P-level status** is the roadmap tracker's job (slice status
 lives in phase/slice READMEs), not this chain's; **direction/priority conflicts are owner decisions**, not doc
 conflicts — never "resolve" a product question by doc order.
 
-## Decide what to read
-
-| Task | Read |
-|------|------|
-| What's next? | [`roadmap/README.md`](./roadmap/README.md), then STOP |
-| Implement current slice | [`roadmap/README.md`](./roadmap/README.md) → phase README → slice README → implementation plan |
-| Architecture/ownership question | [`reference/architecture.md`](./reference/architecture.md) |
-| Current subsystem behavior | `reference/components/<surface>.md` |
-| Current product direction | [`reference/north-star.md`](./reference/north-star.md) |
-| Current worktree/handoff | [`operations/current.md`](./operations/current.md) |
-| Known bug / tech debt | [`operations/tech-debt/`](./operations/tech-debt/) |
-| Design current slice | slice README → routed design files |
-| Research current slice | slice README → routed research files |
-| Historical rationale | [`archive/`](./archive/) (opt-in; nothing here is current truth) |
-
-## Folder map
+## Where truth lives
 
 ```text
-docs/
-  README.md              ← this router (navigation, rules, meta)
-  reference/             ← what is true now (durable truth)
-    architecture.md      ← ownership / boundaries
-    north-star.md        ← final product vision
-    components/          ← one contract per surface
-    design-system/       ← canonical UI/design contracts + visual registry
-  roadmap/               ← what are we changing, and what comes next
-    README.md            ← P-level pipeline/order (slices live in phase folders)
-    p23-layout-depth/    ← active phase
-    p24-scene-staging/   ← proposed phase
-    p25-experience/      ← proposed phase
-    p26-spatial-depth/   ← research-stage phase
-    backlog/             ← proposed/unscheduled (P13, branch rejoin)
-    model-assessment.md  ← per-increment model routing
-  operations/            ← what is happening right now
-    current.md           ← live working-tree delta (baton, not history)
-    tech-debt/           ← deferred defects (reproduced + diagnosed)
-  archive/               ← why did old work happen (opt-in evidence only)
+reference = landed truth
+roadmap = future work
+operations = live work
+archive = history
 ```
 
-**Archive:** live routers never treat archived material as authority. Enter only
-when the task explicitly requires historical rationale.
-
-## Product surface
-
-| Route | Role |
-|---|---|
-| `/` | Public entry (start creating guest project, or continue with Google) |
-| `/editor` | Compatibility redirect → `/project/:id/spatial` |
-| `/projects` | Project Hub (owned cloud project list for authenticated creators) |
-| `/project/:id/spatial` | Spatial workspace (Scene · Camera × Plan · 3D) |
-| `/project/:id/publish` | Publish surface (owner-only status, publish/update/unpublish) |
-| `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth) |
-| `/project/:id/preview` | Visitor Preview takeover (transient snapshot, no save required) |
-| `/museum` | Frozen Chopin visitor relic (checked-in `chopin-project.json`) |
-| `/museum/editor` | Frozen legacy editor relic (Scene · Camera, no Layout) |
-| `/dev/materials` · `/dev/assets` · `/dev/perf` | Development previews / G3 harness |
-
-The editor boots into a fresh empty project; no Chopin/legacy state is loaded
-or migrated. Guest/local work lives in the browser session with portable
-export/import. Authenticated cloud work adds owned Save/Load with a project
-list and versioned saves.
-
-## Read what you need
-
-| Surface | Contract doc | Key source |
-|---------|--------------|------------|
+| Need | Read | Code |
+|------|------|------|
+| What's next? | [`roadmap/README.md`](./roadmap/README.md), then STOP | — |
+| Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |
+| Product direction | [`reference/north-star.md`](./reference/north-star.md) | — |
+| Product routes | [`reference/architecture.md`](./reference/architecture.md) §Product routes | — |
 | Shell / workspaces / timeline | [`reference/components/shell.md`](./reference/components/shell.md) · [`reference/design-system/design-shell-specs.md`](./reference/design-system/design-shell-specs.md) (+ per-domain [`reference/design-system/shell-scene-workspaces.md`](./reference/design-system/shell-scene-workspaces.md) / [`reference/design-system/shell-camera-workspaces.md`](./reference/design-system/shell-camera-workspaces.md)) | `apps/editor/src/lib/editor/app/` |
 | Scene entities / materials / lights | [`reference/components/scene-content.md`](./reference/components/scene-content.md) | app-local `src/lib/content/` facades |
-| Gizmo / placement / transforms | [`reference/components/placement.md`](./reference/components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
+| Placement / transforms | [`reference/components/placement.md`](./reference/components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
 | Camera / tour / motion | [`reference/components/camera-tour.md`](./reference/components/camera-tour.md) | `packages/camera-core/src/` · visitor components in `apps/museum/src/lib/museum/navigation/` |
 | Persistence / schema / history | [`reference/components/persistence.md`](./reference/components/persistence.md) | `packages/project-model/src/` · `packages/layout-core/src/` · app facades |
 | Scene codec internals | [`reference/components/scene-codec.md`](./reference/components/scene-codec.md) | `packages/project-model/src/scene-codec/` · app facade |
 | Assets / catalogue | [`reference/components/assets.md`](./reference/components/assets.md) | app-local `src/lib/content/assets.ts` |
 | Themes | [`reference/components/theme.md`](./reference/components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
-| Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | |
+| Current worktree | [`operations/current.md`](./operations/current.md) | — |
+| Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
+| Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
+| History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
+
+```text
+IMPLEMENT: roadmap → phase → slice → plan
+DESIGN: phase/slice README → routed design
+RESEARCH: phase/slice README → routed research
+STOP: task answered
+```
+
+**Archive:** live routers never treat archived material as authority. Enter only
+when the task explicitly requires historical rationale.
 
 Docs = WHAT is true + WHERE truth lives. Skills = HOW to perform an occasional
 workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
@@ -154,13 +116,7 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 ```
 
 Lifecycle: on **slice open**, update Working tree + Next action. On **slice
-close**, follow `.agents/skills/slice-closeout/SKILL.md`: verify acceptance,
-update affected reference contracts, write closeout evidence, mark slice shipped
-in phase README, update `roadmap/README.md` only if P-level
-execution/planning/order changed, update `operations/current.md`,
-archive the completed bundle when appropriate, prune transients, repair links,
-verify no live router treats archived material as authority.
-**Shipped narrative → archive, never current** (archive owns history).
+close**, follow `.agents/skills/slice-closeout/SKILL.md` (procedure lives there).
 
 **Sliding window:** `current.md` references only the **immediate previous slice**
 (one back-pointer) and the **single next action** — never enumerate shipped

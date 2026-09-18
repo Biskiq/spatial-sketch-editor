@@ -5,13 +5,10 @@ slice plus one next action only.
 
 ## Working tree
 
-- `main` @ `5cfe4d0` stable tip. P23.13 merged via PR #58 (`368a799`);
-  Junction-dissolve merged via PR #57 (`2716f61`). Uncommitted docs pass in
-  tree (P23.14 re-scope + tracker reconciliation).
+- `main` @ `fe94150` stable tip. P23.13 merged via PR #58 (`368a799`);
+  Junction-dissolve merged via PR #57 (`2716f61`). Tree clean.
 - Immediate previous slice: P23.13. Full S0–S10 record + D1–D5 rulings:
   [`archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md`](../archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md).
-- Junction-dissolve plan stays live with the phase (shipped, no P-number);
-  Inspector / Navigator-row / Plan-menu entries deferred to P23.14.
 
 ## Next action
 
@@ -83,13 +80,6 @@ slice plus one next action only.
 
 ## Non-negotiables
 
-- Canonical wall-first Junction/Wall/Opening ownership with persistent semantic
-  Rooms; explicit Junction IDs own connectivity.
-- `LayoutDocument` and `SceneDocument` remain separate; Layout edits never move
-  world-local Scene/Camera content implicitly.
-- One compiler/topology/Room-reconciliation path and deterministic selection,
-  history and Undo/Redo.
-- One Camera graph/route/motion authority.
-- `/museum` and `/p/:publicationId` remain visitor-safe; editor-only hierarchy,
-  selection, history and gizmo code never enter visitor chunks.
-- No commits unless the user asks.
+Invariants: [`AGENTS.md`](../../AGENTS.md) hard rules 1–7 (wall-first
+ownership, doc separation, one compiler/history, one camera authority,
+visitor safety, no commits unless asked).

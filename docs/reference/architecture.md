@@ -17,6 +17,26 @@ apps/editor (greenfield)     apps/museum (frozen Chopin visitor)
 - Shared visitor-safe geometry/render modules may serve both lanes; session,
   selection, hierarchy, gizmo, import, and asset-store code stay editor-only.
 
+## Product routes
+
+| Route | Role |
+|---|---|
+| `/` | Public entry (start creating guest project, or continue with Google) |
+| `/editor` | Compatibility redirect → `/project/:id/spatial` |
+| `/projects` | Project Hub (owned cloud project list for authenticated creators) |
+| `/project/:id/spatial` | Spatial workspace (Scene · Camera × Plan · 3D) |
+| `/project/:id/publish` | Publish surface (owner-only status, publish/update/unpublish) |
+| `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth) |
+| `/project/:id/preview` | Visitor Preview takeover (transient snapshot, no save required) |
+| `/museum` | Frozen Chopin visitor relic (checked-in `chopin-project.json`) |
+| `/museum/editor` | Frozen legacy editor relic (Scene · Camera, no Layout) |
+| `/dev/materials` · `/dev/assets` · `/dev/perf` | Development previews / G3 harness |
+
+The editor boots into a fresh empty project; no Chopin/legacy state is loaded
+or migrated. Guest/local work lives in the browser session with portable
+export/import. Authenticated cloud work adds owned Save/Load with a project
+list and versioned saves.
+
 ## Platform boundary
 
 | Concern | Ratified owner |
@@ -109,32 +129,8 @@ are never serialized.
 
 ## Where to look (per surface)
 
-| Working on… | Read | Key source |
-|---|---|---|
-| Shell / workspaces / timeline | [`components/shell.md`](./components/shell.md) | `apps/editor/src/lib/editor/app/` |
-| P21+ product shell / Hub / chrome target | [`design-system/design-plan-p21.md`](./design-system/design-plan-p21.md) | — |
-| Entities / materials / lights | [`components/scene-content.md`](./components/scene-content.md) | app-local `src/lib/content/` facades |
-| Gizmo / placement / transforms | [`components/placement.md`](./components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
-| Camera / tour / motion | [`components/camera-tour.md`](./components/camera-tour.md) | `packages/camera-core/src/` · visitor components in `apps/museum/src/lib/museum/navigation/` |
-| Persistence / schema / history | [`components/persistence.md`](./components/persistence.md) | `packages/project-model/src/` · `packages/layout-core/src/` · app facades |
-| Scene codec internals | [`components/scene-codec.md`](./components/scene-codec.md) | `packages/project-model/src/scene-codec/` · app facade |
-| Assets / catalogue / project asset registry | [`components/assets.md`](./components/assets.md) | app-local `src/lib/content/assets.ts` · editor registry UI/persistence (`EditorAssetLibrary.svelte` · `project-persistence.ts`) |
-| Themes / tokens | [`components/theme.md`](./components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
-
-**Shell source index**
-
-```text
-Target product IA / P21+ chrome
-→ docs/reference/design-system/design-plan-p21.md
-
-Current implementation map
-→ docs/reference/components/shell.md
-
-Per-workspace exposure
-→ docs/reference/design-system/design-shell-specs.md
-→ docs/reference/design-system/shell-scene-workspaces.md
-→ docs/reference/design-system/shell-camera-workspaces.md
-```
+Doc routing lives in the router ([`../README.md`](../README.md) §Where truth
+lives). Contract truth lives in Ownership + Geometry boundary above/below.
 
 ## Geometry boundary
 
