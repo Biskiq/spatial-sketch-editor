@@ -6,9 +6,12 @@
 ## Context discipline (progressive disclosure)
 
 Do not preload the documentation tree. Start here, identify the task surface,
-then read **only the referenced documents required for that task**.
+then read **the smallest routed context that can answer the task**.
 
-> Stop reading once the routed files answer the task. Do not recursively scan adjacent documentation merely because it exists.
+> A stop point means no additional reading is currently justified — not that
+> further investigation is forbidden. Do not preload deeper or adjacent
+> documentation speculatively. Expand only when the task, missing information,
+> or contradictory evidence requires it.
 
 ### Reading depths
 
@@ -25,7 +28,7 @@ Read only:
 
 L2 — BOUNDED INVESTIGATION
 Search exact terms/symbols/paths.
-Open only matching docs/code needed to resolve question.
+Open only matching docs/code/tests/Git needed to resolve question.
 
 L3 — DEEP EXPLORATION
 Allowed only when:
@@ -46,7 +49,7 @@ question by doc order.
 ## Where truth lives
 
 ```text
-reference = landed truth
+reference = current intended system (authoritative but falsifiable — see below)
 roadmap = future work
 operations = live work
 archive = history
@@ -54,7 +57,7 @@ archive = history
 
 | Need | Read | Code |
 |------|------|------|
-| What's next? | [`roadmap/README.md`](./roadmap/README.md), then STOP | — |
+| What's next? | [`roadmap/README.md`](./roadmap/README.md), then stop (no source survey) | — |
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |
 | Product direction | [`reference/north-star.md`](./reference/north-star.md) | — |
 | Product routes | [`reference/architecture.md`](./reference/architecture.md) §Product routes | — |
@@ -76,11 +79,81 @@ archive = history
 IMPLEMENT: roadmap → phase → slice → plan
 DESIGN: phase/slice README → routed design
 RESEARCH: phase/slice README → routed research
-STOP: task answered
+STOP: no additional reading currently justified
 ```
 
 **Archive:** live routers never treat archived material as authority. Enter only
 when the task explicitly requires historical rationale.
+
+## Progressive project knowledge
+
+The map is intentionally incomplete and grows through normal work:
+
+```text
+existing map
+→ cheapest relevant starting point
+→ enough context?
+   ├─ yes → work
+   └─ no  → bounded discovery in source/tests/Git
+                ↓
+             verify
+                ↓
+       reusable durable knowledge?
+          ├─ no → keep task-local / discard
+          └─ yes → reconcile / promote into project knowledge
+```
+
+The repository is durable memory; the model context window is temporary
+working memory. Docs accumulate high-value verified understanding — they do
+not mirror or index the source tree.
+
+**Promote** (into the appropriate existing `reference/` doc; new route only
+when a recurring reusable concept has actually emerged): subsystem ownership,
+architectural boundaries, persisted formats/contracts, reusable
+transform/data-flow rules, non-obvious current behavior expensive to
+rediscover, owner-approved architectural decisions, stable constraints future
+implementation must respect.
+
+**Do not promote:** files merely visited, search/traversal history, guesses or
+inferred intent, debugging chronology, temporary implementation details, facts
+trivially recoverable from source, proposed future behavior (stays in
+roadmap).
+
+**Descriptive vs normative:** agents may record descriptive current-system
+facts derived from source/tests (which schema is persisted, which component
+owns serialization, what tests enforce). Normative decisions ("there must be
+only one nav system", "Layout/Scene ownership stays separate") need support
+from existing approved reference/architecture, North Star, an approved
+roadmap/design decision, or an explicit owner ruling — never canonize them
+from implementation accidents alone.
+
+**Omission over invention:** under-mapping is safer than wrong mapping. The
+map may stay partial (`CONFIRMED` / `PARTIAL` / `UNKNOWN` where it materially
+aids clarity — no confidence database). Unsupported guesses never become
+durable authority.
+
+**Reference is authoritative but falsifiable.** If source/tests/Git
+materially contradict a reference claim, determine which case applies:
+
+```text
+A. implementation regression → reference remains intended truth → repair implementation
+B. legitimate implementation change + stale reference → reconcile reference to current truth
+C. ambiguous evidence → do not guess → keep uncertainty explicit / escalate
+```
+
+Stale high-authority docs are more dangerous than missing docs — challenge and
+reconcile them rather than silently following either side.
+
+**Evidence anchors (selective):** for important non-obvious architectural
+claims whose incorrectness would misroute future work, add lightweight
+anchors — source path, symbol/export, schema, test, composition root. Not
+every sentence needs a citation.
+
+**Completion:** at the end of substantial work ask: did this establish or
+change durable knowledge future work would otherwise rediscover? If yes,
+reconcile the `reference/` doc, update routing only if necessary, keep
+proposals in roadmap, supersede stale claims. If no, change no docs merely
+for completeness.
 
 Docs = WHAT is true + WHERE truth lives. Skills = HOW to perform an occasional
 workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
@@ -105,7 +178,7 @@ UPDATE:
 - phase/slice state → owning README
 - current work baton → operations/current.md
 - interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
-- landed truth → reference/*
+- landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)
 - deferred bug → operations/tech-debt/
 - slice ship → slice-closeout skill
 - direction change → owner decision (scope decision)

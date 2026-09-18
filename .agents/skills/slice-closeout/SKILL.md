@@ -19,8 +19,10 @@ Deterministic slice lifecycle: plan → implementation → QA → reference upda
    artifact; landed behavior → `reference/*`; verification/rulings →
    closeout/archive; status → phase/slice README), then delete the checkpoint
    and remove any `current.md` RESUME pointer. Do not archive raw checkpoints.
-3. Update affected durable reference contracts (`docs/reference/...`). Roadmap
-   proposals must never silently become reference truth; only landed behavior moves.
+3. Update affected durable reference contracts (`docs/reference/...`) only if the
+   slice established or changed durable knowledge future work would otherwise
+   rediscover; reconcile/supersede stale claims it invalidates.
+   Roadmap proposals must never silently become reference truth; only landed behavior moves.
 4. Write/update slice closeout evidence (acceptance record, rulings, residuals).
 5. Mark slice shipped in its phase README (`docs/roadmap/<phase>/README.md`).
 6. Update `docs/roadmap/README.md` only if P-level execution/planning/order changed.
