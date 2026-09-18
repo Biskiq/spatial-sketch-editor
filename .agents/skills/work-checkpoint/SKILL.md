@@ -106,7 +106,9 @@ unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Complete
 
-Promote before delete:
+Promote before delete (only verified reusable knowledge — see
+`docs/README.md` §Progressive project knowledge; no doc change merely for
+completeness):
 
 ```text
 bug deferred → operations/tech-debt/
