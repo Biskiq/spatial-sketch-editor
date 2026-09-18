@@ -22,12 +22,12 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 7. Svelte 5 runes; Threlte patterns; `scroll-travel` unused.
 8. **No commits** unless user asks.
 9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
-10. **Truth precedence** — when live docs conflict without implementation evidence, highest wins:
-    `source code + tests → operations/current.md → active plan → component
-    contract → reference/architecture.md → reference/north-star.md → archive`.
-    A material contradiction between `reference/` and source/tests/Git is **not**
-    auto-resolved by this order — determine regression vs stale reference vs
-    ambiguity per `docs/README.md` §Progressive project knowledge.
+10. **Truth precedence** — for doc-vs-doc conflicts, highest wins:
+    `operations/current.md → active plan → component contract →
+    reference/architecture.md → reference/north-star.md → archive`.
+    Source/tests/Git are implementation evidence, not another documentation
+    tier. If they materially contradict `reference/`, use the reconciliation
+    triage in `docs/README.md` rather than resolving by precedence alone.
 
 ## Boot contract
 

@@ -82,8 +82,10 @@ RESEARCH: phase/slice README → routed research
 STOP: no additional reading currently justified
 ```
 
-**Archive:** live routers never treat archived material as authority. Enter only
-when the task explicitly requires historical rationale.
+**Archive:** live routers never treat archived material as current authority.
+Enter only when the task explicitly requires historical rationale, or when
+bounded current evidence cannot resolve a material provenance/contradiction
+question.
 
 ## Progressive project knowledge
 
@@ -125,7 +127,9 @@ owns serialization, what tests enforce). Normative decisions ("there must be
 only one nav system", "Layout/Scene ownership stays separate") need support
 from existing approved reference/architecture, North Star, an approved
 roadmap/design decision, or an explicit owner ruling — never canonize them
-from implementation accidents alone.
+from implementation accidents alone. An approved roadmap/design decision is
+authoritative within that planned scope; it moves into reference only when it
+becomes a landed/current contract.
 
 **Omission over invention:** under-mapping is safer than wrong mapping. The
 map may stay partial (`CONFIRMED` / `PARTIAL` / `UNKNOWN` where it materially
