@@ -23,6 +23,6 @@ MODEL: per-increment routing → model-assessment.md
 
 Non-milestone: Typed DB layer (conditional infra).
 
-Status enum: `proposed | approved | in-progress | shipped | archived`.
+Status enum: `proposed | planning | approved | in-progress | shipped | archived`.
 This tracker is authoritative when a plan doc's `**Status:**` drifts.
 Execution order is pinned by phase README depends-on, not by P-number order.

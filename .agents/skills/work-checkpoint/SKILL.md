@@ -1,6 +1,6 @@
 ---
 name: work-checkpoint
-description: Checkpoint interrupted work for cross-agent resume. Use when substantial work is interrupted mid-task and another agent must continue the same unit without reconstructing the investigation.
+description: Checkpoint substantial interrupted work for same- or cross-agent resume. Use to create, resume, update, or complete a checkpoint without reconstructing prior investigation.
 ---
 
 # Work Checkpoint
@@ -44,6 +44,10 @@ TYPE:
 STATUS: paused
 GOAL:
 
+CONSTRAINTS:
+- original task/scope boundaries
+- owner ruling / existing deferral if relevant
+
 READ:
 - exact files/docs already relevant
 
@@ -79,15 +83,25 @@ ESTABLISHED ≠ hypothesis
 RULED OUT = actually disproven
 CURRENT = current frontier, not narrative history
 NEXT = 1–3 exact continuation actions
+NEXT may not silently broaden beyond GOAL / CONSTRAINTS
 ```
 
 No chain-of-thought prose. Conclusions, evidence, decisions, next actions only.
+
+If investigation discovers a product/scope decision is required: record it as
+OPEN/BLOCKER, do not invent the decision.
+
+If durable tech-debt/research already owns part of the diagnosis: reference it,
+do not rediscover or copy it into the checkpoint. The checkpoint owns the
+unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Resume
 
 - Read current.md → checkpoint.
 - Inspect live Git state.
-- Open only checkpoint READ / EVIDENCE targets.
+- START: checkpoint READ / EVIDENCE targets.
+- EXPAND: bounded new files/symbols/tests allowed when NEXT or new evidence
+  requires them. Do not restart broad investigation.
 - Continue from NEXT.
 
 ## Complete

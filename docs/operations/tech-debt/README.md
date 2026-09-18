@@ -142,8 +142,8 @@ placement code**, which was already room-first.
 
 | Commit | Date | Effect |
 |---|---|---|
-| `2c9b04d` — P23.0 F0 stage 4 | 2026-09-09 | `createLayoutRoomRegistry()` starts returning the **empty** registry for wall-first layouts → every `rooms.has/get/point` gate silently becomes `false`/`undefined`/throw |
-| `d1705b7` — P23.3 (PR #19) | 2026-09-10 | the canonical wall-first Layout + world-local Scene pair becomes the **New Project boot** → from here *every new project* is affected |
+| `d5ec0df` — P23.1 (PR #9) | 2026-09-10 | `createLayoutRoomRegistry()` starts returning the **empty** registry for wall-first layouts (`2c9b04d`, 2026-09-09, defined the helper but left it unwired) → every `rooms.has/get/point` gate silently becomes `false`/`undefined`/throw |
+| `d1705b7` — P23.3 (PR #19) | 2026-09-11 | the canonical wall-first Layout + world-local Scene pair becomes the **New Project boot** → from here *every new project* is affected |
 | `69206f5` — P17/P18 | earlier | the `(id) => store.rooms.has(id)` predicate in `EditorSelection.svelte` predates all of this; it was simply never revisited |
 
 So the user's "since P23 began" is exact: the defect is as old as the wall-first boot,

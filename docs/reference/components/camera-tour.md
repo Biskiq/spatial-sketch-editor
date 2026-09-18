@@ -8,7 +8,7 @@
 
 | Term | Meaning |
 |------|---------|
-| Camera node | Eye / target / FOV (room-local) |
+| Camera node | Eye / target / FOV (world-local; `roomId` absent — legacy room-local only) |
 | Connection | Edge; JSON stores **interior** anchors only |
 | Path kinds | `rounded-polyline` · `auto-bezier` (no tangent handles) |
 | Order | Open chain (main route + branches); loop derived from a distinct tail↔head connection |

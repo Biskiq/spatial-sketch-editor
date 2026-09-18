@@ -1,18 +1,15 @@
 # Shell and workspaces
 
 **Read when:** app chrome, Scene/Camera switch, Layout mode, top bar, timeline frame, project menu.  
-**Last reviewed:** 2026-09-08 (P22 shipped — publish surface + public route below; pre-P21 map above retained until a P23 pass reconciles it)
+**Last reviewed:** 2026-09-17 (P21 shell landed — `ProjectRow` + `WorkspaceRibbon` own the top chrome in `EditorApp.svelte`; `EditorAppBar` remains in the frozen relic only)
 
-**Current implementation status:** the pre-P21 stacked Project Shell scaffold
-+ `EditorAppBar` remains in the tree (2026-09-03).
-**P21+ target:** [`../design-system/design-plan-p21.md`](../design-system/design-plan-p21.md)
+**Current implementation status:** P21 shell chrome has landed (`ProjectRow` + `WorkspaceRibbon`). The pre-P21 section map below is retained until a P23 pass reconciles it.
+**P21 target:** [`../design-system/design-plan-p21.md`](../design-system/design-plan-p21.md)
 — target authority for product entry (`/`), Project Hub (`/projects`), Project
 Shell chrome, Row 1 / Row 2 placement, persistence/account presentation, and
 project-level Visitor Preview.
 
-This file remains the **current implementation map**. Everything below
-describes the tree as it exists today (pre-P21) unless explicitly marked as
-P21+ target.
+Everything below the pre-P21 header describes the pre-P21 tree unless explicitly marked as P21+ target.
 
 ---
 
