@@ -9,8 +9,8 @@
  *   every other explicit value is rejected as an unsupported version rather
  *   than guessed at;
  * - a payload **without** `formatVersion` is accepted only through the
- *   explicit recognized legacy decoder (`validateSceneDocument`, the current
- *   room-local shape). Missing version never silently means "whatever
+ *   explicit recognized legacy decoder (`validateSceneDocument`, the
+ *   versionless room-local compatibility shape). Missing version never silently means "whatever
  *   parses";
  * - schema version is never inferred from presence/absence of arbitrary
  *   fields (H5 §10.1).
