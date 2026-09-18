@@ -292,7 +292,7 @@ describe('P23.1 wall-first project codec', () => {
 	it('refuses a superseded wall-first version on both the read and write paths', () => {
 		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
 		// reached `main` before this branch is **not** a supported version, so
-		// neither path migrates it (`docs/north-star.md` → Development-stage schema
+		// neither path migrates it (`docs/reference/north-star.md` → Development-stage schema
 		// compatibility). Reinterpreting the stored payload was the rejected
 		// alternative — under `4` the Floor *was* the vertical authority, so reading
 		// it as current state would change what the document says.

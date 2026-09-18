@@ -5,19 +5,19 @@ Dev-only authoring UI. Prod stubbed out of visitor chunks.
 ## Docs (read one component)
 
 Hub routing: [`docs/README.md`](../../../../../docs/README.md)  
-Live slice: [`docs/hand-off/CURRENT.md`](../../../../../docs/hand-off/CURRENT.md)  
+Live slice: [`docs/operations/current.md`](../../../../../docs/operations/current.md)  
 P0 (archived): [`docs/archive/plans/pre-h1-letters/2026-08-10-layout-cad-foundation.md`](../../../../../docs/archive/plans/pre-h1-letters/2026-08-10-layout-cad-foundation.md)
 
 | Working on | Doc |
 |------------|-----|
-| Vision | `docs/north-star.md` |
-| Layout vs `rooms.ts` | `docs/architecture.md` |
-| Chrome / workspaces | `docs/components/shell.md` |
-| Entities / library | `docs/components/scene-content.md` |
-| Ghost / gizmo / scale | `docs/components/placement.md` |
-| Tour / timeline | `docs/components/camera-tour.md` |
-| Schema / I/O | `docs/components/persistence.md` |
-| GLB / catalogue | `docs/components/assets.md` |
+| Vision | `docs/reference/north-star.md` |
+| Layout vs `rooms.ts` | `docs/reference/architecture.md` |
+| Chrome / workspaces | `docs/reference/components/shell.md` |
+| Entities / library | `docs/reference/components/scene-content.md` |
+| Ghost / gizmo / scale | `docs/reference/components/placement.md` |
+| Tour / timeline | `docs/reference/components/camera-tour.md` |
+| Schema / I/O | `docs/reference/components/persistence.md` |
+| GLB / catalogue | `docs/reference/components/assets.md` |
 
 **Do not** load every docs file. Update the matching doc when contracts change.
 

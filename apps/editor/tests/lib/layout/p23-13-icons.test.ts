@@ -23,7 +23,7 @@ function readLibSource(relativePath: string): string {
 const toolbar = readLibSource('editor/layout/LayoutDraftToolbar.svelte');
 const icons = readLibSource('editor/layout/PlanDraftIcon.svelte');
 const family = readFileSync(
-	resolve(repoRoot, 'docs/design/P23.13-drafting-icons-Designer-D.svg'),
+	resolve(repoRoot, 'docs/reference/design-system/P23.13-drafting-icons-Designer-D.svg'),
 	'utf8'
 );
 

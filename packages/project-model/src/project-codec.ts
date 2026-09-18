@@ -162,13 +162,13 @@ export function parseProjectJson(
  *   canonical one rejects here by name instead of being emitted unchanged. There
  *   is no read-side normalization seam to point at: P23.6I recognizes exactly one
  *   wall-first version (`5`) and a `4` payload fails as an unsupported version
- *   rather than being migrated (`docs/north-star.md` → *Development-stage schema
+ *   rather than being migrated (`docs/reference/north-star.md` → *Development-stage schema
  *   compatibility*).
  * - A legacy (Room-owned, version-less) Layout is a different shape and is not
  *   gated here: the wall-first gate applies only when the payload declares a
  *   Layout format version. That path is retained **temporarily** for internal
  *   development assets — a development dependency, not a compatibility promise
- *   (`docs/north-star.md` → *Development-stage schema compatibility*).
+ *   (`docs/reference/north-star.md` → *Development-stage schema compatibility*).
  *   Retirement is tracked by GitHub Issue #26 and is explicitly post-P23, not a
  *   silent consequence of this gate.
  *

@@ -18,7 +18,7 @@
  *    Floor-derived value and never an unnamed literal;
  * 2. **pre-baseline policy** — the wall-first `4` generation that reached `main`
  *    before this branch is **not** migrated: it fails as an unsupported version
- *    rather than being reinterpreted as `5` (P23.6I, `docs/north-star.md` →
+ *    rather than being reinterpreted as `5` (P23.6I, `docs/reference/north-star.md` →
  *    Development-stage schema compatibility);
  * 3. **one compiler path** — compiled Wall vertical bounds/sections follow
  *    `wall.height`, and a Room's ceiling is the derived flat plane at
@@ -272,7 +272,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
 		// reached `main` before this branch is deliberately **not** migrated, because
 		// having existed on `main` does not by itself create a compatibility
-		// obligation before the baseline (`docs/north-star.md` → Development-stage
+		// obligation before the baseline (`docs/reference/north-star.md` → Development-stage
 		// schema compatibility).
 		//
 		// Migration was rejected on meaning, not effort: a format-5 H document meant
