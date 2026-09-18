@@ -16,8 +16,6 @@ If archive conflicts with live tree, **live tree wins**. Pre-2026-09-05
 versions of this table (which named a "P0" plan and a README layout from
 2026-08-10) are obsolete.
 
-If archive conflicts with live tree, **live tree wins**.
-
 ## Contents
 
 ### Top-level deep guides (moved here 2026-08-10)

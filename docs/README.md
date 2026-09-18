@@ -4,7 +4,9 @@
 **Bootstrap:** [`../AGENTS.md`](../AGENTS.md) ·
 **Plan status / what's next:** [`roadmap/README.md`](./roadmap/README.md) ·
 **Live working-tree state:** [`operations/current.md`](./operations/current.md) ·
-**Roadmap gate:** P12, core P3B, P14, P15, P16, P17, P18, P19, P20, P21, and P22 are shipped. **P23 is in flight** (P23.0–P23.13 landed; P23.14 → P23.15 → P23.16 remaining). P3B.7b remains deferred and non-blocking; P13 remains proposed/unscheduled.
+**Roadmap gate:** P12, core P3B, P14–P22 shipped. **P23 in flight.**
+P3B.7b deferred non-blocking; P13 proposed/unscheduled.
+See tracker for current phase/slice.
 
 ## Context discipline (progressive disclosure)
 

@@ -9,6 +9,23 @@ vertical precision instrument; 3D proves the space. All edit one `LayoutDocument
 **Status:** design/research stage only. No implementation approved. FreeCAD/Bonsai
 harvests remain supporting evidence, not architecture authority.
 
+```text
+STATUS: planning
+STAGE: synthesis (authoritative research input landed; no design brief yet)
+CURRENT: research/synthesis/p26-architectural-spatial-depth-synthesis.md
+NEXT: design brief
+GATE: no implementation approved
+```
+
+```text
+ROUTE:
+research → research/broad/ + research/harvests/
+synthesis → research/synthesis/p26-architectural-spatial-depth-synthesis.md
+design → none yet (brief / proposals / final-direction pending)
+reconciliation → none yet
+plan → none yet (umbrella + child plans pending)
+```
+
 ## Authorities
 
 - Synthesis (authoritative research input): [`research/synthesis/p26-architectural-spatial-depth-synthesis.md`](./research/synthesis/p26-architectural-spatial-depth-synthesis.md)

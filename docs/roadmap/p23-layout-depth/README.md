@@ -17,8 +17,21 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 (P23.14 — Editor Shell & Visual System Foundation; re-scoped 2026-09-17 to the
 visual-system slice whose grammar P23.15/P24/P26 extend).
 
-**Remaining sequence:** P23.14 → P23.15 → P23.16 final closeout.
-No remaining child plan is implementation-ready.
+```text
+STATUS: in-progress
+STAGE: slice planning (P23.14 design reconciliation; no implementation-ready child plan yet)
+CURRENT: p23.14-shell-visual-system/README.md
+NEXT: P23.14 implementation plan, then P23.15 → P23.16 final closeout
+GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
+```
+
+```text
+ROUTE:
+remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.14
+context → context/p23-design-context.md + p23.14 slice context
+plan → P23.14 slice README (no implementation-ready child plan yet)
+closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+```
 
 ## Authorities
 
