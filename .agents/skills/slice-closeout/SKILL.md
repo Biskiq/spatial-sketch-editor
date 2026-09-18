@@ -25,6 +25,12 @@ Deterministic slice lifecycle: plan → implementation → QA → reference upda
 10. Verify no live router treats archived material as authority
     (`docs/README.md`, `docs/roadmap/README.md`, phase/slice READMEs,
     `docs/operations/current.md`). Run any existing docs/link checks.
+11. Checkpoint cleanup: no active checkpoint may remain for that slice.
+    Promote durable findings first (deferred bug → `operations/tech-debt/`;
+    completed research → owning artifact; landed behavior → `reference/*`;
+    verification/rulings → closeout/archive; status → phase/slice README),
+    then delete the checkpoint and remove any `current.md` RESUME pointer.
+    Do not archive raw checkpoints.
 
 Rules: follow `docs/README.md` routing; read minimum necessary context; do not
 rewrite product scope, architecture, roadmap order, design decisions, or history

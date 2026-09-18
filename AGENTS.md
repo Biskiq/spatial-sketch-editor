@@ -38,4 +38,7 @@ NO: commit/push unless allowed
 
 ON slice acceptance complete:
 use slice-closeout skill
+
+ON substantial unfinished work needing cross-agent resume:
+use work-checkpoint skill
 ```

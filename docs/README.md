@@ -67,6 +67,7 @@ archive = history
 | Assets / catalogue | [`reference/components/assets.md`](./reference/components/assets.md) | app-local `src/lib/content/assets.ts` |
 | Themes | [`reference/components/theme.md`](./reference/components/theme.md) | `theme.svelte.ts` + `styles/tokens.css` |
 | Current work / baton | [`operations/current.md`](./operations/current.md) | — |
+| Interrupted work / resume | [`operations/checkpoints/`](./operations/checkpoints/) — transient only; `work-checkpoint` skill owns procedure | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
@@ -88,6 +89,8 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
 ```text
 CURRENT: transient semantic baton only; inspect Git for branch/HEAD/dirty state.
+RESUME / INCREMENT / VERIFY: optional; interrupted work only → operations/checkpoints/ via work-checkpoint skill.
+CHECKPOINT: continue same unit; handoff = start next unit.
 PLAN: slice README owns plan path; phase README owns child order/status.
 PHASE: create README first; umbrella starts build program after discovery/design.
 SHIP: use slice-closeout skill.
@@ -100,6 +103,7 @@ UPDATE:
 - P-level state/order → roadmap/README.md
 - phase/slice state → owning README
 - current work baton → operations/current.md
+- interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
 - landed truth → reference/*
 - deferred bug → operations/tech-debt/
 - slice ship → slice-closeout skill
