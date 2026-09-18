@@ -2,7 +2,7 @@
 
 ## Contradictions / unresolved direction
 
-- **3D / Arrange:** §§2.4 and 15.2 restrict Layout/Arrange to Scene Plan, while §25.1 names canonical B “Scene / 3D / Arrange.” The atlas preserves that specimen title but exposes the mode control only in Scene Plan. Owner must clarify the title before implementation.
+- **Closed by owner ruling:** canonical B is **Scene / 3D**. Layout/Arrange remain Scene Plan local modes. The authoritative §25.1 title and Atlas both incorporate this ruling.
 - **Drawer left edge:** §17 says central-work-column span; PNGs start after the Tool Tray. Atlas follows the written column boundary, including the tray width.
 - No ratified compact-reference scheme is supplied for Buildings, Floors, Scene objects, cameras or sequences. Atlas preserves R/W/O/J identity and uses names plus camera sequence ordinals elsewhere; it does not adopt generated M-/F-/OBJ-/CAM-/SEQ- tokens as contracts.
 
@@ -21,3 +21,5 @@
 - P24 property values, multi-selection outlines and P26 elevation are pressure fixtures, not new behavior contracts. Numeric properties are readouts; global project actions are composition specimens. Destructive controls preserve the QA fixture.
 - Only PLATE Light is represented. Alternate-theme contrast remains unvalidated if variants are retained. Platform font fallback may change text metrics; the contract does not name font families.
 - Browser checks cover canonical switching, 48/288 px Drawer geometry, five lanes, 72 canonical walls / 73 occurrences, search/reveal, shared selection, rename propagation and P26 return. Automated accessibility checks require manual SVG/contrast review; screen-reader reading order and real coarse-pointer usability still need device acceptance. Compact desktop frames retain scrollable panels and a 1:1 inspection canvas; this is not a mobile product layout.
+
+- Companion [P23.13 Plan-detail Atlas](../P23.13-ink-and-instrument-atlas-Designer-D.html) retains landed Plan Paper `#F5F7F8` and graphite/paper-moat Plan-local focus. The authoritative PLATE token table and Atlas now use `#F5F7F8` for Scene Plan and Camera Plan, keeping `#F5F2E9` as a separate non-Plan baseline. The Atlas-only purple focus ring is not authority to override Plan-local focus. Paper unification needs explicit owner re-ratification and QA; product shell-focus handoff remains unvalidated.

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="230" viewBox="0 0 720 230" role="img" aria-label="P23.13 · study-only icon evidence"><title>P23.13 · study-only icon evidence</title><desc>Non-production study marks. These are not reusable production toolbar symbols and do not authorize new tools.</desc>
+<!--
+/**
+ * @license lucide-svelte v1.0.1 - ISC
+ *
+ * ISC License
+ * 
+ * Copyright (c) 2026 Lucide Icons and Contributors
+ * 
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * 
+ * —-
+ * 
+ * The following Lucide icons are derived from the Feather project:
+ * 
+ * airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+ * 
+ * The MIT License (MIT) (for the icons listed above)
+ * 
+ * Copyright (c) 2013-present Cole Bemis
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ */
+
+-->
+<defs>
+<symbol id="bend" viewBox="0 0 20 20"><path d="M3 16C3 5 12 3 17 3V8C10 8 8 11 8 16Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+<symbol id="junction" viewBox="0 0 20 20"><path d="M2 10H18M10 2V18M7 7H13V13H7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+<symbol id="add-junction" viewBox="0 0 20 20"><path d="M2 10H11M7 7V13M14 3V9M11 6H17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+<symbol id="box" viewBox="0 0 20 20"><path d="M3 3H17V17H3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+<symbol id="cylinder" viewBox="0 0 20 20"><path d="M10 3A7 7 0 1 0 10 17A7 7 0 1 0 10 3Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+<symbol id="sphere" viewBox="0 0 20 20"><path d="M10 3A7 7 0 1 0 10 17A7 7 0 1 0 10 3ZM3 10Q10 15 17 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="butt"/></symbol>
+</defs><rect width="720" height="230" fill="#f5f7f8"/><g color="#343c43" fill="#343c43" font-family="system-ui,sans-serif">
+<text x="20" y="28" font-size="15">P23.13 · study-only icon evidence</text>
+<text x="20" y="48" font-size="10">Not production toolbar symbols. No authority to add or replace tools.</text>
+<use href="#bend" x="20" y="72" width="20" height="20"/><text x="20" y="112" font-size="11">Bend</text>
+<use href="#junction" x="160" y="72" width="20" height="20"/><text x="160" y="112" font-size="11">Junction</text>
+<use href="#add-junction" x="300" y="72" width="20" height="20"/><text x="300" y="112" font-size="11">Add junction</text>
+<use href="#box" x="440" y="72" width="20" height="20"/><text x="440" y="112" font-size="11">Box</text>
+<use href="#cylinder" x="580" y="72" width="20" height="20"/><text x="580" y="112" font-size="11">Cylinder</text>
+<use href="#sphere" x="20" y="152" width="20" height="20"/><text x="20" y="192" font-size="11">Sphere</text>
+</g></svg>
