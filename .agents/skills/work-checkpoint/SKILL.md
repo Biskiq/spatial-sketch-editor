@@ -83,6 +83,13 @@ NEXT = 1–3 exact continuation actions
 
 No chain-of-thought prose. Conclusions, evidence, decisions, next actions only.
 
+## Resume
+
+- Read current.md → checkpoint.
+- Inspect live Git state.
+- Open only checkpoint READ / EVIDENCE targets.
+- Continue from NEXT.
+
 ## Complete
 
 Promote before delete:
@@ -95,4 +102,4 @@ verification/rulings → closeout/archive
 implementation status → phase/slice README
 ```
 
-Then delete checkpoint. Remove current.md RESUME. Do not archive raw checkpoints.
+Do not archive raw checkpoints.

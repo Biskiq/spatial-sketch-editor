@@ -89,7 +89,8 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
 ```text
 CURRENT: transient semantic baton only; inspect Git for branch/HEAD/dirty state.
-RESUME / INCREMENT / VERIFY: optional; interrupted work only → operations/checkpoints/ via work-checkpoint skill.
+INCREMENT / VERIFY: optional current-work fields.
+RESUME: interrupted work only → operations/checkpoints/ via work-checkpoint skill.
 CHECKPOINT: continue same unit; handoff = start next unit.
 PLAN: slice README owns plan path; phase README owns child order/status.
 PHASE: create README first; umbrella starts build program after discovery/design.
