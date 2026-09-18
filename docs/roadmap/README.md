@@ -26,8 +26,3 @@ Non-milestone: Typed DB layer (conditional infra).
 Status enum: `proposed | approved | in-progress | shipped | archived`.
 This tracker is authoritative when a plan doc's `**Status:**` drifts.
 Execution order is pinned by phase README depends-on, not by P-number order.
-
-## Lifecycle
-
-Slice closeout: `.agents/skills/slice-closeout/SKILL.md`.
-Child plan existing ≠ implementation-ready. Slice statuses live in phase READMEs.

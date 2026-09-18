@@ -86,10 +86,12 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
 ## Meta — how to write the handoff and the next plan
 
-**Sliding window:** `current.md` holds transient state only — one optional PREV
-back-pointer plus the single next action. Shipped detail lives in
-closeout/archive; deferred bugs live in tech-debt. History is chased backward
-through the phase README and each archived plan's own prerequisites.
+```text
+CURRENT: transient semantic baton only; inspect Git for branch/HEAD/dirty state.
+PLAN: slice README owns plan path; phase README owns child order/status.
+PHASE: create README first; umbrella starts build program after discovery/design.
+SHIP: use slice-closeout skill.
+```
 
 **Next plan** — the slice README owns the exact plan path; the phase README
 owns child order/status. Before implementing any increment, write a brief
