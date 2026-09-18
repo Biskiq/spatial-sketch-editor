@@ -34,6 +34,17 @@ imports back to `$lib`.
   `resolve(import.meta.url, '../../../src')` — update them if `tests/` moves.
 - **The dev perf route** (`src/routes/dev/perf/+page.svelte`) imports scale fixtures
   from here via a relative path. Keep that in sync if fixtures move.
+- **No `__`-prefixed QA plates in the tree.** A `__qa-*` plate runs inside the
+  suite via the vitest `include` pattern and writes into the tree — keep QA
+  fixtures outside matched paths.
+- **A drawing gesture on Plan needs `setPointerCapture` stubbed** for synthetic
+  pointers. That is the only platform call QA stubs; no app gesture logic is
+  touched by it.
+- **Keyboard/traversal contracts that slice Svelte source are shape pins.**
+  `p23-13-keyboard` slices `LayoutPlanViewport.svelte` and asserts text — it
+  passed while the announcement missed required value+units. Drive the path
+  live (or assert the composed string) before trusting refactors that
+  rename/reorder those handlers.
 
 ## Running
 

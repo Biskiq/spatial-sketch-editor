@@ -1,12 +1,7 @@
 # Museum docs — context router
 
 **Audience:** agents + humans.
-**Bootstrap:** [`../AGENTS.md`](../AGENTS.md) ·
-**Plan status / what's next:** [`roadmap/README.md`](./roadmap/README.md) ·
-**Live working-tree state:** [`operations/current.md`](./operations/current.md) ·
-**Roadmap gate:** P12, core P3B, P14–P22 shipped. **P23 in flight.**
-P3B.7b deferred non-blocking; P13 proposed/unscheduled.
-See tracker for P-level pipeline/order.
+**Bootstrap:** [`../AGENTS.md`](../AGENTS.md).
 
 ## Context discipline (progressive disclosure)
 
@@ -45,21 +40,8 @@ Never escalate automatically because more documents exist.
 For code implementation, this rule applies to docs first. Normal code search may
 inspect required source files; avoid broad repository archaeology without a reason.
 
-## Truth precedence — when live docs conflict, highest wins
-
-```text
-source code + tests      → enforced reality
-operations/current.md    → current working-tree state (uncommitted)
-active plan              → intended current change
-component contract       → stable subsystem behavior
-reference/architecture.md → ownership / boundaries
-reference/north-star.md  → product direction
-archive/                 → rationale only (opt-in)
-```
-
-Two separations: **P-level status** is the roadmap tracker's job (slice status
-lives in phase/slice READMEs), not this chain's; **direction/priority conflicts are owner decisions**, not doc
-conflicts — never "resolve" a product question by doc order.
+Direction/priority conflicts are owner decisions — never resolve a product
+question by doc order.
 
 ## Where truth lives
 
@@ -104,26 +86,10 @@ workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
 
 ## Meta — how to write the handoff and the next plan
 
-**Handoff (`operations/current.md`)** — strict template, live delta only:
-
-```text
-## Working tree    — what is in the tree right now (uncommitted)
-## Next action     — phase README pointer + immediate artifact + any gate
-## Verification    — test count, svelte-check, build state
-## Known bugs      — live defects, one line each
-## Traps           — terse gotchas that cost debugging time
-## Non-negotiables — relic frozen, no commits unless asked, visitor purity
-```
-
-Lifecycle: on **slice open**, update Working tree + Next action. On **slice
-close**, follow `.agents/skills/slice-closeout/SKILL.md` (procedure lives there).
-
-**Sliding window:** `current.md` references only the **immediate previous slice**
-(one back-pointer) and the **single next action** — never enumerate shipped
-slices or the full plan sequence. History is chased backward through the phase
-README and each archived plan's own prerequisites; archaeology follows the chain,
-it is not pre-loaded. Keep **Known bugs** / **Traps** bounded — delete entries
-when resolved or deferred elsewhere.
+**Sliding window:** `current.md` holds transient state only — one optional PREV
+back-pointer plus the single next action. Shipped detail lives in
+closeout/archive; deferred bugs live in tech-debt. History is chased backward
+through the phase README and each archived plan's own prerequisites.
 
 **Next plan** — the slice README owns the exact plan path; the phase README
 owns child order/status. Before implementing any increment, write a brief
@@ -138,11 +104,14 @@ transition to build program.
 
 ## Update rules
 
-- Contract change → matching `reference/components/*.md` or `reference/architecture.md`.
-- P-level status / order → [`roadmap/README.md`](./roadmap/README.md) (tracker);
-  slice status/order → owning phase README.
-- Working-tree delta → `operations/current.md`.
-- Direction / priority change → owner decision, recorded as a scope decision
-  and reflected in the tracker.
-- Archive reference → only this router's link + phase README stubs; never explain
-  what is archived inline.
+```text
+UPDATE:
+- P-level state/order → roadmap/README.md
+- phase/slice state → owning README
+- live worktree → operations/current.md
+- landed truth → reference/*
+- deferred bug → operations/tech-debt/
+- slice ship → slice-closeout skill
+- direction change → owner decision (scope decision)
+- archive pointer → router link + phase stub only
+```

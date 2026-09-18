@@ -43,4 +43,4 @@ Plan docs for pre-migration shipped slices stay flat in this folder
 (grandfathered); all new slice closeouts archive the whole slice bundle under
 `docs/archive/roadmap/...` and leave a one-line stub here. Shipped
 narrative for P23.13 lives in `docs/archive/plans/`.
-P23.13 carried four rows to P23.14 by owner ruling (see slice README + operations/current).
+P23.13 carried four rows to P23.14 by owner ruling (see slice README Carried rows).

@@ -148,6 +148,21 @@ names; Junctions remain reference-only.
 Rationale, presentation detail and acceptance record:
 `docs/archive/roadmap/p23/p23.12-final-design-contract.md`.
 
+## Plan keyboard invariants (P23.13, landed)
+
+- **Arrows never enter the control group** (A5: Enter enters, arrows traverse).
+  `planTraversalStep` returns `null` outside the group; `planTraversalEnteredFor`
+  requires keyboard entry — pointer focus also sets `planFocus`, so entry inferred
+  from focus let clicks steal arrows/scrolling. Do not revert to roving-tabindex.
+- **The keyboard readout is a keyboard instrument**: retired by Escape, mode/tool
+  cancel, canvas-reaching primary press, or successful exact edit — never by
+  pointer focus alone. Clear it, do not recompute per change (§9: one announcement
+  per meaningful change). Known residue: Undo moving the focused control leaves
+  stale coordinates (needs a history hook the viewport does not own).
+
+Acceptance record:
+`docs/archive/plans/2026-09-16-P23.13-architectural-plan-drafting-finish.md`.
+
 ## P22 deliverables (shipped 2026-09-08)
 
 - Author surface: `/project/:projectId/publish` in the existing project
