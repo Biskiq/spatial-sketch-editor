@@ -29,7 +29,7 @@ export type SceneCoordinateSpace = 'legacy-room-local' | 'project-world';
 
 export type RecognizedLegacySceneDecode = {
 	kind: 'recognized-legacy';
-	/** Current room-local Scene document (the only shipped shape today). */
+	/** Recognized legacy room-local compatibility shape (versionless). */
 	document: SceneDocument;
 	/** Legacy Scene/Camera values require Room-frame resolution. */
 	sceneSpace: 'legacy-room-local';

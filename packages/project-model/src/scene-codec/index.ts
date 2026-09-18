@@ -1,8 +1,10 @@
 /**
  * `scene-codec/index.ts` — public barrel for the scene document codec.
  *
- * The document has one canonical shape (textures, materials, entities,
- * clusters, navigation nodes, connections). No version field, no migrations.
+ * The current canonical Scene is world-local (`formatVersion: 1`):
+ * project/world coordinates, no `roomId`. The versionless room-local shape
+ * is recognized legacy compatibility, accepted only through the explicit
+ * legacy identification path (`formatVersion` dispatch is explicit).
  *
  * Internal helpers live in:
  *
@@ -35,8 +37,10 @@ import {
 } from '../scene-validation';
 
 /**
- * Public surface types for the scene document codec. The document has
- * one canonical shape; there are no versioned legacy forms to migrate.
+ * Public surface types for the scene document codec. The current canonical
+ * shape is world-local (`formatVersion: 1`); the versionless room-local
+ * shape is recognized legacy compatibility decoded through the explicit
+ * legacy path.
  */
 export type SceneDocumentIssue = {
 	path: string;

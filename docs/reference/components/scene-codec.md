@@ -1,11 +1,11 @@
 # Scene codec layout
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or its app facade.
-**Last reviewed:** 2026-08-30 (P17 visitor cleanup)
+**Last reviewed:** 2026-09-18 (world-local canonical reconciliation)
 
 ---
 
-Five files, one public surface. The document has one canonical shape; no version field, no migrations.
+Five files, one public surface. CURRENT canonical Scene is world-local (`formatVersion: 1`): project/world coordinates, no `roomId`. LEGACY compatibility shape is versionless room-local (`roomId` + room-frame coordinates), accepted only through the explicit legacy identification/conversion path.
 
 ```text
 packages/project-model/src/scene-codec/
