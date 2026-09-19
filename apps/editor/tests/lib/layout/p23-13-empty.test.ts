@@ -4,9 +4,10 @@
  * Pins the §8 copy agreement and the open-corner sketch contract:
  * exact toolbar labels (Wall, Rect Room, Poly Room), zoom/pan hint, no fake
  * dimension promise, open corner (never a closed rect), illustrative only
- * (aria-hidden, pointer-events none, never serialized), and one committed
- * wall removes the first-run message (planEmpty requires zero
- * rooms/walls/objects/scene entities).
+ * (aria-hidden, pointer-events none, never serialized), and a startup-only
+ * first-run message: the first drafting gesture dismisses it (not the
+ * commit), and undoing back to an empty plan never restores it (planEmpty
+ * still requires zero rooms/walls/objects/scene entities).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -54,11 +55,17 @@ describe('P23.13 S9 empty states (§8)', () => {
 		expect(viewport).not.toContain('ghostDismissed:');
 	});
 
-	it('removes the first-run message on one committed wall', () => {
-		// planEmpty is the single gate for both ghost and card.
+	it('removes the first-run message at the first drafting gesture, never restoring it on undo', () => {
+		// planEmpty is the document gate for both ghost and card.
 		expect(viewport).toContain('preview.model.rooms.length === 0');
 		expect(viewport).toContain('(preview.geometry.walls ?? []).length === 0');
 		expect(viewport).toContain('preview.model.objects.length === 0');
 		expect(viewport).toContain('(scene?.entities.length ?? 0) === 0');
+		// The card is startup-only: a session latch (viewport-local, never the
+		// document) dismisses it on the first drafting gesture or first commit,
+		// so an undo back to empty cannot resurrect it.
+		expect(viewport).toContain('let planHintDismissed = $state(false)');
+		expect(viewport).toContain('hasLayoutTransientInteraction(interaction)');
+		expect(viewport).toContain('planEmpty && !ghostVisible && !planHintDismissed');
 	});
 });

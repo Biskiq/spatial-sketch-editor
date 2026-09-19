@@ -723,7 +723,7 @@ describe('P21.2 scene reconciliation', () => {
 		expect(viewport).toContain('ghostDismissed');
 		expect(viewport).toContain('ghostVisible');
 		expect(viewport).toContain("planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed");
-		expect(viewport).toContain('planEmpty && !ghostVisible');
+		expect(viewport).toContain('planEmpty && !ghostVisible && !planHintDismissed');
 		// Empty card carries the same §8 copy agreement.
 		expect(viewport).toContain('Start your plan');
 		expect(viewport).toContain('Draw connected walls with Wall, or start with Rect Room or Poly Room.');

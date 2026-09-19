@@ -64,6 +64,7 @@
 		resolveWallChainEndpointAtLength,
 		resolveArrangeScenePick,
 		isLayoutPresetTool,
+		hasLayoutTransientInteraction,
 		wallChainRoleForTool,
 		clearPlanFocus,
 		setPlanFocus,
@@ -1985,6 +1986,20 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// P21.2 — session-scoped ghost dismissal on first tool use (not serialized).
 	$effect(() => {
 		if (interaction.tool !== 'select' && !ghostDismissed) ghostDismissed = true;
+	});
+
+	// Startup-only empty hint: the "Start your plan" card dismisses the moment
+	// the first drafting gesture begins — not at commit — and is never
+	// restored, so undoing back to an empty plan cannot resurrect it. The
+	// transient check catches every in-progress draft (first polygon point,
+	// wall-chain start, rectangle/primitive drag); the planEmpty arm catches
+	// synchronous one-click commits (presets) that never hold transient state.
+	// Session-scoped, not serialized (like ghostDismissed above).
+	let planHintDismissed = $state(false);
+	$effect(() => {
+		if (!planHintDismissed && (!planEmpty || hasLayoutTransientInteraction(interaction))) {
+			planHintDismissed = true;
+		}
 	});
 
 	function frameView() {
@@ -5536,11 +5551,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	{#if arrangeEmpty && !stagingSelectionMessage}
 		<div class="arrange-empty" role="status">No movable objects here yet — create them in Layout or place them in Scene 3D.</div>
 	{/if}
-	{#if planEmpty && !ghostVisible}
+	{#if planEmpty && !ghostVisible && !planHintDismissed}
 		<!-- P23.13 S9 / §8 — empty-state copy agreement: exact toolbar labels
 		     (Wall, Rect Room, Poly Room), zoom/pan hint, no dimension promise.
-		     Card remains for the dismissed-but-still-empty session tail and
-		     non-Layout empty states; one committed wall removes it. -->
+		     Startup-only: the first drafting gesture dismisses it (not the
+		     commit), and the session latch never restores it — undoing back to
+		     an empty plan stays clean. -->
 		<div class="plan-empty-state" role="status">
 			<strong>Start your plan</strong>
 			<span>Draw connected walls with Wall, or start with Rect Room or Poly Room.</span>
