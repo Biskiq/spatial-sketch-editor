@@ -56,6 +56,13 @@
 	const interactive = $derived(isInteractive(row));
 	const open = $derived(isOpen(row));
 	const hasChildren = $derived((row.children?.length ?? 0) > 0);
+	// P23.14 §12.2/§12.3 — a contextual occurrence is the SAME canonical entity
+	// as its home row (same reference, same name, same selection), presented as a
+	// projection through another context rather than a second owner. It renders
+	// with the entity row's grammar plus an occurrence marker, so "shown through
+	// Gallery North" can never masquerade as "owned by Gallery North".
+	const isEntityRow = $derived(row.kind === 'entity' || row.kind === 'occurrence');
+	const isOccurrence = $derived(row.kind === 'occurrence');
 
 	// ── P23.12 identity presentation ──────────────────────────────────────
 
@@ -91,8 +98,9 @@
 	class:hierarchy-node--depth={depth > 0}
 	role="treeitem"
 	aria-expanded={row.disclosureKey ? open : undefined}
-	aria-selected={row.kind === 'entity' ? selected : undefined}
+	aria-selected={isEntityRow ? selected : undefined}
 	data-row-key={row.rowKey}
+	data-row-kind={row.kind}
 >
 	{#if row.kind === 'heading'}
 		<!-- Presentational eyebrow: not focusable, not selectable, not a page. -->
@@ -122,10 +130,15 @@
 				<span class="tree-row__label">{row.label}</span>
 			</button>
 		</div>
+	{:else if row.kind === 'empty'}
+		<!-- §12.3 species 6 — authored empty/teaching state. Never a selectable
+		     entity, never an error: guidance for a page that projects no rows. -->
+		<p class="hierarchy-empty">{row.label}</p>
 	{:else}
-		<!-- `relation` (non-selectable, e.g. `Ends J1 · J2`) and `entity` rows. -->
+		<!-- `relation` count/summary rows (non-selectable), `entity` rows and
+		     contextual `occurrence` rows. -->
 		<div class="hierarchy-line">
-			{#if row.kind === 'entity' && row.disclosureKey}
+			{#if isEntityRow && row.disclosureKey}
 				<button
 					type="button"
 					class="tree-row__chevron"
@@ -138,10 +151,11 @@
 			{:else}
 				<span class="tree-row__chevron-spacer" aria-hidden="true"></span>
 			{/if}
-			{#if row.kind === 'entity'}
+			{#if isEntityRow}
 				<button
 					type="button"
 					class="tree-row hierarchy-entity"
+					class:hierarchy-occurrence={isOccurrence}
 					class:tree-row--selected={selected}
 					class:tree-row--match-reference={matchEmphasis === 'reference'}
 					class:tree-row--match-label={matchEmphasis === 'label'}
@@ -359,6 +373,28 @@
 	.tree-row--match-label .tree-row__label {
 		color: var(--editor-text-primary);
 		font-weight: 600;
+	}
+	/* P23.14 §12.3 species 4 — contextual occurrence. The canonical identity is
+		kept verbatim (name, protected full reference, same selection), and the
+		`↳` cue plus the quieter name weight make the projection explicit: a
+		shared Wall shown through a Room can never read as a second owner. */
+	.hierarchy-occurrence::before {
+		content: '↳';
+		flex: 0 0 auto;
+		color: var(--editor-text-muted);
+		font-size: 0.66rem;
+		line-height: 1;
+	}
+	.hierarchy-occurrence .tree-row__label { font-weight: 500; }
+	.hierarchy-occurrence .tree-row__label--reference { font-weight: 600; }
+	/* P23.14 §12.3 species 6 — authored empty/teaching state: guidance, not an
+		entity, and never an error treatment. */
+	.hierarchy-empty {
+		margin: 0.35rem 0.45rem;
+		color: var(--editor-text-muted);
+		font-size: 0.7rem;
+		font-style: italic;
+		line-height: 1.4;
 	}
 	.tree-row__meta {
 		min-width: 0;

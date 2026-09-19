@@ -888,8 +888,11 @@
 		min-width: 0;
 		flex-direction: column;
 		gap: 0.1rem;
-		margin-left: 0.85rem;
-		padding-left: 0.62rem;
+		/* P23.14 §12.5 — shallow indentation: ~10 px per level, never the
+		   oversized folder-tree step. A deeply expanded Room → Architecture →
+		   Walls branch must stay usable at the reference 268 px Navigator. */
+		margin-left: 0;
+		padding-left: 0.65rem;
 		border-left: 1px solid var(--editor-border-subtle);
 	}
 	:global(.hierarchy-actions) { display: flex; align-items: center; gap: 0.12rem; }
