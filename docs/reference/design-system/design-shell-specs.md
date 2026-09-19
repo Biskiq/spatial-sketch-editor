@@ -12,8 +12,8 @@ state). Camera uses `Unsequenced` for cameras outside the ordered subset.
 Current rules are written directly below rather than layered as amendments.
 
 > **P23.14 authority (2026-09-19, owner-ratified):** the P23.14
-> [`final-direction.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md)
-> contract plus its [`Atlas`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/atlas/index.html)
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract plus its [`Atlas`](./editor-shell-atlas/index.html)
 > are the **durable design authority for the shell**; later phases (P23.15 →
 > P23.16, P24, P26) fit into that grammar and may depend on it. This file stays
 > canonical for **exposure, ownership and capability rules**; its shell
@@ -22,7 +22,7 @@ Current rules are written directly below rather than layered as amendments.
 > Rail). Two ratifications correct numbers this file and `design-specs.md`
 > carried — the Tool Tray's engraved tier (R1) and the armed-tool treatment (R2)
 > — see
-> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
 
 **Split 2026-08-21:** scene/camera workspace sections moved verbatim to
 [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md) ·
@@ -65,6 +65,28 @@ It intentionally does **not** prescribe Svelte component structure, stores, rout
 > mutation matrices are unchanged, as is the P22 publish/preview ownership.
 > Reference: [`shell.md`](../components/shell.md) §Current implementation and
 > [`design-specs.md`](./design-specs.md) §15.
+>
+> **P23.14 durable authority (2026-09-19, owner-ratified R1–R3):** the
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract is the **durable shell design authority** (its §0.1 states the whole
+> graph). R1 (Tool Tray 7 px group / 8 px tool + opt-in 6 px compact floor), R2
+> (armed = darkened surface, no amber outline/inboard edge/weight jump) and R3
+> (closed 9/10/11/12/13/15/20 px ladder, semantic roles, `--editor-type-scale` +
+> `--editor-control-scale` on `:root`) are folded there, as are the View Bar
+> `MODE`-as-caption grammar and the four distinct surface states.
+>
+> **Superseded for the shell** (do not implement; retained as history): the 32 px
+> Workspace-Ribbon band and the Row 1 / Row 2 composition model; broad-toolbar
+> group-label sizing; the 28 px enclosed View Bar track; the pre-PLATE flat type
+> ramp; navy as the product baseline. **Still canonical here:** capability,
+> authority and workspace exposure matrices (this file, §1–§5 shell placement
+> excepted), the P12/P22 preview, publish and Timeline-ownership rules, and the
+> split scene/camera workspace specs.
+>
+> **Reading order for a later phase (P23.15/P23.16/P24/P26):** `editor-shell-and-visual-system.md`
+> §0 → the section that owns the change → this file only for what a workspace may
+> expose or own. Never take a shell dimension, type size or control metric from
+> this document or from a component's scoped CSS.
 
 > **P23.14 non-goals:** no separate Scene/Camera apps, no third peer view, no
 > Inspector dashboard, no second global toolbar, no sidebar-wide tray, no

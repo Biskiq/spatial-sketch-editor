@@ -5,17 +5,20 @@ STATUS: implemented — Tasks 1–9 landed on `p23.14`; OWNER REVIEW OPEN (not c
 NEXT: owner review of the QA record findings F1/F2/F4/F5, then P23.15
       R1 (tray engraved tier) + R2 (armed tool) + R3 (one type scale + one control scale
       as roles, two knobs) are owner-ratified and landed; F7 is resolved by R1, F8 by R3.
-      Ratifications + drift root cause: ./design/owner-ratifications.md
+      Ratifications + drift root cause: ../../../reference/design-system/editor-shell-ratifications.md
 PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
 QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ```
-**Owner/authority:** shell-design context is authoritative for product/architecture/ownership/scope; final-direction is the ratified designer contract; research and independent proposals are evidence only.
+**Owner/authority:** shell-design context is authoritative for product/architecture/ownership/scope; the promoted durable shell contract (`../../../reference/design-system/editor-shell-and-visual-system.md`) is the ratified shell/system contract; research and independent proposals are evidence only. This slice established it — it is no longer a slice-local document.
 
 ## IMPLEMENT — read for normal implementation
 
 - Phase: [`../README.md`](../README.md) · remaining scope: [`../2026-09-14-P23-remaining-roadmap-reconciliation.md`](../2026-09-14-P23-remaining-roadmap-reconciliation.md) §P23.14
 - Context: [`context/shell-design-context.md`](./context/shell-design-context.md)
-- Direction: [`design/final-direction.md`](./design/final-direction.md)
+- **Durable contract (promoted out of this slice):**
+  [`../../../reference/design-system/editor-shell-and-visual-system.md`](../../../reference/design-system/editor-shell-and-visual-system.md)
+  — the P23.14 direction that used to sit in this folder is now that document. Old path:
+  [`design/final-direction.md`](./design/final-direction.md) (supersession pointer).
 - Relevant reference contracts: `docs/reference/components/shell.md`,
   `docs/reference/design-system/design-specs.md`,
   `docs/reference/design-system/design-shell-specs.md`.
@@ -25,14 +28,14 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ## DESIGN
 
 - [`design/briefs/p23.14-designer-brief.md`](./design/briefs/p23.14-designer-brief.md) (assignment, not authority)
-- Context + final-direction: see IMPLEMENT above.
+- Context: see IMPLEMENT above; durable contract: see IMPLEMENT above.
 
 ## EVIDENCE — read only if needed
 
 - [`research/editor-shell-visual-system.md`](./research/editor-shell-visual-system.md) (precedent evidence, not spec)
-- [`design/proposals/designer-a.md`](./design/proposals/designer-a.md) (independent concept, superseded where final-direction rules)
+- [`design/proposals/designer-a.md`](./design/proposals/designer-a.md) (independent concept, superseded where the durable contract rules)
 - [`design/proposals/designer-d/design-notes.md`](./design/proposals/designer-d/design-notes.md) (independent exploration)
-- [`design/atlas/index.html`](./design/atlas/index.html) + [`design/atlas/notes.md`](./design/atlas/notes.md) (visual/interaction QA evidence, not topology/validation authority)
+- [`../../../reference/design-system/editor-shell-atlas/index.html`](../../../reference/design-system/editor-shell-atlas/index.html) + [`notes.md`](../../../reference/design-system/editor-shell-atlas/notes.md) (visual/interaction QA evidence, not topology/validation authority; moved beside the durable contract — this slice's [`design/atlas/index.html`](./design/atlas/index.html) is now a supersession pointer)
 - [`design/atlas/p23.13-p23.14-atlas-reconciliation.md`](./design/atlas/p23.13-p23.14-atlas-reconciliation.md) (QA boundaries)
 
 ## QA
@@ -45,13 +48,15 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
   screen-reader, reduced-motion and coarse-pointer rows remain **manual-owed**.
 - Atlas specimens are QA references only.
 - **Durable design authority (owner-ratified 2026-09-19):**
-  [`design/final-direction.md`](./design/final-direction.md) + [`design/atlas/`](./design/atlas/)
-  are promoted to the **durable, stable design authority for the editor shell** — P23.15,
+  [`../../../reference/design-system/editor-shell-and-visual-system.md`](../../../reference/design-system/editor-shell-and-visual-system.md)
+  + its [`Atlas`](../../../reference/design-system/editor-shell-atlas/index.html) are the
+  **durable, stable design authority for the editor shell** — P23.15,
   P23.16, P24 and P26 fit into this grammar and may depend on it. The `docs/reference/*`
   docs stay canonical for capability/ownership/exposure and the frozen Plan/identity/icon
   contracts, while their shell placement/dimension/type statements are descriptive of the
   landed PLATE system.
-- **Owner ratifications R1–R3:** [`design/owner-ratifications.md`](./design/owner-ratifications.md)
+- **Owner ratifications R1–R3:**
+  [`../../../reference/design-system/editor-shell-ratifications.md`](../../../reference/design-system/editor-shell-ratifications.md)
   — **R1** the Tool Tray paints the reference's engraved micro-tier (7 px group / 8 px tool,
   plus a 6 px compact floor for a word wider than the rail) rather than the 10 px engraved
   tier, which cannot fit §11's 44 px rail; **R2** an armed tool is a **darkened surface and

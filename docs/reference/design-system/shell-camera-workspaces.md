@@ -4,6 +4,16 @@
 **Scope:** §9 Camera → Plan · §10 Camera → 3D · §11 Timeline ownership · §12 Timeline exposure · §13 Camera selection continuity.
 Global shell / cross-domain rules live in [`Design-shell-specs.md`](./Design-shell-specs.md); scene workspaces in [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md).
 
+> **P23.14 placement note (2026-09-19, landed):** the ribbon band is gone. Camera
+> Plan / Camera 3D mount the Contextual View Bar plus their own **Tool Tray** (a
+> 44 px Paper-attached rail; Camera Plan `CAMERA` = Select · Add Camera · Connect ·
+> Sequence · Play). The Camera Timeline stays a Camera-domain dock inside the
+> central work column and is never relocated into a bar. Shell chrome, type and
+> control metrics come from
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> §7/§10/§11, never from this file. Every capability, authority and P12
+> preview/scope/transport rule below is unchanged.
+>
 > **P21+ placement note (2026-09-03):** tool **placement** only — the
 > contextual toolbar region becomes the Workspace Ribbon (Row 2) per
 > [`design-plan-p21.md`](./design-plan-p21.md). The Camera Timeline stays a

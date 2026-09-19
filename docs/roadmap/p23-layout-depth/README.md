@@ -33,14 +33,30 @@ closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
 
 - Umbrella: [`2026-09-07-P23-layout-depth-minimum-build.md`](./2026-09-07-P23-layout-depth-minimum-build.md)
 - Cross-view direction: [`2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md`](./2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md)
-- **Shell design (durable, owner-ratified 2026-09-19):**
-  [`p23.14-shell-visual-system/design/final-direction.md`](./p23.14-shell-visual-system/design/final-direction.md)
-  + [`design/atlas/`](./p23.14-shell-visual-system/design/atlas/index.html). The P23.14 shell
-  grammar is the **stable baseline later phases fit into and depend on** — P23.15, P23.16,
-  P24 (denser content, multi-select, groups, materials/lights) and P26 (section/elevation as a
-  subordinate instrument) enter through it rather than re-deciding shell composition,
-  dimension or type. Rationale, ratifications (R1/R2) and the drift root cause:
-  [`design/owner-ratifications.md`](./p23.14-shell-visual-system/design/owner-ratifications.md).
+- **Shell design — START HERE (durable, owner-ratified 2026-09-19):**
+  [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md),
+  whose §0.1 states the authority graph. It is slice-independent: it was promoted out of the
+  P23.14 slice, which is now history and keeps only supersession pointers. The P23.14 shell grammar is the **stable baseline
+  later phases fit into and depend on** — P23.15, P23.16, P24 (denser content, multi-select,
+  groups, materials/lights) and P26 (section/elevation as a subordinate instrument) enter
+  through it rather than re-deciding shell composition, dimension or type.
+  Its post-implementation ratifications are **folded into the direction itself** (§0.2):
+  **R1** Tool Tray tier (7 px group / 8 px tool, opt-in 6 px compact floor), **R2** armed tool
+  (material sink, no amber outline/inboard edge), **R3** closed 9–20 px type ladder + semantic
+  roles + `--editor-type-scale` / `--editor-control-scale`, plus the View Bar `MODE`-as-caption
+  grammar, the four distinct surface states, the shell-inheritance rule (§2.8) and
+  roles-not-numbers (§2.9). Its §0.3 keeps the **open owner calls** explicitly unresolved and
+  §0.4 the **implementation debt** out of design.
+  Evidence annexes (evidence, not authority):
+  [`editor-shell-ratifications.md`](../../reference/design-system/editor-shell-ratifications.md)
+  (measurements + drift root cause) and
+  [`editor-shell-atlas/`](../../reference/design-system/editor-shell-atlas/index.html)
+  (interactive QA companion). The dated P23.14 QA record stays with the slice:
+  [`p23.14-shell-visual-system/qa/`](./p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md).
+  Pre-PLATE shell numbers — the `docs/reference/design-system/*` shell-placement/type/control
+  tables and `design-plan-p21.md`'s 32 px ribbon — are **superseded for the shell** and carry
+  header notes saying so; they remain canonical only for capability, ownership, exposure and
+  the frozen identity/icon/Plan contracts.
   `docs/reference/design-system/*` and `docs/reference/components/shell.md` stay canonical for
   capability/ownership/exposure and the frozen Plan/identity/icon contracts, and are
   descriptive — not authoritative — for shell placement, dimension and type.

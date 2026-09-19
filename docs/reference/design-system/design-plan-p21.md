@@ -6,6 +6,28 @@ current implementation status (2026-09-03). This document states the **target**;
 it does not claim the two-row shell is implemented today. The current tree
 remains the pre-P21 stacked Project Shell scaffold + `EditorAppBar`.
 
+> **Superseded for shell presentation and placement (P23.14, 2026-09-19,
+> owner-ratified).** The two-row shell specified below — Row 1 Project Row ·
+> Row 2 32 px Workspace Ribbon with 28 px enclosed View Bar controls — was
+> implemented in P21 and then **superseded by the ratified PLATE composition**: a
+> full-height 56 px **Domain Spine** owns `Scene | Camera`, the 36 px **Project
+> Head** is Row 1, and Row 2 splits into the 34 px **View Bar** (`Plan | 3D` +
+> utilities) plus a 44 px Paper-attached **Tool Tray** that owns the workspace's
+> tool vocabulary.
+>
+> **Do not implement shell chrome, band heights, control sizes or type sizes from
+> this document.** Authority for shell composition, material, typography, control
+> metrics and state language is
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> (§5 geometry · §7 type + control roles · §10/§11 View Bar and Tool Tray · §18
+> states); authority for what each workspace may expose and own remains
+> [`design-shell-specs.md`](./design-shell-specs.md) and its scene/camera splits.
+>
+> This file is retained as the **P21 design record and as provenance** for the
+> information-architecture intent P23.14 carried forward (rank grammar, zone
+> ownership, keyboard invariants, single-history rules). `shell.md` §P21 landing
+> record states the same supersession from the implementation side.
+
 ---
 
 ## Authority & Supersession

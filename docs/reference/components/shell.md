@@ -11,6 +11,16 @@ Head/ribbon split; P23.14 (`../roadmap/p23-layout-depth/p23.14-shell-visual-syst
 recomposed it into the composition below and retired the pre-P21 section map and
 the pre-P21 `Preview Scene → /museum` row this file used to carry.
 
+**Authority (2026-09-19, owner-ratified):** the durable shell design authority is
+[`editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md),
+now carrying ratifications **R1** (Tool Tray tier), **R2** (armed tool) and **R3**
+(closed type ladder, semantic roles, `--editor-type-scale` /
+`--editor-control-scale`), the View Bar `MODE`-as-caption grammar and the four
+distinct surface states. This file is **descriptive** of that composition and stays
+canonical for **capability, ownership and exposure**. Read the direction first for
+any shell composition, material, type, control or state question; do not take a
+shell value from a component's scoped CSS.
+
 ---
 
 ## Current implementation — PLATE composition (P23.14, landed)
@@ -22,7 +32,7 @@ the pre-P21 `Preview Scene → /museum` row this file used to carry.
 │ o    │ Visitor Preview · theme · account · Document menu             │
 │ m    ├───────────────────────────────────────────────────────────────┤
 │ a    │ VIEW BAR · 34 px                                              │
-│ i    │ Scene|Camera · Plan|3D · workspace utilities + precision       │
+│ i    │ Plan|3D tabs · MODE caption (Scene Plan) · utilities · precision  │
 │ n    ├────────┬──────┬────────────────────────────┬──────────────────┤
 │ S    │NAVIG.  │ TRAY │ work column                │ INSPECTOR        │
 │ p    │ 268 px │ 44px │ Plan or 3D canvas          │ 300 px           │
@@ -41,17 +51,24 @@ the pre-P21 `Preview Scene → /museum` row this file used to carry.
   carries workspace manipulation commands.
 - **View Bar (34 px)** carries the `Plan | 3D` view switch plus the current
   workspace's utility and precision controls; it replaced the retired 32 px
-  ribbon band. It is not a second global toolbar.
+  ribbon band. It is not a second global toolbar. The view tabs are engraved and
+  must not read as ordinary tool buttons; Scene Plan adds the `MODE   Layout |
+  Arrange` **caption** grammar (`MODE` is a quiet non-interactive label, not a
+  third segment — no fill, border, radius or padding around the three); utilities
+  sit at the 10 px utility tier, the mode pair at 11 px on the 24 px control role,
+  tool groups are separated by space alone, and a pressed control takes a
+  recessed surface + edge border + inset bottom rule (never a translucent wash).
+  All of those values come from the R3 roles (`editor-shell-and-visual-system.md` §7/§10/§18).
 - **Tool Tray (44 px)** is a Paper-attached vertical instrument rail holding the
   current surface's tool vocabulary — not a second sidebar. Each workspace
   mounts one (Scene Plan drafting, Camera Plan, Scene 3D, camera utilities). Its
   engraved labels are the rail's own micro-tier (7 px group / 8 px tool, 6 px
   compact floor for a word wider than the rail) and an armed tool is a
   **darkened surface** — no border, no inboard edge (P23.14 ratifications R1/R2,
-  [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md)).
-  The P23.14 `final-direction.md` + Atlas are the durable design authority for
-  this composition; this file is descriptive of it and canonical for capability,
-  ownership and exposure.
+  [`editor-shell-ratifications.md`](../../reference/design-system/editor-shell-ratifications.md)).
+  That durable contract (`reference/design-system/editor-shell-and-visual-system.md`) plus its
+  Atlas are the shell design authority; this file is descriptive of it and canonical for
+  capability, ownership and exposure.
 - **Navigator (268 px, 240–300)** owns the domain's structure/assets;
   **Inspector (300 px, 280–420)** owns the selection's properties.
 - **Camera Drawer** spans the central work column only: collapsed `48px`
@@ -60,8 +77,9 @@ the pre-P21 `Preview Scene → /museum` row this file used to carry.
   switch.
 - **Status Rail (24 px)** stays informational: workspace, selection, save state,
   navigation hints, grid/snap. Precision belongs near the gesture; the rail
-  never carries all of it. Its ink is the readable secondary tier, never
-  under-contrast muted ink at 11 px.
+  never carries all of it. It paints the 10 px status role with 12 px side padding
+  and ≈ 20 px gaps, and its ink is the readable secondary tier — quietness comes
+  from weight and size, never from under-contrast muted ink.
 - Theme default is **PLATE Light** (`theme.svelte.ts`; boot allowlist in
   `app.html`). The dark relic theme remains available, not default.
 

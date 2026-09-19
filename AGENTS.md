@@ -25,6 +25,13 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 10. **Truth precedence** — for doc-vs-doc conflicts, highest wins:
     `operations/current.md → active plan → component contract →
     reference/architecture.md → reference/north-star.md → archive`.
+    A **ratified durable design contract** is normative for its own domain and
+    outranks older descriptive numbers there: today that is the shell +
+    visual-system contract
+    (`docs/reference/design-system/editor-shell-and-visual-system.md`), which owns
+    shell composition, material, typography, control metrics and state
+    language. Do not implement shell chrome from `reference/design-system/*`
+    shell tables or from a component's scoped CSS.
     Source/tests/Git are implementation evidence, not another documentation
     tier. If they materially contradict `reference/`, use the reconciliation
     triage in `docs/README.md` rather than resolving by precedence alone.

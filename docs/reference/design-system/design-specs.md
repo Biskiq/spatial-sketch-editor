@@ -30,18 +30,42 @@ system.
 > frozen.
 >
 > **Authority after P23.14 (2026-09-19, owner-ratified):** the P23.14
-> [`final-direction.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md)
-> contract plus its [`Atlas`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/atlas/index.html)
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract plus its [`Atlas`](./editor-shell-atlas/index.html)
 > are the **durable design authority for the shell**; later phases fit into that
 > grammar and may depend on it. This file, `design-shell-specs.md` and
 > `shell.md` stay canonical for **capability, ownership, exposure and the frozen
 > Plan/identity/iconography contracts**, while their **shell placement, dimension
-> and type** sections are **descriptive of the landed PLATE system**. Two
+> and type** sections are **descriptive of the landed PLATE system**. Three
 > ratifications correct numbers in this file — **R1** (the Tool Tray's engraved
-> tier is 7 px group / 8 px tool with a 6 px compact floor, *not* §22's 10 px) and
+> tier is 7 px group / 8 px tool with a 6 px compact floor, *not* §22's 10 px),
 > **R2** (an armed tool is a darkened surface, *not* an amber border + inboard
-> edge). Rationale and measurements:
-> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
+> edge) and **R3** (the shell's type and controls are a closed ladder + semantic
+> roles on two global scales, *not* per-surface literals). Rationale and
+> measurements:
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
+>
+> **How to read this file after P23.14** — every statement in it falls into one of
+> three classes:
+>
+> 1. **Subsystem authority** (still normative): capability, ownership, exposure,
+>    the P23.12 identity contract, the P23.13 Plan drafting/iconography contract,
+>    Plan Paper and the spatial palette.
+> 2. **Descriptive** (true today, follows the durable authority): the shell
+>    composition and the tables already amended in place (§6 type scale, §20 tree
+>    rows, §17 buttons, §5/§18 View Bar).
+> 3. **Superseded for the shell** (history only — do **not** implement): the
+>    pre-PLATE flat type ramp (16/14/13/12.5/11.5 px), the 32 px workspace-ribbon
+>    band and Row 1/Row 2 model, broad-toolbar group-label sizing, 28 px
+>    component-local button/track sizing, the 32 px standard toolbar button, and
+>    navy as the product baseline.
+>
+> The ratified shell grammar lives in **four places only**: `editor-shell-and-visual-system.md`
+> §2.8–§2.10 (inheritance, roles-not-numbers, constraint-over-number), §7 (closed
+> ladder, roles, the two scales, control roles, role outcomes), §10–§11 (View Bar
+> `MODE` grammar, Tool Tray R1/R2) and §18 (four distinct surface states, pressed
+> baseline). Do not take a shell type/control/material value from this file when
+> §7 disagrees.
 
 This specification translates the approved product model and generated UI concepts into concrete implementation rules. The canonical product remains the explicit `Scene | Camera` × `Plan | 3D` domain/view system:
 
@@ -396,7 +420,7 @@ Do not introduce a display font.
 > (`lg` 30px / `md` 26px / `sm` 24px / `xs` 20px, scaled by
 > `--editor-control-scale`). Rationale, the measured Atlas deltas and the two
 > remaining unswept panels:
-> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md) R3.
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md) R3.
 
 **Tool Tray micro-tier (P23.14 R1) — an exception, scoped to the 44 px rail:**
 
@@ -412,7 +436,7 @@ cannot hold this file's engraved 10 px tier: at 10 px the group names measure
 paints the P23.14 reference's tier instead, and a group word wider than the rail
 steps down to 6 px rather than breaking (`TRANSFORM` is the only one). §6's tiers
 above keep every other engraved label in the shell. Full rationale and the
-measured table: P23.14 [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md) §2–§3.
+measured table: P23.14 [`editor-shell-ratifications.md`](./editor-shell-ratifications.md) §2–§3.
 
 Use:
 
@@ -970,20 +994,32 @@ The generated expanded Camera design shows the intended five-lane structure, tra
 
 # 17. Buttons
 
-## Standard toolbar button
+> **P23.14 R3 — controls are ROLES, not numbers (this supersedes the table
+> below for the shell).** Every chrome button is one of four roles from
+> [`editor-shell-and-visual-system.md` §7.4](./editor-shell-and-visual-system.md):
+> `lg` 30 px / `md` 26 px / `sm` 24 px / `xs` 20 px, each carrying its own
+> padding and type, all scaled by `--editor-control-scale`. Radius follows the
+> material rule (square chassis, ≈3 px instruments). The pre-PLATE standard
+> button is retained below as **history and for the frozen relic only**:
+
+## Standard toolbar button (pre-PLATE — superseded for the shell)
 
 ```text
-height:       32px
-padding-x:     9px
-icon:         16px
+height:       32px     ← superseded: shell uses the md (26 px) / sm (24 px) role
+padding-x:     9px     ← superseded: comes from the role
+icon:         16px     ← retained (--editor-icon-size-sm)
 gap:           6px
-font:         13px / 500
-radius:        5px
+font:         13px / 500  ← superseded: --editor-type-control (12 px) in the shell
+radius:        5px     ← superseded: shell instrument radius is ≈3 px
+transparent background, secondary text
 ```
 
-> **Row 2 rule (see §18):** contextual authoring buttons in the View Bar use
-> the 28px compact sizing; the 32px above applies to standard buttons outside
-> Row 2. Tool Tray tools are icon-led and sized to the 44px rail.
+> **View Bar rule (see §18):** the View Bar's controls are the ratified Atlas
+> metrics — plain 24 px buttons on the `sm` role, utilities at the 10 px utility
+> tier, the `MODE` pair at 11 px, presses painted with a recessed surface + edge
+> border + inset bottom rule, and tool groups separated by space only. The 28 px
+> enclosed track and the enclosed segmented trough are **superseded**. Tool Tray
+> tools are icon-led and sized to the 44 px rail (`editor-shell-and-visual-system.md` §11).
 
 Default:
 
@@ -1063,8 +1099,9 @@ Domain Spine track:   the Scene | Camera axis (56px rail)
 Tool Tray tools:      icon-led, one 44px rail per workspace
 ```
 
-Standard controls outside Row 2 may retain the existing 32px sizing where
-applicable.
+Controls **outside** the shell keep whatever sizing their own subsystem's spec
+says; **inside** the shell, control size comes from the R3 role table (§17) and
+never from a retained pre-PLATE number.
 
 Selected:
 
@@ -1228,7 +1265,7 @@ the shell. **Armed tool (owner ratification R2):** a darkened surface and
 nothing else — `background: var(--editor-bg-recess)`, no border, no inboard edge,
 no weight step. `--editor-armed` remains the armed *hue* for other surfaces; the
 tray does not spend it. Rationale and measurements:
-[`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
+[`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
 
 The tool sets per workspace below are unchanged; only their placement changed.
 Viewport-local floating UI is reserved for things with spatial meaning:
