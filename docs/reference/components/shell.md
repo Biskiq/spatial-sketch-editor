@@ -44,7 +44,14 @@ the pre-P21 `Preview Scene → /museum` row this file used to carry.
   ribbon band. It is not a second global toolbar.
 - **Tool Tray (44 px)** is a Paper-attached vertical instrument rail holding the
   current surface's tool vocabulary — not a second sidebar. Each workspace
-  mounts one (Scene Plan drafting, Camera Plan, Scene 3D, camera utilities).
+  mounts one (Scene Plan drafting, Camera Plan, Scene 3D, camera utilities). Its
+  engraved labels are the rail's own micro-tier (7 px group / 8 px tool, 6 px
+  compact floor for a word wider than the rail) and an armed tool is a
+  **darkened surface** — no border, no inboard edge (P23.14 ratifications R1/R2,
+  [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md)).
+  The P23.14 `final-direction.md` + Atlas are the durable design authority for
+  this composition; this file is descriptive of it and canonical for capability,
+  ownership and exposure.
 - **Navigator (268 px, 240–300)** owns the domain's structure/assets;
   **Inspector (300 px, 280–420)** owns the selection's properties.
 - **Camera Drawer** spans the central work column only: collapsed `48px`

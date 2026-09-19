@@ -6,6 +6,29 @@
 - **Drawer left edge:** §17 says central-work-column span; PNGs start after the Tool Tray. Atlas follows the written column boundary, including the tray width.
 - No ratified compact-reference scheme is supplied for Buildings, Floors, Scene objects, cameras or sequences. Atlas preserves R/W/O/J identity and uses names plus camera sequence ordinals elsewhere; it does not adopt generated M-/F-/OBJ-/CAM-/SEQ- tokens as contracts.
 
+## Owner-ratified decisions the Atlas now reflects (2026-09-19)
+
+Record and rationale: [`../owner-ratifications.md`](../owner-ratifications.md). Two changes to
+this instrument after owner review of the landed shell:
+
+- **R1 — Tool Tray type.** The rail paints 7 px group / 8 px tool labels (the reference tier,
+  unchanged here) and a group word wider than the rail steps down to a 6 px compact floor
+  rather than breaking mid-word. `TRANSFORM` is the only qualifying word and carries
+  `class="compact"`. The Atlas previously overflowed that one label; it no longer does.
+- **R2 — the armed tool is a darkened surface and nothing else.** The tool rail's
+  `[aria-pressed=true]` treatment lost its amber border and its 2 px inboard edge; it now paints
+  the recess trough tone with full ink, matching the landed
+  `.tool-tray button.active { background: var(--editor-bg-recess) }`. This instrument is where
+  the old amber treatment was first drawn, so it is corrected here too.
+
+## Authority promotion
+
+The owner has promoted the P23.14 design to the durable, stable baseline: `final-direction.md`
+wins over this Atlas, and this Atlas wins over the reference docs' older shell placement,
+dimension and type numbers (which describe the pre-P23.14 ribbon/floating-toolbar shell). Later
+phases — P23.15→P23.16, P24, P26 — fit into this grammar and may depend on it. This Atlas stays
+QA evidence: never topology, validation or numeric-acceptance authority.
+
 ## Deliberate PNG corrections
 
 - Domain stations use restrained 3 px inboard edge-lights, not full brass/cyan fills. PLATE Light is the only baseline.

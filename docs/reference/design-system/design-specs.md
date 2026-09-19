@@ -28,6 +28,20 @@ system.
 > switch sits in Row 2, read "Domain Spine". §7 color states PLATE Light as
 > the default theme. The §Plan drafting ink and §5 icon inventories stay
 > frozen.
+>
+> **Authority after P23.14 (2026-09-19, owner-ratified):** the P23.14
+> [`final-direction.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md)
+> contract plus its [`Atlas`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/atlas/index.html)
+> are the **durable design authority for the shell**; later phases fit into that
+> grammar and may depend on it. This file, `design-shell-specs.md` and
+> `shell.md` stay canonical for **capability, ownership, exposure and the frozen
+> Plan/identity/iconography contracts**, while their **shell placement, dimension
+> and type** sections are **descriptive of the landed PLATE system**. Two
+> ratifications correct numbers in this file — **R1** (the Tool Tray's engraved
+> tier is 7 px group / 8 px tool with a 6 px compact floor, *not* §22's 10 px) and
+> **R2** (an armed tool is a darkened surface, *not* an amber border + inboard
+> edge). Rationale and measurements:
+> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
 
 This specification translates the approved product model and generated UI concepts into concrete implementation rules. The canonical product remains the explicit `Scene | Camera` × `Plan | 3D` domain/view system:
 
@@ -370,6 +384,22 @@ Do not introduce a display font.
 | Status bar         | 11.5–12px |     400 |
 | Timeline ruler     |      11px |     400 |
 
+**Tool Tray micro-tier (P23.14 R1) — an exception, scoped to the 44 px rail:**
+
+| Usage                    |  Size |  Weight |
+| ------------------------ | ----: | ------: |
+| Tray group label         |   7px |     600 |
+| Tray tool label          |   8px |     600 |
+| Tray group label, a word wider than the rail | 6px | 600 |
+
+The rail (`--editor-tray-width: 44px`) is the one container in the shell that
+cannot hold this file's engraved 10 px tier: at 10 px the group names measure
+46.6–63.8 px against a 39 px text box, so every label broke mid-word. The tray
+paints the P23.14 reference's tier instead, and a group word wider than the rail
+steps down to 6 px rather than breaking (`TRANSFORM` is the only one). §6's tiers
+above keep every other engraved label in the shell. Full rationale and the
+measured table: P23.14 [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md) §2–§3.
+
 Use:
 
 ```css
@@ -417,10 +447,15 @@ alternate (relic) theme — it is an override block, not a second design.
 --editor-bg-recess:       #CBD0D4;
 --editor-bg-instrument:   #E8E5DD;
 
-/* Domain accents on the Chassis — never a full-surface fill. */
---editor-domain-scene:    #A37A3D;
+/* Domain accents on the Chassis — never a full-surface fill. Darkened from
+   #A37A3D/#C58B35 by review F1 rulings D3/D4 so both clear the 3:1 non-text
+   bar on every Chassis step. */
+--editor-domain-scene:    #946D34;
 --editor-domain-camera:   #347D89;
---editor-armed:           #C58B35;
+/* The armed HUE. Since P23.14 R2 the Tool Tray does NOT spend it — an armed
+   tool is a darkened surface (`--editor-bg-recess`), no border, no edge, no
+   weight step. Kept for surfaces that want an armed hue. */
+--editor-armed:           #946624;
 ```
 
 ## Text
@@ -430,18 +465,28 @@ light Chassis flips to dark ink automatically. The light members, with measured
 contrast on the `#D9DDE0` Chassis:
 
 ```css
---editor-text-primary:    #13161D;  /* 10.6:1 */
---editor-text-secondary:  #3A4252;  /*  7.4:1 */
---editor-text-muted:      #606B7E;  /*  chrome text only, never 11 px rails */
+--editor-text-primary:    #13161D;  /* 13.25:1 */
+--editor-text-secondary:  #3A4252;  /*  7.39:1 */
+--editor-text-muted:      #55606E;  /*  4.68:1 — chrome text only */
 --editor-text-disabled:   #9BA3AF;
 ```
 
+(Ratios re-measured on the `#D9DDE0` Chassis by review F1; the earlier `10.6:1`
+belonged to the §6.1 reference ink `#252A2E`, not to the base primary. Muted was
+darkened `#606B7E → #55606E` because it is a *text* ink — Status Rail, resting
+View Bar tabs, Inspector section headers, tray group labels — and only cleared
+3.94:1 before. `tests/lib/editor/app/p23-14-contrast-floor.test.ts` recomputes
+every number in this section from `tokens.css`.)
+
 Small chromatic inks layer above the base ramp and must still clear AA at their
 painted size: `--editor-text-tint`, `--editor-text-tint-soft`,
-`--editor-text-metric`, `--editor-text-timecode`, and
+`--editor-text-metric`, `--editor-text-timecode`,
 `--editor-text-success: #146C34` (4.8:1 — a *text* role, distinct from the
-`--editor-success` glyph/border family, which keeps `#15803D`). The 11 px
-Status Rail paints `--editor-text-secondary`, never muted ink.
+`--editor-success` glyph/border family, which keeps `#15803D`) and
+`--editor-text-warning: #744E0E` (5.41:1 — likewise distinct from the
+`--editor-warning` glyph/border family; a base `--editor-success`/`-warning`
+used as text ink is a bug). The 11 px Status Rail paints
+`--editor-text-secondary`, never muted ink.
 
 ## Instrument accent
 
@@ -1150,13 +1195,23 @@ Do not put large colored status backgrounds behind entire cards.
 tools live in the workspace's **Tool Tray** — a 44 px Paper-attached rail
 (`--editor-tray-width`) with 7 px engraved group labels and 8 px icon-led tool
 labels plus the View Bar's utilities; not in a toolbar floating over the
-viewport. The tray's two sizes are the rail's **micro-tier**
-(`--editor-font-size-tray-group/-tool`), not §7's 10 px engraved tier: §7's
-scale is explicitly *approximate*, and a 10 px label cannot fit §11's own rail
-(the groups measure 46.6–63.8 px inside a 39 px text box, so every label broke
-mid-word). §7's 10 px tier keeps every other engraved label in the shell. The
-tool sets per workspace below are unchanged; only their placement changed. Viewport-local floating UI is reserved for things with spatial
-meaning: orientation cube, TransformControls, rotation handles, path anchors,
+viewport. The tray's sizes are the rail's **micro-tier**
+(`--editor-font-size-tray-group/-tool`, owner ratification R1), *not* the 10 px
+engraved tier in §6 above: that tier was written for a shell whose group labels
+had hundreds of pixels of width, and it cannot fit the 44 px rail (at 10 px the
+groups measure 46.6–63.8 px inside a 39 px text box, so every label broke
+mid-word). A group word that is wider than the rail steps down to a 6 px compact
+floor rather than breaking — `TRANSFORM` is the only one — via an opt-in
+`data-group-compact` on that group. §6's tiers keep every other engraved label in
+the shell. **Armed tool (owner ratification R2):** a darkened surface and
+nothing else — `background: var(--editor-bg-recess)`, no border, no inboard edge,
+no weight step. `--editor-armed` remains the armed *hue* for other surfaces; the
+tray does not spend it. Rationale and measurements:
+[`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
+
+The tool sets per workspace below are unchanged; only their placement changed.
+Viewport-local floating UI is reserved for things with spatial meaning:
+orientation cube, TransformControls, rotation handles, path anchors,
 camera/frustum helpers, and selection/direct-manipulation fixtures. The Camera
 Timeline transport is **not** relocated into the tray; a collapsed Camera Drawer
 is the transport strip.

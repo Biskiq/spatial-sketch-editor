@@ -257,12 +257,57 @@ describe('P23.14 F3 (re-decided) — tray engraved micro-tier', () => {
 	});
 
 	it('keeps the comment and the rule agreeing about the tier', () => {
-		expect(controls).toContain("TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px.");
+		expect(controls).toContain("TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px");
 	});
 
-	it('darkens the armed cue to the non-text bar and keeps its non-hue cue', () => {
-		const armed = block(controls, '.project-editor .tool-tray button.active {');
-		expect(armed).toContain('box-shadow: inset 3px 0 var(--editor-armed)');
-		expect(armed).toContain('font-weight: 700');
+	it('steps the one over-wide group word down instead of breaking it (R1)', () => {
+		// TRANSFORM is 44.7 px at 7 px — wider than the 44 px rail. The opt-in is
+		// per group, so the tier itself stays at the reference's 7 px.
+		expect(tokens).toContain('--editor-font-size-tray-group-compact: 6px;');
+		const compact = block(
+			controls,
+			'.project-editor .tool-tray .tool-group[data-group-compact][data-group-label]::before {'
+		);
+		expect(compact).toContain('font-size: var(--editor-font-size-tray-group-compact)');
+		// The tier itself is never the compact size.
+		expect(groupLabel).toContain('var(--editor-font-size-tray-group)/1.15');
+		const toolbar = fs.readFileSync(
+			path.join(EDITOR_SRC, 'EditorViewportToolbar.svelte'),
+			'utf8'
+		);
+		expect(toolbar).toContain('data-group-label="TRANSFORM" data-group-compact');
+	});
+});
+
+/**
+ * Owner ratification R2 — the armed tool is a DARKENED SURFACE ONLY.
+ *
+ * The amber border and the 3 px inboard edge are gone at the owner's direction,
+ * so the armed state is carried by luminance alone. That still satisfies §18
+ * (never hue alone — it is now no hue at all), and it is the reason the
+ * `.active` rule must not reach for `--editor-armed` again.
+ */
+describe('P23.14 R2 — armed tool is a darkened surface, nothing else', () => {
+	const armed = block(controls, '.project-editor .tool-tray button.active {');
+
+	it('paints the recess step and no border, edge or weight step', () => {
+		expect(armed).toContain('background: var(--editor-bg-recess)');
+		expect(armed).toContain('border-color: transparent');
+		expect(armed).toContain('box-shadow: none');
+		expect(armed).not.toContain('font-weight');
+	});
+
+	it('does not spend the armed hue on the rail', () => {
+		expect(armed).not.toContain('--editor-armed');
+	});
+
+	it('keeps the armed surface readable at full ink', () => {
+		// The armed label is `--editor-text-primary` on the recess step, which is
+		// a TEXT surface the AA floor has to cover like any other.
+		expect(ratio(plateValue('editor-text-primary'), plateValue(RECESS))).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it('still ships the armed hue in the palette, for surfaces that want it', () => {
+		expect(plate).toContain('--editor-armed: #946624;');
 	});
 });

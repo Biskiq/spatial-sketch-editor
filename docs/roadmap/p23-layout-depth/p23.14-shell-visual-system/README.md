@@ -1,9 +1,10 @@
 # P23.14 — Editor Shell & Visual System Foundation
 
 ```text
-STATUS: implemented — Tasks 1–9 landed on `p23.14`; self-review QA record below
-NEXT: owner review of the QA record findings (F1/F2/F4/F5) and F7's one residual call
-      (the `TRANSFORM` group label is wider than the 44 px rail can carry), then P23.15
+STATUS: implemented — Tasks 1–9 landed on `p23.14`; OWNER REVIEW OPEN (not closed out)
+NEXT: owner review of the QA record findings F1/F2/F4/F5, then P23.15
+      R1 (tray engraved tier) + R2 (armed tool) are owner-ratified and landed;
+      F7 is resolved by R1. Ratifications + drift root cause: ./design/owner-ratifications.md
 PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
 QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ```
@@ -37,14 +38,26 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 
 - **Self-review record:** [`qa/2026-09-19-P23.14-shell-qa-record.md`](./qa/2026-09-19-P23.14-shell-qa-record.md)
   — Atlas specimens A–D, the §25.2 stress toggles, and the findings that came out of it
-  (F1/F2/F4/F5 open for an owner call; F3/F6/F7 fixed in the same pass — F7 carries one
-  residual call, the `TRANSFORM` group label). Device, screen-reader, reduced-motion and
-  coarse-pointer rows remain **manual-owed**.
+  (F1/F2/F4/F5 open for an owner call; F3/F6 fixed in the same pass; F7 fixed and then
+  ratified as R1, which resolves the residual `TRANSFORM` call). Device, screen-reader,
+  reduced-motion and coarse-pointer rows remain **manual-owed**.
 - Atlas specimens are QA references only.
-- **Tool Tray type (F7, fixed):** the rail paints the reference's engraved micro-tier
-  (7 px group / 8 px tool, `--editor-font-size-tray-group/-tool`) rather than §7's 10 px
-  engraved tier, because a 10 px label cannot fit §11's 44 px rail. Rationale, measurements
-  and the residual `TRANSFORM` call are recorded in the QA record.
+- **Durable design authority (owner-ratified 2026-09-19):**
+  [`design/final-direction.md`](./design/final-direction.md) + [`design/atlas/`](./design/atlas/)
+  are promoted to the **durable, stable design authority for the editor shell** — P23.15,
+  P23.16, P24 and P26 fit into this grammar and may depend on it. The `docs/reference/*`
+  docs stay canonical for capability/ownership/exposure and the frozen Plan/identity/icon
+  contracts, while their shell placement/dimension/type statements are descriptive of the
+  landed PLATE system.
+- **Owner ratifications R1 + R2:** [`design/owner-ratifications.md`](./design/owner-ratifications.md)
+  — **R1** the Tool Tray paints the reference's engraved micro-tier (7 px group / 8 px tool,
+  plus a 6 px compact floor for a word wider than the rail) rather than the 10 px engraved
+  tier, which cannot fit §11's 44 px rail; **R2** an armed tool is a **darkened surface and
+  nothing else** (no amber border, no inboard edge, no weight step). That file also records
+  the **root cause of the drift** — the pre-P23.14 ribbon-era contract was the only written
+  authority for the new rail's numbers, and the rail's shared toolbar components carry View
+  Bar rules (`white-space: nowrap`) into the tray — so later phases inherit the lesson, not
+  just the number.
 - **Known acceptance limitation (TD‑1):** `Add Camera` still depends on the legacy
   Room-floor placement path, and the canonical wall-first floor hit is refused, so a
   fresh canonical project cannot place a new camera. Existing TD‑1

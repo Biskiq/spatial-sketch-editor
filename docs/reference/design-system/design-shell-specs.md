@@ -11,6 +11,19 @@ Arrange` surface (staging terminology below refers to the shipped pre-P10
 state). Camera uses `Unsequenced` for cameras outside the ordered subset.
 Current rules are written directly below rather than layered as amendments.
 
+> **P23.14 authority (2026-09-19, owner-ratified):** the P23.14
+> [`final-direction.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md)
+> contract plus its [`Atlas`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/atlas/index.html)
+> are the **durable design authority for the shell**; later phases (P23.15 →
+> P23.16, P24, P26) fit into that grammar and may depend on it. This file stays
+> canonical for **exposure, ownership and capability rules**; its shell
+> **placement, dimension and type** statements are descriptive of the landed
+> PLATE composition (Domain Spine · Project Head · View Bar · Tool Tray · Status
+> Rail). Two ratifications correct numbers this file and `design-specs.md`
+> carried — the Tool Tray's engraved tier (R1) and the armed-tool treatment (R2)
+> — see
+> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md).
+
 **Split 2026-08-21:** scene/camera workspace sections moved verbatim to
 [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md) ·
 [`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md) — section

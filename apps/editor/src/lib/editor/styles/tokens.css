@@ -132,7 +132,9 @@
 	   CHASSIS is `--editor-bg-app/-panel` (persistent structure), the recess
 	   step is the Domain Spine trough, INSTRUMENT is the control material,
 	   the domain accents are the two Spine stations' 3 px inboard
-	   edge-light, and ARMED is the tool-tray armed cue (§11). The defaults
+	   edge-light, and ARMED is the armed hue any surface may spend (the Tool
+	   Tray no longer does — owner ratification R2 made its armed state a
+	   darkened surface: `--editor-bg-recess`, no border, no edge). The defaults
 	   below alias every existing dark theme to its current look (recess =
 	   app chassis, instrument = control surface, scene accent = the theme
 	   accent); PLATE Light overrides them with the ratified §6.1 values. */
@@ -161,7 +163,7 @@
 	     active domain      domain-scene/camera        Spine edge-light
 	     active view        accent                     View Bar underline
 	     active mode        control-active-bg          enclosed trough
-	     armed              --editor-armed             tray rail fill
+	     armed              —                          darkened surface (recess step)
 	     disabled + reason  text-disabled              not-allowed + title
 	     refusal / invalid  --editor-state-refusal      inline reason at action
 	     warning            warning                    glyph at the readout
@@ -196,7 +198,9 @@
 	--editor-state-refusal-border: var(--editor-danger-border);
 
 	/* State aliases — the working states other slices already paint, named
-	   here so §7 consumers share one vocabulary. */
+	   here so §7 consumers share one vocabulary. `--editor-state-armed` keeps the
+	   armed HUE; a surface that wants the tray's ratified treatment (R2) uses
+	   `--editor-bg-recess` instead. */
 	--editor-state-armed: var(--editor-armed);
 	--editor-state-snap: var(--editor-plan-snap);
 	--editor-state-disabled-ink: var(--editor-text-disabled);
@@ -391,6 +395,14 @@
 	   7 px, wider than the rail can ever be) still needs `overflow-wrap`. */
 	--editor-font-size-tray-group: 7px;
 	--editor-font-size-tray-tool: 8px;
+	/* The tray's one size exception (owner ratification R1): a group word that is
+	   wider than the rail itself is allowed to step down to this floor rather
+	   than break mid-word. Exactly one word qualifies — TRANSFORM (44.7 px at
+	   7 px, ~38 px here) — and the opt-in lives on that group's markup
+	   (`data-group-compact`), not on the tier. The slack is deliberate: the
+	   platform font fallback moves text metrics by a few percent, so the fix has
+	   to hold when Inter Variable is not the font that renders. */
+	--editor-font-size-tray-group-compact: 6px;
 
 	/* ── DS §14 — elevation ── */
 	--editor-shadow-toolbar: 0 8px 24px rgb(0 0 0 / 38%);

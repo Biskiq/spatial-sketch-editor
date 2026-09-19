@@ -15,9 +15,9 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: slice planning (P23.14 implementation-ready child plan in slice workspace)
+STAGE: P23.14 implemented on `p23.14`, owner review OPEN (PR #61)
 CURRENT: p23.14-shell-visual-system/README.md (P23.14 — Editor Shell & Visual System Foundation)
-NEXT: P23.14 implementation plan, then P23.15 → P23.16 final closeout
+NEXT: P23.14 owner review closeout, then P23.15 → P23.16 final closeout
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
 ```
 
@@ -33,6 +33,17 @@ closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
 
 - Umbrella: [`2026-09-07-P23-layout-depth-minimum-build.md`](./2026-09-07-P23-layout-depth-minimum-build.md)
 - Cross-view direction: [`2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md`](./2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md)
+- **Shell design (durable, owner-ratified 2026-09-19):**
+  [`p23.14-shell-visual-system/design/final-direction.md`](./p23.14-shell-visual-system/design/final-direction.md)
+  + [`design/atlas/`](./p23.14-shell-visual-system/design/atlas/index.html). The P23.14 shell
+  grammar is the **stable baseline later phases fit into and depend on** — P23.15, P23.16,
+  P24 (denser content, multi-select, groups, materials/lights) and P26 (section/elevation as a
+  subordinate instrument) enter through it rather than re-deciding shell composition,
+  dimension or type. Rationale, ratifications (R1/R2) and the drift root cause:
+  [`design/owner-ratifications.md`](./p23.14-shell-visual-system/design/owner-ratifications.md).
+  `docs/reference/design-system/*` and `docs/reference/components/shell.md` stay canonical for
+  capability/ownership/exposure and the frozen Plan/identity/icon contracts, and are
+  descriptive — not authoritative — for shell placement, dimension and type.
 
 ## Completed slices (shipped on `main`)
 

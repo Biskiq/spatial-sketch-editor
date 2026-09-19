@@ -44,23 +44,30 @@
    each group paints its visible engraved label from `data-group-label`, and
    buttons become icon-over-label instruments.
 
-   TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px.
-   §7's *approximate* scale puts engraved/group labels at 10 px; §11 fixes the
-   rail at 44 px. Those two cannot both hold: at 10 px the group names measure
-   46.6–63.8 px against the rail's text box, so every label broke *inside the
-   word* ("OPENI / NGS", "OBJEC / TS", "Windo / w") instead of reading as
-   engraving. The tray therefore paints the reference values through
-   `--editor-font-size-tray-group/-tool` (7 px / 8 px), which is what §11's
-   "small persistent group labels and compact icon-led tools" asks for. The
-   1 px gutter + `width: 100%` control gives the label a 39 px text box — the
-   narrowest box that still paints an 8 px word like "Sequence" on one line
-   (38.8 px) even at the armed 700 weight step.
+   TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px
+   (owner ratification R1; root cause in
+   `design/owner-ratifications.md`). §7's *approximate* scale puts
+   engraved/group labels at 10 px; §11 fixes the rail at 44 px. Those two
+   cannot both hold: at 10 px the group names measure 46.6–63.8 px against the
+   rail's text box, so every label broke *inside the word* ("OPENI / NGS",
+   "OBJEC / TS", "Windo / w") instead of reading as engraving. The tray paints
+   the reference values through `--editor-font-size-tray-group/-tool`
+   (7 px / 8 px), which is what §11's "small persistent group labels and
+   compact icon-led tools" asks for. The 1 px gutter + `width: 100%` control
+   gives the label a 39 px text box — the narrowest box that still paints an
+   8 px word like "Sequence" on one line (38.8 px).
 
-   Armed tool = amber (`--editor-armed`) edge plus TWO non-hue cues, so the
-   armed state never reads by hue alone (§18/§11): a 3 px inboard edge (the
-   same edge-light width the Domain Spine uses) and a label weight step. The
-   amber was darkened to clear the 3:1 non-text bar on Instrument + Chassis
-   (review F1 / ruling D4).
+   One size exception, opt-in per group: a group word wider than the rail steps
+   down to `--editor-font-size-tray-group-compact` instead of breaking. Only
+   TRANSFORM qualifies (44.7 px at 7 px).
+
+   Armed tool = a DARKENED surface and nothing else (owner ratification R2):
+   the tool sinks one material step into the rail (recess trough, the tone the
+   Domain Spine uses) and its label goes full ink. The amber border and the 3 px
+   inboard edge are gone at the owner's direction — the cue is the luminance
+   step alone, which is still a non-hue cue (§18), still visible in a monochrome
+   frame, and the only armed cue in the shell. `--editor-armed` is retained in
+   the §6 palette for surfaces that may still want an armed hue.
    ────────────────────────────────────────────────────────────────────────── */
 .project-editor .tool-tray {
 	display: flex;
@@ -95,11 +102,17 @@
 	font: 600 var(--editor-font-size-tray-group)/1.15 var(--editor-font);
 	/* Uppercase at 7 px is already dense; the reference resets tracking to 0. */
 	letter-spacing: 0;
-	/* Guard only. Every group word fits at 7 px except TRANSFORM (44.7 px),
-	   which no legible size fits inside a 44 px rail — it degrades to a second
-	   line instead of overflowing the rail. */
+	/* Guard only — no group word needs it once `data-group-compact` has stepped
+	   the one over-wide word down; it stays so a future group name degrades to a
+	   second line instead of overflowing the rail. */
 	overflow-wrap: anywhere;
 	color: var(--editor-text-muted);
+}
+
+/* Opt-in per group (ratification R1): a word wider than the 44 px rail steps
+   down one size rather than breaking mid-word. TRANSFORM is the only one. */
+.project-editor .tool-tray .tool-group[data-group-compact][data-group-label]::before {
+	font-size: var(--editor-font-size-tray-group-compact);
 }
 
 .project-editor .tool-tray button {
@@ -117,8 +130,9 @@
 	background: transparent;
 	color: var(--editor-text-secondary);
 	font: 600 var(--editor-font-size-tray-tool)/1.15 var(--editor-font);
-	/* −0.01em absorbs the `.active` 700-weight step so the longest tool word
-	   ("Sequence", 38.8 px at 8/600) stays on one line when armed. */
+	/* Tight enough that the longest tool word ("Sequence", 38.8 px at 8/600)
+	   keeps a margin against the 39 px box even under the platform font
+	   fallback's metric drift. */
 	letter-spacing: -0.01em;
 	/* The View Bar's toolbars are single-line by contract (`white-space:
 	   nowrap` in EditorViewportToolbar's own scope), which left the two-word
@@ -141,14 +155,14 @@
 	color: var(--editor-text-primary);
 }
 
+/* Armed = darken only (ratification R2). No border, no inboard edge, no weight
+   step: the surface step carries the state, and it is the darker of the two
+   steps (hover lifts, armed sinks), so the two can never be confused. */
 .project-editor .tool-tray button.active {
-	background: var(--editor-bg-panel-raised);
-	border-color: var(--editor-armed);
-	/* Redundant, non-hue armed cues: surface step + 3 px inboard edge +
-	   label weight. A monochrome screenshot still separates armed. */
-	box-shadow: inset 3px 0 var(--editor-armed);
+	background: var(--editor-bg-recess);
+	border-color: transparent;
+	box-shadow: none;
 	color: var(--editor-text-primary);
-	font-weight: 700;
 }
 
 .project-editor .tool-tray button:disabled {

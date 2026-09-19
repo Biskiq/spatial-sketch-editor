@@ -222,7 +222,10 @@
 			Select
 		</button>
 	</div>
-	<div class="tool-group" aria-label="Transform tool" data-group-label="TRANSFORM">
+	<!-- `data-group-compact` (owner ratification R1): TRANSFORM is the one group
+	     word wider than the 44 px rail, so its engraved label steps down a size
+	     rather than breaking mid-word. Opt-in per group, never on the tier. -->
+	<div class="tool-group" aria-label="Transform tool" data-group-label="TRANSFORM" data-group-compact>
 		<button
 			type="button"
 			class:active={toolIsActive('translate')}
