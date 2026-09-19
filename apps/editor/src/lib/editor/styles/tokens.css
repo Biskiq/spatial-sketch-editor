@@ -125,6 +125,61 @@
 	   unifying the two papers needs explicit owner re-ratification. */
 	--editor-paper-plate: var(--editor-bg-panel-raised);
 
+	/* ── P23.14 §7 — state language: one cue per state, never hue alone ──
+	   The ratified minimum set, and the cue that carries each one. Every
+	   state has a NON-hue member (form, weight, offset, glyph, motion), so a
+	   monochrome screenshot still separates them; selection blue is never
+	   spent on a second meaning (§18).
+
+	     state              hue                        non-hue
+	     hover              bg-hover                   surface step
+	     selected           bg-selected + accent-border  fill + inboard edge
+	     primary            accent fill                solid mass
+	     keyboard focus     --editor-focus-ring        OUTSIDE offset ring
+	     active domain      domain-scene/camera        Spine edge-light
+	     active view        accent                     View Bar underline
+	     active mode        control-active-bg          enclosed trough
+	     armed              --editor-armed             tray rail fill
+	     disabled + reason  text-disabled              not-allowed + title
+	     refusal / invalid  --editor-state-refusal      inline reason at action
+	     warning            warning                    glyph at the readout
+	     destructive        danger                     separated, last entry
+	     preview ghost      --editor-state-ghost       alpha + ghost ink
+	     snap guide         plan-snap                  own ink, own glyph
+	     authored/derived   --editor-state-derived-ink  weight + mono face
+
+	   The ring is deliberately its own token rather than `--editor-accent`:
+	   focus must be readable as focus in a frame where the same control is
+	   also the selected/active one. Offset lives here too, so a denser
+	   surface can pull the ring in without re-authoring each control. */
+	--editor-focus-ring: #7cc4ff;
+	--editor-focus-ring-width: 2px;
+	--editor-focus-ring-offset: 2px;
+
+	/* Preview ghost — geometry that exists only inside an open transaction
+	   (move/rotate/resize draft). Alpha below 1 keeps it non-committal and
+	   distinct from an authored fill at a glance. */
+	--editor-state-ghost: rgb(47 140 255 / 22%);
+	--editor-state-ghost-ink: var(--editor-text-muted);
+
+	/* Authored vs derived: derived readouts (computed areas, inherited
+	   values, projections) take the quieter ink; authored values take
+	   `--editor-text-primary` plus the mono face (§7 two type voices). */
+	--editor-state-derived-ink: var(--editor-text-muted);
+
+	/* Refusal / invalid is the danger family; the STATE name exists so
+	   refusal sites read as refusals, not as generic errors. */
+	--editor-state-refusal: var(--editor-danger);
+	--editor-state-refusal-soft: var(--editor-danger-soft);
+	--editor-state-refusal-border: var(--editor-danger-border);
+
+	/* State aliases — the working states other slices already paint, named
+	   here so §7 consumers share one vocabulary. */
+	--editor-state-armed: var(--editor-armed);
+	--editor-state-snap: var(--editor-plan-snap);
+	--editor-state-disabled-ink: var(--editor-text-disabled);
+	--editor-state-active-domain: var(--editor-domain-scene);
+
 	/* ── DS §8 — transform axes (spatial meaning only, never decoration) ── */
 	--editor-axis-x: #f05252;
 	--editor-axis-y: #45c878;
@@ -671,6 +726,18 @@
 
 	/* PLATE Paper baseline (non-Plan surfaces); Plan keeps P23.13 paper. */
 	--editor-paper-plate: #f5f2e9;
+
+	/* §7 keyboard focus: on the Chassis the dark-ink member of the
+	   instrument accent. Independence from selection does not rest on the
+	   hue (selection keeps #2F8CFF for spatial truth) — it rests on the
+	   ring's form: an offset outline painted OUTSIDE the control's box, so
+	   a control that is simultaneously focused and selected shows both
+	   cues. Measured ≥ 8:1 against the #D9DDE0 Chassis. */
+	--editor-focus-ring: #0f4a86;
+
+	/* Preview ghost on light Paper: the same blue at a light-chassis alpha,
+	   because 22% ink over Paper #F5F2E9 nearly disappears. */
+	--editor-state-ghost: rgb(20 93 168 / 20%);
 
 	/* Chassis elevation: none. Popovers keep a functional contact shadow. */
 	--editor-shadow-toolbar: none;

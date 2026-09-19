@@ -10,9 +10,16 @@ body:has(.editor-page) {
 	margin: 0;
 }
 
-/* Shared focus treatment (DS §14): 1px accent border + soft outer ring. */
+/* Shared focus treatment (DS §14 + P23.14 §7): the accent border + soft ring
+ * stay as the chroma affordance, and keyboard focus additionally paints the
+ * independent focus ring — an offset outline OUTSIDE the control's box, so a
+ * control that is focused *and* selected (or armed, or hovered) reads as both
+ * states at once instead of one hue overwriting the other. Removing
+ * `outline: none` is the point of the change: focus is no longer only a
+ * recoloured border. */
 .editor-page :is(button, input, select, textarea, [tabindex]):focus-visible {
-	outline: none;
+	outline: var(--editor-focus-ring-width) solid var(--editor-focus-ring);
+	outline-offset: var(--editor-focus-ring-offset);
 	border-color: var(--editor-accent);
 	box-shadow: 0 0 0 2px var(--editor-accent-soft);
 }

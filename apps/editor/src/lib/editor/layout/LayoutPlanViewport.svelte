@@ -161,6 +161,7 @@
 		planNumericEntryBlur,
 		planNumericEntryEscape,
 		planNumericEntryField,
+		planNumericFieldAxis,
 		planNumericEntryHoldsExplicitValue,
 		planNumericControlEntryTarget,
 		planNumericEntryInput,
@@ -5616,6 +5617,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	-->
 	{#if numericEntry}
 		{@const entryField = planNumericEntryField(numericEntry)}
+		{@const entryAxis = planNumericFieldAxis(entryField)}
 		<div
 			class="plan-numeric-entry"
 			class:plan-numeric-entry-coarse={planCoarsePointer}
@@ -5625,6 +5627,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				: undefined}
 			data-host={numericEntry.host}
 			data-field={entryField.id}
+			data-axis={entryAxis ?? undefined}
 		>
 			<span class="plan-numeric-entry-label">{entryField.label}</span>
 			<input
@@ -5736,7 +5739,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	.plan-numeric-entry { position: absolute; z-index: 12; display: inline-flex; gap: 0.3rem; align-items: center; transform: translate(-50%, -50%); padding: 0.16rem 0.34rem; border: 1px solid var(--editor-accent-border); border-radius: 0.3rem; background: var(--editor-plan-canvas-bg); color: var(--editor-plan-label); font: 600 0.68rem/1.2 var(--editor-font); box-shadow: var(--editor-shadow-popover); }
 	.plan-numeric-entry-invalid { border-color: var(--editor-danger-border); }
 	.plan-numeric-entry-label { color: var(--editor-plan-muted); font-weight: 500; }
-	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+	/* #35 (§7) — an axis-valued field names its axis in the canonical axis ink
+	   (ΔX red / ΔZ blue, DS §8), which is the same ink the canvas corner
+	   widget and the 3D gizmo use for that axis: the field and the axis it
+	   moves are visibly one thing. Magnitudes and angles keep neutral ink. */
+	.plan-numeric-entry[data-axis='x'] .plan-numeric-entry-label { color: var(--editor-axis-x); }
+	.plan-numeric-entry[data-axis='z'] .plan-numeric-entry-label { color: var(--editor-axis-z); }
+	/* §7 two type voices: a measure is set in mono + tabular figures, so the
+	   digits never reflow the field the placer already measured. */
+	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
 	.plan-numeric-entry-input:focus { border-bottom-color: var(--editor-accent); }
 	.plan-numeric-entry-unit { color: var(--editor-plan-muted); font-weight: 500; }
 	.plan-numeric-entry-reason { color: var(--editor-danger-fg); font-weight: 500; }

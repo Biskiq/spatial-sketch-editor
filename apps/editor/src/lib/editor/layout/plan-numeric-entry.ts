@@ -65,6 +65,25 @@ function meters(
 	return { id, label, unit: 'length', domain, decimals };
 }
 
+/**
+ * #35 (§7) — the canonical axis a field measures, or `null` when the field is a
+ * magnitude/angle and has none. Only axis-valued fields get the spatial axis
+ * ink; painting ΔX red because it is "a number" would teach the wrong reading,
+ * because red/green/blue are the transform axes' spatial meaning (DS §8).
+ */
+export function planNumericFieldAxis(field: PlanNumericField): 'x' | 'y' | 'z' | null {
+	switch (field.id) {
+		case 'x':
+		case 'dx':
+			return 'x';
+		case 'z':
+		case 'dz':
+			return 'z';
+		default:
+			return null;
+	}
+}
+
 /** A degree-valued field. Angles are the only signed numeric §7 displays. */
 function degrees(id: PlanNumericFieldId, label: string, domain: PlanNumericDomain = 'signed'): PlanNumericField {
 	return { id, label, unit: 'angle', domain, decimals: 1 };
