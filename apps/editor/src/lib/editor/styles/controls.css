@@ -41,11 +41,26 @@
    A 44 px vertical instrument rail attached directly to the Paper edge. The
    same toolbar components that fill the View Bar render here in their `tray`
    presentation, so the grammar is presentation-only: groups stack vertically,
-   each group paints its visible 10 px engraved label from `data-group-label`,
-   and buttons become icon-over-label instruments.
+   each group paints its visible engraved label from `data-group-label`, and
+   buttons become icon-over-label instruments.
 
-   Armed tool = amber (`--editor-armed`) edge plus a non-hue cue (inset edge
-   and label weight) so the armed state never reads by hue alone (§18/§11).
+   TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px.
+   §7's *approximate* scale puts engraved/group labels at 10 px; §11 fixes the
+   rail at 44 px. Those two cannot both hold: at 10 px the group names measure
+   46.6–63.8 px against the rail's text box, so every label broke *inside the
+   word* ("OPENI / NGS", "OBJEC / TS", "Windo / w") instead of reading as
+   engraving. The tray therefore paints the reference values through
+   `--editor-font-size-tray-group/-tool` (7 px / 8 px), which is what §11's
+   "small persistent group labels and compact icon-led tools" asks for. The
+   1 px gutter + `width: 100%` control gives the label a 39 px text box — the
+   narrowest box that still paints an 8 px word like "Sequence" on one line
+   (38.8 px) even at the armed 700 weight step.
+
+   Armed tool = amber (`--editor-armed`) edge plus TWO non-hue cues, so the
+   armed state never reads by hue alone (§18/§11): a 3 px inboard edge (the
+   same edge-light width the Domain Spine uses) and a label weight step. The
+   amber was darkened to clear the 3:1 non-text bar on Instrument + Chassis
+   (review F1 / ruling D4).
    ────────────────────────────────────────────────────────────────────────── */
 .project-editor .tool-tray {
 	display: flex;
@@ -53,7 +68,10 @@
 	box-sizing: border-box;
 	width: var(--editor-tray-width, 44px);
 	min-width: var(--editor-tray-width, 44px);
-	padding: 6px 3px 10px;
+	/* 1 px gutter, not 3: the label needs the width more than the rail needs
+	   air — 44 − 2 − 1(border) − 2(control border) = the 39 px text box the
+	   8 px tool labels are measured against. */
+	padding: 6px 1px 10px;
 	overflow-x: hidden;
 	overflow-y: auto;
 	scrollbar-width: none;
@@ -74,8 +92,13 @@
 	display: block;
 	margin: 6px 0 3px;
 	text-align: center;
-	font: 600 8px/1 var(--editor-font);
-	letter-spacing: 0.06em;
+	font: 600 var(--editor-font-size-tray-group)/1.15 var(--editor-font);
+	/* Uppercase at 7 px is already dense; the reference resets tracking to 0. */
+	letter-spacing: 0;
+	/* Guard only. Every group word fits at 7 px except TRANSFORM (44.7 px),
+	   which no legible size fits inside a 44 px rail — it degrades to a second
+	   line instead of overflowing the rail. */
+	overflow-wrap: anywhere;
 	color: var(--editor-text-muted);
 }
 
@@ -86,14 +109,23 @@
 	justify-content: center;
 	gap: 2px;
 	box-sizing: border-box;
-	width: 38px;
+	width: 100%;
 	min-height: 42px;
 	padding: 3px 0;
 	border: 1px solid transparent;
 	border-radius: 3px;
 	background: transparent;
 	color: var(--editor-text-secondary);
-	font: 600 8px/1.05 var(--editor-font);
+	font: 600 var(--editor-font-size-tray-tool)/1.15 var(--editor-font);
+	/* −0.01em absorbs the `.active` 700-weight step so the longest tool word
+	   ("Sequence", 38.8 px at 8/600) stays on one line when armed. */
+	letter-spacing: -0.01em;
+	/* The View Bar's toolbars are single-line by contract (`white-space:
+	   nowrap` in EditorViewportToolbar's own scope), which left the two-word
+	   Camera labels painting 46 px wide inside a 39 px box — "Add camera"
+	   overran the rail. The tray is the one host that must wrap. */
+	white-space: normal;
+	overflow-wrap: anywhere;
 	text-align: center;
 	cursor: pointer;
 }
@@ -112,7 +144,9 @@
 .project-editor .tool-tray button.active {
 	background: var(--editor-bg-panel-raised);
 	border-color: var(--editor-armed);
-	box-shadow: inset 2px 0 var(--editor-armed);
+	/* Redundant, non-hue armed cues: surface step + 3 px inboard edge +
+	   label weight. A monochrome screenshot still separates armed. */
+	box-shadow: inset 3px 0 var(--editor-armed);
 	color: var(--editor-text-primary);
 	font-weight: 700;
 }

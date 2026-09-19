@@ -2,7 +2,8 @@
 
 ```text
 STATUS: implemented — Tasks 1–9 landed on `p23.14`; self-review QA record below
-NEXT: owner review of the QA record findings (F1/F2/F4/F5), then P23.15
+NEXT: owner review of the QA record findings (F1/F2/F4/F5) and F7's one residual call
+      (the `TRANSFORM` group label is wider than the 44 px rail can carry), then P23.15
 PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
 QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ```
@@ -36,9 +37,14 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 
 - **Self-review record:** [`qa/2026-09-19-P23.14-shell-qa-record.md`](./qa/2026-09-19-P23.14-shell-qa-record.md)
   — Atlas specimens A–D, the §25.2 stress toggles, and the findings that came out of it
-  (F1/F2/F4/F5 open for an owner call; F3/F6 fixed in the same pass). Device,
-  screen-reader, reduced-motion and coarse-pointer rows remain **manual-owed**.
+  (F1/F2/F4/F5 open for an owner call; F3/F6/F7 fixed in the same pass — F7 carries one
+  residual call, the `TRANSFORM` group label). Device, screen-reader, reduced-motion and
+  coarse-pointer rows remain **manual-owed**.
 - Atlas specimens are QA references only.
+- **Tool Tray type (F7, fixed):** the rail paints the reference's engraved micro-tier
+  (7 px group / 8 px tool, `--editor-font-size-tray-group/-tool`) rather than §7's 10 px
+  engraved tier, because a 10 px label cannot fit §11's 44 px rail. Rationale, measurements
+  and the residual `TRANSFORM` call are recorded in the QA record.
 - **Known acceptance limitation (TD‑1):** `Add Camera` still depends on the legacy
   Room-floor placement path, and the canonical wall-first floor hit is refused, so a
   fresh canonical project cannot place a new camera. Existing TD‑1

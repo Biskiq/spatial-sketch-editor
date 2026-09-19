@@ -201,7 +201,8 @@
 		line-height: 1.4;
 	}
 
+	/* Ruling D2 — text, so the warning TEXT sibling. */
 	.status {
-		color: var(--editor-warning);
+		color: var(--editor-text-warning);
 	}
 </style>

@@ -135,7 +135,8 @@
 		border: 1px solid var(--editor-success-border);
 		border-radius: 999px;
 		background: var(--editor-success-soft);
-		color: var(--editor-success);
+		/* Ruling D2 — chip text uses the success TEXT sibling. */
+		color: var(--editor-text-success);
 		font-size: 0.62rem;
 		font-weight: 650;
 		letter-spacing: 0.04em;

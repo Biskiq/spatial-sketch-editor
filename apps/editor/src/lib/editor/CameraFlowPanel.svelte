@@ -931,8 +931,9 @@
 	.guided-actions button.guided-remove {
 		color: var(--editor-danger-fg);
 	}
+	/* Ruling D2 — text uses the success TEXT sibling, never the base token. */
 	.guided-actions button.guided-reroot {
-		color: var(--editor-success);
+		color: var(--editor-text-success);
 		font-size: 0.6rem;
 		font-weight: 700;
 	}
@@ -941,7 +942,7 @@
 	}
 	.guided-actions button.guided-preview,
 	.free-actions button.guided-preview {
-		color: var(--editor-success);
+		color: var(--editor-text-success);
 	}
 	.free-actions {
 		position: absolute;
@@ -1016,7 +1017,7 @@
 		padding: 0.05rem 0.34rem;
 		border: 1px solid var(--editor-success-border);
 		border-radius: 999px;
-		color: var(--editor-success);
+		color: var(--editor-text-success);
 		font-size: 0.58rem;
 		font-weight: 650;
 		letter-spacing: 0.04em;
@@ -1291,7 +1292,7 @@
 		padding-block: 0.18rem;
 	}
 	.detour-row .tree-row__sequence {
-		color: var(--editor-success);
+		color: var(--editor-text-success);
 	}
 	.detour-remove {
 		display: inline-flex;

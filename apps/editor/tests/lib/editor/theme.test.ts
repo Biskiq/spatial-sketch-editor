@@ -71,9 +71,13 @@ describe('editor theme registry + controller', () => {
 			'--editor-bg-app: #d9dde0;',
 			'--editor-bg-recess: #cbd0d4;',
 			'--editor-bg-instrument: #e8e5dd;',
-			'--editor-domain-scene: #a37a3d;',
+			// P23.14 review F1 / ruling D3+D4 — darkened to clear the 3:1
+			// non-text bar on every Chassis step (#a37a3d was 2.84:1, #c58b35
+			// 2.34:1 on Instrument). Ratios are re-measured in
+			// p23-14-contrast-floor.test.ts.
+			'--editor-domain-scene: #946d34;',
 			'--editor-domain-camera: #347d89;',
-			'--editor-armed: #c58b35;',
+			'--editor-armed: #946624;',
 			'--editor-accent: #145da8;',
 			'--editor-danger: #9b3149;',
 			'--editor-paper-plate: #f5f2e9;'

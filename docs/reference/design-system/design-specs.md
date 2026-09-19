@@ -1148,10 +1148,14 @@ Do not put large colored status backgrounds behind entire cards.
 **Placement (P23.14, landed; P21 amended by
 [`design-plan-p21.md`](./design-plan-p21.md)):** permanent contextual authoring
 tools live in the workspace's **Tool Tray** — a 44 px Paper-attached rail
-(`--editor-tray-width`) with 10 px engraved group labels and compact icon-led
-tools — plus the View Bar's utilities; not in a toolbar floating over the
-viewport. The tool sets per workspace below are unchanged; only their placement
-changed. Viewport-local floating UI is reserved for things with spatial
+(`--editor-tray-width`) with 7 px engraved group labels and 8 px icon-led tool
+labels plus the View Bar's utilities; not in a toolbar floating over the
+viewport. The tray's two sizes are the rail's **micro-tier**
+(`--editor-font-size-tray-group/-tool`), not §7's 10 px engraved tier: §7's
+scale is explicitly *approximate*, and a 10 px label cannot fit §11's own rail
+(the groups measure 46.6–63.8 px inside a 39 px text box, so every label broke
+mid-word). §7's 10 px tier keeps every other engraved label in the shell. The
+tool sets per workspace below are unchanged; only their placement changed. Viewport-local floating UI is reserved for things with spatial
 meaning: orientation cube, TransformControls, rotation handles, path anchors,
 camera/frustum helpers, and selection/direct-manipulation fixtures. The Camera
 Timeline transport is **not** relocated into the tray; a collapsed Camera Drawer

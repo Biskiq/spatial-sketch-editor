@@ -60,7 +60,24 @@
 	   (dark themes — all shipped — resolve the light member; a future light
 	   theme sets `color-scheme: light` and text flips to the dark-ink member
 	   automatically). Muted clears 4.5:1 on every dark surface incl. hover
-	   and selected tints. Base tokens must never be overridden by theme
+	   and selected tints, and — since P23.14 review F1 / ruling D1 — the
+	   light member is darkened so the same holds on the light Chassis
+	   family, because muted is a text ink (Status Rail, resting View Bar
+	   tabs, Inspector section headers, tray group labels), not a hint-only
+	   ink. Measured worst case (Chassis #D9DDE0; app · panel-raised ·
+	   instrument #E8E5DD · hover #EDEAE2 · selected #CFE1FB all higher):
+
+	     primary   #13161D                        13.25:1
+	     secondary #3A4252                         7.39:1
+	     muted     #606B7E → #55606E (was 3.94)     4.68:1
+	     success   #146C34                          4.77:1
+	     warning   #744E0E                          5.41:1
+
+	   (10.6:1 belongs to the §6.1 reference ink #252A2E, not to the base
+	   primary — review F1 caught the comment measuring the wrong pair.)
+	   `tests/lib/editor/app/p23-14-state-language.test.ts` recomputes every
+	   number above from this file, so the table cannot rot silently.
+	   Base tokens must never be overridden by theme
 	   blocks — contrast holds by construction.
 
 	   CHROMATIC role inks — non-monochrome depth layered above the base
@@ -71,12 +88,16 @@
 	     metric            technical numbers (lengths, speeds, coordinates);
 	     timecode          timeline times ("00:08.375") — amber by default;
 	     success           readable status text ("Valid") kept distinct from
-	                        the --editor-success glyph/border family.
+	                        the --editor-success glyph/border family;
+	     warning           readable caution text ("Manual envelope") kept
+	                        distinct from the --editor-warning glyph/border
+	                        family — a TEXT use of either base token is a bug
+	                        (review F1 / owner ruling D2).
 	   Chromatic tiers ARE theme-aware and may be overridden per theme — but
 	   always as a full light-dark() pair, never a single hex. */
 	--editor-text-primary: light-dark(#13161D, #F1F4F9);
 	--editor-text-secondary: light-dark(#3A4252, #B2BFD0);
-	--editor-text-muted: light-dark(#606B7E, #94A3B8);
+	--editor-text-muted: light-dark(#55606E, #94A3B8);
 	--editor-text-disabled: light-dark(#9BA3AF, #505A69);
 
 	--editor-text-tint: light-dark(#475569, #94A3B8);
@@ -84,6 +105,7 @@
 	--editor-text-metric: light-dark(#0284C7, #38BDF8);
 	--editor-text-timecode: light-dark(#D97706, #FBBF24);
 	--editor-text-success: light-dark(#15803D, #4ADE80);
+	--editor-text-warning: light-dark(#744E0E, #E0B667);
 
 	/* ── DS §7 — primary blue: the chrome interactive accent ──
    navy default below; theme blocks re-derive the hue per palette. Spatial
@@ -355,6 +377,20 @@
 	--editor-font-size-metadata: 11.5px;
 	--editor-font-size-status: 11.5px;
 	--editor-font-size-ruler: 11px;
+	/* §11 — Tool Tray engraved micro-tier. §7's approximate scale puts
+	   engraved/group labels at 10 px, and §11 fixes the rail at 44 px; the two
+	   cannot both hold: at 10 px/600 the group names measure 46.6–63.8 px
+	   against the rail's 39 px text box, so every label broke *inside* the word
+	   ("OPENI/NGS", "OBJEC/TS") instead of reading as engraving. The tray
+	   therefore paints the reference's engraved tier — 7 px group / 8 px tool,
+	   the values the PLATE reference PNGs and the Atlas rail use — which is
+	   what §11's "small persistent group labels and compact icon-led tools"
+	   asks for; §7 calls its own hierarchy "approximate". The 10 px tier keeps
+	   every other engraved label in the shell. At these sizes every tool word
+	   fits the rail's text box; only the group word TRANSFORM (44.7 px at
+	   7 px, wider than the rail can ever be) still needs `overflow-wrap`. */
+	--editor-font-size-tray-group: 7px;
+	--editor-font-size-tray-tool: 8px;
 
 	/* ── DS §14 — elevation ── */
 	--editor-shadow-toolbar: 0 8px 24px rgb(0 0 0 / 38%);
@@ -651,9 +687,9 @@
    owner re-ratification unifies paper.
 
    Ink: the BASE text ramp is the centralized light-dark() mechanism, so this
-   block only flips `color-scheme` and the dark members (#13161D primary /
-   #3A4252 secondary / #606B7E muted) resolve automatically. Measured on
-   Chassis #D9DDE0: primary 10.6:1, secondary 7.4:1 — both clear 4.5:1. The
+   block only flips `color-scheme` and the light members (#13161D primary /
+   #3A4252 secondary / #55606E muted) resolve automatically, with their
+   measured ratios recorded at the ramp itself. The
    §6.1 baseline ink pair (#252A2E / #697177) is therefore met in hue role
    and contrast hierarchy through §6.1's permitted luminance adjustment: raw
    #697177 measures only 3.6:1 on the Chassis and would fail AA for chrome
@@ -679,10 +715,16 @@
 	--editor-bg-recess: #cbd0d4;
 	--editor-bg-instrument: #e8e5dd;
 
-	/* Domain accents on the Chassis; never a full-surface fill (§8). */
-	--editor-domain-scene: #a37a3d;
+	/* Domain accents on the Chassis; never a full-surface fill (§8). Both
+	   clear the 3:1 non-text bar on every Chassis step (review F1 / ruling
+	   D3): scene 3.42:1 chassis · 3.71 instr · 3.89 hover (was #a37a3d,
+	   2.84:1 — under the bar); camera 3.51 · 3.81 · 3.99. */
+	--editor-domain-scene: #946d34;
 	--editor-domain-camera: #347d89;
-	--editor-armed: #c58b35;
+	/* Armed cue (ruling D4): 3.67:1 chassis · 3.99 instr · 4.17 hover — clears
+	   the non-text bar it missed at #c58b35 (2.34:1 on Instrument), and keeps
+	   its redundant non-hue cue (3 px inboard edge + label weight). */
+	--editor-armed: #946624;
 
 	/* Instrument accent — the Selection dark edge, so selection blue keeps
 	   one meaning (§18: never hue alone; never overload #2F8CFF). */
@@ -740,7 +782,10 @@
 	   hue (selection keeps #2F8CFF for spatial truth) — it rests on the
 	   ring's form: an offset outline painted OUTSIDE the control's box, so
 	   a control that is simultaneously focused and selected shows both
-	   cues. Measured ≥ 8:1 against the #D9DDE0 Chassis. */
+	   cues. Measured 6.56:1 against the #D9DDE0 Chassis — above the 3:1
+	   non-text bar it has to clear as an outline, and deliberately NOT
+	   claimed as a text contrast (review F1: the previous ≥ 8:1 comment
+	   measured the wrong pair). */
 	--editor-focus-ring: #0f4a86;
 
 	/* Preview ghost on light Paper: the same blue at a light-chassis alpha,

@@ -413,7 +413,9 @@
 	.technical-details { display: flex; flex-direction: column; gap: 0.2rem; color: var(--editor-text-muted); font-size: 0.68rem; }
 	.technical-details summary { cursor: pointer; }
 	.technical-id { font-family: var(--editor-font-mono, ui-monospace, monospace); font-size: 10px; overflow-wrap: anywhere; }
-	.status { margin: 0.75rem 0 0; color: var(--editor-warning); font-size: 0.7rem; line-height: 1.4; }
+	/* Text takes the warning TEXT sibling (ruling D2): the base token is the
+	   glyph/border family, re-inked for surfaces, not for small text. */
+	.status { margin: 0.75rem 0 0; color: var(--editor-text-warning); font-size: 0.7rem; line-height: 1.4; }
 	dl { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
 	dl div { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.45rem; }
 	dt, .label-field span { color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
