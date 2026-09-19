@@ -268,10 +268,11 @@
 		border-color: var(--editor-border-normal);
 		background: var(--editor-bg-control);
 	}
-	.tree-root__label { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.02em; }
+	/* Roles, not numbers (R3): scope header + disclosure glyph follow the knobs. */
+	.tree-root__label { font: var(--editor-type-row-head); letter-spacing: 0.02em; }
 	.chevron {
 		display: block;
-		font-size: 1rem;
+		font-size: var(--editor-icon-size-sm);
 		line-height: 1;
 		transform: rotate(0);
 		transition: transform 120ms ease;
@@ -281,7 +282,8 @@
 		display: flex;
 		width: 100%;
 		min-width: 0;
-		min-height: 2rem;
+		/* Atlas `.row` — 29 px row with a 28 px entity target. */
+		min-height: var(--editor-row-height);
 		box-sizing: border-box;
 		align-items: center;
 		gap: 0.45rem;
@@ -306,10 +308,12 @@
 		color: var(--editor-text-primary);
 	}
 	.tree-row--selected[aria-disabled='true'] { opacity: 1; }
+	/* Atlas `.row .disclosure` — 18 px target, 26 px tall. */
 	.tree-row__chevron {
 		display: grid;
-		width: 1.7rem;
-		min-height: 2rem;
+		width: var(--editor-disclosure-size);
+		min-width: var(--editor-disclosure-size);
+		min-height: var(--editor-control-sm-height);
 		place-items: center;
 		padding: 0;
 		border: 1px solid transparent;
@@ -322,12 +326,12 @@
 		border-color: var(--editor-border-normal);
 		background: var(--editor-bg-control);
 	}
-	.tree-row__chevron-spacer { display: block; width: 1.7rem; min-height: 2rem; }
+	.tree-row__chevron-spacer { display: block; width: var(--editor-disclosure-size); min-width: var(--editor-disclosure-size); min-height: var(--editor-control-sm-height); }
 	.tree-row__label {
 		min-width: 0;
 		overflow: hidden;
-		font-size: 0.74rem;
-		font-weight: 570;
+		/* Role, not a number: the ladder scales with `--editor-type-scale`. */
+		font: var(--editor-type-row);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -351,8 +355,8 @@
 		/* Protected: no shrink, no ellipsis — four glyphs plus prefix always fit. */
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
-		font-family: var(--editor-font-mono, ui-monospace, monospace);
-		font-size: 0.62rem;
+		/* §7 two voices + the Atlas's 10 px compact reference. */
+		font: var(--editor-type-ref);
 		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
@@ -362,7 +366,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -382,7 +386,7 @@
 		content: '↳';
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
-		font-size: 0.66rem;
+		font-size: var(--editor-font-size-xs);
 		line-height: 1;
 	}
 	.hierarchy-occurrence .tree-row__label { font-weight: 500; }
@@ -392,7 +396,7 @@
 	.hierarchy-empty {
 		margin: 0.35rem 0.45rem;
 		color: var(--editor-text-muted);
-		font-size: 0.7rem;
+		font-size: var(--editor-font-size-sm);
 		font-style: italic;
 		line-height: 1.4;
 	}
@@ -401,7 +405,7 @@
 		margin-left: auto;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font: var(--editor-type-ref);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}

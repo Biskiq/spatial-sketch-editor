@@ -69,24 +69,26 @@
 		display: flex;
 		flex-direction: column;
 	}
+	/* Atlas `.station`: 55 × 74 px, 11 px label in the domain's own casing
+	   ("Scene" / "Camera", not an engraved uppercase token — §8 names them that
+	   way), icon 24 px, recess → raised step when active, plus the 3 px inboard
+	   edge-light. */
 	.station {
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 4px;
+		gap: 6px;
 		box-sizing: border-box;
 		width: 100%;
-		height: 72px;
+		height: var(--editor-station-height);
 		padding: 0;
 		border: 0;
 		border-radius: 0;
 		background: transparent;
 		color: var(--editor-text-secondary);
-		font: 500 10px/1 var(--editor-font);
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+		font: var(--editor-type-station);
 		cursor: pointer;
 	}
 	.station:hover:not(:disabled) {
@@ -97,6 +99,10 @@
 		background: var(--editor-bg-panel-raised);
 		color: var(--editor-text-primary);
 		font-weight: 700;
+	}
+	.station :global(svg) {
+		width: var(--editor-icon-size-lg);
+		height: var(--editor-icon-size-lg);
 	}
 	/* The 3 px inboard edge-light is the ONLY domain color on the spine (plus
 	   the label weight change, so state never reads by hue alone, §18). */

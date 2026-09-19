@@ -148,30 +148,31 @@
 </footer>
 
 <style>
+	/* Atlas `.status`: 10 px chrome text, 20 px gaps, 12 px inline padding — the
+	   quietest band in the shell (role: `--editor-type-status`). */
 	.status-bar {
 		display: flex;
 		align-items: center;
-		gap: 0.9rem;
+		gap: 20px;
 		/* P21.5 §2.2 — standalone height locked to the row token; the shell also
 		   enforces it (.project-editor > .status-bar). */
 		min-height: var(--editor-status-height, 1.7rem);
-		padding: 0 8px;
+		padding: 0 12px;
 		box-sizing: border-box;
 		border-top: 1px solid var(--editor-border-subtle);
 		background: var(--editor-bg-app);
-		/* #34 — the rail is 11 px chrome text on the Chassis, so its base ink is
-		   the readable secondary tier: muted measures only ~3.9:1 on the PLATE
-		   Light Chassis and fails AA at this size. Quietness comes from weight and
-		   from the tiers below, not from under-contrast ink. */
+		/* #34 — the rail is chrome text on the Chassis, so its base ink is the
+		   readable secondary tier: muted measures only ~3.9:1 on the PLATE Light
+		   Chassis and fails AA at this size. Quietness comes from weight and from
+		   the tiers below, not from under-contrast ink. */
 		color: var(--editor-text-secondary);
-		font-size: 11px;
-		line-height: 1;
+		font: var(--editor-type-status);
 	}
 	.status-left,
 	.status-right {
 		display: flex;
 		align-items: center;
-		gap: 0.7rem;
+		gap: 12px;
 		min-width: 0;
 	}
 	.status-right { margin-left: auto; }

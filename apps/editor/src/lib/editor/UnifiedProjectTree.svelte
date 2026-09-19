@@ -1070,7 +1070,7 @@
 		background: transparent;
 		color: var(--editor-text-primary);
 		font: inherit;
-		font-size: 0.73rem;
+		font-size: var(--editor-font-size-md);
 	}
 	.tree-filter__input::placeholder { color: var(--editor-text-disabled); }
 	.tree-filter__input:focus { outline: none; }
@@ -1126,26 +1126,29 @@
 		cursor: pointer;
 	}
 	.tree-root__row:hover { border-color: var(--editor-border-normal); background: var(--editor-bg-control); }
-	.tree-root__label { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.02em; }
-	.chevron { display: block; font-size: 1rem; line-height: 1; transform: rotate(0); transition: transform 120ms ease; }
+	/* Roles, not numbers (R3): scope header + disclosure glyph follow the knobs. */
+	.tree-root__label { font: var(--editor-type-row-head); letter-spacing: 0.02em; }
+	.chevron { display: block; font-size: var(--editor-icon-size-sm); line-height: 1; transform: rotate(0); transition: transform 120ms ease; }
 	.chevron.open { transform: rotate(90deg); }
 	ul { min-width: 0; margin: 0; padding: 0; list-style: none; }
 	ul[role='tree'], .room-children, .cluster-members, .wall-children { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
 	.room-line, .cluster-line { display: grid; min-width: 0; grid-template-columns: 1.7rem minmax(0, 1fr) auto; gap: 0.1rem; }
-	.tree-row { display: flex; width: 100%; min-width: 0; min-height: 2rem; box-sizing: border-box; align-items: center; gap: 0.45rem; padding: 0.28rem 0.45rem; border: 1px solid transparent; border-radius: 0.28rem; background: transparent; color: inherit; font: inherit; text-align: left; }
+	/* Atlas `.row` — 29 px row, 28 px entity target, 10 px/level indent. */
+	.tree-row { display: flex; width: 100%; min-width: 0; min-height: 29px; box-sizing: border-box; align-items: center; gap: 0.45rem; padding: 0.28rem 0.45rem; border: 1px solid transparent; border-radius: 0.28rem; background: transparent; color: inherit; font: inherit; text-align: left; }
 	button.tree-row { cursor: pointer; }
 	button.tree-row:hover:not([aria-disabled='true']) { border-color: var(--editor-border-normal); background: var(--editor-bg-control); }
 	button.tree-row[aria-disabled='true'] { opacity: 0.6; }
 	.tree-row--selected { border-color: var(--editor-accent-border); background: var(--editor-bg-selected); box-shadow: inset 0 0 0 1px var(--editor-accent-pressed); color: var(--editor-text-primary); }
 	.tree-row--selected[aria-disabled='true'] { opacity: 1; }
-	.tree-row__chevron { display: grid; width: 1.7rem; min-height: 2rem; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 0.28rem; background: transparent; color: var(--editor-accent); cursor: pointer; }
+	.tree-row__chevron { display: grid; width: 18px; min-width: 18px; min-height: 26px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 0.28rem; background: transparent; color: var(--editor-accent); cursor: pointer; }
 	.tree-row__chevron:hover { border-color: var(--editor-border-normal); background: var(--editor-bg-control); }
-	.tree-row__label { min-width: 0; overflow: hidden; font-size: 0.74rem; font-weight: 570; text-overflow: ellipsis; white-space: nowrap; }
-	.tree-row__meta { min-width: 0; margin-left: auto; overflow: hidden; color: var(--editor-text-muted); font-size: 0.62rem; text-overflow: ellipsis; white-space: nowrap; }
+	.tree-row__label { min-width: 0; overflow: hidden; font: var(--editor-type-row); text-overflow: ellipsis; white-space: nowrap; }
+	.tree-row__meta { min-width: 0; margin-left: auto; overflow: hidden; color: var(--editor-text-muted); font: var(--editor-type-ref); text-overflow: ellipsis; white-space: nowrap; }
 	.tree-row--selected .tree-row__meta { color: var(--editor-text-primary); }
 	.room-row { min-height: 2.125rem; }
 	.room-children { margin: 0.12rem 0 0.2rem 0.85rem; padding-left: 0.65rem; border-left: 1px solid var(--editor-border-subtle); }
-	.group-header { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font-size: 0.62rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
+	/* §12 typed group heading — the Atlas `small`/`.eyebrow` treatment. */
+	.group-header { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font: var(--editor-type-engraved); letter-spacing: 0.07em; text-transform: uppercase; }
 	.wall-children, .cluster-members { margin-left: 0.85rem; padding-left: 0.62rem; border-left: 1px solid var(--editor-border-normal); }
 	.cluster-row { justify-content: space-between; }
 	.cluster-title { display: flex; min-width: 0; align-items: center; gap: 0.4rem; }
@@ -1155,7 +1158,7 @@
 	.mini-action { width: 1.8rem; min-height: 2rem; padding: 0; border: 1px solid var(--editor-border-normal); border-radius: 0.28rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-primary); cursor: pointer; }
 	.mini-action:hover:not(:disabled) { border-color: var(--editor-accent-border); background: var(--editor-bg-selected); }
 	.mini-action:disabled { opacity: 0.35; cursor: default; }
-	.empty { color: var(--editor-text-muted); font-size: 0.7rem; padding: 0.3rem 0.45rem 0.4rem; }
+	.empty { color: var(--editor-text-muted); font-size: var(--editor-font-size-sm); padding: 0.3rem 0.45rem 0.4rem; }
 
 	/* S10.1 — per-row visibility + kebab actions. */
 	.row-actions { position: relative; display: flex; align-items: center; gap: 0.12rem; }
@@ -1202,7 +1205,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-align: left;
 		cursor: pointer;
 	}

@@ -237,18 +237,18 @@
 		border-radius: 999px;
 		background: var(--editor-bg-selected);
 		color: var(--editor-text-primary);
-		font-size: 0.66rem;
+		font-size: var(--editor-font-size-xs);
 		font-weight: 650;
 	}
 	.panel-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; }
-	.panel-tabs button { padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.32rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: inherit; font-size: 0.73rem; cursor: pointer; }
+	.panel-tabs button { padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.32rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: inherit; font-size: var(--editor-font-size-md); cursor: pointer; }
 	.panel-tabs button.active { border-color: var(--editor-accent); background: var(--editor-bg-selected); color: var(--editor-text-primary); }
 	.panel-content { display: contents; }
 	/* P23.6e — the hierarchy owns its inner scroll viewport: give the tree a
 	   bounded flex track so page reveal/scroll restoration has a stable owner. */
 	.panel-content--tree { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
 	.panel-content--hidden { display: none; }
-	.layout-error { margin: 0; color: var(--editor-danger-fg); font-size: 0.7rem; line-height: 1.4; }
+	.layout-error { margin: 0; color: var(--editor-danger-fg); font-size: var(--editor-font-size-md); line-height: 1.4; }
 
 	@media (max-width: 62rem) {
 		.panel { min-height: 0; max-height: 34rem; border-top: 1px solid var(--editor-border-subtle); }

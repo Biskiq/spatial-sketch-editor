@@ -2913,7 +2913,8 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	   with `inert`; zero-width alone never removes keyboard focus. */
 	.panel.collapsed { overflow: hidden; visibility: hidden; min-width: 0; }
 	.inspector { border-left: 1px solid var(--editor-border-subtle); }
-	header h2, section h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--editor-text-muted); }
+	/* Atlas `.section h3` — the engraved 10 px tier, +0.04em. */
+	header h2, section h2 { margin: 0; font: var(--editor-type-engraved); letter-spacing: 0.04em; text-transform: uppercase; color: var(--editor-text-muted); }
 	/* P23.14 §13 — property-first selection header: kind icon, name-or-reference,
 	   the secondary reference when a name leads, and the kind stated separately.
 	   No summary block and no prose lead: the panel opens on the selection. */
@@ -2923,22 +2924,21 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	.inspector-header__title {
 		overflow: hidden;
 		color: var(--editor-text-primary);
-		font-size: 13px;
-		font-weight: 600;
+		/* Atlas `.selection-head h2` — 15 px/600 panel-heading tier. */
+		font: var(--editor-type-heading);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.inspector-header__reference {
 		color: var(--editor-text-muted);
-		font-family: var(--editor-font-mono, ui-monospace, monospace);
-		font-size: 10px;
+		font: var(--editor-type-ref);
 		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
 	.inspector-header__kind {
 		color: var(--editor-text-muted);
-		font-size: 10px;
-		letter-spacing: 0.05em;
+		font-size: var(--editor-font-size-xs);
+		letter-spacing: 0.04em;
 		text-transform: uppercase;
 	}
 	section { display: flex; flex-direction: column; gap: 0.55rem; }

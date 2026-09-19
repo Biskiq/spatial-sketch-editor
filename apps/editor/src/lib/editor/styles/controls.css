@@ -5,11 +5,18 @@
  */
 
 :root {
-	/* Dense authoring-tool control metrics (DS §12). */
-	--editor-control-pad-x: 8px;
+	/* Dense authoring-tool control metrics (DS §12).
+	   These generic names are the pre-R3 generation: they are ALIASES onto the
+	   role layer in tokens.css (`--editor-control-*-height/-pad-x` +
+	   `--editor-type-*`), so a component written against either vocabulary moves
+	   with the same two knobs. Do not declare a fresh number here — a button
+	   role belongs in tokens.css, next to its siblings. */
+	--editor-control-pad-x: var(--editor-control-md-pad-x);
 	--editor-control-pad-y: 6px;
-	--editor-control-height: 28px;
-	--editor-control-font: 500 var(--editor-font-size-toolbar) var(--editor-font);
+	--editor-control-height: var(--editor-control-md-height);
+	--editor-control-font: var(--editor-type-control);
+	/* The relic's instrument corner (5 px). The shell overrides it to §6.2's 3 px
+	   in the `.project-editor` block below; the role value lives in tokens.css. */
 	--editor-control-radius: var(--editor-radius-md);
 
 	/* Resting control surface + states. */
@@ -99,7 +106,7 @@
 	display: block;
 	margin: 6px 0 3px;
 	text-align: center;
-	font: 600 var(--editor-font-size-tray-group)/1.15 var(--editor-font);
+	font: var(--editor-type-tray-group);
 	/* Uppercase at 7 px is already dense; the reference resets tracking to 0. */
 	letter-spacing: 0;
 	/* Guard only — no group word needs it once `data-group-compact` has stepped
@@ -123,13 +130,13 @@
 	gap: 2px;
 	box-sizing: border-box;
 	width: 100%;
-	min-height: 42px;
+	min-height: var(--editor-tray-tool-height);
 	padding: 3px 0;
 	border: 1px solid transparent;
-	border-radius: 3px;
+	border-radius: var(--editor-control-radius);
 	background: transparent;
 	color: var(--editor-text-secondary);
-	font: 600 var(--editor-font-size-tray-tool)/1.15 var(--editor-font);
+	font: var(--editor-type-tray-tool);
 	/* Tight enough that the longest tool word ("Sequence", 38.8 px at 8/600)
 	   keeps a margin against the 39 px box even under the platform font
 	   fallback's metric drift. */
@@ -145,8 +152,8 @@
 }
 
 .project-editor .tool-tray button svg {
-	width: 17px;
-	height: 17px;
+	width: var(--editor-tray-icon-size);
+	height: var(--editor-tray-icon-size);
 }
 
 .project-editor .tool-tray button:hover:not(:disabled) {
@@ -186,60 +193,62 @@
 }
 
 /*
- * P21.5 §1.4 — View Bar 4-tier affordance grammar + enclosed tool tracks +
- * enclosed segmented switches (re-homed in P23.14 §10 from the retired
- * workspace ribbon onto the central-column View Bar).
+ * P23.14 §10 — View Bar chrome, matched to the Atlas (owner ratification R3).
  *
- * Scoped to the shell View Bar (`.project-editor .view-bar`) so the
- * frozen relic keeps its own divider-separated chrome; the component-scoped
- * floating styles remain the relic's grammar. Theme-aware tokens only — never
- * hard hexes. The 4-tier state grammar (resting / hover / active / primary
- * CTA) is defined here once and consumed by every track, standalone
- * button, and segmented switch.
+ * The Atlas paints the View Bar's subordinate controls as PLAIN SMALL BUTTONS
+ * rather than enclosed troughs: `.mode button { font-size:11px; min-height:
+ * 24px; padding:2px 8px }` and `.utilities button { font-size:10px;
+ * min-height:24px; padding:2px 6px }`, both inside the plain `button` chrome
+ * (`min-height:26px; padding:3px 9px; border-radius:3px; background:
+ * var(--instrument)`), with `button[aria-pressed=true]` marked by an
+ * edge-colored border plus an inset bottom rule — never a fill.
+ *
+ * The P21.5 enclosed-track / enclosed-segmented grammar this replaces made
+ * every View Bar control 28 px tall with a 12 px label and an accent-soft
+ * fill, which is the loudest button treatment in the shell and the reason the
+ * bar read heavier than the reference. Scoped to `.project-editor .view-bar`
+ * so the frozen relic keeps its own divider-separated chrome.
+ *
+ * Roles, not numbers: every type value below is a `--editor-type-*` role and
+ * every metric a `--editor-control-*` role, so R3's two knobs retune the bar.
  */
 
-/* Enclosed tool tracks (Zone B authoring groups): cohesive filled surfaces
-   lifting off the panel-raised ribbon via the calibrated bg-control step. */
+/* Tool groups are layout-only now: no trough, no fill, no border. */
 .project-editor .view-bar .tool-group {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
-	height: 28px;
-	padding: 2px;
-	gap: 1px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 6px;
+	gap: 2px;
 }
 
-/* Track inner buttons: 24px (28px track − 2px padding ×2), resting tier. */
+/* Resting control: the shared instrument chrome, Atlas metrics (utility tier). */
 .project-editor .view-bar .tool-group > button {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 5px;
 	box-sizing: border-box;
-	height: 24px;
-	padding: 0 8px;
-	border: 1px solid transparent;
-	border-radius: 4px;
-	background: transparent;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-xs-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
 	color: var(--editor-text-secondary);
-	font: 500 12px/1 var(--editor-font);
+	font: var(--editor-type-utility);
 	white-space: nowrap;
 	cursor: pointer;
 }
 
-/* Hover tier. */
+/* Hover tier — the Atlas lifts the surface, never the border colour. */
 .project-editor .view-bar .tool-group > button:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
-	border-color: var(--editor-border-normal);
 	color: var(--editor-text-primary);
 }
 
-/* Active / toggled-on tier: soft accent fill, never a loud bare stroke. */
+/* Pressed/toggled tier: edge border + inset bottom rule (Atlas
+   `button[aria-pressed=true]`). A fill here was the drift. */
 .project-editor .view-bar .tool-group > button.active {
-	background-color: var(--editor-accent-soft);
-	border-color: var(--editor-accent-border);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 
@@ -248,26 +257,25 @@
 	cursor: default;
 }
 
-/* Standalone Row 2 controls (outside tracks): subtle resting surface. */
+/* Standalone View Bar controls (View menu, Grid): the standard 26 px tier. */
 .project-editor .view-bar .ribbon-btn {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 5px;
 	box-sizing: border-box;
-	height: 28px;
-	padding: 0 8px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 5px;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-sm-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
 	color: var(--editor-text-primary);
-	font: 500 12px/1 var(--editor-font);
+	font: var(--editor-type-utility);
 	white-space: nowrap;
 	cursor: pointer;
 }
 
 .project-editor .view-bar .ribbon-btn:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
-	border-color: var(--editor-border-normal);
 }
 
 .project-editor .view-bar .ribbon-btn:disabled {
@@ -275,24 +283,27 @@
 	cursor: default;
 }
 
-/* P21.6 Slice C — Zone C toggle-on tier mirrors the tool-group grammar. */
 .project-editor .view-bar .ribbon-btn.active {
-	background-color: var(--editor-accent-soft);
-	border-color: var(--editor-accent-border);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 
-/* Enclosed segmented switches: [Scene|Camera], [Plan|3D], [Layout|Arrange]. */
+/* MODE — the Atlas's subordinate Layout|Arrange pair: an engraved label and
+   two plain 11 px buttons, no trough and no segmented fill. */
 .project-editor .view-bar .segmented {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
-	height: 28px;
-	padding: 1px;
-	gap: 1px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 6px;
+	gap: 2px;
+}
+
+.project-editor .view-bar .segmented::before {
+	content: 'MODE';
+	margin-right: 6px;
+	color: var(--editor-text-muted);
+	font: var(--editor-type-engraved);
+	letter-spacing: 0.07em;
 }
 
 .project-editor .view-bar .segmented > button {
@@ -300,13 +311,13 @@
 	align-items: center;
 	justify-content: center;
 	box-sizing: border-box;
-	height: 24px;
-	padding: 0 8px;
-	border: 1px solid transparent;
-	border-radius: 4px;
-	background: transparent;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-sm-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
 	color: var(--editor-text-secondary);
-	font: 500 12px/1 var(--editor-font);
+	font: var(--editor-type-utility);
 	cursor: pointer;
 }
 
@@ -316,7 +327,8 @@
 }
 
 .project-editor .view-bar .segmented > button.active {
-	background-color: var(--editor-accent-soft);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 

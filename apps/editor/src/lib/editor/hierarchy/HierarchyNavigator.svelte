@@ -701,7 +701,7 @@
 		background: var(--editor-bg-panel-raised);
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	.tree-nav__back:hover:not(:disabled) {
@@ -714,7 +714,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -749,7 +749,7 @@
 		background: transparent;
 		color: var(--editor-text-primary);
 		font: inherit;
-		font-size: 0.72rem;
+		font-size: var(--editor-font-size-md);
 		outline: none;
 	}
 	.tree-search__input::-webkit-search-cancel-button { display: none; }
@@ -765,7 +765,7 @@
 		background: transparent;
 		color: var(--editor-text-muted);
 		font: inherit;
-		font-size: 0.85rem;
+		font-size: var(--editor-font-size-lg);
 		line-height: 1;
 		cursor: pointer;
 	}
@@ -778,7 +778,7 @@
 	}
 	.tree-filter-select__label {
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
@@ -791,13 +791,13 @@
 		background: var(--editor-bg-panel-raised);
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 	}
 	.search-block { display: flex; min-width: 0; flex-direction: column; }
 	.search-group {
 		margin: 0.25rem 0.45rem 0.1rem;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		opacity: 0.75;
 	}
 	.tree-page {
@@ -813,7 +813,7 @@
 	.empty {
 		margin: 0.5rem 0.45rem;
 		color: var(--editor-text-muted);
-		font-size: 0.7rem;
+		font-size: var(--editor-font-size-md);
 		line-height: 1.4;
 	}
 	.hierarchy-pin {
@@ -838,7 +838,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-secondary);
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -848,7 +848,7 @@
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
 		font-family: var(--editor-font-mono, ui-monospace, monospace);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
@@ -856,7 +856,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -868,7 +868,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.64rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	.hierarchy-pin__action:hover {
@@ -880,7 +880,7 @@
 	:global(.hierarchy-heading) {
 		margin: 0.35rem 0.45rem 0.05rem;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		font-weight: 650;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -894,7 +894,7 @@
 	}
 	:global(.hierarchy-section) { min-height: 1.8rem; }
 	:global(.hierarchy-entity) { min-height: 1.9rem; }
-	:global(.hierarchy-relation) { min-height: 1.6rem; color: var(--editor-text-muted); font-size: 0.68rem; }
+	:global(.hierarchy-relation) { min-height: 1.6rem; color: var(--editor-text-muted); font-size: var(--editor-font-size-xs); }
 	:global(.hierarchy-children) {
 		display: flex;
 		min-width: 0;
@@ -915,7 +915,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.64rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	:global(.hierarchy-action:hover) {
@@ -984,7 +984,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-align: left;
 		cursor: pointer;
 	}

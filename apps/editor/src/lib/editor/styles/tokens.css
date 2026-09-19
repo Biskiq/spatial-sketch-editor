@@ -358,7 +358,11 @@
 	   block below; the frozen relic keeps the values above it. */
 	--editor-spine-width: 56px;
 	--editor-viewbar-height: 34px;
-	--editor-tray-width: 44px;
+	/* §11 — the rail exists to hold its labels, so it is the ONE piece of §5
+	   geometry that follows the type knob: at scale 1 it is the ratified 44 px,
+	   and it grows with its type so the labels keep the fit they were measured
+	   for instead of breaking mid-word. */
+	--editor-tray-width: calc(44px * var(--editor-type-scale));
 	/* §23 — the coarse-pointer minimum every chrome control and its band grows
 	   to. One token so the media query in editor-shell.css and any component
 	   that has to size around a touch target agree. */
@@ -371,16 +375,150 @@
 	/* P23.13 S6 / §7 — working dimensions are set in a mono face: digits must not
 	   reflow the text box the dimension placer already measured. */
 	--editor-font-mono: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
-	--editor-font-size-title: 16px;
-	--editor-font-size-panel-title: 14px;
-	--editor-font-size-toolbar: 13px;
-	--editor-font-size-tree-row: 13px;
-	--editor-font-size-section: 11px;
-	--editor-font-size-label: 12px;
-	--editor-font-size-input: 12.5px;
-	--editor-font-size-metadata: 11.5px;
-	--editor-font-size-status: 11.5px;
-	--editor-font-size-ruler: 11px;
+	/* ── Owner ratification R3 — one type scale, expressed as ROLES ───────────
+	   Two voices (§7): a humanist sans for UI, a mono for measures, references,
+	   IDs and timecodes.
+
+	   `--editor-type-scale` is the single knob, and it is a PERCENTAGE: 1 means
+	   100 %, 1.15 means 115 %, 0.9 means 90 %. Every size in the editor is a
+	   multiple of it, so ONE number grows or shrinks the whole product with no
+	   per-component edits and no chance of one surface drifting from another.
+
+	   Set it on `:root` (a theme block, or inline on document.documentElement —
+	   the same element that declares the ladder below): a token derived from
+	   another token is a SNAPSHOT taken where it is declared, so overriding the
+	   knob further down the tree cannot re-derive a size that was already
+	   resolved here. Raising it to 1.15 renders the whole shell at 115 %.
+
+	   No literal selector block appears in this note on purpose: contract tests
+	   in this repo locate blocks textually, and a snippet here would shadow the
+	   real one. For the same reason there are no nested comment markers in these
+	   notes — CSS comments do not nest, and an inner terminator would end this
+	   one early, dropping the whole ladder from the cascade.
+
+	   It is unitless because CSS cannot multiply a length by a percentage token
+	   (`calc(12px * 110%)` is invalid), so a factor is the only form a single
+	   knob can take. Read it as a percentage everywhere it is documented.
+
+	   Never write a bare `font-size: 12px` in a shell surface — ask for a role
+	   (`--editor-type-*`) or, failing that, a ladder step (`-2xs`…`-2xl`). The
+	   ladder is where the seven numbers live; nothing else in the shell holds a
+	   pinned type size.
+
+	   Ladder = the ratified §7/Atlas ramp (9/10/11/12/13/15/20 px at scale 1).
+	   The old flat ramp (16/14/13/12.5/11.5) was the pre-P23.14 shell's and was
+	   mostly DEAD — nothing consumed `title`, `panel-title`, `toolbar`,
+	   `tree-row` or `status`, so component-level `rem` values drifted instead;
+	   that drift is exactly what the Atlas comparison caught. */
+	--editor-type-scale: 1;
+
+	/* Step 1 — sizes. Only these seven numbers exist. */
+	--editor-font-size-2xs: calc(9px * var(--editor-type-scale)); /* timeline ticks */
+	--editor-font-size-xs: calc(10px * var(--editor-type-scale)); /* engraved labels, refs, status */
+	--editor-font-size-sm: calc(11px * var(--editor-type-scale)); /* compact readouts */
+	--editor-font-size-md: calc(12px * var(--editor-type-scale)); /* standard rows, labels, controls */
+	--editor-font-size-lg: calc(13px * var(--editor-type-scale)); /* property values */
+	--editor-font-size-xl: calc(15px * var(--editor-type-scale)); /* panel headings */
+	--editor-font-size-2xl: calc(20px * var(--editor-type-scale)); /* project identity ceiling */
+
+	/* Step 2 — roles. A surface asks for one of these, never for a number:
+	   family + size + weight + line-height travel together. */
+	--editor-type-body: 400 var(--editor-font-size-md)/1.4 var(--editor-font);
+	--editor-type-engraved: 600 var(--editor-font-size-xs)/1.15 var(--editor-font);
+	--editor-type-engraved-quiet: 400 var(--editor-font-size-xs)/1.3 var(--editor-font);
+	--editor-type-heading: 600 var(--editor-font-size-xl)/1.2 var(--editor-font);
+	/* The Head's project identity. §7's ladder jumps 13 → 15 px, and the Atlas
+	   paints it at 14 px, so the identity keeps its own step — still scaled by
+	   the same knob, so it can never drift from the ladder. */
+	--editor-type-identity: 600 calc(14px * var(--editor-type-scale))/1.2 var(--editor-font);
+	--editor-type-row: 570 var(--editor-font-size-md)/1.25 var(--editor-font);
+	--editor-type-control: 500 var(--editor-font-size-md)/1 var(--editor-font);
+	--editor-type-control-strong: 650 var(--editor-font-size-md)/1 var(--editor-font);
+	/* Subordinate View Bar tiers, straight from the Atlas: utilities at 10 px,
+	   the MODE pair at 11 px. */
+	--editor-type-utility: 500 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-mode: 500 var(--editor-font-size-sm)/1 var(--editor-font);
+	--editor-type-status: 400 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-property: 500 var(--editor-font-size-lg)/1.3 var(--editor-font);
+	--editor-type-mono: 400 var(--editor-font-size-sm)/1.3 var(--editor-font-mono);
+	--editor-type-ref: 400 var(--editor-font-size-xs)/1.3 var(--editor-font-mono);
+	--editor-type-tick: 400 var(--editor-font-size-2xs)/1 var(--editor-font-mono);
+	--editor-type-readout: 600 var(--editor-font-size-md)/1 var(--editor-font-mono);
+	/* Navigator scope header ("Project", "Plan", a room's name when it owns the
+	   list) — one step above a row, still the sans voice. */
+	--editor-type-row-head: 650 var(--editor-font-size-lg)/1.25 var(--editor-font);
+	/* Domain Spine station label: §8 names the domains in their own casing
+	   ("Scene" / "Camera"), so this role is NOT uppercase and carries no
+	   tracking — that is the whole difference from `engraved`. */
+	--editor-type-station: 400 var(--editor-font-size-sm)/1 var(--editor-font);
+	/* Tool Tray tiers (owner ratification R1): the reference's engraved micro-set
+	   at the rail's fitted 7 px / 8 px steps. */
+	--editor-type-tray-group: 600 var(--editor-font-size-tray-group)/1.15
+		var(--editor-font);
+	--editor-type-tray-tool: 600 var(--editor-font-size-tray-tool)/1.15
+		var(--editor-font);
+
+	/* Step 3 — legacy role names, kept as aliases onto the ladder so existing
+	   consumers keep resolving to a real step while surfaces migrate to a role. */
+	--editor-font-size-title: var(--editor-font-size-xl);
+	--editor-font-size-panel-title: var(--editor-font-size-xl);
+	--editor-font-size-toolbar: var(--editor-font-size-md);
+	--editor-font-size-tree-row: var(--editor-font-size-md);
+	--editor-font-size-section: var(--editor-font-size-xs);
+	--editor-font-size-label: var(--editor-font-size-md);
+	--editor-font-size-input: var(--editor-font-size-md);
+	--editor-font-size-metadata: var(--editor-font-size-sm);
+	--editor-font-size-status: var(--editor-font-size-xs);
+	/* The Atlas paints its timeline ticks at 9 px — one step under §7's 10 px
+	   floor, ratified because a ruler tick is a mono measure, not a label. */
+	--editor-font-size-ruler: var(--editor-font-size-2xs);
+	--editor-font-size-ref: var(--editor-font-size-xs);
+
+	/* Step 4 — migration mapping. The pre-P23.14 shell's off-ladder `rem` values
+	   WERE the drift (that is what the Atlas comparison caught), so the sweep
+	   maps them by BAND, not by preference:
+
+	     0.6–0.68rem (9.6–10.9 px)   → -xs  (10)  engraved + micro-meta
+	     0.7–0.78rem (11.2–12.5 px)  → -md  (12)  §12 standard label
+	     0.8–0.85rem (12.8–13.6 px)  → -lg  (13)  property / scope tier
+	     0.9–0.92rem (14.4–14.7 px)  → -xl  (15)  panel heading
+	     1rem (16 px, a glyph)       → --editor-icon-size-sm
+	     9 px (mono measure only)    → -2xs (--editor-type-tick)
+	     10/11/12/12.5/13px          → -xs/-sm/-md/-md/-lg
+
+	   Remaining batch: the Inspector family (EditorInspector + the eight panel
+	   inspectors, whose label/value tiers P21.5 Slice 4 pins at 12 px/12.5 px).
+	   Every other shell surface is on a role or a step. */
+
+	/* ── Owner ratification R3 — control roles ────────────────────────────────
+	   Every chrome BUTTON is one of four roles. Padding, height, radius and type
+	   travel together per role, so the button grammar is retuned here once
+	   instead of in fifty components. `--editor-control-scale` multiplies the
+	   hit area and the padding (not the type); `--editor-type-scale` above does
+	   the type. The two are deliberately independent: a denser button band and a
+	   larger type ramp are different requests, and coupling them would make the
+	   second impossible without the first.
+
+	     role      height        pad-x   type role           used by
+	     lg        30 px         9 px    control            primary actions
+	     md        26 px         9 px    control            the Head, forms
+	     sm        24 px         8 px    utility            View Bar, tabs, icons
+	     xs        20 px         6 px    utility            inline row actions
+
+	   Plus the geometry roles below, for the recurring groups of the shell that
+	   are sized by fit rather than by button semantics — a Navigator row, its
+	   disclosure target, a Spine station, a rail tool. Same idea, same place to
+	   tune: one line here moves every instance in the shell. */
+	--editor-control-scale: 1;
+	--editor-control-lg-height: calc(30px * var(--editor-control-scale));
+	--editor-control-md-height: calc(26px * var(--editor-control-scale));
+	--editor-control-sm-height: calc(24px * var(--editor-control-scale));
+	--editor-control-xs-height: calc(20px * var(--editor-control-scale));
+	--editor-control-lg-pad-x: 9px;
+	--editor-control-md-pad-x: 9px;
+	--editor-control-sm-pad-x: 8px;
+	--editor-control-xs-pad-x: 6px;
+	--editor-control-radius: 3px;
 	/* §11 — Tool Tray engraved micro-tier. §7's approximate scale puts
 	   engraved/group labels at 10 px, and §11 fixes the rail at 44 px; the two
 	   cannot both hold: at 10 px/600 the group names measure 46.6–63.8 px
@@ -393,8 +531,8 @@
 	   every other engraved label in the shell. At these sizes every tool word
 	   fits the rail's text box; only the group word TRANSFORM (44.7 px at
 	   7 px, wider than the rail can ever be) still needs `overflow-wrap`. */
-	--editor-font-size-tray-group: 7px;
-	--editor-font-size-tray-tool: 8px;
+	--editor-font-size-tray-group: calc(7px * var(--editor-type-scale));
+	--editor-font-size-tray-tool: calc(8px * var(--editor-type-scale));
 	/* The tray's one size exception (owner ratification R1): a group word that is
 	   wider than the rail itself is allowed to step down to this floor rather
 	   than break mid-word. Exactly one word qualifies — TRANSFORM (44.7 px at
@@ -402,7 +540,21 @@
 	   (`data-group-compact`), not on the tier. The slack is deliberate: the
 	   platform font fallback moves text metrics by a few percent, so the fix has
 	   to hold when Inter Variable is not the font that renders. */
-	--editor-font-size-tray-group-compact: 6px;
+	--editor-font-size-tray-group-compact: calc(6px * var(--editor-type-scale));
+
+	/* ── Owner ratification R3 — icon + group-geometry roles ──────────────────
+	   Icons are set WITH their label, so they follow the type knob; hit areas
+	   follow the control knob. A group that is measured rather than semantic
+	   (row, station, rail tool) gets its own role here instead of a number in a
+	   rule, so the shell's recurring geometry has one owner. */
+	--editor-icon-size-sm: calc(16px * var(--editor-type-scale)); /* row chevrons, inline glyphs */
+	--editor-icon-size-lg: calc(24px * var(--editor-type-scale)); /* Spine stations, utilities */
+	--editor-tray-icon-size: calc(17px * var(--editor-type-scale)); /* fitted to the rail */
+
+	--editor-row-height: calc(29px * var(--editor-control-scale)); /* Navigator row (Atlas `.row`) */
+	--editor-disclosure-size: calc(18px * var(--editor-control-scale)); /* row chevron target */
+	--editor-station-height: calc(74px * var(--editor-control-scale)); /* Domain Spine station */
+	--editor-tray-tool-height: calc(42px * var(--editor-control-scale)); /* rail tool */
 
 	/* ── DS §14 — elevation ── */
 	--editor-shadow-toolbar: 0 8px 24px rgb(0 0 0 / 38%);

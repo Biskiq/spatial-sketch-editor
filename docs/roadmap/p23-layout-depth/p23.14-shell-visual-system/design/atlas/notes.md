@@ -8,7 +8,7 @@
 
 ## Owner-ratified decisions the Atlas now reflects (2026-09-19)
 
-Record and rationale: [`../owner-ratifications.md`](../owner-ratifications.md). Two changes to
+Record and rationale: [`../owner-ratifications.md`](../owner-ratifications.md). Three changes to
 this instrument after owner review of the landed shell:
 
 - **R1 — Tool Tray type.** The rail paints 7 px group / 8 px tool labels (the reference tier,
@@ -20,12 +20,26 @@ this instrument after owner review of the landed shell:
   the recess trough tone with full ink, matching the landed
   `.tool-tray button.active { background: var(--editor-bg-recess) }`. This instrument is where
   the old amber treatment was first drawn, so it is corrected here too.
+- **R3 — this Atlas is now the METRIC reference for the shell's type and chrome.** The owner
+  compared the whole shell against this instrument and found the fonts, font sizes and button
+  sizing/styling had drifted (F8). The shell no longer holds pinned sizes: seven ladder steps
+  (9/10/11/12/13/15/20 px) and a role for every recurring group are multiples of two knobs
+  (`--editor-type-scale`, `--editor-control-scale`), and the metrics this instrument draws are
+  the resolved values — View Bar plain 24 px buttons with 10 px utility / 11 px MODE labels and
+  a pressed edge border + inset bottom rule; Head 26 px controls with a 14 px identity; 74 px
+  Spine stations with 24 px icons; 29 px Navigator rows (12 px label, 10 px mono meta, 18 px
+  disclosure target); 10 px engraved Inspector section headers; 9 px mono timeline ticks; 10 px
+  Status Rail text. Nothing in this file changed for R3 — the correction is on the product
+  side, and the mapping plus the unswept Inspector family are recorded in the ratification.
 
 ## Authority promotion
 
 The owner has promoted the P23.14 design to the durable, stable baseline: `final-direction.md`
 wins over this Atlas, and this Atlas wins over the reference docs' older shell placement,
-dimension and type numbers (which describe the pre-P23.14 ribbon/floating-toolbar shell). Later
+dimension and type numbers (which describe the pre-P23.14 ribbon/floating-toolbar shell).
+Where R3 says the shell's sizes are roles, this Atlas is the reference those roles were
+resolved against — but the roles (in `styles/tokens.css`) are what the product implements,
+so a later metric change is an owner decision on the role, not an edit to a component. Later
 phases — P23.15→P23.16, P24, P26 — fit into this grammar and may depend on it. This Atlas stays
 QA evidence: never topology, validation or numeric-acceptance authority.
 

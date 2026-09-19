@@ -124,19 +124,20 @@
 		align-self: stretch;
 		gap: 2px;
 	}
+	/* Engraved tabs, Atlas metrics: min-width 54 px, no padding, no control
+	   surface at rest, bold ink, and an inset 2 px underline when active. */
 	.view-tab {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		min-width: 54px;
 		height: 100%;
-		padding: 0 10px;
+		padding: 0;
 		border: 0;
 		border-radius: 0;
 		background: transparent;
 		color: var(--editor-text-muted);
-		font: 650 12px/1 var(--editor-font);
-		letter-spacing: 0.02em;
+		font: var(--editor-type-control-strong);
 		cursor: pointer;
 	}
 	.view-tab:hover:not(:disabled) { color: var(--editor-text-primary); }
@@ -149,19 +150,21 @@
 	.contextual-tools { display:flex; align-items:center; gap:6px; flex:1; min-width:0; padding:0 4px; }
 	/* Subordinate utility region: quieter ink, smaller targets than the tabs. */
 	.utilities { display:flex; align-items:center; gap:2px; flex:0 0 auto; box-sizing:border-box; padding-left:6px; border-left:1px solid var(--editor-border-subtle); }
+	/* Subordinate utility targets: icon-sized, Atlas 24 px tier, and the Atlas's
+	   pressed grammar (edge border + inset bottom rule) rather than a fill. */
 	.utility-btn {
 		justify-content: center;
 		display: inline-flex;
 		align-items: center;
-		width: 24px;
-		height: 24px;
+		width: var(--editor-control-sm-height);
+		height: var(--editor-control-sm-height);
 		padding: 0;
 		border: 1px solid transparent;
-		border-radius: 3px;
+		border-radius: var(--editor-control-radius);
 		background: transparent;
 		color: var(--editor-text-muted);
 		cursor: pointer;
 	}
 	.utility-btn:hover { background: var(--editor-bg-hover); color: var(--editor-text-primary); }
-	.utility-btn.active { background: var(--editor-accent-soft); border-color: var(--editor-accent-border); color: var(--editor-text-primary); }
+	.utility-btn.active { border-color: var(--editor-accent); box-shadow: inset 0 -2px var(--editor-accent); color: var(--editor-text-primary); }
 </style>

@@ -136,8 +136,8 @@
 	.sidebar-section-header h2 {
 		min-width: 0;
 		margin: 0;
-		font-size: 0.68rem;
-		font-weight: 650;
+		/* R3 — the engraved role owns size + weight (Atlas `.section h3`). */
+		font: var(--editor-type-engraved);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--editor-text-secondary);
@@ -145,7 +145,7 @@
 	.sidebar-section-header span {
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
-		font-size: 0.66rem;
+		font-size: var(--editor-font-size-xs);
 		font-variant-numeric: tabular-nums;
 	}
 
@@ -166,7 +166,7 @@
 		cursor: pointer;
 	}
 	.tree-row__chevron:hover { border-color: var(--editor-border-normal); background: var(--editor-bg-control); }
-	.chevron { display: block; font-size: 1rem; line-height: 1; transform: rotate(0); transition: transform 120ms ease; }
+	.chevron { display: block; font-size: var(--editor-icon-size-sm); line-height: 1; transform: rotate(0); transition: transform 120ms ease; }
 	.chevron.open { transform: rotate(90deg); }
 
 	.tree-row {
@@ -186,9 +186,9 @@
 		text-align: left;
 	}
 	.tree-row[aria-disabled='true'] { opacity: 0.72; cursor: default; }
-	.tree-row__label { min-width: 0; overflow: hidden; font-size: 0.74rem; font-weight: 570; text-overflow: ellipsis; white-space: nowrap; }
-	.tree-row__meta { min-width: 0; margin-left: auto; overflow: hidden; color: var(--editor-text-muted); font-size: 0.62rem; text-overflow: ellipsis; white-space: nowrap; }
+	.tree-row__label { min-width: 0; overflow: hidden; font: var(--editor-type-row); text-overflow: ellipsis; white-space: nowrap; }
+	.tree-row__meta { min-width: 0; margin-left: auto; overflow: hidden; color: var(--editor-text-muted); font: var(--editor-type-ref); text-overflow: ellipsis; white-space: nowrap; }
 	.env-children { margin: 0.12rem 0 0.2rem 0.85rem; padding-left: 0.65rem; border-left: 1px solid var(--editor-border-subtle); }
 
-	.empty { color: var(--editor-text-muted); font-size: 0.7rem; padding: 0.3rem 0.45rem 0.4rem; }
+	.empty { color: var(--editor-text-muted); font-size: var(--editor-font-size-sm); padding: 0.3rem 0.45rem 0.4rem; }
 </style>

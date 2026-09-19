@@ -1,16 +1,20 @@
 /*
  * P3.2 — inspector tokens (Design-specs.md §19).
  * The right-hand properties panel reads these from scoped component styles.
+ *
+ * Every size here is a §6 type ROLE now (owner ratification R3), so the panel
+ * follows `--editor-type-scale` like the rest of the shell: section titles are
+ * the engraved tier (Atlas `.section h3` — 10 px, uppercase, +0.04em), labels
+ * are the standard 12 px, values are §7's 13 px property tier in the quiet
+ * weight, and metadata is the compact 11 px tier.
  */
 
 :root {
 	--editor-inspector-width: var(--editor-right-width);
-	--editor-inspector-section-title: 600 var(--editor-font-size-section)
-		var(--editor-font);
-	--editor-inspector-label: 400 var(--editor-font-size-label) var(--editor-font);
-	--editor-inspector-value: 500 var(--editor-font-size-input) var(--editor-font);
-	--editor-inspector-metadata: 400 var(--editor-font-size-metadata)
-		var(--editor-font);
+	--editor-inspector-section-title: var(--editor-type-engraved);
+	--editor-inspector-label: 400 var(--editor-font-size-md) var(--editor-font);
+	--editor-inspector-value: var(--editor-type-property);
+	--editor-inspector-metadata: 400 var(--editor-font-size-sm) var(--editor-font);
 
 	--editor-inspector-gap: var(--editor-space-3);
 	--editor-inspector-row-height: 26px;

@@ -670,7 +670,7 @@
 		border-radius: 0.3rem;
 		background: transparent;
 		color: var(--editor-text-secondary);
-		font: 600 0.68rem/1 var(--editor-font);
+		font: var(--editor-type-engraved);
 		cursor: pointer;
 	}
 
@@ -679,21 +679,21 @@
 	button:disabled { opacity: 0.42; cursor: default; }
 
 	.toggle-row { display: flex; align-items: center; gap: 0.55rem; }
-	.toggle-row .check { width: 0.85rem; color: var(--editor-accent); font: inherit; font-size: 0.78rem; }
+	.toggle-row .check { width: 0.85rem; color: var(--editor-accent); font: inherit; font-size: var(--editor-font-size-md); }
 	.toggle-row:disabled { opacity: 0.42; cursor: default; }
 
 	/* P21.5 §3.3 — View-menu relocation rows for the viewport session
 	   controls (grid / floor / lighting). Same toggle-row grammar; sliders
 	   and color inputs stay session-only and visitor-disabled. */
 	.view-separator { height: 1px; margin: 0.3rem 0.45rem; background: var(--editor-border-subtle); }
-	.view-section-label { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font: 600 0.62rem/1 var(--editor-font); text-transform: uppercase; letter-spacing: 0.05em; }
-	.view-slider-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: 0.68rem; }
+	.view-section-label { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font: var(--editor-type-engraved); text-transform: uppercase; letter-spacing: 0.05em; }
+	.view-slider-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: var(--editor-font-size-xs); }
 	.view-slider-row input[type='range'] { width: 100%; accent-color: var(--editor-accent); }
 	.view-slider-row input:disabled { opacity: 0.4; }
-	.view-color-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: 0.68rem; }
+	.view-color-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: var(--editor-font-size-xs); }
 	.view-color-row .color-inputs { display: flex; align-items: center; gap: 0.4rem; }
 	.view-color-row input[type='color'] { width: 1.8rem; height: 1.3rem; padding: 0; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: transparent; cursor: pointer; }
-	.view-color-row input[type='text'] { width: 4.6rem; padding: 0.24rem 0.35rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-primary); font: inherit; font-size: 0.68rem; }
+	.view-color-row input[type='text'] { width: 4.6rem; padding: 0.24rem 0.35rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-primary); font: inherit; font-size: var(--editor-font-size-xs); }
 	.view-color-row input:disabled { opacity: 0.4; cursor: default; }
 
 	@media (max-width: 44rem) {
@@ -710,8 +710,8 @@
 	.toolbar.ribbon { position:relative; inset:auto; transform:none; flex:1; min-width:0; height:28px; padding:0; border:0; border-radius:0; box-shadow:none; background:transparent; backdrop-filter:none; flex-wrap:nowrap; align-items:center; }
 	.ribbon button { height:28px; padding:0 6px; white-space:nowrap; }
 	.precision { position:relative; margin-left:auto; }
-	.precision summary { cursor:pointer; color:var(--editor-text-secondary); font:500 12px var(--editor-font); padding:6px; }
+	.precision summary { cursor:pointer; color:var(--editor-text-secondary); font: var(--editor-type-control); padding:6px; }
 	.precision .add-menu { right:0; left:auto; }
-	.precision label { display:flex; justify-content:space-between; gap:6px; padding:4px; font-size:12px; }
+	.precision label { display:flex; justify-content:space-between; gap:6px; padding:4px; font-size:var(--editor-font-size-md); }
 	.precision input[type=number] { width:64px; }
 </style>

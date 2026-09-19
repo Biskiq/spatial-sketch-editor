@@ -524,7 +524,11 @@ describe('P21.1 shared shell', () => {
 		const trayCss = readLibSource('editor/styles/controls.css');
 		expect(trayCss).toContain('.project-editor .tool-tray {');
 		expect(trayCss).toContain('width: var(--editor-tray-width, 44px);');
-		expect(readLibSource('editor/styles/tokens.css')).toContain('--editor-tray-width: 44px;');
+		// R3 — the rail follows the type knob, so it stays the ratified 44 px at
+		// scale 1 and grows with its labels rather than breaking them.
+		expect(readLibSource('editor/styles/tokens.css')).toContain(
+			'--editor-tray-width: calc(44px * var(--editor-type-scale));'
+		);
 		// The View Bar hosts the utility projection and never the tools.
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
 		expect(ribbon).toContain('<LayoutDraftToolbar ribbon');
@@ -956,14 +960,17 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 
 describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
 	it('locks the three-tier Inspector type grammar in tokens + inspector shorthands', () => {
+		// P23.14 R3 — the tiers are ladder steps now, and every step is a multiple
+		// of the single `--editor-type-scale` knob, so one value scales the shell.
 		const tokens = readLibSource('editor/styles/tokens.css');
-		expect(tokens).toContain('--editor-font-size-section: 11px;');
-		expect(tokens).toContain('--editor-font-size-label: 12px;');
-		expect(tokens).toContain('--editor-font-size-input: 12.5px;');
+		expect(tokens).toContain('--editor-font-size-xs: calc(10px * var(--editor-type-scale));');
+		expect(tokens).toContain('--editor-font-size-md: calc(12px * var(--editor-type-scale));');
+		expect(tokens).toContain('--editor-font-size-section: var(--editor-font-size-xs);');
+		expect(tokens).toContain('--editor-font-size-label: var(--editor-font-size-md);');
+		expect(tokens).toContain('--editor-font-size-input: var(--editor-font-size-md);');
 		const inspectorTokens = readLibSource('editor/styles/inspector.css');
-		expect(inspectorTokens).toContain(
-			'--editor-inspector-value: 500 var(--editor-font-size-input) var(--editor-font);'
-		);
+		expect(inspectorTokens).toContain('--editor-inspector-value: var(--editor-type-property);');
+		expect(inspectorTokens).toContain('--editor-inspector-section-title: var(--editor-type-engraved);');
 	});
 
 	it('renders Inspector section headers as 11px uppercase muted across every panel', () => {
@@ -1123,9 +1130,10 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		}
 	});
 
-	it('reads ruler timecodes at 11px tabular with the playhead on current time', () => {
+	it('reads ruler timecodes at 9px tabular with the playhead on current time', () => {
 		const tokens = readLibSource('editor/styles/tokens.css');
-		expect(tokens).toContain('--editor-font-size-ruler: 11px;');
+		// Atlas `.ruler` — 9 px mono ticks, one ladder step under §7's 10 px floor.
+		expect(tokens).toContain('--editor-font-size-ruler: var(--editor-font-size-2xs);');
 		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
 		expect(dots).toContain('font: var(--editor-timeline-ruler-font);');
 		expect(dots).toContain('font-variant-numeric: tabular-nums;');

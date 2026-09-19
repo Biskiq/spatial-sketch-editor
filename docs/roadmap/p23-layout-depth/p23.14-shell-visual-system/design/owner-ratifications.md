@@ -2,7 +2,7 @@
 
 ```text
 DATE:    2026-09-19 · branch `p23.14` · PR #61
-STATUS:  R1–R2 ratified and landed; the P23.14 slice itself stays OPEN for owner review
+STATUS:  R1–R3 ratified and landed; the P23.14 slice itself stays OPEN for owner review
 AUTHORITY RECORD: this file is the reference for what the owner decided and why
 ```
 
@@ -33,6 +33,13 @@ The owner has promoted the P23.14 design to the durable, stable baseline:
   docs win on capability/ownership. The Atlas stays QA evidence throughout —
   never topology, validation or numeric-acceptance authority
   ([`atlas/p23.13-p23.14-atlas-reconciliation.md`](./atlas/p23.13-p23.14-atlas-reconciliation.md)).
+- **The type + control SYSTEM is R3 (below):** the shell's sizes live in
+  `styles/tokens.css` as the ladder + role layer, with two knobs
+  (`--editor-type-scale`, `--editor-control-scale`). `design-specs.md` §6/§7's
+  numeric type values and §12's dense-control metrics are now **descriptive of
+  the landed ramp**, not an authority to implement against; a future surface
+  asks for a role, and a future phase that needs a different size changes the
+  role, not the surface.
 - **Frozen by this promotion:** nothing new. P23.12 identity (R/W/O/J, rename
   Inspector-owned), the P23.13 Plan drafting ink and the retained icon
   silhouettes keep their existing freeze; the seven-surround contract and the
@@ -171,6 +178,78 @@ required for keyboard reachability (§7 / review #33) and it only appears for
 keyboard focus, never for a pointer click. If the owner meant the ring as well,
 that is a separate ratification and needs a replacement keyboard cue.
 
+### R3 — one type scale and one control scale, expressed as roles
+
+**Decided:** the shell stops carrying its own numbers. Every size in it is either
+a **role** (`--editor-type-*`, `--editor-control-*`, the icon/geometry roles) or
+a **ladder step** (`--editor-font-size-2xs` … `-2xl`, seven steps and no more),
+and every one of those is a multiple of **one knob**:
+
+| knob | multiplies | ratified value |
+| --- | --- | --- |
+| `--editor-type-scale` | every type size in the product | `1` = 100 % |
+| `--editor-control-scale` | every button height/padding and the fitted group geometry | `1` = 100 % |
+
+**Why:** the drift this slice exists to fix was not one wrong number, it was
+that *each surface carried its own*. §7's flat ramp
+(16/14/13/12.5/11.5) was largely **dead** — nothing consumed `title`,
+`panel-title`, `toolbar`, `tree-row` or `status` — so components wrote
+`font-size: 0.68rem` instead, in seventeen different values between 9.6 px and
+13.6 px, and no two surfaces agreed. A role layer is what makes the Atlas
+comparison converge *and stay converged*: the reference metrics are retuned in
+one file instead of in fifty components, and a future review can change the whole
+shell's size with one number.
+
+**The percentage knob, and the one cascade fact that goes with it.**
+`--editor-type-scale` is unitless (CSS cannot multiply a length by a percentage
+token, so a factor is the only form a single knob can take) and documented as a
+percentage: `1` = 100 %, `1.15` = 115 %. It must be set on **`:root`** — a theme
+block, or inline on `document.documentElement` — because a token derived from
+another token is a **snapshot taken at its declaring element**: the ladder
+declares `calc(10px * var(--editor-type-scale))` at `:root`, so an override
+further down the tree cannot re-derive it. Verified live: setting the knob on
+`document.documentElement` moves status 10 → 11.5 px, stations 11 → 12.65 px,
+Navigator rows 12 → 13.8 px, the identity 14 → 16.1 px and the rail 44 → 51 px
+together, with `--editor-control-scale: 1.2` moving station height 74 → 89 px
+and rail tools 42 → 50 px while the type stays put (the knobs are deliberately
+independent: "denser buttons" and "bigger type" are different requests).
+
+**What the Atlas comparison actually changed** (the drifted values, now roles):
+
+| surface | was | now |
+| --- | --- | --- |
+| View Bar controls | 28 px enclosed troughs, 12 px labels, accent-soft fill | 24 px plain buttons, 10 px utility / 11 px MODE labels, edge border + inset bottom rule when pressed |
+| Head (Project Row) | 12 px controls, 13 px identity | 26 px controls (`--editor-type-control`), 14 px identity role |
+| Domain Spine station | 72 px, 10 px uppercase tracked label | 74 px, 11 px label in the domain's own casing (`Scene`/`Camera`, §8), 24 px icon |
+| Navigator rows | 2 rem rows, 0.74 rem labels, 0.62 rem meta | 29 px rows, the row role (12 px) and the mono ref role (10 px) |
+| Inspector section headers | 11 px/600/+0.05em | the engraved role (10 px/600/+0.04em, Atlas `.section h3`) |
+| Timeline ruler | 11 px sans | the tick role: 9 px **mono** (a measure, not prose) |
+| Status Rail | 11 px, 8 px padding, 0.9 rem gaps | the status role (10 px), 12 px padding, 20 px gaps |
+| Tool Tray | loose px in rules | the tray roles + `--editor-tray-*` geometry |
+
+**Landed as:** `styles/tokens.css` (the ladder, the role table, the icon and
+fitted-geometry roles, the migration mapping), `styles/controls.css` +
+`styles/inspector.css` + `styles/timeline.css` (token layer as roles; the
+pre-R3 generic control names kept as **aliases** so either vocabulary moves with
+the same knob), and the shell surfaces swept onto roles (`WorkspaceRibbon`,
+`ProjectRow`, `StatusBar`, `DomainSpine`, `CameraSidebar`, `EditorSidebar`,
+`HierarchyRow`, `HierarchyNavigator`, `UnifiedProjectTree`,
+`EditorViewportToolbar`).
+
+**Evidence it holds:** `tests/lib/editor/app/p23-14-type-roles.test.ts` — the
+ladder is closed (every `--editor-font-size-*` is a multiple of the knob or a
+named alias onto a step), every type role resolves its size to a step, the
+control/geometry roles resolve to their knob, and a **guard** fails if any swept
+surface reintroduces a pinned `font:`/`font-size:` value. That guard is the
+point: it is how this cannot come back silently.
+
+**What R3 does not yet cover, on the record:** the **Inspector family**
+(`EditorInspector.svelte` plus the eight panel inspectors) still carries pinned
+sizes, because P21.5 Slice 4 pins its 12 px label / 12.5 px value tiers across
+all nine components; converting them is a mechanical batch with the mapping
+table in `tokens.css`, and it is deliberately left as one reviewable change
+rather than half-migrated here.
+
 ### Carried rulings, unchanged by R1–R2
 
 D1–D4 (the measured ink floor: darkened muted, the `--editor-text-success/-warning`
@@ -186,6 +265,7 @@ only; no other shell surface moved.
 | --- | --- | --- |
 | R1 tray tier | `styles/tokens.css` (`--editor-font-size-tray-*`), `styles/controls.css` (`.tool-tray` type + gutter), `EditorViewportToolbar.svelte` (`data-group-compact`) | `p23-14-contrast-floor.test.ts` § "tray engraved micro-tier" |
 | R2 armed surface | `styles/controls.css` (`.tool-tray button.active`) | `p23-14-contrast-floor.test.ts` § "armed tool is a darkened surface" |
+| R3 type + control roles | `styles/tokens.css` (ladder, roles, knobs), `styles/controls.css`, `styles/inspector.css`, `styles/timeline.css` + the swept shell surfaces | `p23-14-type-roles.test.ts` (closed ladder, role resolution, no-pinned-type guard) |
 | Ratified ink floor | `styles/tokens.css` + the `-text-*` consumers | `p23-14-contrast-floor.test.ts` § F1/D1–D4 |
 | Atlas reflects both | `atlas/index.html` tools rail, `atlas/notes.md` | QA evidence, not a contract |
 

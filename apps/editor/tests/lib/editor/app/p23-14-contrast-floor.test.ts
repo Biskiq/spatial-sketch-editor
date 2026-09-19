@@ -228,17 +228,26 @@ describe('P23.14 F3 (re-decided) — tray engraved micro-tier', () => {
 	const button = block(controls, '.project-editor .tool-tray button {');
 
 	it('declares the tray tier as tokens, not loose pixels in a rule', () => {
-		expect(tokens).toContain('--editor-font-size-tray-group: 7px;');
-		expect(tokens).toContain('--editor-font-size-tray-tool: 8px;');
+		// R3 — the tier is a multiple of the one type knob, like every other size.
+		expect(tokens).toContain('--editor-font-size-tray-group: calc(7px * var(--editor-type-scale));');
+		expect(tokens).toContain('--editor-font-size-tray-tool: calc(8px * var(--editor-type-scale));');
 	});
 
 	it('paints the engraved group label at the reference tier', () => {
-		expect(groupLabel).toContain('font: 600 var(--editor-font-size-tray-group)/1.15 var(--editor-font)');
+		// R3 — the rule asks for the ROLE; weight, leading and face live with the
+		// size in the role, so a tier change is one edit in tokens.css.
+		expect(groupLabel).toContain('font: var(--editor-type-tray-group)');
+		expect(tokens).toContain(
+			'--editor-type-tray-group: 600 var(--editor-font-size-tray-group)/1.15'
+		);
 		expect(groupLabel).toContain('letter-spacing: 0');
 	});
 
 	it('paints the tool label at the reference tier, single-line-capable', () => {
-		expect(button).toContain('font: 600 var(--editor-font-size-tray-tool)/1.15 var(--editor-font)');
+		expect(button).toContain('font: var(--editor-type-tray-tool)');
+		expect(tokens).toContain(
+			'--editor-type-tray-tool: 600 var(--editor-font-size-tray-tool)/1.15'
+		);
 		// The View Bar toolbars are nowrap by contract; only the tray wraps.
 		expect(button).toContain('white-space: normal');
 		expect(button).toContain('overflow-wrap: anywhere');
@@ -253,7 +262,7 @@ describe('P23.14 F3 (re-decided) — tray engraved micro-tier', () => {
 		// 44 px rail, 1 px gutter each side, 1 px rail border, 2 px control border.
 		expect(block(controls, '.project-editor .tool-tray {')).toContain('padding: 6px 1px 10px;');
 		expect(button).toContain('width: 100%');
-		expect(tokens).toContain('--editor-tray-width: 44px;');
+		expect(tokens).toContain('--editor-tray-width: calc(44px * var(--editor-type-scale));');
 	});
 
 	it('keeps the comment and the rule agreeing about the tier', () => {
@@ -263,14 +272,20 @@ describe('P23.14 F3 (re-decided) — tray engraved micro-tier', () => {
 	it('steps the one over-wide group word down instead of breaking it (R1)', () => {
 		// TRANSFORM is 44.7 px at 7 px — wider than the 44 px rail. The opt-in is
 		// per group, so the tier itself stays at the reference's 7 px.
-		expect(tokens).toContain('--editor-font-size-tray-group-compact: 6px;');
+		expect(tokens).toContain(
+			'--editor-font-size-tray-group-compact: calc(6px * var(--editor-type-scale));'
+		);
 		const compact = block(
 			controls,
 			'.project-editor .tool-tray .tool-group[data-group-compact][data-group-label]::before {'
 		);
 		expect(compact).toContain('font-size: var(--editor-font-size-tray-group-compact)');
-		// The tier itself is never the compact size.
-		expect(groupLabel).toContain('var(--editor-font-size-tray-group)/1.15');
+		// The tier itself is never the compact size: the role points at the tier
+		// token and the compact override is the only other size in the rail.
+		expect(tokens).toContain(
+			'--editor-type-tray-group: 600 var(--editor-font-size-tray-group)/1.15'
+		);
+		expect(groupLabel).toContain('font: var(--editor-type-tray-group)');
 		const toolbar = fs.readFileSync(
 			path.join(EDITOR_SRC, 'EditorViewportToolbar.svelte'),
 			'utf8'

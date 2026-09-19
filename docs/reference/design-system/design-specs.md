@@ -371,18 +371,32 @@ Do not introduce a display font.
 
 ## Type scale
 
-| Usage              |      Size |  Weight |
-| ------------------ | --------: | ------: |
-| Product title      |      16px |     600 |
-| Major panel title  |      14px |     600 |
-| Toolbar/button     |      13px |     500 |
-| Tree row           |      13px | 400–500 |
-| Inspector section  |      13px |     600 |
-| Inspector label    |      12px |     400 |
-| Input value        | 12.5–13px |     400 |
-| Secondary metadata |    11.5px |     400 |
-| Status bar         | 11.5–12px |     400 |
-| Timeline ruler     |      11px |     400 |
+> **P23.14 R3 amendment (2026-09-19, owner-ratified — this section is now
+> descriptive, not an authority).** The shell's sizes are a **closed ladder of
+> seven steps**, and every surface asks for a **role**, never a number. Both live
+> in `apps/editor/src/lib/editor/styles/tokens.css`, and every step is a multiple
+> of one percentage knob, `--editor-type-scale` (`1` = 100 %):
+>
+> | Step | At scale 1 | Roles that use it |
+> | --- | ---: | --- |
+> | `-2xs` | 9px | `--editor-type-tick` (mono measures only) |
+> | `-xs` | 10px | engraved / engraved-quiet, utility, status, ref, tray tool/group |
+> | `-sm` | 11px | mode (View Bar MODE pair), station, mono |
+> | `-md` | 12px | body, row, control, control-strong, readout, property labels |
+> | `-lg` | 13px | property values, row-head (Navigator scope) |
+> | `-xl` | 15px | heading (panel titles) |
+> | `-2xl` | 20px | the identity ceiling |
+>
+> **The table that used to sit here (16/14/13/13/13/12/12.5–13/11.5/11.5–12/11)
+> is superseded.** It was the pre-P23.14 flat ramp, and it was largely *dead* —
+> nothing consumed `title`, `panel-title`, `toolbar`, `tree-row` or `status`, so
+> components wrote their own `rem` values instead; the Atlas comparison measured
+> seventeen distinct sizes between 9.6 px and 13.6 px across the shell. Read the
+> ladder above, and for control metrics the `--editor-control-*` role table
+> (`lg` 30px / `md` 26px / `sm` 24px / `xs` 20px, scaled by
+> `--editor-control-scale`). Rationale, the measured Atlas deltas and the two
+> remaining unswept panels:
+> [`owner-ratifications.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md) R3.
 
 **Tool Tray micro-tier (P23.14 R1) — an exception, scoped to the 44 px rail:**
 
@@ -1036,7 +1050,11 @@ font: 13px / 500
 > uses the compact rule:
 
 ```text
-View Bar compact controls: 28px
+View Bar controls (P23.14 R3 — Atlas metrics, roles not numbers):
+  plain buttons:    min-height var(--editor-control-sm-height)  /* 24px */
+  labels:           utilities  var(--editor-type-utility)      /* 10px */
+                    MODE pair  var(--editor-type-mode)         /* 11px */
+  pressed/toggled:  edge border + inset 2px bottom rule (never a fill)
 - Plan | 3D
 - Layout | Arrange
 - contextual View Bar utilities
@@ -1118,12 +1136,15 @@ Numeric units should appear in section label or field suffix rather than repeate
 
 # 20. Tree / Outliner
 
-Tree rows:
+Tree rows (P23.14 R3 — the values are roles now; the numbers shown are their
+resolved size at scale 1, and the **row height is 29px**, the Atlas `.row`):
 
 ```text
-height: 28px
-font: 13px
-icon: 14–16px
+height: var(--editor-row-height)          /* 29px */
+font:   var(--editor-type-row)            /* 12px, weight 570 */
+meta:   var(--editor-type-ref)            /* 10px mono */
+icon:   var(--editor-icon-size-sm)        /* 16px disclosure glyph */
+disclosure target: var(--editor-disclosure-size)   /* 18px */
 indent step: 16px
 ```
 
