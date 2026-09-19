@@ -1,9 +1,10 @@
 # P23.14 — Editor Shell & Visual System Foundation
 
 ```text
-STATUS: design reconciliation / implementation planning (implementation-ready child plan below)
-NEXT: implement from the child plan
+STATUS: implemented — Tasks 1–9 landed on `p23.14`; self-review QA record below
+NEXT: owner review of the QA record findings (F1/F2/F4/F5), then P23.15
 PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
+QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ```
 **Owner/authority:** shell-design context is authoritative for product/architecture/ownership/scope; final-direction is the ratified designer contract; research and independent proposals are evidence only.
 
@@ -33,7 +34,11 @@ PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
 
 ## QA
 
-- No slice `qa/` yet (plan pending). Atlas specimens are QA references only.
+- **Self-review record:** [`qa/2026-09-19-P23.14-shell-qa-record.md`](./qa/2026-09-19-P23.14-shell-qa-record.md)
+  — Atlas specimens A–D, the §25.2 stress toggles, and the findings that came out of it
+  (F1/F2/F4/F5 open for an owner call; F3/F6 fixed in the same pass). Device,
+  screen-reader, reduced-motion and coarse-pointer rows remain **manual-owed**.
+- Atlas specimens are QA references only.
 - **Known acceptance limitation (TD‑1):** `Add Camera` still depends on the legacy
   Room-floor placement path, and the canonical wall-first floor hit is refused, so a
   fresh canonical project cannot place a new camera. Existing TD‑1

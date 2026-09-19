@@ -184,7 +184,9 @@
 	<section class="camera-node" aria-label="Camera node editor">
 		<div class="section-heading">
 			<h2>{pendingNode ? 'Pending camera' : 'Camera node'}</h2>
-			<span>{pendingNode ? 'Not saved' : 'Room-local'}</span>
+			<!-- P23.0b — the frame claim is the node's own: a canonical node carries
+			     no Room, so a fixed "Room-local" would misdescribe the document. -->
+			<span>{pendingNode ? 'Not saved' : node.roomId ? 'Room-local' : 'World-local'}</span>
 		</div>
 
 		<label class="label-field">

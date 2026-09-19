@@ -250,15 +250,22 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		const navigator = read('hierarchy/HierarchyNavigator.svelte');
 		expect(block(navigator, '\t.tree-scroll {')).toContain('container-type: inline-size;');
 		const row = read('hierarchy/HierarchyRow.svelte');
-		const dense = block(row, '@container (max-width: 16rem) {');
+		const dense = block(row, '@container (max-width: 216px) {');
 		expect(dense).toContain('.tree-row__meta { display: none; }');
 		// Identity, selection and the tree position stay painted.
 		expect(dense).not.toContain('.tree-row__label');
 		expect(dense).not.toContain('.tree-row__chevron');
-		// The threshold sits below the reference 268 px Navigator, so a normal
-		// width never loses metadata.
-		const threshold = Number(row.match(/@container \(max-width: (\d+(?:\.\d+)?)rem\)/)?.[1]);
-		expect(threshold * 16).toBeLessThanOrEqual(256);
+		// The measured surface is the scroll track, not the column: reference
+		// 268 − 36 chrome = 232 inner (metadata stays), 240 minimum = 204 inner
+		// (metadata sheds). A threshold outside that window either hides counts at
+		// the reference width or never fires at the documented minimum.
+		const threshold = Number(row.match(/@container \(max-width: (\d+)px\)/)?.[1]);
+		const referenceInner = 268 - 36;
+		const minimumInner = 240 - 36;
+		expect(threshold).toBeGreaterThan(minimumInner);
+		expect(threshold).toBeLessThan(referenceInner);
+		const navigatorTokens = read('styles/tokens.css');
+		expect(block(navigatorTokens, '.project-editor {')).toContain('--editor-left-width: 268px;');
 	});
 
 	it('keeps the status bar shedding metadata in the same order', () => {

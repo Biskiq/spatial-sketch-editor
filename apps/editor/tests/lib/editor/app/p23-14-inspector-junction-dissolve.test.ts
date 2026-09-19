@@ -214,9 +214,17 @@ describe('P23.14 §13 — the Inspector is property-first', () => {
 	it('renders the same identity header in the Camera Plan panel', () => {
 		const camera = readLib('editor/app/CameraPlanInspector.svelte');
 		expect(camera).toContain('<span class="identity-title">');
-		expect(camera).toContain('<span class="identity-kind">Camera node · room-local</span>');
+		// P23.0b — a canonical node carries no Room, so the locality badge is
+		// derived from the node instead of asserting the legacy format.
+		expect(camera).toContain("Camera node · {node.roomId ? 'room-local' : 'world-local'}");
+		expect(camera).not.toContain('Camera node · room-local</span>');
 		expect(camera).toContain('<span class="identity-kind">Camera connection · {connection.positionPath.kind}</span>');
-		expect(camera).toContain('<span class="identity-kind">Camera path · {anchor.roomId ? \'room-local\' : \'world-space\'}</span>');
+		expect(camera).toContain("Camera path · {anchor.roomId ? 'room-local' : 'world-local'}");
+		// The Room slot is diagnosis, not a placeholder: a world-local node has no
+		// Room to name.
+		expect(camera).toContain('{#if node.roomId}<span class="technical-id">Room {node.roomId}</span>{/if}');
+		// No unguarded Room slot: a world-local node must not print an empty one.
+		expect(camera).not.toContain('\n\t\t\t<span class="technical-id">Room {node.roomId}</span>');
 		// The raw camera IDs are diagnosis, not identity copy.
 		expect(camera).not.toContain('<h2>Camera node</h2>');
 		expect(camera).not.toContain('<dd class="id">{node.id}</dd>');
@@ -227,6 +235,22 @@ describe('P23.14 §13 — the Inspector is property-first', () => {
 		expect(camera).toContain('<span class="technical-id">{anchor.id}</span>');
 		expect(camera).toContain('<span class="technical-id">{viewKeyframe.id}</span>');
 		expect(camera.match(/<details class="technical-details" bind:open=\{technicalDetailsOpen\}>/g)).toHaveLength(4);
+	});
+
+	it('derives the locality badge from the selection everywhere, never a fixed string', () => {
+		// P23.0b made world-local the canonical Scene format, so a panel that
+		// always says the legacy word tells the user something untrue about the
+		// document they are editing. Each badge follows its own selection.
+		expect(readLib('editor/camera/EditorCameraInspector.svelte')).toContain(
+			"{pendingNode ? 'Not saved' : node.roomId ? 'Room-local' : 'World-local'}"
+		);
+		expect(readLib('editor/EditorTransformInspector.svelte')).toContain(
+			"{selectedObject.roomId ? 'Room-local' : 'World-local'}"
+		);
+		// The Arrange/Plan staging transform is room-owned by construction (a
+		// world-local placement is refused upstream with its own reason text), so
+		// its legend keeps the room-local wording on purpose.
+		expect(readLib('editor/EditorInspector.svelte')).toContain('<legend>Room-local Plan transform</legend>');
 	});
 
 	it('orders consequential actions last in the canonical Wall and Opening blocks', () => {

@@ -173,7 +173,12 @@
 			<span class="identity-icon" aria-hidden="true"><Camera size={15} /></span>
 			<span class="identity-text">
 				<span class="identity-title">{formatCameraNodeLabel(node.label, node.id)}</span>
-				<span class="identity-kind">Camera node · room-local</span>
+				<!-- P23.0b: a canonical node carries no Room, so the locality badge must
+				     report the node's own frame — "room-local" here was a fixed string
+				     that described the legacy format only. -->
+				<span class="identity-kind"
+					>Camera node · {node.roomId ? 'room-local' : 'world-local'}</span
+				>
 			</span>
 		</div>
 
@@ -203,7 +208,7 @@
 		<details class="technical-details" bind:open={technicalDetailsOpen}>
 			<summary>Technical details</summary>
 			<span class="technical-id">{node.id}</span>
-			<span class="technical-id">Room {node.roomId}</span>
+			{#if node.roomId}<span class="technical-id">Room {node.roomId}</span>{/if}
 		</details>
 
 		{#key node.id}
@@ -331,7 +336,11 @@
 			<span class="identity-icon" aria-hidden="true"><Spline size={15} /></span>
 			<span class="identity-text">
 				<span class="identity-title">Curve anchor</span>
-				<span class="identity-kind">Camera path · {anchor.roomId ? 'room-local' : 'world-space'}</span>
+				<!-- Same vocabulary as the node badge: the document frame is what the
+				     user reads, not a synonym for it. -->
+				<span class="identity-kind"
+					>Camera path · {anchor.roomId ? 'room-local' : 'world-local'}</span
+				>
 			</span>
 		</div>
 

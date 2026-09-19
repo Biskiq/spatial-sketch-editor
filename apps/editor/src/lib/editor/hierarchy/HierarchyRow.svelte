@@ -408,14 +408,16 @@
 	.tree-row--selected .tree-row__meta,
 	.tree-row--selected .tree-row__reference { color: var(--editor-text-primary); }
 	/*
-	 * P23.14 §23 — progressive density. When the Navigator is squeezed to its
-	 * 240 px minimum the row sheds its trailing metadata first (`row.secondary` —
-	 * counts, kinds, derived numbers) and keeps identity (the label), selection
-	 * and its place in the tree. Shedding is the last resort, not the first: the
-	 * threshold sits below the reference 268 px Navigator so nothing disappears
-	 * at the normal width, and the tooltip/title still carries the full id.
+	 * P23.14 §23 — progressive density. When the Navigator is squeezed the row
+	 * sheds its trailing metadata first (`row.secondary` — counts, kinds, derived
+	 * numbers) and keeps identity (the label), selection and its place in the
+	 * tree. Shedding is the last resort, not the first: the measured surface is
+	 * the scroll track inside the column (reference 268 − 36 chrome = 232; the
+	 * 240 minimum leaves 204), so 216 px fires only once the column is genuinely
+	 * squeezed and never at the reference width. The tooltip still carries the
+	 * full id, so nothing becomes unreachable.
 	 */
-	@container (max-width: 16rem) {
+	@container (max-width: 216px) {
 		.tree-row__meta { display: none; }
 	}
 </style>
