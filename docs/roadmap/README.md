@@ -2,7 +2,11 @@
 
 **Role:** P-level tracker only. Answers: which phase executes now,
 which phase is being planned, pipeline order, P-level status.
-Slice detail lives in phase README. Child plans live in phase folders.
+Slice detail lives in phase README. Phase root holds phase-wide /
+cross-slice artifacts only; active slice-specific plans/artifacts live
+inside that slice's workspace, and each slice README owns the exact plan
+path. Do not add new slice-specific plans flat at `docs/roadmap/<phase>/`
+(flat slice plans already there are grandfathered legacy).
 
 ```text
 PIPELINE: P23 → P26 → P24 → P25

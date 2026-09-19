@@ -1,8 +1,9 @@
 # P23.14 — Editor Shell & Visual System Foundation
 
 ```text
-STATUS: design reconciliation / implementation planning (no implementation-ready child plan yet)
-NEXT: write implementation-ready child plan from context + final-direction below
+STATUS: design reconciliation / implementation planning (implementation-ready child plan below)
+NEXT: implement from the child plan
+PLAN: ./2026-09-19-P23.14-plate-shell-visual-system.md
 ```
 **Owner/authority:** shell-design context is authoritative for product/architecture/ownership/scope; final-direction is the ratified designer contract; research and independent proposals are evidence only.
 
@@ -33,6 +34,16 @@ NEXT: write implementation-ready child plan from context + final-direction below
 ## QA
 
 - No slice `qa/` yet (plan pending). Atlas specimens are QA references only.
+- **Known acceptance limitation (TD‑1):** `Add Camera` still depends on the legacy
+  Room-floor placement path, and the canonical wall-first floor hit is refused, so a
+  fresh canonical project cannot place a new camera. Existing TD‑1
+  (`docs/operations/tech-debt/README.md`), owner-deferred to P24 — P23.14–P23.16 must not
+  fix or work around it incidentally. Camera QA that needs populated
+  nodes/connections/Sequence/five Timeline lanes/selected-camera 3D frustum must use an
+  existing or pre-seeded canonical world-local Scene + navigation fixture over wall-first
+  Layout data; a fresh-project `Add Camera` failure is expected and is not a P23.14
+  acceptance failure; an unexercisable populated Camera state is marked BLOCKED /
+  manual-owed, never claimed passed from source inspection or Atlas appearance.
 
 ## NO PRELOAD — predecessor material
 
