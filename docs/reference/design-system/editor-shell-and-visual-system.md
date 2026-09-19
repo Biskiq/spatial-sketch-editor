@@ -134,7 +134,8 @@ not new shell design:
   numeric entry, **not** by a shell slice. P23.14 records it and does not change increments.
 - **Manual accessibility rows** — screen-reader reading order, device/coarse-pointer
   usability. Automated motion/reduced-motion and contrast checks exist, and the
-  coarse-pointer rule now covers every interactive shell species including `a[href]`;
+  coarse-pointer rule now covers every interactive shell species including `a[href]`
+  in both dimensions (≥44 × 44);
   the OS-preference and physical-device pass remains owed.
 - **Frozen-relic shared components** — the visitor/publication relic shares shell
   components, so shell changes must be scoped rather than component-local (§2.8).

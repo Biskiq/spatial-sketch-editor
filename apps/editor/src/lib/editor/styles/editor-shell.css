@@ -49,9 +49,13 @@ body:has(.editor-page) {
 
 /*
  * P23.14 §23 — coarse pointers. Every control in the chrome reaches the 44 px
- * minimum (`--editor-touch-target-min`) and the bands that hold them grow with
- * them, so a 44 px control is never clipped into a 26 px row. The Plan canvas
- * is untouched: `$lib/layout/plan-control-grammar` already raises its own
+ * minimum (`--editor-touch-target-min`) in BOTH dimensions, and the bands that
+ * hold them grow with them, so a 44 px control is never clipped into a 26 px
+ * row. Both `min-width` and `min-height` are load-bearing: height alone leaves
+ * narrow icon controls (e.g. the View Bar `.utility-btn` at
+ * `var(--editor-control-sm-height)` ≈ 24 px) at roughly 24 × 44 instead of the
+ * ≥44 × 44 the design promises. The Plan canvas is untouched:
+ * `$lib/layout/plan-control-grammar` already raises its own
  * acquisition radius for coarse pointers, because canvas targets are geometry
  * rather than laid-out chrome.
  *
@@ -67,6 +71,7 @@ body:has(.editor-page) {
 		--editor-viewbar-height: var(--editor-touch-target-min);
 	}
 	.project-editor :is(button, a[href], [role='tab'], [role='menuitem'], select, input, summary) {
+		min-width: var(--editor-touch-target-min);
 		min-height: var(--editor-touch-target-min);
 	}
 	.project-editor .tree-row {

@@ -1,5 +1,56 @@
 import type { EditorWorkspace } from '../editor-types';
 
+/** Shell domain the Inspector's workspace resolution reads. Null = relic (no shell state). */
+export type InspectorShellDomain = 'scene' | 'camera';
+/** Shell view the Inspector's workspace resolution reads. Null = relic. */
+export type InspectorShellView = 'plan' | '3d';
+/** Plan local mode the Inspector's workspace resolution reads. Null = relic/unknown. */
+export type InspectorPlanViewMode = 'layout' | 'staging';
+
+export type InspectorWorkspaceInput = {
+	/** Shell domain, or null when the caller passes no shell state (relic). */
+	domain: InspectorShellDomain | null;
+	/** Shell view, or null when the caller passes no shell state (relic). */
+	view: InspectorShellView | null;
+	/** Plan local mode, or null when unknown/relic. */
+	planViewMode: InspectorPlanViewMode | null;
+	/** Legacy workspace mapping, kept for the relic only. */
+	fallback: EditorWorkspace;
+};
+
+/**
+ * P23.14 follow-up — resolve the Inspector's workspace from the actual shell
+ * state (domain × view × local mode), not the legacy workspace mapping.
+ *
+ * The shell maps BOTH Scene Plan modes onto the legacy `'layout'` workspace
+ * (`EditorApp.svelte`), so reading the legacy workspace collapses Layout and
+ * Arrange into one state: Scene Plan Arrange with a Scene selection then
+ * resolves exposure with `workspace === 'layout'`, which exposes no Scene slot
+ * and drops the Arrange panel into its empty state. The shell state keeps them
+ * distinct:
+ *
+ * - Scene + Plan + Layout → `'layout'` (Layout authority; a remembered Scene
+ *   selection stays remembered, not presented);
+ * - Scene + Plan + Arrange → `'scene'` (owner-aware Layout override still
+ *   applies downstream via `staging` in `resolveInspectorDomain`);
+ * - Scene + 3D → `'scene'`;
+ * - Camera + Plan/3D → `'camera'`;
+ * - relic (no shell state) → legacy `fallback`, ungated as before.
+ *
+ * Pure: exposure changes, stored selection never does.
+ */
+export function resolveInspectorWorkspace({
+	domain,
+	view,
+	planViewMode,
+	fallback
+}: InspectorWorkspaceInput): EditorWorkspace {
+	if (domain === null || domain === undefined) return fallback;
+	if (domain === 'camera') return 'camera';
+	if (view === 'plan' && planViewMode === 'layout') return 'layout';
+	return 'scene';
+}
+
 /** The canonical active selection's domain, or `none` while nothing is active. */
 export type InspectorSelectionDomain = EditorWorkspace | 'none';
 

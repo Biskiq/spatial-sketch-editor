@@ -19,7 +19,11 @@
 	import EditorCameraInspector from './camera/EditorCameraInspector.svelte';
 	import CameraPlanInspector from './app/CameraPlanInspector.svelte';
 	import type { EditorViewState } from './app/editor-view-state.svelte';
-	import { resolveInspectorDomain, resolveInspectorExposure } from './app/inspector-target';
+	import {
+		resolveInspectorDomain,
+		resolveInspectorExposure,
+		resolveInspectorWorkspace
+	} from './app/inspector-target';
 	import EditorLightInspector from './EditorLightInspector.svelte';
 	import EditorMaterialInspector from './EditorMaterialInspector.svelte';
 	import EditorPlacementInspector from './EditorPlacementInspector.svelte';
@@ -224,9 +228,24 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	// different things (F2) and a Scene workspace cannot mount the Camera editor
 	// at all (F1). The relic passes no `viewState`, so it keeps its legacy
 	// ungated behavior exactly as before.
-	const workspace = $derived<EditorWorkspace>(store.currentWorkspace);
+	// The workspace resolves from the actual shell state (domain × view × local
+	// mode), never from the raw legacy `store.currentWorkspace`: the shell maps
+	// BOTH Scene Plan modes onto legacy `'layout'`, so the legacy value
+	// collapses Layout and Arrange and drops a selected Scene object in Arrange
+	// into the empty state (no Scene exposure). Scene Plan Layout → `layout`,
+	// Scene Plan Arrange → `scene` (with the owner-aware Layout override below
+	// when the active target is Layout), Scene 3D → `scene`, Camera → `camera`.
+	const inspectorWorkspace = $derived<EditorWorkspace>(
+		resolveInspectorWorkspace({
+			domain: viewState?.domain ?? null,
+			view: viewState?.activeView ?? viewMode,
+			planViewMode: layoutInteraction.planViewMode,
+			fallback: store.currentWorkspace
+		})
+	);
+	const workspace = $derived<EditorWorkspace>(inspectorWorkspace);
 	const scopedExposure = $derived(viewState !== null);
-	const exposure = $derived(resolveInspectorExposure(workspace));
+	const exposure = $derived(resolveInspectorExposure(inspectorWorkspace));
 	const scenePlanStaging = $derived(
 		viewMode === 'plan' &&
 		viewState?.domain === 'scene' &&

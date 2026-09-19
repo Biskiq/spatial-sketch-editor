@@ -254,7 +254,7 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		expect(reduced).not.toContain('.relic');
 	});
 
-	it('raises every chrome target to 44 px on coarse pointers, by species', () => {
+	it('raises every chrome target to 44 × 44 px on coarse pointers, by species', () => {
 		const tokens = read('styles/tokens.css');
 		expect(block(tokens, ':root {')).toContain('--editor-touch-target-min: 44px;');
 		const shell = read('styles/editor-shell.css');
@@ -267,7 +267,11 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 			expect(coarse).toContain(band);
 		}
 		expect(coarse).toContain('.tree-row');
+		// Both dimensions are load-bearing: height alone leaves narrow icon
+		// controls (e.g. the View Bar `.utility-btn` at ~24 px) at roughly
+		// 24 × 44 instead of the ≥44 × 44 the rule promises.
 		expect(coarse).toContain('min-height: var(--editor-touch-target-min);');
+		expect(coarse).toContain('min-width: var(--editor-touch-target-min);');
 		// The canvas answers to its own grammar, which already grows the
 		// acquisition radius for coarse pointers.
 		expect(coarse).not.toContain('.plan-canvas');
@@ -294,6 +298,16 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		// Links are the species that regressed, so pin them explicitly too.
 		expect(sources.some((source) => source.includes('<a href'))).toBe(true);
 		expect(rule).toContain('a[href]');
+		// Compact icon controls are the dimension that regressed next: the View
+		// Bar utility buttons paint at `var(--editor-control-sm-height)` (≈24 px),
+		// so without a `min-width` in the coarse rule they stay 24 px wide while
+		// reaching 44 px tall. The coarse declaration block for the `:is(...)`
+		// selector must carry both minimums.
+		const ribbon = read('app/WorkspaceRibbon.svelte');
+		expect(ribbon).toContain('width: var(--editor-control-sm-height);');
+		const coarseRuleBody = coarse.slice(coarse.indexOf(':is('));
+		expect(coarseRuleBody).toContain('min-width: var(--editor-touch-target-min);');
+		expect(coarseRuleBody).toContain('min-height: var(--editor-touch-target-min);');
 	});
 
 	it('sheds Navigator metadata before identity when the column is squeezed', () => {

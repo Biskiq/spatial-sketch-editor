@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	resolveInspectorDomain,
 	resolveInspectorExposure,
+	resolveInspectorWorkspace,
 	type InspectorSelectionDomain
 } from '$lib/editor/app/inspector-target';
 import type { EditorWorkspace } from '$lib/editor/editor-types';
@@ -88,7 +89,7 @@ describe('P23.14 §13 — one workspace-scoped Inspector target (F1/F2)', () => 
 	it('the panel and its header read that one resolution', () => {
 		const inspector = read('EditorInspector.svelte');
 		expect(inspector).toContain('resolveInspectorDomain({');
-		expect(inspector).toContain('resolveInspectorExposure(workspace)');
+		expect(inspector).toContain('resolveInspectorExposure(inspectorWorkspace)');
 		// The body mounts the camera panel only for an EXPOSED navigation slot.
 		expect(inspector).toContain('{:else if exposedNavigation}');
 		expect(inspector).not.toContain('{:else if selectedNavigation}');
@@ -113,5 +114,98 @@ describe('P23.14 §13 — one workspace-scoped Inspector target (F1/F2)', () => 
 		expect(module).not.toContain('deselect');
 		expect(module).not.toContain('store.');
 		expect(module).toContain("import type { EditorWorkspace }");
+	});
+});
+
+describe('P23.14 follow-up — Inspector workspace resolves from shell state, not legacy mapping', () => {
+	// The shell maps BOTH Scene Plan modes onto legacy `currentWorkspace ===
+	// 'layout'` (EditorApp.svelte). Resolving exposure from that legacy value
+	// collapses Layout and Arrange: Scene Plan Arrange with a Scene selection
+	// then exposes no Scene slot and drops into the empty state. The panel must
+	// resolve from domain × view × local mode instead.
+	it('maps the real domain × view × local-mode matrix onto distinct workspaces', () => {
+		// Scene + Plan + Layout → layout (Layout authority).
+		expect(
+			resolveInspectorWorkspace({ domain: 'scene', view: 'plan', planViewMode: 'layout', fallback: 'layout' })
+		).toBe('layout');
+		// Scene + Plan + Arrange → scene (Arrange keeps its Scene exposure;
+		// the owner-aware Layout override applies downstream via staging).
+		expect(
+			resolveInspectorWorkspace({ domain: 'scene', view: 'plan', planViewMode: 'staging', fallback: 'layout' })
+		).toBe('scene');
+		// Scene + 3D → scene regardless of the remembered Plan local mode.
+		expect(
+			resolveInspectorWorkspace({ domain: 'scene', view: '3d', planViewMode: 'layout', fallback: 'scene' })
+		).toBe('scene');
+		expect(
+			resolveInspectorWorkspace({ domain: 'scene', view: '3d', planViewMode: 'staging', fallback: 'scene' })
+		).toBe('scene');
+		// Camera + Plan/3D → camera.
+		expect(
+			resolveInspectorWorkspace({ domain: 'camera', view: 'plan', planViewMode: 'layout', fallback: 'camera' })
+		).toBe('camera');
+		expect(
+			resolveInspectorWorkspace({ domain: 'camera', view: '3d', planViewMode: 'staging', fallback: 'camera' })
+		).toBe('camera');
+		// Relic (no shell state) keeps the legacy fallback, ungated as before.
+		expect(
+			resolveInspectorWorkspace({ domain: null, view: null, planViewMode: null, fallback: 'scene' })
+		).toBe('scene');
+		expect(
+			resolveInspectorWorkspace({ domain: null, view: null, planViewMode: null, fallback: 'layout' })
+		).toBe('layout');
+	});
+
+	it('Scene + Plan + Arrange + Scene selection exposes the Scene target', () => {
+		const workspace = resolveInspectorWorkspace({
+			domain: 'scene',
+			view: 'plan',
+			planViewMode: 'staging',
+			fallback: 'layout'
+		});
+		expect(workspace).toBe('scene');
+		// The staging branch stays owner-aware: a Scene pick shows Scene.
+		expect(resolveInspectorDomain({ workspace, selectionDomain: 'scene', staging: true })).toBe('scene');
+		const exposure = resolveInspectorExposure(workspace);
+		expect(exposure.scene).toBe(true);
+		// Placement slots are presented (the Arrange body gates on these).
+		expect(exposure.scene ? ['p1'] : []).toEqual(['p1']);
+	});
+
+	it('Scene + Plan + Arrange + Layout selection exposes the Layout target', () => {
+		const workspace = resolveInspectorWorkspace({
+			domain: 'scene',
+			view: 'plan',
+			planViewMode: 'staging',
+			fallback: 'layout'
+		});
+		expect(workspace).toBe('scene');
+		expect(resolveInspectorDomain({ workspace, selectionDomain: 'layout', staging: true })).toBe('layout');
+		expect(resolveInspectorExposure(workspace).layout).toBe(true);
+	});
+
+	it('Scene + Plan + Layout + remembered Scene selection keeps Layout authority', () => {
+		const workspace = resolveInspectorWorkspace({
+			domain: 'scene',
+			view: 'plan',
+			planViewMode: 'layout',
+			fallback: 'layout'
+		});
+		expect(workspace).toBe('layout');
+		// A remembered Scene pick is not presented under Layout authority.
+		expect(resolveInspectorDomain({ workspace, selectionDomain: 'scene', staging: false })).toBe('layout');
+		expect(resolveInspectorExposure(workspace).scene).toBe(false);
+	});
+
+	it('the panel resolves from shell state, never the raw legacy workspace', () => {
+		const inspector = read('EditorInspector.svelte');
+		expect(inspector).toContain('resolveInspectorWorkspace({');
+		expect(inspector).toContain('viewState?.domain');
+		expect(inspector).toContain('viewState?.activeView');
+		expect(inspector).toContain('layoutInteraction.planViewMode');
+		// The legacy mapping collapses both Scene Plan modes to 'layout' and
+		// must not feed exposure directly anymore.
+		expect(inspector).not.toContain('resolveInspectorExposure(store.currentWorkspace)');
+		expect(inspector).not.toContain('resolveInspectorDomain({\n\t\t\tworkspace: store.currentWorkspace');
 	});
 });
