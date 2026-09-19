@@ -41,11 +41,12 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
 ## QA
 
 - **Self-review record:** [`qa/2026-09-19-P23.14-shell-qa-record.md`](./qa/2026-09-19-P23.14-shell-qa-record.md)
-  — Atlas specimens A–D, the §25.2 stress toggles, and the findings that came out of it
-  (F1/F2/F4/F5 open for an owner call; F3/F6 fixed in the same pass; F7 fixed and then
-  ratified as R1, which resolves the residual `TRANSFORM` call; F8 — the whole shell's
-  type and button chrome measured against the Atlas — fixed by R3). Device,
-  screen-reader, reduced-motion and coarse-pointer rows remain **manual-owed**.
+  — Atlas specimens A–D, the §25.2 stress toggles, the findings that came out of it, and the
+  post-review ownership pass. Fixed: F3, F6, F7 (→ R1, resolving the residual `TRANSFORM`
+  call), F8 (→ R3) and the review's F1/F2/F5/F10 (→ R4 — one writable control owner per fact,
+  one workspace-scoped Inspector target). Open: **F4 only**, deferred as **TD-2** rather than
+  accepted. Device, screen-reader, reduced-motion and coarse-pointer rows remain
+  **manual-owed**.
 - Atlas specimens are QA references only.
 - **Durable design authority (owner-ratified 2026-09-19):**
   [`../../../reference/design-system/editor-shell-and-visual-system.md`](../../../reference/design-system/editor-shell-and-visual-system.md)
@@ -55,7 +56,7 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
   docs stay canonical for capability/ownership/exposure and the frozen Plan/identity/icon
   contracts, while their shell placement/dimension/type statements are descriptive of the
   landed PLATE system.
-- **Owner ratifications R1–R3:**
+- **Owner ratifications R1–R4:**
   [`../../../reference/design-system/editor-shell-ratifications.md`](../../../reference/design-system/editor-shell-ratifications.md)
   — **R1** the Tool Tray paints the reference's engraved micro-tier (7 px group / 8 px tool,
   plus a 6 px compact floor for a word wider than the rail) rather than the 10 px engraved
@@ -73,6 +74,11 @@ QA: ./qa/2026-09-19-P23.14-shell-qa-record.md
   Navigator rows, 10 px engraved Inspector headers, 9 px mono ruler ticks, 10 px Status Rail)
   are the resolved values of those roles, not numbers in components, and
   `tests/lib/editor/app/p23-14-type-roles.test.ts` fails if a swept surface reintroduces one.
+  **R4** (post-review) settled ownership: the host decides what a control paints and the
+  workspace decides what is exposed, so each writable fact has one owner (the Tool Tray paints
+  no View Bar utility, the View Bar owns the menus and utilities, the Camera Drawer owns
+  `POV / Observer`), and the Inspector presents one workspace-scoped target to both its header
+  and its body while remembered selections stay remembered.
 - **Known acceptance limitation (TD‑1):** `Add Camera` still depends on the legacy
   Room-floor placement path, and the canonical wall-first floor hit is refused, so a
   fresh canonical project cannot place a new camera. Existing TD‑1

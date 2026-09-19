@@ -5,20 +5,22 @@ SLICE: P23.14
 STAGE: implemented on `p23.14`, owner review OPEN (not closed out) — PR #61
 
 NEXT:
-- owner review closeout for P23.14. Open findings in
+- owner review closeout for P23.14. Findings state in
   `../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md`:
-  F1 (Scene can mount the Camera node editor), F2 (Inspector header vs body selection),
-  F4 (numeric fields report `:invalid` on legal values), F5 (`POV / Observer` duplicated in
-  Camera 3D). F3 (locality badges) and F6 (Navigator density threshold) were fixed in the
-  same pass; F7 (Tool Tray engraved tier) was fixed and ratified as R1, which also resolves
-  its residual `TRANSFORM` call; F8 (the whole shell's type/button chrome vs the Atlas) was
-  fixed by R3. Device/screen-reader/reduced-motion/coarse-pointer rows stay manual-owed.
+  F3 (locality badges), F6 (Navigator density threshold), F7 (Tool Tray engraved tier → R1),
+  F8 (the whole shell's type/button chrome vs the Atlas → R3) and the review pass's F1, F2, F5
+  and F10 (duplicate writable controls → R4) are **fixed**; the only open finding is **F4**
+  (numeric fields report `:invalid` on legal values), now deferred as **TD-2** in
+  `../operations/tech-debt/README.md` rather than accepted. Device/screen-reader/
+  reduced-motion/coarse-pointer rows stay manual-owed.
 - Ratified and landed 2026-09-19: R1 (tray engraved tier — 7 px group / 8 px tool, 6 px
-  compact floor), R2 (armed tool = darkened surface only, no amber border or inboard edge)
-  and R3 (one closed type ladder + a role per recurring group, all multiples of
+  compact floor), R2 (armed tool = darkened surface only, no amber border or inboard edge),
+  R3 (one closed type ladder + a role per recurring group, all multiples of
   `--editor-type-scale` / `--editor-control-scale` set on `:root`, so the shell holds no
-  pinned sizes; the Inspector family is the remaining batch). Record + drift root cause:
-  `../reference/design-system/editor-shell-ratifications.md`.
+  pinned sizes; the Inspector family is the remaining batch) and R4 (one writable owner per
+  fact: the Tool Tray paints no bar utility, the View Bar owns the menus/utilities, the Camera
+  Drawer owns `POV / Observer`, and the Inspector presents one workspace-scoped target).
+  Record + drift root cause: `../reference/design-system/editor-shell-ratifications.md`.
 - Durable design authority promoted to
   `../reference/design-system/editor-shell-and-visual-system.md` + its Atlas companion; P23.15,
   P23.16, P24 and P26 fit into that shell grammar rather than re-deciding it.

@@ -240,3 +240,76 @@ so reuse that vocabulary rather than inventing a second one.
   ("Add Camera needs a room-floor hit" is the premise this defect invalidates).
 - [`../components/placement.md`](../../reference/components/placement.md) — placement/grounding.
 - P24.2 — shared floor placement, honest transforms, resolution reasons.
+
+---
+
+## TD-2 — Inspector numeric fields announce `:invalid` while holding legal values (step base ≠ `min`)
+
+**Status:** open — **deferred to whoever next owns Inspector numeric entry** (P24 or a later
+Inspector slice).
+**Found:** 2026-09-19, by reading the accessibility tree of a populated Inspector during P23.14
+shell QA (recorded there as finding **F4**).
+**Defer to:** the slice that owns numeric entry semantics. The fix changes arrow-key increment
+behaviour, which is Inspector entry design, not shell polish — P23.14 records it and deliberately
+does **not** "improve" increments incidentally.
+
+### Symptom
+
+Open any Room, Wall Opening, Object or placed-property selection and read the Inspector with an
+assistive technology (or `:invalid` in the DOM): fields whose displayed value is perfectly legal —
+`0.1`, `0.3`, `3.75` — are announced as **invalid**. Visually nothing is wrong (no stylesheet
+paints `:invalid`), so this is an AT-truth defect: a screen-reader user is told the model is in a
+state it is not in.
+
+### Reproduce
+
+Scene · Plan → draw a Room → select it → read `Wall thickness`, `Floor thickness`,
+`Ceiling thickness`, `Floor height`; then select a placed Object and read `Width / Depth /
+Height / Radius`. Probe: in the browser console, `[...document.querySelectorAll('.inspector
+input[type=number]')].map(i => [i.value, i.validity.stepMismatch])` — legal values report
+`stepMismatch: true`.
+
+### Root cause
+
+The rows set a **`min` that is not on the `step` grid**, and per the HTML spec the step base is
+the `min` attribute when present:
+
+```html
+<input type="number" min="0.001" step="0.05" …>   <!-- base 0.001 → 0.1, 3.75 off-grid -->
+<input type="number" min="0.05"  step="0.05" …>   <!-- base 0.05  → fine -->
+```
+
+17 rows carry `min="0.001"` (`EditorInspector.svelte:2357–2362, 2587–2591, 2645–2649, …`); the
+`min="0.05" step="0.05"` and `min="0" step="0.05"` rows are correct. The values themselves are
+legitimate (a 0.001 m floor is the intent), so this is a constraint-expression bug, not a data bug.
+
+### Why the suite is green
+
+The test suite drives these fields through `onchange` handlers and state assertions; nothing
+reads `validity.stepMismatch` or the accessibility tree, and no CSS targets `:invalid`, so the
+defect is invisible to every existing check. P23.14's shell tests only assert styling/source shape.
+
+### Fix options
+
+- **Option A (recommended):** align `min` to the step grid (`min="0"` or `min="0.05"`) and rely
+  on the existing `onchange` clamp to keep authored values positive. Smallest change; keeps
+  arrow-key increments at 0.05 m.
+- **Option B:** `step="any"` — legal arithmetic is unrestricted, but arrow-key stepping becomes
+  1 (integer) unless a JS key handler supplies the increment. Choose only with an explicit
+  increment decision.
+- **Must not do:** migrate these fields onto a custom numeric component as part of an unrelated
+  slice, or add `:invalid` styling that paints the false state — both freeze wrong semantics
+  behind a design decision.
+
+### Then add
+
+1. A test that asserts `stepMismatch === false` for every numeric field the Inspector can render
+   with a legal authored value (parameterised over the panel families, not one hard-coded row).
+2. An increment test: arrow-up from a legal value lands on the next grid value and stays legal.
+3. If Option B is taken, a keyboard test proving the documented increment still applies.
+
+### Related
+
+- P23.14 QA record finding **F4** — [`../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
+- Durable shell contract §0.4 (implementation debt, not design) — [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md)
+- [`../../../apps/editor/src/lib/editor/EditorInspector.svelte`](../../../apps/editor/src/lib/editor/EditorInspector.svelte) — the covered rows.

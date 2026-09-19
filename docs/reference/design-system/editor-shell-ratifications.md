@@ -279,6 +279,48 @@ all nine components; converting them is a mechanical batch with the mapping
 table in `tokens.css`, and it is deliberately left as one reviewable change
 rather than half-migrated here.
 
+### R4 — one writable owner per fact, decided by host (2026-09-19, after code review)
+
+Raised by the implementation PR's code review at head `f7a31e2`, which accepted the R1–R3
+direction and the authority migration but **requested changes** on two coherence bugs plus one
+a11y gap. The ratified rule: **the host decides what a control paints; the workspace decides what
+is exposed.**
+
+**What was wrong.** `EditorViewportToolbar` is mounted by two hosts (Tool Tray and View Bar), and
+the rule that decided whether it painted the View menu was a *context* test rather than a host
+test, so the tray painted the View menu as well as the bar. Five facts then had two writable
+homes:
+
+| Duplicated fact | Owners before | Single owner after |
+| --- | --- | --- |
+| View menu itself | Tool Tray + View Bar (Camera 3D painted it **twice**) | View Bar (host gate, not a hidden button) |
+| Panel visibility | View Bar utility + the View menu | View Bar utility |
+| Scene grid toggle | `EditorViewportGridControls` in the ring + the View menu | View Bar utility |
+| Camera Path/Frame helper toggles | View Bar + the View menu | View Bar |
+| `POV / Observer` (F5) | View Bar + Camera Drawer transport | Camera Drawer (it carries the switch in both camera views and both drawer states) |
+
+The Inspector seam behind **F1/F2** was the same class: the body routed by the *selection's*
+domain while the header walked its own precedence over the raw selection slots, so Scene · 3D
+could mount `EditorCameraInspector` and the header could name an entity whose editor was not
+mounted. Exposure is now resolved once, by workspace, in `app/inspector-target.ts`
+(`resolveInspectorDomain()` for the panel, `resolveInspectorExposure()` for the raw selection
+slots), and both header and body consume it. **No selection is cleared** —
+the retained selection stays remembered across workspace switches, so canonical selection
+continuity is intact; only its *exposure* is scoped.
+
+**The a11y gap:** the coarse-pointer rule raised `button`, `[role]`, `select`, `input` and
+`summary` to 44 px but omitted `a[href]`, so the Project rows' links stayed at the ~26 px regular
+control height while the guard test (named for the invariant) only asserted the selector string.
+`a[href]` is included now, and the guard asserts the interactive shell **species** so another
+link cannot bypass it.
+
+**What R4 removed, precisely** (so a reviewer can see the reversibility): the bar's Observer/POV
+pair (a one-line revert if the bar pair is preferred over the drawer's); the menu's `Panels`
+section (left sidebar / right Inspector / Focus — all three are painted in the bar's utilities
+group); the menu's Grid toggle (grid controls own it); and the menu's `Node handles` /
+`Framing & FOV` rows where a View Bar exists (the bar paints Path and Frame directly). The
+frozen relic's floating mount keeps the full menu, because it has no bar to own those facts.
+
 ### Carried rulings, unchanged by R1–R2
 
 D1–D4 (the measured ink floor: darkened muted, the `--editor-text-success/-warning`
@@ -296,6 +338,7 @@ only; no other shell surface moved.
 | R2 armed surface | `styles/controls.css` (`.tool-tray button.active`) | `p23-14-contrast-floor.test.ts` § "armed tool is a darkened surface" |
 | R3 type + control roles | `styles/tokens.css` (ladder, roles, knobs), `styles/controls.css`, `styles/inspector.css`, `styles/timeline.css` + the swept shell surfaces | `p23-14-type-roles.test.ts` (closed ladder, role resolution, no-pinned-type guard) |
 | Ratified ink floor | `styles/tokens.css` + the `-text-*` consumers | `p23-14-contrast-floor.test.ts` § F1/D1–D4 |
+| R4 ownership + exposure | `EditorViewportToolbar.svelte` (host gate), `WorkspaceRibbon.svelte`, `app/Workspace3DView.svelte`, `app/inspector-target.ts` | `p23-14-control-ownership.test.ts`, `p23-14-inspector-target.test.ts`, `contracts.test.ts` |
 | Atlas reflects both | `editor-shell-atlas/index.html` tools rail, `editor-shell-atlas/notes.md` | QA evidence, not a contract |
 
 ---
@@ -305,10 +348,12 @@ only; no other shell surface moved.
 - The P23.14 slice stays **open for owner review** — these are ratified
   *decisions*, not a slice closeout. `README.md` and
   `docs/operations/current.md` keep the review-pending status.
-- **F1** (Scene workspaces can mount the Camera node editor), **F2** (Inspector
-  header vs body can describe different selections), **F4** (numeric fields
-  report `:invalid` while holding legal values) and **F5** (`POV / Observer`
-  duplicated in Camera 3D) remain open owner calls.
+- **F1**, **F2** and **F5** were **resolved** by R4 (exposure resolved once per workspace; the
+  drawer owns `POV / Observer`), so they are no longer owner calls.
+- **F4** (numeric fields report `:invalid` while holding legal values) is **not accepted** — it
+  is deferred as **TD-2** in
+  [`docs/operations/tech-debt/README.md`](../../operations/tech-debt/README.md) so it cannot read
+  as ratified behaviour.
 - Device, screen-reader, `prefers-reduced-motion` and coarse-pointer rows remain
   **manual-owed**.
 - **Unmade decisions and carried debt are listed in one place** — the QA record's

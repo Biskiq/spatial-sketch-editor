@@ -85,6 +85,7 @@ later phase never has to reconstruct them from a PR body or a QA note.
 | **R2 — armed tool** | `--editor-armed` as the rail's armed fill, with a hue plus non-hue cues | Armed = **one material step darker** (recess), full normal ink, **no amber outline, no 3 px accent edge, no label-weight jump**; hover lifts, armed sinks; legible without hue | §11.2, §18.1 |
 | **R3 — type + control scale** | Numeric type/control values distributed across components | **Closed ladder** 9/10/11/12/13/15/20 px + **semantic roles** + two global scales (`--editor-type-scale`, `--editor-control-scale`), plus the cascade rule and the role outcomes | §2.8, §2.9, §7.1–§7.4, and each metric section |
 | **View Bar MODE grammar** | "Scene Plan may additionally expose the subordinate MODE label with Layout / Arrange" | **`MODE` then `Layout` / `Arrange`**: `MODE` is a quiet **non-interactive caption**, not a third segment; the wrapper has no fill, border, radius or padding that reads as one capsule. Pressed/toggled View Bar controls use a **recessed surface + edge border + inset bottom rule** instead of the earlier accent-soft fill | §10, §18.2 |
+| **R4 — one writable owner per fact** | Composition ruled; ownership of individual controls between shell hosts not stated | **The host decides what a control paints; the workspace decides what is exposed.** Five facts had two writable homes (Panels, Scene grid, camera Path/Frame, the MODE-neighbour pair, `POV / Observer`); the Inspector resolves **one exposed target** (`resolveInspectorDomain()` / `resolveInspectorExposure()`) that both header and body consume, while the retained selection stays remembered. Fix the **host gate**, not the button | §2.12, §10, §11 |
 
 The governing principle behind R1, stated once so it is not re-litigated:
 
@@ -92,9 +93,11 @@ The governing principle behind R1, stated once so it is not re-litigated:
 typography inherited from the pre-PLATE shell.** A historical font size never
 outranks the constraint it was meant to satisfy (§2.10).
 
-Annex with the measured tables (group names 46.6–63.8 px at 10 px against the
-rail's 39 px text box, the live knob measurements, the leak instances):
-[`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
+**R4** was ratified after the code review of the implementation PR at head `f7a31e2`, which
+accepted the R1–R3 direction and the authority migration but blocked merge on the ownership and
+exposure seams. The measured tables, the leak instances and the review evidence:
+[`editor-shell-ratifications.md`](./editor-shell-ratifications.md) and the QA record's
+*Review pass — ownership by host, exposure by workspace* section.
 
 ## 0.3 Open seams — deliberately NOT settled in this document
 
@@ -104,10 +107,10 @@ design. Do not implement a default for any of them without an owner decision.
 
 | Open seam | State |
 | --- | --- |
-| **F1** Scene workspaces can mount the Camera node editor (framing authoring in Scene while the Status Rail says `No selection`) | open — selection-model call, not shell polish |
-| **F2** Inspector header vs body can describe different selections | open — same root as F1 |
-| **F4** Numeric fields report `:invalid` while holding legal values | open — the fix changes arrow-key increments |
-| **F5** `POV / Observer` appears in both the View Bar and the Camera-Drawer transport | open — keep one, or keep both deliberately |
+| ~~**F1** Scene workspaces can mount the Camera node editor~~ | **resolved** by R4 — the Scene workspace never mounts the Camera editor (§2.12) |
+| ~~**F2** Inspector header vs body can describe different selections~~ | **resolved** by R4 — one resolved Inspector target feeds both (§2.12) |
+| **F4** Numeric fields report `:invalid` while holding legal values | **not shell design — deferred, not accepted.** Registered as **TD-2** in [`docs/operations/tech-debt/README.md`](../../operations/tech-debt/README.md); the fix changes arrow-key increments, which is Inspector entry design |
+| ~~**F5** `POV / Observer` in both the View Bar and the Camera-Drawer transport~~ | **resolved** by R4 — the drawer is the single owner (§2.12) |
 | Tool Tray **keyboard focus** treatment | open — focus is a *separate* state from armed (§18); any change must preserve a visible, non-hue keyboard affordance |
 | View Bar **pressed fill** | open — the recessed surface in §10/§18.2 is the current baseline; an accent-tinted fill is a one-line reconsideration |
 | **Tray width vs a renamed `TRANSFORM`** | open — product calls; §11 keeps the spec's own vocabulary and the 44 px rail |
@@ -126,9 +129,13 @@ not new shell design:
   [`docs/operations/tech-debt/README.md`](../../operations/tech-debt/README.md)
   and owned by P24.2. P23.14 records it as an acceptance limitation and does not
   work around it.
+- **TD-2** — Inspector numeric fields announce `:invalid` while holding legal values (step
+  base off the `step` grid). Registered as TD-2; owned by whoever next owns Inspector
+  numeric entry, **not** by a shell slice. P23.14 records it and does not change increments.
 - **Manual accessibility rows** — screen-reader reading order, device/coarse-pointer
-  usability. Automated motion/reduced-motion and contrast checks exist; these rows
-  remain owed.
+  usability. Automated motion/reduced-motion and contrast checks exist, and the
+  coarse-pointer rule now covers every interactive shell species including `a[href]`;
+  the OS-preference and physical-device pass remains owed.
 - **Frozen-relic shared components** — the visitor/publication relic shares shell
   components, so shell changes must be scoped rather than component-local (§2.8).
 - **Residual Inspector role migration** — the Inspector family still pins part of its
@@ -328,6 +335,41 @@ iconography; Plan Paper; visitor/editor isolation; `LayoutDocument` /
 `SceneDocument` ownership; canonical selection, navigation or history authority;
 Camera motion authority; P24 semantics; or P26 detailed interaction design.
 P23.14 remains **shell + visual-system authority** and nothing more.
+
+## 2.12 One writable owner per fact (R4, ratified post-review 2026-09-19)
+
+**The host decides what a control paints; the workspace decides what is exposed.**
+
+Mounting the same component in two shell regions does not make it one owner, and it does not
+make the second region a harmless echo. The implementation review found **five facts with two
+writable homes** — Panel visibility, the Scene grid toggle, the camera Path/Frame helper
+toggles, the View-Bar-mode neighbourhood, and `POV / Observer` — because the Tool Tray and the
+View Bar host the same toolbar component and the View menu repeated the bar's own utilities.
+The ratified rule:
+
+- every writable fact (a toggle, a visibility state, a mode) has **exactly one control owner**;
+- a second surface may **display** a fact, but must not render a second writer;
+- ownership is decided **by host** — Tool Tray = tool vocabulary only; View Bar = menus and
+  workspace utilities; Camera Drawer = transport, lane visibility and `POV / Observer`;
+- exposure is decided **by workspace**;
+- where two contexts legitimately need the same affordance (the collapsed drawer's mini-player
+  vs the expanded transport), fix the **host gate**, not the individual button.
+
+The Inspector is the same rule applied to selection: the workspace resolves **one exposed target**
+through `resolveInspectorDomain()` plus the slot gate `resolveInspectorExposure()`
+([`../../../apps/editor/src/lib/editor/app/inspector-target.ts`](../../../apps/editor/src/lib/editor/app/inspector-target.ts)),
+and both the section header and the body consume it, so the panel can never name an entity whose
+editor is not mounted, and a Scene workspace never exposes Camera framing authoring.
+
+**A retained inactive selection stays remembered.** Nothing is cleared on a domain or workspace
+switch — the canonical selection model owns continuity, and this rule scopes only its
+*exposure*. Do not implement this reconciliation by clearing stored selections.
+
+Acceptance: `tests/lib/editor/app/p23-14-control-ownership.test.ts` (unique writable ownership
+per fact), `tests/lib/editor/app/p23-14-inspector-target.test.ts` (Scene 3D with a selected
+asset; explicit Asset selection; Scene Plan ↔ Scene 3D selection continuity), plus
+`contracts.test.ts` at the composition level. Re-pin existing tests from the duplicated shape to
+this constraint rather than freezing the old layout.
 
 ---
 
@@ -654,6 +696,12 @@ Utility controls such as Snap, Grid, route visibility and Panels live in the sam
 
 The View Bar must not extend over Navigator or Inspector.
 
+The View Bar is the **single owner** of the workspace utilities and the View menu (§2.12): Panels,
+Snap, Grid, route visibility, the camera Path/Frame helper toggles and the menu itself each have
+exactly one writable control, and the View menu must not repeat an affordance the bar already
+exposes directly. Progressive density in a squeezed centre column (§22.1) may hide a utility but
+must not create a second copy of it elsewhere.
+
 ---
 
 # 11. Tool Tray
@@ -661,6 +709,10 @@ The View Bar must not extend over Navigator or Inspector.
 The Tool Tray is a **44 px vertical instrument rail attached directly to the Paper edge**.
 
 It is not a second sidebar and must not become one.
+
+The tray paints the **tool vocabulary only** (`SELECT / TRANSFORM / SPACE / OBJECTS`) and owns no
+View Bar menu or utility, even though both hosts mount the same toolbar component (§2.12). Its
+host decides that; individual buttons must not be conditionally hidden to fake it.
 
 ## 11.1 Ratified rail geometry and type (R1)
 
@@ -1308,6 +1360,9 @@ The ratified implementation adds these acceptance criteria:
     use the recessed surface, edge border and inset rule (§10, §18.2).
 25. Reconciling the shell with this document does **not** close P23.14: the slice stays
     under owner review until the owner says otherwise (§0.3).
+26. Every writable shell fact has exactly one control owner per workspace, the Inspector
+    presents one resolved target in both header and body, and a retained selection stays
+    remembered across workspace switches (§2.12).
 
 ---
 
