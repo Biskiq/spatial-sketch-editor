@@ -68,7 +68,8 @@
 		onSelectSceneEntity,
 		onSelectCluster,
 		onWallContextMenu,
-		onRoomContextMenu
+		onRoomContextMenu,
+		onJunctionContextMenu
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -82,6 +83,12 @@
 		onSelectCluster: (clusterId: string) => void;
 		onWallContextMenu: (event: MouseEvent, wallId: string) => void;
 		onRoomContextMenu: (event: MouseEvent, roomId: string) => void;
+		/**
+		 * P23.14 §13 — the Junction row's reason-coded destructive entry point.
+		 * The row surface stays presentation-only: the owner resolves the planner's
+		 * refusal reason and opens the shared menu.
+		 */
+		onJunctionContextMenu: (event: MouseEvent, junctionId: string) => void;
 	} = $props();
 
 	const index = $derived(
@@ -456,6 +463,7 @@
 		if (!entity || entity.owner !== 'layout') return;
 		if (entity.kind === 'wall') onWallContextMenu(event, entity.wallId);
 		else if (entity.kind === 'room') onRoomContextMenu(event, entity.roomId);
+		else if (entity.kind === 'junction') onJunctionContextMenu(event, entity.junctionId);
 	}
 
 	function emphasize(row: HierarchyProjectedRow): void {

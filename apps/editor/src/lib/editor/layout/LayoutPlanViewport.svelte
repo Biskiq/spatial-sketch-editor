@@ -85,6 +85,7 @@
 	import type { LayoutPreviewState } from './layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
+		wallFirstJunctionDissolveRefusal,
 		commitLayoutPrimitive,
 		commitLayoutObjectPreset,
 		commitLayoutRoomEdit,
@@ -225,7 +226,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	import { isEditableTarget } from '../context-menu/editable-target';
 	import {
 		buildArrangeContextMenuItems,
-		buildPlanLayoutContextMenuItems
+		buildPlanLayoutContextMenuItems,
+		type PlanLayoutTarget
 	} from '../context-menu/plan-menu-items';
 	import {
 		capturePlanSceneTransformMembers,
@@ -1922,6 +1924,26 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
 	});
 
+	// P23.14 §13 (carried row) — an EXTERNAL history transaction invalidates an
+	// open numeric field. Import/reset/undo/redo bump `reframeVersion`, and the
+	// field's anchor follows the new geometry while its text stays the value the
+	// user opened: the number would then describe a shape that no longer exists,
+	// and committing it would be a surprising edit. The entry is cancelled through
+	// its own lifecycle function, never by a second field-state rule here. A
+	// field's own commit bumps only `previewVersion`, so a successful entry can
+	// never cancel itself.
+	let numericEntryReplacementVersion = $state<number | null>(null);
+	$effect(() => {
+		const version = preview.reframeVersion;
+		if (numericEntryReplacementVersion === null) {
+			numericEntryReplacementVersion = version;
+			return;
+		}
+		if (version === numericEntryReplacementVersion) return;
+		numericEntryReplacementVersion = version;
+		if (numericEntry) closeNumericEntry();
+	});
+
 	$effect(() => {
 		// P23.2 clear rules — snap toggle off or a Plan↔3D switch drops any
 		// live guide/marker.
@@ -2161,10 +2183,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			target.kind !== 'object' &&
 			// P23.10 — a canonical physical-Wall body hit carries its already
 			// resolved projection, so the Wall target needs no second resolver.
-			target.kind !== 'physicalWall'
+			target.kind !== 'physicalWall' &&
+			// P23.14 §13 — a canonical endpoint hit carries `{wallId, endpoint}`;
+			// the Junction is resolved from the document below (the same lookup the
+			// click-select path uses). No second hit resolver is introduced.
+			target.kind !== 'wallEndpoint'
 		) {
 			return; // vertex/opening-endpoint/anchor targets have no approved v1 items
 		}
+		// P23.14 §13 — the Junction behind an endpoint hit, or `null` when the
+		// document no longer resolves one (a stale hit gets no menu at all).
+		const hitJunctionId =
+			target.kind === 'wallEndpoint'
+				? wallEndpointJunctionId(target.wallId, target.endpoint)
+				: null;
+		if (target.kind === 'wallEndpoint' && !hitJunctionId) return;
 		// selection-before-menu mirrors the click path's slot writes
 		if (
 			target.kind === 'room' &&
@@ -2192,6 +2225,43 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// P23.10 — a right-click keeps the clicked Wall selected so the command
 			// acts on the same primitive the user pointed at.
 			selectLayoutPhysicalWall(interaction, target.wallId);
+		} else if (
+			target.kind === 'wallEndpoint' &&
+			hitJunctionId &&
+			(interaction.selection.kind !== 'junction' ||
+				interaction.selection.junctionId !== hitJunctionId)
+		) {
+			// The menu acts on the Junction the user pointed at, selected through
+			// the canonical writer (never a raw slot write).
+			selectLayoutJunction(interaction, hitJunctionId);
+		}
+		// P23.14 §13 — one explicit target mapping, resolved by kind. A Junction
+		// target exists only when the endpoint resolved one above.
+		let menuTarget: PlanLayoutTarget;
+		switch (target.kind) {
+			case 'wallEndpoint':
+				if (!hitJunctionId) return;
+				menuTarget = { kind: 'junction', junctionId: hitJunctionId };
+				break;
+			case 'room':
+				menuTarget = { kind: 'room', roomId: target.roomId };
+				break;
+			case 'opening':
+				menuTarget = { kind: 'opening', roomId: target.roomId, openingId: target.openingId };
+				break;
+			case 'physicalWall':
+				menuTarget = {
+					kind: 'wall',
+					wallId: target.wallId,
+					// Canonical-start meters straight from the hit projection.
+					splitDistance: target.projection.offset
+				};
+				break;
+			case 'object':
+				menuTarget = { kind: 'object', objectId: target.objectId };
+				break;
+			default:
+				return;
 		}
 		event.preventDefault();
 		contextMenu.open({
@@ -2199,21 +2269,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			x: event.clientX,
 			y: event.clientY,
 			items: buildPlanLayoutContextMenuItems({
-				target:
-					target.kind === 'room'
-						? { kind: 'room', roomId: target.roomId }
-						: target.kind === 'opening'
-							? { kind: 'opening', roomId: target.roomId, openingId: target.openingId }
-							: target.kind === 'physicalWall'
-								? {
-										kind: 'wall',
-										wallId: target.wallId,
-										// Canonical-start meters straight from the hit projection.
-										splitDistance: target.projection.offset
-									}
-								: { kind: 'object', objectId: target.objectId },
+				target: menuTarget,
 				mutationBlockedReason:
 					store.isDocumentMutationBlocked ? 'Preview is active' : null,
+				// P23.14 §13 — the refusal reason is the core planner's, never a
+				// second eligibility check in this surface.
+				dissolveBlockedReason: hitJunctionId
+					? wallFirstJunctionDissolveRefusal(preview, hitJunctionId)
+					: null,
 				// P23.6d — wall-first Rooms expose ONLY the canonical removal. The
 				// legacy `renameRoom`/`deleteRoom` commands resolve through
 				// `layout.floors`/`deleteLayoutRoom` and REJECT wall-first documents,
@@ -2240,7 +2303,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 											onWallBendPointAdd?.(wallId, bendDistance)
 									}
 								: {}),
-							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
+							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {}),
+							// P23.14 §13 — the Junction-dissolve command reuses the existing
+							// authority. Omitted (never stubbed) when the mount cannot dissolve.
+							...(onJunctionDissolve && hitJunctionId
+								? {
+										dissolveJunction: (junctionId: string) => onJunctionDissolve?.(junctionId)
+									}
+								: {})
 						}
 					: {
 							renameRoom: renameRoomViaPrompt,

@@ -1810,6 +1810,28 @@ export function dissolveWallFirstJunction(
 }
 
 /**
+ * P23.14 §13 — the planner's own refusal reason for dissolving a Junction, or
+ * `null` when the operation would be accepted.
+ *
+ * Read-only: the eligibility authority stays `planDissolveJunction` in the core
+ * planner, so the three shell entry points (Inspector action, Navigator row,
+ * Plan context menu) can state *why* a dissolve is unavailable without a second
+ * eligibility implementation and without mutating the document to find out.
+ * Unlike `wallFirstLayoutOrError` this never writes `lastMutationMessage` — a
+ * query must not install a status message. `pre-install` targets (no applied
+ * document) return the caller-facing reason instead.
+ */
+export function wallFirstJunctionDissolveRefusal(
+	state: LayoutPreviewState,
+	junctionId: string
+): string | null {
+	const layout = layoutPreviewDocument(state);
+	if (!isWallFirstLayoutDocument(layout)) return 'This operation requires a wall-first layout';
+	const plan = planDissolveJunction(layout, junctionId);
+	return plan.kind === 'rejected' ? plan.rejection.message : null;
+}
+
+/**
  * P23.6d — canonical wall-first Room metadata update (name, floor/ceiling
  * thickness) through the one planner. Metadata is not topology, so no face
  * extraction runs; the candidate still passes the canonical validation +

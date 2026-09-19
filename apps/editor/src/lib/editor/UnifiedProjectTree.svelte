@@ -16,7 +16,7 @@
 	import { isSceneModelEntity, type SceneEntity } from '$lib/content/scene';
 	import { formatPlacementLabel } from './editor-outliner';
 	import { layoutPreviewDocument, type LayoutPreviewState } from './layout/layout-preview-state.svelte';
-	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, deleteWallFirstWall, removeWallFirstRoom, updateLayoutRoomFields, wallFirstRoomExclusiveBoundaryWallIds } from './layout/layout-preview-state.svelte';
+	import { deleteLayoutObject, deleteLayoutOpening, deleteLayoutRoom, deleteWallFirstWall, dissolveWallFirstJunction, removeWallFirstRoom, updateLayoutRoomFields, wallFirstJunctionDissolveRefusal, wallFirstRoomExclusiveBoundaryWallIds } from './layout/layout-preview-state.svelte';
 	import type { EditorContextMenuStore } from './context-menu/context-menu-state.svelte';
 	import { isEditableTarget } from './context-menu/editable-target';
 	import { resolveSelectionBeforeMenu } from './context-menu/selection-before-menu';
@@ -27,6 +27,7 @@
 	import { layoutMutationRunnerFor, runLayoutMutation } from './layout/layout-mutation-runner';
 	import {
 		selectLayoutInteriorAnchor,
+		selectLayoutJunction,
 		selectLayoutObject,
 		selectLayoutOpening,
 		selectLayoutRoom,
@@ -425,6 +426,52 @@
 		openTreeContextMenu(event, items);
 	}
 
+	/**
+	 * P23.14 §13 — the same planner-backed dissolve adapter the Delete-key path
+	 * and the Inspector call (one history entry); post-dissolve selection is the
+	 * fixed `none` policy, since the Junction no longer exists.
+	 */
+	function dissolveJunctionFromTree(junctionId: string) {
+		const outcome = runLayoutMutationGuarded(
+			() => dissolveWallFirstJunction(layoutPreview, junctionId),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (outcome.result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(
+			outcome.result.success ? 'Dissolved junction' : `Junction dissolve failed: ${outcome.result.message}`
+		);
+	}
+
+	/**
+	 * P23.14 §13 — the Navigator's Junction row menu. It obeys the SAME
+	 * row-authority contract as activation: an inert row (Camera domain, Scene
+	 * Plan Arrange) opens no menu and can never dissolve. The refusal reason is
+	 * the core planner's own, so the item is reason-coded instead of a silent
+	 * no-op.
+	 */
+	function onJunctionRowContextMenu(event: MouseEvent, junctionId: string): void {
+		if (!contextMenu) return;
+		const row = { kind: 'junction', junctionId } satisfies UnifiedTreeRow;
+		if (!roomRowInteractive(row)) return;
+		selectLayoutJunction(layoutInteraction, junctionId);
+		const items = buildPlanLayoutContextMenuItems({
+			target: { kind: 'junction', junctionId },
+			mutationBlockedReason: treeMutationBlocked(),
+			dissolveBlockedReason: wallFirstJunctionDissolveRefusal(layoutPreview, junctionId),
+			actions: {
+				dissolveJunction: (targetJunctionId: string) => dissolveJunctionFromTree(targetJunctionId),
+				deleteOpening,
+				deleteObject
+			}
+		});
+		if (items.length === 0) return;
+		openTreeContextMenu(event, items);
+	}
+
 	function onWallRowContextMenu(event: MouseEvent, wallId: string): void {
 		if (!contextMenu) return;
 		const row = { kind: 'physicalWall', wallId } satisfies UnifiedTreeRow;
@@ -595,6 +642,7 @@
 			onSelectCluster={selectCluster}
 			onWallContextMenu={onWallRowContextMenu}
 			onRoomContextMenu={onWallFirstRoomRowContextMenu}
+			onJunctionContextMenu={onJunctionRowContextMenu}
 		/>
 	{:else}
 	<div class="tree-filter" role="search">

@@ -1,5 +1,16 @@
 <script lang="ts">
-	import { ExternalLink, Info, Lightbulb } from 'lucide-svelte';
+	import {
+		Box,
+		Boxes,
+		BrickWall,
+		Camera,
+		DoorOpen,
+		ExternalLink,
+		GitMerge,
+		Info,
+		Lightbulb,
+		Square
+	} from 'lucide-svelte';
 	import { resolveAssetFallback } from '$lib/content/assets';
 	import { isSceneLightEntity, isSceneModelEntity, isScenePrimitiveEntity } from '$lib/content/scene';
 	import type { Asset } from '$lib/types/assets';
@@ -23,8 +34,7 @@
 		deleteLayoutRoom,
 		deleteWallFirstOpening,
 		deleteWallFirstWall,
-		layoutPreviewSourceLabel,
-		layoutPreviewStatusLabel,
+		dissolveWallFirstJunction,
 		layoutRoomSceneReferenceSummary,
 		layoutRoomSceneReferenceTotal,
 		listLayoutRoomSceneReferences,
@@ -35,6 +45,7 @@
 		updateWallFirstRoomMetadata,
 		updateWallFirstWallMetadata,
 		updateWallFirstOpeningMetadata,
+		wallFirstJunctionDissolveRefusal,
 		wallFirstRoomExclusiveBoundaryWallIds,
 		updateLayoutObjectFields,
 		layoutPreviewDocument,
@@ -159,6 +170,15 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		 *  switch to 3D when previewing a camera. Omitted by the relic. */
 		viewState?: EditorViewState | null;
 	} = $props();
+
+	/** P23.14 §13 — the property-first selection header's resolved presentation. */
+	type SelectionHeader = {
+		/** The kind cue: any icon component the panel already ships (Lucide). */
+		icon: typeof BrickWall;
+		primary: string;
+		secondary: string | null;
+		kind: string;
+	};
 
 	let clusterNameDraft = $state('');
 	const selectedObject = $derived(store.selectedObject);
@@ -512,6 +532,10 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	// changes, exposing the full canonical ID with a copy control. All four
 	// selection targets are declared above by here.
 	let technicalDetailsOpen = $state(false);
+	// P23.14 §13 — the Scene selection's own raw-ID disclosure. A separate
+	// state from the Layout one: switching domains must not carry a Layout
+	// disclosure state onto a Scene entity (or the reverse).
+	let sceneTechnicalDetailsOpen = $state(false);
 	function copyTechnicalId(): void {
 		void navigator.clipboard?.writeText(technicalDetailsId);
 	}
@@ -1852,6 +1876,45 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		store.setStatusMessage(outcome.result.success ? 'Deleted wall' : `Wall delete failed: ${outcome.result.message}`);
 	}
 
+	/**
+	 * P23.14 §13 — the Inspector's Junction-dissolve entry point. It calls the
+	 * SAME planner-backed adapter the Plan Delete-key path and the Navigator row
+	 * call (`dissolveWallFirstJunction`), so the shell finish adds a surface and
+	 * never a second dissolve implementation. Post-dissolve selection is the
+	 * shared fixed `none` policy; a refusal keeps the document and the status
+	 * message honest.
+	 */
+	function dissolveSelectedJunction(): void {
+		const junction = selectedWallFirstJunction;
+		if (!junction) return;
+		const outcome = runLayoutMutationGuarded(
+			() => dissolveWallFirstJunction(layoutPreview, junction.id),
+			(result) => result.success
+		);
+		if (outcome.kind === 'skipped') {
+			store.setStatusMessage('Finish the current layout interaction first');
+			return;
+		}
+		if (outcome.result.success) layoutInteraction.selection = { kind: 'none' };
+		store.setStatusMessage(
+			outcome.result.success
+				? 'Dissolved junction'
+				: `Junction dissolve failed: ${outcome.result.message}`
+		);
+	}
+
+	/**
+	 * P23.14 §13 — the core planner's own refusal reason for the selected
+	 * Junction (`null` when it would accept). Read-only: the query never writes
+	 * `lastMutationMessage`, so simply selecting a Junction states the truth
+	 * without pretending an action ran.
+	 */
+	const junctionDissolveRefusal = $derived(
+		selectedWallFirstJunction
+			? wallFirstJunctionDissolveRefusal(layoutPreview, selectedWallFirstJunction.id)
+			: null
+	);
+
 	function updateSelectedJunction(index: 0 | 1, event: Event): void {
 		const junction = selectedWallFirstJunction;
 		if (!junction) return;
@@ -1957,33 +2020,145 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		};
 	}
 
+	/**
+	 * P23.14 §13 — the property-first selection header: type icon, name or
+	 * reference, the secondary reference when a name leads, and the kind stated
+	 * separately. It is not a dashboard and not a tutorial: no project summary,
+	 * no prose lead, and never a raw canonical ID — those live in Technical
+	 * details. `null` means nothing is selected, and the panel keeps its plain
+	 * `Inspector` title rather than inventing an entity.
+	 */
+	const selectionHeader = $derived.by((): SelectionHeader | null => {
+		const layout = layoutDocument;
+		if (selectedWallFirstWall) {
+			const identity = wallIdentity(layout, selectedWallFirstWall.id);
+			return {
+				icon: BrickWall,
+				primary: selectedWallFirstWall.name ?? selectedWallReference ?? `Wall ${formatPlacementLabel(selectedWallFirstWall.id)}`,
+				secondary: selectedWallFirstWall.name ? selectedWallReference : null,
+				kind:
+					identity.name !== null && identity.reference === null
+						? 'Wall'
+						: `Wall · ${selectedWallFirstWall.role === 'boundary' ? 'boundary' : 'partition'}`
+			};
+		}
+		if (selectedWallFirstJunction) {
+			return {
+				icon: GitMerge,
+				primary: selectedJunctionReference ?? `Junction ${formatPlacementLabel(selectedWallFirstJunction.id)}`,
+				secondary: null,
+				kind: 'Junction'
+			};
+		}
+		if (selectedWallFirstOpening) {
+			return {
+				icon: selectedWallFirstOpening.kind === 'window' ? Square : DoorOpen,
+				primary: selectedWallFirstOpening.name ?? selectedOpeningReference ?? formatPlacementLabel(selectedWallFirstOpening.id),
+				secondary: selectedWallFirstOpening.name ? selectedOpeningReference : null,
+				kind: selectedWallFirstOpening.kind === 'window' ? 'Window opening' : 'Door opening'
+			};
+		}
+		if (selectedWallFirstRoom) {
+			return {
+				icon: Square,
+				primary: selectedWallFirstRoom.name,
+				secondary: selectedRoomReference,
+				kind: 'Room'
+			};
+		}
+		if (selectedLayoutObject) {
+			return {
+				icon: Box,
+				primary: `${selectedLayoutObject.kind} object`,
+				secondary: formatPlacementLabel(selectedLayoutObject.id),
+				kind: 'Layout object'
+			};
+		}
+		if (selectedNavigation?.kind === 'node') {
+			return {
+				icon: Camera,
+				primary: formatPlacementLabel(selectedCameraNode?.label ?? selectedCameraNode?.id ?? 'camera'),
+				secondary: store.cameraSelection?.handle ?? null,
+				kind: 'Camera node'
+			};
+		}
+		if (selectedNavigation?.kind === 'connection') {
+			return {
+				icon: GitMerge,
+				primary: formatPlacementLabel(selectedNavigation.connectionId),
+				secondary: null,
+				kind: 'Camera connection'
+			};
+		}
+		if (selectedNavigation?.kind === 'anchor') {
+			return {
+				icon: Camera,
+				primary: formatPlacementLabel(selectedNavigation.anchorId),
+				secondary: null,
+				kind: 'Camera anchor'
+			};
+		}
+		if (selectedNavigation?.kind === 'view-keyframe') {
+			return {
+				icon: Camera,
+				primary: formatPlacementLabel(selectedNavigation.keyframeId),
+				secondary: null,
+				kind: `${selectedNavigation.direction} view keyframe`
+			};
+		}
+		if (store.selectedCluster) {
+			return {
+				icon: Boxes,
+				primary: store.selectedCluster.name,
+				secondary: null,
+				kind: `Cluster · ${store.selectedPlacementIds.length} objects`
+			};
+		}
+		if (store.selectedPlacementIds.length > 1) {
+			return {
+				icon: Boxes,
+				primary: `${store.selectedPlacementIds.length} objects`,
+				secondary: null,
+				kind: 'Multiple selection'
+			};
+		}
+		if (selectedObject) {
+			return {
+				icon: isSceneModelEntity(selectedObject) ? Boxes : Box,
+				primary: formatPlacementLabel(selectedObject.name ?? selectedObject.id),
+				secondary: null,
+				kind: selectedObject.kind
+			};
+		}
+		if (showAssetInspector && selectedAsset) {
+			return {
+				icon: Boxes,
+				primary: selectedAsset.name,
+				secondary: null,
+				kind: 'Asset'
+			};
+		}
+		return null;
+	});
+
 </script>
 
-<aside bind:this={inspectorElement} class="panel inspector" class:collapsed aria-label="Inspector" style="grid-area: right;" inert={collapsed}>
-	<header>
-		<h2>Inspector</h2>
-		{#if domain === 'layout'}
-			<p>Layout Plan editing · preview-only</p>
-		{:else if showAssetInspector}
-			<p>{selectedAsset ? 'Asset library selection' : 'No asset matches the current filters.'}</p>
-		{:else if selectedNavigation?.kind === 'node' && selectedCameraNode}
-			<p class="id">{selectedCameraNode.id} · {store.isPendingNavigationNode(selectedCameraNode.id) ? 'pending' : store.cameraSelection?.handle}</p>
-		{:else if selectedNavigation?.kind === 'connection'}
-			<p class="id">{selectedNavigation.connectionId} · connection</p>
-		{:else if selectedNavigation?.kind === 'anchor'}
-			<p class="id">{selectedNavigation.anchorId} · anchor</p>
-		{:else if selectedNavigation?.kind === 'view-keyframe'}
-			<p class="id">{selectedNavigation.keyframeId} · {selectedNavigation.direction} view</p>
-		{:else if store.selectedCluster}
-			<p>{store.selectedCluster.name} · {store.selectedPlacementIds.length} selected</p>
-		{:else if store.selectedPlacementIds.length > 1}
-			<p>{store.selectedPlacementIds.length} selected</p>
-		{:else if selectedObject}
-			<p class="id">{selectedObject.id}</p>
-		{:else if store.selectedRoomId}
-			<p>{store.selectedRoomId} centered. Select an object or camera to edit it.</p>
+<aside bind:this={inspectorElement} class="panel inspector" class:collapsed aria-label="Inspector" style="grid-area: right;" inert={collapsed}>	<!-- P23.14 §13 — the Inspector opens on the selection, not on prose. The
+	     header is one identity line: kind icon, name-or-reference, the secondary
+	     reference when a name leads, and the kind stated separately. Raw canonical
+	     IDs live behind Technical details below. With nothing selected the panel
+	     keeps a plain title instead of a summary or a tutorial lead. -->
+	<header class="inspector-header" aria-label="Current selection">
+		{#if selectionHeader}
+			{@const HeaderIcon = selectionHeader.icon}
+			<span class="inspector-header__icon" aria-hidden="true"><HeaderIcon size={15} /></span>
+			<span class="inspector-header__text">
+				<span class="inspector-header__title">{selectionHeader.primary}</span>
+				{#if selectionHeader.secondary}<span class="inspector-header__reference">{selectionHeader.secondary}</span>{/if}
+				<span class="inspector-header__kind">{selectionHeader.kind}</span>
+			</span>
 		{:else}
-			<p>Select a room or place a shape to begin editing.</p>
+			<h2>Inspector</h2>
 		{/if}
 	</header>
 
@@ -2013,17 +2188,15 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<p class="layout-primer-tip">Tip: walls stay room-derived; drag mid-span to bend existing walls.</p>
 				</div>
 			{/if}
-			<dl>
-				<div><dt>Project</dt><dd>{layoutPreview.project.name}</dd></div>
-				<div><dt>Source</dt><dd>{layoutPreviewSourceLabel(layoutPreview.source)}</dd></div>
-				<div><dt>Status</dt><dd>{layoutPreviewStatusLabel(layoutPreview)}</dd></div>
-				<div><dt>Rooms</dt><dd>{layoutPreview.model.rooms.length}</dd></div>
-				<div><dt>Objects</dt><dd>{layoutPreview.model.objects.length}</dd></div>
-				<div><dt>Issues</dt><dd>{layoutPreview.issues.length}</dd></div>
-			</dl>
+			<!-- P23.14 §13 — the document-wide summary block (Project / Source /
+				Status / Rooms / Objects / Issues) is gone. The Inspector is
+				property-first: it is not a project dashboard, and those counts have
+				owners (the Navigator, the Status rail, the Project menu). One fact,
+				one surface. -->
 			{#if layoutPreview.importError}<p class="layout-opening-warning" role="alert">Import failed: {layoutPreview.importError}</p>{/if}
-			<p class="layout-inspector-note">Openings are geometry-only in this phase. No room adjacency or portal semantics are inferred.</p>
-			{#if isWallFirstLayout}<p class="layout-inspector-note">Wall-first layout: select a Wall, Junction, Opening or Room on Plan (or in the Hierarchy) to edit it exactly here — the Inspector shows only the one selected entity, never a document-wide inventory. Door and Window place canonical Openings on a Wall; Column, Platform and Plinth place ordinary objects; legacy room and primitive placement is unavailable.</p>{/if}
+			{#if layoutInteraction.selection.kind === 'none'}
+				<p class="layout-empty">Select a Wall, Junction, Opening or Room on Plan — or reach the same entity from the Hierarchy.</p>
+			{/if}
 
 			{#if isScenePlanLayout}
 			<div class="layout-accordion">
@@ -2216,9 +2389,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					<div class="layout-opening-actions">
 						<button type="button" onclick={addSelectedWallCurveKnot}>Add bend point at midpoint</button>
 					</div>
-					<div class="layout-opening-actions">
-						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
-					</div>
 					<!-- D2/D3 — boundary participation is a relation, never ownership;
 						hosted Openings select through the canonical wallOpening slot. -->
 					{#if selectedWallFirstHostedOpenings.length > 0}
@@ -2247,6 +2417,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
 						{#if selectedWallReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
 					</details>
+					<!-- P23.14 §13 — consequential actions come last: Delete wall follows
+						Geometry, the authored Name, Relationships and Technical details. -->
+					<div class="layout-opening-actions">
+						<button type="button" class="layout-danger" onclick={deleteSelectedWallFirstWall}>Delete wall</button>
+					</div>
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstJunction}
@@ -2263,6 +2438,19 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
 						{#if selectedJunctionReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
 					</details>
+					<!-- P23.14 §13 — the Junction-dissolve entry point: destructive
+						last, and reason-coded. Eligibility is the core planner's, stated
+						before the click instead of silently doing nothing. -->
+					<div class="layout-opening-actions">
+						<button
+							type="button"
+							class="layout-danger"
+							disabled={junctionDissolveRefusal !== null}
+							title={junctionDissolveRefusal ?? 'Join the two incident walls into one'}
+							onclick={dissolveSelectedJunction}
+						>Dissolve junction…</button>
+					</div>
+					{#if junctionDissolveRefusal}<p class="layout-inspector-note" role="status">{junctionDissolveRefusal}</p>{/if}
 					{#if layoutPreview.lastMutationMessage}<p class="layout-opening-warning" role="status">{layoutPreview.lastMutationMessage}</p>{/if}
 				</div>
 			{:else if selectedWallFirstOpening && selectedWallFirstOpeningMetrics}
@@ -2322,7 +2510,6 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 					</fieldset>
 					<div class="layout-opening-actions">
 						<button type="button" onclick={repeatSelectedWallOpening}>Repeat ×{openingRepeatCount}</button>
-						<button type="button" class="layout-danger" onclick={removeSelectedWallFirstOpening}>Delete opening</button>
 					</div>
 					<!-- D6 — every entity kind exposes the same technical identity block. -->
 					<details class="technical-details" bind:open={technicalDetailsOpen}>
@@ -2331,6 +2518,10 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						<button type="button" onclick={copyTechnicalId}>Copy ID</button>
 						{#if selectedOpeningReference}<button type="button" onclick={copyTechnicalReference}>Copy reference</button>{/if}
 					</details>
+					<!-- P23.14 §13 — consequential actions come last. -->
+					<div class="layout-opening-actions">
+						<button type="button" class="layout-danger" onclick={removeSelectedWallFirstOpening}>Delete opening</button>
+					</div>
 				</div>
 			{:else if selectedLayoutOpening && selectedLayoutSegment && selectedLayoutRoom}
 				<div class="layout-selected-room" aria-label="Selected layout opening">
@@ -2642,9 +2833,16 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 		{:else if singleEditableObject}
 			<section class="selection" aria-label="Selection">
 				<dl>
-					<div><dt>Room</dt><dd>{singleEditableObject.roomId}</dd></div>
 					<div><dt>Asset</dt><dd class="id">{singleEditableObject.assetId}</dd></div>
 				</dl>
+				<!-- P23.14 §13 — the raw Scene IDs (entity id, owning Room id) are
+					diagnosis, so they live behind Technical details instead of the
+					normal identity surface. -->
+				<details class="technical-details" bind:open={sceneTechnicalDetailsOpen}>
+					<summary>Technical details</summary>
+					<span class="technical-id">{singleEditableObject.id}</span>
+					{#if singleEditableObject.roomId}<span class="technical-id">Room {singleEditableObject.roomId}</span>{/if}
+				</details>
 				<button type="button" class="deselect" onclick={() => store.selectionActions.deselect()}>Deselect object</button>
 			</section>
 			{#key singleEditableObject.id}
@@ -2670,11 +2868,11 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			{/key}
 		{:else if singleSelectedEntity}
 			<section class="selection" aria-label="Selection">
-				<dl>
-					<div><dt>Room</dt><dd>{singleSelectedEntity.roomId}</dd></div>
-					<div><dt>Kind</dt><dd>{singleSelectedEntity.kind}</dd></div>
-					<div><dt>Name</dt><dd>{singleSelectedEntity.name}</dd></div>
-				</dl>
+				<details class="technical-details" bind:open={sceneTechnicalDetailsOpen}>
+					<summary>Technical details</summary>
+					<span class="technical-id">{singleSelectedEntity.id}</span>
+					{#if singleSelectedEntity.roomId}<span class="technical-id">Room {singleSelectedEntity.roomId}</span>{/if}
+				</details>
 				<button type="button" class="deselect" onclick={() => store.selectionActions.deselect()}>Deselect object</button>
 			</section>
 			{#key singleSelectedEntity.id}<EditorTransformInspector {store} />{/key}
@@ -2716,14 +2914,36 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	.panel.collapsed { overflow: hidden; visibility: hidden; min-width: 0; }
 	.inspector { border-left: 1px solid var(--editor-border-subtle); }
 	header h2, section h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--editor-text-muted); }
-	header p { margin: 0.35rem 0 0; color: var(--editor-text-secondary); font-size: 0.75rem; line-height: 1.4; }
+	/* P23.14 §13 — property-first selection header: kind icon, name-or-reference,
+	   the secondary reference when a name leads, and the kind stated separately.
+	   No summary block and no prose lead: the panel opens on the selection. */
+	.inspector-header { display: flex; min-width: 0; align-items: flex-start; gap: 0.4rem; }
+	.inspector-header__icon { display: inline-flex; flex: 0 0 auto; margin-top: 0.1rem; color: var(--editor-text-muted); }
+	.inspector-header__text { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
+	.inspector-header__title {
+		overflow: hidden;
+		color: var(--editor-text-primary);
+		font-size: 13px;
+		font-weight: 600;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.inspector-header__reference {
+		color: var(--editor-text-muted);
+		font-family: var(--editor-font-mono, ui-monospace, monospace);
+		font-size: 10px;
+		letter-spacing: 0.01em;
+		white-space: nowrap;
+	}
+	.inspector-header__kind {
+		color: var(--editor-text-muted);
+		font-size: 10px;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
 	section { display: flex; flex-direction: column; gap: 0.55rem; }
 	.id { font-family: var(--editor-font); font-size: 0.75rem; overflow-wrap: anywhere; }
 	.layout-inspector { display: flex; flex-direction: column; gap: 0.8rem; }
-	.layout-inspector dl { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; }
-	.layout-inspector dl div { display: flex; justify-content: space-between; gap: 0.7rem; }
-	.layout-inspector dt { color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
-	.layout-inspector dd { margin: 0; color: var(--editor-text-primary); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
 	.layout-inspector-note { margin: 0; color: var(--editor-text-secondary); font-size: 0.7rem; line-height: 1.45; }
 	.layout-primer { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.6rem 0.65rem; border: 1px solid var(--editor-border-subtle); border-radius: 0.4rem; background: var(--editor-bg-panel-raised); }
 	.layout-primer strong { font-size: 0.74rem; font-weight: 650; letter-spacing: 0.02em; color: var(--editor-text-primary); }
