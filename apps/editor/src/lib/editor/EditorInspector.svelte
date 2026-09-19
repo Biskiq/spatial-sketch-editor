@@ -19,6 +19,7 @@
 	import EditorCameraInspector from './camera/EditorCameraInspector.svelte';
 	import CameraPlanInspector from './app/CameraPlanInspector.svelte';
 	import type { EditorViewState } from './app/editor-view-state.svelte';
+	import { resolveInspectorDomain, resolveInspectorExposure } from './app/inspector-target';
 	import EditorLightInspector from './EditorLightInspector.svelte';
 	import EditorMaterialInspector from './EditorMaterialInspector.svelte';
 	import EditorPlacementInspector from './EditorPlacementInspector.svelte';
@@ -215,8 +216,17 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			? singleSelectedEntity
 			: undefined
 	);
-	// panel domain: the active selection when one is provided and a
-	// domain is active (S3 view-switch preservation), else the legacy workspace.
+	// P23.14 §2.5/§13 — the Inspector has ONE exposed target: the workspace owns
+	// what the panel may present, and the canonical selection is remembered
+	// across a domain switch but only EXPOSED while it belongs to the current
+	// workspace. Both the selection header and the body branch below read this
+	// one resolution (plus the slot exposure beside it), so they cannot describe
+	// different things (F2) and a Scene workspace cannot mount the Camera editor
+	// at all (F1). The relic passes no `viewState`, so it keeps its legacy
+	// ungated behavior exactly as before.
+	const workspace = $derived<EditorWorkspace>(store.currentWorkspace);
+	const scopedExposure = $derived(viewState !== null);
+	const exposure = $derived(resolveInspectorExposure(workspace));
 	const scenePlanStaging = $derived(
 		viewMode === 'plan' &&
 		viewState?.domain === 'scene' &&
@@ -225,13 +235,22 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	// P10 — Arrange (staging) is owner-aware: an active Layout-object target
 	// shows the layout owner's panel; otherwise the Scene owner's Arrange panel.
 	const domain = $derived<EditorWorkspace>(
-		scenePlanStaging
-			? activeSelection && activeSelection.active.domain === 'layout'
-				? 'layout'
-				: 'scene'
-			: activeSelection && activeSelection.active.domain !== 'none'
-				? activeSelection.active.domain
-				: store.currentWorkspace
+		resolveInspectorDomain({
+			workspace,
+			selectionDomain: activeSelection ? activeSelection.active.domain : 'none',
+			staging: scenePlanStaging
+		})
+	);
+	// The raw selection slots the panels and the header read, exposed only where
+	// the workspace on screen may present them: a remembered Camera node is not a
+	// Scene selection, and a remembered Scene placement is not a Camera one.
+	const exposedNavigation = $derived(
+		exposure.camera || !scopedExposure ? selectedNavigation : null
+	);
+	const exposedObject = $derived(exposure.scene || !scopedExposure ? selectedObject : null);
+	const exposedCluster = $derived(exposure.scene || !scopedExposure ? store.selectedCluster : null);
+	const exposedPlacementIds = $derived(
+		exposure.scene || !scopedExposure ? store.selectedPlacementIds : []
 	);
 	// Arrange's read-only gates apply only in the active Scene Plan view;
 	// a persisted staging mode must not disable fields after switching to 3D.
@@ -266,7 +285,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 			!selectionContainsClusteredPlacement
 	);
 	const hasPlacementSelection = $derived(
-		Boolean(store.selectedCluster) || store.selectedPlacementIds.length > 0
+		Boolean(exposedCluster) || exposedPlacementIds.length > 0
 	);
 	const stagingEligibleIds = $derived.by(() => {
 		void store.placementScaleVectorVersion;
@@ -2027,10 +2046,24 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 	 * no prose lead, and never a raw canonical ID — those live in Technical
 	 * details. `null` means nothing is selected, and the panel keeps its plain
 	 * `Inspector` title rather than inventing an entity.
+	 *
+	 * It resolves from the SAME workspace-scoped target the body branches on
+	 * (`domain`), never from the raw selection slots on its own: a selection the
+	 * current workspace does not expose is not described here either (F2), and
+	 * the header can never name an entity whose editor is not mounted (F1).
 	 */
 	const selectionHeader = $derived.by((): SelectionHeader | null => {
 		const layout = layoutDocument;
-		if (selectedWallFirstWall) {
+		const layoutDomain = domain === 'layout';
+		const cameraDomain = domain === 'camera';
+		const sceneDomain = domain === 'scene';
+		// Narrowed locals: each guard below tests the EXPOSED slot, so the branch
+		// reports the same value it was gated by.
+		const navigation = cameraDomain ? exposedNavigation : null;
+		const cluster = sceneDomain ? exposedCluster : null;
+		const placements = sceneDomain ? exposedPlacementIds : [];
+		const object = sceneDomain ? exposedObject : null;
+		if (layoutDomain && selectedWallFirstWall) {
 			const identity = wallIdentity(layout, selectedWallFirstWall.id);
 			return {
 				icon: BrickWall,
@@ -2042,7 +2075,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 						: `Wall · ${selectedWallFirstWall.role === 'boundary' ? 'boundary' : 'partition'}`
 			};
 		}
-		if (selectedWallFirstJunction) {
+		if (layoutDomain && selectedWallFirstJunction) {
 			return {
 				icon: GitMerge,
 				primary: selectedJunctionReference ?? `Junction ${formatPlacementLabel(selectedWallFirstJunction.id)}`,
@@ -2050,7 +2083,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				kind: 'Junction'
 			};
 		}
-		if (selectedWallFirstOpening) {
+		if (layoutDomain && selectedWallFirstOpening) {
 			return {
 				icon: selectedWallFirstOpening.kind === 'window' ? Square : DoorOpen,
 				primary: selectedWallFirstOpening.name ?? selectedOpeningReference ?? formatPlacementLabel(selectedWallFirstOpening.id),
@@ -2058,7 +2091,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				kind: selectedWallFirstOpening.kind === 'window' ? 'Window opening' : 'Door opening'
 			};
 		}
-		if (selectedWallFirstRoom) {
+		if (layoutDomain && selectedWallFirstRoom) {
 			return {
 				icon: Square,
 				primary: selectedWallFirstRoom.name,
@@ -2066,7 +2099,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				kind: 'Room'
 			};
 		}
-		if (selectedLayoutObject) {
+		if (layoutDomain && selectedLayoutObject) {
 			return {
 				icon: Box,
 				primary: `${selectedLayoutObject.kind} object`,
@@ -2074,7 +2107,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				kind: 'Layout object'
 			};
 		}
-		if (selectedNavigation?.kind === 'node') {
+		if (navigation?.kind === 'node') {
 			return {
 				icon: Camera,
 				primary: formatPlacementLabel(selectedCameraNode?.label ?? selectedCameraNode?.id ?? 'camera'),
@@ -2082,52 +2115,52 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				kind: 'Camera node'
 			};
 		}
-		if (selectedNavigation?.kind === 'connection') {
+		if (navigation?.kind === 'connection') {
 			return {
 				icon: GitMerge,
-				primary: formatPlacementLabel(selectedNavigation.connectionId),
+				primary: formatPlacementLabel(navigation.connectionId),
 				secondary: null,
 				kind: 'Camera connection'
 			};
 		}
-		if (selectedNavigation?.kind === 'anchor') {
+		if (navigation?.kind === 'anchor') {
 			return {
 				icon: Camera,
-				primary: formatPlacementLabel(selectedNavigation.anchorId),
+				primary: formatPlacementLabel(navigation.anchorId),
 				secondary: null,
 				kind: 'Camera anchor'
 			};
 		}
-		if (selectedNavigation?.kind === 'view-keyframe') {
+		if (navigation?.kind === 'view-keyframe') {
 			return {
 				icon: Camera,
-				primary: formatPlacementLabel(selectedNavigation.keyframeId),
+				primary: formatPlacementLabel(navigation.keyframeId),
 				secondary: null,
-				kind: `${selectedNavigation.direction} view keyframe`
+				kind: `${navigation.direction} view keyframe`
 			};
 		}
-		if (store.selectedCluster) {
+		if (cluster) {
 			return {
 				icon: Boxes,
-				primary: store.selectedCluster.name,
+				primary: cluster.name,
 				secondary: null,
-				kind: `Cluster · ${store.selectedPlacementIds.length} objects`
+				kind: `Cluster · ${placements.length} objects`
 			};
 		}
-		if (store.selectedPlacementIds.length > 1) {
+		if (placements.length > 1) {
 			return {
 				icon: Boxes,
-				primary: `${store.selectedPlacementIds.length} objects`,
+				primary: `${placements.length} objects`,
 				secondary: null,
 				kind: 'Multiple selection'
 			};
 		}
-		if (selectedObject) {
+		if (object) {
 			return {
-				icon: isSceneModelEntity(selectedObject) ? Boxes : Box,
-				primary: formatPlacementLabel(selectedObject.name ?? selectedObject.id),
+				icon: isSceneModelEntity(object) ? Boxes : Box,
+				primary: formatPlacementLabel(object.name ?? object.id),
 				secondary: null,
-				kind: selectedObject.kind
+				kind: object.kind
 			};
 		}
 		if (showAssetInspector && selectedAsset) {
@@ -2778,7 +2811,7 @@ const WALL_OPENING_DUPLICATE_GAP_M = 0.2;
 				<p>Choose a model, or open Assets → Shapes to place a primitive.</p>
 			</section>
 		{/if}
-	{:else if selectedNavigation}
+	{:else if exposedNavigation}
 		{#if isCameraPlan}
 			<CameraPlanInspector {store} {viewState} />
 		{:else if !readOnlyNonLayout}

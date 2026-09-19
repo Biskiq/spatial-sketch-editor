@@ -353,9 +353,11 @@ import EditorCameraLabelProjector from '$lib/editor/camera/EditorCameraLabelProj
 </script>
 
 <div class="viewport-shell">
-	<!-- P23.14 §11 — the Tool Tray is attached to the Paper edge; the View Bar
-	     owns the subordinate utilities (Path/Frame, View menu, Observer/POV,
-	     Snap, Panels) and renders the same component in its `ribbon` form. -->
+	<!-- P23.14 §11/§14 — the Tool Tray is attached to the Paper edge and paints
+	     ONLY the surface's tool vocabulary. The View Bar renders the same
+	     component in its `ribbon` form and owns the subordinate utilities
+	     (Path/Frame, View menu, Snap, Panels); the Camera Drawer owns
+	     Observer/POV. Each writable fact has exactly one host. -->
 	<ToolTray label="3D tools">
 		<EditorViewportToolbar tray {store} context={isCameraContext ? 'camera' : 'scene'}
 			{gizmoCapabilities} {transformDisabled} />

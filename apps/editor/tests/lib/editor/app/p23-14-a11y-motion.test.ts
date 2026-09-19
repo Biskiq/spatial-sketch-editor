@@ -17,6 +17,35 @@ function read(relative: string): string {
 	return fs.readFileSync(path.join(SRC, relative), 'utf8');
 }
 
+/**
+ * The shell chrome that lives inside `.project-editor` — the surfaces the
+ * coarse-pointer rule is responsible for. Scanned, not hand-listed, so a new
+ * component cannot quietly add an uncovered interactive species.
+ */
+const CHROME_DIRS = ['app', 'hierarchy', 'camera', 'camera-plan', 'layout'] as const;
+const CHROME_FILES = ['EditorViewportToolbar.svelte', 'EditorViewportGridControls.svelte'] as const;
+
+function chromeSources(): string[] {
+	const fromDirs = CHROME_DIRS.flatMap((dir) =>
+		fs
+			.readdirSync(path.join(SRC, dir))
+			.filter((name) => name.endsWith('.svelte'))
+			.map((name) => `${dir}/${name}`)
+	);
+	return [...fromDirs, ...CHROME_FILES];
+}
+
+/** Selector text in the coarse-pointer rule → the markup that mounts that species. */
+const CHROME_SPECIES: ReadonlyArray<readonly [selector: string, marker: string]> = [
+	['button', '<button'],
+	['a[href]', '<a href'],
+	["[role='tab']", 'role="tab"'],
+	["[role='menuitem']", 'role="menuitem'],
+	['select', '<select'],
+	['input', '<input'],
+	['summary', '<summary']
+];
+
 /** Body of a `selector { … }` block, nested blocks included. */
 function block(source: string, selector: string): string {
 	const start = source.indexOf(selector);
@@ -225,7 +254,7 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		expect(reduced).not.toContain('.relic');
 	});
 
-	it('raises every chrome target to 44 px on coarse pointers, from one token', () => {
+	it('raises every chrome target to 44 px on coarse pointers, by species', () => {
 		const tokens = read('styles/tokens.css');
 		expect(block(tokens, ':root {')).toContain('--editor-touch-target-min: 44px;');
 		const shell = read('styles/editor-shell.css');
@@ -237,13 +266,34 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		]) {
 			expect(coarse).toContain(band);
 		}
-		expect(coarse).toContain(":is(button, [role='tab'], [role='menuitem'], select, input, summary)");
 		expect(coarse).toContain('.tree-row');
 		expect(coarse).toContain('min-height: var(--editor-touch-target-min);');
 		// The canvas answers to its own grammar, which already grows the
 		// acquisition radius for coarse pointers.
 		expect(coarse).not.toContain('.plan-canvas');
 		expect(PLAN_CONTROL_TARGET_COARSE_PX).toBeGreaterThan(PLAN_CONTROL_TARGET_PX);
+
+		// The promise is "every chrome target", not "this selector string". The
+		// rule is checked by SPECIES: every interactive species the chrome
+		// actually mounts must appear in its selector list, so a new <a> or role
+		// cannot stay at its 26 px control height while this test stays green.
+		// (It did: links were missing from the rule until the Project Head's were
+		// measured at the same 26 px as its buttons.)
+		const rule = coarse.slice(coarse.indexOf(':is('), coarse.indexOf(') {', coarse.indexOf(':is(')));
+		expect(rule).toContain('button');
+		const sources = chromeSources().map((relative) => read(relative));
+		for (const [selector, marker] of CHROME_SPECIES) {
+			const mounted = sources.some((source) => source.includes(marker));
+			if (mounted) {
+				expect(
+					rule,
+					`${marker} is mounted in the shell chrome, so the coarse rule must cover ${selector}`
+				).toContain(selector);
+			}
+		}
+		// Links are the species that regressed, so pin them explicitly too.
+		expect(sources.some((source) => source.includes('<a href'))).toBe(true);
+		expect(rule).toContain('a[href]');
 	});
 
 	it('sheds Navigator metadata before identity when the column is squeezed', () => {

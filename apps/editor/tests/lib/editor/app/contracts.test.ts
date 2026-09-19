@@ -788,43 +788,54 @@ describe('P21.3 camera reconciliation', () => {
 		}
 	});
 
-	it('exposes Camera 3D Path/Frame/Observer/POV in the ribbon through existing commands only', () => {
+	it('exposes Camera 3D Path/Frame in the ribbon and the preview mode in the drawer', () => {
 		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
 		expect(toolbar).toContain('aria-label="Camera helper visibility"');
 		expect(toolbar).toContain('>Path</button>');
 		expect(toolbar).toContain('>Frame</button>');
 		expect(toolbar).toContain('store.toggleViewportShowPaths()');
 		expect(toolbar).toContain('store.toggleViewportShowFraming()');
-		expect(toolbar).toContain('aria-label="Camera preview mode"');
-		expect(toolbar).toContain('>Observer</button>');
-		expect(toolbar).toContain('>POV</button>');
-		// Both switches share one idle-capable chooser (solo node, else
+		// P23.14 §14 / F5 — the Observer↔POV switch has exactly ONE writer: the
+		// camera preview transport in the Camera Drawer, which carries it in both
+		// camera views (collapsed mini-player always, expanded panel while a
+		// preview is live). The bar used to paint a second copy in Camera 3D.
+		expect(toolbar).not.toContain('aria-label="Camera preview mode"');
+		expect(toolbar).not.toContain('>Observer</button>');
+		expect(toolbar).not.toContain('>POV</button>');
+		expect(toolbar).not.toContain('chooseCameraPreviewMode');
+		// Both drawer switches share one idle-capable chooser (solo node, else
 		// Sequence scope) — never a dead click, no new state.
-		expect(toolbar).toContain('store.chooseCameraPreviewMode(mode)');
 		const timelineFrame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
 		expect(timelineFrame).toContain('store.chooseCameraPreviewMode(mode)');
-		// Ribbon-only: the relic mount (no context) keeps its legacy menu.
+		const previewControls = readLibSource('editor/camera/EditorCameraPreviewControls.svelte');
+		expect(previewControls).toContain("store.setCameraPreviewMode('visitor')");
+		// Ribbon-only helper toggles: the relic mount (no context) keeps its legacy menu.
 		expect(toolbar).toContain('{#if ribbon && isCameraContext}');
 	});
 
-	it('orders the Camera 3D ribbon Path Frame View Observer/POV Snap', () => {
+	it('orders the Camera 3D ribbon Path Frame View Snap', () => {
 		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
-		// Source order is render order: Path/Frame group, the shared View
-		// menu (snippet), the Observer/POV switch, then shared Snap last.
+		// Source order is render order: Path/Frame group, the shared View menu
+		// (snippet), then shared Snap last. Observer/POV is not in the bar at all
+		// (P23.14 §14 / F5) — the Camera Drawer transport owns it.
 		const helperStart = toolbar.indexOf('aria-label="Camera helper visibility"');
-		const renderStart = toolbar.indexOf('{@render viewMenu()}');
-		const modeStart = toolbar.indexOf('aria-label="Camera preview mode"');
+		const renderStart = toolbar.indexOf('{@render viewMenu()}', helperStart);
 		const snapStart = toolbar.indexOf('<summary class="ribbon-btn">Snap</summary>');
-		for (const position of [helperStart, renderStart, modeStart, snapStart]) {
+		for (const position of [helperStart, renderStart, snapStart]) {
 			expect(position).toBeGreaterThanOrEqual(0);
 		}
 		expect(renderStart).toBeGreaterThan(helperStart);
-		expect(modeStart).toBeGreaterThan(renderStart);
-		expect(snapStart).toBeGreaterThan(modeStart);
-		// One View menu definition; the shared site stays suppressed for the
-		// camera ribbon so the menu never mounts twice.
+		expect(snapStart).toBeGreaterThan(renderStart);
+		expect(toolbar).not.toContain('aria-label="Camera preview mode"');
+		// One View menu definition and one live render site PER HOST: the camera
+		// ribbon paints it in its own group order, the shared site stands down
+		// there, and the Tool Tray never paints it — so a 3D view never mounts
+		// two menus (P23.14 §10/§14).
 		expect(toolbar).toContain('{#snippet viewMenu()}');
-		expect(toolbar).toContain('{#if !(ribbon && isCameraContext)}');
+		expect(toolbar).toContain(
+			'const viewMenuHost = $derived(!tray && !(ribbon && isCameraContext));'
+		);
+		expect(toolbar).toContain('{#if viewMenuHost}');
 	});
 
 	it('keeps FOV/frustum/look-target authoring out of Camera Plan', () => {
@@ -972,7 +983,12 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 		expect(sceneStart).toBeGreaterThanOrEqual(0);
 		const sceneBlock = toolbar.slice(sceneStart);
 		expect(sceneBlock).toContain('store.toggleCameraPan()');
-		expect(sceneBlock).toContain('store.toggleGrid()');
+		// P23.14 §14 — grid visibility/opacity belong to the dedicated
+		// `EditorViewportGridControls` the View Bar mounts for every 3D view, so
+		// the menu no longer carries a second Grid row for the same fact.
+		expect(sceneBlock).not.toContain('store.toggleGrid()');
+		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
+		expect(ribbon).toContain('<EditorViewportGridControls {store} />');
 		expect(sceneBlock).toContain('aria-label="Editor floor color picker"');
 		expect(sceneBlock).toContain('store.sessionView.setFloorColor');
 		expect(sceneBlock).toContain('EDITOR_BRIGHT_LIGHTING');

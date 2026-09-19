@@ -54,6 +54,11 @@ body:has(.editor-page) {
  * is untouched: `$lib/layout/plan-control-grammar` already raises its own
  * acquisition radius for coarse pointers, because canvas targets are geometry
  * rather than laid-out chrome.
+ *
+ * `a[href]` is in this list because the chrome does carry links (the Project
+ * Head's Projects / Spatial / Publish destinations) and they own the same
+ * 26 px control height as buttons: leaving them out let a real shell target
+ * stay below the minimum the rule promises.
  */
 @media (pointer: coarse) {
 	.project-editor {
@@ -61,7 +66,7 @@ body:has(.editor-page) {
 		--editor-project-row-height: var(--editor-touch-target-min);
 		--editor-viewbar-height: var(--editor-touch-target-min);
 	}
-	.project-editor :is(button, [role='tab'], [role='menuitem'], select, input, summary) {
+	.project-editor :is(button, a[href], [role='tab'], [role='menuitem'], select, input, summary) {
 		min-height: var(--editor-touch-target-min);
 	}
 	.project-editor .tree-row {

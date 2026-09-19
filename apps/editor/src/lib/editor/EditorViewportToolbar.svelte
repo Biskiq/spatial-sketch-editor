@@ -164,16 +164,19 @@
 			)
 	);
 
-	// P21.3 — Camera 3D ribbon exposes the Path/Frame helper toggles and the
-	// Observer/POV preview-mode switch through the existing session/preview
-	// commands (no new state; the View menu keeps the full helper list).
-	// Idle clicks enter a preview (solo node, else Sequence scope) via the
-	// shared chooser — never a dead click.
-	const previewMode = $derived(store.cameraPreview?.mode ?? 'director');
-
-	function choosePreviewMode(mode: 'director' | 'visitor') {
-		store.chooseCameraPreviewMode(mode);
-	}
+	// P21.3 — Camera 3D ribbon exposes the Path/Frame helper toggles through the
+	// existing session commands (no new state). The Observer/POV switch is NOT
+	// here: it is owned by the camera preview transport in the Camera Drawer,
+	// which carries it in both camera views and in both drawer states
+	// (P23.14 §14, F5).
+	//
+	// P23.14 §10/§14 — the View menu is a VIEW BAR utility, and ownership is
+	// decided by the HOST so one fact has one writer:
+	//   · Camera 3D paints it inside its own group order (Path · Frame · View ·
+	//     Snap), so the shared site must stand down there;
+	//   · the Scene 3D ribbon and the frozen relic (no host flag) paint it here;
+	//   · the Tool Tray paints the tool vocabulary and NO menu at all.
+	const viewMenuHost = $derived(!tray && !(ribbon && isCameraContext));
 
 	function toggleViewMenu() {
 		if (!viewMenuVisible) return;
@@ -206,9 +209,10 @@
 
 <div bind:this={toolbarElement} class="toolbar" class:ribbon class:tray role="toolbar" aria-label="Viewport tools">
 	<!-- P23.14 §11 — 3D tray vocabulary: SELECT / TRANSFORM / SPACE / OBJECTS.
-	     The View Bar keeps the subordinate utilities (Path/Frame visibility,
-	     the View menu, Observer/POV and Snap), so the tool groups render only
-	     in the tray (and the relic's floating form). -->
+	     The View Bar keeps the subordinate utilities (Path/Frame visibility, the
+	     View menu and Snap) and the Camera Drawer owns the Observer/POV switch,
+	     so the tool groups render only in the tray (and the relic's floating
+	     form) and no writable utility is duplicated between the two hosts. -->
 	{#if !ribbon}
 	<div class="tool-group" aria-label="Selection tool" data-group-label="SELECT">
 		<button
@@ -349,24 +353,15 @@
 				onclick={() => store.toggleViewportShowFraming()}
 			>Frame</button>
 		</div>
-		<!-- P21.3 — Camera 3D ribbon order: Path Frame | View | Observer/POV | Snap (shared). -->
+		<!-- P21.3 — Camera 3D bar order: Path Frame | View | Snap (shared).
+		     P23.14 §14 / F5 — the Observer↔POV switch is owned by the camera
+		     preview transport in the Camera Drawer, which carries it in BOTH
+		     camera views and in both drawer states (`EditorCameraTimelineFrame`
+		     collapsed, `EditorCameraPreviewControls` while a preview is live).
+		     The bar used to paint a second copy of it in Camera 3D, which broke
+		     "one fact, one authoritative control owner". Reversible one-liner if
+		     the bar pair is preferred over the drawer's. -->
 		{@render viewMenu()}
-		<div class="tool-group" role="group" aria-label="Camera preview mode">
-			<button
-				type="button"
-				class:active={previewMode === 'director'}
-				aria-pressed={previewMode === 'director'}
-				title="Observer"
-				onclick={() => choosePreviewMode('director')}
-			>Observer</button>
-			<button
-				type="button"
-				class:active={previewMode === 'visitor'}
-				aria-pressed={previewMode === 'visitor'}
-				title="Through camera"
-				onclick={() => choosePreviewMode('visitor')}
-			>POV</button>
-		</div>
 	{/if}
 
 	<!-- Tray-only: these groups never existed on the relic's floating mount, so
@@ -416,16 +411,11 @@
 					onpointerdown={(event) => event.stopPropagation()}
 				>
 					{#if showCameraHelperRows}
-					<button
-						type="button"
-						role="menuitemcheckbox"
-						aria-checked={store.viewportShowNodes}
-						class="toggle-row"
-						onclick={() => store.toggleViewportShowNodes()}
-					>
-						<span class="check" aria-hidden="true">{store.viewportShowNodes ? '✓' : '○'}</span>
-						<span>Node handles</span>
-					</button>
+					<!-- P23.14 §14 / F5 — where a View Bar exists it paints Path and Frame
+					     as direct toggles, so the menu must not repeat those two facts.
+					     A host without a bar (the frozen relic) keeps both rows. Node
+					     handles and Retained paths have no other owner anywhere. -->
+					{#if !ribbon}
 					<button
 						type="button"
 						role="menuitemcheckbox"
@@ -446,6 +436,17 @@
 						<span class="check" aria-hidden="true">{store.viewportShowFraming ? '✓' : '○'}</span>
 						<span>Framing &amp; FOV</span>
 					</button>
+					{/if}
+					<button
+						type="button"
+						role="menuitemcheckbox"
+						aria-checked={store.viewportShowNodes}
+						class="toggle-row"
+						onclick={() => store.toggleViewportShowNodes()}
+					>
+						<span class="check" aria-hidden="true">{store.viewportShowNodes ? '✓' : '○'}</span>
+						<span>Node handles</span>
+					</button>
 					<button
 						type="button"
 						role="menuitemcheckbox"
@@ -457,40 +458,9 @@
 						<span>Retained paths</span>
 					</button>
 					{/if}
-					{#if !store.isRelic}
-						<div class="view-separator" role="separator" aria-orientation="horizontal"></div>
-						<div class="view-section-label" aria-hidden="true">Panels</div>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={!store.leftSidePanelCollapsed}
-							class="toggle-row"
-							onclick={() => store.toggleLeftSidePanel()}
-						>
-							<span class="check" aria-hidden="true">{store.leftSidePanelCollapsed ? '○' : '✓'}</span>
-							<span>Left sidebar</span>
-						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={!store.rightSidePanelCollapsed}
-							class="toggle-row"
-							onclick={() => store.toggleRightSidePanel()}
-						>
-							<span class="check" aria-hidden="true">{store.rightSidePanelCollapsed ? '○' : '✓'}</span>
-							<span>Right inspector</span>
-						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={store.focusMode}
-							class="toggle-row"
-							onclick={() => store.toggleFocusMode()}
-						>
-							<span class="check" aria-hidden="true">{store.focusMode ? '✓' : '○'}</span>
-							<span>Focus 3D ( \ )</span>
-						</button>
-					{/if}
+					<!-- P23.14 §14 / F5 — Panel visibility (left sidebar, right Inspector,
+					     Focus) is View Bar chrome in every view and is painted there as the
+					     `.utilities` group; the menu does not keep a second writer. -->
 					{#if showCeilingRow}
 						<button
 							type="button"
@@ -515,17 +485,9 @@
 							<span class="check" aria-hidden="true">{store.cameraPanEnabled ? '✓' : '○'}</span>
 							<span>Pan</span>
 						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={store.gridVisible}
-							class="toggle-row"
-							disabled={store.isVisitorCameraPreview}
-							onclick={() => store.toggleGrid()}
-						>
-							<span class="check" aria-hidden="true">{store.gridVisible ? '✓' : '○'}</span>
-							<span>Grid</span>
-						</button>
+						<!-- P23.14 §14 / F5 — grid visibility + opacity are owned by
+						     `EditorViewportGridControls`, which the View Bar mounts for every
+						     3D view; the menu does not repeat the toggle. -->
 						<div class="view-separator" role="separator" aria-orientation="horizontal"></div>
 						<label class="view-color-row">
 							<span>Floor</span>
@@ -580,7 +542,8 @@
 	{/if}
 	{/snippet}
 
-	{#if !(ribbon && isCameraContext)}
+	<!-- Exactly one View menu per host — see `viewMenuHost` above. -->
+	{#if viewMenuHost}
 		{@render viewMenu()}
 	{/if}
 </div>
