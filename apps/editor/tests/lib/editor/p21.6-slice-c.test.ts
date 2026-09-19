@@ -296,8 +296,12 @@ describe('P21.6 Slice C — shell wiring source contract', () => {
 		const shortcuts = readLibSource('editor/hooks/shortcuts.svelte.ts');
 		expect(shortcuts).toContain("event.key === '\\\\'");
 		expect(shortcuts).toContain('store.toggleFocusMode()');
+		// P23.14 §14 — the Status Rail is readout-only; the retired status-bar
+		// keyboard-hint band is gone. Discoverability survives on the owning
+		// surfaces (the View menu carries 'Focus 3D ( \ )' and the View Bar's
+		// focus toggle carries the shortcut in its title).
 		const status = readLibSource('editor/app/StatusBar.svelte');
-		expect(status).toContain('\\ Focus');
+		expect(status).not.toContain('\\ Focus');
 	});
 
 	it('resyncs scrub + Line2 projections on the resized viewport', () => {

@@ -30,21 +30,29 @@
 	--editor-danger-fg: #f4b8bd;
 }
 
+/* P23.14 §6.2 — surface rules scoped to the main shell so the frozen relic
+   keeps its own corner treatment: chassis surfaces stay square, instruments
+   use ~3 px, paper handles ~2 px. */
+.project-editor {
+	--editor-control-radius: 3px;
+}
+
 /*
- * P21.5 §1.4 — Row 2 (workspace ribbon) 4-tier affordance grammar + enclosed
- * tool tracks + enclosed segmented switches.
+ * P21.5 §1.4 — View Bar 4-tier affordance grammar + enclosed tool tracks +
+ * enclosed segmented switches (re-homed in P23.14 §10 from the retired
+ * workspace ribbon onto the central-column View Bar).
  *
- * Scoped to the P21 shell ribbon (`.project-editor .workspace-ribbon`) so the
+ * Scoped to the shell View Bar (`.project-editor .view-bar`) so the
  * frozen relic keeps its own divider-separated chrome; the component-scoped
  * floating styles remain the relic's grammar. Theme-aware tokens only — never
  * hard hexes. The 4-tier state grammar (resting / hover / active / primary
- * CTA) is defined here once and consumed by every Row 2 track, standalone
+ * CTA) is defined here once and consumed by every track, standalone
  * button, and segmented switch.
  */
 
 /* Enclosed tool tracks (Zone B authoring groups): cohesive filled surfaces
    lifting off the panel-raised ribbon via the calibrated bg-control step. */
-.project-editor .workspace-ribbon .tool-group {
+.project-editor .view-bar .tool-group {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
@@ -57,7 +65,7 @@
 }
 
 /* Track inner buttons: 24px (28px track − 2px padding ×2), resting tier. */
-.project-editor .workspace-ribbon .tool-group > button {
+.project-editor .view-bar .tool-group > button {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -74,26 +82,26 @@
 }
 
 /* Hover tier. */
-.project-editor .workspace-ribbon .tool-group > button:hover:not(:disabled) {
+.project-editor .view-bar .tool-group > button:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
 	border-color: var(--editor-border-normal);
 	color: var(--editor-text-primary);
 }
 
 /* Active / toggled-on tier: soft accent fill, never a loud bare stroke. */
-.project-editor .workspace-ribbon .tool-group > button.active {
+.project-editor .view-bar .tool-group > button.active {
 	background-color: var(--editor-accent-soft);
 	border-color: var(--editor-accent-border);
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .tool-group > button:disabled {
+.project-editor .view-bar .tool-group > button:disabled {
 	opacity: 0.42;
 	cursor: default;
 }
 
 /* Standalone Row 2 controls (outside tracks): subtle resting surface. */
-.project-editor .workspace-ribbon .ribbon-btn {
+.project-editor .view-bar .ribbon-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -109,25 +117,25 @@
 	cursor: pointer;
 }
 
-.project-editor .workspace-ribbon .ribbon-btn:hover:not(:disabled) {
+.project-editor .view-bar .ribbon-btn:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
 	border-color: var(--editor-border-normal);
 }
 
-.project-editor .workspace-ribbon .ribbon-btn:disabled {
+.project-editor .view-bar .ribbon-btn:disabled {
 	opacity: 0.42;
 	cursor: default;
 }
 
 /* P21.6 Slice C — Zone C toggle-on tier mirrors the tool-group grammar. */
-.project-editor .workspace-ribbon .ribbon-btn.active {
+.project-editor .view-bar .ribbon-btn.active {
 	background-color: var(--editor-accent-soft);
 	border-color: var(--editor-accent-border);
 	color: var(--editor-text-primary);
 }
 
 /* Enclosed segmented switches: [Scene|Camera], [Plan|3D], [Layout|Arrange]. */
-.project-editor .workspace-ribbon .segmented {
+.project-editor .view-bar .segmented {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
@@ -139,7 +147,7 @@
 	border-radius: 6px;
 }
 
-.project-editor .workspace-ribbon .segmented > button {
+.project-editor .view-bar .segmented > button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -154,17 +162,17 @@
 	cursor: pointer;
 }
 
-.project-editor .workspace-ribbon .segmented > button:hover:not(:disabled) {
+.project-editor .view-bar .segmented > button:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .segmented > button.active {
+.project-editor .view-bar .segmented > button.active {
 	background-color: var(--editor-accent-soft);
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .segmented > button:disabled {
+.project-editor .view-bar .segmented > button:disabled {
 	opacity: 0.5;
 	cursor: default;
 }

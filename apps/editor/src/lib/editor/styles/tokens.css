@@ -270,6 +270,14 @@
 	--editor-right-min: 280px;
 	--editor-right-max: 420px;
 
+	/* ── P23.14 §5/§8/§10 — PLATE reference shell geometry ──
+	   Domain Spine width and View Bar height. The main shell narrows the side
+	   columns to the ratified 268 (Navigator, 240–300 range) / 300 (Inspector)
+	   in the `.project-editor` block below; the frozen relic keeps the values
+	   above it. */
+	--editor-spine-width: 56px;
+	--editor-viewbar-height: 34px;
+
 	/* ── DS §6 — typography ── */
 	--editor-font:
 		'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
@@ -670,14 +678,22 @@
 
 /* P21 main shell; the frozen relic retains its existing dimensions.
    Row bands derive from the theme-aware surface ramp (never hard hexes),
-   so every theme — including the light porcelain-atelier — stays
-   consistent by construction. Navy resolves identically to the specced
-   dark-navy bands (bg-app #071019 / bg-panel-raised #0d1925). */
+   so every theme — including PLATE Light — stays consistent by
+   construction.
+   P23.14 narrows the side columns to the ratified §5 composition (Navigator
+   268 / Inspector 300, both resizable within their documented ranges) and
+   swaps the retired 32 px ribbon band for the 34 px View Bar. */
 .project-editor {
 	--editor-project-row-height: 36px;
 	--editor-ribbon-height: 32px;
+	--editor-viewbar-height: 34px;
 	--editor-appbar-height: 36px;
 	--editor-status-height: 24px;
+	--editor-left-width: 268px;
+	--editor-left-min: 240px;
+	--editor-left-max: 300px;
+	--editor-right-width: 300px;
+	--editor-right-min: 280px;
 	--editor-bg-row-1: var(--editor-bg-app);
 	--editor-bg-row-2: var(--editor-bg-panel-raised);
 	--editor-control-active-bg: var(--editor-bg-control);

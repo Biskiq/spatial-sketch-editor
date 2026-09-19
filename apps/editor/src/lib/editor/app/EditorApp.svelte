@@ -75,6 +75,7 @@
 	import ProjectRow from './ProjectRow.svelte';
 	import PublishSurface from './PublishSurface.svelte';
 	import WorkspaceRibbon from './WorkspaceRibbon.svelte';
+	import DomainSpine from './DomainSpine.svelte';
 	import PlanWorkspace from './PlanWorkspace.svelte';
 	import Workspace3DView from './Workspace3DView.svelte';
 	import CameraPlanWorkspace from './CameraPlanWorkspace.svelte';
@@ -2126,10 +2127,10 @@
 		projectId={projectId}
 		surface={surface}
 	/>
-	<WorkspaceRibbon {store} {viewState} {layoutPreview} {layoutInteraction}
-		cameraPlan={cameraPlanState} gizmoCapabilities={activeGizmoCapabilities}
-		transformDisabled={activeSelection.active.domain === 'layout' && layoutDescriptor === null}
-		onDeleteArrange={deleteArrangeSelection} />
+	<!-- P23.14 §8 — the Scene/Camera domain axis lives in the vertical Spine
+	     (full height, leftmost column); the Plan/3D view axis lives in the View
+	     Bar mounted inside the central work column below. -->
+	<DomainSpine {viewState} canSwitch={!store.isEditorInteractionActive} />
 	<EditorSidebar
 		{store}
 		{layoutPreview}
@@ -2166,6 +2167,13 @@
 		onpointerdown={(event) => event.currentTarget.focus()}
 		style="grid-area: center;"
 	>
+		<!-- P23.14 §10 — the View Bar spans this central work column only
+		     (never the Navigator/Inspector); the work surface sits below it. -->
+		<WorkspaceRibbon {store} {viewState} {layoutPreview} {layoutInteraction}
+			cameraPlan={cameraPlanState} gizmoCapabilities={activeGizmoCapabilities}
+			transformDisabled={activeSelection.active.domain === 'layout' && layoutDescriptor === null}
+			onDeleteArrange={deleteArrangeSelection} />
+		<div class="work">
 		<!-- P1.7 owner follow-up — view/domain switches are INSTANT (no fade):
 		     the 3D cell is one component for both domains and both plan
 		     surfaces stay mounted, so a switch only toggles visibility. -->
@@ -2199,8 +2207,14 @@
 		{:else}
 			<!-- explicit 3D context seam: camera authoring overlays and
 			     the bottom timeline are Camera-only; Scene stays scene chrome. -->
-			<Workspace3DView {store} {layoutPreview} {layoutInteraction} context={viewState.domain} {contextMenu} takeoverPose={takeoverOrbitPose} takeoverObserver={takeoverObserverState} onTakeoverPoseRestored={() => { takeoverOrbitPose = null; takeoverObserverState = null; }} />
+			<div class="view-cell">
+				<Workspace3DView {store} {layoutPreview} {layoutInteraction} context={viewState.domain} {contextMenu} takeoverPose={takeoverOrbitPose} takeoverObserver={takeoverObserverState} onTakeoverPoseRestored={() => { takeoverOrbitPose = null; takeoverObserverState = null; }} />
+			</div>
 		{/if}
+		</div>
+		<!-- P23.14 §17 — the Camera Drawer belongs to the Camera domain and is
+		     docked to the bottom of the central work column only (never a global
+		     application footer, never spanning Navigator/Inspector). -->
 		{#if viewState.domain === 'camera'}
 			<EditorCameraTimelineFrame {store} viewMode={viewState.activeView} {contextMenu} />
 		{/if}
@@ -2233,6 +2247,10 @@
 
 <style>
 	:global(body) { margin: 0; }
+	/* P23.14 §5 — reference composition at 1440×900: 56 px Domain Spine (full
+	   height) + Project Head 36 + Navigator 268 (240–300) + central work column
+	   + Inspector 300 + Status Rail 24. Responsive behavior preserves hierarchy
+	   and ownership before exact dimensions. */
 	.page {
 		display: grid;
 		/* P21.6 Slice C — focus mode collapses side tracks toward 0 1fr 0
@@ -2242,13 +2260,12 @@
 		--editor-side-left: minmax(15rem, var(--editor-left-width));
 		--editor-side-right: minmax(17.5rem, var(--editor-right-width));
 		--editor-center: minmax(0, 1fr);
-		grid-template-columns: var(--editor-side-left) var(--editor-center) var(--editor-side-right);
-		grid-template-rows: var(--editor-project-row-height) var(--editor-ribbon-height) minmax(0, 1fr) var(--editor-status-height);
+		grid-template-columns: var(--editor-spine-width) var(--editor-side-left) var(--editor-center) var(--editor-side-right);
+		grid-template-rows: var(--editor-project-row-height) minmax(0, 1fr) var(--editor-status-height);
 		grid-template-areas:
-			'top top top'
-			'ribbon ribbon ribbon'
-			'left center right'
-			'status status status';
+			'spine head head head'
+			'spine left center right'
+			'spine status status status';
 		height: 100vh;
 		height: 100dvh;
 		overflow: hidden;
@@ -2256,8 +2273,12 @@
 		color: var(--editor-text-primary);
 		font-family: var(--editor-font);
 	}
-	.center { position: relative; min-width: 0; min-height: 0; overflow: hidden; outline: none; }
+	.center { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; outline: none; }
 	.center:focus-visible { box-shadow: inset 0 0 0 1px var(--editor-accent); }
+	/* The work surface below the View Bar; the live Camera Drawer anchors to the
+	   bottom of this column, so the bar is never covered by the Drawer. */
+	.work { position: relative; flex: 1; min-width: 0; min-height: 0; }
+	.view-cell { position: relative; width: 100%; height: 100%; min-height: 0; }
 	/* P21.6 Slice C — no animated resizing (grid transitions would
 	   repeatedly reallocate the drawing buffer and multiply pixel work). */
 	.page.panels-left-collapsed { --editor-side-left: 0; }
@@ -2281,11 +2302,15 @@
 	/* P22.4 — Publish surface: Row 1 chrome plus a centered scrolling
 	   author panel. The editor session (store, layout, selection, history,
 	   view) stays mounted in memory; only the Spatial workspaces unmount. */
+	/* P22.4 — Publish is a Project-level destination: the Project Head persists
+	   while the Spatial domain surfaces (Navigator/Inspector/View Bar/Spine)
+	   are replaced by the publish panel. The Spine is a domain axis, so it is
+	   not painted here. */
 	.page.publish-surface-open {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: var(--editor-project-row-height) minmax(0, 1fr) var(--editor-status-height);
 		grid-template-areas:
-			'top'
+			'head'
 			'publish'
 			'status';
 	}

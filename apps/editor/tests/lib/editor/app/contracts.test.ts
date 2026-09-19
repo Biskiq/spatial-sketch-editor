@@ -472,14 +472,35 @@ describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 });
 
 describe('P21.1 shared shell', () => {
-	it('pins the fixed Zone A switch cluster (Scene|Camera + Plan|3D only)', () => {
+	it('splits the domain axis onto the Spine and the view axis onto the View Bar', () => {
+		// P23.14 §3/§8/§10 — the perpendicular signature: Scene/Camera vertical,
+		// Plan/3D horizontal. The retired ribbon Zone A cluster is gone; each
+		// axis has exactly one control owner (no dual domain controls).
+		const spine = readLibSource('editor/app/DomainSpine.svelte');
+		expect(spine).toContain('aria-label="Editor domain"');
+		expect(spine).toContain('viewState.setDomain');
+		// The domain switch keeps its editor-interaction guard, fed from the shell.
+		expect(spine).toContain('canSwitch');
+		expect(readLibSource('editor/app/EditorApp.svelte')).toContain(
+			'canSwitch={!store.isEditorInteractionActive}'
+		);
+		// The active station marks itself with a 3 px inboard edge-light in the
+		// domain accent — never a full-surface domain fill.
+		expect(spine).toContain('--editor-domain-scene');
+		expect(spine).toContain('--editor-domain-camera');
+		expect(spine).toContain('inset-block: 10px');
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
-		expect(ribbon).toContain('aria-label="Editor domain"');
+		expect(ribbon).not.toContain('setDomain');
 		expect(ribbon).toContain('aria-label="Editor views"');
-		expect(ribbon).toContain("viewState.setDomain(domain as 'scene' | 'camera')");
 		expect(ribbon).toContain('viewState.setView(viewState.domain, view as');
-		expect(ribbon).toContain('flex:0 0 240px');
-		expect(ribbon).toContain('style="grid-area:ribbon;"');
+		expect(ribbon).toContain('class="view-tab"');
+		// The View Bar is a central-column band, not a shell row.
+		expect(ribbon).toContain('aria-label="View bar"');
+		expect(ribbon).toContain('grid-area:viewbar;');
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		expect(app).toContain('<DomainSpine');
+		expect(app).toContain("'spine head head head'");
+		expect(app).not.toContain("'ribbon ribbon ribbon'");
 	});
 
 	it('routes every permanent command through the ribbon (no floating toolbars in main surfaces)', () => {
@@ -669,11 +690,17 @@ describe('P21.2 scene reconciliation', () => {
 		expect(status).toContain('Y Preserved');
 		expect(status).toContain('workspaceStatus');
 		expect(status).toContain("transformSpace?: 'local' | 'world'");
-		// The workspace string is announced (role=status), never inside the
-		// aria-hidden hint group, and uses the AA-compliant secondary ink.
-		expect(status.indexOf('workspace-status')).toBeLessThan(status.indexOf('aria-hidden'));
+		// P23.14 §14 — the rail is READOUT-ONLY: the work-state string is
+		// announced (role=status) and uses the AA-compliant secondary ink, and
+		// the retired keyboard-hint band is gone (no control duplication).
 		expect(status).toContain('role="status">{workspaceStatus}');
 		expect(status).toContain('.workspace-status { color: var(--editor-text-secondary);');
+		expect(status).not.toContain('aria-hidden');
+		expect(status).not.toContain('Middle + Drag pan');
+		// domain · view · local-mode readout + grid/snap/metric echo.
+		expect(status).toContain('{domainLabel} · {viewLabel}{modeLabel}');
+		expect(status).toContain('Grid on');
+		expect(status).toContain('Metric (m)');
 		const app = readLibSource('editor/app/EditorApp.svelte');
 		expect(app).toContain('transformSpace={interactionStore.space}');
 	});
@@ -1824,7 +1851,11 @@ describe('camera context contracts', () => {
 		expect(frameMount).toBeGreaterThan(centerStart);
 		expect(frameMount).toBeLessThan(inspectorMount);
 		expect(app).not.toContain("'bottom bottom bottom'");
-		expect(app).toContain('.center { position: relative; min-width: 0; min-height: 0; overflow: hidden;');
+		// P23.14 §10/§17 — the center column is the View Bar + work surface, so
+		// the live Drawer anchors to the bottom of the WORK area, never over the
+		// bar, and never outside the central column.
+		expect(app).toContain('.center { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;');
+		expect(app).toContain('.work { position: relative; flex: 1; min-width: 0; min-height: 0; }');
 		expect(frame).toContain('.timeline-frame.live {');
 		expect(frame).toContain('bottom: 16px;');
 		expect(frame).toContain('width: min(47.5rem, calc(100% - 2rem));');
@@ -1938,7 +1969,8 @@ describe('camera context contracts', () => {
 		// The status bar is an unconditional shell region (design-spec §2/§18),
 		// present in all four workspaces.
 		expect(app).toContain('<StatusBar');
-		expect(app).toContain("'status status status'");
+		// P23.14 §5 — the Status Rail spans the shell beside the full-height Spine.
+		expect(app).toContain("'spine status status status'");
 		expect(status).toContain('grid-area: status');
 		expect(app).toContain('{layoutPreview} {layoutInteraction} {viewState} {activeSelection}');
 		expect(status).toContain('store.isDirty || layoutPreviewIsDirty(layoutPreview)');

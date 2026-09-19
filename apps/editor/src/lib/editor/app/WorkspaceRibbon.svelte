@@ -1,3 +1,23 @@
+<!--
+	P23.14 §10 — the View Bar. Renamed in role from the P21 "workspace ribbon":
+	it spans the CENTRAL WORK COLUMN only (never over Navigator/Inspector) and
+	is mounted inside the editor `.center` column, below the Project Head.
+
+	Left: the durable Plan/3D view axis as *engraved chassis tabs* — they must
+	never look like ordinary tool buttons (§10), so they carry no control
+	surface at rest and an inset ink underline when active.
+
+	Middle: the contextual work tools of the current domain×view (the Scene Plan
+	MODE Layout/Arrange switch is subordinate to the view tabs, §10). P23.14
+	Task 3 moves the tool vocabulary onto the Paper-attached Tool Tray; this
+	region keeps the subordinate MODE/utility controls.
+
+	Right: subordinate utilities — panel visibility (Panels), which is shell
+	chrome in every view.
+
+	The Scene/Camera domain axis lives in the Domain Spine, never here
+	(§3/§8): one fact, one owner.
+-->
 <script lang="ts">
 	import type { EditorStore } from '../editor-store.svelte';
 	import type { EditorViewState } from './editor-view-state.svelte';
@@ -26,20 +46,18 @@
 	}
 </script>
 
-<div class="workspace-ribbon" aria-label="Workspace ribbon" style="grid-area:ribbon;">
-	<div class="zone-a">
-		<div role="group" aria-label="Editor domain" class="segmented">
-			{#each ['scene', 'camera'] as domain}
-				<button disabled={!canSwitch} aria-pressed={viewState.domain === domain} class:active={viewState.domain === domain}
-					onclick={() => { if (canSwitch) viewState.setDomain(domain as 'scene' | 'camera'); }}>{domain === 'scene' ? 'Scene' : 'Camera'}</button>
-			{/each}
-		</div>
-		<div role="group" aria-label="Editor views" class="segmented">
-			{#each ['plan', '3d'] as view}
-				<button disabled={!canSwitch} aria-pressed={viewState.activeView === view} class:active={viewState.activeView === view}
-					onclick={() => { if (canSwitch) viewState.setView(viewState.domain, view as 'plan' | '3d'); }}>{view === 'plan' ? 'Plan' : '3D'}</button>
-			{/each}
-		</div>
+<div class="view-bar" aria-label="View bar" style="grid-area:viewbar;">
+	<div role="group" aria-label="Editor views" class="view-tabs">
+		{#each ['plan', '3d'] as view}
+			<button
+				type="button"
+				class="view-tab"
+				class:active={viewState.activeView === view}
+				aria-pressed={viewState.activeView === view}
+				disabled={!canSwitch}
+				onclick={() => { if (canSwitch) viewState.setView(viewState.domain, view as 'plan' | '3d'); }}
+			>{view === 'plan' ? 'Plan' : '3D'}</button>
+		{/each}
 	</div>
 	<div class="contextual-tools">
 		{#if viewState.activeView === 'plan' && viewState.domain === 'scene'}
@@ -55,27 +73,26 @@
 			<EditorViewportGridControls {store} />
 		{/if}
 	</div>
-	<!-- P21.6 Slice C — Zone C: panel visibility (shell chrome, all views).
-	     P23.3 — VS Code-style layout control: one icon per panel that
-	     collapses/expands it (the glyph itself reports the state), plus the
-	     combined focus toggle. Collapse is CSS-grid only; the canvas is never
-	     unmounted. Requests during an active gesture defer to gesture end
-	     (store-owned). There is no bottom panel in this shell, so the control
-	     carries three toggles rather than VS Code's four. -->
-	<div class="zone-c" role="group" aria-label="Panel visibility">
-		<button type="button" class="ribbon-btn layout-toggle" aria-pressed={store.leftSidePanelCollapsed}
+	<!-- §10 — subordinate utilities: span/zoom controls stay visually quieter
+	     than the durable view tabs. Panel visibility is shell chrome in every
+	     view (P23.3): one icon per panel that collapses/expands it (the glyph
+	     reports the state) plus the combined focus toggle. Collapse is CSS-grid
+	     only; the canvas is never unmounted, and requests during an active
+	     gesture defer to gesture end (store-owned). -->
+	<div class="utilities" role="group" aria-label="Panel visibility">
+		<button type="button" class="utility-btn" aria-pressed={store.leftSidePanelCollapsed}
 			aria-label={store.leftSidePanelCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
 			title={store.leftSidePanelCollapsed ? 'Expand left sidebar' : 'Collapse left sidebar'}
 			onclick={() => store.toggleLeftSidePanel()}>
 			{#if store.leftSidePanelCollapsed}<PanelLeftOpen size={15} aria-hidden="true" />{:else}<PanelLeftClose size={15} aria-hidden="true" />{/if}
 		</button>
-		<button type="button" class="ribbon-btn layout-toggle" aria-pressed={store.rightSidePanelCollapsed}
+		<button type="button" class="utility-btn" aria-pressed={store.rightSidePanelCollapsed}
 			aria-label={store.rightSidePanelCollapsed ? 'Expand right sidebar' : 'Collapse right sidebar'}
 			title={store.rightSidePanelCollapsed ? 'Expand right sidebar' : 'Collapse right sidebar'}
 			onclick={() => store.toggleRightSidePanel()}>
 			{#if store.rightSidePanelCollapsed}<PanelRightOpen size={15} aria-hidden="true" />{:else}<PanelRightClose size={15} aria-hidden="true" />{/if}
 		</button>
-		<button type="button" class="ribbon-btn layout-toggle" class:active={store.focusMode} aria-pressed={store.focusMode}
+		<button type="button" class="utility-btn" class:active={store.focusMode} aria-pressed={store.focusMode}
 			aria-label="Focus — collapse both sidebars"
 			title="Focus — collapse both sidebars ( \ )"
 			onclick={() => store.toggleFocusMode()}>
@@ -85,14 +102,65 @@
 </div>
 
 <style>
-	.workspace-ribbon { display:flex; height:var(--editor-ribbon-height); min-width:0; box-sizing:border-box; background:var(--editor-bg-row-2); border-bottom:1px solid var(--editor-border-subtle); z-index:20; }
-	.zone-a { display:flex; align-items:center; gap:8px; flex:0 0 240px; box-sizing:border-box; padding:0 8px; border-right:1px solid var(--editor-border-subtle); }
-	.zone-c { display:flex; align-items:center; gap:2px; flex:0 0 auto; box-sizing:border-box; margin-left:auto; padding:0 8px; border-left:1px solid var(--editor-border-subtle); }
-	/* Square icon-only toggles: the glyph carries the state, so no label and a
-	   tighter gutter (the VS Code layout-control look). */
-	.layout-toggle { justify-content:center; width:26px; height:26px; padding:0; gap:0; }
-	/* Row 2 control surfaces (tracks / segmented switches / ribbon-btn) are
-	   owned by the P21.5 grammar in styles/controls.css; only shell layout
-	   stays here. */
-	.contextual-tools { display:flex; align-items:center; gap:6px; flex:1; min-width:0; padding:0 8px; }
+	.view-bar {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		box-sizing: border-box;
+		height: var(--editor-viewbar-height, 34px);
+		min-height: var(--editor-viewbar-height, 34px);
+		min-width: 0;
+		padding: 0 8px;
+		background: var(--editor-bg-app);
+		border-bottom: 1px solid var(--editor-border-subtle);
+		z-index: 20;
+	}
+	/* Engraved view tabs: no resting control surface, no radius — the tab is
+	   cut into the chassis and marked by an inset ink underline. */
+	.view-tabs {
+		display: flex;
+		align-items: stretch;
+		align-self: stretch;
+		gap: 2px;
+	}
+	.view-tab {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 54px;
+		height: 100%;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		color: var(--editor-text-muted);
+		font: 650 12px/1 var(--editor-font);
+		letter-spacing: 0.02em;
+		cursor: pointer;
+	}
+	.view-tab:hover:not(:disabled) { color: var(--editor-text-primary); }
+	.view-tab.active {
+		background: var(--editor-bg-panel-raised);
+		color: var(--editor-text-primary);
+		box-shadow: inset 0 -2px var(--editor-text-secondary);
+	}
+	.view-tab:disabled { opacity: 0.45; cursor: default; }
+	.contextual-tools { display:flex; align-items:center; gap:6px; flex:1; min-width:0; padding:0 4px; }
+	/* Subordinate utility region: quieter ink, smaller targets than the tabs. */
+	.utilities { display:flex; align-items:center; gap:2px; flex:0 0 auto; box-sizing:border-box; padding-left:6px; border-left:1px solid var(--editor-border-subtle); }
+	.utility-btn {
+		justify-content: center;
+		display: inline-flex;
+		align-items: center;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		background: transparent;
+		color: var(--editor-text-muted);
+		cursor: pointer;
+	}
+	.utility-btn:hover { background: var(--editor-bg-hover); color: var(--editor-text-primary); }
+	.utility-btn.active { background: var(--editor-accent-soft); border-color: var(--editor-accent-border); color: var(--editor-text-primary); }
 </style>

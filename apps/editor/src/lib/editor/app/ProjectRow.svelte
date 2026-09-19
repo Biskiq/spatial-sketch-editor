@@ -116,7 +116,7 @@
 
 </script>
 
-<header class="project-row" aria-label="Project navigation" style="grid-area: top;">
+<header class="project-row" aria-label="Project Head" style="grid-area: head;">
 	<a href="/projects" class="projects-link"><ArrowLeft size={14} /> Projects</a>
 	<input class="project-name" aria-label="Project name" value={projectName} maxlength="200"
 		onblur={(event) => rename(event.currentTarget)}
@@ -221,21 +221,24 @@
 </header>
 
 <style>
-	.project-row { display:flex; align-items:center; gap:8px; padding:0 8px; height:var(--editor-project-row-height); box-sizing:border-box; background:var(--editor-bg-row-1); border-bottom:1px solid var(--editor-border-subtle); font:500 12px var(--editor-font); min-width:0; z-index:30; }
+	/* P23.14 §9 — the Project Head: a 36 px chassis band that stays compact.
+	   Spatial and Publish are independent chassis actions (two links), never a
+	   segmented control; there is no second global toolbar. */
+	.project-row { display:flex; align-items:center; gap:10px; padding:0 10px; height:var(--editor-project-row-height); box-sizing:border-box; background:var(--editor-bg-app); border-bottom:1px solid var(--editor-border-subtle); font:500 12px var(--editor-font); min-width:0; z-index:30; }
 	.project-row a { color:var(--editor-text-primary); text-decoration:none; display:flex; gap:6px; align-items:center; white-space:nowrap; }
 	.project-name { width:180px; max-width:240px; min-width:80px; font:600 13px var(--editor-font); }
-	button, input, .location, nav span, nav a { height:28px; box-sizing:border-box; border:1px solid var(--editor-border-subtle); border-radius:4px; background:transparent; color:var(--editor-text-primary); padding:0 8px; }
-	.location, nav span, nav a { display:flex; align-items:center; white-space:nowrap; }
+	button, input, .location, nav span, nav a { height:26px; box-sizing:border-box; border:1px solid var(--editor-border-subtle); border-radius:3px; background:var(--editor-bg-instrument); color:var(--editor-text-primary); padding:0 8px; }
+	.location, nav span, nav a { display:flex; align-items:center; white-space:nowrap; background:transparent; border-color:transparent; }
 	nav a { text-decoration:none; }
 	nav { display:flex; gap:4px; margin-left:auto; margin-right:auto; }
-	nav span, nav a[aria-current="page"] { color:var(--editor-accent); background:var(--editor-bg-control); }
+	nav a:hover { background:var(--editor-bg-hover); border-color:var(--editor-border-subtle); }
+	/* Active destination: ink + inset bottom edge, never a loud accent fill. */
+	nav span[aria-current="page"], nav a[aria-current="page"] { color:var(--editor-text-primary); font-weight:650; box-shadow:inset 0 -2px var(--editor-text-secondary); }
 	button { display:inline-flex; align-items:center; justify-content:center; gap:5px; font:inherit; white-space:nowrap; cursor:pointer; }
 	button:disabled { opacity:.5; cursor:default; }
-	nav { margin-left:auto; margin-right:auto; }
-	nav span { color:var(--editor-accent); background:var(--editor-bg-control); }
 	.actions { display:flex; align-items:center; gap:4px; }
 	.theme-menu-wrap, .account { position:relative; }
-	.theme-menu, .account-menu { position:absolute; top:calc(100% + 4px); right:0; padding:5px; min-width:130px; background:var(--editor-bg-panel-raised); border:1px solid var(--editor-border-normal); border-radius:4px; box-shadow:var(--editor-shadow-popover); }
+	.theme-menu, .account-menu { position:absolute; top:calc(100% + 4px); right:0; padding:5px; min-width:130px; background:var(--editor-bg-panel-raised); border:1px solid var(--editor-border-normal); border-radius:3px; box-shadow:var(--editor-shadow-popover); }
 	.theme-menu button { width:100%; justify-content:space-between; }
 	.theme-menu button.active { color:var(--editor-accent); }
 	@media(max-width:1100px) { .project-name { width:120px; } .project-row { gap:4px; } }
