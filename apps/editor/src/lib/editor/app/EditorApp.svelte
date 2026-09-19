@@ -256,6 +256,11 @@
 	// zoom, hover, and tool mutations stay reactive (Scene Plan wraps the same
 	// way via `layoutInteraction`).
 	const cameraPlanState = $state(createCameraPlanState());
+	// Startup-only empty hint: owned here, high enough to survive the Plan ↔
+	// 3D component swap (`LayoutPlanViewport` unmounts in 3D, which would reset
+	// viewport-local state on every view round-trip). Bound through
+	// `PlanWorkspace` into the viewport; never serialized, never history.
+	let planHintDismissed = $state(false);
 	// P3.4 — one shared context-menu slot; surface adapters open through it.
 	const contextMenu = createEditorContextMenuStore();
 	// one active selection domain at the editor composition root.
@@ -2194,6 +2199,7 @@
 					active={viewState.domain === 'scene'}
 					{contextMenu}
 					onDeleteArrange={deleteArrangeSelection}
+					bind:planHintDismissed
 				/>
 			</div>
 			<div

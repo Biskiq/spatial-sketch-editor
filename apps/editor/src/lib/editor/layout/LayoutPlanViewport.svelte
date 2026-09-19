@@ -321,7 +321,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		store,
 		contextMenu = null,
 		hierarchyEmphasis = null,
-		hierarchySceneEmphasis = null
+		hierarchySceneEmphasis = null,
+		planHintDismissed = $bindable(false)
 	}: {
 		model: LayoutPreviewModel;
 		preview: LayoutPreviewState;
@@ -405,6 +406,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		hierarchyEmphasis?: PlanHitIdentity | null;
 		/** Scene entity emphasis uses the existing passive footprint renderer. */
 		hierarchySceneEmphasis?: string | null;
+		/**
+		 * Startup-only empty hint, owned by the editor session (bound from
+		 * EditorApp through PlanWorkspace) so a Plan → 3D → Plan round-trip
+		 * cannot resurrect the card. Mounts without a binding (the frozen
+		 * relic) keep viewport-local behavior via the default.
+		 */
+		planHintDismissed?: boolean;
 	} = $props();
 
 	let svgElement = $state<SVGSVGElement>();
@@ -1994,8 +2002,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// transient check catches every in-progress draft (first polygon point,
 	// wall-chain start, rectangle/primitive drag); the planEmpty arm catches
 	// synchronous one-click commits (presets) that never hold transient state.
-	// Session-scoped, not serialized (like ghostDismissed above).
-	let planHintDismissed = $state(false);
+	// Owned by the editor session (bound prop above), never viewport-local:
+	// this component unmounts on Plan → 3D, so local state would resurrect the
+	// card on the way back. Never serialized, never history.
 	$effect(() => {
 		if (!planHintDismissed && (!planEmpty || hasLayoutTransientInteraction(interaction))) {
 			planHintDismissed = true;

@@ -62,7 +62,8 @@
 		layoutInteraction,
 		active = true,
 		contextMenu = null,
-		onDeleteArrange
+		onDeleteArrange,
+		planHintDismissed = $bindable(false)
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -72,6 +73,12 @@
 		contextMenu?: EditorContextMenuStore | null;
 		/** Arrange owner-aware Delete (P21.2) — rendered on the Paper-attached Tool Tray. */
 		onDeleteArrange?: () => boolean;
+		/**
+		 * Startup-only empty hint, owned by the editor session (EditorApp) so it
+		 * survives the Plan ↔ 3D unmount. Bound through to the viewport; the
+		 * frozen relic mount omits it and keeps viewport-local behavior.
+		 */
+		planHintDismissed?: boolean;
 	} = $props();
 	const activeSelection = getContext<EditorActiveSelectionStore | undefined>(
 		ACTIVE_EDITOR_SELECTION_KEY
@@ -595,6 +602,7 @@
 		hierarchySceneEmphasis={hierarchySceneEmphasis}
 		{store}
 		{contextMenu}
+		bind:planHintDismissed
 	/>
 	</div>
 </div>
