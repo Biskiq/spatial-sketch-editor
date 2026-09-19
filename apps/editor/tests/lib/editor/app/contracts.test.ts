@@ -828,7 +828,10 @@ describe('P21.3 camera reconciliation', () => {
 
 	it('pins the shared Timeline density (120px labels, 28px ruler, 44/48/34/34/32 lanes, 48px mini-player, live-dock +View Key)', () => {
 		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
-		expect(dots).toContain('grid-template-columns: 7.5rem minmax(30rem, 1fr);');
+		// P23.14 §17 — one column model: 120px labels plus the remaining drawer
+		// width. The P21.3 fixed track floor (30rem, over a 42rem lanes minimum)
+		// fragmented the surface and left the ruler misaligned with the transport.
+		expect(dots).toContain('grid-template-columns: 7.5rem minmax(0, 1fr);');
 		expect(dots).toContain('grid-template-rows: 28px 44px 48px 34px 34px 32px;');
 		// +View Key renders in both live branches (Edge + Sequence, Plan + 3D)
 		// and stays out of the relic (which keeps its Ruler button); the
@@ -1084,6 +1087,15 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		expect(frame).toContain('border: 1px solid var(--editor-border-normal);');
 		expect(frame).toContain('box-shadow: 0 12px 32px rgb(0 0 0 / 60%)');
 		expect(frame).not.toMatch(/coral|#ef626c/);
+		// P23.14 Decision 5 — 48px transport + readout, and nothing else: no lane,
+		// no ruler and no second scrubber is mounted in the collapsed Drawer.
+		const collapsedStart = frame.indexOf('<div class="mini-player"');
+		expect(collapsedStart).toBeGreaterThan(-1);
+		const collapsed = frame.slice(collapsedStart, frame.indexOf('</section>', collapsedStart));
+		expect(collapsed).toContain('mini-player__timecode');
+		expect(collapsed).not.toContain('<input type="range"');
+		expect(collapsed).not.toContain('EditorCameraTimelineDots');
+		expect(collapsed).not.toContain('EditorCameraTimelineRuler');
 	});
 
 	it('keeps the expanded transport as quiet ghost buttons above the lanes', () => {
@@ -1093,11 +1105,13 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		expect(frame).toContain('background: transparent;');
 		expect(frame).toContain('.mode-control button:focus-visible,');
 		// The frozen mini-player composition is never swapped for generic icons.
+		// P23.14 Decision 5 replaces the collapsed scrubber with the timecode
+		// readout: one playhead, owned by the expanded lanes.
 		for (const fragment of [
 			'scope-capsule',
 			'swapEdgeReverse',
 			'mini-player__transport',
-			'mini-player__scrubber',
+			'mini-player__timecode',
 			'>POV</span>',
 			'>Observer</span>'
 		]) {
@@ -1119,7 +1133,10 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 	it('gives the collapsed pill full keyboard parity within its floating geometry', () => {
 		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
 		expect(frame).toContain('.mini-player__icon:focus-visible,');
-		expect(frame).toContain('.mini-player__scrubber input:focus-visible');
+		// P23.14 Decision 5 — the collapsed strip holds no scrubber, so there is
+		// no range control to focus; the transport buttons carry the parity.
+		expect(frame).not.toContain('mini-player__scrubber');
+		expect(frame).toContain('mini-player__timecode');
 		expect(frame).toContain('.toggle:focus-visible');
 		// Geometry untouched: no resize, no re-dock, no new controls.
 		expect(frame).toContain('bottom: 16px;');

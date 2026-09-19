@@ -1254,12 +1254,17 @@
 	.lanes {
 		position: relative;
 		display: grid;
-		min-width: 42rem;
-		grid-template-columns: 7.5rem minmax(30rem, 1fr);
+		/* P23.14 §17 — the lanes fill the Drawer's own width instead of a fixed
+		   42rem/30rem floor that fragmented the surface and left the ruler and
+		   playhead misaligned with the transport above. One column model
+		   (120px labels + the remaining width) is the whole layout; density
+		   degradation at narrow widths is the container query below. */
+		min-width: 0;
+		width: 100%;
+		grid-template-columns: 7.5rem minmax(0, 1fr);
 		/* P21.3 — shared Timeline density: 120px labels, 28px ruler,
 		   44/48/34/34/32 lanes (Camera Plan + Camera 3D, one dock). */
 		grid-template-rows: 28px 44px 48px 34px 34px 32px;
-		overflow-x: auto;
 		border: 1px solid var(--editor-border-subtle);
 		border-radius: 0.28rem;
 		background: var(--editor-timeline-chrome-bg);
@@ -1280,7 +1285,7 @@
 	.lane-label strong { color: var(--editor-text-primary); font-size: 0.66rem; font-weight: 620; white-space: nowrap; }
 	.lane-label span { overflow: hidden; color: var(--editor-text-muted); font-size: 0.54rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 	.lane-label.quiet { opacity: 0.72; }
-	.time-ruler { position: relative; min-width: 30rem; container-type: inline-size; border-bottom: 1px solid var(--editor-border-subtle); color: var(--editor-text-timecode); }
+	.time-ruler { position: relative; min-width: 0; container-type: inline-size; border-bottom: 1px solid var(--editor-border-subtle); color: var(--editor-text-timecode); }
 	.scrub-surface { cursor: ew-resize; }
 	.time-tick { position: absolute; top: 5px; transform: translateX(-50%); font: var(--editor-timeline-ruler-font); font-variant-numeric: tabular-nums; white-space: nowrap; }
 	.time-tick:first-child { transform: none; }
@@ -1288,7 +1293,7 @@
 	.time-tick i { position: absolute; top: 14px; left: 50%; width: 1px; height: 6px; background: var(--editor-border-strong); }
 	.track {
 		position: relative;
-		min-width: 30rem;
+		min-width: 0;
 		border-top: 1px solid var(--editor-border-subtle);
 		background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), rgb(255 255 255 / 4%) calc(10% - 1px), rgb(255 255 255 / 4%) 10%);
 		cursor: ew-resize;
@@ -1340,7 +1345,9 @@
 	.envelope-handle:disabled { opacity: 0.35; cursor: default; }
 
 	@media (max-width: 44rem) {
-		.lanes { grid-template-columns: 7rem minmax(30rem, 1fr); }
+		/* P23.14 §17 — narrow widths shed label width; the tracks still take the
+		   remaining Drawer width instead of forcing a horizontal scroll. */
+		.lanes { grid-template-columns: 7rem minmax(0, 1fr); }
 		.timeline-playhead-overlay { left: 7rem; }
 	}
 	@container (min-width: 52rem) {
