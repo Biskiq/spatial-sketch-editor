@@ -93,7 +93,9 @@
 	<section class="transform" aria-label="Placement transform">
 		<div class="section-heading">
 			<h2>Transform</h2>
-			<span>Room-local</span>
+			<!-- P23.0b — an entity without a Room is already in the world-local
+			     identity frame; the badge follows the selection, not the legacy format. -->
+			<span>{selectedObject.roomId ? 'Room-local' : 'World-local'}</span>
 		</div>
 
 		<fieldset>

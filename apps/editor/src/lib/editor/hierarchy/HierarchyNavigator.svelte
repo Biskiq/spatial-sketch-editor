@@ -68,7 +68,8 @@
 		onSelectSceneEntity,
 		onSelectCluster,
 		onWallContextMenu,
-		onRoomContextMenu
+		onRoomContextMenu,
+		onJunctionContextMenu
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -82,6 +83,12 @@
 		onSelectCluster: (clusterId: string) => void;
 		onWallContextMenu: (event: MouseEvent, wallId: string) => void;
 		onRoomContextMenu: (event: MouseEvent, roomId: string) => void;
+		/**
+		 * P23.14 §13 — the Junction row's reason-coded destructive entry point.
+		 * The row surface stays presentation-only: the owner resolves the planner's
+		 * refusal reason and opens the shared menu.
+		 */
+		onJunctionContextMenu: (event: MouseEvent, junctionId: string) => void;
 	} = $props();
 
 	const index = $derived(
@@ -456,6 +463,7 @@
 		if (!entity || entity.owner !== 'layout') return;
 		if (entity.kind === 'wall') onWallContextMenu(event, entity.wallId);
 		else if (entity.kind === 'room') onRoomContextMenu(event, entity.roomId);
+		else if (entity.kind === 'junction') onJunctionContextMenu(event, entity.junctionId);
 	}
 
 	function emphasize(row: HierarchyProjectedRow): void {
@@ -693,7 +701,7 @@
 		background: var(--editor-bg-panel-raised);
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	.tree-nav__back:hover:not(:disabled) {
@@ -706,7 +714,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -718,6 +726,10 @@
 		flex-direction: column;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+		/* P23.14 §23 — progressive density is measured against the *column*, not
+		   the window: the Navigator can be 240 px wide inside a 1600 px window.
+		   Rows adapt through a container query on this scroll surface. */
+		container-type: inline-size;
 	}
 	.tree-search {
 		display: flex;
@@ -737,7 +749,7 @@
 		background: transparent;
 		color: var(--editor-text-primary);
 		font: inherit;
-		font-size: 0.72rem;
+		font-size: var(--editor-font-size-md);
 		outline: none;
 	}
 	.tree-search__input::-webkit-search-cancel-button { display: none; }
@@ -753,7 +765,7 @@
 		background: transparent;
 		color: var(--editor-text-muted);
 		font: inherit;
-		font-size: 0.85rem;
+		font-size: var(--editor-font-size-lg);
 		line-height: 1;
 		cursor: pointer;
 	}
@@ -766,7 +778,7 @@
 	}
 	.tree-filter-select__label {
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
@@ -779,13 +791,13 @@
 		background: var(--editor-bg-panel-raised);
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 	}
 	.search-block { display: flex; min-width: 0; flex-direction: column; }
 	.search-group {
 		margin: 0.25rem 0.45rem 0.1rem;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		opacity: 0.75;
 	}
 	.tree-page {
@@ -801,7 +813,7 @@
 	.empty {
 		margin: 0.5rem 0.45rem;
 		color: var(--editor-text-muted);
-		font-size: 0.7rem;
+		font-size: var(--editor-font-size-md);
 		line-height: 1.4;
 	}
 	.hierarchy-pin {
@@ -826,7 +838,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-secondary);
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -836,7 +848,7 @@
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
 		font-family: var(--editor-font-mono, ui-monospace, monospace);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
@@ -844,7 +856,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -856,7 +868,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.64rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	.hierarchy-pin__action:hover {
@@ -868,7 +880,7 @@
 	:global(.hierarchy-heading) {
 		margin: 0.35rem 0.45rem 0.05rem;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		font-weight: 650;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -882,14 +894,17 @@
 	}
 	:global(.hierarchy-section) { min-height: 1.8rem; }
 	:global(.hierarchy-entity) { min-height: 1.9rem; }
-	:global(.hierarchy-relation) { min-height: 1.6rem; color: var(--editor-text-muted); font-size: 0.68rem; }
+	:global(.hierarchy-relation) { min-height: 1.6rem; color: var(--editor-text-muted); font-size: var(--editor-font-size-xs); }
 	:global(.hierarchy-children) {
 		display: flex;
 		min-width: 0;
 		flex-direction: column;
 		gap: 0.1rem;
-		margin-left: 0.85rem;
-		padding-left: 0.62rem;
+		/* P23.14 §12.5 — shallow indentation: ~10 px per level, never the
+		   oversized folder-tree step. A deeply expanded Room → Architecture →
+		   Walls branch must stay usable at the reference 268 px Navigator. */
+		margin-left: 0;
+		padding-left: 0.65rem;
 		border-left: 1px solid var(--editor-border-subtle);
 	}
 	:global(.hierarchy-actions) { display: flex; align-items: center; gap: 0.12rem; }
@@ -900,7 +915,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.64rem;
+		font-size: var(--editor-font-size-xs);
 		cursor: pointer;
 	}
 	:global(.hierarchy-action:hover) {
@@ -969,7 +984,7 @@
 		background: transparent;
 		color: var(--editor-text-secondary);
 		font: inherit;
-		font-size: 0.68rem;
+		font-size: var(--editor-font-size-xs);
 		text-align: left;
 		cursor: pointer;
 	}

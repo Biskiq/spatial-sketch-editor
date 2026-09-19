@@ -472,30 +472,106 @@ describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 });
 
 describe('P21.1 shared shell', () => {
-	it('pins the fixed Zone A switch cluster (Scene|Camera + Plan|3D only)', () => {
+	it('splits the domain axis onto the Spine and the view axis onto the View Bar', () => {
+		// P23.14 §3/§8/§10 — the perpendicular signature: Scene/Camera vertical,
+		// Plan/3D horizontal. The retired ribbon Zone A cluster is gone; each
+		// axis has exactly one control owner (no dual domain controls).
+		const spine = readLibSource('editor/app/DomainSpine.svelte');
+		expect(spine).toContain('aria-label="Editor domain"');
+		expect(spine).toContain('viewState.setDomain');
+		// The domain switch keeps its editor-interaction guard, fed from the shell.
+		expect(spine).toContain('canSwitch');
+		expect(readLibSource('editor/app/EditorApp.svelte')).toContain(
+			'canSwitch={!store.isEditorInteractionActive}'
+		);
+		// The active station marks itself with a 3 px inboard edge-light in the
+		// domain accent — never a full-surface domain fill.
+		expect(spine).toContain('--editor-domain-scene');
+		expect(spine).toContain('--editor-domain-camera');
+		expect(spine).toContain('inset-block: 10px');
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
-		expect(ribbon).toContain('aria-label="Editor domain"');
+		expect(ribbon).not.toContain('setDomain');
 		expect(ribbon).toContain('aria-label="Editor views"');
-		expect(ribbon).toContain("viewState.setDomain(domain as 'scene' | 'camera')");
 		expect(ribbon).toContain('viewState.setView(viewState.domain, view as');
-		expect(ribbon).toContain('flex:0 0 240px');
-		expect(ribbon).toContain('style="grid-area:ribbon;"');
+		expect(ribbon).toContain('class="view-tab"');
+		// The View Bar is a central-column band, not a shell row.
+		expect(ribbon).toContain('aria-label="View bar"');
+		expect(ribbon).toContain('grid-area:viewbar;');
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		expect(app).toContain('<DomainSpine');
+		expect(app).toContain("'spine head head head'");
+		expect(app).not.toContain("'ribbon ribbon ribbon'");
 	});
 
-	it('routes every permanent command through the ribbon (no floating toolbars in main surfaces)', () => {
-		// The three main surfaces mount no toolbar/grid-control chrome; the
-		// ribbon re-hosts their logic (P21.1 re-host, zero behavior change).
-		expect(readLibSource('editor/app/PlanWorkspace.svelte')).not.toContain('LayoutDraftToolbar');
-		expect(readLibSource('editor/app/CameraPlanWorkspace.svelte')).not.toContain('CameraPlanToolbar');
+	it('mounts the tool vocabulary on the Paper-attached Tool Tray, never floating', () => {
+		// P23.14 §10/§11 — ownership split: each work surface mounts its own
+		// 44 px Tool Tray at the Paper edge (in the toolbar's `tray`
+		// presentation), while the View Bar keeps only subordinate utilities.
+		const plan = readLibSource('editor/app/PlanWorkspace.svelte');
+		expect(plan).toContain('<ToolTray label="Scene Plan tools">');
+		expect(plan).toContain('<LayoutDraftToolbar');
+		expect(plan).toContain('tray');
+		expect(plan).toContain('class="paper-column"');
+		const cameraPlan = readLibSource('editor/app/CameraPlanWorkspace.svelte');
+		expect(cameraPlan).toContain('<ToolTray label="Camera Plan tools">');
+		expect(cameraPlan).toContain('<CameraPlanToolbar tray {store} {cameraPlan} />');
 		const ws3d = readLibSource('editor/app/Workspace3DView.svelte');
-		expect(ws3d).not.toContain('<EditorViewportToolbar');
-		expect(ws3d).not.toContain('<EditorViewportGridControls');
+		expect(ws3d).toContain('<ToolTray label="3D tools">');
+		expect(ws3d).toContain('<EditorViewportToolbar tray');
+		expect(ws3d).toContain('.viewport-shell');
+		// No floating toolbar resurrects: the trays carry no floating chrome.
+		expect(plan).not.toMatch(/LayoutDraftToolbar[\s\S]{0,120}showViewToggle/);
+		const trayCss = readLibSource('editor/styles/controls.css');
+		expect(trayCss).toContain('.project-editor .tool-tray {');
+		expect(trayCss).toContain('width: var(--editor-tray-width, 44px);');
+		// R3 — the rail follows the type knob, so it stays the ratified 44 px at
+		// scale 1 and grows with its labels rather than breaking them.
+		expect(readLibSource('editor/styles/tokens.css')).toContain(
+			'--editor-tray-width: calc(44px * var(--editor-type-scale));'
+		);
+		// The View Bar hosts the utility projection and never the tools.
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
 		expect(ribbon).toContain('<LayoutDraftToolbar ribbon');
-		expect(ribbon).toContain('<CameraPlanToolbar {store} {cameraPlan} />');
+		expect(ribbon).toContain('<CameraPlanToolbar ribbon {store} {cameraPlan} />');
 		expect(ribbon).toContain('<EditorViewportToolbar ribbon');
 		expect(ribbon).toContain('<EditorViewportGridControls {store} />');
+		expect(ws3d).not.toContain('<EditorViewportGridControls');
 		expect(readLibSource('editor/app/EditorApp.svelte')).toContain('<WorkspaceRibbon');
+	});
+
+	it('paints MODE as a muted caption beside two plain buttons — no enclosure', () => {
+		// Owner review: `MODE` read as a third control inside the same capsule as
+		// Layout|Arrange, because the ribbon component's enclosed segmented trough
+		// (padding 1 px, subtle border, 6 px radius, control fill) kept applying
+		// in the shell scope. The wrapper clears it completely and the caption is
+		// the muted engraved tier — a caption, not a segment (Atlas `.mode`).
+		const css = readLibSource('editor/styles/controls.css');
+		const slice = (selector: string): string => {
+			const start = css.indexOf(selector);
+			expect(start, `${selector} must exist`).toBeGreaterThanOrEqual(0);
+			const open = css.indexOf('{', start);
+			return css.slice(open + 1, css.indexOf('}', open));
+		};
+		// The group divider is the same leak class: space separates groups.
+		const group = slice('.project-editor .view-bar .tool-group {');
+		expect(group).toContain('padding: 0;');
+		expect(group).toContain('border: 0;');
+		const segmented = slice('.project-editor .view-bar .segmented {');
+		for (const cleared of ['padding: 0;', 'border: 0;', 'border-radius: 0;', 'background: transparent;']) {
+			expect(segmented, `MODE group keeps ${cleared}`).toContain(cleared);
+		}
+		const caption = slice('.project-editor .view-bar .segmented::before {');
+		expect(caption).toContain("content: 'MODE';");
+		expect(caption).toContain('color: var(--editor-text-muted);');
+		const button = slice('.project-editor .view-bar .segmented > button {');
+		expect(button).toContain('font: var(--editor-type-mode);');
+		expect(button).toContain('min-height: var(--editor-control-sm-height);');
+		// The ribbon's own `button { height: 28px }` must not size a 24 px tier.
+		expect(button).toContain('height: auto;');
+		// Pressed takes the Atlas's recessive surface + edge rule, never a wash.
+		expect(slice('.project-editor .view-bar .segmented > button.active {')).toContain(
+			'background-color: var(--editor-bg-recess);'
+		);
 	});
 
 	it('keeps the Timeline docked, never in Row 2', () => {
@@ -536,8 +612,12 @@ describe('P21.1 shared shell', () => {
 		// Only the explicit save-auth interruption surfaces the menu; a
 		// failed owned-projects refresh on fresh guest load must not.
 		const row = readLibSource('editor/app/ProjectRow.svelte');
-		expect(row).toContain('if (saveAuthGateOpen) projectMenuOpen = true');
+		// P23.14 #40 — the same gate now also closes the row's sibling popovers,
+		// so it goes through the coordinating opener.
+		expect(row).toContain('if (saveAuthGateOpen) openDocumentMenu()');
+		expect(row).toContain('function openDocumentMenu()');
 		expect(row).not.toContain('cloudError) projectMenuOpen = true');
+		expect(row).not.toContain('cloudError) openDocumentMenu()');
 	});
 
 	it('derives shell row bands from the theme-aware surface ramp (never hard hexes)', () => {
@@ -597,9 +677,12 @@ describe('P21.2 scene reconciliation', () => {
 		expect(toolbar).toContain('onDeleteArrange');
 		expect(toolbar).toContain('aria-label="Delete arrange selection"');
 		expect(toolbar).toContain('Delete</button>');
-		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
-		expect(ribbon).toContain('onDeleteArrange');
-		expect(ribbon).toContain('{onDeleteArrange}');
+		// P23.14 §11 — the Delete control rides the Scene Plan tray (mounted by
+		// PlanWorkspace), not the View Bar.
+		const plan = readLibSource('editor/app/PlanWorkspace.svelte');
+		expect(plan).toContain('onDeleteArrange');
+		expect(plan).toContain('{onDeleteArrange}');
+		expect(readLibSource('editor/app/WorkspaceRibbon.svelte')).not.toContain('onDeleteArrange');
 		// The router lives in `layout/arrange-delete.ts` (behaviorally pinned
 		// in `tests/lib/editor/app/arrange-delete.test.ts`); the shell only
 		// binds the current domain/view.
@@ -640,7 +723,7 @@ describe('P21.2 scene reconciliation', () => {
 		expect(viewport).toContain('ghostDismissed');
 		expect(viewport).toContain('ghostVisible');
 		expect(viewport).toContain("planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed");
-		expect(viewport).toContain('planEmpty && !ghostVisible');
+		expect(viewport).toContain('planEmpty && !ghostVisible && !planHintDismissed');
 		// Empty card carries the same §8 copy agreement.
 		expect(viewport).toContain('Start your plan');
 		expect(viewport).toContain('Draw connected walls with Wall, or start with Rect Room or Poly Room.');
@@ -669,11 +752,17 @@ describe('P21.2 scene reconciliation', () => {
 		expect(status).toContain('Y Preserved');
 		expect(status).toContain('workspaceStatus');
 		expect(status).toContain("transformSpace?: 'local' | 'world'");
-		// The workspace string is announced (role=status), never inside the
-		// aria-hidden hint group, and uses the AA-compliant secondary ink.
-		expect(status.indexOf('workspace-status')).toBeLessThan(status.indexOf('aria-hidden'));
+		// P23.14 §14 — the rail is READOUT-ONLY: the work-state string is
+		// announced (role=status) and uses the AA-compliant secondary ink, and
+		// the retired keyboard-hint band is gone (no control duplication).
 		expect(status).toContain('role="status">{workspaceStatus}');
 		expect(status).toContain('.workspace-status { color: var(--editor-text-secondary);');
+		expect(status).not.toContain('aria-hidden');
+		expect(status).not.toContain('Middle + Drag pan');
+		// domain · view · local-mode readout + grid/snap/metric echo.
+		expect(status).toContain('{domainLabel} · {viewLabel}{modeLabel}');
+		expect(status).toContain('Grid on');
+		expect(status).toContain('Metric (m)');
 		const app = readLibSource('editor/app/EditorApp.svelte');
 		expect(app).toContain('transformSpace={interactionStore.space}');
 	});
@@ -699,43 +788,54 @@ describe('P21.3 camera reconciliation', () => {
 		}
 	});
 
-	it('exposes Camera 3D Path/Frame/Observer/POV in the ribbon through existing commands only', () => {
+	it('exposes Camera 3D Path/Frame in the ribbon and the preview mode in the drawer', () => {
 		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
 		expect(toolbar).toContain('aria-label="Camera helper visibility"');
 		expect(toolbar).toContain('>Path</button>');
 		expect(toolbar).toContain('>Frame</button>');
 		expect(toolbar).toContain('store.toggleViewportShowPaths()');
 		expect(toolbar).toContain('store.toggleViewportShowFraming()');
-		expect(toolbar).toContain('aria-label="Camera preview mode"');
-		expect(toolbar).toContain('>Observer</button>');
-		expect(toolbar).toContain('>POV</button>');
-		// Both switches share one idle-capable chooser (solo node, else
+		// P23.14 §14 / F5 — the Observer↔POV switch has exactly ONE writer: the
+		// camera preview transport in the Camera Drawer, which carries it in both
+		// camera views (collapsed mini-player always, expanded panel while a
+		// preview is live). The bar used to paint a second copy in Camera 3D.
+		expect(toolbar).not.toContain('aria-label="Camera preview mode"');
+		expect(toolbar).not.toContain('>Observer</button>');
+		expect(toolbar).not.toContain('>POV</button>');
+		expect(toolbar).not.toContain('chooseCameraPreviewMode');
+		// Both drawer switches share one idle-capable chooser (solo node, else
 		// Sequence scope) — never a dead click, no new state.
-		expect(toolbar).toContain('store.chooseCameraPreviewMode(mode)');
 		const timelineFrame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
 		expect(timelineFrame).toContain('store.chooseCameraPreviewMode(mode)');
-		// Ribbon-only: the relic mount (no context) keeps its legacy menu.
+		const previewControls = readLibSource('editor/camera/EditorCameraPreviewControls.svelte');
+		expect(previewControls).toContain("store.setCameraPreviewMode('visitor')");
+		// Ribbon-only helper toggles: the relic mount (no context) keeps its legacy menu.
 		expect(toolbar).toContain('{#if ribbon && isCameraContext}');
 	});
 
-	it('orders the Camera 3D ribbon Path Frame View Observer/POV Snap', () => {
+	it('orders the Camera 3D ribbon Path Frame View Snap', () => {
 		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
-		// Source order is render order: Path/Frame group, the shared View
-		// menu (snippet), the Observer/POV switch, then shared Snap last.
+		// Source order is render order: Path/Frame group, the shared View menu
+		// (snippet), then shared Snap last. Observer/POV is not in the bar at all
+		// (P23.14 §14 / F5) — the Camera Drawer transport owns it.
 		const helperStart = toolbar.indexOf('aria-label="Camera helper visibility"');
-		const renderStart = toolbar.indexOf('{@render viewMenu()}');
-		const modeStart = toolbar.indexOf('aria-label="Camera preview mode"');
+		const renderStart = toolbar.indexOf('{@render viewMenu()}', helperStart);
 		const snapStart = toolbar.indexOf('<summary class="ribbon-btn">Snap</summary>');
-		for (const position of [helperStart, renderStart, modeStart, snapStart]) {
+		for (const position of [helperStart, renderStart, snapStart]) {
 			expect(position).toBeGreaterThanOrEqual(0);
 		}
 		expect(renderStart).toBeGreaterThan(helperStart);
-		expect(modeStart).toBeGreaterThan(renderStart);
-		expect(snapStart).toBeGreaterThan(modeStart);
-		// One View menu definition; the shared site stays suppressed for the
-		// camera ribbon so the menu never mounts twice.
+		expect(snapStart).toBeGreaterThan(renderStart);
+		expect(toolbar).not.toContain('aria-label="Camera preview mode"');
+		// One View menu definition and one live render site PER HOST: the camera
+		// ribbon paints it in its own group order, the shared site stands down
+		// there, and the Tool Tray never paints it — so a 3D view never mounts
+		// two menus (P23.14 §10/§14).
 		expect(toolbar).toContain('{#snippet viewMenu()}');
-		expect(toolbar).toContain('{#if !(ribbon && isCameraContext)}');
+		expect(toolbar).toContain(
+			'const viewMenuHost = $derived(!tray && !(ribbon && isCameraContext));'
+		);
+		expect(toolbar).toContain('{#if viewMenuHost}');
 	});
 
 	it('keeps FOV/frustum/look-target authoring out of Camera Plan', () => {
@@ -782,7 +882,10 @@ describe('P21.3 camera reconciliation', () => {
 
 	it('pins the shared Timeline density (120px labels, 28px ruler, 44/48/34/34/32 lanes, 48px mini-player, live-dock +View Key)', () => {
 		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
-		expect(dots).toContain('grid-template-columns: 7.5rem minmax(30rem, 1fr);');
+		// P23.14 §17 — one column model: 120px labels plus the remaining drawer
+		// width. The P21.3 fixed track floor (30rem, over a 42rem lanes minimum)
+		// fragmented the surface and left the ruler misaligned with the transport.
+		expect(dots).toContain('grid-template-columns: 7.5rem minmax(0, 1fr);');
 		expect(dots).toContain('grid-template-rows: 28px 44px 48px 34px 34px 32px;');
 		// +View Key renders in both live branches (Edge + Sequence, Plan + 3D)
 		// and stays out of the relic (which keeps its Ruler button); the
@@ -880,7 +983,12 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 		expect(sceneStart).toBeGreaterThanOrEqual(0);
 		const sceneBlock = toolbar.slice(sceneStart);
 		expect(sceneBlock).toContain('store.toggleCameraPan()');
-		expect(sceneBlock).toContain('store.toggleGrid()');
+		// P23.14 §14 — grid visibility/opacity belong to the dedicated
+		// `EditorViewportGridControls` the View Bar mounts for every 3D view, so
+		// the menu no longer carries a second Grid row for the same fact.
+		expect(sceneBlock).not.toContain('store.toggleGrid()');
+		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
+		expect(ribbon).toContain('<EditorViewportGridControls {store} />');
 		expect(sceneBlock).toContain('aria-label="Editor floor color picker"');
 		expect(sceneBlock).toContain('store.sessionView.setFloorColor');
 		expect(sceneBlock).toContain('EDITOR_BRIGHT_LIGHTING');
@@ -903,14 +1011,17 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 
 describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
 	it('locks the three-tier Inspector type grammar in tokens + inspector shorthands', () => {
+		// P23.14 R3 — the tiers are ladder steps now, and every step is a multiple
+		// of the single `--editor-type-scale` knob, so one value scales the shell.
 		const tokens = readLibSource('editor/styles/tokens.css');
-		expect(tokens).toContain('--editor-font-size-section: 11px;');
-		expect(tokens).toContain('--editor-font-size-label: 12px;');
-		expect(tokens).toContain('--editor-font-size-input: 12.5px;');
+		expect(tokens).toContain('--editor-font-size-xs: calc(10px * var(--editor-type-scale));');
+		expect(tokens).toContain('--editor-font-size-md: calc(12px * var(--editor-type-scale));');
+		expect(tokens).toContain('--editor-font-size-section: var(--editor-font-size-xs);');
+		expect(tokens).toContain('--editor-font-size-label: var(--editor-font-size-md);');
+		expect(tokens).toContain('--editor-font-size-input: var(--editor-font-size-md);');
 		const inspectorTokens = readLibSource('editor/styles/inspector.css');
-		expect(inspectorTokens).toContain(
-			'--editor-inspector-value: 500 var(--editor-font-size-input) var(--editor-font);'
-		);
+		expect(inspectorTokens).toContain('--editor-inspector-value: var(--editor-type-property);');
+		expect(inspectorTokens).toContain('--editor-inspector-section-title: var(--editor-type-engraved);');
 	});
 
 	it('renders Inspector section headers as 11px uppercase muted across every panel', () => {
@@ -1038,6 +1149,15 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		expect(frame).toContain('border: 1px solid var(--editor-border-normal);');
 		expect(frame).toContain('box-shadow: 0 12px 32px rgb(0 0 0 / 60%)');
 		expect(frame).not.toMatch(/coral|#ef626c/);
+		// P23.14 Decision 5 — 48px transport + readout, and nothing else: no lane,
+		// no ruler and no second scrubber is mounted in the collapsed Drawer.
+		const collapsedStart = frame.indexOf('<div class="mini-player"');
+		expect(collapsedStart).toBeGreaterThan(-1);
+		const collapsed = frame.slice(collapsedStart, frame.indexOf('</section>', collapsedStart));
+		expect(collapsed).toContain('mini-player__timecode');
+		expect(collapsed).not.toContain('<input type="range"');
+		expect(collapsed).not.toContain('EditorCameraTimelineDots');
+		expect(collapsed).not.toContain('EditorCameraTimelineRuler');
 	});
 
 	it('keeps the expanded transport as quiet ghost buttons above the lanes', () => {
@@ -1047,11 +1167,13 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		expect(frame).toContain('background: transparent;');
 		expect(frame).toContain('.mode-control button:focus-visible,');
 		// The frozen mini-player composition is never swapped for generic icons.
+		// P23.14 Decision 5 replaces the collapsed scrubber with the timecode
+		// readout: one playhead, owned by the expanded lanes.
 		for (const fragment of [
 			'scope-capsule',
 			'swapEdgeReverse',
 			'mini-player__transport',
-			'mini-player__scrubber',
+			'mini-player__timecode',
 			'>POV</span>',
 			'>Observer</span>'
 		]) {
@@ -1059,9 +1181,10 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 		}
 	});
 
-	it('reads ruler timecodes at 11px tabular with the playhead on current time', () => {
+	it('reads ruler timecodes at 9px tabular with the playhead on current time', () => {
 		const tokens = readLibSource('editor/styles/tokens.css');
-		expect(tokens).toContain('--editor-font-size-ruler: 11px;');
+		// Atlas `.ruler` — 9 px mono ticks, one ladder step under §7's 10 px floor.
+		expect(tokens).toContain('--editor-font-size-ruler: var(--editor-font-size-2xs);');
 		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
 		expect(dots).toContain('font: var(--editor-timeline-ruler-font);');
 		expect(dots).toContain('font-variant-numeric: tabular-nums;');
@@ -1073,7 +1196,10 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 	it('gives the collapsed pill full keyboard parity within its floating geometry', () => {
 		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
 		expect(frame).toContain('.mini-player__icon:focus-visible,');
-		expect(frame).toContain('.mini-player__scrubber input:focus-visible');
+		// P23.14 Decision 5 — the collapsed strip holds no scrubber, so there is
+		// no range control to focus; the transport buttons carry the parity.
+		expect(frame).not.toContain('mini-player__scrubber');
+		expect(frame).toContain('mini-player__timecode');
 		expect(frame).toContain('.toggle:focus-visible');
 		// Geometry untouched: no resize, no re-dock, no new controls.
 		expect(frame).toContain('bottom: 16px;');
@@ -1824,7 +1950,11 @@ describe('camera context contracts', () => {
 		expect(frameMount).toBeGreaterThan(centerStart);
 		expect(frameMount).toBeLessThan(inspectorMount);
 		expect(app).not.toContain("'bottom bottom bottom'");
-		expect(app).toContain('.center { position: relative; min-width: 0; min-height: 0; overflow: hidden;');
+		// P23.14 §10/§17 — the center column is the View Bar + work surface, so
+		// the live Drawer anchors to the bottom of the WORK area, never over the
+		// bar, and never outside the central column.
+		expect(app).toContain('.center { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;');
+		expect(app).toContain('.work { position: relative; flex: 1; min-width: 0; min-height: 0; }');
 		expect(frame).toContain('.timeline-frame.live {');
 		expect(frame).toContain('bottom: 16px;');
 		expect(frame).toContain('width: min(47.5rem, calc(100% - 2rem));');
@@ -1938,7 +2068,8 @@ describe('camera context contracts', () => {
 		// The status bar is an unconditional shell region (design-spec §2/§18),
 		// present in all four workspaces.
 		expect(app).toContain('<StatusBar');
-		expect(app).toContain("'status status status'");
+		// P23.14 §5 — the Status Rail spans the shell beside the full-height Spine.
+		expect(app).toContain("'spine status status status'");
 		expect(status).toContain('grid-area: status');
 		expect(app).toContain('{layoutPreview} {layoutInteraction} {viewState} {activeSelection}');
 		expect(status).toContain('store.isDirty || layoutPreviewIsDirty(layoutPreview)');

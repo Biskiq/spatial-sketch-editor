@@ -11,6 +11,19 @@ Arrange` surface (staging terminology below refers to the shipped pre-P10
 state). Camera uses `Unsequenced` for cameras outside the ordered subset.
 Current rules are written directly below rather than layered as amendments.
 
+> **P23.14 authority (2026-09-19, owner-ratified):** the P23.14
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract plus its [`Atlas`](./editor-shell-atlas/index.html)
+> are the **durable design authority for the shell**; later phases (P23.15 →
+> P23.16, P24, P26) fit into that grammar and may depend on it. This file stays
+> canonical for **exposure, ownership and capability rules**; its shell
+> **placement, dimension and type** statements are descriptive of the landed
+> PLATE composition (Domain Spine · Project Head · View Bar · Tool Tray · Status
+> Rail). Two ratifications correct numbers this file and `design-specs.md`
+> carried — the Tool Tray's engraved tier (R1) and the armed-tool treatment (R2)
+> — see
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
+
 **Split 2026-08-21:** scene/camera workspace sections moved verbatim to
 [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md) ·
 [`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md) — section
@@ -41,6 +54,43 @@ It intentionally does **not** prescribe Svelte component structure, stores, rout
 > contextual viewport toolbar, the P21+ two-row shell (Row 1 Project Row ·
 > Row 2 Workspace Ribbon) supersedes that **placement** only. No capability,
 > authority, or mutation matrix below is changed by this amendment.
+>
+> **P23.14 reconciliation note (2026-09-19, landed):** the ratified PLATE
+> composition replaces the two-row chrome: a full-height **Domain Spine**
+> (56 px) is the `Scene | Camera` axis, the **Project Head** (36 px) is Row 1,
+> and Row 2 splits into the **View Bar** (34 px — `Plan | 3D` + utilities) and
+> a Paper-attached **Tool Tray** (44 px) that owns the workspace's tool
+> vocabulary. Placement supersedes this spec wherever it describes the
+> ribbon or a permanent floating viewport toolbar; capability, authority and
+> mutation matrices are unchanged, as is the P22 publish/preview ownership.
+> Reference: [`shell.md`](../components/shell.md) §Current implementation and
+> [`design-specs.md`](./design-specs.md) §15.
+>
+> **P23.14 durable authority (2026-09-19, owner-ratified R1–R3):** the
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract is the **durable shell design authority** (its §0.1 states the whole
+> graph). R1 (Tool Tray 7 px group / 8 px tool + opt-in 6 px compact floor), R2
+> (armed = darkened surface, no amber outline/inboard edge/weight jump) and R3
+> (closed 9/10/11/12/13/15/20 px ladder, semantic roles, `--editor-type-scale` +
+> `--editor-control-scale` on `:root`) are folded there, as are the View Bar
+> `MODE`-as-caption grammar and the four distinct surface states.
+>
+> **Superseded for the shell** (do not implement; retained as history): the 32 px
+> Workspace-Ribbon band and the Row 1 / Row 2 composition model; broad-toolbar
+> group-label sizing; the 28 px enclosed View Bar track; the pre-PLATE flat type
+> ramp; navy as the product baseline. **Still canonical here:** capability,
+> authority and workspace exposure matrices (this file, §1–§5 shell placement
+> excepted), the P12/P22 preview, publish and Timeline-ownership rules, and the
+> split scene/camera workspace specs.
+>
+> **Reading order for a later phase (P23.15/P23.16/P24/P26):** `editor-shell-and-visual-system.md`
+> §0 → the section that owns the change → this file only for what a workspace may
+> expose or own. Never take a shell dimension, type size or control metric from
+> this document or from a component's scoped CSS.
+
+> **P23.14 non-goals:** no separate Scene/Camera apps, no third peer view, no
+> Inspector dashboard, no second global toolbar, no sidebar-wide tray, no
+> video-editor Timeline.
 
 ---
 
@@ -130,49 +180,53 @@ Rules:
 
 # 2. Global Shell Contract
 
-The editor shell consists of persistent regions. **P21+ placement (amended by
-[`design-plan-p21.md`](./design-plan-p21.md)):** the former single global
-header + permanent floating contextual viewport toolbar are replaced by a
-Project Row (Row 1) and a Workspace Ribbon (Row 2):
+The editor shell consists of persistent regions. **Placement is the PLATE
+composition (P23.14, landed; supersedes [`design-plan-p21.md`](./design-plan-p21.md)
+and the P21 two-row chrome):**
 
 ```text
-PROJECT ROW — Row 1
-WORKSPACE RIBBON — Row 2
-┌──────────────┬──────────────────────────────┬───────────────────┐
-│              │                              │                   │
-│ LEFT PANEL   │          VIEWPORT            │ INSPECTOR         │
-│              │                              │                   │
-├──────────────┴──────────────────────────────┴───────────────────┤
-│ CAMERA TIMELINE — Camera domain only                            │
-├─────────────────────────────────────────────────────────────────┤
-│ STATUS BAR                                                      │
+┌──────┬───────────────────────────────────────────────────────────┐
+│ D    │ PROJECT HEAD · 36 px                                      │
+│ O    ├───────────────────────────────────────────────────────────┤
+│ M    │ VIEW BAR · 34 px                                          │
+│ A    ├────────┬───────┬────────────────────────┬────────────────┤
+│ I    │ NAVIG. │ TRAY  │        WORK COLUMN     │   INSPECTOR    │
+│ N    │ 268 px │ 44 px │  Plan or 3D canvas     │    300 px      │
+│ S    ├────────┴───────┴────────────────────────┴────────────────┤
+│ PINE │ CAMERA DRAWER — central column only                      │
+├──────┴──────────────────────────────────────────────────────────┤
+│ STATUS RAIL · 24 px                                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Region ownership (placement per P21+; capabilities below remain canonical):
+Region ownership (placement per P23.14; capabilities below remain canonical):
 
-| Region           | Responsibility                                                                  |
-| ---------------- | ------------------------------------------------------------------------------- |
-| Project Row      | project identity, persistence, project navigation, history slot, Visitor Preview, account |
-| Workspace Ribbon | active workspace routing + contextual authoring commands + precision/view controls |
-| Left panel       | structure/resources belonging to current domain                                |
-| Viewport         | spatial authoring + direct-manipulation overlays only                           |
-| Inspector        | properties of current selection                                                 |
-| Timeline         | temporal Camera authoring                                                       |
-| Status bar       | state, navigation hints, snap, units                                            |
+| Region        | Responsibility                                                                  |
+| ------------- | ------------------------------------------------------------------------------- |
+| Domain Spine  | the `Scene | Camera` domain axis (never a workspace, never a peer view)         |
+| Project Head  | project identity, persistence, project navigation, history slot, Visitor Preview, theme, account |
+| View Bar      | `Plan | 3D` view routing + workspace utilities and precision/view controls      |
+| Tool Tray     | the active workspace's tool vocabulary, Paper-attached rail                     |
+| Navigator     | structure/resources belonging to current domain                                |
+| Work column   | spatial authoring + direct-manipulation overlays only                           |
+| Inspector     | properties of current selection                                                 |
+| Camera Drawer | temporal Camera authoring — central column only                                |
+| Status Rail   | state, navigation hints, snap, units                                            |
 
 The overall shell should remain structurally stable while workspace-specific content changes inside these regions.
 
 ---
 
-# 3. Project Row (Row 1) and Workspace Ribbon (Row 2)
+# 3. Project Head (Row 1), View Bar and Tool Tray (Row 2)
 
-**P21+ placement (amended by [`design-plan-p21.md`](./design-plan-p21.md)
+**Placement (P23.14, landed; amended from [`design-plan-p21.md`](./design-plan-p21.md)
 §C):** the former single global header + permanent contextual viewport toolbar
-split into two chrome rows. Capability and authority rules are unchanged — this
-is placement only.
+split into two chrome rows in P21, and P23.14 moved the domain axis to the
+full-height Domain Spine and the authoring tools to the Tool Tray. Row 1 is the
+Project Head, Row 2 is the View Bar plus the Tool Tray. Capability and authority
+rules are unchanged — this is placement only.
 
-Row 1 (Project Row) exists across **all four project surfaces** (Spatial and Experience as the two primary creative modes; Assets and Publish as project-level supporting surfaces). It exposes:
+Row 1 (Project Head) exists across **all four project surfaces** (Spatial and Experience as the two primary creative modes; Assets and Publish as project-level supporting surfaces). It exposes:
 
 * product/project identity
 * current project name (inline editable)
@@ -184,11 +238,15 @@ Row 1 (Project Row) exists across **all four project surfaces** (Spatial and Exp
 * project-level document menu/actions
 * editor/settings access where applicable
 
-Row 2 (Workspace Ribbon) owns workspace routing and contextual authoring:
+Row 2 (View Bar + Tool Tray) owns workspace routing, utilities and the active
+workspace's tool vocabulary:
 
-* `[Scene | Camera]`
-* `[Plan | 3D]`
-* active authoring tools for the current workspace
+* `[Plan | 3D]` (the `Scene | Camera` domain axis is the Domain Spine, full
+  height, not a Row 2 track)
+* workspace utilities and precision/view controls
+* the workspace's authoring tools, presented as the Paper-attached Tool Tray
+  (group-labelled, icon-led, one presentation of the same toolbar component
+  the View Bar uses for utilities)
 
 Row 1 MUST NOT contain workspace-specific manipulation commands such as:
 
@@ -200,7 +258,7 @@ Row 1 MUST NOT contain workspace-specific manipulation commands such as:
 * Frame
 * Path
 
-Those belong to the contextual Workspace Ribbon (Row 2).
+Those belong to the View Bar or the Tool Tray.
 
 ### State behavior
 
@@ -226,7 +284,8 @@ Recommended boot state:
 
 # 4. Left Panel Routing
 
-The left side changes primarily by **domain**, not merely by Plan/3D view.
+The left side (the **Navigator**, 268 px; 240–300) changes primarily by
+**domain**, not merely by Plan/3D view.
 
 ## Scene domain
 
@@ -341,13 +400,20 @@ Possible selection types include:
 
 The Inspector should use shared interaction grammar:
 
-* selection header
+* selection header (identity first: name/reference lead, rename owned here)
 * collapsible groups
 * numeric fields
 * toggles
 * dropdowns
 * contextual commands
 * optional tags/notes
+
+**Property-first order (P23.14, landed):** the panel leads with the selection's
+identity and its editable properties; destructive actions are deferred to the
+end of the panel and their entry points are reason-coded — an action that
+cannot run says why instead of disappearing or silently no-op'ing. Precise
+numbers are typed near the gesture that sets them; the Status Rail never carries
+all of the measurement.
 
 The selected entity determines Inspector content.
 
@@ -434,9 +500,10 @@ Likewise, Scene workspaces may show Camera entries in project hierarchy without 
 
 # 16. Toolbar Ownership
 
-**P21+ placement:** contextual authoring tools live in the Workspace Ribbon
-(Row 2) rather than a floating viewport toolbar. The viewport retains only
-direct-manipulation fixtures (selection handles, gizmos, orientation box).
+**Placement (P23.14, landed):** contextual authoring tools live in the
+workspace's **Tool Tray** (a 44 px Paper-attached rail) and its utilities in the
+**View Bar**, rather than in a floating viewport toolbar. The viewport retains
+only direct-manipulation fixtures (selection handles, gizmos, orientation box).
 
 Toolbar should be selected from current workspace.
 
@@ -601,9 +668,10 @@ Shell should remain stable.
 Changes:
 
 * Scene sidebar → Camera Sidebar
-* Workspace Ribbon tools → Camera-domain ribbon tools (Row 2)
+* View Bar + Tool Tray tools → Camera-domain tools (Row 2)
 * Inspector routes to Camera context/selection
-* Camera Timeline expands from bottom
+* Camera Drawer mounts at the bottom of the central column (never over the
+  Navigator or the Inspector)
 * viewport becomes Camera representation of selected Plan/3D view
 
 Shell view/domain switches are **instant** — no fade on workspace, sidebar,
@@ -614,9 +682,9 @@ animation; its expansion state remains unchanged.
 
 Reverse:
 
-* Camera Sidebar → Scene Hierarchy/Assets
-* Camera-domain ribbon tools → Scene-domain ribbon tools (Row 2)
-* Camera Timeline collapses/disappears
+* Camera Sidebar → Scene Navigator (Hierarchy/Assets)
+* Camera-domain tools → Scene-domain tools (Row 2)
+* Camera Drawer collapses/disappears (never auto-expands on the switch)
 * Scene Inspector context restored
 
 Do not animate entire editor around unnecessarily.
@@ -642,7 +710,7 @@ Persistent:
 Changes:
 
 * viewport representation
-* Workspace Ribbon (Row 2) tools
+* View Bar + Tool Tray (Row 2) tools
 * Inspector capabilities where view-specific
 * viewport helpers
 

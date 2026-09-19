@@ -27,6 +27,13 @@ export type PlanLayoutTarget =
 	 * Add-junction command (no invented coordinate, no second hit resolver).
 	 */
 	| { kind: 'wall'; wallId: string; splitDistance?: number }
+	/**
+	 * P23.14 §13 — canonical wall-first Junction target. The Junction-dissolve
+	 * entry point the shell finish owns: it reuses the SAME planner-backed
+	 * `dissolveWallFirstJunction` adapter the Delete-key path calls, so the menu
+	 * never grows a second dissolve implementation.
+	 */
+	| { kind: 'junction'; junctionId: string }
 	| { kind: 'object'; objectId: string };
 
 export type PlanLayoutMenuActions = {
@@ -79,12 +86,24 @@ export type PlanLayoutMenuActions = {
 	 * without a dedicated tool and without a second curve-editing code path.
 	 */
 	addBendPoint?(wallId: string, bendDistance: number): void;
+	/**
+	 * P23.14 §13 — the Junction-dissolve command (the planner-backed
+	 * `dissolveWallFirstJunction` adapter). Optional like every other command:
+	 * a caller that cannot honor it omits it and gets no item.
+	 */
+	dissolveJunction?(junctionId: string): void;
 	deleteObject(objectId: string): void;
 };
 
 export function buildPlanLayoutContextMenuItems(input: {
 	target: PlanLayoutTarget;
 	mutationBlockedReason: string | null;
+	/**
+	 * P23.14 §13 — the core planner's own refusal reason for a Junction target,
+	 * resolved by the caller through `wallFirstJunctionDissolveRefusal`. The
+	 * menu states it; it never re-derives eligibility.
+	 */
+	dissolveBlockedReason?: string | null;
 	actions: PlanLayoutMenuActions;
 }): ContextMenuItem[] {
 	const { target } = input;
@@ -138,6 +157,22 @@ export function buildPlanLayoutContextMenuItems(input: {
 				danger: true,
 				disabledReason: deleteDisabled,
 				run: () => input.actions.deleteOpening(target.roomId, target.openingId)
+			}
+		];
+	}
+	// P23.14 §13 — the Junction-dissolve entry point. Destructive actions come
+	// last in every other branch; a Junction target has exactly this one, and its
+	// refusal reason comes from the planner (never from a second eligibility
+	// check here). No action, no item — the omit-don't-dummy policy.
+	if (target.kind === 'junction') {
+		if (!input.actions.dissolveJunction) return [];
+		return [
+			{
+				id: 'dissolve-junction',
+				label: 'Dissolve junction…',
+				danger: true,
+				disabledReason: input.mutationBlockedReason ?? input.dissolveBlockedReason ?? null,
+				run: () => input.actions.dissolveJunction!(target.junctionId)
 			}
 		];
 	}

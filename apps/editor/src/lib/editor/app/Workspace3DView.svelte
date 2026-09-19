@@ -65,6 +65,9 @@ import EditorCameraLabelProjector from '$lib/editor/camera/EditorCameraLabelProj
 		type EditorActiveSelectionStore
 	} from './active-editor-selection.svelte';
 	import type { LayoutGizmoCandidateBundle } from '$lib/editor/gizmo/layout-gizmo-candidate';
+	import type { EditorGizmoCapabilities } from '$lib/editor/gizmo/editor-gizmo-policy';
+	import EditorViewportToolbar from '$lib/editor/EditorViewportToolbar.svelte';
+	import ToolTray from './ToolTray.svelte';
 
 	let {
 		store,
@@ -78,13 +81,20 @@ import EditorCameraLabelProjector from '$lib/editor/camera/EditorCameraLabelProj
 		contextMenu = null,
 		takeoverPose = null,
 		takeoverObserver = null,
-		onTakeoverPoseRestored = undefined
+		onTakeoverPoseRestored = undefined,
+		// P23.14 §11 — the Paper-attached Tool Tray renders the same toolbar
+		// component the View Bar uses, so the 3D tool vocabulary needs the same
+		// capability projection the bar receives.
+		gizmoCapabilities = null,
+		transformDisabled = false
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
 		layoutInteraction: LayoutInteractionState;
 		context: 'scene' | 'camera';
 		contextMenu?: EditorContextMenuStore | null;
+		gizmoCapabilities?: EditorGizmoCapabilities | null;
+		transformDisabled?: boolean;
 		takeoverPose?: import('$lib/editor/camera/editor-camera').EditorOrbitPose | null;
 		takeoverObserver?: import('$lib/editor/editor-store.svelte').TakeoverObserverState | null;
 		onTakeoverPoseRestored?: () => void;
@@ -342,6 +352,17 @@ import EditorCameraLabelProjector from '$lib/editor/camera/EditorCameraLabelProj
 	 */
 </script>
 
+<div class="viewport-shell">
+	<!-- P23.14 §11/§14 — the Tool Tray is attached to the Paper edge and paints
+	     ONLY the surface's tool vocabulary. The View Bar renders the same
+	     component in its `ribbon` form and owns the subordinate utilities
+	     (Path/Frame, View menu, Snap, Panels); the Camera Drawer owns
+	     Observer/POV. Each writable fact has exactly one host. -->
+	<ToolTray label="3D tools">
+		<EditorViewportToolbar tray {store} context={isCameraContext ? 'camera' : 'scene'}
+			{gizmoCapabilities} {transformDisabled} />
+	</ToolTray>
+	<div class="paper-column">
 <div
 	class="viewport"
 	class:placing={Boolean(
@@ -509,8 +530,14 @@ import EditorCameraLabelProjector from '$lib/editor/camera/EditorCameraLabelProj
 		<EditorOrientationGizmo {store} layoutBounds={layoutPreview.bounds} />
 	{/if}
 </div>
+	</div>
+</div>
 
 <style>
+	/* P23.14 §5/§11 — 44 px Tool Tray + the 3D Paper beside it. The `.viewport`
+	   box keeps owning every absolutely positioned overlay it projects. */
+	.viewport-shell { display: flex; flex-direction: row; width: 100%; height: 100%; min-height: 0; }
+	.paper-column { position: relative; flex: 1; min-width: 0; min-height: 0; }
 	.viewport {
 		position: relative;
 		width: 100%;

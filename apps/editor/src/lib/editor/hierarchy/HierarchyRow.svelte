@@ -56,6 +56,13 @@
 	const interactive = $derived(isInteractive(row));
 	const open = $derived(isOpen(row));
 	const hasChildren = $derived((row.children?.length ?? 0) > 0);
+	// P23.14 §12.2/§12.3 — a contextual occurrence is the SAME canonical entity
+	// as its home row (same reference, same name, same selection), presented as a
+	// projection through another context rather than a second owner. It renders
+	// with the entity row's grammar plus an occurrence marker, so "shown through
+	// Gallery North" can never masquerade as "owned by Gallery North".
+	const isEntityRow = $derived(row.kind === 'entity' || row.kind === 'occurrence');
+	const isOccurrence = $derived(row.kind === 'occurrence');
 
 	// ── P23.12 identity presentation ──────────────────────────────────────
 
@@ -91,8 +98,9 @@
 	class:hierarchy-node--depth={depth > 0}
 	role="treeitem"
 	aria-expanded={row.disclosureKey ? open : undefined}
-	aria-selected={row.kind === 'entity' ? selected : undefined}
+	aria-selected={isEntityRow ? selected : undefined}
 	data-row-key={row.rowKey}
+	data-row-kind={row.kind}
 >
 	{#if row.kind === 'heading'}
 		<!-- Presentational eyebrow: not focusable, not selectable, not a page. -->
@@ -122,10 +130,15 @@
 				<span class="tree-row__label">{row.label}</span>
 			</button>
 		</div>
+	{:else if row.kind === 'empty'}
+		<!-- §12.3 species 6 — authored empty/teaching state. Never a selectable
+		     entity, never an error: guidance for a page that projects no rows. -->
+		<p class="hierarchy-empty">{row.label}</p>
 	{:else}
-		<!-- `relation` (non-selectable, e.g. `Ends J1 · J2`) and `entity` rows. -->
+		<!-- `relation` count/summary rows (non-selectable), `entity` rows and
+		     contextual `occurrence` rows. -->
 		<div class="hierarchy-line">
-			{#if row.kind === 'entity' && row.disclosureKey}
+			{#if isEntityRow && row.disclosureKey}
 				<button
 					type="button"
 					class="tree-row__chevron"
@@ -138,10 +151,11 @@
 			{:else}
 				<span class="tree-row__chevron-spacer" aria-hidden="true"></span>
 			{/if}
-			{#if row.kind === 'entity'}
+			{#if isEntityRow}
 				<button
 					type="button"
 					class="tree-row hierarchy-entity"
+					class:hierarchy-occurrence={isOccurrence}
 					class:tree-row--selected={selected}
 					class:tree-row--match-reference={matchEmphasis === 'reference'}
 					class:tree-row--match-label={matchEmphasis === 'label'}
@@ -254,10 +268,11 @@
 		border-color: var(--editor-border-normal);
 		background: var(--editor-bg-control);
 	}
-	.tree-root__label { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.02em; }
+	/* Roles, not numbers (R3): scope header + disclosure glyph follow the knobs. */
+	.tree-root__label { font: var(--editor-type-row-head); letter-spacing: 0.02em; }
 	.chevron {
 		display: block;
-		font-size: 1rem;
+		font-size: var(--editor-icon-size-sm);
 		line-height: 1;
 		transform: rotate(0);
 		transition: transform 120ms ease;
@@ -267,7 +282,8 @@
 		display: flex;
 		width: 100%;
 		min-width: 0;
-		min-height: 2rem;
+		/* Atlas `.row` — 29 px row with a 28 px entity target. */
+		min-height: var(--editor-row-height);
 		box-sizing: border-box;
 		align-items: center;
 		gap: 0.45rem;
@@ -292,10 +308,12 @@
 		color: var(--editor-text-primary);
 	}
 	.tree-row--selected[aria-disabled='true'] { opacity: 1; }
+	/* Atlas `.row .disclosure` — 18 px target, 26 px tall. */
 	.tree-row__chevron {
 		display: grid;
-		width: 1.7rem;
-		min-height: 2rem;
+		width: var(--editor-disclosure-size);
+		min-width: var(--editor-disclosure-size);
+		min-height: var(--editor-control-sm-height);
 		place-items: center;
 		padding: 0;
 		border: 1px solid transparent;
@@ -308,12 +326,12 @@
 		border-color: var(--editor-border-normal);
 		background: var(--editor-bg-control);
 	}
-	.tree-row__chevron-spacer { display: block; width: 1.7rem; min-height: 2rem; }
+	.tree-row__chevron-spacer { display: block; width: var(--editor-disclosure-size); min-width: var(--editor-disclosure-size); min-height: var(--editor-control-sm-height); }
 	.tree-row__label {
 		min-width: 0;
 		overflow: hidden;
-		font-size: 0.74rem;
-		font-weight: 570;
+		/* Role, not a number: the ladder scales with `--editor-type-scale`. */
+		font: var(--editor-type-row);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -337,8 +355,8 @@
 		/* Protected: no shrink, no ellipsis — four glyphs plus prefix always fit. */
 		flex: 0 0 auto;
 		color: var(--editor-text-muted);
-		font-family: var(--editor-font-mono, ui-monospace, monospace);
-		font-size: 0.62rem;
+		/* §7 two voices + the Atlas's 10 px compact reference. */
+		font: var(--editor-type-ref);
 		letter-spacing: 0.01em;
 		white-space: nowrap;
 	}
@@ -348,7 +366,7 @@
 		min-width: 0;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.6rem;
+		font-size: var(--editor-font-size-xs);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
@@ -360,15 +378,50 @@
 		color: var(--editor-text-primary);
 		font-weight: 600;
 	}
+	/* P23.14 §12.3 species 4 — contextual occurrence. The canonical identity is
+		kept verbatim (name, protected full reference, same selection), and the
+		`↳` cue plus the quieter name weight make the projection explicit: a
+		shared Wall shown through a Room can never read as a second owner. */
+	.hierarchy-occurrence::before {
+		content: '↳';
+		flex: 0 0 auto;
+		color: var(--editor-text-muted);
+		font-size: var(--editor-font-size-xs);
+		line-height: 1;
+	}
+	.hierarchy-occurrence .tree-row__label { font-weight: 500; }
+	.hierarchy-occurrence .tree-row__label--reference { font-weight: 600; }
+	/* P23.14 §12.3 species 6 — authored empty/teaching state: guidance, not an
+		entity, and never an error treatment. */
+	.hierarchy-empty {
+		margin: 0.35rem 0.45rem;
+		color: var(--editor-text-muted);
+		font-size: var(--editor-font-size-sm);
+		font-style: italic;
+		line-height: 1.4;
+	}
 	.tree-row__meta {
 		min-width: 0;
 		margin-left: auto;
 		overflow: hidden;
 		color: var(--editor-text-muted);
-		font-size: 0.62rem;
+		font: var(--editor-type-ref);
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.tree-row--selected .tree-row__meta,
 	.tree-row--selected .tree-row__reference { color: var(--editor-text-primary); }
+	/*
+	 * P23.14 §23 — progressive density. When the Navigator is squeezed the row
+	 * sheds its trailing metadata first (`row.secondary` — counts, kinds, derived
+	 * numbers) and keeps identity (the label), selection and its place in the
+	 * tree. Shedding is the last resort, not the first: the measured surface is
+	 * the scroll track inside the column (reference 268 − 36 chrome = 232; the
+	 * 240 minimum leaves 204), so 216 px fires only once the column is genuinely
+	 * squeezed and never at the reference width. The tooltip still carries the
+	 * full id, so nothing becomes unreachable.
+	 */
+	@container (max-width: 216px) {
+		.tree-row__meta { display: none; }
+	}
 </style>

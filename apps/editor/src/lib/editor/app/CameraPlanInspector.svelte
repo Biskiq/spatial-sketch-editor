@@ -1,4 +1,10 @@
 <script lang="ts">
+	// P23.14 §13 — the panel opens on the selection, not on prose: the section
+	// heading is the property-first identity line (kind icon, name-or-reference,
+	// kind stated separately), and raw canonical IDs live behind Technical
+	// details. Camera entities carry no ledger reference, so the authored label is
+	// the identity and its raw ID is diagnosis.
+	import { Camera, Eye, GitMerge, Spline } from 'lucide-svelte';
 	import type { CameraConnectionDirection } from '$lib/types/scene';
 	import { isFlowNode } from '$lib/content/scene';
 	import type { EditorStore } from '../editor-store.svelte';
@@ -72,6 +78,10 @@
 			? getScenePathAnchorWorldPosition(anchor, store.rooms)
 			: null
 	);
+
+	// One disclosure state for the panel, so switching between camera kinds never
+	// collapses the identity the user just opened.
+	let technicalDetailsOpen = $state(false);
 
 	let timingDirection = $state<CameraConnectionDirection>('forward');
 	$effect(() => {
@@ -160,8 +170,16 @@
 {#if selection?.kind === 'node' && node && nodeWorld}
 	<section class="camera-plan-panel" aria-label="Camera Plan node editor">
 		<div class="section-heading">
-			<h2>Camera node</h2>
-			<span>Room-local</span>
+			<span class="identity-icon" aria-hidden="true"><Camera size={15} /></span>
+			<span class="identity-text">
+				<span class="identity-title">{formatCameraNodeLabel(node.label, node.id)}</span>
+				<!-- P23.0b: a canonical node carries no Room, so the locality badge must
+				     report the node's own frame — "room-local" here was a fixed string
+				     that described the legacy format only. -->
+				<span class="identity-kind"
+					>Camera node · {node.roomId ? 'room-local' : 'world-local'}</span
+				>
+			</span>
 		</div>
 
 		<label class="label-field">
@@ -175,8 +193,6 @@
 		</label>
 
 		<dl>
-			<div><dt>Node</dt><dd class="id">{node.id}</dd></div>
-			<div><dt>Room</dt><dd>{node.roomId}</dd></div>
 			<div>
 				<dt>Flow order</dt>
 				<dd>
@@ -188,6 +204,12 @@
 				</dd>
 			</div>
 		</dl>
+
+		<details class="technical-details" bind:open={technicalDetailsOpen}>
+			<summary>Technical details</summary>
+			<span class="technical-id">{node.id}</span>
+			{#if node.roomId}<span class="technical-id">Room {node.roomId}</span>{/if}
+		</details>
 
 		{#key node.id}
 			<div class="xz-fields" aria-label="Camera node world position">
@@ -270,16 +292,24 @@
 {:else if selection?.kind === 'connection' && connection}
 	<section class="camera-plan-panel" aria-label="Camera Plan connection editor">
 		<div class="section-heading">
-			<h2>Camera connection</h2>
-			<span>{connection.positionPath.kind}</span>
+			<span class="identity-icon" aria-hidden="true"><GitMerge size={15} /></span>
+			<span class="identity-text">
+				<span class="identity-title">{formatCameraNodeLabel(fromNode?.label, connection.fromNodeId)} → {formatCameraNodeLabel(toNode?.label, connection.toNodeId)}</span>
+				<span class="identity-kind">Camera connection · {connection.positionPath.kind}</span>
+			</span>
 		</div>
 		<dl>
-			<div><dt>Connection</dt><dd class="id">{connection.id}</dd></div>
-			<div><dt>From</dt><dd>{formatCameraNodeLabel(fromNode?.label, connection.fromNodeId)}<small class="id">{connection.fromNodeId}</small></dd></div>
-			<div><dt>To</dt><dd>{formatCameraNodeLabel(toNode?.label, connection.toNodeId)}<small class="id">{connection.toNodeId}</small></dd></div>
+			<div><dt>From</dt><dd>{formatCameraNodeLabel(fromNode?.label, connection.fromNodeId)}</dd></div>
+			<div><dt>To</dt><dd>{formatCameraNodeLabel(toNode?.label, connection.toNodeId)}</dd></div>
 			<div><dt>Anchors</dt><dd>{connection.positionPath.anchors.length}</dd></div>
 			<div><dt>Clearance</dt><dd>{connection.clearance.toFixed(2)} m</dd></div>
 		</dl>
+
+		<details class="technical-details" bind:open={technicalDetailsOpen}>
+			<summary>Technical details</summary>
+			<span class="technical-id">{connection.id}</span>
+			<span class="technical-id">{connection.fromNodeId} → {connection.toNodeId}</span>
+		</details>
 
 		{#if graph}
 			<EditorCameraConnectionTiming
@@ -303,13 +333,22 @@
 {:else if selection?.kind === 'anchor' && anchor && anchorWorld && connection}
 	<section class="camera-plan-panel" aria-label="Camera Plan anchor editor">
 		<div class="section-heading">
-			<h2>Curve anchor</h2>
-			<span>{anchor.roomId ? `${anchor.roomId} local` : 'World-space'}</span>
+			<span class="identity-icon" aria-hidden="true"><Spline size={15} /></span>
+			<span class="identity-text">
+				<span class="identity-title">Curve anchor</span>
+				<!-- Same vocabulary as the node badge: the document frame is what the
+				     user reads, not a synonym for it. -->
+				<span class="identity-kind"
+					>Camera path · {anchor.roomId ? 'room-local' : 'world-local'}</span
+				>
+			</span>
 		</div>
-		<dl>
-			<div><dt>Anchor</dt><dd class="id">{anchor.id}</dd></div>
-			<div><dt>Path</dt><dd class="id">{connection.id}</dd></div>
-		</dl>
+
+		<details class="technical-details" bind:open={technicalDetailsOpen}>
+			<summary>Technical details</summary>
+			<span class="technical-id">{anchor.id}</span>
+			<span class="technical-id">Path {connection.id}</span>
+		</details>
 		{#key `${connection.id}:${anchor.id}`}
 			<div class="xz-fields" aria-label="Camera path anchor world position">
 				<EditorNumberField
@@ -338,18 +377,22 @@
 {:else if selection?.kind === 'view-keyframe' && viewKeyframe && connection}
 	<section class="camera-plan-panel" aria-label="Camera Plan view breakpoint">
 		<div class="section-heading">
-			<h2>View breakpoint</h2>
-			<span>{selection.direction}</span>
+			<span class="identity-icon" aria-hidden="true"><Eye size={15} /></span>
+			<span class="identity-text">
+				<span class="identity-title">{selection.direction} view breakpoint</span>
+				<span class="identity-kind">Camera connection framing</span>
+			</span>
 		</div>
 		<p class="passive-note">
 			A view breakpoint stays selected across the Plan ⇄ 3D switch, but its
 			framing is authored in Camera 3D. Switch to 3D to edit the look target,
 			FOV, and aim.
 		</p>
-		<dl>
-			<div><dt>View key</dt><dd class="id">{viewKeyframe.id}</dd></div>
-			<div><dt>Path</dt><dd class="id">{connection.id}</dd></div>
-		</dl>
+		<details class="technical-details" bind:open={technicalDetailsOpen}>
+			<summary>Technical details</summary>
+			<span class="technical-id">{viewKeyframe.id}</span>
+			<span class="technical-id">Path {connection.id}</span>
+		</details>
 	</section>
 {/if}
 
@@ -359,16 +402,24 @@
 
 <style>
 	.camera-plan-panel { display: flex; flex-direction: column; gap: 0.75rem; }
-	.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
-	h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--editor-text-muted); }
-	.section-heading span { color: var(--editor-text-muted); font-size: 0.68rem; }
-	.status { margin: 0.75rem 0 0; color: var(--editor-warning); font-size: 0.7rem; line-height: 1.4; }
+	/* P23.14 §13 — the property-first identity line: kind icon, name-or-reference
+	   and the kind stated separately. No prose lead, no dashboard. */
+	.section-heading { display: flex; min-width: 0; align-items: flex-start; gap: 0.4rem; }
+	.identity-icon { display: inline-flex; flex: 0 0 auto; margin-top: 0.1rem; color: var(--editor-text-muted); }
+	.identity-text { display: flex; min-width: 0; flex-direction: column; gap: 0.12rem; }
+	.identity-title { overflow: hidden; color: var(--editor-text-primary); font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+	.identity-kind { color: var(--editor-text-muted); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+	/* P23.14 §13 — raw canonical IDs are diagnosis, reachable on demand. */
+	.technical-details { display: flex; flex-direction: column; gap: 0.2rem; color: var(--editor-text-muted); font-size: 0.68rem; }
+	.technical-details summary { cursor: pointer; }
+	.technical-id { font-family: var(--editor-font-mono, ui-monospace, monospace); font-size: 10px; overflow-wrap: anywhere; }
+	/* Text takes the warning TEXT sibling (ruling D2): the base token is the
+	   glyph/border family, re-inked for surfaces, not for small text. */
+	.status { margin: 0.75rem 0 0; color: var(--editor-text-warning); font-size: 0.7rem; line-height: 1.4; }
 	dl { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
 	dl div { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.45rem; }
 	dt, .label-field span { color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
 	dd { display: flex; flex-direction: column; gap: 0.1rem; margin: 0; color: var(--editor-text-primary); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
-	dd small { color: var(--editor-text-muted); font-size: 0.62rem; }
-	.id { font-family: var(--editor-font); overflow-wrap: anywhere; }
 	.label-field { display: flex; flex-direction: column; gap: 0.3rem; }
 	.label-field input { width: 100%; box-sizing: border-box; padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel); color: var(--editor-text-primary); font: 500 12.5px var(--editor-font); }
 	.order-badge { align-self: flex-start; padding: 0.14rem 0.5rem; border: 1px solid var(--editor-accent-border); border-radius: 999px; background: var(--editor-bg-selected); color: var(--editor-text-primary); font-size: 0.68rem; font-weight: 650; }

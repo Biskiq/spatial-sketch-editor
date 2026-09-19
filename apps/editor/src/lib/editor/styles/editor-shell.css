@@ -10,9 +10,16 @@ body:has(.editor-page) {
 	margin: 0;
 }
 
-/* Shared focus treatment (DS §14): 1px accent border + soft outer ring. */
+/* Shared focus treatment (DS §14 + P23.14 §7): the accent border + soft ring
+ * stay as the chroma affordance, and keyboard focus additionally paints the
+ * independent focus ring — an offset outline OUTSIDE the control's box, so a
+ * control that is focused *and* selected (or armed, or hovered) reads as both
+ * states at once instead of one hue overwriting the other. Removing
+ * `outline: none` is the point of the change: focus is no longer only a
+ * recoloured border. */
 .editor-page :is(button, input, select, textarea, [tabindex]):focus-visible {
-	outline: none;
+	outline: var(--editor-focus-ring-width) solid var(--editor-focus-ring);
+	outline-offset: var(--editor-focus-ring-offset);
 	border-color: var(--editor-accent);
 	box-shadow: 0 0 0 2px var(--editor-accent-soft);
 }
@@ -20,6 +27,56 @@ body:has(.editor-page) {
 /* Numeric readouts keep tabular figures (DS §6); never monospace. */
 .editor-page .editor-numeric {
 	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * P23.14 §23 — reduced motion. The chrome stops animating hover/selection
+ * changes; workspace swaps are already instant, so nothing a user can *do*
+ * changes here, only how much the shell moves while they do it. Scoped to the
+ * editor page (the relic keeps its own frozen transitions) and expressed as a
+ * duration override so a component does not have to know about the preference.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.editor-page *,
+	.editor-page *::before,
+	.editor-page *::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/*
+ * P23.14 §23 — coarse pointers. Every control in the chrome reaches the 44 px
+ * minimum (`--editor-touch-target-min`) in BOTH dimensions, and the bands that
+ * hold them grow with them, so a 44 px control is never clipped into a 26 px
+ * row. Both `min-width` and `min-height` are load-bearing: height alone leaves
+ * narrow icon controls (e.g. the View Bar `.utility-btn` at
+ * `var(--editor-control-sm-height)` ≈ 24 px) at roughly 24 × 44 instead of the
+ * ≥44 × 44 the design promises. The Plan canvas is untouched:
+ * `$lib/layout/plan-control-grammar` already raises its own
+ * acquisition radius for coarse pointers, because canvas targets are geometry
+ * rather than laid-out chrome.
+ *
+ * `a[href]` is in this list because the chrome does carry links (the Project
+ * Head's Projects / Spatial / Publish destinations) and they own the same
+ * 26 px control height as buttons: leaving them out let a real shell target
+ * stay below the minimum the rule promises.
+ */
+@media (pointer: coarse) {
+	.project-editor {
+		--editor-appbar-height: var(--editor-touch-target-min);
+		--editor-project-row-height: var(--editor-touch-target-min);
+		--editor-viewbar-height: var(--editor-touch-target-min);
+	}
+	.project-editor :is(button, a[href], [role='tab'], [role='menuitem'], select, input, summary) {
+		min-width: var(--editor-touch-target-min);
+		min-height: var(--editor-touch-target-min);
+	}
+	.project-editor .tree-row {
+		min-height: var(--editor-touch-target-min);
+	}
 }
 
 /* P21 chrome metrics apply only to the main editor, never the frozen relic. */

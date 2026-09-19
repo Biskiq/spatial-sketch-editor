@@ -64,6 +64,7 @@
 		resolveWallChainEndpointAtLength,
 		resolveArrangeScenePick,
 		isLayoutPresetTool,
+		hasLayoutTransientInteraction,
 		wallChainRoleForTool,
 		clearPlanFocus,
 		setPlanFocus,
@@ -85,6 +86,7 @@
 	import type { LayoutPreviewState } from './layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
+		wallFirstJunctionDissolveRefusal,
 		commitLayoutPrimitive,
 		commitLayoutObjectPreset,
 		commitLayoutRoomEdit,
@@ -160,6 +162,7 @@
 		planNumericEntryBlur,
 		planNumericEntryEscape,
 		planNumericEntryField,
+		planNumericFieldAxis,
 		planNumericEntryHoldsExplicitValue,
 		planNumericControlEntryTarget,
 		planNumericEntryInput,
@@ -225,7 +228,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	import { isEditableTarget } from '../context-menu/editable-target';
 	import {
 		buildArrangeContextMenuItems,
-		buildPlanLayoutContextMenuItems
+		buildPlanLayoutContextMenuItems,
+		type PlanLayoutTarget
 	} from '../context-menu/plan-menu-items';
 	import {
 		capturePlanSceneTransformMembers,
@@ -317,7 +321,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		store,
 		contextMenu = null,
 		hierarchyEmphasis = null,
-		hierarchySceneEmphasis = null
+		hierarchySceneEmphasis = null,
+		planHintDismissed = $bindable(false)
 	}: {
 		model: LayoutPreviewModel;
 		preview: LayoutPreviewState;
@@ -401,6 +406,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		hierarchyEmphasis?: PlanHitIdentity | null;
 		/** Scene entity emphasis uses the existing passive footprint renderer. */
 		hierarchySceneEmphasis?: string | null;
+		/**
+		 * Startup-only empty hint, owned by the editor session (bound from
+		 * EditorApp through PlanWorkspace) so a Plan → 3D → Plan round-trip
+		 * cannot resurrect the card. Mounts without a binding (the frozen
+		 * relic) keep viewport-local behavior via the default.
+		 */
+		planHintDismissed?: boolean;
 	} = $props();
 
 	let svgElement = $state<SVGSVGElement>();
@@ -1922,6 +1934,26 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (interaction.architectureEdit || architectureEditSnapshot) cancelArchitectureEditGesture();
 	});
 
+	// P23.14 §13 (carried row) — an EXTERNAL history transaction invalidates an
+	// open numeric field. Import/reset/undo/redo bump `reframeVersion`, and the
+	// field's anchor follows the new geometry while its text stays the value the
+	// user opened: the number would then describe a shape that no longer exists,
+	// and committing it would be a surprising edit. The entry is cancelled through
+	// its own lifecycle function, never by a second field-state rule here. A
+	// field's own commit bumps only `previewVersion`, so a successful entry can
+	// never cancel itself.
+	let numericEntryReplacementVersion = $state<number | null>(null);
+	$effect(() => {
+		const version = preview.reframeVersion;
+		if (numericEntryReplacementVersion === null) {
+			numericEntryReplacementVersion = version;
+			return;
+		}
+		if (version === numericEntryReplacementVersion) return;
+		numericEntryReplacementVersion = version;
+		if (numericEntry) closeNumericEntry();
+	});
+
 	$effect(() => {
 		// P23.2 clear rules — snap toggle off or a Plan↔3D switch drops any
 		// live guide/marker.
@@ -1962,6 +1994,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	// P21.2 — session-scoped ghost dismissal on first tool use (not serialized).
 	$effect(() => {
 		if (interaction.tool !== 'select' && !ghostDismissed) ghostDismissed = true;
+	});
+
+	// Startup-only empty hint: the "Start your plan" card dismisses the moment
+	// the first drafting gesture begins — not at commit — and is never
+	// restored, so undoing back to an empty plan cannot resurrect it. The
+	// transient check catches every in-progress draft (first polygon point,
+	// wall-chain start, rectangle/primitive drag); the planEmpty arm catches
+	// synchronous one-click commits (presets) that never hold transient state.
+	// Owned by the editor session (bound prop above), never viewport-local:
+	// this component unmounts on Plan → 3D, so local state would resurrect the
+	// card on the way back. Never serialized, never history.
+	$effect(() => {
+		if (!planHintDismissed && (!planEmpty || hasLayoutTransientInteraction(interaction))) {
+			planHintDismissed = true;
+		}
 	});
 
 	function frameView() {
@@ -2161,10 +2208,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			target.kind !== 'object' &&
 			// P23.10 — a canonical physical-Wall body hit carries its already
 			// resolved projection, so the Wall target needs no second resolver.
-			target.kind !== 'physicalWall'
+			target.kind !== 'physicalWall' &&
+			// P23.14 §13 — a canonical endpoint hit carries `{wallId, endpoint}`;
+			// the Junction is resolved from the document below (the same lookup the
+			// click-select path uses). No second hit resolver is introduced.
+			target.kind !== 'wallEndpoint'
 		) {
 			return; // vertex/opening-endpoint/anchor targets have no approved v1 items
 		}
+		// P23.14 §13 — the Junction behind an endpoint hit, or `null` when the
+		// document no longer resolves one (a stale hit gets no menu at all).
+		const hitJunctionId =
+			target.kind === 'wallEndpoint'
+				? wallEndpointJunctionId(target.wallId, target.endpoint)
+				: null;
+		if (target.kind === 'wallEndpoint' && !hitJunctionId) return;
 		// selection-before-menu mirrors the click path's slot writes
 		if (
 			target.kind === 'room' &&
@@ -2192,6 +2250,43 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// P23.10 — a right-click keeps the clicked Wall selected so the command
 			// acts on the same primitive the user pointed at.
 			selectLayoutPhysicalWall(interaction, target.wallId);
+		} else if (
+			target.kind === 'wallEndpoint' &&
+			hitJunctionId &&
+			(interaction.selection.kind !== 'junction' ||
+				interaction.selection.junctionId !== hitJunctionId)
+		) {
+			// The menu acts on the Junction the user pointed at, selected through
+			// the canonical writer (never a raw slot write).
+			selectLayoutJunction(interaction, hitJunctionId);
+		}
+		// P23.14 §13 — one explicit target mapping, resolved by kind. A Junction
+		// target exists only when the endpoint resolved one above.
+		let menuTarget: PlanLayoutTarget;
+		switch (target.kind) {
+			case 'wallEndpoint':
+				if (!hitJunctionId) return;
+				menuTarget = { kind: 'junction', junctionId: hitJunctionId };
+				break;
+			case 'room':
+				menuTarget = { kind: 'room', roomId: target.roomId };
+				break;
+			case 'opening':
+				menuTarget = { kind: 'opening', roomId: target.roomId, openingId: target.openingId };
+				break;
+			case 'physicalWall':
+				menuTarget = {
+					kind: 'wall',
+					wallId: target.wallId,
+					// Canonical-start meters straight from the hit projection.
+					splitDistance: target.projection.offset
+				};
+				break;
+			case 'object':
+				menuTarget = { kind: 'object', objectId: target.objectId };
+				break;
+			default:
+				return;
 		}
 		event.preventDefault();
 		contextMenu.open({
@@ -2199,21 +2294,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			x: event.clientX,
 			y: event.clientY,
 			items: buildPlanLayoutContextMenuItems({
-				target:
-					target.kind === 'room'
-						? { kind: 'room', roomId: target.roomId }
-						: target.kind === 'opening'
-							? { kind: 'opening', roomId: target.roomId, openingId: target.openingId }
-							: target.kind === 'physicalWall'
-								? {
-										kind: 'wall',
-										wallId: target.wallId,
-										// Canonical-start meters straight from the hit projection.
-										splitDistance: target.projection.offset
-									}
-								: { kind: 'object', objectId: target.objectId },
+				target: menuTarget,
 				mutationBlockedReason:
 					store.isDocumentMutationBlocked ? 'Preview is active' : null,
+				// P23.14 §13 — the refusal reason is the core planner's, never a
+				// second eligibility check in this surface.
+				dissolveBlockedReason: hitJunctionId
+					? wallFirstJunctionDissolveRefusal(preview, hitJunctionId)
+					: null,
 				// P23.6d — wall-first Rooms expose ONLY the canonical removal. The
 				// legacy `renameRoom`/`deleteRoom` commands resolve through
 				// `layout.floors`/`deleteLayoutRoom` and REJECT wall-first documents,
@@ -2240,7 +2328,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 											onWallBendPointAdd?.(wallId, bendDistance)
 									}
 								: {}),
-							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {})
+							...(onWallDelete ? { deleteWall: (wallId: string) => onWallDelete?.(wallId) } : {}),
+							// P23.14 §13 — the Junction-dissolve command reuses the existing
+							// authority. Omitted (never stubbed) when the mount cannot dissolve.
+							...(onJunctionDissolve && hitJunctionId
+								? {
+										dissolveJunction: (junctionId: string) => onJunctionDissolve?.(junctionId)
+									}
+								: {})
 						}
 					: {
 							renameRoom: renameRoomViaPrompt,
@@ -5465,11 +5560,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	{#if arrangeEmpty && !stagingSelectionMessage}
 		<div class="arrange-empty" role="status">No movable objects here yet — create them in Layout or place them in Scene 3D.</div>
 	{/if}
-	{#if planEmpty && !ghostVisible}
+	{#if planEmpty && !ghostVisible && !planHintDismissed}
 		<!-- P23.13 S9 / §8 — empty-state copy agreement: exact toolbar labels
 		     (Wall, Rect Room, Poly Room), zoom/pan hint, no dimension promise.
-		     Card remains for the dismissed-but-still-empty session tail and
-		     non-Layout empty states; one committed wall removes it. -->
+		     Startup-only: the first drafting gesture dismisses it (not the
+		     commit), and the session latch never restores it — undoing back to
+		     an empty plan stays clean. -->
 		<div class="plan-empty-state" role="status">
 			<strong>Start your plan</strong>
 			<span>Draw connected walls with Wall, or start with Rect Room or Poly Room.</span>
@@ -5546,6 +5642,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	-->
 	{#if numericEntry}
 		{@const entryField = planNumericEntryField(numericEntry)}
+		{@const entryAxis = planNumericFieldAxis(entryField)}
 		<div
 			class="plan-numeric-entry"
 			class:plan-numeric-entry-coarse={planCoarsePointer}
@@ -5555,6 +5652,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				: undefined}
 			data-host={numericEntry.host}
 			data-field={entryField.id}
+			data-axis={entryAxis ?? undefined}
 		>
 			<span class="plan-numeric-entry-label">{entryField.label}</span>
 			<input
@@ -5666,7 +5764,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	.plan-numeric-entry { position: absolute; z-index: 12; display: inline-flex; gap: 0.3rem; align-items: center; transform: translate(-50%, -50%); padding: 0.16rem 0.34rem; border: 1px solid var(--editor-accent-border); border-radius: 0.3rem; background: var(--editor-plan-canvas-bg); color: var(--editor-plan-label); font: 600 0.68rem/1.2 var(--editor-font); box-shadow: var(--editor-shadow-popover); }
 	.plan-numeric-entry-invalid { border-color: var(--editor-danger-border); }
 	.plan-numeric-entry-label { color: var(--editor-plan-muted); font-weight: 500; }
-	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
+	/* #35 (§7) — an axis-valued field names its axis in the canonical axis ink
+	   (ΔX red / ΔZ blue, DS §8), which is the same ink the canvas corner
+	   widget and the 3D gizmo use for that axis: the field and the axis it
+	   moves are visibly one thing. Magnitudes and angles keep neutral ink. */
+	.plan-numeric-entry[data-axis='x'] .plan-numeric-entry-label { color: var(--editor-axis-x); }
+	.plan-numeric-entry[data-axis='z'] .plan-numeric-entry-label { color: var(--editor-axis-z); }
+	/* §7 two type voices: a measure is set in mono + tabular figures, so the
+	   digits never reflow the field the placer already measured. */
+	.plan-numeric-entry-input { width: 5.4rem; padding: 0.1rem 0.2rem; border: 0; border-bottom: 1px solid var(--editor-plan-label); background: transparent; color: var(--editor-plan-label); font: 600 0.74rem/1.2 var(--editor-font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; text-align: right; outline: none; }
 	.plan-numeric-entry-input:focus { border-bottom-color: var(--editor-accent); }
 	.plan-numeric-entry-unit { color: var(--editor-plan-muted); font-weight: 500; }
 	.plan-numeric-entry-reason { color: var(--editor-danger-fg); font-weight: 500; }

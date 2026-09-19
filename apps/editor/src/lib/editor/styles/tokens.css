@@ -9,9 +9,14 @@
  *
  * Section references: DS = docs/reference/design-system/design-specs.md.
  *
- * Theme layer — `:root` below is the canonical navy-blue theme and keeps the
+ * Theme layer — `:root` below is the legacy navy-blue theme and keeps the
  * FIRST declaration of every token (the scene-palette contract test matches
- * the first `--editor-<name>: #hex;` declaration). Additional themes are
+ * the first `--editor-<name>: #hex;` declaration). Since P23.14 the canonical
+ * DEFAULT identity is `plate-light` (final-direction §6/§26.5), whose
+ * additive `:root[data-theme='plate-light']` block lives at the END of this
+ * file; navy-blue and the six curated palettes are variants of the same
+ * hierarchy grammar, not redefinitions of component roles.
+ * Additional themes are
  * additive `:root[data-theme='<id>'] { … }` override blocks at the END of
  * this file, overriding only theme-aware tokens: chrome surfaces/borders,
  * the chrome accent family (`--editor-accent*` — the interactive
@@ -55,7 +60,24 @@
 	   (dark themes — all shipped — resolve the light member; a future light
 	   theme sets `color-scheme: light` and text flips to the dark-ink member
 	   automatically). Muted clears 4.5:1 on every dark surface incl. hover
-	   and selected tints. Base tokens must never be overridden by theme
+	   and selected tints, and — since P23.14 review F1 / ruling D1 — the
+	   light member is darkened so the same holds on the light Chassis
+	   family, because muted is a text ink (Status Rail, resting View Bar
+	   tabs, Inspector section headers, tray group labels), not a hint-only
+	   ink. Measured worst case (Chassis #D9DDE0; app · panel-raised ·
+	   instrument #E8E5DD · hover #EDEAE2 · selected #CFE1FB all higher):
+
+	     primary   #13161D                        13.25:1
+	     secondary #3A4252                         7.39:1
+	     muted     #606B7E → #55606E (was 3.94)     4.68:1
+	     success   #146C34                          4.77:1
+	     warning   #744E0E                          5.41:1
+
+	   (10.6:1 belongs to the §6.1 reference ink #252A2E, not to the base
+	   primary — review F1 caught the comment measuring the wrong pair.)
+	   `tests/lib/editor/app/p23-14-state-language.test.ts` recomputes every
+	   number above from this file, so the table cannot rot silently.
+	   Base tokens must never be overridden by theme
 	   blocks — contrast holds by construction.
 
 	   CHROMATIC role inks — non-monochrome depth layered above the base
@@ -66,12 +88,16 @@
 	     metric            technical numbers (lengths, speeds, coordinates);
 	     timecode          timeline times ("00:08.375") — amber by default;
 	     success           readable status text ("Valid") kept distinct from
-	                        the --editor-success glyph/border family.
+	                        the --editor-success glyph/border family;
+	     warning           readable caution text ("Manual envelope") kept
+	                        distinct from the --editor-warning glyph/border
+	                        family — a TEXT use of either base token is a bug
+	                        (review F1 / owner ruling D2).
 	   Chromatic tiers ARE theme-aware and may be overridden per theme — but
 	   always as a full light-dark() pair, never a single hex. */
 	--editor-text-primary: light-dark(#13161D, #F1F4F9);
 	--editor-text-secondary: light-dark(#3A4252, #B2BFD0);
-	--editor-text-muted: light-dark(#606B7E, #94A3B8);
+	--editor-text-muted: light-dark(#55606E, #94A3B8);
 	--editor-text-disabled: light-dark(#9BA3AF, #505A69);
 
 	--editor-text-tint: light-dark(#475569, #94A3B8);
@@ -79,6 +105,7 @@
 	--editor-text-metric: light-dark(#0284C7, #38BDF8);
 	--editor-text-timecode: light-dark(#D97706, #FBBF24);
 	--editor-text-success: light-dark(#15803D, #4ADE80);
+	--editor-text-warning: light-dark(#744E0E, #E0B667);
 
 	/* ── DS §7 — primary blue: the chrome interactive accent ──
    navy default below; theme blocks re-derive the hue per palette. Spatial
@@ -100,6 +127,84 @@
 	--editor-danger: #ef626c;
 	--editor-danger-soft: rgb(239 98 108 / 14%);
 	--editor-danger-border: rgb(239 98 108 / 55%);
+
+	/* ── P23.14 §4/§6 — PLATE material role surfaces (chrome; theme-aware) ──
+	   CHASSIS is `--editor-bg-app/-panel` (persistent structure), the recess
+	   step is the Domain Spine trough, INSTRUMENT is the control material,
+	   the domain accents are the two Spine stations' 3 px inboard
+	   edge-light, and ARMED is the armed hue any surface may spend (the Tool
+	   Tray no longer does — owner ratification R2 made its armed state a
+	   darkened surface: `--editor-bg-recess`, no border, no edge). The defaults
+	   below alias every existing dark theme to its current look (recess =
+	   app chassis, instrument = control surface, scene accent = the theme
+	   accent); PLATE Light overrides them with the ratified §6.1 values. */
+	--editor-bg-recess: var(--editor-bg-app);
+	--editor-bg-instrument: var(--editor-bg-control);
+	--editor-domain-scene: var(--editor-accent);
+	--editor-domain-camera: #347d89;
+	--editor-armed: var(--editor-warning);
+
+	/* PLATE Paper baseline — non-Plan Paper surfaces only. Scene Plan and
+	   Camera Plan keep the landed P23.13 `--editor-plan-bg` (#F5F7F8);
+	   unifying the two papers needs explicit owner re-ratification. */
+	--editor-paper-plate: var(--editor-bg-panel-raised);
+
+	/* ── P23.14 §7 — state language: one cue per state, never hue alone ──
+	   The ratified minimum set, and the cue that carries each one. Every
+	   state has a NON-hue member (form, weight, offset, glyph, motion), so a
+	   monochrome screenshot still separates them; selection blue is never
+	   spent on a second meaning (§18).
+
+	     state              hue                        non-hue
+	     hover              bg-hover                   surface step
+	     selected           bg-selected + accent-border  fill + inboard edge
+	     primary            accent fill                solid mass
+	     keyboard focus     --editor-focus-ring        OUTSIDE offset ring
+	     active domain      domain-scene/camera        Spine edge-light
+	     active view        accent                     View Bar underline
+	     active mode        control-active-bg          enclosed trough
+	     armed              —                          darkened surface (recess step)
+	     disabled + reason  text-disabled              not-allowed + title
+	     refusal / invalid  --editor-state-refusal      inline reason at action
+	     warning            warning                    glyph at the readout
+	     destructive        danger                     separated, last entry
+	     preview ghost      --editor-state-ghost       alpha + ghost ink
+	     snap guide         plan-snap                  own ink, own glyph
+	     authored/derived   --editor-state-derived-ink  weight + mono face
+
+	   The ring is deliberately its own token rather than `--editor-accent`:
+	   focus must be readable as focus in a frame where the same control is
+	   also the selected/active one. Offset lives here too, so a denser
+	   surface can pull the ring in without re-authoring each control. */
+	--editor-focus-ring: #7cc4ff;
+	--editor-focus-ring-width: 2px;
+	--editor-focus-ring-offset: 2px;
+
+	/* Preview ghost — geometry that exists only inside an open transaction
+	   (move/rotate/resize draft). Alpha below 1 keeps it non-committal and
+	   distinct from an authored fill at a glance. */
+	--editor-state-ghost: rgb(47 140 255 / 22%);
+	--editor-state-ghost-ink: var(--editor-text-muted);
+
+	/* Authored vs derived: derived readouts (computed areas, inherited
+	   values, projections) take the quieter ink; authored values take
+	   `--editor-text-primary` plus the mono face (§7 two type voices). */
+	--editor-state-derived-ink: var(--editor-text-muted);
+
+	/* Refusal / invalid is the danger family; the STATE name exists so
+	   refusal sites read as refusals, not as generic errors. */
+	--editor-state-refusal: var(--editor-danger);
+	--editor-state-refusal-soft: var(--editor-danger-soft);
+	--editor-state-refusal-border: var(--editor-danger-border);
+
+	/* State aliases — the working states other slices already paint, named
+	   here so §7 consumers share one vocabulary. `--editor-state-armed` keeps the
+	   armed HUE; a surface that wants the tray's ratified treatment (R2) uses
+	   `--editor-bg-recess` instead. */
+	--editor-state-armed: var(--editor-armed);
+	--editor-state-snap: var(--editor-plan-snap);
+	--editor-state-disabled-ink: var(--editor-text-disabled);
+	--editor-state-active-domain: var(--editor-domain-scene);
 
 	/* ── DS §8 — transform axes (spatial meaning only, never decoration) ── */
 	--editor-axis-x: #f05252;
@@ -246,6 +351,23 @@
 	--editor-right-min: 280px;
 	--editor-right-max: 420px;
 
+	/* ── P23.14 §5/§8/§10/§11 — PLATE reference shell geometry ──
+	   Domain Spine width, View Bar height and the Paper-attached Tool Tray rail
+	   width. The main shell narrows the side columns to the ratified 268
+	   (Navigator, 240–300 range) / 300 (Inspector) in the `.project-editor`
+	   block below; the frozen relic keeps the values above it. */
+	--editor-spine-width: 56px;
+	--editor-viewbar-height: 34px;
+	/* §11 — the rail exists to hold its labels, so it is the ONE piece of §5
+	   geometry that follows the type knob: at scale 1 it is the ratified 44 px,
+	   and it grows with its type so the labels keep the fit they were measured
+	   for instead of breaking mid-word. */
+	--editor-tray-width: calc(44px * var(--editor-type-scale));
+	/* §23 — the coarse-pointer minimum every chrome control and its band grows
+	   to. One token so the media query in editor-shell.css and any component
+	   that has to size around a touch target agree. */
+	--editor-touch-target-min: 44px;
+
 	/* ── DS §6 — typography ── */
 	--editor-font:
 		'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
@@ -253,16 +375,186 @@
 	/* P23.13 S6 / §7 — working dimensions are set in a mono face: digits must not
 	   reflow the text box the dimension placer already measured. */
 	--editor-font-mono: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
-	--editor-font-size-title: 16px;
-	--editor-font-size-panel-title: 14px;
-	--editor-font-size-toolbar: 13px;
-	--editor-font-size-tree-row: 13px;
-	--editor-font-size-section: 11px;
-	--editor-font-size-label: 12px;
-	--editor-font-size-input: 12.5px;
-	--editor-font-size-metadata: 11.5px;
-	--editor-font-size-status: 11.5px;
-	--editor-font-size-ruler: 11px;
+	/* ── Owner ratification R3 — one type scale, expressed as ROLES ───────────
+	   Two voices (§7): a humanist sans for UI, a mono for measures, references,
+	   IDs and timecodes.
+
+	   `--editor-type-scale` is the single knob, and it is a PERCENTAGE: 1 means
+	   100 %, 1.15 means 115 %, 0.9 means 90 %. Every size in the editor is a
+	   multiple of it, so ONE number grows or shrinks the whole product with no
+	   per-component edits and no chance of one surface drifting from another.
+
+	   Set it on `:root` (a theme block, or inline on document.documentElement —
+	   the same element that declares the ladder below): a token derived from
+	   another token is a SNAPSHOT taken where it is declared, so overriding the
+	   knob further down the tree cannot re-derive a size that was already
+	   resolved here. Raising it to 1.15 renders the whole shell at 115 %.
+
+	   No literal selector block appears in this note on purpose: contract tests
+	   in this repo locate blocks textually, and a snippet here would shadow the
+	   real one. For the same reason there are no nested comment markers in these
+	   notes — CSS comments do not nest, and an inner terminator would end this
+	   one early, dropping the whole ladder from the cascade.
+
+	   It is unitless because CSS cannot multiply a length by a percentage token
+	   (`calc(12px * 110%)` is invalid), so a factor is the only form a single
+	   knob can take. Read it as a percentage everywhere it is documented.
+
+	   Never write a bare `font-size: 12px` in a shell surface — ask for a role
+	   (`--editor-type-*`) or, failing that, a ladder step (`-2xs`…`-2xl`). The
+	   ladder is where the seven numbers live; nothing else in the shell holds a
+	   pinned type size.
+
+	   Ladder = the ratified §7/Atlas ramp (9/10/11/12/13/15/20 px at scale 1).
+	   The old flat ramp (16/14/13/12.5/11.5) was the pre-P23.14 shell's and was
+	   mostly DEAD — nothing consumed `title`, `panel-title`, `toolbar`,
+	   `tree-row` or `status`, so component-level `rem` values drifted instead;
+	   that drift is exactly what the Atlas comparison caught. */
+	--editor-type-scale: 1;
+
+	/* Step 1 — sizes. Only these seven numbers exist. */
+	--editor-font-size-2xs: calc(9px * var(--editor-type-scale)); /* timeline ticks */
+	--editor-font-size-xs: calc(10px * var(--editor-type-scale)); /* engraved labels, refs, status */
+	--editor-font-size-sm: calc(11px * var(--editor-type-scale)); /* compact readouts */
+	--editor-font-size-md: calc(12px * var(--editor-type-scale)); /* standard rows, labels, controls */
+	--editor-font-size-lg: calc(13px * var(--editor-type-scale)); /* property values */
+	--editor-font-size-xl: calc(15px * var(--editor-type-scale)); /* panel headings */
+	--editor-font-size-2xl: calc(20px * var(--editor-type-scale)); /* project identity ceiling */
+
+	/* Step 2 — roles. A surface asks for one of these, never for a number:
+	   family + size + weight + line-height travel together. */
+	--editor-type-body: 400 var(--editor-font-size-md)/1.4 var(--editor-font);
+	--editor-type-engraved: 600 var(--editor-font-size-xs)/1.15 var(--editor-font);
+	--editor-type-engraved-quiet: 400 var(--editor-font-size-xs)/1.3 var(--editor-font);
+	--editor-type-heading: 600 var(--editor-font-size-xl)/1.2 var(--editor-font);
+	/* The Head's project identity. §7's ladder jumps 13 → 15 px, and the Atlas
+	   paints it at 14 px, so the identity keeps its own step — still scaled by
+	   the same knob, so it can never drift from the ladder. */
+	--editor-type-identity: 600 calc(14px * var(--editor-type-scale))/1.2 var(--editor-font);
+	--editor-type-row: 570 var(--editor-font-size-md)/1.25 var(--editor-font);
+	--editor-type-control: 500 var(--editor-font-size-md)/1 var(--editor-font);
+	--editor-type-control-strong: 650 var(--editor-font-size-md)/1 var(--editor-font);
+	/* Subordinate View Bar tiers, straight from the Atlas: utilities at 10 px,
+	   the MODE pair at 11 px. */
+	--editor-type-utility: 500 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-mode: 500 var(--editor-font-size-sm)/1 var(--editor-font);
+	--editor-type-status: 400 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-property: 500 var(--editor-font-size-lg)/1.3 var(--editor-font);
+	--editor-type-mono: 400 var(--editor-font-size-sm)/1.3 var(--editor-font-mono);
+	--editor-type-ref: 400 var(--editor-font-size-xs)/1.3 var(--editor-font-mono);
+	--editor-type-tick: 400 var(--editor-font-size-2xs)/1 var(--editor-font-mono);
+	--editor-type-readout: 600 var(--editor-font-size-md)/1 var(--editor-font-mono);
+	/* Navigator scope header ("Project", "Plan", a room's name when it owns the
+	   list) — one step above a row, still the sans voice. */
+	--editor-type-row-head: 650 var(--editor-font-size-lg)/1.25 var(--editor-font);
+	/* Domain Spine station label: §8 names the domains in their own casing
+	   ("Scene" / "Camera"), so this role is NOT uppercase and carries no
+	   tracking — that is the whole difference from `engraved`. */
+	--editor-type-station: 400 var(--editor-font-size-sm)/1 var(--editor-font);
+	/* Tool Tray tiers (owner ratification R1): the reference's engraved micro-set
+	   at the rail's fitted 7 px / 8 px steps. */
+	--editor-type-tray-group: 600 var(--editor-font-size-tray-group)/1.15
+		var(--editor-font);
+	--editor-type-tray-tool: 600 var(--editor-font-size-tray-tool)/1.15
+		var(--editor-font);
+
+	/* Step 3 — legacy role names, kept as aliases onto the ladder so existing
+	   consumers keep resolving to a real step while surfaces migrate to a role. */
+	--editor-font-size-title: var(--editor-font-size-xl);
+	--editor-font-size-panel-title: var(--editor-font-size-xl);
+	--editor-font-size-toolbar: var(--editor-font-size-md);
+	--editor-font-size-tree-row: var(--editor-font-size-md);
+	--editor-font-size-section: var(--editor-font-size-xs);
+	--editor-font-size-label: var(--editor-font-size-md);
+	--editor-font-size-input: var(--editor-font-size-md);
+	--editor-font-size-metadata: var(--editor-font-size-sm);
+	--editor-font-size-status: var(--editor-font-size-xs);
+	/* The Atlas paints its timeline ticks at 9 px — one step under §7's 10 px
+	   floor, ratified because a ruler tick is a mono measure, not a label. */
+	--editor-font-size-ruler: var(--editor-font-size-2xs);
+	--editor-font-size-ref: var(--editor-font-size-xs);
+
+	/* Step 4 — migration mapping. The pre-P23.14 shell's off-ladder `rem` values
+	   WERE the drift (that is what the Atlas comparison caught), so the sweep
+	   maps them by BAND, not by preference:
+
+	     0.6–0.68rem (9.6–10.9 px)   → -xs  (10)  engraved + micro-meta
+	     0.7–0.78rem (11.2–12.5 px)  → -md  (12)  §12 standard label
+	     0.8–0.85rem (12.8–13.6 px)  → -lg  (13)  property / scope tier
+	     0.9–0.92rem (14.4–14.7 px)  → -xl  (15)  panel heading
+	     1rem (16 px, a glyph)       → --editor-icon-size-sm
+	     9 px (mono measure only)    → -2xs (--editor-type-tick)
+	     10/11/12/12.5/13px          → -xs/-sm/-md/-md/-lg
+
+	   Remaining batch: the Inspector family (EditorInspector + the eight panel
+	   inspectors, whose label/value tiers P21.5 Slice 4 pins at 12 px/12.5 px).
+	   Every other shell surface is on a role or a step. */
+
+	/* ── Owner ratification R3 — control roles ────────────────────────────────
+	   Every chrome BUTTON is one of four roles. Padding, height, radius and type
+	   travel together per role, so the button grammar is retuned here once
+	   instead of in fifty components. `--editor-control-scale` multiplies the
+	   hit area and the padding (not the type); `--editor-type-scale` above does
+	   the type. The two are deliberately independent: a denser button band and a
+	   larger type ramp are different requests, and coupling them would make the
+	   second impossible without the first.
+
+	     role      height        pad-x   type role           used by
+	     lg        30 px         9 px    control            primary actions
+	     md        26 px         9 px    control            the Head, forms
+	     sm        24 px         8 px    utility            View Bar, tabs, icons
+	     xs        20 px         6 px    utility            inline row actions
+
+	   Plus the geometry roles below, for the recurring groups of the shell that
+	   are sized by fit rather than by button semantics — a Navigator row, its
+	   disclosure target, a Spine station, a rail tool. Same idea, same place to
+	   tune: one line here moves every instance in the shell. */
+	--editor-control-scale: 1;
+	--editor-control-lg-height: calc(30px * var(--editor-control-scale));
+	--editor-control-md-height: calc(26px * var(--editor-control-scale));
+	--editor-control-sm-height: calc(24px * var(--editor-control-scale));
+	--editor-control-xs-height: calc(20px * var(--editor-control-scale));
+	--editor-control-lg-pad-x: 9px;
+	--editor-control-md-pad-x: 9px;
+	--editor-control-sm-pad-x: 8px;
+	--editor-control-xs-pad-x: 6px;
+	--editor-control-radius: 3px;
+	/* §11 — Tool Tray engraved micro-tier. §7's approximate scale puts
+	   engraved/group labels at 10 px, and §11 fixes the rail at 44 px; the two
+	   cannot both hold: at 10 px/600 the group names measure 46.6–63.8 px
+	   against the rail's 39 px text box, so every label broke *inside* the word
+	   ("OPENI/NGS", "OBJEC/TS") instead of reading as engraving. The tray
+	   therefore paints the reference's engraved tier — 7 px group / 8 px tool,
+	   the values the PLATE reference PNGs and the Atlas rail use — which is
+	   what §11's "small persistent group labels and compact icon-led tools"
+	   asks for; §7 calls its own hierarchy "approximate". The 10 px tier keeps
+	   every other engraved label in the shell. At these sizes every tool word
+	   fits the rail's text box; only the group word TRANSFORM (44.7 px at
+	   7 px, wider than the rail can ever be) still needs `overflow-wrap`. */
+	--editor-font-size-tray-group: calc(7px * var(--editor-type-scale));
+	--editor-font-size-tray-tool: calc(8px * var(--editor-type-scale));
+	/* The tray's one size exception (owner ratification R1): a group word that is
+	   wider than the rail itself is allowed to step down to this floor rather
+	   than break mid-word. Exactly one word qualifies — TRANSFORM (44.7 px at
+	   7 px, ~38 px here) — and the opt-in lives on that group's markup
+	   (`data-group-compact`), not on the tier. The slack is deliberate: the
+	   platform font fallback moves text metrics by a few percent, so the fix has
+	   to hold when Inter Variable is not the font that renders. */
+	--editor-font-size-tray-group-compact: calc(6px * var(--editor-type-scale));
+
+	/* ── Owner ratification R3 — icon + group-geometry roles ──────────────────
+	   Icons are set WITH their label, so they follow the type knob; hit areas
+	   follow the control knob. A group that is measured rather than semantic
+	   (row, station, rail tool) gets its own role here instead of a number in a
+	   rule, so the shell's recurring geometry has one owner. */
+	--editor-icon-size-sm: calc(16px * var(--editor-type-scale)); /* row chevrons, inline glyphs */
+	--editor-icon-size-lg: calc(24px * var(--editor-type-scale)); /* Spine stations, utilities */
+	--editor-tray-icon-size: calc(17px * var(--editor-type-scale)); /* fitted to the rail */
+
+	--editor-row-height: calc(29px * var(--editor-control-scale)); /* Navigator row (Atlas `.row`) */
+	--editor-disclosure-size: calc(18px * var(--editor-control-scale)); /* row chevron target */
+	--editor-station-height: calc(74px * var(--editor-control-scale)); /* Domain Spine station */
+	--editor-tray-tool-height: calc(42px * var(--editor-control-scale)); /* rail tool */
 
 	/* ── DS §14 — elevation ── */
 	--editor-shadow-toolbar: 0 8px 24px rgb(0 0 0 / 38%);
@@ -549,16 +841,144 @@
 	--editor-orientation-border: #283835;
 }
 
+/* PLATE Light — P23.14 §6: the ratified canonical DEFAULT identity
+   (final-direction.md §6, §26.5). A cool engineered Chassis (#D9DDE0) with a
+   recessed Spine trough (#CBD0D4) and warm Instrument controls (#E8E5DD);
+   Scene Plan and Camera Plan keep the landed P23.13 Plan Paper #F5F7F8
+   (this block touches no Plan-paper or Plan-semantic token, so the
+   seven-surround contract still holds), while #F5F2E9 stays the non-Plan
+   PLATE Paper baseline until
+   owner re-ratification unifies paper.
+
+   Ink: the BASE text ramp is the centralized light-dark() mechanism, so this
+   block only flips `color-scheme` and the light members (#13161D primary /
+   #3A4252 secondary / #55606E muted) resolve automatically, with their
+   measured ratios recorded at the ramp itself. The
+   §6.1 baseline ink pair (#252A2E / #697177) is therefore met in hue role
+   and contrast hierarchy through §6.1's permitted luminance adjustment: raw
+   #697177 measures only 3.6:1 on the Chassis and would fail AA for chrome
+   text. Chrome controls take the Selection dark edge #145DA8 as their
+   interactive accent so #2F8CFF stays owned by spatial selection (§18). */
+:root[data-theme='plate-light'] {
+	color-scheme: light;
+
+	/* CHASSIS — persistent structure: square corners, 1 px hairlines, no
+	   decorative shadows (separation is tonal + alignment, §6.2). */
+	--editor-bg-app: #d9dde0;
+	--editor-bg-panel: #d9dde0;
+	--editor-bg-panel-raised: #e2e6e8;
+	--editor-bg-control: #e8e5dd;
+	--editor-bg-hover: #edeae2;
+	--editor-bg-selected: #cfe1fb;
+
+	--editor-border-subtle: #c6cbd0;
+	--editor-border-normal: #b1b8bd;
+	--editor-border-strong: #8d959b;
+
+	/* Material roles (§4): Spine trough + Instrument control surface. */
+	--editor-bg-recess: #cbd0d4;
+	--editor-bg-instrument: #e8e5dd;
+
+	/* Domain accents on the Chassis; never a full-surface fill (§8). Both
+	   clear the 3:1 non-text bar on every Chassis step (review F1 / ruling
+	   D3): scene 3.42:1 chassis · 3.71 instr · 3.89 hover (was #a37a3d,
+	   2.84:1 — under the bar); camera 3.51 · 3.81 · 3.99. */
+	--editor-domain-scene: #946d34;
+	--editor-domain-camera: #347d89;
+	/* Armed cue (ruling D4): 3.67:1 chassis · 3.99 instr · 4.17 hover — clears
+	   the non-text bar it missed at #c58b35 (2.34:1 on Instrument), and keeps
+	   its redundant non-hue cue (3 px inboard edge + label weight). */
+	--editor-armed: #946624;
+
+	/* Instrument accent — the Selection dark edge, so selection blue keeps
+	   one meaning (§18: never hue alone; never overload #2F8CFF). */
+	--editor-accent: #145da8;
+	--editor-accent-hover: #2f75c9;
+	--editor-accent-pressed: #0f4a86;
+	--editor-accent-soft: rgb(20 93 168 / 12%);
+	--editor-accent-border: rgb(20 93 168 / 55%);
+
+	/* Readable status ink on light chassis (§6.1 refusal/invalid #9B3149). */
+	--editor-success: #15803d;
+	--editor-success-soft: rgb(21 128 61 / 12%);
+	--editor-success-border: rgb(21 128 61 / 50%);
+	--editor-warning: #8a5f14;
+	--editor-warning-soft: rgb(197 139 53 / 20%);
+	--editor-warning-border: rgb(138 95 20 / 50%);
+	--editor-danger: #9b3149;
+	--editor-danger-soft: rgb(155 49 73 / 12%);
+	--editor-danger-border: rgb(155 49 73 / 55%);
+	--editor-danger-fg: #7d2740;
+
+	/* Chromatic role inks — full light-dark() pairs (theme contract). */
+	--editor-text-tint: light-dark(#454f57, #d7dbdd);
+	--editor-text-tint-soft: light-dark(#5c666d, #bcc2c6);
+	--editor-text-metric: light-dark(#145da8, #7fb2e8);
+	--editor-text-timecode: light-dark(#8a5f14, #e0b667);
+	/* #34 — the shared success ink #15803D measures 3.7:1 on the #D9DDE0 Chassis
+	   and fails AA at the 11 px status size; #146C34 measures 4.8:1. Only the
+	   light member moves — the glyph/border family (`--editor-success`) keeps its
+	   own hue. */
+	--editor-text-success: light-dark(#146c34, #4ade80);
+
+	/* Camera route/playhead follow the instrument accent; the lane parameter
+	   colors stay invariant data-viz identity. */
+	--editor-timeline-path: #145da8;
+	--editor-timeline-playhead: #145da8;
+
+	/* 3D canvas: the warm architectural studio gray the Plan paper
+	   harmonizes with (explicit so QA can read the resolved value). */
+	--editor-bg-viewport: #ddd7ce;
+	--editor-viewport-grid-major: #b1aca5;
+	--editor-viewport-grid-minor: #cbc6be;
+
+	/* Orientation widget — Instrument material, not a floating card. */
+	--editor-orientation-surface: #e8e5dd;
+	--editor-orientation-hover: #edeae2;
+	--editor-orientation-border: #b1b8bd;
+	--editor-orientation-label: #252a2e;
+
+	/* PLATE Paper baseline (non-Plan surfaces); Plan keeps P23.13 paper. */
+	--editor-paper-plate: #f5f2e9;
+
+	/* §7 keyboard focus: on the Chassis the dark-ink member of the
+	   instrument accent. Independence from selection does not rest on the
+	   hue (selection keeps #2F8CFF for spatial truth) — it rests on the
+	   ring's form: an offset outline painted OUTSIDE the control's box, so
+	   a control that is simultaneously focused and selected shows both
+	   cues. Measured 6.56:1 against the #D9DDE0 Chassis — above the 3:1
+	   non-text bar it has to clear as an outline, and deliberately NOT
+	   claimed as a text contrast (review F1: the previous ≥ 8:1 comment
+	   measured the wrong pair). */
+	--editor-focus-ring: #0f4a86;
+
+	/* Preview ghost on light Paper: the same blue at a light-chassis alpha,
+	   because 22% ink over Paper #F5F2E9 nearly disappears. */
+	--editor-state-ghost: rgb(20 93 168 / 20%);
+
+	/* Chassis elevation: none. Popovers keep a functional contact shadow. */
+	--editor-shadow-toolbar: none;
+	--editor-shadow-popover: 0 4px 12px rgb(20 28 36 / 14%);
+}
+
 /* P21 main shell; the frozen relic retains its existing dimensions.
    Row bands derive from the theme-aware surface ramp (never hard hexes),
-   so every theme — including the light porcelain-atelier — stays
-   consistent by construction. Navy resolves identically to the specced
-   dark-navy bands (bg-app #071019 / bg-panel-raised #0d1925). */
+   so every theme — including PLATE Light — stays consistent by
+   construction.
+   P23.14 narrows the side columns to the ratified §5 composition (Navigator
+   268 / Inspector 300, both resizable within their documented ranges) and
+   swaps the retired 32 px ribbon band for the 34 px View Bar. */
 .project-editor {
 	--editor-project-row-height: 36px;
 	--editor-ribbon-height: 32px;
+	--editor-viewbar-height: 34px;
 	--editor-appbar-height: 36px;
 	--editor-status-height: 24px;
+	--editor-left-width: 268px;
+	--editor-left-min: 240px;
+	--editor-left-max: 300px;
+	--editor-right-width: 300px;
+	--editor-right-min: 280px;
 	--editor-bg-row-1: var(--editor-bg-app);
 	--editor-bg-row-2: var(--editor-bg-panel-raised);
 	--editor-control-active-bg: var(--editor-bg-control);

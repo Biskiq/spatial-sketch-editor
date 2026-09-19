@@ -560,29 +560,38 @@ describe('P23.6e slice 1 — Room page', () => {
 		);
 	});
 
-	it('nests hosted Openings under their Wall and ends with one oriented relation row', () => {
+	it('nests hosted Openings under their Wall and carries no Ends relation row', () => {
+		// P23.14 Decision 4: the per-Wall oriented `Ends …` row is removed. The
+		// Wall's disclosure is its hosted Openings, and endpoint identity is
+		// answered by the Wall row itself plus `Boundary Junctions (n)`.
 		const projection = project({ kind: 'room', roomId: 'room-a' });
 		const w1 = rowByKey(projection.rows, 'room:room-a:wall:w1');
 		expect(w1.children!.map((row) => row.rowKey)).toEqual([
-			'room:room-a:wall:w1:opening:op-door-1',
-			'room:room-a:wall:w1:ends'
+			'room:room-a:wall:w1:opening:op-door-1'
 		]);
 		// P23.12 D8 — kind + host, never a bare kind restatement.
 		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:opening:op-door-1').secondary).toBe(
 			'Door · on W1'
 		);
-		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:ends').label).toBe('Ends J1 · J2');
-		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:ends').kind).toBe('relation');
-		expect(isHierarchyRowSelectable(rowByKey(projection.rows, 'room:room-a:wall:w1:ends'))).toBe(
-			false
-		);
+		expect(JSON.stringify(projection.rows)).not.toContain('Ends ');
 	});
 
-	it('uses the boundary ref direction for the oriented Ends row', () => {
-		const reversed = project({ kind: 'room', roomId: 'room-b' });
-		expect(rowByKey(reversed.rows, 'room:room-b:wall:w2:ends').label).toBe('Ends J3 · J2');
-		const forward = project({ kind: 'room', roomId: 'room-a' });
-		expect(rowByKey(forward.rows, 'room:room-a:wall:w2:ends').label).toBe('Ends J2 · J3');
+	it('marks contextual rows as occurrences of the canonical entity (§12.2)', () => {
+		// A Wall reached through a Room's Boundary, its hosted Openings, the
+		// Boundary Junctions and the explicitly assigned Objects are projections:
+		// same canonical entity, same reference, same selection — never ownership.
+		const projection = project({ kind: 'room', roomId: 'room-a' });
+		const wall = rowByKey(projection.rows, 'room:room-a:wall:w1');
+		expect(wall.kind).toBe('occurrence');
+		expect(isHierarchyRowSelectable(wall)).toBe(true);
+		expect(rowByKey(projection.rows, 'room:room-a:wall:w1:opening:op-door-1').kind).toBe(
+			'occurrence'
+		);
+		expect(rowByKey(projection.rows, 'room:room-a:junction:j1').kind).toBe('occurrence');
+		expect(rowByKey(projection.rows, 'room:room-a:object:object-1').kind).toBe('occurrence');
+		// …while a page's own inventory rows are canonical entities.
+		expect(rowByKey(project({ kind: 'walls' }).rows, 'walls:wall:w1').kind).toBe('entity');
+		expect(rowByKey(project({ kind: 'rooms' }).rows, 'rooms:room:room-a').kind).toBe('entity');
 	});
 
 	it('derives Boundary Junctions from oriented boundary starts, in first-encounter order', () => {
@@ -655,9 +664,13 @@ describe('P23.6e slice 1 — Room page', () => {
 		});
 	});
 
-	it('projects an empty page for a missing Room without inventing rows', () => {
+	it('projects an authored empty state for a missing Room without inventing entities', () => {
+		// P23.14 §12.3 species 6 — an empty page answers with authored guidance,
+		// never a blank column and never a fabricated entity row.
 		const projection = project({ kind: 'room', roomId: 'room-missing' });
-		expect(projection.rows).toEqual([]);
+		expect(projection.rows).toHaveLength(1);
+		expect(projection.rows[0]!.kind).toBe('empty');
+		expect(projection.rows[0]!.entity).toBeUndefined();
 		expect(projection.representations.size).toBe(0);
 	});
 });
@@ -1189,13 +1202,12 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		expect(directRooms.map((row) => row.label)).toEqual(['Gallery B']);
 		const relatedWalls = groupRows(projection, 'walls', 'related');
 		expect(relatedWalls.map((row) => row.canonicalId)).toEqual(['w2', 'w5', 'w6', 'w7']);
-		// Dependents nested only: the hosted Opening and the oriented Ends row.
+		// Dependents nested only: the wall-hosted Opening (Decision 4 removed the
+		// per-Wall `Ends …` row; the Wall row itself carries the identity).
 		expect(relatedWalls[0]!.children!.map((row) => row.rowKey)).toEqual([
-			'search:walls:wall:w2:opening:op-win-2',
-			'search:walls:wall:w2:ends'
+			'search:walls:wall:w2:opening:op-win-2'
 		]);
-		// Orientation comes from the Room boundary ref (w2 is reversed in B).
-		expect(relatedWalls[0]!.children![1]!.label).toBe('Ends J3 · J2');
+		expect(relatedWalls[0]!.children![0]!.kind).toBe('occurrence');
 
 		// Topology summarized: a count row, never a Junction inventory.
 		const topology = groupRows(projection, 'rooms', 'topology');
@@ -1227,9 +1239,11 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		).not.toContain('w1');
 		// The hosted Opening is a dependent of the matched Wall, not a new result.
 		expect(categories(projection)).not.toContain('openings');
+		// The hosted Opening is selectable here too: it is an occurrence of the
+		// canonical Opening, not a second entity (§12.2).
 		expect(
 			groupRows(projection, 'walls', 'direct')[0]!.children!
-				.filter((row) => row.kind === 'entity')
+				.filter((row) => isHierarchyRowSelectable(row))
 				.map((row) => row.canonicalId)
 		).toEqual(['op-win-2']);
 	});
@@ -1416,7 +1430,7 @@ describe('P23.6e slice 2 — bounded relationship search', () => {
 		expect(groupRows(rebasedSearch, 'walls', 'related')[0]!.canonicalId).toBe('w3');
 		expect(
 			groupRows(buildHierarchySearchProjection(rebasedIndex, 'w3'), 'walls', 'direct')[0]!.children!
-				.filter((row) => row.kind === 'entity')
+				.filter((row) => isHierarchyRowSelectable(row))
 				.map((row) => row.canonicalId)
 		).toEqual(['op-win-2']);
 

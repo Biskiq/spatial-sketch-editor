@@ -9,6 +9,16 @@
 > §30 as amended below.
 Global shell / cross-domain rules live in [`Design-shell-specs.md`](./Design-shell-specs.md); camera workspaces in [`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md).
 
+> **P23.14 placement note (2026-09-19, landed):** the ribbon band is gone. Scene
+> Plan mounts the Contextual View Bar and its **Tool Tray** — a 44 px
+> Paper-attached rail (groups `SELECT` · `DRAW` · `OPENINGS` · `OBJECTS` · `VIEW`)
+> — and the `Layout | Arrange` mode control reads `MODE   Layout | Arrange` (a
+> caption plus two controls) in the View Bar. Shell chrome, type and control
+> metrics come from
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> §7/§10/§11, never from this file. Every capability, authority and mutation rule
+> below is unchanged by that move.
+>
 > **P21+ placement note (2026-09-03):** tool **placement** only — the
 > contextual toolbar region becomes the Workspace Ribbon (Row 2) per
 > [`design-plan-p21.md`](./design-plan-p21.md). Every capability, authority,

@@ -16,6 +16,7 @@
 
 	let {
 		ribbon = false,
+		tray = false,
 		store,
 		showCeilings = false,
 		onToggleCeilings,
@@ -47,6 +48,7 @@
 		context?: 'scene' | 'camera';
 		transformDisabled?: boolean;
 		gizmoCapabilities?: EditorGizmoCapabilities | null;
+		tray?: boolean;
 	} = $props();
 
 	const interactionStore = getContext<EditorInteractionStore | undefined>(
@@ -162,16 +164,19 @@
 			)
 	);
 
-	// P21.3 — Camera 3D ribbon exposes the Path/Frame helper toggles and the
-	// Observer/POV preview-mode switch through the existing session/preview
-	// commands (no new state; the View menu keeps the full helper list).
-	// Idle clicks enter a preview (solo node, else Sequence scope) via the
-	// shared chooser — never a dead click.
-	const previewMode = $derived(store.cameraPreview?.mode ?? 'director');
-
-	function choosePreviewMode(mode: 'director' | 'visitor') {
-		store.chooseCameraPreviewMode(mode);
-	}
+	// P21.3 — Camera 3D ribbon exposes the Path/Frame helper toggles through the
+	// existing session commands (no new state). The Observer/POV switch is NOT
+	// here: it is owned by the camera preview transport in the Camera Drawer,
+	// which carries it in both camera views and in both drawer states
+	// (P23.14 §14, F5).
+	//
+	// P23.14 §10/§14 — the View menu is a VIEW BAR utility, and ownership is
+	// decided by the HOST so one fact has one writer:
+	//   · Camera 3D paints it inside its own group order (Path · Frame · View ·
+	//     Snap), so the shared site must stand down there;
+	//   · the Scene 3D ribbon and the frozen relic (no host flag) paint it here;
+	//   · the Tool Tray paints the tool vocabulary and NO menu at all.
+	const viewMenuHost = $derived(!tray && !(ribbon && isCameraContext));
 
 	function toggleViewMenu() {
 		if (!viewMenuVisible) return;
@@ -202,8 +207,14 @@
 	});
 </script>
 
-<div bind:this={toolbarElement} class="toolbar" class:ribbon role="toolbar" aria-label="Viewport tools">
-	<div class="tool-group" aria-label="Transform tool">
+<div bind:this={toolbarElement} class="toolbar" class:ribbon class:tray role="toolbar" aria-label="Viewport tools">
+	<!-- P23.14 §11 — 3D tray vocabulary: SELECT / TRANSFORM / SPACE / OBJECTS.
+	     The View Bar keeps the subordinate utilities (Path/Frame visibility, the
+	     View menu and Snap) and the Camera Drawer owns the Observer/POV switch,
+	     so the tool groups render only in the tray (and the relic's floating
+	     form) and no writable utility is duplicated between the two hosts. -->
+	{#if !ribbon}
+	<div class="tool-group" aria-label="Selection tool" data-group-label="SELECT">
 		<button
 			type="button"
 			class:active={!store.transformGizmoVisible}
@@ -214,6 +225,11 @@
 			<MousePointer2 size={14} aria-hidden="true" />
 			Select
 		</button>
+	</div>
+	<!-- `data-group-compact` (owner ratification R1): TRANSFORM is the one group
+	     word wider than the 44 px rail, so its engraved label steps down a size
+	     rather than breaking mid-word. Opt-in per group, never on the tier. -->
+	<div class="tool-group" aria-label="Transform tool" data-group-label="TRANSFORM" data-group-compact>
 		<button
 			type="button"
 			class:active={toolIsActive('translate')}
@@ -301,9 +317,10 @@
 		</button>
 		{/if}
 	</div>
+	{/if}
 
-	{#if isCameraContext}
-		<div class="tool-group" aria-label="Camera authoring">
+	{#if isCameraContext && !ribbon}
+		<div class="tool-group" aria-label="Camera authoring" data-group-label="OBJECTS">
 			<button
 				type="button"
 				class="add-camera"
@@ -336,29 +353,24 @@
 				onclick={() => store.toggleViewportShowFraming()}
 			>Frame</button>
 		</div>
-		<!-- P21.3 — Camera 3D ribbon order: Path Frame | View | Observer/POV | Snap (shared). -->
+		<!-- P21.3 — Camera 3D bar order: Path Frame | View | Snap (shared).
+		     P23.14 §14 / F5 — the Observer↔POV switch is owned by the camera
+		     preview transport in the Camera Drawer, which carries it in BOTH
+		     camera views and in both drawer states (`EditorCameraTimelineFrame`
+		     collapsed, `EditorCameraPreviewControls` while a preview is live).
+		     The bar used to paint a second copy of it in Camera 3D, which broke
+		     "one fact, one authoritative control owner". Reversible one-liner if
+		     the bar pair is preferred over the drawer's. -->
 		{@render viewMenu()}
-		<div class="tool-group" role="group" aria-label="Camera preview mode">
-			<button
-				type="button"
-				class:active={previewMode === 'director'}
-				aria-pressed={previewMode === 'director'}
-				title="Observer"
-				onclick={() => choosePreviewMode('director')}
-			>Observer</button>
-			<button
-				type="button"
-				class:active={previewMode === 'visitor'}
-				aria-pressed={previewMode === 'visitor'}
-				title="Through camera"
-				onclick={() => choosePreviewMode('visitor')}
-			>POV</button>
-		</div>
 	{/if}
 
-	{#if ribbon && !isCameraContext}
-		<button class="ribbon-btn" disabled={disabled} onclick={() => store.setLeftPanel('assets')}><PackagePlus size={14} aria-hidden="true" /> Add Asset</button>
-		<div class="tool-group" role="group" aria-label="Transform space">
+	<!-- Tray-only: these groups never existed on the relic's floating mount, so
+	     gating on `tray` (not `!ribbon`) keeps the frozen relic byte-identical. -->
+	{#if tray && !isCameraContext}
+		<div class="tool-group" role="group" aria-label="Scene objects" data-group-label="OBJECTS">
+			<button class="add-asset" disabled={disabled} onclick={() => store.setLeftPanel('assets')}><PackagePlus size={14} aria-hidden="true" /> Add Asset</button>
+		</div>
+		<div class="tool-group" role="group" aria-label="Transform space" data-group-label="SPACE">
 			{#each ['local', 'world'] as space}
 				<button disabled={disabled || !interactionStore} class:active={interactionStore?.space === space}
 					aria-pressed={interactionStore?.space === space}
@@ -399,16 +411,11 @@
 					onpointerdown={(event) => event.stopPropagation()}
 				>
 					{#if showCameraHelperRows}
-					<button
-						type="button"
-						role="menuitemcheckbox"
-						aria-checked={store.viewportShowNodes}
-						class="toggle-row"
-						onclick={() => store.toggleViewportShowNodes()}
-					>
-						<span class="check" aria-hidden="true">{store.viewportShowNodes ? '✓' : '○'}</span>
-						<span>Node handles</span>
-					</button>
+					<!-- P23.14 §14 / F5 — where a View Bar exists it paints Path and Frame
+					     as direct toggles, so the menu must not repeat those two facts.
+					     A host without a bar (the frozen relic) keeps both rows. Node
+					     handles and Retained paths have no other owner anywhere. -->
+					{#if !ribbon}
 					<button
 						type="button"
 						role="menuitemcheckbox"
@@ -429,6 +436,17 @@
 						<span class="check" aria-hidden="true">{store.viewportShowFraming ? '✓' : '○'}</span>
 						<span>Framing &amp; FOV</span>
 					</button>
+					{/if}
+					<button
+						type="button"
+						role="menuitemcheckbox"
+						aria-checked={store.viewportShowNodes}
+						class="toggle-row"
+						onclick={() => store.toggleViewportShowNodes()}
+					>
+						<span class="check" aria-hidden="true">{store.viewportShowNodes ? '✓' : '○'}</span>
+						<span>Node handles</span>
+					</button>
 					<button
 						type="button"
 						role="menuitemcheckbox"
@@ -440,40 +458,9 @@
 						<span>Retained paths</span>
 					</button>
 					{/if}
-					{#if !store.isRelic}
-						<div class="view-separator" role="separator" aria-orientation="horizontal"></div>
-						<div class="view-section-label" aria-hidden="true">Panels</div>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={!store.leftSidePanelCollapsed}
-							class="toggle-row"
-							onclick={() => store.toggleLeftSidePanel()}
-						>
-							<span class="check" aria-hidden="true">{store.leftSidePanelCollapsed ? '○' : '✓'}</span>
-							<span>Left sidebar</span>
-						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={!store.rightSidePanelCollapsed}
-							class="toggle-row"
-							onclick={() => store.toggleRightSidePanel()}
-						>
-							<span class="check" aria-hidden="true">{store.rightSidePanelCollapsed ? '○' : '✓'}</span>
-							<span>Right inspector</span>
-						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={store.focusMode}
-							class="toggle-row"
-							onclick={() => store.toggleFocusMode()}
-						>
-							<span class="check" aria-hidden="true">{store.focusMode ? '✓' : '○'}</span>
-							<span>Focus 3D ( \ )</span>
-						</button>
-					{/if}
+					<!-- P23.14 §14 / F5 — Panel visibility (left sidebar, right Inspector,
+					     Focus) is View Bar chrome in every view and is painted there as the
+					     `.utilities` group; the menu does not keep a second writer. -->
 					{#if showCeilingRow}
 						<button
 							type="button"
@@ -498,17 +485,9 @@
 							<span class="check" aria-hidden="true">{store.cameraPanEnabled ? '✓' : '○'}</span>
 							<span>Pan</span>
 						</button>
-						<button
-							type="button"
-							role="menuitemcheckbox"
-							aria-checked={store.gridVisible}
-							class="toggle-row"
-							disabled={store.isVisitorCameraPreview}
-							onclick={() => store.toggleGrid()}
-						>
-							<span class="check" aria-hidden="true">{store.gridVisible ? '✓' : '○'}</span>
-							<span>Grid</span>
-						</button>
+						<!-- P23.14 §14 / F5 — grid visibility + opacity are owned by
+						     `EditorViewportGridControls`, which the View Bar mounts for every
+						     3D view; the menu does not repeat the toggle. -->
 						<div class="view-separator" role="separator" aria-orientation="horizontal"></div>
 						<label class="view-color-row">
 							<span>Floor</span>
@@ -563,12 +542,17 @@
 	{/if}
 	{/snippet}
 
-	{#if !(ribbon && isCameraContext)}
+	<!-- Exactly one View menu per host — see `viewMenuHost` above. -->
+	{#if viewMenuHost}
 		{@render viewMenu()}
 	{/if}
 </div>
 
 <style>
+	/* P23.14 §11 — Tool Tray presentation: drop the floating chrome and stack;
+	   the rail chrome lives in the shell-scoped `.project-editor .tool-tray`
+	   grammar (styles/controls.css), so the relic's floating form is untouched. */
+	.toolbar.tray { position:static; inset:auto; display:flex; flex-direction:column; align-items:stretch; gap:0; height:auto; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; }
 	.toolbar {
 		position: absolute;
 		top: 0.75rem;
@@ -649,7 +633,7 @@
 		border-radius: 0.3rem;
 		background: transparent;
 		color: var(--editor-text-secondary);
-		font: 600 0.68rem/1 var(--editor-font);
+		font: var(--editor-type-engraved);
 		cursor: pointer;
 	}
 
@@ -658,21 +642,21 @@
 	button:disabled { opacity: 0.42; cursor: default; }
 
 	.toggle-row { display: flex; align-items: center; gap: 0.55rem; }
-	.toggle-row .check { width: 0.85rem; color: var(--editor-accent); font: inherit; font-size: 0.78rem; }
+	.toggle-row .check { width: 0.85rem; color: var(--editor-accent); font: inherit; font-size: var(--editor-font-size-md); }
 	.toggle-row:disabled { opacity: 0.42; cursor: default; }
 
 	/* P21.5 §3.3 — View-menu relocation rows for the viewport session
 	   controls (grid / floor / lighting). Same toggle-row grammar; sliders
 	   and color inputs stay session-only and visitor-disabled. */
 	.view-separator { height: 1px; margin: 0.3rem 0.45rem; background: var(--editor-border-subtle); }
-	.view-section-label { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font: 600 0.62rem/1 var(--editor-font); text-transform: uppercase; letter-spacing: 0.05em; }
-	.view-slider-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: 0.68rem; }
+	.view-section-label { padding: 0.3rem 0.45rem 0.1rem; color: var(--editor-text-muted); font: var(--editor-type-engraved); text-transform: uppercase; letter-spacing: 0.05em; }
+	.view-slider-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: var(--editor-font-size-xs); }
 	.view-slider-row input[type='range'] { width: 100%; accent-color: var(--editor-accent); }
 	.view-slider-row input:disabled { opacity: 0.4; }
-	.view-color-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: 0.68rem; }
+	.view-color-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.3rem 0.45rem; color: var(--editor-text-secondary); font-size: var(--editor-font-size-xs); }
 	.view-color-row .color-inputs { display: flex; align-items: center; gap: 0.4rem; }
 	.view-color-row input[type='color'] { width: 1.8rem; height: 1.3rem; padding: 0; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: transparent; cursor: pointer; }
-	.view-color-row input[type='text'] { width: 4.6rem; padding: 0.24rem 0.35rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-primary); font: inherit; font-size: 0.68rem; }
+	.view-color-row input[type='text'] { width: 4.6rem; padding: 0.24rem 0.35rem; border: 1px solid var(--editor-border-normal); border-radius: 0.3rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-primary); font: inherit; font-size: var(--editor-font-size-xs); }
 	.view-color-row input:disabled { opacity: 0.4; cursor: default; }
 
 	@media (max-width: 44rem) {
@@ -689,8 +673,8 @@
 	.toolbar.ribbon { position:relative; inset:auto; transform:none; flex:1; min-width:0; height:28px; padding:0; border:0; border-radius:0; box-shadow:none; background:transparent; backdrop-filter:none; flex-wrap:nowrap; align-items:center; }
 	.ribbon button { height:28px; padding:0 6px; white-space:nowrap; }
 	.precision { position:relative; margin-left:auto; }
-	.precision summary { cursor:pointer; color:var(--editor-text-secondary); font:500 12px var(--editor-font); padding:6px; }
+	.precision summary { cursor:pointer; color:var(--editor-text-secondary); font: var(--editor-type-control); padding:6px; }
 	.precision .add-menu { right:0; left:auto; }
-	.precision label { display:flex; justify-content:space-between; gap:6px; padding:4px; font-size:12px; }
+	.precision label { display:flex; justify-content:space-between; gap:6px; padding:4px; font-size:var(--editor-font-size-md); }
 	.precision input[type=number] { width:64px; }
 </style>

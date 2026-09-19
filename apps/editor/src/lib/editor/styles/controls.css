@@ -5,11 +5,18 @@
  */
 
 :root {
-	/* Dense authoring-tool control metrics (DS §12). */
-	--editor-control-pad-x: 8px;
+	/* Dense authoring-tool control metrics (DS §12).
+	   These generic names are the pre-R3 generation: they are ALIASES onto the
+	   role layer in tokens.css (`--editor-control-*-height/-pad-x` +
+	   `--editor-type-*`), so a component written against either vocabulary moves
+	   with the same two knobs. Do not declare a fresh number here — a button
+	   role belongs in tokens.css, next to its siblings. */
+	--editor-control-pad-x: var(--editor-control-md-pad-x);
 	--editor-control-pad-y: 6px;
-	--editor-control-height: 28px;
-	--editor-control-font: 500 var(--editor-font-size-toolbar) var(--editor-font);
+	--editor-control-height: var(--editor-control-md-height);
+	--editor-control-font: var(--editor-type-control);
+	/* The relic's instrument corner (5 px). The shell overrides it to §6.2's 3 px
+	   in the `.project-editor` block below; the role value lives in tokens.css. */
 	--editor-control-radius: var(--editor-radius-md);
 
 	/* Resting control surface + states. */
@@ -30,141 +37,335 @@
 	--editor-danger-fg: #f4b8bd;
 }
 
-/*
- * P21.5 §1.4 — Row 2 (workspace ribbon) 4-tier affordance grammar + enclosed
- * tool tracks + enclosed segmented switches.
- *
- * Scoped to the P21 shell ribbon (`.project-editor .workspace-ribbon`) so the
- * frozen relic keeps its own divider-separated chrome; the component-scoped
- * floating styles remain the relic's grammar. Theme-aware tokens only — never
- * hard hexes. The 4-tier state grammar (resting / hover / active / primary
- * CTA) is defined here once and consumed by every Row 2 track, standalone
- * button, and segmented switch.
- */
-
-/* Enclosed tool tracks (Zone B authoring groups): cohesive filled surfaces
-   lifting off the panel-raised ribbon via the calibrated bg-control step. */
-.project-editor .workspace-ribbon .tool-group {
-	display: inline-flex;
-	align-items: center;
-	box-sizing: border-box;
-	height: 28px;
-	padding: 2px;
-	gap: 1px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 6px;
+/* P23.14 §6.2 — surface rules scoped to the main shell so the frozen relic
+   keeps its own corner treatment: chassis surfaces stay square, instruments
+   use ~3 px, paper handles ~2 px. */
+.project-editor {
+	--editor-control-radius: 3px;
 }
 
-/* Track inner buttons: 24px (28px track − 2px padding ×2), resting tier. */
-.project-editor .workspace-ribbon .tool-group > button {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+/* ── P23.14 §11 — Tool Tray grammar ────────────────────────────────────────
+   A 44 px vertical instrument rail attached directly to the Paper edge. The
+   same toolbar components that fill the View Bar render here in their `tray`
+   presentation, so the grammar is presentation-only: groups stack vertically,
+   each group paints its visible engraved label from `data-group-label`, and
+   buttons become icon-over-label instruments.
+
+   TYPE — the rail keeps the reference's engraved micro-tier, not §7's 10 px
+   (owner ratification R1; root cause in
+   `design/owner-ratifications.md`). §7's *approximate* scale puts
+   engraved/group labels at 10 px; §11 fixes the rail at 44 px. Those two
+   cannot both hold: at 10 px the group names measure 46.6–63.8 px against the
+   rail's text box, so every label broke *inside the word* ("OPENI / NGS",
+   "OBJEC / TS", "Windo / w") instead of reading as engraving. The tray paints
+   the reference values through `--editor-font-size-tray-group/-tool`
+   (7 px / 8 px), which is what §11's "small persistent group labels and
+   compact icon-led tools" asks for. The 1 px gutter + `width: 100%` control
+   gives the label a 39 px text box — the narrowest box that still paints an
+   8 px word like "Sequence" on one line (38.8 px).
+
+   One size exception, opt-in per group: a group word wider than the rail steps
+   down to `--editor-font-size-tray-group-compact` instead of breaking. Only
+   TRANSFORM qualifies (44.7 px at 7 px).
+
+   Armed tool = a DARKENED surface and nothing else (owner ratification R2):
+   the tool sinks one material step into the rail (recess trough, the tone the
+   Domain Spine uses) and its label goes full ink. The amber border and the 3 px
+   inboard edge are gone at the owner's direction — the cue is the luminance
+   step alone, which is still a non-hue cue (§18), still visible in a monochrome
+   frame, and the only armed cue in the shell. `--editor-armed` is retained in
+   the §6 palette for surfaces that may still want an armed hue.
+   ────────────────────────────────────────────────────────────────────────── */
+.project-editor .tool-tray {
+	display: flex;
+	flex-direction: column;
 	box-sizing: border-box;
-	height: 24px;
-	padding: 0 8px;
+	width: var(--editor-tray-width, 44px);
+	min-width: var(--editor-tray-width, 44px);
+	/* 1 px gutter, not 3: the label needs the width more than the rail needs
+	   air — 44 − 2 − 1(border) − 2(control border) = the 39 px text box the
+	   8 px tool labels are measured against. */
+	padding: 6px 1px 10px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	scrollbar-width: none;
+	background: var(--editor-bg-instrument);
+	border-right: 1px solid var(--editor-border-subtle);
+}
+
+.project-editor .tool-tray .tool-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 0;
+	border: 0;
+}
+
+.project-editor .tool-tray .tool-group[data-group-label]::before {
+	content: attr(data-group-label);
+	display: block;
+	margin: 6px 0 3px;
+	text-align: center;
+	font: var(--editor-type-tray-group);
+	/* Uppercase at 7 px is already dense; the reference resets tracking to 0. */
+	letter-spacing: 0;
+	/* Guard only — no group word needs it once `data-group-compact` has stepped
+	   the one over-wide word down; it stays so a future group name degrades to a
+	   second line instead of overflowing the rail. */
+	overflow-wrap: anywhere;
+	color: var(--editor-text-muted);
+}
+
+/* Opt-in per group (ratification R1): a word wider than the 44 px rail steps
+   down one size rather than breaking mid-word. TRANSFORM is the only one. */
+.project-editor .tool-tray .tool-group[data-group-compact][data-group-label]::before {
+	font-size: var(--editor-font-size-tray-group-compact);
+}
+
+.project-editor .tool-tray button {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: var(--editor-tray-tool-height);
+	padding: 3px 0;
 	border: 1px solid transparent;
-	border-radius: 4px;
+	border-radius: var(--editor-control-radius);
 	background: transparent;
 	color: var(--editor-text-secondary);
-	font: 500 12px/1 var(--editor-font);
-	white-space: nowrap;
+	font: var(--editor-type-tray-tool);
+	/* Tight enough that the longest tool word ("Sequence", 38.8 px at 8/600)
+	   keeps a margin against the 39 px box even under the platform font
+	   fallback's metric drift. */
+	letter-spacing: -0.01em;
+	/* The View Bar's toolbars are single-line by contract (`white-space:
+	   nowrap` in EditorViewportToolbar's own scope), which left the two-word
+	   Camera labels painting 46 px wide inside a 39 px box — "Add camera"
+	   overran the rail. The tray is the one host that must wrap. */
+	white-space: normal;
+	overflow-wrap: anywhere;
+	text-align: center;
 	cursor: pointer;
 }
 
-/* Hover tier. */
-.project-editor .workspace-ribbon .tool-group > button:hover:not(:disabled) {
-	background-color: var(--editor-bg-hover);
+.project-editor .tool-tray button svg {
+	width: var(--editor-tray-icon-size);
+	height: var(--editor-tray-icon-size);
+}
+
+.project-editor .tool-tray button:hover:not(:disabled) {
+	background: var(--editor-bg-hover);
 	border-color: var(--editor-border-normal);
 	color: var(--editor-text-primary);
 }
 
-/* Active / toggled-on tier: soft accent fill, never a loud bare stroke. */
-.project-editor .workspace-ribbon .tool-group > button.active {
-	background-color: var(--editor-accent-soft);
-	border-color: var(--editor-accent-border);
+/* Armed = darken only (ratification R2). No border, no inboard edge, no weight
+   step: the surface step carries the state, and it is the darker of the two
+   steps (hover lifts, armed sinks), so the two can never be confused. */
+.project-editor .tool-tray button.active {
+	background: var(--editor-bg-recess);
+	border-color: transparent;
+	box-shadow: none;
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .tool-group > button:disabled {
+.project-editor .tool-tray button:disabled {
 	opacity: 0.42;
 	cursor: default;
 }
 
-/* Standalone Row 2 controls (outside tracks): subtle resting surface. */
-.project-editor .workspace-ribbon .ribbon-btn {
+/* Cancel stays an instrument action, never an armed tool. */
+.project-editor .tool-tray button.cancel {
+	border-color: var(--editor-danger-border);
+	background: var(--editor-danger-soft);
+	color: var(--editor-danger-fg);
+}
+
+/* Reduced motion: the tray has no transitions of its own, and the rail must
+   never animate on hover (§23). */
+@media (prefers-reduced-motion: reduce) {
+	.project-editor .tool-tray button {
+		transition: none;
+	}
+}
+
+/*
+ * P23.14 §10 — View Bar chrome, matched to the Atlas (owner ratification R3).
+ *
+ * The Atlas paints the View Bar's subordinate controls as PLAIN SMALL BUTTONS
+ * rather than enclosed troughs: `.mode button { font-size:11px; min-height:
+ * 24px; padding:2px 8px }` and `.utilities button { font-size:10px;
+ * min-height:24px; padding:2px 6px }`, both inside the plain `button` chrome
+ * (`min-height:26px; padding:3px 9px; border-radius:3px; background:
+ * var(--instrument)`), with `button[aria-pressed=true]` marked by an
+ * edge-colored border plus an inset bottom rule — never a fill.
+ *
+ * The P21.5 enclosed-track / enclosed-segmented grammar this replaces made
+ * every View Bar control 28 px tall with a 12 px label and an accent-soft
+ * fill, which is the loudest button treatment in the shell and the reason the
+ * bar read heavier than the reference. Scoped to `.project-editor .view-bar`
+ * so the frozen relic keeps its own divider-separated chrome.
+ *
+ * Roles, not numbers: every type value below is a `--editor-type-*` role and
+ * every metric a `--editor-control-*` role, so R3's two knobs retune the bar.
+ */
+
+/* Tool groups are layout-only now: no trough, no fill, no border. The
+   ribbon component's own group rule (`padding-right: 0.32rem; border-right:
+   1px`) is cleared here too — the Atlas separates groups with space alone, and
+   this is the same leak class as the tray's inherited `nowrap`: a
+   component-scoped rule keeps applying in the shell until the shell says
+   otherwise. */
+.project-editor .view-bar .tool-group {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
 	box-sizing: border-box;
-	height: 28px;
-	padding: 0 8px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 5px;
-	color: var(--editor-text-primary);
-	font: 500 12px/1 var(--editor-font);
+	gap: 2px;
+	padding: 0;
+	border: 0;
+}
+
+/* Resting control: the shared instrument chrome, Atlas metrics (utility tier).
+   `height: auto` is load-bearing: the ribbon's own `button { height: 28px }`
+   would otherwise size this 24 px tier from the component, not the role. */
+.project-editor .view-bar .tool-group > button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	box-sizing: border-box;
+	height: auto;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-xs-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
+	color: var(--editor-text-secondary);
+	font: var(--editor-type-utility);
 	white-space: nowrap;
 	cursor: pointer;
 }
 
-.project-editor .workspace-ribbon .ribbon-btn:hover:not(:disabled) {
+/* Hover tier — the Atlas lifts the surface, never the border colour. */
+.project-editor .view-bar .tool-group > button:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
-	border-color: var(--editor-border-normal);
+	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .ribbon-btn:disabled {
+/* Pressed/toggled tier: one material step DOWN onto the recess tone, plus the
+   Atlas's edge border + inset bottom rule (`button[aria-pressed=true]`). The
+   recessive fill is the Atlas's own (`#c5cbce` against an `#E8E5DD`
+   instrument), and it keeps the cue from being hue alone: hover LIFTS to
+   `--editor-bg-hover`, pressed SINKS to `--editor-bg-recess`, the same pair the
+   Tool Tray's armed state uses (R2). A translucent accent-soft wash here was the
+   drift — it left the pressed button the same height and surface as a resting
+   one. */
+.project-editor .view-bar .tool-group > button.active {
+	background-color: var(--editor-bg-recess);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
+	color: var(--editor-text-primary);
+}
+
+.project-editor .view-bar .tool-group > button:disabled {
 	opacity: 0.42;
 	cursor: default;
 }
 
-/* P21.6 Slice C — Zone C toggle-on tier mirrors the tool-group grammar. */
-.project-editor .workspace-ribbon .ribbon-btn.active {
-	background-color: var(--editor-accent-soft);
-	border-color: var(--editor-accent-border);
+/* Standalone View Bar controls (View menu, Grid): the standard 26 px tier. */
+.project-editor .view-bar .ribbon-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	box-sizing: border-box;
+	height: auto;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-sm-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
+	color: var(--editor-text-primary);
+	font: var(--editor-type-utility);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.project-editor .view-bar .ribbon-btn:hover:not(:disabled) {
+	background-color: var(--editor-bg-hover);
+}
+
+.project-editor .view-bar .ribbon-btn:disabled {
+	opacity: 0.42;
+	cursor: default;
+}
+
+.project-editor .view-bar .ribbon-btn.active {
+	background-color: var(--editor-bg-recess);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 
-/* Enclosed segmented switches: [Scene|Camera], [Plan|3D], [Layout|Arrange]. */
-.project-editor .workspace-ribbon .segmented {
+/* MODE — the Atlas's `.mode`: a muted engraved LABEL and two plain 11 px
+   buttons, and **no box around the three of them**. The owner called the
+   previous treatment out directly: the wrapper still painted the ribbon
+   component's enclosed trough (padding 1 px, subtle border, 6 px radius, control
+   fill), so `MODE` read as a third control sitting in the same capsule as
+   Layout|Arrange. The label is muted text beside the pair — it is a caption, not
+   a segment — so every enclosure property is cleared here and only the buttons
+   carry chrome. */
+.project-editor .view-bar .segmented {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
-	height: 28px;
-	padding: 1px;
-	gap: 1px;
-	background-color: var(--editor-bg-control);
-	border: 1px solid var(--editor-border-subtle);
-	border-radius: 6px;
+	gap: 2px;
+	margin-left: 12px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	height: auto;
 }
 
-.project-editor .workspace-ribbon .segmented > button {
+.project-editor .view-bar .segmented::before {
+	content: 'MODE';
+	margin-right: 8px;
+	color: var(--editor-text-muted);
+	font: var(--editor-type-engraved);
+	letter-spacing: 0.07em;
+}
+
+.project-editor .view-bar .segmented > button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	box-sizing: border-box;
-	height: 24px;
-	padding: 0 8px;
-	border: 1px solid transparent;
-	border-radius: 4px;
-	background: transparent;
+	height: auto;
+	min-height: var(--editor-control-sm-height);
+	padding: 2px var(--editor-control-sm-pad-x);
+	border: 1px solid var(--editor-border-normal);
+	border-radius: var(--editor-control-radius);
+	background: var(--editor-bg-instrument);
 	color: var(--editor-text-secondary);
-	font: 500 12px/1 var(--editor-font);
+	font: var(--editor-type-mode);
 	cursor: pointer;
 }
 
-.project-editor .workspace-ribbon .segmented > button:hover:not(:disabled) {
+.project-editor .view-bar .segmented > button:hover:not(:disabled) {
 	background-color: var(--editor-bg-hover);
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .segmented > button.active {
-	background-color: var(--editor-accent-soft);
+.project-editor .view-bar .segmented > button.active {
+	background-color: var(--editor-bg-recess);
+	border-color: var(--editor-accent);
+	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 
-.project-editor .workspace-ribbon .segmented > button:disabled {
+.project-editor .view-bar .segmented > button:disabled {
 	opacity: 0.5;
 	cursor: default;
 }

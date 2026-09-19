@@ -10,7 +10,9 @@
 	--editor-timeline-chrome-bg: var(--editor-bg-panel);
 	--editor-timeline-chrome-border: var(--editor-border-subtle);
 	--editor-timeline-ruler-fg: var(--editor-text-muted);
-	--editor-timeline-ruler-font: 400 var(--editor-font-size-ruler) var(--editor-font);
+	/* Atlas `.ruler` — 9 px MONO ticks (§7's second voice); the previous rule
+	   was sans, which is why the ruler read as prose instead of a scale. */
+	--editor-timeline-ruler-font: var(--editor-type-tick);
 
 	/* Backing two-lane model renders the five display lanes' semantics:
 	   path = connection motion, look = aim keys, envelope = framing amber,

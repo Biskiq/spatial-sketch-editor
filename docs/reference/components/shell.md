@@ -1,33 +1,90 @@
 # Shell and workspaces
 
 **Read when:** app chrome, Scene/Camera switch, Layout mode, top bar, timeline frame, project menu.  
-**Last reviewed:** 2026-09-17 (P21 shell landed — `ProjectRow` + `WorkspaceRibbon` own the top chrome in `EditorApp.svelte`; `EditorAppBar` remains in the frozen relic only)
+**Last reviewed:** 2026-09-19 (P23.14 — the shell is the PLATE reference
+composition: Domain Spine · Project Head · View Bar · Tool Tray over
+Navigator | work column | Inspector, Camera Drawer owning the central column,
+24 px Status Rail, PLATE Light default)
 
-**Current implementation status:** P21 shell chrome has landed (`ProjectRow` + `WorkspaceRibbon`). The pre-P21 section map below is retained until a P23 pass reconciles it.
-**P21 target:** [`../design-system/design-plan-p21.md`](../design-system/design-plan-p21.md)
-— target authority for product entry (`/`), Project Hub (`/projects`), Project
-Shell chrome, Row 1 / Row 2 placement, persistence/account presentation, and
-project-level Visitor Preview.
+**Current implementation status:** landed. P21 introduced the Project
+Head/ribbon split; P23.14 (`../roadmap/p23-layout-depth/p23.14-shell-visual-system/`)
+recomposed it into the composition below and retired the pre-P21 section map and
+the pre-P21 `Preview Scene → /museum` row this file used to carry.
 
-Everything below the pre-P21 header describes the pre-P21 tree unless explicitly marked as P21+ target.
+**Authority (2026-09-19, owner-ratified):** the durable shell design authority is
+[`editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md),
+now carrying ratifications **R1** (Tool Tray tier), **R2** (armed tool) and **R3**
+(closed type ladder, semantic roles, `--editor-type-scale` /
+`--editor-control-scale`), the View Bar `MODE`-as-caption grammar and the four
+distinct surface states. This file is **descriptive** of that composition and stays
+canonical for **capability, ownership and exposure**. Read the direction first for
+any shell composition, material, type, control or state question; do not take a
+shell value from a component's scoped CSS.
 
 ---
 
-## Current implementation — pre-P21
+## Current implementation — PLATE composition (P23.14, landed)
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ Top bar — Scene|Camera · Plan|3D · Undo/Redo · Project      │
-├──────────┬──────────────────────────────┬───────────────────┤
-│ Left     │  3D viewport + tools         │ Inspector         │
-├──────────┴──────────────────────────────┴───────────────────┤
-│ Camera timeline — mounted in Camera domain only             │
-├─────────────────────────────────────────────────────────────┤
-│ Status — workspace · selection · save · hints · grid/snap   │
-└─────────────────────────────────────────────────────────────┘
+┌──────┬───────────────────────────────────────────────────────────────┐
+│      │ PROJECT HEAD · 36 px                                          │
+│ D    │ identity · persistence · project nav · undo/redo ·            │
+│ o    │ Visitor Preview · theme · account · Document menu             │
+│ m    ├───────────────────────────────────────────────────────────────┤
+│ a    │ VIEW BAR · 34 px                                              │
+│ i    │ Plan|3D tabs · MODE caption (Scene Plan) · utilities · precision  │
+│ n    ├────────┬──────┬────────────────────────────┬──────────────────┤
+│ S    │NAVIG.  │ TRAY │ work column                │ INSPECTOR        │
+│ p    │ 268 px │ 44px │ Plan or 3D canvas          │ 300 px           │
+│ i    │240–300 │      │ Camera Drawer owns this    │ 280–420          │
+│ n    │        │      │ column's bottom edge only  │                  │
+│ e    ├────────┴──────┴────────────────────────────┴──────────────────┤
+│ 56px │ STATUS RAIL · 24 px                                           │
+└──────┴───────────────────────────────────────────────────────────────┘
 ```
 
-The shell is a domain×view matrix over **one shared `Plan | 3D` view axis**
+- **Domain Spine (56 px, full height)** is the domain axis: `Scene | Camera`.
+  A domain switch is a switch, never a separate application or a peer view.
+- **Project Head (36 px)** carries project identity + inline rename, the
+  persistence cluster and save state, project navigation, the history slot,
+  Visitor Preview, the Document menu, and the theme/account popovers. It never
+  carries workspace manipulation commands.
+- **View Bar (34 px)** carries the `Plan | 3D` view switch plus the current
+  workspace's utility and precision controls; it replaced the retired 32 px
+  ribbon band. It is not a second global toolbar. The view tabs are engraved and
+  must not read as ordinary tool buttons; Scene Plan adds the `MODE   Layout |
+  Arrange` **caption** grammar (`MODE` is a quiet non-interactive label, not a
+  third segment — no fill, border, radius or padding around the three); utilities
+  sit at the 10 px utility tier, the mode pair at 11 px on the 24 px control role,
+  tool groups are separated by space alone, and a pressed control takes a
+  recessed surface + edge border + inset bottom rule (never a translucent wash).
+  All of those values come from the R3 roles (`editor-shell-and-visual-system.md` §7/§10/§18).
+- **Tool Tray (44 px)** is a Paper-attached vertical instrument rail holding the
+  current surface's tool vocabulary — not a second sidebar. Each workspace
+  mounts one (Scene Plan drafting, Camera Plan, Scene 3D, camera utilities). Its
+  engraved labels are the rail's own micro-tier (7 px group / 8 px tool, 6 px
+  compact floor for a word wider than the rail) and an armed tool is a
+  **darkened surface** — no border, no inboard edge (P23.14 ratifications R1/R2,
+  [`editor-shell-ratifications.md`](../../reference/design-system/editor-shell-ratifications.md)).
+  That durable contract (`reference/design-system/editor-shell-and-visual-system.md`) plus its
+  Atlas are the shell design authority; this file is descriptive of it and canonical for
+  capability, ownership and exposure.
+- **Navigator (268 px, 240–300)** owns the domain's structure/assets;
+  **Inspector (300 px, 280–420)** owns the selection's properties.
+- **Camera Drawer** spans the central work column only: collapsed `48px`
+  transport/readout strip (no scrubber, no lanes), expanded `288px`; it never
+  opens over the Navigator or the Inspector, and never auto-expands on a domain
+  switch.
+- **Status Rail (24 px)** stays informational: workspace, selection, save state,
+  navigation hints, grid/snap. Precision belongs near the gesture; the rail
+  never carries all of it. It paints the 10 px status role with 12 px side padding
+  and ≈ 20 px gaps, and its ink is the readable secondary tier — quietness comes
+  from weight and size, never from under-contrast muted ink.
+- Theme default is **PLATE Light** (`theme.svelte.ts`; boot allowlist in
+  `app.html`). The dark relic theme remains available, not default.
+
+Domain × view behaviour is unchanged and canonical: the shell is a
+domain×view matrix over **one shared `Plan | 3D` view axis**
 (P1.7): `Scene | Camera` switches domain; a `Plan | 3D` switch applies to
 both domains; a domain switch never snaps the view (boot: Scene → Plan).
 Domain changes are attention-only (not document/history/world); view changes
@@ -50,9 +107,8 @@ Unsequenced sidequests; ordered Sequence neighbors are omitted, and there is
 no standalone Neighbors section. Reorder remains drag-only. Scene 3D owns
 `Hierarchy | Assets`. Scene-only tabs, Assets, and
 Add Room never appear in Camera. No empty Camera rail mounts over the
-viewport; workspace actions stay in the contextual viewport toolbar except
-for the Camera Plan toolbar (P1.5), which owns Select/View, Add Camera,
-Connect, and Grid/Snap.
+viewport; workspace tools live in the workspace's Tool Tray, including the
+Camera Plan set (P1.5): Select/View, Add Camera, Connect, and Grid/Snap.
 
 **Camera → Plan (P1.5)** mounts over the architectural backdrop with its own
 contextual toolbar (Select/View, Add Camera, Connect, Grid/Snap); the Plan
@@ -64,20 +120,16 @@ history rules) is canonical in [`camera-tour.md`](./camera-tour.md).
 
 | Workspace | Preview |
 |-----------|---------|
-| Scene | Preview Scene → `/museum` (pre-P21 temporary) |
+| Scene | Project-level Visitor Preview takeover (Project Head `Preview`), per [`design-plan-p21.md`](../design-system/design-plan-p21.md) §I |
 | Camera | Preview Camera → in-editor selected-camera view; Preview Edge and Preview Sequence remain contextual scopes |
-
-> **Pre-P21 note:** `Preview Scene → /museum` is temporary pre-P21 behavior,
-> not canonical target. The P21+ target is the project-level Visitor Preview
-> takeover (`/project/:id/preview`) per
-> [`design-plan-p21.md`](../design-system/design-plan-p21.md) §I.
 
 Project menu: scene Import/Paste/Copy/Download/Reset + separate Layout JSON Import/Paste/Copy/Download/Reset section. Layout status + invalid-import feedback appear in menu, sidebar, inspector. Scene + layout replacement confirmations document-scoped; editor navigation + browser unload protect either dirty document. Undo/Redo enabled in Layout, shares one chronological stack with tagged scene/layout entries. Top-bar scene dirty badge scene-scoped. **No** automatic git Save.
 
-Layout workspace chrome: viewport toolbar has Plan/3D, Select, Rect room, Polygon room, Plan Snap/Grid or 3D Ceiling controls. Plan Select room bodies move complete room units; selected rooms expose centroid rotation arm + Shift 15° snap. Right sidebar keeps layout status/counts visible, presents Place, Objects, Selection accordion sections; accordion state session-only. Room inspector rotation applies relative degrees, resets to zero.
+Layout workspace chrome: the View Bar and the Plan Tool Tray expose Plan/3D, Select, Rect room, Polygon room, Plan Snap/Grid or 3D Ceiling controls. Plan Select room bodies move complete room units; selected rooms expose centroid rotation arm + Shift 15° snap. Right sidebar keeps layout status/counts visible, presents Place, Objects, Selection accordion sections; accordion state session-only. Room inspector rotation applies relative degrees, resets to zero.
 
-Timeline: collapsed `48px`; default expanded `288px`, user range `240–300px`.
-Expansion state persists verbatim and never auto-expands on a domain switch.
+Timeline (Camera Drawer, central work column only): collapsed `48px`;
+default expanded `288px`, user range `240–300px`. Expansion state persists
+verbatim and never auto-expands on a domain switch.
 Display lanes: Camera Path · Shots · FOV · Look At · Roll. These project the
 current two backing models (Guided Route + Camera Framing); P3 adds no new
 Shots/Roll entities or independent raw curves. Expanded main-editor chrome has
@@ -94,30 +146,23 @@ hints, while 3D reads 3D grid/transform-snap state and 3D navigation hints.
 
 ---
 
-## P21+ target
+## P21 landing record
 
-Summary of the ratified target (full detail in
-[`design-plan-p21.md`](../design-system/design-plan-p21.md)):
+[`design-plan-p21.md`](../design-system/design-plan-p21.md) is frozen at the
+P21 shape (`Project Row` + `Workspace Ribbon`, `ProjectRow` +
+`WorkspaceRibbon` in `EditorApp.svelte`); P23.14 supersedes its **placement**
+only. Where the two disagree, this file wins:
 
-```text
-36px Project Row (Row 1)
-+ 32px Workspace Ribbon (Row 2)
-= 68px total persistent top chrome
-status bar 24px
-no permanent floating viewport toolbar
-project-level Visitor Preview
-```
-
-- Row 1 hosts project identity, persistence, project navigation, the Undo/Redo
-  slot, Visitor Preview, and account; Row 2 hosts `Scene | Camera`,
-  `Plan | 3D`, and the active workspace's contextual authoring tools.
-- The current floating/contextual toolbars relocate into Row 2; viewports keep
-  only direct-manipulation fixtures.
-- Undo/Redo in Row 1 binds the existing chronological tagged Scene/Layout
-  history stack for Spatial; non-Spatial surfaces defer or disable the slot
-  rather than sharing one universal cross-workspace undo.
-- `Preview Scene → /museum` is a temporary pre-P21 behavior and is **not** the
-  canonical target.
+- Row 1 (Project Head) hosted the Undo/Redo slot, preview and account; Row 2
+  hosted `Scene | Camera`, `Plan | 3D` and the contextual authoring tools.
+  The domain axis moved to the **Domain Spine** in P23.14 (P21's Row 2
+  `Scene | Camera` track is retired), and the authoring tools moved to the
+  **Tool Tray**.
+- Undo/Redo in the Project Head binds the existing chronological tagged
+  Scene/Layout history stack for Spatial; non-Spatial surfaces defer or disable
+  the slot rather than sharing one universal cross-workspace undo.
+- `Preview Scene → /museum` was a temporary pre-P21 behaviour and is retired —
+  Scene preview is the project-level Visitor Preview takeover.
 
 ## Display identity (P23.12, landed)
 

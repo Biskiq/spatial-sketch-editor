@@ -11,7 +11,7 @@
 		type LayoutPreviewState
 	} from './layout/layout-preview-state.svelte';
 	import { requestLayoutImportReplacement } from './layout/layout-import-replacement';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { acquireObjectUrl, releaseObjectUrl } from './store/binary-texture-store.svelte';
 	import type { EditorStore } from './editor-store.svelte';
 	import type { ProjectSummary } from './project-persistence';
@@ -43,6 +43,9 @@
 		onDiscardPendingSave,
 		resolveProjectAssetBytes,
 		open = $bindable(false),
+		/** #40 — lets the Project Head coordinate its popovers: reported on every
+		 * internal transition, so the row can close its other menus. */
+		onOpenChange,
 		onReset,
 		onLayoutReplaced
 	}: {
@@ -72,6 +75,7 @@
 		onDiscardPendingSave?: () => void;
 		resolveProjectAssetBytes?: (uri: string) => Promise<Uint8Array | null>;
 		open?: boolean;
+		onOpenChange?: (open: boolean) => void;
 		/** fired after a reset action; the shell clears the active selection on all three slots. */
 		onReset?: () => void;
 		/**
@@ -93,8 +97,63 @@
 	const unresolvedCount = $derived(store.unresolvedTextureCount);
 	const plainJsonBlocked = $derived(exportBlocker !== null);
 	let projectMenuElement = $state<HTMLElement>();
+	let menuTriggerElement = $state<HTMLButtonElement>();
+	let menuPanelElement = $state<HTMLElement>();
 	let importFileInput = $state<HTMLInputElement>();
 	let layoutImportFileInput = $state<HTMLInputElement>();
+
+	/**
+	 * #41 — the Document menu's focus lifecycle. Every internal transition goes
+	 * through here, so the panel takes focus when it opens, focus returns to the
+	 * ⋮ trigger when it closes *from* the panel (Escape), and the Project Head is
+	 * told about the transition so it can close its sibling popovers (#40).
+	 *
+	 * Focus is only pulled back when it was inside the panel: a pointer-driven
+	 * close must not steal focus from whatever the user aimed at next.
+	 */
+	function setOpen(next: boolean, options: { restoreFocus?: boolean } = {}) {
+		if (open === next) return;
+		const hadFocus = Boolean(menuPanelElement?.contains(document.activeElement));
+		open = next;
+		onOpenChange?.(next);
+		if (next) return; // focus-in is handled by the open effect below
+		const restore = options.restoreFocus ?? hadFocus;
+		if (!restore || !menuTriggerElement) return;
+		void tick().then(() => menuTriggerElement?.focus());
+	}
+
+	/**
+	 * Focus lands inside the panel on every open, whatever opened it — including
+	 * an external `open` write from the shell (the save-auth gate pops the menu
+	 * without a click).
+	 */
+	let menuWasOpen = false;
+	$effect(() => {
+		if (open && !menuWasOpen) {
+			menuWasOpen = true;
+			void tick().then(() => focusFirstMenuControl());
+			return;
+		}
+		if (!open) menuWasOpen = false;
+	});
+
+	/** The first control that can actually be used — never a disabled one. */
+	function focusFirstMenuControl() {
+		const panel = menuPanelElement;
+		if (!panel) return;
+		const control = panel.querySelector<HTMLElement>(
+			'button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]'
+		);
+		if (control) control.focus();
+		else panel.focus();
+	}
+
+	/** Escape inside the panel closes it and hands focus back to the trigger. */
+	function onMenuPanelKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Escape') return;
+		event.stopPropagation();
+		setOpen(false);
+	}
 	let packageImportInput = $state<HTMLInputElement>();
 	let pastedSceneJson = $state('');
 	let pastedLayoutJson = $state('');
@@ -302,10 +361,12 @@
 
 	onMount(() => {
 		const closeProjectMenu = (event: PointerEvent) => {
-			if (!projectMenuElement?.contains(event.target as Node)) open = false;
+			// Pointer close: focus stays where the user put it (setOpen's default).
+			if (!projectMenuElement?.contains(event.target as Node)) setOpen(false, { restoreFocus: false });
 		};
 		const closeProjectMenuWithEscape = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') open = false;
+			// Fallback for the Escape that never reaches the panel (focus outside it).
+			if (event.key === 'Escape') setOpen(false);
 		};
 		window.addEventListener('pointerdown', closeProjectMenu);
 		window.addEventListener('keydown', closeProjectMenuWithEscape);
@@ -318,15 +379,23 @@
 
 <div bind:this={projectMenuElement} class="project-menu-wrap" class:elevated>
 	<button
+		bind:this={menuTriggerElement}
 		type="button"
 		class:active={open}
 		aria-haspopup="dialog"
 		aria-expanded={open}
-		onclick={() => (open = !open)}
+		onclick={() => setOpen(!open)}
 	aria-label={elevated ? "Document menu" : "Project"}
 	>{#if elevated}⋮{:else}Project <ChevronDown size={14} aria-hidden="true" />{/if}</button>
 	{#if open}
-		<div class="project-menu" role="dialog" aria-label="Project actions">
+		<div
+			bind:this={menuPanelElement}
+			class="project-menu"
+			role="dialog"
+			aria-label="Project actions"
+			tabindex="-1"
+			onkeydown={onMenuPanelKeydown}
+		>
 			{#if saveBlocker}<p role="status">{saveBlocker}</p>{/if}
 			{#if !relic && cloudConfigured}
 				<section class="cloud-project" aria-label="Cloud project">
@@ -498,7 +567,9 @@
 		border: 1px solid var(--editor-success-border);
 		border-radius: 999px;
 		background: var(--editor-success-soft);
-		color: var(--editor-success);
+		/* Ruling D2 — chip text uses the success TEXT sibling; the border and
+		   soft fill stay on the glyph/border family. */
+		color: var(--editor-text-success);
 		font-size: 0.62rem;
 		font-weight: 650;
 		letter-spacing: 0.04em;

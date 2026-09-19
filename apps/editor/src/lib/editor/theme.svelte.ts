@@ -1,11 +1,13 @@
 /*
  * Editor theme registry + controller.
  *
- * Named theme identities (no generic "dark"/"light"). Shipped themes:
- * `navy-blue` (canonical default) plus the curated chrome palettes
- * `salon-espresso`, `electric-plum`, `acid-moss` and the multi-tonal
- * `porcelain-atelier` (the first LIGHT identity), `synth-sunset`,
- * `velvet-kodachrome`. A future theme is one THEMES entry + one
+ * Named theme identities (no generic "dark"/"light"). Since P23.14 the
+ * canonical DEFAULT identity is `plate-light` (PLATE Light — final-direction
+ * §6/§26.5); `navy-blue`, the curated chrome palettes `salon-espresso`,
+ * `electric-plum`, `acid-moss`, the multi-tonal `porcelain-atelier` (the
+ * other light identity), `synth-sunset` and `velvet-kodachrome` are variants
+ * of the same hierarchy grammar — they must not redefine component roles.
+ * A future theme is one THEMES entry + one
  * `:root[data-theme='<id>']` override block at the end of
  * styles/tokens.css + one entry in the app.html boot allowlist (the last is
  * CI-pinned by tests/lib/editor/theme-registry.test.ts).
@@ -39,6 +41,7 @@
  */
 
 export const THEMES = {
+	'plate-light': { label: 'PLATE Light', colorScheme: 'light' },
 	'navy-blue': { label: 'Navy Blue', colorScheme: 'dark' },
 	'salon-espresso': { label: 'Salon Espresso', colorScheme: 'dark' },
 	'electric-plum': { label: 'Electric Plum', colorScheme: 'dark' },
@@ -50,7 +53,11 @@ export const THEMES = {
 
 export type ThemeId = keyof typeof THEMES;
 
-export const DEFAULT_THEME: ThemeId = 'navy-blue';
+/**
+ * P23.14 — PLATE Light is the product-defining default appearance; the old
+ * navy dark identity is a variant, never the baseline (final-direction §6).
+ */
+export const DEFAULT_THEME: ThemeId = 'plate-light';
 
 export const THEME_STORAGE_KEY = 'editor.theme';
 

@@ -184,7 +184,9 @@
 	<section class="camera-node" aria-label="Camera node editor">
 		<div class="section-heading">
 			<h2>{pendingNode ? 'Pending camera' : 'Camera node'}</h2>
-			<span>{pendingNode ? 'Not saved' : 'Room-local'}</span>
+			<!-- P23.0b — the frame claim is the node's own: a canonical node carries
+			     no Room, so a fixed "Room-local" would misdescribe the document. -->
+			<span>{pendingNode ? 'Not saved' : node.roomId ? 'Room-local' : 'World-local'}</span>
 		</div>
 
 		<label class="label-field">
@@ -495,7 +497,8 @@
 	.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 	h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--editor-text-muted); }
 	.section-heading span { color: var(--editor-text-muted); font-size: 0.68rem; }
-	.status { margin: 0.75rem 0 0; color: var(--editor-warning); font-size: 0.7rem; line-height: 1.4; }
+	/* Ruling D2 — caution text uses the warning TEXT sibling. */
+	.status { margin: 0.75rem 0 0; color: var(--editor-text-warning); font-size: 0.7rem; line-height: 1.4; }
 	dl { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
 	dl div { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.45rem; }
 	dt, .label-field span { color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }

@@ -31,7 +31,7 @@ import {
 	canonicalHierarchyHome,
 	collectHierarchyRepresentations,
 	hierarchyClusterRow,
-	hierarchyEndsRow,
+
 	hierarchyJunctionRow,
 	hierarchyObjectRow,
 	hierarchyOpeningRow,
@@ -285,14 +285,13 @@ function searchWallRow(
 		// it under the related host Wall, where the Wall block is ordered first
 		// and would otherwise steal the primary representation/reveal target.
 		if (options.excludeOpeningIds?.has(openingId)) continue;
-		const opening = hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId);
+		const opening = hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId, {
+			occurrence: true
+		});
 		if (opening) children.push(opening);
 	}
-	const ends = hierarchyEndsRow(index, `${rowKey}:ends`, {
-		wallId,
-		direction: options.direction
-	});
-	if (ends) children.push(ends);
+	// P23.14 Decision 4 — no `Ends …` relation row: host Openings are the whole
+	// wall disclosure, and endpoint identity lives on the Wall row itself.
 	const roomIds = index.roomIdsByWallId.get(wallId) ?? [];
 	return hierarchyWallRow(index, rowKey, wallId, {
 		// Participation text explains why a related Wall is present; a directly

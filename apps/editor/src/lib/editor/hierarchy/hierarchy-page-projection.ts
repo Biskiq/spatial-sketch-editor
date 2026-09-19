@@ -110,7 +110,33 @@ export type HierarchyRowAction = {
 	destination: HierarchyDestination;
 };
 
-export type HierarchyRowKind = 'heading' | 'destination' | 'section' | 'entity' | 'relation';
+/**
+ * P23.14 §12.3 — the six visually distinct row species. Each one has a
+ * different visual job, so a group can never masquerade as a domain entity:
+ *
+ * - `heading`     — presentational eyebrow inside a page (never focusable);
+ * - `destination` — spatial/container entity row (a page destination: Rooms,
+ *                   Walls, Openings, Junctions, …) with its inventory count;
+ * - `section`     — typed group heading inside an entity page (Boundary,
+ *                   Boundary Junctions, Wall-hosted Openings, …);
+ * - `entity`      — ordinary canonical entity at its own home;
+ * - `occurrence`  — contextual projection of a canonical entity shown through
+ *                   another context (a shared Wall inside a Room's Boundary, an
+ *                   Opening inside its host Wall, a Boundary Junction, an
+ *                   assigned object). Nesting never establishes ownership
+ *                   (§12.2): an occurrence resolves to the same canonical
+ *                   entity, reference, name and selection as its home row;
+ * - `relation`    — relation metadata / non-selectable inventory count row;
+ * - `empty`       — authored empty/teaching state for a page with no rows.
+ */
+export type HierarchyRowKind =
+	| 'heading'
+	| 'destination'
+	| 'section'
+	| 'entity'
+	| 'occurrence'
+	| 'relation'
+	| 'empty';
 
 /** Which field of an entity a search query hit, strongest first. */
 export type HierarchyMatchField = 'name' | 'reference' | 'id' | 'role' | 'kind' | 'label';
@@ -245,7 +271,36 @@ const PAGE_EXCLUSION: PinnedReason = { kind: 'page', text: 'Not on this page' };
  * **represented**: DOM presence is never the test.
  */
 export function isHierarchyRowSelectable(row: HierarchyProjectedRow): boolean {
-	return row.kind === 'entity' && row.entity !== undefined;
+	// A contextual occurrence is the SAME canonical entity as its home row
+	// (§12.2), so it stays selectable: nesting is presentation, not ownership.
+	return (row.kind === 'entity' || row.kind === 'occurrence') && row.entity !== undefined;
+}
+
+/** Authored empty/teaching state for a page that projects no rows (§12.3). */
+export function hierarchyEmptyRow(rowKey: string, label: string): HierarchyProjectedRow {
+	return { rowKey, kind: 'empty', label };
+}
+
+/** The authored empty/teaching copy for each page (§12.3 species 6, §19). */
+function pageEmptyLabel(page: HierarchyPage): string {
+	switch (page.kind) {
+		case 'rooms':
+			return 'No rooms yet · draw a Wall run or use Rect Room in the Tool Tray';
+		case 'room':
+			return 'This room projects no rows yet';
+		case 'walls':
+			return 'No walls yet · use Draw Wall in the Tool Tray';
+		case 'openings':
+			return 'No openings yet · use Door or Window on a Wall';
+		case 'junctions':
+			return 'No junctions yet · junctions appear where walls meet';
+		case 'layoutObjects':
+			return 'No layout objects yet · place a Column, Platform or Plinth';
+		case 'sceneContent':
+			return 'No scene content yet · use Place in the Tool Tray';
+		default:
+			return 'Nothing to show yet';
+	}
 }
 
 function entityRow(input: {
@@ -260,8 +315,11 @@ function entityRow(input: {
 	defaultOpen?: boolean;
 	children?: HierarchyProjectedRow[];
 	actions?: HierarchyRowAction[];
+	/** True when this row is a contextual projection of the canonical entity. */
+	occurrence?: boolean;
 }): HierarchyProjectedRow {
-	return { kind: 'entity', ...input };
+	const { occurrence = false, ...rest } = input;
+	return { kind: occurrence ? 'occurrence' : 'entity', ...rest };
 }
 
 function headingRow(rowKey: string, label: string): HierarchyProjectedRow {
@@ -371,6 +429,8 @@ export type HierarchyEntityRowOptions = {
 	disclosureKey?: string;
 	defaultOpen?: boolean;
 	tooltip?: string;
+	/** P23.14 §12.2 — render as a contextual occurrence of the canonical entity. */
+	occurrence?: boolean;
 };
 
 export function hierarchyRoomRow(
@@ -393,6 +453,7 @@ export function hierarchyRoomRow(
 		label,
 		entity: room.entity,
 		canonicalId: room.roomId,
+		occurrence: options.occurrence,
 		...(reference ? { reference } : {}),
 		secondary: options.secondary,
 		children: options.children,
@@ -427,6 +488,7 @@ export function hierarchyWallRow(
 		entity: wall.entity,
 		canonicalId: wall.wallId,
 		facet: wall.role,
+		occurrence: options.occurrence,
 		...(reference ? { reference } : {}),
 		...(referenceLed ? { referenceLed: true } : {}),
 		secondary: options.secondary,
@@ -457,6 +519,7 @@ export function hierarchyOpeningRow(
 		entity: opening.entity,
 		canonicalId: opening.openingId,
 		facet: opening.openingKind,
+		occurrence: options.occurrence,
 		...(reference ? { reference } : {}),
 		...(referenceLed ? { referenceLed: true } : {}),
 		// D8 — kind + host, never a bare kind restatement.
@@ -489,6 +552,7 @@ export function hierarchyJunctionRow(
 		label: junction.reference ?? formatPlacementLabel(junction.junctionId),
 		entity: junction.entity,
 		canonicalId: junction.junctionId,
+		occurrence: options.occurrence,
 		// Reference-only rows are always reference-led when the token resolved.
 		...(junction.reference !== null ? { referenceLed: true } : {}),
 		secondary:
@@ -518,6 +582,7 @@ export function hierarchyObjectRow(
 		entity: object.entity,
 		canonicalId: object.objectId,
 		facet: object.objectKind,
+		occurrence: options.occurrence,
 		// Explicit `roomId` only — never coordinate/bounds inference.
 		secondary:
 			options.secondary ??
@@ -611,27 +676,15 @@ export function boundaryJunctionIds(
 	return ids;
 }
 
-/** The non-selectable oriented `Ends <start> · <end>` relation row of a Wall. */
-export function hierarchyEndsRow(
-	index: HierarchySourceIndex,
-	rowKey: string,
-	ref: { wallId: string; direction: 'forward' | 'reverse' }
-): HierarchyProjectedRow | null {
-	const wall = index.wallById.get(ref.wallId);
-	if (!wall) return null;
-	const start = ref.direction === 'forward' ? wall.startJunctionId : wall.endJunctionId;
-	const end = ref.direction === 'forward' ? wall.endJunctionId : wall.startJunctionId;
-	// P23.12 — endpoint identity is the compact reference when the ledger has
-	// one, falling back to the raw-ID display label for ledger-less documents.
-	const startRef = index.junctionById.get(start)?.reference ?? formatPlacementLabel(start);
-	const endRef = index.junctionById.get(end)?.reference ?? formatPlacementLabel(end);
-	return {
-		rowKey,
-		kind: 'relation',
-		label: `Ends ${startRef} · ${endRef}`
-	};
-}
-
+/*
+ * P23.14 Decision 4 (owner-ruled) — the per-Wall oriented `Ends <start> · <end>`
+ * relation row is REMOVED. Endpoint identity duplicated what the Wall's own
+ * disclosure and the `Boundary Junctions (n)` inventory already answer, and a
+ * non-selectable relation row sitting under every Wall was the densest noise in
+ * the Navigator. The inventories of record are `Boundary Junctions (n)` on the
+ * Room page plus the global Junctions page; the `relation` species stays for
+ * count/summary rows that carry no entity.
+ */
 function buildRootRows(index: HierarchySourceIndex): HierarchyProjectedRow[] {
 	return [
 		destinationRow('root:rooms', 'Rooms', index.orderedRooms.length, { kind: 'rooms' }),
@@ -693,9 +746,12 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 		if (!index.wallById.has(ref.wallId)) continue;
 		const wallRowKey = `room:${roomId}:wall:${ref.wallId}`;
 		const openings = (index.openingsByWallId.get(ref.wallId) ?? [])
-			.map((openingId) => hierarchyOpeningRow(index, `${wallRowKey}:opening:${openingId}`, openingId))
+			.map((openingId) =>
+				hierarchyOpeningRow(index, `${wallRowKey}:opening:${openingId}`, openingId, {
+					occurrence: true
+				})
+			)
 			.filter((row): row is HierarchyProjectedRow => row !== null);
-		const ends = hierarchyEndsRow(index, `${wallRowKey}:ends`, ref);
 		const others = (index.roomIdsByWallId.get(ref.wallId) ?? []).filter((id) => id !== roomId);
 		boundaryChildren.push(
 			hierarchyWallRow(index, wallRowKey, ref.wallId, {
@@ -707,7 +763,11 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 					: undefined,
 				disclosureKey: wallRowKey,
 				defaultOpen: false,
-				children: ends ? [...openings, ends] : openings
+				// A Wall reached through a Room's Boundary is a contextual
+				// occurrence of the canonical Wall (§12.2), and its hosted
+				// Openings live in its own disclosure (§11/Decision 4).
+				occurrence: true,
+				children: openings
 			})!
 		);
 	}
@@ -727,7 +787,9 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 			`Boundary Junctions (${junctionIds.length})`,
 			junctionIds
 				.map((junctionId) =>
-					hierarchyJunctionRow(index, `room:${roomId}:junction:${junctionId}`, junctionId)
+					hierarchyJunctionRow(index, `room:${roomId}:junction:${junctionId}`, junctionId, {
+						occurrence: true
+					})
 				)
 				.filter((row): row is HierarchyProjectedRow => row !== null),
 			{ defaultOpen: false }
@@ -742,7 +804,9 @@ function buildRoomPageRows(index: HierarchySourceIndex, roomId: string): Hierarc
 			`Assigned Layout Objects (${objectIds.length})`,
 			objectIds
 				.map((objectId) =>
-					hierarchyObjectRow(index, `room:${roomId}:object:${objectId}`, objectId)
+					hierarchyObjectRow(index, `room:${roomId}:object:${objectId}`, objectId, {
+						occurrence: true
+					})
 				)
 				.filter((row): row is HierarchyProjectedRow => row !== null),
 			{
@@ -781,8 +845,14 @@ function buildWallsRows(
 				secondary: secondaryParts.length > 0 ? secondaryParts.join(' · ') : undefined,
 				disclosureKey: rowKey,
 				defaultOpen: false,
+				// Wall-hosted Openings: the Wall is the canonical home for a wall-first
+				// Opening, so these rows are occurrences of the Openings-page entities.
 				children: openingIds
-					.map((openingId) => hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId))
+					.map((openingId) =>
+						hierarchyOpeningRow(index, `${rowKey}:opening:${openingId}`, openingId, {
+							occurrence: true
+						})
+					)
 					.filter((row): row is HierarchyProjectedRow => row !== null)
 			})!
 		);
@@ -937,7 +1007,11 @@ export function buildHierarchyPageProjection(
 	page: HierarchyPage,
 	options: HierarchyPageOptions = {}
 ): HierarchyPageProjection {
-	const rows = buildPageRows(index, page, options);
+	const projected = buildPageRows(index, page, options);
+	// P23.14 §12.3 — an empty page states its authored empty/teaching case
+	// instead of rendering as a blank column.
+	const rows =
+		projected.length > 0 ? projected : [hierarchyEmptyRow(`${page.kind}:empty`, pageEmptyLabel(page))];
 	const representations = collectHierarchyRepresentations(rows);
 	const filtered =
 		(options.wallFilter ?? 'all') !== 'all' || (options.openingFilter ?? 'all') !== 'all';

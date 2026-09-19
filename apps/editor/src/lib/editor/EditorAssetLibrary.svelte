@@ -12,6 +12,7 @@
 	} from './editor-textures';
 	import { PROJECT_ASSET_MAX_BYTES, sniffImageMime } from '$lib/editor/helpers/mime-sniff';
 	import type { ProjectAssetMetadata } from '$lib/editor/project-persistence';
+	import { resolveRovingIndex, tablistTabIndex } from '$lib/editor/app/roving-focus';
 	import type { EditorStore } from './editor-store.svelte';
 
 	type SourceMode = 'public' | 'local' | 'cloud';
@@ -53,6 +54,22 @@
 
 	const categories = [...new Set(assetCatalog.map((asset) => asset.category))];
 	let libraryTab = $state<'models' | 'shapes' | 'lights' | 'textures'>('models');
+	const LIBRARY_TABS = ['models', 'shapes', 'lights', 'textures'] as const;
+	/** Roving focus targets for the library tablist (#39). */
+	let libraryTabElements = $state<(HTMLButtonElement | null)[]>([]);
+
+	/**
+	 * #39 — the section strip is one tab stop: arrows move and select, Home/End
+	 * jump to the ends, and Tab leaves the strip for the search field below.
+	 */
+	function onLibraryTabsKeydown(event: KeyboardEvent) {
+		const selected = LIBRARY_TABS.indexOf(libraryTab);
+		const next = resolveRovingIndex(LIBRARY_TABS.length, selected, event.key, 'horizontal');
+		if (next === null) return;
+		event.preventDefault();
+		libraryTab = LIBRARY_TABS[next]!;
+		libraryTabElements[next]?.focus();
+	}
 	let query = $state('');
 	let category = $state<AssetCategory | ''>('');
 	let status = $state<AssetLibraryStatusFilter>('usable');
@@ -386,35 +403,24 @@
 </script>
 
 <section class="library" aria-label="Asset library">
-	<div class="library-tabs" role="tablist" aria-label="Asset library sections">
-		<button
-			type="button"
-			role="tab"
-			aria-selected={libraryTab === 'models'}
-			class:active={libraryTab === 'models'}
-			onclick={() => (libraryTab = 'models')}
-		>Models</button>
-		<button
-			type="button"
-			role="tab"
-			aria-selected={libraryTab === 'shapes'}
-			class:active={libraryTab === 'shapes'}
-			onclick={() => (libraryTab = 'shapes')}
-		>Shapes</button>
-		<button
-			type="button"
-			role="tab"
-			aria-selected={libraryTab === 'lights'}
-			class:active={libraryTab === 'lights'}
-			onclick={() => (libraryTab = 'lights')}
-		>Lights</button>
-		<button
-			type="button"
-			role="tab"
-			aria-selected={libraryTab === 'textures'}
-			class:active={libraryTab === 'textures'}
-			onclick={() => (libraryTab = 'textures')}
-		>Textures</button>
+	<div
+		class="library-tabs"
+		role="tablist"
+		aria-label="Asset library sections"
+		tabindex="-1"
+		onkeydown={onLibraryTabsKeydown}
+	>
+		{#each LIBRARY_TABS as tab, index (tab)}
+			<button
+				bind:this={libraryTabElements[index]}
+				type="button"
+				role="tab"
+				aria-selected={libraryTab === tab}
+				tabindex={tablistTabIndex(index, LIBRARY_TABS.indexOf(libraryTab))}
+				class:active={libraryTab === tab}
+				onclick={() => (libraryTab = tab)}
+			>{tab === 'models' ? 'Models' : tab === 'shapes' ? 'Shapes' : tab === 'lights' ? 'Lights' : 'Textures'}</button>
+		{/each}
 	</div>
 
 	<div class="filters">

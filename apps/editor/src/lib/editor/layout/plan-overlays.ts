@@ -1311,7 +1311,14 @@ export function buildPlanInteractionProjection(
 			points: points.map(([x, z]) => [x, z] as LayoutVec2),
 			style: 'selection-bounds'
 		});
-		const topCenter = roomTopCenter(model, selectedRoom.id);
+		// Locked Decision 7 — a canonical wall-first Room has no authored yaw: its
+		// shape **is** the Walls around it, so a rotation gesture has no honest
+		// result to commit. The arm and its handle are therefore suppressed at this
+		// seam (paint first, and through it the handle hit test that starts the
+		// drag) instead of being offered and then refused. Scene staging's arm and
+		// the P10 layout-object yaw arm are untouched — they rotate owners that do
+		// carry their own yaw.
+		const topCenter = !wallFirst ? roomTopCenter(model, selectedRoom.id) : null;
 		if (topCenter) {
 			selection.push({
 				kind: 'polyline',

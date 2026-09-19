@@ -50,6 +50,40 @@ export function createEditorContextMenuStore(): EditorContextMenuStore {
 export const EDITOR_CONTEXT_MENU_KEY = KEY;
 
 /**
+ * #38 — menu keyboard model. Disabled items stay *visible* (their reason text is
+ * the whole point of showing them), but they are never focus targets: roving
+ * focus walks the enabled list so a user arrowing through a menu is never
+ * parked on something they cannot run.
+ */
+export function enabledMenuItemIndexes(items: readonly ContextMenuItem[]): number[] {
+	return items.flatMap((item, index) => (item.disabledReason ? [] : [index]));
+}
+
+/**
+ * #38 — the item a menu key focuses, or `null` when the menu has nothing to
+ * focus. Arrow keys wrap at both ends; Home/End are absolute. `currentIndex`
+ * may be -1 (nothing focused yet, e.g. after a re-open), which resolves to the
+ * first/last enabled item in the direction of travel.
+ */
+export function resolveMenuItemFocus(
+	items: readonly ContextMenuItem[],
+	currentIndex: number,
+	key: 'ArrowDown' | 'ArrowUp' | 'Home' | 'End'
+): number | null {
+	const enabled = enabledMenuItemIndexes(items);
+	if (enabled.length === 0) return null;
+	if (key === 'Home') return enabled[0]!;
+	if (key === 'End') return enabled[enabled.length - 1]!;
+	const step = key === 'ArrowDown' ? 1 : -1;
+	const position = enabled.indexOf(currentIndex);
+	if (position === -1) return step === 1 ? enabled[0]! : enabled[enabled.length - 1]!;
+	return enabled[(position + step + enabled.length) % enabled.length]!;
+}
+
+/** Keys the shared menu consumes for its own roving focus. */
+export const CONTEXT_MENU_NAV_KEYS = ['ArrowDown', 'ArrowUp', 'Home', 'End'] as const;
+
+/**
  * Pure helper — clamp an anchored menu box inside the viewport with a small
  * margin, flipping up/left when it would overflow. Unit-testable.
  */

@@ -321,7 +321,9 @@
 	.preset-btn.active { border-color: var(--editor-accent); background: var(--editor-bg-selected); box-shadow: 0 0 8px color-mix(in srgb, var(--editor-accent) 30%, transparent); color: var(--editor-text-primary); }
 	.preset-btn:disabled { opacity: 0.42; cursor: default; }
 	.envelope-status { margin: 0; color: var(--editor-text-muted); font-size: 0.65rem; text-align: center; }
-	.envelope-status.manual { color: var(--editor-warning); }
+	/* Ruling D2 — the manual-envelope caution is text, so it takes the
+	   warning TEXT sibling; the border below stays on the glyph family. */
+	.envelope-status.manual { color: var(--editor-text-warning); }
 	.diagnostics { display: flex; flex-direction: column; gap: 0.2rem; }
 	.diagnostic {
 		margin: 0;

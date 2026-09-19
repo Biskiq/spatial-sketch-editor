@@ -17,6 +17,55 @@ system.
 > broader visual language (color, tokens, typography, panels, spacing),
 > workspace behavior, and capability rules in this specification remain
 > canonical.
+>
+> **P23.14 amendment (2026-09-19, landed):** placement is now the ratified
+> PLATE composition (§15, [`shell.md`](../components/shell.md)) — a full-height
+> **Domain Spine** owns `Scene | Camera`, Row 1 is the **Project Head**, and
+> Row 2 is the **View Bar** (34 px: `Plan | 3D` + utilities) plus the
+> Paper-attached **Tool Tray** (44 px: the workspace's tool vocabulary).
+> **Wherever a section below says "Workspace Ribbon (Row 2)", read
+> "View Bar + Tool Tray (Row 2)"**, and wherever it says the `Scene | Camera`
+> switch sits in Row 2, read "Domain Spine". §7 color states PLATE Light as
+> the default theme. The §Plan drafting ink and §5 icon inventories stay
+> frozen.
+>
+> **Authority after P23.14 (2026-09-19, owner-ratified):** the P23.14
+> [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
+> contract plus its [`Atlas`](./editor-shell-atlas/index.html)
+> are the **durable design authority for the shell**; later phases fit into that
+> grammar and may depend on it. This file, `design-shell-specs.md` and
+> `shell.md` stay canonical for **capability, ownership, exposure and the frozen
+> Plan/identity/iconography contracts**, while their **shell placement, dimension
+> and type** sections are **descriptive of the landed PLATE system**. Three
+> ratifications correct numbers in this file — **R1** (the Tool Tray's engraved
+> tier is 7 px group / 8 px tool with a 6 px compact floor, *not* §22's 10 px),
+> **R2** (an armed tool is a darkened surface, *not* an amber border + inboard
+> edge) and **R3** (the shell's type and controls are a closed ladder + semantic
+> roles on two global scales, *not* per-surface literals). Rationale and
+> measurements:
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
+>
+> **How to read this file after P23.14** — every statement in it falls into one of
+> three classes:
+>
+> 1. **Subsystem authority** (still normative): capability, ownership, exposure,
+>    the P23.12 identity contract, the P23.13 Plan drafting/iconography contract,
+>    Plan Paper and the spatial palette.
+> 2. **Descriptive** (true today, follows the durable authority): the shell
+>    composition and the tables already amended in place (§6 type scale, §20 tree
+>    rows, §17 buttons, §5/§18 View Bar).
+> 3. **Superseded for the shell** (history only — do **not** implement): the
+>    pre-PLATE flat type ramp (16/14/13/12.5/11.5 px), the 32 px workspace-ribbon
+>    band and Row 1/Row 2 model, broad-toolbar group-label sizing, 28 px
+>    component-local button/track sizing, the 32 px standard toolbar button, and
+>    navy as the product baseline.
+>
+> The ratified shell grammar lives in **four places only**: `editor-shell-and-visual-system.md`
+> §2.8–§2.10 (inheritance, roles-not-numbers, constraint-over-number), §7 (closed
+> ladder, roles, the two scales, control roles, role outcomes), §10–§11 (View Bar
+> `MODE` grammar, Tool Tray R1/R2) and §18 (four distinct surface states, pressed
+> baseline). Do not take a shell type/control/material value from this file when
+> §7 disagrees.
 
 This specification translates the approved product model and generated UI concepts into concrete implementation rules. The canonical product remains the explicit `Scene | Camera` × `Plan | 3D` domain/view system:
 
@@ -346,18 +395,48 @@ Do not introduce a display font.
 
 ## Type scale
 
-| Usage              |      Size |  Weight |
-| ------------------ | --------: | ------: |
-| Product title      |      16px |     600 |
-| Major panel title  |      14px |     600 |
-| Toolbar/button     |      13px |     500 |
-| Tree row           |      13px | 400–500 |
-| Inspector section  |      13px |     600 |
-| Inspector label    |      12px |     400 |
-| Input value        | 12.5–13px |     400 |
-| Secondary metadata |    11.5px |     400 |
-| Status bar         | 11.5–12px |     400 |
-| Timeline ruler     |      11px |     400 |
+> **P23.14 R3 amendment (2026-09-19, owner-ratified — this section is now
+> descriptive, not an authority).** The shell's sizes are a **closed ladder of
+> seven steps**, and every surface asks for a **role**, never a number. Both live
+> in `apps/editor/src/lib/editor/styles/tokens.css`, and every step is a multiple
+> of one percentage knob, `--editor-type-scale` (`1` = 100 %):
+>
+> | Step | At scale 1 | Roles that use it |
+> | --- | ---: | --- |
+> | `-2xs` | 9px | `--editor-type-tick` (mono measures only) |
+> | `-xs` | 10px | engraved / engraved-quiet, utility, status, ref, tray tool/group |
+> | `-sm` | 11px | mode (View Bar MODE pair), station, mono |
+> | `-md` | 12px | body, row, control, control-strong, readout, property labels |
+> | `-lg` | 13px | property values, row-head (Navigator scope) |
+> | `-xl` | 15px | heading (panel titles) |
+> | `-2xl` | 20px | the identity ceiling |
+>
+> **The table that used to sit here (16/14/13/13/13/12/12.5–13/11.5/11.5–12/11)
+> is superseded.** It was the pre-P23.14 flat ramp, and it was largely *dead* —
+> nothing consumed `title`, `panel-title`, `toolbar`, `tree-row` or `status`, so
+> components wrote their own `rem` values instead; the Atlas comparison measured
+> seventeen distinct sizes between 9.6 px and 13.6 px across the shell. Read the
+> ladder above, and for control metrics the `--editor-control-*` role table
+> (`lg` 30px / `md` 26px / `sm` 24px / `xs` 20px, scaled by
+> `--editor-control-scale`). Rationale, the measured Atlas deltas and the two
+> remaining unswept panels:
+> [`editor-shell-ratifications.md`](./editor-shell-ratifications.md) R3.
+
+**Tool Tray micro-tier (P23.14 R1) — an exception, scoped to the 44 px rail:**
+
+| Usage                    |  Size |  Weight |
+| ------------------------ | ----: | ------: |
+| Tray group label         |   7px |     600 |
+| Tray tool label          |   8px |     600 |
+| Tray group label, a word wider than the rail | 6px | 600 |
+
+The rail (`--editor-tray-width: 44px`) is the one container in the shell that
+cannot hold this file's engraved 10 px tier: at 10 px the group names measure
+46.6–63.8 px against a 39 px text box, so every label broke mid-word. The tray
+paints the P23.14 reference's tier instead, and a group word wider than the rail
+steps down to 6 px rather than breaking (`TRANSFORM` is the only one). §6's tiers
+above keep every other engraved label in the shell. Full rationale and the
+measured table: P23.14 [`editor-shell-ratifications.md`](./editor-shell-ratifications.md) §2–§3.
 
 Use:
 
@@ -376,13 +455,120 @@ for:
 
 Do not use monospace for normal numeric fields. Inter with tabular figures keeps the UI cleaner.
 
----
-
-# 7. Core color system
+---# 7. Core color system
 
 The generated images do not provide exact CSS colors, so these become the normalized implementation tokens. All tokens use the `--editor-` prefix so the editor never collides with the host app or the `/museum` visitor.
 
-## Dark shell
+**PLATE Light is the default theme (P23.14, landed).** `theme.svelte.ts`
+ships `plate-light` as `DEFAULT_THEME` and `app.html`'s boot allowlist pins it
+before hydration, so the light Chassis below is what the editor paints on
+first load. The navy ramp that used to be the only shell is retained as the
+alternate (relic) theme — it is an override block, not a second design.
+
+## PLATE Light — default Chassis
+
+```css
+/* CHASSIS — persistent structure. Square corners, 1 px hairlines, no
+   decorative shadows: separation is tonal + alignment, not elevation. */
+--editor-bg-app:          #D9DDE0;
+--editor-bg-panel:        #D9DDE0;
+--editor-bg-panel-raised: #E2E6E8;
+--editor-bg-control:      #E8E5DD;
+--editor-bg-hover:        #EDEAE2;
+--editor-bg-selected:     #CFE1FB;
+
+--editor-border-subtle:   #C6CBD0;
+--editor-border-normal:   #B1B8BD;
+--editor-border-strong:   #8D959B;
+
+/* Material roles: Spine trough + Instrument control surface. */
+--editor-bg-recess:       #CBD0D4;
+--editor-bg-instrument:   #E8E5DD;
+
+/* Domain accents on the Chassis — never a full-surface fill. Darkened from
+   #A37A3D/#C58B35 by review F1 rulings D3/D4 so both clear the 3:1 non-text
+   bar on every Chassis step. */
+--editor-domain-scene:    #946D34;
+--editor-domain-camera:   #347D89;
+/* The armed HUE. Since P23.14 R2 the Tool Tray does NOT spend it — an armed
+   tool is a darkened surface (`--editor-bg-recess`), no border, no edge, no
+   weight step. Kept for surfaces that want an armed hue. */
+--editor-armed:           #946624;
+```
+
+## Text
+
+Text tokens are single `light-dark()` pairs keyed to `color-scheme`, so the
+light Chassis flips to dark ink automatically. The light members, with measured
+contrast on the `#D9DDE0` Chassis:
+
+```css
+--editor-text-primary:    #13161D;  /* 13.25:1 */
+--editor-text-secondary:  #3A4252;  /*  7.39:1 */
+--editor-text-muted:      #55606E;  /*  4.68:1 — chrome text only */
+--editor-text-disabled:   #9BA3AF;
+```
+
+(Ratios re-measured on the `#D9DDE0` Chassis by review F1; the earlier `10.6:1`
+belonged to the §6.1 reference ink `#252A2E`, not to the base primary. Muted was
+darkened `#606B7E → #55606E` because it is a *text* ink — Status Rail, resting
+View Bar tabs, Inspector section headers, tray group labels — and only cleared
+3.94:1 before. `tests/lib/editor/app/p23-14-contrast-floor.test.ts` recomputes
+every number in this section from `tokens.css`.)
+
+Small chromatic inks layer above the base ramp and must still clear AA at their
+painted size: `--editor-text-tint`, `--editor-text-tint-soft`,
+`--editor-text-metric`, `--editor-text-timecode`,
+`--editor-text-success: #146C34` (4.8:1 — a *text* role, distinct from the
+`--editor-success` glyph/border family, which keeps `#15803D`) and
+`--editor-text-warning: #744E0E` (5.41:1 — likewise distinct from the
+`--editor-warning` glyph/border family; a base `--editor-success`/`-warning`
+used as text ink is a bug). The 11 px Status Rail paints
+`--editor-text-secondary`, never muted ink.
+
+## Instrument accent
+
+```css
+/* PLATE Light — the Selection dark edge, so #2F8CFF stays owned by spatial
+   selection. */
+--editor-accent:          #145DA8;
+--editor-accent-hover:    #2F75C9;
+--editor-accent-pressed:  #0F4A86;
+--editor-accent-soft:     rgb(20 93 168 / 12%);
+--editor-accent-border:   rgb(20 93 168 / 55%);
+```
+
+Blue means:
+
+* selected
+* active tool
+* active workspace/view
+* selected object
+* selected camera
+* selected timeline item
+* handles
+* authored camera paths
+
+Do not make every clickable control blue. Keyboard focus has its own ring
+(`--editor-focus-ring`), painted as an offset outline so a control that is both
+focused and selected shows both cues — independence rests on the ring's form,
+not on a third hue. The full state vocabulary (hover / selected / primary /
+focus / armed / disabled+reason / refusal / warning / destructive /
+preview-ghost / snap-guide / authored-vs-derived) is tokenised in
+`styles/tokens.css` (`--editor-focus-ring-*`, `--editor-state-*`,
+`--editor-axis-*`).
+
+## Semantic colors
+
+```css
+/* PLATE Light */
+--editor-success:         #15803D;
+--editor-warning:         #8A5F14;
+--editor-danger:          #9B3149;
+--editor-danger-fg:       #7D2740;
+```
+
+## Alternate theme — dark shell (relic)
 
 ```css
 --editor-bg-app:          #071019;
@@ -395,50 +581,18 @@ The generated images do not provide exact CSS colors, so these become the normal
 --editor-border-subtle:   #1A2936;
 --editor-border-normal:   #243544;
 --editor-border-strong:   #32485A;
-```
 
-Keep chrome slightly blue rather than neutral charcoal.
-
-No large gradients.
-
-No frosted-glass SaaS cards.
-
-## Text
-
-```css
 --editor-text-primary:    #EDF3F8;
 --editor-text-secondary:  #A7B3BF;
 --editor-text-muted:      #71808E;
 --editor-text-disabled:   #52606C;
-```
 
-## Primary blue
-
-```css
 --editor-accent:          #2F8CFF;
 --editor-accent-hover:    #55A1FF;
 --editor-accent-pressed:  #1976DF;
 --editor-accent-soft:     rgba(47, 140, 255, 0.16);
 --editor-accent-border:   rgba(47, 140, 255, 0.62);
-```
 
-Blue means:
-
-* selected
-* active tool
-* active workspace/view
-* selected object
-* selected camera
-* selected timeline item
-* handles
-* focus ring
-* authored camera paths
-
-Do not make every clickable control blue.
-
-## Semantic colors
-
-```css
 --editor-success:         #31C985;
 --editor-success-soft:    rgba(49, 201, 133, 0.14);
 
@@ -446,8 +600,14 @@ Do not make every clickable control blue.
 --editor-warning-soft:    rgba(217, 164, 65, 0.14);
 
 --editor-danger:          #EF626C;
---editor-danger-soft:     rgba(239, 98, 108, 0.14);
+--editor-danger-soft:    rgba(239, 98, 108, 0.14);
 ```
+
+Keep chrome slightly blue rather than neutral charcoal.
+
+No large gradients.
+
+No frosted-glass SaaS cards.
 
 Use green for:
 
@@ -696,9 +856,8 @@ large panel:          0px
 ```
 
 The radius above applies to transient/floating viewport utilities and
-popovers, not to a permanent floating toolbar — under the P21+ amendment,
-contextual authoring tools live in the Workspace Ribbon (Row 2), which is not a
-floating surface.
+popovers, not to a permanent floating toolbar — contextual authoring tools live
+in the View Bar + Tool Tray (Row 2), which is not a floating surface.
 
 Panels themselves should generally meet edge-to-edge.
 
@@ -720,13 +879,16 @@ Inputs:
 1px solid --editor-border-normal
 ```
 
-Focus:
+Focus (P23.14, landed — an independent ring, never the accent border alone):
 
-```text
-1px accent border
-+
-0 0 0 2px rgba(47,140,255,.18)
+```css
+outline: var(--editor-focus-ring-width) solid var(--editor-focus-ring);
+outline-offset: var(--editor-focus-ring-offset);
 ```
+
+The ring paints *outside* the control's box, so a control that is both focused
+and selected shows both cues. Independence rests on the ring's form, not on a
+third hue.
 
 Transient/floating viewport utility (elevation only — not a permanent toolbar):
 
@@ -735,10 +897,10 @@ box-shadow:
   0 8px 24px rgba(0, 0, 0, 0.38);
 ```
 
-Menus/popovers use a smaller equivalent. Under the P21+ amendment there is no
-permanent floating contextual toolbar; the Workspace Ribbon (Row 2) hosts
-permanent contextual authoring tools without a drop shadow between chrome
-rows.
+Menus/popovers use a smaller equivalent. There is no permanent floating
+contextual toolbar; the View Bar + Tool Tray (Row 2) host the permanent
+contextual authoring tools without a drop shadow between chrome rows (the
+Tool Tray separates by the Instrument surface tone and a 1 px hairline).
 
 Do not put drop shadows between permanent side panels.
 
@@ -746,46 +908,55 @@ Do not put drop shadows between permanent side panels.
 
 # 15. Shell dimensions
 
-**P21+ target (amended by [`design-plan-p21.md`](./design-plan-p21.md)):**
-the single-app-bar target is superseded by a two-row top chrome. The runtime
-CSS tokens `--editor-appbar-height` (56px) and `--editor-status-height` (32px)
-still carry the pre-P21 values; P21 implementation migrates them. There is no
-permanent floating viewport toolbar.
+**PLATE composition (P23.14, landed).** The two-row P21 chrome is superseded
+by the reference composition: a full-height Domain Spine plus Head over
+View Bar / Tool Tray / work column, with the Camera Drawer owning the central
+column and a 24 px Status Rail. Responsive behaviour preserves hierarchy and
+ownership before exact dimensions.
 
 ```text
-Project Row:       36px
-Workspace Ribbon:  32px
-Total top chrome:  68px
+Domain Spine:      56px  (full height)
+Project Head:      36px
+View Bar:          34px
+Tool Tray rail:    44px  (Paper-attached, per workspace)
 
-Left sidebar:      300px
+Navigator:         268px
 minimum:           240px
-maximum:           420px
+maximum:           300px
 
-Right Inspector:   320px
+Inspector:         300px
 minimum:           280px
 maximum:           420px
 
-Status bar:        24px (P21 target)
-
-Transient/floating viewport utilities: 38–40px high
+Status Rail:       24px
+Touch target min:  44px  (coarse pointers; `--editor-touch-target-min`)
 ```
 
 Shell:
 
 ```text
-┌──────────── Project Row ─────────────────┐
-├───────── Workspace Ribbon ───────────────┤
-│ left │          viewport          │ right│
-├──────┴──── Camera Timeline ───────┴─────┤
-│                Status                    │
-└──────────────────────────────────────────┘
+┌──────┬────────────────────────────────────────────┐
+│      │ Project Head — project context             │
+│ D    ├────────────────────────────────────────────┤
+│ o    │ View Bar — workspace + view + utilities     │
+│ m    ├────────┬──────┬────────────────┬───────────┤
+│ S    │Navig.  │ Tray │ work column    │ Inspector │
+│ p    ├────────┴──────┴────────────────┴───────────┤
+│ i    │ Camera Drawer — central column only        │
+│ n    ├───────────────────────────────────────────┤
+│ e    │ Status Rail                                │
+└──────┴────────────────────────────────────────────┘
 ```
 
 Top = project context + workspace authoring tools.
 Left = structure/resources.
 Center = world.
 Right = properties.
-Bottom = temporal Camera authoring.
+Bottom = temporal Camera authoring (central column only).
+
+`--editor-appbar-height` (56px) and `--editor-status-height` (32px) survive in
+`:root` for the frozen relic only; the `.project-editor` block overrides them
+with the values above.
 
 ---
 
@@ -823,20 +994,32 @@ The generated expanded Camera design shows the intended five-lane structure, tra
 
 # 17. Buttons
 
-## Standard toolbar button
+> **P23.14 R3 — controls are ROLES, not numbers (this supersedes the table
+> below for the shell).** Every chrome button is one of four roles from
+> [`editor-shell-and-visual-system.md` §7.4](./editor-shell-and-visual-system.md):
+> `lg` 30 px / `md` 26 px / `sm` 24 px / `xs` 20 px, each carrying its own
+> padding and type, all scaled by `--editor-control-scale`. Radius follows the
+> material rule (square chassis, ≈3 px instruments). The pre-PLATE standard
+> button is retained below as **history and for the frozen relic only**:
+
+## Standard toolbar button (pre-PLATE — superseded for the shell)
 
 ```text
-height:       32px
-padding-x:     9px
-icon:         16px
+height:       32px     ← superseded: shell uses the md (26 px) / sm (24 px) role
+padding-x:     9px     ← superseded: comes from the role
+icon:         16px     ← retained (--editor-icon-size-sm)
 gap:           6px
-font:         13px / 500
-radius:        5px
+font:         13px / 500  ← superseded: --editor-type-control (12 px) in the shell
+radius:        5px     ← superseded: shell instrument radius is ≈3 px
+transparent background, secondary text
 ```
 
-> **P21+ Row 2 rule (see §18):** contextual authoring buttons inside the
-> Workspace Ribbon use the 28px compact sizing; the 32px above applies to
-> standard buttons outside the Ribbon.
+> **View Bar rule (see §18):** the View Bar's controls are the ratified Atlas
+> metrics — plain 24 px buttons on the `sm` role, utilities at the 10 px utility
+> tier, the `MODE` pair at 11 px, presses painted with a recessed surface + edge
+> border + inset bottom rule, and tool groups separated by space only. The 28 px
+> enclosed track and the enclosed segmented trough are **superseded**. Tool Tray
+> tools are icon-led and sized to the 44 px rail (`editor-shell-and-visual-system.md` §11).
 
 Default:
 
@@ -897,21 +1080,28 @@ min width/item: 74px
 font: 13px / 500
 ```
 
-> **P21+ Row 2 supersession (amended by
-> [`design-plan-p21.md`](./design-plan-p21.md)):** the 34px height above
-> applies to segmented controls **outside** the Workspace Ribbon. Row 2 uses
-> the compact rule:
+> **Row 2 supersession (P21+ amended by
+> [`design-plan-p21.md`](./design-plan-p21.md); placement per P23.14 §15):**
+> the 34px height above applies to segmented controls **outside** Row 2. Row 2
+> uses the compact rule:
 
 ```text
-Workspace Ribbon compact controls: 28px
-- Scene | Camera
+View Bar controls (P23.14 R3 — Atlas metrics, roles not numbers):
+  plain buttons:    min-height var(--editor-control-sm-height)  /* 24px */
+  labels:           utilities  var(--editor-type-utility)      /* 10px */
+                    MODE pair  var(--editor-type-mode)         /* 11px */
+  pressed/toggled:  edge border + inset 2px bottom rule (never a fill)
 - Plan | 3D
 - Layout | Arrange
-- contextual Row 2 authoring buttons
+- contextual View Bar utilities
+
+Domain Spine track:   the Scene | Camera axis (56px rail)
+Tool Tray tools:      icon-led, one 44px rail per workspace
 ```
 
-Standard controls outside the Workspace Ribbon may retain the existing 32px
-sizing where applicable.
+Controls **outside** the shell keep whatever sizing their own subsystem's spec
+says; **inside** the shell, control size comes from the R3 role table (§17) and
+never from a retained pre-PLATE number.
 
 Selected:
 
@@ -983,12 +1173,15 @@ Numeric units should appear in section label or field suffix rather than repeate
 
 # 20. Tree / Outliner
 
-Tree rows:
+Tree rows (P23.14 R3 — the values are roles now; the numbers shown are their
+resolved size at scale 1, and the **row height is 29px**, the Atlas `.row`):
 
 ```text
-height: 28px
-font: 13px
-icon: 14–16px
+height: var(--editor-row-height)          /* 29px */
+font:   var(--editor-type-row)            /* 12px, weight 570 */
+meta:   var(--editor-type-ref)            /* 10px mono */
+icon:   var(--editor-icon-size-sm)        /* 16px disclosure glyph */
+disclosure target: var(--editor-disclosure-size)   /* 18px */
 indent step: 16px
 ```
 
@@ -1053,18 +1246,35 @@ Do not put large colored status backgrounds behind entire cards.
 
 ---
 
-# 22. Contextual authoring tools — Workspace Ribbon (Row 2)
+# 22. Contextual authoring tools — Tool Tray (Row 2)
 
-**P21+ model (amended by [`design-plan-p21.md`](./design-plan-p21.md)):**
-permanent contextual authoring tools live in the Workspace Ribbon (Row 2),
-not in a toolbar floating over the viewport. The tool sets per workspace below
-are unchanged; only their placement changed. Viewport-local floating UI is
-reserved for things with spatial meaning: orientation cube, TransformControls,
-rotation handles, path anchors, camera/frustum helpers, and
-selection/direct-manipulation fixtures. The Camera Timeline transport is **not**
-relocated into Row 2.
+**Placement (P23.14, landed; P21 amended by
+[`design-plan-p21.md`](./design-plan-p21.md)):** permanent contextual authoring
+tools live in the workspace's **Tool Tray** — a 44 px Paper-attached rail
+(`--editor-tray-width`) with 7 px engraved group labels and 8 px icon-led tool
+labels plus the View Bar's utilities; not in a toolbar floating over the
+viewport. The tray's sizes are the rail's **micro-tier**
+(`--editor-font-size-tray-group/-tool`, owner ratification R1), *not* the 10 px
+engraved tier in §6 above: that tier was written for a shell whose group labels
+had hundreds of pixels of width, and it cannot fit the 44 px rail (at 10 px the
+groups measure 46.6–63.8 px inside a 39 px text box, so every label broke
+mid-word). A group word that is wider than the rail steps down to a 6 px compact
+floor rather than breaking — `TRANSFORM` is the only one — via an opt-in
+`data-group-compact` on that group. §6's tiers keep every other engraved label in
+the shell. **Armed tool (owner ratification R2):** a darkened surface and
+nothing else — `background: var(--editor-bg-recess)`, no border, no inboard edge,
+no weight step. `--editor-armed` remains the armed *hue* for other surfaces; the
+tray does not spend it. Rationale and measurements:
+[`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
 
-Scene → Plan populates the Ribbon with:
+The tool sets per workspace below are unchanged; only their placement changed.
+Viewport-local floating UI is reserved for things with spatial meaning:
+orientation cube, TransformControls, rotation handles, path anchors,
+camera/frustum helpers, and selection/direct-manipulation fixtures. The Camera
+Timeline transport is **not** relocated into the tray; a collapsed Camera Drawer
+is the transport strip.
+
+Scene → Plan populates the Tool Tray with:
 
 ```text
 Scene | Camera
@@ -1080,7 +1290,7 @@ Measure
 …
 ```
 
-Scene → 3D populates the Ribbon with:
+Scene → 3D populates the Tool Tray with:
 
 ```text
 Scene | Camera
@@ -1095,7 +1305,7 @@ Snap
 …
 ```
 
-Camera → Plan populates the Ribbon with:
+Camera → Plan populates the Tool Tray with:
 
 ```text
 Scene | Camera
@@ -1107,7 +1317,7 @@ View
 …
 ```
 
-Camera → 3D populates the Ribbon with:
+Camera → 3D populates the Tool Tray with:
 
 ```text
 Scene | Camera

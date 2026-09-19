@@ -22,6 +22,7 @@
 	import type { EditorStore } from '$lib/editor/editor-store.svelte';
 	import type { EditorContextMenuStore } from '$lib/editor/context-menu/context-menu-state.svelte';
 	import UnifiedProjectTree from '$lib/editor/UnifiedProjectTree.svelte';
+	import { resolveRovingIndex, tablistTabIndex } from './roving-focus';
 	import CameraSidebar from './CameraSidebar.svelte';
 	import type { EditorActiveSelectionStore } from './active-editor-selection.svelte';
 	import type { EditorViewState } from './editor-view-state.svelte';
@@ -82,8 +83,25 @@
 			layoutPreviewSessionStatus(layoutPreview) !== 'blank'
 	);
 
+	const PANEL_TABS = ['scene', 'assets'] as const;
+	/** Roving focus targets for the Hierarchy | Assets tablist (#39). */
+	let panelTabElements = $state<(HTMLButtonElement | null)[]>([]);
+
 	function switchLeftPanel(panel: 'scene' | 'assets') {
 		store.setLeftPanel(panel);
+	}
+
+	/**
+	 * #39 — one tab stop for the strip; arrows move focus and select (automatic
+	 * activation: both panels stay mounted, so switching costs nothing).
+	 */
+	function onPanelTabsKeydown(event: KeyboardEvent) {
+		const selected = PANEL_TABS.indexOf(store.leftPanel);
+		const next = resolveRovingIndex(PANEL_TABS.length, selected, event.key, 'horizontal');
+		if (next === null) return;
+		event.preventDefault();
+		switchLeftPanel(PANEL_TABS[next]!);
+		panelTabElements[next]?.focus();
 	}
 
 	function resolveTextureImageSrc(uri: string): string | null {
@@ -121,21 +139,24 @@
 	{/if}
 
 	{#if showScenePanelTabs}
-		<div class="panel-tabs" role="tablist" aria-label="Editor panels">
-			<button
-				type="button"
-				role="tab"
-				aria-selected={store.leftPanel === 'scene'}
-				class:active={store.leftPanel === 'scene'}
-				onclick={() => switchLeftPanel('scene')}
-			>Hierarchy</button>
-			<button
-				type="button"
-				role="tab"
-				aria-selected={store.leftPanel === 'assets'}
-				class:active={store.leftPanel === 'assets'}
-				onclick={() => switchLeftPanel('assets')}
-			>Assets</button>
+		<div
+			class="panel-tabs"
+			role="tablist"
+			aria-label="Editor panels"
+			tabindex="-1"
+			onkeydown={onPanelTabsKeydown}
+		>
+			{#each PANEL_TABS as panel, index (panel)}
+				<button
+					bind:this={panelTabElements[index]}
+					type="button"
+					role="tab"
+					aria-selected={store.leftPanel === panel}
+					tabindex={tablistTabIndex(index, PANEL_TABS.indexOf(store.leftPanel))}
+					class:active={store.leftPanel === panel}
+					onclick={() => switchLeftPanel(panel)}
+				>{panel === 'scene' ? 'Hierarchy' : 'Assets'}</button>
+			{/each}
 		</div>
 	{/if}
 
@@ -216,18 +237,18 @@
 		border-radius: 999px;
 		background: var(--editor-bg-selected);
 		color: var(--editor-text-primary);
-		font-size: 0.66rem;
+		font-size: var(--editor-font-size-xs);
 		font-weight: 650;
 	}
 	.panel-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; }
-	.panel-tabs button { padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.32rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: inherit; font-size: 0.73rem; cursor: pointer; }
+	.panel-tabs button { padding: 0.42rem; border: 1px solid var(--editor-border-normal); border-radius: 0.32rem; background: var(--editor-bg-panel-raised); color: var(--editor-text-secondary); font: inherit; font-size: var(--editor-font-size-md); cursor: pointer; }
 	.panel-tabs button.active { border-color: var(--editor-accent); background: var(--editor-bg-selected); color: var(--editor-text-primary); }
 	.panel-content { display: contents; }
 	/* P23.6e — the hierarchy owns its inner scroll viewport: give the tree a
 	   bounded flex track so page reveal/scroll restoration has a stable owner. */
 	.panel-content--tree { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
 	.panel-content--hidden { display: none; }
-	.layout-error { margin: 0; color: var(--editor-danger-fg); font-size: 0.7rem; line-height: 1.4; }
+	.layout-error { margin: 0; color: var(--editor-danger-fg); font-size: var(--editor-font-size-md); line-height: 1.4; }
 
 	@media (max-width: 62rem) {
 		.panel { min-height: 0; max-height: 34rem; border-top: 1px solid var(--editor-border-subtle); }

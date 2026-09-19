@@ -53,13 +53,10 @@
 		(scope === 'sequence' && timeline !== null) || (scope === 'edge' && edgeTimeline !== null)
 	);
 	const activePlayhead = $derived(scope === 'edge' ? edgePlayhead : playhead);
-	const showCollapsedScrubber = $derived(!expanded && hasTemporalTimeline);
-	const collapsedScrubDisabled = $derived(
-		scope === 'edge' ? timelineApi.edgeScrubDisabled : timelineApi.scrubDisabled
-	);
-	const collapsedScrubberLabel = $derived(
-		scope === 'edge' ? 'Edge playhead' : 'Sequence playhead'
-	);
+	// P23.14 §17 / Decision 5 — the collapsed Drawer is a 48px transport strip:
+	// transport + readout only. There is exactly ONE playhead in the product, and
+	// it lives with the lanes in the expanded drawer, so a collapsed scrubber
+	// (a second, competing playhead control over the same time) does not exist.
 	const previousNodeDisabled = $derived(
 		!hasTemporalTimeline ||
 		activePlayhead <= 0 ||
@@ -300,13 +297,6 @@
 		timelineApi.stepNodeBoundary(direction);
 	}
 
-	function scrubCollapsed(event: Event) {
-		const progress = Number((event.currentTarget as HTMLInputElement).value);
-		if (previewPlaying) store.pauseCameraPreview();
-		if (scope === 'edge') timelineApi.seekEdge(progress);
-		else timelineApi.seek(progress);
-	}
-
 	function closeMoreMenu(returnFocus = false) {
 		moreMenuOpen = false;
 		if (returnFocus) void tick().then(() => moreButton?.focus());
@@ -504,7 +494,7 @@
 				{/if}
 			</button>
 		</header>
-	{:else if expanded || !showCollapsedScrubber}
+	{:else if expanded}
 		<header class="s4-header">
 			{#if sequenceAvailable}
 			<div class="scope-switcher">
@@ -679,7 +669,9 @@
 		<div class="content">
 			<EditorCameraTimelinePanel {store} {viewMode} {contextMenu} />
 		</div>
-	{:else if showCollapsedScrubber && !store.isRelic}
+	{:else}
+		<!-- P23.14 §17 — collapsed transport strip: transport + timecode readout.
+		     No lanes, no ruler, no scrubber (one playhead, owned by the lanes). -->
 		<div class="mini-player" role="toolbar" aria-label="Camera timeline mini-player">
 			{#if sequenceAvailable}
 			<div class="scope-switcher">
@@ -704,10 +696,6 @@
 				<button type="button" class="mini-player__icon mini-player__play" class:active={previewPlaying} aria-label={timelineApi.playLabel} title={timelineApi.playLabel} disabled={!timelineApi.canPlay} onclick={() => timelineApi.toggleTourPlayback()}>{#if previewPlaying}<Pause size={13} aria-hidden="true" />{:else}<Play size={13} aria-hidden="true" />{/if}</button>
 				<button type="button" class="mini-player__icon" aria-label="Next camera node" title="Next camera node" disabled={nextNodeDisabled} onclick={() => stepNode(1)}>▶│</button>
 			</div>
-			<label class="mini-player__scrubber">
-				<span class="sr-only">{collapsedScrubberLabel}</span>
-				<input type="range" min="0" max="1" step="0.0005" value={activePlayhead} disabled={collapsedScrubDisabled} aria-label={collapsedScrubberLabel} oninput={scrubCollapsed} />
-			</label>
 			<output class="mini-player__timecode" aria-label="Camera timeline time">{formatTime(timelineApi.currentSeconds)} / {formatTime(durationSeconds)}</output>
 			<div class="mode-control" role="group" aria-label="Camera preview mode">
 				<button type="button" class:active={cameraMode === 'visitor'} aria-pressed={cameraMode === 'visitor'} aria-label="POV" title="Through Camera" onclick={() => choosePreviewMode('visitor')}><Video size={13} aria-hidden="true" /><span>POV</span></button>
@@ -1078,27 +1066,7 @@
 	.mini-player__icon.active { border-color: var(--editor-accent); color: var(--editor-text-primary); outline: none; }
 	.mini-player__icon:disabled { opacity: 0.4; cursor: default; }
 	.mini-player__transport { display: flex; flex: 0 0 auto; align-items: center; gap: 0.2rem; }
-	.mini-player__scrubber { display: flex; min-width: 0; min-height: 24px; flex: 1 1 0; align-items: center; }
-	.mini-player__scrubber input {
-		width: 100%;
-		height: 24px;
-		margin: 0;
-		accent-color: var(--editor-accent);
-		cursor: ew-resize;
-	}
-	.mini-player__scrubber input:focus-visible { outline: 1px solid var(--editor-accent); outline-offset: 1px; }
 	.mini-player__timecode { min-width: 6rem; color: var(--editor-text-timecode); font: 650 0.66rem/1 var(--editor-font); font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.toggle {
 		display: inline-flex;
 		align-items: center;

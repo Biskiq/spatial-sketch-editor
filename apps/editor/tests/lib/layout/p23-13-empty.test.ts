@@ -4,9 +4,10 @@
  * Pins the §8 copy agreement and the open-corner sketch contract:
  * exact toolbar labels (Wall, Rect Room, Poly Room), zoom/pan hint, no fake
  * dimension promise, open corner (never a closed rect), illustrative only
- * (aria-hidden, pointer-events none, never serialized), and one committed
- * wall removes the first-run message (planEmpty requires zero
- * rooms/walls/objects/scene entities).
+ * (aria-hidden, pointer-events none, never serialized), and a startup-only
+ * first-run message: the first drafting gesture dismisses it (not the
+ * commit), and undoing back to an empty plan never restores it (planEmpty
+ * still requires zero rooms/walls/objects/scene entities).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -54,11 +55,39 @@ describe('P23.13 S9 empty states (§8)', () => {
 		expect(viewport).not.toContain('ghostDismissed:');
 	});
 
-	it('removes the first-run message on one committed wall', () => {
-		// planEmpty is the single gate for both ghost and card.
+	it('removes the first-run message at the first drafting gesture, never restoring it on undo', () => {
+		// planEmpty is the document gate for both ghost and card.
 		expect(viewport).toContain('preview.model.rooms.length === 0');
 		expect(viewport).toContain('(preview.geometry.walls ?? []).length === 0');
 		expect(viewport).toContain('preview.model.objects.length === 0');
 		expect(viewport).toContain('(scene?.entities.length ?? 0) === 0');
+		// The card is startup-only: a session latch dismisses it on the first
+		// drafting gesture or first commit, so an undo back to empty cannot
+		// resurrect it.
+		expect(viewport).toContain('hasLayoutTransientInteraction(interaction)');
+		expect(viewport).toContain('planEmpty && !ghostVisible && !planHintDismissed');
+		// The latch is owned by the editor session, never the viewport: the
+		// Plan surface unmounts on Plan → 3D, so viewport-local state would
+		// resurrect the card on the way back (draft → cancel/undo → 3D → Plan).
+		expect(viewport).toContain('planHintDismissed = $bindable(false)');
+		expect(viewport).not.toContain('let planHintDismissed = $state(false)');
+		// One-way latch: nothing ever clears it, so a view round-trip before
+		// any drafting still shows the card, and any round-trip after drafting
+		// keeps it dismissed.
+		expect(viewport).not.toContain('planHintDismissed = false');
+	});
+
+	it('lifts the latch above the Plan mount boundary (view round-trip cannot resurrect it)', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const workspace = readLibSource('editor/app/PlanWorkspace.svelte');
+		// EditorApp owns the session latch at the composition root — outside
+		// the `{#if viewState.activeView === 'plan'}` swap that unmounts the
+		// Plan surface in 3D — and binds it into the workspace.
+		expect(app).toContain('let planHintDismissed = $state(false)');
+		expect(app).toContain('{#if viewState.activeView ===');
+		expect(app).toContain('bind:planHintDismissed');
+		// PlanWorkspace forwards the binding into the viewport.
+		expect(workspace).toContain('planHintDismissed = $bindable(false)');
+		expect(workspace).toContain('bind:planHintDismissed');
 	});
 });

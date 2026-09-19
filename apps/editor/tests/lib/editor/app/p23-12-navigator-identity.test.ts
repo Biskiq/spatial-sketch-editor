@@ -25,7 +25,7 @@ import {
 } from '$lib/editor/hierarchy/hierarchy-source-index';
 import {
 	buildHierarchyPageProjection,
-	hierarchyEndsRow,
+
 	hierarchyWallRow,
 	hierarchyOpeningRow,
 	hierarchyJunctionRow,
@@ -263,20 +263,18 @@ describe('P23.12 navigator — row identity', () => {
 		expect(index.roomIdsByWallId.get('wA2')).toEqual(['room-a', 'room-b']);
 	});
 
-	it('the Ends relation row uses references', () => {
+	it('replaces the per-Wall Ends relation row with the boundary inventories', () => {
+		// P23.14 Decision 4 — the oriented `Ends <start> · <end>` row is removed:
+		// endpoint identity is answered by the Wall row itself plus
+		// `Boundary Junctions (n)` and the global Junctions page.
 		const state = makeState(twoRoomDocument());
 		const index = indexOf(state);
-		const ends = hierarchyEndsRow(index, 'k', { wallId: 'wA2', direction: 'forward' });
-		expect(ends).not.toBeNull();
-		// Both endpoint labels resolve to compact references, not formatted IDs.
-		if (ends) {
-			const text = ends.label;
-			expect(text).toContain('·');
-			for (const junctionId of ['B', 'E']) {
-				const reference = index.junctionById.get(junctionId)?.reference ?? 'missing';
-				expect(text).toContain(reference);
-			}
-		}
+		const projection = buildHierarchyPageProjection(index, { kind: 'room', roomId: 'room-a' });
+		expect(JSON.stringify(projection.rows)).not.toContain('Ends ');
+		const junctions = projection.rows
+			.flatMap((row) => [row, ...(row.children ?? [])])
+			.find((row) => row.rowKey === 'room:room-a:section:junctions');
+		expect(junctions?.label).toMatch(/^Boundary Junctions \(\d+\)$/);
 	});
 
 	it('no row restates its own kind or role in the label', () => {

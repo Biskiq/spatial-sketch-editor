@@ -2,6 +2,8 @@
 	import type { LayoutPreviewState } from '$lib/editor/layout/layout-preview-state.svelte';
 	import type { EditorStore } from '$lib/editor/editor-store.svelte';
 	import CameraPlanViewport from '$lib/editor/camera-plan/CameraPlanViewport.svelte';
+	import CameraPlanToolbar from '$lib/editor/camera-plan/CameraPlanToolbar.svelte';
+	import ToolTray from './ToolTray.svelte';
 	import type { CameraPlanState } from '$lib/editor/camera-plan/camera-plan-state.svelte';
 	import type { EditorContextMenuStore } from '$lib/editor/context-menu/context-menu-state.svelte';
 	import { resolveEditorPlacementScale } from '$lib/editor/scale-vector';
@@ -28,12 +30,21 @@
 </script>
 
 <div class="camera-plan-workspace" role="application" aria-label="Camera Plan surface">
-	<CameraPlanViewport {store} preview={layoutPreview} {cameraPlan} {contextMenu} getEffectiveSceneScale={effectiveSceneScale} />
+	<!-- P23.14 §11 — Camera Plan tray: one CAMERA group (Select / Add Camera /
+	     Connect / View). Snap and Grid are View Bar utilities (§10). -->
+	<ToolTray label="Camera Plan tools">
+		<CameraPlanToolbar tray {store} {cameraPlan} />
+	</ToolTray>
+	<div class="paper-column">
+		<CameraPlanViewport {store} preview={layoutPreview} {cameraPlan} {contextMenu} getEffectiveSceneScale={effectiveSceneScale} />
+	</div>
 </div>
 
 <style>
 	.camera-plan-workspace {
 		position: relative;
+		display: flex;
+		flex-direction: row;
 		width: 100%;
 		height: 100%;
 		min-height: 0;
@@ -41,4 +52,5 @@
 		background: var(--editor-bg-app);
 		/* S10.1.6 amendment — Plan ↔ 3D swaps are instant (no fade). */
 	}
+	.paper-column { position: relative; flex: 1; min-width: 0; min-height: 0; }
 </style>
