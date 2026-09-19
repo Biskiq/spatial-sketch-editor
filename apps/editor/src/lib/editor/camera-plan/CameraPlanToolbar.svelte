@@ -9,10 +9,16 @@
 
 	let {
 		store,
-		cameraPlan
+		cameraPlan,
+		tray = false,
+		ribbon = false
 	}: {
 		store: EditorStore;
 		cameraPlan: CameraPlanState;
+		/** P23.14 §11 — Tool Tray presentation: CAMERA tool vocabulary only. */
+		tray?: boolean;
+		/** P23.14 §10 — View Bar presentation: the subordinate Snap/Grid utilities. */
+		ribbon?: boolean;
 	} = $props();
 
 	const pendingKind = $derived(store.pendingNavigationCommand?.kind ?? null);
@@ -41,11 +47,13 @@
 	}
 </script>
 
-<div class="camera-plan-toolbar" role="toolbar" aria-label="Camera Plan tools">
-	<!-- P21.3 — Row 2 order: Select | Add Camera Connect | View | Snap Grid.
-	     P21.5 §1.4 — Zone B authoring groups sit in enclosed .tool-group
-	     tracks (grammar in styles/controls.css); options stay text-only. -->
-	<div class="tool-group" role="group" aria-label="Selection">
+<div class="camera-plan-toolbar" class:ribbon class:tray role="toolbar" aria-label="Camera Plan tools">
+	<!-- P21.3 order (Select | Add Camera Connect | View | Snap Grid) is kept as
+	     an order contract, but P23.14 §10/§11 split the ownership: the CAMERA
+	     tools render on the Paper-attached Tool Tray, the Snap/Grid utilities
+	     stay in the View Bar. -->
+	{#if !ribbon}
+	<div class="tool-group" role="group" aria-label="Selection" data-group-label="CAMERA">
 		<button
 			type="button"
 			class:active={cameraPlan.tool === 'select'}
@@ -78,7 +86,9 @@
 			onclick={() => chooseTool('view')}
 		><Eye size={14} aria-hidden="true" /> View</button>
 	</div>
-	<div class="tool-group" role="group" aria-label="Plan options">
+	{/if}
+	{#if !tray}
+	<div class="tool-group" role="group" aria-label="Plan options" data-group-label="VIEW">
 		<button
 			type="button"
 			class:active={cameraPlan.planView.snapEnabled}
@@ -92,11 +102,15 @@
 			onclick={() => (cameraPlan.planView.gridEnabled = !cameraPlan.planView.gridEnabled)}
 		><Grid3x3 size={14} aria-hidden="true" /> Grid</button>
 	</div>
+	{/if}
 </div>
 
 <style>
 	.camera-plan-toolbar {
 		display:flex; align-items:center; gap:6px; flex:1; min-width:0; height:28px;
 	}
+	/* P23.14 §11 — tray presentation: stack, and leave the rail chrome to the
+	   shell-scoped `.project-editor .tool-tray` grammar. */
+	.camera-plan-toolbar.tray { display:flex; flex-direction:column; align-items:stretch; height:auto; gap:0; }
 	/* Button surfaces/tracks come from the P21.5 grammar in styles/controls.css. */
 </style>

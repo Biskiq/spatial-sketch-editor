@@ -2171,8 +2171,7 @@
 		     (never the Navigator/Inspector); the work surface sits below it. -->
 		<WorkspaceRibbon {store} {viewState} {layoutPreview} {layoutInteraction}
 			cameraPlan={cameraPlanState} gizmoCapabilities={activeGizmoCapabilities}
-			transformDisabled={activeSelection.active.domain === 'layout' && layoutDescriptor === null}
-			onDeleteArrange={deleteArrangeSelection} />
+			transformDisabled={activeSelection.active.domain === 'layout' && layoutDescriptor === null} />
 		<div class="work">
 		<!-- P1.7 owner follow-up — view/domain switches are INSTANT (no fade):
 		     the 3D cell is one component for both domains and both plan
@@ -2194,6 +2193,7 @@
 					{layoutInteraction}
 					active={viewState.domain === 'scene'}
 					{contextMenu}
+					onDeleteArrange={deleteArrangeSelection}
 				/>
 			</div>
 			<div
@@ -2208,7 +2208,7 @@
 			<!-- explicit 3D context seam: camera authoring overlays and
 			     the bottom timeline are Camera-only; Scene stays scene chrome. -->
 			<div class="view-cell">
-				<Workspace3DView {store} {layoutPreview} {layoutInteraction} context={viewState.domain} {contextMenu} takeoverPose={takeoverOrbitPose} takeoverObserver={takeoverObserverState} onTakeoverPoseRestored={() => { takeoverOrbitPose = null; takeoverObserverState = null; }} />
+				<Workspace3DView {store} {layoutPreview} {layoutInteraction} context={viewState.domain} {contextMenu} takeoverPose={takeoverOrbitPose} takeoverObserver={takeoverObserverState} onTakeoverPoseRestored={() => { takeoverOrbitPose = null; takeoverObserverState = null; }} gizmoCapabilities={activeGizmoCapabilities} transformDisabled={activeSelection.active.domain === 'layout' && layoutDescriptor === null} />
 			</div>
 		{/if}
 		</div>

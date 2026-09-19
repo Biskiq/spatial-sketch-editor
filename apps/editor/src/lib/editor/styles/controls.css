@@ -37,6 +37,106 @@
 	--editor-control-radius: 3px;
 }
 
+/* ── P23.14 §11 — Tool Tray grammar ────────────────────────────────────────
+   A 44 px vertical instrument rail attached directly to the Paper edge. The
+   same toolbar components that fill the View Bar render here in their `tray`
+   presentation, so the grammar is presentation-only: groups stack vertically,
+   each group paints its visible 10 px engraved label from `data-group-label`,
+   and buttons become icon-over-label instruments.
+
+   Armed tool = amber (`--editor-armed`) edge plus a non-hue cue (inset edge
+   and label weight) so the armed state never reads by hue alone (§18/§11).
+   ────────────────────────────────────────────────────────────────────────── */
+.project-editor .tool-tray {
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	width: var(--editor-tray-width, 44px);
+	min-width: var(--editor-tray-width, 44px);
+	padding: 6px 3px 10px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	scrollbar-width: none;
+	background: var(--editor-bg-instrument);
+	border-right: 1px solid var(--editor-border-subtle);
+}
+
+.project-editor .tool-tray .tool-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 0;
+	border: 0;
+}
+
+.project-editor .tool-tray .tool-group[data-group-label]::before {
+	content: attr(data-group-label);
+	display: block;
+	margin: 6px 0 3px;
+	text-align: center;
+	font: 600 8px/1 var(--editor-font);
+	letter-spacing: 0.06em;
+	color: var(--editor-text-muted);
+}
+
+.project-editor .tool-tray button {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	box-sizing: border-box;
+	width: 38px;
+	min-height: 42px;
+	padding: 3px 0;
+	border: 1px solid transparent;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--editor-text-secondary);
+	font: 600 8px/1.05 var(--editor-font);
+	text-align: center;
+	cursor: pointer;
+}
+
+.project-editor .tool-tray button svg {
+	width: 17px;
+	height: 17px;
+}
+
+.project-editor .tool-tray button:hover:not(:disabled) {
+	background: var(--editor-bg-hover);
+	border-color: var(--editor-border-normal);
+	color: var(--editor-text-primary);
+}
+
+.project-editor .tool-tray button.active {
+	background: var(--editor-bg-panel-raised);
+	border-color: var(--editor-armed);
+	box-shadow: inset 2px 0 var(--editor-armed);
+	color: var(--editor-text-primary);
+	font-weight: 700;
+}
+
+.project-editor .tool-tray button:disabled {
+	opacity: 0.42;
+	cursor: default;
+}
+
+/* Cancel stays an instrument action, never an armed tool. */
+.project-editor .tool-tray button.cancel {
+	border-color: var(--editor-danger-border);
+	background: var(--editor-danger-soft);
+	color: var(--editor-danger-fg);
+}
+
+/* Reduced motion: the tray has no transitions of its own, and the rail must
+   never animate on hover (§23). */
+@media (prefers-reduced-motion: reduce) {
+	.project-editor .tool-tray button {
+		transition: none;
+	}
+}
+
 /*
  * P21.5 §1.4 — View Bar 4-tier affordance grammar + enclosed tool tracks +
  * enclosed segmented switches (re-homed in P23.14 §10 from the retired

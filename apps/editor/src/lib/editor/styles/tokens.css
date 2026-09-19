@@ -270,13 +270,14 @@
 	--editor-right-min: 280px;
 	--editor-right-max: 420px;
 
-	/* ── P23.14 §5/§8/§10 — PLATE reference shell geometry ──
-	   Domain Spine width and View Bar height. The main shell narrows the side
-	   columns to the ratified 268 (Navigator, 240–300 range) / 300 (Inspector)
-	   in the `.project-editor` block below; the frozen relic keeps the values
-	   above it. */
+	/* ── P23.14 §5/§8/§10/§11 — PLATE reference shell geometry ──
+	   Domain Spine width, View Bar height and the Paper-attached Tool Tray rail
+	   width. The main shell narrows the side columns to the ratified 268
+	   (Navigator, 240–300 range) / 300 (Inspector) in the `.project-editor`
+	   block below; the frozen relic keeps the values above it. */
 	--editor-spine-width: 56px;
 	--editor-viewbar-height: 34px;
+	--editor-tray-width: 44px;
 
 	/* ── DS §6 — typography ── */
 	--editor-font:

@@ -32,11 +32,10 @@
 	import EditorViewportGridControls from '../EditorViewportGridControls.svelte';
 	import { Maximize, Minimize, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-svelte';
 
-	let { store, viewState, layoutPreview, layoutInteraction, cameraPlan, gizmoCapabilities, transformDisabled, onDeleteArrange } : {
+	let { store, viewState, layoutPreview, layoutInteraction, cameraPlan, gizmoCapabilities, transformDisabled } : {
 		store: EditorStore; viewState: EditorViewState; layoutPreview: LayoutPreviewState;
 		layoutInteraction: LayoutInteractionState; cameraPlan: CameraPlanState;
 		gizmoCapabilities: EditorGizmoCapabilities | null; transformDisabled: boolean;
-		onDeleteArrange?: () => boolean;
 	} = $props();
 	const canSwitch = $derived(!store.isEditorInteractionActive);
 	function choosePlanMode(mode: 'layout' | 'staging') {
@@ -61,12 +60,14 @@
 	</div>
 	<div class="contextual-tools">
 		{#if viewState.activeView === 'plan' && viewState.domain === 'scene'}
+			<!-- §10 — the View Bar keeps the subordinate MODE switch and the
+			     Snap/Grid/Tour utilities; the tool vocabulary lives on the
+			     Paper-attached Tool Tray (§11), mounted by the workspace. -->
 			<LayoutDraftToolbar ribbon interaction={layoutInteraction} preview={layoutPreview}
 				showViewToggle={false} showPlanModeToggle onPlanModeChange={choosePlanMode}
-				{onDeleteArrange}
 				onCancelLayoutTransaction={() => store.cancelLayoutTransaction()} />
 		{:else if viewState.activeView === 'plan'}
-			<CameraPlanToolbar {store} {cameraPlan} />
+			<CameraPlanToolbar ribbon {store} {cameraPlan} />
 		{:else}
 			<EditorViewportToolbar ribbon {store} context={viewState.domain} {gizmoCapabilities} {transformDisabled}
 				showCeilings={layoutPreview.showCeilings} onToggleCeilings={() => toggleLayoutCeilings(layoutPreview)} />

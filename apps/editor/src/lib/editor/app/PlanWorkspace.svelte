@@ -1,5 +1,7 @@
 <script lang="ts">
 	import LayoutPlanViewport from '$lib/editor/layout/LayoutPlanViewport.svelte';
+	import LayoutDraftToolbar from '$lib/editor/layout/LayoutDraftToolbar.svelte';
+	import ToolTray from './ToolTray.svelte';
 	import type { LayoutPreviewState } from '$lib/editor/layout/layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
@@ -59,7 +61,8 @@
 		layoutPreview,
 		layoutInteraction,
 		active = true,
-		contextMenu = null
+		contextMenu = null,
+		onDeleteArrange
 	}: {
 		store: EditorStore;
 		layoutPreview: LayoutPreviewState;
@@ -67,6 +70,8 @@
 		/** Scene Plan visibility; false while keep-mounted Camera Plan owns the viewport. */
 		active?: boolean;
 		contextMenu?: EditorContextMenuStore | null;
+		/** Arrange owner-aware Delete (P21.2) — rendered on the Paper-attached Tool Tray. */
+		onDeleteArrange?: () => boolean;
 	} = $props();
 	const activeSelection = getContext<EditorActiveSelectionStore | undefined>(
 		ACTIVE_EDITOR_SELECTION_KEY
@@ -541,6 +546,18 @@
 </script>
 
 <div class="plan-view" role="application" aria-label="Plan drafting surface">
+	<!-- P23.14 §11 — the Tool Tray is attached directly to the Paper edge (not a
+	     floating toolbar, not a second sidebar). -->
+	<ToolTray label="Scene Plan tools">
+		<LayoutDraftToolbar
+			tray
+			interaction={layoutInteraction}
+			preview={layoutPreview}
+			onCancelLayoutTransaction={cancelLayoutTransaction}
+			{onDeleteArrange}
+		/>
+	</ToolTray>
+	<div class="paper-column">
 	<LayoutPlanViewport
 		model={layoutPreview.model}
 		preview={layoutPreview}
@@ -579,11 +596,14 @@
 		{store}
 		{contextMenu}
 	/>
+	</div>
 </div>
 
 <style>
 	.plan-view {
 		position: relative;
+		display: flex;
+		flex-direction: row;
 		width: 100%;
 		height: 100%;
 		min-height: 0;
@@ -591,4 +611,7 @@
 		background: var(--editor-bg-app);
 		/* S10.1.6 amendment — Plan ↔ 3D swaps are instant (no fade). */
 	}
+	/* The Paper keeps every absolutely positioned overlay it owns: it is the
+	   positioned box to the RIGHT of the 44 px tray. */
+	.paper-column { position: relative; flex: 1; min-width: 0; min-height: 0; }
 </style>

@@ -503,19 +503,35 @@ describe('P21.1 shared shell', () => {
 		expect(app).not.toContain("'ribbon ribbon ribbon'");
 	});
 
-	it('routes every permanent command through the ribbon (no floating toolbars in main surfaces)', () => {
-		// The three main surfaces mount no toolbar/grid-control chrome; the
-		// ribbon re-hosts their logic (P21.1 re-host, zero behavior change).
-		expect(readLibSource('editor/app/PlanWorkspace.svelte')).not.toContain('LayoutDraftToolbar');
-		expect(readLibSource('editor/app/CameraPlanWorkspace.svelte')).not.toContain('CameraPlanToolbar');
+	it('mounts the tool vocabulary on the Paper-attached Tool Tray, never floating', () => {
+		// P23.14 §10/§11 — ownership split: each work surface mounts its own
+		// 44 px Tool Tray at the Paper edge (in the toolbar's `tray`
+		// presentation), while the View Bar keeps only subordinate utilities.
+		const plan = readLibSource('editor/app/PlanWorkspace.svelte');
+		expect(plan).toContain('<ToolTray label="Scene Plan tools">');
+		expect(plan).toContain('<LayoutDraftToolbar');
+		expect(plan).toContain('tray');
+		expect(plan).toContain('class="paper-column"');
+		const cameraPlan = readLibSource('editor/app/CameraPlanWorkspace.svelte');
+		expect(cameraPlan).toContain('<ToolTray label="Camera Plan tools">');
+		expect(cameraPlan).toContain('<CameraPlanToolbar tray {store} {cameraPlan} />');
 		const ws3d = readLibSource('editor/app/Workspace3DView.svelte');
-		expect(ws3d).not.toContain('<EditorViewportToolbar');
-		expect(ws3d).not.toContain('<EditorViewportGridControls');
+		expect(ws3d).toContain('<ToolTray label="3D tools">');
+		expect(ws3d).toContain('<EditorViewportToolbar tray');
+		expect(ws3d).toContain('.viewport-shell');
+		// No floating toolbar resurrects: the trays carry no floating chrome.
+		expect(plan).not.toMatch(/LayoutDraftToolbar[\s\S]{0,120}showViewToggle/);
+		const trayCss = readLibSource('editor/styles/controls.css');
+		expect(trayCss).toContain('.project-editor .tool-tray {');
+		expect(trayCss).toContain('width: var(--editor-tray-width, 44px);');
+		expect(readLibSource('editor/styles/tokens.css')).toContain('--editor-tray-width: 44px;');
+		// The View Bar hosts the utility projection and never the tools.
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
 		expect(ribbon).toContain('<LayoutDraftToolbar ribbon');
-		expect(ribbon).toContain('<CameraPlanToolbar {store} {cameraPlan} />');
+		expect(ribbon).toContain('<CameraPlanToolbar ribbon {store} {cameraPlan} />');
 		expect(ribbon).toContain('<EditorViewportToolbar ribbon');
 		expect(ribbon).toContain('<EditorViewportGridControls {store} />');
+		expect(ws3d).not.toContain('<EditorViewportGridControls');
 		expect(readLibSource('editor/app/EditorApp.svelte')).toContain('<WorkspaceRibbon');
 	});
 
@@ -618,9 +634,12 @@ describe('P21.2 scene reconciliation', () => {
 		expect(toolbar).toContain('onDeleteArrange');
 		expect(toolbar).toContain('aria-label="Delete arrange selection"');
 		expect(toolbar).toContain('Delete</button>');
-		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
-		expect(ribbon).toContain('onDeleteArrange');
-		expect(ribbon).toContain('{onDeleteArrange}');
+		// P23.14 §11 — the Delete control rides the Scene Plan tray (mounted by
+		// PlanWorkspace), not the View Bar.
+		const plan = readLibSource('editor/app/PlanWorkspace.svelte');
+		expect(plan).toContain('onDeleteArrange');
+		expect(plan).toContain('{onDeleteArrange}');
+		expect(readLibSource('editor/app/WorkspaceRibbon.svelte')).not.toContain('onDeleteArrange');
 		// The router lives in `layout/arrange-delete.ts` (behaviorally pinned
 		// in `tests/lib/editor/app/arrange-delete.test.ts`); the shell only
 		// binds the current domain/view.

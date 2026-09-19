@@ -16,6 +16,7 @@
 
 	let {
 		ribbon = false,
+		tray = false,
 		store,
 		showCeilings = false,
 		onToggleCeilings,
@@ -47,6 +48,7 @@
 		context?: 'scene' | 'camera';
 		transformDisabled?: boolean;
 		gizmoCapabilities?: EditorGizmoCapabilities | null;
+		tray?: boolean;
 	} = $props();
 
 	const interactionStore = getContext<EditorInteractionStore | undefined>(
@@ -202,8 +204,13 @@
 	});
 </script>
 
-<div bind:this={toolbarElement} class="toolbar" class:ribbon role="toolbar" aria-label="Viewport tools">
-	<div class="tool-group" aria-label="Transform tool">
+<div bind:this={toolbarElement} class="toolbar" class:ribbon class:tray role="toolbar" aria-label="Viewport tools">
+	<!-- P23.14 §11 — 3D tray vocabulary: SELECT / TRANSFORM / SPACE / OBJECTS.
+	     The View Bar keeps the subordinate utilities (Path/Frame visibility,
+	     the View menu, Observer/POV and Snap), so the tool groups render only
+	     in the tray (and the relic's floating form). -->
+	{#if !ribbon}
+	<div class="tool-group" aria-label="Selection tool" data-group-label="SELECT">
 		<button
 			type="button"
 			class:active={!store.transformGizmoVisible}
@@ -214,6 +221,8 @@
 			<MousePointer2 size={14} aria-hidden="true" />
 			Select
 		</button>
+	</div>
+	<div class="tool-group" aria-label="Transform tool" data-group-label="TRANSFORM">
 		<button
 			type="button"
 			class:active={toolIsActive('translate')}
@@ -301,9 +310,10 @@
 		</button>
 		{/if}
 	</div>
+	{/if}
 
-	{#if isCameraContext}
-		<div class="tool-group" aria-label="Camera authoring">
+	{#if isCameraContext && !ribbon}
+		<div class="tool-group" aria-label="Camera authoring" data-group-label="OBJECTS">
 			<button
 				type="button"
 				class="add-camera"
@@ -356,9 +366,13 @@
 		</div>
 	{/if}
 
-	{#if ribbon && !isCameraContext}
-		<button class="ribbon-btn" disabled={disabled} onclick={() => store.setLeftPanel('assets')}><PackagePlus size={14} aria-hidden="true" /> Add Asset</button>
-		<div class="tool-group" role="group" aria-label="Transform space">
+	<!-- Tray-only: these groups never existed on the relic's floating mount, so
+	     gating on `tray` (not `!ribbon`) keeps the frozen relic byte-identical. -->
+	{#if tray && !isCameraContext}
+		<div class="tool-group" role="group" aria-label="Scene objects" data-group-label="OBJECTS">
+			<button class="add-asset" disabled={disabled} onclick={() => store.setLeftPanel('assets')}><PackagePlus size={14} aria-hidden="true" /> Add Asset</button>
+		</div>
+		<div class="tool-group" role="group" aria-label="Transform space" data-group-label="SPACE">
 			{#each ['local', 'world'] as space}
 				<button disabled={disabled || !interactionStore} class:active={interactionStore?.space === space}
 					aria-pressed={interactionStore?.space === space}
@@ -569,6 +583,10 @@
 </div>
 
 <style>
+	/* P23.14 §11 — Tool Tray presentation: drop the floating chrome and stack;
+	   the rail chrome lives in the shell-scoped `.project-editor .tool-tray`
+	   grammar (styles/controls.css), so the relic's floating form is untouched. */
+	.toolbar.tray { position:static; inset:auto; display:flex; flex-direction:column; align-items:stretch; gap:0; height:auto; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; }
 	.toolbar {
 		position: absolute;
 		top: 0.75rem;
