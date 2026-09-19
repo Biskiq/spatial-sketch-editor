@@ -407,4 +407,15 @@
 	}
 	.tree-row--selected .tree-row__meta,
 	.tree-row--selected .tree-row__reference { color: var(--editor-text-primary); }
+	/*
+	 * P23.14 §23 — progressive density. When the Navigator is squeezed to its
+	 * 240 px minimum the row sheds its trailing metadata first (`row.secondary` —
+	 * counts, kinds, derived numbers) and keeps identity (the label), selection
+	 * and its place in the tree. Shedding is the last resort, not the first: the
+	 * threshold sits below the reference 268 px Navigator so nothing disappears
+	 * at the normal width, and the tooltip/title still carries the full id.
+	 */
+	@container (max-width: 16rem) {
+		.tree-row__meta { display: none; }
+	}
 </style>

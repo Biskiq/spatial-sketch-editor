@@ -573,8 +573,12 @@ describe('P21.1 shared shell', () => {
 		// Only the explicit save-auth interruption surfaces the menu; a
 		// failed owned-projects refresh on fresh guest load must not.
 		const row = readLibSource('editor/app/ProjectRow.svelte');
-		expect(row).toContain('if (saveAuthGateOpen) projectMenuOpen = true');
+		// P23.14 #40 — the same gate now also closes the row's sibling popovers,
+		// so it goes through the coordinating opener.
+		expect(row).toContain('if (saveAuthGateOpen) openDocumentMenu()');
+		expect(row).toContain('function openDocumentMenu()');
 		expect(row).not.toContain('cloudError) projectMenuOpen = true');
+		expect(row).not.toContain('cloudError) openDocumentMenu()');
 	});
 
 	it('derives shell row bands from the theme-aware surface ramp (never hard hexes)', () => {

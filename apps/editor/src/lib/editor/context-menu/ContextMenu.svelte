@@ -3,36 +3,118 @@
 	// its anchor, clamped inside the viewport; closes on outside pointerdown,
 	// Escape, scroll, resize, or after an action runs. Pure presentation: item
 	// semantics live in the surface adapters.
+	//
+	// P23.14 §7 / #38 — the shell also owns the keyboard contract, so every menu
+	// in the editor (Plan, 3D, Navigator, Camera, Timeline) behaves identically:
+	// it takes focus on open, walks enabled items with the arrows/Home/End,
+	// closes on Tab, and hands focus back to the opener when the close came from
+	// the keyboard.
 	import { onMount, tick } from 'svelte';
-	import { clampMenuPosition } from './context-menu-state.svelte';
+	import {
+		clampMenuPosition,
+		resolveMenuItemFocus
+	} from './context-menu-state.svelte';
 	import type { EditorContextMenuStore } from './context-menu-state.svelte';
 
 	let { store }: { store: EditorContextMenuStore } = $props();
 
 	let menuElement = $state<HTMLElement | null>(null);
 	let position = $state({ x: 0, y: 0 });
+	/** Bound in item order; index-addressed so roving focus can target an item. */
+	let itemElements = $state<(HTMLButtonElement | null)[]>([]);
 
 	const request = $derived(store.menu);
 
+	/**
+	 * The element focus returns to. Captured at open time rather than passed in,
+	 * so every existing adapter gets focus restore without changing its call site.
+	 */
+	let opener: HTMLElement | null = null;
+	let wasOpen = false;
+	/** Only a keyboard-initiated close returns focus: a pointer close must never
+	 * yank focus off the control the user just aimed at. */
+	let keyboardClose = false;
+
 	$effect(() => {
-		if (!request) return;
-		position = { x: request.x, y: request.y };
+		const open = Boolean(request);
+		if (!open) {
+			if (!wasOpen) return;
+			wasOpen = false;
+			const target = opener;
+			const restore = keyboardClose;
+			opener = null;
+			keyboardClose = false;
+			if (restore && target) void tick().then(() => target.focus());
+			return;
+		}
+		wasOpen = true;
+		if (!opener) {
+			const active = document.activeElement;
+			opener = active instanceof HTMLElement && active !== document.body ? active : null;
+		}
+		position = { x: request!.x, y: request!.y };
 		void tick().then(() => {
 			if (!menuElement) return;
 			const box = menuElement.getBoundingClientRect();
 			position = clampMenuPosition(
-				request.x,
-				request.y,
+				request!.x,
+				request!.y,
 				box.width,
 				box.height,
 				window.innerWidth,
 				window.innerHeight
 			);
+			// Focus lands inside the menu on open, so the menu is reachable from
+			// the keyboard the moment it exists.
+			const first = itemElements.findIndex((element) => element && !element.disabled);
+			// Nothing enabled (every item refused): the menu still takes focus, so
+			// Escape and the reason text are reachable from the keyboard.
+			if (first >= 0) itemElements[first]?.focus();
+			else menuElement.focus();
 		});
 	});
 
 	function onWindowPointerDown(event: PointerEvent) {
-		if (!menuElement || !menuElement.contains(event.target as Node)) store.close();
+		if (!menuElement || !menuElement.contains(event.target as Node)) {
+			keyboardClose = false;
+			store.close();
+		}
+	}
+
+	function focusItem(index: number | null) {
+		if (index === null) return;
+		itemElements[index]?.focus();
+	}
+
+	function onMenuKeydown(event: KeyboardEvent) {
+		const items = request?.items ?? [];
+		switch (event.key) {
+			case 'ArrowDown':
+			case 'ArrowUp':
+			case 'Home':
+			case 'End': {
+				const focused = itemElements.findIndex((element) => element === document.activeElement);
+				focusItem(resolveMenuItemFocus(items, focused, event.key));
+				keyboardClose = true;
+				event.preventDefault();
+				return;
+			}
+			case 'Escape':
+				keyboardClose = true;
+				return;
+			case 'Tab':
+				// Standard menu contract: Tab leaves the menu rather than walking it.
+				keyboardClose = true;
+				return;
+			case 'Enter':
+			case ' ':
+				// The activation that follows is the native button click; flagging the
+				// intent here is what makes focus return for keyboard activation.
+				keyboardClose = true;
+				return;
+			default:
+				return;
+		}
 	}
 
 	function onWindowKeydown(event: KeyboardEvent) {
@@ -44,6 +126,7 @@
 		if (!menuElement) return;
 		if (event.key !== 'Escape') return;
 		event.stopPropagation();
+		keyboardClose = true;
 		store.close();
 	}
 
@@ -75,18 +158,22 @@
 		style={`left: ${position.x}px; top: ${position.y}px`}
 		role="menu"
 		aria-label={`${request.surfaceId} actions`}
+		tabindex="-1"
+		onkeydown={onMenuKeydown}
 	>
-		{#each request.items as item (item.id)}
+		{#each request.items as item, index (item.id)}
 			{#if item.separatorBefore}
 				<div class="separator" role="separator"></div>
 			{/if}
 			<button
+				bind:this={itemElements[index]}
 				type="button"
 				class:danger={item.danger}
 				disabled={Boolean(item.disabledReason)}
 				title={item.disabledReason ?? undefined}
 				aria-disabled={item.disabledReason ? 'true' : undefined}
 				role="menuitem"
+				tabindex="-1"
 				onpointerdown={(event) => event.stopPropagation()}
 				onclick={() => { if (!item.disabledReason) runItem(item.run); }}
 			>
@@ -131,10 +218,16 @@
 		text-align: left;
 		cursor: pointer;
 	}
-	button:hover:not(:disabled),
+	button:hover:not(:disabled) {
+		background: var(--editor-bg-hover);
+	}
+	/* §7 — the focused item carries the independent focus ring (inset, because an
+	   outward ring would clip against the menu box), so arrowing through the menu
+	   is never signalled by the hover tint alone. */
 	button:focus-visible:not(:disabled) {
 		background: var(--editor-bg-hover);
-		outline: none;
+		outline: var(--editor-focus-ring-width) solid var(--editor-focus-ring);
+		outline-offset: -2px;
 	}
 	button.danger:not(:disabled) {
 		color: var(--editor-danger-fg);

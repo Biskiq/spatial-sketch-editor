@@ -29,6 +29,46 @@ body:has(.editor-page) {
 	font-variant-numeric: tabular-nums;
 }
 
+/*
+ * P23.14 §23 — reduced motion. The chrome stops animating hover/selection
+ * changes; workspace swaps are already instant, so nothing a user can *do*
+ * changes here, only how much the shell moves while they do it. Scoped to the
+ * editor page (the relic keeps its own frozen transitions) and expressed as a
+ * duration override so a component does not have to know about the preference.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.editor-page *,
+	.editor-page *::before,
+	.editor-page *::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/*
+ * P23.14 §23 — coarse pointers. Every control in the chrome reaches the 44 px
+ * minimum (`--editor-touch-target-min`) and the bands that hold them grow with
+ * them, so a 44 px control is never clipped into a 26 px row. The Plan canvas
+ * is untouched: `$lib/layout/plan-control-grammar` already raises its own
+ * acquisition radius for coarse pointers, because canvas targets are geometry
+ * rather than laid-out chrome.
+ */
+@media (pointer: coarse) {
+	.project-editor {
+		--editor-appbar-height: var(--editor-touch-target-min);
+		--editor-project-row-height: var(--editor-touch-target-min);
+		--editor-viewbar-height: var(--editor-touch-target-min);
+	}
+	.project-editor :is(button, [role='tab'], [role='menuitem'], select, input, summary) {
+		min-height: var(--editor-touch-target-min);
+	}
+	.project-editor .tree-row {
+		min-height: var(--editor-touch-target-min);
+	}
+}
+
 /* P21 chrome metrics apply only to the main editor, never the frozen relic. */
 .project-editor > .status-bar { height:24px; min-height:24px; box-sizing:border-box; padding-block:0; }
 .project-editor :is(.panel, .sidebar, .outliner, .inspector) { border-radius:0; }

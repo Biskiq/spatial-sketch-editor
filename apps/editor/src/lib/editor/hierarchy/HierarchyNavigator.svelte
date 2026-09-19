@@ -726,6 +726,10 @@
 		flex-direction: column;
 		overflow-y: auto;
 		overscroll-behavior: contain;
+		/* P23.14 §23 — progressive density is measured against the *column*, not
+		   the window: the Navigator can be 240 px wide inside a 1600 px window.
+		   Rows adapt through a container query on this scroll surface. */
+		container-type: inline-size;
 	}
 	.tree-search {
 		display: flex;

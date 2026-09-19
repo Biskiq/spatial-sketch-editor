@@ -1,0 +1,272 @@
+import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+	CONTEXT_MENU_NAV_KEYS,
+	enabledMenuItemIndexes,
+	resolveMenuItemFocus
+} from '$lib/editor/context-menu/context-menu-state.svelte';
+import { resolveRovingIndex, tablistTabIndex } from '$lib/editor/app/roving-focus';
+import { PLAN_CONTROL_TARGET_COARSE_PX, PLAN_CONTROL_TARGET_PX } from '$lib/layout/plan-control-grammar';
+
+const SRC = fileURLToPath(new URL('../../../../src/lib/editor', import.meta.url));
+
+function read(relative: string): string {
+	return fs.readFileSync(path.join(SRC, relative), 'utf8');
+}
+
+/** Body of a `selector { … }` block, nested blocks included. */
+function block(source: string, selector: string): string {
+	const start = source.indexOf(selector);
+	expect(start, `${selector} must exist`).toBeGreaterThanOrEqual(0);
+	const open = source.indexOf('{', start);
+	let depth = 1;
+	let cursor = open + 1;
+	while (cursor < source.length && depth > 0) {
+		if (source[cursor] === '{') depth += 1;
+		else if (source[cursor] === '}') depth -= 1;
+		cursor += 1;
+	}
+	return source.slice(open + 1, cursor - 1);
+}
+
+const item = (id: string, options: { disabledReason?: string } = {}) => ({
+	id,
+	label: id,
+	run: () => {},
+	...options
+});
+
+describe('P23.14 §23 #38 — one menu keyboard model', () => {
+	it('walks enabled items only, wrapping at both ends', () => {
+		const items = [item('a'), item('b', { disabledReason: 'Refused' }), item('c')];
+		expect(enabledMenuItemIndexes(items)).toEqual([0, 2]);
+		// The disabled item keeps its slot (its reason text is the point) but is
+		// never a focus stop: b is skipped in both directions.
+		expect(resolveMenuItemFocus(items, 0, 'ArrowDown')).toBe(2);
+		expect(resolveMenuItemFocus(items, 2, 'ArrowDown')).toBe(0);
+		expect(resolveMenuItemFocus(items, 0, 'ArrowUp')).toBe(2);
+		expect(resolveMenuItemFocus(items, 2, 'ArrowUp')).toBe(0);
+	});
+
+	it('resolves Home/End to the ends of the enabled list, never a refused item', () => {
+		const items = [item('a', { disabledReason: 'Refused' }), item('b'), item('c', { disabledReason: 'Refused' })];
+		expect(resolveMenuItemFocus(items, 1, 'Home')).toBe(1);
+		expect(resolveMenuItemFocus(items, 1, 'End')).toBe(1);
+	});
+
+	it('enters in the direction of travel when nothing is focused yet', () => {
+		const items = [item('a', { disabledReason: 'Refused' }), item('b'), item('c')];
+		// -1 = no focused item (fresh open, or the focused node was replaced).
+		expect(resolveMenuItemFocus(items, -1, 'ArrowDown')).toBe(1);
+		expect(resolveMenuItemFocus(items, -1, 'ArrowUp')).toBe(2);
+	});
+
+	it('reports no focus target for a fully refused menu', () => {
+		expect(resolveMenuItemFocus([item('a', { disabledReason: 'x' })], -1, 'ArrowDown')).toBeNull();
+		expect(resolveMenuItemFocus([], -1, 'Home')).toBeNull();
+		expect(CONTEXT_MENU_NAV_KEYS).toEqual(['ArrowDown', 'ArrowUp', 'Home', 'End']);
+	});
+
+	it('owns focus in the shell menu: take on open, return only for keyboard closes', () => {
+		const source = read('context-menu/ContextMenu.svelte');
+		expect(source).toContain('resolveMenuItemFocus(items, focused, event.key)');
+		// Items are addressed by index so roving focus can reach them, and the
+		// menu itself is a tabindex=-1 focus sink when every item is refused.
+		expect(source).toContain('bind:this={itemElements[index]}');
+		expect(source).toContain('tabindex="-1"');
+		expect(source).toContain("case 'Tab':");
+		// The hit-test that decides "return focus" is the keyboard flag, not the
+		// close itself: a pointer close must never move focus.
+		expect(source).toContain('const restore = keyboardClose;');
+		expect(source).toContain('if (restore && target) void tick().then(() => target.focus());');
+		expect(source).toContain('keyboardClose = false;\n\t\t\tstore.close();');
+		expect(source).toContain('outline: var(--editor-focus-ring-width) solid var(--editor-focus-ring)');
+		expect(source).not.toContain('outline: none;\n\t\tbackground: var(--editor-bg-hover)');
+	});
+});
+
+describe('P23.14 §23 #39 — one roving-focus model for both tablists', () => {
+	it('keeps the axis honest: a strip never answers the perpendicular keys', () => {
+		expect(resolveRovingIndex(3, 1, 'ArrowRight', 'horizontal')).toBe(2);
+		expect(resolveRovingIndex(3, 2, 'ArrowRight', 'horizontal')).toBe(0);
+		expect(resolveRovingIndex(3, 0, 'ArrowLeft', 'horizontal')).toBe(2);
+		expect(resolveRovingIndex(3, 1, 'ArrowDown', 'vertical')).toBe(2);
+		expect(resolveRovingIndex(3, 0, 'ArrowUp', 'vertical')).toBe(2);
+		// A horizontal strip must let Down through — the surface below wants it.
+		expect(resolveRovingIndex(3, 0, 'ArrowDown', 'horizontal')).toBeNull();
+		expect(resolveRovingIndex(3, 0, 'ArrowUp', 'horizontal')).toBeNull();
+		expect(resolveRovingIndex(3, 0, 'ArrowRight', 'vertical')).toBeNull();
+		expect(resolveRovingIndex(3, 0, 'Enter', 'horizontal')).toBeNull();
+		expect(resolveRovingIndex(0, 0, 'ArrowRight', 'horizontal')).toBeNull();
+	});
+
+	it('exposes exactly one tab stop, and it is the selected member', () => {
+		expect([0, 1, 2].map((index) => tablistTabIndex(index, 1))).toEqual([-1, 0, -1]);
+	});
+
+	it('is consumed by both strips rather than re-implemented per surface', () => {
+		for (const [file, tabs] of [
+			['app/EditorSidebar.svelte', 'PANEL_TABS'],
+			['EditorAssetLibrary.svelte', 'LIBRARY_TABS']
+		] as const) {
+			const source = read(file);
+			// One declared member list per strip, and the shared model is the only
+			// thing that decides where an arrow key moves.
+			expect(source, `${file} must declare its members once`).toContain(`const ${tabs} = [`);
+			expect(source, `${file} must use the shared axis model`).toContain(
+				`resolveRovingIndex(${tabs}.length, selected, event.key, 'horizontal')`
+			);
+			expect(source).toContain(`tablistTabIndex(index, ${tabs}.indexOf(`);
+			expect(source).toContain('role="tablist"');
+			// Automatic activation: the arrow moves focus and switches the panel,
+			// so the ring never sits on an unselected tab.
+			expect(source).toContain('?.focus();');
+		}
+	});
+});
+
+describe('P23.14 §23 #40/#41 — popover focus lifecycle', () => {
+	it('coordinates the Project Head popovers instead of stacking them', () => {
+		const row = read('app/ProjectRow.svelte');
+		const documentMenu = block(row, 'function openDocumentMenu() {');
+		expect(documentMenu).toContain('projectMenuOpen = true;');
+		expect(documentMenu).toContain('themeMenuOpen = false;');
+		expect(documentMenu).toContain('accountOpen = false;');
+		const themeMenu = block(row, 'function toggleThemeMenu() {');
+		expect(themeMenu).toContain('if (!themeMenuOpen) return;');
+		expect(themeMenu).toContain('projectMenuOpen = false;');
+		expect(themeMenu).toContain('accountOpen = false;');
+		const accountMenu = block(row, 'function toggleAccountMenu() {');
+		expect(accountMenu).toContain('projectMenuOpen = false;');
+		expect(accountMenu).toContain('themeMenuOpen = false;');
+		// The save-auth gate opens through the coordinator, so the row can never
+		// end up with the Document menu over an open theme menu.
+		expect(row).toContain('if (saveAuthGateOpen) openDocumentMenu();');
+	});
+
+	it('restores focus to the trigger on Escape, and never as a Tab trap', () => {
+		const row = read('app/ProjectRow.svelte');
+		expect(row).toContain("if (event.key !== 'Escape') return;");
+		expect(row).toContain('void tick().then(() => trigger?.focus());');
+		// Members are roving (tabindex -1) so Tab leaves the popover.
+		expect(row).toContain('role="menuitemradio"');
+		expect(row).toContain('tabindex="-1"');
+		for (const panel of ['themeMenuPanelElement', 'accountMenuPanelElement']) {
+			expect(row).toContain(`focusFirstPopoverControl(${panel})`);
+		}
+	});
+
+	it('gives the Document menu the same lifecycle, including external opens', () => {
+		const source = read('EditorProjectMenu.svelte');
+		expect(source).toContain('function setOpen(next: boolean, options: { restoreFocus?: boolean } = {})');
+		expect(source).toContain('const hadFocus = Boolean(menuPanelElement?.contains(document.activeElement));');
+		// Pointer close: focus stays where the user aimed it.
+		expect(source).toContain('setOpen(false, { restoreFocus: false })');
+		expect(source).toContain('void tick().then(() => focusFirstMenuControl());');
+		expect(source).toContain('focusFirstMenuControl');
+		expect(source).toContain("'button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]'");
+		expect(source).toContain('aria-haspopup="dialog"');
+		expect(source).toContain('onkeydown={onMenuPanelKeydown}');
+	});
+});
+
+describe('P23.14 §23 #34 — readable status ink', () => {
+	it('keeps the status rail on the readable text tiers', () => {
+		const status = read('app/StatusBar.svelte');
+		const base = block(status, '.status-bar {');
+		expect(base).toContain('color: var(--editor-text-secondary);');
+		expect(base).not.toContain('var(--editor-text-muted)');
+		expect(status).toContain('.save-state { color: var(--editor-text-success); }');
+		// The success *glyph* family is a different role than success *text*.
+		expect(status).not.toContain('color: var(--editor-success)');
+	});
+
+	it('ships a success ink that is not the glyph hue and clears AA at 11 px', () => {
+		const tokens = read('styles/tokens.css');
+		const plate = block(tokens, ":root[data-theme='plate-light'] {");
+		// The default theme is what the status rail actually paints on.
+		const successInk = plate.match(/--editor-text-success:\s*light-dark\(([^,]+),/)?.[1]?.trim();
+		const successGlyph = plate.match(/--editor-success:\s*([^;]+);/)?.[1]?.trim();
+		expect(successInk).toBeTruthy();
+		expect(successGlyph).toBeTruthy();
+		expect(successInk).not.toBe(successGlyph);
+		// 4.8:1 on the PLATE Light Chassis #D9DDE0 — the shared #15803D measured
+		// 3.7:1 and failed at the 11 px status size.
+		const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+		const luminance = ([r, g, b]: number[]) => {
+			const channel = (value: number) =>
+				value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+			return 0.2126 * channel(r!) + 0.7152 * channel(g!) + 0.0722 * channel(b!);
+		};
+		// The Chassis the status rail sits on: `--editor-bg-app: #d9dde0`.
+		expect(plate).toContain('--editor-bg-app: #d9dde0;');
+		const chassis = [0.851, 0.867, 0.878];
+		const ink = rgb(successInk!);
+		const ratio =
+			(Math.max(luminance(chassis), luminance(ink)) + 0.05) /
+			(Math.min(luminance(chassis), luminance(ink)) + 0.05);
+		expect(ratio).toBeGreaterThanOrEqual(4.5);
+	});
+});
+
+describe('P23.14 §23 — motion, pointer and progressive density', () => {
+	it('disables chrome transitions under prefers-reduced-motion, relic untouched', () => {
+		const shell = read('styles/editor-shell.css');
+		const reduced = block(shell, '@media (prefers-reduced-motion: reduce) {');
+		expect(reduced).toContain('.editor-page *');
+		expect(reduced).toContain('transition-duration: 0.01ms !important;');
+		expect(reduced).toContain('animation-duration: 0.01ms !important;');
+		expect(reduced).not.toContain('display: none');
+		// The frozen relic owns its own chrome; the shell preference stops at the
+		// editor page.
+		expect(reduced).not.toContain('.relic');
+	});
+
+	it('raises every chrome target to 44 px on coarse pointers, from one token', () => {
+		const tokens = read('styles/tokens.css');
+		expect(block(tokens, ':root {')).toContain('--editor-touch-target-min: 44px;');
+		const shell = read('styles/editor-shell.css');
+		const coarse = block(shell, '@media (pointer: coarse) {');
+		for (const band of [
+			'--editor-appbar-height: var(--editor-touch-target-min);',
+			'--editor-project-row-height: var(--editor-touch-target-min);',
+			'--editor-viewbar-height: var(--editor-touch-target-min);'
+		]) {
+			expect(coarse).toContain(band);
+		}
+		expect(coarse).toContain(":is(button, [role='tab'], [role='menuitem'], select, input, summary)");
+		expect(coarse).toContain('.tree-row');
+		expect(coarse).toContain('min-height: var(--editor-touch-target-min);');
+		// The canvas answers to its own grammar, which already grows the
+		// acquisition radius for coarse pointers.
+		expect(coarse).not.toContain('.plan-canvas');
+		expect(PLAN_CONTROL_TARGET_COARSE_PX).toBeGreaterThan(PLAN_CONTROL_TARGET_PX);
+	});
+
+	it('sheds Navigator metadata before identity when the column is squeezed', () => {
+		const navigator = read('hierarchy/HierarchyNavigator.svelte');
+		expect(block(navigator, '\t.tree-scroll {')).toContain('container-type: inline-size;');
+		const row = read('hierarchy/HierarchyRow.svelte');
+		const dense = block(row, '@container (max-width: 16rem) {');
+		expect(dense).toContain('.tree-row__meta { display: none; }');
+		// Identity, selection and the tree position stay painted.
+		expect(dense).not.toContain('.tree-row__label');
+		expect(dense).not.toContain('.tree-row__chevron');
+		// The threshold sits below the reference 268 px Navigator, so a normal
+		// width never loses metadata.
+		const threshold = Number(row.match(/@container \(max-width: (\d+(?:\.\d+)?)rem\)/)?.[1]);
+		expect(threshold * 16).toBeLessThanOrEqual(256);
+	});
+
+	it('keeps the status bar shedding metadata in the same order', () => {
+		const status = read('app/StatusBar.svelte');
+		expect(status).toContain('@media (max-width: 62rem) {\n\t\t.workspace-status { display: none; }');
+		const narrow = status.slice(status.indexOf('@media (max-width: 44rem)'));
+		expect(narrow).toContain('.save-state { display: none; }');
+		// Location (workspace + view) is the last thing to go, never the first.
+		expect(narrow).not.toContain('.workspace ');
+	});
+});

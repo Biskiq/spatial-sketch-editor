@@ -333,6 +333,10 @@
 	--editor-spine-width: 56px;
 	--editor-viewbar-height: 34px;
 	--editor-tray-width: 44px;
+	/* §23 — the coarse-pointer minimum every chrome control and its band grows
+	   to. One token so the media query in editor-shell.css and any component
+	   that has to size around a touch target agree. */
+	--editor-touch-target-min: 44px;
 
 	/* ── DS §6 — typography ── */
 	--editor-font:
@@ -705,7 +709,11 @@
 	--editor-text-tint-soft: light-dark(#5c666d, #bcc2c6);
 	--editor-text-metric: light-dark(#145da8, #7fb2e8);
 	--editor-text-timecode: light-dark(#8a5f14, #e0b667);
-	--editor-text-success: light-dark(#15803d, #4ade80);
+	/* #34 — the shared success ink #15803D measures 3.7:1 on the #D9DDE0 Chassis
+	   and fails AA at the 11 px status size; #146C34 measures 4.8:1. Only the
+	   light member moves — the glyph/border family (`--editor-success`) keeps its
+	   own hue. */
+	--editor-text-success: light-dark(#146c34, #4ade80);
 
 	/* Camera route/playhead follow the instrument accent; the lane parameter
 	   colors stay invariant data-viz identity. */

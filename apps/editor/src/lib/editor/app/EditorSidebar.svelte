@@ -22,6 +22,7 @@
 	import type { EditorStore } from '$lib/editor/editor-store.svelte';
 	import type { EditorContextMenuStore } from '$lib/editor/context-menu/context-menu-state.svelte';
 	import UnifiedProjectTree from '$lib/editor/UnifiedProjectTree.svelte';
+	import { resolveRovingIndex, tablistTabIndex } from './roving-focus';
 	import CameraSidebar from './CameraSidebar.svelte';
 	import type { EditorActiveSelectionStore } from './active-editor-selection.svelte';
 	import type { EditorViewState } from './editor-view-state.svelte';
@@ -82,8 +83,25 @@
 			layoutPreviewSessionStatus(layoutPreview) !== 'blank'
 	);
 
+	const PANEL_TABS = ['scene', 'assets'] as const;
+	/** Roving focus targets for the Hierarchy | Assets tablist (#39). */
+	let panelTabElements = $state<(HTMLButtonElement | null)[]>([]);
+
 	function switchLeftPanel(panel: 'scene' | 'assets') {
 		store.setLeftPanel(panel);
+	}
+
+	/**
+	 * #39 — one tab stop for the strip; arrows move focus and select (automatic
+	 * activation: both panels stay mounted, so switching costs nothing).
+	 */
+	function onPanelTabsKeydown(event: KeyboardEvent) {
+		const selected = PANEL_TABS.indexOf(store.leftPanel);
+		const next = resolveRovingIndex(PANEL_TABS.length, selected, event.key, 'horizontal');
+		if (next === null) return;
+		event.preventDefault();
+		switchLeftPanel(PANEL_TABS[next]!);
+		panelTabElements[next]?.focus();
 	}
 
 	function resolveTextureImageSrc(uri: string): string | null {
@@ -121,21 +139,24 @@
 	{/if}
 
 	{#if showScenePanelTabs}
-		<div class="panel-tabs" role="tablist" aria-label="Editor panels">
-			<button
-				type="button"
-				role="tab"
-				aria-selected={store.leftPanel === 'scene'}
-				class:active={store.leftPanel === 'scene'}
-				onclick={() => switchLeftPanel('scene')}
-			>Hierarchy</button>
-			<button
-				type="button"
-				role="tab"
-				aria-selected={store.leftPanel === 'assets'}
-				class:active={store.leftPanel === 'assets'}
-				onclick={() => switchLeftPanel('assets')}
-			>Assets</button>
+		<div
+			class="panel-tabs"
+			role="tablist"
+			aria-label="Editor panels"
+			tabindex="-1"
+			onkeydown={onPanelTabsKeydown}
+		>
+			{#each PANEL_TABS as panel, index (panel)}
+				<button
+					bind:this={panelTabElements[index]}
+					type="button"
+					role="tab"
+					aria-selected={store.leftPanel === panel}
+					tabindex={tablistTabIndex(index, PANEL_TABS.indexOf(store.leftPanel))}
+					class:active={store.leftPanel === panel}
+					onclick={() => switchLeftPanel(panel)}
+				>{panel === 'scene' ? 'Hierarchy' : 'Assets'}</button>
+			{/each}
 		</div>
 	{/if}
 

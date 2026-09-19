@@ -159,7 +159,11 @@
 		box-sizing: border-box;
 		border-top: 1px solid var(--editor-border-subtle);
 		background: var(--editor-bg-app);
-		color: var(--editor-text-muted);
+		/* #34 — the rail is 11 px chrome text on the Chassis, so its base ink is
+		   the readable secondary tier: muted measures only ~3.9:1 on the PLATE
+		   Light Chassis and fails AA at this size. Quietness comes from weight and
+		   from the tiers below, not from under-contrast ink. */
+		color: var(--editor-text-secondary);
 		font-size: 11px;
 		line-height: 1;
 	}
@@ -171,10 +175,11 @@
 		min-width: 0;
 	}
 	.status-right { margin-left: auto; }
-	.workspace { font-weight: 650; color: var(--editor-text-secondary); }
+	.workspace { font-weight: 650; color: var(--editor-text-primary); }
 	.workspace-status { color: var(--editor-text-secondary); font-weight: 600; white-space: nowrap; }
-	.selection { color: var(--editor-text-muted); }
-	.save-state { color: var(--editor-success); }
+	.selection { color: var(--editor-text-secondary); }
+	/* A readable text role, never the success glyph/border family (#34). */
+	.save-state { color: var(--editor-text-success); }
 	.save-state.dirty { color: var(--editor-text-primary); }
 
 	@media (max-width: 62rem) {
