@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script>
       // THEME_IDS_SYNC_WITH_THEME_REGISTRY start
-      var THEME_IDS = ['navy-blue', 'salon-espresso', 'electric-plum', 'acid-moss', 'porcelain-atelier', 'synth-sunset', 'velvet-kodachrome'];
+      var THEME_IDS = ['plate-light', 'navy-blue', 'salon-espresso', 'electric-plum', 'acid-moss', 'porcelain-atelier', 'synth-sunset', 'velvet-kodachrome'];
 
       // THEME_IDS_SYNC_WITH_THEME_REGISTRY end
       try {
         var themeId = localStorage.getItem('editor.theme');
-        if (THEME_IDS.indexOf(themeId) === -1) themeId = 'navy-blue';
+        if (THEME_IDS.indexOf(themeId) === -1) themeId = 'plate-light';
         document.documentElement.dataset.theme = themeId;
       } catch (e) {
-        document.documentElement.dataset.theme = 'navy-blue';
+        document.documentElement.dataset.theme = 'plate-light';
       }
     </script>
     %sveltekit.head%
