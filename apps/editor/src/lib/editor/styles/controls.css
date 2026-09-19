@@ -213,20 +213,30 @@
  * every metric a `--editor-control-*` role, so R3's two knobs retune the bar.
  */
 
-/* Tool groups are layout-only now: no trough, no fill, no border. */
+/* Tool groups are layout-only now: no trough, no fill, no border. The
+   ribbon component's own group rule (`padding-right: 0.32rem; border-right:
+   1px`) is cleared here too — the Atlas separates groups with space alone, and
+   this is the same leak class as the tray's inherited `nowrap`: a
+   component-scoped rule keeps applying in the shell until the shell says
+   otherwise. */
 .project-editor .view-bar .tool-group {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
 	gap: 2px;
+	padding: 0;
+	border: 0;
 }
 
-/* Resting control: the shared instrument chrome, Atlas metrics (utility tier). */
+/* Resting control: the shared instrument chrome, Atlas metrics (utility tier).
+   `height: auto` is load-bearing: the ribbon's own `button { height: 28px }`
+   would otherwise size this 24 px tier from the component, not the role. */
 .project-editor .view-bar .tool-group > button {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
 	box-sizing: border-box;
+	height: auto;
 	min-height: var(--editor-control-sm-height);
 	padding: 2px var(--editor-control-xs-pad-x);
 	border: 1px solid var(--editor-border-normal);
@@ -244,9 +254,16 @@
 	color: var(--editor-text-primary);
 }
 
-/* Pressed/toggled tier: edge border + inset bottom rule (Atlas
-   `button[aria-pressed=true]`). A fill here was the drift. */
+/* Pressed/toggled tier: one material step DOWN onto the recess tone, plus the
+   Atlas's edge border + inset bottom rule (`button[aria-pressed=true]`). The
+   recessive fill is the Atlas's own (`#c5cbce` against an `#E8E5DD`
+   instrument), and it keeps the cue from being hue alone: hover LIFTS to
+   `--editor-bg-hover`, pressed SINKS to `--editor-bg-recess`, the same pair the
+   Tool Tray's armed state uses (R2). A translucent accent-soft wash here was the
+   drift — it left the pressed button the same height and surface as a resting
+   one. */
 .project-editor .view-bar .tool-group > button.active {
+	background-color: var(--editor-bg-recess);
 	border-color: var(--editor-accent);
 	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
@@ -263,6 +280,7 @@
 	align-items: center;
 	gap: 5px;
 	box-sizing: border-box;
+	height: auto;
 	min-height: var(--editor-control-sm-height);
 	padding: 2px var(--editor-control-sm-pad-x);
 	border: 1px solid var(--editor-border-normal);
@@ -284,23 +302,36 @@
 }
 
 .project-editor .view-bar .ribbon-btn.active {
+	background-color: var(--editor-bg-recess);
 	border-color: var(--editor-accent);
 	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);
 }
 
-/* MODE — the Atlas's subordinate Layout|Arrange pair: an engraved label and
-   two plain 11 px buttons, no trough and no segmented fill. */
+/* MODE — the Atlas's `.mode`: a muted engraved LABEL and two plain 11 px
+   buttons, and **no box around the three of them**. The owner called the
+   previous treatment out directly: the wrapper still painted the ribbon
+   component's enclosed trough (padding 1 px, subtle border, 6 px radius, control
+   fill), so `MODE` read as a third control sitting in the same capsule as
+   Layout|Arrange. The label is muted text beside the pair — it is a caption, not
+   a segment — so every enclosure property is cleared here and only the buttons
+   carry chrome. */
 .project-editor .view-bar .segmented {
 	display: inline-flex;
 	align-items: center;
 	box-sizing: border-box;
 	gap: 2px;
+	margin-left: 12px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	height: auto;
 }
 
 .project-editor .view-bar .segmented::before {
 	content: 'MODE';
-	margin-right: 6px;
+	margin-right: 8px;
 	color: var(--editor-text-muted);
 	font: var(--editor-type-engraved);
 	letter-spacing: 0.07em;
@@ -311,13 +342,14 @@
 	align-items: center;
 	justify-content: center;
 	box-sizing: border-box;
+	height: auto;
 	min-height: var(--editor-control-sm-height);
 	padding: 2px var(--editor-control-sm-pad-x);
 	border: 1px solid var(--editor-border-normal);
 	border-radius: var(--editor-control-radius);
 	background: var(--editor-bg-instrument);
 	color: var(--editor-text-secondary);
-	font: var(--editor-type-utility);
+	font: var(--editor-type-mode);
 	cursor: pointer;
 }
 
@@ -327,6 +359,7 @@
 }
 
 .project-editor .view-bar .segmented > button.active {
+	background-color: var(--editor-bg-recess);
 	border-color: var(--editor-accent);
 	box-shadow: inset 0 -2px var(--editor-accent);
 	color: var(--editor-text-primary);

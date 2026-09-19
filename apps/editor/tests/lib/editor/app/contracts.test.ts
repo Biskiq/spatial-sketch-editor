@@ -539,6 +539,41 @@ describe('P21.1 shared shell', () => {
 		expect(readLibSource('editor/app/EditorApp.svelte')).toContain('<WorkspaceRibbon');
 	});
 
+	it('paints MODE as a muted caption beside two plain buttons — no enclosure', () => {
+		// Owner review: `MODE` read as a third control inside the same capsule as
+		// Layout|Arrange, because the ribbon component's enclosed segmented trough
+		// (padding 1 px, subtle border, 6 px radius, control fill) kept applying
+		// in the shell scope. The wrapper clears it completely and the caption is
+		// the muted engraved tier — a caption, not a segment (Atlas `.mode`).
+		const css = readLibSource('editor/styles/controls.css');
+		const slice = (selector: string): string => {
+			const start = css.indexOf(selector);
+			expect(start, `${selector} must exist`).toBeGreaterThanOrEqual(0);
+			const open = css.indexOf('{', start);
+			return css.slice(open + 1, css.indexOf('}', open));
+		};
+		// The group divider is the same leak class: space separates groups.
+		const group = slice('.project-editor .view-bar .tool-group {');
+		expect(group).toContain('padding: 0;');
+		expect(group).toContain('border: 0;');
+		const segmented = slice('.project-editor .view-bar .segmented {');
+		for (const cleared of ['padding: 0;', 'border: 0;', 'border-radius: 0;', 'background: transparent;']) {
+			expect(segmented, `MODE group keeps ${cleared}`).toContain(cleared);
+		}
+		const caption = slice('.project-editor .view-bar .segmented::before {');
+		expect(caption).toContain("content: 'MODE';");
+		expect(caption).toContain('color: var(--editor-text-muted);');
+		const button = slice('.project-editor .view-bar .segmented > button {');
+		expect(button).toContain('font: var(--editor-type-mode);');
+		expect(button).toContain('min-height: var(--editor-control-sm-height);');
+		// The ribbon's own `button { height: 28px }` must not size a 24 px tier.
+		expect(button).toContain('height: auto;');
+		// Pressed takes the Atlas's recessive surface + edge rule, never a wash.
+		expect(slice('.project-editor .view-bar .segmented > button.active {')).toContain(
+			'background-color: var(--editor-bg-recess);'
+		);
+	});
+
 	it('keeps the Timeline docked, never in Row 2', () => {
 		const ribbon = readLibSource('editor/app/WorkspaceRibbon.svelte');
 		expect(ribbon).not.toContain('Timeline');

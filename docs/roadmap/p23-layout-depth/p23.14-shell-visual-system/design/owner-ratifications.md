@@ -243,6 +243,20 @@ control/geometry roles resolve to their knob, and a **guard** fails if any swept
 surface reintroduces a pinned `font:`/`font-size:` value. That guard is the
 point: it is how this cannot come back silently.
 
+**R3 follow-up — the View Bar's `MODE` caption (owner-reported, commit `28d4cf3`).** The owner
+read `MODE` as a third segment sharing the capsule with `Layout | Arrange`. Cause: the shell
+scope cleared the properties it named, while `LayoutDraftToolbar`'s own `.segmented` rule
+(`padding: 1px; border: 1px; border-radius: 6px; background: var(--editor-bg-control)`) kept
+drawing the enclosure — the same leak class §2.2 records, third and fourth instances included:
+the tool-group divider (`padding-right: 0.32rem` + `border-right`, which the Atlas does not
+have) and the ribbon's `button { height: 28px }`, which was sizing the View Bar's 24 px tiers
+from the component instead of the role. All are cleared in the shell scope now, the caption
+sits on the muted engraved tier at the Atlas's 8 px gap, and the pair takes the 11 px MODE role.
+**One judgment call inside that fix, reversible in a line:** pressed/toggled controls now take
+the Atlas's recessive surface step (`--editor-bg-recess`) with the edge border and inset rule,
+replacing the component's translucent accent wash — hover lifts / pressed sinks, the pair the
+armed tray tool already uses (R2), so the state cannot rest on hue alone.
+
 **What R3 does not yet cover, on the record:** the **Inspector family**
 (`EditorInspector.svelte` plus the eight panel inspectors) still carries pinned
 sizes, because P21.5 Slice 4 pins its 12 px label / 12.5 px value tiers across
@@ -282,6 +296,13 @@ only; no other shell surface moved.
   duplicated in Camera 3D) remain open owner calls.
 - Device, screen-reader, `prefers-reduced-motion` and coarse-pointer rows remain
   **manual-owed**.
+- **Unmade decisions and carried debt are listed in one place** — the QA record's
+  *Open items carried out of this pass*: the open owner calls (F1/F2/F4/F5, the tray's
+  keyboard focus ring, the View Bar pressed-surface treatment), the manual-owed device /
+  screen-reader / motion / coarse-pointer rows, **TD-1** in
+  [`docs/operations/tech-debt/README.md`](../../../../operations/tech-debt/README.md),
+  the Inspector family's un-migrated tiers, the reference docs' remaining older numeric
+  sections, and the pre-existing View Bar clipping in a squeezed center column.
 - Content-visibility items (a *wider* rail, or a renamed `TRANSFORM` group) are
   owner product calls, not shell fixes; R1 deliberately keeps the spec's own
   vocabulary and the spec's own rail width.

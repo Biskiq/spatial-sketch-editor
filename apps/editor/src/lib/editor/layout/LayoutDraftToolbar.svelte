@@ -120,9 +120,11 @@
 
 <div class="layout-toolbar" class:ribbon class:tray role="toolbar" aria-label={interaction.planViewMode === 'staging' ? 'Scene Plan arrange tools' : 'Layout drafting tools'}>
 	{#if showPlanModeToggle && !tray}
-		<!-- P21.5 §1.3 — [Layout|Arrange] joins the shared enclosed segmented
-		     grammar (Scene|Camera, Plan|3D, Layout|Arrange); ribbon and
-		     floating both draw their own enclosure per the shell contract. -->
+		<!-- P21.5 §1.3 — [Layout|Arrange]. The floating (relic) form keeps the
+		     enclosed segmented grammar from the scoped styles below; the P23.14
+		     ribbon drops the enclosure entirely in the shell scope
+		     (`controls.css`), where the pair is two plain buttons preceded by a
+		     muted `MODE` caption (`--editor-type-mode`, Atlas `.mode`). -->
 		<div class="segmented mode-group" role="group" aria-label="Scene Plan mode">
 			<button type="button" class:active={interaction.planViewMode === 'layout'} aria-pressed={interaction.planViewMode === 'layout'} onclick={() => choosePlanMode('layout')}>Layout</button>
 			<button type="button" class:active={interaction.planViewMode === 'staging'} aria-pressed={interaction.planViewMode === 'staging'} onclick={() => choosePlanMode('staging')}>Arrange</button>
