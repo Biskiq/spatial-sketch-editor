@@ -1421,7 +1421,7 @@ retained in the moved half, so full test names are unchanged.
 | fast file (representatives kept) | new heavy file | moved | that file in `fast` |
 |---|---|---|---|
 | `camera-motion.test.ts` (62 its) | `camera-motion-dense-sweeps.test.ts` | the file's own P1.4 section: banner + its private fixture block + 55 its (2,148 lines) | 5,052ms → **381ms** |
-| `p23-6e-extra-angled-plan-integrity.test.ts` (7 its) | `angled-plan-noding-sweeps.test.ts` | the `P23.6e regression — projected Wall endpoints node oblique hosts` describe (5 its; 591 independently projected divider positions each) | 3,708ms → **188ms** |
+| `p23-6e-extra-angled-plan-integrity.test.ts` (10 its) | `angled-plan-noding-sweeps.test.ts` | the two `stress-splits …` sweeps of the `P23.6e regression — projected Wall endpoints node oblique hosts` describe (591 independently projected divider positions each) | 3,708ms → **166ms** |
 | `__fixtures__/layout-scale-fixtures.test.ts` (6 its) | `layout-scale-compile.test.ts` | the two compile sweeps (small+medium, and the 1,000-room fixture) | 2,972ms → **17ms** |
 | `wall-mesh-builder.test.ts` (20 its) | `wall-mesh-watertight-matrices.test.ts` | the 8 corner/arch/opening watertight matrices | 1,666ms → **239ms** |
 
@@ -1438,7 +1438,9 @@ Both halves of each split need the same fixtures, so copying them would create a
 second owner of the same fixture — the T3 lesson. Three helper modules were
 created instead, bodies verbatim with only `export` added:
 `tests/helpers/camera-motion-fixtures.ts` (5 sampling helpers),
-`tests/helpers/angled-plan-fixtures.ts` (6 document builders),
+`tests/helpers/angled-plan-fixtures.ts` (6 document builders + the `bottomStart`/`bottomEnd`
+oblique divider and `twoRoomsWithOneObliqueDivider`, which the shared-Junction
+regression in `fast` and the 2→3 sweep in `heavy` both build on),
 `tests/helpers/wall-mesh-fixtures.ts` (8 mesh assertions/builder, with
 `pointOnSegment` kept private). No production module was created or changed.
 
@@ -1492,9 +1494,9 @@ Quiet machine, one run per lane unless noted:
 
 | lane | pre-T4 | this head |
 |---|---|---|
-| `test:fast` | 279 files / 4,280 · **30.90s** (tests 31.57s cumulative) | 279 / 4,209 · **27.04s · 28.84s** (tests 15.58s · 17.26s) |
-| `test:arch` | 23 / 252 | 23 / **253** · 9.28s |
-| `test:heavy` | 1 / 6 | 5 / **76** · 10.89s |
+| `test:fast` | 279 files / 4,280 · **30.90s** (tests 31.57s cumulative) | 279 / 4,212 · **27.04s · 28.04s · 28.35s** (tests 16.29s · 16.96s) |
+| `test:arch` | 23 / 252 | 23 / **253** · 9.26s |
+| `test:heavy` | 1 / 6 | 5 / **73** · 11.11s |
 | `test:perf` | 5 / 23 | 5 / 23 · 3.54s |
 | `test:full` | 308 / 4,561 · 34.98s | 312 / 4,561 · 36.59s · 37.43s |
 
@@ -1538,12 +1540,12 @@ lane-splitting slice, and neither is smuggled into T4.
 | test LOC | 114,865 | **114,835** |
 | helper modules / LOC | 11 / 1,713 | 14 / 2,001 |
 | files reading production source | 74 | **73** |
-| fast lane | 279 / 4,280 | 279 / 4,209 |
-| arch · heavy · perf | 23/252 · 1/6 · 5/23 | 23/253 · 5/76 · 5/23 |
+| fast lane | 279 / 4,280 | 279 / 4,212 |
+| arch · heavy · perf | 23/252 · 1/6 · 5/23 | 23/253 · 5/73 · 5/23 |
 
-Partition exact and disjoint: 4,209 + 253 + 76 + 23 = 4,561; 279 + 23 + 5 + 5
-= 312. `npm test` ≡ `npm run test:full`. `npm run check` 0 errors / 0 warnings.
-No production file touched by T4.
+Partition exact and disjoint: 4,212 + 253 + 73 + 23 = 4,561; 279 + 23 + 5 + 5
+= 312. `npm test` ≡ `npm run test:full` (312 files, 4,561 tests, 37.08s).
+`npm run check` 0 errors / 0 warnings. No production file touched by T4.
 
 ### P.8 Deliberately not done
 
@@ -1567,3 +1569,38 @@ with its cheap representatives intact, bench timing was already carried by
 was deleted, and no production code changed. The remaining fast-lane wall is
 now attributed to per-worker module-graph isolation (§P.6) rather than to test
 volume. T5 and T6 not started.
+
+### P.10 Review amendment — the angled-plan split was too coarse
+
+Review of the pushed head found one real classification error, and it was the
+same mistake T4 exists to avoid: **“dense section” was applied to a whole
+`describe` instead of to the sweeps inside it.** Only two of the five `it`s in
+`P23.6e regression — projected Wall endpoints node oblique hosts` walk the 591
+projected divider positions. The other three are single-case regressions —
+`uses one shared Junction …`, `does not move a reused baseline Junction …`,
+`does not connect an endpoint outside Junction-identity tolerance` — and §P.1
+described all five as sweeps.
+
+The fix, applied narrowly:
+
+- the three single-case regressions returned **verbatim** to
+  `p23-6e-extra-angled-plan-integrity.test.ts`, whose re-opened `describe` keeps
+  their full names unchanged;
+- `angled-plan-noding-sweeps.test.ts` keeps only the two 591-step sweeps, and
+  its header now states exactly that rather than “every `it` here”;
+- the fixtures the two halves share — `bottomStart`, `bottomEnd`,
+  `twoRoomsWithOneObliqueDivider` — moved into `angled-plan-fixtures.ts`
+  instead of being copied, so the one-owner rule still holds.
+
+Evidence: all five blocks are **byte-identical** to their pre-amendment bodies
+(`git show d9896dc:…` compared with the working tree), the fast file now runs
+10 its in 166ms and the heavy file 2 in 1,822ms, lanes remain exact and
+disjoint (4,212 + 253 + 73 + 23 = 4,561; 279 + 23 + 5 + 5 = 312), and
+`npm test` ≡ `test:full` at 312 files / 4,561 tests. §P.1, §P.2, §P.5 and §P.7
+above carry the corrected numbers; the error and its correction are left in the
+record rather than silently rewritten.
+
+**Lesson carried forward:** a lane boundary must be drawn around the *expensive
+`it`s*, not around the `describe` that happens to contain them — and the claim
+“every test here is dense” needs the per-`it` durations (§P.1's rule) rather
+than a section banner.
