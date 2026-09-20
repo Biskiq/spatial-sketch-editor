@@ -36,6 +36,8 @@ import { fileURLToPath } from 'node:url';
 
 import { createFixtureEditorStore } from '../editor-test-utils';
 import { chopinProject } from '$lib/content/chopin-project';
+import { createEmptyLayoutDocument, createEmptyWallFirstLayoutDocument } from '$lib/layout/layout-codec';
+import { createEmptySceneDocument, createEmptyWorldLocalSceneDocument } from '$lib/content/scene';
 import {
 	classifyLayoutFormat,
 	classifySceneFormat,
@@ -478,5 +480,34 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 		// begin() only sets on refusal.)
 		expect(store.beginDocumentTransaction()).toBe(true);
 		store.cancelDocumentTransaction();
+	});
+
+	/**
+	 * T3b — the positive half of the Layout/Scene ownership pin.
+	 *
+	 * Only the *legacy* branches were pinned (the empty-roots tree case), so a
+	 * document that silently stopped carrying the current discriminators — the
+	 * pair the editor is allowed to author — could classify as legacy and pass.
+	 * These are the positive ownership claims: the authoring pair is Layout
+	 * wall-first (v5) + Scene world-local (v1), and the retired pair stays
+	 * retired (no accidental promotion either way).
+	 */
+	describe('current Layout/Scene ownership', () => {
+		it('classifies the authoring pair as wall-first + project-world', () => {
+			expect(classifyLayoutFormat(createEmptyWallFirstLayoutDocument())).toBe('wall-first');
+			expect(classifySceneFormat(createEmptyWorldLocalSceneDocument())).toBe('project-world');
+		});
+
+		it('keeps the retired pair classified as legacy in both domains', () => {
+			expect(classifyLayoutFormat(createEmptyLayoutDocument())).toBe('legacy');
+			expect(classifySceneFormat(createEmptySceneDocument())).toBe('legacy-room-local');
+		});
+
+		// The *pairing* itself — a wall-first Layout carrying its world-local
+		// Scene partner — is composed and asserted end to end in
+		// `tests/lib/editor/app/p23-3-new-project-boot.test.ts`. A third `it` here
+		// only compared the two classifications for inequality, which the two
+		// positive claims above already state exactly; it is deleted per T3's
+		// consolidation rule (its name claimed a mixed-pair check it never made).
 	});
 });

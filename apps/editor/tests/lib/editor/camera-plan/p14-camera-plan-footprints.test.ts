@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const LIB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../src/lib');
 
@@ -46,5 +48,27 @@ describe('P14 Camera Plan passive footprints', () => {
 		expect(planSvg).toContain('var(--plan-layout-object-fill, var(--editor-plan-readonly-fill))');
 		expect(planSvg).toContain('var(--plan-layout-object-dasharray, 5 3)');
 		expect(planSvg).not.toContain('--editor-camera-footprint-');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P3 structural visual contracts', () => {
+	it('keeps Camera Plan on distinct paper while reusing the shared opaque room projection', () => {
+		const cameraPlan = readLibSource('editor/camera-plan/CameraPlanViewport.svelte');
+		const scenePlan = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+
+		expect(scenePlan).toContain('background: var(--editor-plan-canvas-bg)');
+		expect(cameraPlan).toContain('background: var(--editor-camera-plan-canvas-bg)');
+		expect(cameraPlan).toContain('--editor-plan-room-bg: var(--editor-camera-plan-room-bg)');
+	});
+	it('keeps P14 footprint aliases surface-scoped and Scene-safe', () => {
+		const tokens = readLibSource('editor/styles/plan.css');
+		const cameraPlan = readLibSource('editor/camera-plan/CameraPlanViewport.svelte');
+		const planSvg = readLibSource('editor/layout/PlanSvg.svelte');
+
+		expect(tokens).toContain('--editor-camera-footprint-stroke: var(--editor-plan-muted);');
+		expect(tokens).toContain('--editor-camera-footprint-fill: rgb(146 144 138 / 12%);');
+		expect(planSvg).not.toContain('--editor-camera-footprint-stroke');
+		expect(planSvg).not.toContain('--editor-camera-footprint-fill');
 	});
 });

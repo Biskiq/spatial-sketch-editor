@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { projectPersistencePresentation } from '$lib/editor/app/project-persistence-presentation';
+import { readLibSource } from '../../../helpers/lib-source';
 
 describe('Project Row persistence presentation', () => {
 	it.each([
@@ -15,4 +16,23 @@ describe('Project Row persistence presentation', () => {
 			expect(projectPersistencePresentation({ owned, dirty, saving, blocker }))
 				.toMatchObject({ location, label, actionable });
 		});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.1 shared shell', () => {
+	it('never pops the document menu on background cloud errors', () => {
+		// Only the explicit save-auth interruption surfaces the menu; a
+		// failed owned-projects refresh on fresh guest load must not.
+		const row = readLibSource('editor/app/ProjectRow.svelte');
+		// P23.14 #40 — the same gate now also closes the row's sibling popovers,
+		// so it goes through the coordinating opener.
+		expect(row).toContain('if (saveAuthGateOpen) openDocumentMenu()');
+		expect(row).toContain('function openDocumentMenu()');
+		expect(row).not.toContain('cloudError) projectMenuOpen = true');
+		expect(row).not.toContain('cloudError) openDocumentMenu()');
+	});
+	it('disables the save-state pill when neither actionable nor blocked', () => {
+		const row = readLibSource('editor/app/ProjectRow.svelte');
+		expect(row).toContain('(!presentation.actionable && !saveBlocker)');
+	});
 });

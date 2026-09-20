@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readLibSource } from '../../../helpers/lib-source';
 
 /**
  * P23.14 review F1–F4 / owner rulings D1–D4 + F3 — the contrast and type floor
@@ -324,5 +325,54 @@ describe('P23.14 R2 — armed tool is a darkened surface, nothing else', () => {
 
 	it('still ships the armed hue in the palette, for surfaces that want it', () => {
 		expect(plate).toContain('--editor-armed: #946624;');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.1 shared shell', () => {
+	it('derives shell row bands from the theme-aware surface ramp (never hard hexes)', () => {
+		// Porcelain-atelier regression: hardcoded dark-navy rows stayed dark
+		// while the light theme went porcelain. Rows must resolve through
+		// themed surfaces so every theme stays consistent by construction.
+		const css = readLibSource('editor/styles/tokens.css');
+		expect(css).toContain('--editor-bg-row-1: var(--editor-bg-app)');
+		expect(css).toContain('--editor-bg-row-2: var(--editor-bg-panel-raised)');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
+	it('holds the Slice 1.1 surface-step calibration across all seven themes (sweep baseline)', () => {
+		const tokens = readLibSource('editor/styles/tokens.css');
+		// Four recalibrated dark blocks; porcelain/synth/velvet verified only.
+		for (const control of [
+			'--editor-bg-control: #121f2e;',
+			'--editor-bg-control: #221a16;',
+			'--editor-bg-control: #211538;',
+			'--editor-bg-control: #1c2b22;',
+			'--editor-bg-control: #e4ddd2;',
+			'--editor-bg-control: #1f273d;',
+			'--editor-bg-control: #2a2620;'
+		]) {
+			expect(tokens).toContain(control);
+		}
+		// Every override block stays complete: resting control surface + the
+		// subtle track edge resolve through theme-aware tokens, never hard hexes.
+		for (const id of [
+			'salon-espresso',
+			'electric-plum',
+			'acid-moss',
+			'porcelain-atelier',
+			'synth-sunset',
+			'velvet-kodachrome'
+		]) {
+			const start = tokens.indexOf(`:root[data-theme='${id}']`);
+			expect(start, `missing theme block ${id}`).toBeGreaterThanOrEqual(0);
+			const next = tokens.indexOf(":root[data-theme='", start + 1);
+			const end = tokens.indexOf('.project-editor', start);
+			const block = tokens.slice(start, next === -1 ? end : Math.min(next, end));
+			expect(block, `${id} misses resting control surface`).toContain('--editor-bg-control:');
+			expect(block, `${id} misses subtle track edge`).toContain('--editor-border-subtle:');
+		}
 	});
 });

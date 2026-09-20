@@ -5,10 +5,22 @@
  * Minimum review set: navy-blue (darkest default), porcelain-atelier (lightest
  * — the only light identity), electric-plum (most saturated); then all seven
  * by construction (no theme block may override any `--editor-plan-*` token).
- * This also closes the S9-step-1 Scene-ink eyeball seam: the resting Scene
- * outline weight is per-primitive opacity (regime/zone), never theme color —
- * pinned in `p23-13-object-scene-paint` — so theme invariance of the palette
- * is the whole surround claim.
+ *
+ * **T3c consolidation.** Two claims this file used to carry are now owned
+ * elsewhere and were removed here:
+ *
+ * - *theme registry membership* — `tests/lib/editor/theme.test.ts` asserts the
+ *   exact `THEME_IDS` list (an 8-id superset including `plate-light`), so a
+ *   theme missing from the registry fails there; the same-id `toContain` loop
+ *   here was the same defect asserted twice.
+ * - *Scene-ink weight* — the per-footprint regime/zone fraction is proven
+ *   behaviourally by the A6 paint owner
+ *   (`p23-13-object-scene-paint`), which fails when `sceneInkFor` stops being
+ *   consulted (`§K.3` mutation evidence), so the source-slice copy here was
+ *   redundant.
+ *
+ * What stays is what nothing else asserts: the override *blocks* exist for the
+ * six non-default themes, and no theme block may touch a Plan token.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -26,21 +38,10 @@ const tokens = readStyleSource('editor/styles/tokens.css');
 const blocks = tokens.slice(tokens.indexOf('Theme override blocks'));
 
 describe('P23.13 S9 seven surrounds (§9)', () => {
-	it('ships all seven shell themes with the reviewed minimum among them', () => {
-		// navy-blue is the :root default (no override block); the other six
-		// carry additive blocks. Registry truth lives in theme.svelte.ts.
-		const registry = readStyleSource('editor/theme.svelte.ts');
-		for (const id of [
-			'navy-blue',
-			'salon-espresso',
-			'electric-plum',
-			'acid-moss',
-			'porcelain-atelier',
-			'synth-sunset',
-			'velvet-kodachrome'
-		]) {
-			expect(registry).toContain(`'${id}'`);
-		}
+	it('ships an override block for every non-default shell theme', () => {
+		// navy-blue is the :root default (no override block); the other six are
+		// additive. Registry membership itself is pinned exactly by
+		// `tests/lib/editor/theme.test.ts` (`THEME_IDS`).
 		for (const id of [
 			'salon-espresso',
 			'electric-plum',
@@ -51,22 +52,11 @@ describe('P23.13 S9 seven surrounds (§9)', () => {
 		]) {
 			expect(blocks).toContain(`[data-theme='${id}']`);
 		}
-		// Minimum set: darkest default, lightest (only light), most saturated.
-		expect(registry).toContain("'navy-blue'");
-		expect(registry).toContain("'porcelain-atelier'");
-		expect(registry).toContain("'electric-plum'");
 	});
 
 	it('holds paper and selection constant (no theme block touches plan tokens)', () => {
 		expect(tokens).toContain('--editor-plan-bg: #f5f7f8');
 		expect(tokens).toContain('--editor-plan-selection: #2f8cff');
 		expect(blocks).not.toContain('--editor-plan-');
-	});
-
-	it('keeps the Scene-ink weight theme-independent (opacity, never theme color)', () => {
-		const planSvg = readStyleSource('editor/layout/PlanSvg.svelte');
-		// The regime/zone fraction rides opacity on the resting style only.
-		expect(planSvg).toContain('presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk');
-		expect(planSvg).toContain("if (primitive.style !== 'scene-footprint') return undefined;");
 	});
 });

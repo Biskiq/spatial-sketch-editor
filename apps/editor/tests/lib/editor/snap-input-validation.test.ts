@@ -7,6 +7,7 @@ import {
 	parseRotationSnapDegrees,
 	parseTranslationSnapMeters
 } from '$lib/editor/snap-input-validation';
+import { readLibSource } from '../../helpers/lib-source';
 
 describe('snap number-input validation (P21.1 Row 2 precision)', () => {
 	it('accepts strictly positive snap distances at or above the 0.01 m floor', () => {
@@ -35,5 +36,23 @@ describe('snap number-input validation (P21.1 Row 2 precision)', () => {
 		for (const raw of [Number.NaN, Number.POSITIVE_INFINITY, 0, 0.5, -15, 181, 360]) {
 			expect(parseRotationSnapDegrees(raw)).toBeNull();
 		}
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.1 shared shell', () => {
+	it('validates Row 2 snap number inputs before writing gizmo state', () => {
+		// The parser behavior is pinned in `tests/lib/editor/snap-input-validation.test.ts`;
+		// that suite imports the parsers directly, so it stays green if the toolbar
+		// stops calling them. This is the wiring half: the toolbar parses on
+		// change/blur (never per-keystroke, which corrupts mid-typing states) and
+		// restores the live value on reject.
+		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
+		expect(toolbar).toContain('parseTranslationSnapMeters(Number(');
+		expect(toolbar).toContain('parseRotationSnapDegrees(Number(');
+		expect(toolbar).toContain('onchange={(e) => commitTranslationSnap');
+		expect(toolbar).toContain('onchange={(e) => commitRotationSnapDegrees');
+		expect(toolbar).toContain('input.value = String(store.translationSnap)');
+		expect(toolbar).toContain('input.value = String(store.rotationSnapDegrees)');
 	});
 });

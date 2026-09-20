@@ -25,11 +25,19 @@ import {
 	resolvePlanAttentionZone,
 	withPlanAttentionSceneInk
 } from '$lib/editor/layout/plan-attention';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-compat';
+import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
+import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-codec';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
-import type {
-	PlanPolygonPrimitive,
-	PlanPresentationSource
+import {
+	buildPlanRenderModel,
+	type PlanInteractionProjection,
+	type PlanPolygonPrimitive,
+	type PlanPresentationSource,
+	type PlanRenderModel,
+	type PlanRenderPrimitive
 } from '$lib/layout/plan-render-model';
+import { planSvgRule, renderPlanSvg } from '../../helpers/plan-render-harness';
 
 /**
  * P23.13 S8 / §1.12 — the instrument zone.
@@ -214,30 +222,118 @@ describe('P23.13 S8 region-scoped Scene ink', () => {
 });
 
 describe('P23.13 S8 paint contract (tokens reach the renderer)', () => {
-	// The plates the earlier slices used to eyeball paint cannot run in this
-	// `node` suite, so the link that *can* silently break is pinned as a source
-	// contract instead: a token with no class entry and no CSS rule is invisible
-	// ink, which is exactly what a plate would have caught.
-	const here = path.dirname(fileURLToPath(import.meta.url));
-	const svg = fs.readFileSync(
-		path.resolve(here, '../../../src/lib/editor/layout/PlanSvg.svelte'),
-		'utf8'
-	);
+	// A token with no class entry and no CSS rule is invisible ink — the failure a
+	// plate would have caught. These claims used to be slices of `PlanSvg.svelte`'s
+	// source text, which could not see whether the class was ever *emitted*; they
+	// are now driven through `plan-render-harness`: the shipped component rendered
+	// through its own props, plus the Svelte compiler's own stylesheet.
+	//
+	// The third claim of this row — "per-footprint Scene ink is read before the
+	// regime value" — moved to its A6 owner (`p23-13-object-scene-paint`, §S8/
+	// §1.12), where one footprint inside the live zone dims to the zone value
+	// while the others keep the regime value. That test fails if the per-primitive
+	// source is dropped, which the source slice could never establish.
+
+	/** An empty plan plus this slice's interaction ink: one wash draft, one reason. */
+	function inkModel(): PlanRenderModel {
+		const document: LayoutDocumentWallFirst = {
+			units: 'meters',
+			formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
+			junctions: [],
+			walls: [],
+			openings: [],
+			rooms: [],
+			objects: []
+		};
+		const interaction: PlanInteractionProjection = {
+			selection: [],
+			handles: [],
+			drafts: [
+				{
+					kind: 'polygon',
+					key: 'wash',
+					points: [
+						[0, 0],
+						[2, 0],
+						[2, 2],
+						[0, 2]
+					],
+					style: 'closure-wash'
+				}
+			],
+			labels: [
+				{
+					kind: 'text',
+					key: 'reason',
+					anchor: [1, 1],
+					text: 'Needs a closed room',
+					style: 'refusal-reason'
+				}
+			]
+		};
+		return buildPlanRenderModel(
+			compileWallFirstLayoutGeometry(document).geometry,
+			undefined,
+			interaction
+		);
+	}
 
 	it('maps the S8 tokens to a class and gives each one ink', () => {
-		expect(svg).toContain("'closure-wash': 'closure-wash'");
-		expect(svg).toContain("'refusal-reason': 'refusal-reason'");
-		expect(svg).toMatch(/\.closure-wash \{[^}]*fill:/);
-		expect(svg).toMatch(/\.refusal-reason \{[^}]*fill:/);
+		const rendered = renderPlanSvg({ model: inkModel() });
+		const wash = rendered.find((element) => element.classes.includes('closure-wash'));
+		const reason = rendered.find((element) => element.classes.includes('refusal-reason'));
+		expect(wash?.tag).toBe('polygon');
+		expect(reason?.tag).toBe('text');
+		expect(reason?.text).toBe('Needs a closed room');
+		// …and each emitted class is actually painted, read from the compiler's
+		// stylesheet rather than from a regex over the file's text. Only the
+		// declaration is asserted: the refusal ink's *value* is an owner-open
+		// decision this refactor does not ratify.
+		expect(planSvgRule('.closure-wash').fill).toBeTruthy();
+		expect(planSvgRule('.refusal-reason').fill).toBeTruthy();
+	});
+
+	it('routes every style token through the class table rather than its own name', () => {
+		// Both S8 tokens map to themselves, so their assertions above cannot tell a
+		// consulted table from the identity fallback. A token whose class differs
+		// from its style name is the proof that the table is what the renderer
+		// reads — the failure mode that would make a *renamed* future token paint
+		// as unstyled ink.
+		const model = inkModel();
+		const drafts = model.layers.find((entry) => entry.order === 12)!;
+		const [wash] = drafts.primitives;
+		const renamed: PlanRenderModel = {
+			...model,
+			layers: model.layers.map((layer) =>
+				layer.order === 12
+					? {
+							...layer,
+							primitives: [
+								{ ...(wash as PlanPolygonPrimitive), style: 'opening-drag-preview-invalid' as const }
+							]
+						}
+					: layer
+			)
+		};
+		const emitted = renderPlanSvg({ model: renamed }).find((element) =>
+			element.classes.includes('opening-drag-preview')
+		);
+		expect(emitted?.classes).toEqual(['opening-drag-preview', 'invalid']);
 	});
 
 	it('paints a polygon in the drafts layer, so the closure wash is not dead ink', () => {
-		expect(svg).toContain("primitive.kind === 'polygon'");
-		expect(svg).toContain('class={tokenClass(primitive.style)} points={pointsAttr(primitive.points)}');
-	});
-
-	it('reads the per-footprint Scene ink before the regime value', () => {
-		expect(svg).toContain('presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk');
+		const layer = inkModel().layers.find((entry) => entry.order === 12);
+		const drafts: PlanRenderPrimitive[] = layer ? [...layer.primitives] : [];
+		expect(drafts).toHaveLength(1);
+		expect(drafts[0]).toMatchObject({ kind: 'polygon', style: 'closure-wash' });
+		// The same primitive reaches the markup as a polygon element, so layer
+		// assignment and emission are proven together rather than in halves.
+		expect(
+			renderPlanSvg({ model: inkModel() }).filter((element) =>
+				element.classes.includes('closure-wash')
+			)
+		).toHaveLength(1);
 	});
 });
 

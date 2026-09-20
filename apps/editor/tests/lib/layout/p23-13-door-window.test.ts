@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 /**
  * P23.13 S1 — static architectural grammar: band projection, jambs and cut
  * terminations, the perpendicular three-dash Door type cue and the Window
@@ -43,6 +45,11 @@ import {
 	windowStrokeShapeAllowed
 } from '$lib/editor/layout/plan-architecture-grammar';
 import { createPlanViewportState, type PlanViewportState } from '$lib/editor/layout/layout-plan-transform';
+import {
+	elementsWithClass,
+	planSvgRule,
+	renderPlanSvg
+} from '../../helpers/plan-render-harness';
 
 const LIB_DIR = new URL('../../../src/lib/', import.meta.url);
 
@@ -145,13 +152,37 @@ describe('P23.13 S1 — canonical band projection', () => {
 	});
 
 	it('keeps a wall-first Wall outside every Room on the same band and punch rules', () => {
-		const plan = readLibSource('editor/layout/PlanSvg.svelte');
-		// The punch uses the drafting surface, not a room background.
+		// **A5.** The punch painting the *drafting surface* rather than a room
+		// background is a token-ownership fact in a plain stylesheet, so that half
+		// stays a static read of the file that owns the token.
 		expect(readLibSource('editor/styles/plan.css')).toContain(
 			'--editor-plan-opening-void: var(--editor-plan-canvas-bg);'
 		);
-		expect(plan).toContain('stroke-width: calc(var(--architecture-band-width) + 2px);');
-		expect(plan).toContain('.wall-silhouette { stroke: var(--editor-plan-silhouette); stroke-width: 1;');
+		// The band, casing and punch widths come from the Svelte compiler's own
+		// stylesheet, so a declaration the compiler drops cannot pass.
+		expect(planSvgRule('.wall-casing')['stroke-width']).toBe(
+			'calc(var(--architecture-band-width) + 2px)'
+		);
+		expect(planSvgRule('.opening-void')['stroke-width']).toBe(
+			'calc(var(--architecture-band-width) + 2px)'
+		);
+		// …and the rules are load-bearing for a plan whose Walls belong to *no*
+		// Room: the same band, casing and Opening punch are emitted with zero Rooms
+		// present, so nothing about the paint is derived from a Room.
+		const roomless = doorWindowDocument();
+		roomless.rooms = [];
+		const { geometry, issues } = compileWallFirstLayoutGeometry(roomless);
+		expect(issues).toEqual([]);
+		const rendered = renderPlanSvg({ model: buildPlanRenderModel(geometry) });
+		// Each host Wall is split by its own punch, so the band arrives as one
+		// segment per surviving run; what matters is that no Wall vanishes and that
+		// every band run still carries its casing.
+		const bands = elementsWithClass(rendered, 'wall-line');
+		const casings = elementsWithClass(rendered, 'wall-casing');
+		expect(bands.length).toBeGreaterThanOrEqual(roomless.walls.length);
+		expect(casings).toHaveLength(bands.length);
+		// Both openings punch their host; neither is dropped for lack of a Room.
+		expect(elementsWithClass(rendered, 'opening-void')).toHaveLength(roomless.openings.length);
 	});
 });
 
@@ -377,3 +408,22 @@ describe('P23.13 S1 — cue stays presentation-only', () => {
 function toSureScreen(view: PlanViewportState, point: LayoutVec2): LayoutVec2 {
 	return [view.width / 2 + (point[0] - view.center[0]) * view.pixelsPerMeter, view.height / 2 + (point[1] - view.center[1]) * view.pixelsPerMeter];
 }
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P3 structural visual contracts', () => {
+	it('renders architectural wall, window, and neutral door primitives in the shared Plan SVG', () => {
+		const plan = readLibSource('editor/layout/PlanSvg.svelte');
+
+		for (const primitive of ['wall-casing', 'window-frame', 'opening-void', 'opening-jamb']) {
+			expect(plan).toContain(primitive);
+		}
+		// P23.6 — no invented hinge/swing semantics: leaf and swing are gone.
+		for (const primitive of ['door-leaf', 'door-swing']) {
+			expect(plan).not.toContain(primitive);
+		}
+		// P23.13 S0 — the host-parallel `door-threshold` cue is retired; the
+		// ratified perpendicular three-dash Door type cue is painted in S1 from
+		// the render-model source facts (never from a second SVG ink path).
+		expect(plan).not.toContain('door-threshold');
+	});
+});

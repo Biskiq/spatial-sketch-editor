@@ -212,17 +212,10 @@ describe('P21.6 Slice C — focus shortcut', () => {
 		expect(store.focusMode).toBe(false);
 	});
 
-	it('leaves the frozen relic chrome untouched', () => {
-		const store = createEditorStore({
-			document: cloneFixtureDocument(),
-			rooms: chopinRuntime.rooms,
-			relic: true
-		});
-		const handle = createEditorShortcutHandler(store, nullShortcutHost);
-		handle(makeKeyEvent('\\'));
-		expect(store.focusMode).toBe(false);
-		expect(store.leftSidePanelCollapsed).toBe(false);
-	});
+	// The relic's backslash-immunity moved to `relic-smoke.test.ts` claim 6
+	// ("keeps a shell focus shortcut from reaching the relic shell"), which drives
+	// the same shortcut handler against a relic store and fails on the same
+	// defect — the live focus shortcut leaking into the frozen shell (T3c).
 });
 
 describe('P21.6 Slice C — observer-relative framing aspect', () => {

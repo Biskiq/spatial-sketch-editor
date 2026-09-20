@@ -1,7 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
 	compileWallFirstLayoutGeometry,
@@ -33,6 +30,12 @@ import {
 	type LayoutInteractionState
 } from '$lib/editor/layout/layout-interaction';
 import { buildLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
+import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
+import {
+	planSvgRule,
+	planSvgStylesheet,
+	renderPlanSvg
+} from '../../helpers/plan-render-harness';
 
 /**
  * P23.13 S4 — state composition, hit authority and shape-coded controls.
@@ -497,23 +500,56 @@ describe('P23.13 S4 focus — ring, owner control net and the true centerline', 
 });
 
 describe('P23.13 S4 paint composition — the Wall state never becomes the Wall', () => {
-	const source = readFileSync(
-		resolve(
-			dirname(fileURLToPath(import.meta.url)),
-			'../../../src/lib/editor/layout/PlanSvg.svelte'
-		),
-		'utf8'
-	);
+	/**
+	 * One Wall, selected — the composition claim is about *state* ink, so the
+	 * plan is rendered through the shipped component with a real selection and
+	 * the emitted element order is what gets asserted.
+	 */
+	function selectedWallModel() {
+		const layout = createEmptyWallFirstLayoutDocument();
+		layout.junctions = [
+			{ id: 'j-a', point: [0, 0] },
+			{ id: 'j-b', point: [4, 0] }
+		];
+		layout.walls = [
+			{
+				id: 'wall-a',
+				startJunctionId: 'j-a',
+				endJunctionId: 'j-b',
+				role: 'boundary',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			}
+		];
+		const { geometry } = compileWallFirstLayoutGeometry(layout);
+		return buildPlanRenderModel(geometry, undefined, {
+			selected: { kind: 'physicalWall', wallId: 'wall-a' },
+			selection: [],
+			handles: [],
+			drafts: [],
+			labels: []
+		});
+	}
+
+	/** The state + band elements of the rendered plan, in document order. */
+	function stateInkOrder(): string[] {
+		const stateClasses = ['wall-contour', 'wall-contour-moat', 'wall-casing', 'wall-line'];
+		return renderPlanSvg({ model: selectedWallModel() })
+			.filter((element) => element.classes.some((name) => stateClasses.includes(name)))
+			.map((element) => element.classes.join(' '));
+	}
 
 	it('paints contour → moat → profile → band, so the state sits outside the ink', () => {
-		const contour = source.indexOf('class="wall-contour selected"');
-		const moat = source.indexOf('class="wall-contour-moat selected"');
-		const casing = source.indexOf('wall-casing ${wallPartitionClass(primitive)}');
-		const band = source.indexOf('${tokenClass(primitive.style)} ${wallPartitionClass(primitive)}');
-		expect(contour).toBeGreaterThan(-1);
-		expect(moat).toBeGreaterThan(contour);
-		expect(casing).toBeGreaterThan(moat);
-		expect(band).toBeGreaterThan(casing);
+		// Emitted order, not template order: the claim is about what the renderer
+		// draws first, which a source slice could only approximate.
+		const order = stateInkOrder();
+		expect(order).toEqual([
+			'wall-contour selected',
+			'wall-contour-moat selected',
+			'wall-casing',
+			'wall-line selected'
+		]);
 	});
 
 	it('separates the state contour from the band by the §2 figure, measured from the band edge', () => {
@@ -523,11 +559,11 @@ describe('P23.13 S4 paint composition — the Wall state never becomes the Wall'
 		// (selected, 1.5 px stroke) from the band edge. Both figures are measured
 		// from the BAND edge, which is why the visible gap from the 1 px profile is
 		// one pixel smaller — the profile is 1 px of that distance.
+		//
+		// The declarations come from the Svelte compiler's stylesheet, so the
+		// arithmetic is done on what the browser is actually served.
 		const strokeOf = (selector: string): number => {
-			const start = source.indexOf(`${selector} {`);
-			if (start < 0) return Number.NaN;
-			const rule = source.slice(start, source.indexOf('}', start));
-			const match = /band-width\) \+ ([\d.]+)px/u.exec(rule);
+			const match = /band-width\) \+ ([\d.]+)px/u.exec(planSvgRule(selector)['stroke-width'] ?? '');
 			return match ? Number(match[1]) : Number.NaN;
 		};
 		// Ink extends (stroke/2) outside the band; the moat erases everything
@@ -543,13 +579,21 @@ describe('P23.13 S4 paint composition — the Wall state never becomes the Wall'
 	});
 
 	it('never recolours the Wall mass with a state token', () => {
-		const casingRules = [...source.matchAll(/\.wall-casing[^{]*\{([^}]*)\}/gu)].map(
-			(match) => match[0]
-		);
-		for (const rule of casingRules) {
+		// Enumerated over every compiled rule for the mass and its casing, so a
+		// *new* recolouring rule cannot slip through by being formatted
+		// differently from the ones the source slice happened to match.
+		const stylesheet = planSvgStylesheet();
+		const massRules = [
+			...stylesheet.matchAll(/\.wall-casing[^{]*\{([^}]*)\}/gu),
+			...stylesheet.matchAll(/\.wall-line[^{]*\{([^}]*)\}/gu)
+		].map((match) => match[0]);
+		expect(massRules.length).toBeGreaterThan(0);
+		for (const rule of massRules) {
 			expect(rule).not.toContain('editor-plan-selection');
 			expect(rule).not.toContain('hover-stroke');
 		}
+		// …and the mass really is emitted with those classes for a selected Wall.
+		expect(stateInkOrder()).toContain('wall-casing');
 	});
 });
 

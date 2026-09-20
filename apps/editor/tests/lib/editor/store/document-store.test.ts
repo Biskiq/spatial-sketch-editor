@@ -10,6 +10,9 @@ import {
 	EditorDocumentStore,
 	pickInitialNavigationNodeId
 } from '$lib/editor/store/document-store.svelte';
+import { createEmptySceneDocument, resolveSceneDocument } from '$lib/content/scene';
+import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
+import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 
 /**
  * Mutate a leaf of the scene document in a way the validator will accept
@@ -173,5 +176,23 @@ describe('EditorDocumentStore', () => {
 		expect(resolved.positionPath.anchors).toHaveLength(2);
 		expect(resolved.positionPath.anchors[0]!.id).toContain('node:');
 		expect(resolved.positionPath.anchors[1]!.id).toContain('node:');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('zero-node policy + room-resolver seam', () => {
+	it('pickInitialNavigationNodeId returns null for a scene with no navigation nodes', () => {
+		const rooms = createLayoutRoomRegistry(createEmptyLayoutDocument());
+		const scene = resolveSceneDocument(createEmptySceneDocument(), rooms);
+
+		expect(scene.navigationNodes).toEqual([]);
+		expect(pickInitialNavigationNodeId(scene)).toBeNull();
+	});
+	it('boots a zero-node scene against injected rooms without reaching for Chopin', () => {
+		const rooms = createLayoutRoomRegistry(createEmptyLayoutDocument());
+		const store = new EditorDocumentStore(createEmptySceneDocument(), rooms);
+
+		expect(store.scene.navigationNodes).toEqual([]);
+		expect(store.state.activeNodeId).toBe('');
 	});
 });

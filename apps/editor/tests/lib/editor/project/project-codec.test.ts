@@ -13,6 +13,9 @@ import {
 	validateProject
 } from '$lib/project/project-codec';
 import type { Project } from '$lib/project/project-types';
+import path from 'node:path';
+import { createEmptyProject } from '$lib/project/project-codec';
+import { createEmptySceneDocument } from '$lib/content/scene';
 
 function validScene(): SceneDocument {
 	return JSON.parse(JSON.stringify(sceneDocument)) as SceneDocument;
@@ -177,5 +180,60 @@ describe('Project codec', () => {
 
 		expect(JSON.stringify(input)).toBe(before);
 		expect(() => serializeProject({})).toThrow(ProjectValidationError);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('empty project contract', () => {
+	it('creates a codec-valid, fully-empty project', () => {
+		const project = createEmptyProject({ id: 'project:blank', name: 'Blank' });
+
+		expect(project.layout.units).toBe('meters');
+		expect(project.layout.floors).toEqual([]);
+		expect(project.layout.objects).toEqual([]);
+		expect(project.scene.textures).toEqual([]);
+		expect(project.scene.materials).toEqual([]);
+		expect(project.scene.entities).toEqual([]);
+		expect(project.scene.navigationNodes).toEqual([]);
+		expect(project.scene.connections).toEqual([]);
+
+		const result = validateProject(project);
+		expect(result.success).toBe(true);
+	});
+	it('round-trips a blank project byte-stably through the codec', () => {
+		const project = createEmptyProject({ id: 'project:blank', name: 'Blank' });
+		const json = serializeProject(project);
+		const parsed = parseProjectJson(json);
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+		expect(parsed.project).toEqual(project);
+		expect(serializeProject(parsed.project)).toBe(json);
+	});
+	it('accepts an authoring-empty scene document with an empty layout', () => {
+		const result = validateProject({
+			id: 'project:blank',
+			name: 'Blank',
+			layout: createEmptyLayoutDocument(),
+			scene: createEmptySceneDocument()
+		});
+
+		expect(result.success).toBe(true);
+	});
+	it('keeps non-empty scene invariants: a populated scene still requires its rooms', () => {
+		const result = validateProject({
+			id: 'project:blank',
+			name: 'Blank',
+			layout: createEmptyLayoutDocument(),
+			scene: sceneDocument
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.issues[0]).toMatchObject({
+				path: '$.scene.entities[0].roomId',
+				code: 'unknown_room'
+			});
+		}
 	});
 });

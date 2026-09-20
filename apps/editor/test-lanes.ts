@@ -52,11 +52,18 @@ export const ARCH_FILES: string[] = [
 	'tests/lib/editor/p23-f0-stage5-small-items.test.ts',
 	// Bind/wiring migration contract (import-direction source walk).
 	'tests/lib/editor/editor-store-bind-migration.test.ts',
-	// Visitor closure + single nav/motion owner + Layout/Scene ownership +
-	// relic mount boundaries. Currently one mixed accumulator; harvest §C.1.2
-	// plans a lossless 7-way split (T3a) that will move its behavioral core
-	// into the fast lane.
-	'tests/lib/editor/app/contracts.test.ts'
+	// T3a (§L): the `contracts.test.ts` accumulator was dismantled. Its
+	// behavioural core moved into `test:fast` (its owners' files); the two
+	// unconditional boundaries that needed a home of their own are these.
+	'tests/lib/editor/app/editor-entry-boundary.test.ts',
+	'tests/lib/editor/gizmo/editor-gizmo-boundary.test.ts',
+	// Frozen `/museum/editor` relic isolation (harvest §C.1.4 / T2c). Every one
+	// of its six claims is an unconditional mount/isolation guarantee — the
+	// mount target, the Paris-only gate, the frozen transport, the shared-store
+	// drift detector and the live-shell isolation branches — so it belongs with
+	// the other durable boundaries rather than with ordinary behavior. Its
+	// rendered/behavioral mechanism is not what put it here.
+	'tests/lib/editor/app/relic-smoke.test.ts'
 ];
 
 /**

@@ -174,32 +174,66 @@ describe('P23.13 S10 traversal announcements (§9)', () => {
 describe('P23.13 S10 viewport wiring (§9)', () => {
 	const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 
-	it('walks the group on arrows only on a quiet layout canvas', () => {
-		expect(viewport).toContain("event.key === 'ArrowRight'");
-		expect(viewport).toContain("event.key === 'ArrowLeft'");
-		expect(viewport).toContain('planTraversalStep(\n\t\t\t\t\tgroup,\n\t\t\t\t\tinteraction.planFocus?.id ?? null,\n\t\t\t\t\tdirection as 1 | -1\n\t\t\t\t');
-		expect(viewport).toContain('planTraversalGestureQuiet()');
-		// …and only once the keyboard has *entered* the group: the pointer focuses
-		// controls by pressing them, so membership alone would be an unlocked door.
-		expect(viewport).toContain(
-			'planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey())'
+	/**
+	 * T2b — these two units used to pin the rule *itself* as source text (which
+	 * key strings the handler tested, the exact `planTraversalStep` call layout, the
+	 * `if (group && group.length > 0 && …)` shape). The rule — arrows only inside an
+	 * entered group on a quiet canvas, Enter entering before the numeric door, and
+	 * neither reachable by a pointer press — is now
+	 * `planKeyboardTraversalDecision`, proven directly in
+	 * `plan-keyboard-session.test.ts` (14 its, each one failing on the defect it
+	 * names; mutation evidence in the harvest §K.3). What is left here is the half
+	 * only the component can prove: that it *asks* the rule and applies every one of
+	 * its three answers. That is exactly the "machinery works vs call site invokes
+	 * it" distinction the T2a review turned on, so it stays a call-site pin.
+	 */
+	it('asks the traversal rule at the keydown and applies every answer', () => {
+		const askAt = viewport.indexOf('planKeyboardTraversalDecision({');
+		expect(askAt).toBeGreaterThan(-1);
+		const nextBlockAt = viewport.indexOf("interaction.planViewMode === 'staging'", askAt);
+		expect(nextBlockAt).toBeGreaterThan(askAt);
+		const body = viewport.slice(askAt, nextBlockAt);
+		// The live facts the decision needs. `entered` is the A5 gate (the pointer
+		// focuses controls by pressing them, so membership alone is not an entry), and
+		// `quiet` is §9's no-gesture/no-field gate.
+		expect(body).toContain(
+			'entered: planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey())'
 		);
-		// Same LOD gate the overlay draws controls with: invisible controls
-		// are never focused.
+		expect(body).toContain('quiet: planTraversalGestureQuiet()');
+		// The group stays lazy: it is document-derived and LOD-gated, so a key the
+		// rule decides without must not build one.
+		expect(body).toContain('group: planKeyboardGroup');
+		expect(body).toContain('focusId: interaction.planFocus?.id ?? null');
+		// The polarity is load-bearing and easy to invert: `numericEntry` *is* the
+		// open field (`PlanNumericEntryState | null`), so the fact the rule wants —
+		// "is a field open" — reads directly. Handing it `!numericEntry` compiles,
+		// passes every pure `plan-keyboard-session` test, and inverts Enter: the
+		// first press at a selected Wall would be swallowed as "a field is open"
+		// while a genuinely open field would let Enter traverse. This is the one
+		// assertion that catches it, so it is asserted as an *equality*, not a
+		// containment that a longer expression could satisfy.
+		expect(body).toMatch(/numericEntryOpen: numericEntry !== null\b/);
+		expect(body).not.toContain('numericEntryOpen: !numericEntry');
+		// …and all three answers are applied, not just the first.
+		expect(body).toContain("traversal?.kind === 'traverse'");
+		expect(body).toContain("traversal?.kind === 'enter-group'");
+		expect(body).toContain("traversal?.kind === 'open-numeric-door'");
+		// Traverse moves the ring; enter-group also records the entry as state next to
+		// the focus move; the door is attempted last, so a failed door keeps falling
+		// through to the rest of the handler.
+		expect(body).toContain('focusPlanControlByKeyboard(');
+		expect(body).toContain('planKeyboardGroupKey = planKeyboardSelectionKey();');
+		expect(body).toContain('beginNumericEntryFromFocus()');
+		const doorAt = body.indexOf('open-numeric-door');
+		expect(body.indexOf('enter-group')).toBeLessThan(doorAt);
+	});
+
+	it('keeps the same LOD gate the overlay draws controls with', () => {
+		// Same gate the overlay draws controls with: invisible controls are never
+		// focused, so the group (and therefore every traversal) is absent below it.
 		expect(viewport).toContain(
 			'if (interaction.planView.pixelsPerMeter < JUNCTION_HANDLES_MIN_PX_PER_M) return null;'
 		);
-	});
-
-	it('enters the group on Enter before reaching the numeric door', () => {
-		const enterAt = viewport.indexOf('focusPlanControlByKeyboard(first, 0, group.length)');
-		expect(enterAt).toBeGreaterThan(-1);
-		const numericAt = viewport.indexOf('beginNumericEntryFromFocus()', enterAt);
-		expect(numericAt).toBeGreaterThan(enterAt);
-		// The entry is recorded as state next to the focus move, and only a second
-		// Enter (entry held + ring already on a member) reaches the field.
-		expect(viewport).toContain('planKeyboardGroupKey = planKeyboardSelectionKey();');
-		expect(viewport).toContain('if (group && group.length > 0 && (!entered || !focusInGroup)) {');
 	});
 
 	it('retires the readout on a successful exact edit, keeping focus and the entry', () => {

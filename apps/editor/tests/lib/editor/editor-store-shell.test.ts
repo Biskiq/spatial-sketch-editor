@@ -7,6 +7,8 @@ import { EditorInteractionStore } from '$lib/editor/store/editor-interaction-sto
 import { projectGizmoCapabilities } from '$lib/editor/gizmo/editor-gizmo-policy';
 import { SCENE_GIZMO_POLICY } from '$lib/editor/gizmo/scene-gizmo-adapter.svelte';
 import { CAMERA_GIZMO_POLICY } from '$lib/editor/gizmo/camera-gizmo-adapter.svelte';
+import { readLibSource } from '../../helpers/lib-source';
+import { serializeSceneDocument } from '$lib/content/scene-codec';
 
 function createFixtureEditorStore() {
 	return createEditorStore({ document: cloneFixtureDocument(), rooms: chopinRuntime.rooms });
@@ -569,5 +571,65 @@ describe('createEditorShortcutHandler — W/E/R/T refuse unsupported modes (S7 s
 		expect(interactionStore.mode).toBe('scale');
 		handler(makeKeyEvent('w'));
 		expect(interactionStore.mode).toBe('translate');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('Plan ↔ 3D switch preserves session state', () => {
+	it('switches workspace without touching document, history, dirty state, or selection', () => {
+		const store = createEditorStore({ document: cloneFixtureDocument(), rooms: chopinRuntime.rooms });
+
+		// Make one real mutation so the undo stack is non-empty and the doc is dirty.
+		expect(store.beginDocumentTransaction()).toBe(true);
+		const first = store.document.entities[0]!;
+		first.rotation = [
+			first.rotation[0],
+			first.rotation[1] + 0.001,
+			first.rotation[2]
+		] as typeof first.rotation;
+		expect(store.commitDocumentTransaction()).toBe(true);
+		expect(store.canUndo).toBe(true);
+
+		const documentJson = serializeSceneDocument(store.document);
+		const historyVersion = store.historyVersion;
+		const dirty = store.isDirty;
+		const selection = JSON.parse(JSON.stringify(store.selection.workspace)) as unknown;
+
+		expect(store.setWorkspace('layout')).toBe(true); // Plan
+		expect(store.setWorkspace('camera')).toBe(true); // 3D camera
+		expect(store.setWorkspace('scene')).toBe(true); // 3D scene
+
+		expect(serializeSceneDocument(store.document)).toBe(documentJson);
+		expect(store.historyVersion).toBe(historyVersion);
+		expect(store.canUndo).toBe(true);
+		expect(store.isDirty).toBe(dirty);
+		expect(JSON.parse(JSON.stringify(store.selection.workspace))).toEqual(selection);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('exposes session-only entity visibility through the store facade', () => {
+		const facade = readLibSource('editor/editor-store.svelte.ts');
+		expect(facade).toContain('get hiddenEntityIds()');
+		expect(facade).toContain('toggleEntityVisibility(');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('cross-domain selection contracts', () => {
+	it('does not rerun cross-domain selection clearing on Plan mode switches', () => {
+		const shell = readLibSource('editor/app/EditorApp.svelte');
+		expect(shell).toContain('JSON.stringify(layoutInteraction.selection);');
+		expect(shell).toContain('untrack(() => activeSelection.onLayoutSelectionChanged())');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P1.5 Camera Plan source contracts', () => {
+	it('the shared Camera Delete/Backspace branch routes anchors through deleteSelectedAnchor', () => {
+		const shortcuts = readLibSource('editor/hooks/shortcuts.svelte.ts');
+		expect(shortcuts).toContain("selection?.kind === 'anchor'");
+		expect(shortcuts).toContain('store.deleteSelectedAnchor()');
 	});
 });

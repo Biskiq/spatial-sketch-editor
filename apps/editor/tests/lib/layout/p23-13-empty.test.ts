@@ -13,6 +13,20 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+	compileWallFirstLayoutGeometry,
+	createEmptyWallFirstLayoutDocument
+} from '@portfolio/layout-core';
+import { componentPath, componentRule } from '../../helpers/plan-render-harness';
+import {
+	beginLayoutPrimitiveDraft,
+	beginRectangle,
+	cancelLayoutPrimitiveDraft,
+	createLayoutInteractionState,
+	hasLayoutTransientInteraction,
+	setLayoutViewMode,
+	updateRectangle
+} from '$lib/editor/layout/layout-interaction';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -44,6 +58,30 @@ describe('P23.13 S9 empty states (§8)', () => {
 		expect(ghost).not.toContain('10.0');
 		expect(ghost).not.toContain('8.0');
 		expect(ghost).not.toContain('ghost-dims');
+	});
+
+	it('mounts the sketch through the viewport’s own visibility gate, in neutral plan ink', () => {
+		// T3 review pass: the accumulator shipped a session-scoped ghost/card `it`
+		// whose pins were pruned as duplicates of this file, but three of them had
+		// no successor here. The mount and the gate it hangs on are restored; the
+		// ink is now read from the *compiled* stylesheet (T2b A-series mechanism)
+		// rather than sliced out of the component source.
+		expect(viewport).toContain('{#if ghostVisible}');
+		expect(viewport).toContain('<PlanEmptyGhost planView={interaction.planView} />');
+		// Pinning only the gate's consumer leaves a rewrite of the derivation —
+		// say `planEmpty` alone — green, and the sketch would then paint over the
+		// 3D view and ignore a dismissal. The gate's three terms are the contract.
+		expect(viewport).toContain('const ghostVisible = $derived(');
+		expect(viewport).toContain(
+			"planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed"
+		);
+		// Neutral ink: `#adb6bd` is the P23.13 §8 sketch value, so a re-tint to a
+		// semantic/accent colour (or a filled shape) is the regression this catches.
+		const corner = componentRule(
+			componentPath('editor/layout/PlanEmptyGhost.svelte'),
+			'.ghost-corner'
+		);
+		expect(corner.stroke).toBe('#adb6bd');
 	});
 
 	it('is illustrative only: hidden from assistive tech, pointer-transparent, unserialized', () => {
@@ -89,5 +127,69 @@ describe('P23.13 S9 empty states (§8)', () => {
 		// PlanWorkspace forwards the binding into the viewport.
 		expect(workspace).toContain('planHintDismissed = $bindable(false)');
 		expect(workspace).toContain('bind:planHintDismissed');
+	});
+});
+
+describe('P23.13 S9 empty-state latch — the gate it closes on (T2b)', () => {
+	// **What is behavioural here, and what is not.** The card's own visibility is
+	// one line inside the viewport — `planEmpty && !ghostVisible &&
+	// !planHintDismissed`, dismissed by `!planHintDismissed && (!planEmpty ||
+	// hasLayoutTransientInteraction(interaction))` — and the latch is a component
+	// `$state` binding three components deep. A server-side render neither runs
+	// effects nor survives a view round trip, so the *ownership* half (who owns
+	// the latch, and that nothing ever clears it) has no same-defect successor and
+	// stays source-pinned above. What the harness can settle is that both inputs
+	// of that rule answer as the rule assumes — including the case the latch
+	// exists for: after a cancelled gesture the gate's inputs say "show the card"
+	// again, so only a one-way latch can keep an undo from resurrecting it.
+
+	it('sees a live drafting gesture, and comes back to rest when it is cancelled', () => {
+		const interaction = createLayoutInteractionState();
+		expect(hasLayoutTransientInteraction(interaction)).toBe(false);
+		beginRectangle(interaction, [0, 0]);
+		updateRectangle(interaction, [4, 2]);
+		// A held Rect Room drag is the "first drafting gesture" the §8 rule
+		// dismisses on — before anything is committed.
+		expect(hasLayoutTransientInteraction(interaction)).toBe(true);
+		setLayoutViewMode(interaction, 'plan');
+		expect(hasLayoutTransientInteraction(interaction)).toBe(false);
+
+		const primitive = createLayoutInteractionState();
+		beginLayoutPrimitiveDraft(primitive, 'box', [0, 0]);
+		expect(hasLayoutTransientInteraction(primitive)).toBe(true);
+		cancelLayoutPrimitiveDraft(primitive);
+		// Cancelled: the document is untouched and the gesture is gone, so this
+		// input is *not* what keeps the card dismissed afterwards.
+		expect(hasLayoutTransientInteraction(primitive)).toBe(false);
+	});
+
+	it('reads emptiness from the document, so the first commit closes the gate too', () => {
+		// The rule's other input is document truth, not session truth: an empty
+		// wall-first document reports zero of everything the gate counts, and one
+		// committed Wall is already non-empty. That is why the *commit* — not just
+		// the gesture — dismisses, and why the dismissal has to be latched in the
+		// session rather than recomputed from the document.
+		const empty = compileWallFirstLayoutGeometry(createEmptyWallFirstLayoutDocument()).geometry;
+		expect((empty.walls ?? []).length).toBe(0);
+		expect(empty.rooms.length).toBe(0);
+		const layout = createEmptyWallFirstLayoutDocument();
+		layout.junctions = [
+			{ id: 'j-a', point: [0, 0] },
+			{ id: 'j-b', point: [4, 0] }
+		];
+		layout.walls = [
+			{
+				id: 'wall-a',
+				startJunctionId: 'j-a',
+				endJunctionId: 'j-b',
+				role: 'boundary',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			}
+		];
+		const committed = compileWallFirstLayoutGeometry(layout).geometry;
+		expect((committed.walls ?? []).length).toBeGreaterThan(0);
+		expect(committed.rooms.length).toBe(0);
 	});
 });

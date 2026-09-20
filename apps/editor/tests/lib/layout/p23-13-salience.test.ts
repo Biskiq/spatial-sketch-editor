@@ -492,6 +492,15 @@ describe('P23.13 S2 — gesture freeze', () => {
 		// Every path that drops the baseline must drop the frozen vocabulary with
 		// it: `cancelLocalPlanInteraction` clears the snapshot directly, which
 		// bypasses the tool-change effect that otherwise closes the transaction.
+		//
+		// **T2b: deliberately retained.** This is a coupling sweep — "every place
+		// that drops the baseline also drops the freeze" — and its mechanism is
+		// static inspection for the same reason the ownership sweeps are: the pair
+		// lives in a component's event-driven effect/gesture lifecycle, which a
+		// server-side render cannot execute. The frozen *behaviour* (a held
+		// vocabulary that ignores a mid-gesture scale change) is proven above;
+		// what only this pin can say is that no new baseline-release path was
+		// added without its freeze release.
 		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
 		const cancelStart = viewport.indexOf('function cancelLocalPlanInteraction');
 		expect(cancelStart).toBeGreaterThan(-1);

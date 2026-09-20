@@ -170,7 +170,6 @@
 		planNumericEntrySubmit,
 		planNumericEntryTab,
 		planNumericEntryTrigger,
-		planNumericHostReadout,
 		planNumericInvalidMessage,
 		planNumericPointerUp,
 		planNumericRestingEntryTarget,
@@ -183,11 +182,17 @@
 		planTraversalAnnouncement,
 		planTraversalEnteredFor,
 		planTraversalGroup,
-		planTraversalStep,
 		type PlanTraversalControl,
 		type PlanTraversalLayout,
 		type PlanTraversalSelection
 	} from './plan-keyboard-traversal';
+	// T2b — §9's readout rule and the arrow/Enter traversal decision are pure modules
+	// (they used to be inline here, provable only by slicing this file's text).
+	import {
+		planKeyboardControlFactsFromLayout,
+		planKeyboardControlReadout as planControlReadout
+	} from './plan-keyboard-readout';
+	import { planKeyboardTraversalDecision } from './plan-keyboard-session';
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -4330,44 +4335,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 
 	/**
 	 * P23.13 S10 / §9 — the focused control's own current value and units, read
-	 * from the canonical facts its numeric door already seeds from: a Junction or
-	 * curve point is its document coordinate, an Opening width edge its width and
-	 * the slide grip its offset. `null` where the document holds no value (a legacy
-	 * draft has no canonical Junction; a control with no measure of its own has
-	 * none), which announces role and owner without a number rather than a
-	 * fabricated zero.
+	 * from the canonical facts its numeric door already seeds from. The *rule*
+	 * (which fact a control reads, and that one control reports one measure) lives
+	 * in `plan-keyboard-readout.ts` where it is driven directly; this supplies the
+	 * facts from the live document, which is the half only the component can do.
 	 */
 	function planKeyboardControlReadout(control: PlanTraversalControl): string | null {
-		if (control.kind === 'junction') {
-			const point = resolveJunctionPoint(control.id);
-			return point ? planNumericHostReadout('junction', { x: point[0], z: point[1] }) : null;
-		}
-		if (control.kind === 'curve-control') {
-			const knot = wallFirstKnotPoint(control.id);
-			return knot ? planNumericHostReadout('curve-point', { x: knot[0], z: knot[1] }) : null;
-		}
-		if (control.kind === 'opening-edge' || control.kind === 'opening-slide') {
-			const opening = wallFirstOpeningById(control.ownerId);
-			if (!opening) return null;
-			// One field each: the width edge is the width's handle and the paired grip
-			// the offset's (§7), so an edge never reports the grip's number too.
-			return control.kind === 'opening-edge'
-				? planNumericHostReadout('opening-resize', { width: opening.width })
-				: planNumericHostReadout('opening-slide', { offset: opening.offset });
-		}
-		return null;
-	}
-
-	/** The authored bend knot's canonical coordinate, or `null` when no Wall owns it. */
-	function wallFirstKnotPoint(knotId: string): LayoutVec2 | null {
-		const layout = wallFirstLayoutDocument();
-		if (!layout) return null;
-		for (const wall of layout.walls) {
-			if (wall.centerline.kind !== 'cubic-chain') continue;
-			const knot = wall.centerline.knots.find((candidate) => candidate.id === knotId);
-			if (knot) return [knot.point[0], knot.point[1]] as LayoutVec2;
-		}
-		return null;
+		return planControlReadout(control, planKeyboardControlFactsFromLayout(wallFirstLayoutDocument()));
 	}
 
 	/**
@@ -5298,82 +5272,51 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			event.preventDefault();
 			return;
 		}
-		// P23.13 S10 / §9 — arrows walk the selected owner's control group in
-		// canonical endpoint/arc order with wrap. No group, a live gesture, another
-		// mode/tool, or a group the user has not entered with Enter all leave the
-		// key alone, so page scroll and every other surface keep their arrows.
-		if (
-			(event.key === 'ArrowRight' ||
-				event.key === 'ArrowLeft' ||
-				event.key === 'ArrowDown' ||
-				event.key === 'ArrowUp') &&
-			!event.metaKey &&
-			!event.ctrlKey &&
-			!event.altKey &&
-			interaction.planViewMode === 'layout' &&
-			interaction.tool === 'select' &&
+		// P23.13 S10 / §9 + A5 — the traversal decision is one pure rule
+		// (`plan-keyboard-session.ts`): arrows walk the entered group in canonical
+		// endpoint/arc order with wrap and never enter it, and Enter's first press
+		// enters the group while only a second one reaches S7's numeric door. This
+		// handler supplies the live facts and applies the answer; a key this
+		// instrument has no claim on decides `null` and keeps falling through, so
+		// page scroll and every other surface keep their arrows.
+		const traversal = planKeyboardTraversalDecision({
+			key: event.key,
+			metaKey: event.metaKey,
+			ctrlKey: event.ctrlKey,
+			altKey: event.altKey,
+			planViewMode: interaction.planViewMode,
+			tool: interaction.tool,
 			// A5 — arrows traverse a group the keyboard has *entered*: a pointer press
 			// focuses controls without entering anything, so membership alone would let
 			// a click unlock the arrows.
-			planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey()) &&
-			planTraversalGestureQuiet()
-		) {
-			const group = planKeyboardGroup();
-			if (group && group.length > 0) {
-				const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
-				// A5 — arrows traverse the group the user entered; they never enter it.
-				// `planTraversalStep` answers `null` for a focus outside this group, so
-				// an unentered selection leaves the arrow to the page rather than
-				// swallowing a key the user has not asked this instrument to use.
-				const next = planTraversalStep(
-					group,
-					interaction.planFocus?.id ?? null,
-					direction as 1 | -1
-				);
-				if (next) {
-					event.preventDefault();
-					focusPlanControlByKeyboard(next, group.indexOf(next), group.length);
-					return;
-				}
-			}
+			entered: planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey()),
+			quiet: planTraversalGestureQuiet(),
+			// Lazy: a key that decides without a group must not build one (§9's LOD
+			// gate lives in `planKeyboardGroup`).
+			group: planKeyboardGroup,
+			focusId: interaction.planFocus?.id ?? null,
+			// The fact is "is a numeric field open", and `numericEntry` is the
+			// open field itself (`PlanNumericEntryState | null`) — so it reads
+			// directly, never negated. The rule that consumes it is what requires
+			// the field to be *closed* for Enter to traverse.
+			numericEntryOpen: numericEntry !== null
+		});
+		if (traversal?.kind === 'traverse') {
+			event.preventDefault();
+			focusPlanControlByKeyboard(traversal.control, traversal.index, traversal.groupSize);
+			return;
 		}
-		// P23.13 S7 step 2 / S10 / A5 — Enter first enters the selected owner's
-		// control group (the ring lands on its first control, announced once),
-		// and a focused control's Enter reaches S7's numeric door as before. A
-		// selection with no group keeps the resting-measure door directly. A
-		// field that is already open owns Enter through its own input, so this
-		// can never steal a submit.
-		if (
-			event.key === 'Enter' &&
-			!event.metaKey &&
-			!event.ctrlKey &&
-			!event.altKey &&
-			!numericEntry &&
-			interaction.planViewMode === 'layout' &&
-			interaction.tool === 'select'
-		) {
-			const group = planTraversalGestureQuiet() ? planKeyboardGroup() : null;
-			const entered = planTraversalEnteredFor(planKeyboardGroupKey, planKeyboardSelectionKey());
-			const focus = interaction.planFocus;
-			const focusInGroup =
-				!!group && !!focus && group.some((control) => control.id === focus.id);
-			// Enter enters the group, and only a second Enter (with the entry held and
-			// the ring already on a member) reaches the numeric door — so the chain is
-			// the same whether the ring got there by keyboard or by a pointer press,
-			// and a pointer-focused control cannot skip the entry.
-			if (group && group.length > 0 && (!entered || !focusInGroup)) {
-				const first = group[0];
-				if (first) {
-					event.preventDefault();
-					planKeyboardGroupKey = planKeyboardSelectionKey();
-					focusPlanControlByKeyboard(first, 0, group.length);
-					return;
-				}
-			}
-			if (beginNumericEntryFromFocus()) {
-				event.preventDefault();
-				return;
-			}
+		if (traversal?.kind === 'enter-group') {
+			// The entry is recorded as state next to the focus move, and only a second
+			// Enter (entry held + ring already on a member) reaches the field.
+			event.preventDefault();
+			planKeyboardGroupKey = planKeyboardSelectionKey();
+			focusPlanControlByKeyboard(traversal.control, 0, traversal.groupSize);
+			return;
+		}
+		if (traversal?.kind === 'open-numeric-door' && beginNumericEntryFromFocus()) {
+			event.preventDefault();
+			return;
 		}
 		if (
 			interaction.planViewMode === 'staging' &&

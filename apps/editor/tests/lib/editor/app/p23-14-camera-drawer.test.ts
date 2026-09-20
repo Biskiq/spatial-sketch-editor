@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { existsLibSource, readLibSource } from '../../../helpers/lib-source';
 /**
  * P23.14 Task 6 — Camera Drawer ownership, the lane set, and the frustum rule.
  *
@@ -111,5 +114,129 @@ describe('P23.14 §16 — the finite frustum stays a Camera 3D instrument', () =
 		// And the 3D side keeps the instrument it owns.
 		const helpers = readLib('editor/camera/EditorCameraViewHelpers.svelte');
 		expect(helpers).toMatch(/frustum/i);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P3 structural visual contracts', () => {
+	it('keeps the Camera timeline expanded into the five canonical display lanes', () => {
+		const timeline = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
+
+		for (const label of ['Camera Path', 'Shots', 'FOV', 'Look At', 'Roll']) {
+			expect(timeline).toContain(`<strong>${label}</strong>`);
+		}
+		expect(timeline).not.toContain('<strong>Guided Route</strong>');
+		expect(timeline).not.toContain('<strong>Camera Framing</strong>');
+	});
+	it('keeps one five-lane timeline component shared by live scopes; relic owns old controls', () => {
+		const panel = readLibSource('editor/camera/EditorCameraTimelinePanel.svelte');
+
+		expect(panel.match(/<EditorCameraTimelineDots/g)).toHaveLength(2);
+		expect(panel).toContain(
+			'<EditorCameraTimelineDots {store} {viewMode} {contextMenu} edgeTimeline={edgeTimeline} />'
+		);
+		expect(panel).toContain('{#if store.isRelic && preview}');
+		expect(panel).not.toContain('EditorCameraEdgeRuler');
+		expect(panel).not.toContain("previewScope === 'edge'");
+		expect(panel).not.toContain("previewScope === 'camera'");
+		expect(existsLibSource('editor/camera/EditorCameraEdgeRuler.svelte')).toBe(false);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.3 camera reconciliation', () => {
+	it('shares one Camera sidebar and one Timeline across Camera Plan and Camera 3D', () => {
+		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
+		expect(sidebar).toContain("{#if domain === 'camera'}");
+		expect(sidebar).toContain('<CameraSidebar {store} {layoutPreview} />');
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		expect(app).toContain('createCameraPlanState()');
+		expect(app).toContain("{#if viewState.domain === 'camera'}");
+		expect(app).toContain('<EditorCameraTimelineFrame {store} viewMode={viewState.activeView}');
+		expect(app.match(/<EditorCameraTimelineFrame/g)).toHaveLength(1);
+	});
+	it('pins the shared Timeline density (120px labels, 28px ruler, 44/48/34/34/32 lanes, 48px mini-player, live-dock +View Key)', () => {
+		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
+		// P23.14 §17 — one column model: 120px labels plus the remaining drawer
+		// width. The P21.3 fixed track floor (30rem, over a 42rem lanes minimum)
+		// fragmented the surface and left the ruler misaligned with the transport.
+		// +View Key renders in both live branches (Edge + Sequence, Plan + 3D)
+		// and stays out of the relic (which keeps its Ruler button); the
+		// disabled state — not visibility — gates eligibility.
+		expect(dots.match(/>\+ View Key<\/button>/g)).toHaveLength(2);
+		expect(dots).not.toContain('<div class="ruler-label">Time</div>');
+		expect(dots.match(/\{#if !store\.isRelic\}/g)).toHaveLength(2);
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		expect(frame).toContain('flex: 0 0 48px;');
+		const ruler = readLibSource('editor/camera/EditorCameraTimelineRuler.svelte');
+		expect(ruler).toContain("viewMode === '3d' &&");
+		expect(ruler).toContain("scope === 'sequence' &&");
+		expect(ruler).toContain('>+ View Key</button>');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
+	it('freezes the 48px collapsed pill and the 36px expanded header', () => {
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		expect(frame).toContain('flex: 0 0 48px;');
+		expect(frame).toContain('flex: 0 0 36px;');
+		// No red/coral border anywhere — the collapsed pill carries the
+		// neutral border + shadow only, within the existing floating geometry.
+		expect(frame).toContain('border: 1px solid var(--editor-border-normal);');
+		expect(frame).toContain('box-shadow: 0 12px 32px rgb(0 0 0 / 60%)');
+		expect(frame).not.toMatch(/coral|#ef626c/);
+		// P23.14 Decision 5 — 48px transport + readout, and nothing else: no lane,
+		// no ruler and no second scrubber is mounted in the collapsed Drawer.
+		const collapsedStart = frame.indexOf('<div class="mini-player"');
+		expect(collapsedStart).toBeGreaterThan(-1);
+		const collapsed = frame.slice(collapsedStart, frame.indexOf('</section>', collapsedStart));
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('docks the live camera timeline inside the center viewport in both views, never Scene', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		expect(app).toContain("viewState.domain === 'camera'");
+		const centerStart = app.indexOf('class="center"');
+		const frameMount = app.indexOf('<EditorCameraTimelineFrame');
+		const inspectorMount = app.indexOf('<EditorInspector');
+		expect(frameMount).toBeGreaterThan(centerStart);
+		expect(frameMount).toBeLessThan(inspectorMount);
+		expect(app).not.toContain("'bottom bottom bottom'");
+		// P23.14 §10/§17 — the center column is the View Bar + work surface, so
+		// the live Drawer anchors to the bottom of the WORK area, never over the
+		// bar, and never outside the central column.
+		expect(app).toContain('.center { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;');
+		expect(app).toContain('.work { position: relative; flex: 1; min-width: 0; min-height: 0; }');
+		expect(frame).toContain('.timeline-frame.live {');
+		expect(frame).toContain('bottom: 16px;');
+		expect(frame).toContain('width: min(47.5rem, calc(100% - 2rem));');
+		// Frozen relic keeps its root-grid placement.
+		expect(frame).toContain("store.isRelic ? ' grid-area: bottom;' : ''");
+	});
+	it('keeps both Camera cells on the camera workspace so timeline state persists across views (G3)', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		// G3 — `store.setWorkspace` collapses the timeline, stops previews, and
+		// cancels pending navigation when leaving 'camera'; mapping both Camera
+		// cells to the camera workspace means Camera 3D ↔ Plan toggles never
+		// trigger those side effects (timeline expanded state persists).
+		expect(app).toContain("if (viewState.domain === 'camera')");
+		expect(app).toContain("store.setWorkspace('camera')");
+	});
+	it('gates camera authoring overlays to Camera while keeping the rig always mounted', () => {
+		const ws3d = readLibSource('editor/app/Workspace3DView.svelte');
+
+		// EditorCameraRig stays mounted in both contexts (shared viewport infra).
+		expect(ws3d).toContain('<EditorCameraRig');
+		// Overlay groups are camera-context gated.
+		expect(ws3d).toContain('isCameraContext && store.viewportShowPaths');
+		expect(ws3d).toContain('isCameraContext && store.viewportShowFraming');
+		// The node-handle group preserves the connect-flow force-mount override.
+		expect(ws3d).toContain(
+			'isCameraContext && (store.viewportShowNodes || store.forceMountCameraNodeHandles)'
+		);
 	});
 });

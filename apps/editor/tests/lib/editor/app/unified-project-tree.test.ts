@@ -5,7 +5,8 @@ import {
 	type LayoutDocumentWallFirst
 } from '$lib/layout/layout-wall-first-types';
 import type { SceneDocument, SceneEntity } from '$lib/content/scene';
-import type { ActiveEditorSelection } from '$lib/editor/app/active-editor-selection.svelte';	import {
+import type { ActiveEditorSelection } from '$lib/editor/app/active-editor-selection.svelte';
+import {
 		buildUnifiedProjectTreeModel,
 		filterUnifiedProjectTreeModel,
 		isUnifiedTreeRowInteractive,
@@ -16,6 +17,8 @@ import type { ActiveEditorSelection } from '$lib/editor/app/active-editor-select
 		type UnifiedTreeDiscovery,
 		type UnifiedTreeRow
 	} from '$lib/editor/unified-project-tree-model';
+import { existsLibSource, readLibSource } from '../../../helpers/lib-source';
+import type { LayoutSelection } from '$lib/editor/layout/layout-interaction';
 
 function makeLayout(): LayoutDocument {
 	return {
@@ -651,5 +654,219 @@ describe('unified project tree — wall-first documents', () => {
 		expect(filterUnifiedProjectTreeModel(model, 'zzz-no-match').wallFirstRooms).toEqual([]);
 		// A partition's Wall is not any Room's, so its id matches nothing here.
 		expect(filterUnifiedProjectTreeModel(model, 'w5').wallFirstRooms).toEqual([]);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('unified hierarchy contracts', () => {
+	it('keeps the camera tree internals reusable behind optional props (relic default behavior)', () => {
+		const guided = readLibSource('editor/CameraFlowPanel.svelte');
+		// The optional gate prop defaults to true when absent (the relic never
+		// passes it and keeps its legacy behavior).
+		expect(guided).toMatch(/interactive\??:/);
+	});
+	it('gates every guided/free node-row pick in CameraFlowPanel behind interactive (Plan gate)', () => {
+		// The Plan gate is behavioral, not just prop presence: the node-row
+		// select click (and the neighbors chevron) must be no-ops when
+		// interactive is false — a plain `onclick={() => selectNode(node.id)}`
+		// would leak the camera domain into Plan (the plan's locked
+		// "scene/camera rows aria-disabled no-ops" decision).
+		const guided = readLibSource('editor/CameraFlowPanel.svelte');
+		// Row select is gated and carries aria-disabled on guided + free rows;
+		// P1.9 neighbor rows are gated identically (select = partner row).
+		expect(guided).not.toContain('onclick={() => selectNode(node.id)}');
+		expect(guided.match(/onclick=\{interactive \? \(\) => selectNode\(node\.id\) : undefined\}/g)).toHaveLength(3);
+		expect(guided.match(/onclick=\{interactive \? \(\) => selectNode\(partner\.id\) : undefined\}/g)).toHaveLength(2);
+		expect(guided.match(/onclick=\{interactive \? \(\) => toggleNodeNeighbors\(node\.id\) : undefined\}/g)).toHaveLength(2);
+		// aria-disabled appears on every gated surface: guided li + chevron +
+		// row, free li + chevron + row, detour row, both neighbor rows.
+		expect(guided.match(/aria-disabled=\{interactive \? undefined : true\}/g)).toHaveLength(9);
+	});
+	it('routes the Camera domain to the four-section Camera Sidebar and keeps Scene on the unified tree', () => {
+		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
+		// Camera domain renders the dedicated sidebar; the unified tree (with
+		// the Assets sibling) stays the Scene-domain panel.
+		expect(sidebar).toContain('CameraSidebar');
+		expect(sidebar).toContain("domain === 'camera'");
+		expect(sidebar).toContain('<UnifiedProjectTree');
+
+		const cameraSidebar = readLibSource('editor/app/CameraSidebar.svelte');
+		// Canonical four sections: Environment header + the panel's three.
+		expect(cameraSidebar).toContain('<h2>Environment</h2>');
+		expect(cameraSidebar).toContain('CameraFlowPanel');
+		// Environment is read-only context: rows carry aria-disabled and no
+		// select/mutation handlers.
+		expect(cameraSidebar.match(/aria-disabled="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+		expect(cameraSidebar).not.toContain('onclick={() => store');
+		expect(cameraSidebar).not.toContain('deleteLayout');
+
+		const panel = readLibSource('editor/CameraFlowPanel.svelte');
+		// Amended terminology: Sequence Inspector / Unsequenced / Connections.
+		expect(panel).toContain('<h2>Sequence Inspector</h2>');
+		expect(panel).toContain('<h2>Unsequenced</h2>');
+		expect(panel).toContain('<h2>Connections</h2>');
+		expect(panel).not.toContain('Not in order yet');
+		expect(panel).not.toContain('Free navigation nodes');
+		expect(panel).not.toContain('Connections / Advanced');
+		expect(panel).not.toContain('↔');
+		// Undirected topology labels only (chain records + retained tray).
+		expect(panel).toContain('chainConnectionRows');
+		expect(panel).toContain('connectionRows');
+		// P1.9 — drag-only reorder (no per-row order arrows), tail-row
+		// "Set as First" hidden, Branches terminology, flat neighbor list.
+		expect(panel).not.toContain('ArrowUp');
+		expect(panel).not.toContain('ArrowDown');
+		expect(panel).not.toContain('moveGuidedNode');
+		expect(panel).toContain('index > 0 && index < guidedTourChain.length - 1');
+		expect(panel).toContain('<h3 class="sub-section-header">Branches ·');
+		expect(panel).not.toContain('kept as free');
+		expect(panel).toContain('neighborRowsOf');
+	});
+	it('keeps the unified tree mounted across Hierarchy|Assets tabs and hides the boot header correctly', () => {
+		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
+		// The tree must not unmount when the Assets tab is active (its
+		// component-local expansion state would be lost) — it renders
+		// unconditionally and the inactive panel is hidden by class, with the
+		// Assets library as a 3D-only sibling.
+		expect(sidebar).toContain('<UnifiedProjectTree');
+		expect(sidebar.match(/class:panel-content--hidden/g)?.length).toBe(2);
+		// importError is `string | null`, so the boot-empty header check must
+		// be `!== null` — `!== undefined` is always true and would show the
+		// header strip on every blank boot.
+		expect(sidebar).toContain('layoutPreview.importError !== null');
+	});
+	it('owns neighbor expansion in the sidebar and leaves the discovery direction highlight to the Inspector', () => {
+		// P1.9 — NodeConnectionsPanel is deleted: row expansion is a flat
+		// neighbor list (graph truth) owned by CameraFlowPanel, and the
+		// discovery-driven direction highlight left the sidebar with it
+		// (a node list has no direction). Connection detail stays available
+		// via the Connections section / Inspector / Plan edges / Timeline.
+		expect(existsLibSource('editor/NodeConnectionsPanel.svelte')).toBe(false);
+		const guided = readLibSource('editor/CameraFlowPanel.svelte');
+		expect(guided).not.toContain('activeDomain');
+		expect(guided).toContain('neighborRowsOf');
+		// The accordion is sidequest-only: ordered Sequence neighbors are already
+		// represented by the list and must not be repeated in its sub-list.
+		expect(guided).toContain('!guidedTourChain.includes(row.partnerId)');
+		expect(guided).toContain('sidequest list');
+		// No store toggle API for the deleted per-connection tree.
+		const facade = readLibSource('editor/editor-store.svelte.ts');
+		expect(facade).not.toContain('toggleCameraConnectionTreeExpansion');
+		expect(facade).not.toContain('toggleCameraDirectionTreeExpansion');
+	});
+	it('seeds the empty chain only through the manual Start Sequence affordance', () => {
+		const guided = readLibSource('editor/CameraFlowPanel.svelte');
+		// P1.9 — empty-chain promotion is manual (connecting 3+ cameras never
+		// auto-promotes): eligible unsequenced rows carry Start Sequence,
+		// isolated rows show nothing, one transaction per seed.
+		expect(guided).toContain('startSequenceEligible');
+		expect(guided).toContain('store.startSequenceFromNode(nodeId)');
+		expect(guided).toContain('title="Start Sequence"');
+		// Empty Sequence has a real drop target; dropping a row uses the same
+		// manual pair-promotion command instead of the strict insertion validator.
+		expect(guided).toContain('guided-gap--empty');
+		expect(guided).toContain('guidedTourChain.length === 0');
+		expect(guided).toContain('startSequence(nodeId);');
+		const facade = readLibSource('editor/editor-store.svelte.ts');
+		expect(facade).toContain('startSequenceFromNode(nodeId)');
+	});
+	it('expands the ancestor chain for every active layout/scene selection, not just rooms', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		const model = readLibSource('editor/unified-project-tree-model.ts');
+		// Viewport picks don't route through the tree's select* helpers (which
+		// already expand), so the tree must reveal the picked row for any active
+		// layout/scene selection — including cluster ancestors.
+		expect(tree).toContain('ensureClusterTreeExpanded');
+		expect(model).toContain('export function layoutSelectionAncestorRoomId');
+	});
+	it('pins the P23.6b canonical reveal helper beside the legacy ancestor helper', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		const model = readLibSource('editor/unified-project-tree-model.ts');
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		// Both pure helpers stay exported and covered (their behavior is pinned
+		// above). P23.6e moved canonical reveal off the accordion: the tree keeps
+		// only the legacy Room-qualified ancestor helper, and the Navigator owns
+		// canonical reveal through the pure page/search representation model.
+		expect(model).toContain('export function layoutSelectionRevealTarget');
+		expect(model).toContain("export function layoutSelectionAncestorRoomId");
+		expect(tree).not.toContain('layoutSelectionRevealTarget');
+		expect(navigator).toContain('evaluateHierarchyReveal');
+	});
+	it('keeps the P23.6b format-gated roots empty for legacy documents', () => {
+		const model = readLibSource('editor/unified-project-tree-model.ts');
+		// The legacy branch must return empty canonical roots so legacy
+		// Room-nested objects/entities never render twice.
+		expect(model).toContain("architecture: { walls: [], junctions: [] }");
+		expect(model).toContain("layoutObjects: []");
+		expect(model).toContain("sceneContent: { clusters: [], entities: [] }");
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('renders the Sequence Inspector loop row as a derived readout, never a Close-loop mutation', () => {
+		const panel = readLibSource('editor/CameraFlowPanel.svelte');
+		expect(panel).toContain('Loops via:');
+		expect(panel).toContain('Disconnect Loop');
+		expect(panel).toContain('Stops at');
+		expect(panel).toContain('+ Connect to');
+		// The loop row only renders for N ≥ 3 (a two-node pair never loops and
+		// never shows a loop row).
+		expect(panel).toContain('showLoopRow = $derived(guidedTourChain.length >= 3)');
+		// [Disconnect Loop] is a plain connection deletion; connecting is the
+		// ordinary connect-existing flow. No Close-loop mutation anywhere.
+		expect(panel).toContain('store.deleteConnection(flowLoopConnectionId)');
+		expect(panel).toContain('store.beginConnectExistingNodes()');
+		expect(panel).not.toContain('closeGuidedTourLoop');
+		expect(panel).not.toContain('findClosableGuidedChain');
+	});
+	it('renders the detour groups and the undirected Connections list in the Sequence Inspector', () => {
+		const panel = readLibSource('editor/CameraFlowPanel.svelte');
+		expect(panel).toContain('store.flowDetourGroups');
+		expect(panel).toContain('store.flowLoopConnectionId');
+		expect(panel).toContain('Branch at');
+		expect(panel).toContain('store.removeDetour(');
+		expect(panel).toContain('store.removeDetourNode(');
+		expect(panel).toContain('<h2>Unsequenced</h2>');
+		expect(panel).toContain('<h2>Connections</h2>');
+		expect(panel).toContain('chainConnectionRows');
+		expect(panel).toContain('store.appendDetourNode(');
+		expect(panel).toContain('finalPairConnectionIds');
+		expect(panel).toContain('both cameras return to Unsequenced');
+	});
+	it('adds per-row visibility and kebab actions to the Rooms tree, plus a Rooms add button', () => {
+		const tree = readLibSource('editor/UnifiedProjectTree.svelte');
+		expect(tree).toContain('EllipsisVertical');
+		expect(tree).toContain('<Eye size={14}');
+		expect(tree).toContain('<EyeOff size={14}');
+		expect(tree).toContain('<Plus size={14}');
+		expect(tree).toContain('onAddRoom');
+		expect(tree).toContain('store.toggleEntityVisibility(');
+		expect(tree).toContain('store.focusRoom(');
+		expect(tree).toContain('store.focusPlacement(');
+		expect(tree).toContain('store.deletePlacements(');
+		expect(tree).toContain('deleteLayoutRoom(');
+		expect(tree).toContain('deleteLayoutObject(');
+		expect(tree).toContain('deleteLayoutOpening(');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('asset library selection contracts', () => {
+	it('an explicit Models-tab click deselects the active selection so the asset panel shows; filters never do', () => {
+		const library = readLibSource('editor/EditorAssetLibrary.svelte');
+		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		// The explicit-click channel is distinct from `onselectionchange` (which
+		// also fires on filter-driven list changes and must never deselect a
+		// scene pick).
+		expect(library).toContain('onSelectAsset');
+		expect(library).toContain('onSelectAsset?.(asset)');
+		expect(library).toContain('onselectionchange');
+		expect(sidebar).toContain('onSelectAsset');
+		expect(app).toContain('onSelectAsset');
+		expect(app).toContain('activeSelection.deselectActive()');
+		// The relic keeps frozen behavior: no deselect-on-asset-click wiring.
+		expect(readLibSource('editor/EditorLeftSidebar.svelte')).not.toContain('onSelectAsset');
 	});
 });

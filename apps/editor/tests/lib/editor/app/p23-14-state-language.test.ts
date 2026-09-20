@@ -7,6 +7,7 @@ import {
 	PLAN_NUMERIC_FIELD_SETS,
 	planNumericFieldAxis
 } from '$lib/editor/layout/plan-numeric-entry';
+import { readLibSource } from '../../../helpers/lib-source';
 
 const STYLES_DIR = fileURLToPath(new URL('../../../../src/lib/editor/styles', import.meta.url));
 
@@ -119,5 +120,47 @@ describe('P23.14 §7 — canonical axis ink in number fields (#35)', () => {
 			'font: 600 0.74rem/1.2 var(--editor-font-mono, ui-monospace, monospace)'
 		);
 		expect(viewport).toContain('data-axis={entryAxis ?? undefined}');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.3 camera reconciliation', () => {
+	it('reports the Camera 3D observer/scope/play/selection status without new state', () => {
+		const status = readLibSource('editor/app/StatusBar.svelte');
+		expect(status).toContain('isCamera3D');
+		expect(status).toContain('cameraModeLabel');
+		expect(status).toContain('cameraScopeLabel');
+		expect(status).toContain('cameraPlayLabel');
+		expect(status).toContain('cameraSelectionCount');
+		expect(status).toContain('store.cameraPreview?.mode');
+		expect(status).toContain("store.cameraPreview?.kind === 'edge'");
+		expect(status).not.toContain("kind !== 'node'");
+		expect(status).toContain('store.isCameraPreviewPlaying');
+		expect(status).toContain('store.navigationSelection');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('mounts a persistent status bar region in every workspace with no authoring actions', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const status = readLibSource('editor/app/StatusBar.svelte');
+		// The status bar is an unconditional shell region (design-spec §2/§18),
+		// present in all four workspaces.
+		expect(app).toContain('<StatusBar');
+		// P23.14 §5 — the Status Rail spans the shell beside the full-height Spine.
+		expect(app).toContain("'spine status status status'");
+		expect(status).toContain('grid-area: status');
+		expect(app).toContain('{layoutPreview} {layoutInteraction} {viewState} {activeSelection}');
+		expect(status).toContain('store.isDirty || layoutPreviewIsDirty(layoutPreview)');
+		expect(status).toContain('layoutInteraction.planView.gridEnabled');
+		expect(status).toContain('layoutInteraction.planView.snapEnabled');
+		// Informational/supporting only — major authoring actions must not
+		// migrate into it.
+		expect(status).not.toContain('beginCameraPlacement');
+		expect(status).not.toContain('connectNavigationNodes');
+		expect(status).not.toContain('deleteConnection');
+		expect(status).not.toContain('setLayoutDraftTool');
+		expect(status).not.toContain('store.undo');
 	});
 });

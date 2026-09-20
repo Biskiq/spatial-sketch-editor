@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
@@ -31,6 +31,54 @@ function sourceFiles(root: string): string[] {
   }
   return files;
 }
+
+/**
+ * T3b — one navigation system.
+ *
+ * The motion side was already pinned (headless package, TransformControls-free).
+ * What no test owned was the *evaluator* half: that the route/flow evaluation is
+ * defined exactly once, under `packages/camera-core`, and that the editor's
+ * navigation-graph module is the single owner of flow/ordering semantics. A
+ * second copy of either (the classic "re-derived adjacency" drift) fails here.
+ */
+describe('one navigation system — single graph + route evaluator', () => {
+  const editorLibSrc = resolve(appSrc, 'lib/editor');
+  const repoRoot = resolve(appSrc, '../../..');
+
+  function exportingOwners(symbol: string): string[] {
+    return [...sourceFiles(packageSrc), ...sourceFiles(editorLibSrc)]
+      .filter((file) =>
+        new RegExp(`export\\s+(?:async\\s+)?function\\s+${symbol}\\b`).test(readFileSync(file, 'utf8'))
+      )
+      .map((file) => relative(repoRoot, file));
+  }
+
+  it('defines each route/flow evaluator exactly once, under camera-core', () => {
+    for (const symbol of [
+      'getCameraRoute',
+      'getCameraConnectionRoute',
+      'resolveFlowRoute',
+      'getFlowRoute',
+      'getFlowLoopConnectionId'
+    ]) {
+      expect(exportingOwners(symbol), symbol).toEqual(['packages/camera-core/src/camera-route.ts']);
+    }
+  });
+
+  it('keeps the editor navigation graph the single owner of flow semantics', () => {
+    for (const symbol of [
+      'currentMainFlowNodeIds',
+      'flowLoopConnectionId',
+      'flowDetourGroups',
+      'flowRetainedConnectionIds',
+      'validateCurrentGuidedTourOrder'
+    ]) {
+      expect(exportingOwners(symbol), symbol).toEqual([
+        'apps/editor/src/lib/editor/editor-navigation-graph.ts'
+      ]);
+    }
+  });
+});
 
 describe('camera-core package boundary', () => {
   it('exposes the camera API directly without an app shim', () => {

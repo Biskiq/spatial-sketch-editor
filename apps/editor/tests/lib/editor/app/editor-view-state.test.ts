@@ -59,3 +59,13 @@ describe('EditorViewState', () => {
 		expectTypeOf<EditorDomain>().toEqualTypeOf<'scene' | 'camera'>();
 	});
 });
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('pinned types', () => {
+	it('locks EditorViewMode to plan | 3d', () => {
+		expectTypeOf<EditorViewMode>().toEqualTypeOf<'plan' | '3d'>();
+
+		const modes: EditorViewMode[] = ['plan', '3d'];
+		expect(modes).toEqual(['plan', '3d']);
+	});
+});
