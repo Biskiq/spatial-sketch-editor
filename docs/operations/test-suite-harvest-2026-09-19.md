@@ -1,6 +1,6 @@
 # Test-suite harvest — Museum Editor (2026-09-19)
 
-**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. T2b/T2c/T3 remain unstarted.
+**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. T2b/T2c/T3 remain unstarted.
 **Scope:** `apps/editor/tests/**/*.{test,spec}.{js,ts}` on branch `refractor/tests` at `a479f78` (merge of PR #61, P23.14 implementation).
 **Authority rule used:** current `docs/reference/` over archived plans; archived plans/comments used only to explain why a historical test exists.
 **Artifacts:** this report + `test-suite-harvest-inventory-2026-09-19.csv` (same directory, 303 rows, one per test file, with LOC/describes/tests/subsystem/slice/imports-fs/walk/spawn/loop/random/timing/kind + run-1 duration + vitest test count).
@@ -170,9 +170,9 @@ C.2's mechanical draft is superseded by C.1.1–C.1.4 for: all 5 Cluster-1 files
 | p12-s4 C1a scrubber-absence line | No collapsed second scrubber | PLATE Decision 5 / drawer §17 | `p23-14-camera-drawer / §17 collapsed / mounts no lane, ruler or second scrubber` | Same reintroduced-scrubber bug (`mini-player__scrubber` / range input / `showCollapsedScrubber`) fails both; in-test comment cites supersession | None for this line | **EXECUTED (T2a)** — MERGE (line only) / high |
 | slice-c E5c 3 toggle-ownership lines | No second panel writer in shared toolbar | PLATE R4 §14 one-owner | `p23-14-control-ownership / §14 / panel visibility written only by View Bar` | Same `toggleLeftSidePanel/RightSidePanel/FocusMode`-in-toolbar bug fails both; in-test comments cite §14 | Hint-placement pins stay | **EXECUTED (T2a)** — MERGE (lines only) / high |
 | contracts #10 Arrange-Delete it | Single Delete entry point | Arrange ownership (durable) | `arrange-delete.test.ts` (behavioral) | Same duplicate-entry bug fails both | None | **EXECUTED (T2a)** — DELETE_CANDIDATE / high |
-| contracts #9 snap it | Snap wiring present | Snap grammar (durable) | `snap-input-validation.test.ts` (behavioral) | Same unwired-snap bug fails both | None | **EXECUTED (T2a)** — DELETE_CANDIDATE / high |
-| contracts #8 teardown it | Keyed session + abort teardown | Session isolation (durable) | `project-session-isolation.test.ts` (behavioral successor, cited in-file) | Same leaked-session bug fails both | None | **EXECUTED (T2a)** — REPLACE_MECHANISM→DELETE / med-high |
-| contracts #13 type grammar | Type tiers present | PLATE R3 ladder | `p23-14-type-roles.test.ts` | Same off-ladder type bug fails both (except 12.5px → OWNER) | 12.5px tier | **EXECUTED (T2a, partial)** — DELETE except 12.5px it / med |
+| contracts #9 snap it | Snap wiring present | Snap grammar (durable) | `snap-input-validation.test.ts` (behavioral) | ~~Same unwired-snap bug fails both~~ **WRONG — successor tests the parsers, not the toolbar call site; it stays green if the wiring disappears** | None | **RESTORED (review): DELETE_CANDIDATE WITHDRAWN** |
+| contracts #8 teardown it | Keyed session + abort teardown | Session isolation (durable) | `project-session-isolation.test.ts` (behavioral successor, cited in-file) | ~~Same leaked-session bug fails both~~ **WRONG — successor proves `ProjectAssetRequestScope.invalidate()` behaves; it does not fail if `EditorApp` stops calling it** | None | **RESTORED (review): REPLACE_MECHANISM not demonstrated** |
+| contracts #13 type grammar | Type tiers present | PLATE R3 ladder | `p23-14-type-roles.test.ts` | **Ladder-closure lines only.** The two literal step lines are genuinely subsumed; the Inspector *shorthand* mappings are NOT (a role swapped for another valid role still closes the ladder) | 12.5px tier | **PARTIALLY RESTORED (review)** — 5 mapping assertions kept, 2 subsumed step lines dropped |
 | contracts #14 live-chrome its | P12 timeline geometry | p12-s4 (in-file cited owner) | `p12-s4-header-chrome` (parity it → a11y-motion) | Same chrome-drift bug fails both | Parity behavior | **EXECUTED (T2a, partial)** — DELETE_CANDIDATE / med-high |
 | contracts #15 terminology/counts | Tree vocabulary + counts | Tree projection (durable) | `unified-project-tree.test.ts` + 6e projection | Same renamed-row bug fails both | None | **NOT EXECUTED (T2a)** — no demonstrated successor (see §J.2) / med-high |
 | contracts #18 harness-content it | No harness text in prod | — (meta) | `editor-gizmo-host.test.ts` (the harness itself) | Same leak fails the harness directly | None | **EXECUTED (T2a)** — DELETE_CANDIDATE / high |
@@ -449,10 +449,10 @@ deltas are exact.
 | 3 | `p21.6-slice-c` | E5c's 3 ownership lines (`toggleLeftSidePanel`/`toggleRightSidePanel`/`toggleFocusMode` `not.toContain`) | `p23-14-control-ownership` §14 `panel visibility is written only by the View Bar utilities` | 0 |
 | 4 | `app/p23-12-navigator-identity` | `it('the shared Wall shows both Rooms as participation context')` | 6e source-index `roomIdsByWallId` (strictly more rooms) | −1 |
 | 5 | `app/p23-12-navigator-identity` | `it('replaces the per-Wall Ends relation row with the boundary inventories')` | 6e `nests hosted Openings … no Ends relation row` + `derives Boundary Junctions…` | −1 |
-| 6a | `app/contracts` | route-wiring teardown block (6 assertions) inside `mounts one keyed session…` | `project-session-isolation` (behavioral); the `{#key}` source pin is cited by that file as complementary and was kept | 0 |
-| 6b | `app/contracts` | `it('validates Row 2 snap number inputs before writing gizmo state')` | `snap-input-validation` (behavioral) | −1 |
+| 6a | `app/contracts` | ~~route-wiring teardown block (6 assertions) inside `mounts one keyed session…`~~ **RESTORED §J.4** | ~~`project-session-isolation`~~ (machinery, not the `EditorApp` call site) | 0 |
+| 6b | `app/contracts` | ~~`it('validates Row 2 snap number inputs before writing gizmo state')`~~ **RESTORED §J.4** | ~~`snap-input-validation`~~ (parsers only, no call-site guard) | 0 |
 | 6c | `app/contracts` | arrange-delete router-internals block (`deriveArrangeTarget`/`deleteLayoutObject`/`store.deleteSelection`) | `arrange-delete` (behavioral); shell-wiring lines kept | 0 |
-| 6d | `app/contracts` | `it('locks the three-tier Inspector type grammar in tokens + inspector shorthands')` | `p23-14-type-roles` (closed ladder + role derivation) | −1 |
+| 6d | `app/contracts` | ~~`it('locks the three-tier Inspector type grammar…')`~~ **REDUCED §J.4** to 5 shorthand-mapping assertions | `p23-14-type-roles` owns the ladder steps + closure | 0 |
 | 6e | `app/contracts` | timeline `height: 48px;` + `height: 36px;` + the frame-level `mini-player__timecode` fragment | `p12-s4-header-chrome` | 0 |
 | 6f | `app/contracts` | `it('records the fake-host lifecycle harness…')` meta-test | `editor-gizmo-host.test.ts` (the harness itself) | −1 |
 
@@ -460,6 +460,10 @@ Also dropped the now-unused `TEST_DIR` const in `contracts.test.ts`.
 
 **Population change:** 4,510 → **4,504** tests (−6 `it`s: 1 p11-s4, 2 navigator,
 3 contracts). Files stay 303. The one skip (`plan-bench` full tier) is unchanged.
+
+> **Superseded by §J.4:** three of those units were restored after review, so
+> the T2a end-state is **4,506** tests / −4 `it`s. This row is kept as the
+> as-committed record, not the current state.
 
 **Items deliberately NOT executed** (fallback: stop rather than widen scope):
 
@@ -480,12 +484,57 @@ Also dropped the now-unused `TEST_DIR` const in `contracts.test.ts`.
   "mapped" and stayed.
 - **12.5px tier — untouched** (NEEDS_OWNER_DECISION), per instruction.
 
-### J.3 Verification (after T1+T2a)
+### J.3 Verification (after T1+T2a as first committed)
 
 - `npm test` == `npm run test:full`: 303 files, same file set; 4,504 tests
   (4,503 pass, 1 skip).
-- Lanes still partition: fast 276/4,128 + arch 21/347 + heavy 1/6 + perf 5/23
+- Lanes partition: fast 276/4,128 + arch 21/347 + heavy 1/6 + perf 5/23
   = 4,504, disjoint.
 - `npm run test:fast` and `npm run test:arch` green; every successor file run
   explicitly green; `npm run check` (svelte-check) 0 errors.
 - Post-T2a wall: fast 23.3s, arch 2.5s, full 31.6s (concurrency caveat §H).
+  Superseded by §J.4 for the current end-state.
+
+### J.4 Review response — three "successors" restored (EXECUTED)
+
+An external review found three T2a units whose named successor pins a *different*
+failure than the deleted assertion. All three were **restored** (or reduced to
+their non-redundant half). The distinction that matters — and that the §C.3
+successor map got wrong — is **behavioral successor vs. call-site successor**:
+
+- A successor that imports and exercises the module under test can replace an
+  intra-module assertion (`arrange-delete` #6c: it imports
+  `deleteArrangeSelection` and deletes end to end, so the removed router-internals
+  lines really were subsumed — this one **stands**).
+- A successor that tests a *sibling* module's machinery, or only the pure helper
+  the call site consumes, does **not** replace a pin on the call site; it stays
+  green when the wiring is deleted. That is the case for all three below.
+
+| # | Restored | Why the named successor was a false successor |
+|---|---|---|
+| 6a | `contracts` route-wiring teardown block inside `mounts one keyed session…` (6 assertions on `EditorApp.svelte`) | `project-session-isolation.test.ts` proves `ProjectAssetRequestScope.invalidate()` behaves when called. It cannot fail if `EditorApp` stops calling `projectRequestController?.abort()` / `invalidateProjectAssets()` / `clearRetainedSourceAliases()` / `assetScope.invalidate()`. The retained `{#key}` pin is a markup pin and does not close it. Grep confirms the deleted block was the only pin on those calls. |
+| 6b | `it('validates Row 2 snap number inputs before writing gizmo state')` | `snap-input-validation.test.ts` imports `parseTranslationSnapMeters` / `parseRotationSnapDegrees` and tests valid/invalid numbers. It does not touch `EditorViewportToolbar.svelte`, so a toolbar that stops calling the parsers on `onchange` — or stops restoring the live value on reject — leaves it green. Grep confirms the deleted assertions were the only test referencing `commitTranslationSnap` wiring. |
+| 6d | `it('maps the Inspector type shorthands onto their ratified roles')` — the 5 semantic mappings only | `p23-14-type-roles` proves the ladder is closed and that swept surfaces carry no pinned pixel value. Both hold when `--editor-inspector-value` is repointed at another *valid* role, or when `--editor-font-size-label` points at `lg`. The two literal step lines (`font-size-xs: calc(10px …)`, `font-size-md: calc(12px …)`) **were** genuinely subsumed by the successor's `LADDER` sweep and stayed deleted; `section: var(--editor-font-size-xs)` and friends were restored as mappings. |
+
+Unchanged by the review (verified, not just asserted): p11-s4 A3a Flip (strictly
+subsumed by p12-s3 B2a), the p12-s4 collapsed-scrubber line, the slice-c E5c
+ownership lines, both p23-12 Navigator removals (stronger 6e coverage), the
+timeline height/timecode fragments (p12-s4 owner; still green), and the gizmo
+harness meta-test (the harness itself is the failure boundary). The 12.5px tier
+remains untouched (NEEDS_OWNER_DECISION).
+
+**Corrected end-state (measured, vitest JSON reporter):**
+
+- `npm test` ≡ `npm run test:full`: 303 files, **4,506** tests (4,505 pass, 1 skip).
+- Partition is exact: fast 276/4,128 + arch 21/**349** + heavy 1/6 + perf 5/23
+  = **4,506**, disjoint, union = the full 303 files.
+- Net T2a deletion: **−4 `it`s** (p11-s4 1, navigator 2, gizmo meta 1); the
+  scrubber/ownership/timeline/arrange-delete edits are line-level (0 tests).
+- Wall: `test:fast` 24.4s, `test:arch` 2.9s, `test:full` 29.6s.
+- `contracts.test.ts` 156 tests; `npm run check` (svelte-check) 0 errors.
+
+**Open note carried forward (non-blocking in review):** `contracts.test.ts` sits
+wholly in `ARCH_FILES` until the T3a 7-way split, so its cheap behavioral core
+(~110ms) is outside `test:fast`. The complete behavioral inner loop is therefore
+`test:fast` + `test:arch` (~27s), which the review accepted as a T3a item rather
+than a T1 blocker.
