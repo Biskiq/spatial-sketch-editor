@@ -2,7 +2,7 @@
  * P23.6I — continuous Wall-run height (I3, editor half).
  *
  * The durable birth rule lives in the pure planner (`resolveWallBirthHeight`, see
- * `p23-6i-wall-birth-height.test.ts`). The editor owns only the **transient
+ * `layout-wall-birth-height.test.ts`). The editor owns only the **transient
  * continuation** value:
  *
  * ```text

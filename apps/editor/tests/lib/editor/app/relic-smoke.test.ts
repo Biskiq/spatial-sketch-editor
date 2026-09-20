@@ -4,7 +4,7 @@
  *
  * **Why it exists.** The relic's proof is currently scattered across ~20
  * historical pins, most of them source slices of files the *live* shell also
- * owns (`p11-s4`, `p12-s3 B2b`, `p12-s4 C2b`, `p21.6-slice-c E3b`,
+ * owns (`p11-s4`, `p12-s3 B2b`, `p12-s4 C2b`, `shell-focus-mode E3b`,
  * `contracts.test.ts` route/relic its). Those pins are the reason relic
  * consolidation cannot start: there is no single, independent artifact that says
  * "the relic still works". This is that artifact, and it is **additive** — no

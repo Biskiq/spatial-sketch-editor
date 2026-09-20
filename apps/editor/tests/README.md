@@ -14,6 +14,70 @@ sits at `tests/lib/editor/editor-selection.test.ts`. **No `.test.ts` files live 
 3. No extension on imports: `allowImportingTsExtensions` is off, so
    `'$lib/editor/editor-selection'` not `'$lib/editor/editor-selection.ts'`.
 
+## Test design rules
+
+Durable doctrine for adding, replacing and placing tests. This section is the
+authority; the evidence behind it (measurements, migration history, review
+findings) is in `docs/operations/test-suite-harvest-2026-09-19.md` §Q/§R and is
+not needed to contribute a normal test.
+
+### Successors and deletion
+
+1. **Same feature ≠ successor.** A replacement counts as a successor only if it
+   would fail on the **same defect** the removed test protected. Naming a test
+   that covers a related subject proves nothing.
+2. **Identical assertion text ≠ duplicate coverage.** Same expression + same
+   asserted value/pattern + same polarity identifies a *candidate* only.
+   Deleting also requires equivalent execution conditions, source root and lane
+   coverage.
+3. **Machinery correctness ≠ call-site correctness.** A perfect helper, store or
+   pure function stays green after production stops invoking it. When the
+   invariant depends on wiring, polarity, teardown, ownership or invocation,
+   keep a narrow **call-site proof** alongside the machinery test.
+4. **Replacement claims are proved by mutation.** For a successor/replacement
+   claim, or any change to an architecture or call-site boundary, prefer a
+   mutation that (a) reintroduces the old defect, (b) makes the proposed
+   successor fail, and (c) leaves unrelated controls green. This is not required
+   for ordinary new unit tests.
+
+### Behavioral vs architecture proof
+
+5. **Prefer behavioral proof** over source-shape proof whenever the behavior can
+   actually be exercised.
+6. **Source inspection is appropriate for genuine architecture invariants only:**
+   forbidden imports, dependency direction, unique ownership, absence of a
+   duplicate system, visitor/editor isolation, and source-level composition
+   boundaries where no executable harness exists.
+7. **One parser per grammar.** When several tests must interpret the same
+   source/import grammar, share one extractor/predicate
+   (`museum/visitor-import-boundary` is the reference) instead of parallel
+   regexes — two patterns for one invariant means two holes.
+
+### Lanes
+
+8. `test:fast` owns ordinary behavioral feedback.
+9. `test:arch` owns unconditional architecture/ownership/isolation boundaries. It
+   runs whole before a PR and is **never path-gated**.
+10. `test:heavy` owns dense correctness/property/stress work.
+11. `test:perf` owns timing/budget gates and never substitutes for functional
+    correctness coverage.
+12. **Split, do not cut.** Moving expensive work to `heavy` keeps cheap
+    representative behavior in `fast`.
+13. **Draw the boundary around the expensive `it`s**, not automatically around a
+    large file or its enclosing `describe`. An “is this section dense?” claim
+    needs per-test evidence whenever it is not obvious.
+14. **When the density is the proof, keep the density** and give the test
+    explicit timeout headroom rather than shrinking the sweep.
+15. `npm test` / `test:full` remain the complete suite: the lane union must equal
+    full and the lanes must stay pairwise disjoint.
+
+### Naming and ownership
+
+16. **Prefer durable subsystem/contract names** over roadmap/slice-era names once
+    the behavior is a stable product contract.
+17. **A rename does not fix mixed ownership.** If a file genuinely bundles
+    unrelated subjects, do not hide that behind an inaccurate umbrella name.
+
 ## What lives here vs in `src/`
 
 | Thing | Where |
@@ -29,9 +93,13 @@ imports back to `$lib`.
 ## Caveats
 
 - **Boundary tests walk `src/` via `import.meta.url`** (`bench-boundary`,
-  `plan-render-boundary`, `layout-geometry-boundary`, `visitor-import-boundary`,
-  `editor-store-bind-migration`, `wall-mesh-builder`). They compute roots as
+  `plan-render-boundary`, `layout-geometry-boundary`, `camera-core-boundary`,
+  `wall-mesh-shell-boundary`, `visitor-import-boundary`, `project-model-boundary`,
+  `editor-store-bind-migration`). They compute roots as
   `resolve(import.meta.url, '../../../src')` — update them if `tests/` moves.
+  The `$lib/layout` renderer-free sweep lives in `layout-geometry-boundary`; the
+  wall-mesh shell/import boundary is owned by `wall-mesh-shell-boundary`, so
+  `wall-mesh-builder` is a behavioral file and walks no source.
 - **The dev perf route** (`src/routes/dev/perf/+page.svelte`) imports scale fixtures
   from here via a relative path. Keep that in sync if fixtures move.
 - **No `__`-prefixed QA plates in the tree.** A `__qa-*` plate runs inside the
@@ -41,9 +109,11 @@ imports back to `$lib`.
   pointers. That is the only platform call QA stubs; no app gesture logic is
   touched by it.
 - **Keyboard/traversal contracts that slice Svelte source are shape pins.**
-  `p23-13-keyboard` slices `LayoutPlanViewport.svelte` and asserts text — it
-  passed while the announcement missed required value+units. Drive the path
-  live (or assert the composed string) before trusting refactors that
+  `plan-keyboard-navigation` slices `LayoutPlanViewport.svelte` and asserts text —
+  it passed while the announcement missed required value+units. The pure halves
+  now have direct tests (`plan-keyboard-readout`, `plan-keyboard-session`), but
+  that slice cannot fail if the viewport simply stops calling them: drive the
+  path live (or assert the composed string) before trusting refactors that
   rename/reorder those handlers.
 
 ## Running
@@ -70,8 +140,11 @@ npm run test:full    # the same effective suite as `npm test`
 
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
-visitor boundary through shared code. See
-`docs/operations/test-suite-harvest-2026-09-19.md` §F for the lane model.
+visitor boundary through shared code. Membership is executable fact in
+`apps/editor/test-lanes.ts`; the rules for *placing* a test are under
+[Test design rules](#test-design-rules) above. See
+`docs/operations/test-suite-harvest-2026-09-19.md` §F for the original lane
+model and §R for the final measurements.
 
 ## Agent E2E (`tests/e2e/`)
 

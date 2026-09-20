@@ -162,7 +162,7 @@ and the control stretches to the rail (`width: 100%`), which is what turns a
 vocabularies (Scene Plan, Scene 3D, Camera 3D, Camera Plan) — tray
 `scrollWidth == clientWidth` (43 px), every label on one line except the
 two-word labels, which wrap at their word boundary. Pinned by
-`tests/lib/editor/app/p23-14-contrast-floor.test.ts`.
+`tests/lib/editor/app/shell-contrast-floor.test.ts`.
 
 ### R2 — the armed tool is a darkened surface, nothing else
 
@@ -251,7 +251,7 @@ the same knob), and the shell surfaces swept onto roles (`WorkspaceRibbon`,
 `HierarchyRow`, `HierarchyNavigator`, `UnifiedProjectTree`,
 `EditorViewportToolbar`).
 
-**Evidence it holds:** `tests/lib/editor/app/p23-14-type-roles.test.ts` — the
+**Evidence it holds:** `tests/lib/editor/app/shell-type-roles.test.ts` — the
 ladder is closed (every `--editor-font-size-*` is a multiple of the knob or a
 named alias onto a step), every type role resolves its size to a step, the
 control/geometry roles resolve to their knob, and a **guard** fails if any swept
@@ -334,11 +334,11 @@ only; no other shell surface moved.
 
 | Decision | Rule | Contract test |
 | --- | --- | --- |
-| R1 tray tier | `styles/tokens.css` (`--editor-font-size-tray-*`), `styles/controls.css` (`.tool-tray` type + gutter), `EditorViewportToolbar.svelte` (`data-group-compact`) | `p23-14-contrast-floor.test.ts` § "tray engraved micro-tier" |
-| R2 armed surface | `styles/controls.css` (`.tool-tray button.active`) | `p23-14-contrast-floor.test.ts` § "armed tool is a darkened surface" |
-| R3 type + control roles | `styles/tokens.css` (ladder, roles, knobs), `styles/controls.css`, `styles/inspector.css`, `styles/timeline.css` + the swept shell surfaces | `p23-14-type-roles.test.ts` (closed ladder, role resolution, no-pinned-type guard) |
-| Ratified ink floor | `styles/tokens.css` + the `-text-*` consumers | `p23-14-contrast-floor.test.ts` § F1/D1–D4 |
-| R4 ownership + exposure | `EditorViewportToolbar.svelte` (host gate), `WorkspaceRibbon.svelte`, `app/Workspace3DView.svelte`, `app/inspector-target.ts` | `p23-14-control-ownership.test.ts`, `p23-14-inspector-target.test.ts`, `contracts.test.ts` |
+| R1 tray tier | `styles/tokens.css` (`--editor-font-size-tray-*`), `styles/controls.css` (`.tool-tray` type + gutter), `EditorViewportToolbar.svelte` (`data-group-compact`) | `shell-contrast-floor.test.ts` § "tray engraved micro-tier" |
+| R2 armed surface | `styles/controls.css` (`.tool-tray button.active`) | `shell-contrast-floor.test.ts` § "armed tool is a darkened surface" |
+| R3 type + control roles | `styles/tokens.css` (ladder, roles, knobs), `styles/controls.css`, `styles/inspector.css`, `styles/timeline.css` + the swept shell surfaces | `shell-type-roles.test.ts` (closed ladder, role resolution, no-pinned-type guard) |
+| Ratified ink floor | `styles/tokens.css` + the `-text-*` consumers | `shell-contrast-floor.test.ts` § F1/D1–D4 |
+| R4 ownership + exposure | `EditorViewportToolbar.svelte` (host gate), `WorkspaceRibbon.svelte`, `app/Workspace3DView.svelte`, `app/inspector-target.ts` | `shell-control-ownership.test.ts`, `inspector-target.test.ts`, `contracts.test.ts` |
 | Atlas reflects both | `editor-shell-atlas/index.html` tools rail, `editor-shell-atlas/notes.md` | QA evidence, not a contract |
 
 ---

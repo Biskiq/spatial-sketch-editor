@@ -25,7 +25,7 @@ function createUnsequencedStore() {
  *   playing); framing stays editable through a PAUSED visitor camera (P1.6).
  * - DEL: topology deletion pauses first; the release chain keeps a paused
  *   preview mounted when it does not touch the deleted topology (the touching
- *   force-stop case is pinned in p8-s5-interaction-matrix D4).
+ *   force-stop case is pinned in interaction-matrix D4).
  * - CH·AA: workspace/sidebar/timeline-shell/tree-expansion session writes
  *   stay allowed while a preview plays.
  * - SB: placement-cluster writes stay blocked while playing; cancel is AA

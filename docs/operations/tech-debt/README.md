@@ -156,7 +156,7 @@ and no P23 slice has had camera placement on its acceptance list.
   document, *not* the canonical boot) and drafts a Room with `commitLayoutDraftRoom`
   (legacy). It proves the registry seam works for room-first documents and says nothing
   about the canonical pair.
-- `p23-3-new-project-boot.test.ts` covers the canonical boot but not placement.
+- `new-project-boot.test.ts` covers the canonical boot but not placement.
 - Evidence-class warning, same shape as P23.13's residue: these tests pin *individual
   seams* (`registry sync`, `predicate`, `createPendingNavigationNodeAt` in isolation).
   No test crosses **canonical boot → placement → committed node**, which is the only

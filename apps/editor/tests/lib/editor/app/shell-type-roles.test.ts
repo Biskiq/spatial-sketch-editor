@@ -279,7 +279,7 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
 	it('maps the Inspector type shorthands onto their ratified roles', () => {
 		// The ladder itself (steps, the knob, closure) is owned by
-		// `tests/lib/editor/app/p23-14-type-roles.test.ts`; what only a mapping
+		// `tests/lib/editor/app/shell-type-roles.test.ts`; what only a mapping
 		// assertion can catch is a role swapped for another *valid* role —
 		// closing the ladder does not notice `--editor-font-size-label` pointing
 		// at `lg` instead of `md`.

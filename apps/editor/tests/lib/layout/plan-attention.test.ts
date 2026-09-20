@@ -229,7 +229,7 @@ describe('P23.13 S8 paint contract (tokens reach the renderer)', () => {
 	// through its own props, plus the Svelte compiler's own stylesheet.
 	//
 	// The third claim of this row — "per-footprint Scene ink is read before the
-	// regime value" — moved to its A6 owner (`p23-13-object-scene-paint`, §S8/
+	// regime value" — moved to its A6 owner (`plan-scene-paint`, §S8/
 	// §1.12), where one footprint inside the live zone dims to the zone value
 	// while the others keep the regime value. That test fails if the per-primitive
 	// source is dropped, which the source slice could never establish.

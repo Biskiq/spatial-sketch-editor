@@ -26,73 +26,21 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	buildCorrespondenceComponents,
-	createEmptyWallFirstLayoutDocument,
-	extractBoundaryCandidateFaces,
-	interiorWitness,
 	planWallChain,
-	planWallSegment,
-	roomBoundaryPolygon,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-
-const p = (x: number, z: number): LayoutVec2 => [x, z];
-
-function baseDocument(): LayoutDocumentWallFirst {
-	const document = createEmptyWallFirstLayoutDocument();
-	return {
-		...document,
-		floor: { ...document.floor, id: 'floor-1', name: 'Floor 1', elevation: 0 }
-	};
-}
-
-function plan(
-	baseline: LayoutDocumentWallFirst,
-	start: LayoutVec2,
-	end: LayoutVec2
-): ReturnType<typeof planWallSegment> {
-	return planWallSegment({ baseline, start, end, role: 'boundary' });
-}
-
-function commit(
-	baseline: LayoutDocumentWallFirst,
-	start: LayoutVec2,
-	end: LayoutVec2
-): LayoutDocumentWallFirst {
-	const result = plan(baseline, start, end);
-	if (result.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(result)}`);
-	return result.document;
-}
-
-/** Same nearest-point arithmetic used by wall-span snap candidates. */
-function projectToSpan(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): LayoutVec2 {
-	const dx = end[0] - start[0];
-	const dz = end[1] - start[1];
-	const squared = dx * dx + dz * dz;
-	const t = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared;
-	return [start[0] + dx * t, start[1] + dz * t];
-}
-
-/** Room ↔ face correspondence of a document against its own faces. */
-function selfComponents(document: LayoutDocumentWallFirst): string[] {
-	const faces = extractBoundaryCandidateFaces(document).faces;
-	const polygons = new Map(
-		document.rooms.map((room) => [room.id, roomBoundaryPolygon(document, room.id)!])
-	);
-	const witnesses = new Map(
-		document.rooms.map((room) => [
-			room.id,
-			interiorWitness(roomBoundaryPolygon(document, room.id)!)
-		])
-	);
-	return buildCorrespondenceComponents(
-		faces,
-		document.rooms.map((room) => room.id),
-		witnesses,
-		polygons
-	).map((component) => `${component.predecessorRoomIds.length}→${component.candidateFaceKeys.length}`);
-}
+import {
+	p,
+	baseDocument,
+	plan,
+	commit,
+	selfComponents,
+	projectToSpan,
+	bottomStart,
+	bottomEnd,
+	twoRoomsWithOneObliqueDivider
+} from '../../helpers/angled-plan-fixtures';
 
 describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {
 	/** Room split by an oblique Wall: the exact shape that used to fuse. */
@@ -141,39 +89,11 @@ describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {
 	});
 });
 
+// The single-case regressions of the projected-host fix stay in `test:fast`:
+// only the two 591-step sweeps of this `describe` live in
+// `angled-plan-noding-sweeps.test.ts` (T4). `describe` title retained so the
+// full test names are unchanged.
 describe('P23.6e regression — projected Wall endpoints node oblique hosts', () => {
-	const topStart = p(0, -3.3142857142857145);
-	const topEnd = p(7, -3.2);
-	const bottomStart = p(0, -0.9142857142857137);
-	const bottomEnd = p(7, -0.9333333333333336);
-
-	function stackedObliqueRooms(): LayoutDocumentWallFirst {
-		const enclosure = planWallChain({
-			baseline: baseDocument(),
-			points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
-			close: true,
-			role: 'boundary'
-		});
-		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
-		let document = commit(enclosure.document, topStart, topEnd);
-		document = commit(document, bottomStart, bottomEnd);
-		expect(document.rooms).toHaveLength(3);
-		return document;
-	}
-
-	function twoRoomsWithOneObliqueDivider(): LayoutDocumentWallFirst {
-		const enclosure = planWallChain({
-			baseline: baseDocument(),
-			points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
-			close: true,
-			role: 'boundary'
-		});
-		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
-		const document = commit(enclosure.document, bottomStart, bottomEnd);
-		expect(document.rooms).toHaveLength(2);
-		return document;
-	}
-
 	it('uses one shared Junction for the projected stem and both host fragments', () => {
 		const document = twoRoomsWithOneObliqueDivider();
 		const start = p(3.37, -4);
@@ -242,45 +162,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 		);
 		expect(result.document.walls.find((wall) => wall.id === 'old-wall')).toEqual(oldWall);
 		expect(result.createdJunctionIds).not.toContain('existing');
-	});
-
-	it('stress-splits one oblique host without false 2→3 correspondence', () => {
-		const document = twoRoomsWithOneObliqueDivider();
-		for (let step = 100; step <= 690; step += 1) {
-			const rawX = step / 100;
-			const start = p(rawX, -4);
-			const end = projectToSpan(p(rawX, -0.92), bottomStart, bottomEnd);
-			const result = plan(document, start, end);
-			expect(
-				result.kind,
-				`projected 2→3 regression at x=${rawX}: ${result.kind === 'rejected' ? JSON.stringify(result.rejection) : 'unexpected result'}`
-			).toBe('success');
-			if (result.kind !== 'success') continue;
-			expect(result.splitWallIds, `host splits at x=${rawX}`).toHaveLength(2);
-			expect(result.document.walls, `wall count at x=${rawX}`).toHaveLength(10);
-			expect(result.document.rooms, `Room split at x=${rawX}`).toHaveLength(3);
-		}
-	});
-
-	it('stress-splits both projected hosts without intermittent 3→4 or missed faces', () => {
-		const document = stackedObliqueRooms();
-		// 591 independently planned divider positions exercise both signs of the
-		// rounded projection dust. Before this fix the same sweep alternated among
-		// success-with-no-split, numeric `invalid`, and false 3→4 rejection.
-		for (let step = 100; step <= 690; step += 1) {
-			const rawX = step / 100;
-			const start = projectToSpan(p(rawX, -3.25), topStart, topEnd);
-			const end = projectToSpan(p(start[0], -0.92), bottomStart, bottomEnd);
-			const result = plan(document, start, end);
-			expect(
-				result.kind,
-				`projected divider at x=${rawX}: ${result.kind === 'rejected' ? JSON.stringify(result.rejection) : 'unexpected result'}`
-			).toBe('success');
-			if (result.kind !== 'success') continue;
-			expect(result.splitWallIds, `host splits at x=${rawX}`).toHaveLength(2);
-			expect(result.document.walls, `wall count at x=${rawX}`).toHaveLength(13);
-			expect(result.document.rooms, `Room split at x=${rawX}`).toHaveLength(4);
-		}
 	});
 
 	it('does not connect an endpoint outside Junction-identity tolerance', () => {
@@ -405,3 +286,4 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 		expect(result.document.junctions.filter((junction) => junction.id.includes('chain'))).toHaveLength(2);
 	});
 });
+

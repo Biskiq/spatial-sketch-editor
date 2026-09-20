@@ -25,6 +25,14 @@ const CONSUMER_FILES = [
 
 const IMPORT_SPECIFIER = /from\s+['"]([^'"]+)['"]|import\(?\s*['"]([^'"]+)['"]/g;
 
+/**
+ * Renderer, editor and browser-global coupling in one predicate — the
+ * `$lib/layout` modules are the renderer-free geometry layer the Plan, the
+ * editor 3D scene and the visitor 3D shell all consume.
+ */
+const RENDERER_OR_BROWSER_COUPLING =
+	/from\s+['"](three|svelte|@threlte|\$app)['"]|\$lib\/(editor|museum)|\bdocument\.|\bwindow\./;
+
 function walk(dir: string): string[] {
 	const entries = readdirSync(dir).map((name) => resolve(dir, name));
 	const files: string[] = [];
@@ -87,6 +95,22 @@ describe('G1 geometry boundary', () => {
 		expect(packageFilesDefining('export function splitWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
 		expect(packageFilesDefining('export function splitSampledWallAroundOpenings')).toEqual(['layout-geometry-openings.ts']);
 		expect(packageFilesDefining('export function buildArchProfile')).toEqual(['layout-geometry-openings.ts']);
+	});
+
+	it('keeps every $lib/layout module free of renderer, editor, and browser coupling', () => {
+		// T4: absorbed the single-module pin that used to live in
+		// `wall-mesh-builder.test.ts` (`keeps the builder free of Svelte, DOM, and
+		// Three imports`) and widened it to the whole layer. `$lib/layout` is the
+		// renderer-free geometry layer shared by Plan, the editor 3D scene and the
+		// visitor 3D shell, so a renderer, editor or browser-global import here is
+		// a layering inversion whichever module introduces it.
+		const layoutFiles = ALL_SOURCE_FILES.filter((file) => file.startsWith(`${libRoot}/layout/`));
+		expect(layoutFiles.length).toBeGreaterThan(25);
+		for (const file of layoutFiles) {
+			expect(sourceOf(file), file.slice(libRoot.length + 1)).not.toMatch(
+				RENDERER_OR_BROWSER_COUPLING
+			);
+		}
 	});
 
 	it('removes all retired resampling helpers', () => {

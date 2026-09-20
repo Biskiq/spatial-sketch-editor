@@ -37,18 +37,18 @@ export const ARCH_FILES: string[] = [
 	'tests/lib/bench/bench-boundary.test.ts',
 	// Visitor/editor isolation (cold release, public closure, identity).
 	'tests/lib/museum/visitor-import-boundary.test.ts',
-	'tests/lib/visitor/p22-1-cold-runtime.test.ts',
-	'tests/lib/visitor/p22-3-public-route.test.ts',
-	'tests/lib/visitor/p23-12-visitor-identity-isolation.test.ts',
+	'tests/lib/visitor/visitor-cold-runtime.test.ts',
+	'tests/lib/visitor/visitor-public-route.test.ts',
+	'tests/lib/visitor/visitor-identity-isolation.test.ts',
 	'tests/lib/visitor/preview-surface-boundary.test.ts',
 	'tests/lib/visitor/visitor-runtime-state.test.ts',
 	'tests/vite/preview-surface-boundary-plugin.test.ts',
 	'tests/vite/public-surface-boundary-plugin.test.ts',
 	// Format policy / transaction guards / Layout↔Scene ownership (F0 gates).
-	'tests/lib/editor/store/p23-f0-stage1-format-policy.test.ts',
-	'tests/lib/editor/p23-f0-stage2-writers.test.ts',
-	'tests/lib/editor/p23-f0-stage3-writer-fixtures.test.ts',
-	'tests/lib/editor/p23-f0-stage4-visitor-parity.test.ts',
+	'tests/lib/editor/store/project-format-policy.test.ts',
+	'tests/lib/editor/project-format-writers.test.ts',
+	'tests/lib/editor/project-format-writer-fixtures.test.ts',
+	'tests/lib/editor/project-format-visitor-parity.test.ts',
 	'tests/lib/editor/p23-f0-stage5-small-items.test.ts',
 	// Bind/wiring migration contract (import-direction source walk).
 	'tests/lib/editor/editor-store-bind-migration.test.ts',
@@ -78,7 +78,26 @@ export const ARCH_FILES: string[] = [
 export const HEAVY_FILES: string[] = [
 	// Subprocess harness (~29% of the suite's per-file time): shells out to
 	// sh/shasum/gltf-transform per run. All six tests spawn the job.
-	'tests/lib/content/normalize-asset.test.ts'
+	'tests/lib/content/normalize-asset.test.ts',
+	// T4 — the mixed files T1 deferred, split so the cheap behavior stays in
+	// `test:fast` and only the dense sweeps leave it. Each was split along a
+	// boundary the file itself already drew (a banner-delimited section, a
+	// `describe`, or the file's own stress/sweep cases); the assertion bodies
+	// were moved verbatim and the `describe` titles retained, so full test names
+	// are unchanged. See harvest §P.
+	//
+	// P1.4 dense whole-transition acceptance matrices: a >=1001-value edge-local
+	// progress grid per fixture (~5.0s). The behavioral suite (constants,
+	// easing, path construction, guard repairs, sampling) stays fast.
+	'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts',
+	// The two oblique-host sweeps: 591 independently projected divider
+	// positions each (~3.4s). The sibling single-case regressions of the same
+	// `describe` stay in `test:fast`.
+	'tests/lib/layout/angled-plan-noding-sweeps.test.ts',
+	// Compiling the small/medium tiers and the 1,000-room tier (~2.9s).
+	'tests/lib/layout/layout-scale-compile.test.ts',
+	// Corner, arch and opening watertight matrices over profile families (~1.3s).
+	'tests/lib/layout/wall-mesh-watertight-matrices.test.ts'
 ];
 
 /**
@@ -87,7 +106,7 @@ export const HEAVY_FILES: string[] = [
  * `test:fast`.
  */
 export const PERF_FILES: string[] = [
-	'tests/lib/bench/p2311-bend-perf-pass.test.ts',
+	'tests/lib/bench/bend-perf.test.ts',
 	'tests/lib/bench/bench-report.test.ts',
 	'tests/lib/bench/browser-bench.test.ts',
 	'tests/lib/bench/three-stats.test.ts',
