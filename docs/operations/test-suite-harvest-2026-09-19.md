@@ -1,6 +1,6 @@
 # Test-suite harvest — Museum Editor (2026-09-19)
 
-**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. T3+ remain unstarted.
+**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. **T3 has since been executed** — see **§L Execution log (T3)** for the dismantled `contracts.test.ts` accumulator (its migration map, the 49 pruned duplicate assertions and the two new boundary homes), the four ownership pins T3b added, the relic retirements T3c performed against §K.5, and the before/after maintenance + lane metrics. T4–T6 remain unstarted.
 **Scope:** `apps/editor/tests/**/*.{test,spec}.{js,ts}` on branch `refractor/tests` at `a479f78` (merge of PR #61, P23.14 implementation).
 **Authority rule used:** current `docs/reference/` over archived plans; archived plans/comments used only to explain why a historical test exists.
 **Artifacts:** this report + `test-suite-harvest-inventory-2026-09-19.csv` (same directory, 303 rows, one per test file, with LOC/describes/tests/subsystem/slice/imports-fs/walk/spawn/loop/random/timing/kind + run-1 duration + vitest test count).
@@ -182,6 +182,17 @@ C.2's mechanical draft is superseded by C.1.1–C.1.4 for: all 5 Cluster-1 files
 | p23-12 shared-Wall→Rooms | Wall shows both Rooms | Index relation (durable) | 6e index + participation its | Same dropped-room bug fails both; successor asserts more | None | **EXECUTED (T2a)** — MERGE into 6e / med |
 | Relic markup pins (header/tour/ruler/controls/mount) | Frozen relic chrome + mount | Relic frozen (durable) | `relic-smoke.test.ts` — **built in T2c** (6 claims, 13 tests, `ARCH_FILES`) | Smoke asserts the same mount/chrome/isolation behaviourally; §K.5 maps each historical pin to its smoke claim | Nothing deleted in T2c (additive by instruction); consolidation after the smoke survives independently | **SMOKE BUILT (T2c)** — historical pins still RETAINED / high |
 
+> **Superseded in part by §L (T3a/T3c):** the §C.1.2 seven-way split was
+> executed as a *disposition* pass rather than seven files — the behavioural core
+> went back to `test:fast`, the shell pins went to the owners that already assert
+> those invariants (the P23.14 family, `p12-s4`, `p11-s4`, the tree/camera-plan/
+> persistence homes), and only two unconditional boundaries needed new files.
+> The G-group deletions are all done (the snap and teardown guards were *moved to
+> the files whose machinery they guard*, which is why §J.4's restoration is now
+> paired with its successor instead of separated from it), the relic route/mount
+> its are covered by the smoke, and the `#15` terminology/counts half that was
+> STOPPED in T2a now has a home (`unified-project-tree`).
+
 Review-open pins that MUST NOT become durable behavior yet: contracts P21.1 MODE pressed-fill (`--editor-bg-recess` vs open accent-tint question); contracts P21.1 + contrast-floor tray width (`--editor-tray-width: calc(44px …)` vs open rename/widen question); contracts P21.5-Slice-4 `12.5px` tier (off R3 ladder); contracts P21.2 `border-radius:0` (PLATE material tension); room-labels never-editable guard home; snap D5 comment-vs-docs; surrounds six-block-presence home.
 
 ### C.4 Uncovered gaps discovered (all verified, not hypothesized)
@@ -189,10 +200,10 @@ Review-open pins that MUST NOT become durable behavior yet: contracts P21.1 MODE
 1. **No live keyboard→announcement test.** `planKeyboardControlReadout` (viewport:4340) has zero test callers; only wiring pins + pure `planTraversalAnnouncement` tests reference the path. README incident class reproducible today. New test K3 is highest priority. — **CLOSED (T2b, §K.2/K.3):** the readout and the traversal rule were extracted to `plan-keyboard-readout.ts` / `plan-keyboard-session.ts` and are driven directly (`plan-keyboard-readout.test.ts`, `plan-keyboard-session.test.ts`); the remaining call-site pins are narrowed wiring guards.
 2. **No live attention/refusal/empty-lifecycle tests.** `planHintDismissed`, `planRefusal`, `attentionZone` appear in tests only inside pin suites (+ contracts same-mechanism ghost pins). Renaming `touchPlanAttention`/`armPlanRefusal`/latch bindings passes silently with broken behavior. — **PARTLY CLOSED (T2b, §K.2/K.3):** the attention paint/zone rules, the refusal record+annotation lifecycle and the empty-state dismissal gate now have behavioural tests; the *call sites* (`touchPlanAttention`, `armPlanRefusal`, the latch bindings) still pass silently, because they are event-driven component state — see §K.4.
 3. **No PlanSvg render/adapter tests.** Every `PlanSvg.svelte` test reference is a source-string read; `plan-render-boundary` only pins delegation. All A-sketches need new harness code. — **CLOSED (T2b, §K.1):** `tests/helpers/plan-render-harness.ts` renders the shipped component through `svelte/server` and reads paint from the compiler's stylesheet; the A-series rows are replaced with mutation-proven rendered claims (§K.2/K.3).
-4. **No one-nav-graph/evaluator pin.** Motion-side pinned (TransformControls-free); route-side has no equivalent. Add one-evaluator sweep.
-5. **No positive Layout-v5/Scene-v1 ownership pin.** Only legacy empty-roots branch pinned. Add `formatVersion: 5` wall-first / `formatVersion: 1` world-local positive pins.
-6. **No single editor→museum import-direction sweep.** Piecemeal `$lib/museum`-free + museum-free pins exist; no unified sweep analogous to gizmo sweeps.
-7. **Relic has no DOM/behavioral mount test; `MuseumEditorApp` no-layout-history branch unpinned; no relic-side import-surface test.** See C.1.4 gaps. — **PARTLY CLOSED (T2c, §K.5):** `relic-smoke.test.ts` covers the mount/implementation, the frozen transport (server-rendered, so it is a behavioural transport proof) and the isolation branches, including `MuseumEditorApp`'s no-layout-history branch. The relic-side *import-surface* check is still only the shared boundary suites plus the smoke's mount claims; a dedicated relic import-surface test remains open.
+4. **No one-nav-graph/evaluator pin.** Motion-side pinned (TransformControls-free); route-side has no equivalent. Add one-evaluator sweep. — **CLOSED (T3b, §L.3)**: `camera-core-boundary` now sweeps evaluator ownership (every route/flow evaluator defined exactly once) and the editor navigation graph as the single owner of flow semantics.
+5. **No positive Layout-v5/Scene-v1 ownership pin.** Only legacy empty-roots branch pinned. Add `formatVersion: 5` wall-first / `formatVersion: 1` world-local positive pins. — **CLOSED (T3b, §L.3)**: the format-policy gate now asserts the authoring pair classifies wall-first + project-world, the retired pair legacy, and the mixed pair never the default.
+6. **No single editor→museum import-direction sweep.** Piecemeal `$lib/museum`-free + museum-free pins exist; no unified sweep analogous to gizmo sweeps. — **CLOSED (T3b, §L.3)** as two directions: no editor source imports the museum *app*, and the shared `$lib/museum` shell stays editor-free (it is consumed by the visitor build too). Sweeping `$lib/museum` out of the editor was the wrong premise — the editor legitimately owns that rendering shell.
+7. **Relic has no DOM/behavioral mount test; `MuseumEditorApp` no-layout-history branch unpinned; no relic-side import-surface test.** See C.1.4 gaps. — **PARTLY CLOSED (T2c, §K.5):** `relic-smoke.test.ts` covers the mount/implementation, the frozen transport (server-rendered, so it is a behavioural transport proof) and the isolation branches, including `MuseumEditorApp`'s no-layout-history branch. The relic-side *import-surface* check is still only the shared boundary suites plus the smoke's mount claims; a dedicated relic import-surface test remains open. — **CLOSED (T3b, §L.3)**: `relic-smoke` now owns the frozen import surface (the relic shell never consumes the unified tree, the greenfield sidebar or the project API).
 
 ### C.5 Residual low-confidence drafts (superseded counts — see C.2 replacement note above)
 
@@ -812,3 +823,171 @@ state composition and snap glyphs` → `test: render the band projection and
 Window frame count` → `test: prove the refusal and empty-state gate behaviour` →
 `test: read the toolbar labels off the rendered toolbar` → `test: fix the
 keyboard fixture type and record retained pins` → this docs commit.
+
+## L. Execution log — T3 (EXECUTED)
+
+Scope: **T3a** (dismantle `contracts.test.ts`), **T3b** (the four ownership
+gaps), **T3c** (historical-shell + relic consolidation). T4/T5/T6 not started;
+**no production code changed in this slice** (the two seams from §K.1 remain the
+only production edits in the PR).
+
+Commit list: `test: share one $lib source reader across boundary suites` →
+`test: dismantle the contracts accumulator into durable homes` →
+`test: pin the four ownership gaps the harvest identified` →
+`test: retire relic pins the smoke now owns, and two proven duplicates` → this
+docs commit.
+
+### L.1 T3a — method
+
+The core review rule (same feature ≠ same defect) was applied mechanically where
+it could be: a **duplicate detector** parsed every `toContain`/`toMatch` in
+`contracts.test.ts` with its polarity and source expression, then searched every
+other test file for the *same literal with the same polarity*. That is the same
+defect by construction — the string leaving that one source file. It reported
+**74/716** assertions duplicated elsewhere; after adjudicating generic literals
+that legitimately recur in unrelated components (`pointer-events: none`,
+`aria-hidden="true"`, `<button`, `selectLayout`), **49 assertions were pruned**.
+Every other assertion **moved verbatim** — nothing was rewritten, so no moved
+test lost sensitivity.
+
+Infrastructure added, and only because it deletes duplication: `tests/helpers/lib-source.ts`
+owns the `$lib`/route/`readAllSourceFiles` readers that five files had each
+copied. The two brand-new *test* files are boundary homes (below); the accumulator
+itself is gone, so net file delta is +1.
+
+### L.2 T3a — migration map
+
+| Old home (describe) | New durable home |
+|---|---|
+| empty project contract · pinned types · zero-node policy · boot into an empty project · Plan↔3D it1 · 3 gizmo FSM fixtures · 3 cross-domain behavioural its | `project/project-codec`, `app/editor-view-state`, `store/document-store`, `app/p23-3-new-project-boot`, `editor-store-shell`, `gizmo/editor-gizmo-behavior-fixtures`, `store/selection-store` — **all `test:fast`** |
+| route wiring (live its), editor-side sidebar/tree mount | **new** `app/editor-entry-boundary.test.ts` (arch) |
+| single gizmo host sweeps · layout candidate session · layout 3D pick metadata · centralized 3D layout selection | **new** `gizmo/editor-gizmo-boundary.test.ts` (arch) |
+| P21.1 shared shell · P21.2 tools/Delete/status/edges · P21.3 ribbon ownership · camera-context toolbar/menu/cells/rail/toolbar-composition · ceiling context seam | `app/p23-14-control-ownership.test.ts` (21 its) |
+| P21.3 density/Timeline sharing · P21.5-S5 collapsed-pill geometry · P3 lanes · camera-context docking/rig-gating/G3 | `app/p23-14-camera-drawer.test.ts` |
+| P21.5-S3/S4 inspector density, typography, panels, Place gate, Inspector routing · P1.5 Inspector routing · cross-domain Arrange eligibility | `app/p23-14-inspector-target.test.ts` |
+| P21.5-S4 type ladder/typography sweep · P21.5-S3 field geometry | `app/p23-14-type-roles.test.ts` |
+| P21.1 row-band ramp · P21.5-S4 seven-theme calibration | `app/p23-14-contrast-floor.test.ts` |
+| StatusRail readout · camera 3D status readout | `app/p23-14-state-language.test.ts` |
+| no-fade shells (2 its) | `app/p23-14-a11y-motion.test.ts` |
+| timeline heights · S5 expanded transport / ruler timecodes / pill parity · relic tour selector · loop readout | `store/p12-s4-header-chrome.test.ts` (live transport owner) |
+| frozen relic PreviewControls (+AP/AA/CH predicates) | `store/p11-s4-compact-controls.test.ts` |
+| tree/CameraFlowPanel vocabulary, sequence seed, ancestor reveal, legacy roots, asset-panel selection, visibility facade | `app/unified-project-tree.test.ts` (13 its) + `app/p23-6e-hierarchy-projection.test.ts` |
+| Plan SVG door/window primitives | `layout/p23-13-door-window.test.ts` |
+| Camera Plan paper + P14 footprint aliases | `camera-plan/p14-camera-plan-footprints.test.ts` |
+| Camera Plan ribbon order / FOV exclusion / XZ binding / live workspace | `camera-plan/camera-plan-state.test.ts` |
+| camera labels · camera paths · orientation box | `camera/editor-camera-labels`, `camera/editor-camera-path`, `editor-orientation-gizmo` |
+| preview affordances | `camera/editor-camera-preview-affordances.test.ts` |
+| P19 persistence coordinator (5 its) | `project-persistence.test.ts` |
+| snap wiring guard · AppRow cloud-error gate · save-state pill | `snap-input-validation`, `app/project-persistence-presentation` (the guard now sits with the machinery it guards) |
+| Staging gesture seam | `layout/plan-scene-transform.test.ts` |
+| `/museum` camera-plan-free | `museum/visitor-import-boundary.test.ts` |
+
+**Dropped, with the owner named**: `relic isolation` and the two relic route
+its (relic-smoke claims 1/6); the contracts ghost/card sketch (13 assertions
+identical to `p23-13-empty`, the ghost owner).
+
+### L.3 T3b — the four gaps (additive)
+
+| Gap (C.4) | Pin | Mutation that fails it |
+|---|---|---|
+| no one-nav-graph/**evaluator** pin | `camera-core-boundary`: each camera-core route evaluator defined exactly once; the editor navigation graph is the single owner of flow semantics | a second `resolveFlowRoute` in the editor; a re-derived `flowDetourGroups` in the store |
+| no positive Layout-v5/Scene-v1 pin | `p23-f0-stage1-format-policy`: the authoring pair classifies wall-first + project-world; the retired pair legacy; the mixed pair never the default | `project-world` → `legacy-room-local`; `wall-first` → `legacy` |
+| no unified editor→museum sweep | `visitor-import-boundary`: no editor source imports the museum app; the shared `$lib/museum` shell stays free of editor internals | `@portfolio/museum` import in `EditorApp`; `$lib/editor` import in `MuseumShared` |
+| relic import surface | `relic-smoke` §7: the relic shell never consumes the unified tree / greenfield sidebar / project API | `createProjectApi` in `MuseumEditorApp` |
+
+Note on the third pin: the first draft swept `$lib/museum` out of the editor and
+was **wrong** — the editor legitimately owns `$lib/museum` (its 3D museum
+rendering shell, consumed by the visitor too). The pin was corrected to the two
+directions that are actually invariants; recorded here because the false premise
+is the kind of thing a mechanical sweep hides.
+
+### L.4 T3c — consolidation performed
+
+| Unit | Owner that now covers it | Evidence |
+|---|---|---|
+| `p12-s4` relic-header + tour-selector source slices | relic-smoke claim 4 | forcing the relic branch off fails the smoke (`expected … to contain 'relic-header'`) |
+| `p12-s4` relic branch PreviewControls mounting | relic-smoke claim 4 | same |
+| `p21.6-slice-c` relic backslash-immunity it | relic-smoke claim 6 | removing `&& !store.isRelic` fails the smoke; the retired pin no longer does (transfer verified both ways) |
+| `p23-13-surrounds` theme-registry loop | `theme.test.ts` `THEME_IDS` exact list | renaming a theme id fails theme.test.ts |
+| `p23-13-surrounds` Scene-ink source slice | A6 paint owner (`p23-13-object-scene-paint`) | dropping `sceneInkFor` fails the rendered A6 proof |
+
+### L.5 Pins deliberately retained (T3c)
+
+- **`p12-s3` relic Flip preservation.** The smoke samples *one* playhead (§K.5
+  claim 5); the pin sweeps five and also asserts `direction`/`runId`/`edgeRepeat`.
+  A regression that resets only at a later playhead would pass the smoke — not
+  the same defect coverage, so the pin stays (the §J.4 rule, applied in reverse).
+- **`p11-s4` Repeat-scope relic it.** No smoke claim asserts repeat scope.
+- **`p12-s2` relic selection/preview it.** Mixed: the smoke covers the seek
+  refusal, not the P11 selection scopes it also asserts.
+- **`p12-s4` "does not apply live header controls to the relic store surface".**
+  It is a behavioural store test, not header chrome; claim 4 renders markup.
+- Everything in §K.4 (attention/refusal/latch wiring, freeze sweep, R2–R4
+  plumbing) is untouched.
+- **Owner-open items unchanged**: MODE pressed-fill, tray width, `12.5px`,
+  `border-radius:0`, room-label never-editable home, snap D5 comment,
+  surrounds block-presence home. T3 moved them with their comments intact and
+  asserted no disputed value.
+
+### L.6 Metrics (baseline = PR63 pre-T3 head `51c3586`)
+
+| Metric | Before | After |
+|---|---|---|
+| test files | 307 | **308** (−1 accumulator, +2 boundary homes) |
+| tests | 4,557 | **4,560** |
+| test LOC | 114,665 | **114,729** (+64, +0.06%) |
+| `contracts.test.ts` LOC | 2,716 | **0 (deleted)** |
+| source-reading test files | 77 | **74** |
+| assertions duplicated elsewhere (detector) | 74 | **0 for the dismantled set** |
+| historical slice-named files removed/touched | — | `contracts` removed; `p11-s4`, `p12-s3`, `p12-s4`, `p21.6-slice-c`, `p23-13-surrounds` edited in place |
+
+The +64 LOC are the moved code, its wrapper `describe` lines, the two new
+boundary homes and the shared reader; the accumulator's 2,716 lines and 49
+duplicated assertions left. The residual growth is **not** new proof — it is the
+same proof in durable homes — so the consolidation is net-reductive on every
+axis that matters (files −1 accumulator, source-readers −3, arch lane halved)
+while LOC is flat.
+
+### L.7 Lane changes
+
+| Lane | Before | After |
+|---|---|---|
+| fast | 279 files / 4,166 | 279 files / **4,279** (+113: the behavioural core is back in the inner loop) |
+| arch | 22 / 362 | 23 / **252** (contracts gone; `editor-entry-boundary` + `editor-gizmo-boundary` added) |
+| heavy | 1 / 6 | 1 / 6 |
+| perf | 5 / 23 (1 skip) | 5 / 23 (1 skip) |
+| full | 307 / 4,557 | 308 / 4,560 |
+
+`test:arch` now contains only unconditional boundaries — the mixed accumulator's
+cheap behavioural core no longer hides there, which closes the open note carried
+in §J.4.
+
+### L.8 Verification (measured, this machine)
+
+- `npm run check` (svelte-check): **0 errors, 0 warnings**.
+- `npm test` ≡ `npm run test:full`: **308 files, 4,560 tests** (4,559 pass, 1 skip).
+- Partition exact and disjoint: fast 4,279 + arch 252 + heavy 6 + perf 22 (+1 skip)
+  = 4,560.
+- Walls: full 38.7s, fast 34.3s, arch 10.0s, heavy 10.0s, perf 4.4s (concurrency
+  caveat §H; the fast lane also carries 113 more tests than its pre-T3 state).
+- Mutations: 9 T3b defers + 4 T3c owner-equivalence checks, all self-restored;
+  after every batch `git status` showed only intended test edits.
+
+### L.9 What T3 did **not** finish (carried forward)
+
+- **P23.14 migration to rendered proof.** T3 concentrated the live shell's source
+  pins into the P23.14 family rather than replacing them; the paint half already
+  has a behavioural owner (the render harness), but the *shell composition*
+  half (Spine/View-Bar/Tray ownership, menu row composition, status rail) is
+  still source text. Replacing it needs a DOM/event harness the §K.1 server-render
+  harness deliberately excludes — that is T3c's remaining substance and it was
+  not attempted here rather than half-done.
+- **`p23-13` paint-cluster merges** beyond `surrounds`: the A-cluster now has a
+  single paint owner (A6) and per-store proof, but door-window/attention/salience
+  still each carry some paint literals. Sequenced after P23.14.
+- **R2–R4 room-label plumbing and the refusal-lifetime owner** remain deferred
+  production-ownership changes (§K.6) — T3 found no architectural reason to
+  force them.
+- **RELIC_ONLY pins kept per §L.5** stay until a real successor exists.
+- **No GitHub status checks** are attached to the branch head: all verification
+  in this report is locally measured.
