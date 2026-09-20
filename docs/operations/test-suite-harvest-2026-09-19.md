@@ -1,6 +1,6 @@
 # Test-suite harvest — Museum Editor (2026-09-19)
 
-**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. **T3 has since been executed** — see **§L Execution log (T3)** for the dismantled `contracts.test.ts` accumulator (its migration map, the 49 pruned duplicate assertions and the two new boundary homes), the four ownership pins T3b added, the relic retirements T3c performed against §K.5, and the before/after maintenance + lane metrics. T4–T6 remain unstarted.
+**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. **T3 has since been executed** — see **§L Execution log (T3)** for the dismantled `contracts.test.ts` accumulator (its migration map, the 49 pruned duplicate assertions and the two new boundary homes), the four ownership pins T3b added, the relic retirements T3c performed against §K.5, and the before/after maintenance + lane metrics. **T4 has since been executed** — see **§P Execution log (T4)** for the dense-sweep splits (with fast representatives kept), the widened `$lib/layout` renderer-free sweep, the name-level proof that no test was cut, and the diagnosis of the remaining fast-lane wall. T5–T6 remain unstarted.
 **Scope:** `apps/editor/tests/**/*.{test,spec}.{js,ts}` on branch `refractor/tests` at `a479f78` (merge of PR #61, P23.14 implementation).
 **Authority rule used:** current `docs/reference/` over archived plans; archived plans/comments used only to explain why a historical test exists.
 **Artifacts:** this report + `test-suite-harvest-inventory-2026-09-19.csv` (same directory, 303 rows, one per test file, with LOC/describes/tests/subsystem/slice/imports-fs/walk/spawn/loop/random/timing/kind + run-1 duration + vitest test count).
@@ -1402,3 +1402,168 @@ arch 23 / 252, `contracts.test.ts` gone, no production file touched. `test:arch`
 T3a complete · T3b complete · T3c complete to the current testing-mechanism
 boundary. The DOM/event-dependent shell pins and the other §L.9 carry-forwards
 are unchanged deferrals. No T4/T5/T6 work started.
+
+## P. Execution log — T4 heavy/property/perf split (EXECUTED)
+
+T1 recorded the heavy tail and then deliberately did not touch it: seven mixed
+files stayed in `test:fast` because "a file-level split would need rewriting"
+(§J.1). T4 owns that work. Bench timing was already in `perf`; the remaining
+targets were the dense sweeps, the scale fixtures and the property/scale
+subsets — moved **with fast representatives kept**, i.e. split, not cut.
+
+### P.1 The split map
+
+Boundary rule: each split follows a line the file **already drew** — a
+banner-delimited section, a whole `describe`, or the file's own stress/matrix
+cases — never a duration threshold applied across a file. `describe` titles are
+retained in the moved half, so full test names are unchanged.
+
+| fast file (representatives kept) | new heavy file | moved | that file in `fast` |
+|---|---|---|---|
+| `camera-motion.test.ts` (62 its) | `camera-motion-dense-sweeps.test.ts` | the file's own P1.4 section: banner + its private fixture block + 55 its (2,148 lines) | 5,052ms → **381ms** |
+| `p23-6e-extra-angled-plan-integrity.test.ts` (7 its) | `angled-plan-noding-sweeps.test.ts` | the `P23.6e regression — projected Wall endpoints node oblique hosts` describe (5 its; 591 independently projected divider positions each) | 3,708ms → **188ms** |
+| `__fixtures__/layout-scale-fixtures.test.ts` (6 its) | `layout-scale-compile.test.ts` | the two compile sweeps (small+medium, and the 1,000-room fixture) | 2,972ms → **17ms** |
+| `wall-mesh-builder.test.ts` (20 its) | `wall-mesh-watertight-matrices.test.ts` | the 8 corner/arch/opening watertight matrices | 1,666ms → **239ms** |
+
+What stayed in `fast` by design: plain-rectangle manifold, L-shaped weld,
+lintel/reveal surfaces, UVs, winding guard, rejections and `pickRanges`; the
+camera-motion constants/easing/path-construction/guard-repair/sampling suite;
+the scale-fixture determinism/seed/pinned-mix assertions; the angled-plan
+1→1/1→2/freeze and degenerate-split cases. The `p12-s3` B1b integration the T4
+text protects is untouched.
+
+### P.2 Shared fixtures moved to **one** owner (not duplicated)
+
+Both halves of each split need the same fixtures, so copying them would create a
+second owner of the same fixture — the T3 lesson. Three helper modules were
+created instead, bodies verbatim with only `export` added:
+`tests/helpers/camera-motion-fixtures.ts` (5 sampling helpers),
+`tests/helpers/angled-plan-fixtures.ts` (6 document builders),
+`tests/helpers/wall-mesh-fixtures.ts` (8 mesh assertions/builder, with
+`pointOnSegment` kept private). No production module was created or changed.
+
+### P.3 The renderer-free pin leaves `fast` for `arch` — and widens
+
+`wall-mesh-builder`'s `it('keeps the builder free of Svelte, DOM, and Three
+imports')` was one module's pin inside a behavioral file. It is now a sweep in
+`layout-geometry-boundary.test.ts` over **every** `$lib/layout/*.ts` module
+(34 files) for all four coupling classes — renderer (`three`/`svelte`/
+`@threlte`/`$app`), editor internals (`$lib/editor`), visitor internals
+(`$lib/museum`) and browser globals (`document.`/`window.`). The widened
+invariant is the layering rule the whole layer is consumed under (Plan, editor
+3D, visitor 3D), so this is strictly stronger than the pin it replaces.
+
+Mutation matrix (self-restoring; `git diff apps` empty after each):
+
+| probe appended to a `$lib/layout` module | result |
+|---|---|
+| `import { Vector3 } from 'three';` in `plan-render-model.ts` | **fails** the sweep |
+| `import { … } from '$lib/editor/editor-store.svelte';` in `layout-compat.ts` | fails the sweep |
+| `import { … } from '$lib/museum/MuseumCanvas.svelte';` in `layout-identity.ts` | fails the sweep |
+| `void document.title;` in `layout-portals.ts` | fails the sweep |
+| NEGATIVE: `import { … } from './layout-types';` | **passes** |
+
+### P.4 "Split, not cut" proof
+
+Baseline = a worktree of the pre-T4 merge `eb309a4` on the same machine, with
+`node_modules` / `.svelte-kit` symlinked. (Recorded because the first baseline
+run silently lost 38 tests: the worktree also needs
+`apps/museum/.svelte-kit`, or `p23-11-fix-pass.test.ts` fails to collect on the
+museum tsconfig `extends` — the corrected baseline reports 308/308 files passed.)
+
+Full-suite JSON runs, both revisions:
+
+| | pre-T4 `eb309a4` | this head |
+|---|---|---|
+| tests | 4,561 | **4,561** |
+| files | 308 | 312 |
+| test names **lost** | — | **1**: `buildRoomWallMesh keeps the builder free of Svelte, DOM, and Three imports` (replaced by the §P.3 sweep) |
+| test names **added** | — | **1**: the §P.3 sweep |
+
+Per-file name sets are otherwise identical — camera-motion 117 → 117 across the
+two files, angled plan 12 → 12, scale fixtures 8 → 8, wall-mesh 29 → 28 (the
+replaced pin) — and **1,681 source lines across 11 moved regions are
+byte-identical** to the baseline. No assertion was rewritten, weakened or
+dropped.
+
+### P.5 Wall times (same machine)
+
+Quiet machine, one run per lane unless noted:
+
+| lane | pre-T4 | this head |
+|---|---|---|
+| `test:fast` | 279 files / 4,280 · **30.90s** (tests 31.57s cumulative) | 279 / 4,209 · **27.04s · 28.84s** (tests 15.58s · 17.26s) |
+| `test:arch` | 23 / 252 | 23 / **253** · 9.28s |
+| `test:heavy` | 1 / 6 | 5 / **76** · 10.89s |
+| `test:perf` | 5 / 23 | 5 / 23 · 3.54s |
+| `test:full` | 308 / 4,561 · 34.98s | 312 / 4,561 · 36.59s · 37.43s |
+
+`test:full` single samples looked ~2.5s slower, so it was re-measured
+interleaved (pre/post/pre/post, same machine, same session): pre 46.93s · 47.20s
+(median **47.1**), post 48.76s · 44.70s (median **46.7**) — i.e. **the full suite
+is indistinguishable between the revisions**, and the earlier gap was machine
+contention, not composition. The quiet-machine absolute numbers above are not
+comparable to the interleaved ones; each pair is only read against itself.
+
+### P.6 The <12s fast target is still not met — and is now diagnosed
+
+The fast lane's **test volume fell 48%** (31.57s → 16.5s cumulative work) while
+its **wall fell only ~10%** (30.9s → 27.9s median). The residual is per-file
+transform/collect across 279 files, exactly as §J concluded; moving the heavy
+tail cannot reach it.
+
+Decisive experiment (**not committed**, config experiment only):
+
+```
+npx vitest run --config vitest.fast.config.ts --no-isolate
+→ 13.21s   (transform 12.20s, collect 34.03s cumulative vs 90–98s)
+→ 5 failed | 4204 passed (4209)
+```
+
+All five failures are in **`tests/lib/editor/theme.test.ts`** — the SSR-safety
+`it`s that assert refresh is a no-op without a `document`, which stops being
+true once another file has left a `document` in the reused worker. So the
+isolate boundary, not the heavy tail, is what stands between the fast lane and
+`<12s`. Recorded as the **T6 lead**: making those assertions isolation-independent
+is a test-design change with its own evidence requirements, and disabling pool
+isolation is a behavior-level config change — neither belongs inside a
+lane-splitting slice, and neither is smuggled into T4.
+
+### P.7 Metrics
+
+| metric | pre-T4 `eb309a4` | this head |
+|---|---|---|
+| test files | 308 | **312** (+4 heavy) |
+| tests | 4,561 | **4,561** (unchanged) |
+| test LOC | 114,865 | **114,835** |
+| helper modules / LOC | 11 / 1,713 | 14 / 2,001 |
+| files reading production source | 74 | **73** |
+| fast lane | 279 / 4,280 | 279 / 4,209 |
+| arch · heavy · perf | 23/252 · 1/6 · 5/23 | 23/253 · 5/76 · 5/23 |
+
+Partition exact and disjoint: 4,209 + 253 + 76 + 23 = 4,561; 279 + 23 + 5 + 5
+= 312. `npm test` ≡ `npm run test:full`. `npm run check` 0 errors / 0 warnings.
+No production file touched by T4.
+
+### P.8 Deliberately not done
+
+- **The negligible dense subsets stay in `fast`.** `p23-12-identity` (203ms,
+  2 dense loops), `p23-2-snap-extent-parity` (390ms, seeded differential
+  sweep) and `p21.6-slice-b` (4ms) were each measured as negligible wall by
+  §J.1; splitting them would add files and lanes without buying the inner loop
+  anything, which is the opposite of T4's purpose.
+- **`layout-preview-state` (1,792ms / 27 its, max 173ms) stays in `fast`.** Its
+  cost is uniformly moderate — there is no dense subset to lift — and it was
+  not a §J.1 heavy candidate; moving it would take 27 behavioral tests out of
+  the inner loop for ~1.5s.
+- **P23.13 paint-cluster and Inspector-cluster merges** remain excluded by the
+  T4 note (they wait on harnesses, not lanes).
+
+### P.9 T4 status
+
+T4 complete: every §J.1 mixed-file candidate with a dense majority is split
+with its cheap representatives intact, bench timing was already carried by
+`perf`, the randomized/200k subsets were measured negligible and left, no test
+was deleted, and no production code changed. The remaining fast-lane wall is
+now attributed to per-worker module-graph isolation (§P.6) rather than to test
+volume. T5 and T6 not started.
