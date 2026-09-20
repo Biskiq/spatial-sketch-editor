@@ -19,6 +19,16 @@ import {
 	type PlanRenderPrimitive
 } from '$lib/layout/plan-render-model';
 import { g2MultipleOpeningsDocument } from './__fixtures__/layout-g2-fixtures';
+import {
+	architectureBandPx,
+	resolveWindowStrokeCount
+} from '$lib/editor/layout/plan-architecture-grammar';
+import {
+	elementsWithClass,
+	planSvgRule,
+	planViewFixture,
+	renderPlanSvg
+} from '../../helpers/plan-render-harness';
 
 const LIB_DIR = new URL('../../../src/lib/', import.meta.url);
 
@@ -170,24 +180,58 @@ describe('P23.13 S0 — adapter paint contract', () => {
 	const plan = readLibSource('editor/layout/PlanSvg.svelte');
 	const tokens = readLibSource('editor/styles/plan.css');
 
+	function model() {
+		const { geometry, issues } = compileWallFirstLayoutGeometry(wallFirstOpeningDocument());
+		expect(issues).toEqual([]);
+		return buildPlanRenderModel(geometry);
+	}
+
 	it('projects the canonical band width with no paint floor left in the path', () => {
-		expect(plan).toContain('--architecture-band-width: ${bandPx}px;');
-		// The clamp is no longer geometry, and the S0 temporary ink floor is gone:
-		// readability is the separate silhouette aid now.
+		// **A7.** The projection is rendered, not sliced: at 8 px/m the fixture's
+		// 0.2 m and 0.35 m Walls are exactly a 1.6 px and a 2.8 px band, and those
+		// are the values the emitted band carries.
+		const rendered = renderPlanSvg({
+			model: model(),
+			planView: planViewFixture({ pixelsPerMeter: 8 })
+		});
+		const bandStyles = rendered
+			.filter((element) => element.classes.includes('wall-line'))
+			.map((element) => element.attrs.style);
+		expect(bandStyles).toContain(`--architecture-band-width: ${architectureBandPx(8, 0.2)}px;`);
+		expect(bandStyles).toContain(`--architecture-band-width: ${architectureBandPx(8, 0.35)}px;`);
+		// The band rule reads that property verbatim, so no floor is reapplied
+		// below the adapter…
+		expect(planSvgRule('.wall-line')['stroke-width']).toBe('var(--architecture-band-width)');
+		expect(planSvgRule('.wall-casing')['stroke-width']).toBe(
+			'calc(var(--architecture-band-width) + 2px)'
+		);
+		// …and the retired clamp/floor names are gone from the adapter entirely.
 		expect(plan).not.toContain('Math.max(7,');
 		expect(plan).not.toContain('ARCHITECTURE_TEMPORARY_INK_FLOOR_PX');
 		expect(plan).not.toContain('--architecture-ink-width');
-		expect(plan).toContain('stroke-width: var(--architecture-band-width);');
-		expect(plan).toContain('stroke-width: calc(var(--architecture-band-width) + 2px);');
 		expect(plan).not.toContain('--architecture-width:');
 	});
 
 	it('paints at most two Window strokes and never the retired third frame', () => {
+		// The adapter no longer derives the frame itself: what it paints is the
+		// grammar's own resolution for that host's *projected* thickness at each
+		// zoom, counted in the rendered markup. A hard-coded third frame fails.
+		const windowHostThicknessMeters = 0.35;
+		for (const pixelsPerMeter of [8, 20, 100]) {
+			const rendered = renderPlanSvg({
+				model: model(),
+				planView: planViewFixture({ pixelsPerMeter })
+			});
+			const expected = resolveWindowStrokeCount(
+				2,
+				windowHostThicknessMeters * pixelsPerMeter
+			);
+			expect(elementsWithClass(rendered, 'window-frame'), `${pixelsPerMeter} px/m`).toHaveLength(
+				expected
+			);
+			expect(expected).toBeLessThanOrEqual(2);
+		}
 		expect(plan).not.toContain('0.28');
-		// Shape and count both come from the shared grammar, with the injected
-		// count as the S2 salience decision.
-		expect(plan).toContain('resolveWindowStrokeCount');
-		expect(plan).toContain('windowStrokeLayout(thicknessPx, strokeCount)');
 	});
 
 	it('retires the host-parallel Door threshold and leaves no second ink path', () => {
@@ -213,8 +257,10 @@ describe('P23.13 S0 — adapter paint contract', () => {
 		expect(tokens).toContain('--editor-plan-wall-band: var(--editor-plan-wall-fill);');
 		expect(tokens).toContain('--editor-plan-wall-ink: var(--editor-plan-wall);');
 		expect(tokens).toContain('--editor-plan-opening-void: var(--editor-plan-canvas-bg);');
-		expect(plan).toContain('stroke: var(--editor-plan-wall-band);');
-		expect(plan).toContain('stroke: var(--editor-plan-wall-ink);');
-		expect(plan).toContain('stroke: var(--editor-plan-opening-void);');
+		// The role wiring is read from the compiler's stylesheet, so a rule that
+		// stopped naming its role token cannot pass on a stale source string.
+		expect(planSvgRule('.wall-line').stroke).toBe('var(--editor-plan-wall-band)');
+		expect(planSvgRule('.wall-casing').stroke).toBe('var(--editor-plan-wall-ink)');
+		expect(planSvgRule('.opening-void').stroke).toBe('var(--editor-plan-opening-void)');
 	});
 });
