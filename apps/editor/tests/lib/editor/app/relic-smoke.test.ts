@@ -192,6 +192,25 @@ describe('relic smoke — the frozen transport is still reachable', () => {
 		expect(markup).toContain('aria-label="POV"');
 		expect(markup).toContain('aria-label="Observer"');
 	});
+
+	it('keeps the frozen transport unreachable from a live shell that has its own live preview', () => {
+		// The other half of "relic-only": the retired p12-s4 / p23-14 source pins
+		// asserted the Panel's preview controls sit behind `store.isRelic`. A live
+		// preview is what makes that gate falsifiable — with no preview the branch
+		// is empty either way, so a de-gated Panel would still pass.
+		const live = createFixtureEditorStore();
+		expect(live.previewEdge('tour-a-b', 'forward', 'visitor')).toBe(true);
+		const markup = frameMarkup(live);
+		expect(live.cameraPreview).not.toBeNull();
+		expect(markup).not.toContain('Camera preview transport');
+		expect(markup).not.toContain('Edge playhead');
+		// …and the relic, same store API, same live preview, still gets them.
+		const relic = createRelicFixtureEditorStore();
+		expect(relic.previewEdge('tour-a-b', 'forward', 'director')).toBe(true);
+		const relicMarkup = frameMarkup(relic);
+		expect(relicMarkup).toContain('Camera preview transport');
+		expect(relicMarkup).toContain('Edge playhead');
+	});
 });
 
 // ---------------------------------------------------------------------------

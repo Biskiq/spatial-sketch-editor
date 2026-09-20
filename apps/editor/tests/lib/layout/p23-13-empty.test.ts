@@ -17,6 +17,7 @@ import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument
 } from '@portfolio/layout-core';
+import { componentPath, componentRule } from '../../helpers/plan-render-harness';
 import {
 	beginLayoutPrimitiveDraft,
 	beginRectangle,
@@ -57,6 +58,30 @@ describe('P23.13 S9 empty states (§8)', () => {
 		expect(ghost).not.toContain('10.0');
 		expect(ghost).not.toContain('8.0');
 		expect(ghost).not.toContain('ghost-dims');
+	});
+
+	it('mounts the sketch through the viewport’s own visibility gate, in neutral plan ink', () => {
+		// T3 review pass: the accumulator shipped a session-scoped ghost/card `it`
+		// whose pins were pruned as duplicates of this file, but three of them had
+		// no successor here. The mount and the gate it hangs on are restored; the
+		// ink is now read from the *compiled* stylesheet (T2b A-series mechanism)
+		// rather than sliced out of the component source.
+		expect(viewport).toContain('{#if ghostVisible}');
+		expect(viewport).toContain('<PlanEmptyGhost planView={interaction.planView} />');
+		// Pinning only the gate's consumer leaves a rewrite of the derivation —
+		// say `planEmpty` alone — green, and the sketch would then paint over the
+		// 3D view and ignore a dismissal. The gate's three terms are the contract.
+		expect(viewport).toContain('const ghostVisible = $derived(');
+		expect(viewport).toContain(
+			"planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed"
+		);
+		// Neutral ink: `#adb6bd` is the P23.13 §8 sketch value, so a re-tint to a
+		// semantic/accent colour (or a filled shape) is the regression this catches.
+		const corner = componentRule(
+			componentPath('editor/layout/PlanEmptyGhost.svelte'),
+			'.ghost-corner'
+		);
+		expect(corner.stroke).toBe('#adb6bd');
 	});
 
 	it('is illustrative only: hidden from assistive tech, pointer-transparent, unserialized', () => {

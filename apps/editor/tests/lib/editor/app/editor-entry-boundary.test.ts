@@ -83,10 +83,11 @@ describe('unified hierarchy contracts', () => {
 		expect(relicSidebar).toContain('EditorSceneTree');
 		expect(relicSidebar).toContain('EditorCameraTree');
 
-		for (const component of [
-			'editor/EditorSceneTree.svelte',
-			'editor/camera/EditorCameraTree.svelte'
-		]) {
-		}
+		// The relic-side half of this unit (MuseumEditorApp / EditorLeftSidebar /
+		// EditorSceneTree / EditorCameraTree must not reference the greenfield
+		// sidebar or unified tree) left `contracts.test.ts` as an *empty* loop and
+		// now lives where the relic's frozen import surface is owned:
+		// `relic-smoke.test.ts` → 'frozen relic import surface' (all four files ×
+		// {UnifiedProjectTree, EditorSidebar, createProjectApi}).
 	});
 });
