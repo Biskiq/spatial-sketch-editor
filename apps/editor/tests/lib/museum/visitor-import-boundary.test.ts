@@ -13,21 +13,73 @@ const entry = resolve(appSrc, 'routes/museum/+page.svelte');
 const extensions = ['', '.ts', '.svelte', '.json'];
 
 /**
- * Module specifiers of a source file: static `import`/`export … from` and
-dynamic `import(…)`. **One owner** — the reachability walk and both
-import-direction sweeps below ask the same question of the same list, because
-two subtly different specifier patterns is exactly how a real violation hid
-from one of them.
+ * Module specifiers of a source file: static `import`/`export … from`, dynamic
+ * `import(…)`, and **bare side-effect** `import '…'`. **One owner** — the
+ * reachability walk and both import-direction sweeps below ask the same
+ * question of the same list, because two subtly different specifier patterns
+ * is exactly how a real violation hid from one of them.
+ *
+ * Two ordering/anchoring rules are load-bearing, and neither is decoration —
+ * both were found by mutation, not by reading:
+ *
+ * 1. the side-effect alternative is **first**. With the `from` form first,
+ *    `import './a'` followed later by any `import X from '…'` lets a lazy
+ *    `[\s\S]*?` span the two statements, so the side-effect specifier is
+ *    swallowed by the neighbouring match and never reported;
+ * 2. the `from` form is **line-anchored and may not cross a `;`**. An
+ *    unanchored `(?:import|export)\s+…[\s\S]*?\sfrom` happily starts at
+ *    `export const X = 1;` and bridges to the next `from '…'` in the file
+ *    (the appended probe imported `@portfolio/museum` through a *type-only*
+ *    import, which this boundary deliberately ignores, and was still reported).
+ *    No import/export clause contains a `;` before its `from`, so `[^;]*?` is
+ *    the exact guard.
+ *
+ * `import type` / `export type` are deliberately excluded: this boundary is
+ * about runtime/bundle isolation. Type-only coupling is a different invariant
+ * and is not claimed here.
+ *
+ * Reading specifiers out of source means an import *written inside a comment or
+ * string* is also seen: the boundary asserted is "this tree contains no
+ * specifier that resolves into forbidden code", not "no such import exists at
+ * runtime". Line-anchoring does keep an indented `* import '…'` doc line out.
  */
 const MODULE_SPECIFIER =
-	/(?:import|export)\s+(?!type\b)[\s\S]*?\sfrom\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
+	/\bimport\s+['"]([^'"]+)['"]|^\s*(?:import|export)\s+(?!type\b)[^;]*?\sfrom\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/gm;
 
 function importedSpecifiers(source: string): string[] {
-	return [...source.matchAll(MODULE_SPECIFIER)].map((match) => match[1] ?? match[2] ?? '');
+	return [...source.matchAll(MODULE_SPECIFIER)].map(
+		(match) => match[1] ?? match[2] ?? match[3] ?? ''
+	);
 }
 
 /** The editor's internal tree — `apps/editor/src/lib/editor` — from either app. */
 const EDITOR_INTERNALS = resolve(editorSrc, 'lib/editor');
+
+/** The museum **app** — a separate build the editor must never pull in. */
+const MUSEUM_APP = appSrc;
+
+/**
+ * Does a specifier reach the museum app (`apps/museum/src`)?
+ *
+ * The workspace package name (`@portfolio/museum`) names it outright. A
+ * relative specifier is **resolved** against its importer, so every hop count
+ * lands on `apps/museum/src` and no regex has to enumerate them.
+ */
+function reachesMuseumApp(importer: string, specifier: string): boolean {
+	if (specifier === '@portfolio/museum' || specifier.startsWith('@portfolio/museum/')) {
+		return true;
+	}
+	if (!specifier.startsWith('.')) return false;
+	const resolved = resolve(dirname(importer), specifier);
+	return resolved === MUSEUM_APP || resolved.startsWith(`${MUSEUM_APP}/`);
+}
+
+/** The museum-app specifiers one file imports (empty means clean). */
+function museumAppImports(file: string): string[] {
+	return importedSpecifiers(readFileSync(file, 'utf8')).filter((specifier) =>
+		reachesMuseumApp(file, specifier)
+	);
+}
 
 /**
  * Does a specifier reach the editor's internals?
@@ -148,14 +200,20 @@ describe('visitor import boundary', () => {
  * 2. that shared `$lib/museum` shell stays free of editor internals, because
  *    the visitor build consumes the same components — an editor import there
  *    would pull the whole editor into the public bundle.
+ *
+ * Both directions run the **same** specifier list through a resolved-path
+ * predicate (`reachesEditorInternals` / `reachesMuseumApp`); neither is a text
+ * regex any more. One extractor, one resolution rule, two directions.
  */
 describe('shared museum shell — import direction', () => {
 	it('keeps every editor source free of museum-app imports', () => {
+		// Resolution, not text: the editor's `$lib` is its *own* src, so only the
+		// package name and specifiers that actually land in `apps/museum/src` —
+		// `../…/museum/src/foo`, `./museum/src/foo`, any hop count — are
+		// violations.
 		for (const file of sourceFiles(editorSrc)) {
-			const source = readFileSync(file, 'utf8');
-			expect(source, file).not.toMatch(
-				/(?:from|import\()\s*['"][^'"]*(?:@portfolio\/museum|apps\/museum|museum\/src)/
-			);
+			const offenders = museumAppImports(file);
+			expect(offenders, `${file} imports ${offenders.join(', ')}`).toEqual([]);
 		}
 	});
 
