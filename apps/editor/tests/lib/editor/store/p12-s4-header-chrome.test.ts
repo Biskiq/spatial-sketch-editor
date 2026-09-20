@@ -17,8 +17,10 @@ describe('P12.4 S4 — live header chrome', () => {
 		const liveStart = frame.indexOf('<header class="s4-header"');
 		const live = frame.slice(liveStart, frame.indexOf('</section>', liveStart));
 
-		expect(frame).toContain('<header class="relic-header">');
-		expect(frame).toContain('class="tour-selector"');
+		// The frozen relic header (relic-header + tour-selector, and the relic
+		// branch's own ruler + PreviewControls below) is asserted behaviourally by
+		// `relic-smoke.test.ts` claim 4, which server-renders this frame with a
+		// relic store and fails when the branch stops emitting (T3c).
 		expect(live).toContain('<header class="s4-header">');
 		expect(live).toContain('Previous camera node');
 		expect(live).toContain('Next camera node');
@@ -58,8 +60,8 @@ describe('P12.4 S4 — live header chrome', () => {
 		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
 
 		expect(panel).toContain('<EditorCameraTimelineRuler {store} {viewMode} />');
-		expect(panel).toContain('{#if store.isRelic}');
-		expect(panel).toContain('<EditorCameraPreviewControls {store} />');
+		// The relic branch's PreviewControls mounting is the smoke's claim 4
+		// (rendered, relic store) — see the note in the header test above (T3c).
 		expect(dots).toContain('+ View Key');
 		// Owner 2026-09-07: +View Key renders live-dock-wide (Edge + Sequence,
 		// Plan + 3D) — eligibility gates on disabled, not visibility — so the
