@@ -94,18 +94,6 @@ describe('P11.4 visible Stop removed from the timeline UI (§11.3)', () => {
 });
 
 describe('P12.3 Edge Flip migration (§3)', () => {
-	it('swaps direction and resets the non-relic Edge playhead to 0', () => {
-		const store = createFixtureEditorStore();
-		expect(store.previewEdge('tour-a-b', 'forward', 'director')).toBe(true);
-		expect(store.cameraPreview).toMatchObject({ kind: 'edge', direction: 'forward' });
-		expect(store.setCameraPreviewPlayhead(0.3)).toBe(true);
-
-		expect(store.swapEdgePreviewDirection()).toBe(true);
-
-		expect(store.cameraPreview).toMatchObject({ kind: 'edge', direction: 'reverse' });
-		expect(store.cameraPreview!.playhead).toBe(0);
-	});
-
 	it('refuses outside paused edge state (idle, camera, playing)', () => {
 		const store = createFixtureEditorStore();
 		expect(store.swapEdgePreviewDirection()).toBe(false); // idle

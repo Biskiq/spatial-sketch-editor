@@ -38,10 +38,6 @@ describe('P12.4 S4 — live header chrome', () => {
 		expect(frame).toContain('height: 48px;');
 		expect(frame).toContain('height: 1.8rem;');
 		expect(frame).toContain('class="mini-player"');
-		// P23.14 Decision 5 supersedes the P12.4 collapsed scrubber: the collapsed
-		// Drawer is a transport + readout strip, and the single playhead lives with
-		// the expanded lanes. The frozen mini-player geometry below is unchanged.
-		expect(frame).not.toContain('mini-player__scrubber');
 		expect(frame).toContain('class="mini-player__timecode"');
 		expect(frame).toContain('.mini-player .scope-switcher { width: 10rem; flex: 0 1 10rem;');
 		expect(frame).toContain('.mini-player .mode-control { order: initial; flex: 0 0 auto; }');

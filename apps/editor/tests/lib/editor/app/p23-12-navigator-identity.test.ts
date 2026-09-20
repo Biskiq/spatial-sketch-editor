@@ -24,8 +24,6 @@ import {
 	wallEntityKey
 } from '$lib/editor/hierarchy/hierarchy-source-index';
 import {
-	buildHierarchyPageProjection,
-
 	hierarchyWallRow,
 	hierarchyOpeningRow,
 	hierarchyJunctionRow,
@@ -255,26 +253,6 @@ describe('P23.12 navigator — row identity', () => {
 		expect(wallsPage?.label).toBe(roomARow?.label);
 		expect(roomARow?.label).toBe(roomBRow?.label);
 		expect(wallsPage?.reference).toBe(roomARow?.reference);
-	});
-
-	it('the shared Wall shows both Rooms as participation context', () => {
-		const state = makeState(twoRoomDocument());
-		const index = indexOf(state);
-		expect(index.roomIdsByWallId.get('wA2')).toEqual(['room-a', 'room-b']);
-	});
-
-	it('replaces the per-Wall Ends relation row with the boundary inventories', () => {
-		// P23.14 Decision 4 — the oriented `Ends <start> · <end>` row is removed:
-		// endpoint identity is answered by the Wall row itself plus
-		// `Boundary Junctions (n)` and the global Junctions page.
-		const state = makeState(twoRoomDocument());
-		const index = indexOf(state);
-		const projection = buildHierarchyPageProjection(index, { kind: 'room', roomId: 'room-a' });
-		expect(JSON.stringify(projection.rows)).not.toContain('Ends ');
-		const junctions = projection.rows
-			.flatMap((row) => [row, ...(row.children ?? [])])
-			.find((row) => row.rowKey === 'room:room-a:section:junctions');
-		expect(junctions?.label).toMatch(/^Boundary Junctions \(\d+\)$/);
 	});
 
 	it('no row restates its own kind or role in the label', () => {

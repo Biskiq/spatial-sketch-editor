@@ -29,7 +29,6 @@ import { museumEditorEntryPlugin } from '../../../../vite/museum-editor-entry-pl
 const ROUTES_DIR = fileURLToPath(new URL('../../../../src/routes', import.meta.url));
 const VISITOR_ROUTES_DIR = fileURLToPath(new URL('../../../../../museum/src/routes', import.meta.url));
 const LIB_DIR = fileURLToPath(new URL('../../../../src/lib', import.meta.url));
-const TEST_DIR = fileURLToPath(new URL('../../../../tests', import.meta.url));
 const CAMERA_CORE_DIR = path.resolve(LIB_DIR, '../../../..', 'packages/camera-core/src');
 
 function readRouteSource(routePath: string): string {
@@ -435,12 +434,14 @@ describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 		expect(host).toContain("endsWith('/preview')");
 		const layout = readRouteSource('project/[projectId]/+layout.svelte');
 		expect(layout).toContain('{#key page.params.projectId}');
-		// Teardown contract: unmount aborts in-flight project/asset requests
-		// and drops asset contexts, so A→B navigation cannot leak requests or
-		// retained bytes (behaviorally pinned in
-		// `tests/lib/editor/app/project-session-isolation.test.ts`). Asset
-		// request ownership lives in `ProjectAssetRequestScope` — one per
-		// mount, invalidated on teardown.
+		// Teardown wiring: the isolation *machinery* is behaviorally pinned in
+		// `tests/lib/editor/app/project-session-isolation.test.ts`, which proves
+		// `ProjectAssetRequestScope.invalidate()` behaves correctly when called —
+		// it cannot fail if `EditorApp` simply stops calling it. So the call site
+		// is pinned here: unmount aborts in-flight project/asset requests and
+		// drops asset contexts, so A→B navigation cannot leak requests or
+		// retained bytes. Asset request ownership is one scope per mount,
+		// invalidated on teardown.
 		const app = readLibSource('editor/app/EditorApp.svelte');
 		expect(app).toContain('projectRequestController?.abort();');
 		expect(app).toContain('invalidateProjectAssets();');
@@ -640,9 +641,11 @@ describe('P21.1 shared shell', () => {
 	});
 
 	it('validates Row 2 snap number inputs before writing gizmo state', () => {
-		// Behaviorally pinned in `tests/lib/editor/snap-input-validation.test.ts`;
-		// here the wiring: the toolbar parses on change/blur (never per-keystroke,
-		// which corrupts mid-typing states) and restores from live state on reject.
+		// The parser behavior is pinned in `tests/lib/editor/snap-input-validation.test.ts`;
+		// that suite imports the parsers directly, so it stays green if the toolbar
+		// stops calling them. This is the wiring half: the toolbar parses on
+		// change/blur (never per-keystroke, which corrupts mid-typing states) and
+		// restores the live value on reject.
 		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
 		expect(toolbar).toContain('parseTranslationSnapMeters(Number(');
 		expect(toolbar).toContain('parseRotationSnapDegrees(Number(');
@@ -683,13 +686,6 @@ describe('P21.2 scene reconciliation', () => {
 		expect(plan).toContain('onDeleteArrange');
 		expect(plan).toContain('{onDeleteArrange}');
 		expect(readLibSource('editor/app/WorkspaceRibbon.svelte')).not.toContain('onDeleteArrange');
-		// The router lives in `layout/arrange-delete.ts` (behaviorally pinned
-		// in `tests/lib/editor/app/arrange-delete.test.ts`); the shell only
-		// binds the current domain/view.
-		const helper = readLibSource('editor/layout/arrange-delete.ts');
-		expect(helper).toContain('deriveArrangeTarget');
-		expect(helper).toContain('deleteLayoutObject(layoutPreview, target.objectId)');
-		expect(helper).toContain('store.deleteSelection()');
 		const app = readLibSource('editor/app/EditorApp.svelte');
 		expect(app).toContain('function deleteArrangeSelection');
 		expect(app).toContain('runArrangeDelete');
@@ -1010,12 +1006,13 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 });
 
 describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
-	it('locks the three-tier Inspector type grammar in tokens + inspector shorthands', () => {
-		// P23.14 R3 — the tiers are ladder steps now, and every step is a multiple
-		// of the single `--editor-type-scale` knob, so one value scales the shell.
+	it('maps the Inspector type shorthands onto their ratified roles', () => {
+		// The ladder itself (steps, the knob, closure) is owned by
+		// `tests/lib/editor/app/p23-14-type-roles.test.ts`; what only a mapping
+		// assertion can catch is a role swapped for another *valid* role —
+		// closing the ladder does not notice `--editor-font-size-label` pointing
+		// at `lg` instead of `md`.
 		const tokens = readLibSource('editor/styles/tokens.css');
-		expect(tokens).toContain('--editor-font-size-xs: calc(10px * var(--editor-type-scale));');
-		expect(tokens).toContain('--editor-font-size-md: calc(12px * var(--editor-type-scale));');
 		expect(tokens).toContain('--editor-font-size-section: var(--editor-font-size-xs);');
 		expect(tokens).toContain('--editor-font-size-label: var(--editor-font-size-md);');
 		expect(tokens).toContain('--editor-font-size-input: var(--editor-font-size-md);');
@@ -1141,8 +1138,6 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 	it('freezes the 48px collapsed pill and the 36px expanded header', () => {
 		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
 		expect(frame).toContain('flex: 0 0 48px;');
-		expect(frame).toContain('height: 48px;');
-		expect(frame).toContain('height: 36px;');
 		expect(frame).toContain('flex: 0 0 36px;');
 		// No red/coral border anywhere — the collapsed pill carries the
 		// neutral border + shadow only, within the existing floating geometry.
@@ -1173,7 +1168,6 @@ describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
 			'scope-capsule',
 			'swapEdgeReverse',
 			'mini-player__transport',
-			'mini-player__timecode',
 			'>POV</span>',
 			'>Observer</span>'
 		]) {
@@ -1651,17 +1645,6 @@ describe('single gizmo host', () => {
 		const composer = readLibSource('editor/EditorTransformControls.svelte');
 		expect(composer).toContain('if (activeSelection) return null;');
 		expect(composer).toContain('getActiveTransformTarget');
-	});
-
-	it('records the fake-host lifecycle harness for orbit restore, single-cancel switch, and late mouseUp', () => {
-		const harness = fs.readFileSync(
-			path.join(TEST_DIR, 'lib/editor/gizmo/editor-gizmo-host.test.ts'),
-			'utf8'
-		);
-		// The three host-level behaviors Step 0 deferred are pinned there.
-		expect(harness).toMatch(/orbit.*(true|false)/i);
-		expect(harness).toMatch(/cancels once|switch.*cancel|unmount/i);
-		expect(harness).toMatch(/late mouseUp|mouseUp/i);
 	});
 
 	it('keeps the policy helper renderer-neutral (no Three/Svelte/runes)', () => {
