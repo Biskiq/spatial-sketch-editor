@@ -1,12 +1,14 @@
 /**
- * Heavy lane (T4): the oblique-host projection and noding sweeps.
+ * Heavy lane (T4): the two oblique-host projection sweeps.
  *
  * Moved verbatim out of `p23-6e-extra-angled-plan-integrity.test.ts`, which
- * keeps the cheap representatives in `test:fast`. Every `it` here plans 591
- * independently projected divider positions (two of them walk 591 x-steps and
- * assert the resulting Wall/Room correspondence at each step), so the sweep is
- * the invariant — it is what makes the rounded-projection dust reproducible —
- * and the section belongs in `test:heavy`.
+ * keeps every single-case regression in `test:fast` — including the other three
+ * `it`s that used to share this `describe` (shared-Junction identity, baseline
+ * Junction immobility, out-of-tolerance endpoints). Only these two plan the
+ * same host 591 times: `step` walks 100…690 by hundredths and each step
+ * re-plans and re-asserts the whole Wall/Room correspondence. The sweep is the
+ * invariant — it is what makes the rounded-projection dust reproducible — and
+ * that density is why the section belongs in `test:heavy`.
  */
 /**
  * P23.6e — extra finding: wall-engine integrity on dense, angled plans.
@@ -35,24 +37,21 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	planWallChain,
-	type LayoutDocumentWallFirst,
-	type LayoutVec2
-} from '@portfolio/layout-core';
+import { planWallChain, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import {
 	p,
 	baseDocument,
 	plan,
 	commit,
-	projectToSpan
+	projectToSpan,
+	bottomStart,
+	bottomEnd,
+	twoRoomsWithOneObliqueDivider
 } from '../../helpers/angled-plan-fixtures';
 
 describe('P23.6e regression — projected Wall endpoints node oblique hosts', () => {
 	const topStart = p(0, -3.3142857142857145);
 	const topEnd = p(7, -3.2);
-	const bottomStart = p(0, -0.9142857142857137);
-	const bottomEnd = p(7, -0.9333333333333336);
 
 	function stackedObliqueRooms(): LayoutDocumentWallFirst {
 		const enclosure = planWallChain({
@@ -67,89 +66,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 		expect(document.rooms).toHaveLength(3);
 		return document;
 	}
-
-	function twoRoomsWithOneObliqueDivider(): LayoutDocumentWallFirst {
-		const enclosure = planWallChain({
-			baseline: baseDocument(),
-			points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
-			close: true,
-			role: 'boundary'
-		});
-		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
-		const document = commit(enclosure.document, bottomStart, bottomEnd);
-		expect(document.rooms).toHaveLength(2);
-		return document;
-	}
-
-	it('uses one shared Junction for the projected stem and both host fragments', () => {
-		const document = twoRoomsWithOneObliqueDivider();
-		const start = p(3.37, -4);
-		const end = projectToSpan(p(start[0], -0.92), bottomStart, bottomEnd);
-		const result = plan(document, start, end);
-		expect(result.kind).toBe('success');
-		if (result.kind !== 'success') return;
-
-		const sharedJunctionId = result.endJunctionId;
-		const incidentWalls = result.document.walls.filter(
-			(wall) =>
-				wall.startJunctionId === sharedJunctionId || wall.endJunctionId === sharedJunctionId
-		);
-		const authoredWallIds = new Set(result.authoredWallIds);
-		expect(incidentWalls.filter((wall) => authoredWallIds.has(wall.id))).toHaveLength(1);
-		expect(incidentWalls.filter((wall) => !authoredWallIds.has(wall.id))).toHaveLength(2);
-		expect(
-			result.document.junctions.filter((junction) =>
-				Math.hypot(junction.point[0] - end[0], junction.point[1] - end[1]) <= 1e-9
-			)
-		).toHaveLength(1);
-	});
-
-	it('does not move a reused baseline Junction while noding a near host', () => {
-		const canonicalPoint = p(2, 5e-10);
-		const baseline: LayoutDocumentWallFirst = {
-			...baseDocument(),
-			junctions: [
-				{ id: 'host-a', point: p(0, 0) },
-				{ id: 'host-b', point: p(4, 0) },
-				{ id: 'existing', point: canonicalPoint },
-				{ id: 'old-end', point: p(4, 2) }
-			],
-			walls: [
-				{
-					id: 'host',
-					startJunctionId: 'host-a',
-					endJunctionId: 'host-b',
-					role: 'partition',
-					thickness: 0.1,
-					height: 3,
-					centerline: { kind: 'line' } as const,
-				},
-				{
-					id: 'old-wall',
-					startJunctionId: 'existing',
-					endJunctionId: 'old-end',
-					role: 'partition',
-					thickness: 0.1,
-					height: 3,
-					centerline: { kind: 'line' } as const,
-				}
-			]
-		};
-		const oldWall = structuredClone(baseline.walls[1]);
-		const result = planWallChain({
-			baseline,
-			points: [canonicalPoint, p(2, -2)],
-			close: false,
-			role: 'partition'
-		});
-		expect(result.kind).toBe('success');
-		if (result.kind !== 'success') return;
-		expect(result.document.junctions.find((junction) => junction.id === 'existing')?.point).toEqual(
-			canonicalPoint
-		);
-		expect(result.document.walls.find((wall) => wall.id === 'old-wall')).toEqual(oldWall);
-		expect(result.createdJunctionIds).not.toContain('existing');
-	});
 
 	it('stress-splits one oblique host without false 2→3 correspondence', () => {
 		const document = twoRoomsWithOneObliqueDivider();
@@ -188,36 +104,5 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			expect(result.document.walls, `wall count at x=${rawX}`).toHaveLength(13);
 			expect(result.document.rooms, `Room split at x=${rawX}`).toHaveLength(4);
 		}
-	});
-
-	it('does not connect an endpoint outside Junction-identity tolerance', () => {
-		const baseline: LayoutDocumentWallFirst = {
-			...baseDocument(),
-			junctions: [
-				{ id: 'host-a', point: p(0, 0) },
-				{ id: 'host-b', point: p(4, 1) }
-			],
-			walls: [
-				{
-					id: 'host',
-					startJunctionId: 'host-a',
-					endJunctionId: 'host-b',
-					role: 'boundary',
-					thickness: 0.2,
-					height: 3,
-					centerline: { kind: 'line' } as const,
-				}
-			]
-		};
-		const normalLength = Math.hypot(-1, 4);
-		const normal = p(-1 / normalLength, 4 / normalLength);
-		const midpoint = p(2, 0.5);
-		const offset = (amount: number): LayoutVec2 =>
-			p(midpoint[0] + normal[0] * amount, midpoint[1] + normal[1] * amount);
-		const result = plan(baseline, offset(1), offset(2e-9));
-		expect(result.kind).toBe('success');
-		if (result.kind !== 'success') return;
-		expect(result.splitWallIds).toHaveLength(0);
-		expect(result.document.walls).toHaveLength(2);
 	});
 });

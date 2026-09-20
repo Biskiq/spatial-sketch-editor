@@ -90,7 +90,9 @@ export const HEAVY_FILES: string[] = [
 	// progress grid per fixture (~5.0s). The behavioral suite (constants,
 	// easing, path construction, guard repairs, sampling) stays fast.
 	'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts',
-	// 591 independently projected divider positions per `it` (~3.4s).
+	// The two oblique-host sweeps: 591 independently projected divider
+	// positions each (~3.4s). The sibling single-case regressions of the same
+	// `describe` stay in `test:fast`.
 	'tests/lib/layout/angled-plan-noding-sweeps.test.ts',
 	// Compiling the small/medium tiers and the 1,000-room tier (~2.9s).
 	'tests/lib/layout/layout-scale-compile.test.ts',

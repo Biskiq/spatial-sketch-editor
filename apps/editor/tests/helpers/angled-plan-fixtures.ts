@@ -3,13 +3,19 @@
  * suite (`angled-plan-noding-sweeps.test.ts`) and the behavioral suite
  * (`p23-6e-extra-angled-plan-integrity.test.ts`) share one owner for the
  * document builders instead of duplicating them across lanes.
+ *
+ * `bottomStart`/`bottomEnd` and `twoRoomsWithOneObliqueDivider` are shared: the
+ * behavioral suite's "one shared Junction" regression and the heavy lane's
+ * 591-step 2→3 sweep both build on the same oblique host.
  */
 
+import { expect } from 'vitest';
 import {
 	buildCorrespondenceComponents,
 	createEmptyWallFirstLayoutDocument,
 	extractBoundaryCandidateFaces,
 	interiorWitness,
+	planWallChain,
 	planWallSegment,
 	roomBoundaryPolygon,
 	type LayoutDocumentWallFirst,
@@ -51,6 +57,24 @@ export function projectToSpan(point: LayoutVec2, start: LayoutVec2, end: LayoutV
 	const squared = dx * dx + dz * dz;
 	const t = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared;
 	return [start[0] + dx * t, start[1] + dz * t];
+}
+
+/** The oblique divider whose rounded projection dust the 2→3 sweep walks. */
+export const bottomStart = p(0, -0.9142857142857137);
+export const bottomEnd = p(7, -0.9333333333333336);
+
+/** Two Rooms divided by that oblique Wall — the shape the 2→3 regression needs. */
+export function twoRoomsWithOneObliqueDivider(): LayoutDocumentWallFirst {
+	const enclosure = planWallChain({
+		baseline: baseDocument(),
+		points: [p(0, -4), p(7, -4), p(7, 2), p(0, 2)],
+		close: true,
+		role: 'boundary'
+	});
+	if (enclosure.kind !== 'success') throw new Error('enclosure failed');
+	const document = commit(enclosure.document, bottomStart, bottomEnd);
+	expect(document.rooms).toHaveLength(2);
+	return document;
 }
 
 /** Room ↔ face correspondence of a document against its own faces. */
