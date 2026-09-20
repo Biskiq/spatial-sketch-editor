@@ -842,13 +842,18 @@ docs commit.
 The core review rule (same feature ≠ same defect) was applied mechanically where
 it could be: a **duplicate detector** parsed every `toContain`/`toMatch` in
 `contracts.test.ts` with its polarity and source expression, then searched every
-other test file for the *same literal with the same polarity*. That is the same
-defect by construction — the string leaving that one source file. It reported
+other test file for the *same literal with the same polarity*. It reported
 **74/716** assertions duplicated elsewhere; after adjudicating generic literals
 that legitimately recur in unrelated components (`pointer-events: none`,
 `aria-hidden="true"`, `<button`, `selectLayout`), **49 assertions were pruned**.
-Every other assertion **moved verbatim** — nothing was rewritten, so no moved
-test lost sensitivity.
+
+> **Standard, corrected in §M.2 (post-review).** Same source expression + same
+> asserted value/pattern + same polarity identifies an *assertion-level duplicate
+> candidate*. Deletion additionally requires equivalent execution conditions,
+> source root and required lane coverage. The detector output alone was treated
+> as sufficient at the time, which is exactly the gap the §M audit closed: of the
+> 46 statements that turned out to have no identical twin at all, 3 were
+> genuinely lost and were restored.
 
 Infrastructure added, and only because it deletes duplication: `tests/helpers/lib-source.ts`
 owns the `$lib`/route/`readAllSourceFiles` readers that five files had each
@@ -883,8 +888,10 @@ itself is gone, so net file delta is +1.
 | `/museum` camera-plan-free | `museum/visitor-import-boundary.test.ts` |
 
 **Dropped, with the owner named**: `relic isolation` and the two relic route
-its (relic-smoke claims 1/6); the contracts ghost/card sketch (13 assertions
-identical to `p23-13-empty`, the ghost owner).
+its (relic-smoke claims 1/6); the contracts ghost/card sketch. **Correction
+(§M.2):** only 3 of that sketch's 21 statements were actually identical to
+`p23-13-empty`; 6 more were covered there by equivalent-or-stronger forms, but
+3 had no successor at all and were restored in the review commit.
 
 ### L.3 T3b — the four gaps (additive)
 
@@ -937,7 +944,7 @@ is the kind of thing a mechanical sweep hides.
 | tests | 4,557 | **4,560** |
 | test LOC | 114,665 | **114,729** (+64, +0.06%) |
 | `contracts.test.ts` LOC | 2,716 | **0 (deleted)** |
-| source-reading test files | 77 | **74** |
+| source-reading test files | 77 | **74** — *row superseded: re-measured with explicit definitions in §M.5* |
 | assertions duplicated elsewhere (detector) | 74 | **0 for the dismantled set** |
 | historical slice-named files removed/touched | — | `contracts` removed; `p11-s4`, `p12-s3`, `p12-s4`, `p21.6-slice-c`, `p23-13-surrounds` edited in place |
 
@@ -972,6 +979,8 @@ in §J.4.
   caveat §H; the fast lane also carries 113 more tests than its pre-T3 state).
 - Mutations: 9 T3b defers + 4 T3c owner-equivalence checks, all self-restored;
   after every batch `git status` showed only intended test edits.
+- Review pass (§M) re-measured this head twice more on the same machine and added
+  one sensitivity mutation per restored assertion.
 
 ### L.9 What T3 did **not** finish (carried forward)
 
@@ -991,3 +1000,224 @@ in §J.4.
 - **RELIC_ONLY pins kept per §L.5** stay until a real successor exists.
 - **No GitHub status checks** are attached to the branch head: all verification
   in this report is locally measured.
+
+## M. Execution log — T3 review validation (EXECUTED)
+
+Post-review pass on the already-pushed T3 head `26c57fb`. Three questions: is the
+runtime claim apples-to-apples, do the 49 pruned assertions really have
+equivalent success, and is the arch classification honest. The first two produced
+findings; the third produced one artifact. **No production file was touched**
+(`git status` under `apps/editor/src` was clean after every mutation), and no
+pushed commit was rewritten.
+
+### M.1 Same-machine runtime comparison
+
+Method: `git worktree add --detach .t3-baseline 51c3586`, with the root
+`node_modules` and the two `apps/*/.svelte-kit` directories symlinked in (the
+worktree has no install). The comparison isolates *test* architecture: the whole
+`51c3586..HEAD` diff is `tests/**`, `test-lanes.ts` and docs — T3 changed no
+production file, so both revisions execute identical product code. Same machine,
+`node v26.7.0` / `npm 11.19.0`, same lane configs, default worker/concurrency,
+sequential runs. Two runs per lane per revision, three for the amended head.
+
+| Lane | Revision | Files | Tests | Wall (s) | Median |
+|---|---|---|---|---|---|
+| fast | `51c3586` | 279 | 4,166 | 33.62 · 29.16 | **31.4** |
+| fast | T3 head `26c57fb` | 279 | 4,279 | 38.73 · 39.79 | **39.3** |
+| fast | + this pass | 279 | 4,280 | 37.11 · 35.25 · 39.75 | **37.1** |
+| arch | `51c3586` | 22 | 362 | 8.37 · 9.98 | **9.2** |
+| arch | T3 head `26c57fb` | 23 | 252 | 9.92 · 9.61 | **9.8** |
+| arch | + this pass | 23 | 253 | 8.48 · 9.39 · 9.37 | **9.4** |
+| full | `51c3586` | 307 | 4,557 | 34.43 · 41.29 | **37.9** |
+| full | T3 head `26c57fb` | 308 | 4,560 | 41.32 · 46.09 | **43.7** |
+| full | + this pass | 308 | 4,562 | 36.73 (`npm test` 37.02) | **36.7** |
+
+Phase detail (one representative run per revision, seconds):
+
+| Lane | Revision | transform | collect | tests | prepare |
+|---|---|---|---|---|---|
+| fast | `51c3586` | 13.83 | 104.39 | 38.45 | 14.84 |
+| fast | + this pass | 17.01 | 118.91 | 39.53 | 16.36 |
+| arch | `51c3586` | 6.50 | 16.29 | 0.63 | 0.98 |
+| arch | + this pass | 6.95 | 17.71 | 0.76 | 1.27 |
+| full | `51c3586` | 18.31 | 116.77 | 49.40 | 13.47 |
+| full | + this pass | 18.35 | 120.74 | 54.43 | 14.63 |
+
+**Reading.**
+
+- **`fast` +5.7s median is composition, not accidental work.** The lane carries
+  4,280 tests where it carried 4,166: the 113-assertion behavioural core that
+  used to hide inside the `arch`-classified accumulator plus the one restored §8
+  test. Phase-wise the growth is module-graph `transform`/`collect` over 279
+  files plus test bodies; nothing was added to `fast` except the restored test,
+  and no repeated work was introduced there.
+- **`arch` did not regress.** Both revisions' arch runs span 8.4–10.0s; the
+  median moved +0.2s, inside the baseline's own spread. The lane is
+  transform/collect/prepare-bound over 23 source-reading files, with **~0.8s of
+  cumulative test-body time**. Per-file JSON (single samples) shows the retired
+  accumulator costing 97ms and the two new homes costing 33ms total, while the
+  largest same-file deltas are +96ms and +64ms on files whose bodies did not
+  change and −63ms on another — run-to-run variance exceeds every delta.
+- **No accidental repeated work to cache.** The arch lane has 6
+  `readAllSourceFiles(...)` callsites (8 suite-wide) over 6 distinct
+directories — one tree walk per `it` that needs one. A per-process source cache
+  would be behaviour-neutral, but the measured cost does not justify it; recorded
+  for T4/T6 rather than changed here.
+- **`full` tracks `fast`** (+arch/heavy/perf unchanged), and its run-to-run
+  spread on this machine is ±5s (baseline 34.4–41.3s).
+
+### M.2 Duplicate-removal standard — amended, then audited
+
+The §L.1 line "same defect by construction" was **too strong** and is corrected
+to:
+
+> Same source expression + same asserted value/pattern + same polarity
+> identifies an *assertion-level duplicate candidate*. Deletion additionally
+> requires equivalent execution conditions, source root and required lane
+> coverage.
+
+Audit performed (statement-level, so wrapped/multi-line assertions count whole):
+all **944** `expect` statements of the pre-T3 accumulator were extracted with
+balanced-paren scanning and matched against the current tree by
+whitespace-normalised statement identity. **46 statements in 18 `it`s had no
+identical twin at all.** A receiver-blind triage (same matcher + same argument,
+local variable ignored) showed **31** are covered by an identical assertion in
+their durable home — the split renames the receiver (`full`→`live`,
+`relicApp`→`source`, `navigator`→`navigatorSource`, `frame`→`panel`) — leaving
+**15** to review by hand. Of those, **12 are covered by strictly stronger
+proof** and **3 were genuinely lost**.
+
+Execution-condition checks (what the detector could not answer):
+
+- **nothing is skipped or conditional**: no `.skip`/`.only()` was added anywhere;
+  the only conditional skip in the suite is the pre-existing perf
+  `describe.skipIf(!runFullBench)`, and both revisions report exactly one skipped
+  test;
+- **same source root**: `tests/helpers/lib-source.ts` resolves
+  `apps/editor/src/lib`, `apps/editor/src/routes` and
+  `packages/camera-core/src` from its own location — byte-identical roots to the
+  accumulator's five private copies (which it replaced);
+- **same lane lifecycle point or better**: `contracts.test.ts` was wholly in
+  `arch`; its behavioural core now runs in `fast` (more often), and no moved test
+  ended up in a lane that runs less often;
+- **same polarity and value**: verified per statement by the triage (matcher +
+  argument identity), not by the bare literal.
+
+### M.3 Restored coverage (this pass)
+
+| Deleted assertion | Why its successor did not cover it | Restoration |
+|---|---|---|
+| `viewport` mounts `<PlanEmptyGhost …>` | nothing asserted the viewport renders the sketch; the gate's consumer is not its mount | restored in `p23-13-empty` with its `{#if ghostVisible}` guard |
+| `planEmpty && interaction.planViewMode === 'layout' && !ghostDismissed` | only the gate's *consumer* was pinned, so a rewrite of the derivation to `planEmpty` alone stayed green | restored with `const ghostVisible = $derived(` |
+| `ghost` contains `#adb6bd` (neutral sketch ink) | dropped with the sketch unit | restored as a **compiled-stylesheet** read (`componentRule(componentPath('editor/layout/PlanEmptyGhost.svelte'), '.ghost-corner').stroke`) — the §K.1 A-series mechanism, not source text |
+| `panel` contains `{#if store.isRelic}` / `<EditorCameraPreviewControls {store} />` | the smoke proved the relic branch *renders* the transport but never that a live shell cannot | closed in `relic-smoke`: a **live store with a live preview** must not emit `Camera preview transport` / `Edge playhead`, while the relic on the same API still does |
+
+### M.4 The 12 covered without restoration
+
+| Deleted statement(s) | Covering proof |
+|---|---|
+| panel mounts `<EditorCameraPreviewControls {store} />` (2 sites) | relic-smoke claim 4 renders it; **mutation**: unmounting all three mounts fails exactly that test (1 failed \| 14 passed) |
+| virtual entry resolves to `MuseumEditorApp.svelte` | relic-smoke resolves through the **real plugin** and asserts the default-export regex — stronger than a substring |
+| relic route `not.toContain('EditorApp')` (2 units) | relic-smoke 1‑2 + `editor-entry-boundary` route shape |
+| relic sidebar/tree `not.toContain('UnifiedProjectTree' …)` (3, incl. the empty loop) | relic-smoke frozen-import-surface sweep (4 files × 3 tokens); **mutation**: injecting `UnifiedProjectTree` into `EditorSceneTree.svelte` fails exactly that test |
+| relic-only tour selector (`{#if store.isRelic}`) | relic-smoke claim 4/6: `tour-selector` renders on the relic and is absent on live |
+| `full.setWorkspace('layout')` / `currentWorkspace` | relic-smoke claim 6 asserts the same pair on the live store (`live`) plus the relic refusal |
+| ghost copy + `10.0m`/`8.0m` negatives | `p23-13-empty` copy agreement, and the dimension negatives as `10.0`/`8.0` **prefixes** (wider) |
+| L507, L879, L973, L1190, L1377, L1902, L2216, L2326, L2412 | identical matcher + argument in the durable home (`p23-14-control-ownership`, `p23-14-camera-drawer`, `p23-6e-hierarchy-projection`, `p21.6-slice-b`, `plan-render-boundary`, …) |
+
+### M.5 Metrics, re-measured with explicit definitions
+
+Definitions: files = `find tests -name '*.test.ts'`; tests = vitest totals; LOC =
+all `tests/**/*.ts`; `.toContain` = occurrences of `.toContain(`/`.not.toContain(`;
+"reads production source" = contains `src/lib`/`src/routes`/`helpers/lib-source`;
+"read-source helper" = contains `readLibSource`/`readRouteSource`/
+`readAllSourceFiles`/`readCameraCoreSource`/`sourceOf(`.
+
+| Metric | `51c3586` | this head |
+|---|---|---|
+| test files | 307 | **308** |
+| tests | 4,557 (1 skipped) | **4,562** (1 skipped) |
+| test LOC | 116,309 | **116,487** (+178) |
+| `.toContain`/`.not.toContain` occurrences | 2,471 | **2,399** (−72) |
+| `.toMatch` occurrences | 237 | **239** |
+| `expect(` occurrences | 17,220 | **17,156** (−64) |
+| files reading production source | 68 | **81** |
+| files using a read-source helper | 32 | **51** |
+| `contracts.test.ts` LOC | 2,716 | **0** |
+| historical slice-named test files | 27 | **27** |
+
+**Honest reading, and a correction.** The §L.6 row "source-reading test files
+77 → 74" is **not reproducible** by any definition tried here; by the definitions
+above the count went **up**, because the accumulator's source pins were
+distributed into ~20 destination files which now import the shared reader. That
+is one reader where there were five private copies, but more files touch source
+than before. What actually moved in the consolidating direction: the 2,716-line
+accumulator → 0, source-shape assertions −72, `expect` statements −64, arch test
+count 362 → 253, and the behavioural core back in `fast`. File and LOC counts are
+flat-to-+1 because moving proof neither deletes nor shortens it — T4 (heavy
+splitting) and T5 (renames) are where the file count and LOC can fall.
+
+### M.6 Arch classification re-check
+
+Both new homes were re-read line by line. Everything in them is a mount,
+ownership, absence or isolation claim: the entry file's route-shape and
+EditorApp/teardown wiring (`{#key}`, one keyed session, one place that constructs
+`ProjectAssetRequestScope`), and the gizmo file's unique-constructor,
+forbidden-mutator, renderer-neutrality and durable-absence sweeps. The entry
+file's copy/label assertions (`Start creating`, `signIn('projects')`, `Spatial`,
+`/auth/login?intent=`) are *evidence for* those boundary claims — the root route
+stays a landing page and Project Row has exactly one destination — not standalone
+chrome, so they stay with the unit they prove. Nothing ordinary-deterministic was
+left behind, and nothing unconditional moved into `fast`: the fast-lane additions
+are shell-behaviour/chrome presence whose invariant is rendered/state presence,
+and every T3b pin landed in an arch file or an ARCH-listed file.
+
+One artifact was found and fixed: the entry file's relic-negative loop had been
+flattened to an **empty `for` body** when the accumulator was dismantled. Its
+invariant is covered by the smoke's import-surface sweep, so the dead loop was
+removed with a comment recording where the coverage lives.
+
+### M.7 Amendments in this pass
+
+| File | Change |
+|---|---|
+| `tests/lib/layout/p23-13-empty.test.ts` | +1 `it` restoring the 3 lost §8 assertions (mount, gate, neutral ink via compiled CSS) |
+| `tests/lib/editor/app/relic-smoke.test.ts` | +1 `it` closing the live-shell half of the retired panel pins |
+| `tests/lib/editor/app/editor-entry-boundary.test.ts` | removed the dropped empty-loop body; comment points at the new owner |
+| this document | §M, plus the §L.1/§L.2/§L.6 corrections above |
+
+### M.8 Mutation / sensitivity evidence (all self-restored)
+
+| Mutation | Test that fails |
+|---|---|
+| unmount `<PlanEmptyGhost …>` in the viewport | restored §8 mount test |
+| drop the Plan-view term from the `ghostVisible` derivation | same test |
+| re-tint `.ghost-corner` `#adb6bd` → `#3b82f6` | same test (compiled-CSS read) |
+| de-gate the Panel's `store.isRelic` branches (`{#if true}`) | new live-preview isolation test |
+| unmount all three `<EditorCameraPreviewControls {store} />` mounts | relic-smoke claim 4 |
+| inject `UnifiedProjectTree` into `EditorSceneTree.svelte` | relic-smoke frozen-import-surface sweep |
+
+After every mutation the file was restored and `git diff apps/editor/src` was
+empty; no mutation code reached the commit.
+
+### M.9 T3 completion status
+
+- **T3a — complete.** The accumulator is deleted, its behavioural core is in
+  `test:fast`, its two unconditional boundaries have named arch homes.
+- **T3b — complete.** The four C.4 gaps are pinned (9 tests, mutation-proved).
+- **T3c — complete to the current testing-mechanism boundary.** Every deletion
+  that shipped is now either behaviourally re-proved (5 units, two of them
+  mutation-verified in this pass) or retained with its reason in place (§L.5).
+  DOM/event-dependent shell migration (Spine/View-Bar/Tray ownership, menu-row
+  composition, status rail) stays deferred per §L.9 — no new production seam was
+  introduced to escape it.
+- **No T4/T5/T6 work has started.**
+
+### M.10 Final verification (after the amendments)
+
+- `npm run check`: **0 errors, 0 warnings**.
+- `npm run test:fast` 279 / 4,280 · `test:arch` 23 / 253 · `test:heavy` 1 / 6 ·
+  `test:perf` 5 / 23 (1 skip).
+- `npm run test:full` ≡ `npm test`: **308 files, 4,562 tests** (4,561 pass, 1 skip).
+- Partition exact and disjoint: 4,280 + 253 + 6 + 23 = 4,562.
+- Only intended test edits in the tree; mutations reverted; no production change.
