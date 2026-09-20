@@ -51,26 +51,6 @@ describe('layout-scale-fixtures', () => {
 			expect(kinds.size).toBeGreaterThan(2);
 		}
 	});
-
-	it('passes the strict codec and compiles with zero blocking issues at small and medium scales', () => {
-		for (const tier of ['small', 'medium'] as const) {
-			const document = buildScaleFixture(SCALE_FIXTURE_SEEDS[tier]);
-			const validated = validateLayoutDocument(document);
-			expect(validated.success, `codec rejected ${tier}: ${JSON.stringify(validated.success ? [] : validated.issues)}`).toBe(true);
-
-			const { issues } = compileLayoutGeometry(document);
-			const blocking = issues.filter((issue) => issue.severity !== 'warning');
-			expect(blocking, `blocking issues at ${tier}: ${JSON.stringify(blocking.slice(0, 3))}`).toEqual([]);
-		}
-	}, 30000);
-
-	it('compiles the 1,000-room fixture with zero blocking issues', () => {
-		const document = buildScaleFixture(SCALE_FIXTURE_SEEDS.large);
-		const { geometry, issues } = compileLayoutGeometry(document);
-		const blocking = issues.filter((issue) => issue.severity !== 'warning');
-		expect(blocking, `blocking issues: ${JSON.stringify(blocking.slice(0, 3))}`).toEqual([]);
-		expect(geometry.rooms).toHaveLength(SCALE_FIXTURE_SEEDS.large.roomCount);
-	}, 60000);
 });
 
 function roomCountFor(tier: ScaleFixtureTier): number {

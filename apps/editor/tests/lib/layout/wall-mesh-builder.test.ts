@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
 import { assertWindingAgreesWithNormals, buildRoomWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	g1DocumentWithRooms,
 	g1LShapedDocument,
 	g1LineRectangleDocument,
-	g1LineSegments,
 	g1MultipleOpeningsDocument,
 	g1Opening,
 	g1ProfileMatrixDocument,
@@ -17,41 +12,11 @@ import {
 import type { CompiledRoom, CompiledWall } from '$lib/layout/layout-geometry-types';
 import type { CurveSample } from '$lib/layout/layout-geometry-curve';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
-
-function compileRoom(document: ReturnType<typeof g1LineRectangleDocument>): CompiledRoom {
-	const geometry = compileLayoutGeometry(document).geometry;
-	const room = geometry.rooms[0];
-	if (!room) throw new Error('fixture compiled to no room');
-	return room;
-}
-
-/** Assert every geometric edge (by quantized position) is shared by exactly `expected` triangles. */
-function assertEdgeMultiplicity(mesh: IndexedWallMesh, expected: number): void {
-	const grid = 1e-4;
-	const id = new Map<string, number>();
-	let next = 0;
-	function vid(index: number): number {
-		const x = mesh.positions[index * 3]!;
-		const y = mesh.positions[index * 3 + 1]!;
-		const z = mesh.positions[index * 3 + 2]!;
-		const key = `${Math.round(x / grid)},${Math.round(y / grid)},${Math.round(z / grid)}`;
-		let value = id.get(key);
-		if (value === undefined) {
-			value = next++;
-			id.set(key, value);
-		}
-		return value;
-	}
-	const edges = new Map<string, number>();
-	for (let i = 0; i < mesh.indices.length; i += 3) {
-		const tri = [vid(mesh.indices[i]!), vid(mesh.indices[i + 1]!), vid(mesh.indices[i + 2]!)];
-		for (const [a, b] of [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]] as const) {
-			const key = a < b ? `${a},${b}` : `${b},${a}`;
-			edges.set(key, (edges.get(key) ?? 0) + 1);
-		}
-	}
-	for (const [key, count] of edges) expect(count, `edge ${key}`).toBe(expected);
-}
+import {
+	compileRoom,
+	assertEdgeMultiplicity,
+	assertFinite
+} from '../../helpers/wall-mesh-fixtures';
 
 /** Count every geometric edge (by quantized position) by how many triangles own it. */
 function edgeMultiplicityCounts(mesh: IndexedWallMesh): Record<number, number> {
@@ -80,87 +45,9 @@ function edgeMultiplicityCounts(mesh: IndexedWallMesh): Record<number, number> {
 	return counts;
 }
 
-/** Assert every geometric edge is shared by exactly 1 or 2 triangles (manifold, possibly with boundary). */
-function assertManifoldWithBoundary(mesh: IndexedWallMesh): void {
-	const grid = 1e-4;
-	const id = new Map<string, number>();
-	let next = 0;
-	function vid(index: number): number {
-		const x = mesh.positions[index * 3]!;
-		const y = mesh.positions[index * 3 + 1]!;
-		const z = mesh.positions[index * 3 + 2]!;
-		const key = `${Math.round(x / grid)},${Math.round(y / grid)},${Math.round(z / grid)}`;
-		let value = id.get(key);
-		if (value === undefined) { value = next++; id.set(key, value); }
-		return value;
-	}
-	const edges = new Map<string, number>();
-	for (let i = 0; i < mesh.indices.length; i += 3) {
-		const tri = [vid(mesh.indices[i]!), vid(mesh.indices[i + 1]!), vid(mesh.indices[i + 2]!)!];
-		for (const [a, b] of [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]] as const) {
-			const key = a < b ? `${a},${b}` : `${b},${a}`;
-			edges.set(key, (edges.get(key) ?? 0) + 1);
-		}
-	}
-	for (const [key, count] of edges) {
-		expect(count, `edge ${key}`).toBeGreaterThanOrEqual(1);
-		expect(count, `edge ${key}`).toBeLessThanOrEqual(2);
-	}
-}
 
-/** Assert no vertex lies in the interior of a non-incident geometric edge (no T-junctions). */
-function assertNoTjunctions(mesh: IndexedWallMesh): void {
-	const grid = 1e-4;
-	const points: [number, number, number][] = [];
-	const id = new Map<string, number>();
-	function vid(index: number): number {
-		const x = mesh.positions[index * 3]!;
-		const y = mesh.positions[index * 3 + 1]!;
-		const z = mesh.positions[index * 3 + 2]!;
-		const key = `${Math.round(x / grid)},${Math.round(y / grid)},${Math.round(z / grid)}`;
-		let value = id.get(key);
-		if (value === undefined) { value = points.length; id.set(key, value); points.push([x, y, z]); }
-		return value;
-	}
-	const edges = new Map<string, [number, number]>();
-	for (let i = 0; i < mesh.indices.length; i += 3) {
-		const tri = [vid(mesh.indices[i]!), vid(mesh.indices[i + 1]!), vid(mesh.indices[i + 2]!)!];
-		for (const [a, b] of [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]] as const) {
-			const key = a < b ? `${a},${b}` : `${b},${a}`;
-			if (!edges.has(key)) edges.set(key, [Math.min(a, b), Math.max(a, b)]);
-		}
-	}
-	for (let v = 0; v < points.length; v += 1) {
-		const p = points[v]!;
-		for (const [a, b] of edges.values()) {
-			if (a === v || b === v) continue;
-			if (pointOnSegment(p, points[a]!, points[b]!)) {
-				throw new Error(`T-junction: vertex ${v} (${p.join(',')}) lies on edge ${a}–${b}`);
-			}
-		}
-	}
-}
 
-function pointOnSegment(p: [number, number, number], a: [number, number, number], b: [number, number, number]): boolean {
-	const abx = b[0] - a[0];
-	const aby = b[1] - a[1];
-	const abz = b[2] - a[2];
-	const len2 = abx * abx + aby * aby + abz * abz;
-	if (len2 <= 1e-12) return false;
-	const t = ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby + (p[2] - a[2]) * abz) / len2;
-	if (t < -1e-3 || t > 1 + 1e-3) return false;
-	const cx = a[0] + t * abx - p[0];
-	const cy = a[1] + t * aby - p[1];
-	const cz = a[2] + t * abz - p[2];
-	const tol = 1e-3;
-	return cx * cx + cy * cy + cz * cz <= tol * tol;
-}
 
-function assertFinite(mesh: IndexedWallMesh): void {
-	for (const value of mesh.positions) expect(Number.isFinite(value)).toBe(true);
-	for (const value of mesh.normals) expect(Number.isFinite(value)).toBe(true);
-	for (const value of mesh.uvs) expect(Number.isFinite(value)).toBe(true);
-}
 
 function lintelMinY(mesh: IndexedWallMesh, openingId: string): number {
 	let min = Infinity;
@@ -220,14 +107,6 @@ describe('buildRoomWallMesh', () => {
 		expect(mesh.bounds.max[1]).toBeCloseTo(3, 3);
 	});
 
-	it('builds a watertight 2-manifold with boundary around opening fixtures (no T-junctions)', () => {
-		for (const document of [g1LineRectangleDocument(), g1LShapedDocument(), g1MultipleOpeningsDocument(), g1ProfileMatrixDocument()]) {
-			const room = compileRoom(document);
-			const mesh = buildRoomWallMesh(room).mesh!;
-			assertManifoldWithBoundary(mesh);
-			assertNoTjunctions(mesh);
-		}
-	});
 
 	it('keeps collinear wall junctions as separate vertices when wall-local u resets', () => {
 		// Closed rectangle whose bottom edge is two COLLINEAR walls A (0,0)->(2,0)
@@ -347,11 +226,6 @@ describe('buildRoomWallMesh', () => {
 		expect(() => assertWindingAgreesWithNormals(flipped)).toThrow(/winds opposite/);
 	});
 
-	it('keeps the builder free of Svelte, DOM, and Three imports', () => {
-		const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/lib/layout/wall-mesh-builder.ts'), 'utf8');
-		expect(source).not.toMatch(/from\s+['"](three|svelte|@threlte|\$app)['"]/);
-		expect(source).not.toMatch(/\$lib\/editor|\$lib\/museum|\bdocument\.|\bwindow\./);
-	});
 
 	it('produces metric, floor-anchored UVs', () => {
 		const room = compileRoom(g1LineRectangleDocument());
@@ -364,36 +238,7 @@ describe('buildRoomWallMesh', () => {
 		}
 	});
 
-	it('builds watertight beveled corners past the miter limit (forced bevel)', () => {
-		// A 90° corner's miter apex sits at thickness/2 · √2 ≈ 0.113; miterLimit 1
-		// forces every corner into the bevel path. The bridge must close the wedge
-		// (front chamfer + caps) while every wall stays on its own offset line.
-		const room = compileRoom(g1DocumentWithRooms([g1RectangleRoom('room-bev', 0, 0, 6, 4)]));
-		const result = buildRoomWallMesh(room, { miterLimit: 1, assertWinding: true });
-		expect(result.issues).toEqual([]);
-		const mesh = result.mesh!;
-		assertFinite(mesh);
-		assertEdgeMultiplicity(mesh, 2);
-		// Bridge faces are metadata-only: they must not leak into sectionToRange
-		// (the reviewer's contract) nor create a second material group.
-		expect(mesh.sectionToRange.length).toBe(4);
-		expect(mesh.materialGroups.map((group) => group.surfaceKey)).toEqual(['side']);
-		// Bridge geometry is still reachable through the shared wallRanges entry.
-		expect(mesh.wallRanges.some((wall) => wall.ranges.length > 1)).toBe(true);
-	});
 
-	it('bevels acute and concave (reflex) corners watertight', () => {
-		// Rhombus: acute ~63° corners (long miter apexes) — beveled at limit 1.
-		// Notch: a V-notch with a reflex corner whose outer apex is long — beveled.
-		for (const document of [rhombusDocument(), notchDocument()]) {
-			const room = compileRoom(document);
-			const result = buildRoomWallMesh(room, { miterLimit: 1, assertWinding: true });
-			expect(result.issues).toEqual([]);
-			const mesh = result.mesh!;
-			assertFinite(mesh);
-			assertEdgeMultiplicity(mesh, 2);
-		}
-	});
 
 	it('keeps collinear continuations mitered (no bevel, no fold)', () => {
 		// Two collinear walls meeting at (2,0): the junction continues straight.
@@ -430,94 +275,10 @@ describe('buildRoomWallMesh', () => {
 		expect(result.issues.length).toBeGreaterThan(0);
 	});
 
-	it('welds endpoint door openings at mitered and beveled corners', () => {
-		// Door at offset 0 (the wall's start) and a second door meeting the same
-		// corner from the adjacent wall (both-open). Both the mitered and the
-		// beveled (miterLimit 1) variants must be edge-clean manifolds.
-		const single = g1DocumentWithRooms([
-			g1RectangleRoom('room-d0', 0, 0, 6, 4, [g1Opening('door-0', 'room-d0:wall:0', 'door', 0, 0.9, 2.1, 0)])
-		]);
-		const both = g1DocumentWithRooms([
-			g1RectangleRoom('room-vb', 0, 0, 6, 4, [
-				g1Opening('door-a', 'room-vb:wall:0', 'door', 5.1, 0.9, 2.1, 0),
-				g1Opening('door-b', 'room-vb:wall:1', 'door', 0, 0.9, 2.1, 0)
-			])
-		]);
-		for (const [document, options] of [
-			[single, undefined],
-			[single, { miterLimit: 1 }],
-			[both, { miterLimit: 1 }]
-		] as const) {
-			const room = compileRoom(document);
-			const result = buildRoomWallMesh(room, { assertWinding: true, ...options });
-			expect(result.issues).toEqual([]);
-			const mesh = result.mesh!;
-			assertFinite(mesh);
-			assertEdgeMultiplicity(mesh, 2);
-		}
-	});
 
-	it('closes sloped arch undersides at band crossings (profile matrix is fully watertight)', () => {
-		const room = compileRoom(g1ProfileMatrixDocument());
-		const result = buildRoomWallMesh(room, { assertWinding: true });
-		expect(result.issues).toEqual([]);
-		const mesh = result.mesh!;
-		assertFinite(mesh);
-		// Arch/band intersections + triangle collapse: every geometric edge is
-		// shared by exactly two triangles, even with a floor-level door and
-		// rounded/pointed windows whose arches cross the room breakpoints.
-		assertEdgeMultiplicity(mesh, 2);
-	});
 
-	it('merges a both-open miter corner into one void (no interior jamb)', () => {
-		// Two equal doors meeting at a shared miter corner form a single L-shaped
-		// void: both corner jambs are interior and must be suppressed, leaving a
-		// watertight manifold where every edge is owned by exactly two triangles.
-		const room = compileRoom(g1DocumentWithRooms([
-			g1RectangleRoom('room-vb', 0, 0, 6, 4, [
-				g1Opening('door-a', 'room-vb:wall:0', 'door', 5.1, 0.9, 2.1, 0),
-				g1Opening('door-b', 'room-vb:wall:1', 'door', 0, 0.9, 2.1, 0)
-			])
-		]));
-		const result = buildRoomWallMesh(room, { assertWinding: true });
-		expect(result.issues).toEqual([]);
-		const mesh = result.mesh!;
-		assertFinite(mesh);
-		assertEdgeMultiplicity(mesh, 2);
-	});
 
-	it('closes mismatched both-open miter corners with a profile-difference reveal', () => {
-		// Different door heights at the shared corner: the taller door's void
-		// exposes the shorter door's lintel end over the mismatched band, which
-		// must be closed by a reveal cap (not a full interior jamb).
-		const room = compileRoom(g1DocumentWithRooms([
-			g1RectangleRoom('room-mm', 0, 0, 6, 4, [
-				g1Opening('door-a', 'room-mm:wall:0', 'door', 5.1, 0.9, 2.1, 0),
-				g1Opening('door-b', 'room-mm:wall:1', 'door', 0, 0.9, 2.4, 0)
-			])
-		]));
-		const result = buildRoomWallMesh(room, { assertWinding: true });
-		expect(result.issues).toEqual([]);
-		const mesh = result.mesh!;
-		assertFinite(mesh);
-		assertEdgeMultiplicity(mesh, 2);
-	});
 
-	it('keeps arched corner openings watertight (miter and bevel)', () => {
-		const document = g1DocumentWithRooms([
-			g1RectangleRoom('room-arch', 0, 0, 6, 4, [
-				g1Opening('arch-0', 'room-arch:wall:0', 'door', 0, 1.4, 2.4, 0, 'rounded')
-			])
-		]);
-		for (const options of [undefined, { miterLimit: 1 }] as const) {
-			const room = compileRoom(document);
-			const result = buildRoomWallMesh(room, { assertWinding: true, ...options });
-			expect(result.issues).toEqual([]);
-			const mesh = result.mesh!;
-			assertFinite(mesh);
-			assertEdgeMultiplicity(mesh, 2);
-		}
-	});
 });
 
 describe('pickRanges pick metadata', () => {
@@ -668,35 +429,7 @@ function triangleCentroidPlan(mesh: IndexedWallMesh, triangleIndex: number): [nu
 	];
 }
 
-function rhombusDocument(): ReturnType<typeof g1DocumentWithRooms> {
-	const room = g1RectangleRoom('room-rhombus', 0, 0, 6, 4);
-	room.boundary.segments = g1LineSegments(
-		[
-			[0, 0],
-			[6, 0],
-			[11.638, 2.052],
-			[5.638, 2.052]
-		],
-		'room-rhombus:wall'
-	);
-	return g1DocumentWithRooms([room]);
-}
 
-function notchDocument(): ReturnType<typeof g1DocumentWithRooms> {
-	const room = g1RectangleRoom('room-notch', 0, 0, 6, 4);
-	room.boundary.segments = g1LineSegments(
-		[
-			[0, 0],
-			[6, 0],
-			[6, 1],
-			[4, 1.5],
-			[4, 5],
-			[0, 5]
-		],
-		'room-notch:wall'
-	);
-	return g1DocumentWithRooms([room]);
-}
 
 function fabricateWall(segmentId: string, points: readonly LayoutVec2[], thickness: number): CompiledWall {
 	const samples: CurveSample[] = [];

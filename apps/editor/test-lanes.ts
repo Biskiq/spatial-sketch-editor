@@ -78,7 +78,24 @@ export const ARCH_FILES: string[] = [
 export const HEAVY_FILES: string[] = [
 	// Subprocess harness (~29% of the suite's per-file time): shells out to
 	// sh/shasum/gltf-transform per run. All six tests spawn the job.
-	'tests/lib/content/normalize-asset.test.ts'
+	'tests/lib/content/normalize-asset.test.ts',
+	// T4 — the mixed files T1 deferred, split so the cheap behavior stays in
+	// `test:fast` and only the dense sweeps leave it. Each was split along a
+	// boundary the file itself already drew (a banner-delimited section, a
+	// `describe`, or the file's own stress/sweep cases); the assertion bodies
+	// were moved verbatim and the `describe` titles retained, so full test names
+	// are unchanged. See harvest §P.
+	//
+	// P1.4 dense whole-transition acceptance matrices: a >=1001-value edge-local
+	// progress grid per fixture (~5.0s). The behavioral suite (constants,
+	// easing, path construction, guard repairs, sampling) stays fast.
+	'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts',
+	// 591 independently projected divider positions per `it` (~3.4s).
+	'tests/lib/layout/angled-plan-noding-sweeps.test.ts',
+	// Compiling the small/medium tiers and the 1,000-room tier (~2.9s).
+	'tests/lib/layout/layout-scale-compile.test.ts',
+	// Corner, arch and opening watertight matrices over profile families (~1.3s).
+	'tests/lib/layout/wall-mesh-watertight-matrices.test.ts'
 ];
 
 /**
