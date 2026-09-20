@@ -1851,3 +1851,308 @@ T5 is frozen at this state; T6 (§R) owns the final measurement.
 A file can name its owner correctly and still bundle three subjects (the one
 `DEFER` above) — naming cleanup must not be used to *look* like the bundling was
 fixed.
+
+## R. Execution log — T6 final closeout (EXECUTED)
+
+T6 answers one question: **did T1–T5 improve the suite without losing coverage or
+weakening architecture protection?** It is measurement and documentation, plus
+the two narrow defects the measurement itself exposed. It is not another
+optimization pass, and nothing below is a target to reach.
+
+### R.1 Comparison points
+
+| revision | what it is | numbers below are |
+|---|---|---|
+| `a479f78` | original pre-T1 baseline (merge of P23.14) | **re-measured now**, in a detached worktree |
+| `9600600` / `eb309a4` | post-T3 head / PR #63 merge | recorded (§M, §O) |
+| `882f278` | reviewed T4 head | recorded (§P) |
+| `c8f8db4` | T5 head | this section |
+| final head | T6 (this commit) | **re-measured now** |
+
+The pre-T1 baseline was re-measured rather than quoted, because §M.5 and §P.7
+used different unnamed definitions for two rows and therefore disagree with each
+other (74 vs 81 source-reading files, 27 vs 115 slice-labelled files). Every
+row in §R.3 is produced by **one** stated definition, run against a worktree of
+`a479f78` and against the final head, on this machine. The earlier rows are left
+in place as what they were: intermediate slice evidence.
+
+### R.2 Final lanes (this head)
+
+| lane | files | tests | failed | skipped | wall | vitest breakdown |
+|---|---|---|---|---|---|---|
+| `test:fast` | 279 | 4,212 | 0 | 0 | 28.22s | 27.40s (transform 12.21s, collect 88.89s, tests 15.75s, prepare 12.26s) |
+| `test:arch` | 23 | 253 | 0 | 0 | 9.97s | — |
+| `test:heavy` | 5 | 73 | 0 | 0 | 11.10s | — |
+| `test:perf` | 5 | 23 | 0 | 1 | 3.88s | — |
+| `test:full` | 312 | 4,561 | 0 | 1 | 31.34s | 31.19s (transform 16.59s, collect 104.81s, tests 45.75s, prepare 12.60s) |
+| `npm test` | 312 | 4,561 | 0 | 1 | 32.05s | ≡ `test:full` |
+
+Partition **exact and disjoint**, proved from the vitest JSON file lists, not
+from the configuration: `4,212 + 253 + 73 + 23 = 4,561` tests and
+`279 + 23 + 5 + 5 = 312` files, **zero** files in two lanes, **union == full**
+exactly (`npm test` and `test:full` produce identical file sets). One skip both
+before and after (the pre-existing `plan-bench` full tier); no skip added.
+`npm run check` 0 errors / 0 warnings.
+
+The breakdown columns are **worker-summed**, not wall: `collect 88.89s` over a
+27.40s wall means collection is the fast lane's real cost, spread across
+workers. That is the number that explains §R.4.
+
+### R.3 Structural metrics, recomputed with one definition set
+
+Definitions: files = `find tests -name '*.test.ts'`; test LOC = every
+`tests/**/*.ts`; `.toContain` = occurrences of `.toContain(`/`.not.toContain(`;
+"reads production source" = contains `src/lib`, `src/routes` or
+`helpers/lib-source`; "read-source helper" = contains `readLibSource`,
+`readRouteSource`, `readAllSourceFiles`, `readCameraCoreSource` or `sourceOf(`;
+"slice-labelled" = basename matches `p<n>-`/`p<n>.<n>`/`slice-`/`stage-`/
+`pass-`/`phase-`/`closeout-`.
+
+| metric | pre-T1 `a479f78` | final head | Δ |
+|---|---|---|---|
+| test files | 303 | **312** | +9 |
+| tests | 4,510 (1 skip) | **4,561** (1 skip) | **+51** |
+| test LOC | 114,850 | **117,170** | +2,320 |
+| non-test `.ts` modules under `tests/` | 9 | **14** | +5 |
+| non-test `.ts` LOC | 1,337 | **2,038** | +701 |
+| `.toContain`/`.not.toContain` | 2,487 | **2,400** | **−87** |
+| `.toMatch` | 240 | **235** | −5 |
+| `expect(` | 17,051 | **17,150** | +99 |
+| files reading production source | 70 | **80** | +10 |
+| files using a read-source helper | 28 | **46** | +18 |
+| slice-labelled test file names | 115 | **1** | **−114** |
+| `contracts.test.ts` LOC | 2,716 | **0** (deleted) | −2,716 |
+| slowest `fast` file | 5,052ms (`camera-motion`) | **1,754ms** | −65% |
+| `fast` lane membership | (no lanes) | 279 files / 4,212 tests | — |
+
+The +9 files are **10 new suite files** — `editor-entry-boundary`,
+`editor-gizmo-boundary` and `relic-smoke` (the unconditional boundaries that
+needed their own homes), `plan-render-harness`, `plan-keyboard-readout`,
+`plan-keyboard-session` (T2b), and the four `heavy` files T4 split out
+(`camera-motion-dense-sweeps`, `angled-plan-noding-sweeps`,
+`layout-scale-compile`, `wall-mesh-watertight-matrices`) — **minus** the deleted
+2,716-line `contracts.test.ts` accumulator. No other file was removed; every
+other name change is a rename (§Q.2).
+
+**Rows that grew, and why.** `expect(` rose +99 and test count +51 because T2b,
+T2c and T3 *added* coverage: the Plan render harness, the keyboard
+traversal/readout extraction's direct tests, the F1/E2 behavioral additions, the
+relic smoke, and the three assertions T3's audit found unowned. Files reading
+production source (+10) and using the shared reader (+18) grew because the
+accumulator's source pins were distributed into ~20 existing owner files that
+now import one reader instead of five private copies — the *number of readers*
+fell from five to one while the number of files touching source rose. That is
+the honest direction, and it is the row T5/T6 must keep watching. Helper
+modules went from 0 under `tests/helpers/` to 5 (701 LOC): T4 moved four shared
+fixture blocks to one owner each instead of copying them.
+
+What moved in the consolidating direction: `.toContain`/`.not.toContain` −87,
+the 2,716-line accumulator gone, the fast lane's worst file down 65%, and 114 of
+115 historical names retired.
+
+### R.4 Runtime: what can be measured on this machine, and what cannot
+
+The machine was under heavy unrelated load for every measurement (`load average:
+25.92 30.68 37.41` on 8 cores — VS Code, a second agent worktree and other
+tooling). The proof that this is contention and not the refactor: **the same
+revision measured 25.13s and 39.48s** full-suite wall in two interleaved runs.
+
+Interleaved full suite, pre-T1 worktree vs final head, alternating:
+
+| run | revision | files | tests | wall | worker-summed file time |
+|---|---|---|---|---|---|
+| 1 | pre-T1 `a479f78` | 303 | 4,510 | 25.13s | 43.89s |
+| 1 | final head | 312 | 4,561 | 42.23s | 64.21s |
+| 2 | pre-T1 `a479f78` | 303 | 4,510 | 39.48s | 85.51s |
+| 2 | final head | 312 | 4,561 | 46.83s | 79.07s |
+
+**Conclusion, stated conservatively: no runtime claim is supportable from these
+numbers.** The two revisions' ranges overlap heavily and the same-revision
+spread exceeds the difference between them. The full suite is *not materially
+faster or slower* after the refactor on this machine; T4 already recorded the
+same conclusion from its own interleaved pass (§P.5).
+
+Worker-time breakdown, single sample each (indicative only, same caveat):
+
+| | pre-T1 `a479f78` | final head |
+|---|---|---|
+| wall | 37.43s | 31.19s |
+| transform | 7.62s | 16.59s |
+| collect | 101.81s | 104.81s |
+| tests | **72.48s** | **45.75s** |
+| prepare | 22.44s | 12.60s |
+
+The one row consistent with the structural change is `tests` (72.48s → 45.75s of
+worker time): duplicated assertions removed and dense work moved out of the
+default lane reduce *test work*, while `collect` — one module graph per file —
+is unaffected by anything T1–T5 did. `transform` moving the other way (7.62s →
+16.59s) is not explained by the refactor; the fast lane alone reports 12.21s in
+the same period, so the two samples were taken under different contention.
+
+**The `<12s` fast target: NOT ACHIEVED, and now quantified as out of reach for
+this slice family.** The fast lane is 28.22s wall against 15.75s of worker test
+time; the remainder is per-file transform/collect/prepare over 279 files. T4's
+`--no-isolate` experiment (§R.5) reached ~12–13s but is not usable. Meeting
+`<12s` requires changing how files are batched into workers, not moving more
+tests out — and there is nothing left to move: every remaining `it` in `fast` is
+under 500ms.
+
+### R.5 The `--no-isolate` lead — investigated, not adopted
+
+Five consecutive `test:fast --no-isolate` runs on one unchanged tree:
+
+| run | failed | failing file(s) |
+|---|---|---|
+| 1 | 7 | `theme.test.ts` + `texture-cache.test.ts` |
+| 2 | **0** | — |
+| 3 | 5 | `texture-cache.test.ts` |
+| 4 | 2 | `theme.test.ts` |
+| 5 | 5 | `texture-cache.test.ts` |
+
+**Cause 1 — a leaked partial `document` stub.** `editor-store-shell.test.ts`
+lines 423 and 462 call `vi.stubGlobal('document', { activeElement })`. With pool
+isolation off, that partial stub reaches the shared global scope of whatever
+worker the file landed in. `theme.test.ts` then fails its SSR claims, because
+its precondition is *ambient*: line 178 is literally
+`expect(typeof document).toBe('undefined')`, and `applyTheme('navy-blue')` is
+called with no document argument.
+
+**Cause 2 — a module-level singleton whose pristine value is assumed.**
+`texture-cache.ts:92` holds `let defaultSourceLoader: TextureSourceLoader | null
+= null`, mutated by `setDefaultSourceLoader` and reset only by
+`__resetDefaultSourceLoaderForTests()`. Each file gets a fresh module registry
+under isolation; without it, a loader installed by another file changes which
+path the null-dispatcher and legacy-fallback `it`s take. Those failures are
+test-order dependent, which is exactly why the failing set changes per run.
+
+**Are they testing production behavior, or accidental cleanliness?** The
+*invariants* are real production behavior (theme must not require a `document`;
+a null dispatcher must fall through to the legacy fetch path). The
+*preconditions* are accidental: both assume the process is pristine instead of
+constructing the condition they claim to test, even though the loader tests
+already import the reset helper that would establish it.
+
+**Decision (per §5's rule): `--no-isolate` is not adopted.** The trigger for
+adopting it is "the entire fast lane is green repeatedly and the behavior is
+understood"; runs 1–5 give 7/0/5/2/5 failures, and the failing set moves with
+worker assignment. Making the seven observed assertions isolation-independent
+would not be enough — green would be **luck**, not a property of the suite — and
+finding the rest is a suite-wide state-hygiene project that T6 must not absorb.
+Default configuration unchanged. Recorded as deferred debt in §R.8 with owners.
+
+### R.6 False-successor / call-site audit (final pass)
+
+Method: **delete the call site, keep the machinery, and require the owning test
+to fail.** Machinery-level tests cannot prove their own invocation.
+
+| probe (production mutation) | expected | result |
+|---|---|---|
+| session teardown: drop `projectRequestController?.abort()` at the teardown site | fail | **FAILS** |
+| session teardown: drop `invalidateProjectAssets()` at the teardown site | fail | **FAILS** |
+| session teardown: drop `clearRetainedSourceAliases()` at the teardown site | fail | **FAILS** |
+| drop `assetScope.invalidate()` from `invalidateProjectAssets()` | fail | **FAILS** |
+| *control:* drop the abort inside `cancelProjectMutation()` (a different site) | pass | **PASSES** |
+| relic virtual entry resolves to the live `EditorApp` | fail | **FAILS** |
+| relic route stops mounting the virtual entry | fail | **FAILS** |
+| a second route evaluator appears outside camera-core | fail | **FAILS** |
+| visitor module imports the editor identity layer | fail | **FAILS** |
+| `beginLayoutTransaction` stops consulting the format policy | fail | **FAILS** |
+| `beginLayoutTransaction` stops recording the begin format | fail | **FAILS** |
+| *control:* an unrelated editor file gains a comment | pass | **PASSES** |
+
+All probes reverted; `git diff` empty after each. Classes audited:
+session teardown, relic mounting/isolation, camera/navigation ownership,
+visitor/editor isolation, Layout↔Scene format ownership, import boundaries.
+
+**Gap found and fixed (1 of 2) — the session-teardown pin asserted containment,
+not the call site.** `editor-entry-boundary.test.ts` asserted
+`toContain('projectRequestController?.abort();')`, `toContain('invalidateProjectAssets();')`
+and `toContain('clearRetainedSourceAliases();')` somewhere in
+`EditorApp.svelte` — but those three strings appear **2, 5 and 3 times**
+elsewhere in the file (a mutation removing the *first* `abort()` passed, which is
+how it was found). Deleting the teardown call alone left every assertion green.
+This is the T2a/T3 lesson again, one level down: the wiring, not the machinery,
+is what needs pinning. The test now slices the session `onMount` block's
+returned teardown function and the `invalidateProjectAssets` body, and asserts
+the four calls **inside** them; the control probe proves the pin is now
+site-specific.
+
+**Gap found and fixed (2 of 2) — a dense sweep with no timeout headroom.**
+`angled-plan-noding-sweeps.test.ts` (created by T4) runs its two 591-position
+sweeps at 2,420ms and 2,629ms against vitest's **default 5,000ms** timeout, and
+a full-suite run on this loaded machine failed it with `Test timed out` at
+5,383ms. The geometry was correct, so this was a false red on a correctness
+gate. The file now declares `30_000` per the convention already used by
+`layout-scale-compile` (30s/60s) and `layout-identity` (30s). The density is the
+invariant; the timeout moved, not the sweep. Proved wired by setting it to
+300ms — both `it`s fail with `Test timed out in 300ms` — then reverting.
+
+**No other gap found.** The remaining audit is the evidence that the machinery
+tests are not load-bearing on their own: every class above fails when its call
+site disappears.
+
+### R.7 Did it work? Objectives vs outcome
+
+| objective | verdict | evidence |
+|---|---|---|
+| faster inner loop | **PARTIALLY ACHIEVED** | Composition improved decisively (dense work out, worst fast file 5,052ms → 1,754ms), but wall did not: 28.22s vs `<12s`. The residual is per-file module graph, not test volume (§R.4). |
+| smaller heavy tail in `fast` | **ACHIEVED** | The four split files' own cost went **13,398ms → 803ms (−94%)** (to 381/166/17/239ms) and the lane shed 68 tests (67 to `heavy`, 1 to `arch`), which is where the 4,280 → 4,212 count comes from. |
+| clear arch / heavy / perf separation | **ACHIEVED** | 23/253 arch · 5/73 heavy · 5/23 perf; partition exact and disjoint from the file lists; arch is never path-gated and runs whole pre-PR. |
+| fewer brittle source-shape tests | **PARTIALLY ACHIEVED** | `.toContain`/`.not.toContain` 2,487 → 2,400 and the accumulator's pins were replaced where a behavioral successor existed — but files reading production source rose 70 → 80, and the DOM-dependent P23.14 pins still cannot be replaced without a harness. |
+| fewer historical test layers | **ACHIEVED** | 115 → 1 slice-labelled filename. |
+| fewer giant accumulators | **ACHIEVED** | `contracts.test.ts` (2,716 LOC, 113 assertions) deleted and distributed; no accumulator was recreated and no test names were lost. |
+| no false successors | **ACHIEVED at the final head** | T2a shipped three (found in review, restored); T3's audit restored three unowned assertions; T6's call-site pass found and fixed the teardown pin. The *process* is now the guarantee: every removal had to name an equivalent successor, and every replacement had to survive deleting its call site. |
+| visitor/editor isolation preserved | **ACHIEVED** | 3 probing mutations fail; the resolution-based boundary predicate is single-sourced (§O). |
+| single nav/camera ownership preserved | **ACHIEVED** | a second route evaluator fails `camera-core-boundary`. |
+| `LayoutDocument`/`SceneDocument` ownership preserved | **ACHIEVED** | both format-policy probes fail; the bounded/scan machinery is unchanged. |
+| relic isolation preserved | **ACHIEVED** | relic smoke passes and both relic-mount probes fail. |
+| full-suite coverage retained | **ACHIEVED** | 4,510 → **4,561** tests (+51), 1 skip both sides, per-file name sets identical apart from the one pin replaced by a strictly wider sweep, zero production files changed by T1–T6. |
+
+### R.8 Deferred debt (only what is genuinely open)
+
+| item | why it is still open | owner class |
+|---|---|---|
+| P23.14 DOM/event-dependent source pins | The invariant needs a rendered/browser mechanism the node environment cannot provide; T2b built the Plan render harness for the plan half only. | new-test-first follow-up |
+| R2–R4 production ownership extraction | Refusal lifetime and the remaining P23.13/Inspector clusters need production seams before tests can move. | production change, then tests |
+| remaining P23.13 paint-cluster / Inspector-cluster merges | Blocked on the same harness, not on lanes. | follow-up |
+| kept `RELIC_ONLY` pins | Deliberately retained as cheap tripwires; no behaviorally-equivalent successor exists at zero cost. | owner call |
+| source-text architecture sweeps with no better mechanism | Some boundaries can only be stated over source today; the resolution-based import predicate (§O) is the template for replacing the rest one at a time. | incremental |
+| `--no-isolate` / worker-pool optimization | Cause identified (§R.5): a leaked partial `document` stub in `editor-store-shell.test.ts` and the `defaultSourceLoader` singleton in `texture-cache.ts`, with a scheduling-dependent failure set. Worth ~15s of the inner loop, so it is the largest remaining win — but it needs suite-wide state hygiene first. | separate slice |
+| slice labels in `describe`/`it` titles | 171 files / 609 titles still name a milestone. Deliberately untouched by T5 (§Q.4) so all 4,561 names stayed byte-identical. Pure cosmetics, batchable at zero risk. | optional |
+| stale test name inside a production doc comment | `document-format-policy.svelte.ts:21` still says `p23-f0-stage1-format-policy.test.ts`. One-line comment fix, held back because T5/T6 are frozen against production edits. | next production PR |
+| `p23-f0-stage5-small-items.test.ts` | The one `DEFER` in T5 (§Q.3): a milestone bundle of three subjects. Splitting it is §E work, not naming. | follow-up |
+
+### R.9 Durable rules the refactor produced
+
+1. **Same feature ≠ successor.** Naming a test that covers a related subject is
+   not proving the removed assertion is covered.
+2. **Same assertion text ≠ same execution coverage.** Identical `expect` strings
+   under different conditions are not duplicates (the T3 standard: same
+   expression + same value + same polarity is only a *candidate*).
+3. **Machinery correctness ≠ call-site correctness.** A perfect helper, store or
+   pure function stays green after its only production caller is deleted. Delete
+   the call site and watch the test fail — that is the proof.
+4. **Lane boundaries belong around expensive `it`s, not around the `describe`
+   that contains them** (§P.10), and a “dense section” claim needs per-`it`
+   durations, not a banner.
+5. **Architecture boundaries should fail unconditionally**, so they are never
+   path-gated: the arch lane runs whole, pre-PR, on every change.
+6. **Heavy density is an invariant when the sweep itself is the proof** — move
+   the timeout, not the sample size (§R.6).
+7. **Prefer one source/import parser over parallel regex interpretations.** Two
+   patterns for one invariant means two holes (§O.1): the `../editor/foo` escape
+   and the side-effect-import escape were both found in a “fixed” boundary.
+8. **A rename proves less than it looks like.** A durable filename can still
+   bundle three subjects, and a rename cannot make an accumulator disappear.
+
+### R.10 T6 status
+
+T1–T6 complete. T5 and T6 are frozen at this head. No production file was
+changed by any slice (`git diff eb309a4..HEAD -- apps/editor/src apps/museum/src
+packages` is empty). The remaining work in §R.8 is deferred by design, not
+pending.
+
+**Lesson carried forward:** the suite's remaining weaknesses are no longer
+“wrong lane” or “wrong owner” — they are mechanisms the node environment cannot
+provide, plus one genuine performance lever (`--no-isolate`) whose precondition
+is suite-wide state hygiene rather than a config flag.
