@@ -2,6 +2,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { VISITOR_ROUTES_DIR } from '../../helpers/lib-source';
 
 const appSrc = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../museum/src');
 const libRoot = resolve(appSrc, 'lib');
@@ -90,5 +93,15 @@ describe('visitor import boundary', () => {
 				/(?:from|import\()\s*['"][^'"]*(?:\$lib\/editor|(?:\.\.?\/)\.?editor\/)/
 			);
 		}
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P1.5 Camera Plan source contracts', () => {
+	it('keeps Camera Plan editor-only: /museum routes import no camera-plan code', () => {
+		const visitor = fs.readFileSync(path.join(VISITOR_ROUTES_DIR, 'museum/+page.svelte'), 'utf8');
+		expect(visitor).not.toContain('camera-plan');
+		expect(visitor).not.toContain('CameraPlan');
+		expect(visitor).not.toContain('plan-camera-projection');
 	});
 });

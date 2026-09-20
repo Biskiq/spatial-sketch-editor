@@ -2238,3 +2238,24 @@ describe('P23.6e review — every successful import routes through the document-
 		expect(appSource.match(/onReset=\{resetDocumentScopedState\}/g)?.length).toBe(2);
 	});
 });
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('unified hierarchy contracts', () => {
+	it('reveals canonical selections through the pure P23.6e Navigator decision, not the legacy target', () => {
+		const navigator = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
+		const projection = readLibSource('editor/hierarchy/hierarchy-page-projection.ts');
+		// The canonical branch decides reveal from the pure event/cause model: exact
+		// representation row plus ancestor-only disclosure, never the legacy
+		// root-based target and never the filter-clear hint.
+		expect(projection).toContain('export function evaluateHierarchyReveal');
+		expect(navigator).toContain('evaluateHierarchyReveal');
+		expect(navigator).not.toContain('layoutSelectionRevealTarget');
+		expect(navigator).not.toContain('hiddenRevealTarget');
+		// Auto-disclosure changes the current UI entry; it must never push history or
+		// write canonical selection.
+		expect(navigator).toContain('navigator.revealDisclosure(');
+		// The pinned strip is derived presentation with its canonical Show action.
+		expect(navigator).toContain('explainHierarchyExclusion');
+		expect(navigator).toContain('hierarchy-pin');
+	});
+});

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createFixtureEditorStore, createRelicFixtureEditorStore } from '../editor-test-utils';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const LIB_DIR = fileURLToPath(new URL('../../../../src/lib', import.meta.url));
 
@@ -122,5 +124,98 @@ describe('P12.4 S4 — idle mode and transport lifecycle', () => {
 		const rig = readLibSource('editor/camera/EditorCameraRig.svelte');
 		expect(rig).toContain("store.isRelic || store.currentWorkspace !== 'camera'");
 		expect(rig).toContain('store.stopCameraPreview()');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P3 structural visual contracts', () => {
+	it('pins the timeline shell to the documented expanded and collapsed heights', () => {
+		const store = readLibSource('editor/editor-store.svelte.ts');
+
+		expect(store).toContain('EDITOR_TIMELINE_COLLAPSED_HEIGHT = 48');
+		expect(store).toContain('EDITOR_TIMELINE_MIN_HEIGHT = 240');
+		expect(store).toContain('EDITOR_TIMELINE_MAX_HEIGHT = 300');
+		expect(store).toContain('EDITOR_TIMELINE_DEFAULT_HEIGHT = 288');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 5 timeline density (P12 geometry frozen)', () => {
+	it('keeps the expanded transport as quiet ghost buttons above the lanes', () => {
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		// Resting tier is transparent; the accent cue arrives on hover/focus/active only.
+		expect(frame).toContain('border: 1px solid transparent;');
+		expect(frame).toContain('background: transparent;');
+		expect(frame).toContain('.mode-control button:focus-visible,');
+		// The frozen mini-player composition is never swapped for generic icons.
+		// P23.14 Decision 5 replaces the collapsed scrubber with the timecode
+		// readout: one playhead, owned by the expanded lanes.
+		for (const fragment of [
+			'scope-capsule',
+			'swapEdgeReverse',
+			'mini-player__transport',
+			'>POV</span>',
+			'>Observer</span>'
+		]) {
+			expect(frame, `missing frozen transport fragment ${fragment}`).toContain(fragment);
+		}
+	});
+	it('reads ruler timecodes at 9px tabular with the playhead on current time', () => {
+		const tokens = readLibSource('editor/styles/tokens.css');
+		// Atlas `.ruler` — 9 px mono ticks, one ladder step under §7's 10 px floor.
+		expect(tokens).toContain('--editor-font-size-ruler: var(--editor-font-size-2xs);');
+		const dots = readLibSource('editor/camera/EditorCameraTimelineDots.svelte');
+		expect(dots).toContain('font: var(--editor-timeline-ruler-font);');
+		expect(dots).toContain('font-variant-numeric: tabular-nums;');
+		expect(dots).toContain('left: var(--playhead-progress);');
+		const ruler = readLibSource('editor/camera/EditorCameraTimelineRuler.svelte');
+		expect(ruler).toContain('font-variant-numeric: tabular-nums;');
+	});
+	it('gives the collapsed pill full keyboard parity within its floating geometry', () => {
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		expect(frame).toContain('.mini-player__icon:focus-visible,');
+		// P23.14 Decision 5 — the collapsed strip holds no scrubber, so there is
+		// no range control to focus; the transport buttons carry the parity.
+		expect(frame).not.toContain('mini-player__scrubber');
+		expect(frame).toContain('.toggle:focus-visible');
+		// Geometry untouched: no resize, no re-dock, no new controls.
+		expect(frame).toContain('bottom: 16px;');
+		expect(frame).toContain('transform: translateX(-50%);');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('keeps the single tour as a relic-only read-only selector in the timeline header (P1.7 §3)', () => {
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		// The canonical tour is a read-only presentation — the skeleton has
+		// exactly one guided tour, so the selector itself must carry zero
+		// mutation path (no multi-tour semantics exist yet; order is authored
+		// in the sidebar's Sequence Inspector).
+		const selector = frame.match(/class="tour-selector"[\s\S]*?<\/button>/)?.[0];
+		expect(selector).toBeTruthy();
+		expect(frame).toContain('<header class="s4-header"');
+		expect(selector!).toContain('Main Visitor Tour');
+		expect(selector!).toContain('aria-disabled="true"');
+		expect(selector!).not.toContain('onclick');
+		// The interim dev phase label is gone from the header.
+		expect(frame).not.toContain('exact shared motion');
+	});
+	it('shows the derived loop readout in the timeline panel with no Close-loop language', () => {
+		const panel = readLibSource('editor/camera/EditorCameraTimelinePanel.svelte');
+		expect(panel).toContain('Loops via:');
+		expect(panel).toContain('Stops at');
+		expect(panel).toContain('store.flowLoopConnectionId');
+		expect(panel).toContain('showLoopRow = $derived(chain.length >= 3)');
+		// The stale guided-cycle repair message is gone; the empty state names
+		// the actual gap (no flow, or a missing transition).
+		expect(panel).not.toContain('Guided timeline unavailable');
+		expect(panel).not.toContain('Repair the guided camera cycle');
+		// P11.3 §4 — the loop readout is Sequence-scope-only and the empty
+		// state is a compact inline diagnostic, not a modal-like panel.
+		expect(panel).toContain("scope === 'sequence' && chain.length > 0");
+		expect(panel).toContain('No sequence yet');
+		expect(panel).toContain('Gap at {nodeLabel(result.diagnostic.fromNodeId)}');
+		expect(panel).not.toContain('closeGuidedTourLoop');
 	});
 });

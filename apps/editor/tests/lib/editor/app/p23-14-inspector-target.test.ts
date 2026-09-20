@@ -10,6 +10,7 @@ import {
 	type InspectorSelectionDomain
 } from '$lib/editor/app/inspector-target';
 import type { EditorWorkspace } from '$lib/editor/editor-types';
+import { readLibSource } from '../../../helpers/lib-source';
 
 const SRC = fileURLToPath(new URL('../../../../src/lib/editor', import.meta.url));
 
@@ -207,5 +208,97 @@ describe('P23.14 follow-up — Inspector workspace resolves from shell state, no
 		// must not feed exposure directly anymore.
 		expect(inspector).not.toContain('resolveInspectorExposure(store.currentWorkspace)');
 		expect(inspector).not.toContain('resolveInspectorDomain({\n\t\t\tworkspace: store.currentWorkspace');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.2 scene reconciliation', () => {
+	it('hides the Plan read-only card over the editable Layout surface', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).toContain('{#if readOnlyNonLayout && !scenePlanStaging}');
+		expect(inspector).not.toContain('{#if readOnly && !scenePlanStaging}');
+	});
+	it('shows the Layout primer while selection is zero (guidance only, no dead controls)', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).toContain('showLayoutPrimer');
+		expect(inspector).toContain('layout-primer');
+		expect(inspector).toContain('Rect Room');
+		expect(inspector).toContain('Poly Room');
+		// P23.2 — the snap label reads the centralized grid step constant.
+		expect(inspector).toContain('Snap {LAYOUT_PLAN_GRID_STEP}m');
+		// Primer carries no buttons — directional guidance only (Design-Plan H).
+		const primerStart = inspector.indexOf('<div class="layout-primer"');
+		const primerEnd = inspector.indexOf('</div>', primerStart);
+		const primerBlock = inspector.slice(primerStart, primerEnd);
+		expect(primerBlock).not.toContain('<button');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 3 inspector density + selection isolation', () => {
+	it('removes the permanent Camera/Lighting panels so zero selection shows the primer only', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).not.toContain('aria-label="Editor camera controls"');
+		expect(inspector).not.toContain('aria-label="Viewport lighting"');
+		expect(inspector).not.toContain('toggleCameraPan');
+		expect(inspector).not.toContain('applyLightingPreset');
+		expect(inspector).not.toContain('setAmbientIntensity');
+		expect(inspector).not.toContain('setFloorColor');
+		expect(inspector).not.toContain('camera-controls');
+		// Selection routing is preserved: layout CAD, Arrange, assets, camera,
+		// placement, and the empty primer path all stay mounted.
+		expect(inspector).toContain('showLayoutPrimer');
+		expect(inspector).toContain('aria-label="Arrange selection"');
+		expect(inspector).toContain('showAssetInspector');
+		expect(inspector).toContain('selectedNavigation');
+		expect(inspector).toContain('hasPlacementSelection');
+		expect(inspector).toContain('aria-label="Editor help"');
+	});
+	it('gates the 2D Place drafting grid to Scene Plan Layout only', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).toContain('{#if isScenePlanLayout}');
+		expect(inspector).not.toContain('{#if !arrangeMode}');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('keeps the camera inspector selection-domain-driven, never context-driven', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		// The panel follows the active selection domain (a preserved camera
+		// selection stays inspectable in Scene); context never hides it.
+		expect(inspector).toContain('activeSelection.active.domain');
+		expect(inspector).toContain('selectedNavigation');
+		expect(inspector).not.toContain('active3dContext');
+	});
+	it('exposes the inspector Aim control and routes it through the shared aim mutator', () => {
+		const inspector = readLibSource('editor/camera/EditorCameraInspector.svelte');
+		expect(inspector).toContain('Aim look target');
+		expect(inspector).toContain('Yaw Δ (°)');
+		expect(inspector).toContain('Pitch Δ (°)');
+		expect(inspector).toContain('Apply Aim');
+		expect(inspector).toContain('store.commitSelectedViewKeyframeAim(');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('cross-domain selection contracts', () => {
+	it('keeps the Scene Plan Arrange inspector eligibility-aware and Plan-transform scoped', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).toContain('aria-label="Arrange selection"');
+		expect(inspector).toContain('Not editable in Plan. Edit position in 3D.');
+		expect(inspector).toContain('Room-local Plan transform');
+		expect(inspector).toContain('Delete selected');
+		expect(inspector).toContain('{#if readOnlyNonLayout && !scenePlanStaging}');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P1.5 Camera Plan source contracts', () => {
+	it('EditorInspector routes Camera → Plan to the Plan inspector and keeps Scene Plan read-only', () => {
+		const inspector = readLibSource('editor/EditorInspector.svelte');
+		expect(inspector).toContain('CameraPlanInspector');
+		expect(inspector).toContain("const isCameraPlan = $derived(viewMode === 'plan' && domain === 'camera')");
+		expect(inspector).toContain("const readOnly = $derived(viewMode !== '3d' && !isCameraPlan)");
 	});
 });

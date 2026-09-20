@@ -21,6 +21,7 @@ import {
 	resolveDraftConnectionPathPart,
 	writeScenePathAnchorWorldPosition
 } from '$lib/editor/camera/editor-camera-path';
+import { readLibSource } from '../../../helpers/lib-source';
 
 function createDocument(
 	kind: 'rounded-polyline' | 'auto-bezier' = 'rounded-polyline'
@@ -280,5 +281,18 @@ describe('camera path curve math', () => {
 			EDITOR_CAMERA_PATH_MAX_SAMPLES
 		);
 		expect(EDITOR_CAMERA_PATH_MOVE_EPSILON).toBe(1e-4);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('renders Camera 3D connection paths without arrows or cones', () => {
+		const paths = readLibSource('editor/camera/EditorCameraPathHelpers.svelte');
+		// Undirected topology: the 3D splines are Line2 samples only — no
+		// cone/arrow geometry may appear (mirrors the Plan-level assertion).
+		expect(paths).toContain('Line2');
+		expect(paths).not.toContain('ConeGeometry');
+		expect(paths).not.toContain('ArrowHelper');
+		expect(paths).not.toContain('Arrow');
 	});
 });

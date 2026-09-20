@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LIB_DIR, readLibSource } from '../../../helpers/lib-source';
 
 /**
  * P23.14 R3 — the shell's type + control roles, and the two knobs that retune
@@ -237,6 +238,132 @@ describe('P23.14 R3 — button + geometry roles on the second knob', () => {
 					`${surface} pins a type value: "font: ${value}" — use a role or a ladder step`
 				).toBe(true);
 			}
+		}
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 3 inspector density + selection isolation', () => {
+	it('restyles the shared number field as a compact 28px axis-chip row (no forked row component)', () => {
+		const field = readLibSource('editor/fields/EditorNumberField.svelte');
+		expect(field).toContain('height: 28px;');
+		expect(field).toContain('axis-chip');
+		expect(field).toContain('width: 18px;');
+		expect(field).toContain('height: 18px;');
+		expect(field).toContain('font-variant-numeric: tabular-nums;');
+		expect(field).toContain("data-tone={chipTone}");
+		expect(field).toContain('aria-label={label}');
+		// Axis tones follow the canonical gizmo mapping (X red / Y green / Z blue).
+		expect(field).toContain("data-tone='x'");
+		expect(field).toContain('#f05252');
+		expect(field).toContain('#45c878');
+		expect(field).toContain('#3b82f6');
+		// No TransformInputRow fork exists; the shared field is reused.
+		expect(fs.existsSync(path.join(LIB_DIR, 'editor/components/TransformInputRow.svelte'))).toBe(false);
+		const vec3 = readLibSource('editor/fields/EditorVec3Field.svelte');
+		expect(vec3).toContain('axis-chip');
+		expect(vec3).toContain('height: 28px;');
+		expect(vec3).toContain('font-variant-numeric: tabular-nums;');
+	});
+	it('folds the transform axis legend into per-field chips (density only, scale semantics intact)', () => {
+		const inspector = readLibSource('editor/EditorTransformInspector.svelte');
+		expect(inspector).not.toContain('axis-legend');
+		expect(inspector).toContain('.field-grid');
+		expect(inspector).toContain('toggleScaleMode');
+		expect(inspector).toContain("scaleMode === 'uniform'");
+		expect(inspector).toContain("scaleMode === 'independent'");
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
+	it('maps the Inspector type shorthands onto their ratified roles', () => {
+		// The ladder itself (steps, the knob, closure) is owned by
+		// `tests/lib/editor/app/p23-14-type-roles.test.ts`; what only a mapping
+		// assertion can catch is a role swapped for another *valid* role —
+		// closing the ladder does not notice `--editor-font-size-label` pointing
+		// at `lg` instead of `md`.
+		const tokens = readLibSource('editor/styles/tokens.css');
+		expect(tokens).toContain('--editor-font-size-section: var(--editor-font-size-xs);');
+		expect(tokens).toContain('--editor-font-size-label: var(--editor-font-size-md);');
+		expect(tokens).toContain('--editor-font-size-input: var(--editor-font-size-md);');
+		const inspectorTokens = readLibSource('editor/styles/inspector.css');
+		expect(inspectorTokens).toContain('--editor-inspector-value: var(--editor-type-property);');
+		expect(inspectorTokens).toContain('--editor-inspector-section-title: var(--editor-type-engraved);');
+	});
+	it('renders Inspector section headers as 11px uppercase muted across every panel', () => {
+		const tier = [
+			'font-size: 11px;',
+			'font-weight: 600;',
+			'letter-spacing: 0.05em;',
+			'text-transform: uppercase;',
+			'color: var(--editor-text-muted);'
+		];
+		for (const component of [
+			'editor/EditorInspector.svelte',
+			'editor/EditorTransformInspector.svelte',
+			'editor/EditorPlacementInspector.svelte',
+			'editor/app/CameraPlanInspector.svelte',
+			'editor/camera/EditorCameraInspector.svelte',
+			'editor/camera/EditorCameraConnectionTiming.svelte',
+			'editor/EditorLightInspector.svelte',
+			'editor/EditorPrimitiveInspector.svelte',
+			'editor/EditorMaterialInspector.svelte'
+		]) {
+			const source = readLibSource(component);
+			for (const fragment of tier) {
+				expect(source, `${component} misses section-header tier ${fragment}`).toContain(fragment);
+			}
+		}
+	});
+	it('keeps Inspector property labels at 12px secondary and values at 12.5px tabular primary', () => {
+		// EditorTransformInspector carries no label/value rows of its own —
+		// its Position/Rotation/Scale rows reuse the shared number field.
+		for (const component of [
+			'editor/EditorInspector.svelte',
+			'editor/EditorPlacementInspector.svelte',
+			'editor/app/CameraPlanInspector.svelte',
+			'editor/camera/EditorCameraInspector.svelte',
+			'editor/camera/EditorCameraConnectionTiming.svelte',
+			'editor/EditorLightInspector.svelte',
+			'editor/EditorPrimitiveInspector.svelte',
+			'editor/EditorMaterialInspector.svelte'
+		]) {
+			const source = readLibSource(component);
+			expect(source, `${component} misses label tier`).toContain('font-size: 12px;');
+			expect(source, `${component} misses value tier`).toContain('12.5px');
+		}
+		// Tabular numerals on every panel with numeric rows (coordinates,
+		// dimensions, angles, timing). The Material panel carries no numeric
+		// rows of its own — its roughness/metalness rows reuse the shared
+		// number field pinned below.
+		for (const component of [
+			'editor/EditorInspector.svelte',
+			'editor/EditorPlacementInspector.svelte',
+			'editor/app/CameraPlanInspector.svelte',
+			'editor/camera/EditorCameraInspector.svelte',
+			'editor/camera/EditorCameraConnectionTiming.svelte',
+			'editor/EditorLightInspector.svelte',
+			'editor/EditorPrimitiveInspector.svelte'
+		]) {
+			expect(readLibSource(component), `${component} misses tabular values`).toContain(
+				'font-variant-numeric: tabular-nums;'
+			);
+		}
+	});
+	it('reads Inspector numeric fields through the shared 12.5px tabular inputs (no fork)', () => {
+		for (const component of [
+			'editor/fields/EditorNumberField.svelte',
+			'editor/fields/EditorVec3Field.svelte',
+			'editor/fields/EditorProgressField.svelte'
+		]) {
+			const source = readLibSource(component);
+			expect(source, `${component} misses value tier`).toContain(
+				'font: 500 12.5px var(--editor-font);'
+			);
+			expect(source, `${component} misses tabular values`).toContain(
+				'font-variant-numeric: tabular-nums;'
+			);
 		}
 	});
 });

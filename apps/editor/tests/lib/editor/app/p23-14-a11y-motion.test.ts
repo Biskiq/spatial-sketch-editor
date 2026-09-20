@@ -10,6 +10,7 @@ import {
 } from '$lib/editor/context-menu/context-menu-state.svelte';
 import { resolveRovingIndex, tablistTabIndex } from '$lib/editor/app/roving-focus';
 import { PLAN_CONTROL_TARGET_COARSE_PX, PLAN_CONTROL_TARGET_PX } from '$lib/layout/plan-control-grammar';
+import { LIB_DIR, readLibSource } from '../../../helpers/lib-source';
 
 const SRC = fileURLToPath(new URL('../../../../src/lib/editor', import.meta.url));
 
@@ -339,5 +340,46 @@ describe('P23.14 §23 — motion, pointer and progressive density', () => {
 		expect(narrow).toContain('.save-state { display: none; }');
 		// Location (workspace + view) is the last thing to go, never the first.
 		expect(narrow).not.toContain('.workspace ');
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('switches views and domains instantly — no fade on any shell swap (P1.7 owner follow-up)', () => {
+		// Owner decision 2026-08-21: view/domain switches snap instantly.
+		// The shared fade helper is deleted and no swappable surface may
+		// carry a swap fade again.
+		for (const path of [
+			'editor/app/PlanWorkspace.svelte',
+			'editor/app/CameraPlanWorkspace.svelte',
+			'editor/app/Workspace3DView.svelte',
+			'editor/camera/EditorCameraTimelineFrame.svelte',
+			'editor/app/CameraSidebar.svelte',
+			'editor/UnifiedProjectTree.svelte',
+			'editor/app/EditorApp.svelte'
+		]) {
+			const source = readLibSource(path);
+			expect(source, path).not.toContain('editorWorkspaceFade');
+			expect(source, path).not.toContain('view-fade-in');
+			expect(source, path).not.toContain('plan-fade-in');
+		}
+		expect(fs.existsSync(path.join(LIB_DIR, 'editor/editor-transitions.ts'))).toBe(false);
+		// The plan-cell flip is visibility-only (instant), and the 3D cell
+		// stays one component for both domains — a Scene ⇄ Camera switch in
+		// 3D never remounts the canvas.
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		expect(app).toContain('.plan-cell--hidden');
+		expect(app).not.toContain('transition: opacity');
+		expect(app).toContain('<Workspace3DView');
+		expect(app).toContain('context={viewState.domain}');
+	});
+	it('switches workspace surfaces instantly — S10.1.6 fades superseded (P1.7 owner follow-up)', () => {
+		// Superseded: the owner removed all shell swap fades (2026-08-21).
+		// The old view-fade/plan-fade keyframes must stay gone.
+		const ws3d = readLibSource('editor/app/Workspace3DView.svelte');
+		const planView = readLibSource('editor/app/PlanWorkspace.svelte');
+		expect(ws3d).not.toContain('@keyframes view-fade-in');
+		expect(ws3d).not.toContain('prefers-reduced-motion');
+		expect(planView).not.toContain('@keyframes plan-fade-in');
 	});
 });

@@ -14,6 +14,8 @@ import {
 	sameProjectFingerprint,
 	writePendingCloudSave
 } from '$lib/editor/project-persistence';
+import { readLibSource } from '../../helpers/lib-source';
+import { serializeProject } from '$lib/project/project-codec';
 
 const project = createEmptyProject({ id: 'project:one', name: 'One' });
 const assetId = '123e4567-e89b-12d3-a456-426614174000';
@@ -303,5 +305,111 @@ describe('project persistence client', () => {
 		expect(values.has(PENDING_CLOUD_SAVE_KEY)).toBe(false);
 		// The current-format document still writes normally.
 		expect(writePendingCloudSave(project, storage, 1_000_000)).toBe(true);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P19 project persistence coordinator contracts', () => {
+	it('rechecks cloud durability at the final submit boundary for resumed drafts', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const submitStart = app.indexOf('async function submitSaveSnapshot');
+		const submit = app.slice(submitStart, app.indexOf('async function signOutFromProjects', submitStart));
+
+		expect(submit).toContain('computeCloudSaveBlocker(snapshot.project.scene,');
+		expect(submit).toContain('isReadyProjectAssetForSave(uri, snapshot.project.id)');
+		expect(submit.indexOf('computeCloudSaveBlocker(snapshot.project.scene,')).toBeLessThan(
+			submit.indexOf('await projectApi!.saveProject')
+		);
+	});
+	it('keeps one first-save identity and settles trimmed-name baselines', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const saveStart = app.indexOf('function captureValidatedSaveSnapshot');
+		const save = app.slice(saveStart, app.indexOf('async function loadProject', saveStart));
+
+		expect(save).toContain('const saveProjectId = projectId ?? createProjectId();');
+		expect(save).toContain('id: saveProjectId');
+		expect(save).toContain('if (projectId === null) projectId = snapshot.project.id;');
+		expect(save.indexOf('if (projectId === null) projectId = snapshot.project.id;')).toBeLessThan(
+			save.indexOf('await projectApi!.saveProject')
+		);
+		expect(save).toContain('if (projectName.trim() === snapshot.project.name) projectName = snapshot.project.name;');
+		expect(save).toContain('store.markSaved(snapshot.sceneCanonicalJson)');
+		// P23.12 — the baseline is the authored layout form (the reference cursor is
+		// bookkeeping), and promotion ran before the payload was built.
+		expect(save).toContain('promoteLayoutPreviewIdentity(layoutPreview);');
+		// P23.12 review fix — and it is the authored form of the **snapshot that was
+		// sent**, never the live document: an edit made while the request is in
+		// flight is not in the persisted payload, so it must stay dirty.
+		expect(save).toContain(
+			'layoutAuthoredJsonOf(snapshot.project.layout as unknown as EditorLayoutDocument)'
+		);
+		const baselineCall = save.indexOf('markLayoutPreviewSaved(');
+		expect(baselineCall).toBeGreaterThan(-1);
+		expect(save.slice(baselineCall, baselineCall + 200)).not.toContain('layoutPreviewAuthoredJson');
+		expect(save).toContain(
+			'{ id: saved.projectId, name: saved.name, version: saved.version, updatedAt: saved.updatedAt },'
+		);
+	});
+	it('normalizes a wholesale replacement before install and re-derives the resumed payload', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		// P23.12 review fix — a pre-P23.12 project must install with references
+		// instead of staying ledger-less until the next mutation or Save, so both
+		// Load and the resumed draft normalize the incoming document and derive the
+		// bundle from its own repaired cursor.
+		const loadStart = app.indexOf('async function loadProject');
+		const load = app.slice(loadStart, app.indexOf('async function signOutFromProjects', loadStart));
+		expect(load).toContain('normalizeIncomingLayout(');
+		expect(load).toContain('replacementIdentityBase(incomingLayout)');
+		// Normalization happens on the loaded payload, after the request resolves
+		// and before the install bundle is derived.
+		expect(load.indexOf('await projectApi!.loadProject')).toBeLessThan(
+			load.indexOf('normalizeIncomingLayout(')
+		);
+		expect(load.indexOf('normalizeIncomingLayout(')).toBeLessThan(
+			load.indexOf('const bundle = derivePreviewBundle(')
+		);
+		expect(load).toContain('markLayoutPreviewSaved(layoutPreview, layoutPreviewAuthoredJson(layoutPreview))');
+
+		const resumeStart = app.indexOf('async function resumePendingCloudSave');
+		const resume = app.slice(resumeStart, app.indexOf('async function loadProject', resumeStart));
+		expect(resume).toContain('normalizeIncomingLayout(');
+		expect(resume).toContain('replacementIdentityBase(incomingLayout)');
+		// The submitted payload is the installed, promoted snapshot — never the raw
+		// pending payload, which would let `layout` and `layoutCanonicalJson`
+		// disagree once promotion wrote the identity block.
+		expect(resume).toContain('const resumed = captureValidatedSaveSnapshot();');
+		expect(resume).toContain('await submitSaveSnapshot(resumed);');
+		expect(resume).not.toContain('await submitSaveSnapshot({');
+	});
+	it('drops stale project lists around mutations and keeps project replacement guarded', () => {
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		const refresh = app.slice(
+			app.indexOf('async function refreshOwnedProjects'),
+			app.indexOf('async function signInToProjects')
+		);
+		const gate = app.slice(
+			app.indexOf('function canStartProjectMutation'),
+			app.indexOf('function confirmProjectReplacement')
+		);
+		const load = app.slice(app.indexOf('async function loadProject'));
+
+		expect(refresh).toContain('const requestToken = ++projectListRequestToken;');
+		expect(refresh).toContain('const mutationEpoch = projectMutationEpoch;');
+		expect(refresh).toContain('requestToken !== projectListRequestToken');
+		expect(refresh).toContain('mutationEpoch !== projectMutationEpoch');
+		expect(gate).toContain('store.isEditorInteractionActive || store.isDocumentTransactionActive');
+		expect(load).toContain('sameProjectFingerprint(fingerprint, currentProjectFingerprint())');
+		expect(load).toContain('store.isEditorInteractionActive || store.isDocumentTransactionActive');
+	});
+	it('does not expose disabled cloud chrome and keeps the relic controller-free', () => {
+		const menu = readLibSource('editor/EditorProjectMenu.svelte');
+		const relic = readLibSource('editor/MuseumEditorApp.svelte');
+
+		expect(menu).toContain('{#if !relic && cloudConfigured}');
+		expect(menu).toContain("const cloudConfigured = $derived(cloudStatus !== 'disabled' && onSaveProject !== undefined);");
+		expect(menu).toContain('Save your project');
+		expect(menu).toContain('Sign in with Google to save this project and access it later.');
+		expect(menu).toContain('Discard draft');
+		expect(relic).toContain('<EditorAppBar {store} {layoutPreview} {confirmSceneReplacement} {confirmLayoutReplacement} {relic} />');
 	});
 });

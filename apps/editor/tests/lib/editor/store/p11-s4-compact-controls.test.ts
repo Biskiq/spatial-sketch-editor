@@ -6,6 +6,7 @@ import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { cloneFixtureDocument } from '../../content/__fixtures__/load-fixture-scene';
 import { createFixtureEditorStore } from '../editor-test-utils';
 import { useCameraTimeline } from '$lib/editor/hooks/use-camera-timeline.svelte';
+import fs from 'node:fs';
 
 const LIB_DIR = fileURLToPath(new URL('../../../../src/lib', import.meta.url));
 
@@ -175,6 +176,116 @@ describe('P11.4 duplicate Preview Edge affordance disposition (§11.3)', () => {
 		);
 		expect(readLibSource('editor/app/CameraPlanInspector.svelte')).not.toContain(
 			'EditorCameraEdgePreviewActions'
+		);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('keeps P11 preview controls mounted only for the frozen relic', () => {
+		const timeline = readLibSource('editor/camera/EditorCameraTimelinePanel.svelte');
+		const controls = readLibSource('editor/camera/EditorCameraPreviewControls.svelte');
+		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
+		const relicSidebar = readLibSource('editor/EditorLeftSidebar.svelte');
+		// Live P12 scope/chrome ownership lives in p12-s4-header-chrome.test.ts.
+		// This component survives only inside the relic branch.
+		expect(timeline).not.toContain('Camera flow unavailable');
+		expect(timeline).toContain("scope === 'camera'");
+		expect(timeline).toContain('{#if store.isRelic && preview}');
+		// Retained-scope diagnostics and live lanes remain shared panel behavior.
+		expect(timeline).toContain('{targetKindLabel} unavailable');
+		expect(timeline).toContain('<EditorCameraTimelineDots {store} {viewMode} {contextMenu} />');
+		expect(controls).toContain('preview.kind !== \'camera\'');
+		expect(controls).toContain('store.playCameraPreview()');
+		// Frozen P11.4 relic controls keep binary transport/mode tools; teardown
+		// stays reachable through relic Escape/lifecycle.
+		// P11.4 §11.3 — one accessible segmented Camera-mode control.
+		// P11.2 §3 — the editor surface is locked only for a *visitor* preview;
+		// a Director preview keeps the sidebar interactive (AA inspection + AP
+		// authoring auto-pause). Migrated deliberately from isDocumentMutationBlocked.
+		expect(sidebar).toContain('<div class="sidebar-content" inert={store.isVisitorCameraPreview}>');
+		expect(sidebar).not.toContain('Back to museum');
+		expect(relicSidebar).not.toContain('Back to museum');
+	});
+	it('fronts AP/AA/CH controls with the interaction/visitor predicates (P11.2 §3)', () => {
+		// Sidebar inertness is visitor-only (Director playing/paused interactive).
+		expect(readLibSource('editor/EditorLeftSidebar.svelte')).toContain(
+			'<div class="sidebar-content" inert={store.isVisitorCameraPreview}>'
+		);
+		expect(readLibSource('editor/app/EditorSidebar.svelte')).toContain(
+			'<div class="sidebar-content" inert={store.isVisitorCameraPreview}>'
+		);
+		// App bars keep only the interaction bar for domain/workspace switching (CH·AA).
+		const appBar = readLibSource('editor/EditorAppBar.svelte');
+		expect(appBar).toContain('canSwitchWorkspace = $derived(!store.isEditorInteractionActive)');
+		expect(appBar).not.toContain('canSwitchWorkspace = $derived(!store.isDocumentMutationBlocked');
+		const appAppBar = readLibSource('editor/app/WorkspaceRibbon.svelte');
+		expect(appAppBar).toContain('const canSwitch = $derived(!store.isEditorInteractionActive)');
+		expect(appAppBar).not.toContain('const canSwitch = $derived(!store.isDocumentMutationBlocked');
+		// Timeline frame resize + toggle are CH·AA (no mutation-blocked term).
+		const frame = readLibSource('editor/camera/EditorCameraTimelineFrame.svelte');
+		expect(frame).not.toContain('isDocumentMutationBlocked');
+		expect(frame).toContain('if (!expanded || store.isEditorInteractionActive) return;');
+		// Director shield is non-blocking (visitor-only pointer-events: auto).
+		for (const source of [
+			readLibSource('editor/EditorViewport.svelte'),
+			readLibSource('editor/app/Workspace3DView.svelte')
+		]) {
+			expect(source).toContain('class:non-blocking={!store.isVisitorCameraPreview}');
+			expect(source).toContain('.preview-shield.non-blocking {');
+			expect(source).toContain('pointer-events: none;');
+		}
+		// P21.6 review (A/B P1, second pass) — three-state ownership: playback
+		// keeps the playhead owner; a paused Director preview yields the
+		// filled helper to an editable selection, and paused with no
+		// editable selection owns `none` (deselect never resurrects the
+		// wireframe). Frame off suppresses both implementations. A playing
+		// visitor keeps framing hidden and a paused visitor still shows it
+		// (paused framing stays editable).
+		const framingHelpers = readLibSource('editor/camera/EditorCameraFramingHelpers.svelte');
+		expect(framingHelpers).toContain(
+			'(store.isVisitorCameraPreview && store.isCameraPreviewPlaying)'
+		);
+		expect(framingHelpers).not.toContain('store.isDirectorCameraPreview ||');
+		expect(framingHelpers).not.toContain('store.isCameraPreviewPlaying ||');
+		// The playhead frustum renders for Director playback; a paused
+		// editable selection hides the competing preview helper; paused
+		// with no editable selection hides both — timeline scope,
+		// transport, and playhead are untouched.
+		const cameraRig = readLibSource('editor/camera/EditorCameraRig.svelte');
+		expect(cameraRig).toContain("preview.mode !== 'director'");
+		expect(cameraRig).toContain('computeBoundingSphere()');
+		expect(cameraRig).not.toContain("preview.transport === 'playing' || !selectedFraming");
+		// Room selection is AA (drop the broad mutation gate).
+		const sceneTree = readLibSource('editor/EditorSceneTree.svelte');
+		expect(sceneTree).not.toContain('if (store.isDocumentMutationBlocked) return;');
+		expect(sceneTree).toContain('store.selectionActions.selectRoom(roomId);');
+		// Inspector framing rows use the Inspector framing predicate; document rows
+		// use the AP predicate — neither references the old broad gate.
+		const inspector = readLibSource('editor/camera/EditorCameraInspector.svelte');
+		expect(inspector).not.toContain('store.isDocumentMutationBlocked');
+		expect(inspector).not.toContain('store.isCameraFramingMutationBlocked');
+		expect(inspector).toContain('store.isInspectorFramingBlocked');
+		expect(inspector).toContain('store.isAuthoringPauseBlocked');
+		// Drag entry resolves, pauses, then captures; the transaction opens only
+		// after the threshold. Pin the ordering inside each relevant function.
+		const selectionSource = readLibSource('editor/EditorSelection.svelte');
+		const beginPathPointer = selectionSource.slice(
+			selectionSource.indexOf('function beginPathPointer'),
+			selectionSource.indexOf('function beginDirectPathDrag')
+		);
+		expect(beginPathPointer.indexOf('requestAuthoringPause()')).toBeGreaterThan(-1);
+		expect(beginPathPointer.indexOf('requestAuthoringPause()')).toBeLessThan(
+			beginPathPointer.indexOf('setPointerCapture(event.pointerId)')
+		);
+		const planSource = readLibSource('editor/camera-plan/CameraPlanViewport.svelte');
+		const beginPlanDrag = planSource.slice(
+			planSource.indexOf('function beginDragSession'),
+			planSource.indexOf('function startDragging')
+		);
+		expect(beginPlanDrag.indexOf('requestAuthoringPause()')).toBeGreaterThan(-1);
+		expect(beginPlanDrag.indexOf('requestAuthoringPause()')).toBeLessThan(
+			beginPlanDrag.indexOf('setPointerCapture(event.pointerId)')
 		);
 	});
 });

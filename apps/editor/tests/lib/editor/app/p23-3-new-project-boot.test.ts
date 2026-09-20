@@ -1,3 +1,8 @@
+import path from 'node:path';
+import { createEditorStore } from '$lib/editor/editor-store.svelte';
+import { chopinRuntime } from '$lib/content/chopin-project';
+import { cloneFixtureDocument } from '../../content/__fixtures__/load-fixture-scene';
+import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 /**
  * P23.3 — a new project boots a wall-first Layout, and that boot is saveable.
  *
@@ -139,5 +144,106 @@ describe('P23.3 new-project boot is wall-first', () => {
 		const legacyPreview = createEmptyLayoutPreviewState();
 		resetLayoutPreview(legacyPreview);
 		expect(formatVersionOf(layoutPreviewDocument(legacyPreview))).toBeUndefined();
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('boot into an empty project', () => {
+	it('boots blank: zero navigation nodes, no persisted node, no tour preview', () => {
+		const project = createEmptyProject({ id: 'project:blank', name: 'Blank' });
+		const store = createEditorStore({
+			document: project.scene,
+			rooms: createLayoutRoomRegistry(project.layout)
+		});
+
+		expect(store.document.navigationNodes).toEqual([]);
+		expect(store.document.connections).toEqual([]);
+		expect(store.document.entities).toEqual([]);
+		expect(store.scene.navigationNodes).toEqual([]);
+		expect(store.state.activeNodeId).toBe('');
+		expect(store.canStartTourPreview).toBe(false);
+	});
+	it('locks tour preview until a guided chain exists (zero nodes, lone node, guided)', () => {
+		// Zero nodes.
+		const empty = createEditorStore({
+			document: createEmptyProject({ id: 'p0', name: 'Empty' }).scene,
+			rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
+		});
+		expect(empty.canStartTourPreview).toBe(false);
+
+		// One node that is not part of a guided chain (no next/previous link).
+		const lone = cloneFixtureDocument();
+		const node = lone.navigationNodes[0]!;
+		lone.navigationNodes = [node];
+		lone.connections = [];
+		node.nextNodeId = undefined;
+		node.previousNodeId = undefined;
+		node.connectedNodeIds = [];
+		expect(createEditorStore({ document: lone, rooms: chopinRuntime.rooms }).canStartTourPreview).toBe(false);
+
+		// A guided chain exists.
+		expect(
+			createEditorStore({ document: cloneFixtureDocument(), rooms: chopinRuntime.rooms }).canStartTourPreview
+		).toBe(true);
+	});
+	it('reset restores the boot document (not Chopin) and clears history', () => {
+		const store = createEditorStore({ document: cloneFixtureDocument(), rooms: chopinRuntime.rooms });
+		const bootCanonical = store.canonicalJson;
+
+		expect(store.beginDocumentTransaction()).toBe(true);
+		const first = store.document.entities[0]!;
+		first.rotation = [
+			first.rotation[0],
+			first.rotation[1] + 0.001,
+			first.rotation[2]
+		] as typeof first.rotation;
+		expect(store.commitDocumentTransaction()).toBe(true);
+		expect(store.canUndo).toBe(true);
+		expect(store.isDirty).toBe(true);
+
+		expect(store.resetToCheckedInDocument()).toBe(true);
+		expect(store.canonicalJson).toBe(bootCanonical);
+		expect(store.canUndo).toBe(false);
+		expect(store.isDirty).toBe(false);
+	});
+	it('authors every node standalone, then unlocks preview once the two-node pair is connected', () => {
+		const fixture = cloneFixtureDocument();
+		fixture.navigationNodes = [];
+		fixture.connections = [];
+		const store = createEditorStore({ document: fixture, rooms: chopinRuntime.rooms });
+
+		const roomId = store.rooms.entries[0]!.id;
+		const floorWorld = store.rooms.point(roomId, [0, 0, 0]);
+
+		// First node commits standalone as a free node (not in order yet).
+		expect(store.beginCameraPlacement()).toBe(true);
+		const firstNodeId = store.createPendingNavigationNodeAt(roomId, floorWorld, [0, 0, -1]);
+
+		expect(firstNodeId).not.toBeNull();
+		expect(store.document.navigationNodes).toHaveLength(1);
+		expect(store.document.connections).toHaveLength(0);
+		expect(store.pendingNavigationCommand).toBeNull();
+		expect(store.canStartTourPreview).toBe(false); // lone node, no flow
+
+		// Second node also commits standalone — no pending connect step (B0).
+		expect(store.beginCameraPlacement()).toBe(true);
+		const secondNodeId = store.createPendingNavigationNodeAt(
+			roomId,
+			store.rooms.point(roomId, [1, 0, 1]),
+			[0, 0, -1]
+		);
+		expect(secondNodeId).not.toBeNull();
+		expect(store.document.navigationNodes).toHaveLength(2);
+		expect(store.document.connections).toHaveLength(0);
+		expect(store.pendingNavigationCommand).toBeNull();
+
+		// Connecting the only two free nodes seeds the open pair first → second
+		// in the same transaction, so preview is immediately ready.
+		expect(store.selectionActions.selectNavigationNode(firstNodeId!)).toBe(true);
+		expect(store.beginConnectExistingNodes()).toBe(true);
+		expect(store.selectionActions.selectNavigationNode(secondNodeId!)).toBe(true);
+		expect(store.document.connections).toHaveLength(1);
+		expect(store.guidedTourNodeIds).toEqual([firstNodeId!, secondNodeId!]);
+		expect(store.canStartTourPreview).toBe(true);
 	});
 });

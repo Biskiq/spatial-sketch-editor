@@ -10,6 +10,7 @@ import {
 	rotatePlanSceneMembers,
 	translatePlanSceneMembers
 } from '$lib/editor/layout/plan-scene-transform';
+import { readLibSource } from '../../../helpers/lib-source';
 
 function layout(): LayoutDocument {
 	return {
@@ -141,5 +142,21 @@ describe('P2 Plan Scene transforms', () => {
 		expect(store.beginDocumentTransaction()).toBe(true);
 		expect(store.commitDocumentTransaction()).toBe(false);
 		expect(store.canUndo).toBe(false);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('cross-domain selection contracts', () => {
+	it('routes Staging gestures through the existing Scene transaction and placement mutator seam', () => {
+		const workspace = readLibSource('editor/app/PlanWorkspace.svelte');
+		const viewport = readLibSource('editor/layout/LayoutPlanViewport.svelte');
+		expect(workspace).toContain('store.beginDocumentTransaction()');
+		expect(workspace).toContain('store.updatePlacementTransform(');
+		expect(workspace).toContain('store.commitDocumentTransaction()');
+		expect(workspace).toContain('store.cancelDocumentTransaction()');
+		expect(viewport).toContain('translatePlanSceneMembers(');
+		expect(viewport).toContain('rotatePlanSceneMembers(');
+		expect(viewport).toContain('withPlanSceneRotationHandle(');
+		expect(viewport).toContain('onSceneDelete?.()');
 	});
 });

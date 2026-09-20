@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 /**
  * P23.13 S1 — static architectural grammar: band projection, jambs and cut
  * terminations, the perpendicular three-dash Door type cue and the Window
@@ -406,3 +408,22 @@ describe('P23.13 S1 — cue stays presentation-only', () => {
 function toSureScreen(view: PlanViewportState, point: LayoutVec2): LayoutVec2 {
 	return [view.width / 2 + (point[0] - view.center[0]) * view.pixelsPerMeter, view.height / 2 + (point[1] - view.center[1]) * view.pixelsPerMeter];
 }
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('P3 structural visual contracts', () => {
+	it('renders architectural wall, window, and neutral door primitives in the shared Plan SVG', () => {
+		const plan = readLibSource('editor/layout/PlanSvg.svelte');
+
+		for (const primitive of ['wall-casing', 'window-frame', 'opening-void', 'opening-jamb']) {
+			expect(plan).toContain(primitive);
+		}
+		// P23.6 — no invented hinge/swing semantics: leaf and swing are gone.
+		for (const primitive of ['door-leaf', 'door-swing']) {
+			expect(plan).not.toContain(primitive);
+		}
+		// P23.13 S0 — the host-parallel `door-threshold` cue is retired; the
+		// ratified perpendicular three-dash Door type cue is painted in S1 from
+		// the render-model source facts (never from a second SVG ink path).
+		expect(plan).not.toContain('door-threshold');
+	});
+});

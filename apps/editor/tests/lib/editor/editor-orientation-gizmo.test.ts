@@ -15,6 +15,7 @@ import {
 	projectOrientationGeometry,
 	type OrientationProjectionSnapshot
 } from '$lib/editor/editor-orientation-projection';
+import { existsLibSource, readLibSource } from '../../helpers/lib-source';
 
 function snapshotForEye(
 	eye: Vector3,
@@ -371,5 +372,54 @@ describe('orientation interaction (P3B.3)', () => {
 			{ x: 0, y: 0.99, z: -0.1 }
 		);
 		expect(deriveOrientationSnapStartPose(applied, live)).toBe(applied);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('camera context contracts', () => {
+	it('mounts the Scene-3D-only orientation box with grid controls intact', () => {
+		const ws3d = readLibSource('editor/app/Workspace3DView.svelte');
+		const gridControls = readLibSource('editor/EditorViewportGridControls.svelte');
+		// Overlay widget + canvas-side projector, both Scene-context gated.
+		// The gizmo receives the compiled layout bounds so its cardinal-snap
+		// fallback composes bounds framing before the neutral pose (P3B.1
+		// fallback-authority contract, steps 2 → 3).
+		expect(ws3d).toContain('<EditorOrientationGizmo {store} layoutBounds={layoutPreview.bounds} />');
+		expect(ws3d).toContain('<EditorOrientationGizmoProjector />');
+		expect(ws3d).toContain('{#if !isCameraContext}');
+		// The grid control reuses session state (visibility + new opacity).
+		expect(gridControls).toContain('store.gridOpacity = value');
+		expect(gridControls).toContain('type="range"');
+		expect(existsLibSource('editor/EditorOrientationGizmo.svelte')).toBe(true);
+		expect(existsLibSource('editor/editor-orientation-gizmo.svelte.ts')).toBe(true);
+		expect(existsLibSource('editor/editor-orientation-interaction.ts')).toBe(true);
+		const orientation = readLibSource('editor/EditorOrientationGizmo.svelte');
+		expect(orientation).toContain('deriveActiveCardinalFace(snapshot.eyeDirection)');
+		expect(orientation).toContain('setPointerCapture(event.pointerId)');
+		expect(orientation).toContain('tabindex={disabled ? -1 : 0}');
+		expect(orientation).toContain('aria-disabled={disabled}');
+		expect(orientation).toContain('onclick={isolateEvent}');
+		expect(orientation).not.toContain('onclick={() => snap');
+		// P3B.4 — animated snap wiring: the widget resolves via the shared
+		// two-phase helper and flies through the single camera-motion sampler;
+		// reduced motion commits instantly. The projector advances/lands the
+		// flight with the fixture-pinned handoff and cancels on manual orbit.
+		const projector = readLibSource('editor/EditorOrientationGizmoProjector.svelte');
+		expect(orientation).toContain('resolveEditorCardinalSnapBasis');
+		expect(orientation).toContain('createEditorCardinalSnapMotion');
+		expect(orientation).toContain("prefers-reduced-motion: reduce");
+		// Interruptions hand off (never raw-clear): manual orbit via the
+		// controls start event, preview takeover, teardown, reduced-motion
+		// replacement, and missing-ref teardown all route through the
+		// non-terminal +Y restore in `cancelEditorOrientationSnap`.
+		expect(orientation).toContain('cancelEditorOrientationSnap');
+		expect(projector).toContain("addEventListener('start'");
+		expect(projector).toContain('applyActiveSnap');
+		expect(projector).toContain('currentControls.update()');
+		expect(projector).toContain('currentCamera.up.set(0, 1, 0)');
+		expect(projector).toContain('cancelEditorOrientationSnap');
+		expect(readLibSource('editor/editor-orientation-gizmo.svelte.ts')).toContain(
+			'consumeEditorOrbitInertia'
+		);
 	});
 });

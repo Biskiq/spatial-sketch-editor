@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { EditorInteractionStore } from '$lib/editor/store/editor-interaction-store.svelte';
 /**
  * step 0 — behavioral fixtures recorded BEFORE extraction.
  *
@@ -457,5 +459,45 @@ describe('S7 step 0 — camera session fixtures', () => {
 		// value, never an epsilon-delta beyond it.
 		expect(store.selectedViewKeyframe!.cameraTarget[0]).toBeCloseTo(start[0]! + 2);
 		expect(store.canUndo).toBe(true);
+	});
+});
+
+// Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
+describe('single gizmo host', () => {
+	it('records placement Escape: DRAG_END(cancelled) → deselect → ACTIVE_TARGET_CHANGE(null) ends Idle; a late mouseUp cannot commit', () => {
+		const store = new EditorInteractionStore();
+		store.dispatch({ type: 'CLICK', target: 'p1', shift: false, meta: false });
+		store.dispatch({ type: 'DRAG_START' });
+		expect(store.state).toBe('Dragging');
+		// Cancel path: the adapter restores its snapshot and deselects; the
+		// host never dispatches FSM ESC from a live drag.
+		store.dispatch({ type: 'DRAG_END', cancelled: true });
+		store.dispatch({ type: 'ACTIVE_TARGET_CHANGE', targetKey: null });
+		expect(store.state).toBe('Idle');
+		// Late natural mouseUp is inert — DRAG_END only transitions from Dragging.
+		store.dispatch({ type: 'DRAG_END', cancelled: false });
+		expect(store.state).toBe('Idle');
+	});
+	it('records camera Escape: cancel keeps its navigation selection, so the target persists → Selected', () => {
+		const store = new EditorInteractionStore();
+		store.dispatch({ type: 'ACTIVE_TARGET_CHANGE', targetKey: 'camera:node:pos' });
+		store.dispatch({ type: 'DRAG_START' });
+		expect(store.state).toBe('Dragging');
+		store.dispatch({ type: 'DRAG_END', cancelled: true });
+		// No ACTIVE_TARGET_CHANGE(null): the camera selection survives.
+		expect(store.state).toBe('Selected');
+	});
+	it('records a target switch mid-drag: cancel first, then sync; a stray sync during Dragging is ignored', () => {
+		const store = new EditorInteractionStore();
+		store.dispatch({ type: 'ACTIVE_TARGET_CHANGE', targetKey: 'scene:placement' });
+		store.dispatch({ type: 'DRAG_START' });
+		expect(store.state).toBe('Dragging');
+		// A straggler sync mid-drag can never silently retarget the FSM.
+		store.dispatch({ type: 'ACTIVE_TARGET_CHANGE', targetKey: 'camera:node:pos' });
+		expect(store.state).toBe('Dragging');
+		// The real host switch order: cancel → DRAG_END → attach → sync.
+		store.dispatch({ type: 'DRAG_END', cancelled: true });
+		store.dispatch({ type: 'ACTIVE_TARGET_CHANGE', targetKey: 'camera:node:pos' });
+		expect(store.state).toBe('Selected');
 	});
 });
