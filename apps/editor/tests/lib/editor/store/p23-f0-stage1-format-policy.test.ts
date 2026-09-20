@@ -36,6 +36,8 @@ import { fileURLToPath } from 'node:url';
 
 import { createFixtureEditorStore } from '../editor-test-utils';
 import { chopinProject } from '$lib/content/chopin-project';
+import { createEmptyLayoutDocument, createEmptyWallFirstLayoutDocument } from '$lib/layout/layout-codec';
+import { createEmptySceneDocument, createEmptyWorldLocalSceneDocument } from '$lib/content/scene';
 import {
 	classifyLayoutFormat,
 	classifySceneFormat,
@@ -478,5 +480,41 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 		// begin() only sets on refusal.)
 		expect(store.beginDocumentTransaction()).toBe(true);
 		store.cancelDocumentTransaction();
+	});
+
+	/**
+	 * T3b — the positive half of the Layout/Scene ownership pin.
+	 *
+	 * Only the *legacy* branches were pinned (the empty-roots tree case), so a
+	 * document that silently stopped carrying the current discriminators — the
+	 * pair the editor is allowed to author — could classify as legacy and pass.
+	 * These are the positive ownership claims: the authoring pair is Layout
+	 * wall-first (v5) + Scene world-local (v1), and the retired pair stays
+	 * retired (no accidental promotion either way).
+	 */
+	describe('current Layout/Scene ownership', () => {
+		it('classifies the authoring pair as wall-first + project-world', () => {
+			expect(classifyLayoutFormat(createEmptyWallFirstLayoutDocument())).toBe('wall-first');
+			expect(classifySceneFormat(createEmptyWorldLocalSceneDocument())).toBe('project-world');
+		});
+
+		it('keeps the retired pair classified as legacy in both domains', () => {
+			expect(classifyLayoutFormat(createEmptyLayoutDocument())).toBe('legacy');
+			expect(classifySceneFormat(createEmptySceneDocument())).toBe('legacy-room-local');
+		});
+
+		it('moves the two discriminators together — a mixed pair is never the authoring default', () => {
+			// The wall-first Layout must carry its world-local Scene partner; the
+			// boot composition is asserted end to end in
+			// `tests/lib/editor/app/p23-3-new-project-boot.test.ts`. Here we pin the
+			// classification invariant that makes the pairing load-bearing: a
+			// wall-first Layout may not be paired with the legacy room-local Scene.
+			expect(classifyLayoutFormat(createEmptyWallFirstLayoutDocument())).not.toBe(
+				classifyLayoutFormat(createEmptyLayoutDocument())
+			);
+			expect(classifySceneFormat(createEmptyWorldLocalSceneDocument())).not.toBe(
+				classifySceneFormat(createEmptySceneDocument())
+			);
+		});
 	});
 });

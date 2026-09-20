@@ -287,3 +287,37 @@ describe('relic smoke — the relic is isolated from live shell ownership', () =
 		expect(relic.isRelic).toBe(true);
 	});
 });
+
+/**
+ * T3b — the frozen **import surface** of the relic shell.
+ *
+ * The last relic gap from C.1.4/§K.5: claims 1–6 prove *where* the relic mounts
+ * and that the live shell does not retune it, but nothing proved that the relic
+ * shell cannot start consuming greenfield shell modules (the unified tree, the
+ * project API). Those assertions lived in the dismantled accumulator; they
+ * belong here, where the relic's frozen surface is owned. Static inspection is
+ * the correct mechanism for an import/mount boundary.
+ */
+describe('frozen relic import surface', () => {
+	const relicShell = [
+		'editor/MuseumEditorApp.svelte',
+		'editor/EditorLeftSidebar.svelte',
+		'editor/EditorSceneTree.svelte',
+		'editor/camera/EditorCameraTree.svelte'
+	];
+
+	it('keeps the whole relic shell clear of greenfield shell modules', () => {
+		for (const relativePath of relicShell) {
+			const source = readLibSource(relativePath);
+			for (const greenfield of ['UnifiedProjectTree', 'EditorSidebar', 'createProjectApi']) {
+				expect(source, `${relativePath} references ${greenfield}`).not.toContain(greenfield);
+			}
+		}
+	});
+
+	it('mounts the legacy tree family, never the unified tree', () => {
+		const relicSidebar = readLibSource('editor/EditorLeftSidebar.svelte');
+		expect(relicSidebar).toContain('EditorSceneTree');
+		expect(relicSidebar).toContain('EditorCameraTree');
+	});
+});

@@ -96,6 +96,42 @@ describe('visitor import boundary', () => {
 	});
 });
 
+/**
+ * T3b — the shared museum-rendering shell, swept in both directions.
+ *
+ * The suites above prove the visitor never reaches *editor* code. Two
+ * directions were unpinned after the accumulator was dismantled:
+ *
+ * 1. the editor app never imports the museum **app** (`apps/museum`) — the
+ *    editor's own `$lib/museum` rendering shell is legitimate and stays;
+ * 2. that shared `$lib/museum` shell stays free of editor internals, because
+ *    the visitor build consumes the same components — an editor import there
+ *    would pull the whole editor into the public bundle.
+ */
+describe('shared museum shell — import direction', () => {
+	const editorSrc = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
+
+	it('keeps every editor source free of museum-app imports', () => {
+		for (const file of sourceFiles(editorSrc)) {
+			const source = readFileSync(file, 'utf8');
+			expect(source, file).not.toMatch(
+				/(?:from|import\()\s*['"][^'"]*(?:@portfolio\/museum|apps\/museum|museum\/src)/
+			);
+		}
+	});
+
+	it('keeps the shared museum shell free of editor internals', () => {
+		const shared = sourceFiles(resolve(editorSrc, 'lib/museum'));
+		expect(shared.length).toBeGreaterThan(0);
+		for (const file of shared) {
+			const source = readFileSync(file, 'utf8');
+			expect(source, file).not.toMatch(
+				/(?:from|import\()\s*['"][^'"]*(?:\$lib\/editor|(?:^|\/)\.\.\/editor\/)/
+			);
+		}
+	});
+});
+
 // Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
 describe('P1.5 Camera Plan source contracts', () => {
 	it('keeps Camera Plan editor-only: /museum routes import no camera-plan code', () => {
