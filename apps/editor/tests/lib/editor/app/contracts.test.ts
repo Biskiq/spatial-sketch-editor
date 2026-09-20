@@ -19,53 +19,20 @@ import {
 } from '$lib/project/project-codec';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { serializeSceneDocument } from '$lib/content/scene-codec';
 import { deriveActiveSelection } from '$lib/editor/app/active-editor-selection.svelte';
 import type { LayoutSelection } from '$lib/editor/layout/layout-interaction';
 import { cloneFixtureDocument } from '../../content/__fixtures__/load-fixture-scene';
 import { museumEditorEntryPlugin } from '../../../../vite/museum-editor-entry-plugin';
-
-const ROUTES_DIR = fileURLToPath(new URL('../../../../src/routes', import.meta.url));
-const VISITOR_ROUTES_DIR = fileURLToPath(new URL('../../../../../museum/src/routes', import.meta.url));
-const LIB_DIR = fileURLToPath(new URL('../../../../src/lib', import.meta.url));
-const CAMERA_CORE_DIR = path.resolve(LIB_DIR, '../../../..', 'packages/camera-core/src');
-
-function readRouteSource(routePath: string): string {
-	return fs.readFileSync(path.join(ROUTES_DIR, routePath), 'utf8');
-}
-
-function readLibSource(relativePath: string): string {
-	return fs.readFileSync(path.join(LIB_DIR, relativePath), 'utf8');
-}
-
-function readCameraCoreSource(relativePath: string): string {
-	return fs.readFileSync(path.join(CAMERA_CORE_DIR, relativePath), 'utf8');
-}
-
-function existsLibSource(relativePath: string): boolean {
-	return fs.existsSync(path.join(LIB_DIR, relativePath));
-}
-
-/** Recursively read every .ts/.svelte source under a `$lib` sub-directory. */
-function readAllSourceFiles(relativeDir: string): { name: string; source: string }[] {
-	const root = path.join(LIB_DIR, relativeDir);
-	const sources: { name: string; source: string }[] = [];
-	const stack = [root];
-	while (stack.length > 0) {
-		const entry = stack.pop()!;
-		const stat = fs.statSync(entry);
-		if (stat.isDirectory()) {
-			for (const child of fs.readdirSync(entry)) {
-				if (child.startsWith('.')) continue;
-				stack.push(path.join(entry, child));
-			}
-		} else if (entry.endsWith('.ts') || entry.endsWith('.svelte')) {
-			sources.push({ name: path.basename(entry), source: fs.readFileSync(entry, 'utf8') });
-		}
-	}
-	return sources;
-}
+import {
+	LIB_DIR,
+	VISITOR_ROUTES_DIR,
+	existsLibSource,
+	readAllSourceFiles,
+	readCameraCoreSource,
+	readLibSource,
+	readRouteSource
+} from '../../../helpers/lib-source';
 
 describe('empty project contract', () => {
 	it('creates a codec-valid, fully-empty project', () => {
