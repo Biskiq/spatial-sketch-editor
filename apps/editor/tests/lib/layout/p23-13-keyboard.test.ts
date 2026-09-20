@@ -204,7 +204,16 @@ describe('P23.13 S10 viewport wiring (§9)', () => {
 		// rule decides without must not build one.
 		expect(body).toContain('group: planKeyboardGroup');
 		expect(body).toContain('focusId: interaction.planFocus?.id ?? null');
-		expect(body).toContain('numericEntryOpen: !numericEntry');
+		// The polarity is load-bearing and easy to invert: `numericEntry` *is* the
+		// open field (`PlanNumericEntryState | null`), so the fact the rule wants —
+		// "is a field open" — reads directly. Handing it `!numericEntry` compiles,
+		// passes every pure `plan-keyboard-session` test, and inverts Enter: the
+		// first press at a selected Wall would be swallowed as "a field is open"
+		// while a genuinely open field would let Enter traverse. This is the one
+		// assertion that catches it, so it is asserted as an *equality*, not a
+		// containment that a longer expression could satisfy.
+		expect(body).toMatch(/numericEntryOpen: numericEntry !== null\b/);
+		expect(body).not.toContain('numericEntryOpen: !numericEntry');
 		// …and all three answers are applied, not just the first.
 		expect(body).toContain("traversal?.kind === 'traverse'");
 		expect(body).toContain("traversal?.kind === 'enter-group'");

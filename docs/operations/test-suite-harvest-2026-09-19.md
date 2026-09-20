@@ -665,6 +665,7 @@ batch (`git status`). No mutation code is committed.
 | a held Rect Room drag is no longer a drafting gesture | E2 `sees a live drafting gesture, and comes back to rest…` |
 | a cancelled primitive draft keeps the interaction live | E2 (same it) |
 | toolbar stops calling the snap parsers (from §J.4) | the restored contracts wiring guard |
+| **`numericEntryOpen` adapter inverted** (`!numericEntry` on a `… | null` field) | K1/K2 call-site pin `asks the traversal rule at the keydown and applies every answer` — **and nothing else**: the pure `plan-keyboard-session` tests stayed green, which is the §J.4 lesson repeating (§K.7) |
 
 ### K.4 Pins deliberately retained (and why)
 
@@ -747,7 +748,45 @@ the T3b ownership work.
   fixed in commit `c245b83`; recorded here because the cluster was committed
   before the type check was re-run.
 
-### K.7 Final verification (measured)
+### K.7 Review round — the adapter polarity regression (EXECUTED)
+
+An external review of PR #63 found one **real behaviour regression introduced by
+this slice**. The extraction renamed the inline `!numericEntry` guard into a
+named fact, and the call site passed the old negation into the new name:
+
+```ts
+numericEntryOpen: !numericEntry   // numericEntry is PlanNumericEntryState | null
+```
+
+The rule (`plan-keyboard-session.ts`) reads the fact literally —
+`if (facts.key === 'Enter' && !facts.numericEntryOpen)` — so the adapter was
+**inverted**: with no field open the helper saw "a field is open" and swallowed
+the first Enter (no group entry, no numeric door), while a genuinely open field
+looked closed. That is precisely the P23.13 behaviour the extraction exists to
+preserve (first Enter enters the selected owner's group, second reaches S7's
+door).
+
+Fixed in three parts, all required by the review:
+
+1. **Viewport mapping corrected** to `numericEntryOpen: numericEntry !== null`,
+   with the polarity stated in a comment so the next reader does not re-invert it.
+2. **The call-site pin now asserts polarity as an equality**, not a containment:
+   `expect(body).toMatch(/numericEntryOpen: numericEntry !== null\b/)` plus
+   `expect(body).not.toContain('numericEntryOpen: !numericEntry')`. The old pin
+   (`toContain('numericEntryOpen: !numericEntry')`) pinned the **wrong mapping** —
+   it certified the inverted adapter, which is why the regression shipped green.
+3. **Mutation evidence added** (§K.3): flipping the mapping back to the inverted
+   form fails exactly that pin and *nothing else* in the keyboard suites.
+
+The transferable lesson, and it is the T2a one again: **machinery correctness
+does not imply call-site correctness.** A pure decision module with a `boolean`
+fact has a polarity the module cannot check for itself, and the pure suite
+necessarily stayed green through the inversion. Where an extracted rule consumes
+a *mapped* fact, the call-site pin must assert the mapping — including its
+polarity — rather than the presence of a string that an inverted mapping also
+satisfies.
+
+### K.8 Final verification (measured)
 
 - `npm run check` (svelte-check): **0 errors, 0 warnings**.
 - `npm test` ≡ `npm run test:full`: **307 files, 4,557 tests** (4,556 pass, 1 skip).

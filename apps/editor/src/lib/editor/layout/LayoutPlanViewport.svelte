@@ -5295,7 +5295,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// gate lives in `planKeyboardGroup`).
 			group: planKeyboardGroup,
 			focusId: interaction.planFocus?.id ?? null,
-			numericEntryOpen: !numericEntry
+			// The fact is "is a numeric field open", and `numericEntry` is the
+			// open field itself (`PlanNumericEntryState | null`) — so it reads
+			// directly, never negated. The rule that consumes it is what requires
+			// the field to be *closed* for Enter to traverse.
+			numericEntryOpen: numericEntry !== null
 		});
 		if (traversal?.kind === 'traverse') {
 			event.preventDefault();
