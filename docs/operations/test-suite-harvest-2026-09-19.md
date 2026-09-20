@@ -898,7 +898,7 @@ its (relic-smoke claims 1/6); the contracts ghost/card sketch. **Correction
 | Gap (C.4) | Pin | Mutation that fails it |
 |---|---|---|
 | no one-nav-graph/**evaluator** pin | `camera-core-boundary`: each camera-core route evaluator defined exactly once; the editor navigation graph is the single owner of flow semantics | a second `resolveFlowRoute` in the editor; a re-derived `flowDetourGroups` in the store |
-| no positive Layout-v5/Scene-v1 pin | `p23-f0-stage1-format-policy`: the authoring pair classifies wall-first + project-world; the retired pair legacy; the mixed pair never the default | `project-world` → `legacy-room-local`; `wall-first` → `legacy` |
+| no positive Layout-v5/Scene-v1 pin | `p23-f0-stage1-format-policy`: the authoring pair classifies wall-first + project-world; the retired pair legacy (the pairing itself is owned by `p23-3-new-project-boot`; a third "mixed pair" `it` was deleted in §N.2 as overclaiming) | `project-world` → `legacy-room-local`; `wall-first` → `legacy` |
 | no unified editor→museum sweep | `visitor-import-boundary`: no editor source imports the museum app; the shared `$lib/museum` shell stays free of editor internals | `@portfolio/museum` import in `EditorApp`; `$lib/editor` import in `MuseumShared` |
 | relic import surface | `relic-smoke` §7: the relic shell never consumes the unified tree / greenfield sidebar / project API | `createProjectApi` in `MuseumEditorApp` |
 
@@ -1221,3 +1221,95 @@ empty; no mutation code reached the commit.
 - `npm run test:full` ≡ `npm test`: **308 files, 4,562 tests** (4,561 pass, 1 skip).
 - Partition exact and disjoint: 4,280 + 253 + 6 + 23 = 4,562.
 - Only intended test edits in the tree; mutations reverted; no production change.
+
+## N. Execution log — second review round (EXECUTED)
+
+Two findings, both accepted: the new editor↔museum import-direction pin had a real
+hole, and one T3b `it` claimed more than it proved. Plus the PR metadata that still
+described the pre-T3 state.
+
+### N.1 The import-boundary hole (blocker)
+
+The T3b sweep used a pattern anchored with `^`:
+
+```
+/(?:from|import\()\s*['"][^'"]*(?:\$lib\/editor|(?:^|\/)\.\.\/editor\/)/
+```
+
+`^` in a regex over raw source anchors to the **start of the file**, not to the
+start of the quoted specifier, so the common one-level form
+`import x from '../editor/foo'` matched neither alternative — and that is exactly
+the editor-internal dependency the sweep exists to forbid. The same file already
+had a *better* relative pattern in the museum-side sweep, which is the real
+lesson: **two subtly different patterns for one invariant means two different
+holes.**
+
+Both sweeps (and the visitor reachability walk) now share one specifier owner
+(`importedSpecifiers`) plus one **resolution-based** predicate
+(`reachesEditorInternals(importer, specifier)`: the `$lib/editor` alias, or any
+relative specifier that resolves into `apps/editor/src/lib/editor`). Resolution
+replaces text matching, so multi-level and cross-app hops are covered by
+construction rather than by an extra alternative.
+
+| Mutation (all reverted, `git diff apps` empty after each) | Result |
+|---|---|
+| `../editor/foo` in `src/lib/museum/paris-activation.ts` (file directly under the shell root) | **fails** the editor-shell sweep — the reported blocker |
+| `../../editor/foo` in `src/lib/museum/layout/LayoutMuseumShell.svelte` | fails the same sweep |
+| `../../../../editor/src/lib/editor/foo` in the museum app | fails the museum-side sweep |
+| `$lib/editor/foo` in the museum app | fails the museum-side sweep |
+
+Retired-pattern check (same probes, run against the deleted patterns): the one-level
+transitive form was **missed by the shipped T3b pattern and caught only by the
+museum-side one**, which is why consolidating to a single resolution-based check
+matters rather than keeping both patterns. Probe specifiers are computed with
+`path.relative`, never hand-written — two of this round's first-draft mutations
+were wrong about the hop count and would have "proved" a hole that did not exist.
+
+### N.2 The overclaiming mixed-pair `it` (deleted)
+
+```
+it('moves the two discriminators together — a mixed pair is never the authoring default')
+```
+
+Its body only asserted `classifyLayoutFormat(wall-first) !== classifyLayoutFormat(legacy)`
+and the Scene equivalent — an inequality the two preceding positive claims already
+state exactly (`toBe('wall-first')` + `toBe('legacy')`). It never built a mixed
+Layout/Scene pair and never touched default project composition. The pairing
+itself is composed and asserted end to end in
+`tests/lib/editor/app/p23-3-new-project-boot.test.ts`
+(`composes a wall-first Layout with a world-local Scene that validates`), so the
+`it` was deleted and the §L.3 row corrected. This is the T3 rule applied to T3's
+own additions: a test that cannot fail on the defect its name claims is worse than
+no test, because it certifies the claim.
+
+### N.3 Final metrics after this round
+
+| Metric | `51c3586` | this head |
+|---|---|---|
+| test files | 307 | **308** |
+| tests | 4,557 (1 skipped) | **4,561** (1 skipped) |
+| arch lane | 22 files / 362 tests | **23 files / 252 tests** |
+| fast lane | 279 / 4,166 | **279 / 4,280** |
+| heavy · perf | 1 / 6 · 5 / 23 | 1 / 6 · 5 / 23 |
+| `contracts.test.ts` | 2,716 LOC | **0** |
+| `.toContain`/`.not.toContain` | 2,471 | **2,399** |
+| `expect(` | 17,220 | **17,156** |
+| files reading production source | 68 | **81** |
+
+(§M.5's table was measured one commit earlier — 4,562 tests — and is superseded
+by this one only in the test count and arch lane; the definitions are unchanged.)
+
+Verification: `npm run check` 0 errors / 0 warnings; fast 279/4,280 · arch
+23/252 · heavy 1/6 · perf 5/23 (1 skip); `npm run test:full` ≡ `npm test`
+**308 files / 4,561 tests**; partition exact and disjoint
+(4,280 + 252 + 6 + 23 = 4,561). No production file touched in this round.
+
+### N.4 T3 status after round 2
+
+T3a complete · T3b complete (the one overclaiming `it` removed, the import
+direction genuinely pinned in both directions) · T3c complete to the
+current testing-mechanism boundary. The reviewer's readiness list
+(contracts gone, arch leakage corrected, behavioural core in `fast`, arch timing
+flat, source-shape assertions down, source-reading rise reported honestly, no
+production change, duplicate audit restoring real coverage) is satisfied; the
+source-reading-file trend is carried as a T5/T6 watch item.
