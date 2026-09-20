@@ -434,6 +434,21 @@ describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 		expect(host).toContain("endsWith('/preview')");
 		const layout = readRouteSource('project/[projectId]/+layout.svelte');
 		expect(layout).toContain('{#key page.params.projectId}');
+		// Teardown wiring: the isolation *machinery* is behaviorally pinned in
+		// `tests/lib/editor/app/project-session-isolation.test.ts`, which proves
+		// `ProjectAssetRequestScope.invalidate()` behaves correctly when called —
+		// it cannot fail if `EditorApp` simply stops calling it. So the call site
+		// is pinned here: unmount aborts in-flight project/asset requests and
+		// drops asset contexts, so A→B navigation cannot leak requests or
+		// retained bytes. Asset request ownership is one scope per mount,
+		// invalidated on teardown.
+		const app = readLibSource('editor/app/EditorApp.svelte');
+		expect(app).toContain('projectRequestController?.abort();');
+		expect(app).toContain('invalidateProjectAssets();');
+		expect(app).toContain('clearRetainedSourceAliases();');
+		expect(app).toContain("import { ProjectAssetRequestScope } from '$lib/editor/project-asset-request-scope';");
+		expect(app).toContain('const assetScope = new ProjectAssetRequestScope();');
+		expect(app).toContain('assetScope.invalidate();');
 	});
 
 	it('keeps Project Row navigation Spatial-only', () => {
@@ -623,6 +638,21 @@ describe('P21.1 shared shell', () => {
 		expect(toolbar).toContain('aria-label="Scene Plan mode"');
 		expect(toolbar).toContain('>Layout</button>');
 		expect(toolbar).toContain('>Arrange</button>');
+	});
+
+	it('validates Row 2 snap number inputs before writing gizmo state', () => {
+		// The parser behavior is pinned in `tests/lib/editor/snap-input-validation.test.ts`;
+		// that suite imports the parsers directly, so it stays green if the toolbar
+		// stops calling them. This is the wiring half: the toolbar parses on
+		// change/blur (never per-keystroke, which corrupts mid-typing states) and
+		// restores the live value on reject.
+		const toolbar = readLibSource('editor/EditorViewportToolbar.svelte');
+		expect(toolbar).toContain('parseTranslationSnapMeters(Number(');
+		expect(toolbar).toContain('parseRotationSnapDegrees(Number(');
+		expect(toolbar).toContain('onchange={(e) => commitTranslationSnap');
+		expect(toolbar).toContain('onchange={(e) => commitRotationSnapDegrees');
+		expect(toolbar).toContain('input.value = String(store.translationSnap)');
+		expect(toolbar).toContain('input.value = String(store.rotationSnapDegrees)');
 	});
 
 	it('disables the save-state pill when neither actionable nor blocked', () => {
@@ -976,6 +1006,21 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 });
 
 describe('P21.5 Slice 4 inspector typography + theme sweep', () => {
+	it('maps the Inspector type shorthands onto their ratified roles', () => {
+		// The ladder itself (steps, the knob, closure) is owned by
+		// `tests/lib/editor/app/p23-14-type-roles.test.ts`; what only a mapping
+		// assertion can catch is a role swapped for another *valid* role —
+		// closing the ladder does not notice `--editor-font-size-label` pointing
+		// at `lg` instead of `md`.
+		const tokens = readLibSource('editor/styles/tokens.css');
+		expect(tokens).toContain('--editor-font-size-section: var(--editor-font-size-xs);');
+		expect(tokens).toContain('--editor-font-size-label: var(--editor-font-size-md);');
+		expect(tokens).toContain('--editor-font-size-input: var(--editor-font-size-md);');
+		const inspectorTokens = readLibSource('editor/styles/inspector.css');
+		expect(inspectorTokens).toContain('--editor-inspector-value: var(--editor-type-property);');
+		expect(inspectorTokens).toContain('--editor-inspector-section-title: var(--editor-type-engraved);');
+	});
+
 	it('renders Inspector section headers as 11px uppercase muted across every panel', () => {
 		const tier = [
 			'font-size: 11px;',
