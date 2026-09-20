@@ -173,7 +173,9 @@ describe('P23.13 S8 refusal paint', () => {
 		const marks = after.drafts.filter((p) => p.style.startsWith('refusal-'));
 		// One stop and one × per refusal: the answer is bounded, not a spray.
 		expect(marks).toHaveLength(2);
-		expect(marks.every((primitive) => primitive.hit === undefined)).toBe(true);
+		expect(marks.every((primitive) => (primitive as { hit?: unknown }).hit === undefined)).toBe(
+			true
+		);
 		expect(after.labels.filter((p) => p.style === 'refusal-reason')).toHaveLength(1);
 		// The reason is a *label*, so it gets the text layer's knockout rather than
 		// being painted into the draft order where the Wall band would swallow it.

@@ -71,6 +71,7 @@ function document(): LayoutDocumentWallFirst {
 			offset: OPENING_OFFSET,
 			width: OPENING_WIDTH,
 			height: 2.1,
+			sillHeight: 0,
 			profile: 'rectangular'
 		}
 	];

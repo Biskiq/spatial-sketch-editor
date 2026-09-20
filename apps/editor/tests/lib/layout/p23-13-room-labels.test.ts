@@ -768,6 +768,16 @@ describe('P23.13 S3 — placement never animates and never depends on host fonts
 });
 
 describe('P23.13 S3 — viewport wiring', () => {
+	// **T2b: retained (R2–R4), with the reason recorded.** These are structural
+	// tripwires for viewport-internal plumbing — a reactivity key that must stay
+	// reactive, a gesture predicate that must keep naming every live session, and
+	// a font-readiness hook that must not fire per frame. Replacing them means
+	// extracting that logic out of `LayoutPlanViewport.svelte` into modules of its
+	// own, which is a production ownership change with its own review surface, not
+	// a test-mechanism change; the harvest records it as a separate slice. The
+	// shared resolver this block's last describe leans on (`identityLabelPair`) is
+	// already covered behaviourally at its own layer.
+
 	it('keeps the reconsider reason reactive so stickiness cannot latch on `geometry`', () => {
 		const source = readSource('src/lib/editor/layout/LayoutPlanViewport.svelte');
 		// The reason is read inside a derived, so the geometry key it compares has to
