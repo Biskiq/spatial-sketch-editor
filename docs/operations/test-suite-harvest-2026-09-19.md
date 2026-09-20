@@ -1313,3 +1313,92 @@ current testing-mechanism boundary. The reviewer's readiness list
 flat, source-shape assertions down, source-reading rise reported honestly, no
 production change, duplicate audit restoring real coverage) is satisfied; the
 source-reading-file trend is carried as a T5/T6 watch item.
+
+## O. Execution log — third review round (EXECUTED)
+
+The round-2 fix consolidated the extractor; this round closed the remaining
+escape hatch in it and the last text-matching direction.
+
+### O.1 The extractor missed bare side-effect imports (blocker)
+
+`importedSpecifiers()` handled `import X from '…'`, `export … from '…'` and
+`import('…')` — but not
+
+```ts
+import '../editor/foo'; // side-effect import: no clause, no `from`, no parens
+```
+
+so a *runtime* dependency on editor internals written that way passed both the
+museum-side sweep and the visitor reachability walk. The alternative is now the
+**first** branch, `\bimport\s+['"]([^'"]+)['"]`.
+
+Order is load-bearing, not decoration: with the `from` form first, the lazy
+`[\s\S]*?` spans statements, so `import './side'` followed later by any
+`import X from '…'` was **swallowed by the neighbouring match** and never
+reported. The `from` form is now also line-anchored (`^\s*`) and forbidden to
+cross a `;` (`[^;]*?`): unanchored, `export const A = 1;` bridged forward to the
+next `from '…'` in the file — that was found by mutation, when an appended probe
+was reported through a *type-only* import this boundary deliberately ignores.
+No `import`/`export` clause contains a `;` before its `from`, so `[^;]*?` is the
+exact guard. Both rules are recorded in the source comment because neither is
+derivable by reading the pattern.
+
+### O.2 The editor → museum direction was still a text regex
+
+```ts
+expect(source, file).not.toMatch(
+  /(?:from|import\()\s*['"][^'"]*(?:@portfolio\/museum|apps\/museum|museum\/src)/
+);
+```
+
+which is the same pattern shape the round-2 blocker was about — and it inherited
+the same side-effect blind spot. It is now `reachesMuseumApp(importer, specifier)`
+over the **same** extracted specifier list: the workspace package name
+(`@portfolio/museum[/…]`) names the app outright, and every relative specifier is
+resolved against its importer, so hop count is irrelevant instead of enumerated.
+One extractor, one resolution rule, two directions — the claim the previous round
+made and had not quite finished.
+
+### O.3 Mutation / sensitivity evidence (all probes self-reverted)
+
+Probe specifiers are always computed with `path.relative`, never hand-written.
+
+| Probe | Result |
+|---|---|
+| `import '../editor/foo';` (bare side-effect) in `src/lib/museum/paris-activation.ts` | **fails** the shell sweep — the requested case |
+| `import '../../editor/foo';` in `src/lib/museum/layout/LayoutMuseumShell.svelte` | fails the same sweep |
+| `import '<rel>/museum/src/lib/layout/wall-mesh-builder';` (bare side-effect) in editor source | **fails** the editor-side sweep — the requested case |
+| `import { X } from '@portfolio/museum';` in editor source | fails the editor-side sweep |
+| `import { X } from '<rel>/museum/src/…';` in editor source | fails the editor-side sweep |
+| NEGATIVE: `$lib/museum/…` in editor source | **passes** — the editor's own rendering shell is legitimate |
+| BY-DESIGN: `import type { X } from '@portfolio/museum';` | passes — this boundary is runtime/bundle isolation |
+| Retired extractor on the side-effect source | captured only `['./bar']` — **missed** the violation |
+
+Extractor unit table (10 cases, `node /tmp/spec-check.mjs`, byte-identical pattern
+verified against the test file): both statement orders, multi-line clause,
+spaced/unspaced dynamic import, `import type`/`export type` exclusion,
+`export {…} from`, `export * from`, and two **bridging** cases proving a terminated
+`export const` cannot reach a later `from`.
+
+### O.4 Scope decision left explicit: `import type`
+
+The extractor excludes `import type` / `export type` by design, matching the
+boundary's stated invariant (runtime/bundle isolation). The reviewer raised
+zero-compile-time-coupling as a *possible* stronger invariant; the architecture
+authority does not state it, so it is **not** changed here and no claim is made
+about it. Recorded rather than silently chosen — if the authority later wants
+type-level isolation, this is a one-branch change to the extractor plus a typed
+negative probe.
+
+### O.5 Metrics after round 3
+
+No test added, moved or deleted in this round: 308 files / 4,561 tests (1 skip),
+arch 23 / 252, `contracts.test.ts` gone, no production file touched. `test:arch`
+9.90 s · `test:full` 35.47 s on this machine. Lane partition still exact
+(4,280 + 252 + 6 + 23 = 4,561).
+
+### O.6 T3 status after round 3
+
+T3a complete · T3b complete · T3c complete to the current testing-mechanism
+boundary. The DOM/event-dependent shell pins and the other §L.9 carry-forwards
+are unchanged deferrals. No T4/T5/T6 work started.
