@@ -503,18 +503,11 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 			expect(classifySceneFormat(createEmptySceneDocument())).toBe('legacy-room-local');
 		});
 
-		it('moves the two discriminators together — a mixed pair is never the authoring default', () => {
-			// The wall-first Layout must carry its world-local Scene partner; the
-			// boot composition is asserted end to end in
-			// `tests/lib/editor/app/p23-3-new-project-boot.test.ts`. Here we pin the
-			// classification invariant that makes the pairing load-bearing: a
-			// wall-first Layout may not be paired with the legacy room-local Scene.
-			expect(classifyLayoutFormat(createEmptyWallFirstLayoutDocument())).not.toBe(
-				classifyLayoutFormat(createEmptyLayoutDocument())
-			);
-			expect(classifySceneFormat(createEmptyWorldLocalSceneDocument())).not.toBe(
-				classifySceneFormat(createEmptySceneDocument())
-			);
-		});
+		// The *pairing* itself — a wall-first Layout carrying its world-local
+		// Scene partner — is composed and asserted end to end in
+		// `tests/lib/editor/app/p23-3-new-project-boot.test.ts`. A third `it` here
+		// only compared the two classifications for inequality, which the two
+		// positive claims above already state exactly; it is deleted per T3's
+		// consolidation rule (its name claimed a mixed-pair check it never made).
 	});
 });
