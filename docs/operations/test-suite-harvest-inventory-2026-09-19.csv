@@ -1,0 +1,304 @@
+path,loc,describes,its,tests_fn,tests_approx,subsystem,domain,slice,imports_source,reads_fs,walks_repo,spawns,large_loop,randomized,timing,kind_heuristic,run1_duration_s,vitest_tests
+apps/editor/tests/e2e/test-auth.test.ts,103,1,5,0,5,e2e,e2e,,False,False,False,False,True,False,False,behavior,0.009,5
+apps/editor/tests/lib/bench/bench-boundary.test.ts,66,1,5,0,5,lib/bench,lib/bench,,False,True,True,False,False,False,True,arch-boundary (source-walk),0.003,5
+apps/editor/tests/lib/bench/bench-report.test.ts,67,1,5,0,5,lib/bench,lib/bench,,True,False,False,False,False,False,True,behavior,0.608,5
+apps/editor/tests/lib/bench/browser-bench.test.ts,83,1,5,0,5,lib/bench,lib/bench,,True,False,False,False,False,False,True,behavior,0.520,5
+apps/editor/tests/lib/bench/p2311-bend-perf-pass.test.ts,661,4,10,0,10,lib/bench,lib/bench,p2311,True,False,True,False,True,False,True,behavior,5.056,10
+apps/editor/tests/lib/bench/plan-bench.test.ts,60,0,1,0,1,lib/bench,lib/bench,,True,False,False,False,True,False,True,behavior,0.000,1
+apps/editor/tests/lib/bench/three-stats.test.ts,39,1,2,0,2,lib/bench,lib/bench,,True,False,False,False,False,False,True,behavior,0.185,2
+apps/editor/tests/lib/content/assets.test.ts,83,1,8,0,8,lib/content,lib/content,,True,False,False,False,False,False,False,behavior,0.004,8
+apps/editor/tests/lib/content/chopin-layout.test.ts,13,1,1,0,1,lib/content,lib/content,,True,False,False,False,False,False,False,behavior,0.001,1
+apps/editor/tests/lib/content/chopin-project.test.ts,173,1,5,0,5,lib/content,lib/content,,True,False,False,False,False,False,False,behavior,0.022,5
+apps/editor/tests/lib/content/footprint-generator.test.ts,157,1,9,0,9,lib/content,lib/content,,True,False,False,False,False,False,False,behavior,0.004,9
+apps/editor/tests/lib/content/normalize-asset.test.ts,113,0,6,0,6,lib/content,lib/content,,False,True,True,True,True,False,False,source-read/other,15.259,6
+apps/editor/tests/lib/content/package-format.test.ts,179,8,24,0,24,lib/content,lib/content,,True,False,False,False,True,False,False,behavior,0.012,24
+apps/editor/tests/lib/content/provenance.test.ts,176,1,9,0,9,lib/content,lib/content,,False,False,False,False,False,False,False,arch-boundary,0.002,9
+apps/editor/tests/lib/content/rooms.test.ts,34,1,2,0,2,lib/content,lib/content,,True,False,False,False,False,False,False,arch-boundary,0.002,2
+apps/editor/tests/lib/content/scene-codec.test.ts,1021,2,27,0,27,lib/content,lib/content,,True,False,False,False,False,True,False,arch-boundary,0.051,39
+apps/editor/tests/lib/content/scene.test.ts,568,3,18,0,18,lib/content,lib/content,,True,False,False,False,False,False,True,arch-boundary,0.015,24
+apps/editor/tests/lib/content/texture-uri.test.ts,33,1,0,0,0,lib/content,lib/content,,True,False,False,False,False,False,False,behavior,0.002,18
+apps/editor/tests/lib/editor/EditorSelectionHelper.test.ts,171,5,12,0,12,lib/editor,lib/editor,,True,False,False,False,True,False,False,behavior,0.006,12
+apps/editor/tests/lib/editor/app/active-editor-selection.test.ts,640,7,28,0,28,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.022,28
+apps/editor/tests/lib/editor/app/arrange-delete.test.ts,124,1,2,0,2,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.022,2
+apps/editor/tests/lib/editor/app/contracts.test.ts,2734,25,158,0,158,lib/editor,lib/editor/app,,True,True,True,False,True,True,False,arch-boundary (source-walk),0.114,157
+apps/editor/tests/lib/editor/app/editor-view-state.test.ts,62,1,5,0,5,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.001,5
+apps/editor/tests/lib/editor/app/hierarchy-navigator-state.test.ts,560,5,28,0,28,lib/editor,lib/editor/app,,True,True,True,False,False,False,False,arch-boundary (source-walk),0.005,28
+apps/editor/tests/lib/editor/app/live-rooms.test.ts,146,2,5,0,5,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.039,5
+apps/editor/tests/lib/editor/app/p23-12-inspector-identity.test.ts,510,4,23,0,23,lib/editor,lib/editor/app,p23-12,True,True,True,False,False,False,False,arch-boundary (source-walk),0.061,23
+apps/editor/tests/lib/editor/app/p23-12-navigator-identity.test.ts,824,9,46,0,46,lib/editor,lib/editor/app,p23-12,True,True,True,False,False,False,False,arch-boundary (source-walk),0.209,46
+apps/editor/tests/lib/editor/app/p23-14-a11y-motion.test.ts,344,5,17,0,17,lib/editor,lib/editor/app,p23-14,True,True,True,False,True,False,True,source-shape,0.008,17
+apps/editor/tests/lib/editor/app/p23-14-camera-drawer.test.ts,116,4,7,0,7,lib/editor,lib/editor/app,p23-14,False,True,True,False,False,False,False,source-shape,0.006,7
+apps/editor/tests/lib/editor/app/p23-14-contrast-floor.test.ts,329,5,18,2,20,lib/editor,lib/editor/app,p23-14,False,True,True,False,True,False,False,arch-boundary (source-walk),0.036,35
+apps/editor/tests/lib/editor/app/p23-14-control-ownership.test.ts,115,1,6,0,6,lib/editor,lib/editor/app,p23-14,False,True,True,False,False,False,False,source-shape,0.002,6
+apps/editor/tests/lib/editor/app/p23-14-inspector-junction-dissolve.test.ts,301,4,14,0,14,lib/editor,lib/editor/app,p23-14,True,True,True,False,False,True,False,source-shape,0.015,14
+apps/editor/tests/lib/editor/app/p23-14-inspector-target.test.ts,212,2,11,0,11,lib/editor,lib/editor/app,p23-14,True,True,True,False,False,False,False,source-shape,0.005,10
+apps/editor/tests/lib/editor/app/p23-14-state-language.test.ts,124,2,5,0,5,lib/editor,lib/editor/app,p23-14,True,True,True,False,False,False,False,source-shape,0.002,5
+apps/editor/tests/lib/editor/app/p23-14-type-roles.test.ts,243,2,8,2,10,lib/editor,lib/editor/app,p23-14,False,True,True,False,False,True,False,source-shape,0.017,8
+apps/editor/tests/lib/editor/app/p23-3-new-project-boot.test.ts,144,1,6,0,6,lib/editor,lib/editor/app,p23-3,True,False,False,False,False,False,False,arch-boundary,0.006,6
+apps/editor/tests/lib/editor/app/p23-6b-hierarchy-inspector.test.ts,565,5,30,0,30,lib/editor,lib/editor/app,p23-6,True,True,True,False,False,False,False,arch-boundary (source-walk),0.008,29
+apps/editor/tests/lib/editor/app/p23-6e-hierarchy-plan-bridge.test.ts,216,2,9,0,9,lib/editor,lib/editor/app,p23-6,True,True,True,False,False,False,False,arch-boundary (source-walk),0.024,8
+apps/editor/tests/lib/editor/app/p23-6e-hierarchy-projection.test.ts,2241,19,109,0,109,lib/editor,lib/editor/app,p23-6,True,True,True,False,False,False,True,arch-boundary (source-walk),0.046,109
+apps/editor/tests/lib/editor/app/p8-s5-interaction-matrix.test.ts,247,1,7,0,7,lib/editor,lib/editor/app,p8,True,False,False,False,False,False,False,behavior,0.032,7
+apps/editor/tests/lib/editor/app/placement.test.ts,125,1,6,0,6,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.026,6
+apps/editor/tests/lib/editor/app/project-persistence-presentation.test.ts,19,1,0,0,0,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.002,7
+apps/editor/tests/lib/editor/app/project-session-isolation.test.ts,251,1,7,0,7,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,arch-boundary,0.018,7
+apps/editor/tests/lib/editor/app/room-delete.test.ts,222,3,8,0,8,lib/editor,lib/editor/app,,True,False,False,False,False,False,False,behavior,0.088,8
+apps/editor/tests/lib/editor/app/room-focus.test.ts,118,2,6,0,6,lib/editor,lib/editor/app,,True,True,True,False,False,False,False,source-shape,0.014,6
+apps/editor/tests/lib/editor/app/unified-project-tree.test.ts,656,6,30,0,30,lib/editor,lib/editor/app,,True,False,True,False,False,False,False,arch-boundary,0.018,30
+apps/editor/tests/lib/editor/camera/cardinal-snap-motion.test.ts,396,3,12,0,12,lib/editor,lib/editor/camera,,True,False,True,False,True,False,True,behavior,0.009,16
+apps/editor/tests/lib/editor/camera/cardinal-snap-residual-drag.test.ts,122,1,2,0,2,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.003,2
+apps/editor/tests/lib/editor/camera/editor-camera-connections.test.ts,102,1,5,0,5,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.003,5
+apps/editor/tests/lib/editor/camera/editor-camera-framing-authoring.test.ts,262,7,36,0,36,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.004,36
+apps/editor/tests/lib/editor/camera/editor-camera-framing-envelope.test.ts,297,5,18,0,18,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.006,31
+apps/editor/tests/lib/editor/camera/editor-camera-framing.test.ts,479,7,23,0,23,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.011,23
+apps/editor/tests/lib/editor/camera/editor-camera-labels.test.ts,42,1,4,0,4,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/lib/editor/camera/editor-camera-path.test.ts,285,3,13,0,13,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.043,13
+apps/editor/tests/lib/editor/camera/editor-camera-preview-affordances.test.ts,101,1,5,0,5,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.026,5
+apps/editor/tests/lib/editor/camera/editor-camera-timeline.test.ts,415,1,12,0,12,lib/editor,lib/editor/camera,,True,False,True,False,True,False,True,arch-boundary,0.033,12
+apps/editor/tests/lib/editor/camera/editor-camera-view.test.ts,224,1,6,0,6,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.003,6
+apps/editor/tests/lib/editor/camera/editor-camera.test.ts,741,4,32,0,32,lib/editor,lib/editor/camera,,True,False,False,False,False,False,False,behavior,0.011,42
+apps/editor/tests/lib/editor/camera/editor-directed-edge-motion.test.ts,251,2,11,0,11,lib/editor,lib/editor/camera,,True,False,False,False,False,False,True,behavior,0.024,11
+apps/editor/tests/lib/editor/camera/p21.6-slice-b.test.ts,197,3,17,0,17,lib/editor,lib/editor/camera,p21.6,False,True,True,False,False,False,False,arch-boundary (source-walk),0.004,17
+apps/editor/tests/lib/editor/camera/polar-orbit-handoff.test.ts,182,1,4,0,4,lib/editor,lib/editor/camera,,True,False,True,False,False,False,False,behavior,0.009,4
+apps/editor/tests/lib/editor/camera-plan/camera-plan-hit.test.ts,149,2,6,0,6,lib/editor,lib/editor/camera-plan,,True,False,False,False,False,False,False,behavior,0.024,6
+apps/editor/tests/lib/editor/camera-plan/camera-plan-hover.test.ts,220,1,5,0,5,lib/editor,lib/editor/camera-plan,,True,False,False,False,False,False,False,behavior,0.034,5
+apps/editor/tests/lib/editor/camera-plan/camera-plan-state.test.ts,31,2,2,0,2,lib/editor,lib/editor/camera-plan,,True,False,False,False,False,False,False,behavior,0.001,2
+apps/editor/tests/lib/editor/camera-plan/camera-plan-timing.test.ts,124,1,5,0,5,lib/editor,lib/editor/camera-plan,,True,False,False,False,False,False,True,behavior,0.009,5
+apps/editor/tests/lib/editor/camera-plan/p14-camera-plan-footprints.test.ts,51,1,2,0,2,lib/editor,lib/editor/camera-plan,p14,False,True,True,False,False,False,False,source-shape,0.007,2
+apps/editor/tests/lib/editor/cluster-obb.test.ts,271,7,15,0,15,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.004,15
+apps/editor/tests/lib/editor/context-menu/context-menu.test.ts,415,6,25,0,25,lib/editor,lib/editor/context-menu,,True,False,False,False,False,False,False,behavior,0.006,25
+apps/editor/tests/lib/editor/editor-assets.test.ts,38,2,3,0,3,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.001,3
+apps/editor/tests/lib/editor/editor-cluster-transform.test.ts,148,2,4,0,4,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.005,4
+apps/editor/tests/lib/editor/editor-lights.test.ts,107,1,5,0,5,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.002,5
+apps/editor/tests/lib/editor/editor-navigation-graph.test.ts,740,3,23,1,24,lib/editor,lib/editor,,True,True,True,False,False,False,False,source-shape,0.017,23
+apps/editor/tests/lib/editor/editor-orientation-gizmo.test.ts,376,2,14,0,14,lib/editor,lib/editor,,True,False,False,False,True,False,False,behavior,0.015,14
+apps/editor/tests/lib/editor/editor-outliner.test.ts,31,2,4,0,4,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/lib/editor/editor-placement.test.ts,355,8,24,0,24,lib/editor,lib/editor,,True,False,False,False,True,False,False,behavior,0.010,24
+apps/editor/tests/lib/editor/editor-primitives.test.ts,54,1,3,0,3,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.002,3
+apps/editor/tests/lib/editor/editor-selection.test.ts,676,5,27,0,27,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.009,27
+apps/editor/tests/lib/editor/editor-shell-boot-core.test.ts,139,3,6,0,6,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.004,6
+apps/editor/tests/lib/editor/editor-store-bind-migration.test.ts,89,1,4,1,5,lib/editor,lib/editor,,True,True,True,False,False,False,False,source-read/other,0.009,4
+apps/editor/tests/lib/editor/editor-store-camera.test.ts,4049,18,135,0,135,lib/editor,lib/editor,,True,False,True,False,True,False,True,arch-boundary,0.385,135
+apps/editor/tests/lib/editor/editor-store-package-archive.test.ts,251,4,11,0,11,lib/editor,lib/editor,,True,False,False,False,True,False,False,behavior,0.034,11
+apps/editor/tests/lib/editor/editor-store-placement.test.ts,495,4,24,0,24,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.028,24
+apps/editor/tests/lib/editor/editor-store-selection.test.ts,460,2,22,0,22,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.038,22
+apps/editor/tests/lib/editor/editor-store-shell.test.ts,574,4,26,0,26,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.028,26
+apps/editor/tests/lib/editor/editor-store-textures.test.ts,271,1,12,0,12,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.035,12
+apps/editor/tests/lib/editor/editor-store.test.ts,367,4,16,0,16,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.080,16
+apps/editor/tests/lib/editor/editor-textures.test.ts,179,1,11,0,11,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.002,11
+apps/editor/tests/lib/editor/editor-transform-target.test.ts,99,1,6,0,6,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.002,6
+apps/editor/tests/lib/editor/editor-transform.test.ts,186,2,13,0,13,lib/editor,lib/editor,,True,False,False,False,False,False,False,arch-boundary,0.003,13
+apps/editor/tests/lib/editor/editor-vector.test.ts,34,1,2,0,2,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.001,11
+apps/editor/tests/lib/editor/export/package-exporter.test.ts,218,1,11,0,11,lib/editor,lib/editor/export,,True,False,False,False,True,False,False,behavior,0.076,11
+apps/editor/tests/lib/editor/export/package-roundtrip-smoke.test.ts,173,1,1,0,1,lib/editor,lib/editor/export,,True,False,False,False,True,False,False,behavior,0.033,1
+apps/editor/tests/lib/editor/gizmo/camera-gizmo-adapter.test.ts,442,3,12,0,12,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,behavior,0.018,11
+apps/editor/tests/lib/editor/gizmo/editor-gizmo-behavior-fixtures.test.ts,461,3,12,0,12,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,arch-boundary,0.023,11
+apps/editor/tests/lib/editor/gizmo/editor-gizmo-host.test.ts,463,4,15,0,15,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,behavior,0.035,15
+apps/editor/tests/lib/editor/gizmo/editor-gizmo-policy.test.ts,335,8,33,0,33,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,behavior,0.004,33
+apps/editor/tests/lib/editor/gizmo/layout-gizmo-adapter.test.ts,467,3,15,0,15,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,arch-boundary,0.175,15
+apps/editor/tests/lib/editor/gizmo/layout-gizmo-candidate.test.ts,396,3,11,0,11,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,arch-boundary,0.059,11
+apps/editor/tests/lib/editor/gizmo/layout-gizmo-target.test.ts,616,8,32,0,32,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,arch-boundary,0.056,32
+apps/editor/tests/lib/editor/gizmo/scene-gizmo-adapter.test.ts,434,4,12,0,12,lib/editor,lib/editor/gizmo,,True,False,False,False,False,False,False,behavior,0.020,12
+apps/editor/tests/lib/editor/helpers/mime-sniff.test.ts,32,1,5,0,5,lib/editor,lib/editor/helpers,,True,False,False,False,False,False,False,behavior,0.001,5
+apps/editor/tests/lib/editor/helpers/package-sha.test.ts,32,1,4,0,4,lib/editor,lib/editor/helpers,,True,False,False,False,False,False,False,behavior,0.008,4
+apps/editor/tests/lib/editor/helpers/route-clone.test.ts,52,1,2,0,2,lib/editor,lib/editor/helpers,,True,False,False,False,False,False,False,behavior,0.001,2
+apps/editor/tests/lib/editor/helpers/validators-runner.test.ts,87,1,6,0,6,lib/editor,lib/editor/helpers,,True,False,False,False,False,False,False,behavior,0.003,6
+apps/editor/tests/lib/editor/import/package-importer.test.ts,199,1,9,0,9,lib/editor,lib/editor/import,,True,False,False,False,False,False,False,behavior,0.065,9
+apps/editor/tests/lib/editor/interaction-cursor.test.ts,52,1,9,0,9,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.002,9
+apps/editor/tests/lib/editor/layout/arch-profile.test.ts,30,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.002,4
+apps/editor/tests/lib/editor/layout/arrange-hit.test.ts,118,1,10,0,10,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.003,10
+apps/editor/tests/lib/editor/layout/curve-geometry.test.ts,66,1,5,0,5,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.004,5
+apps/editor/tests/lib/editor/layout/draft-geometry.test.ts,48,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.003,4
+apps/editor/tests/lib/editor/layout/layout-3d-picking.test.ts,401,4,20,0,20,lib/editor,lib/editor/layout,,True,True,True,False,False,False,False,source-shape,0.169,20
+apps/editor/tests/lib/editor/layout/layout-3d-selection.test.ts,322,4,14,1,15,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.087,14
+apps/editor/tests/lib/editor/layout/layout-auto-bezier.test.ts,64,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.003,4
+apps/editor/tests/lib/editor/layout/layout-editing.test.ts,83,1,5,0,5,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.003,5
+apps/editor/tests/lib/editor/layout/layout-exact-input.test.ts,50,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,True,False,False,behavior,0.005,4
+apps/editor/tests/lib/editor/layout/layout-interaction.test.ts,555,8,33,0,33,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.005,33
+apps/editor/tests/lib/editor/layout/layout-mesh-factory.test.ts,76,1,5,0,5,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.023,5
+apps/editor/tests/lib/editor/layout/layout-mutation-runner.test.ts,241,4,10,0,10,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.100,10
+apps/editor/tests/lib/editor/layout/layout-object-editing.test.ts,120,1,7,0,7,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.012,7
+apps/editor/tests/lib/editor/layout/layout-opening-editing.test.ts,96,1,8,0,8,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.003,8
+apps/editor/tests/lib/editor/layout/layout-plan-transform.test.ts,101,1,8,0,8,lib/editor,lib/editor/layout,,True,False,False,False,True,False,False,behavior,0.006,8
+apps/editor/tests/lib/editor/layout/layout-preview-bounds.test.ts,36,1,3,0,3,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.013,3
+apps/editor/tests/lib/editor/layout/layout-preview-geometry.test.ts,15,1,2,0,2,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.001,2
+apps/editor/tests/lib/editor/layout/layout-preview-state.test.ts,535,1,27,0,27,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,2.427,27
+apps/editor/tests/lib/editor/layout/layout-room-editing.test.ts,109,1,7,0,7,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.002,7
+apps/editor/tests/lib/editor/layout/layout-room-transform.test.ts,76,1,3,0,3,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.005,3
+apps/editor/tests/lib/editor/layout/layout-transaction.test.ts,40,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.006,4
+apps/editor/tests/lib/editor/layout/layout-validation.test.ts,104,1,8,0,8,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.007,8
+apps/editor/tests/lib/editor/layout/layout-wall-material.test.ts,70,2,7,0,7,lib/editor,lib/editor/layout,,True,True,True,False,False,False,False,arch-boundary (source-walk),0.003,7
+apps/editor/tests/lib/editor/layout/p23-10-add-junction.test.ts,367,2,9,0,9,lib/editor,lib/editor/layout,p23-10,True,True,True,False,False,False,False,arch-boundary (source-walk),0.058,9
+apps/editor/tests/lib/editor/layout/p23-10-wall-edit-gesture.test.ts,838,5,33,0,33,lib/editor,lib/editor/layout,p23-10,True,True,True,False,False,False,False,arch-boundary (source-walk),0.233,33
+apps/editor/tests/lib/editor/layout/p23-10-wall-move-adapter.test.ts,202,1,4,0,4,lib/editor,lib/editor/layout,p23-10,True,False,False,False,False,False,False,arch-boundary,0.040,4
+apps/editor/tests/lib/editor/layout/p23-11-bend-command.test.ts,608,5,20,0,20,lib/editor,lib/editor/layout,p23-11,True,True,False,False,True,False,False,source-shape,0.080,20
+apps/editor/tests/lib/editor/layout/p23-11-transient-direct-preview.test.ts,955,5,22,0,22,lib/editor,lib/editor/layout,p23-11,True,False,True,False,False,False,False,arch-boundary,0.249,23
+apps/editor/tests/lib/editor/layout/p23-12-lifecycle-semantics.test.ts,439,6,14,0,14,lib/editor,lib/editor/layout,p23-12,True,False,False,False,False,False,False,arch-boundary,0.160,14
+apps/editor/tests/lib/editor/layout/p23-12-lifecycle.test.ts,295,2,8,0,8,lib/editor,lib/editor/layout,p23-12,True,False,False,False,False,False,False,arch-boundary,0.090,8
+apps/editor/tests/lib/editor/layout/p23-12-names.test.ts,366,5,17,0,17,lib/editor,lib/editor/layout,p23-12,True,False,False,False,False,True,False,arch-boundary,0.062,17
+apps/editor/tests/lib/editor/layout/p23-12-plan-identity.test.ts,251,2,13,0,13,lib/editor,lib/editor/layout,p23-12,True,True,True,False,False,False,False,arch-boundary (source-walk),0.005,13
+apps/editor/tests/lib/editor/layout/p23-12-review-fixes.test.ts,308,4,10,0,10,lib/editor,lib/editor/layout,p23-12,True,False,False,False,False,False,False,arch-boundary,0.066,10
+apps/editor/tests/lib/editor/layout/p23-12-transient-allocation.test.ts,416,5,10,0,10,lib/editor,lib/editor/layout,p23-12,True,True,True,False,False,False,False,arch-boundary (source-walk),0.091,10
+apps/editor/tests/lib/editor/layout/p23-12-undo-branch.test.ts,239,1,3,0,3,lib/editor,lib/editor/layout,p23-12,True,False,False,False,False,False,False,arch-boundary,0.064,3
+apps/editor/tests/lib/editor/layout/p23-14-room-rotation-arm.test.ts,109,1,3,0,3,lib/editor,lib/editor/layout,p23-14,True,False,False,False,False,False,False,arch-boundary,0.033,3
+apps/editor/tests/lib/editor/layout/p23-2-interior-anchor-release.test.ts,854,4,26,0,26,lib/editor,lib/editor/layout,p23-2,True,True,True,False,False,False,False,arch-boundary (source-walk),0.625,26
+apps/editor/tests/lib/editor/layout/p23-3-opening-authoring-reachability.test.ts,207,5,11,0,11,lib/editor,lib/editor/layout,p23-3,False,True,True,False,False,False,False,source-shape,0.004,11
+apps/editor/tests/lib/editor/layout/p23-6a-room-move-gesture.test.ts,602,3,16,0,16,lib/editor,lib/editor/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.130,16
+apps/editor/tests/lib/editor/layout/p23-6h-height-edit-history.test.ts,240,1,8,0,8,lib/editor,lib/editor/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.059,8
+apps/editor/tests/lib/editor/layout/p23-6i-layout-import-replacement.test.ts,240,1,3,0,3,lib/editor,lib/editor/layout,p23-6,True,False,False,False,False,False,False,behavior,0.019,3
+apps/editor/tests/lib/editor/layout/p23-6i-wall-run-height.test.ts,427,2,13,0,13,lib/editor,lib/editor/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.078,13
+apps/editor/tests/lib/editor/layout/p23-9-wall-chain-commit.test.ts,173,2,10,0,10,lib/editor,lib/editor/layout,p23-9,True,False,False,False,False,False,False,arch-boundary,0.106,10
+apps/editor/tests/lib/editor/layout/p23-9-wall-segment-history.test.ts,316,1,7,0,7,lib/editor,lib/editor/layout,p23-9,True,False,False,False,False,False,False,arch-boundary,0.085,7
+apps/editor/tests/lib/editor/layout/plan-camera-projection.test.ts,339,4,13,0,13,lib/editor,lib/editor/layout,,True,False,False,False,False,False,True,behavior,0.075,13
+apps/editor/tests/lib/editor/layout/plan-hit.test.ts,96,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.131,4
+apps/editor/tests/lib/editor/layout/plan-overlays.test.ts,568,4,20,0,20,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.129,20
+apps/editor/tests/lib/editor/layout/plan-scene-footprint.test.ts,338,2,12,0,12,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,behavior,0.024,12
+apps/editor/tests/lib/editor/layout/plan-scene-hit.test.ts,56,1,4,0,4,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.002,4
+apps/editor/tests/lib/editor/layout/plan-scene-transform.test.ts,146,1,5,0,5,lib/editor,lib/editor/layout,,True,False,False,False,False,False,False,arch-boundary,0.004,5
+apps/editor/tests/lib/editor/layout/plan-timing-pill.test.ts,128,1,4,0,4,lib/editor,lib/editor/layout,,False,True,True,False,True,False,False,source-shape,0.003,4
+apps/editor/tests/lib/editor/layout/rooms-to-layout.test.ts,141,1,9,0,9,lib/editor,lib/editor/layout,,True,False,True,False,False,False,False,arch-boundary,0.005,9
+apps/editor/tests/lib/editor/obb-util-root.test.ts,115,1,6,0,6,lib/editor,lib/editor,,False,False,False,False,False,False,False,behavior,0.003,6
+apps/editor/tests/lib/editor/obb-util.test.ts,130,2,9,0,9,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.005,9
+apps/editor/tests/lib/editor/p20-s2-spatial-registry.test.ts,122,1,4,0,4,lib/editor,lib/editor,p20,True,True,True,False,True,False,False,source-shape,0.017,4
+apps/editor/tests/lib/editor/p20-s3-texture-conversion.test.ts,252,1,4,0,4,lib/editor,lib/editor,p20,True,False,False,False,True,False,False,behavior,0.018,4
+apps/editor/tests/lib/editor/p20-s4-load-resolution.test.ts,213,1,9,0,9,lib/editor,lib/editor,p20,True,True,True,False,False,False,False,source-shape,0.071,22
+apps/editor/tests/lib/editor/p21.6-slice-c.test.ts,326,5,19,0,19,lib/editor,lib/editor,p21.6,True,True,True,False,False,False,False,source-shape,0.012,19
+apps/editor/tests/lib/editor/p22-4-publish-surface.test.ts,282,2,17,0,17,lib/editor,lib/editor,p22-4,True,False,False,False,False,False,False,behavior,0.007,17
+apps/editor/tests/lib/editor/p23-6h-height-parity.test.ts,167,2,9,0,9,lib/editor,lib/editor,p23-6,True,True,True,False,False,False,False,source-shape,0.010,9
+apps/editor/tests/lib/editor/p23-f0-stage2-writers.test.ts,567,6,27,0,27,lib/editor,lib/editor,p23-f0,True,False,False,False,False,False,False,arch-boundary,0.055,27
+apps/editor/tests/lib/editor/p23-f0-stage3-writer-fixtures.test.ts,796,5,21,0,21,lib/editor,lib/editor,p23-f0,True,False,False,False,False,False,False,arch-boundary,0.068,21
+apps/editor/tests/lib/editor/p23-f0-stage4-visitor-parity.test.ts,488,4,14,0,14,lib/editor,lib/editor,p23-f0,True,False,False,False,False,False,False,arch-boundary,0.124,14
+apps/editor/tests/lib/editor/p23-f0-stage5-small-items.test.ts,481,3,16,0,16,lib/editor,lib/editor,p23-f0,True,False,False,False,False,False,False,arch-boundary,0.081,15
+apps/editor/tests/lib/editor/placement-ghost.test.ts,215,6,18,0,18,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.028,18
+apps/editor/tests/lib/editor/preview/preview-coordinator.test.ts,128,2,5,0,5,lib/editor,lib/editor/preview,,True,False,False,False,False,False,False,behavior,0.006,5
+apps/editor/tests/lib/editor/preview/project-flows.test.ts,109,1,3,0,3,lib/editor,lib/editor/preview,,False,True,True,False,False,False,False,source-shape,0.002,3
+apps/editor/tests/lib/editor/project/project-codec.test.ts,182,1,10,0,10,lib/editor,lib/editor/project,,True,False,False,False,False,True,False,behavior,0.022,10
+apps/editor/tests/lib/editor/project-persistence.test.ts,308,1,11,0,11,lib/editor,lib/editor,,True,False,False,False,True,False,False,behavior,0.037,11
+apps/editor/tests/lib/editor/scale-vector.test.ts,201,7,26,0,26,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.003,26
+apps/editor/tests/lib/editor/snap-input-validation.test.ts,40,1,4,0,4,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/lib/editor/store/binary-texture-store.test.ts,191,1,12,0,12,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.018,12
+apps/editor/tests/lib/editor/store/camera-preview-controller.test.ts,314,2,25,0,25,lib/editor,lib/editor/store,,True,False,False,False,True,False,False,behavior,0.076,25
+apps/editor/tests/lib/editor/store/document-store.test.ts,178,1,11,0,11,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,arch-boundary,0.034,11
+apps/editor/tests/lib/editor/store/editor-interaction-store.test.ts,150,6,21,0,21,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.005,21
+apps/editor/tests/lib/editor/store/editor-toolbar.test.ts,117,1,4,0,4,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.002,4
+apps/editor/tests/lib/editor/store/history-controller.test.ts,211,1,12,0,12,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.009,12
+apps/editor/tests/lib/editor/store/interaction-fsm.test.ts,231,2,10,0,10,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.026,40
+apps/editor/tests/lib/editor/store/material-resource-mutator.test.ts,561,4,24,0,24,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.006,24
+apps/editor/tests/lib/editor/store/mutation-guards.test.ts,85,1,4,0,4,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/lib/editor/store/p11-s1-selection-scope.test.ts,289,1,17,0,17,lib/editor,lib/editor/store,p11,True,False,False,False,False,False,False,arch-boundary,0.046,17
+apps/editor/tests/lib/editor/store/p11-s2-mutation-policy.test.ts,448,1,20,0,20,lib/editor,lib/editor/store,p11,True,False,False,False,True,False,True,behavior,0.095,19
+apps/editor/tests/lib/editor/store/p11-s3-scope-shell.test.ts,337,6,16,0,16,lib/editor,lib/editor/store,p11,True,False,True,False,True,False,True,arch-boundary,0.054,16
+apps/editor/tests/lib/editor/store/p11-s4-compact-controls.test.ts,193,5,14,0,14,lib/editor,lib/editor/store,p11,True,True,True,False,False,False,True,source-shape,0.039,14
+apps/editor/tests/lib/editor/store/p12-s1-session-model.test.ts,140,1,9,0,9,lib/editor,lib/editor/store,p12,True,False,True,False,False,False,True,behavior,0.028,9
+apps/editor/tests/lib/editor/store/p12-s2-selection-matrix.test.ts,254,1,11,0,11,lib/editor,lib/editor/store,p12,True,False,False,False,False,False,True,arch-boundary,0.052,11
+apps/editor/tests/lib/editor/store/p12-s3-one-shell-lanes.test.ts,233,3,9,0,9,lib/editor,lib/editor/store,p12,True,True,True,False,True,False,True,source-shape,0.036,9
+apps/editor/tests/lib/editor/store/p12-s4-header-chrome.test.ts,131,2,5,0,5,lib/editor,lib/editor/store,p12,False,True,True,False,False,False,True,arch-boundary (source-walk),0.012,5
+apps/editor/tests/lib/editor/store/p23-f0-stage1-format-policy.test.ts,482,3,16,2,18,lib/editor,lib/editor/store,p23-f0,True,True,True,False,True,False,True,arch-boundary (source-walk),0.034,16
+apps/editor/tests/lib/editor/store/p8-s2-preview-scope.test.ts,263,2,14,0,14,lib/editor,lib/editor/store,p8,True,False,True,False,False,False,True,behavior,0.070,14
+apps/editor/tests/lib/editor/store/p8-s3-edge-timeline.test.ts,208,4,7,0,7,lib/editor,lib/editor/store,p8,True,False,False,False,False,False,True,behavior,0.027,7
+apps/editor/tests/lib/editor/store/p8-s4-preview-sequence.test.ts,399,10,18,0,18,lib/editor,lib/editor/store,p8,True,False,True,False,False,False,True,arch-boundary,0.070,18
+apps/editor/tests/lib/editor/store/project-export-store.test.ts,330,8,34,0,34,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.006,34
+apps/editor/tests/lib/editor/store/scene-roots.test.ts,179,7,16,0,16,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.003,16
+apps/editor/tests/lib/editor/store/selection-actions.test.ts,477,3,14,0,14,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,arch-boundary,0.007,14
+apps/editor/tests/lib/editor/store/selection-store.test.ts,228,1,12,0,12,lib/editor,lib/editor/store,,True,False,False,False,False,False,False,behavior,0.002,12
+apps/editor/tests/lib/editor/store/session-state.test.ts,597,15,70,0,70,lib/editor,lib/editor/store,,True,False,False,False,True,False,False,behavior,0.012,70
+apps/editor/tests/lib/editor/styles/gizmo-single-ending.test.ts,170,1,1,0,1,lib/editor,lib/editor/styles,,True,False,False,False,False,False,False,behavior,0.038,1
+apps/editor/tests/lib/editor/styles/scene-palette.test.ts,69,1,2,0,2,lib/editor,lib/editor/styles,,True,True,True,False,False,False,False,source-read/other,0.012,2
+apps/editor/tests/lib/editor/texture-verifier.test.ts,100,1,6,0,6,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.007,6
+apps/editor/tests/lib/editor/theme-registry.test.ts,36,1,2,0,2,lib/editor,lib/editor,,True,True,True,False,False,False,False,source-shape,0.001,2
+apps/editor/tests/lib/editor/theme.test.ts,183,2,12,0,12,lib/editor,lib/editor,,True,True,True,False,True,False,False,source-shape,0.003,12
+apps/editor/tests/lib/editor/tmp-confirm-gizmo-frame-bug.test.ts,167,2,5,0,5,lib/editor,lib/editor,,True,False,False,False,False,False,False,behavior,0.014,5
+apps/editor/tests/lib/editor/tmp-confirm-gizmo-pointer-pipeline.test.ts,413,1,4,0,4,lib/editor,lib/editor,,True,False,True,False,False,False,False,arch-boundary,0.097,3
+apps/editor/tests/lib/layout/__fixtures__/layout-scale-fixtures.test.ts,79,1,5,0,5,lib/layout,lib/layout/__fixtures__,,True,False,False,False,True,False,False,arch-boundary,3.774,8
+apps/editor/tests/lib/layout/layout-codec.test.ts,395,1,27,0,27,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.016,27
+apps/editor/tests/lib/layout/layout-face-extraction.test.ts,329,2,11,0,11,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.006,11
+apps/editor/tests/lib/layout/layout-g2-fixtures.test.ts,266,3,18,0,18,lib/layout,lib/layout,,True,False,False,False,False,False,True,behavior,0.047,18
+apps/editor/tests/lib/layout/layout-geometry-boundary.test.ts,131,1,6,0,6,lib/layout,lib/layout,,True,True,True,False,False,False,False,arch-boundary (source-walk),0.066,6
+apps/editor/tests/lib/layout/layout-geometry-golden.test.ts,13212,2,7,0,7,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.063,7
+apps/editor/tests/lib/layout/layout-geometry-parity.test.ts,52,1,1,0,1,lib/layout,lib/layout,,True,False,False,False,False,False,False,behavior,0.042,6
+apps/editor/tests/lib/layout/layout-geometry.test.ts,522,1,21,0,21,lib/layout,lib/layout,,True,False,True,False,False,False,False,arch-boundary,0.081,21
+apps/editor/tests/lib/layout/layout-migration-math.test.ts,152,2,9,0,9,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.003,9
+apps/editor/tests/lib/layout/layout-migration.test.ts,330,1,9,0,9,lib/layout,lib/layout,,True,False,True,False,False,False,False,arch-boundary,0.052,9
+apps/editor/tests/lib/layout/layout-portals.test.ts,28,1,2,0,2,lib/layout,lib/layout,,True,False,False,False,False,False,False,behavior,0.002,2
+apps/editor/tests/lib/layout/layout-room-frame.test.ts,32,1,2,0,2,lib/layout,lib/layout,,True,False,False,False,False,False,False,behavior,0.002,2
+apps/editor/tests/lib/layout/layout-room-reconciliation.test.ts,1119,3,22,0,22,lib/layout,lib/layout,,True,False,False,False,True,False,False,arch-boundary,0.013,22
+apps/editor/tests/lib/layout/layout-wall-first-codec.test.ts,288,2,14,0,14,lib/layout,lib/layout,,True,False,True,False,False,False,False,arch-boundary,0.013,14
+apps/editor/tests/lib/layout/layout-wall-noding.test.ts,290,2,12,0,12,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.016,12
+apps/editor/tests/lib/layout/layout-wall-topology.test.ts,190,2,18,0,18,lib/layout,lib/layout,,True,False,False,False,False,False,False,behavior,0.004,17
+apps/editor/tests/lib/layout/p23-1-precision.test.ts,217,1,13,0,13,lib/layout,lib/layout,p23-1,True,False,False,False,False,False,False,arch-boundary,0.043,13
+apps/editor/tests/lib/layout/p23-10-wall-edit.test.ts,570,4,20,0,20,lib/layout,lib/layout,p23-10,True,False,False,False,False,False,False,arch-boundary,0.070,20
+apps/editor/tests/lib/layout/p23-11-closeout.test.ts,433,4,7,0,7,lib/layout,lib/layout,p23-11,True,True,False,False,False,False,False,arch-boundary (source-walk),0.123,7
+apps/editor/tests/lib/layout/p23-11-curve-planners.test.ts,811,5,29,0,29,lib/layout,lib/layout,p23-11,True,False,False,False,False,False,False,arch-boundary,0.143,29
+apps/editor/tests/lib/layout/p23-11-curve-read-path.test.ts,502,4,14,0,14,lib/layout,lib/layout,p23-11,True,True,True,False,False,False,False,arch-boundary (source-walk),0.040,14
+apps/editor/tests/lib/layout/p23-11-curve-schema.test.ts,465,4,20,0,20,lib/layout,lib/layout,p23-11,True,False,False,False,False,False,False,arch-boundary,0.023,20
+apps/editor/tests/lib/layout/p23-11-curve-split-primitives.test.ts,462,5,18,0,18,lib/layout,lib/layout,p23-11,True,False,False,False,False,False,False,behavior,0.030,18
+apps/editor/tests/lib/layout/p23-11-curved-correspondence-regression.test.ts,63,1,3,0,3,lib/layout,lib/layout,p23-11,True,False,False,False,False,False,False,arch-boundary,0.053,3
+apps/editor/tests/lib/layout/p23-11-curved-rooms.test.ts,386,2,13,0,13,lib/layout,lib/layout,p23-11,True,False,False,False,False,False,False,arch-boundary,0.026,13
+apps/editor/tests/lib/layout/p23-11-fix-pass.test.ts,1204,10,38,0,38,lib/layout,lib/layout,p23-11,True,True,True,False,False,False,False,arch-boundary (source-walk),0.145,38
+apps/editor/tests/lib/layout/p23-11-render-safe-validation.test.ts,268,3,12,3,15,lib/layout,lib/layout,p23-11,True,True,True,False,False,False,False,source-shape,0.065,12
+apps/editor/tests/lib/layout/p23-12-identity.test.ts,467,5,18,0,18,lib/layout,lib/layout,p23-12,True,False,False,False,True,False,False,arch-boundary,0.257,18
+apps/editor/tests/lib/layout/p23-13-attention.test.ts,266,5,16,0,16,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,True,source-shape,0.022,16
+apps/editor/tests/lib/layout/p23-13-dimensions.test.ts,651,3,29,0,29,lib/layout,lib/layout,p23-13,True,False,False,False,True,False,False,behavior,0.006,28
+apps/editor/tests/lib/layout/p23-13-door-window.test.ts,380,4,16,0,16,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,arch-boundary (source-walk),0.023,16
+apps/editor/tests/lib/layout/p23-13-empty.test.ts,94,1,7,0,7,lib/layout,lib/layout,p23-13,False,True,True,False,False,False,False,arch-boundary (source-walk),0.012,5
+apps/editor/tests/lib/layout/p23-13-guide.test.ts,328,4,20,0,20,lib/layout,lib/layout,p23-13,True,False,False,False,False,True,False,behavior,0.004,20
+apps/editor/tests/lib/layout/p23-13-icons.test.ts,108,1,5,0,5,lib/layout,lib/layout,p23-13,False,True,True,False,True,False,False,arch-boundary (source-walk),0.001,5
+apps/editor/tests/lib/layout/p23-13-keyboard.test.ts,300,5,21,0,21,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,source-shape,0.007,21
+apps/editor/tests/lib/layout/p23-13-numeric-entry.test.ts,676,12,61,0,61,lib/layout,lib/layout,p23-13,True,False,False,False,False,False,False,behavior,0.009,61
+apps/editor/tests/lib/layout/p23-13-object-scene-paint.test.ts,196,2,7,0,7,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,arch-boundary (source-walk),0.007,7
+apps/editor/tests/lib/layout/p23-13-presentation-foundation.test.ts,221,2,8,0,8,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,arch-boundary (source-walk),0.022,8
+apps/editor/tests/lib/layout/p23-13-preview-closure.test.ts,254,3,11,0,11,lib/layout,lib/layout,p23-13,True,False,False,False,False,False,False,arch-boundary,0.015,11
+apps/editor/tests/lib/layout/p23-13-refusal.test.ts,176,3,10,0,10,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,True,source-shape,0.002,10
+apps/editor/tests/lib/layout/p23-13-room-labels.test.ts,851,8,28,0,28,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,source-shape,0.039,28
+apps/editor/tests/lib/layout/p23-13-salience.test.ts,605,7,27,0,27,lib/layout,lib/layout,p23-13,True,True,True,False,True,False,False,arch-boundary (source-walk),0.012,27
+apps/editor/tests/lib/layout/p23-13-snap-grammar.test.ts,496,5,27,0,27,lib/layout,lib/layout,p23-13,True,True,True,False,True,True,False,source-shape,0.009,27
+apps/editor/tests/lib/layout/p23-13-state-controls.test.ts,591,6,26,0,26,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,arch-boundary (source-walk),0.035,26
+apps/editor/tests/lib/layout/p23-13-surrounds.test.ts,73,1,3,0,3,lib/layout,lib/layout,p23-13,False,True,True,False,False,False,False,source-shape,0.001,3
+apps/editor/tests/lib/layout/p23-13-thin-wall.test.ts,121,1,3,0,3,lib/layout,lib/layout,p23-13,True,True,True,False,False,False,False,arch-boundary (source-walk),0.012,3
+apps/editor/tests/lib/layout/p23-2-align.test.ts,446,7,18,0,18,lib/layout,lib/layout,p23-2,True,False,False,False,False,False,False,arch-boundary,0.005,18
+apps/editor/tests/lib/layout/p23-2-snap-extent-parity.test.ts,792,8,18,0,18,lib/layout,lib/layout,p23-2,True,False,True,False,True,True,True,arch-boundary,0.269,44
+apps/editor/tests/lib/layout/p23-2-snap.test.ts,887,12,51,0,51,lib/layout,lib/layout,p23-2,True,False,False,False,False,False,False,arch-boundary,0.009,51
+apps/editor/tests/lib/layout/p23-3-openings.test.ts,912,7,32,0,32,lib/layout,lib/layout,p23-3,True,False,True,False,False,False,False,arch-boundary,0.160,32
+apps/editor/tests/lib/layout/p23-4-duplicate.test.ts,722,4,27,0,27,lib/layout,lib/layout,p23-4,True,False,False,False,False,False,False,arch-boundary,0.117,27
+apps/editor/tests/lib/layout/p23-5-presets.test.ts,332,2,17,0,17,lib/layout,lib/layout,p23-5,True,False,False,False,False,False,False,behavior,0.016,17
+apps/editor/tests/lib/layout/p23-6-drafting-pass.test.ts,777,12,31,0,31,lib/layout,lib/layout,p23-6,True,True,True,False,True,False,False,arch-boundary (source-walk),0.137,31
+apps/editor/tests/lib/layout/p23-6-wall-role.test.ts,113,3,5,0,5,lib/layout,lib/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.031,5
+apps/editor/tests/lib/layout/p23-6-wall-selection.test.ts,378,8,20,0,20,lib/layout,lib/layout,p23-6,True,True,True,False,False,False,False,arch-boundary (source-walk),0.042,20
+apps/editor/tests/lib/layout/p23-6a-room-move.test.ts,730,5,23,0,23,lib/layout,lib/layout,p23-6,True,False,True,False,False,False,False,arch-boundary,0.077,23
+apps/editor/tests/lib/layout/p23-6c-wall-delete.test.ts,692,3,28,0,28,lib/layout,lib/layout,p23-6,True,True,True,False,False,False,False,arch-boundary (source-walk),0.154,27
+apps/editor/tests/lib/layout/p23-6d-room-lifecycle.test.ts,996,6,45,0,45,lib/layout,lib/layout,p23-6,True,True,True,False,True,False,False,arch-boundary (source-walk),0.197,44
+apps/editor/tests/lib/layout/p23-6e-concave-room-identity.test.ts,210,2,6,0,6,lib/layout,lib/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.026,6
+apps/editor/tests/lib/layout/p23-6e-extra-angled-plan-integrity.test.ts,408,4,12,0,12,lib/layout,lib/layout,p23-6,True,False,False,False,True,False,False,arch-boundary,4.714,12
+apps/editor/tests/lib/layout/p23-6h-wall-height.test.ts,734,8,36,0,36,lib/layout,lib/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.052,36
+apps/editor/tests/lib/layout/p23-6i-wall-birth-height.test.ts,310,4,14,0,14,lib/layout,lib/layout,p23-6,True,False,False,False,False,False,False,arch-boundary,0.018,14
+apps/editor/tests/lib/layout/p23-9-junction-identity.test.ts,343,3,8,0,8,lib/layout,lib/layout,p23-9,True,False,False,False,True,False,False,arch-boundary,0.166,8
+apps/editor/tests/lib/layout/p23-9-wall-chain.test.ts,684,7,35,0,35,lib/layout,lib/layout,p23-9,True,False,False,False,True,False,False,arch-boundary,0.125,35
+apps/editor/tests/lib/layout/p23-dissolve-curves.test.ts,413,2,9,0,9,lib/layout,lib/layout,p23,True,False,False,False,False,False,False,arch-boundary,0.112,9
+apps/editor/tests/lib/layout/p23-dissolve-integration.test.ts,246,2,8,0,8,lib/layout,lib/layout,p23,True,True,True,False,False,False,False,arch-boundary (source-walk),0.038,8
+apps/editor/tests/lib/layout/p23-dissolve-junction.test.ts,727,4,19,0,19,lib/layout,lib/layout,p23,True,False,False,False,False,False,False,arch-boundary,0.050,22
+apps/editor/tests/lib/layout/plan-render-boundary.test.ts,193,5,15,0,15,lib/layout,lib/layout,,False,True,True,False,False,False,False,arch-boundary (source-walk),0.006,15
+apps/editor/tests/lib/layout/plan-render-model.test.ts,277,2,16,0,16,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.050,16
+apps/editor/tests/lib/layout/shared-walls.test.ts,232,1,4,0,4,lib/layout,lib/layout,,True,False,False,False,False,False,False,arch-boundary,0.194,7
+apps/editor/tests/lib/layout/wall-mesh-builder.test.ts,755,2,29,0,29,lib/layout,lib/layout,,True,True,True,False,False,False,False,arch-boundary (source-walk),2.198,29
+apps/editor/tests/lib/museum/assets/instance-material-remap.test.ts,109,1,3,0,3,lib/museum,lib/museum/assets,,True,False,False,False,False,False,False,behavior,0.003,3
+apps/editor/tests/lib/museum/camera-core-boundary.test.ts,84,1,3,0,3,lib/museum,lib/museum,,True,True,True,False,False,False,False,arch-boundary (source-walk),0.007,3
+apps/editor/tests/lib/museum/layout/wall-material-factory.test.ts,55,1,3,0,3,lib/museum,lib/museum/layout,,True,False,False,False,False,False,False,behavior,0.003,3
+apps/editor/tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts,66,1,5,0,5,lib/museum,lib/museum/layout,,False,True,True,False,False,False,False,arch-boundary (source-walk),0.002,5
+apps/editor/tests/lib/museum/materials/scene-instance-material.test.ts,125,1,8,0,8,lib/museum,lib/museum/materials,,True,False,False,False,False,False,False,behavior,0.006,8
+apps/editor/tests/lib/museum/materials/texture-cache.test.ts,243,2,10,0,10,lib/museum,lib/museum/materials,,True,False,False,False,False,False,False,behavior,0.008,10
+apps/editor/tests/lib/museum/navigation/camera-motion.test.ts,3540,15,75,0,75,lib/museum,lib/museum/navigation,,True,False,True,False,True,False,True,arch-boundary,6.226,117
+apps/editor/tests/lib/museum/navigation/camera-route.test.ts,1107,3,25,0,25,lib/museum,lib/museum/navigation,,True,False,False,False,True,False,True,arch-boundary,0.027,31
+apps/editor/tests/lib/museum/paris-activation.test.ts,127,1,6,0,6,lib/museum,lib/museum,,True,False,False,False,False,False,False,behavior,0.002,6
+apps/editor/tests/lib/museum/visitor-import-boundary.test.ts,95,1,3,0,3,lib/museum,lib/museum,,False,True,True,False,False,False,False,arch-boundary (source-walk),0.014,3
+apps/editor/tests/lib/project/project-compat.test.ts,357,3,17,0,17,lib/project,lib/project,,True,False,False,False,False,False,False,arch-boundary,0.026,16
+apps/editor/tests/lib/project/scene-world-conversion.test.ts,223,1,8,0,8,lib/project,lib/project,,True,False,False,False,False,False,False,arch-boundary,0.017,8
+apps/editor/tests/lib/project-model-boundary.test.ts,62,1,3,0,3,lib,lib,,True,True,True,False,False,False,False,arch-boundary (source-walk),0.011,3
+apps/editor/tests/lib/render/wall-geometry-adapter.test.ts,158,2,10,0,10,lib/render,lib/render,,True,False,False,False,False,False,False,behavior,0.056,10
+apps/editor/tests/lib/state/runtime-state.test.ts,123,1,4,0,4,lib/state,lib/state,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/lib/visitor/p22-1-cold-runtime.test.ts,473,1,14,0,14,lib/visitor,lib/visitor,p22-1,True,True,True,False,False,False,False,arch-boundary (source-walk),0.011,14
+apps/editor/tests/lib/visitor/p22-3-public-route.test.ts,449,2,15,0,15,lib/visitor,lib/visitor,p22-3,True,True,True,False,True,False,False,arch-boundary (source-walk),0.042,15
+apps/editor/tests/lib/visitor/p23-12-visitor-identity-isolation.test.ts,120,1,4,0,4,lib/visitor,lib/visitor,p23-12,True,True,True,False,False,False,False,arch-boundary (source-walk),0.004,4
+apps/editor/tests/lib/visitor/preview-surface-boundary.test.ts,143,1,9,0,9,lib/visitor,lib/visitor,,True,False,False,False,False,False,False,arch-boundary,0.003,9
+apps/editor/tests/lib/visitor/visitor-runtime-state.test.ts,92,1,4,0,4,lib/visitor,lib/visitor,,True,False,False,False,False,False,False,behavior,0.001,4
+apps/editor/tests/vite/preview-surface-boundary-plugin.test.ts,103,2,6,0,6,vite,vite,,False,False,True,False,False,False,False,arch-boundary,0.003,6
+apps/editor/tests/vite/public-surface-boundary-plugin.test.ts,72,1,4,0,4,vite,vite,,False,False,False,False,False,False,False,arch-boundary,0.003,4
