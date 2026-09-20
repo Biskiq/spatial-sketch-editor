@@ -23,6 +23,11 @@
     "check:layout-core": "npm run check -w @portfolio/layout-core",
     "check:project-model": "npm run check -w @portfolio/project-model",
     "test": "npm run test -w @portfolio/editor",
+    "test:fast": "npm run test:fast -w @portfolio/editor",
+    "test:arch": "npm run test:arch -w @portfolio/editor",
+    "test:heavy": "npm run test:heavy -w @portfolio/editor",
+    "test:perf": "npm run test:perf -w @portfolio/editor",
+    "test:full": "npm run test:full -w @portfolio/editor",
     "test:api": "npm run test -w @biskiq/api"
   },
   "engines": {

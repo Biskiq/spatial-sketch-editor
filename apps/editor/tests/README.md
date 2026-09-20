@@ -49,9 +49,29 @@ imports back to `$lib`.
 ## Running
 
 ```bash
-npm test        # vitest run (include pattern: tests/**/*.{test,spec}.{js,ts})
+npm test        # vitest run (include pattern: tests/**/*.{test,spec}.{js,ts}) — the complete suite
 npm run check   # svelte-check — picks up tests/ via the generated tsconfig
 ```
+
+### Lanes
+
+The suite is split into lanes by **configuration, not by file moves** — the
+mirrored tree and every `import.meta.url` boundary root stay put. Membership
+lives in `apps/editor/test-lanes.ts`; the scripts are in
+`apps/editor/package.json`:
+
+```bash
+npm run test:fast    # inner loop: everything EXCEPT arch + heavy + perf
+npm run test:arch    # durable architecture boundaries (always run before a PR)
+npm run test:heavy   # expensive correctness/property/stress work
+npm run test:perf    # timing/budget gates
+npm run test:full    # the same effective suite as `npm test`
+```
+
+`npm test` still runs the complete suite and is never narrowed. The arch lane
+is never path-gated: a Plan or store change can break a camera drawer or
+visitor boundary through shared code. See
+`docs/operations/test-suite-harvest-2026-09-19.md` §F for the lane model.
 
 ## Agent E2E (`tests/e2e/`)
 
