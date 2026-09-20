@@ -1,6 +1,6 @@
 # Test-suite harvest — Museum Editor (2026-09-19)
 
-**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. **T3 has since been executed** — see **§L Execution log (T3)** for the dismantled `contracts.test.ts` accumulator (its migration map, the 49 pruned duplicate assertions and the two new boundary homes), the four ownership pins T3b added, the relic retirements T3c performed against §K.5, and the before/after maintenance + lane metrics. **T4 has since been executed** — see **§P Execution log (T4)** for the dense-sweep splits (with fast representatives kept), the widened `$lib/layout` renderer-free sweep, the name-level proof that no test was cut, and the diagnosis of the remaining fast-lane wall. T5–T6 remain unstarted.
+**Status:** evidence gathering only at authoring time (no tests refactored, renamed, moved, or deleted; no production code changed; no commits). **T1 and T2a have since been executed** from this report — see **§J Execution log** for the lane implementation and the exact duplicate removals; §C.3 dispositions are annotated `EXECUTED (T2a)` where the change landed. Three T2a units were later judged false-successor deletions in review and **restored** — see **§J.4**. **T2b and T2c have since been executed** — see **§K Execution log (T2b + T2c)** for the render harness, the A/K/E/I/F replacements with their mutation evidence, the retained pins and why, and the relic smoke contract. **T3 has since been executed** — see **§L Execution log (T3)** for the dismantled `contracts.test.ts` accumulator (its migration map, the 49 pruned duplicate assertions and the two new boundary homes), the four ownership pins T3b added, the relic retirements T3c performed against §K.5, and the before/after maintenance + lane metrics. **T4 has since been executed** — see **§P Execution log (T4)** for the dense-sweep splits (with fast representatives kept), the widened `$lib/layout` renderer-free sweep, the name-level proof that no test was cut, and the diagnosis of the remaining fast-lane wall. **T5 and T6 have since been executed and the refactor is complete** — see **§Q Execution log (T5)** for the durable naming cleanup (inventory + classification, the full 115-row rename map, the one intentional `DEFER`, and the reference sweep) and **§R Execution log (T6)** for the final measurement, the same-machine comparison against the pre-T1 baseline, the `--no-isolate` investigation, the two narrow defects the closeout found and fixed, the objective-by-objective verdict and the deferred debt. **Routing: T5 → §Q, T6 → §R.** The original scope and baseline above are unchanged.
 **Scope:** `apps/editor/tests/**/*.{test,spec}.{js,ts}` on branch `refractor/tests` at `a479f78` (merge of PR #61, P23.14 implementation).
 **Authority rule used:** current `docs/reference/` over archived plans; archived plans/comments used only to explain why a historical test exists.
 **Artifacts:** this report + `test-suite-harvest-inventory-2026-09-19.csv` (same directory, 303 rows, one per test file, with LOC/describes/tests/subsystem/slice/imports-fs/walk/spawn/loop/random/timing/kind + run-1 duration + vitest test count).
@@ -1878,14 +1878,29 @@ in place as what they were: intermediate slice evidence.
 
 ### R.2 Final lanes (this head)
 
+**Authoritative measurement pass:** the second full lane sweep, run against the
+committed head `d68ae79`. Counts are identical in both passes; only wall times
+differ, and only because of machine contention (§R.4).
+
 | lane | files | tests | failed | skipped | wall | vitest breakdown |
 |---|---|---|---|---|---|---|
-| `test:fast` | 279 | 4,212 | 0 | 0 | 28.22s | 27.40s (transform 12.21s, collect 88.89s, tests 15.75s, prepare 12.26s) |
-| `test:arch` | 23 | 253 | 0 | 0 | 9.97s | — |
-| `test:heavy` | 5 | 73 | 0 | 0 | 11.10s | — |
-| `test:perf` | 5 | 23 | 0 | 1 | 3.88s | — |
-| `test:full` | 312 | 4,561 | 0 | 1 | 31.34s | 31.19s (transform 16.59s, collect 104.81s, tests 45.75s, prepare 12.60s) |
-| `npm test` | 312 | 4,561 | 0 | 1 | 32.05s | ≡ `test:full` |
+| `test:fast` | 279 | 4,212 | 0 | 0 | 28.06s | 27.26s (transform 11.59s, collect 90.40s, tests 16.20s, prepare 12.15s) |
+| `test:arch` | 23 | 253 | 0 | 0 | 8.69s | 7.90s |
+| `test:heavy` | 5 | 73 | 0 | 0 | 10.38s | 9.81s |
+| `test:perf` | 5 | 23 | 0 | 1 | 4.01s | 3.41s |
+| `test:full` | 312 | 4,561 | 0 | 1 | 39.44s | 38.64s (transform 19.96s, collect 129.73s, tests 53.43s, prepare 15.89s) |
+| `npm test` | 312 | 4,561 | 0 | 1 | 65.10s | ≡ `test:full` (identical file set) |
+
+`npm test` and `test:full` are the same content measured minutes apart in the
+same pass; the 25.7s between them is contention, not lane behaviour. That is why
+no wall time in this section is used as a regression argument.
+
+*Earlier verification pass* — the same tree content, run before the final two
+commits, kept as historical evidence only and **not** the current numbers:
+`fast 28.22s · arch 9.97s · heavy 11.10s · perf 3.88s · full 31.34s ·
+npm test 32.05s`, with `fast`'s own vitest duration 27.40s (transform 12.21s,
+collect 88.89s, tests 15.75s, prepare 12.26s) and `full`'s 31.19s (transform
+16.59s, collect 104.81s, tests 45.75s, prepare 12.60s).
 
 Partition **exact and disjoint**, proved from the vitest JSON file lists, not
 from the configuration: `4,212 + 253 + 73 + 23 = 4,561` tests and
@@ -1894,8 +1909,8 @@ exactly (`npm test` and `test:full` produce identical file sets). One skip both
 before and after (the pre-existing `plan-bench` full tier); no skip added.
 `npm run check` 0 errors / 0 warnings.
 
-The breakdown columns are **worker-summed**, not wall: `collect 88.89s` over a
-27.40s wall means collection is the fast lane's real cost, spread across
+The breakdown columns are **worker-summed**, not wall: `collect 90.40s` over a
+27.26s wall means collection is the fast lane's real cost, spread across
 workers. That is the number that explains §R.4.
 
 ### R.3 Structural metrics, recomputed with one definition set
@@ -1966,31 +1981,43 @@ Interleaved full suite, pre-T1 worktree vs final head, alternating:
 | 2 | pre-T1 `a479f78` | 303 | 4,510 | 39.48s | 85.51s |
 | 2 | final head | 312 | 4,561 | 46.83s | 79.07s |
 
-**Conclusion, stated conservatively: no runtime claim is supportable from these
-numbers.** The two revisions' ranges overlap heavily and the same-revision
-spread exceeds the difference between them. The full suite is *not materially
-faster or slower* after the refactor on this machine; T4 already recorded the
-same conclusion from its own interleaved pass (§P.5).
+**Conclusion, stated conservatively: these samples do not establish an
+attributable before/after wall-time delta.** The final head's two samples
+(42.23s, 46.83s) are both higher than the baseline's (25.13s, 39.48s), so the
+recorded ranges do **not** overlap — but with two samples per revision on a
+machine at load average 26–37, the same-revision spread is comparably large:
+`a479f78` alone measured 25.13s and 39.48s (a 14.35s spread), while the
+paired differences are +17.10s and +7.35s. The experiment was also not run under
+controlled benchmark conditions (no fixed worker count, no warm cache control,
+other worktrees active). A causal performance claim is therefore not supportable
+in either direction: the honest statement is that the final samples are higher
+than the baseline samples, and that this measurement setup cannot tell refactor
+effects apart from contention. T4 recorded the same conclusion from its own
+interleaved pass (§P.5).
 
-Worker-time breakdown, single sample each (indicative only, same caveat):
+Worker-time breakdown — one sample per revision per pass, because single samples
+here are contaminated by contention in both directions:
 
-| | pre-T1 `a479f78` | final head |
-|---|---|---|
-| wall | 37.43s | 31.19s |
-| transform | 7.62s | 16.59s |
-| collect | 101.81s | 104.81s |
-| tests | **72.48s** | **45.75s** |
-| prepare | 22.44s | 12.60s |
+| worker-summed | pre-T1 `a479f78` | final head, earlier pass | final head, authoritative pass |
+|---|---|---|---|
+| wall | 37.43s | 31.19s | 38.64s |
+| transform | 7.62s | 16.59s | 19.96s |
+| collect | 101.81s | 104.81s | 129.73s |
+| tests | **72.48s** | **45.75s** | **53.43s** |
+| prepare | 22.44s | 12.60s | 15.89s |
 
-The one row consistent with the structural change is `tests` (72.48s → 45.75s of
-worker time): duplicated assertions removed and dense work moved out of the
-default lane reduce *test work*, while `collect` — one module graph per file —
-is unaffected by anything T1–T5 did. `transform` moving the other way (7.62s →
-16.59s) is not explained by the refactor; the fast lane alone reports 12.21s in
-the same period, so the two samples were taken under different contention.
+The only row whose direction is the same in both final samples is `tests`
+(72.48s of worker time → 45.75s and 53.43s): duplicated assertions removed and
+dense work moved out of the default lane reduce *test work*, while `collect` —
+one module graph per file — is not something T1–T5 changed. Every other row
+moves inconsistently between the two final samples (`transform` 7.62s → 16.59s →
+19.96s, `wall` 37.43s → 31.19s → 38.64s), which is the contention signature
+rather than a refactor effect. The `tests` row is the closest thing to an
+explainable signal in this section, and it is still one worker-summed number per
+revision.
 
 **The `<12s` fast target: NOT ACHIEVED, and now quantified as out of reach for
-this slice family.** The fast lane is 28.22s wall against 15.75s of worker test
+this slice family.** The fast lane is 28.06s wall against ~16.2s of worker test
 time; the remainder is per-file transform/collect/prepare over 279 files. T4's
 `--no-isolate` experiment (§R.5) reached ~12–13s but is not usable. Meeting
 `<12s` requires changing how files are batched into workers, not moving more
@@ -2095,7 +2122,7 @@ site disappears.
 
 | objective | verdict | evidence |
 |---|---|---|
-| faster inner loop | **PARTIALLY ACHIEVED** | Composition improved decisively (dense work out, worst fast file 5,052ms → 1,754ms), but wall did not: 28.22s vs `<12s`. The residual is per-file module graph, not test volume (§R.4). |
+| faster inner loop | **PARTIALLY ACHIEVED** | Composition improved decisively (dense work out, worst fast file 5,052ms → 1,754ms), but wall did not: 28.06s vs `<12s`. The residual is per-file module graph, not test volume (§R.4). |
 | smaller heavy tail in `fast` | **ACHIEVED** | The four split files' own cost went **13,398ms → 803ms (−94%)** (to 381/166/17/239ms) and the lane shed 68 tests (67 to `heavy`, 1 to `arch`), which is where the 4,280 → 4,212 count comes from. |
 | clear arch / heavy / perf separation | **ACHIEVED** | 23/253 arch · 5/73 heavy · 5/23 perf; partition exact and disjoint from the file lists; arch is never path-gated and runs whole pre-PR. |
 | fewer brittle source-shape tests | **PARTIALLY ACHIEVED** | `.toContain`/`.not.toContain` 2,487 → 2,400 and the accumulator's pins were replaced where a behavioral successor existed — but files reading production source rose 70 → 80, and the DOM-dependent P23.14 pins still cannot be replaced without a harness. |
@@ -2106,7 +2133,7 @@ site disappears.
 | single nav/camera ownership preserved | **ACHIEVED** | a second route evaluator fails `camera-core-boundary`. |
 | `LayoutDocument`/`SceneDocument` ownership preserved | **ACHIEVED** | both format-policy probes fail; the bounded/scan machinery is unchanged. |
 | relic isolation preserved | **ACHIEVED** | relic smoke passes and both relic-mount probes fail. |
-| full-suite coverage retained | **ACHIEVED** | 4,510 → **4,561** tests (+51), 1 skip both sides, per-file name sets identical apart from the one pin replaced by a strictly wider sweep, zero production files changed by T1–T6. |
+| full-suite coverage retained | **ACHIEVED** | 4,510 → **4,561** tests (+51), 1 skip both sides, per-file name sets identical apart from the one pin replaced by a strictly wider sweep; T4–T6 changed no production file (§R.10). |
 
 ### R.8 Deferred debt (only what is genuinely open)
 
@@ -2145,12 +2172,37 @@ site disappears.
 8. **A rename proves less than it looks like.** A durable filename can still
    bundle three subjects, and a rename cannot make an accumulator disappear.
 
-### R.10 T6 status
+These eight rules are doctrine, not history, and have been **promoted into
+`apps/editor/tests/README.md` → “Test design rules”** so future test work does
+not have to read §J–§R to learn them. This section stays as the evidence; the
+README is the durable authority. §Q.2's rename map and §R's measurements remain
+the migration/provenance record.
 
-T1–T6 complete. T5 and T6 are frozen at this head. No production file was
-changed by any slice (`git diff eb309a4..HEAD -- apps/editor/src apps/museum/src
-packages` is empty). The remaining work in §R.8 is deferred by design, not
-pending.
+Documentation hierarchy for testing:
+
+```
+apps/editor/tests/README.md          durable rules for writing/organizing/running tests
+apps/editor/test-lanes.ts            executable lane membership + lane rationale
+docs/operations/test-suite-harvest-2026-09-19.md   evidence, measurements, migration history, review findings
+```
+
+### R.10 T6 status and production-change scope
+
+T1–T6 complete. T4, T5 and T6 are frozen at this head.
+
+**Production-change scope, stated precisely for the whole refactor:**
+
+| scope | production changes |
+|---|---|
+| T1–T6 overall | **Limited to the documented T2b keyboard seams** (PR #63): the `LayoutPlanViewport` keyboard readout/traversal extraction (`plan-keyboard-readout.ts`, `plan-keyboard-session.ts`, `LayoutPlanViewport.svelte`) and the `numericEntryOpen` polarity fix. Nothing else, in any slice. |
+| T4–T6 / PR #64 | **None.** `git diff eb309a4..HEAD -- apps/editor/src apps/museum/src packages` is empty. |
+
+An earlier draft of this section said “no production file was changed by any
+slice”, which is true for T3–T6 and for this PR but false for T1–T6 as a whole;
+the table above replaces it. The T2b/T3 sections (§K, §L, §O) describe that seam
+work accurately and are unchanged.
+
+The remaining work in §R.8 is deferred by design, not pending.
 
 **Lesson carried forward:** the suite's remaining weaknesses are no longer
 “wrong lane” or “wrong owner” — they are mechanisms the node environment cannot
