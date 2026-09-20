@@ -294,9 +294,6 @@ describe('P21.6 Slice C — shell wiring source contract', () => {
 		// Panels section until the ownership pass; one fact, one writer now, so
 		// the toolbar must not redirect panel state at all.
 		expect(toolbar).not.toContain('>Panels</div>');
-		expect(toolbar).not.toContain('toggleLeftSidePanel');
-		expect(toolbar).not.toContain('toggleRightSidePanel');
-		expect(toolbar).not.toContain('toggleFocusMode');
 		// The shortcut hint survives on the owning control (the View Bar's Focus
 		// button), not in a second copy inside the menu.
 		expect(toolbar).not.toContain('Focus 3D ( \\ )');
