@@ -12,6 +12,14 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { render } from 'svelte/server';
+import LayoutDraftToolbar from '$lib/editor/layout/LayoutDraftToolbar.svelte';
+import {
+	beginRectangle,
+	createLayoutInteractionState,
+	type LayoutInteractionState
+} from '$lib/editor/layout/layout-interaction';
+import { createEmptyWallFirstLayoutPreviewState } from '$lib/editor/layout/layout-preview-state.svelte';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../../../..');
@@ -26,6 +34,32 @@ const family = readFileSync(
 	resolve(repoRoot, 'docs/reference/design-system/P23.13-drafting-icons-Designer-D.svg'),
 	'utf8'
 );
+
+/**
+ * The toolbar's own rendered markup, from the shipped component. The props are
+ * the ones the app passes: a fresh interaction state and an empty wall-first
+ * preview — everything the label contract depends on.
+ */
+function renderedToolbar(configure: (interaction: LayoutInteractionState) => void = () => {}): string {
+	const interaction = createLayoutInteractionState();
+	// The Plan options group (Snap/Grid) belongs to the Plan view, so the Plan
+	// view is the configuration the labels are read in.
+	interaction.viewMode = 'plan';
+	configure(interaction);
+	return render(LayoutDraftToolbar, {
+		props: {
+			interaction,
+			preview: createEmptyWallFirstLayoutPreviewState()
+		}
+	}).body;
+}
+
+/** Every button's text content, in document order. */
+function renderedButtonLabels(configure?: (interaction: LayoutInteractionState) => void): string[] {
+	return [...renderedToolbar(configure).matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/g)].map(
+		(match) => match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+	);
+}
 
 describe('P23.13 S9 toolbar icons (owner ruling 2026-09-17)', () => {
 	it('keeps the five owner-ratified originals byte-identical on lucide', () => {
@@ -79,20 +113,36 @@ describe('P23.13 S9 toolbar icons (owner ruling 2026-09-17)', () => {
 	});
 
 	it('keeps visible labels authoritative beside every icon', () => {
+		// **I1.** Rendered, not sliced: the labels below are the text the toolbar
+		// actually emits for its tool buttons, so a button that lost its label (or
+		// gained an icon-only twin) fails here — which source containment could
+		// not see, because the string would still be in the file.
+		const labels = renderedButtonLabels();
 		for (const label of [
-			'Select</button>',
-			'Wall</button>',
-			'Rect Room</button>',
-			'Poly Room</button>',
-			'Door</button>',
-			'Window</button>',
-			'Column</button>',
-			'Platform</button>',
-			'Plinth</button>',
-			'Grid</button>'
+			'Select',
+			'Wall',
+			'Rect Room',
+			'Poly Room',
+			'Door',
+			'Window',
+			'Column',
+			'Platform',
+			'Plinth',
+			'Grid'
 		]) {
-			expect(toolbar).toContain(label);
+			expect(labels, label).toContain(label);
 		}
+	});
+
+	it('offers the view utilities beside the tools, and cancels only mid-gesture', () => {
+		// The label list above is read from the rendered controls, not from the
+		// template: the Snap/Grid group only reaches the markup in the Plan view,
+		// and Cancel only exists while there is something to cancel.
+		expect(renderedButtonLabels()).toContain('Grid');
+		expect(renderedButtonLabels()).not.toContain('Cancel');
+		expect(renderedButtonLabels((interaction) => beginRectangle(interaction, [0, 0]))).toContain(
+			'Cancel'
+		);
 	});
 
 	it('stays editor-only (visitor chunks never import the icon component)', () => {
