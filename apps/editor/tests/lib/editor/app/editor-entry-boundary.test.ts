@@ -12,6 +12,35 @@ import { describe, expect, it } from 'vitest';
 
 import { readLibSource, readRouteSource } from '../../../helpers/lib-source';
 
+/**
+ * Slice the `onMount` block that bootstraps the project session, i.e. the
+ * mount whose returned function is the A→B teardown.
+ *
+ * T6 audit — `projectRequestController?.abort()`, `invalidateProjectAssets()`
+ * and `clearRetainedSourceAliases()` each appear at several other call sites in
+ * `EditorApp.svelte`, so asserting bare containment stayed green even when the
+ * teardown call was deleted. The pin has to name the call site.
+ */
+function sliceSessionTeardown(app: string): string {
+	const marker = 'void bootstrapProjectSession(controller.signal);';
+	const anchor = app.indexOf(marker);
+	expect(anchor, 'EditorApp must bootstrap the project session from onMount').toBeGreaterThan(-1);
+	const start = app.lastIndexOf('onMount(', anchor);
+	const end = app.indexOf('\n\t});', anchor);
+	expect(start, 'the session bootstrap must live in an onMount callback').toBeGreaterThan(-1);
+	expect(end, 'the session onMount callback must close at top level').toBeGreaterThan(anchor);
+	return app.slice(start, end);
+}
+
+/** Body of a top-level `function <name>(...) { ... }` declaration. */
+function sliceFunctionBody(source: string, name: string): string {
+	const anchor = source.indexOf(`function ${name}(`);
+	expect(anchor, `EditorApp must declare ${name}()`).toBeGreaterThan(-1);
+	const end = source.indexOf('\n\t}', anchor);
+	expect(end, `${name}() must close at top level`).toBeGreaterThan(anchor);
+	return source.slice(anchor, end);
+}
+
 // Moved verbatim from the dismantled `contracts.test.ts` accumulator (T3a).
 describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 	it('keeps the root and compatibility entry lightweight', () => {
@@ -47,12 +76,17 @@ describe('route wiring (relic smoke proxy, no DOM harness)', () => {
 		// retained bytes. Asset request ownership is one scope per mount,
 		// invalidated on teardown.
 		const app = readLibSource('editor/app/EditorApp.svelte');
-		expect(app).toContain('projectRequestController?.abort();');
-		expect(app).toContain('invalidateProjectAssets();');
-		expect(app).toContain('clearRetainedSourceAliases();');
 		expect(app).toContain("import { ProjectAssetRequestScope } from '$lib/editor/project-asset-request-scope';");
 		expect(app).toContain('const assetScope = new ProjectAssetRequestScope();');
-		expect(app).toContain('assetScope.invalidate();');
+		// Asserted inside the teardown function itself, not merely somewhere in
+		// the file: each of the three calls below has other call sites too.
+		const teardown = sliceSessionTeardown(app);
+		expect(teardown).toContain('controller.abort();');
+		expect(teardown).toContain('projectRequestController?.abort();');
+		expect(teardown).toContain('invalidateProjectAssets();');
+		expect(teardown).toContain('clearRetainedSourceAliases();');
+		// ...and `invalidateProjectAssets()` is what invalidates the asset scope.
+		expect(sliceFunctionBody(app, 'invalidateProjectAssets')).toContain('assetScope.invalidate();');
 	});
 	it('keeps Project Row navigation Spatial-only', () => {
 		const shell = readRouteSource('project/[projectId]/+layout.svelte');

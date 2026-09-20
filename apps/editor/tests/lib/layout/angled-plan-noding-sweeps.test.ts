@@ -83,7 +83,13 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			expect(result.document.walls, `wall count at x=${rawX}`).toHaveLength(10);
 			expect(result.document.rooms, `Room split at x=${rawX}`).toHaveLength(3);
 		}
-	});
+		// T6: this sweep measures 2.4–2.6s and one 591-position step re-plans and
+		// re-asserts the whole Wall/Room correspondence, so the default 5s
+		// timeout is only ~2× headroom — a full-suite run on a loaded machine
+		// timed out here (5,383ms) while the geometry was correct. 30s matches
+		// the dense-sweep convention already used by `layout-scale-compile` and
+		// `layout-identity`; the density is the invariant, so the timeout moves.
+	}, 30_000);
 
 	it('stress-splits both projected hosts without intermittent 3→4 or missed faces', () => {
 		const document = stackedObliqueRooms();
@@ -104,5 +110,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			expect(result.document.walls, `wall count at x=${rawX}`).toHaveLength(13);
 			expect(result.document.rooms, `Room split at x=${rawX}`).toHaveLength(4);
 		}
-	});
+		// T6: same headroom as the sibling sweep above (2.6s measured).
+	}, 30_000);
 });
