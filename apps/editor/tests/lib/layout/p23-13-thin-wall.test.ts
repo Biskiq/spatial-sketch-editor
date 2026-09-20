@@ -2,15 +2,14 @@
  * P23.13 S10 — thin-wall-at-zoom eyeball, pinned (open since S2).
  *
  * Real pipeline end to end: canonical compile → render model → salience
- * projection at 8/20/100 px/m. At 8 px/m every sub-2px band resolves the
- * centered 1px silhouette aid with the canonical band preserved beneath, and
- * the close thin pair resolves dense (one neutral aid, casing skipped); at
- * 20/100 px/m the bands stand alone. The paint conditions themselves are
- * source-pinned against the template that owns them.
+ * projection at 8/20/100 px/m → the shipped `PlanSvg.svelte` rendered through
+ * the test render harness. At 8 px/m every sub-2px band resolves the centered
+ * 1px silhouette aid with the canonical band preserved beneath, and the close
+ * thin pair resolves dense (one neutral aid, casing skipped); at 20/100 px/m
+ * the bands stand alone. **A10** — the paint conditions used to be sliced out
+ * of the template that owns them; they are now read off what that template
+ * emits, with the aid computed by the real salience pipeline at the same zoom.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-compat';
 import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
@@ -28,13 +27,15 @@ import {
 	architectureBandPx,
 	resolveWallInkAid
 } from '$lib/editor/layout/plan-architecture-grammar';
-import { createPlanViewportState } from '$lib/editor/layout/layout-plan-transform';
-
-const here = dirname(fileURLToPath(import.meta.url));
-
-function readLibSource(relativePath: string): string {
-	return readFileSync(resolve(here, '../../../src/lib', relativePath), 'utf8');
-}
+import {
+	createPlanViewportState,
+	type PlanViewportState
+} from '$lib/editor/layout/layout-plan-transform';
+import {
+	elementsWithClass,
+	planSvgRule,
+	renderPlanSvg
+} from '../../helpers/plan-render-harness';
 
 /** Rect enclosure + thin partition + close thin pair (0.3 m apart). */
 function thinWallDocument(): LayoutDocumentWallFirst {
@@ -108,13 +109,58 @@ describe('P23.13 S10 thin walls at zoom (S2 eyeball, pinned)', () => {
 	});
 
 	it('paints the aid as a separate mark over the preserved band', () => {
-		const plan = readLibSource('editor/layout/PlanSvg.svelte');
-		// The band polyline is unconditional; the aid is additive.
-		expect(plan).toContain("{#if inkAid !== 'none'}");
-		expect(plan).toContain('class="wall-silhouette"');
-		// Dense collapses stacked profiles to the one neutral aid (casing skipped).
-		expect(plan).toContain("{#if inkAid !== 'dense'}");
-		// The aid is 1px screen ink, excluded from measure/snap/hit by construction.
-		expect(plan).toContain('.wall-silhouette { stroke: var(--editor-plan-silhouette); stroke-width: 1;');
+		// The aid is computed by the real salience pipeline at the same zoom the
+		// plan is drawn at, then rendered through the shipped component: the band
+		// polyline is unconditional, and the aid is *added* to it rather than
+		// replacing it.
+		const aids = wallAidsAt(8);
+		const rendered = renderAt(8);
+		const bands = elementsWithClass(rendered, 'wall-line');
+		const silhouettes = elementsWithClass(rendered, 'wall-silhouette');
+		expect(bands).toHaveLength(aids.size);
+		expect(silhouettes).toHaveLength(aids.size);
+		expect(silhouettes.every((element) => element.tag === 'polyline')).toBe(true);
+		// The aid is a *mark*, never a measurement: it carries no band width of its
+		// own, so nothing downstream can read a scale out of it.
+		expect(silhouettes.every((element) => element.attrs.style === undefined)).toBe(true);
+		expect(bands.every((element) => element.attrs.style?.includes('--architecture-band-width'))).toBe(
+			true
+		);
+	});
+
+	it('collapses the stacked profiles to the one neutral aid when a pair is dense', () => {
+		const aids = wallAidsAt(8);
+		const dense = [...aids.values()].filter((aid) => aid === 'dense').length;
+		expect(dense).toBeGreaterThan(0);
+		const rendered = renderAt(8);
+		// One casing per Wall that is *not* dense; the dense pair keeps its band and
+		// its neutral aid and loses the inner profile (casing skipped).
+		expect(elementsWithClass(rendered, 'wall-casing')).toHaveLength(aids.size - dense);
+		expect(elementsWithClass(rendered, 'wall-line')).toHaveLength(aids.size);
+		expect(elementsWithClass(rendered, 'wall-silhouette')).toHaveLength(aids.size);
+	});
+
+	it('drops the aid entirely once the bands stand on their own', () => {
+		const aids = wallAidsAt(8);
+		for (const ppm of [20, 100]) {
+			const rendered = renderAt(ppm);
+			expect(elementsWithClass(rendered, 'wall-line')).toHaveLength(aids.size);
+			expect(elementsWithClass(rendered, 'wall-silhouette')).toHaveLength(0);
+			expect(elementsWithClass(rendered, 'wall-casing')).toHaveLength(aids.size);
+		}
+		// The aid's ink is 1px screen ink under its own token, read from the
+		// compiler's stylesheet rather than a regex over the file.
+		const silhouette = planSvgRule('.wall-silhouette');
+		expect(silhouette['stroke-width']).toBe('1');
+		expect(silhouette.stroke).toContain('var(--editor-plan-silhouette)');
 	});
 });
+
+/** The shipped plan at a zoom, with the real salience projection for that zoom. */
+function renderAt(pixelsPerMeter: number): ReturnType<typeof renderPlanSvg> {
+	const { geometry } = compileWallFirstLayoutGeometry(thinWallDocument());
+	const model = buildPlanRenderModel(geometry);
+	const view: PlanViewportState = { ...createPlanViewportState(), pixelsPerMeter };
+	const presentation = resolvePlanSalience({ model, view }, createPlanSalienceMemory());
+	return renderPlanSvg({ model, planView: view, presentation });
+}
