@@ -366,8 +366,8 @@ editor is not mounted, and a Scene workspace never exposes Camera framing author
 switch — the canonical selection model owns continuity, and this rule scopes only its
 *exposure*. Do not implement this reconciliation by clearing stored selections.
 
-Acceptance: `tests/lib/editor/app/p23-14-control-ownership.test.ts` (unique writable ownership
-per fact), `tests/lib/editor/app/p23-14-inspector-target.test.ts` (Scene 3D with a selected
+Acceptance: `tests/lib/editor/app/shell-control-ownership.test.ts` (unique writable ownership
+per fact), `tests/lib/editor/app/inspector-target.test.ts` (Scene 3D with a selected
 asset; explicit Asset selection; Scene Plan ↔ Scene 3D selection continuity), plus
 `contracts.test.ts` at the composition level. Re-pin existing tests from the duplicated shape to
 this constraint rather than freezing the old layout.

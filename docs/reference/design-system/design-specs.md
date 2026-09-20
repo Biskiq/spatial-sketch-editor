@@ -513,7 +513,7 @@ contrast on the `#D9DDE0` Chassis:
 belonged to the §6.1 reference ink `#252A2E`, not to the base primary. Muted was
 darkened `#606B7E → #55606E` because it is a *text* ink — Status Rail, resting
 View Bar tabs, Inspector section headers, tray group labels — and only cleared
-3.94:1 before. `tests/lib/editor/app/p23-14-contrast-floor.test.ts` recomputes
+3.94:1 before. `tests/lib/editor/app/shell-contrast-floor.test.ts` recomputes
 every number in this section from `tokens.css`.)
 
 Small chromatic inks layer above the base ramp and must still clear AA at their

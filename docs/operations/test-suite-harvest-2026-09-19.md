@@ -1604,3 +1604,250 @@ record rather than silently rewritten.
 `it`s*, not around the `describe` that happens to contain them — and the claim
 “every test here is dense” needs the per-`it` durations (§P.1's rule) rather
 than a section banner.
+
+## Q. Execution log — T5 durable naming cleanup (EXECUTED)
+
+T5 is **mechanical naming/organisation cleanup, not another coverage slice**. A
+file called `p23-6c-wall-delete.test.ts` tells a reader which roadmap slice
+produced it, not what it protects; once the behaviour is a durable product
+contract the milestone name is the wrong owner. T5 renames those files to the
+thing they protect and stops there: **no assertion body, no `describe`/`it`
+title, no lane membership and no test mechanism changed.**
+
+### Q.1 Inventory and classification
+
+The pre-T5 inventory was every file under `apps/editor/tests/` matching
+`p<major>[-.]…`, `slice-`, `stage-`, `pass-`, `phase-` or `closeout-`: **116
+files** (115 test files, 1 fixture module). Each was classified before anything
+moved.
+
+| disposition | count | files |
+|---|---|---|
+| `RENAME_DURABLE` | 115 | 114 test files + the `__fixtures__/p23-12-content.ts` fixture module |
+| `DEFER` | 1 | `lib/editor/p23-f0-stage5-small-items.test.ts` |
+| `KEEP_HISTORICAL` | 0 | — |
+
+The classification rule used: rename when the file's subject is a durable
+product contract and no *other* owner is a better home; defer when the new name
+would have to be an inaccurate umbrella because the file is a milestone bundle.
+Only one file failed that test (§Q.3).
+
+Rename families (`p11-S*`, `p12-S*`, `p20-S*`, `p21.6-S*`, `p22-*`, `p23-*`,
+`p23-F0-stage*`, `p23-13-*`) collapsed onto the durable owner vocabulary the
+suite already used elsewhere:
+
+| historical prefix | durable owner prefix |
+|---|---|
+| `p11-s*`, `p12-s*`, `p21.6-*`, `p23-14-*` (shell) | `shell-*`, `selection-*`, `mutation-*`, `session-*` |
+| `p23-2/3/4/5/6*/9/10/11/12-*` (layout/geometry) | `layout-*` |
+| `p23-13-*` (plan drafting) | `plan-*` |
+| `p22-*`, `p23-12-visitor-*` | `visitor-*` |
+| `p23-f0-stage*` (format policy/writers) | `project-format-*` |
+| `p14-*`, `p8-s2..s4` (camera/preview) | `camera-*`, `preview-*` |
+| `p20-s*` (assets/registry) | `spatial-registry`, `texture-conversion`, `asset-load-resolution` |
+| `p2311-…-perf-pass` | `bend-perf` |
+
+### Q.2 Rename map (old → new → lane)
+
+Same-directory, **filename-only** renames (`R100`/`R099` in git): every
+`import.meta.url` boundary root, relative import and fixture path keeps its
+meaning, and the single fixture module that had to be renamed carries its four
+importers with it. `lane` is the *post-rename* membership and is identical to
+the pre-rename membership in every row.
+
+| old basename | new basename | lane |
+|---|---|---|
+| `p2311-bend-perf-pass.test.ts` | `bend-perf.test.ts` | perf |
+| `p23-14-camera-drawer.test.ts` | `camera-drawer.test.ts` | fast |
+| `p23-6b-hierarchy-inspector.test.ts` | `hierarchy-inspector.test.ts` | fast |
+| `p23-6e-hierarchy-plan-bridge.test.ts` | `hierarchy-plan-bridge.test.ts` | fast |
+| `p23-6e-hierarchy-projection.test.ts` | `hierarchy-projection.test.ts` | fast |
+| `p23-12-inspector-identity.test.ts` | `inspector-identity.test.ts` | fast |
+| `p23-14-inspector-junction-dissolve.test.ts` | `inspector-junction-dissolve.test.ts` | fast |
+| `p23-14-inspector-target.test.ts` | `inspector-target.test.ts` | fast |
+| `p8-s5-interaction-matrix.test.ts` | `interaction-matrix.test.ts` | fast |
+| `p23-12-navigator-identity.test.ts` | `navigator-identity.test.ts` | fast |
+| `p23-3-new-project-boot.test.ts` | `new-project-boot.test.ts` | fast |
+| `p23-14-a11y-motion.test.ts` | `shell-a11y-motion.test.ts` | fast |
+| `p23-14-contrast-floor.test.ts` | `shell-contrast-floor.test.ts` | fast |
+| `p23-14-control-ownership.test.ts` | `shell-control-ownership.test.ts` | fast |
+| `p23-14-state-language.test.ts` | `shell-state-language.test.ts` | fast |
+| `p23-14-type-roles.test.ts` | `shell-type-roles.test.ts` | fast |
+| `p20-s4-load-resolution.test.ts` | `asset-load-resolution.test.ts` | fast |
+| `p14-camera-plan-footprints.test.ts` | `camera-plan-footprints.test.ts` | fast |
+| `p21.6-slice-b.test.ts` | `camera-visualization-contract.test.ts` | fast |
+| `p23-6h-height-parity.test.ts` | `layout-mesh-parity.test.ts` | fast |
+| `p23-10-add-junction.test.ts` | `layout-add-junction.test.ts` | fast |
+| `p23-11-bend-command.test.ts` | `layout-bend-command.test.ts` | fast |
+| `p23-6h-height-edit-history.test.ts` | `layout-height-edit-history.test.ts` | fast |
+| `p23-6i-layout-import-replacement.test.ts` | `layout-import-replacement.test.ts` | fast |
+| `p23-2-interior-anchor-release.test.ts` | `layout-interior-anchor-release.test.ts` | fast |
+| `p23-12-lifecycle-semantics.test.ts` | `layout-lifecycle-semantics.test.ts` | fast |
+| `p23-12-lifecycle.test.ts` | `layout-lifecycle.test.ts` | fast |
+| `p23-12-names.test.ts` | `layout-names.test.ts` | fast |
+| `p23-3-opening-authoring-reachability.test.ts` | `layout-opening-authoring.test.ts` | fast |
+| `p23-12-plan-identity.test.ts` | `layout-plan-identity.test.ts` | fast |
+| `p23-12-review-fixes.test.ts` | `layout-replacement-normalization.test.ts` | fast |
+| `p23-6a-room-move-gesture.test.ts` | `layout-room-move-gesture.test.ts` | fast |
+| `p23-14-room-rotation-arm.test.ts` | `layout-room-rotation.test.ts` | fast |
+| `p23-12-transient-allocation.test.ts` | `layout-transient-allocation.test.ts` | fast |
+| `p23-11-transient-direct-preview.test.ts` | `layout-transient-preview.test.ts` | fast |
+| `p23-12-undo-branch.test.ts` | `layout-undo-branch.test.ts` | fast |
+| `p23-9-wall-chain-commit.test.ts` | `layout-wall-chain-commit.test.ts` | fast |
+| `p23-10-wall-edit-gesture.test.ts` | `layout-wall-edit-gesture.test.ts` | fast |
+| `p23-10-wall-move-adapter.test.ts` | `layout-wall-move-adapter.test.ts` | fast |
+| `p23-6i-wall-run-height.test.ts` | `layout-wall-run-height.test.ts` | fast |
+| `p23-9-wall-segment-history.test.ts` | `layout-wall-segment-history.test.ts` | fast |
+| `p23-f0-stage4-visitor-parity.test.ts` | `project-format-visitor-parity.test.ts` | arch |
+| `p23-f0-stage3-writer-fixtures.test.ts` | `project-format-writer-fixtures.test.ts` | arch |
+| `p23-f0-stage2-writers.test.ts` | `project-format-writers.test.ts` | arch |
+| `p22-4-publish-surface.test.ts` | `publish-surface.test.ts` | fast |
+| `p21.6-slice-c.test.ts` | `shell-focus-mode.test.ts` | fast |
+| `p20-s2-spatial-registry.test.ts` | `spatial-registry.test.ts` | fast |
+| `p11-s2-mutation-policy.test.ts` | `mutation-policy.test.ts` | fast |
+| `p8-s3-edge-timeline.test.ts` | `preview-edge-timeline.test.ts` | fast |
+| `p8-s2-preview-scope.test.ts` | `preview-scope.test.ts` | fast |
+| `p8-s4-preview-sequence.test.ts` | `preview-sequence.test.ts` | fast |
+| `p23-f0-stage1-format-policy.test.ts` | `project-format-policy.test.ts` | arch |
+| `p12-s2-selection-matrix.test.ts` | `selection-matrix.test.ts` | fast |
+| `p11-s1-selection-scope.test.ts` | `selection-scope.test.ts` | fast |
+| `p12-s1-session-model.test.ts` | `session-model.test.ts` | fast |
+| `p11-s4-compact-controls.test.ts` | `shell-compact-controls.test.ts` | fast |
+| `p12-s4-header-chrome.test.ts` | `shell-header-chrome.test.ts` | fast |
+| `p12-s3-one-shell-lanes.test.ts` | `shell-lanes.test.ts` | fast |
+| `p11-s3-scope-shell.test.ts` | `shell-scope.test.ts` | fast |
+| `p20-s3-texture-conversion.test.ts` | `texture-conversion.test.ts` | fast |
+| `p23-12-content.ts` | `layout-identity-content.ts` | fixture |
+| `p23-2-align.test.ts` | `layout-align.test.ts` | fast |
+| `p23-6e-extra-angled-plan-integrity.test.ts` | `layout-angled-plan-integrity.test.ts` | fast |
+| `p23-6e-concave-room-identity.test.ts` | `layout-concave-room-identity.test.ts` | fast |
+| `p23-11-curved-correspondence-regression.test.ts` | `layout-curve-correspondence.test.ts` | fast |
+| `p23-11-closeout.test.ts` | `layout-curve-integration.test.ts` | fast |
+| `p23-11-curve-planners.test.ts` | `layout-curve-planners.test.ts` | fast |
+| `p23-11-curve-read-path.test.ts` | `layout-curve-read-path.test.ts` | fast |
+| `p23-11-fix-pass.test.ts` | `layout-curve-regressions.test.ts` | fast |
+| `p23-11-curve-schema.test.ts` | `layout-curve-schema.test.ts` | fast |
+| `p23-11-curve-split-primitives.test.ts` | `layout-curve-split-primitives.test.ts` | fast |
+| `p23-11-curved-rooms.test.ts` | `layout-curved-rooms.test.ts` | fast |
+| `p23-dissolve-curves.test.ts` | `layout-dissolve-curves.test.ts` | fast |
+| `p23-dissolve-integration.test.ts` | `layout-dissolve-integration.test.ts` | fast |
+| `p23-dissolve-junction.test.ts` | `layout-dissolve-junction.test.ts` | fast |
+| `p23-6-drafting-pass.test.ts` | `layout-drafting.test.ts` | fast |
+| `p23-4-duplicate.test.ts` | `layout-duplicate.test.ts` | fast |
+| `p23-12-identity.test.ts` | `layout-identity.test.ts` | fast |
+| `p23-9-junction-identity.test.ts` | `layout-junction-identity.test.ts` | fast |
+| `p23-3-openings.test.ts` | `layout-openings.test.ts` | fast |
+| `p23-1-precision.test.ts` | `layout-precision.test.ts` | fast |
+| `p23-5-presets.test.ts` | `layout-presets.test.ts` | fast |
+| `p23-11-render-safe-validation.test.ts` | `layout-render-safe-validation.test.ts` | fast |
+| `p23-6d-room-lifecycle.test.ts` | `layout-room-lifecycle.test.ts` | fast |
+| `p23-6a-room-move.test.ts` | `layout-room-move.test.ts` | fast |
+| `p23-2-snap-extent-parity.test.ts` | `layout-snap-extent-parity.test.ts` | fast |
+| `p23-2-snap.test.ts` | `layout-snap.test.ts` | fast |
+| `p23-6i-wall-birth-height.test.ts` | `layout-wall-birth-height.test.ts` | fast |
+| `p23-9-wall-chain.test.ts` | `layout-wall-chain.test.ts` | fast |
+| `p23-6c-wall-delete.test.ts` | `layout-wall-delete.test.ts` | fast |
+| `p23-10-wall-edit.test.ts` | `layout-wall-edit.test.ts` | fast |
+| `p23-6h-wall-height.test.ts` | `layout-wall-height.test.ts` | fast |
+| `p23-6-wall-role.test.ts` | `layout-wall-role.test.ts` | fast |
+| `p23-6-wall-selection.test.ts` | `layout-wall-selection.test.ts` | fast |
+| `p23-13-attention.test.ts` | `plan-attention.test.ts` | fast |
+| `p23-13-dimensions.test.ts` | `plan-dimensions.test.ts` | fast |
+| `p23-13-door-window.test.ts` | `plan-door-window.test.ts` | fast |
+| `p23-13-empty.test.ts` | `plan-empty-state.test.ts` | fast |
+| `p23-13-guide.test.ts` | `plan-guide.test.ts` | fast |
+| `p23-13-icons.test.ts` | `plan-icons.test.ts` | fast |
+| `p23-13-keyboard.test.ts` | `plan-keyboard-navigation.test.ts` | fast |
+| `p23-13-numeric-entry.test.ts` | `plan-numeric-entry.test.ts` | fast |
+| `p23-13-presentation-foundation.test.ts` | `plan-presentation-foundation.test.ts` | fast |
+| `p23-13-preview-closure.test.ts` | `plan-preview-closure.test.ts` | fast |
+| `p23-13-refusal.test.ts` | `plan-refusal.test.ts` | fast |
+| `p23-13-room-labels.test.ts` | `plan-room-labels.test.ts` | fast |
+| `p23-13-salience.test.ts` | `plan-salience.test.ts` | fast |
+| `p23-13-object-scene-paint.test.ts` | `plan-scene-paint.test.ts` | fast |
+| `p23-13-snap-grammar.test.ts` | `plan-snap-grammar.test.ts` | fast |
+| `p23-13-state-controls.test.ts` | `plan-state-controls.test.ts` | fast |
+| `p23-13-surrounds.test.ts` | `plan-surrounds.test.ts` | fast |
+| `p23-13-thin-wall.test.ts` | `plan-thin-wall.test.ts` | fast |
+| `p22-1-cold-runtime.test.ts` | `visitor-cold-runtime.test.ts` | arch |
+| `p23-12-visitor-identity-isolation.test.ts` | `visitor-identity-isolation.test.ts` | arch |
+| `p22-3-public-route.test.ts` | `visitor-public-route.test.ts` | arch |
+
+### Q.3 Historical names intentionally retained
+
+| file | why it keeps its milestone name |
+|---|---|
+| `lib/editor/p23-f0-stage5-small-items.test.ts` (15 its) | It is a **milestone bundle**, not an owner: standalone Scene import semantics, portal Save-blocker relations and the museum/visitor no-second-transform seam, grouped by “F0 stage 5 named small items”. No single durable name describes it, and naming it after any one of the three would be an inaccurate umbrella — the T5 `DEFER` case. Splitting it across its three owners is semantic restructuring (§E/F work), not naming, so it stays as-is. |
+
+Net effect: **1 of 312** test files still carries a slice name.
+
+### Q.4 What T5 deliberately did not change
+
+- **`describe` / `it` titles are untouched**, so **every test name is
+  identical** before and after — the identity proof in §Q.6 depends on it. 171
+  files (609 titles of 5,327) still mention a `P<n>` milestone *inside* their
+  titles. That is honest residual, not an oversight: a title rewrite changes the
+  test's public name, so it has to be paired with an explicit name-change record
+  and buys no ownership clarity once the filename already names the owner. It is
+  pure cosmetics and can be batched later at zero risk; T5 chose zero name churn
+  instead.
+- **No lane membership changed.** Historical names did not correlate with lanes:
+  the 115 renames span 7 `arch`, 1 `perf`, 106 `fast` and 1 fixture module, and
+  every file stayed exactly where it was.
+- **No merging, no re-homing and no helper extraction.** Two files whose new
+  names are adjacent (`hierarchy-projection`, `navigator-identity`) stayed
+  separate because merging them is a §E question, not a naming one.
+
+### Q.5 Reference updates
+
+`apps/editor/test-lanes.ts`, `apps/editor/tests/README.md`, every comment that
+named a renamed file, and the renamed fixture's four importers were updated in
+the rename commit. A follow-up sweep then found what that commit missed: **12
+references in four *live* documents** still pointed at pre-T5 filenames.
+`docs/reference/design-system/editor-shell-ratifications.md`,
+`editor-shell-and-visual-system.md`, `design-specs.md` and
+`docs/operations/tech-debt/README.md` are owner-facing reference material, not
+history, so they were repointed.
+
+Left stale on purpose (recorded, not erased):
+
+- `docs/archive/**`, `docs/roadmap/**` and `Repo-Audit/**` — dated slice records;
+  they say what was true when written. Rewriting them would destroy provenance.
+- §C, §J–§P of this harvest — the candidate table and the per-slice execution
+  logs quote pre-T5 paths as *evidence of what was decided then*. The map in
+  §Q.2 is the translation layer; the historical text is left intact.
+- **One residual in a production file:**
+  `apps/editor/src/lib/editor/store/document-format-policy.svelte.ts:21` names
+  the old `p23-f0-stage1-format-policy.test.ts` in a doc comment. It is a
+  one-line comment fix, but T5/T6 are frozen against production edits (§10's
+  “no production files changed” gate), so it is recorded here as an open item
+  for the next production PR rather than fixed in a test-only slice.
+
+A repo-wide scan for each of the 115 old basenames/paths now returns **zero hits
+outside `docs/archive/**`, `docs/roadmap/**`, `Repo-Audit/**`, this harvest, and
+that one production comment**.
+
+### Q.6 Proof
+
+Against the parent commit (`882f278`), i.e. the reviewed T4 head:
+
+| metric | before | after |
+|---|---|---|
+| test files | 312 | 312 |
+| tests | 4,561 | 4,561 |
+| test names lost / added | — | **0 / 0** |
+| lanes | 4,212 + 253 + 73 + 23 | 4,212 + 253 + 73 + 23 |
+| test files with a slice name | 116 | **1** |
+| production files changed | — | 0 |
+
+`npm test` ≡ `test:full` at 312 files / 4,561 tests, lanes exact and disjoint,
+one pre-existing skip, `npm run check` 0 errors / 0 warnings. Every rename is a
+pure path change: the rename commit is `R100` for all but the fixture module and
+the files whose own comments named a renamed sibling (`R099`).
+
+T5 is frozen at this state; T6 (§R) owns the final measurement.
+
+**Lesson carried forward:** a durable filename is the cheap half of ownership.
+A file can name its owner correctly and still bundle three subjects (the one
+`DEFER` above) — naming cleanup must not be used to *look* like the bundling was
+fixed.
