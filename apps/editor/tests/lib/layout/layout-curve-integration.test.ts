@@ -40,7 +40,7 @@ import {
 import { buildLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
 // P23.12 — an installed document is normalized with its reference ledger, so
 // "reimports to the same document" is a content claim (see the helper).
-import { documentContentJson } from './__fixtures__/p23-12-content';
+import { documentContentJson } from './__fixtures__/layout-identity-content';
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';

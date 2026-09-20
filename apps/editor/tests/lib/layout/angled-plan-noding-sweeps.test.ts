@@ -1,7 +1,7 @@
 /**
  * Heavy lane (T4): the two oblique-host projection sweeps.
  *
- * Moved verbatim out of `p23-6e-extra-angled-plan-integrity.test.ts`, which
+ * Moved verbatim out of `layout-angled-plan-integrity.test.ts`, which
  * keeps every single-case regression in `test:fast` — including the other three
  * `it`s that used to share this `describe` (shared-Junction identity, baseline
  * Junction immobility, out-of-tolerance endpoints). Only these two plan the

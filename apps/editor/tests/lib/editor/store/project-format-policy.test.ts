@@ -505,7 +505,7 @@ describe('P23.0 F0 stage 1 — behavioral guard contract', () => {
 
 		// The *pairing* itself — a wall-first Layout carrying its world-local
 		// Scene partner — is composed and asserted end to end in
-		// `tests/lib/editor/app/p23-3-new-project-boot.test.ts`. A third `it` here
+		// `tests/lib/editor/app/new-project-boot.test.ts`. A third `it` here
 		// only compared the two classifications for inequality, which the two
 		// positive claims above already state exactly; it is deleted per T3's
 		// consolidation rule (its name claimed a mixed-pair check it never made).

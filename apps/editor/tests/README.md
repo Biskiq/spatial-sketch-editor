@@ -41,7 +41,7 @@ imports back to `$lib`.
   pointers. That is the only platform call QA stubs; no app gesture logic is
   touched by it.
 - **Keyboard/traversal contracts that slice Svelte source are shape pins.**
-  `p23-13-keyboard` slices `LayoutPlanViewport.svelte` and asserts text — it
+  `plan-keyboard-navigation` slices `LayoutPlanViewport.svelte` and asserts text — it
   passed while the announcement missed required value+units. Drive the path
   live (or assert the composed string) before trusting refactors that
   rename/reorder those handlers.

@@ -74,7 +74,7 @@ describe('editor theme registry + controller', () => {
 			// P23.14 review F1 / ruling D3+D4 — darkened to clear the 3:1
 			// non-text bar on every Chassis step (#a37a3d was 2.84:1, #c58b35
 			// 2.34:1 on Instrument). Ratios are re-measured in
-			// p23-14-contrast-floor.test.ts.
+			// shell-contrast-floor.test.ts.
 			'--editor-domain-scene: #946d34;',
 			'--editor-domain-camera: #347d89;',
 			'--editor-armed: #946624;',

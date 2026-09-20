@@ -19,7 +19,7 @@
  *
  * Deliberately **not** this rule:
  * - continuation inside one active draw run — the editor carries that as
- *   transient state and passes it explicitly (`p23-6i-wall-run-height.test.ts`);
+ *   transient state and passes it explicitly (`layout-wall-run-height.test.ts`);
  * - Rectangle/Polygon, which are bounded compound commands and take one uniform
  *   height for the whole generated chain, never a per-leg inheritance.
  */

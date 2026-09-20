@@ -15,7 +15,7 @@
  *   here was the same defect asserted twice.
  * - *Scene-ink weight* — the per-footprint regime/zone fraction is proven
  *   behaviourally by the A6 paint owner
- *   (`p23-13-object-scene-paint`), which fails when `sceneInkFor` stops being
+ *   (`plan-scene-paint`), which fails when `sceneInkFor` stops being
  *   consulted (`§K.3` mutation evidence), so the source-slice copy here was
  *   redundant.
  *

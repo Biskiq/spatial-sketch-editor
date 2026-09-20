@@ -13,7 +13,7 @@
  *
  * Still bounded, unchanged from the slice:
  * - Plan Room labels stay name-driven and gated by area/scale/suppression
- *   (`p23-6-drafting-pass.test.ts` stays untouched);
+ *   (`layout-drafting.test.ts` stays untouched);
  * - no permanent per-entity reference label appears on the canvas;
  * - no P23.13 surface (line weights, symbols, dimension or collision code) is
  *   touched.

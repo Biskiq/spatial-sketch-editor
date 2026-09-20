@@ -18,7 +18,7 @@ import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
 // P23.12 — references are presentation identity, not content (see the helper).
-import { documentContentJson } from '../../layout/__fixtures__/p23-12-content';
+import { documentContentJson } from '../../layout/__fixtures__/layout-identity-content';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,

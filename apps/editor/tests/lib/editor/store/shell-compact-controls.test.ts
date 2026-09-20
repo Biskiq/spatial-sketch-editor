@@ -187,7 +187,7 @@ describe('camera context contracts', () => {
 		const controls = readLibSource('editor/camera/EditorCameraPreviewControls.svelte');
 		const sidebar = readLibSource('editor/app/EditorSidebar.svelte');
 		const relicSidebar = readLibSource('editor/EditorLeftSidebar.svelte');
-		// Live P12 scope/chrome ownership lives in p12-s4-header-chrome.test.ts.
+		// Live P12 scope/chrome ownership lives in shell-header-chrome.test.ts.
 		// This component survives only inside the relic branch.
 		expect(timeline).not.toContain('Camera flow unavailable');
 		expect(timeline).toContain("scope === 'camera'");

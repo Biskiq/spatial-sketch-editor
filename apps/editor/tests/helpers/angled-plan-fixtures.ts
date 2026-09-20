@@ -1,7 +1,7 @@
 /**
  * Angled-plan test fixtures — extracted by T4 so the noding/projection sweep
  * suite (`angled-plan-noding-sweeps.test.ts`) and the behavioral suite
- * (`p23-6e-extra-angled-plan-integrity.test.ts`) share one owner for the
+ * (`layout-angled-plan-integrity.test.ts`) share one owner for the
  * document builders instead of duplicating them across lanes.
  *
  * `bottomStart`/`bottomEnd` and `twoRoomsWithOneObliqueDivider` are shared: the
