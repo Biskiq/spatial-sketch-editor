@@ -1,7 +1,8 @@
 # Architecture Operating Cycle — Implementation Plan
 
-**Status:** implementation-ready, not executed. Owner review pending (r6 — review corrections
-R1–R6, R7–R11, R12–R16 and R17–R20 applied in §15.5–§15.8).
+**Status:** EXECUTED 2026-09-21 on `architecture-operating-cycle` (PR #66) · **AUTHORITY: NONE** —
+provenance of the applied rules; the merge anchor is recorded when PR #66 lands.
+**Review history:** r1–r6 corrections R1–R6, R7–R11, R12–R16, R17–R20 applied in §15.5–§15.8.
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -1366,3 +1367,73 @@ amendment that removed the last stale trigger in the ratified plan.
 ✓ paths and cross-references verified; no anchor-dependent links introduced
 ✓ implementation-ready: an executing agent needs no further harvest (§10 is file-by-file)
 ```
+
+---
+
+## 16. Execution record (S1–S5)
+
+Executed on `architecture-operating-cycle` (2026-09-21); each slice is one commit. §10.8 is
+applied in the S5 commit, so this file is now provenance with `AUTHORITY: NONE`.
+
+```text
+S1  live cycle state + routing contract         d764c39
+    new docs/operations/architecture-cycle.md · one docs/README.md row · roadmap META wording
+S2  major-phase-close behavior                  2c21c4d
+    slice-closeout: final-gate guard; phase-close steps 1–9 including the stage preflight and
+    idempotence; step 5/7/8/11 additions; cycle-file route numbering corrected
+S3  P23 final-gate wiring                       5f2f812
+    P23 README FINAL PHASE GATE block + landed-plan evidence note; the stale whole-bundle archive
+    sentence reconciled to the hybrid rule; current.md intentionally unchanged (cycle is WAITING,
+    so no META line is owed)
+S4  closed-work contract                        1a00ce2
+    docs/archive/README.md states the hybrid rule; the §7.3 mechanics (anchor computation,
+    two-commit protocol, post-merge verification) live in the skill from S2
+S5  acceptance and rehearsal                    <this commit>
+```
+
+### Consistency re-read (ratified plan · harvest · applied files)
+
+```text
+✓ Phase 2 boundary identical in ratified §15, plan §3.2/§3.3/§6 and the live cycle file
+✓ one stage set (§3.2) and one transition table (§3.3), mirrored in the cycle file
+✓ META condition single-owned by the cycle file (`OWNER ACTION`), mirrored only in current.md
+✓ closed-work rule identical in OD-4/§7, the skill (slice step 8 + phase-close step 7), the
+  archive README and the P23 README
+✓ three routing seams only (§9): router row · phase final-gate line · skill
+✓ the skill's step-4 status block matches the docs/roadmap/README.md enum exactly
+```
+
+### Table-top rehearsal — acceptance matrix A–P
+
+Walked against the applied files; no product state was touched.
+
+| # | Result |
+| --- | --- |
+| A | the guard compares the closing child to the declared `FINAL PHASE GATE`; a non-final child runs steps 1–11 unchanged — parent open, P-level unchanged, cycle `WAITING`, no META |
+| B | steps 1–2 record acceptance; step 3 STOPs without owner ratification — phase stays `in-progress`, cycle `WAITING`, no META |
+| C | the preflight resolves `WAITING` → `PHASE_0_DUE`; steps 4–9 run in order and the drift report reads ✓ |
+| D | Phase 0 evidence files are created `AUTHORITY: NONE` and the cycle records `PHASE_0_ACTIVE` (§8.2 — not a slice deliverable) |
+| E | Outcome 1 writes `STEADY` / `TRIGGER: none pending` / `ACTIVE MECHANISMS: none`; no window, no META |
+| F | mechanisms installed + window plan reconciled + first P26 slice → `PHASE_2_VALIDATING`, `VALIDATION WINDOW: P26` |
+| G | an ordinary product PR touches neither the cycle file nor `current.md` (discovery is pull-based) |
+| H | a scope change at the existing roadmap moment writes `CALIBRATION`; no mechanism is auto-installed |
+| I | the P26 close preflight resolves `PHASE_2_VALIDATING` → `PHASE_3_EVALUATE`; verdicts → `STEADY` |
+| J | closed work is a stub at its original path with `AUTHORITY: NONE` and a verified `git show <A>:<path>` |
+| K | the cycle file is reachable only from the router row, the phase final-gate line and the skill |
+| L | a later phase closing while `STEADY` preflights to `STEADY`; no audits, no META |
+| M | a resume reads the persisted `CYCLE TARGET`, never repeats step 3, and writes the missing steps 5–9 |
+| N | verified on the diff: pipeline `P23 → P26 → P24 → P25` and every P-status line unchanged; `AGENTS.md`, `work-checkpoint`, source, tests and `reference/*` untouched |
+| O | the final-gate override sets the baton to the pending decision + `BLOCKER`, then stops; no P-level, cycle or META change |
+| P | any other cycle stage at a close yields no legal transition and STOPs before any close write |
+
+### Manual link search (OD-9)
+
+No checked-in checker exists, so it was run by hand over every file this branch touches
+(including the new state file): **42 relative links resolved, 0 broken**. No path was moved in
+S1–S5, so no inbound link needed repair.
+
+### §10.8 applied
+
+The header now reads `EXECUTED … · AUTHORITY: NONE` and the body is retained as provenance of the
+rule set the skill and the state file now carry. The merge anchor is recorded when PR #66 lands.
+This file stays out of scope of the §7 closed-work machinery (cycle provenance, not product work).
