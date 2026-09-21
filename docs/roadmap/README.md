@@ -31,9 +31,16 @@ PIPELINE: P23 → P26 → P24 → P25
 
 ```text
 BACKLOG: P13 proposed/unscheduled; branch-rejoin experiment, no schedule → backlog/
+META: architecture operating-cycle plan → architecture-operating-cycle-plan.md
+      ratified direction; non-operational pending targeted workflow harvest + implementation
 OPS: current work baton → ../operations/current.md
 MODEL: per-increment routing → model-assessment.md
 ```
+
+`META` is a process track beside the product pipeline, not a phase in it: the
+ratified [`architecture-operating-cycle-plan.md`](./architecture-operating-cycle-plan.md)
+enters no `P23 → P26 → P24 → P25` slot, holds no operational authority yet, and
+changes no current procedure until the targeted workflow harvest and implementation land.
 
 Non-milestone: Typed DB layer (conditional infra).
 
