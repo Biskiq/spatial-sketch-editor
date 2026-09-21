@@ -1,7 +1,7 @@
 # Architecture Operating Cycle — Implementation Plan
 
-**Status:** implementation-ready, not executed. Owner review pending (r5 — review corrections
-R1–R6, R7–R11 and R12–R16 applied in §15.5–§15.7).
+**Status:** implementation-ready, not executed. Owner review pending (r6 — review corrections
+R1–R6, R7–R11, R12–R16 and R17–R19 applied in §15.5–§15.8).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -470,10 +470,11 @@ PREFLIGHT (required; after step 3, before step 4) — stage compatibility
         Legal → remember the expected target T, then perform steps 4–7; step 8 writes T. Step 8
         therefore executes a validated transition; it never discovers whether closure was legal
         after the fact.
-        Re-run (the phase README already carries the PHASE CLOSE block): reuse the target T
-        recorded by the first run instead of recomputing it — after step 8 the cycle STAGE *is*
-        the post-close target, so recomputing would mistake the output for the input. Reuse is
-        what keeps the §4.3 resume idempotent.
+        Re-run (the phase README already carries the PHASE CLOSE block): read the persisted
+        `CYCLE TARGET` (step 4) instead of recomputing — after step 8 the cycle STAGE *is* the
+        post-close target, so recomputing would mistake the output for the input, and a partial
+        close can leave the two surfaces disagreeing about which transition was authorized. The
+        target is computed once, by the first run.
 
 Step 4  Phase-local close state
         Phase README gains/replaces a "PHASE CLOSE" block:
@@ -481,11 +482,16 @@ Step 4  Phase-local close state
             STAGE: closed
             CLOSED: <date> — owner ratification recorded in <anchor>
             FINAL GATE: <child> (<artifact>) — accepted <date>
+            CYCLE TARGET: <T>         # PHASE_0_DUE | PHASE_3_EVALUATE | STEADY, persisted from
+                                      # the preflight so a re-run never recomputes it
             CLOSED WORK: <stubs/archive summary or pointer>
         `STATUS` mirrors the canonical enum (`proposed | planning | approved | in-progress |
         shipped | archived`, docs/roadmap/README.md); the phase README never invents a status
         outside it, and the tracker row stays authoritative. Closure is carried by
         `STAGE: closed` plus the CLOSED/FINAL GATE lines, not by a second status field.
+        `CYCLE TARGET` is the durable record of the preflight's validated transition: the first
+        run writes it, step 8 executes it, and recovery reads it. Without it "reuse the target"
+        would be an instruction with nothing to read.
         The phase's STAGE:/CURRENT:/NEXT: lines are reconciled to the closed state.
 
 Step 5  P-level status (OD-2)
@@ -499,9 +505,9 @@ Step 6  Product baton
 
 Step 7  Closed-work procedure (§7) for this close's artifacts.
 
-Step 8  Meta stage — write the preflighted target
-        Write the transition T computed in the close preflight (after step 3, before step 4).
-        Do not recompute a target here and never invent one:
+Step 8  Meta stage — write the persisted target
+        Write the `CYCLE TARGET` T persisted at step 4 (computed by the close preflight after
+        step 3). Do not recompute a target here and never invent one:
             T = PHASE_0_DUE       written with TRIGGER, PRODUCT CONTEXT and OWNER ACTION: required
             T = PHASE_3_EVALUATE  written with OWNER ACTION: required (verdicts are an owner call)
             T = STEADY            record the close, add nothing
@@ -520,10 +526,10 @@ No locking, no state machine, no database. Three cheap conventions:
 
 ```text
 - The phase README "PHASE CLOSE" block (§4 step 4) is the close marker. It proves owner
-  authorization and prevents the closure *decision* from being repeated. It does NOT mean the
-  batch finished.
-- A re-run therefore never re-asks for owner ratification (step 3), reuses the preflight's
-  recorded target T, inspects steps 5–9, and ensures each consequence — WRITING any that are
+  authorization, prevents the closure *decision* from being repeated, and persists `CYCLE
+  TARGET`, the validated transition. It does NOT mean the batch finished.
+- A re-run therefore never re-asks for owner ratification (step 3), reads the persisted
+  `CYCLE TARGET`, inspects steps 5–9, and ensures each consequence — WRITING any that are
   missing — then stops when all are satisfied. A close that stopped after step 4 is completed
   by the re-run, not merely reported on.
 - Every step is "ensure value", never "increment". Re-running writes the same values.
@@ -540,9 +546,9 @@ Drift report shape (kept in the closeout record, not in the cycle file):
 phase README: closed ✓ | roadmap row: shipped ✓ | baton: <next phase> ✓ | cycle: <expected target> ✓ | META: <present|absent> ✓
 ```
 
-`<expected target>` and the META presence come from the preflight, so the two kinds of close
-report differently: a window close (target `PHASE_3_EVALUATE`) has META present, a STEADY close
-(target `STEADY`) has META absent.
+`<expected target>` is the persisted `CYCLE TARGET`, and META presence follows from it, so the
+two kinds of close report differently: a window close (target `PHASE_3_EVALUATE`) has META
+present, a STEADY close (target `STEADY`) has META absent.
 
 ### 4.4 Failure and partial-transition handling
 
@@ -934,7 +940,9 @@ EXACT SECTIONS new "## Guard — does this close also close the phase?" before s
                new "## Phase close (final gate only)" containing §4.2 steps 1–9 **including the
                close preflight between steps 3 and 4** + §4.3 idempotence;
                step 5 gains "step 5 applies to an ordinary child; the final gate also runs the
-               phase-close block"; **step 7 gains the final-gate override (§4.1): baton =
+               phase-close block"; **step 4 persists `CYCLE TARGET` (the preflight's validated
+               transition), and the preflight re-run reads it instead of recomputing**;
+               **step 7 gains the final-gate override (§4.1): baton =
                phase-close decision pending owner ratification, then STOP**;
                **the phase-close preflight is written before step 4 and step 8 executes its
                precomputed target**; step 8 gains
@@ -1079,7 +1087,7 @@ S4 — closed-work contract and mechanics
      Acceptance: matrix J (stub + verified recovery line; a compacted artifact cannot look live)
 
 S5 — acceptance and transition rehearsal
-     Re-read against the ratified plan + harvest; walk matrices A–O as a table-top rehearsal on
+     Re-read against the ratified plan + harvest; walk matrices A–P as a table-top rehearsal on
      a scratch branch (no product state touched); run the manual link search (OD-9);
      §10.8 status update
      Acceptance: §12 fully satisfied; plan self-review list in §0/§15 clean
@@ -1098,7 +1106,7 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 | --- | --- | --- | --- |
 | A | ordinary child closes | parent stays open; P-level unchanged; cycle unchanged (`WAITING`); no META | S2 rehearsal; `slice-closeout` guard reads a false final-gate comparison |
 | B | final gate passes, owner has not closed | phase is *closable*; phase stays `in-progress`; gate artifact records acceptance; cycle stays `WAITING` | §4.2 steps 1–2 STOP |
-| C | owner closes the final phase | preflight confirms a legal transition → ratification recorded → phase README `PHASE CLOSE` (`STATUS: shipped` mirror + `STAGE: closed`) → roadmap row `shipped` → baton → closed work → cycle `<expected target>` → META per that target | §4.2 close preflight + steps 3–9 in order; drift report ✓ |
+| C | owner closes the final phase | preflight confirms a legal transition → ratification recorded → phase README `PHASE CLOSE` (`STATUS: shipped` mirror + `STAGE: closed` + persisted `CYCLE TARGET`) → roadmap row `shipped` → baton → closed work → cycle `<persisted target>` → META per that target | §4.2 close preflight + steps 3–9 in order; drift report ✓ |
 | D | Phase 0 starts | `phase0-audit-a.md` + `phase0-audit-b.md` created `AUTHORITY: NONE`; cycle `PHASE_0_ACTIVE`; P26 design/planning unaffected | §8.2 steps 1–2 |
 | E | Phase 0 Outcome 1 (mostly C/D) | no Phase 1 mechanism; no Phase 2 obligation; cycle → `STEADY` with `TRIGGER: none pending` / `ACTIVE MECHANISMS: none`; P26 implementation may proceed once OD-3's Phase 0 step is satisfied | §3.3 shortcut; §6.1 boundary check |
 | F | Phase 0 requires Phase 1 | only justified mechanisms installed; one bounded reconciliation of the prepared P26 plan; P26 impl #1 then starts; cycle `PHASE_2_VALIDATING`, `VALIDATION WINDOW: P26` | §6.1/§6.2 |
@@ -1122,8 +1130,8 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 ```text
 symptom   authorization written (step 3/4) but a later step missing (e.g. tracker row not updated)
 handling  re-run §4.2. The "PHASE CLOSE" marker proves closure was authorized, so step 3 is
-          never repeated and the preflight target T is reused, not recomputed; steps 5–9 are
-          "ensure value" and the re-run WRITES what is missing.
+          never repeated and the persisted CYCLE TARGET is reused, not recomputed; steps 5–9
+          are "ensure value" and the re-run WRITES what is missing.
           The drift report names the surfaces still unsatisfied. No step except step 3 depends on
           the owner being present.
 result    "marker present + surface absent" means authorized-but-incomplete, never "already closed".
@@ -1291,7 +1299,8 @@ R13 §4.2 stage compatibility moved into a close preflight that runs after step 
     step 4: no legal transition → STOP before any close write; legal → remember the target and
     let step 8 write it. Step 8 executes a validated transition instead of discovering legality
     after the phase has already been closed (steps 4–7 no longer precede the guard). A re-run
-    reuses the recorded target instead of recomputing it from the post-close stage.
+    reuses the recorded target instead of recomputing it from the post-close stage (R17 later
+    persists that target in the close marker, so there is a record to read).
 R14 §4 step 4 no longer writes `STATUS: closed`. The phase README mirrors the canonical enum
     (`STATUS: shipped`; the tracker row stays authoritative) and carries closure in
     `STAGE: closed` + the CLOSED/FINAL GATE lines; no status outside the roadmap enum.
@@ -1312,6 +1321,22 @@ No ratified owner decision (OD-1…OD-9) is reopened by these corrections: R12 r
 boundary §3 had drifted from, R13/R14 remove two consistency defects introduced by R7/R9, and
 R15/R16 are wording and bookkeeping.
 
+### 15.8 Review corrections applied at r6 (`e37693c` → this revision)
+
+```text
+R17 The preflight target is now persisted instead of "remembered". The phase README PHASE CLOSE
+    block (§4.2 step 4) gains `CYCLE TARGET: PHASE_0_DUE | PHASE_3_EVALUATE | STEADY`; step 8
+    writes that persisted value; the preflight's re-run rule and §4.3/§13.1 read it rather than
+    recomputing. The drift report's <expected target> is that persisted field. Recovery no
+    longer depends on inferring the transition from a partially-closed cycle.
+R18 §11 S5 rehearsal scope corrected to matrices A–P (case P was added at r5).
+R19 PR body refreshed for this head (r6 / this commit, matrices A–P, corrections R12–R17).
+    Metadata only — no document change.
+```
+
+No ratified owner decision (OD-1…OD-9) is reopened: R17 closes the last idempotence gap in the
+step 4–8 sequence, R18 is a cross-reference, and R19 is PR metadata.
+
 ### 15.4 Self-review before commit
 
 ```text
@@ -1325,6 +1350,8 @@ R15/R16 are wording and bookkeeping.
 ✓ no planned change to AGENTS.md / work-checkpoint / source / tests / CI / roadmap order (§10.9)
 ✓ r4 review corrections R7–R11 applied and internally consistent (§15.6)
 ✓ r5 review corrections R12–R16 applied and internally consistent (§15.7)
+✓ r6 review corrections R17–R19 applied and internally consistent (§15.8)
+✓ the preflight target is persisted in the close marker, so resume never recomputes it (§4.2)
 ✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
 ✓ phase-close legality is preflighted before any close write (§4.2)
 ✓ no status outside the roadmap enum is introduced (§4 step 4)
