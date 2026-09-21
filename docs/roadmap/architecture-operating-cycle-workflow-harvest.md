@@ -16,6 +16,18 @@ REVISION:   r2 — owner review at 9aa3ca1 applied (four findings + two wording 
             PLAN / IMPLEMENTATION GAP.
 ```
 
+**Post-harvest resolution (2026-09-21, added after `b2aa383`; the harvest body is unchanged).**
+This harvest was written before the owner decisions and remains correct as pre-decision evidence.
+One item it deliberately left neutral has since been settled: the **closed-work mechanism** —
+the "mechanism still an owner choice" cell in §12, the owner-preference note in §7.2, §15 Q4,
+and the major-unknown list in the verdict — was ratified as the **hybrid** model by **OD-4**: a
+path-preserving compact stub at the artifact's original path plus a `git show <A>:<path>`
+exact-recovery line, with an archive copy only for multi-file bundles and non-text evidence. See
+[`architecture-operating-cycle-implementation-plan.md`](./architecture-operating-cycle-implementation-plan.md)
+§1 (OD-4) and §7 (mechanics). The authoritative close event (§15 Q1/Q2) and the next phase's
+state and sequencing (§15 Q3) were likewise settled by OD-1 and OD-3 in the same plan, and
+Q5–Q9 by OD-5…OD-9. Read the items below as the pre-decision record they are.
+
 **Read in full:** `AGENTS.md`, `docs/README.md`, `docs/roadmap/README.md`,
 `docs/roadmap/architecture-operating-cycle-plan.md`, `docs/operations/current.md`,
 `.agents/skills/slice-closeout/SKILL.md`, `.agents/skills/work-checkpoint/SKILL.md`,
@@ -351,6 +363,11 @@ the active one, with only a prose `Status:` line distinguishing closed work from
 > mechanism: the harvest stays neutral, and the implementation plan should present the
 > alternatives (stub / hybrid / archived bundle) against the ratified semantic requirement
 > before one is chosen.
+>
+> **Resolved 2026-09-21 — OD-4.** The mechanism is now ratified: the **hybrid** model
+> (path-preserving compact stub + `git show <A>:<path>` recovery; archive copy only for
+> multi-file bundles and non-text evidence). See the implementation plan §1 (OD-4) / §7 and the
+> post-harvest resolution in §0.
 
 ---
 
@@ -470,7 +487,7 @@ meta-roadmap." The above achieves that with **no startup cost**.
 | Phase 0 fires after P23 fully closes | nothing detects phase close; the close event's identity is itself unresolved (§15 Q1) | **prerequisite plumbing**, not a Phase-0 outcome: the written phase-close transition + a recordable `Phase 0 due` state | `slice-closeout` + phase README `GATE` (+ optional `current.md` line) | confirmed |
 | Live meta-state file `docs/operations/architecture-cycle.md` | none (plan says "do not create yet") | the file + its route row — **must exist before Phase 0**, since stages such as `Phase 0 due/active` have nowhere to live otherwise | `docs/operations/` + one `docs/README.md` table row | confirmed |
 | Phase-close reconciliation/subtraction | promotion exists; subtraction does not | a subtraction step has no owner | `slice-closeout` | confirmed |
-| Closed-work artifacts shed authority and stay exactly recoverable by verified SHA/path | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution under the fixed semantics; **mechanism still an owner choice** (stub / hybrid / archived bundle — §15 Q4) | closed-work step in `slice-closeout` | confirmed |
+| Closed-work artifacts shed authority and stay exactly recoverable by verified SHA/path | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution under the fixed semantics; **mechanism still an owner choice** (stub / hybrid / archived bundle — §15 Q4); **resolved after the harvest by OD-4 → hybrid stub + SHA** (§0) | closed-work step in `slice-closeout` | confirmed |
 | Durable-ruling capture (Outcome 3, if justified) | same-PR promotion happens informally; destination is clear | a trigger/rule naming when capture is mandatory | `slice-closeout` step 3 / `docs/README.md` update rules | partial |
 | Direction format | scattered equivalents (AGENTS rule, reference note, plan non-goals, tech-debt "must not fix") | shared shape; `DONE WHEN` ownership is weakest | owning `reference/*` contract | partial |
 | Scope-change calibration | scope changes are a documentation commit (`62b2ebd`) | no place to ask the calibration question | reconciliation header / phase README `GATE` | partial |
@@ -571,6 +588,9 @@ cannot settle either, and both are open questions again:
    whole-bundle archive, in-place compact stub, or a hybrid? The owner's stated preference is
    the compact stub + SHA (§7.2); the implementation plan should present the alternatives
    before choosing, and the 19 already-landed live plans are the migration set either way.
+   → **Resolved 2026-09-21 by OD-4: the hybrid** (path-preserving compact stub +
+   `git show <A>:<path>`; archive copy only for multi-file bundles and non-text evidence). The
+   19 already-landed live plans migrate as one bounded batch at P23 close.
 5. **Does `operations/current.md` carry a META line** while a cycle stage is open, or does
    discovery happen only through the phase README / skill?
 6. **Is `docs/operations/architecture-cycle.md` the right home** (plan's proposal), and does
@@ -678,6 +698,8 @@ HARVEST VERDICT:
   (c) which mechanisms Phase 0 will actually justify (capture, guards, Direction, range
   review, or none); (d) the closed-work *mechanism* (stub / hybrid / archived bundle) given
   the already-fixed semantics, and the migration of the 19 landed live plans.
+  **→ (d) resolved after the harvest by OD-4** (hybrid stub + SHA; §0); (a) and (b) are settled
+  by OD-1/OD-3, (c) remains Phase 0's finding by design.
 - **deeper code harvest required before planning:** **no.** The remaining questions are
   owner/policy questions and one documentation-surface measurement gap. If a plan later
   needs the mechanical arm to be concrete, the exact bounded sets already exist in

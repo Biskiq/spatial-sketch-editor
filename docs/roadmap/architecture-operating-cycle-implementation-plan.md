@@ -1,7 +1,7 @@
 # Architecture Operating Cycle — Implementation Plan
 
-**Status:** implementation-ready, not executed. Owner review pending (r4 — review corrections
-R1–R6 and R7–R11 applied in §15.5).
+**Status:** implementation-ready, not executed. Owner review pending (r5 — review corrections
+R1–R6, R7–R11 and R12–R16 applied in §15.5–§15.7).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -33,14 +33,21 @@ FIVE REQUIRED FILE CHANGES (four documents + one new file)
 
 TWO CONDITIONAL EDITS (justified in §10, both one-line-class)
   docs/archive/README.md                     — the hybrid closed-work rule
-  docs/operations/current.md                 — only gains a META line at PHASE_0_DUE
+  docs/operations/current.md                 — gains a META line only while OWNER ACTION: required
+                                               (PHASE_0_DUE, ADJUDICATION, PHASE_3_EVALUATE)
+
+ONE REVIEW ADDENDUM (documents only; not an execution slice)
+  docs/roadmap/architecture-operating-cycle-workflow-harvest.md
+                                             — a dated post-harvest resolution recording that
+                                               OD-4 settled the closed-work mechanism (harvest §0)
 ```
 
 ### 0.2 What this plan does not touch
 
 `AGENTS.md` · `work-checkpoint` skill · any source or test file · CI (there is none) · any
 existing `reference/*` contract · product roadmap scope, order or status · the ratified plan ·
-P23/P26 status or scope · the harvest's accepted wording.
+P23/P26 status or scope · the harvest's accepted body and findings (it gains only the dated
+post-harvest resolution addendum described in §0.1).
 
 ### 0.3 Why the surface is this small
 
@@ -330,7 +337,7 @@ reading the whole evidence set. No other fields without a demonstrated use.
 | `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (§4 step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
 | `PHASE_0_ACTIVE` | Two independent audits in progress | owner authorization | run audits A and B independently; do not read each other | both audits complete | `ADJUDICATION` | no |
 | `ADJUDICATION` | Owner classifies and decides | both audits exist | owner adjudicates A/B/C/D + "what catches it next time?" + outcome | outcome recorded | `PHASE_1` or `STEADY` | **yes** |
-| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms | mechanisms landed + recorded | `PHASE_2_VALIDATING` | no (unless action pending) |
+| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan (OD-3 boundary check, §6.1) and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
 | `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes | `PHASE_3_EVALUATE` | no |
 | `PHASE_3_EVALUATE` | Keep / simplify / delete | validation window closed | record a verdict per mechanism | verdicts recorded; survivors folded into normal practice | `STEADY` | **yes** |
 | `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or Outcome 1 (nothing installed) | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
@@ -344,12 +351,22 @@ PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
 PHASE_0_ACTIVE + audits A and B done   → ADJUDICATION
 ADJUDICATION + Outcome 1 (C/D)         → STEADY              (no PHASE_1, no PHASE_2)
 ADJUDICATION + Outcome 2/3/4           → PHASE_1
-PHASE_1      + justified mechanisms    → PHASE_2_VALIDATING  (window = next product phase)
+PHASE_1      + justified mechanisms + reconciled window plan
+                                       → PHASE_1             (STATUS: ready for validation)
+PHASE_1      + first implementation slice of the window phase starts
+                                       → PHASE_2_VALIDATING  (window = that phase, e.g. P26)
 PHASE_2_VALIDATING + window phase ends → PHASE_3_EVALUATE
 PHASE_3_EVALUATE + verdicts            → STEADY
 STEADY       + ordinary major phase close → STEADY   (reconcile · subtract · close work; §4)
 STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → PHASE_0_DUE
 ```
+
+**Phase 2 begins at implementation, not at installation (OD-3).** Installing the mechanisms and
+reconciling the prepared implementation plan leaves the cycle in `PHASE_1` with
+`STATUS: ready for validation`; the `PHASE_2_VALIDATING` entry trigger is the **first
+implementation slice** of the window phase. This is the same boundary §6.1 states, so §3 and §6
+no longer disagree about when validation starts, and no `VALIDATION WINDOW` is opened before
+that slice begins.
 
 **Steady state does not re-run Phase 0.** A major phase close is *hygiene*, not *diagnosis*: it
 performs the ordinary closeout work (reconciliation, subtraction of stale guidance, closed-work
@@ -441,12 +458,34 @@ Step 3  Owner ratification  →  provenance
         No form, no workflow, no separate governance artifact. If the owner has not ratified,
         STOP here: the phase stays in-progress, the cycle stays WAITING, no META appears.
 
+PREFLIGHT (required; after step 3, before step 4) — stage compatibility
+        Read architecture-cycle.md STAGE and compute the legal post-close transition. The
+        transition is validated before any close write, so an impossible one is caught while
+        the phase is still open instead of after the phase has already been closed:
+            WAITING            → PHASE_0_DUE
+            PHASE_2_VALIDATING → PHASE_3_EVALUATE
+            STEADY             → STEADY (unchanged; record the close only)
+            any other stage    → no legal transition
+        No legal transition → STOP before changing any phase status (steps 4–9 do not run).
+        Legal → remember the expected target T, then perform steps 4–7; step 8 writes T. Step 8
+        therefore executes a validated transition; it never discovers whether closure was legal
+        after the fact.
+        Re-run (the phase README already carries the PHASE CLOSE block): reuse the target T
+        recorded by the first run instead of recomputing it — after step 8 the cycle STAGE *is*
+        the post-close target, so recomputing would mistake the output for the input. Reuse is
+        what keeps the §4.3 resume idempotent.
+
 Step 4  Phase-local close state
         Phase README gains/replaces a "PHASE CLOSE" block:
-            STATUS: closed
+            STATUS: shipped           # mirror; docs/roadmap/README.md is the status authority
+            STAGE: closed
             CLOSED: <date> — owner ratification recorded in <anchor>
             FINAL GATE: <child> (<artifact>) — accepted <date>
             CLOSED WORK: <stubs/archive summary or pointer>
+        `STATUS` mirrors the canonical enum (`proposed | planning | approved | in-progress |
+        shipped | archived`, docs/roadmap/README.md); the phase README never invents a status
+        outside it, and the tracker row stays authoritative. Closure is carried by
+        `STAGE: closed` plus the CLOSED/FINAL GATE lines, not by a second status field.
         The phase's STAGE:/CURRENT:/NEXT: lines are reconciled to the closed state.
 
 Step 5  P-level status (OD-2)
@@ -454,23 +493,22 @@ Step 5  P-level status (OD-2)
         "phase is closed" state everything else keys off.
 
 Step 6  Product baton
-        docs/operations/current.md → PHASE: <next in pipeline> (P26), CHILD/STAGE/NEXT set to
-        the next real work item. Baton stays product-only at this point.
+        docs/operations/current.md → PHASE: <next in pipeline>, CHILD/STAGE/NEXT set to the next
+        real work item. Read the next phase from the tracker pipeline; never assume it. For P23
+        the next phase is P26. Baton stays product-only at this point.
 
 Step 7  Closed-work procedure (§7) for this close's artifacts.
 
-Step 8  Meta stage — STAGE-AWARE, never a fixed target
-        Read architecture-cycle.md STAGE and write the transition that actually matches it:
-            WAITING            + phase close                     → PHASE_0_DUE
-            PHASE_2_VALIDATING + its window phase closing        → PHASE_3_EVALUATE
-            STEADY             + ordinary major phase close      → unchanged (STEADY);
-                                                                   record the close, add nothing
-            any other stage    + a major phase close             → STOP and report the mismatch;
-                                                                   never invent a transition
-        PHASE_0_DUE is written with TRIGGER, PRODUCT CONTEXT and OWNER ACTION: required;
-        PHASE_3_EVALUATE is written with OWNER ACTION: required (verdicts are an owner call).
+Step 8  Meta stage — write the preflighted target
+        Write the transition T computed in the close preflight (after step 3, before step 4).
+        Do not recompute a target here and never invent one:
+            T = PHASE_0_DUE       written with TRIGGER, PRODUCT CONTEXT and OWNER ACTION: required
+            T = PHASE_3_EVALUATE  written with OWNER ACTION: required (verdicts are an owner call)
+            T = STEADY            record the close, add nothing
         This keeps R1 true in implementation: a later phase closing while STEADY does not
-        restart Phase 0, and P26 closing during validation does not re-open it either.
+        restart Phase 0, and P26 closing during validation does not re-open it either. Because
+        T was validated before any close write, the phase README, tracker row and baton are
+        only ever changed for a closure the cycle can legally absorb.
 
 Step 9  Baton META pointer (§3.4) — added last, and only when the state written at step 8 has
         OWNER ACTION: required. A STEADY outcome at step 8 therefore produces no META line.
@@ -484,9 +522,10 @@ No locking, no state machine, no database. Three cheap conventions:
 - The phase README "PHASE CLOSE" block (§4 step 4) is the close marker. It proves owner
   authorization and prevents the closure *decision* from being repeated. It does NOT mean the
   batch finished.
-- A re-run therefore never re-asks for owner ratification (step 3), inspects steps 5–9, and
-  ensures each consequence — WRITING any that are missing — then stops when all are satisfied.
-  A close that stopped after step 4 is completed by the re-run, not merely reported on.
+- A re-run therefore never re-asks for owner ratification (step 3), reuses the preflight's
+  recorded target T, inspects steps 5–9, and ensures each consequence — WRITING any that are
+  missing — then stops when all are satisfied. A close that stopped after step 4 is completed
+  by the re-run, not merely reported on.
 - Every step is "ensure value", never "increment". Re-running writes the same values.
 - Step 7 is a no-op for any artifact already carrying "AUTHORITY: NONE" (§7.1), so a second
   run cannot double-compact or lose a body.
@@ -498,8 +537,12 @@ consequence surfaces (steps 5–8) plus the META line (step 9), never by the mar
 Drift report shape (kept in the closeout record, not in the cycle file):
 
 ```text
-phase README: closed ✓ | roadmap row: shipped ✓ | baton: P26 ✓ | cycle: PHASE_0_DUE ✓ | META ✓
+phase README: closed ✓ | roadmap row: shipped ✓ | baton: <next phase> ✓ | cycle: <expected target> ✓ | META: <present|absent> ✓
 ```
+
+`<expected target>` and the META presence come from the preflight, so the two kinds of close
+report differently: a window close (target `PHASE_3_EVALUATE`) has META present, a STEADY close
+(target `STEADY`) has META absent.
 
 ### 4.4 Failure and partial-transition handling
 
@@ -527,7 +570,8 @@ FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout ga
   gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
   satisfying its exit criteria makes P23 CLOSABLE, not closed.
   CLOSED requires explicit owner ratification; closure then updates P-level status/baton
-  (slice-closeout, phase-close procedure) and makes Architecture Cycle Phase 0 DUE.
+  (slice-closeout, phase-close procedure) and runs the close preflight. For P23 the cycle is
+  WAITING, so the preflight's target is PHASE_0_DUE; the target is computed, never assumed.
   Landed P23 slice plans are evidence; they are not active instructions (§5.3).
 ```
 
@@ -675,10 +719,11 @@ archive copy later is an explicit owner exception recorded in the closeout, not 
 the closing agent evaluates case by case.
 
 **Mixed workspaces (a directory holding prose + assets).** The prose router of the directory is
-stubbed in place; the assets get an archive copy and keep their own paths, because moving them
-would break references without a reason to. Because asset links are outside what F-1 measured,
-the closeout runs the manual link search over any moved asset path — one search per batch, not per
-file.
+stubbed in place. The assets are **copied** to the archive, and their live copies stay at their
+original paths — they are not moved, because a move would break references for no benefit.
+Because asset links are outside what F-1 measured, the closeout runs the manual link search over
+the assets' original paths (one search per batch, not per file) to confirm the stub in that
+directory did not orphan an inbound link.
 
 **Closed phase-wide planning hubs.** The P23 umbrella, the remaining-roadmap reconciliation and
 the cross-view addendum are themselves **completed work artifacts** once P23 closes. Leaving their
@@ -886,11 +931,13 @@ CURRENT ROLE   slice lifecycle: 11 steps, slice-scoped promotion/archive/verify;
 NEW ROLE       same, plus a phase-close branch entered only when the phase declares this child
                its final gate; ordinary child close is untouched
 EXACT SECTIONS new "## Guard — does this close also close the phase?" before step 1;
-               new "## Phase close (final gate only)" containing §4.2 steps 1–9 + §4.3 idempotence;
+               new "## Phase close (final gate only)" containing §4.2 steps 1–9 **including the
+               close preflight between steps 3 and 4** + §4.3 idempotence;
                step 5 gains "step 5 applies to an ordinary child; the final gate also runs the
                phase-close block"; **step 7 gains the final-gate override (§4.1): baton =
                phase-close decision pending owner ratification, then STOP**;
-               **the phase-close step 8 is written stage-aware, per the §4.2 table**; step 8 gains
+               **the phase-close preflight is written before step 4 and step 8 executes its
+               precomputed target**; step 8 gains
                "closed-work uses the §7 hybrid rule: stub at the original path +
                `git show <A>:<path>`; archive copy only for bundles/non-text";
                step 11 gains "manual link search (no checker exists — OD-9)"
@@ -964,8 +1011,8 @@ ACCEPTANCE     `P23 → P26 → P24 → P25` and every phase status byte-identic
 ```text
 WHY            OD-5: the baton surfaces the cycle only when action is required
 CURRENT ROLE   product baton (PHASE/CHILD/STAGE/NEXT/ROUTE/BLOCKER)
-NEW ROLE       unchanged; gains one META line only at PHASE_0_DUE and loses it when the action
-               is satisfied
+NEW ROLE       unchanged; gains one META line whenever OWNER ACTION: required (PHASE_0_DUE,
+               ADJUDICATION, PHASE_3_EVALUATE) and loses it when the action is satisfied
 EXACT SECTION  between STAGE and NEXT, or immediately after NEXT (writer's choice — one rule:
                it is a pointer line, not a state block)
 EXACT EDIT     **none in S1–S5**: at install the cycle is WAITING, so OWNER ACTION is not
@@ -1006,7 +1053,8 @@ ACCEPTANCE     it is never mistaken for pending instructions; it is explicitly o
 
 ```text
 AGENTS.md · work-checkpoint skill · all source and test files · package.json / CI (none exists) ·
-reference/* contracts · P26 docs · P23/P26 scope, order, status · the ratified plan · the harvest
+reference/* contracts · P26 docs · P23/P26 scope, order, status · the ratified plan · the
+harvest's body and findings (only the §0 post-harvest resolution addendum is added)
 ```
 
 ---
@@ -1050,7 +1098,7 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 | --- | --- | --- | --- |
 | A | ordinary child closes | parent stays open; P-level unchanged; cycle unchanged (`WAITING`); no META | S2 rehearsal; `slice-closeout` guard reads a false final-gate comparison |
 | B | final gate passes, owner has not closed | phase is *closable*; phase stays `in-progress`; gate artifact records acceptance; cycle stays `WAITING` | §4.2 steps 1–2 STOP |
-| C | owner closes the final phase | ratification recorded → phase README `PHASE CLOSE` → roadmap row `shipped` → baton → closed work → cycle `PHASE_0_DUE` → META appears | §4.2 steps 3–9 in order; drift report ✓ |
+| C | owner closes the final phase | preflight confirms a legal transition → ratification recorded → phase README `PHASE CLOSE` (`STATUS: shipped` mirror + `STAGE: closed`) → roadmap row `shipped` → baton → closed work → cycle `<expected target>` → META per that target | §4.2 close preflight + steps 3–9 in order; drift report ✓ |
 | D | Phase 0 starts | `phase0-audit-a.md` + `phase0-audit-b.md` created `AUTHORITY: NONE`; cycle `PHASE_0_ACTIVE`; P26 design/planning unaffected | §8.2 steps 1–2 |
 | E | Phase 0 Outcome 1 (mostly C/D) | no Phase 1 mechanism; no Phase 2 obligation; cycle → `STEADY` with `TRIGGER: none pending` / `ACTIVE MECHANISMS: none`; P26 implementation may proceed once OD-3's Phase 0 step is satisfied | §3.3 shortcut; §6.1 boundary check |
 | F | Phase 0 requires Phase 1 | only justified mechanisms installed; one bounded reconciliation of the prepared P26 plan; P26 impl #1 then starts; cycle `PHASE_2_VALIDATING`, `VALIDATION WINDOW: P26` | §6.1/§6.2 |
@@ -1063,6 +1111,7 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 | M | close authorized but a step failed | `PHASE CLOSE` marker present, later surface missing; re-run writes the missing steps 5–9 and does not repeat owner ratification | §4.3, §13.1 |
 | N | no collateral change | pipeline `P23 → P26 → P24 → P25`, all phase statuses, scopes and routes byte-identical; `AGENTS.md`, `work-checkpoint`, source, tests, CI untouched | diff review per slice |
 | O | final gate accepted but phase not owner-closed | baton is set to `phase-close decision pending owner ratification` + `BLOCKER: owner ratification` and the run stops; no P-level change, no cycle change, no META | §4.1 step-7 override; matrix B |
+| P | major phase close while the cycle is in an unexpected stage | preflight finds no legal transition and stops **before** any close write; the phase stays as it was, nothing is closed, no META | §4.2 close preflight |
 
 ---
 
@@ -1073,7 +1122,8 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 ```text
 symptom   authorization written (step 3/4) but a later step missing (e.g. tracker row not updated)
 handling  re-run §4.2. The "PHASE CLOSE" marker proves closure was authorized, so step 3 is
-          never repeated; steps 5–9 are "ensure value" and the re-run WRITES what is missing.
+          never repeated and the preflight target T is reused, not recomputed; steps 5–9 are
+          "ensure value" and the re-run WRITES what is missing.
           The drift report names the surfaces still unsatisfied. No step except step 3 depends on
           the owner being present.
 result    "marker present + surface absent" means authorized-but-incomplete, never "already closed".
@@ -1230,6 +1280,38 @@ R11 acceptance matrix duplicate label L renamed: steady-state later close stays 
     "no collateral change" row is N; all "matrix L" cross-references updated.
 ```
 
+### 15.7 Review corrections applied at r5 (`b2aa383` → this revision)
+
+```text
+R12 §3.2/§3.3 now agree with §6: installing the mechanisms and reconciling the prepared window
+    implementation plan leaves the cycle in PHASE_1 with STATUS: ready for validation; the
+    PHASE_2_VALIDATING entry trigger is the first implementation slice of the window phase.
+    No new state was added.
+R13 §4.2 stage compatibility moved into a close preflight that runs after step 3 and before
+    step 4: no legal transition → STOP before any close write; legal → remember the target and
+    let step 8 write it. Step 8 executes a validated transition instead of discovering legality
+    after the phase has already been closed (steps 4–7 no longer precede the guard). A re-run
+    reuses the recorded target instead of recomputing it from the post-close stage.
+R14 §4 step 4 no longer writes `STATUS: closed`. The phase README mirrors the canonical enum
+    (`STATUS: shipped`; the tracker row stays authoritative) and carries closure in
+    `STAGE: closed` + the CLOSED/FINAL GATE lines; no status outside the roadmap enum.
+R15 Genericity cleanup: §4 step 6 reads the next phase from the tracker pipeline with “for P23,
+    next = P26” stated separately; §4.3's drift report uses `<expected target>` and
+    `META: <present|absent>`; §0.1/§10.6 state the META rule as `OWNER ACTION: required` rather
+    than PHASE_0_DUE only; §7.2 says mixed-workspace assets are copied to the archive and stay
+    at their live paths, not moved (this supersedes R10's “moved asset paths” wording); §5.1's
+    P23 gate block says the close target is computed, never assumed (PHASE_0_DUE only because
+    P23's cycle is WAITING).
+R16 Harvest addendum: a dated post-harvest resolution (harvest §0) records that OD-4 ratified the
+    hybrid closed-work mechanism and points at the implementation plan, with resolution pointers
+    at harvest §7.2, §12, §15 Q4 and the verdict's major unknowns. The harvest's findings and
+    wording are not rewritten — it stays legitimate pre-decision evidence.
+```
+
+No ratified owner decision (OD-1…OD-9) is reopened by these corrections: R12 restores the OD-3
+boundary §3 had drifted from, R13/R14 remove two consistency defects introduced by R7/R9, and
+R15/R16 are wording and bookkeeping.
+
 ### 15.4 Self-review before commit
 
 ```text
@@ -1242,6 +1324,10 @@ R11 acceptance matrix duplicate label L renamed: steady-state later close stays 
 ✓ no Phase-0-selected mechanism in the prerequisite surface (§2.2, §14)
 ✓ no planned change to AGENTS.md / work-checkpoint / source / tests / CI / roadmap order (§10.9)
 ✓ r4 review corrections R7–R11 applied and internally consistent (§15.6)
+✓ r5 review corrections R12–R16 applied and internally consistent (§15.7)
+✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
+✓ phase-close legality is preflighted before any close write (§4.2)
+✓ no status outside the roadmap enum is introduced (§4 step 4)
 ✓ paths and cross-references verified; no anchor-dependent links introduced
 ✓ implementation-ready: an executing agent needs no further harvest (§10 is file-by-file)
 ```
