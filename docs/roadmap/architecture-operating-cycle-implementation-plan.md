@@ -1,8 +1,10 @@
 # Architecture Operating Cycle — Implementation Plan
 
 **Status:** EXECUTED 2026-09-21 on `architecture-operating-cycle` (PR #66) · **AUTHORITY: NONE** —
-provenance of the applied rules; the merge anchor is recorded when PR #66 lands.
-**Review history:** r1–r6 corrections R1–R6, R7–R11, R12–R16, R17–R20 applied in §15.5–§15.8.
+provenance of the applied rules; the implementation commits are listed in §16 and the live authority
+is the skill plus `docs/operations/architecture-cycle.md`.
+**Review history:** r1–r7 corrections R1–R6, R7–R11, R12–R16, R17–R20, R21–R24 applied in
+§15.5–§15.9.
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -1051,7 +1053,7 @@ ACCEPTANCE     no bucket moved; no existing archive description weakened
 
 ```text
 WHY            OD-6 defines this file as "instructions until executed" but not afterwards
-NEW ROLE       on execution: gain "Status: EXECUTED <date> (<merge anchor>) · AUTHORITY: NONE";
+NEW ROLE       on execution: gain "Status: EXECUTED <date> (PR #66) · AUTHORITY: NONE";
                body retained as provenance of the skill/state-file rules
 EXACT EDIT     header status line only
 DEPENDENCIES   S5 acceptance
@@ -1246,7 +1248,7 @@ N-2  §7.2 closed phase-wide hubs (umbrella/reconciliation/addendum) compact to 
      why they stub *in place* rather than staying live in full.
 ```
 
-### 15.5 Review corrections applied at r3 (requested changes, `1339ed1` → this revision)
+### 15.5 Review corrections applied at r3 (requested changes, `1339ed1` → `4a8f094`)
 
 ```text
 R1  §3.2/§3.3 STEADY no longer auto-restarts Phase 0: a phase close does hygiene
@@ -1269,7 +1271,7 @@ No ratified owner decision (OD-1…OD-9) is reopened by these corrections; R1, R
 internal inconsistencies that would otherwise have contradicted the ratified plan, and R5/R6 make
 two OD-4 mechanics deterministic. `OWNER RECONSIDERATION REQUIRED: none`.
 
-### 15.6 Review corrections applied at r4 (`4a8f094` → this revision)
+### 15.6 Review corrections applied at r4 (`4a8f094` → `b2aa383`)
 
 ```text
 R7  §4.2 step 8 is now stage-aware instead of always writing PHASE_0_DUE:
@@ -1291,7 +1293,7 @@ R11 acceptance matrix duplicate label L renamed: steady-state later close stays 
     "no collateral change" row is N; all "matrix L" cross-references updated.
 ```
 
-### 15.7 Review corrections applied at r5 (`b2aa383` → this revision)
+### 15.7 Review corrections applied at r5 (`b2aa383` → `e37693c`)
 
 ```text
 R12 §3.2/§3.3 now agree with §6: installing the mechanisms and reconciling the prepared window
@@ -1324,7 +1326,7 @@ No ratified owner decision (OD-1…OD-9) is reopened by these corrections: R12 r
 boundary §3 had drifted from, R13/R14 remove two consistency defects introduced by R7/R9, and
 R15/R16 are wording and bookkeeping.
 
-### 15.8 Review corrections applied at r6 (`e37693c` → this revision)
+### 15.8 Review corrections applied at r6 (`e37693c` → `477cabf`, R20 in `131e2bf`)
 
 ```text
 R17 The preflight target is now persisted instead of "remembered". The phase README PHASE CLOSE
@@ -1333,7 +1335,7 @@ R17 The preflight target is now persisted instead of "remembered". The phase REA
     recomputing. The drift report's <expected target> is that persisted field. Recovery no
     longer depends on inferring the transition from a partially-closed cycle.
 R18 §11 S5 rehearsal scope corrected to matrices A–P (case P was added at r5).
-R19 PR body refreshed for this head (r6 / this commit, matrices A–P, corrections R12–R17).
+R19 PR body refreshed for the r6 head `477cabf` (matrices A–P, corrections R12–R17).
     Metadata only — no document change.
 R20 Owner amendment to the ratified plan §15 (2026-09-21), closing the residual §15.7 flagged:
     the Phase 2 trigger now reads "installed **and** the prepared plan reconciled", names the
@@ -1345,6 +1347,28 @@ R20 Owner amendment to the ratified plan §15 (2026-09-21), closing the residual
 No ratified owner decision (OD-1…OD-9) is reopened: R17 closes the last idempotence gap in the
 step 4–8 sequence, R18 is a cross-reference, R19 is PR metadata, and R20 records the owner
 amendment that removed the last stale trigger in the ratified plan.
+
+### 15.9 Review corrections applied at r7 (`536a5f3` → the r7 revision, this commit)
+
+```text
+R21 `docs/operations/architecture-cycle.md` credited the META pointer to "phase-close step 10";
+    phase close is steps 1–9 and META is step 9. Corrected. The state file is live operational
+    authority, so a stale pointer there is fixed rather than tolerated.
+R22 The execution record (§16) named S5 as `<this commit>`, which stopped being meaningful the
+    moment this file became provenance. Replaced with the real SHAs: `S5 dcafd4f` plus the
+    self-review commit `536a5f3` that corrected the applied rules.
+R23 The promised post-merge merge-anchor bookkeeping is removed (header, §10.8 NEW ROLE, §16).
+    A document cannot record its own future merge SHA, and the promise would demand a post-merge
+    commit to insert it for no gain: this file is `AUTHORITY: NONE` provenance, out of scope of
+    the §7 closed-work machinery, already tied to PR #66, and §16 lists the implementation
+    commits. Git history names the merge.
+R24 The skill's phase-close step 7 said "the hybrid rule from step 8 above"; the skill now carries
+    two numbering systems (slice Procedure steps 1–11, phase-close steps 1–9), so it reads
+    "slice Procedure step 8".
+```
+
+No ratified owner decision is reopened: R21–R24 are a pointer fix, provenance precision, and two
+wording clarifications. No rule, stage, transition or mechanism changes.
 
 ### 15.4 Self-review before commit
 
@@ -1360,6 +1384,8 @@ amendment that removed the last stale trigger in the ratified plan.
 ✓ r4 review corrections R7–R11 applied and internally consistent (§15.6)
 ✓ r5 review corrections R12–R16 applied and internally consistent (§15.7)
 ✓ r6 review corrections R17–R20 applied and internally consistent (§15.8)
+✓ r7 review corrections R21–R24 applied and internally consistent (§15.9)
+✓ no promised post-merge bookkeeping remains: provenance names its own commits instead (§16)
 ✓ the preflight target is persisted in the close marker, so resume never recomputes it (§4.2)
 ✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
 ✓ phase-close legality is preflighted before any close write (§4.2)
@@ -1373,7 +1399,9 @@ amendment that removed the last stale trigger in the ratified plan.
 ## 16. Execution record (S1–S5)
 
 Executed on `architecture-operating-cycle` (2026-09-21); each slice is one commit. §10.8 is
-applied in the S5 commit, so this file is now provenance with `AUTHORITY: NONE`.
+applied in the S5 commit, so this file is now provenance with `AUTHORITY: NONE`. The r7 review
+corrections (§15.9) land in the commit carrying this record; Git history identifies it by its
+parent, `536a5f3`.
 
 ```text
 S1  live cycle state + routing contract         d764c39
@@ -1388,7 +1416,13 @@ S3  P23 final-gate wiring                       5f2f812
 S4  closed-work contract                        1a00ce2
     docs/archive/README.md states the hybrid rule; the §7.3 mechanics (anchor computation,
     two-commit protocol, post-merge verification) live in the skill from S2
-S5  acceptance and rehearsal                    <this commit>
+S5  acceptance and rehearsal                    dcafd4f
+    §16 execution record, acceptance-matrix A–P walk, manual link search (42 links, 0 broken),
+    header → EXECUTED · AUTHORITY: NONE
+SR  self-review findings                        536a5f3
+    the cycle file's PHASE_0_DUE write pinned to phase-close step 8; resume scoped to an existing
+    PHASE CLOSE marker; final-gate slice hygiene steps 9–11 restored; ratification given a home
+    in the PHASE CLOSE block
 ```
 
 ### Consistency re-read (ratified plan · harvest · applied files)
@@ -1435,5 +1469,7 @@ S1–S5, so no inbound link needed repair.
 ### §10.8 applied
 
 The header now reads `EXECUTED … · AUTHORITY: NONE` and the body is retained as provenance of the
-rule set the skill and the state file now carry. The merge anchor is recorded when PR #66 lands.
+rule set the skill and the state file now carry. No post-merge anchor is inserted: this document
+cannot record its own future merge SHA, and the implementation commits above already say what
+constituted execution. The merge that brought PR #66 onto `main` is named by Git history.
 This file stays out of scope of the §7 closed-work machinery (cycle provenance, not product work).

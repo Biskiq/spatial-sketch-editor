@@ -167,7 +167,7 @@ phase. The baton stays product-only here.
 
 ### Step 7 — Closed work
 
-Apply the hybrid rule from step 8 above to this close's artifacts:
+Apply the hybrid rule from slice Procedure step 8 to this close's artifacts:
 
 ```text
 ARCHIVE A COPY (copy the full body to docs/archive/roadmap/<phase>/<slice>/…, keep a stub)

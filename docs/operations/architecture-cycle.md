@@ -89,7 +89,7 @@ window phase still closes normally.
 ```text
 META line present  ⇔  this file's OWNER ACTION: required
 line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
-writer:      the closeout agent (slice-closeout, phase-close step 10), or the owner's ruling
+writer:      the closeout agent (slice-closeout, phase-close step 9), or the owner's ruling
              when a stage changes
 removal:     when OWNER ACTION returns to not required (e.g. Phase 0 authorized)
 ```
