@@ -19,8 +19,7 @@
  *
  * 1. **Outward frames.** Every leg's `tangentOut`/`normalOut` point from the
  *    Junction into the Wall, so canonical Wall orientation never leaks into the
- *    classification. `outwardTangent(leg)` and the arrival frame below are the
- *    only place the canonical direction is read.
+ *    classification.
  * 2. **Continuity is a centerline relationship.** Degree-2 with outward rays
  *    ≈180° is a straight continuation (suppress the common interface); a real
  *    tangent break is a bend; outward rays ≈0° is a fold (invalid).
@@ -36,8 +35,10 @@ import {
 	geometryId,
 	type CompiledCornerSide,
 	type CompiledEndCorner,
+	type CompiledJunction,
 	type CompiledEndpointBand,
 	type CompiledJunctionLeg,
+	type CompiledJunctionNeighbor,
 	type CompiledJunctionResolution,
 	type CompiledLegJoin,
 	type CompiledWallSection,
@@ -82,8 +83,7 @@ export type CornerSideResolution =
  * arithmetic; the room-loop path calls it too rather than keeping a copy.
  *
  * Generalised over per-wall half-thickness so mixed-thickness Junctions resolve
- * without a second rule. `dirA`/`dirB` are travel directions (arriving →
- * departing); the caller supplies frames consistent with the outward convention.
+ * without a second rule.
  */
 export function resolveSharedCornerSide(
 	junction: LayoutVec2,
@@ -118,10 +118,11 @@ export function resolveSharedCornerSide(
 
 /**
  * The canonical corner between a **predecessor** leg `prev` (a0 side) and a
- * **successor** leg `cur` (b0 side), in the outward convention. `a0` always sits
- * on `prev`'s offset line, `b0` on `cur`'s; the renderer reads `a0` for a leg
- * whose Junction end is `end` and `b0` for one whose Junction end is `start`,
- * so this one object serves both legs.
+ * **successor** leg `cur` (b0 side), in the outward convention: `a0` sits on
+ * `prev`'s offset line and `b0` on `cur`'s. The renderer reads `a0` for a leg
+ * whose Junction end is `end` and `b0` for one whose Junction end is `start`, so
+ * `cornerForEnd` below adapts the roles when a leg's canonical role and its
+ * end label differ (common with arbitrary canonical Wall orientation).
  */
 export function resolveLegPairCorner(
 	junction: LayoutVec2,
@@ -140,13 +141,31 @@ export function resolveLegPairCorner(
 	return { corner: { front: front.side, back: back.side } };
 }
 
+function swapCornerSide(side: CompiledCornerSide): CompiledCornerSide {
+	return side.kind === 'miter' ? side : { kind: 'bevel', a0: side.b0, b0: side.a0 };
+}
+
+function swapCorner(corner: CompiledEndCorner): CompiledEndCorner {
+	return { front: swapCornerSide(corner.front), back: swapCornerSide(corner.back) };
+}
+
+/**
+ * Adapt a canonical `(prev, cur)` corner to a specific leg. `canonical === 'prev'`
+ * means the leg owns the `a0` slot; `'cur'` owns `b0`. A leg whose Junction end
+ * is `end` reads `a0`, a leg whose end is `start` reads `b0`, so a role/label
+ * mismatch swaps the offset slots (miters are unaffected).
+ */
+function cornerForEnd(corner: CompiledEndCorner, canonical: 'prev' | 'cur', end: 'start' | 'end'): CompiledEndCorner {
+	const wantsA0 = end === 'end';
+	const isA0 = canonical === 'prev';
+	return wantsA0 === isA0 ? corner : swapCorner(corner);
+}
+
 /** Is the outward-ray pair a tangent (straight) continuation? */
 export function isTangentContinuation(a: CompiledJunctionLeg, b: CompiledJunctionLeg): boolean {
 	const ta = outwardTangent(a);
 	const tb = outwardTangent(b);
-	const determinant = cross(ta, tb);
-	// Opposite outward rays (≈180°) with no cross product.
-	return Math.abs(determinant) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
+	return Math.abs(cross(ta, tb)) < JUNCTION_DET_EPSILON && dot(ta, tb) < 0;
 }
 
 /** Is the outward-ray pair a fold (≈0°, walls overlap)? */
@@ -190,9 +209,6 @@ export function endpointSolidBands(
 	if (intervals.length === 0) return [{ bottomY: 0, topY: height, solid: true }];
 	intervals.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
 	const bands: CompiledEndpointBand[] = [];
-	// A void band at an endpoint is the Opening void: attribute it to the Opening
-	// whose section shares this endpoint, so a renderer can tell "open" from
-	// "short Wall" without re-reading the document.
 	const voidBand = (bottomY: number, topY: number): CompiledEndpointBand => {
 		const band: CompiledEndpointBand = { bottomY, topY, solid: false };
 		if (openingIds[0]) band.openingId = openingIds[0];
@@ -236,14 +252,6 @@ function unionBands(legs: readonly CompiledJunctionLeg[]): Array<{ bottomY: numb
 	return bands;
 }
 
-/** Whether a leg's endpoint is solid across the whole `[lo, hi]` band. */
-function legSolidInBand(leg: CompiledJunctionLeg, lo: number, hi: number): boolean {
-	if (lo < leg.bottomY - JUNCTION_BAND_EPSILON || hi > leg.topY + JUNCTION_BAND_EPSILON) return false;
-	return leg.endpointSolidBands.some(
-		(band) => band.solid && lo >= band.bottomY - JUNCTION_BAND_EPSILON && hi <= band.topY + JUNCTION_BAND_EPSILON
-	);
-}
-
 /**
  * Resolve one canonical Junction into Wall-attributed end geometry.
  *
@@ -263,16 +271,13 @@ export function resolveJunctionGeometry(
 	const bands = unionBands(legs);
 	const joins: CompiledLegJoin[] = [];
 
-	const bounds2 = junctionBounds2(point, legs);
-
 	if (legs.length === 0) {
-		return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+		return { resolution: { junctionId, legOrder, joins, bounds2: { min: [...point] as LayoutVec2, max: [...point] as LayoutVec2 } }, issues };
 	}
 
 	if (legs.length === 1) {
-		const leg = legs[0]!;
-		joins.push(terminalJoin(leg, bands));
-		return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+		joins.push(terminalJoin(legs[0]!, bands));
+		return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 	}
 
 	if (legs.length === 2) {
@@ -280,27 +285,43 @@ export function resolveJunctionGeometry(
 		if (isFoldPair(a, b)) {
 			issues.push(foldIssue(junctionId));
 			joins.push(suppressedJoin(a, bands), suppressedJoin(b, bands));
-			return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
 		if (isTangentContinuation(a, b)) {
-			joins.push(suppressedJoin(a, bands), suppressedJoin(b, bands));
-			return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+			// Straight continuation: suppress the common interface. Any thickness /
+			// height / opening-profile difference is emitted as an exposed step by
+			// the consumer from the two legs' bands.
+			joins.push(suppressedJoin(a, bands, neighborFacts(b)), suppressedJoin(b, bands, neighborFacts(a)));
+			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		const resolved = resolveLegPairCorner(point, a, b, miterLimit);
+		// Canonical roles: prefer the departing (start) leg as `cur`.
+		const swap = a.end === 'start' && b.end === 'end';
+		const prev = swap ? b : a;
+		const cur = swap ? a : b;
+		const resolved = resolveLegPairCorner(point, prev, cur, miterLimit);
 		if ('fold' in resolved) {
 			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(a, bands), suppressedJoin(b, bands));
-			return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+			joins.push(suppressedJoin(prev, bands), suppressedJoin(cur, bands));
+			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		// One wedge owner per corner: the smaller wallId, unless the legs are the
-		// same wall (self-loop), which is a fold-like degeneracy handled above.
-		const ownerWallId = a.wallId <= b.wallId ? a.wallId : b.wallId;
-		const seam = { sector: 0, polygon: wedgePolygon(point, a, b) };
+		// One owner per seam. Prefer the start leg (the bridge builder is
+		// start-oriented); otherwise the smaller wallId — never an angle.
+		const ownerWallId =
+			cur.end === 'start' ? cur.wallId : prev.end === 'start' ? prev.wallId : prev.wallId <= cur.wallId ? prev.wallId : cur.wallId;
+		const seam = { sector: 0, polygon: wedgePolygon(point, prev, cur) };
 		joins.push(
-			cornerJoin(a, bands, resolved.corner, ownerWallId === a.wallId ? seam : null),
-			cornerJoin(b, bands, resolved.corner, ownerWallId === b.wallId ? seam : null)
+			cornerJoin(prev, bands, cornerForEnd(resolved.corner, 'prev', prev.end), ownerWallId === prev.wallId ? seam : null, {
+				canonicalRole: 'prev',
+				canonicalCorner: resolved.corner,
+				neighbor: neighborFacts(cur)
+			}),
+			cornerJoin(cur, bands, cornerForEnd(resolved.corner, 'cur', cur.end), ownerWallId === cur.wallId ? seam : null, {
+				canonicalRole: 'cur',
+				canonicalCorner: resolved.corner,
+				neighbor: neighborFacts(prev)
+			})
 		);
-		return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+		return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 	}
 
 	// degree >= 3 — resolve across all incident legs. Each leg is paired with its
@@ -326,12 +347,17 @@ export function resolveJunctionGeometry(
 			continue;
 		}
 		const covered = wedgeCoveredByOthers(point, prev, leg, legs);
-		const owner = !covered && prev.wallId <= leg.wallId ? leg.wallId : !covered ? prev.wallId : null;
-		const seam = owner === null ? null : { sector: 0, polygon: wedgePolygon(point, prev, leg) };
-		joins.push(cornerJoin(leg, bands, resolved.corner, owner === leg.wallId ? seam : null));
+		const seam = covered ? null : { sector: i, polygon: wedgePolygon(point, prev, leg) };
+		joins.push(
+			cornerJoin(leg, bands, cornerForEnd(resolved.corner, 'cur', leg.end), seam, {
+				canonicalRole: 'cur',
+				canonicalCorner: resolved.corner,
+				neighbor: neighborFacts(prev)
+			})
+		);
 	}
 
-	return { resolution: { junctionId, legOrder, joins, bounds2 }, issues };
+	return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 }
 
 function terminalJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; topY: number }>): CompiledLegJoin {
@@ -347,7 +373,22 @@ function terminalJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; 
 	};
 }
 
-function suppressedJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; topY: number }>): CompiledLegJoin {
+function neighborFacts(leg: CompiledJunctionLeg): CompiledJunctionNeighbor {
+	return {
+		wallId: leg.wallId,
+		tangentOut: leg.tangentOut,
+		normalOut: leg.normalOut,
+		halfThickness: leg.halfThickness,
+		endpointOpen: leg.endpointOpen,
+		endpointSolidBands: leg.endpointSolidBands
+	};
+}
+
+function suppressedJoin(
+	leg: CompiledJunctionLeg,
+	bands: Array<{ bottomY: number; topY: number }>,
+	neighbor?: CompiledJunctionNeighbor
+): CompiledLegJoin {
 	return {
 		wallId: leg.wallId,
 		end: leg.end,
@@ -356,7 +397,8 @@ function suppressedJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number
 		interfaceSuppressed: true,
 		ownedSeam: null,
 		bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
-		corner: null
+		corner: null,
+		...(neighbor ? { neighbor } : {})
 	};
 }
 
@@ -364,7 +406,8 @@ function cornerJoin(
 	leg: CompiledJunctionLeg,
 	bands: Array<{ bottomY: number; topY: number }>,
 	corner: CompiledEndCorner,
-	ownedSeam: { sector: number; polygon: LayoutVec2[] } | null
+	ownedSeam: { sector: number; polygon: LayoutVec2[] } | null,
+	meta: { canonicalRole: 'prev' | 'cur'; canonicalCorner: CompiledEndCorner; neighbor: CompiledJunctionNeighbor }
 ): CompiledLegJoin {
 	const kind: CompiledLegJoin['kind'] =
 		corner.front.kind === 'bevel' || corner.back.kind === 'bevel' ? 'bevel' : 'miter';
@@ -376,7 +419,10 @@ function cornerJoin(
 		interfaceSuppressed: false,
 		ownedSeam,
 		bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
-		corner
+		corner,
+		canonicalRole: meta.canonicalRole,
+		canonicalCorner: meta.canonicalCorner,
+		neighbor: meta.neighbor
 	};
 }
 
@@ -426,17 +472,28 @@ function pointInLegFootprint(point: LayoutVec2, junction: LayoutVec2, leg: Compi
 	return along >= -JUNCTION_BAND_EPSILON && Math.abs(lateral) <= leg.halfThickness + JUNCTION_BAND_EPSILON;
 }
 
-function junctionBounds2(point: LayoutVec2, legs: readonly CompiledJunctionLeg[]): LayoutBounds2 {
-	let minX = point[0];
-	let minY = point[1];
-	let maxX = point[0];
-	let maxY = point[1];
-	for (const leg of legs) {
-		for (const p of legEndBoundary(point, leg)) {
-			minX = Math.min(minX, p[0]);
-			minY = Math.min(minY, p[1]);
-			maxX = Math.max(maxX, p[0]);
-			maxY = Math.max(maxY, p[1]);
+function joinsBounds2(junction: LayoutVec2, joins: readonly CompiledLegJoin[]): LayoutBounds2 {
+	let minX = junction[0];
+	let minY = junction[1];
+	let maxX = junction[0];
+	let maxY = junction[1];
+	const consider = (p: LayoutVec2): void => {
+		minX = Math.min(minX, p[0]);
+		minY = Math.min(minY, p[1]);
+		maxX = Math.max(maxX, p[0]);
+		maxY = Math.max(maxY, p[1]);
+	};
+	for (const join of joins) {
+		for (const p of join.endBoundary) consider(p);
+		if (join.ownedSeam) for (const p of join.ownedSeam.polygon) consider(p);
+		if (join.corner) {
+			for (const side of [join.corner.front, join.corner.back]) {
+				if (side.kind === 'miter') consider(side.apex);
+				else {
+					consider(side.a0);
+					consider(side.b0);
+				}
+			}
 		}
 	}
 	return { min: [minX, minY], max: [maxX, maxY] };
@@ -447,4 +504,29 @@ export function compiledJunctionId(floorId: string, junctionId: string): string 
 	return geometryId(['compiled-junction', floorId, junctionId]);
 }
 
-export { legSolidInBand };
+/** One Wall's resolved Junction ends — the shape a Wall-level builder consumes. */
+export type CompiledWallEnds = {
+	start: CompiledLegJoin | null;
+	end: CompiledLegJoin | null;
+};
+
+/**
+ * `wallId` → its resolved end record, for consumers that package geometry
+ * per Wall. A **pure lookup** over already-compiled Junction facts: it never
+ * re-reads `LayoutDocument` and never solves topology. A Wall end with no
+ * compiled Junction leaves that slot `null` (a free/terminal end); an end bound
+ * to a Junction that resolved without a join for it is also `null`, which a
+ * consumer must treat as an invariant failure rather than a square-cap
+ * fallback.
+ */
+export function legJoinsByWall(junctions: readonly CompiledJunction[] | undefined): Map<string, CompiledWallEnds> {
+	const ends = new Map<string, CompiledWallEnds>();
+	for (const junction of junctions ?? []) {
+		for (const join of junction.resolution.joins) {
+			const entry = ends.get(join.wallId) ?? { start: null, end: null };
+			entry[join.end] = join;
+			ends.set(join.wallId, entry);
+		}
+	}
+	return ends;
+}

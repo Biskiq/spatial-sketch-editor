@@ -2,7 +2,7 @@
 	import { T } from '@threlte/core';
 	import { Shape, type BufferGeometry, type Material } from 'three';
 	import type { LayoutVec2 } from '$lib/layout/layout-types';
-	import type { CompiledLayoutGeometry, LayoutBounds3 } from '$lib/layout/layout-geometry-types';
+	import { legJoinsByWall, type CompiledLayoutGeometry, type LayoutBounds3 } from '$lib/layout/layout-geometry-types';
 	import type { VisitorRoomPresentation } from './room-presentation';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
@@ -85,10 +85,14 @@
 			geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const)
 		);
 		const walls: AdaptedWall[] = [];
+		// P23.15 — the compiled Junction ends, never a renderer-side topology solve.
+		const endsByWall = legJoinsByWall(geometry.junctions);
 		for (const wall of geometry.walls ?? []) {
 			const frame = { elevation: floorElevationById.get(wall.floorId) ?? 0 };
 			// P23.6H — the compiled Wall's own height decides its vertical extent.
-			const result = buildStandaloneWallMesh(wall, frame.elevation, { classifySurface: () => 'wall' });
+			const result = buildStandaloneWallMesh(wall, frame.elevation, endsByWall.get(wall.wallId) ?? null, {
+				classifySurface: () => 'wall'
+			});
 			if (!result.mesh) {
 				walls.push({ wallId: wall.wallId, floorElevation: frame.elevation, ok: false, bounds: wall.bounds3 });
 				continue;

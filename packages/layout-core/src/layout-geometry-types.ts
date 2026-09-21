@@ -315,6 +315,16 @@ export type CompiledEndCorner = { front: CompiledCornerSide; back: CompiledCorne
 /** How an incident leg's Junction end is resolved. */
 export type CompiledLegJoinKind = 'terminal' | 'suppressed' | 'miter' | 'bevel' | 'trim';
 
+/** Counterparty leg facts a Wall end needs to close a seam without its neighbour's mesh. */
+export type CompiledJunctionNeighbor = {
+	wallId: string;
+	tangentOut: LayoutVec2;
+	normalOut: LayoutVec2;
+	halfThickness: number;
+	endpointOpen: boolean;
+	endpointSolidBands: CompiledEndpointBand[];
+};
+
 export type CompiledLegJoin = {
 	wallId: string;
 	end: 'start' | 'end';
@@ -332,6 +342,12 @@ export type CompiledLegJoin = {
 	bands: Array<{ bottomY: number; topY: number }>;
 	/** Resolved start/end corner geometry, or `null` when terminal/suppressed. */
 	corner: CompiledEndCorner | null;
+	/** The leg's canonical `prev`/`cur` role in the shared corner (present when `corner` is set). */
+	canonicalRole?: 'prev' | 'cur';
+	/** The shared corner in canonical `(a0 = prev, b0 = cur)` orientation (for bridges). */
+	canonicalCorner?: CompiledEndCorner | null;
+	/** The counterparty leg, so a beam/step can be closed without the neighbour's mesh. */
+	neighbor?: CompiledJunctionNeighbor;
 };
 
 /** P23.15 — the local, renderer-neutral solve result for one Junction. */

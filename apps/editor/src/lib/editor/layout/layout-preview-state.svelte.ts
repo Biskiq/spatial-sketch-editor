@@ -16,7 +16,7 @@ import {
 	type LayoutPreviewModel,
 	type LayoutPreviewModelResult
 } from './layout-mesh-factory';
-import type { LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
+import { legJoinsByWall, type LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
 import type {
 	DraftSegment,
 	LayoutDocument,
@@ -597,10 +597,14 @@ function buildWallMeshesByRoom(geometry: CompiledLayoutGeometry): {
 	}
 	// P23.6H — the canonical Wall's own authoritative height supplies the mesh
 	// vertical extent; no Floor-derived ceiling is passed (or derivable) here.
+	// P23.15 — the Wall consumes its already-resolved Junction ends. The 3D path
+	// never solves a Junction; a connected end without a resolution fails closed
+	// inside the builder rather than falling back to a square cap.
 	const floorElevationById = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
+	const endsByWall = legJoinsByWall(geometry.junctions);
 	for (const wall of geometry.walls) {
 		const floorElevation = floorElevationById.get(wall.floorId) ?? 0;
-		const result = buildStandaloneWallMesh(wall, floorElevation);
+		const result = buildStandaloneWallMesh(wall, floorElevation, endsByWall.get(wall.wallId) ?? null);
 		if (result.mesh) wallMeshesByWall.set(wall.wallId, result.mesh);
 		issues.push(...result.issues);
 	}

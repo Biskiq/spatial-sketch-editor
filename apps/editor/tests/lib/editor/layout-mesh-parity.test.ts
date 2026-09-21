@@ -6,8 +6,12 @@
  *
  * ```text
  * CompiledLayoutGeometry.walls[].height
- *   → buildStandaloneWallMesh(wall, floorElevation)
+ *   → buildStandaloneWallMesh(wall, floorElevation, resolvedEnds)
  *   → identical vertical extent everywhere
+ *
+ * P23.15 adds the second half of the contract: every surface passes the compiled
+ * Junction ends (`legJoinsByWall(geometry.junctions)`), so no surface solves
+ * topology and none can silently square-cap a connected Wall.
  * ```
  *
  * The builder exists twice (editor app + standalone museum app) and the copies
@@ -20,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry, legJoinsByWall } from '@portfolio/layout-core';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
@@ -36,6 +40,15 @@ const VISITOR_SHELL = 'apps/editor/src/lib/visitor/VisitorLayoutShell.svelte';
 
 function source(relativePath: string): string {
 	return readFileSync(resolve(repoRoot, relativePath), 'utf8');
+}
+
+/**
+ * P23.15 — the Wall's already-resolved Junction ends, exactly what every live
+ * surface passes. The builder fails closed without them, so "identical extent"
+ * is now asserted on the Junction-aware path, not on a square-cap path.
+ */
+function endsFor(compilation: ReturnType<typeof compileWallFirstLayoutGeometry>, wallId: string) {
+	return legJoinsByWall(compilation.geometry.junctions).get(wallId) ?? null;
 }
 
 /** One straight canonical Wall from (0,0) to (4,0) at the given height. */
@@ -88,7 +101,7 @@ describe('P23.6H mesh parity — one compiled Wall contract', () => {
 		expect(wall.height).toBe(1.2);
 		expect(wall.bounds3.max[1]).toBe(1.2);
 
-		const result = buildStandaloneWallMesh(wall, document.floor.elevation);
+		const result = buildStandaloneWallMesh(wall, document.floor.elevation, endsFor(compiled, wall.wallId));
 		if (!result.mesh) throw new Error(`expected mesh: ${JSON.stringify(result.issues)}`);
 		expect(result.mesh.bounds.max[1]).toBe(wall.bounds3.max[1]);
 		expect(result.mesh.bounds.min[1]).toBe(wall.bounds3.min[1]);
@@ -98,7 +111,7 @@ describe('P23.6H mesh parity — one compiled Wall contract', () => {
 		const document = wallDocument({ wallHeight: 0.9, elevation: 1.25 });
 		const compiled = compileWallFirstLayoutGeometry(document);
 		const wall = compiled.geometry.walls[0]!;
-		const result = buildStandaloneWallMesh(wall, document.floor.elevation);
+		const result = buildStandaloneWallMesh(wall, document.floor.elevation, endsFor(compiled, wall.wallId));
 		if (!result.mesh) throw new Error('expected mesh');
 		expect(result.mesh.bounds.min[1]).toBe(1.25);
 		expect(result.mesh.bounds.max[1]).toBe(2.15);
@@ -112,7 +125,7 @@ describe('P23.6H mesh parity — one compiled Wall contract', () => {
 		const compiled = compileWallFirstLayoutGeometry(document);
 		expect(compiled.issues.filter((issue) => issue.severity !== 'warning')).toEqual([]);
 		const wall = compiled.geometry.walls[0]!;
-		const result = buildStandaloneWallMesh(wall, document.floor.elevation, {
+		const result = buildStandaloneWallMesh(wall, document.floor.elevation, endsFor(compiled, wall.wallId), {
 			classifySurface: () => 'wall'
 		});
 		if (!result.mesh) throw new Error(`expected mesh: ${JSON.stringify(result.issues)}`);
@@ -154,6 +167,20 @@ describe('P23.6H mesh parity — live surface contracts', () => {
 		const shell = source(VISITOR_SHELL);
 		expect(shell).toContain('buildStandaloneWallMesh');
 		expect(shell).toContain('geometry.walls');
+	});
+
+	it('passes the compiled resolved Junction ends from every live surface', () => {
+		// P23.15 — the renderer is a pure consumer: it looks the Wall's resolved
+		// ends up from the compiled Junction topology and hands them to the
+		// builder. It never inspects the document and never decides the seam.
+		for (const path of [EDITOR_MUSEUM_SHELL, STANDALONE_MUSEUM_SHELL, VISITOR_SHELL]) {
+			const text = source(path);
+			expect(text).toContain('legJoinsByWall(geometry.junctions)');
+			expect(text).toMatch(/buildStandaloneWallMesh\(wall, [a-zA-Z.]+, endsByWall\.get\(wall\.wallId\) \?\? null/);
+		}
+		const preview = source('apps/editor/src/lib/editor/layout/layout-preview-state.svelte.ts');
+		expect(preview).toContain('legJoinsByWall(geometry.junctions)');
+		expect(preview).toMatch(/buildStandaloneWallMesh\(wall, floorElevation, endsByWall\.get\(wall\.wallId\) \?\? null\)/);
 	});
 
 	it('never passes a floor-derived ceiling to the standalone builder anywhere', () => {

@@ -434,7 +434,7 @@ function compileWallFirstWithPhysicalWalls(
 	);
 	const joinsByWall = junctionJoinsByWall(junctions);
 	for (const wall of physicalWalls) {
-		const expansion = wallEndExpansion(joinsByWall.get(wall.wallId), floorElevation, wall.height);
+		const expansion = wallEndExpansion(joinsByWall.get(wall.wallId));
 		if (!expansion) continue;
 		includeBounds2(wall.bounds2, expansion.min, expansion.max);
 		includePhysicalBounds([expansion.min[0], floorElevation, expansion.min[1]], [expansion.max[0], floorElevation + wall.height, expansion.max[1]]);
@@ -638,11 +638,7 @@ function junctionJoinsByWall(junctions: readonly CompiledJunction[]): Map<string
 }
 
 /** Plan extent of a Wall's resolved end geometry (miters/bevels can exceed the sampled band). */
-function wallEndExpansion(
-	joins: readonly CompiledLegJoin[] | undefined,
-	floorElevation: number,
-	height: number
-): { min: LayoutVec2; max: LayoutVec2 } | undefined {
+function wallEndExpansion(joins: readonly CompiledLegJoin[] | undefined): { min: LayoutVec2; max: LayoutVec2 } | undefined {
 	if (!joins || joins.length === 0) return undefined;
 	let minX = Infinity;
 	let minZ = Infinity;
@@ -668,8 +664,6 @@ function wallEndExpansion(
 		if (join.ownedSeam) for (const p of join.ownedSeam.polygon) consider(p);
 	}
 	if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return undefined;
-	void floorElevation;
-	void height;
 	return { min: [minX, minZ], max: [maxX, maxZ] };
 }
 
