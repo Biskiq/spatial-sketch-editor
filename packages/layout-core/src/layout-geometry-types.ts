@@ -348,6 +348,12 @@ export type CompiledLegJoin = {
 	canonicalCorner?: CompiledEndCorner | null;
 	/** The counterparty leg, so a beam/step can be closed without the neighbour's mesh. */
 	neighbor?: CompiledJunctionNeighbor;
+	/**
+	 * Set when this join is a fold: two incident legs point the same way, so
+	 * their offset regions overlap. Carried on the join so a Wall-level builder
+	 * can refuse the same configuration (same code) without the Junction.
+	 */
+	fold?: true;
 };
 
 /** P23.15 — the local, renderer-neutral solve result for one Junction. */

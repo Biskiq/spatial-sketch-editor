@@ -77,7 +77,7 @@ function cornerDocument(degrees: number, options: { firstThickness?: number; sec
 function build(documentValue: LayoutDocumentWallFirst, wallId: string) {
 	const compilation = compileWallFirstLayoutGeometry(documentValue);
 	const compiled = compilation.geometry.walls.find((candidate) => candidate.wallId === wallId)!;
-	const ends = legJoinsByWall(compilation.geometry.junctions).get(wallId) ?? null;
+	const ends = legJoinsByWall(compilation.geometry.junctions).get(wallId) ?? { start: null, end: null };
 	return {
 		compilation,
 		compiled,

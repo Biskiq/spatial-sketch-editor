@@ -284,7 +284,7 @@ export function resolveJunctionGeometry(
 		const [a, b] = legs as [CompiledJunctionLeg, CompiledJunctionLeg];
 		if (isFoldPair(a, b)) {
 			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(a, bands), suppressedJoin(b, bands));
+			joins.push(suppressedJoin(a, bands, undefined, true), suppressedJoin(b, bands, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
 		if (isTangentContinuation(a, b)) {
@@ -301,14 +301,26 @@ export function resolveJunctionGeometry(
 		const resolved = resolveLegPairCorner(point, prev, cur, miterLimit);
 		if ('fold' in resolved) {
 			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(prev, bands), suppressedJoin(cur, bands));
+			joins.push(suppressedJoin(prev, bands, undefined, true), suppressedJoin(cur, bands, undefined, true));
 			return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 		}
-		// One owner per seam. Prefer the start leg (the bridge builder is
-		// start-oriented); otherwise the smaller wallId — never an angle.
-		const ownerWallId =
-			cur.end === 'start' ? cur.wallId : prev.end === 'start' ? prev.wallId : prev.wallId <= cur.wallId ? prev.wallId : cur.wallId;
-		const seam = { sector: 0, polygon: wedgePolygon(point, prev, cur) };
+		// One owner per seam, decided **after** the sector is identified and never
+		// from an angle: the start leg (the bridge builder is start-oriented),
+		// falling back to the smaller `wallId` when both or neither qualify.
+		// `atan2`'s branch cut can then never move physical ownership.
+		const owner =
+			cur.end === 'start' && prev.end !== 'start'
+				? cur
+				: prev.end === 'start' && cur.end !== 'start'
+					? prev
+					: prev.wallId <= cur.wallId
+						? prev
+						: cur;
+		const ownerWallId = owner.wallId;
+		// `sector` is the index of the wedge's departing leg in the Junction's
+		// cyclic leg order, so a Junction-level validator can map join → sector
+		// without a second convention.
+		const seam = { sector: legs.indexOf(cur), polygon: wedgePolygon(point, prev, cur) };
 		joins.push(
 			cornerJoin(prev, bands, cornerForEnd(resolved.corner, 'prev', prev.end), ownerWallId === prev.wallId ? seam : null, {
 				canonicalRole: 'prev',
@@ -333,17 +345,22 @@ export function resolveJunctionGeometry(
 		const prev = legs[(i - 1 + legs.length) % legs.length]!;
 		if (isFoldPair(prev, leg)) {
 			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(leg, bands));
+			joins.push(suppressedJoin(leg, bands, undefined, true));
 			continue;
 		}
 		if (isTangentContinuation(prev, leg)) {
-			joins.push(suppressedJoin(leg, bands));
+			// A straight through-pair suppresses its interface, but a thickness or
+			// height difference still exposes a step — unless another incident leg's
+			// body covers the whole step, in which case it is buried and must stay
+			// suppressed. Only the Junction has every leg, so it decides here and the
+			// Wall builder simply obeys.
+			joins.push(suppressedJoin(leg, bands, continuationStepExposed(point, prev, leg, legs) ? neighborFacts(prev) : undefined));
 			continue;
 		}
 		const resolved = resolveLegPairCorner(point, prev, leg, miterLimit);
 		if ('fold' in resolved) {
 			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(leg, bands));
+			joins.push(suppressedJoin(leg, bands, undefined, true));
 			continue;
 		}
 		const covered = wedgeCoveredByOthers(point, prev, leg, legs);
@@ -387,18 +404,20 @@ function neighborFacts(leg: CompiledJunctionLeg): CompiledJunctionNeighbor {
 function suppressedJoin(
 	leg: CompiledJunctionLeg,
 	bands: Array<{ bottomY: number; topY: number }>,
-	neighbor?: CompiledJunctionNeighbor
+	neighbor?: CompiledJunctionNeighbor,
+	fold = false
 ): CompiledLegJoin {
 	return {
 		wallId: leg.wallId,
 		end: leg.end,
 		kind: 'suppressed',
 		endBoundary: [],
-		interfaceSuppressed: true,
+		interfaceSuppressed: !fold,
 		ownedSeam: null,
 		bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
 		corner: null,
-		...(neighbor ? { neighbor } : {})
+		...(neighbor ? { neighbor } : {}),
+		...(fold ? { fold: true as const } : {})
 	};
 }
 
@@ -440,6 +459,37 @@ function wedgePolygon(junction: LayoutVec2, prev: CompiledJunctionLeg, cur: Comp
 	const a0: LayoutVec2 = [junction[0] - prev.halfThickness * prev.normalOut[0], junction[1] - prev.halfThickness * prev.normalOut[1]];
 	const b0: LayoutVec2 = [junction[0] + cur.halfThickness * cur.normalOut[0], junction[1] + cur.halfThickness * cur.normalOut[1]];
 	return [[...junction] as LayoutVec2, a0, b0];
+}
+
+/**
+ * Does a tangent-continuation pair at a degree >= 3 Junction still expose a
+ * thickness/height step? The step lies in the Junction plane, on the sides of the
+ * thicker leg; if some other incident leg's footprint covers every sample of it,
+ * the surface is buried inside that leg's body and stays suppressed.
+ */
+function continuationStepExposed(
+	junction: LayoutVec2,
+	prev: CompiledJunctionLeg,
+	cur: CompiledJunctionLeg,
+	legs: readonly CompiledJunctionLeg[]
+): boolean {
+	const thinner = Math.min(prev.halfThickness, cur.halfThickness);
+	const thicker = Math.max(prev.halfThickness, cur.halfThickness);
+	const halfDelta = thicker - thinner;
+	const topDelta = Math.abs(prev.topY - cur.topY);
+	if (halfDelta <= JUNCTION_BAND_EPSILON && topDelta <= JUNCTION_BAND_EPSILON) return false;
+	const others = legs.filter((leg) => leg !== prev && leg !== cur);
+	if (others.length === 0) return true;
+	const ray = outwardTangent(cur);
+	const lateral: LayoutVec2 = [-ray[1], ray[0]];
+	const offsets = halfDelta > JUNCTION_BAND_EPSILON ? [thinner + halfDelta * 0.25, thinner + halfDelta * 0.75, thicker] : [thicker];
+	for (const sign of [1, -1] as const) {
+		for (const offset of offsets) {
+			const sample: LayoutVec2 = [junction[0] + sign * offset * lateral[0], junction[1] + sign * offset * lateral[1]];
+			if (!others.some((leg) => pointInLegFootprint(sample, junction, leg))) return true;
+		}
+	}
+	return false;
 }
 
 /** Is the wedge between two adjacent legs already covered by a third leg? */

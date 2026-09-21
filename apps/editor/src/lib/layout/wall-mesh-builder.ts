@@ -19,6 +19,7 @@ import {
 	WALL_OFFSET_FOLD_MESSAGE,
 	WALL_OFFSET_OVERLAP_CODE,
 	WALL_OFFSET_OVERLAP_MESSAGE,
+	wallEndsSeamFailure,
 	wallOffsetClearanceFailure,
 	wallPairClearanceOverlap
 } from '@portfolio/layout-core';
@@ -276,6 +277,18 @@ export function buildStandaloneWallMesh(
 	]) {
 		const junctionId = end === 'start' ? wall.startJunctionId : wall.endJunctionId;
 		if (junctionId && !join) return { mesh: undefined, issues: [missingResolutionIssue(wall, end)] };
+	}
+
+	// P23.15 / Decision 15 — defense-in-depth, the same pure predicate the
+	// canonical compile gate runs. The compile path is authoritative, so this
+	// normally never fires; it exists so the renderer is never the first place a
+	// seam failure becomes visible. Same predicate, same codes, no second rule.
+	const seam = wallEndsSeamFailure(ends);
+	if (seam) {
+		return {
+			mesh: undefined,
+			issues: [{ path: `walls.${wall.wallId}`, code: seam.code, message: seam.message, targetId: wall.wallId }]
+		};
 	}
 
 	// P23.11 / Issue #6 — defense-in-depth. The canonical acceptance path
