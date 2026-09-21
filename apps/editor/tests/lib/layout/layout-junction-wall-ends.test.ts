@@ -169,19 +169,19 @@ describe('P23.15 Task 3 — standalone Wall end contract', () => {
 			],
 			[wall('w1', 'ja', 'j', { thickness: 0.2 }), wall('w2', 'j', 'jb', { thickness: 0.3 })]
 		);
-		const built = build(documentValue, 'w1');
+		const thinner = build(documentValue, 'w1');
 		// Straight (collinear outward rays) ⇒ continuation, not a fold.
-		expect(built.ends.end?.kind).toBe('suppressed');
-		expect(built.result.issues).toEqual([]);
-		const mesh = built.result.mesh!;
-		expect(mesh).toBeDefined();
-		// The step is real geometry: the thinner leg emits the exposed difference
-		// surfaces of its neighbour's wider cross-section.
-		expect(hasBridgeSurface(mesh)).toBe(true);
+		expect(thinner.ends.end?.kind).toBe('suppressed');
+		expect(thinner.result.issues).toEqual([]);
+		// The step is real geometry, but it is the **thicker** leg's own exposed
+		// side surface, so the thinner leg stays silent: ownership follows the
+		// material, not a wallId tie-break.
+		expect(hasBridgeSurface(thinner.result.mesh!)).toBe(false);
 
-		// Only the lower-`wallId` leg emits it, so the step is painted once.
-		const other = build(documentValue, 'w2');
-		expect(hasBridgeSurface(other.result.mesh!)).toBe(false);
+		const thicker = build(documentValue, 'w2');
+		expect(thicker.ends.start?.kind).toBe('suppressed');
+		expect(thicker.result.issues).toEqual([]);
+		expect(hasBridgeSurface(thicker.result.mesh!)).toBe(true);
 	});
 
 	it('closes the exposed height step of a straight continuation', () => {
@@ -193,18 +193,51 @@ describe('P23.15 Task 3 — standalone Wall end contract', () => {
 			],
 			[wall('w1', 'ja', 'j', { height: 1.2 }), wall('w2', 'j', 'jb', { height: 3 })]
 		);
-		const built = build(documentValue, 'w1');
-		expect(built.ends.end?.kind).toBe('suppressed');
-		expect(built.result.issues).toEqual([]);
-		const mesh = built.result.mesh!;
-		expect(hasBridgeSurface(mesh)).toBe(true);
-		// The shorter leg emits the taller leg's cross-section above its own top,
-		// so the mesh closes the step up to the taller Wall's height.
-		expect(mesh.bounds.max[1]).toBeCloseTo(3, 9);
-		// The taller leg keeps its full extent and stays a pure continuation.
+		const shorter = build(documentValue, 'w1');
+		expect(shorter.ends.end?.kind).toBe('suppressed');
+		expect(shorter.result.issues).toEqual([]);
+		// The shorter leg's whole end cross-section is common interface, and a Wall
+		// never grows past its authored height into a neighbour.
+		expect(hasBridgeSurface(shorter.result.mesh!)).toBe(false);
+		expect(shorter.result.mesh!.bounds.max[1]).toBeCloseTo(1.2, 9);
+
+		// The taller leg closes its own exposed step: the band of its end
+		// cross-section the shorter neighbour does not cover.
 		const taller = build(documentValue, 'w2');
 		expect(taller.result.issues).toEqual([]);
+		expect(hasBridgeSurface(taller.result.mesh!)).toBe(true);
 		expect(taller.result.mesh!.bounds.max[1]).toBeCloseTo(3, 9);
+	});
+
+	it('attributes the height step to the taller Wall whichever side it starts on', () => {
+		// Regression: the step used to be emitted by the seam's *start* leg, so a
+		// shorter start Wall borrowed the taller neighbour's cross-section, grew to
+		// the neighbour's height, and owned a surface that was not its own. The
+		// owner must follow the material, in both seam orders.
+		const junctions = [
+			{ id: 'ja', point: [-4, 0] as LayoutVec2 },
+			{ id: 'j', point: [0, 0] as LayoutVec2 },
+			{ id: 'jb', point: [4, 0] as LayoutVec2 }
+		];
+		for (const [startHeight, endHeight] of [
+			[1.2, 3],
+			[3, 1.2]
+		] as const) {
+			const documentValue = document(junctions, [
+				wall('w1', 'ja', 'j', { height: startHeight }),
+				wall('w2', 'j', 'jb', { height: endHeight })
+			]);
+			const short = build(documentValue, startHeight < endHeight ? 'w1' : 'w2');
+			const tall = build(documentValue, startHeight < endHeight ? 'w2' : 'w1');
+			// The short Wall's whole end cross-section is common interface, and it
+			// never grows into the taller Wall's cross-section.
+			expect(hasBridgeSurface(short.result.mesh!)).toBe(false);
+			expect(short.result.mesh!.bounds.max[1]).toBeCloseTo(Math.min(startHeight, endHeight), 9);
+			// The taller Wall closes its own exposed step: the band the short
+			// neighbour does not cover.
+			expect(hasBridgeSurface(tall.result.mesh!)).toBe(true);
+			expect(tall.result.mesh!.bounds.max[1]).toBeCloseTo(Math.max(startHeight, endHeight), 9);
+		}
 	});
 
 	it('emits nothing extra when a straight continuation has identical cross-sections', () => {

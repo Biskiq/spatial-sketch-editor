@@ -554,9 +554,19 @@ function buildStandaloneEndBridge(
  * still real physical geometry, so the exposed difference surfaces of each
  * leg's end plane are emitted here — never the buried internal cap.
  *
- * Emitted once per seam, by the leg with the smaller `wallId`
- * (branch-cut-independent). Opening voids are respected: a difference surface is
- * never emitted across a non-solid interval.
+ * Each difference surface is emitted **once, by the leg that owns it**, so Wall
+ * attribution follows the material instead of an arbitrary tie-break:
+ *
+ * ```text
+ * thickness step strip  → the thicker leg's own exposed side
+ * sole-solid band cap   → the solid leg's own exposed end cross-section
+ * ```
+ *
+ * The counterpart leg evaluates the mirrored predicate in its own build and
+ * emits nothing, so the seam is still painted exactly once and neither Wall
+ * ever grows into its neighbour's cross-section. Ownership is decided from
+ * thickness and solidity alone — never an angle (Decision 4). Opening voids are
+ * respected: a difference surface is never emitted across a non-solid interval.
  */
 function buildStandaloneContinuationStep(
 	room: CompiledRoom,
@@ -568,9 +578,6 @@ function buildStandaloneContinuationStep(
 ): Face[] {
 	const neighbor = join.neighbor;
 	if (!neighbor || !join.interfaceSuppressed) return [];
-	// One emitter per seam: the lower `wallId`, so the exposed difference
-	// surfaces are painted exactly once (never an angle — Decision 4).
-	if (join.wallId > neighbor.wallId) return [];
 
 	const ownHalf = wall.thickness / 2;
 	const neighborHalf = neighbor.halfThickness;
@@ -605,7 +612,6 @@ function buildStandaloneContinuationStep(
 	];
 	const lateralNormal: V3 = [own.normal[0], 0, own.normal[1]];
 	const ownCapNormal: V3 = [-own.tangent[0], 0, -own.tangent[1]];
-	const neighborCapNormal: V3 = [-neighbor.tangentOut[0], 0, -neighbor.tangentOut[1]];
 	const cap = (faces: Face[], half: number, lo: number, hi: number, faceNormal: V3): void => {
 		const p1 = at(half);
 		const p2 = at(-half);
@@ -630,6 +636,11 @@ function buildStandaloneContinuationStep(
 		const ownIsSolid = profileCovers(ownSolid, lo, hi);
 		const neighborIsSolid = profileCovers(neighborSolid, lo, hi);
 		if (ownIsSolid && neighborIsSolid) {
+			// A thickness step is the **thicker** leg's own exposed side surface, so
+			// only the thicker leg emits it. The thinner leg's build evaluates the
+			// mirrored predicate and stays silent, so the strips are still painted
+			// exactly once — now by the Wall that physically owns them.
+			if (ownHalf <= neighborHalf + LAYOUT_GEOMETRY_EPSILON) continue;
 			const halfDelta = thickerHalf - thinnerHalf;
 			if (halfDelta <= LAYOUT_GEOMETRY_EPSILON) continue;
 			for (const sign of [1, -1] as const) {
@@ -649,8 +660,11 @@ function buildStandaloneContinuationStep(
 			}
 			continue;
 		}
+		// Exactly one leg is solid in this band, so the exposed surface is that
+		// leg's own end cross-section. Attribution follows the material: the
+		// neighbour's band cap is emitted by the neighbour's own build, never
+		// borrowed into this Wall's mesh.
 		if (ownIsSolid) cap(faces, ownHalf, lo, hi, ownCapNormal);
-		else if (neighborIsSolid) cap(faces, neighborHalf, lo, hi, neighborCapNormal);
 	}
 	return faces;
 }
