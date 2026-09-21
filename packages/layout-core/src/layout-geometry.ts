@@ -13,6 +13,9 @@ import type { LayoutDocumentWallFirst } from './layout-wall-first-types';
 import type {
 	CompiledCurveSample,
 	CompiledFloor,
+	CompiledJunction,
+	CompiledJunctionLeg,
+	CompiledLegJoin,
 	CompiledLayoutGeometry,
 	CompiledLayoutGeometryResult,
 	CompiledLayoutObject,
@@ -29,6 +32,12 @@ import type {
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
+import {
+	compiledJunctionId,
+	endpointSolidBands,
+	JUNCTION_BAND_EPSILON,
+	resolveJunctionGeometry
+} from './layout-junction-resolution';
 import { p2311Measure } from './p2311-perf';
 import {
 	pointAlongSamples,
@@ -388,7 +397,9 @@ function compileWallFirstWithPhysicalWalls(
 			openings: compiledOpenings,
 			solidCenterlinePolylines,
 			bounds2: wallBounds2Value,
-			bounds3: wallBounds3Value
+			bounds3: wallBounds3Value,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId
 		};
 		// P23.11 / Issue #6 — render-safe acceptance. A curved Wall whose local
 		// bend is tighter than half its thickness renders as a folded or
@@ -415,6 +426,22 @@ function compileWallFirstWithPhysicalWalls(
 	}
 
 	physicalWalls.sort((a, b) => (a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0));
+	// P23.15 — compile canonical Junction topology: canonical incidence + the
+	// Junction-local resolution. Renderers/visitors consume these facts and never
+	// receive the document or solve topology themselves.
+	const junctions = p2311Measure('junction-resolution', () =>
+		compileWallFirstJunctions(document, physicalWalls, floorElevation, wallIssues)
+	);
+	const joinsByWall = junctionJoinsByWall(junctions);
+	for (const wall of physicalWalls) {
+		const expansion = wallEndExpansion(joinsByWall.get(wall.wallId), floorElevation, wall.height);
+		if (!expansion) continue;
+		includeBounds2(wall.bounds2, expansion.min, expansion.max);
+		includePhysicalBounds([expansion.min[0], floorElevation, expansion.min[1]], [expansion.max[0], floorElevation + wall.height, expansion.max[1]]);
+	}
+	for (const junction of junctions) {
+		includePhysicalBounds(junction.bounds3.min, junction.bounds3.max);
+	}
 	const bounds = documentMin && documentMax ? finiteBounds3(documentMin, documentMax) : null;
 	// Strip room-path wall detail for wall-first documents: rooms keep
 	// identity, floor/ceiling semantics, floor polygons and bounds, but their
@@ -444,6 +471,7 @@ function compileWallFirstWithPhysicalWalls(
 		includeBounds3(floorMin, floorMax, min, max);
 	};
 	for (const wall of physicalWalls) includeFloorBounds(wall.bounds3.min, wall.bounds3.max);
+	for (const junction of junctions) includeFloorBounds(junction.bounds3.min, junction.bounds3.max);
 	const floorBounds = floorMin && floorMax ? finiteBounds3(floorMin, floorMax) : null;
 	const floors =
 		geometry.floors.some((candidate) => candidate.floorId === floor.id)
@@ -486,6 +514,7 @@ function compileWallFirstWithPhysicalWalls(
 			floors,
 			rooms,
 			walls: physicalWalls,
+			junctions,
 			queries: {
 				points: queryBuilder.points,
 				spans: queryBuilder.spans,
@@ -496,6 +525,160 @@ function compileWallFirstWithPhysicalWalls(
 		},
 		issues: [...result.issues, ...wallIssues]
 	};
+}
+
+/**
+ * P23.15 Task 1/2 — build the compiled Junction records from canonical
+ * incidence and resolve each Junction locally. `bottomY`/`topY` on a leg are
+ * wall-local (0 = Wall base), matching compiled section coordinates; bounds3
+ * adds `floorElevation`.
+ */
+function compileWallFirstJunctions(
+	document: LayoutDocumentWallFirst,
+	walls: readonly CompiledPhysicalWall[],
+	floorElevation: number,
+	issues: LayoutGeometryIssue[]
+): CompiledJunction[] {
+	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	const legsByJunction = new Map<string, CompiledJunctionLeg[]>();
+	const pushLeg = (junctionId: string, leg: CompiledJunctionLeg): void => {
+		const list = legsByJunction.get(junctionId);
+		if (list) list.push(leg);
+		else legsByJunction.set(junctionId, [leg]);
+	};
+	for (const wall of walls) {
+		if (wall.samples.length < 2) continue;
+		if (wall.startJunctionId && pointById.has(wall.startJunctionId)) {
+			pushLeg(wall.startJunctionId, junctionLeg(wall, 'start'));
+		}
+		if (wall.endJunctionId && pointById.has(wall.endJunctionId)) {
+			pushLeg(wall.endJunctionId, junctionLeg(wall, 'end'));
+		}
+	}
+	const junctions: CompiledJunction[] = [];
+	for (const [junctionId, legs] of legsByJunction) {
+		const point = pointById.get(junctionId);
+		if (!point) continue;
+		// Cyclic adjacency order only — never physical ownership (Decision 4).
+		legs.sort(
+			(a, b) =>
+				a.outwardAngle - b.outwardAngle ||
+				(a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0) ||
+				(a.end < b.end ? -1 : a.end > b.end ? 1 : 0)
+		);
+		const resolved = resolveJunctionGeometry(junctionId, point, legs);
+		issues.push(...resolved.issues);
+		const minBand = Math.min(...legs.map((leg) => leg.bottomY));
+		const maxBand = Math.max(...legs.map((leg) => leg.topY));
+		junctions.push({
+			id: compiledJunctionId(document.floor.id, junctionId),
+			cacheKey: cacheKeyOf([
+				'compiled-junction',
+				document.floor.id,
+				junctionId,
+				point,
+				legs.map((leg) => [leg.wallId, leg.end, leg.tangentOut, leg.thickness, leg.bottomY, leg.topY, leg.endpointOpen])
+			]),
+			junctionId,
+			point,
+			legs,
+			resolution: resolved.resolution,
+			bounds3: {
+				min: [resolved.resolution.bounds2.min[0], floorElevation + minBand, resolved.resolution.bounds2.min[1]],
+				max: [resolved.resolution.bounds2.max[0], floorElevation + maxBand, resolved.resolution.bounds2.max[1]]
+			}
+		});
+	}
+	junctions.sort((a, b) => (a.junctionId < b.junctionId ? -1 : a.junctionId > b.junctionId ? 1 : 0));
+	return junctions;
+}
+
+/** One compiled Junction leg: outward frame + endpoint solid/Opening facts. */
+function junctionLeg(wall: CompiledPhysicalWall, end: 'start' | 'end'): CompiledJunctionLeg {
+	const first = wall.samples[0]!;
+	const last = wall.samples.at(-1)!;
+	const sign = end === 'start' ? 1 : -1;
+	const tangent = end === 'start' ? first.tangent : last.tangent;
+	const normal = end === 'start' ? first.normal : last.normal;
+	const tangentOut: LayoutVec2 = [sign * tangent[0], sign * tangent[1]];
+	const normalOut: LayoutVec2 = [sign * normal[0], sign * normal[1]];
+	const atDistance = end === 'start' ? 0 : (last.distance ?? 0);
+	const length = last.distance ?? 0;
+	const endpointOpen =
+		end === 'start'
+			? wall.openings.some((opening) => opening.offset <= JUNCTION_BAND_EPSILON)
+			: wall.openings.some((opening) => opening.offset + opening.width >= length - JUNCTION_BAND_EPSILON);
+	return {
+		wallId: wall.wallId,
+		end,
+		tangentOut,
+		normalOut,
+		outwardAngle: Math.atan2(tangentOut[1], tangentOut[0]),
+		thickness: wall.thickness,
+		halfThickness: wall.thickness / 2,
+		bottomY: 0,
+		topY: wall.height,
+		role: wall.role,
+		endpointOpen,
+		endpointSolidBands: endpointSolidBands(wall.sections, atDistance, wall.height)
+	};
+}
+
+/** Wall id → its resolved Junction joins (at most one per end). */
+function junctionJoinsByWall(junctions: readonly CompiledJunction[]): Map<string, CompiledLegJoin[]> {
+	const map = new Map<string, CompiledLegJoin[]>();
+	for (const junction of junctions) {
+		for (const join of junction.resolution.joins) {
+			const list = map.get(join.wallId);
+			if (list) list.push(join);
+			else map.set(join.wallId, [join]);
+		}
+	}
+	return map;
+}
+
+/** Plan extent of a Wall's resolved end geometry (miters/bevels can exceed the sampled band). */
+function wallEndExpansion(
+	joins: readonly CompiledLegJoin[] | undefined,
+	floorElevation: number,
+	height: number
+): { min: LayoutVec2; max: LayoutVec2 } | undefined {
+	if (!joins || joins.length === 0) return undefined;
+	let minX = Infinity;
+	let minZ = Infinity;
+	let maxX = -Infinity;
+	let maxZ = -Infinity;
+	const consider = (p: LayoutVec2): void => {
+		minX = Math.min(minX, p[0]);
+		minZ = Math.min(minZ, p[1]);
+		maxX = Math.max(maxX, p[0]);
+		maxZ = Math.max(maxZ, p[1]);
+	};
+	for (const join of joins) {
+		if (join.corner) {
+			for (const side of [join.corner.front, join.corner.back]) {
+				if (side.kind === 'miter') consider(side.apex);
+				else {
+					consider(side.a0);
+					consider(side.b0);
+				}
+			}
+		}
+		for (const p of join.endBoundary) consider(p);
+		if (join.ownedSeam) for (const p of join.ownedSeam.polygon) consider(p);
+	}
+	if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return undefined;
+	void floorElevation;
+	void height;
+	return { min: [minX, minZ], max: [maxX, maxZ] };
+}
+
+/** Expand a compiled `LayoutBounds2` in place. */
+function includeBounds2(bounds: LayoutBounds2, min: LayoutVec2, max: LayoutVec2): void {
+	bounds.min[0] = Math.min(bounds.min[0], min[0]);
+	bounds.min[1] = Math.min(bounds.min[1], min[1]);
+	bounds.max[0] = Math.max(bounds.max[0], max[0]);
+	bounds.max[1] = Math.max(bounds.max[1], max[1]);
 }
 
 /** Query records for one canonical physical Wall — no fake `roomId`. */

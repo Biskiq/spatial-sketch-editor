@@ -258,6 +258,97 @@ export type CompiledPhysicalWall = CompiledIdentity & {
 	solidCenterlinePolylines: LayoutVec2[][];
 	bounds2: LayoutBounds2;
 	bounds3: LayoutBounds3;
+	/**
+	 * P23.15 — the canonical Junction at each Wall end, carried into compiled
+	 * output so renderers and visitors can see a Wall's neighbours without ever
+	 * receiving `LayoutDocument`. Optional so hand-built/legacy compiled Walls
+	 * (and test fixtures) stay valid; wall-first compilation always sets them.
+	 */
+	startJunctionId?: string;
+	endJunctionId?: string;
+};
+
+/**
+ * P23.15 — one vertical band of a Wall endpoint's cross-section. `solid` is
+ * true where the Wall body exists at that band; an Opening reaching the
+ * endpoint makes the band `solid: false` and names the Opening. Compiled, not
+ * re-read from the document (Decision 10).
+ */
+export type CompiledEndpointBand = {
+	bottomY: number;
+	topY: number;
+	solid: boolean;
+	openingId?: string;
+};
+
+/**
+ * P23.15 — one canonical incident Wall leg at a Junction, with the facts a
+ * Junction-local solve needs. `tangentOut`/`normalOut` point **outward from the
+ * Junction into the Wall** (the Junction-local frame that removes the canonical
+ * orientation ambiguity). `outwardAngle` exists only for deterministic cyclic
+ * adjacency; it must never decide physical ownership.
+ */
+export type CompiledJunctionLeg = {
+	wallId: string;
+	end: 'start' | 'end';
+	tangentOut: LayoutVec2;
+	normalOut: LayoutVec2;
+	/** CCW angle of `tangentOut` from +X — cyclic ordering only. */
+	outwardAngle: number;
+	thickness: number;
+	halfThickness: number;
+	bottomY: number;
+	topY: number;
+	role: 'boundary' | 'partition';
+	/** True when a hosted Opening reaches this exact Wall endpoint. */
+	endpointOpen: boolean;
+	endpointSolidBands: CompiledEndpointBand[];
+};
+
+/** One side of a resolved Junction corner (renderer-neutral miter/bevel fact). */
+export type CompiledCornerSide =
+	| { kind: 'miter'; apex: LayoutVec2 }
+	| { kind: 'bevel'; a0: LayoutVec2; b0: LayoutVec2 };
+
+export type CompiledEndCorner = { front: CompiledCornerSide; back: CompiledCornerSide };
+
+/** How an incident leg's Junction end is resolved. */
+export type CompiledLegJoinKind = 'terminal' | 'suppressed' | 'miter' | 'bevel' | 'trim';
+
+export type CompiledLegJoin = {
+	wallId: string;
+	end: 'start' | 'end';
+	kind: CompiledLegJoinKind;
+	/** Resolved footprint boundary for this leg end, in plan XZ. */
+	endBoundary: LayoutVec2[];
+	/** Internal interface suppressed (tangent continuation / buried T / X through). */
+	interfaceSuppressed: boolean;
+	/**
+	 * The sector this leg owns when a wedge is emitted, or `null` when the leg
+	 * owns none. Ownership is branch-cut-independent (Decision 4).
+	 */
+	ownedSeam: { sector: number; polygon: LayoutVec2[] } | null;
+	/** Resolved vertical bands this end spans (union of incident tops + Opening sill/spring). */
+	bands: Array<{ bottomY: number; topY: number }>;
+	/** Resolved start/end corner geometry, or `null` when terminal/suppressed. */
+	corner: CompiledEndCorner | null;
+};
+
+/** P23.15 — the local, renderer-neutral solve result for one Junction. */
+export type CompiledJunctionResolution = {
+	junctionId: string;
+	legOrder: Array<{ wallId: string; end: 'start' | 'end' }>;
+	joins: CompiledLegJoin[];
+	bounds2: LayoutBounds2;
+};
+
+/** P23.15 — compiled Junction topology: canonical identity + incident legs + local solve. */
+export type CompiledJunction = CompiledIdentity & {
+	junctionId: string;
+	point: LayoutVec2;
+	legs: CompiledJunctionLeg[];
+	resolution: CompiledJunctionResolution;
+	bounds3: LayoutBounds3;
 };
 
 export type CompiledLayoutGeometry = {
@@ -274,6 +365,14 @@ export type CompiledLayoutGeometry = {
 	 * physical Walls carry no `roomId`.
 	 */
 	walls: CompiledPhysicalWall[];
+	/**
+	 * P23.15 — compiled Junction topology (wall-first only; empty/absent for
+	 * legacy). Each canonical Junction with at least one incident Wall appears
+	 * once, carrying its incident legs and Junction-local resolution. The
+	 * renderer consumes these facts and never solves topology. Optional so
+	 * hand-built/legacy geometry literals stay valid.
+	 */
+	junctions?: CompiledJunction[];
 	objects: CompiledLayoutObject[];
 	queries: CompiledLayoutQueryGeometry;
 	bounds: LayoutBounds3 | null;
