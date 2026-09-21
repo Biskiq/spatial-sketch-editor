@@ -71,9 +71,9 @@ Architecture Cycle.
    **Final-gate exception:** keep the declared final-gate artifact itself live while it still
    serves as phase-close evidence (`phase-closeout` step 2 re-reads it to verify the gate).
    Compact the child's other completed work normally now; `phase-closeout` owns the gate
-   artifact's final compaction when the phase is actually closed. If the owner later moves
-   `FINAL PHASE GATE` to a different child, the old gate artifact becomes ordinary completed
-   child work and is compacted under this rule.
+   artifact's final compaction when the phase is actually closed. When `FINAL PHASE GATE` is
+   later reassigned, the change that reassigns it must also process the former gate artifact as
+   ordinary completed child work under this closed-work rule.
 9. Prune transient/stale artifacts (empty states, superseded husks, `__qa-*` plates).
 10. Repair links: search the repo for every moved path; fix Markdown, HTML/image,
     and prototype relative paths; verify case-sensitive paths.
