@@ -8,6 +8,7 @@ export * from './layout-geometry-openings';
 export * from './layout-geometry-queries';
 export * from './layout-geometry-types';
 export * from './layout-geometry-validation';
+export * from './layout-junction-resolution';
 export * from './layout-junction-identity';
 export * from './layout-migration';
 export * from './layout-migration-math';
