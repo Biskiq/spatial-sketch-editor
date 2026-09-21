@@ -8,6 +8,12 @@
 Do not preload the documentation tree. Start here, identify the task surface,
 then read **the smallest routed context that can answer the task**.
 
+A routed file is not automatically a full-file read: read the smallest relevant
+section / authority box / route block first, then stop unless the task, missing
+information, or contradictory evidence requires expanding within the file.
+A plan referencing a contract does not imply preloading that contract; the test
+README existing does not imply preloading every lane before implementation starts.
+
 > A stop point means no additional reading is currently justified — not that
 > further investigation is forbidden. Do not preload deeper or adjacent
 > documentation speculatively. Expand only when the task, missing information,
@@ -94,7 +100,29 @@ Enter only when the task explicitly requires historical rationale, or when
 bounded current evidence cannot resolve a material provenance/contradiction
 question.
 
-## Progressive project knowledge
+### Startup boundary
+
+```text
+STARTUP (ordinary fresh implementation work) ends here once the task is routed:
+current work → phase status → exact active plan → durable authority → test contract.
+STOP HERE if the route is resolved and no contradiction exists.
+
+ON-DEMAND (same document, read only at the trigger):
+- source/tests/Git contradicting a reference claim → falsifiability triage below
+- first actual plan mutation / review fold-in / owner ruling → Plan hygiene
+- substantial work establishing or changing durable knowledge → Knowledge promotion / completion
+- promoting truth, changing status, checkpointing, closing, recording debt → Update rules / Meta handoff
+- slice accepted → slice-closeout skill; explicit owner phase close → phase-closeout skill;
+  interrupted work → work-checkpoint skill (skills stay unloaded until their event)
+```
+
+## Progressive project knowledge (on-demand — reconciliation / completion)
+
+> **Trigger:** read when reconciling substantial work or promoting durable
+> knowledge — not at slice start. Exception: the falsifiability triage below
+> (implementation regression vs stale reference vs ambiguous evidence) stays one
+> hop away during implementation via the Startup boundary above; use it on any
+> source-vs-reference contradiction.
 
 The map is intentionally incomplete and grows through normal work:
 
@@ -178,7 +206,13 @@ Docs = WHAT is true + WHERE truth lives. Skills = HOW to perform an occasional
 workflow (see `.agents/skills/`; most valuable first: `slice-closeout`, then the
 manual-only `phase-closeout`).
 
-## Meta — how to write the handoff and the next plan
+## Meta — how to write the handoff and the next plan (on-demand — read at the action moment)
+
+> **Trigger:** read the row for the action being performed (checkpointing,
+> resuming, planning, shipping, closing) — not at slice start. Route
+> discoverability stays ambient: CURRENT → product baton, RESUME/CHECKPOINT →
+> work-checkpoint, SHIP → slice-closeout, PHASE CLOSE → phase-closeout,
+> explicit owner request only.
 
 ```text
 CURRENT: transient semantic baton only; inspect Git for branch/HEAD/dirty state.
@@ -191,7 +225,12 @@ SHIP: use slice-closeout skill.
 PHASE CLOSE: explicit owner request only → phase-closeout skill.
 ```
 
-### Plan hygiene
+### Plan hygiene (on-demand — first plan mutation)
+
+> **Trigger:** read when making the first actual plan mutation, folding in a
+> review correction, or incorporating an owner ruling — not when starting
+> implementation from an already-approved plan. Authority stays here; delivery
+> moves to the mutation moment.
 
 An active plan is a projection of current approved intent, not a review diary.
 
@@ -222,7 +261,14 @@ When the owner decides: fold the ruling into the rule/section it governs.
 **Plans preserve conclusions and necessary rationale; Git/PR history preserves
 deliberation.**
 
-## Update rules
+## Update rules (on-demand — status / closeout / checkpoint events)
+
+> **Trigger:** read when actually promoting landed truth, changing P-level or
+> child/phase status, checkpointing/resuming, closing work, recording debt, or
+> repairing archive pointers — not at slice start. Startup keeps only the compact
+> routes: slice accepted → slice-closeout, explicit owner phase close →
+> phase-closeout, interrupted work → work-checkpoint. Procedure detail already
+> owned by the relevant skill is not duplicated here beyond these destinations.
 
 ```text
 UPDATE:
