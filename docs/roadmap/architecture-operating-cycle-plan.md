@@ -1,37 +1,72 @@
-# Architecture Operating Cycle — Ratified Plan
+# Architecture Operating Cycle — Canonical Plan
 
-**Status:** ratified direction; implementation pending targeted workflow harvest
-**Scope:** project-development process, parallel to the P-number product roadmap
-**Current product pipeline:** P23 → P26 → P24 → P25
-**Operational authority:** none yet — this document describes the planned operating model, not a currently active procedure.
+```text
+STATUS: RATIFIED — 2026-09-21
+AUTHORITY: canonical strategic model
+```
+
+**Scope:** project-development process, parallel to the P-number product roadmap.
+**Current product pipeline:** P23 → P26 → P24 → P25.
 
 ---
 
 ## 1. Purpose
 
-AI-assisted implementation can increase code throughput much faster than one project owner can continuously supervise every architectural implication.
+AI-assisted implementation can increase code throughput much faster than one project owner
+can continuously supervise every architectural implication.
 
-The problem this plan addresses is not primarily agent memory.
-
-It is the possibility that implementation choices become project conventions faster than they are deliberately reviewed, captured, enforced, or retired.
+The problem this plan addresses is not primarily agent memory. It is the possibility that
+implementation choices become project conventions faster than they are deliberately
+reviewed, captured, enforced, or retired.
 
 The operating objective is:
 
-> **Make durable architectural change deliberate, propagating change visible, and stale guidance disposable.**
+> **Make durable architectural change deliberate, propagating change visible, and stale
+> guidance disposable.**
 
-This should be achieved with the smallest amount of permanent process possible.
-
-The system must not become a second product or a repository-knowledge platform.
+This is achieved with the smallest amount of permanent process possible. The system must
+not become a second product or a repository-knowledge platform.
 
 ---
 
-## 2. Core principle
+## 2. Operating principles
 
-Do not build project-knowledge or architecture-governance machinery because it seems theoretically useful.
+These principles are applied together. None of them alone justifies machinery.
 
-First establish that the repository has the failure the mechanism would solve.
+```text
+Evidence is not architecture.
+Repetition is not precedent.
+Only explicit owner adjudication creates architectural authority.
+```
 
-The lifecycle is therefore:
+Frequency, centrality, repetition, tool output, or graph shape may serve as evidence.
+None of them is authority.
+
+```text
+Facts are recomputed from repository state.
+Decisions and commitments are persisted.
+```
+
+A durable record carries what was decided and why — not a frozen copy of what the code
+happened to look like on some date.
+
+```text
+Architecture knowledge must be able to disappear as well as accumulate.
+```
+
+Every installed mechanism carries its own removal condition. Subtraction is ordinary work,
+not an exceptional event.
+
+```text
+Existing tools first.
+Custom tooling only for demonstrated gaps.
+```
+
+Commodity questions are answered with commodity tooling (search, language tooling,
+typecheck, tests, dependency analysis). Custom code is admitted only for a demonstrated,
+precisely named gap — never in anticipation of generality.
+
+The lifecycle that follows from these principles is:
 
 ```text
 observe
@@ -42,578 +77,478 @@ observe
 → keep / simplify / delete
 ```
 
-The desired steady state is ordinary development with a few proven architectural safeguards, not a permanent experimental program.
+The desired steady state is ordinary development with a few proven safeguards, not a
+permanent experimental program.
 
 ---
 
 ## 3. What this is not
 
-This plan does not currently justify:
+This plan does not justify, unless a demonstrated future failure requires it:
 
-* vector retrieval;
-* semantic repository maps;
-* knowledge graphs;
-* claim databases;
-* global decision/commitment registers;
-* generated contract indexes;
-* path-to-contract selectors;
-* generated locality files;
+* vector retrieval, embeddings, or semantic repository search;
+* a persistent repository index, code graph, graph database, or knowledge graph;
+* filesystem watchers, incremental graph sync, or a structural history database;
+* a general symbol resolver, call-graph engine, or multi-language abstraction;
+* a custom MCP server or shared structural platform;
+* centrality / god-node / architecture-smell metrics;
+* automatic architecture-candidate generation;
+* a global decision/commitment register or machine-readable contract database;
+* generated contract indexes, path-to-contract selectors, or generated locality files;
 * generic architectural novelty detection;
-* per-PR fresh-agent architectural review;
-* provisional-decision infrastructure;
+* per-PR fresh-agent review or provisional-decision infrastructure;
 * a generic second-instance ratchet;
 * mass ADR backfill;
-* a machine-readable contract database.
+* standing non-blocking structural audits or persistent structural counters.
 
-Any such mechanism requires a concrete future failure that the simpler system cannot address.
+Any such mechanism requires a concrete failure that the simpler system cannot address.
 
 ---
 
 ## 4. Project knowledge model
 
-The semantic distinction survives even though no formal database/schema is proposed.
+### Current contract
 
-### Current Contract
+What currently binds implementation. Normally lives in `docs/reference/*`.
 
-What currently binds implementation.
-
-Normally lives in:
-
-```text
-docs/reference/*
-```
-
-Contracts should be small, current, project-specific, and falsifiable enough that a reviewer can understand what kind of change would contradict them.
-
-Typical shape:
+Contracts persist commitments, not recomputable observations. A contract contains only
+what needs durable authority:
 
 ```text
-stable anchor
 rule
-one-line why
-important exception, if needed
+why
+exceptions
 ```
 
-Partial enforcement belongs primarily with the enforcement mechanism unless omitting it from the contract would create a dangerous misconception.
+Do not persist file/path/symbol coverage maps as architecture. Statements such as "these
+files currently write X" or "these five modules currently consume Y" are recomputable
+facts, not commitments; recompute them when needed instead of freezing them into a
+contract.
 
----
+Partial enforcement belongs primarily with the enforcement mechanism unless omitting it
+from the contract would create a dangerous misconception.
 
 ### Decision provenance
 
-Why an important current rule exists.
-
-Decision history is secondary to the current contract.
-
-Separate durable provenance is justified selectively when a decision is:
-
-* expensive to reverse;
-* about persisted/public shape or domain ownership;
-* a recurring rejected alternative;
-* intentionally temporary/scoped;
-* a meaningful cross-domain tradeoff.
-
-For smaller decisions, Git/PR history or a lightweight ratification reference may be sufficient.
-
----
+Why an important current rule exists. Decision history is secondary to the current
+contract. Separate durable provenance is justified selectively when a decision is
+expensive to reverse, governs persisted or public shape, rejects a recurring
+alternative, is intentionally temporary or scoped, or records a meaningful cross-domain
+tradeoff. For smaller decisions, Git and PR history or a lightweight ratification
+reference is sufficient.
 
 ### Direction
 
-A current contract used while architecture is intentionally in transition.
-
-It may state:
+A current contract used while architecture is intentionally in transition. It constrains
+unrelated future work while the migration is incomplete, and its shape is:
 
 ```text
 TARGET
-TEMPORARILY PERMITTED
+PERMITTED INTERMEDIATE STATE
 FORBIDDEN
 RATCHET
 DONE WHEN
 ```
 
-A Direction matters because it constrains unrelated future work while the migration is incomplete.
-
-If it communicates nothing beyond an existing deprecation marker and mechanical ratchet, the extra prose should be removed.
-
----
+A Direction is temporary. When the migration finishes, the Direction is removed — not
+preserved as permanent historical instruction. If it communicates nothing beyond an
+existing deprecation marker and mechanical ratchet, the extra prose is removed.
 
 ### Enforcement
 
-Code, types, tests, dependency boundaries, API shape, and ratchets can enforce parts of a contract.
+Code, types, tests, dependency boundaries, API shape, and ratchets can enforce parts of
+a contract. Enforcement must be honest. Each important guard states what it detects and
+what it does not prove.
 
-Enforcement must be honest.
+Prefer, in order:
 
-Each important guard should make clear:
-
-```text
-what it detects
-what it does not detect
-```
-
-Prefer:
-
-1. code/API structure that naturally communicates the architecture;
+1. code and API structure that naturally communicates the architecture;
 2. enforcement at real structural seams;
 3. focused behavioral tests for known dangerous operations;
 4. prose for irreducibly semantic intent.
 
 Do not create elaborate types or abstractions solely to make governance easier.
 
----
-
 ### Work artifacts
 
-Plans, research, QA and implementation records help produce durable knowledge but are not automatically permanent authority.
-
-At completion they should shed authority.
-
-The intended future closeout direction is:
-
-```text
-STATUS: CLOSED
-AUTHORITY: NONE
-
-Outcome:
-...
-
-Current contracts:
-...
-
-Relevant decisions:
-...
-
-Historical full version:
-git show <exact-sha>:<exact-path>
-```
-
-The exact truncation/archive mechanics remain to be reconciled with the existing closeout workflow during implementation planning.
+Plans, research, QA, and implementation records help produce durable knowledge but are
+not automatically permanent authority. At completion they shed authority under the
+closed-work hybrid rule: a path-preserving stub at the original path records outcome,
+residuals, current contracts, and exact Git recovery, while an archive copy is kept only
+for multi-file bundles and non-text evidence. Archive is opt-in evidence, never
+authority. The exact mechanics belong to the applied closeout procedure, not to this
+plan.
 
 ---
 
 ## 5. Admission rule for durable guidance
 
-Do not document every conceivable misunderstanding.
+Do not document every conceivable misunderstanding. A new durable architectural rule is
+normally admitted when either:
 
-A new operational architectural rule normally enters the durable layer when either:
+1. a real incident, correction, or repeated implementation pattern demonstrates the
+   need; or
+2. the first failure would create a durable, costly, or difficult-to-detect
+   architectural state.
 
-1. a real incident, correction or repeated implementation pattern demonstrates the need; or
-2. the first failure would create a durable, costly or difficult-to-detect architectural state.
+The default is evidence-driven authoring: each new contract is approximately either
+incident-derived or preemptive-because-the-first-failure-is-unacceptable, without
+requiring a formal metadata system.
 
-The default is therefore evidence-driven authoring.
-
-Each newly introduced contract should be identifiable as approximately:
-
-```text
-incident-derived
-```
-
-or:
-
-```text
-preemptive — first failure unacceptable
-```
-
-without requiring a formal metadata system.
+When a real repeated wrong implementation explains why a contract exists, the concrete
+attractor may be preserved beside the general rule — observed wrong shape versus
+correct direction — where it helps. The general rule remains authoritative; the example
+is one instance, not the definition. Do not invent counterexamples to make
+documentation look complete.
 
 ---
 
-## 6. Incident-derived counterexamples
+## 6. Lifecycle overview
 
-When an actual repeated wrong implementation explains why a contract exists, preserve that concrete attractor where useful.
-
-Shape:
-
-```text
-GENERAL RULE
-
-Observed wrong shape:
-...
-
-Correct direction:
-...
-```
-
-The general rule remains authoritative.
-
-The example is one concrete instance, not the complete definition of the rule.
-
-Do not invent counterexamples merely to make documentation look complete.
-
----
-
-# 7. The meta-roadmap
-
-This operating project progresses through event-driven phases while normal P-number product development continues independently.
+The operating project progresses through event-driven stages while normal P-number
+product development continues independently:
 
 ```text
 PHASE 0 — diagnose
-
-PHASE 1 — install smallest response
-
+PHASE 1 — install smallest justified response
 PHASE 2 — prospective validation during normal product work
-
-PHASE 3 — ratify / simplify / delete
-
-STEADY STATE — surviving practices become ordinary development
+PHASE 3 — keep / simplify / delete
+STEADY  — surviving practices become ordinary development
 ```
 
-The phases are triggered by project events, not calendar dates.
-
----
-
-# 8. Phase 0 — retrospective diagnosis
-
-## Trigger
-
-Phase 0 becomes due when P23 is fully accepted and closed.
-
-P23 provides the retrospective evidence set.
-
-Do not materially change the documentation/process system in anticipation of the result.
-
----
-
-## Goal
-
-Determine what kind of architecture/process failure Museum actually exhibits.
-
-Phase 0 asks:
-
-> What consequential architecture-related behavior occurred during recent work that our existing development loop did not deliberately manage?
-
-It distinguishes four outcomes.
-
-### A — real unratified precedent
-
-Implementation established a convention that nobody deliberately selected, and future contributors could reasonably infer the convention from the code.
-
-### B — intended but undocumented
-
-The owner deliberately made the decision, but that decision failed to reach current project authority.
-
-### C — already caught
-
-Existing review/checks already identified and managed the issue.
-
-### D — not architecture
-
-Ordinary implementation detail, duplication, framework convention, or local choice.
-
-This classification is central because A and B require different solutions.
-
----
-
-# 9. Phase 0 inputs
-
-Use a bounded recent range, approximately:
+The installed state machine is:
 
 ```text
-30–60 meaningful merged PRs
+WAITING
+→ PHASE_0_DUE
+→ PHASE_0_ACTIVE
+→ ADJUDICATION
+→ PHASE_1
+→ PHASE_2_VALIDATING
+→ PHASE_3_EVALUATE
+→ STEADY
 ```
 
-or:
+When neither adjudication lane justifies a mechanism, the cycle goes directly from
+adjudication to `STEADY` with no manufactured validation window. When either lane
+justifies at least one mechanism, the cycle passes through `PHASE_1` and prospective
+validation before reaching `STEADY`.
+
+---
+
+## 7. Triggers and ownership
+
+* **Phase 0 becomes due when the owning product phase is owner-closed.** Passing the
+  final gate makes a phase closable; only explicit owner ratification closes it. The
+  repository never infers closure from numbering. P23's close is the trigger that opens
+  the first diagnosis.
+* **Major phase closure stays explicitly owner-ratified.** The owner ruling is
+  provenance recorded in the phase-close record; the persistent machine-read state is
+  the tracker row.
+* **`docs/roadmap/README.md` is the P-level status authority.** Phase READMEs own
+  phase-local stage, child status, gates, and the phase-close record. `current.md` is
+  the product baton. `architecture-cycle.md` is the live meta-state. Each surface owns
+  exactly one concern.
+* **Reference contracts own landed architectural truth.** Only landed behavior moves
+  into `docs/reference/*`; roadmap proposals never silently become reference truth.
+* **The applied close procedure performs transitions; this plan does not.** Exact
+  phase-close write ordering, anchor mechanics, and recovery verification live in the
+  slice-closeout skill and the live cycle file — not here.
+
+---
+
+## 8. Phase 0 — retrospective diagnosis
+
+### Trigger and boundary
+
+Phase 0 becomes due when P23 is fully accepted and owner-closed. P23 supplies the
+retrospective evidence set.
+
+P26-adjacent rule, fixed for the first cycle and generalizable: design, research, and
+implementation planning for the next phase may proceed before and during Phase 0, but
+implementation of the validation-window phase waits for Phase 0 adjudication and any
+justified Phase 1 response. P26 design and planning work is never Phase 0 evidence —
+Phase 0 stays retrospective and reviewers do not manufacture preemptive failures from
+anticipated work.
+
+Do not materially change the documentation or process system in anticipation of the
+result.
+
+### Goal
+
+Determine what kind of architecture or process failure the project actually exhibits:
+
+> What consequential architecture-related behavior occurred during recent work that the
+> existing development loop did not deliberately manage?
+
+Each candidate is classified by the owner as:
+
+* **A — real unratified precedent.** Implementation established a convention nobody
+  deliberately selected, and future contributors could reasonably infer it from the code.
+* **B — intended but undocumented.** The owner deliberately decided, but the decision
+  never reached current project authority. This is a capture problem, not a detection
+  problem.
+* **C — already caught.** Existing review or checks identified and managed the issue.
+* **D — not architecture.** Ordinary implementation detail, duplication, framework
+  convention, or local choice.
+
+A and B require different responses, so the classification is load-bearing. The reviewer
+generates candidates only and never ratifies architecture.
+
+### Inputs
+
+Use a bounded recent range — approximately 30–60 meaningful merged PRs, or the previous
+2–3 architecture-heavy completed slices or phases, whichever gives the clearest
+coherent range. Inputs may include merged diffs, the contracts authoritative at the
+time, and phase or plan context where necessary. PR review history is consulted only
+when owner adjudication needs it. Do not clean history before inspecting it; the goal is
+to evaluate the system that actually operated.
+
+### Mechanical control pass
+
+Before semantic review, inspect a very small number of structural sets, and only those
+already cheaply and honestly observable — for example the persisted document-schema
+surface, the canonical writer set, known compatibility callers, or the visitor/editor
+dependency boundary. At most a few high-value sets; no new analysis framework; no
+tooling project merely to obtain the measurement; no semantic conclusion from a count
+alone.
+
+The guiding question is whether an already meaningful bounded structural set expanded
+or changed. If the mechanical pass explains every meaningful later finding, recurring
+semantic review is unnecessary.
+
+Any mechanical result elevated into architectural evidence states its limits compactly:
 
 ```text
-the previous 2–3 architecture-heavy completed slices/phases
+source / anchor
+method / provenance
+revision / SHA range
+coverage limitation
 ```
 
-depending on which gives the clearest coherent range after P23 closes.
+This prevents structured output from appearing more authoritative than it is. It does
+not decorate ordinary searches — no paperwork is required for routine agent
+investigation.
 
-Inputs may include:
+### Fresh semantic reviews
 
-* merged diffs;
-* authoritative contracts applicable at the time;
-* phase/plan context where necessary;
-* PR review history only when owner adjudication needs it.
+Run two fresh-context semantic reviews over the same historical range. They do not read
+each other's output before owner adjudication. Different reviewer/model perspectives
+are preferred where practical. Reviewers look for repeated non-obvious choices about representation, ownership, or naming that a
+contributor reading only the code could reasonably take for project convention — citing
+each concrete occurrence, stating the inferred convention in one sentence, and noting
+whether later occurrences repeat the earlier shape. Language, framework, and library
+conventions, ordinary local duplication, and behavior already stated by current
+contracts are skipped. If there are fewer than three candidates, fewer than three are
+reported. Separately, reviewers ask whether any change contradicted a rule explicitly
+written at the time, which distinguishes newly formed precedent from rules not
+followed. Reviewers generate candidates only and never ratify architecture.
 
-Do not clean history before inspecting it.
+### Structural-workflow companion diagnostic
 
-The goal is to evaluate the system that actually operated.
+The Phase-0 diagnosis window carries one bounded companion diagnostic alongside the
+architecture-loss audit above. It asks a different question:
 
----
+```text
+A. architecture-loss diagnostic
+   → are architectural commitments being lost or propagating accidentally?
 
-# 10. Phase 0 mechanical control pass
+B. structural-workflow diagnostic
+   → are scoped agents failing to inspect or verify downstream impact,
+     and would existing tooling materially help?
+```
 
-Before semantic review, inspect a very small number of structural sets only when they are already cheaply and honestly observable.
+The two may share timing and owner adjudication, but their conclusions stay separate:
+an architecture finding never automatically justifies a tooling or workflow mechanism,
+and a workflow finding never automatically justifies an architecture contract.
 
-Possible examples, subject to code harvest:
+The structural-workflow diagnostic uses agent-session evidence where available
+(navigation calls, wrong-path exploration, repeated reconstruction of the same
+relationship, didn't-look versus didn't-find, recurring caller/dependent/dispatch/state
+questions) together with Git, PR, and review correctness evidence (follow-up fixes from
+missed dependents, review comments catching overlooked downstream impact, regressions
+outside the original task scope). Correctness failures weigh more heavily than token
+savings, and review criteria are predefined so results are not classified
+opportunistically.
 
-* persisted document-schema surface;
-* canonical writer set;
-* known compatibility callers;
-* visitor/editor dependency boundary.
+Its decision sequence is fixed: if graph-shaped work is rare, continue with native
+search and existing verification and stop; if it is common and ordinary language-level
+relationships dominate, use existing tooling (language-server and compiler tooling,
+dependency analysis, narrow structural queries where measured work benefits); only if a
+repeated gap survives existing tools is one narrow stateless script built for that one
+precisely named relation — recomputed from repository state, provenance-labelled, and
+creating no architectural authority of its own. No persistent repository graph, index,
+or platform is created.
 
-Constraints:
+### Owner adjudication
 
-* at most a few high-value sets;
-* no new analysis framework;
-* no tooling project merely to obtain the measurement;
-* no semantic conclusion from count alone.
+Adjudication runs in two lanes inside one lifecycle: one state machine, one overall
+transition, no second meta-track.
 
-Question:
-
-> Did an already meaningful bounded structural set expand or change?
-
-The mechanical pass acts as a control.
-
-If it explains every meaningful later finding, semantic recurring review may be unnecessary.
-
----
-
-# 11. Phase 0 semantic review
-
-Run the review independently at least twice.
-
-A suitable question is:
-
-> Across these merged changes, find places where two or more changes make the same non-obvious choice about how something is represented, owned, or named, where a contributor reading only the code could reasonably conclude that this is how the project does it.
->
-> For each candidate:
->
-> * cite each concrete occurrence;
-> * state the inferred convention in one sentence;
-> * state whether later occurrences appear to repeat/copy the earlier shape.
->
-> Skip:
->
-> * language/framework/library conventions;
-> * ordinary local duplication;
-> * behavior already stated by current contracts.
->
-> If there are fewer than three candidates, report fewer than three.
-
-Separately ask:
-
-> Did any change contradict a rule that was explicitly written at the time?
-
-That distinguishes newly formed precedent from `NOT FOLLOWED`.
-
-The reviewer generates candidates only.
-
-It never ratifies architecture.
-
----
-
-# 12. Owner adjudication
-
-The owner classifies each candidate as A/B/C/D.
-
-For every meaningful finding also ask:
+**Architecture lane.** The owner classifies each architecture candidate as A, B, C, or
+D. For every meaningful finding, the owner answers:
 
 > **If this happens again next month, what catches it?**
 
-Possible answers include:
+Ordinary owner review, an existing architecture test, a dependency boundary, or a
+current contract are all acceptable answers. "Normal review catches it" is a valid
+outcome — no new mechanism is justified merely because a pattern exists.
 
-* ordinary owner review;
-* existing architecture test;
-* dependency boundary;
-* current contract;
-* nothing.
+A real precedent is never left unresolved. It is either explicitly ratified or
+explicitly contracted against so it cannot spread further.
 
-“Normal review catches it” is an acceptable outcome.
-
-No new mechanism is justified merely because a pattern exists.
-
-For a real precedent, explicitly decide:
+**Structural-workflow lane.** The owner classifies the workflow evidence separately as
+one of:
 
 ```text
-RATIFY THIS PATTERN
+no consequential gap
+→ continue with existing tools and verification; stop
+
+existing-tool or workflow correction justified
+→ correct verification or adopt existing tooling; no custom code
+
+narrow custom-tool gap justified
+→ one narrow stateless script for the precisely named relation,
+  admitted only under the rule in §9
 ```
 
-or:
+A workflow finding never automatically justifies an architecture contract, and an
+architecture finding never automatically justifies a tooling or workflow mechanism.
+
+**Single overall transition.** The two lanes adjudicate separately but transition
+together:
 
 ```text
-CONTRACT AGAINST ITS FURTHER SPREAD
+neither lane justifies a mechanism → STEADY (no validation window)
+either lane justifies ≥ 1 mechanism → PHASE_1 (install only what was justified)
 ```
 
-Do not leave discovered precedent unresolved.
+An architecture Outcome 1 (mostly C/D) combined with a real consequential workflow gap
+therefore enters `PHASE_1` for the workflow correction alone — the architecture branch
+never vetoes the workflow lane, and the workflow lane never manufactures architecture
+machinery.
+
+**Forward-compatibility note.** The live cycle file currently encodes this transition
+as Outcome 1 (C/D) → `STEADY` versus Outcomes 2/3/4 → `PHASE_1`. Once this plan is
+ratified, that wording is reconciled to the two-lane rule above in the operational
+pass — no operational edit in this PR.
+
+### Branch outcomes
+
+* **Outcome 1 — neither lane justifies a mechanism (architecture mostly C/D, no
+  consequential workflow gap).** The existing development loop is sufficient. Retain
+  normal review and existing architecture checks, continue documentation and closeout
+  cleanup, and build no new architecture-cycle machinery. The cycle goes directly to
+  `STEADY` with no validation window. This is a successful stop outcome.
+* **Outcome 2 — real precedent concentrated at structural seams.** Write concise
+  contracts for the implicated seams with honest guards or ratchets where mechanically
+  representable. Do not introduce recurring semantic review.
+* **Outcome 3 — intended-but-undocumented dominates.** This is a capture problem: the
+  owner makes a durable ruling and the corresponding current-contract delta is drafted
+  in the same PR, edited and approved by the owner, and merged. Do not solve a capture
+  problem with detection machinery.
+* **Outcome 4 — real precedent outside obvious seams.** Only if semantic precedent
+  repeatedly forms outside cheap mechanical boundaries and existing review fails to
+  make it deliberate is recurring semantic range reconciliation justified.
 
 ---
 
-# 13. Phase 0 branch outcomes
+## 9. Phase 1 — install the smallest justified response
 
-## Outcome 1 — mostly C/D
+### Trigger
 
-The existing development loop is sufficient.
+Owner adjudication of Phase 0 completes. Phase 1 installs only the mechanisms the
+observed failure justified — it may contain almost nothing, and mechanisms not
+justified by Phase 0 remain absent.
 
-Response:
+### Candidate mechanisms
 
-* retain normal review;
-* retain existing architecture checks;
-* continue documentation/closeout cleanup;
-* build no new architecture-cycle machinery.
+* **Concise current contracts** for implicated seams or rulings, shaped as rule, why,
+  and exceptions.
+* **Same-PR contract capture:** when review reveals an architectural correction
+  significant enough to change the implementation materially, the governing contract is
+  updated in the same PR so the commitment does not disappear into review history.
+* **One real temporary Direction** with the TARGET / PERMITTED INTERMEDIATE STATE /
+  FORBIDDEN / RATCHET / DONE WHEN shape, removed when the migration finishes.
+* **An honest seam guard or ratchet** where the repository exposes a real closed seam
+  (forbidden import direction, single-owner mutation path, closed writer allowlist,
+  compatibility boundary).
+* **A workflow or verification correction** justified by the structural-workflow
+  diagnostic.
+* **Use of existing structural tooling** for the demonstrated gap.
+* **One narrow stateless custom structural script,** but only under the admission rule
+  below.
 
-This is a successful falsification result.
+### Guard discipline
 
----
+A guard is allowed only when the architectural meaning exists before the check.
+Checkability never justifies a rule. The allowlist lives in the guard implementation,
+not the contract. The guard states what it detects, the governing contract it enforces,
+the mechanical evidence it relies on, and what it does not prove. A standing
+mechanical check either blocks honestly or does not exist — there is no permanent
+warn-only or audit tier. One-off mechanical queries remain ordinary investigation.
 
-## Outcome 2 — A exists, but all meaningful A is visible at structural seams
+### Custom tooling admission rule
 
-Response:
+Custom structural tooling is introduced only when all of the following hold:
 
-* concise contracts for the implicated seams;
-* honest guards/ratchets where mechanically representable.
+1. a specific structural question recurs in real tasks or caused consequential rework;
+2. existing tools have been tried and demonstrably fail to answer it reliably;
+3. the missing relation can be named precisely;
+4. the proposed solution addresses only that relation;
+5. its output states provenance and limitations;
+6. it introduces no architectural authority of its own.
 
-Do not introduce semantic range review as a recurring process.
-
----
-
-## Outcome 3 — B dominates
-
-This is primarily a capture problem.
-
-Response:
-
-```text
-owner makes durable architectural ruling
-→ agent drafts corresponding current-contract delta in same PR
-→ owner edits/approves
-→ merge
-```
-
-Do not solve a capture problem with detection machinery.
-
----
-
-## Outcome 4 — A exists outside obvious structural seams
-
-If real semantic precedent repeatedly forms outside cheap mechanical boundaries and existing review fails to make it deliberate, the richer V0 is justified.
-
-Only this result earns recurring semantic range reconciliation.
-
----
-
-# 14. Phase 1 — install the smallest response
-
-## Trigger
-
-Owner adjudication of Phase 0 completes.
-
-## Goal
-
-Install only the mechanisms justified by the observed failure.
-
-Phase 1 is therefore branch-dependent.
-
-It may contain almost nothing.
-
-Potential mechanisms:
-
-* same-PR contract capture;
-* one or more concise current contracts;
-* honest seam guard;
-* compatibility ratchet;
-* one real Direction;
-* semantic range review.
-
-Mechanisms not justified by Phase 0 remain absent.
+A single narrow script answering one demonstrated relation is the acceptable outcome; a
+general intelligence package with graph, provider, history, and inference layers is
+not. Further gaps reconsider abstraction only from demonstrated repetition — never in
+anticipation of portability.
 
 ---
 
-# 15. Phase 2 — prospective validation
+## 10. Phase 2 — prospective validation during normal product work
 
-## Trigger
+### Trigger and boundary
 
-Phase 1's smallest response is installed and the prepared implementation plan for the validation-window phase has been reconciled.
+Installing Phase 1 mechanisms does **not** begin Phase 2. Phase 1 remains in a
+ready-for-validation state — mechanisms installed, and the prepared implementation plan
+of the validation-window phase reconciled once against them — until the first
+implementation slice of the selected validation-window phase starts. That first
+implementation slice begins Phase 2.
 
-Installation alone does not begin Phase 2. The cycle remains in Phase 1, ready for validation, until the first implementation slice of the selected validation-window phase starts.
+The expected first window is P26, assuming P23 supplied the Phase 0 evidence. Normal
+product development continues; the validation-window phase is never turned into an
+experiment-specific roadmap, and its scope is never redesigned to suit the mechanism.
+The installed mechanisms operate quietly alongside normal work.
 
-That first implementation slice begins Phase 2.
+### Validation question
 
-The next substantial architecture-heavy product phase is expected to be the validation window.
+For every retained mechanism, the project must be able to say what historical failure
+motivated it ("we added this because P23 showed ___"), and at window close it asks
+whether that failure recurred and whether the mechanism handled it better. No
+statistical proof is required: obvious cost is measurable and prevented failures
+usually are not, so mechanisms must be cheap and fail-safe.
 
-Expected first window:
-
-```text
-P26
-```
-
-assuming P23 supplied Phase 0 evidence.
-
-> **Owner amendment — 2026-09-21.** Phase 2 entry was clarified from "response installed" to the first implementation slice of the validation-window phase. This preserves a prospective validation boundary and is ratified as OD-3 (see `architecture-operating-cycle-implementation-plan.md` §1).
-
-Normal product development continues.
-
-Do not turn P26 into an experiment-specific roadmap.
-
-The installed mechanisms should operate quietly alongside normal work.
-
----
-
-## Validation question
-
-For every mechanism we retain, we should be able to say:
-
-> We added this because P23 showed ______.
-
-At P26 close, ask:
-
-> Did ______ happen again, and did the mechanism handle it better?
-
-Examples:
-
-| Mechanism       | Historical reason                                   | Validation                                                                     |
-| --------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Same-PR capture | Owner rulings were stranded in review discussion    | Did P26 rulings reach current contracts?                                       |
-| Writer guard    | New canonical writers appeared unintentionally      | Did expansion become visible?                                                  |
-| Range review    | Semantic convention propagated without ratification | Did phase-close reconciliation find meaningful precedent normal review missed? |
-| Direction       | Legacy path kept receiving new usage                | Did unrelated work stop extending it?                                          |
-
-The project does not need statistical proof.
-
-Obvious cost is measurable; prevented failures usually are not.
-
-Therefore mechanisms should be cheap and fail-safe.
-
----
-
-# 16. Scope-change calibration
+### Scope-change calibration
 
 Product phases may grow or split without automatically resetting the operating cycle.
-
-Example:
-
-```text
-P26
-→ additional elevation work
-→ arches
-→ multi-storey implications
-```
-
-Ordinary scope growth does not advance the meta-roadmap.
-
-The current validation stage continues until its semantic exit condition is reached.
-
-A calibration check is required only when scope expansion materially changes the assumptions behind the active validation.
-
-Ask:
-
-> Does this new scope invalidate or materially broaden what we are currently testing?
-
-If no:
-
-```text
-continue
-```
-
-If yes:
-
-```text
-record changed assumption
-adjust validation scope if necessary
-do not automatically add a new mechanism
-```
-
-A product phase split may extend the validation window deliberately if the mechanism has not received enough relevant real-world exposure.
+Ordinary scope growth does not advance the meta-roadmap; the active validation
+continues until its semantic exit condition is reached. A calibration check is required
+only when scope expansion materially changes the assumptions behind the active
+validation ("does this new scope invalidate or materially broaden what we are
+currently testing?"). If it does, the changed assumption is recorded and the
+validation scope adjusted if necessary — never by automatically adding a new
+mechanism. A phase split may deliberately extend the validation window when the
+mechanism has not yet received enough relevant real-world exposure.
 
 ---
 
-# 17. Phase 3 — ratify, simplify or delete
+## 11. Phase 3 — keep, simplify, delete
 
-## Trigger
+### Trigger
 
-The prospective validation window closes, expected initially at P26 close.
-
-For every experimental mechanism:
+The prospective validation window closes, expected initially at P26 close. For every
+experimental mechanism the verdict is one of:
 
 ```text
 KEEP
@@ -621,362 +556,145 @@ SIMPLIFY
 DELETE
 ```
 
-Questions:
+The evaluation asks whether the mechanism addressed the observed historical failure,
+generated useful owner decisions, imposed noticeable friction, is now covered by
+something cheaper, or rests on a stale rule — and whether code or API structure can now
+communicate the truth instead. Only survivors become normal project practice. A
+mechanism that clearly succeeds or fails early may be judged before the window closes
+with its reason recorded; the window phase itself still closes normally.
 
-* Did it address the observed historical failure?
-* Did it generate useful owner decisions?
-* Did it impose noticeable friction?
-* Does a cheaper mechanism now cover the same failure?
-* Is the documented rule stale?
-* Can code/API structure now communicate the truth instead?
+### Subtraction
 
-Only survivors become normal project practice.
+Phase 3 actively removes obsolete authority: completed Direction sections, stale or
+unsupported clauses, obsolete implementation instructions, accumulated deltas that
+should be resynthesized rather than appended indefinitely, and closed work still
+presenting as authority. Where guards exist, the close reconciliation may inspect
+allowlist growth — cumulative growth is never automatically accepted, and the question
+is whether the architectural rule still describes reality, with tightening the
+implementation or rewriting the contract as the two honest outcomes.
+
+Recurring semantic range reconciliation is justified only if Phase 0 demonstrated the
+failure it solves. It is never a mandatory ritual at every close.
 
 ---
 
-# 18. Steady state
+## 12. Steady state
 
-Once Phase 3 finishes, the architecture-cycle design project ends.
-
-Surviving practices become ordinary project development.
-
-A mature loop may be only:
+Once Phase 3 finishes, the architecture-cycle design project ends and surviving
+practices become ordinary development:
 
 ```text
 normal implementation
 
-when owner makes durable ruling:
-    update current contract
+when the owner makes a durable ruling:
+    update the current contract
 
-when real structural seam is crossed:
-    honest guard makes expansion visible
+when a real structural seam is crossed:
+    an honest guard makes expansion visible
 
-during active migration:
-    Direction constrains new work
+during an active migration:
+    a Direction constrains new work
 
-at major phase close:
+at a major phase close:
     reconcile
     subtract stale guidance
-    close/truncate work artifacts
+    close and truncate work artifacts
 ```
 
-Further mechanisms are introduced only in response to new demonstrated failures.
-
-The desired outcome is for this process to become small and boring.
-
----
-
-# 19. Trigger model
-
-The meta-roadmap is event-driven.
-
-Relevant trigger families:
-
-### Major product phase closes
-
-May:
-
-* start retrospective diagnosis;
-* end prospective validation;
-* trigger reconciliation/subtraction.
-
-### Durable architectural ruling occurs
-
-May trigger same-PR capture if that mechanism has been justified.
-
-### Active Direction changes
-
-Update the Direction itself.
-
-### Material roadmap/scope change
-
-Run a calibration check.
-
-### Mechanism clearly succeeds or fails early
-
-Record the result; do not artificially wait for phase close when the conclusion is already obvious.
-
-Most ordinary PRs should trigger nothing in the meta-roadmap.
+Future ordinary major-phase closes while `STEADY` stay `STEADY`: each close performs
+reconciliation, subtraction, and closed-work hygiene without restarting diagnosis.
+Fresh diagnosis restarts only for a demonstrated architecture failure or an explicit
+owner request. Further mechanisms are introduced only in response to new demonstrated
+failures. The desired outcome is for this process to become small and boring.
 
 ---
 
-# 20. Operating-cycle state
+## 13. Relationship to project documentation
 
-Once implemented, the live cycle should expose a compact state approximately like:
+The ownership model is:
 
 ```text
-STAGE:
-CURRENT PRODUCT PHASE:
-VALIDATION WINDOW:
-MECHANISMS UNDER VALIDATION:
-NEXT TRIGGER:
-CALIBRATION CONDITIONS:
-```
-
-This should not become an activity diary.
-
-Update the live cycle only when its state, next trigger, or active validation changes.
-
-Durable domain artifacts remain the primary records of actual architectural changes.
-
----
-
-# 21. Relationship to project documentation
-
-The intended final ownership model is:
-
-```text
-AGENTS.md
-= bootstrap + genuinely cross-cutting invariants
-
-docs/README.md
-= context router
-
-docs/roadmap/README.md
-= P-level product roadmap
-
-Pxx/README.md
-= phase/child state + direct artifact routes
-
-exact plan/design/research/QA artifact
-= owns its work detail
-
-docs/reference/*
-= landed current architectural truth
-
-docs/operations/current.md
-= current work baton
+canonical plan (this document)
+= ratified strategic model
 
 docs/operations/architecture-cycle.md
-= live meta-roadmap once implemented
+= live cycle state
 
-docs/operations/checkpoints/*
-= interrupted work only
+.agents/skills/slice-closeout/SKILL.md
+= applied close and transition procedure
 
-docs/operations/tech-debt/*
-= durable deferred diagnosis
+docs/reference/*
+= landed and current architecture contracts
 
-docs/archive/*
-= history/evidence, never current authority
+implementation plan + workflow harvest
+= historical execution and planning evidence only
 ```
 
-No mandatory slice README layer.
+The implementation plan and workflow harvest are provenance: they explain how the
+installed behavior came to exist, but they carry no authority and prescribe nothing
+further. Exact phase-close write ordering, shell commands, anchor mechanics,
+acceptance matrices, and rehearsal records belong to the applied skill and the
+historical evidence — never to this plan.
+
+`docs/roadmap/README.md` remains the P-level status authority and the stable route to
+this plan. The temporary reconciliation input used to produce this plan was unrouted,
+carried no authority, and has been deleted.
 
 ---
 
-# 22. Relationship to agent skills
+## 14. Scope versus verification
 
-The intended future integration is small.
+Proposed immediate operational consequence of this plan, with promotion into workflow
+instructions deferred to the post-ratification operational pass:
 
-### work-checkpoint
+> Task scope limits what may be changed, not what may be inspected or verified.
 
-Remain focused on interrupted-work recovery.
+Implementation scope stays narrow; verification is allowed to see consequences outside
+that scope. Before finishing, the project's full verification runs regardless of task
+scope, and a change that looks necessary outside the assigned scope is reported rather
+than made.
 
-Do not turn checkpoints into architectural decision storage.
-
-### slice-closeout
-
-Likely future integration point for:
-
-* contract promotion check;
-* Direction completion/revisit;
-* phase-close architecture-cycle trigger;
-* stale-guidance subtraction;
-* closed-work authority removal.
-
-The exact changes require a targeted harvest of the cleaned workflow first.
-
-Do not implement them from this plan alone.
+This pass makes no workflow-instruction change: `AGENTS.md`, skills, and test commands
+are untouched. The concrete verification set (the complete editor suite, the
+typecheck, and the architecture lane with its never-path-gated semantics) remains owned
+by the test documentation and is deliberately not duplicated here, where it would rot.
 
 ---
 
-# 23. Cost and kill philosophy
+## 15. Cost and kill philosophy
 
-At Museum's scale, process cost is easier to measure than prevented failures.
-
-Therefore every mechanism should be almost free and removable.
-
-Examples of local kill conditions:
-
-### Range reconciliation
-
-Remove if repeated runs produce no actionable owner decision.
-
-### Structural guard
-
-Reconsider if it repeatedly blocks legitimate changes or the bounded set proves semantically meaningless.
-
-### Direction
-
-Remove the prose layer if deprecation + ratchet already communicate everything relevant.
-
-### Same-PR capture
-
-Simplify if it creates documentation churn without preserving actual durable rulings.
-
-Kill conditions belong beside the mechanism when implemented.
-
-Do not create a central governance metrics system.
+At this scale, process cost is easier to measure than prevented failures, so every
+mechanism is almost free and removable, with its kill condition beside it. Repeated
+reconciliation runs that produce no actionable owner decision are removed; a guard that
+repeatedly blocks legitimate changes or watches a semantically meaningless set is
+reconsidered; a Direction whose deprecation marker and ratchet already communicate
+everything is reduced to prose-free enforcement; same-PR capture that creates churn
+without preserving durable rulings is simplified. No central governance metrics system
+is created.
 
 ---
 
-# 24. AI-specific rationale
+## 16. AI-specific rationale
 
-Most of this plan is ordinary architecture discipline.
-
-AI changes the pressure in several ways.
-
-### Loop compression
-
-```text
-code
-→ agent infers convention
-→ agent emits more matching code
-→ convention becomes stronger evidence
-```
-
-can happen quickly.
-
-### Uniform priors
-
-Different agents may make the same plausible inference from the same misleading code shape.
-
-### Review-capacity inversion
-
-Implementation throughput can scale much faster than one owner's architectural attention.
-
-### Testable readers
-
-Agents can occasionally be tested against explicit guidance to determine whether prominent documentation still adds value.
-
-These factors justify careful architecture hygiene.
-
-They do not currently justify substantial custom AI infrastructure.
+Most of this plan is ordinary architecture discipline. AI changes the pressure: inferred
+conventions can amplify quickly from code to agent to more matching code; different
+agents may draw the same plausible inference from the same misleading shape; and
+implementation throughput can scale faster than one owner's architectural attention.
+Agents can also occasionally be tested against explicit guidance to see whether
+prominent documentation still adds value. These factors justify careful hygiene. They
+do not by themselves justify substantial custom AI infrastructure.
 
 ---
 
-# 25. Preconditions before implementation
+## 17. End goal
 
-Before constructing the live architecture cycle:
+This project succeeds when it ceases to require special attention. The desired mature
+repository does not require giant context packages; makes current architectural intent
+easy to find; lets code express everything it honestly can; keeps semantic contracts
+small; does not strand durable owner rulings in chats or reviews; makes important
+structural expansion visible where possible; prevents active migrations from silently
+growing; reconciles only where evidence proves the need; removes stale guidance; and
+prevents closed work from competing with current authority.
 
-## Prerequisite 1 — documentation routing cleanup
-
-Complete the removal of mandatory slice READMEs and restore clear artifact ownership.
-
-PR #65 is intended to establish this prerequisite.
-
-## Prerequisite 2 — targeted workflow harvest
-
-After the cleanup lands, inspect only the cleaned project workflow needed to determine:
-
-* exact major-phase close semantics;
-* exact phase status ownership;
-* `operations/current.md` update lifecycle;
-* `slice-closeout` hooks;
-* `work-checkpoint` interaction;
-* how the parallel operating-cycle state should be routed;
-* how closed-work authority currently changes;
-* what existing checks already support these transitions.
-
-This is a docs/workflow harvest, not a deep product-code harvest.
-
-## Prerequisite 3 — implementation-ready lifecycle plan
-
-Use that harvest to design the exact changes required to introduce the live meta-roadmap.
-
-## Prerequisite 4 — P23 fully closes
-
-Only then does Phase 0 trigger.
-
----
-
-# 26. Initial expected sequence
-
-Assuming the current product roadmap remains:
-
-```text
-P23 → P26 → P24 → P25
-```
-
-the likely operating sequence is:
-
-```text
-PR #65
-documentation topology cleanup
-
-        ↓
-
-targeted workflow harvest
-
-        ↓
-
-implement live architecture-cycle workflow
-
-        ↓
-
-P23 completes
-
-        ↓
-
-PHASE 0
-P23 retrospective diagnosis
-
-        ↓
-
-PHASE 1
-install smallest justified response
-
-        ↓
-
-P26
-PHASE 2 prospective validation during normal work
-
-        ↓
-
-P26 closes
-PHASE 3 keep / simplify / delete
-
-        ↓
-
-P24+
-surviving mechanisms are ordinary project practice
-```
-
-This operating sequence is parallel to the product roadmap.
-
-It does not create a new P-number phase.
-
----
-
-# 27. End goal
-
-This project succeeds when it ceases to require special attention.
-
-The desired mature repository:
-
-* does not require giant context packages;
-* makes current architectural intent easy to find;
-* lets code express everything it honestly can;
-* keeps semantic contracts small;
-* does not strand durable owner rulings in chats or reviews;
-* makes important structural expansion visible where possible;
-* prevents active migrations from silently growing;
-* periodically reconciles only where evidence proves the need;
-* removes stale guidance;
-* prevents closed work from competing with current authority.
-
-The mature system should be smaller than this plan.
-
-If Phase 0 proves that the existing review loop is already sufficient, that smaller outcome is a success.
-
----
-
-# 28. Current next step
-
-Do not implement the mechanisms in this document yet.
-
-After PR #65 establishes the cleaned documentation topology:
-
-> **Harvest the cleaned workflow and write the implementation-ready plan for the live architecture-cycle/meta-roadmap.**
-
-The harvest should determine integration details from the repository rather than this document inventing them.
+The mature system is smaller than this plan. If Phase 0 proves the existing review loop
+already sufficient, that smaller outcome is a success.
