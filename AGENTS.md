@@ -25,6 +25,9 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 10. **Truth precedence** — for doc-vs-doc conflicts, highest wins:
     `operations/current.md → active plan → component contract →
     reference/architecture.md → reference/north-star.md → archive`.
+    Precedence is by concern, not one universal authority: `operations/current.md`
+    owns the **current work/baton/status**, an **active plan** owns its approved
+    slice scope, and a **landed `reference/*` contract** owns durable architecture.
     A **ratified durable design contract** is normative for its own domain and
     outranks older descriptive numbers there: today that is the shell +
     visual-system contract

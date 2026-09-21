@@ -2,11 +2,21 @@
 
 **Role:** P-level tracker only. Answers: which phase executes now,
 which phase is being planned, pipeline order, P-level status.
-Slice detail lives in phase README. Phase root holds phase-wide /
-cross-slice artifacts only; active slice-specific plans/artifacts live
-inside that slice's workspace, and each slice README owns the exact plan
-path. Do not add new slice-specific plans flat at `docs/roadmap/<phase>/`
-(flat slice plans already there are grandfathered legacy).
+
+```text
+NORMAL ROUTE: roadmap/README → phase README → exact artifact
+```
+
+The **phase README** owns its children's status and order and routes active
+child work **directly** to the exact plan/context/design/QA artifact it needs.
+Slice-specific artifacts may live in a slice workspace directory, but a
+**workspace directory does not require a README**: there is no mandatory
+intermediate slice router. A workspace-local index is allowed only when a
+workspace genuinely needs a local navigational index, and is then
+**navigation-only** — never a status, plan, decision, acceptance or contract
+authority. Phase root holds phase-wide artifacts only; do not add new
+slice-specific plans flat at `docs/roadmap/<phase>/` (flat slice plans already
+there are grandfathered legacy).
 
 ```text
 PIPELINE: P23 → P26 → P24 → P25

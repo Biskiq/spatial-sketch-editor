@@ -346,8 +346,9 @@ only; no other shell surface moved.
 ## 5. What this record does **not** close
 
 - The P23.14 slice stays **open for owner review** — these are ratified
-  *decisions*, not a slice closeout. `README.md` and
-  `docs/operations/current.md` keep the review-pending status.
+  *decisions*, not a slice closeout. The P23 phase README
+  (`docs/roadmap/p23-layout-depth/README.md`) and `docs/operations/current.md` keep
+  the review-pending status.
 - **F1**, **F2** and **F5** were **resolved** by R4 (exposure resolved once per workspace; the
   drawer owns `POV / Observer`), so they are no longer owner calls.
 - **F4** (numeric fields report `:invalid` while holding legal values) is **not accepted** — it

@@ -115,7 +115,12 @@ bug deferred → operations/tech-debt/
 research completed → owning research/synthesis artifact
 landed behavior → reference/*
 verification/rulings → closeout/archive
-implementation status → phase/slice README
+phase/child status/order → phase README
+current resume/next unit → operations/current.md
+active plan-specific state → the owning active plan (only if that plan owns it)
 ```
+
+Never promote to a slice README/index: a slice workspace does not need one, and
+the exact plan stays its own artifact.
 
 Do not archive raw checkpoints.
