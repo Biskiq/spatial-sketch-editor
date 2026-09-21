@@ -142,7 +142,13 @@ boundary. Plan and unified 3D consume the same compile; no consumer resamples
 curves or reinterprets opening topology. Junction resolution is derived in the
 same compile (network-aware, per-Wall attributed) and is never serialized: any
 Wall end resolved against a canonical Junction carries its resolved join, so a
-renderer triangulates compiled geometry instead of solving topology. The Three
+renderer triangulates compiled geometry instead of solving topology. Degree ≥ 3
+Junction material is partitioned locally across all incident Walls — through
+continuations suppress their shared interface, branches are trimmed against the
+resolved Junction material, and every exposed Junction surface has one
+deterministic owner — so per-Wall meshes never rely on overlapping solids for
+closure. A Junction that has no straight-through continuation pair yet records
+that fact as a warning instead of passing silently. The Three
 adapter owns buffers, materials, resource lifetime, and raycast identity
 adaptation.
 
