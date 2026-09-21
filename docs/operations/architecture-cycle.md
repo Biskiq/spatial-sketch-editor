@@ -38,7 +38,7 @@ EVIDENCE           empty
 | Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
 | --- | --- | --- | --- | --- | --- | --- |
 | `WAITING` | Cycle installed; nothing due | S1–S5 landed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
-| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 9) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
+| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
 | `PHASE_0_ACTIVE` | Two independent audits in progress | owner authorization | run audits A and B independently; do not read each other | both audits complete | `ADJUDICATION` | no |
 | `ADJUDICATION` | Owner classifies and decides | both audits exist | owner adjudicates A/B/C/D + "what catches it next time?" + outcome | outcome recorded | `PHASE_1` or `STEADY` | **yes** |
 | `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
@@ -105,6 +105,9 @@ This file owns the condition; `docs/operations/current.md` only mirrors it.
 3  slice-closeout, phase close (preflight, 8–9) — the procedure that performs the close writes
                                                  the stage and the META pointer
 ```
+
+The tracker's `META:` line (`../roadmap/README.md`) repeats the same pointer for P-level readers;
+it is tracker metadata, not a fourth discovery route.
 
 Deliberately **not** routed from `AGENTS.md`, the IMPLEMENT/DESIGN/RESEARCH blocks, any phase
 child route, ordinary implementation startup context, or `work-checkpoint`.

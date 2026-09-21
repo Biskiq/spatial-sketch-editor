@@ -5,7 +5,8 @@ description: Close a shipped roadmap slice deterministically. Use when a roadmap
 
 # Slice Closeout
 
-Deterministic slice lifecycle: plan → implementation → QA → reference update → handoff → archive.
+Deterministic slice lifecycle: plan → implementation → QA → reference update → handoff → closed
+work. A declared final phase gate additionally runs the phase-close procedure.
 
 ## Guard — does this close also close the phase?
 
@@ -110,8 +111,10 @@ date and anchor:
 Owner ratification: closed by owner ruling <date> (<PR/commit anchor>)
 ```
 
-No form, no workflow, no separate governance artifact. If the owner has not ratified, STOP here:
-the phase stays in-progress, the cycle stays `WAITING`, no META appears.
+The record is the `PHASE CLOSE` block written at step 4 — its `CLOSED:` line carries the
+ratification date and anchor (the closeout evidence may quote the full line). No form, no
+workflow, no separate governance artifact. If the owner has not ratified, STOP here: the phase
+stays in-progress, the cycle stays `WAITING`, no META appears.
 
 ### Preflight — stage compatibility (required; after step 3, before step 4)
 
@@ -198,6 +201,10 @@ git show <A>:<path> | head -3
 A stub must never be readable as live instructions: `AUTHORITY: NONE` and no content that
 competes with `reference/*`.
 
+Slice hygiene still applies to the gate slice: run slice steps 9–11 (prune transient artifacts,
+repair links for every moved path, confirm no live router treats archived material as authority)
+once, as part of this step.
+
 ### Step 8 — Cycle stage
 
 Write the target `T` validated by the preflight to `docs/operations/architecture-cycle.md`; never
@@ -225,9 +232,11 @@ No locking, no database. Four cheap conventions:
 - The phase README "PHASE CLOSE" block is the close marker. It proves owner authorization,
   prevents the closure decision from being repeated, and persists CYCLE TARGET. It does NOT mean
   the batch finished.
-- A re-run never re-asks for owner ratification (step 3), reads the persisted CYCLE TARGET,
-  inspects steps 5–9, WRITES any missing consequence, and stops when all are satisfied. A close
-  that stopped after step 4 is completed by the re-run, not merely reported on.
+- A re-run that finds the `PHASE CLOSE` block never re-asks for owner ratification (step 3):
+  it reads the persisted `CYCLE TARGET`, inspects steps 5–9, WRITES any missing consequence, and
+  stops when all are satisfied. A close that stopped after step 4 is completed by the re-run, not
+  merely reported on. If the block itself is missing (the close stopped at step 3), resume at
+  step 4 — the preflight re-runs safely, because the cycle is still pre-close.
 - Every step is "ensure value", never "increment". Re-running writes the same values.
 - Step 7 is a no-op for any artifact already carrying "AUTHORITY: NONE", so a second run cannot
   double-compact or lose a body.
