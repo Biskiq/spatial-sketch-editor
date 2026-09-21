@@ -42,6 +42,12 @@ cannot accidentally close its parent, and no child close ever touches P-level st
    slice established or changed durable knowledge future work would otherwise
    rediscover; reconcile/supersede stale claims it invalidates.
    Roadmap proposals must never silently become reference truth; only landed behavior moves.
+   **Promotion backstop (any closing work artifact):** before it closes, promote final
+   durable decisions/rules to their actual current owner and fold the final conclusion into
+   that owner — do **not** promote review chronology or reviewer discussion, because Git/PR
+   history owns deliberation. Do not rewrite already-clean artifacts or write a review
+   summary merely for completeness. This is a safety net; the durable plan-writing rule is
+   owned by `docs/README.md` ("Plan hygiene").
 4. Write/update slice closeout evidence (acceptance record, rulings, residuals).
 5. Mark the slice shipped in its phase README (`docs/roadmap/<phase>/README.md`) —
    the phase README owns child status/order and routes each child's exact plan/QA

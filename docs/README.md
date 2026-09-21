@@ -189,6 +189,37 @@ PHASE: create README first; umbrella starts build program after discovery/design
 SHIP: use slice-closeout skill.
 ```
 
+### Plan hygiene
+
+An active plan is a projection of current approved intent, not a review diary.
+
+```text
+KEEP:
+- current scope
+- current/final decisions folded into the section they govern
+- implementation sequence
+- acceptance criteria
+- unresolved owner calls
+- concise rationale when removing it would make a decision
+  unsafe or confusing to reverse
+
+DO NOT APPEND:
+- review-round logs
+- reviewer commentary
+- R1 / R2 / Rn correction ledgers
+- chronological owner-decision ledgers
+- resolved alternatives
+- implementation/debug chronology
+- rehearsal transcripts
+- commit-by-commit history
+```
+
+When review changes the plan: rewrite the owning section into the corrected current form.
+When the owner decides: fold the ruling into the rule/section it governs.
+
+**Plans preserve conclusions and necessary rationale; Git/PR history preserves
+deliberation.**
+
 ## Update rules
 
 ```text
