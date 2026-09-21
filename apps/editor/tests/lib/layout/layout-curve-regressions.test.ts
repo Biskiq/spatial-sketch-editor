@@ -44,6 +44,7 @@ import {
 	wallCurveChainLength,
 	wallOffsetClearanceFailure,
 	wallFirstWallSpan,
+	legJoinsByWall,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
@@ -1173,11 +1174,11 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 
 		// These are the actual compiled Wall samples passed to the standalone
 		// editor and museum mesh builders, not a second predicate-only verdict.
-		const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
-			(candidate) => candidate.wallId === 'wall-uneven'
-		)!;
-		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0);
-		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0);
+		const compilation = compileWallFirstLayoutGeometry(document);
+		const compiled = compilation.geometry.walls.find((candidate) => candidate.wallId === 'wall-uneven')!;
+		const ends = legJoinsByWall(compilation.geometry.junctions).get(compiled.wallId) ?? null;
+		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0, ends);
+		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0, ends);
 		expect(editorMesh.issues).toEqual([]);
 		expect(editorMesh.mesh).toBeDefined();
 		expect(museumMesh.issues).toEqual([]);
@@ -1190,11 +1191,11 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 		const document = wallDocument([3, 2], 0.4);
 		expect(clearanceOf(document)).toBeUndefined();
 		expect(blockingCodes(document)).toEqual([]);
-		const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
-			(candidate) => candidate.wallId === 'wall-p'
-		)!;
-		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0);
-		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0);
+		const compilation = compileWallFirstLayoutGeometry(document);
+		const compiled = compilation.geometry.walls.find((candidate) => candidate.wallId === 'wall-p')!;
+		const ends = legJoinsByWall(compilation.geometry.junctions).get(compiled.wallId) ?? null;
+		const editorMesh = buildEditorStandaloneWallMesh(compiled, 0, ends);
+		const museumMesh = buildMuseumStandaloneWallMesh(compiled, 0, ends);
 		expect(editorMesh.issues).toEqual([]);
 		expect(editorMesh.mesh).toBeDefined();
 		expect(museumMesh.issues).toEqual([]);

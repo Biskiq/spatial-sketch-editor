@@ -1,5 +1,7 @@
 import type { LayoutVec2 } from './layout-types';
 import type {
+	CompiledEndpointBand,
+	CompiledLegJoin,
 	CompiledOpening,
 	CompiledPhysicalWall,
 	CompiledRoom,
@@ -100,6 +102,17 @@ export type WallMeshOptions = {
 export type WallMeshBuildResult = {
 	mesh?: IndexedWallMesh;
 	issues: LayoutGeometryIssue[];
+};
+
+/**
+ * P23.15 — already-resolved Junction endpoints passed to the standalone builder.
+ * The builder consumes resolved end geometry; it must not decide whether a
+ * Junction is a miter, T, X or continuation. A connected endpoint with no
+ * resolution fails closed (no square-cap fallback).
+ */
+export type ResolvedWallEnds = {
+	start?: CompiledLegJoin | null;
+	end?: CompiledLegJoin | null;
 };
 
 type V3 = [number, number, number];
@@ -203,19 +216,34 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
 }
 
 /**
- * Build one standalone box mesh for a canonical physical Wall (P23.9).
+ * Build one standalone box mesh for a canonical physical Wall (P23.9,
+ * Junction-correct as of P23.15).
  *
- * Canonical Walls are straight segments between two explicit Junctions, so
- * both ends are exact square miters — no room-loop corner computation, no
- * neighbor-clearance gate (connected Walls legitimately touch at shared
- * Junctions; that is topology, not offset overlap). Sections (side/lintel),
- * opening reveals, band splits and winding guards reuse the room path
- * verbatim by passing the Wall as its own neighbor with trivial corners.
+ * **The builder consumes already-resolved endpoint geometry.** Per-Wall
+ * ownership/output remains the unit; per-Wall geometry *solving* does not. The
+ * Junction solve lives in `layout-core` (`resolveJunctionGeometry`), which
+ * inspects every incident leg together and publishes `CompiledLegJoin`s. This
+ * function never decides whether a Junction is a miter, T, X, tangent
+ * continuation or terminal — it triangulates the resolved footprint plus
+ * vertical bands plus Wall-hosted Opening cuts.
+ *
+ * End geometry resolves in three explicit branches, with no silent fallback:
+ *
+ * ```text
+ * degree 1 / free end      → square terminal cap (`squareEndCorner`)
+ * connected + resolution   → consume the resolved corner + seam + bands
+ * connected, no resolution → blocking issue, no mesh (fail closed)
+ * ```
+ *
+ * Sections (side/lintel), opening reveals, band splits and winding guards reuse
+ * the room path verbatim by passing the Wall as its own neighbor with trivial
+ * corners; Junction wedges/beams are emitted as the existing `'bridge'` surface
+ * class so material grouping and the pick partition are unchanged.
  *
  * Render-only for interaction: canonical wall-first 3D picking/highlighting is
  * explicitly deferred post-P23. Callers must NOT enter the result into
  * room-keyed pick-index maps (its refs namespace to the Wall ID, and there is
- * no Room ownership to claim). Junction-correct seams are proposed for P23.15.
+ * no Room ownership to claim).
  *
  * Vertical extent comes from `wall.height` (P23.6H): `floorElevation` …
  * `floorElevation + wall.height`, so a partial-height Wall ends at its authored
@@ -224,6 +252,7 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
 export function buildStandaloneWallMesh(
 	wall: CompiledPhysicalWall,
 	floorElevation: number,
+	ends: ResolvedWallEnds | null = null,
 	options: WallMeshOptions = {}
 ): WallMeshBuildResult {
 	const issues: LayoutGeometryIssue[] = [];
@@ -234,6 +263,20 @@ export function buildStandaloneWallMesh(
 		issues.push({ path: `walls.${wall.wallId}`, code: 'wall_thickness_invalid', message: 'Wall thickness must be finite and greater than zero.', targetId: wall.wallId });
 	}
 	if (issues.length > 0) return { mesh: undefined, issues };
+
+	// P23.15 — fail closed, unconditionally. An end bound to a canonical
+	// Junction needs its compiled resolution: degree 1 arrives as
+	// `kind: 'terminal'` (the square cap), degree >= 2 as miter/bevel/trim/
+	// suppressed. A missing resolution is an invariant failure, never a square
+	// cap — a silent fallback would recreate the pre-P23.15 geometry and make
+	// the renderer an authority the compiler is not.
+	for (const [end, join] of [
+		['start', ends?.start] as const,
+		['end', ends?.end] as const
+	]) {
+		const junctionId = end === 'start' ? wall.startJunctionId : wall.endJunctionId;
+		if (junctionId && !join) return { mesh: undefined, issues: [missingResolutionIssue(wall, end)] };
+	}
 
 	// P23.11 / Issue #6 — defense-in-depth. The canonical acceptance path
 	// already refuses a Wall that cannot render at its own thickness, so this
@@ -271,12 +314,42 @@ export function buildStandaloneWallMesh(
 	} as CompiledRoom;
 	const first = wall.samples[0]!;
 	const last = wall.samples.at(-1)!;
-	const cornerStart = squareEndCorner(first.point, first.normal, half);
-	const cornerEnd = squareEndCorner(last.point, last.normal, half);
+	// Three explicit branches — terminal square cap, resolved corner, or fail
+	// closed above. No silent no-resolution fallback survives.
+	const cornerStart = cornerFromJoin(ends?.start, squareEndCorner(first.point, first.normal, half));
+	const cornerEnd = cornerFromJoin(ends?.end, squareEndCorner(last.point, last.normal, half));
 	const breakpoints = standaloneHeightBreakpoints(wall, wallHeight);
-	const wallsFaces = [
-		buildWallFaces(roomView, wallAsCompiled, wallAsCompiled, wallAsCompiled, cornerStart, cornerEnd, wallHeight, breakpoints, classify)
+	const faces = buildWallFaces(
+		roomView,
+		wallAsCompiled,
+		wallAsCompiled,
+		wallAsCompiled,
+		cornerStart,
+		cornerEnd,
+		wallHeight,
+		breakpoints,
+		classify,
+		false
+	);
+	const bridges: BridgeFaces[] = [];
+	for (const [join, atEnd] of [
+		[ends?.start ?? null, false] as const,
+		[ends?.end ?? null, true] as const
+	]) {
+		if (!join) continue;
+		const bridge = buildStandaloneEndBridge(roomView, wallAsCompiled, join, atEnd, wallHeight, breakpoints, classify);
+		if (bridge) bridges.push(bridge);
+	}
+	faces.bridges = bridges;
+	const stepFaces = [
+		...(ends?.start ? buildStandaloneContinuationStep(roomView, wallAsCompiled, ends.start, false, wallHeight, breakpoints) : []),
+		...(ends?.end ? buildStandaloneContinuationStep(roomView, wallAsCompiled, ends.end, true, wallHeight, breakpoints) : [])
 	];
+	if (stepFaces.length > 0) {
+		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
+		faces.sections.push({ ref, surfaceKey: classify(ref), faces: stepFaces });
+	}
+	const wallsFaces = [faces];
 	const mesh = emitMesh(wall.wallId, wallsFaces, classify, weldTolerance);
 	if (options.assertWinding) assertWindingAgreesWithNormals(mesh);
 	return { mesh, issues: [] };
@@ -298,6 +371,269 @@ function standaloneHeightBreakpoints(wall: CompiledPhysicalWall, wallHeight: num
 		if (spring > LAYOUT_GEOMETRY_EPSILON && spring < wallHeight - LAYOUT_GEOMETRY_EPSILON) breakpoints.add(spring);
 	}
 	return [...breakpoints].sort((a, b) => a - b);
+}
+
+/** P23.15 — a connected end with no resolved geometry fails closed. */
+function missingResolutionIssue(wall: CompiledPhysicalWall, end: 'start' | 'end'): LayoutGeometryIssue {
+	return {
+		path: `walls.${wall.wallId}`,
+		code: 'junction_resolution_missing',
+		message: `Wall ${end} is connected to a Junction but no resolved endpoint geometry was supplied.`,
+		targetId: wall.wallId
+	};
+}
+
+/** Use the resolved corner when present; otherwise the degree-1 square cap. */
+function cornerFromJoin(join: CompiledLegJoin | null | undefined, fallback: Corner): Corner {
+	if (!join || !join.corner) return fallback;
+	return { front: join.corner.front as CornerSide, back: join.corner.back as CornerSide };
+}
+
+/** The Wall's outward frame at one end (from the Junction into the Wall). */
+function ownOutwardFrame(wall: CompiledWall, atEnd: boolean): { tangent: LayoutVec2; normal: LayoutVec2 } {
+	const sample = atEnd ? wall.samples.at(-1)! : wall.samples[0]!;
+	const sign = atEnd ? -1 : 1;
+	return {
+		tangent: [sign * sample.tangent[0], sign * sample.tangent[1]],
+		normal: [sign * sample.normal[0], sign * sample.normal[1]]
+	};
+}
+
+function intervalsFromBands(bands: readonly CompiledEndpointBand[]): Array<[number, number]> {
+	return bands.filter((band) => band.solid).map((band) => [band.bottomY, band.topY] as [number, number]);
+}
+
+/** Unconstrained back-side miter apex from leg facts (no neighbour CompiledWall needed). */
+function legOuterApex(
+	junction: LayoutVec2,
+	prevTangent: LayoutVec2,
+	prevNormal: LayoutVec2,
+	prevHalf: number,
+	curTangent: LayoutVec2,
+	curNormal: LayoutVec2,
+	curHalf: number
+): LayoutVec2 {
+	const a0: LayoutVec2 = [junction[0] - prevHalf * prevNormal[0], junction[1] - prevHalf * prevNormal[1]];
+	const b0: LayoutVec2 = [junction[0] - curHalf * curNormal[0], junction[1] - curHalf * curNormal[1]];
+	const dirA: LayoutVec2 = [-prevTangent[0], -prevTangent[1]];
+	const dirB = curTangent;
+	const det = dirA[0] * dirB[1] - dirA[1] * dirB[0];
+	if (Math.abs(det) < 1e-9) return a0;
+	const dx = b0[0] - a0[0];
+	const dy = b0[1] - a0[1];
+	const u = (dx * dirB[1] - dy * dirB[0]) / det;
+	return [a0[0] + u * dirA[0], a0[1] + u * dirA[1]];
+}
+
+/**
+ * P23.15 — close a resolved Junction end. Mirrors the room path's start bridge
+ * but reads both legs' resolved facts (corner + endpoint profiles), so the
+ * standalone Wall never needs its neighbour's mesh. Emitted only by the leg
+ * that owns the seam (`ownedSeam`); pure miter corners with no endpoint void
+ * need nothing because the shared apex already welds the top/front/back faces.
+ */
+function buildStandaloneEndBridge(
+	room: CompiledRoom,
+	wall: CompiledWall,
+	join: CompiledLegJoin,
+	atEnd: boolean,
+	wallHeight: number,
+	roomBreakpoints: readonly number[],
+	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey
+): BridgeFaces | null {
+	const neighbor = join.neighbor;
+	const canonical = join.canonicalCorner;
+	const role = join.canonicalRole;
+	if (!neighbor || !canonical || !role || !join.ownedSeam) return null;
+	const corner = { front: canonical.front as CornerSide, back: canonical.back as CornerSide };
+	const front = corner.front;
+	const back = corner.back;
+	if (front.kind === 'fold' || back.kind === 'fold') return null;
+	const isBevel = front.kind === 'bevel' || back.kind === 'bevel';
+	const own = ownOutwardFrame(wall, atEnd);
+	const ownOpens = atEnd ? wallOpensAtEnd(wall) : wallOpensAtStart(wall);
+	const prevIsOwn = role === 'prev';
+	const prevTangent = prevIsOwn ? own.tangent : neighbor.tangentOut;
+	const prevNormal = prevIsOwn ? own.normal : neighbor.normalOut;
+	const prevHalf = prevIsOwn ? wall.thickness / 2 : neighbor.halfThickness;
+	const curTangent = prevIsOwn ? neighbor.tangentOut : own.tangent;
+	const curNormal = prevIsOwn ? neighbor.normalOut : own.normal;
+	const curHalf = prevIsOwn ? neighbor.halfThickness : wall.thickness / 2;
+	const prevOpen = prevIsOwn ? ownOpens : neighbor.endpointOpen;
+	const curOpen = prevIsOwn ? neighbor.endpointOpen : ownOpens;
+	const bothOpen = prevOpen && curOpen;
+	if (!isBevel && !bothOpen) return null;
+
+	const junction = atEnd ? wall.samples.at(-1)!.point : wall.samples[0]!.point;
+	const ownProfile = endpointProfileIntervals(wall, atEnd);
+	const neighborProfile = intervalsFromBands(neighbor.endpointSolidBands);
+	const prevProfile = prevIsOwn ? ownProfile : neighborProfile;
+	const curProfile = prevIsOwn ? neighborProfile : ownProfile;
+	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wallHeight;
+	const top = Math.max(wallHeight, neighborTop);
+
+	const edges = new Set<number>([0, top]);
+	for (const [lo, hi] of [...prevProfile, ...curProfile]) {
+		edges.add(lo);
+		edges.add(hi);
+	}
+	for (const y of roomBreakpoints) edges.add(y);
+	const sorted = [...edges].sort((a, b) => a - b);
+	const bands: Array<{ lo: number; hi: number; solidA: boolean; solidB: boolean }> = [];
+	for (let i = 1; i < sorted.length; i += 1) {
+		const lo = sorted[i - 1]!;
+		const hi = sorted[i]!;
+		if (hi - lo <= LAYOUT_GEOMETRY_EPSILON) continue;
+		bands.push({ lo, hi, solidA: profileCovers(prevProfile, lo, hi), solidB: profileCovers(curProfile, lo, hi) });
+	}
+	if (bands.length === 0) return null;
+
+	const frontA = front.kind === 'bevel' ? front.a0 : front.apex;
+	const frontB = front.kind === 'bevel' ? front.b0 : front.apex;
+	const backB = back.kind === 'bevel' ? back.b0 : back.apex;
+	const backA = back.kind === 'bevel' ? back.a0 : back.apex;
+	const outer = back.kind === 'bevel' ? legOuterApex(junction, prevTangent, prevNormal, prevHalf, curTangent, curNormal, curHalf) : null;
+	const nA: LayoutVec2 = [-prevNormal[0], -prevNormal[1]];
+	const nB: LayoutVec2 = curNormal;
+	const dirA: LayoutVec2 = [-prevTangent[0], -prevTangent[1]];
+	const dirB: LayoutVec2 = curTangent;
+
+	const faces: Face[] = [];
+	for (const band of bands) {
+		const yLo = room.floorElevation + band.lo;
+		const yHi = room.floorElevation + band.hi;
+		if (band.solidA && band.solidB) {
+			if (front.kind === 'bevel') pushBridgeSide(faces, frontA, frontB, yLo, yHi, band.lo, band.hi, nA, nB, 1);
+			if (back.kind === 'bevel' && outer) {
+				pushBridgeCap(faces, backA, outer, yLo, yHi, band.lo, band.hi, nA, -1);
+				pushBridgeCap(faces, backB, outer, yLo, yHi, band.lo, band.hi, nB, -1);
+			}
+		} else if (band.solidA) {
+			pushBridgeCap(faces, frontA, backA, yLo, yHi, band.lo, band.hi, dirA, 1);
+		} else if (band.solidB) {
+			pushBridgeCap(faces, frontB, backB, yLo, yHi, band.lo, band.hi, dirB, -1);
+		}
+	}
+	for (let i = 0; i < bands.length; i += 1) {
+		const band = bands[i]!;
+		const solid = band.solidA && band.solidB;
+		const belowSolid = i > 0 ? bands[i - 1]!.solidA && bands[i - 1]!.solidB : false;
+		const aboveSolid = i < bands.length - 1 ? bands[i + 1]!.solidA && bands[i + 1]!.solidB : false;
+		if (solid && !belowSolid) pushWedgeCaps(faces, frontA, frontB, backA, backB, outer, room.floorElevation + band.lo, band.lo, [0, -1, 0]);
+		if (solid && !aboveSolid) pushWedgeCaps(faces, frontA, frontB, backA, backB, outer, room.floorElevation + band.hi, band.hi, [0, 1, 0]);
+	}
+	if (faces.length === 0) return null;
+	const surfaceKey = classify({ roomId: room.roomId, segmentId: wall.segmentId, sectionIndex: -1, kind: 'side' });
+	return { neighborSegmentId: neighbor.wallId, surfaceKey, faces };
+}
+
+/**
+ * P23.15 — the exposed difference surfaces of a tangent continuation.
+ *
+ * Tangent continuation suppresses only the **overlapping/common** interface. A
+ * thickness difference, a height difference or an Opening-profile difference is
+ * still real physical geometry, so the exposed difference surfaces of each
+ * leg's end plane are emitted here — never the buried internal cap.
+ *
+ * Emitted once per seam, by the leg with the smaller `wallId`
+ * (branch-cut-independent). Opening voids are respected: a difference surface is
+ * never emitted across a non-solid interval.
+ */
+function buildStandaloneContinuationStep(
+	room: CompiledRoom,
+	wall: CompiledWall,
+	join: CompiledLegJoin,
+	atEnd: boolean,
+	wallHeight: number,
+	roomBreakpoints: readonly number[]
+): Face[] {
+	const neighbor = join.neighbor;
+	if (!neighbor || !join.interfaceSuppressed) return [];
+	// One emitter per seam: the lower `wallId`, so the exposed difference
+	// surfaces are painted exactly once (never an angle — Decision 4).
+	if (join.wallId > neighbor.wallId) return [];
+
+	const ownHalf = wall.thickness / 2;
+	const neighborHalf = neighbor.halfThickness;
+	const ownTop = wallHeight;
+	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wallHeight;
+	// Thickness and height are INDEPENDENT: a straight continuation can change
+	// either, both, or neither. The union's exposed difference surfaces are:
+	//
+	//   both legs solid at this height  → two lateral strips between the half
+	//                                     thicknesses (a thickness step)
+	//   exactly one leg solid           → that leg's full end cross-section (a
+	//                                     cap, also what an Opening at the
+	//                                     Junction exposes)
+	//
+	// Neither case is "no added geometry": suppressing the interface is not the
+	// same as the shells being equal.
+	const thickerHalf = Math.max(ownHalf, neighborHalf);
+	const thinnerHalf = Math.min(ownHalf, neighborHalf);
+	const heightEdges: number[] = [0, ownTop, neighborTop];
+	const ownSolid = endpointProfileIntervals(wall, atEnd);
+	const neighborSolid = intervalsFromBands(neighbor.endpointSolidBands);
+	for (const [lo, hi] of [...ownSolid, ...neighborSolid]) heightEdges.push(lo, hi);
+	for (const y of roomBreakpoints) heightEdges.push(y);
+	const top = Math.max(ownTop, neighborTop);
+	const sorted = [...new Set(heightEdges.filter((y) => y >= 0 && y <= top))].sort((a, b) => a - b);
+
+	const own = ownOutwardFrame(wall, atEnd);
+	const junction = atEnd ? wall.samples.at(-1)!.point : wall.samples[0]!.point;
+	const at = (lateral: number): LayoutVec2 => [
+		junction[0] + lateral * own.normal[0],
+		junction[1] + lateral * own.normal[1]
+	];
+	const lateralNormal: V3 = [own.normal[0], 0, own.normal[1]];
+	const ownCapNormal: V3 = [-own.tangent[0], 0, -own.tangent[1]];
+	const neighborCapNormal: V3 = [-neighbor.tangentOut[0], 0, -neighbor.tangentOut[1]];
+	const cap = (faces: Face[], half: number, lo: number, hi: number, faceNormal: V3): void => {
+		const p1 = at(half);
+		const p2 = at(-half);
+		pushOrientedFace(
+			faces,
+			[
+				vertex(p1[0], room.floorElevation + hi, p1[1], 0, 0, 0, 0, hi),
+				vertex(p2[0], room.floorElevation + hi, p2[1], 0, 0, 0, 0, hi),
+				vertex(p2[0], room.floorElevation + lo, p2[1], 0, 0, 0, 0, lo),
+				vertex(p1[0], room.floorElevation + lo, p1[1], 0, 0, 0, 0, lo)
+			],
+			faceNormal,
+			BRIDGE_PICK
+		);
+	};
+
+	const faces: Face[] = [];
+	for (let i = 1; i < sorted.length; i += 1) {
+		const lo = sorted[i - 1]!;
+		const hi = sorted[i]!;
+		if (hi - lo <= LAYOUT_GEOMETRY_EPSILON) continue;
+		const ownIsSolid = profileCovers(ownSolid, lo, hi);
+		const neighborIsSolid = profileCovers(neighborSolid, lo, hi);
+		if (ownIsSolid && neighborIsSolid) {
+			const halfDelta = thickerHalf - thinnerHalf;
+			if (halfDelta <= LAYOUT_GEOMETRY_EPSILON) continue;
+			for (const sign of [1, -1] as const) {
+				const inner = at(sign * thinnerHalf);
+				const outer = at(sign * thickerHalf);
+				pushOrientedFace(
+					faces,
+					[
+						vertex(outer[0], room.floorElevation + hi, outer[1], 0, 0, 0, 0, hi),
+						vertex(inner[0], room.floorElevation + hi, inner[1], 0, 0, 0, 0, hi),
+						vertex(inner[0], room.floorElevation + lo, inner[1], 0, 0, 0, 0, lo),
+						vertex(outer[0], room.floorElevation + lo, outer[1], 0, 0, 0, 0, lo)
+					],
+					[sign * lateralNormal[0], 0, sign * lateralNormal[2]],
+					BRIDGE_PICK
+				);
+			}
+			continue;
+		}
+		if (ownIsSolid) cap(faces, ownHalf, lo, hi, ownCapNormal);
+		else if (neighborIsSolid) cap(faces, neighborHalf, lo, hi, neighborCapNormal);
+	}
+	return faces;
 }
 
 function validateRoom(room: CompiledRoom): LayoutGeometryIssue[] {
@@ -398,7 +734,8 @@ function buildWallFaces(
 	cornerEnd: Corner,
 	wallHeight: number,
 	roomBreakpoints: readonly number[],
-	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey
+	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
+	emitBridges = true
 ): WallFaces {
 	const half = wall.thickness / 2;
 	const sections: SectionFaces[] = [];
@@ -429,9 +766,13 @@ function buildWallFaces(
 	}
 
 	// Beveled joint at this wall's start (the corner shared with `prevWall`).
+	// The standalone Junction path passes `emitBridges = false` and supplies its
+	// own resolved bridges from both ends.
 	const bridges: BridgeFaces[] = [];
-	const bridge = buildStartBridgeFaces(room, prevWall, wall, cornerStart, wallHeight, roomBreakpoints, classify);
-	if (bridge) bridges.push(bridge);
+	if (emitBridges) {
+		const bridge = buildStartBridgeFaces(room, prevWall, wall, cornerStart, wallHeight, roomBreakpoints, classify);
+		if (bridge) bridges.push(bridge);
+	}
 
 	return { segmentId: wall.segmentId, sections, reveals, bridges };
 }

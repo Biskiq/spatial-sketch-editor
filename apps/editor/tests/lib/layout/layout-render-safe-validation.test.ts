@@ -33,6 +33,7 @@ import {
 	wallCubicChain,
 	wallCurveKnotArcDistance,
 	wallOffsetClearanceFailure,
+	legJoinsByWall,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
@@ -47,6 +48,15 @@ const CHORD = 6;
  * is only 3 m of radius, well inside half the thickness.
  */
 const THICK = 8;
+
+/**
+ * P23.15 — the resolved Junction ends of one compiled Wall. The standalone
+ * builder fails closed on a connected end with no resolution, so every call
+ * here passes the compiled facts exactly like a live surface does.
+ */
+function endsFor(compilation: ReturnType<typeof compileWallFirstLayoutGeometry>, wallId: string) {
+	return legJoinsByWall(compilation.geometry.junctions).get(wallId) ?? null;
+}
 
 /**
  * Roomless partition Wall whose single bend point sits at `anchor`. The bow is
@@ -186,7 +196,7 @@ describe('P23.11 slice 6 — core and the mesh builders agree', () => {
 
 		// Defense-in-depth: the builder refuses the same Wall, with the same
 		// code, without a second copy of the rule.
-		const built = buildStandaloneWallMesh(compiled, 0);
+		const built = buildStandaloneWallMesh(compiled, 0, endsFor(compilation, compiled.wallId));
 		expect(built.mesh).toBeUndefined();
 		expect(built.issues.map((issue) => issue.code)).toEqual(['wall_offset_fold']);
 		expect(built.issues[0]!.targetId).toBe('wall-p');
@@ -195,7 +205,7 @@ describe('P23.11 slice 6 — core and the mesh builders agree', () => {
 	it('builds a mesh for the accepted fixture', () => {
 		const compilation = compileWallFirstLayoutGeometry(thickWallDocument([3, 0.5]));
 		const compiled = compilation.geometry.walls.find((wall) => wall.wallId === 'wall-p')!;
-		const built = buildStandaloneWallMesh(compiled, 0);
+		const built = buildStandaloneWallMesh(compiled, 0, endsFor(compilation, compiled.wallId));
 		expect(built.issues).toEqual([]);
 		expect(built.mesh).toBeDefined();
 		expect(built.mesh!.positions.length).toBeGreaterThan(0);
