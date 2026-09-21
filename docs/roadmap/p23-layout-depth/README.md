@@ -78,7 +78,7 @@ detail in this file is on-demand.
 ## Completed slices (shipped on `main`)
 
 P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13,
-**P23.14** (shell visual system, accepted 2026-09-21),
+**P23.14** (shell visual system; accepted 2026-09-21 — implementation PR #61, closeout PR #71),
 plus the concurrent Junction-dissolve / Wall join child slice (PR #57, no tracker
 P-number; its Inspector/Navigator-row/Plan-menu entry points landed in P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only

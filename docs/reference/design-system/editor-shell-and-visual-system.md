@@ -197,7 +197,7 @@ permanent QA companion (§0.1 rank 3).
 
 This is a **documentation and authority migration only** — it changed no
 implementation. P23.14 has since **closed** (accepted 2026-09-21, after the PR #61
-code review): the slice's prose artifacts are now path-preserving stubs carrying
+code review; closeout PR #71): the slice's prose artifacts are now path-preserving stubs carrying
 `git show <A>:<path>` recovery anchors, its `context/` and `design/` bundles are
 copied to `docs/archive/roadmap/p23/p23.14-shell-visual-system/`, and no slice
 artifact is authority. What closeout did **not** do: settle the §0.3 owner calls,

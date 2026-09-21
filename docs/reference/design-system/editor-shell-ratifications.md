@@ -3,7 +3,7 @@
 ```text
 DATE:     2026-09-19 · branch `p23.14` · PR #61
 SLICE:    established by P23.14 (slice history: docs/roadmap/p23-layout-depth/p23.14-shell-visual-system/)
-STATUS:   R1–R4 ratified and landed; P23.14 CLOSED — accepted 2026-09-21
+STATUS:   R1–R4 ratified and landed; P23.14 CLOSED — accepted 2026-09-21 (closeout PR #71)
 ROLE:     EVIDENCE ANNEX to editor-shell-and-visual-system.md — measurements and history, NOT a second authority
 ```
 

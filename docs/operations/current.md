@@ -2,8 +2,8 @@
 
 PHASE: P23
 CHILD: P23.15 — Junction-correct wall-first 3D
-STAGE: P23.14 CLOSED (accepted 2026-09-21, PR #61); P23.15 plan NOT written yet
-       (the routed plan file does not exist — planning is the next action)
+STAGE: P23.14 CLOSED (accepted 2026-09-21; implementation PR #61; closeout PR #71); P23.15
+       plan NOT written yet (the routed plan file does not exist — planning is the next action)
 
 NEXT:
 1. Write the P23.15 implementation-ready plan at the routed path, then owner review; no
