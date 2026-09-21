@@ -10,6 +10,10 @@ MAIN SHA:   bac8858e8d6b160e71b115d4de6304a5be17dbcd
             = merge of PR #65 (docs: remove the mandatory slice-README layer)
 TREE:       clean; branch head == main head at harvest time
 METHOD:     read live artifacts + bounded Git history (representative commits only)
+REVISION:   r2 — owner review at 9aa3ca1 applied (four findings + two wording corrections);
+            the two lifecycle questions that review re-opened are recorded in §15
+            "Withdrawn in review". Findings still labeled CURRENT / REQUIRED BY RATIFIED
+            PLAN / IMPLEMENTATION GAP.
 ```
 
 **Read in full:** `AGENTS.md`, `docs/README.md`, `docs/roadmap/README.md`,
@@ -74,9 +78,11 @@ throughout and never blurred.
 | P-level status/order | `docs/roadmap/README.md` | owner / closeout **only on P-level change** | skill step 6; file history is only 4 commits |
 | history | `docs/archive/**` | closeout (per skill step 8) | rule stated in phase README; **no post-restructure execution** (§7) |
 
-**Finding (CURRENT):** every fact has exactly one routed owner after PR #65. There is
-no remaining second live surface for slice state. This is the topology the ratified plan
-assumes in §21 — the assumption holds.
+**Finding (CURRENT):** after PR #65 every **concern** has a designated authority surface.
+This is deliberately one owner per concern, not one copy per fact: a status or rule may
+legitimately appear in a baton/status line and again as evidence elsewhere, provided exactly
+one surface *owns* it. No second live surface owns slice state. This is the topology the
+ratified plan assumes in §21 — the assumption holds.
 
 ---
 
@@ -151,17 +157,23 @@ P23.16 acceptance rows pass (P23.16 §Exit criteria)
 → P23.16's plan records its acceptance evidence + Status: shipped (PR/#SHA)
 → phase README "Completed slices" gains P23.16; STATUS:/STAGE: line updated
 → roadmap/README.md P23 row: in-progress → shipped
-→ current.md: PHASE: P24? / P26? and CHILD: the next work item
-→ (archive step 8) bundle archived + one-line stub
+→ current.md: PHASE: P26 and CHILD: the next work item
+→ (closed-work step) bundle archived + one-line stub (rule never executed post-restructure)
 ```
 
 Steps 3–5 have **no assigned owner and no procedure**; they are what the owner or the
-closeout agent currently improvises. Which phase the baton advances to is genuinely
-ambiguous: the pipeline is `P23 → P26 → P24 → P25`, and `p26-spatial-depth/README.md`
-says `STATUS: planning` with `NEXT: design brief`, but `roadmap/README.md`'s table also
-lists P26 as `planning` — so "P23 shipped → P26 becomes active" is implied by the
-pipeline and by P23's `GATE` line ("P24 implementation waits for accepted P23 minimum"),
-not by any written transition.
+closeout agent currently improvises.
+
+**Which phase comes next is not in question.** `docs/roadmap/README.md` pins the pipeline
+`P23 → P26 → P24 → P25` and P23's `GATE` line says "P24 implementation waits for accepted
+P23 minimum", so the product baton moves toward **P26** — nothing established here implies
+P24, and this harvest makes no P24 claim.
+
+What is genuinely unstated is **what happens inside P26 immediately after P23 closes**:
+whether P26 stays `planning` while the operating cycle's Phase 0 runs, when it moves to
+`approved`/`in-progress`, whether its design brief or implementation may begin before Phase 0
+adjudication completes, and whether Phase 1 must be installed before P26 implementation
+starts. Those are §15 Q3, not a phase-order question.
 
 ### 3.3 Historical precedent (pre-restructure, still informative)
 
@@ -176,11 +188,12 @@ advance the baton → register the next phase.**
 `IMPLEMENTATION GAP` (small): the current topology has the same *files* (tracker, router,
 contracts, phase README, baton) but no procedure that walks them at phase close.
 
-> **Owner decision 2026-09-20 (OD-1, §15):** the owner's declaration is the trigger of
-> record — P23.16 acceptance does not auto-close the phase. The phase README `STATUS:`
-> line, the tracker row, the baton and the closed-work step are consequences the closing
-> agent records. The CURRENT tables above are unchanged by that decision: the repository
-> still has no written phase-close owner, and writing that step is the gap.
+> **Still unresolved (§15 Q1).** The repository establishes only that satisfying P23.16's
+> `**Exit criteria:**` makes P23 *closable*. It does not establish whether the close event is
+> an explicit owner ratification or a deterministic closeout transition in which closing the
+> dependency-last gate closes the phase. The harvest does not choose; either way, the phase
+> README `STATUS:` line, the tracker row, the baton and the closed-work step are consequences
+> the closing agent records, and no written phase-close owner exists today.
 
 ---
 
@@ -247,9 +260,23 @@ owner ruling inside a slice
   destination for a captured ruling — what it lacks is a *trigger* that says "this ruling
   is durable, write it now" rather than leaving it to agent judgement.
 
-`IMPLEMENTATION GAP` (minimal): a one-line rule naming when a ruling must be captured
-(and its destination) would cover Outcome 3 without any new artifact. Whether that is
-justified is Phase 0's call — not this harvest's.
+`IMPLEMENTATION GAP` (two different kinds, and they must not be conflated):
+
+```text
+PREREQUISITE INFRASTRUCTURE (must exist before Phase 0 can run)
+  - the explicit major-phase close transition (§3)
+  - the live cycle-state file, because something must be able to record
+    `Phase 0 due` / `Phase 0 active` / `adjudication complete` / `Phase 1 installed`
+
+PHASE-0-SELECTED MECHANISMS (installed only if evidence justifies them)
+  - a same-PR capture rule naming when a durable ruling must be written
+  - concise contracts, seam guards, ratchets, a Direction, semantic range review
+```
+
+A one-line capture rule naming when a ruling must be captured (and its destination) would
+cover Outcome 3 without a new artifact — but that is a *mechanism*, so it is Phase 0's call,
+not this harvest's. The cycle-state file is not: without it no metadata stage can be
+represented at all.
 
 ---
 
@@ -299,9 +326,9 @@ finding, not a harvest conclusion.
 | How do recent closeouts differ from grandfathered plans? | grandfathered flat plans stay complete in the live folder with only a `Status:` line; pre-restructure archived ones moved out | §4 |
 | Is the current archive contract sufficient for exact reconstruction? | Yes for the archived bundles (git history preserves everything; the bundle is whole). No for the **live** shipped plans — nothing distinguishes "closed work" from "active work" except a prose `Status:` line, and no SHA-recovery convention exists | §7.2 |
 
-### 7.2 Delta vs the ratified future model
+### 7.2 Delta vs the ratified requirement
 
-| Dimension | CURRENT (whole bundle archived + one-line stub — stated, not executed) | RATIFIED POSSIBLE FUTURE (compact stub + exact SHA/path) |
+| Dimension | CURRENT (whole bundle archived + one-line stub — stated, not executed) | RATIFIED REQUIREMENT (closed work sheds authority + stays exactly recoverable by verified SHA/path; **mechanism left open** — the plan's compact stub + SHA is one candidate) |
 | --- | --- | --- |
 | Cost per closeout | move N files, repair links, add stub | write a small stub; no file moves, no link repair |
 | Live-tree clarity | shipped plans stay live and complete until someone archives them (today: they just stay) | closed artifacts lose authority immediately and become stubs |
@@ -309,15 +336,21 @@ finding, not a harvest conclusion.
 | Clickability | archived docs remain linkable (links tend to rot, but resolve while the bundle exists) | a SHA/path is not clickable — needs a documented recovery command instead of a link |
 | Removes | duplication of authority in the live tree | requires the same, plus a retention decision for pre-existing live plans |
 | Migration cost | unknown (never executed) | the 19 already-landed live plans (+ phase-README stubs + `docs/archive/README.md` wording + link repair), plus a decision on the grandfathered flat plans |
-|  Contradiction with current rules? | — | skill step 8 currently says "archive the whole bundle"; the ratified model prefers in-place stubs. **Reconciled by OD-2 (2026-09-20): the stub + exact-SHA model wins; step 8 is rewritten and the already-landed live plans migrate at P23 close** |
+| Contradiction with current rules? | — | **Mechanism only, not semantics.** Skill step 8 prescribes one mechanism (whole-bundle archive). The ratified plan fixes the *semantic* requirement — closed work sheds authority and remains exactly recoverable via a verified SHA/path — and explicitly leaves truncation/archive mechanics to reconciliation. Whole-bundle archive, an in-place stub, or a hybrid can each satisfy that contract |
 
-**Tradeoff to hand to the planner:** the current rule's cost is *live-tree clutter and
-competing authority* (P23's live folder holds 19 already-landed plans beside the active
-one); the future model's
-cost is *lost clickability* and a one-time migration of the existing live plans. Neither
-is obviously better at Museum's scale. **Decided 2026-09-20 (OD-2, §15):** the stub +
-exact-SHA model wins, step 8 is rewritten, and the already-landed live plans migrate at
-P23 close.
+**Tradeoff to hand to the planner (mechanism-neutral).** Whole-bundle archive costs N file
+moves and link repair per closeout but keeps documents clickable. An in-place stub costs one
+small write and no link repair but loses clickability (a SHA/path needs a documented recovery
+command). A hybrid — stub the prose-heavy artifacts, archive whole multi-file bundles — keeps
+the common case cheap. The current rule's real defect is not its mechanism: it is that it has
+**never been executed**, so 19 already-landed plans still sit in the live P23 folder beside
+the active one, with only a prose `Status:` line distinguishing closed work from open work.
+
+> **Owner note 2026-09-20 (see §15 Q4).** The owner expressed a preference for the in-place
+> compact-stub + exact-SHA mechanism. It is recorded here as a *preference*, not as a fixed
+> mechanism: the harvest stays neutral, and the implementation plan should present the
+> alternatives (stub / hybrid / archived bundle) against the ratified semantic requirement
+> before one is chosen.
 
 ---
 
@@ -434,10 +467,10 @@ meta-roadmap." The above achieves that with **no startup cost**.
 
 | Ratified requirement | Current mechanism | Gap | Likely integration point | Confidence |
 | --- | --- | --- | --- | --- |
-| Phase 0 fires after P23 fully closes | nothing detects phase close; owner ruling commit is the only signal | written phase-close step + where the "due" state is visible (trigger **owner-decided: OD-1**) | `slice-closeout` + phase README `GATE` (+ optional `current.md` line) | confirmed |
-| Live meta-state file `docs/operations/architecture-cycle.md` | none (plan says "do not create yet") | the file and its route row | `docs/operations/` + one `docs/README.md` table row | confirmed |
+| Phase 0 fires after P23 fully closes | nothing detects phase close; the close event's identity is itself unresolved (§15 Q1) | **prerequisite plumbing**, not a Phase-0 outcome: the written phase-close transition + a recordable `Phase 0 due` state | `slice-closeout` + phase README `GATE` (+ optional `current.md` line) | confirmed |
+| Live meta-state file `docs/operations/architecture-cycle.md` | none (plan says "do not create yet") | the file + its route row — **must exist before Phase 0**, since stages such as `Phase 0 due/active` have nowhere to live otherwise | `docs/operations/` + one `docs/README.md` table row | confirmed |
 | Phase-close reconciliation/subtraction | promotion exists; subtraction does not | a subtraction step has no owner | `slice-closeout` | confirmed |
-| Closed-work artifacts shed authority | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution only — policy **owner-decided (OD-2)**: in-place compact stub + exact SHA | `slice-closeout` step 8 | confirmed |
+| Closed-work artifacts shed authority and stay exactly recoverable by verified SHA/path | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution under the fixed semantics; **mechanism still an owner choice** (stub / hybrid / archived bundle — §15 Q4) | closed-work step in `slice-closeout` | confirmed |
 | Durable-ruling capture (Outcome 3, if justified) | same-PR promotion happens informally; destination is clear | a trigger/rule naming when capture is mandatory | `slice-closeout` step 3 / `docs/README.md` update rules | partial |
 | Direction format | scattered equivalents (AGENTS rule, reference note, plan non-goals, tech-debt "must not fix") | shared shape; `DONE WHEN` ownership is weakest | owning `reference/*` contract | partial |
 | Scope-change calibration | scope changes are a documentation commit (`62b2ebd`) | no place to ask the calibration question | reconciliation header / phase README `GATE` | partial |
@@ -456,13 +489,16 @@ The next plan works on these files. Nothing else in the repository needs to chan
 ```text
 MUST CHANGE (candidate, plan to decide)
   .agents/skills/slice-closeout/SKILL.md
-      - phase-completion step (recognize the dependency-last gate; owner declaration is the
-        trigger of record — OD-1; the agent then records the consequences)
-      - closed-work step rewritten to the in-place compact-stub + exact-SHA policy (OD-2)
-      - optional: one capture-rule line (only if Phase 0 concludes capture is the failure)
+      - phase-completion step: recognize the dependency-last gate and record the phase-close
+        transition (the authoritative close event is §15 Q1, resolved by the plan/owner)
+      - closed-work step: encode the ratified semantics (authority shed + exact SHA/path
+        recovery); the mechanism is a plan-time owner choice (§15 Q4)
+      - PREREQUISITE, not Phase-0-conditional
+      - optional mechanism line: capture rule (only if Phase 0 concludes capture is the failure)
   docs/roadmap/p23-layout-depth/README.md
-      - GATE line becomes the phase-close trigger pointer (and later the P26 handoff)
+      - GATE line becomes the phase-close pointer (and later the P26 handoff)
   docs/operations/architecture-cycle.md            (NEW — live meta-state)
+      - PREREQUISITE: must exist before Phase 0, so `Phase 0 due/active` is representable
   docs/README.md
       - one "Where truth lives" table row; nothing in the reading-depth or route blocks
   docs/operations/current.md
@@ -501,31 +537,40 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
 
 ## 15. Open questions requiring owner decision
 
-### Resolved by owner (2026-09-20)
+### Withdrawn in review (2026-09-20)
 
-- **OD-1 — phase-close trigger of record = owner declaration, recorded by the agent.**
-  P23 does not auto-close when P23.16 acceptance passes. The owner declares the phase
-  shipped; the closing agent then walks the phase README status, the `roadmap/README.md`
-  row, the baton and the closed-work step as consequences. Matches the only historical
-  precedent (`f8411f7`). Answers Q1 and Q2.
-- **OD-2 — closed-work policy = in-place compact stub + exact SHA/path.** The ratified
-  truncated-artifact model replaces whole-bundle archive: `slice-closeout` step 8 is
-  rewritten, and the 19 already-landed plans in the live P23 folder migrate at P23 close.
-  Answers Q4.
+Two items were briefly recorded here as owner-resolved. Both are **withdrawn** — the harvest
+cannot settle either, and both are open questions again:
+
+- former **OD-1** (phase-close trigger = explicit owner declaration): **withdrawn.** Current
+  evidence establishes only that `P23.16 exit criteria satisfied → P23 may be closed`; it does
+  not establish whether closure requires separate owner ratification or is a deterministic
+  closeout transition. See Q1/Q2.
+- former **OD-2** (closed-work mechanism = in-place stub + exact SHA): **withdrawn as a
+  decision; retained as a recorded owner preference** (§7.2). The ratified plan fixes the
+  semantics (authority shed + exact recovery by verified SHA/path) and leaves the mechanism
+  open — see Q4.
 
 ### Still open
 
-1. **Who declares P23 closed?** — **RESOLVED (OD-1):** the owner declares; acceptance does
-   not auto-close. (Original question: does P23.16 acceptance auto-trigger Phase 0, or does
-   the owner declare `shipped`?)
-2. **What is the trigger source of record** — **RESOLVED (OD-1):** the owner's declaration;
-   the tracker row and the phase README `STATUS:` line are consequences of it.
-3. **Which phase does the baton advance to** after P23 — P26 (pipeline next, currently
-   `planning`) and under what status? The pipeline implies P26; nothing states it.
-4. **Archive policy:** — **RESOLVED (OD-2):** compact stub + exact SHA/path replaces the
-   whole-bundle archive; the 19 already-landed plans in the live P23 folder migrate at P23
-   close (original question: whole bundle, or stub + SHA, and does the existing live work
-   migrate?).
+1. **What is the authoritative P23 close event?** Current evidence establishes that
+   satisfying P23.16's `**Exit criteria:**` makes P23 *closable*. It does **not** establish
+   whether closure requires an explicit owner ratification (precedent `f8411f7`) or is a
+   deterministic closeout transition in which closing the dependency-last gate implies the
+   phase closes. The plan/owner must choose; `P23 = shipped` is then the machine-readable
+   observable.
+2. **Which surface records that close?** The `roadmap/README.md` phase row, the phase README
+   `STATUS:` line, or the owner's ruling commit as source of record — the answer follows from
+   Q1, so this cannot be settled first.
+3. **Which phase is next, and in what state?** *Not* a phase-order question: the pipeline pins
+   P26 as next. Open: does P26 remain `planning` while Phase 0 runs, when does it move to
+   `approved`/`in-progress`, may its design brief or implementation start before Phase 0
+   adjudication completes, and must Phase 1 be installed before P26 implementation begins?
+4. **Closed-work mechanism** (its semantics are already fixed by the ratified plan: closed
+   work sheds authority and stays exactly recoverable through a verified SHA/path):
+   whole-bundle archive, in-place compact stub, or a hybrid? The owner's stated preference is
+   the compact stub + SHA (§7.2); the implementation plan should present the alternatives
+   before choosing, and the 19 already-landed live plans are the migration set either way.
 5. **Does `operations/current.md` carry a META line** while a cycle stage is open, or does
    discovery happen only through the phase README / skill?
 6. **Is `docs/operations/architecture-cycle.md` the right home** (plan's proposal), and does
@@ -541,15 +586,19 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
 
 ## 16. Harvest questions — direct answers
 
-1. **What exact event should trigger Phase 0 after P23?** P23.16 satisfying its exit
-   criteria *and* the owner declaring P23 shipped — confirmed as the trigger of record by
-   **OD-1** (§15). The acceptance facts are in P23.16's `**Exit criteria:**`; the
-   declaration is an owner ruling (precedent: `f8411f7`).
-2. **How can an agent mechanically know?** It cannot today. The observable proxies are:
-   the P23.16 plan's `Status:` line, the phase README `STATUS:`/`CURRENT:`, and the
-   `roadmap/README.md` row. The tracker is written as drift-authoritative, so
-   `roadmap/README.md` P23 row = `shipped` is the cleanest mechanical signal — but nothing
-   writes it automatically, and adding a writer is a Phase 1 decision.
+1. **What exact event should trigger Phase 0 after P23?** Current evidence establishes only
+   the first half: satisfying P23.16's `**Exit criteria:**` makes P23 *closable*. The
+   authoritative close event is **unresolved** and is a plan/owner decision (§15 Q1) — either
+   an explicit owner ratification (precedent `f8411f7`) or a deterministic closeout
+   transition where closing the dependency-last gate closes the phase. Either way,
+   `P23 = shipped` is the observable Phase 0 keys off.
+2. **How can an agent mechanically know?** It cannot today: nothing detects the close. The
+   observable proxies are the P23.16 plan's `Status:` line, the phase README
+   `STATUS:`/`CURRENT:`, and the `roadmap/README.md` row; the tracker is written as
+   drift-authoritative, so `roadmap/README.md` P23 = `shipped` is the cleanest mechanical
+   signal. Making that transition happen is **prerequisite plumbing** (a written phase-close
+   step), not a Phase-0-selected mechanism: Phase 0's own `due` state has nothing to read
+   without it.
 3. **Which current procedure is the natural host?** `.agents/skills/slice-closeout`, at
    steps 5–6, because that is the only place a slice close and a P-level decision are
    considered together. The phase README `GATE` line is the natural *storage* for
@@ -571,15 +620,20 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
 8. **What exact lifecycle event updates `architecture-cycle.md`?** Its own state changes:
    a stage opening (phase close / adjudication complete / validation window start) and a
    stage closing (Phase 3 verdict). Not per-PR, and not per-slice.
-9. **What closeout/promotion behavior can be reused unchanged?** All of it: the promotion
-   path (skill steps 2–5), the baton shape and step 7, the phase-README status/order model,
-   the tech-debt ledger, the QA/closeout evidence pattern, and the harvest-report genre
-   (`docs/operations/test-suite-harvest-2026-09-19.md`).
-10. **What conflicts with current archive behavior?** Skill step 8's whole-bundle archive
-    is stated but never executed; the ratified model wants in-place compact stubs + SHA.
-    **Decided 2026-09-20 (OD-2, §15):** the stub + exact-SHA model wins over step 8, and the
-    19 already-landed plans in the live P23 folder migrate at P23 close. What remains is
-    execution, not a policy decision.
+9. **What closeout/promotion behavior can be reused unchanged?** The promotion path (skill
+   steps 2–5), the baton shape and step 7, and child-status routing through the phase
+   README — plus the tech-debt ledger, the QA/closeout evidence pattern and the
+   harvest-report genre (`docs/operations/test-suite-harvest-2026-09-19.md`). What
+   demonstrably **cannot** be reused unchanged: the parent-phase close transition (absent
+   today) and the closed-work step (§7.2, mechanism still undecided).
+10. **What conflicts with current archive behavior?** The *semantics* are fixed; the
+    *mechanism* is not. Skill step 8 prescribes whole-bundle archive (stated, never
+    executed); the ratified plan requires only that closed work sheds authority and stays
+    exactly recoverable by a verified SHA/path, explicitly leaving truncation/archive
+    mechanics to reconciliation. Whole-bundle archive, an in-place compact stub, or a hybrid
+    can each satisfy that contract; the owner's preference for the stub + SHA mechanism is
+    recorded in §7.2, and the 19 already-landed live plans are the migration set whichever
+    mechanism is chosen (§15 Q4).
 11. **How are durable owner rulings promoted today?** Informally but consistently:
     same-PR write into the owning `reference/*` contract with evidence in an annex, a QA
     record and `current.md` (`f7a31e2`, `02744b2`); or at close into a routed authority
@@ -610,19 +664,20 @@ HARVEST VERDICT:
   fact one owner, promotion already happens in practice, and the router is pull-based. The
   lifecycle needs **one new artifact** (`docs/operations/architecture-cycle.md`), **one
   new phase-close step** in `slice-closeout`, **one trigger pointer** in the P23 phase
-  README `GATE` line, and **one optional baton line**. The two policy blockers are now
-  owner-decided: phase close is owner-declared (**OD-1**) and closed work becomes an
-  in-place compact stub + exact SHA (**OD-2**).
+  README `GATE` line, and **one optional baton line**. The cycle-state file and the
+  phase-close transition are **prerequisite infrastructure that must exist before Phase 0**
+  — Phase 0 has no way to record `due`/`active` without them. Phase 0 then decides which
+  *mechanisms* (capture rule, guards, Direction, range review, or none) are justified.
 - **likely change surface:** `.agents/skills/slice-closeout/SKILL.md`,
   `docs/operations/architecture-cycle.md` (new), `docs/README.md` (one table row),
   `docs/roadmap/p23-layout-depth/README.md` (`GATE`), optionally `docs/operations/current.md`.
   No source, test, schema, CI or roadmap-scope change.
-- **major unknowns:** (a) which phase the baton advances to after P23 and under what status
-  (P26 implied, unstated); (b) executing the OD-2 migration — rewriting step 8 and stubbing
-  the 19 already-landed live plans; (c) whether Phase 0 will justify any capture mechanism at
-  all, which determines whether the cycle file exists to be routed in the first place;
-  (d) whether P26 (not P24) is indeed the Phase 2 validation window and how its close is
-  recognized.
+- **major unknowns:** (a) the authoritative phase-close event — explicit owner ratification
+  vs a deterministic closeout transition (§15 Q1); (b) P26's internal status and sequencing
+  while Phase 0 runs, and how P26's own close is recognized as the Phase 2 window exit;
+  (c) which mechanisms Phase 0 will actually justify (capture, guards, Direction, range
+  review, or none); (d) the closed-work *mechanism* (stub / hybrid / archived bundle) given
+  the already-fixed semantics, and the migration of the 19 landed live plans.
 - **deeper code harvest required before planning:** **no.** The remaining questions are
   owner/policy questions and one documentation-surface measurement gap. If a plan later
   needs the mechanical arm to be concrete, the exact bounded sets already exist in
