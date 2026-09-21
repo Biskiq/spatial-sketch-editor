@@ -1,6 +1,6 @@
 # Architecture Operating Cycle — Workflow Harvest
 
-Prerequisite 2 of `architecture-operating-cycle-plan.md` (§25). This is a workflow
+Prerequisite 2 of `architecture-operating-cycle-plan.md`. This is a workflow
 harvest, not a product-code harvest and not Phase 0.
 
 ## 0. Scope and evidence
@@ -18,15 +18,24 @@ REVISION:   r2 — owner review at 9aa3ca1 applied (four findings + two wording 
 
 **Post-harvest resolution (2026-09-21, added after `b2aa383`; the harvest body is unchanged).**
 This harvest was written before the owner decisions and remains correct as pre-decision evidence.
-One item it deliberately left neutral has since been settled: the **closed-work mechanism** —
-the "mechanism still an owner choice" cell in §12, the owner-preference note in §7.2, §15 Q4,
-and the major-unknown list in the verdict — was ratified as the **hybrid** model by **OD-4**: a
-path-preserving compact stub at the artifact's original path plus a `git show <A>:<path>`
-exact-recovery line, with an archive copy only for multi-file bundles and non-text evidence. See
-[`architecture-operating-cycle-implementation-plan.md`](./architecture-operating-cycle-implementation-plan.md)
-§1 (OD-4) and §7 (mechanics). The authoritative close event (§15 Q1/Q2) and the next phase's
-state and sequencing (§15 Q3) were likewise settled by OD-1 and OD-3 in the same plan, and
-Q5–Q9 by OD-5…OD-9. Read the items below as the pre-decision record they are.
+The open questions it recorded have since been settled by owner ruling and folded into current
+authority, which now owns them:
+
+```text
+canonical strategic meaning       → architecture-operating-cycle-plan.md
+applied close / anchor mechanics  → .agents/skills/slice-closeout/SKILL.md
+current live cycle state          → docs/operations/architecture-cycle.md
+```
+
+In particular, the **closed-work mechanism** this harvest deliberately left neutral — the
+"mechanism still an owner choice" cell in §12, the owner-preference note in §7.2, §15 Q4, and
+the major-unknown list in the verdict — was ratified as the **hybrid** model: a path-preserving
+compact stub at the artifact's original path plus a `git show <A>:<path>` exact-recovery line,
+with an archive copy only for multi-file bundles and non-text evidence. The authoritative close
+event (§15 Q1/Q2) and the next phase's state and sequencing (§15 Q3), and Q5–Q9, were likewise
+settled and folded into those owners. The owner-decision record lived in the now-closed
+implementation plan, which is historical evidence only and prescribes nothing. Read the items
+below as the pre-decision record they are.
 
 **Read in full:** `AGENTS.md`, `docs/README.md`, `docs/roadmap/README.md`,
 `docs/roadmap/architecture-operating-cycle-plan.md`, `docs/operations/current.md`,
@@ -698,8 +707,9 @@ HARVEST VERDICT:
   (c) which mechanisms Phase 0 will actually justify (capture, guards, Direction, range
   review, or none); (d) the closed-work *mechanism* (stub / hybrid / archived bundle) given
   the already-fixed semantics, and the migration of the 19 landed live plans.
-  **→ (d) resolved after the harvest by OD-4** (hybrid stub + SHA; §0); (a) and (b) are settled
-  by OD-1/OD-3, (c) remains Phase 0's finding by design.
+  **→ (d) resolved after the harvest** as the hybrid stub + SHA model (§0; mechanics now in
+  `.agents/skills/slice-closeout/SKILL.md`); (a) and (b) settled and folded into
+  `docs/operations/architecture-cycle.md`; (c) remains Phase 0's finding by design.
 - **deeper code harvest required before planning:** **no.** The remaining questions are
   owner/policy questions and one documentation-surface measurement gap. If a plan later
   needs the mechanical arm to be concrete, the exact bounded sets already exist in
