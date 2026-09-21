@@ -4,7 +4,7 @@
 provenance of the applied rules; the implementation commits are listed in §16 and the live authority
 is the skill plus `docs/operations/architecture-cycle.md`.
 **Review history:** r1–r7 corrections R1–R6, R7–R11, R12–R16, R17–R20, R21–R24 applied in
-§15.5–§15.9, plus the pre-merge rehearsal follow-up R25 (§15.10).
+§15.5–§15.9, plus the pre-merge rehearsal follow-ups R25 (§15.10) and R26 (§15.11).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -454,10 +454,10 @@ Step 2  Gate acceptance verified  →  phase is CLOSABLE
         (existing plan-status convention). "Closable" is a phase-local fact; nothing P-level
         has changed yet.
         If already recorded for this content, reuse the evidence (no re-run for its own sake).
-        Merge requirement: if this closeout performs the closed-work step (7) in the same PR,
-        use the §7.3 P2 route (land the accepted body first, compact afterwards), which is immune
-        to merge style; P1 (single merge-commit PR) is allowed only when that merge behaviour is
-        guaranteed. Whichever route, verify anchor reachability after merge.
+        Merge requirement: same-PR body + compaction is the §7.3 P1 optimisation and
+        requires an explicit merge-commit guarantee (never squash/rebase). Canonical P2
+        lands the accepted body on main first, then compacts in a later commit/PR, and is
+        merge-style independent. Whichever route, verify anchor reachability after merge.
 
 Step 3  Owner ratification  →  provenance
         An explicit owner ruling is required. Recorded as one line in the phase-close record
@@ -1400,6 +1400,18 @@ REHEARSAL  A disposable rehearsal of the phase-close procedure was run against t
     verification event, not an execution slice, so §16 is unchanged.
 ```
 
+### 15.11 Git-anchor rehearsal correction
+
+```text
+R26 Real Git-anchor rehearsal demonstrated that the applied skill/§4 Step 2
+    compressed P2 incorrectly. P2 is merge-style independent only when the accepted
+    full body has already landed on main before compaction. A same-PR A+B flow is P1
+    and requires a guaranteed merge-commit landing. Scratch tests: P2 landed-body-first
+    PASS; P1 merge commit PASS; same-PR squash anchor unreachable in fresh clone, FAIL
+    as expected; exact git show reconstruction PASS. Live skill + §4.2 Step 2 reconciled
+    to §7.3; §7.3 unchanged.
+```
+
 ### 15.4 Self-review before commit
 
 ```text
@@ -1417,6 +1429,7 @@ REHEARSAL  A disposable rehearsal of the phase-close procedure was run against t
 ✓ r7 review corrections R21–R24 applied and internally consistent (§15.9)
 ✓ no promised post-merge bookkeeping remains: provenance names its own commits instead (§16)
 ✓ pre-merge rehearsal follow-up R25 applied and recorded (§15.10); no rule change beyond it
+✓ Git-anchor rehearsal correction R26 applied and recorded (§15.11); §7.3 unchanged
 ✓ the preflight target is persisted in the close marker, so resume never recomputes it (§4.2)
 ✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
 ✓ phase-close legality is preflighted before any close write (§4.2)

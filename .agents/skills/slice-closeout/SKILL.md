@@ -98,9 +98,11 @@ never infer finality from numbering.
 Run the gate artifact's exit criteria and record the acceptance evidence in that artifact
 (existing plan-status convention). "Closable" is a phase-local fact: nothing P-level has changed
 yet. If already recorded for this content, reuse the evidence — do not re-run a gate for its own
-sake. If this close performs the closed-work step in the same PR, use the merge-style-independent
-route (land the accepted body first, compact afterwards) and verify anchor reachability after
-merge.
+sake. If the accepted full body and its compaction would land in the same PR, that is
+the P1 optimisation and is allowed only when that PR is explicitly guaranteed to land
+with a merge commit (not squash/rebase). Otherwise use canonical P2: land the accepted
+full body on main first, verify its anchor is reachable, then compact it in a later
+commit/PR.
 
 ### Step 3 — Owner ratification → provenance
 
@@ -188,8 +190,10 @@ A=$(git log -1 --format=%H -- <path>)
 ```
 
 The stub records `git show <A>:<path>`. Never use `--amend` — it rewrites `A` and invalidates the
-written anchor. Commit the accepted body first and compact afterwards (merge-style independent);
-if the recovery line was invalidated by a squash or force-push, annotate it to the reachable form
+written anchor. P2 canonical: the accepted full body already lands on main → compute/verify
+A → a later commit/PR compacts and records A. P1 optimisation: A + compaction in one PR →
+only with an explicit merge-commit guarantee; never assume squash/rebase preserves A.
+If the recovery line was invalidated by a squash or force-push, annotate it to the reachable form
 (`git fetch origin refs/pull/<n>/head && git show <A>:<path>`) and record the degradation. Verify
 in the same session, after merge:
 
