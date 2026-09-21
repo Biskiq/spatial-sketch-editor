@@ -513,9 +513,13 @@ Mechanisms not justified by Phase 0 remain absent.
 
 ## Trigger
 
-Phase 1's smallest response is installed.
+Phase 1's smallest response is installed and the prepared implementation plan for the validation-window phase has been reconciled.
 
-The next substantial architecture-heavy product phase becomes the validation window.
+Installation alone does not begin Phase 2. The cycle remains in Phase 1, ready for validation, until the first implementation slice of the selected validation-window phase starts.
+
+That first implementation slice begins Phase 2.
+
+The next substantial architecture-heavy product phase is expected to be the validation window.
 
 Expected first window:
 
@@ -524,6 +528,8 @@ P26
 ```
 
 assuming P23 supplied Phase 0 evidence.
+
+> **Owner amendment — 2026-09-21.** Phase 2 entry was clarified from "response installed" to the first implementation slice of the validation-window phase. This preserves a prospective validation boundary and is ratified as OD-3 (see `architecture-operating-cycle-implementation-plan.md` §1).
 
 Normal product development continues.
 

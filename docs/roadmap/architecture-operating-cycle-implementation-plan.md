@@ -1,7 +1,7 @@
 # Architecture Operating Cycle — Implementation Plan
 
 **Status:** implementation-ready, not executed. Owner review pending (r6 — review corrections
-R1–R6, R7–R11, R12–R16 and R17–R19 applied in §15.5–§15.8).
+R1–R6, R7–R11, R12–R16 and R17–R20 applied in §15.5–§15.8).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -45,9 +45,10 @@ ONE REVIEW ADDENDUM (documents only; not an execution slice)
 ### 0.2 What this plan does not touch
 
 `AGENTS.md` · `work-checkpoint` skill · any source or test file · CI (there is none) · any
-existing `reference/*` contract · product roadmap scope, order or status · the ratified plan ·
-P23/P26 status or scope · the harvest's accepted body and findings (it gains only the dated
-post-harvest resolution addendum described in §0.1).
+existing `reference/*` contract · product roadmap scope, order or status · the ratified plan
+(except its owner-amended §15 trigger, R20, which an owner ruling changed and this plan only
+records) · P23/P26 status or scope · the harvest's accepted body and findings (it gains only the
+dated post-harvest resolution addendum described in §0.1).
 
 ### 0.3 Why the surface is this small
 
@@ -1061,8 +1062,9 @@ ACCEPTANCE     it is never mistaken for pending instructions; it is explicitly o
 
 ```text
 AGENTS.md · work-checkpoint skill · all source and test files · package.json / CI (none exists) ·
-reference/* contracts · P26 docs · P23/P26 scope, order, status · the ratified plan · the
-harvest's body and findings (only the §0 post-harvest resolution addendum is added)
+reference/* contracts · P26 docs · P23/P26 scope, order, status · the ratified plan (its §15
+trigger was owner-amended, R20 — an owner ruling, not a step of this plan) · the harvest's body
+and findings (only the §0 post-harvest resolution addendum is added)
 ```
 
 ---
@@ -1332,10 +1334,16 @@ R17 The preflight target is now persisted instead of "remembered". The phase REA
 R18 §11 S5 rehearsal scope corrected to matrices A–P (case P was added at r5).
 R19 PR body refreshed for this head (r6 / this commit, matrices A–P, corrections R12–R17).
     Metadata only — no document change.
+R20 Owner amendment to the ratified plan §15 (2026-09-21), closing the residual §15.7 flagged:
+    the Phase 2 trigger now reads "installed **and** the prepared plan reconciled", names the
+    first implementation slice as the entry, and is annotated as an owner amendment ratified as
+    OD-3. The amendment lives in `architecture-operating-cycle-plan.md`; §3/§6 of this plan
+    already stated the same boundary, so no plan change follows.
 ```
 
 No ratified owner decision (OD-1…OD-9) is reopened: R17 closes the last idempotence gap in the
-step 4–8 sequence, R18 is a cross-reference, and R19 is PR metadata.
+step 4–8 sequence, R18 is a cross-reference, R19 is PR metadata, and R20 records the owner
+amendment that removed the last stale trigger in the ratified plan.
 
 ### 15.4 Self-review before commit
 
@@ -1350,7 +1358,7 @@ step 4–8 sequence, R18 is a cross-reference, and R19 is PR metadata.
 ✓ no planned change to AGENTS.md / work-checkpoint / source / tests / CI / roadmap order (§10.9)
 ✓ r4 review corrections R7–R11 applied and internally consistent (§15.6)
 ✓ r5 review corrections R12–R16 applied and internally consistent (§15.7)
-✓ r6 review corrections R17–R19 applied and internally consistent (§15.8)
+✓ r6 review corrections R17–R20 applied and internally consistent (§15.8)
 ✓ the preflight target is persisted in the close marker, so resume never recomputes it (§4.2)
 ✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
 ✓ phase-close legality is preflighted before any close write (§4.2)
