@@ -1,0 +1,110 @@
+# Architecture Cycle — live state
+
+**Role:** live meta state for the architecture operating cycle. Answers: which cycle stage is
+open, on which trigger, and what the next action is.
+
+```text
+NOT:  a plan · an activity diary · product status · product next-work
+OWNS: meta stage only
+
+PROVENANCE  ratified design → ../roadmap/architecture-operating-cycle-plan.md
+            instructions    → ../roadmap/architecture-operating-cycle-implementation-plan.md
+            planning evidence → ../roadmap/architecture-operating-cycle-workflow-harvest.md
+BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in ./current.md.
+            Nothing here restates either.
+```
+
+## State
+
+```text
+STAGE              WAITING
+STATUS             installed; no diagnosis due
+TRIGGER            S1–S5 landed (prerequisite infrastructure)
+PRODUCT CONTEXT    P23 (in progress) — the close that will open Phase 0
+OWNER ACTION       not required
+NEXT               none pending
+EXIT CONDITION     the owning phase is owner-closed
+VALIDATION WINDOW  empty
+ACTIVE MECHANISMS  none
+CALIBRATION        unchanged
+EVIDENCE           empty
+```
+
+`OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
+`EVIDENCE` lets Phase 0 resume without reading the whole evidence set. No field without a job.
+
+## Stages
+
+| Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
+| --- | --- | --- | --- | --- | --- | --- |
+| `WAITING` | Cycle installed; nothing due | S1–S5 landed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
+| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 9) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
+| `PHASE_0_ACTIVE` | Two independent audits in progress | owner authorization | run audits A and B independently; do not read each other | both audits complete | `ADJUDICATION` | no |
+| `ADJUDICATION` | Owner classifies and decides | both audits exist | owner adjudicates A/B/C/D + "what catches it next time?" + outcome | outcome recorded | `PHASE_1` or `STEADY` | **yes** |
+| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
+| `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes | `PHASE_3_EVALUATE` | no |
+| `PHASE_3_EVALUATE` | Keep / simplify / delete | validation window closed | record a verdict per mechanism | verdicts recorded; survivors folded into normal practice | `STEADY` | **yes** |
+| `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or Outcome 1 (nothing installed) | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
+
+## Transitions
+
+```text
+install (S1–S5)                        → WAITING
+WAITING      + phase owner-closed      → PHASE_0_DUE
+PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
+PHASE_0_ACTIVE + audits A and B done   → ADJUDICATION
+ADJUDICATION + Outcome 1 (C/D)         → STEADY              (no PHASE_1, no PHASE_2)
+ADJUDICATION + Outcome 2/3/4           → PHASE_1
+PHASE_1      + justified mechanisms + reconciled window plan
+                                       → PHASE_1             (STATUS: ready for validation)
+PHASE_1      + first implementation slice of the window phase starts
+                                       → PHASE_2_VALIDATING  (window = that phase, e.g. P26)
+PHASE_2_VALIDATING + window phase ends → PHASE_3_EVALUATE
+PHASE_3_EVALUATE + verdicts            → STEADY
+STEADY       + ordinary major phase close → STEADY   (reconcile · subtract · close work)
+STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → PHASE_0_DUE
+```
+
+**Phase 2 begins at implementation, not at installation.** Installing the mechanisms and
+reconciling the prepared window plan leaves the cycle in `PHASE_1` with
+`STATUS: ready for validation`; `PHASE_2_VALIDATING` opens on the **first implementation slice**
+of the window phase, and no `VALIDATION WINDOW` is opened before it starts.
+
+**Steady state does not re-run Phase 0.** A major phase close is *hygiene*, not *diagnosis*: it
+performs the ordinary closeout work (reconciliation, subtraction of stale guidance, closed-work
+compaction) and the cycle remains `STEADY`. Diagnosis restarts only on evidence — a new
+demonstrated architectural failure — or because the owner explicitly asks for a fresh
+retrospective.
+
+**Outcome 1 opens no window.** With nothing installed the cycle goes straight to `STEADY` with
+`TRIGGER: none pending` and `ACTIVE MECHANISMS: none`; a validation window with an empty
+mechanism list is a defect, not a valid value.
+
+**Early mechanism verdicts.** A mechanism that clearly succeeds or fails early may move
+`PHASE_2_VALIDATING → PHASE_3_EVALUATE` before the window closes; record the reason here. The
+window phase still closes normally.
+
+## `current.md` META pointer
+
+```text
+META line present  ⇔  this file's OWNER ACTION: required
+line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
+writer:      the closeout agent (slice-closeout, phase-close step 10), or the owner's ruling
+             when a stage changes
+removal:     when OWNER ACTION returns to not required (e.g. Phase 0 authorized)
+```
+
+This file owns the condition; `docs/operations/current.md` only mirrors it.
+
+## ROUTES — the three seams, nothing else
+
+```text
+1  docs/README.md "Where truth lives"          — the pull-based row (deliberate meta work)
+2  phase README FINAL PHASE GATE line          — the close path discovers the cycle from the
+                                                 phase it is closing
+3  slice-closeout, phase close (preflight, 9)  — the procedure that performs the close writes
+                                                 the stage and the META pointer
+```
+
+Deliberately **not** routed from `AGENTS.md`, the IMPLEMENT/DESIGN/RESEARCH blocks, any phase
+child route, ordinary implementation startup context, or `work-checkpoint`.
