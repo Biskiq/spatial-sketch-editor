@@ -32,6 +32,7 @@ import type {
 	LayoutGeometryIssue
 } from './layout-geometry-types';
 import { geometryId } from './layout-geometry-types';
+import { junctionSeamFailureOf } from './layout-junction-clearance';
 import {
 	compiledJunctionId,
 	endpointSolidBands,
@@ -568,6 +569,15 @@ function compileWallFirstJunctions(
 		);
 		const resolved = resolveJunctionGeometry(junctionId, point, legs);
 		issues.push(...resolved.issues);
+		// P23.15 — canonical seam acceptance. Validity is decided HERE, from the
+		// resolved geometry the renderers consume, so a mesh builder is never the
+		// first place a seam failure is discovered. The resolution already reports
+		// a fold (it needs that fact for control flow); this de-duplicates by code
+		// so one Junction never produces the same issue twice.
+		const seam = junctionSeamFailureOf({ junctionId, point, legs, resolution: resolved.resolution });
+		if (seam && !resolved.issues.some((issue) => issue.code === seam.code)) {
+			issues.push({ path: `junctions.${junctionId}`, code: seam.code, message: seam.message, targetId: junctionId });
+		}
 		const minBand = Math.min(...legs.map((leg) => leg.bottomY));
 		const maxBand = Math.max(...legs.map((leg) => leg.topY));
 		junctions.push({

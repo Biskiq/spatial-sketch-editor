@@ -1,0 +1,243 @@
+/**
+ * `layout-junction-clearance.ts` — P23.15 canonical Junction seam validation.
+ *
+ * Compile canonical Walls/Junctions → resolve Junction geometry → **validate the
+ * resolved geometry** → `LayoutGeometryIssue` → only valid compiled geometry
+ * reaches consumers. This is the P23.11 render-safe shape: canonical compiler
+ * acceptance is authoritative, and the mesh builders repeat the same pure
+ * predicate as defense-in-depth instead of being the first place validity is
+ * discovered.
+ *
+ * **Production validity is analytic, not sampled.** Every predicate reads the
+ * actual resolved geometry and is deterministic, convention-free (no dependence
+ * on the arbitrary canonical orientation of a Wall) and axis-independent:
+ *
+ * ```text
+ * junction_seam_degenerate  a coordinate is not finite, or a resolved band has
+ *                           no vertical span (a zero-height surface)
+ * junction_seam_fold        two incident legs have exactly collinear outward
+ *                           rays in the same direction: their offset solids
+ *                           coincide
+ * junction_seam_overlap     an owned seam polygon has no area, so the resolved
+ *                           seam surface has collapsed past its own offset line
+ * junction_seam_uncovered   an incident leg was resolved to nothing: it is
+ *                           neither a terminal cap, nor a corner, nor a
+ *                           suppressed interface, so its end is left open
+ * ```
+ *
+ * `uncovered` is deliberately stated over the resolution's own completeness
+ * (every leg must be terminal / cornered / suppressed) rather than over a
+ * sampled or inferred area partition: a Junction is a point, so a reflex sector
+ * between two walls is simply outside the union, not a hole. An *unresolved*
+ * leg, by contrast, always leaves a real gap.
+ *
+ * The throwaway raster/coverage probe from the P23.15 investigation is
+ * deliberately **not** the production predicate. It lives on as a fixture oracle
+ * in the test helper, precisely because it does not share this algorithm.
+ *
+ * A near-parallel (but not collinear) pair of legs is deliberately **not** a
+ * failure: a very acute corner is legitimate architecture, and the miter limit
+ * already turns an unresolvable apex into a bevel. Only the exact fold and the
+ * collapsed seam polygon are blocked.
+ *
+ * There is no renderer, no Three.js and no document read here: the predicate is
+ * a pure function of already-compiled facts.
+ */
+import type { LayoutVec2 } from './layout-types';
+import type {
+	CompiledJunction,
+	CompiledJunctionLeg,
+	CompiledJunctionResolution,
+	CompiledLegJoin
+} from './layout-geometry-types';
+
+/** Absolute floor for "this span/area is actually zero". */
+export const JUNCTION_SEAM_EPSILON = 1e-9;
+/** Parallel rays closer than this `|cross|` are treated as collinear. */
+export const JUNCTION_SEAM_PARALLEL_TOLERANCE = 1e-9;
+
+export type JunctionSeamCode =
+	| 'junction_seam_uncovered'
+	| 'junction_seam_overlap'
+	| 'junction_seam_degenerate'
+	| 'junction_seam_fold';
+
+export type JunctionSeamFailure = { code: JunctionSeamCode; message: string };
+
+export const JUNCTION_SEAM_MESSAGES: Readonly<Record<JunctionSeamCode, string>> = {
+	junction_seam_uncovered:
+		'Junction seam leaves an incident Wall end unresolved: it is neither a terminal cap, nor a resolved corner, nor a suppressed interface.',
+	junction_seam_overlap:
+		'Junction seam geometry overlaps illegitimately: a resolved seam surface has collapsed past its own offset line.',
+	junction_seam_degenerate:
+		'Junction seam geometry is degenerate: a coordinate is not finite, or a resolved band has no vertical span.',
+	junction_seam_fold:
+		'Junction has two legs pointing the same direction (fold); their offset regions would coincide.'
+};
+
+export function junctionSeamFailure(code: JunctionSeamCode): JunctionSeamFailure {
+	return { code, message: JUNCTION_SEAM_MESSAGES[code] };
+}
+
+type Vec2Like = readonly [number, number];
+
+function finite2(point: Vec2Like): boolean {
+	return Number.isFinite(point[0]) && Number.isFinite(point[1]);
+}
+
+/**
+ * Is a resolved seam polygon collapsed past its own offset line?
+ *
+ * The test is **scale-free** — the polygon's area is compared against its own
+ * bounding-box diagonal squared — so a legitimately near-collinear pair of Walls
+ * at any thickness is not mistaken for a collapsed seam, while a seam surface
+ * whose arms are exactly collinear (area zero at its own scale) is caught.
+ */
+function seamPolygonCollapsed(polygon: readonly Vec2Like[]): boolean {
+	if (polygon.length < 3) return true;
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	for (const point of polygon) {
+		minX = Math.min(minX, point[0]);
+		minY = Math.min(minY, point[1]);
+		maxX = Math.max(maxX, point[0]);
+		maxY = Math.max(maxY, point[1]);
+	}
+	const diagonal = Math.hypot(maxX - minX, maxY - minY);
+	if (!(diagonal > 0)) return true;
+	return Math.abs(doubleSignedArea(polygon)) <= JUNCTION_SEAM_EPSILON * diagonal * diagonal;
+}
+
+function cross(a: Vec2Like, b: Vec2Like): number {
+	return a[0] * b[1] - a[1] * b[0];
+}
+
+function dot(a: Vec2Like, b: Vec2Like): number {
+	return a[0] * b[0] + a[1] * b[1];
+}
+
+/** Unit outward ray of a leg (from the Junction into the Wall). */
+export function junctionOutwardRay(leg: CompiledJunctionLeg): LayoutVec2 {
+	const length = Math.hypot(leg.tangentOut[0], leg.tangentOut[1]) || 1;
+	return [leg.tangentOut[0] / length, leg.tangentOut[1] / length];
+}
+
+/** Twice the signed area of a polygon (shoelace). */
+function doubleSignedArea(polygon: readonly Vec2Like[]): number {
+	let total = 0;
+	for (let index = 0; index < polygon.length; index += 1) {
+		const a = polygon[index]!;
+		const b = polygon[(index + 1) % polygon.length]!;
+		total += a[0] * b[1] - b[0] * a[1];
+	}
+	return total;
+}
+
+/**
+ * The subset of the rule a single resolved Wall end can decide. Shared verbatim
+ * by the compile gate and both mesh builders, so the three can never disagree.
+ */
+export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | undefined {
+	for (const band of join.bands) {
+		if (!Number.isFinite(band.bottomY) || !Number.isFinite(band.topY)) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+		if (band.topY - band.bottomY <= JUNCTION_SEAM_EPSILON) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+	}
+	for (const point of join.endBoundary) {
+		if (!finite2(point)) return junctionSeamFailure('junction_seam_degenerate');
+	}
+	if (join.corner) {
+		for (const side of [join.corner.front, join.corner.back]) {
+			if (side.kind === 'miter') {
+				if (!finite2(side.apex)) return junctionSeamFailure('junction_seam_degenerate');
+			} else if (!finite2(side.a0) || !finite2(side.b0)) {
+				return junctionSeamFailure('junction_seam_degenerate');
+			}
+		}
+	}
+	if (join.fold) return junctionSeamFailure('junction_seam_fold');
+	if (join.ownedSeam) {
+		for (const point of join.ownedSeam.polygon) {
+			if (!finite2(point)) return junctionSeamFailure('junction_seam_degenerate');
+		}
+		if (seamPolygonCollapsed(join.ownedSeam.polygon)) return junctionSeamFailure('junction_seam_overlap');
+	}
+	// An incident leg must be resolved to *something*. A suppressed interface
+	// (a straight continuation) and a fold are both resolved; a bare `miter` /
+	// `bevel` / `trim` without a corner is not.
+	if (join.kind !== 'terminal' && !join.corner && !join.interfaceSuppressed) {
+		return junctionSeamFailure('junction_seam_uncovered');
+	}
+	return undefined;
+}
+
+export type JunctionSeamInput = {
+	junctionId: string;
+	point: LayoutVec2;
+	legs: readonly CompiledJunctionLeg[];
+	resolution: CompiledJunctionResolution;
+};
+
+/**
+ * Validate one resolved Junction. Predicates run in a fixed order so the
+ * reported code is deterministic: the Junction's own coordinates, then the
+ * Wall-decidable join failures, then the Junction-level ray checks (a fold
+ * reported by the pair of legs, then near-parallel overlap). The first failure
+ * is returned.
+ */
+export function junctionSeamFailureOf(junction: JunctionSeamInput): JunctionSeamFailure | undefined {
+	const { point, legs, resolution } = junction;
+	if (!finite2(point) || legs.some((leg) => !finite2(leg.tangentOut) || !finite2(leg.normalOut) || !Number.isFinite(leg.halfThickness))) {
+		return junctionSeamFailure('junction_seam_degenerate');
+	}
+	if (!finite2(resolution.bounds2.min) || !finite2(resolution.bounds2.max)) {
+		return junctionSeamFailure('junction_seam_degenerate');
+	}
+
+	for (const join of resolution.joins) {
+		const failure = joinSeamFailure(join);
+		if (failure) return failure;
+	}
+
+	// Junction-level fold: two legs leaving in exactly the same direction. The
+	// resolution reports this on its joins too; this is the same rule applied to
+	// the raw legs, so a resolution that somehow missed it still cannot pass.
+	for (let index = 0; index < legs.length; index += 1) {
+		for (let other = index + 1; other < legs.length; other += 1) {
+			const a = junctionOutwardRay(legs[index]!);
+			const b = junctionOutwardRay(legs[other]!);
+			if (dot(a, b) <= 0) continue;
+			if (Math.abs(cross(a, b)) <= JUNCTION_SEAM_PARALLEL_TOLERANCE) return junctionSeamFailure('junction_seam_fold');
+		}
+	}
+	return undefined;
+}
+
+/** Convenience wrapper over a compiled Junction record — the compile gate entry point. */
+export function junctionSeamFailureOfCompiled(
+	junction: Pick<CompiledJunction, 'junctionId' | 'point' | 'legs' | 'resolution'>
+): JunctionSeamFailure | undefined {
+	return junctionSeamFailureOf(junction);
+}
+
+/**
+ * Builder-side defense-in-depth: the same rule applied to the ends one Wall was
+ * given, so a renderer never becomes the first place a seam failure is
+ * discovered. Identical predicate, identical codes — no second rule.
+ */
+export function wallEndsSeamFailure(
+	ends: { start?: CompiledLegJoin | null; end?: CompiledLegJoin | null } | null | undefined
+): JunctionSeamFailure | undefined {
+	if (!ends) return undefined;
+	for (const join of [ends.start, ends.end]) {
+		if (!join) continue;
+		const failure = joinSeamFailure(join);
+		if (failure) return failure;
+	}
+	return undefined;
+}
