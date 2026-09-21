@@ -315,6 +315,54 @@ export type CompiledEndCorner = { front: CompiledCornerSide; back: CompiledCorne
 /** How an incident leg's Junction end is resolved. */
 export type CompiledLegJoinKind = 'terminal' | 'suppressed' | 'miter' | 'bevel' | 'trim';
 
+/**
+ * P23.15 — one vertical band of a resolved Junction surface/interface.
+ * Per-band resolution is what makes exposure Opening-aware: a branch that
+ * covers a difference step in plan below its own top does not cover it above.
+ */
+export type CompiledJunctionBand = { bottomY: number; topY: number };
+
+/**
+ * P23.15 — one resolved, Wall-attributed physical surface at a Junction.
+ *
+ * `layout-core` decides **what physical surface exists and who owns it**; a
+ * builder only turns this into vertices/indices. No builder decides thickness
+ * order, band exposure, step existence or difference ownership.
+ *
+ * The surface is a vertical planar quad: the plan segment `from` → `to`
+ * extruded over each vertical band, wound so its geometric normal points along
+ * `normal` (away from the owning Wall's material).
+ */
+export type CompiledJunctionSurface = {
+	ownerWallId: string;
+	end: 'start' | 'end';
+	kind: 'continuation-thickness-step' | 'continuation-height-step' | 'branch-trim';
+	from: LayoutVec2;
+	to: LayoutVec2;
+	/** Outward plan normal (unit) pointing away from the owning Wall's material. */
+	normal: LayoutVec2;
+	bands: CompiledJunctionBand[];
+};
+
+/**
+ * P23.15 — an internal interface: another incident Wall's material rests on
+ * this Wall's own offset face here, so that region of the face is interior to
+ * the resolved Junction material and must not be painted.
+ *
+ * `normal` is the outward plan normal of the Wall's own face the interface
+ * lies on (a builder matches its face normal against it, never a `front`/`back`
+ * convention). `fromDistance`/`toDistance` are signed along-axis distances from
+ * this Junction end (+ = into the Wall).
+ */
+export type CompiledJunctionInterface = {
+	wallId: string;
+	end: 'start' | 'end';
+	normal: LayoutVec2;
+	fromDistance: number;
+	toDistance: number;
+	bands: CompiledJunctionBand[];
+};
+
 /** Counterparty leg facts a Wall end needs to close a seam without its neighbour's mesh. */
 export type CompiledJunctionNeighbor = {
 	wallId: string;
@@ -354,6 +402,25 @@ export type CompiledLegJoin = {
 	 * can refuse the same configuration (same code) without the Junction.
 	 */
 	fold?: true;
+	/**
+	 * P23.15 — the resolved, Wall-attributed surfaces this end owns: tangent
+	 * continuation difference steps and exposed branch trims. Emitted by
+	 * `layout-core`; a builder only triangulates them.
+	 */
+	surfaces?: CompiledJunctionSurface[];
+	/**
+	 * P23.15 — internal interfaces resting on **this** Wall's own faces: the
+	 * region of the face that is interior to the resolved Junction material.
+	 */
+	interfaces?: CompiledJunctionInterface[];
+	/**
+	 * P23.15 — along-distance from this Junction end where the Wall's material
+	 * begins (0 = the Junction plane). A trimmed branch carries the distance at
+	 * which it leaves the resolved Junction material; its sections/reveals are
+	 * clipped there and its end cross-section is **not** painted, because that
+	 * interface belongs to the resolved Junction material instead.
+	 */
+	clipDistance?: number;
 };
 
 /** P23.15 — the local, renderer-neutral solve result for one Junction. */

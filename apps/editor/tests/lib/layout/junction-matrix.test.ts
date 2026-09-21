@@ -242,11 +242,16 @@ describe('P23.15 Task 6 — Junction matrix (fast lane)', () => {
 		assertCoverage(documentValue, union, [0, 0], [2.5]);
 		const stem = union.find((mesh) => mesh.roomId === 'ws')!;
 		expect(stem.indices.length).toBeGreaterThan(0);
-		// The door void reaching the Junction is not sealed by the resolved geometry:
-		// a point inside the stem's body below the lintel is outside every mesh.
-		expect(anyMeshContains(union, [0, 0.5, 0.05])).toBe(false);
+		// The door void reaching the Junction is not sealed by the resolved
+		// geometry. The stem is now trimmed against the resolved through-Wall
+		// material (its own body starts where the through strip ends), so the door
+		// void is sampled in the stem's own material, not on the through seam.
+		expect(anyMeshContains(union, [0, 0.5, 0.3])).toBe(false);
 		// ...while above the lintel the stem is solid there.
-		expect(anyMeshContains(union, [0, 2.5, 0.05])).toBe(true);
+		expect(anyMeshContains(union, [0, 2.5, 0.3])).toBe(true);
+		// ...and the through Wall's own material closes the Junction region behind
+		// the trim (sampled off the through Walls' shared seam).
+		expect(anyMeshContains(union, [0.05, 2.5, 0.05])).toBe(true);
 	});
 
 	it('keeps a Wall authored once when two Rooms reference its opposite sides (F)', () => {
