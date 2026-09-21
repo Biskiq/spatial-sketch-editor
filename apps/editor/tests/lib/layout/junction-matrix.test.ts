@@ -269,12 +269,31 @@ describe('P23.15 Task 6 — Junction matrix (fast lane)', () => {
 		const { compilation, union } = buildUnion(documentValue);
 		const documentBounds = compilation.geometry.bounds!;
 		expect(documentBounds).not.toBeNull();
+		// Every aggregate bounds record the resolved geometry contributes to: the
+		// document, the owning Floor, the Junction itself and the owner Wall.
+		const floorBounds = compilation.geometry.floors[0]!.bounds3!;
+		const junctionBounds = compilation.geometry.junctions!.map((entry) => entry.bounds3);
+		const wallBoundsById = new Map(compilation.geometry.walls.map((wall) => [wall.wallId, wall.bounds3]));
+		const within = (value: number, min: number, max: number, label: string) => {
+			expect(value, `${label} min`).toBeGreaterThanOrEqual(min - 1e-6);
+			expect(value, `${label} max`).toBeLessThanOrEqual(max + 1e-6);
+		};
 		for (const mesh of union) {
+			const own = wallBoundsById.get(mesh.roomId)!;
 			for (let index = 0; index < mesh.positions.length; index += 3) {
 				for (const axis of [0, 1, 2] as const) {
-					expect(mesh.positions[index + axis]!, `axis ${axis}`).toBeGreaterThanOrEqual(documentBounds.min[axis] - 1e-6);
-					expect(mesh.positions[index + axis]!, `axis ${axis}`).toBeLessThanOrEqual(documentBounds.max[axis] + 1e-6);
+					const value = mesh.positions[index + axis]!;
+					within(value, documentBounds.min[axis], documentBounds.max[axis], `document axis ${axis}`);
+					within(value, floorBounds.min[axis], floorBounds.max[axis], `floor axis ${axis}`);
+					within(value, own.min[axis], own.max[axis], `wall ${mesh.roomId} axis ${axis}`);
 				}
+			}
+		}
+		// `CompiledJunction.bounds3` must be inside the aggregate document bounds too.
+		for (const bounds of junctionBounds) {
+			for (const axis of [0, 1, 2] as const) {
+				within(bounds.min[axis], documentBounds.min[axis], documentBounds.max[axis], `junction min axis ${axis}`);
+				within(bounds.max[axis], documentBounds.min[axis], documentBounds.max[axis], `junction max axis ${axis}`);
 			}
 		}
 	});

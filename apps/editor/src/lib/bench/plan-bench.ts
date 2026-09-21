@@ -1,8 +1,8 @@
 import type { LayoutDocument, LayoutVec2 } from '$lib/layout/layout-types';
 import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
 import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
-import { buildRoomWallMesh } from '$lib/layout/wall-mesh-builder';
-import type { CompiledLayoutGeometry, CompiledQueryPoint } from '$lib/layout/layout-geometry-types';
+import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import { legJoinsByWall, type CompiledLayoutGeometry, type CompiledQueryPoint } from '$lib/layout/layout-geometry-types';
 // Pure hit resolver (imports only $lib/layout/**; no Svelte/DOM/Three). Used here
 // so the Node tier measures the real locked-priority hit path rather than a stub.
 import { resolvePlanHit } from '$lib/editor/layout/plan-hit';
@@ -130,7 +130,12 @@ function countRooms(document: LayoutDocument): number {
 	return document.floors.reduce((sum, floor) => sum + floor.rooms.length, 0);
 }
 
-/** Build every room's indexed wall mesh; returns the total index count (a deterministic work proxy). */
+/**
+ * Build every index-count work proxy: each room's legacy mesh, then every
+ * canonical physical Wall through the Junction-aware P23.15 path (resolved ends
+ * from the compiled Junction contract). A wall-first document has no room-owned
+ * walls, so the canonical loop is where its wall cost actually lives.
+ */
 function buildAllWallMeshes(compiled: CompiledLayoutGeometry): number {
 	let indexCount = 0;
 	for (const room of compiled.rooms) {
@@ -138,6 +143,20 @@ function buildAllWallMeshes(compiled: CompiledLayoutGeometry): number {
 		if (!result.mesh) {
 			const details = result.issues.map((issue) => `${issue.code}: ${issue.message}`).join('; ');
 			throw new Error(`wall mesh build failed for room ${room.roomId}: ${details}`);
+		}
+		indexCount += result.mesh.indices.length;
+	}
+	const endsByWall = legJoinsByWall(compiled.junctions);
+	const elevationByFloor = new Map(compiled.floors.map((floor) => [floor.floorId, floor.elevation] as const));
+	for (const wall of compiled.walls) {
+		const result = buildStandaloneWallMesh(
+			wall,
+			elevationByFloor.get(wall.floorId) ?? 0,
+			endsByWall.get(wall.wallId) ?? null
+		);
+		if (!result.mesh) {
+			const details = result.issues.map((issue) => `${issue.code}: ${issue.message}`).join('; ');
+			throw new Error(`wall mesh build failed for wall ${wall.wallId}: ${details}`);
 		}
 		indexCount += result.mesh.indices.length;
 	}

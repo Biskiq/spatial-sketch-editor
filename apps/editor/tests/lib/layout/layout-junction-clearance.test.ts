@@ -187,7 +187,7 @@ describe('P23.15 Task 4 — junction seam acceptance', () => {
 	});
 
 	it('pins junction_seam_uncovered for an end the resolution left unresolved', () => {
-		const unresolved = join({ kind: 'trim', corner: null, interfaceSuppressed: false });
+		const unresolved = join({ kind: 'miter', corner: null, interfaceSuppressed: false });
 		expect(
 			junctionSeamFailureOf({ junctionId: 'j', point: [0, 0], legs: [leg('wa', 0), leg('wb', 90)], resolution: resolution([unresolved]) })
 				?.code

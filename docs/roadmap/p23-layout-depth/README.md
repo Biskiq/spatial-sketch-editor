@@ -15,9 +15,9 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: P23.14 closed (accepted 2026-09-21); P23.15 plan written, pending owner review
-CURRENT: P23.15 — Junction-correct wall-first 3D
-NEXT: P23.15 implementation, then P23.16 final closeout
+STAGE: P23.14 closed (accepted 2026-09-21); P23.15 plan owner-reviewed and implemented, live rows pending
+CURRENT: P23.15 — Junction-correct wall-first 3D (implementation landed, owner closeout pending)
+NEXT: P23.15 owner review of the landed implementation, then P23.16 final closeout
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
 ```
 
@@ -37,6 +37,8 @@ FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout ga
 ```text
 ROUTE (active child P23.15 — direct; no intermediate slice router):
 plan → p23.15-junction-correct-wall-first-3d/2026-09-21-P23.15-junction-correct-wall-first-3d.md
+qa → p23.15-junction-correct-wall-first-3d/qa/2026-09-21-P23.15-junction-qa-record.md
+  (automated acceptance landed; live 3D rows manual-owed to an owner session)
 remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.15
 dependencies → landed P23.8 topology acceptance · P23.11 curved-Wall compiler shape ·
   P23.13 Plan fixtures · canonical physical-Wall compilation
