@@ -163,8 +163,8 @@ phase. The baton stays product-only here.
 ### Step 7 — Closed work
 
 Apply the hybrid closed-work rule defined in the `slice-closeout` skill ("Closed work (hybrid
-rule)") to this close's artifacts — same anchor safety, same P1/P2 rule, same recovery
-verification:
+rule)") to the artifacts **this phase close itself changes or compacts** — same anchor safety,
+same P1/P2 rule, same recovery verification:
 
 ```text
 ARCHIVE A COPY (copy the full body to docs/archive/roadmap/<phase>/<slice>/…, keep a stub)
@@ -177,9 +177,12 @@ LEAVE ALONE
   already-correctly-archived material · P1–P22 · the live phase README
 ```
 
-Slice hygiene still applies to the gate slice: run the `slice-closeout` procedure's steps 9–11
-(prune transient artifacts, repair links for every moved path, confirm no live router treats
-archived material as authority) once, as part of this step.
+The final-gate child was already fully closed by `slice-closeout`, including its own steps 8–11
+hygiene — this step does not finish an unfinished child. The one artifact deliberately held back
+by `slice-closeout` is the **declared gate artifact**, kept live while it served as phase-close
+evidence (step 2 reads it); compact it here, now that the phase is actually closed. Repair links
+for every path this step moves, and confirm no live router treats compacted material as
+authority (`slice-closeout` steps 10–11 applied to this step's moves).
 
 ### Step 8 — Cycle stage
 

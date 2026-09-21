@@ -18,9 +18,11 @@ no FINAL PHASE GATE line, or it names another child
   → ordinary child close: run steps 1–11.
 
 FINAL PHASE GATE names this child
-  → run steps 1–6, apply the final-gate hand-off (step 7 override), then STOP.
-    The phase becomes CLOSABLE, not CLOSED. Closing the phase is a separate,
-    owner-invoked procedure — see "Final-gate hand-off" below.
+  → run steps 1–6, set the pending-owner baton (step 7 override), finish the
+    slice's own hygiene (steps 8–11, with the final-gate artifact exception in
+    step 8), then STOP. The child is fully closed; the phase becomes CLOSABLE,
+    not CLOSED. Closing the phase is a separate, owner-invoked procedure — see
+    "Final-gate hand-off" below.
 ```
 
 Finality is never inferred from child numbering, from "this looks like the last child", or from
@@ -59,13 +61,19 @@ Architecture Cycle.
    A slice close never changes the phase's own P-level status.
 7. Update `docs/operations/current.md` to the next work item (baton, not history).
    **Final-gate override:** at a declared final gate whose phase is not yet owner-closed, the next
-   work item *is* the phase-close decision — set that baton (see "Final-gate hand-off" below) and
-   STOP before steps 8–11. Do not mark the P-level phase shipped, do not write a `PHASE CLOSE`
-   block, do not transition `architecture-cycle.md`, and do not write cycle META; all of that
-   belongs to the owner-invoked `phase-closeout` skill.
+   work item *is* the phase-close decision — set that baton (see "Final-gate hand-off" below).
+   Then finish the slice's own hygiene (steps 8–11) and STOP. Do not mark the P-level phase
+   shipped, do not write a `PHASE CLOSE` block, do not transition `architecture-cycle.md`, and do
+   not write cycle META; all of that belongs to the owner-invoked `phase-closeout` skill.
 8. Closed work: apply the hybrid rule in "Closed work (hybrid rule)" below to this slice's
    artifacts — a path-preserving stub with exact Git recovery for single prose artifacts; an
    archive copy only for multi-file bundles and non-text evidence.
+   **Final-gate exception:** keep the declared final-gate artifact itself live while it still
+   serves as phase-close evidence (`phase-closeout` step 2 re-reads it to verify the gate).
+   Compact the child's other completed work normally now; `phase-closeout` owns the gate
+   artifact's final compaction when the phase is actually closed. If the owner later moves
+   `FINAL PHASE GATE` to a different child, the old gate artifact becomes ordinary completed
+   child work and is compacted under this rule.
 9. Prune transient/stale artifacts (empty states, superseded husks, `__qa-*` plates).
 10. Repair links: search the repo for every moved path; fix Markdown, HTML/image,
     and prototype relative paths; verify case-sensitive paths.
@@ -77,8 +85,11 @@ Architecture Cycle.
 
 ## Final-gate hand-off
 
-Reached only from the guard, when this child is the phase's declared final gate (steps 1–6 done,
-step 7 override applied). The phase is now CLOSABLE and stays in-progress; major-phase closure is
+Reached only from the guard, when this child is the phase's declared final gate. Run steps 1–6,
+apply the step-7 override, finish the slice-local hygiene (steps 8–11, with the gate-artifact
+exception in step 8), then STOP.
+
+The child is fully closed; the phase is CLOSABLE and stays in-progress. Major-phase closure is
 owner-invoked only.
 
 Set the baton:
@@ -92,7 +103,7 @@ ROUTE:    phase README FINAL PHASE GATE block + the gate artifact
 BLOCKER:  owner phase-close decision
 ```
 
-Then STOP. Do not close the phase here:
+STOP means: the slice is done and the baton is set. Do not close the phase here:
 
 ```text
 - no P-level phase status change
