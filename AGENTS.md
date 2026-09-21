@@ -60,6 +60,11 @@ NO: commit/push unless allowed
 ON slice acceptance complete:
 use slice-closeout skill
 
+ON explicit owner request to close a major phase:
+use phase-closeout skill (manual-only)
+final-gate acceptance makes a phase closable, not closed;
+major-phase closure is owner-invoked only
+
 ON substantial unfinished work needing same- or cross-agent resume:
 use work-checkpoint skill
 ```
