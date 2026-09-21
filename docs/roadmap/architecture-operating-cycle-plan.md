@@ -1,9 +1,8 @@
 # Architecture Operating Cycle — Canonical Plan
 
 ```text
-STATUS: RECONCILED DRAFT — OWNER REVIEW REQUIRED
-AUTHORITY: NONE YET — this draft has no ratifying power until the owner reviews it.
-Once approved, this document becomes the single canonical strategic model.
+STATUS: RATIFIED — 2026-09-21
+AUTHORITY: canonical strategic model
 ```
 
 **Scope:** project-development process, parallel to the P-number product roadmap.
@@ -612,7 +611,7 @@ failures. The desired outcome is for this process to become small and boring.
 
 ## 13. Relationship to project documentation
 
-Once this reconciliation is owner-approved, the ownership model is:
+The ownership model is:
 
 ```text
 canonical plan (this document)
@@ -638,15 +637,15 @@ acceptance matrices, and rehearsal records belong to the applied skill and the
 historical evidence — never to this plan.
 
 `docs/roadmap/README.md` remains the P-level status authority and the stable route to
-this plan. The reconciliation input that produced this draft is not routed and carries
-no authority once review completes.
+this plan. The temporary reconciliation input used to produce this plan was unrouted,
+carried no authority, and has been deleted.
 
 ---
 
 ## 14. Scope versus verification
 
-Proposed immediate operational consequence of this plan, pending owner review and
-promotion into workflow instructions in a later pass:
+Proposed immediate operational consequence of this plan, with promotion into workflow
+instructions deferred to the post-ratification operational pass:
 
 > Task scope limits what may be changed, not what may be inspected or verified.
 
