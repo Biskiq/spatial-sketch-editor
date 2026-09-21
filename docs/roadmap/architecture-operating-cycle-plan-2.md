@@ -1,6 +1,19 @@
-# Architecture Operating Cycle — Final Plan
+# Architecture Operating Cycle — Reconciliation Input
 
-## Status
+```text
+STATUS: RECONCILIATION INPUT
+AUTHORITY: NONE
+TARGET: architecture-operating-cycle-plan.md
+```
+
+This document is reviewed reconciliation input for the canonical plan above. It is not
+a second authority and is not routed from the roadmap tracker. Its useful refinements
+are absorbed into the canonical candidate; anything conflicting with already-installed
+live behavior yields to the live state.
+
+---
+
+## Status (original, retained below for provenance)
 
 This plan incorporates the completed multi-round review.
 
