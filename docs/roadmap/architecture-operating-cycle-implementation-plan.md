@@ -1,7 +1,7 @@
 # Architecture Operating Cycle — Implementation Plan
 
-**Status:** implementation-ready, not executed. Owner review pending (r3 — review corrections
-R1–R6 applied in §15.5).
+**Status:** implementation-ready, not executed. Owner review pending (r4 — review corrections
+R1–R6 and R7–R11 applied in §15.5).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -24,7 +24,7 @@ Nothing here requires a further harvest.
 ### 0.1 What this plan changes
 
 ```text
-FIVE REQUIRED EDITS (three documents + one new file + one status wording)
+FIVE REQUIRED FILE CHANGES (four documents + one new file)
   .agents/skills/slice-closeout/SKILL.md      — major-phase close behavior (additive)
   docs/operations/architecture-cycle.md      — NEW live state (compact)
   docs/README.md                             — one pull-based route row
@@ -392,12 +392,30 @@ unchanged by this plan.
 
 ```text
 0. Read the phase README. Does it declare FINAL PHASE GATE == this child?
-      no  → ordinary child close; run steps 1–11; STOP after step 7 (baton) and 8–11 as today
-      yes → ordinary child close FIRST (steps 1–7), then the phase-close procedure (§4.2)
+      no  → ordinary child close; run steps 1–11 exactly as today
+      yes → ordinary child close steps 1–6, then the final-gate handling of step 7 below,
+            then the phase-close procedure (§4.2)
 ```
 
 A normal child close therefore cannot accidentally close its parent. A child close never
 touches P-level status.
+
+**Step 7 at a declared final gate (baton, deterministic).** Ordinary step 7 moves the baton to
+"the next work item". At a final gate whose phase is not yet owner-closed, the next work item *is*
+the phase-close decision, so step 7 is overridden to:
+
+```text
+PHASE:    <this phase>
+CHILD:    <final gate child> — accepted (<date>)
+STAGE:    phase-close decision pending owner ratification
+NEXT:     owner closes <phase>, or leaves it open
+ROUTE:    the phase README FINAL PHASE GATE block + the gate artifact
+BLOCKER:  owner ratification
+```
+
+…and the run **STOPS**. No P-level change, no closed-work step, no cycle change, no META line.
+The baton advances to the next pipeline phase only in §4.2 step 6, after owner ratification.
+This is the state acceptance matrix **B** describes.
 
 ### 4.2 Final-gate close (new procedure)
 
@@ -441,11 +459,21 @@ Step 6  Product baton
 
 Step 7  Closed-work procedure (§7) for this close's artifacts.
 
-Step 8  Meta stage
-        docs/operations/architecture-cycle.md → PHASE_0_DUE with TRIGGER, PRODUCT CONTEXT and
-        OWNER ACTION: required.
+Step 8  Meta stage — STAGE-AWARE, never a fixed target
+        Read architecture-cycle.md STAGE and write the transition that actually matches it:
+            WAITING            + phase close                     → PHASE_0_DUE
+            PHASE_2_VALIDATING + its window phase closing        → PHASE_3_EVALUATE
+            STEADY             + ordinary major phase close      → unchanged (STEADY);
+                                                                   record the close, add nothing
+            any other stage    + a major phase close             → STOP and report the mismatch;
+                                                                   never invent a transition
+        PHASE_0_DUE is written with TRIGGER, PRODUCT CONTEXT and OWNER ACTION: required;
+        PHASE_3_EVALUATE is written with OWNER ACTION: required (verdicts are an owner call).
+        This keeps R1 true in implementation: a later phase closing while STEADY does not
+        restart Phase 0, and P26 closing during validation does not re-open it either.
 
-Step 9  Baton META pointer (§3.4) — added last, because it reflects OWNER ACTION.
+Step 9  Baton META pointer (§3.4) — added last, and only when the state written at step 8 has
+        OWNER ACTION: required. A STEADY outcome at step 8 therefore produces no META line.
 ```
 
 ### 4.3 Idempotence
@@ -537,7 +565,8 @@ Do not close P23, do not change its status, do not execute P23.16, do not migrat
 | now → P23 close | free to proceed | not ready (no plan) | `WAITING` |
 | P23 closed, Phase 0 open | free to proceed | may not start | `PHASE_0_DUE` → `PHASE_0_ACTIVE` → `ADJUDICATION` |
 | adjudication done | free to proceed | may start **after** the boundary check below | `PHASE_1` or `STEADY` |
-| first P26 impl slice | free to proceed | running | `PHASE_2_VALIDATING` (window = P26) |
+| first P26 impl slice — Phase 1 installed ≥1 mechanism | free to proceed | running | `PHASE_2_VALIDATING`, window = P26 |
+| first P26 impl slice — Outcome 1, nothing installed | free to proceed | running | **stays `STEADY`; no validation window opened** |
 
 **Boundary check before P26 impl #1** (one bounded reconciliation, no redesign):
 
@@ -553,13 +582,16 @@ Do not close P23, do not change its status, do not execute P23.16, do not migrat
 ### 6.2 What the cycle records
 
 ```text
-VALIDATION WINDOW: P26
+VALIDATION WINDOW: P26     ← written only when Phase 1 installed ≥1 mechanism
 ACTIVE MECHANISMS:
-  - <only what Phase 1 actually justified>      (may be "none")
+  - <only what Phase 1 actually justified>
 ```
 
-An empty list is a legitimate value and must not trigger the invention of a validation
-mechanism (OD-3).
+**Outcome 1 opens no window at all.** With nothing installed there is nothing to validate, so
+`VALIDATION WINDOW` stays empty, no `PHASE_2_VALIDATING` is entered, and the first P26
+implementation slice runs normally under `STEADY` (§3.3, matrix E). The implementation agent must
+not open a window in order to have something to record: a validation window with an empty
+mechanism list is exactly the phantom obligation R1 removed, and is a defect, not a valid value.
 
 ### 6.3 Scope creep during Phase 2 only
 
@@ -615,6 +647,14 @@ Nothing else survives — no task sequence, no plan content, no acceptance rows,
 detail. The stub is a router plus a recovery anchor, never a summary that competes with
 `reference/*`.
 
+**The path-preserving stub applies to text artifacts only.** A PNG, SVG, prototype HTML bundle or
+binary fixture cannot become a Markdown stub at the same path, so it is not covered by the “the
+path always survives” promise. Evidence assets follow the §7.2 rule below: an archive copy is
+made in the same commit, and any live inbound link to the asset's path is repaired by the manual
+search (OD-9). F-1 counted *plan and anchor* references only — it says nothing about inbound
+links to evidence assets — so this is precisely where the link search must actually run rather
+than be assumed empty.
+
 ### 7.2 Layer 2 — archive rule (structural, not judged)
 
 ```text
@@ -633,6 +673,12 @@ Two mechanical facts, no judgment: does the artifact consist of one prose file o
 file / non-text evidence, and is it already archived? A prose file that genuinely deserves an
 archive copy later is an explicit owner exception recorded in the closeout, not a third category
 the closing agent evaluates case by case.
+
+**Mixed workspaces (a directory holding prose + assets).** The prose router of the directory is
+stubbed in place; the assets get an archive copy and keep their own paths, because moving them
+would break references without a reason to. Because asset links are outside what F-1 measured,
+the closeout runs the manual link search over any moved asset path — one search per batch, not per
+file.
 
 **Closed phase-wide planning hubs.** The P23 umbrella, the remaining-roadmap reconciliation and
 the cross-view addendum are themselves **completed work artifacts** once P23 closes. Leaving their
@@ -842,12 +888,16 @@ NEW ROLE       same, plus a phase-close branch entered only when the phase decla
 EXACT SECTIONS new "## Guard — does this close also close the phase?" before step 1;
                new "## Phase close (final gate only)" containing §4.2 steps 1–9 + §4.3 idempotence;
                step 5 gains "step 5 applies to an ordinary child; the final gate also runs the
-               phase-close block"; step 8 gains "closed-work uses the §7 hybrid rule: stub at the
-               original path + `git show <A>:<path>`; archive copy only for bundles/non-text";
+               phase-close block"; **step 7 gains the final-gate override (§4.1): baton =
+               phase-close decision pending owner ratification, then STOP**;
+               **the phase-close step 8 is written stage-aware, per the §4.2 table**; step 8 gains
+               "closed-work uses the §7 hybrid rule: stub at the original path +
+               `git show <A>:<path>`; archive copy only for bundles/non-text";
                step 11 gains "manual link search (no checker exists — OD-9)"
-EXACT EDITS    additive only; no step renumbered; no existing rule weakened
+EXACT EDITS    additive only; no step renumbered; no existing rule weakened; the two overrides
+               above are explicitly scoped to the final-gate branch
 DEPENDENCIES   §3 (states), §4 (contract), §7 (mechanics), §5 (P23 declaration)
-ACCEPTANCE     acceptance matrix A–C, J; a normal child close performs no phase action
+ACCEPTANCE     acceptance matrix A–C, J, O; a normal child close performs no phase action
 ```
 
 ### 10.2 `docs/operations/architecture-cycle.md` — NEW
@@ -890,7 +940,7 @@ EXACT SECTIONS the STATUS/ROUTE block; "## Completed slices"
 EXACT EDITS    §5.1 block (kept alongside the existing GATE/ROUTE lines) and the §5.3 sentence
 DEPENDENCIES   §4.2; the gate artifact path (unchanged)
 ACCEPTANCE     the gate is discoverable mechanically (procedure reads a declared line); no status,
-               scope, order or route change (matrix L)
+               scope, order or route change (matrix N)
 ```
 
 ### 10.5 `docs/roadmap/README.md` — required (status wording becomes true)
@@ -905,7 +955,7 @@ EXACT SECTION  the BACKLOG/META/OPS/MODEL block and its clarifying paragraph
 EXACT EDIT     replace the second META line with: "live state → ../operations/architecture-cycle.md;
                ratified design → architecture-operating-cycle-plan.md"; keep the sentence that
                META is not a pipeline phase and adds no P-number
-DEPENDENCIES   §10.2; no pipeline/status change (§ acceptance matrix L)
+DEPENDENCIES   §10.2; no pipeline/status change (acceptance matrix N)
 ACCEPTANCE     `P23 → P26 → P24 → P25` and every phase status byte-identical
 ```
 
@@ -974,14 +1024,14 @@ S2 — major-phase-close behavior
 
 S3 — P23 final-gate wiring + conditional baton behavior
      §10.4 (FINAL PHASE GATE + landed-plan note) · §10.6 (no-edit assertion recorded)
-     Acceptance: matrix L (no status change); the procedure finds the declared gate
+     Acceptance: matrix N (no status change); the procedure finds the declared gate (matrix O)
 
 S4 — closed-work contract and mechanics
      §10.1 step 8 amendment (already in S2 as the rule) · §10.7 · §7.3 verification steps
      Acceptance: matrix J (stub + verified recovery line; a compacted artifact cannot look live)
 
 S5 — acceptance and transition rehearsal
-     Re-read against the ratified plan + harvest; walk matrices A–L as a table-top rehearsal on
+     Re-read against the ratified plan + harvest; walk matrices A–O as a table-top rehearsal on
      a scratch branch (no product state touched); run the manual link search (OD-9);
      §10.8 status update
      Acceptance: §12 fully satisfied; plan self-review list in §0/§15 clean
@@ -1011,7 +1061,8 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 | K | cold-start context | ordinary agent never loads `architecture-cycle.md`; phase-close agent and deliberate meta work do | §9.3 table |
 | L | later phase closes while `STEADY` | ordinary reconciliation/subtraction/closed-work runs; cycle **stays** `STEADY`; no audits, no META | §3.2/§3.3 steady-state rule |
 | M | close authorized but a step failed | `PHASE CLOSE` marker present, later surface missing; re-run writes the missing steps 5–9 and does not repeat owner ratification | §4.3, §13.1 |
-| L | no collateral change | pipeline `P23 → P26 → P24 → P25`, all phase statuses, scopes and routes byte-identical; `AGENTS.md`, `work-checkpoint`, source, tests, CI untouched | diff review per slice |
+| N | no collateral change | pipeline `P23 → P26 → P24 → P25`, all phase statuses, scopes and routes byte-identical; `AGENTS.md`, `work-checkpoint`, source, tests, CI untouched | diff review per slice |
+| O | final gate accepted but phase not owner-closed | baton is set to `phase-close decision pending owner ratification` + `BLOCKER: owner ratification` and the run stops; no P-level change, no cycle change, no META | §4.1 step-7 override; matrix B |
 
 ---
 
@@ -1157,6 +1208,28 @@ No ratified owner decision (OD-1…OD-9) is reopened by these corrections; R1, R
 internal inconsistencies that would otherwise have contradicted the ratified plan, and R5/R6 make
 two OD-4 mechanics deterministic. `OWNER RECONSIDERATION REQUIRED: none`.
 
+### 15.6 Review corrections applied at r4 (`4a8f094` → this revision)
+
+```text
+R7  §4.2 step 8 is now stage-aware instead of always writing PHASE_0_DUE:
+      WAITING + close → PHASE_0_DUE · PHASE_2_VALIDATING + window close → PHASE_3_EVALUATE ·
+      STEADY + ordinary close → unchanged STEADY · unexpected stage + close → STOP and report.
+    Step 9 then writes META only if the resulting state needs owner action — without this,
+    implementation of step 8 would have undone R1.
+R8  §6.1/§6.2 Outcome 1 opens no validation window at all: P26 implementation runs under STEADY
+    with VALIDATION WINDOW empty. A window with an empty mechanism list is now explicitly a
+    defect, not a valid value (matches matrix E and §3.3).
+R9  §4.1 step 7 is overridden deterministically at a declared final gate: the baton becomes
+    "phase-close decision pending owner ratification" with BLOCKER: owner ratification, and the
+    run stops. The baton advances to the next pipeline phase only in §4.2 step 6. New matrix
+    row O covers it.
+R10 §7.1/§7.2 limit the path-preserving stub to text artifacts; binary/non-text evidence gets an
+    archive copy with the manual link search over moved asset paths (F-1 measured plan/anchor
+    references, not evidence-asset links). Mixed workspaces stubbed prose router + asset paths.
+R11 acceptance matrix duplicate label L renamed: steady-state later close stays L, the previous
+    "no collateral change" row is N; all "matrix L" cross-references updated.
+```
+
 ### 15.4 Self-review before commit
 
 ```text
@@ -1168,6 +1241,7 @@ two OD-4 mechanics deterministic. `OWNER RECONSIDERATION REQUIRED: none`.
 ✓ P26 *implementation*, not planning, is the prospective boundary (§6.1)
 ✓ no Phase-0-selected mechanism in the prerequisite surface (§2.2, §14)
 ✓ no planned change to AGENTS.md / work-checkpoint / source / tests / CI / roadmap order (§10.9)
+✓ r4 review corrections R7–R11 applied and internally consistent (§15.6)
 ✓ paths and cross-references verified; no anchor-dependent links introduced
 ✓ implementation-ready: an executing agent needs no further harvest (§10 is file-by-file)
 ```
