@@ -4,7 +4,7 @@
 provenance of the applied rules; the implementation commits are listed in §16 and the live authority
 is the skill plus `docs/operations/architecture-cycle.md`.
 **Review history:** r1–r7 corrections R1–R6, R7–R11, R12–R16, R17–R20, R21–R24 applied in
-§15.5–§15.9.
+§15.5–§15.9, plus the pre-merge rehearsal follow-up R25 (§15.10).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -396,8 +396,12 @@ The window phase still closes normally.
 ```text
 META line present  ⇔  architecture-cycle.md OWNER ACTION: required
 line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
-writer:      the closeout agent at §4 step 9, or the owner's ruling when a stage changes
-removal:     when OWNER ACTION returns to not required (e.g. Phase 0 authorized)
+writer:      whoever applies the transition that changes OWNER ACTION, in that same transition —
+             §4 step 9 is the phase-close instance; a non-close transition counts the same way
+             (e.g. PHASE_0_ACTIVE → ADJUDICATION sets OWNER ACTION: required with no close),
+             as does a stage change by owner ruling
+removal:     the same rule in reverse — whenever OWNER ACTION returns to not required
+             (Phase 0 authorized, adjudication resolved, verdicts recorded)
 ```
 
 The cycle file owns the condition; `current.md` only mirrors it. `current.md` is otherwise
@@ -1028,7 +1032,9 @@ NEW ROLE       unchanged; gains one META line whenever OWNER ACTION: required (P
 EXACT SECTION  between STAGE and NEXT, or immediately after NEXT (writer's choice — one rule:
                it is a pointer line, not a state block)
 EXACT EDIT     **none in S1–S5**: at install the cycle is WAITING, so OWNER ACTION is not
-               required and no line may appear. The line is written by §4 step 9 at a real close.
+               required and no line may appear. The line is written by §4 step 9 at a real close;
+               outside a close, whoever applies the OWNER ACTION transition writes or removes it
+               (§3.4).
 DEPENDENCIES   §3.4 (one owner for the condition), §4 step 9
 ACCEPTANCE     matrix A/G: no META line during ordinary work or waiting states
 ```
@@ -1348,7 +1354,7 @@ No ratified owner decision (OD-1…OD-9) is reopened: R17 closes the last idempo
 step 4–8 sequence, R18 is a cross-reference, R19 is PR metadata, and R20 records the owner
 amendment that removed the last stale trigger in the ratified plan.
 
-### 15.9 Review corrections applied at r7 (`536a5f3` → the r7 revision, this commit)
+### 15.9 Review corrections applied at r7 (`536a5f3` → `4ac49b1`)
 
 ```text
 R21 `docs/operations/architecture-cycle.md` credited the META pointer to "phase-close step 10";
@@ -1370,6 +1376,30 @@ R24 The skill's phase-close step 7 said "the hybrid rule from step 8 above"; the
 No ratified owner decision is reopened: R21–R24 are a pointer fix, provenance precision, and two
 wording clarifications. No rule, stage, transition or mechanism changes.
 
+### 15.10 Pre-merge rehearsal and the META-writer fix
+
+Applied on `architecture-operating-cycle` before merge; no stage, transition, mechanism, product
+state or P-level status changes.
+
+```text
+R25 The META writer rule was under-specified. §3.4 and docs/operations/architecture-cycle.md
+    named "the closeout agent at §4 step 9, or the owner's ruling when a stage changes" only, so
+    a transition that changes OWNER ACTION outside a close — e.g. PHASE_0_ACTIVE → ADJUDICATION
+    — had no writer and the mirror could go stale. Both now state the invariant: whoever applies
+    a transition that changes OWNER ACTION writes or removes the mirrored pointer in that same
+    transition; §4 step 9 is the phase-close instance of the rule, not the whole rule.
+
+REHEARSAL  A disposable rehearsal of the phase-close procedure was run against the applied rules
+    (copied docs state, dummy artifacts, no product state): A (final gate accepted, owner pending),
+    B (WAITING close → PHASE_0_DUE, including preflight-before-any-close-write ordering), C1–C3
+    (resume after the close marker, after partial consequences, after the cycle write with META
+    still owed, and with the marker missing), D1–D3 (validation close → PHASE_3_EVALUATE, STEADY
+    close → STEADY, and every illegal stage stopping before any close write) and E (the non-close
+    OWNER ACTION/META transition). All matched the expected outcomes. These letters are rehearsal
+    scenarios, not the §11 acceptance matrix A–P. No rule change followed: the rehearsal is a
+    verification event, not an execution slice, so §16 is unchanged.
+```
+
 ### 15.4 Self-review before commit
 
 ```text
@@ -1386,6 +1416,7 @@ wording clarifications. No rule, stage, transition or mechanism changes.
 ✓ r6 review corrections R17–R20 applied and internally consistent (§15.8)
 ✓ r7 review corrections R21–R24 applied and internally consistent (§15.9)
 ✓ no promised post-merge bookkeeping remains: provenance names its own commits instead (§16)
+✓ pre-merge rehearsal follow-up R25 applied and recorded (§15.10); no rule change beyond it
 ✓ the preflight target is persisted in the close marker, so resume never recomputes it (§4.2)
 ✓ §3 and §6 agree on the Phase 2 boundary (first implementation slice, not installation)
 ✓ phase-close legality is preflighted before any close write (§4.2)
@@ -1399,9 +1430,9 @@ wording clarifications. No rule, stage, transition or mechanism changes.
 ## 16. Execution record (S1–S5)
 
 Executed on `architecture-operating-cycle` (2026-09-21); each slice is one commit. §10.8 is
-applied in the S5 commit, so this file is now provenance with `AUTHORITY: NONE`. The r7 review
-corrections (§15.9) land in the commit carrying this record; Git history identifies it by its
-parent, `536a5f3`.
+applied in the S5 commit, so this file is now provenance with `AUTHORITY: NONE`. Later
+before-merge commits are recorded where they occurred: §15.9's r7 corrections landed in
+`4ac49b1`, and §15.10's META-writer fix in the commit following it.
 
 ```text
 S1  live cycle state + routing contract         d764c39
@@ -1423,6 +1454,8 @@ SR  self-review findings                        536a5f3
     the cycle file's PHASE_0_DUE write pinned to phase-close step 8; resume scoped to an existing
     PHASE CLOSE marker; final-gate slice hygiene steps 9–11 restored; ratification given a home
     in the PHASE CLOSE block
+R7  r7 review corrections                       4ac49b1
+    live-state META writer corrected to phase-close step 9; provenance names its own commits
 ```
 
 ### Consistency re-read (ratified plan · harvest · applied files)

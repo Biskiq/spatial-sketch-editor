@@ -89,9 +89,14 @@ window phase still closes normally.
 ```text
 META line present  ⇔  this file's OWNER ACTION: required
 line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
-writer:      the closeout agent (slice-closeout, phase-close step 9), or the owner's ruling
-             when a stage changes
-removal:     when OWNER ACTION returns to not required (e.g. Phase 0 authorized)
+writer:      whoever applies a cycle transition that changes OWNER ACTION — the line is written
+             or removed in that same transition. slice-closeout phase-close step 9 is the
+             phase-close instance (WAITING → PHASE_0_DUE, PHASE_2_VALIDATING → PHASE_3_EVALUATE);
+             a non-close transition counts the same way (e.g. PHASE_0_ACTIVE → ADJUDICATION sets
+             OWNER ACTION: required with no close and no ruling), as does a stage change by
+             owner ruling
+removal:     the same rule in reverse — whenever OWNER ACTION returns to not required
+             (Phase 0 authorized, adjudication resolved, verdicts recorded)
 ```
 
 This file owns the condition; `docs/operations/current.md` only mirrors it.
