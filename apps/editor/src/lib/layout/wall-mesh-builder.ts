@@ -11,6 +11,7 @@ import type {
 import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import { type CurveSample } from './layout-geometry-curve';
 import {
+	resolveSharedCornerSide,
 	WALL_CLEARANCE_INSUFFICIENT_CODE,
 	WALL_OFFSET_FOLD_CODE,
 	WALL_OFFSET_FOLD_MESSAGE,
@@ -751,23 +752,19 @@ function cornerSide(
 	signHalf: number,
 	miterLimit: number
 ): CornerSide {
-	const a0: LayoutVec2 = [junction[0] + signHalf * nA[0], junction[1] + signHalf * nA[1]];
-	const b0: LayoutVec2 = [junction[0] + signHalf * nB[0], junction[1] + signHalf * nB[1]];
-	const det = dirA[0] * dirB[1] - dirA[1] * dirB[0];
-	const dot = dirA[0] * dirB[0] + dirA[1] * dirB[1];
-	if (Math.abs(det) < 1e-9) {
-		if (dot < 0) return { kind: 'fold', a0, b0 };
-		return { kind: 'miter', apex: a0 }; // collinear continuation (a0 ≈ b0)
-	}
-	const dx = b0[0] - a0[0];
-	const dy = b0[1] - a0[1];
-	const u = (dx * dirB[1] - dy * dirB[0]) / det;
-	const point: LayoutVec2 = [a0[0] + u * dirA[0], a0[1] + u * dirA[1]];
+	// P23.15 — one rule, two callers. The offset-line intersection, the miter
+	// limit and the fold refusal live in `layout-core`
+	// (`resolveSharedCornerSide`); this room-loop path and the standalone
+	// Junction solve share them instead of keeping a second copy of the
+	// arithmetic. Mixed thickness is generalised there via per-side halves; the
+	// room loop passes the same half for both sides.
 	const half = Math.abs(signHalf);
-	if (half > 0 && Math.hypot(point[0] - junction[0], point[1] - junction[1]) > miterLimit * half) {
-		return { kind: 'bevel', a0, b0 };
-	}
-	return { kind: 'miter', apex: point };
+	const sign: 1 | -1 = signHalf >= 0 ? 1 : -1;
+	const resolved = resolveSharedCornerSide(junction, dirA, nA, half, dirB, nB, half, sign, miterLimit);
+	if (resolved.kind === 'side') return resolved.side;
+	const a0: LayoutVec2 = [junction[0] + sign * half * nA[0], junction[1] + sign * half * nA[1]];
+	const b0: LayoutVec2 = [junction[0] + sign * half * nB[0], junction[1] + sign * half * nB[1]];
+	return { kind: 'fold', a0, b0 };
 }
 
 function cornerPoint(sample: ClipSample, half: number, cornerStart: Corner, cornerEnd: Corner): LayoutVec2 {
