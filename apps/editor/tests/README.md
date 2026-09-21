@@ -3,6 +3,18 @@
 All Vitest suites live here, mirrored to `src/lib/`. A test for `src/lib/editor/editor-selection.ts`
 sits at `tests/lib/editor/editor-selection.test.ts`. **No `.test.ts` files live under `src/`.**
 
+## Start here (startup verification summary)
+
+Repository-level verification applies regardless of task scope: implement the
+slice, then run the contract below — task scope never narrows required
+verification (AGENTS.md rule 11). Major lanes: `test:fast` (inner loop),
+`test:arch` (ownership/isolation boundaries, always before a PR, never
+path-gated), `test:heavy` (dense correctness/stress), `test:perf` (timing
+gates). Read lane internals ([Lanes](#lanes), [Running](#running)) when the
+implementation or verification task actually needs that lane — not before the
+first edit. Test-design authority for adding/replacing tests:
+[Test design rules](#test-design-rules).
+
 ## Import rules
 
 1. **Import source modules via `$lib` aliases, never relative paths.** Tests are

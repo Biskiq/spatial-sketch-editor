@@ -21,7 +21,7 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 6. No second graph/motion/geometry compiler; prefer Floor/Wall/Ceiling planes.
 7. Svelte 5 runes; Threlte patterns; `scroll-travel` unused.
 8. **No commits** unless user asks.
-9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
+9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. A routed file is not automatically a full-file read: read the smallest relevant section / authority box / route block first, then stop unless the task, missing information, or contradictory evidence requires expanding within the file. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
 10. **Authority by concern** — no single total ordering; resolve a doc-vs-doc
     conflict through the owner of that concern. `operations/current.md` owns the
     **current work/baton/status**; an **active plan** owns its approved slice
