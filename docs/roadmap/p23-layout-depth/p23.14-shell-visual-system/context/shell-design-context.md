@@ -1017,7 +1017,8 @@ conflicts.
 | Row 1 contents | `app/ProjectRow.svelte` (`Project navigation`, project name, save state, Document menu slot, `Project modes`, Undo/Redo, Visitor Preview, Theme, Account) |
 | Current shell contract (behaviour, timeline, domain/view rules) | [`reference/components/shell.md`](../../../../reference/components/shell.md) |
 | Ownership and boundaries | [`reference/architecture.md`](../../../../reference/architecture.md) |
-| Current hand-off state, traps, carried rows | [`docs/operations/current.md`](../../../../operations/current.md) |
+| Current hand-off state / baton | [`docs/operations/current.md`](../../../../operations/current.md) |
+| Carried P23.13 rows and their disposals | [`2026-09-19-P23.14-plate-shell-visual-system.md`](../2026-09-19-P23.14-plate-shell-visual-system.md) — Task 5 carried rows, Task 8, locked Decision 7 |
 | Plan/tracker status and P23.14's declared scope + absorbed issues | [`roadmap/README.md`](../../../README.md); [`2026-09-14-P23-remaining-roadmap-reconciliation.md`](../../2026-09-14-P23-remaining-roadmap-reconciliation.md) §P23.14 |
 | P23-wide product/Plan baseline (companion) | [`p23-design-context.md`](../../context/p23-design-context.md) |
 | Designer-facing exploration brief that consumes this document (§9–§11, §15–§17) | [`p23.14-designer-brief.md`](../design/briefs/p23.14-designer-brief.md) |

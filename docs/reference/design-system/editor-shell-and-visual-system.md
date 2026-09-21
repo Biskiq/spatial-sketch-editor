@@ -199,7 +199,7 @@ implementation, and it does not close the slice: P23.14 stays **OWNER REVIEW**
 **On the wording below.** The sections keep the design-time voice they were written
 in (`P23.14 must…`, `P23.14 should…`, and references to the four PLATE PNGs and the
 Atlas brief). Read that as **this contract** — the shell and visual-system
-requirements it governs — not as a claim about a slice that is now history. The
+requirements it governs — not as a claim about the slice's live review status. The
 slice's current status is §0.3; its dated artifacts are §0.6.
 
 ---

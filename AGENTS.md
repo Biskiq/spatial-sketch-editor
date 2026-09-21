@@ -22,9 +22,12 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 7. Svelte 5 runes; Threlte patterns; `scroll-travel` unused.
 8. **No commits** unless user asks.
 9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
-10. **Truth precedence** — for doc-vs-doc conflicts, highest wins:
-    `operations/current.md → active plan → component contract →
-    reference/architecture.md → reference/north-star.md → archive`.
+10. **Authority by concern** — no single total ordering; resolve a doc-vs-doc
+    conflict through the owner of that concern. `operations/current.md` owns the
+    **current work/baton/status**; an **active plan** owns its approved slice
+    scope; `roadmap/` owns future work; a **landed `reference/*` contract** owns
+    durable architecture and current product truth (`reference/architecture.md`,
+    `reference/north-star.md`, component contracts); `archive` owns history.
     A **ratified durable design contract** is normative for its own domain and
     outranks older descriptive numbers there: today that is the shell +
     visual-system contract

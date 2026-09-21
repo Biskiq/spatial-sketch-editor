@@ -22,7 +22,7 @@ Read AGENTS.md + docs/README.md.
 L1 — NORMAL TASK
 Read only:
 - routed roadmap manifest if relevant;
-- active phase/slice manifest;
+- active phase manifest;
 - active plan;
 - directly affected reference contracts.
 
@@ -77,11 +77,16 @@ archive = history
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
 
 ```text
-IMPLEMENT: roadmap → phase → slice → plan
-DESIGN: phase/slice README → routed design
-RESEARCH: phase/slice README → routed research
+IMPLEMENT: roadmap → phase → exact active plan
+DESIGN: phase → exact routed context/design artifact
+RESEARCH: phase → exact routed research/synthesis artifact
 STOP: no additional reading currently justified
 ```
+
+The normal route has no mandatory intermediate slice router: the **phase README**
+owns child status/order and links the exact artifact. Slice artifacts may live in
+a slice workspace directory; a workspace directory does not require a README, and
+a local index there is navigation-only if one exists.
 
 **Archive:** live routers never treat archived material as current authority.
 Enter only when the task explicitly requires historical rationale, or when
@@ -178,7 +183,7 @@ CURRENT: transient semantic baton only; inspect Git for branch/HEAD/dirty state.
 INCREMENT / VERIFY: optional current-work fields.
 RESUME: interrupted work only → operations/checkpoints/ via work-checkpoint skill.
 CHECKPOINT: continue same unit; handoff = start next unit.
-PLAN: slice README owns plan path; phase README owns child order/status.
+PLAN: phase README routes the exact plan path and owns child order/status; a slice workspace needs no README.
 PHASE: create README first; umbrella starts build program after discovery/design.
 SHIP: use slice-closeout skill.
 ```
@@ -188,7 +193,7 @@ SHIP: use slice-closeout skill.
 ```text
 UPDATE:
 - P-level state/order → roadmap/README.md
-- phase/slice state → owning README
+- phase/child state/order → owning phase README
 - current work baton → operations/current.md
 - interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
 - landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)
