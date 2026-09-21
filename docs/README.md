@@ -73,6 +73,7 @@ archive = history
 | Current work / baton | [`operations/current.md`](./operations/current.md) | — |
 | Interrupted work / resume | [`operations/checkpoints/`](./operations/checkpoints/) — transient only; `work-checkpoint` skill owns procedure | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
+| Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — states and triggers only | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
 

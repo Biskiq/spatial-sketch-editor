@@ -22,6 +22,16 @@ GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 mini
 ```
 
 ```text
+FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout gate
+  gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+  satisfying its exit criteria makes P23 CLOSABLE, not closed.
+  CLOSED requires explicit owner ratification; closure then updates P-level status/baton
+  (slice-closeout, phase-close procedure) and runs the close preflight. For P23 the cycle is
+  WAITING, so the preflight's target is PHASE_0_DUE; the target is computed, never assumed.
+  Landed P23 slice plans are evidence; they are not active instructions (see "Completed slices").
+```
+
+```text
 ROUTE (active child P23.14 — direct; no intermediate slice router):
 plan → p23.14-shell-visual-system/2026-09-19-P23.14-plate-shell-visual-system.md
 context → p23.14-shell-visual-system/context/shell-design-context.md (+ context/p23-design-context.md)
@@ -62,8 +72,14 @@ P-number; Inspector/Navigator-row/Plan-menu entry points deferred to P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only
 (pre-migration shipped slices); do not add new slice-specific plans here —
 active slice plans/artifacts live in that slice's workspace, and this phase README
-routes the exact plan path. All new slice closeouts archive the whole slice bundle under
-`docs/archive/roadmap/...` and leave a one-line stub here. Shipped
-narrative for P23.13 lives in `docs/archive/plans/`.
+routes the exact plan path.
+
+Landed P23 slice plans below are historical evidence (each carries its own Status line);
+they are not current instructions, and their full bodies become compact stubs at P23 close.
+
+All new slice closeouts leave closed artifacts as path-preserving stubs holding a
+`git show <A>:<path>` recovery line, with an archive copy only for multi-file bundles or
+non-text evidence (mechanics: `slice-closeout`). Shipped narrative for P23.13 lives in
+`docs/archive/plans/`.
 P23.13 carried rows to P23.14 by owner ruling — now owned by the P23.14 plan
 (Task 5 carried rows, Task 8 coarse-pointer pass, locked Decision 7).
