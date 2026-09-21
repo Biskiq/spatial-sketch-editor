@@ -4,10 +4,13 @@
 **Purpose:** durable product/UX baseline for P23.12–P23.16 slice briefs. This file
 is **persistent context**, not a slice brief and not an implementation plan.
 **Compiled:** 2026-09-15 against `main` @ `9118696` (P23.11 merged, PR #51).
-**Shell/visual successor (P23.14):** [`P23.14-shell-design-context.md`](../p23.14-shell-visual-system/context/shell-design-context.md)
-— compiled 2026-09-17 against `main` @ `368a799` (P23.13 merged). It narrows to shell
+**Shell/visual outcome (P23.14, closed 2026-09-21):** the durable authority is
+[`../../../reference/design-system/editor-shell-and-visual-system.md`](../../../reference/design-system/editor-shell-and-visual-system.md);
+the slice's dated shell-design context is archived at
+[`context/shell-design-context.md`](../../../archive/roadmap/p23/p23.14-shell-visual-system/context/shell-design-context.md)
+(compiled 2026-09-17 against `main` @ `368a799`, P23.13 merged) — it narrowed to shell
 structure, the durability map, and P23.15/P24/P26 forward-compatibility. Where this file's
-shell and Plan-presentation claims disagree with it, that file is fresher. **Note
+shell and Plan-presentation claims disagree with the shell contract, the contract is fresher. **Note
 (2026-09-17):** P23.14 was re-scoped by owner review from bounded shell polish to
 **Editor Shell & Visual System Foundation** — this file's "P23.14" rows and its §6
 "broad shell redesign" deferral were updated to match.
@@ -554,8 +557,9 @@ Canvas/WebGL Plan, whole-app visual redesign. **[D]**
 ### P23.14 — Editor Shell & Visual System Foundation **[P]**
 
 *(Re-scoped by owner review, 2026-09-17; formerly "Build shell, Navigator and Inspector
-finish". The bounded work below is retained inside the larger outcome. The slice's own
-context is [`P23.14-shell-design-context.md`](../p23.14-shell-visual-system/context/shell-design-context.md).)*
+finish". The bounded work below is retained inside the larger outcome — **shipped and closed
+2026-09-21**; durable outcome: [`reference/design-system/editor-shell-and-visual-system.md`](../../../reference/design-system/editor-shell-and-visual-system.md).
+The slice's own context is archived at [`shell-design-context.md`](../../../archive/roadmap/p23/p23.14-shell-visual-system/context/shell-design-context.md).)*
 
 **Outcome:** establish one coherent, extensible editor-shell visual system and interaction
 grammar — with a high enough ceiling that future P24, P26 and later capability can

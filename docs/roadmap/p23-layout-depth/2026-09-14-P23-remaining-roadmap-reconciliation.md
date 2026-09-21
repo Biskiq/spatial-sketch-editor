@@ -245,8 +245,8 @@ prerequisite contract for P23.11–P23.16.
 > outcome (not dropped), and the old non-goal is replaced by a narrower boundary:
 > product/domain architecture, document ownership, selection/history authority,
 > navigation and camera systems, visitor runtime, and future P24/P26 capability
-> semantics stay out of scope. Slice design context:
-> [`design/P23.14-shell-design-context.md`](p23.14-shell-visual-system/context/shell-design-context.md).
+> semantics stay out of scope. Slice design context (archived; P23.14 closed
+> 2026-09-21): [`shell-design-context.md`](../../archive/roadmap/p23/p23.14-shell-visual-system/context/shell-design-context.md).
 
 - **Purpose / product outcome:** Establish one coherent, extensible editor-shell
   **visual system and interaction grammar** — across Scene/Camera, Plan/3D,

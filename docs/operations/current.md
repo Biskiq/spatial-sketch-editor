@@ -1,22 +1,21 @@
 # Current
 
 PHASE: P23
-CHILD: P23.14 — Editor Shell & Visual System Foundation
-STAGE: implemented on `p23.14`; owner review OPEN (not closed out) — PR #61
+CHILD: P23.15 — Junction-correct wall-first 3D
+STAGE: P23.14 CLOSED (accepted 2026-09-21, PR #61); P23.15 plan NOT written yet
+       (the routed plan file does not exist — planning is the next action)
 
 NEXT:
-1. Owner review closeout for P23.14. Its findings, open owner calls and the
-   manual-owed rows (device / screen-reader / reduced-motion / coarse-pointer)
-   are owned by the QA record. Only open finding: **F4** (numeric fields report
-   `:invalid` on legal values), deferred — not accepted — as **TD-2** in
-   `../operations/tech-debt/README.md`.
-2. Then P23.15 → P23.16 final closeout (phase gate).
+1. Write the P23.15 implementation-ready plan at the routed path, then owner review; no
+   implementation has begun.
+2. After P23.15: P23.16 final closeout (phase gate).
 
 ROUTE (direct):
-plan → ../roadmap/p23-layout-depth/p23.14-shell-visual-system/2026-09-19-P23.14-plate-shell-visual-system.md
-QA → ../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md
-durable shell contract → ../reference/design-system/editor-shell-and-visual-system.md
+plan → ../roadmap/p23-layout-depth/p23.15-junction-correct-wall-first-3d/2026-09-21-P23.15-junction-correct-wall-first-3d.md
+remaining scope → ../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.15
+shell grammar (any UI touched) → ../reference/design-system/editor-shell-and-visual-system.md
 phase status/order → ../roadmap/p23-layout-depth/README.md
+P23.14 (closed, evidence only) → ../roadmap/p23-layout-depth/p23.14-shell-visual-system/ (stubs)
 
 BLOCKER:
 - none

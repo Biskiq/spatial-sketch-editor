@@ -4,10 +4,10 @@
 visual system**, promoted here out of the P23.14 implementation slice. The P23.14
 design documents are now history and only supersession pointers remain at their old
 slice paths (§0.6).  
-The post-implementation owner ratifications (R1–R3) and the implementation-era
+The post-implementation owner ratifications (R1–R4) and the implementation-era
 rules they produced are folded into the sections below (ratified 2026-09-19).
-P23.14 itself remains under **OWNER REVIEW** — promoting this document does not
-close that slice (§0.3).  
+**P23.14 is closed** (accepted 2026-09-21): this document is its durable outcome,
+the open owner calls it left behind are §0.3, and its dated artifacts are §0.6.  
 **Working name:** **PLATE**  
 **Purpose:** the normative shell + visual-system contract for Museum Editor, and the
 first document a later phase reads before it touches shell composition, material,
@@ -17,8 +17,9 @@ typography, control metrics or state language.
 record of R1–R3 and the root cause of the pre-ratification drift;
 [`editor-shell-atlas/`](./editor-shell-atlas/index.html) — the interactive visual/interaction QA companion;
 [the P23.14 shell QA record](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
-— findings, open owner calls and
-carried implementation debt.  
+— a closed-work stub: its closeout record (acceptance, gate numbers, residuals) is
+in the stub, and the full findings / open-calls / carried-debt body recovers from
+the `git show` anchor inside it.  
 **Provenance only (never authority):** the P23.14 slice's `design/proposals/` and
 `design/briefs/`, the historical
 Designer-D PNG exports, and the pre-PLATE shell specifications' numeric sections.
@@ -101,9 +102,10 @@ exposure seams. The measured tables, the leak instances and the review evidence:
 
 ## 0.3 Open seams — deliberately NOT settled in this document
 
-These are unresolved owner calls recorded by the P23.14 review. They are listed
-here so no later phase mistakes **review-open** behaviour for ratified shell
-design. Do not implement a default for any of them without an owner decision.
+These are unresolved owner calls recorded by the P23.14 review; **closing that slice
+did not settle them**. They are listed here so no later phase mistakes an unsettled
+call for ratified shell design. Do not implement a default for any of them without
+an owner decision.
 
 | Open seam | State |
 | --- | --- |
@@ -116,8 +118,9 @@ design. Do not implement a default for any of them without an owner decision.
 | **Tray width vs a renamed `TRANSFORM`** | open — product calls; §11 keeps the spec's own vocabulary and the 44 px rail |
 | **View Bar in a squeezed centre column** (progressive density) | open seam — see §22.2 |
 
-Source of record for each:
-[`../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md).
+Source of record for each: the P23.14 QA record,
+[`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
+(closed-work stub; full body via its `git show` anchor).
 
 ## 0.4 Carried implementation debt — not design contracts
 
@@ -184,7 +187,7 @@ slice's design folder is now history. Exactly one copy of each artifact exists:
 | Shell + visual-system contract (this document) | `roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md` — read as “the final P23.14 direction” | **`reference/design-system/editor-shell-and-visual-system.md`** — read as the product's shell/system contract, slice-independent and ratified |
 | Measurement + ratification annex | `…/design/owner-ratifications.md` | **`reference/design-system/editor-shell-ratifications.md`** — evidence, not authority |
 | Atlas (QA companion) | `…/design/atlas/index.html` + `notes.md` | **`reference/design-system/editor-shell-atlas/`** |
-| P23.14 shell QA record (dated slice artifact) | `…/qa/2026-09-19-P23.14-shell-qa-record.md` | unchanged — stays with the slice as its QA history |
+| P23.14 shell QA record (dated slice artifact) | `…/qa/2026-09-19-P23.14-shell-qa-record.md` | a **closed-work stub** — closeout record (acceptance, gate numbers, rulings, residuals) at the path; the full review-pass body via its `git show` anchor |
 
 At each old path a **supersession pointer** replaces the document, so no second
 live copy exists and any existing link or bookmark still resolves. The Atlas keeps
@@ -192,9 +195,13 @@ its P23.14 provenance in its own wording — it is still the instrument P23.14's
 review was conducted against — but it now lives beside this document as its
 permanent QA companion (§0.1 rank 3).
 
-This is a **documentation and authority migration only**. It changed no
-implementation, and it does not close the slice: P23.14 stays **OWNER REVIEW**
-(§0.3) until the owner closes it.
+This is a **documentation and authority migration only** — it changed no
+implementation. P23.14 has since **closed** (accepted 2026-09-21, after the PR #61
+code review): the slice's prose artifacts are now path-preserving stubs carrying
+`git show <A>:<path>` recovery anchors, its `context/` and `design/` bundles are
+copied to `docs/archive/roadmap/p23/p23.14-shell-visual-system/`, and no slice
+artifact is authority. What closeout did **not** do: settle the §0.3 owner calls,
+fix TD-1/TD-2, or clear the manual-owed accessibility rows.
 
 **On the wording below.** The sections keep the design-time voice they were written
 in (`P23.14 must…`, `P23.14 should…`, and references to the four PLATE PNGs and the
@@ -1359,8 +1366,8 @@ The ratified implementation adds these acceptance criteria:
     document root scales type and control geometry respectively, independently (§7.2).
 24. `MODE` reads as a caption rather than a third segment, and pressed View Bar controls
     use the recessed surface, edge border and inset rule (§10, §18.2).
-25. Reconciling the shell with this document does **not** close P23.14: the slice stays
-    under owner review until the owner says otherwise (§0.3).
+25. Reconciling a later surface with this document never reopens P23.14 (closed
+    2026-09-21); the §0.3 owner calls stay open and outrank any implementation default.
 26. Every writable shell fact has exactly one control owner per workspace, the Inspector
     presents one resolved target in both header and body, and a retained selection stays
     remembered across workspace switches (§2.12).
