@@ -7,9 +7,11 @@ open, on which trigger, and what the next action is.
 NOT:  a plan · an activity diary · product status · product next-work
 OWNS: meta stage only
 
-PROVENANCE  ratified design → ../roadmap/architecture-operating-cycle-plan.md
-            instructions    → ../roadmap/architecture-operating-cycle-implementation-plan.md
-            planning evidence → ../roadmap/architecture-operating-cycle-workflow-harvest.md
+PROVENANCE  strategic model      → ../roadmap/architecture-operating-cycle-plan.md
+            live cycle state     → (this file)
+            close / transition   → ../../.agents/skills/slice-closeout/SKILL.md
+            historical planning evidence
+                                 → ../roadmap/architecture-operating-cycle-workflow-harvest.md
 BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in ./current.md.
             Nothing here restates either.
 ```
@@ -19,7 +21,7 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 ```text
 STAGE              WAITING
 STATUS             installed; no diagnosis due
-TRIGGER            S1–S5 landed (prerequisite infrastructure)
+TRIGGER            prerequisite cycle infrastructure landed
 PRODUCT CONTEXT    P23 (in progress) — the close that will open Phase 0
 OWNER ACTION       not required
 NEXT               none pending
@@ -37,24 +39,24 @@ EVIDENCE           empty
 
 | Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
 | --- | --- | --- | --- | --- | --- | --- |
-| `WAITING` | Cycle installed; nothing due | S1–S5 landed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
+| `WAITING` | Cycle installed; nothing due | prerequisite cycle infrastructure installed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
 | `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
-| `PHASE_0_ACTIVE` | Two independent audits in progress | owner authorization | run audits A and B independently; do not read each other | both audits complete | `ADJUDICATION` | no |
-| `ADJUDICATION` | Owner classifies and decides | both audits exist | owner adjudicates A/B/C/D + "what catches it next time?" + outcome | outcome recorded | `PHASE_1` or `STEADY` | **yes** |
+| `PHASE_0_ACTIVE` | Phase-0 evidence in progress: two fresh-context semantic architecture reviews + one bounded structural-workflow companion diagnostic | owner authorization | run both semantic reviews over the same range without reading each other's output before adjudication; run the structural-workflow diagnostic as separate evidence — it is not a third architecture reviewer | the Phase-0 evidence required for **both lanes** is available | `ADJUDICATION` | no |
+| `ADJUDICATION` | Owner classifies and decides in two lanes inside one lifecycle | the Phase-0 evidence required for both lanes exists | architecture lane: classify each candidate A/B/C/D and answer "what catches it next time?"; structural-workflow lane: adjudicate the workflow evidence separately (no consequential gap / existing-tool or workflow correction / narrow custom-tool gap) | both lanes adjudicated and the single overall transition recorded | `PHASE_1` or `STEADY` | **yes** |
 | `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
 | `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes | `PHASE_3_EVALUATE` | no |
 | `PHASE_3_EVALUATE` | Keep / simplify / delete | validation window closed | record a verdict per mechanism | verdicts recorded; survivors folded into normal practice | `STEADY` | **yes** |
-| `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or Outcome 1 (nothing installed) | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
+| `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or neither lane justified a mechanism | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
 
 ## Transitions
 
 ```text
-install (S1–S5)                        → WAITING
+prerequisite cycle infrastructure installed → WAITING
 WAITING      + phase owner-closed      → PHASE_0_DUE
 PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
-PHASE_0_ACTIVE + audits A and B done   → ADJUDICATION
-ADJUDICATION + Outcome 1 (C/D)         → STEADY              (no PHASE_1, no PHASE_2)
-ADJUDICATION + Outcome 2/3/4           → PHASE_1
+PHASE_0_ACTIVE + Phase-0 evidence for both lanes available → ADJUDICATION
+ADJUDICATION + neither lane justifies a mechanism → STEADY   (no PHASE_1, no PHASE_2)
+ADJUDICATION + either lane justifies ≥1 mechanism → PHASE_1
 PHASE_1      + justified mechanisms + reconciled window plan
                                        → PHASE_1             (STATUS: ready for validation)
 PHASE_1      + first implementation slice of the window phase starts
@@ -76,9 +78,15 @@ compaction) and the cycle remains `STEADY`. Diagnosis restarts only on evidence 
 demonstrated architectural failure — or because the owner explicitly asks for a fresh
 retrospective.
 
-**Outcome 1 opens no window.** With nothing installed the cycle goes straight to `STEADY` with
-`TRIGGER: none pending` and `ACTIVE MECHANISMS: none`; a validation window with an empty
+**When neither lane justifies a mechanism, no window opens.** The cycle goes straight to `STEADY`
+with `TRIGGER: none pending` and `ACTIVE MECHANISMS: none`; a validation window with an empty
 mechanism list is a defect, not a valid value.
+
+**Two lanes, one transition.** Architecture and structural-workflow evidence are adjudicated
+separately but transition together: a consequential workflow correction alone, or an architecture
+mechanism alone, is enough to reach `PHASE_1`. A mostly-C/D architecture result never vetoes the
+structural-workflow lane, and a workflow finding never manufactures architecture machinery. The
+architecture lane's A/B/C/D classification stays valid inside its lane.
 
 **Early mechanism verdicts.** A mechanism that clearly succeeds or fails early may move
 `PHASE_2_VALIDATING → PHASE_3_EVALUATE` before the window closes; record the reason here. The

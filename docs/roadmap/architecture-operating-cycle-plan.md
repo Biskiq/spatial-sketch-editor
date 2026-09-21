@@ -428,11 +428,6 @@ therefore enters `PHASE_1` for the workflow correction alone — the architectur
 never vetoes the workflow lane, and the workflow lane never manufactures architecture
 machinery.
 
-**Forward-compatibility note.** The live cycle file currently encodes this transition
-as Outcome 1 (C/D) → `STEADY` versus Outcomes 2/3/4 → `PHASE_1`. Once this plan is
-ratified, that wording is reconciled to the two-lane rule above in the operational
-pass — no operational edit in this PR.
-
 ### Branch outcomes
 
 * **Outcome 1 — neither lane justifies a mechanism (architecture mostly C/D, no
@@ -626,15 +621,15 @@ docs/operations/architecture-cycle.md
 docs/reference/*
 = landed and current architecture contracts
 
-implementation plan + workflow harvest
-= historical execution and planning evidence only
+workflow harvest
+= historical bounded planning evidence
 ```
 
-The implementation plan and workflow harvest are provenance: they explain how the
-installed behavior came to exist, but they carry no authority and prescribe nothing
-further. Exact phase-close write ordering, shell commands, anchor mechanics,
-acceptance matrices, and rehearsal records belong to the applied skill and the
-historical evidence — never to this plan.
+The workflow harvest is provenance: it explains how the installed behavior came to
+exist, but it carries no authority and prescribes nothing further. Exact phase-close
+write ordering, shell commands, anchor mechanics, acceptance matrices, and rehearsal
+records belong to the applied skill and to Git/PR history — never to this plan.
+PR #66 implementation and review chronology remains recoverable through Git/PR history.
 
 `docs/roadmap/README.md` remains the P-level status authority and the stable route to
 this plan. The temporary reconciliation input used to produce this plan was unrouted,
@@ -644,20 +639,33 @@ carried no authority, and has been deleted.
 
 ## 14. Scope versus verification
 
-Proposed immediate operational consequence of this plan, with promotion into workflow
-instructions deferred to the post-ratification operational pass:
+Strategic rule, owned by the cross-cutting agent workflow (`AGENTS.md`):
 
 > Task scope limits what may be changed, not what may be inspected or verified.
 
-Implementation scope stays narrow; verification is allowed to see consequences outside
-that scope. Before finishing, the project's full verification runs regardless of task
-scope, and a change that looks necessary outside the assigned scope is reported rather
-than made.
+A scoped task may inspect callers, dependents, wiring, tests and adjacent code needed
+to establish impact. Task scope is never a reason to narrow verification that is
+otherwise applicable:
 
-This pass makes no workflow-instruction change: `AGENTS.md`, skills, and test commands
-are untouched. The concrete verification set (the complete editor suite, the
-typecheck, and the architecture lane with its never-path-gated semantics) remains owned
-by the test documentation and is deliberately not duplicated here, where it would rot.
+```text
+implementation/code tasks
+→ the standard repository verification owned by the applicable test contract
+
+documentation / other non-product work
+→ the verification appropriate to that work
+
+task scope itself
+→ never a reason to narrow otherwise-applicable verification
+```
+
+Implementation scope stays narrow; verification is allowed to see consequences outside
+that scope, and a change that appears necessary outside the assigned scope is reported
+rather than made unless scope is explicitly expanded.
+
+The concrete verification set — the editor suite, the typecheck, and the architecture
+lane with its never-path-gated semantics — and its lane semantics remain owned by the
+test documentation (`apps/editor/tests/README.md`) and are deliberately not duplicated
+here, where they would rot.
 
 ---
 
