@@ -54,8 +54,8 @@ In a project created by the editor's own **New Project** boot:
 **Why it looks like "the Timeline lanes show up differently"** (the report this came
 from): with zero nodes there is no camera flow, so the Camera Timeline renders its
 no-sequence state (header + empty `288px` body, `No sequence yet`) and never its lane
-surface — see [`../design/P23.14-shell-design-context.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/context/shell-design-context.md)
-§3. TD-1 is what keeps the node count at zero.
+surface — see the archived [`shell-design-context.md`](../../archive/roadmap/p23/p23.14-shell-visual-system/context/shell-design-context.md)
+§3 (P23.14 closed 2026-09-21). TD-1 is what keeps the node count at zero.
 
 ### Reproduce
 
@@ -310,6 +310,6 @@ defect is invisible to every existing check. P23.14's shell tests only assert st
 
 ### Related
 
-- P23.14 QA record finding **F4** — [`../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
+- P23.14 QA record finding **F4** — [`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md) (closed-work stub; the full F4 text is behind its `git show` anchor — the defect and its owed tests are reproduced above, not there)
 - Durable shell contract §0.4 (implementation debt, not design) — [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md)
 - [`../../../apps/editor/src/lib/editor/EditorInspector.svelte`](../../../apps/editor/src/lib/editor/EditorInspector.svelte) — the covered rows.

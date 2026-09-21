@@ -3,7 +3,7 @@
 ```text
 DATE:     2026-09-19 · branch `p23.14` · PR #61
 SLICE:    established by P23.14 (slice history: docs/roadmap/p23-layout-depth/p23.14-shell-visual-system/)
-STATUS:   R1–R3 ratified and landed; the P23.14 slice itself stays OPEN for owner review
+STATUS:   R1–R4 ratified and landed; P23.14 CLOSED — accepted 2026-09-21
 ROLE:     EVIDENCE ANNEX to editor-shell-and-visual-system.md — measurements and history, NOT a second authority
 ```
 
@@ -343,12 +343,13 @@ only; no other shell surface moved.
 
 ---
 
-## 5. What this record does **not** close
+## 5. What this record does **not** settle
 
-- The P23.14 slice stays **open for owner review** — these are ratified
-  *decisions*, not a slice closeout. The P23 phase README
-  (`docs/roadmap/p23-layout-depth/README.md`) and `docs/operations/current.md` keep
-  the review-pending status.
+- P23.14 **closed on 2026-09-21** (accepted), but that is a slice closeout of the
+  ratified *decisions* here, not a resolution of the owner calls the review left
+  open — those stay open in the durable contract §0.3. Slice status lives in the
+  P23 phase README (`docs/roadmap/p23-layout-depth/README.md`) and
+  `docs/operations/current.md`.
 - **F1**, **F2** and **F5** were **resolved** by R4 (exposure resolved once per workspace; the
   drawer owns `POV / Observer`), so they are no longer owner calls.
 - **F4** (numeric fields report `:invalid` while holding legal values) is **not accepted** — it

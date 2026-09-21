@@ -1,12 +1,20 @@
-# Moved — owner ratifications annex
+# P23.14 owner ratifications — closed work (stub)
 
-**Status:** superseded pointer (history). The R1–R3 ratification record and its
-measurements moved to the durable design authority. This path holds no content.
+```text
+STATUS:    CLOSED — P23.14 accepted 2026-09-21
+AUTHORITY: NONE — historical ratification record. Not an instruction.
+POINTER:   git show f7a31e24bcbe7835c97522e8d48f3b2536572b3b:docs/roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md
+           (the supersession pointer that already stood at this path before closeout)
+FULL BODY: git show db23ab4:docs/roadmap/p23-layout-depth/p23.14-shell-visual-system/design/owner-ratifications.md
+           (last commit holding the ratification record itself; 19,174 B)
+ARCHIVE:   none — the path already held a pointer, not a body, so there was nothing to copy
+DURABLE:   docs/reference/design-system/editor-shell-ratifications.md (evidence annex)
+           docs/reference/design-system/editor-shell-and-visual-system.md §0.2 (folded rulings)
+```
 
-> **[`docs/reference/design-system/editor-shell-ratifications.md`](../../../../reference/design-system/editor-shell-ratifications.md)**
-> — evidence annex to the shell contract
-> ([`editor-shell-and-visual-system.md`](../../../../reference/design-system/editor-shell-and-visual-system.md)).
+**What was here.** The slice-local ratification record for R1 (tray engraved tier), R2 (armed
+tool treatment) and R3 (type + control roles as two scales), with the measured drift that
+produced them. R4 arrived later with the PR #61 review.
 
-The ratified rules themselves are folded into that contract (§0.2 record, §7 type
-and control roles, §10 View Bar grammar, §11 Tool Tray, §18 surface states); the
-annex keeps the measurements and the history. P23.14 stays under **OWNER REVIEW**.
+**Where the truth went.** The rulings are folded into the durable contract §0.2/§7/§10/§11/§18;
+the annex keeps the measurement evidence and the provenance narrative.

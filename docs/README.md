@@ -67,7 +67,7 @@ archive = history
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |
 | Product direction | [`reference/north-star.md`](./reference/north-star.md) | — |
 | Product routes | [`reference/architecture.md`](./reference/architecture.md) §Product routes | — |
-| Shell **design** — composition, material, typography, control metrics, state language (durable, owner-ratified) | [`reference/design-system/editor-shell-and-visual-system.md`](./reference/design-system/editor-shell-and-visual-system.md) — read §0 first (authority graph · ratification record · open calls); established by the P23.14 slice, which stays under owner review | `apps/editor/src/lib/editor/styles/tokens.css` + `controls.css` |
+| Shell **design** — composition, material, typography, control metrics, state language (durable, owner-ratified) | [`reference/design-system/editor-shell-and-visual-system.md`](./reference/design-system/editor-shell-and-visual-system.md) — read §0 first (authority graph · ratification record · open calls); established by P23.14 (slice closed 2026-09-21) | `apps/editor/src/lib/editor/styles/tokens.css` + `controls.css` |
 | Shell / workspaces / timeline — **capability, exposure, ownership** | [`reference/components/shell.md`](./reference/components/shell.md) · [`reference/design-system/design-shell-specs.md`](./reference/design-system/design-shell-specs.md) (+ per-domain [`reference/design-system/shell-scene-workspaces.md`](./reference/design-system/shell-scene-workspaces.md) / [`reference/design-system/shell-camera-workspaces.md`](./reference/design-system/shell-camera-workspaces.md)) — descriptive of the landed shell; their shell dimension/type/control numbers are superseded by the durable shell contract above | `apps/editor/src/lib/editor/app/` |
 | Scene entities / materials / lights | [`reference/components/scene-content.md`](./reference/components/scene-content.md) | app-local `src/lib/content/` facades |
 | Placement / transforms | [`reference/components/placement.md`](./reference/components/placement.md) | `apps/editor/src/lib/editor/gizmo/` |
@@ -186,7 +186,7 @@ under a slice-independent name, fold the implementation-era owner ratifications 
 the contract itself, leave a supersession pointer at the old slice path, and keep the
 slice as its history. One live copy, discoverable from this router — the shell contract
 ([`reference/design-system/editor-shell-and-visual-system.md`](./reference/design-system/editor-shell-and-visual-system.md),
-established by P23.14 and still slice-review-open) is the first instance.
+established by P23.14, slice closed 2026-09-21) is the first instance.
 
 Stale high-authority docs are more dangerous than missing docs — challenge and
 reconcile them rather than silently following either side.
