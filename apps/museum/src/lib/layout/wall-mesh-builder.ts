@@ -1,6 +1,7 @@
 import type { LayoutVec2 } from './layout-types';
 import type {
 	CompiledEndpointBand,
+	CompiledJunctionBand,
 	CompiledLegJoin,
 	CompiledOpening,
 	CompiledPhysicalWall,
@@ -104,6 +105,26 @@ export type WallMeshOptions = {
 export type WallMeshBuildResult = {
 	mesh?: IndexedWallMesh;
 	issues: LayoutGeometryIssue[];
+};
+
+/**
+ * P23.15 — absolute along-distance span a resolved Wall end actually occupies.
+ * A branch trimmed against the resolved Junction material starts (or ends) at
+ * its `clipDistance`, never at the Junction plane, so no Wall-owned body can
+ * occupy the same volume as the Junction material.
+ */
+type ResolvedEndClip = { start: number; end: number };
+
+/**
+ * P23.15 — one internal interface resting on this Wall's own offset face. The
+ * builder only **omits** the covered face region; it never decides that the
+ * interface exists (that is resolved in `layout-core`).
+ */
+type ResolvedFaceSuppression = {
+	normal: LayoutVec2;
+	fromDistance: number;
+	toDistance: number;
+	bands: readonly CompiledJunctionBand[];
 };
 
 /**
@@ -328,11 +349,36 @@ export function buildStandaloneWallMesh(
 	} as CompiledRoom;
 	const first = wall.samples[0]!;
 	const last = wall.samples.at(-1)!;
+	const length = last.distance ?? 0;
+	// P23.15 — the resolved end clip and interfaces, straight from the compiled
+	// Junction resolution. The builder does not derive either: it only clips the
+	// Wall's own sections/reveals to the resolved span and omits the faces the
+	// resolution reports as interior.
+	const clip: ResolvedEndClip = {
+		start: ends?.start?.clipDistance ?? 0,
+		end: length - (ends?.end?.clipDistance ?? 0)
+	};
+	const suppressions: ResolvedFaceSuppression[] = [];
+	for (const [join, atEnd] of [
+		[ends?.start ?? null, false] as const,
+		[ends?.end ?? null, true] as const
+	]) {
+		for (const entry of join?.interfaces ?? []) {
+			const a = atEnd ? length - entry.toDistance : entry.fromDistance;
+			const b = atEnd ? length - entry.fromDistance : entry.toDistance;
+			suppressions.push({
+				normal: entry.normal,
+				fromDistance: Math.max(0, Math.min(a, b)),
+				toDistance: Math.min(length, Math.max(a, b)),
+				bands: entry.bands
+			});
+		}
+	}
 	// Three explicit branches — terminal square cap, resolved corner, or fail
 	// closed above. No silent no-resolution fallback survives.
 	const cornerStart = cornerFromJoin(ends?.start, squareEndCorner(first.point, first.normal, half));
 	const cornerEnd = cornerFromJoin(ends?.end, squareEndCorner(last.point, last.normal, half));
-	const breakpoints = standaloneHeightBreakpoints(wall, wallHeight);
+	const breakpoints = withSuppressionBreakpoints(standaloneHeightBreakpoints(wall, wallHeight), suppressions);
 	// P23.15 Task 7 — a measure point for the per-Wall Junction-aware build, beside
 	// the compile's `junction-resolution` mark, so the perf lane can attribute the
 	// cost of resolving ends to the compile and the cost of consuming them here.
@@ -347,7 +393,9 @@ export function buildStandaloneWallMesh(
 			wallHeight,
 			breakpoints,
 			classify,
-			false
+			false,
+			clip,
+			suppressions
 		)
 	);
 	const bridges: BridgeFaces[] = [];
@@ -360,13 +408,13 @@ export function buildStandaloneWallMesh(
 		if (bridge) bridges.push(bridge);
 	}
 	faces.bridges = bridges;
-	const stepFaces = [
-		...(ends?.start ? buildStandaloneContinuationStep(roomView, wallAsCompiled, ends.start, false, wallHeight, breakpoints) : []),
-		...(ends?.end ? buildStandaloneContinuationStep(roomView, wallAsCompiled, ends.end, true, wallHeight, breakpoints) : [])
-	];
-	if (stepFaces.length > 0) {
+	// P23.15 — the resolved difference/trim surfaces are **compiled facts**. This
+	// path only triangulates them; it never compares thicknesses, never inspects
+	// a neighbour's bands and never decides whether a step exists.
+	const surfaceFaces = buildStandaloneResolvedSurfaces(roomView, ends);
+	if (surfaceFaces.length > 0) {
 		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
-		faces.sections.push({ ref, surfaceKey: classify(ref), faces: stepFaces });
+		faces.sections.push({ ref, surfaceKey: classify(ref), faces: surfaceFaces });
 	}
 	const wallsFaces = [faces];
 	const mesh = emitMesh(wall.wallId, wallsFaces, classify, weldTolerance);
@@ -547,126 +595,58 @@ function buildStandaloneEndBridge(
 }
 
 /**
- * P23.15 — the exposed difference surfaces of a tangent continuation.
+ * P23.15 — triangulate the **resolved** Junction surfaces this Wall owns.
  *
- * Tangent continuation suppresses only the **overlapping/common** interface. A
- * thickness difference, a height difference or an Opening-profile difference is
- * still real physical geometry, so the exposed difference surfaces of each
- * leg's end plane are emitted here — never the buried internal cap.
- *
- * Each difference surface is emitted **once, by the leg that owns it**, so Wall
- * attribution follows the material instead of an arbitrary tie-break:
- *
- * ```text
- * thickness step strip  → the thicker leg's own exposed side
- * sole-solid band cap   → the solid leg's own exposed end cross-section
- * ```
- *
- * The counterpart leg evaluates the mirrored predicate in its own build and
- * emits nothing, so the seam is still painted exactly once and neither Wall
- * ever grows into its neighbour's cross-section. Ownership is decided from
- * thickness and solidity alone — never an angle (Decision 4). Opening voids are
- * respected: a difference surface is never emitted across a non-solid interval.
+ * `layout-core` decides what physical surface exists, in which vertical bands,
+ * and which Wall owns it (`CompiledJunctionSurface`). This function only turns
+ * each resolved surface into vertical quads — it never compares thicknesses,
+ * never inspects a neighbour's bands, never decides exposure or ownership and
+ * never invents a step. A surface's `normal` is authoritative for winding.
  */
-function buildStandaloneContinuationStep(
-	room: CompiledRoom,
-	wall: CompiledWall,
-	join: CompiledLegJoin,
-	atEnd: boolean,
-	wallHeight: number,
-	roomBreakpoints: readonly number[]
-): Face[] {
-	const neighbor = join.neighbor;
-	if (!neighbor || !join.interfaceSuppressed) return [];
-
-	const ownHalf = wall.thickness / 2;
-	const neighborHalf = neighbor.halfThickness;
-	const ownTop = wallHeight;
-	const neighborTop = neighbor.endpointSolidBands.at(-1)?.topY ?? wallHeight;
-	// Thickness and height are INDEPENDENT: a straight continuation can change
-	// either, both, or neither. The union's exposed difference surfaces are:
-	//
-	//   both legs solid at this height  → two lateral strips between the half
-	//                                     thicknesses (a thickness step)
-	//   exactly one leg solid           → that leg's full end cross-section (a
-	//                                     cap, also what an Opening at the
-	//                                     Junction exposes)
-	//
-	// Neither case is "no added geometry": suppressing the interface is not the
-	// same as the shells being equal.
-	const thickerHalf = Math.max(ownHalf, neighborHalf);
-	const thinnerHalf = Math.min(ownHalf, neighborHalf);
-	const heightEdges: number[] = [0, ownTop, neighborTop];
-	const ownSolid = endpointProfileIntervals(wall, atEnd);
-	const neighborSolid = intervalsFromBands(neighbor.endpointSolidBands);
-	for (const [lo, hi] of [...ownSolid, ...neighborSolid]) heightEdges.push(lo, hi);
-	for (const y of roomBreakpoints) heightEdges.push(y);
-	const top = Math.max(ownTop, neighborTop);
-	const sorted = [...new Set(heightEdges.filter((y) => y >= 0 && y <= top))].sort((a, b) => a - b);
-
-	const own = ownOutwardFrame(wall, atEnd);
-	const junction = atEnd ? wall.samples.at(-1)!.point : wall.samples[0]!.point;
-	const at = (lateral: number): LayoutVec2 => [
-		junction[0] + lateral * own.normal[0],
-		junction[1] + lateral * own.normal[1]
-	];
-	const lateralNormal: V3 = [own.normal[0], 0, own.normal[1]];
-	const ownCapNormal: V3 = [-own.tangent[0], 0, -own.tangent[1]];
-	const cap = (faces: Face[], half: number, lo: number, hi: number, faceNormal: V3): void => {
-		const p1 = at(half);
-		const p2 = at(-half);
-		pushOrientedFace(
-			faces,
-			[
-				vertex(p1[0], room.floorElevation + hi, p1[1], 0, 0, 0, 0, hi),
-				vertex(p2[0], room.floorElevation + hi, p2[1], 0, 0, 0, 0, hi),
-				vertex(p2[0], room.floorElevation + lo, p2[1], 0, 0, 0, 0, lo),
-				vertex(p1[0], room.floorElevation + lo, p1[1], 0, 0, 0, 0, lo)
-			],
-			faceNormal,
-			BRIDGE_PICK
-		);
-	};
-
+function buildStandaloneResolvedSurfaces(room: CompiledRoom, ends: ResolvedWallEnds | null): Face[] {
 	const faces: Face[] = [];
-	for (let i = 1; i < sorted.length; i += 1) {
-		const lo = sorted[i - 1]!;
-		const hi = sorted[i]!;
-		if (hi - lo <= LAYOUT_GEOMETRY_EPSILON) continue;
-		const ownIsSolid = profileCovers(ownSolid, lo, hi);
-		const neighborIsSolid = profileCovers(neighborSolid, lo, hi);
-		if (ownIsSolid && neighborIsSolid) {
-			// A thickness step is the **thicker** leg's own exposed side surface, so
-			// only the thicker leg emits it. The thinner leg's build evaluates the
-			// mirrored predicate and stays silent, so the strips are still painted
-			// exactly once — now by the Wall that physically owns them.
-			if (ownHalf <= neighborHalf + LAYOUT_GEOMETRY_EPSILON) continue;
-			const halfDelta = thickerHalf - thinnerHalf;
-			if (halfDelta <= LAYOUT_GEOMETRY_EPSILON) continue;
-			for (const sign of [1, -1] as const) {
-				const inner = at(sign * thinnerHalf);
-				const outer = at(sign * thickerHalf);
+	for (const join of [ends?.start ?? null, ends?.end ?? null]) {
+		for (const surface of join?.surfaces ?? []) {
+			const spanX = surface.to[0] - surface.from[0];
+			const spanZ = surface.to[1] - surface.from[1];
+			const span = Math.hypot(spanX, spanZ);
+			if (span <= LAYOUT_GEOMETRY_EPSILON) continue;
+			const faceNormal: V3 = [surface.normal[0], 0, surface.normal[1]];
+			for (const band of surface.bands) {
+				const yLo = room.floorElevation + band.bottomY;
+				const yHi = room.floorElevation + band.topY;
+				if (yHi - yLo <= LAYOUT_GEOMETRY_EPSILON) continue;
 				pushOrientedFace(
 					faces,
 					[
-						vertex(outer[0], room.floorElevation + hi, outer[1], 0, 0, 0, 0, hi),
-						vertex(inner[0], room.floorElevation + hi, inner[1], 0, 0, 0, 0, hi),
-						vertex(inner[0], room.floorElevation + lo, inner[1], 0, 0, 0, 0, lo),
-						vertex(outer[0], room.floorElevation + lo, outer[1], 0, 0, 0, 0, lo)
+						vertex(surface.from[0], yHi, surface.from[1], 0, 0, 0, 0, band.topY),
+						vertex(surface.to[0], yHi, surface.to[1], 0, 0, 0, span, band.topY),
+						vertex(surface.to[0], yLo, surface.to[1], 0, 0, 0, span, band.bottomY),
+						vertex(surface.from[0], yLo, surface.from[1], 0, 0, 0, 0, band.bottomY)
 					],
-					[sign * lateralNormal[0], 0, sign * lateralNormal[2]],
+					faceNormal,
 					BRIDGE_PICK
 				);
 			}
-			continue;
 		}
-		// Exactly one leg is solid in this band, so the exposed surface is that
-		// leg's own end cross-section. Attribution follows the material: the
-		// neighbour's band cap is emitted by the neighbour's own build, never
-		// borrowed into this Wall's mesh.
-		if (ownIsSolid) cap(faces, ownHalf, lo, hi, ownCapNormal);
 	}
 	return faces;
+}
+
+/** Merge the interface band edges into the Wall's height breakpoints. */
+function withSuppressionBreakpoints(
+	breakpoints: readonly number[],
+	suppressions: readonly ResolvedFaceSuppression[]
+): number[] {
+	if (suppressions.length === 0) return [...breakpoints];
+	const edges = new Set<number>(breakpoints);
+	for (const suppression of suppressions) {
+		for (const band of suppression.bands) {
+			edges.add(band.bottomY);
+			edges.add(band.topY);
+		}
+	}
+	return [...edges].sort((a, b) => a - b);
 }
 
 function validateRoom(room: CompiledRoom): LayoutGeometryIssue[] {
@@ -768,7 +748,9 @@ function buildWallFaces(
 	wallHeight: number,
 	roomBreakpoints: readonly number[],
 	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
-	emitBridges = true
+	emitBridges = true,
+	clip?: ResolvedEndClip,
+	suppressions: readonly ResolvedFaceSuppression[] = []
 ): WallFaces {
 	const half = wall.thickness / 2;
 	const sections: SectionFaces[] = [];
@@ -781,7 +763,7 @@ function buildWallFaces(
 			kind: section.kind
 		};
 		const surfaceKey = classify(ref);
-		const faces = buildSectionFaces(room, wall, section, half, cornerStart, cornerEnd, roomBreakpoints);
+		const faces = buildSectionFaces(room, wall, section, half, cornerStart, cornerEnd, roomBreakpoints, clip, suppressions);
 		if (faces.length > 0) sections.push({ ref, surfaceKey, faces });
 	}
 
@@ -794,7 +776,7 @@ function buildWallFaces(
 			...(opening.openingId ? { openingId: opening.openingId } : {}),
 			kind: 'side'
 		});
-		const faces = buildRevealFaces(room, wall, prevWall, nextWall, opening, half, wallHeight, roomBreakpoints, cornerStart, cornerEnd);
+		const faces = buildRevealFaces(room, wall, prevWall, nextWall, opening, half, wallHeight, roomBreakpoints, cornerStart, cornerEnd, clip);
 		if (faces.length > 0) reveals.push({ openingId: opening.openingId, surfaceKey, faces });
 	}
 
@@ -817,15 +799,35 @@ function buildSectionFaces(
 	half: number,
 	cornerStart: Corner,
 	cornerEnd: Corner,
-	roomBreakpoints: readonly number[]
+	roomBreakpoints: readonly number[],
+	endClip?: ResolvedEndClip,
+	suppressions: readonly ResolvedFaceSuppression[] = []
 ): Face[] {
+	// P23.15 — a trimmed end shortens the Wall's own material: the section span
+	// starts (or stops) at the resolved clip distance, never at the Junction
+	// plane, so the Wall's body cannot occupy the Junction material's volume.
+	const spanStart = Math.max(section.startDistance, endClip?.start ?? 0);
+	const spanEnd = Math.min(section.endDistance, endClip?.end ?? Infinity);
+	if (spanEnd - spanStart <= LAYOUT_GEOMETRY_EPSILON) return [];
+	// Interfaces split the section at their own interval edges so a covered strip
+	// is a whole face, never a half-covered quad.
+	const interfaceDistances: number[] = [];
+	for (const suppression of suppressions) {
+		if (suppression.fromDistance > section.startDistance && suppression.fromDistance < section.endDistance) {
+			interfaceDistances.push(suppression.fromDistance);
+		}
+		if (suppression.toDistance > section.startDistance && suppression.toDistance < section.endDistance) {
+			interfaceDistances.push(suppression.toDistance);
+		}
+	}
 	// Lintel bottoms follow the arch profile, so merge its topBoundary knots into
 	// the clip: the underside and front-face bottom edge tessellate at profile
 	// resolution instead of the (coarser) wall-sample spacing, and the pointed
 	// apex lands exactly on a knot rather than vanishing between samples.
-	const clip = clipSectionSamples(wall.samples, section.startDistance, section.endDistance, [
+	const clip = clipSectionSamples(wall.samples, spanStart, spanEnd, [
 		...lintelProfileKnotDistances(section),
-		...lintelBandIntersectionDistances(section, roomBreakpoints)
+		...lintelBandIntersectionDistances(section, roomBreakpoints),
+		...interfaceDistances
 	]);
 	if (clip.length < 2) return [];
 	const faces: Face[] = [];
@@ -885,14 +887,20 @@ function buildSectionFaces(
 			const yLoAWorld = floorElevation + yLoA;
 			const yLoBWorld = floorElevation + yLoB;
 			const yHiWorld = floorElevation + hi;
-			pushBandFace(faces,
+			// P23.15 — a resolved internal interface means the corrected region is
+			// interior to the Junction material, so the Wall's own face is omitted
+			// there. Both offset faces are tested by their own outward normal.
+			const frontOmitted = faceOmitted(suppressions, nA, a.distance, b.distance, lo, hi);
+			const backOmitted = faceOmitted(suppressions, [-nA[0], -nA[1]], a.distance, b.distance, lo, hi);
+			if (frontOmitted && backOmitted) continue;
+			if (!frontOmitted) pushBandFace(faces,
 				vertex(frontA[0], yHiWorld, frontA[1], nA[0], 0, nA[1], a.distance, hi),
 				vertex(frontA[0], yLoAWorld, frontA[1], nA[0], 0, nA[1], a.distance, yLoA),
 				vertex(frontB[0], yLoBWorld, frontB[1], nB[0], 0, nB[1], b.distance, yLoB),
 				vertex(frontB[0], yHiWorld, frontB[1], nB[0], 0, nB[1], b.distance, hi),
 				sectionPick
 			);
-			pushBandFace(faces,
+			if (!backOmitted) pushBandFace(faces,
 				vertex(backB[0], yHiWorld, backB[1], -nB[0], 0, -nB[1], b.distance, hi),
 				vertex(backB[0], yLoBWorld, backB[1], -nB[0], 0, -nB[1], b.distance, yLoB),
 				vertex(backA[0], yLoAWorld, backA[1], -nA[0], 0, -nA[1], a.distance, yLoA),
@@ -931,6 +939,31 @@ function buildSectionFaces(
 	return faces;
 }
 
+/**
+ * Is this offset face region interior to the resolved Junction material? The
+ * interface carries the face's own outward normal, so no `front`/`back`
+ * convention can drift between the resolver and the builder.
+ */
+function faceOmitted(
+	suppressions: readonly ResolvedFaceSuppression[],
+	normal: LayoutVec2,
+	startDistance: number,
+	endDistance: number,
+	lo: number,
+	hi: number
+): boolean {
+	for (const suppression of suppressions) {
+		if (suppression.normal[0] * normal[0] + suppression.normal[1] * normal[1] < 0.9) continue;
+		if (startDistance < suppression.fromDistance - LAYOUT_GEOMETRY_EPSILON) continue;
+		if (endDistance > suppression.toDistance + LAYOUT_GEOMETRY_EPSILON) continue;
+		const covered = suppression.bands.some(
+			(band) => lo >= band.bottomY - LAYOUT_GEOMETRY_EPSILON && hi <= band.topY + LAYOUT_GEOMETRY_EPSILON
+		);
+		if (covered) return true;
+	}
+	return false;
+}
+
 function buildRevealFaces(
 	room: CompiledRoom,
 	wall: CompiledWall,
@@ -941,7 +974,8 @@ function buildRevealFaces(
 	wallHeight: number,
 	roomBreakpoints: readonly number[],
 	cornerStart: Corner,
-	cornerEnd: Corner
+	cornerEnd: Corner,
+	endClip?: ResolvedEndClip
 ): Face[] {
 	const floorElevation = room.floorElevation;
 	// The jamb face ends where the arch spring begins: for rectangular openings
@@ -954,8 +988,8 @@ function buildRevealFaces(
 	const faces: Face[] = [];
 	const bands = segmentBands(revealBottom, revealBottom, revealTop, roomBreakpoints);
 	const sides: Array<{ distance: number; sign: number }> = [
-		{ distance: opening.offset, sign: 1 },
-		{ distance: opening.offset + opening.width, sign: -1 }
+		{ distance: Math.max(opening.offset, endClip?.start ?? 0), sign: 1 },
+		{ distance: Math.min(opening.offset + opening.width, endClip?.end ?? Infinity), sign: -1 }
 	];
 	// Jambs at the wall's endpoints use the same profile-aware corner
 	// coordinates as the sections: a mitered corner shares the apex with the
@@ -984,6 +1018,10 @@ function buildRevealFaces(
 			if (atEnd && wallOpensAtStart(nextWall)) continue;
 			if (atStart && wallOpensAtEnd(prevWall)) continue;
 		}
+		// A trimmed (Junction-clipped) end has no jamb of its own: the resolved
+		// Junction material closes that end, so a jamb that the clip moved off its
+		// authored position would double-paint the resolved region.
+		if (side.sign > 0 ? opening.offset < (endClip?.start ?? 0) - LAYOUT_GEOMETRY_EPSILON : opening.offset + opening.width > (endClip?.end ?? length) + LAYOUT_GEOMETRY_EPSILON) continue;
 		const sample = sampleAt(wall.samples, side.distance);
 		const clip: ClipSample = {
 			...sample,

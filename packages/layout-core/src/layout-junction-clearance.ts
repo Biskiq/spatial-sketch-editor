@@ -160,6 +160,47 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 			}
 		}
 	}
+	// P23.15 — resolved Wall-attributed surfaces are emitted geometry, so they are
+	// validated here too: finite, non-zero plan span, positive vertical span, and
+	// owned by the Wall whose join carries them. A zero-area or unowned surface
+	// would render as a degenerate sliver or as unexplained material.
+	for (const surface of join.surfaces ?? []) {
+		if (!finite2(surface.from) || !finite2(surface.to) || !finite2(surface.normal)) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+		if (surface.ownerWallId !== join.wallId || surface.end !== join.end) {
+			return junctionSeamFailure('junction_seam_uncovered');
+		}
+		if (Math.hypot(surface.to[0] - surface.from[0], surface.to[1] - surface.from[1]) <= JUNCTION_SEAM_EPSILON) {
+			return junctionSeamFailure('junction_seam_overlap');
+		}
+		for (const band of surface.bands) {
+			if (!Number.isFinite(band.bottomY) || !Number.isFinite(band.topY)) {
+				return junctionSeamFailure('junction_seam_degenerate');
+			}
+			if (band.topY - band.bottomY <= JUNCTION_SEAM_EPSILON) {
+				return junctionSeamFailure('junction_seam_degenerate');
+			}
+		}
+	}
+	for (const entry of join.interfaces ?? []) {
+		if (!finite2(entry.normal) || !Number.isFinite(entry.fromDistance) || !Number.isFinite(entry.toDistance)) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+		if (entry.toDistance - entry.fromDistance <= JUNCTION_SEAM_EPSILON) {
+			return junctionSeamFailure('junction_seam_overlap');
+		}
+	}
+	if (join.clipDistance !== undefined) {
+		if (!Number.isFinite(join.clipDistance) || join.clipDistance < -JUNCTION_SEAM_EPSILON) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+		// A clipped (trimmed) end is resolved by the Junction material it rests on,
+		// so its interface must be suppressed; an open clipped end would be a hole.
+		if (join.clipDistance > JUNCTION_SEAM_EPSILON && !join.interfaceSuppressed) {
+			return junctionSeamFailure('junction_seam_uncovered');
+		}
+	}
 	if (join.fold) return junctionSeamFailure('junction_seam_fold');
 	if (join.ownedSeam) {
 		for (const point of join.ownedSeam.polygon) {
@@ -175,6 +216,32 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		join.kind === 'terminal' || join.kind === 'trim' || join.corner !== null || join.interfaceSuppressed;
 	if (!resolved) return junctionSeamFailure('junction_seam_uncovered');
 	return undefined;
+}
+
+/** Two plan segments are the same physical segment (either orientation). */
+function sameSegment(a0: Vec2Like, a1: Vec2Like, b0: Vec2Like, b1: Vec2Like): boolean {
+	const direct =
+		Math.hypot(a0[0] - b0[0], a0[1] - b0[1]) <= JUNCTION_SEAM_EPSILON &&
+		Math.hypot(a1[0] - b1[0], a1[1] - b1[1]) <= JUNCTION_SEAM_EPSILON;
+	const reversed =
+		Math.hypot(a0[0] - b1[0], a0[1] - b1[1]) <= JUNCTION_SEAM_EPSILON &&
+		Math.hypot(a1[0] - b0[0], a1[1] - b0[1]) <= JUNCTION_SEAM_EPSILON;
+	return direct || reversed;
+}
+
+/** Do any two band lists share a positive vertical span? */
+function bandsOverlap(
+	a: readonly { bottomY: number; topY: number }[],
+	b: readonly { bottomY: number; topY: number }[]
+): boolean {
+	for (const first of a) {
+		for (const second of b) {
+			const lo = Math.max(first.bottomY, second.bottomY);
+			const hi = Math.min(first.topY, second.topY);
+			if (hi - lo > JUNCTION_SEAM_EPSILON) return true;
+		}
+	}
+	return false;
 }
 
 export type JunctionSeamInput = {
@@ -203,6 +270,22 @@ export function junctionSeamFailureOf(junction: JunctionSeamInput): JunctionSeam
 	for (const join of resolution.joins) {
 		const failure = joinSeamFailure(join);
 		if (failure) return failure;
+	}
+
+	// Duplicate ownership: two Walls may not own the same resolved physical
+	// region. Two *different* owners with coincident surface segments whose bands
+	// overlap would double-paint the same surface and split ownership of the same
+	// material.
+	const surfaces = resolution.joins.flatMap((join) => join.surfaces ?? []);
+	for (let index = 0; index < surfaces.length; index += 1) {
+		for (let other = index + 1; other < surfaces.length; other += 1) {
+			const a = surfaces[index]!;
+			const b = surfaces[other]!;
+			if (a.ownerWallId === b.ownerWallId && a.end === b.end) continue;
+			if (!sameSegment(a.from, a.to, b.from, b.to)) continue;
+			if (!bandsOverlap(a.bands, b.bands)) continue;
+			return junctionSeamFailure('junction_seam_overlap');
+		}
 	}
 
 	// Junction-level fold: two legs leaving in exactly the same direction. The
