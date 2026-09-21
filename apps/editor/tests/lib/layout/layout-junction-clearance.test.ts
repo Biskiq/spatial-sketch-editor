@@ -18,9 +18,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
+	joinSeamFailure,
 	junctionSeamFailureOf,
 	legJoinsByWall,
+	resolveJunctionGeometry,
 	wallEndsSeamFailure,
+	type CompiledJunctionSurface,
 	type CompiledJunctionLeg,
 	type CompiledJunctionResolution,
 	type CompiledLegJoin,
@@ -236,6 +239,50 @@ describe('P23.15 Task 4 — junction seam acceptance', () => {
 		const museum = buildMuseumWallMesh(compiled, 0, ends);
 		expect(editor.issues.map((issue) => issue.code)).toEqual(['junction_seam_fold']);
 		expect(museum.issues.map((issue) => issue.code)).toEqual(['junction_seam_fold']);
+	});
+
+	it('rejects a zero-span resolved surface and duplicate ownership analytically', () => {
+		const legs: CompiledJunctionLeg[] = [leg('w1', 0), leg('w2', 180)];
+		const resolved = resolveJunctionGeometry('j', [0, 0], legs);
+		const owner = resolved.resolution.joins[0]!;
+		const sound: CompiledLegJoin = {
+			...owner,
+			surfaces: [
+				{
+					ownerWallId: owner.wallId,
+					end: owner.end,
+					kind: 'continuation-thickness-step',
+					from: [0, 0.1],
+					to: [0, 0.2],
+					normal: [1, 0],
+					bands: [{ bottomY: 0, topY: 3 }]
+				}
+			]
+		};
+		expect(joinSeamFailure(sound)).toBeUndefined();
+		// Zero plan span: a degenerate sliver, not a surface.
+		expect(
+			joinSeamFailure({ ...sound, surfaces: [{ ...sound.surfaces![0]!, to: [0, 0.1] }] })?.code
+		).toBe('junction_seam_overlap');
+		// Zero vertical span: a zero-height surface.
+		expect(
+			joinSeamFailure({ ...sound, surfaces: [{ ...sound.surfaces![0]!, bands: [{ bottomY: 1, topY: 1 }] }] })?.code
+		).toBe('junction_seam_degenerate');
+		// A clipped (trimmed) end that is not an interface would be an open hole.
+		expect(joinSeamFailure({ ...sound, clipDistance: 0.1, interfaceSuppressed: false })?.code).toBe(
+			'junction_seam_uncovered'
+		);
+		// Duplicate ownership: two Walls owning the same resolved region.
+		const other = resolved.resolution.joins[1]!;
+		const shared: CompiledJunctionSurface = sound.surfaces![0]!;
+		const stolen: CompiledJunctionSurface = { ...shared, ownerWallId: other.wallId, end: other.end };
+		const resolution: CompiledJunctionResolution = {
+			...resolved.resolution,
+			joins: [sound, { ...other, surfaces: [stolen] }]
+		};
+		expect(junctionSeamFailureOf({ junctionId: 'j', point: [0, 0], legs, resolution })?.code).toBe(
+			'junction_seam_overlap'
+		);
 	});
 
 	it('accepts every ordinary Junction the compiler compiles today', () => {

@@ -299,6 +299,72 @@ export function assertUnionCoverageAtJunction(
 	return { insideSamples, outsideSamples };
 }
 
+/**
+ * P23.15 — the **independent ownership/overlap oracle**.
+ *
+ * Union coverage alone cannot detect wrong ownership: a step painted by the
+ * wrong Wall, or two Wall-owned bodies interpenetrating, cover exactly the same
+ * area. This probe samples the Junction region against the independently
+ * described Wall boxes and asserts:
+ *
+ * ```text
+ * point deep inside some authored Wall box
+ *   → exactly ONE emitted Wall mesh contains it
+ * ```
+ *
+ * It shares no code with the production partition: the boxes are computed from
+ * the document's junctions/thicknesses, and the solidity test is per-mesh ray
+ * parity. Points near a box boundary are skipped, because a resolved miter,
+ * trim or difference step may legitimately reach past the authored band there.
+ */
+export function assertWallOwnershipAtJunction(
+	meshes: readonly IndexedWallMesh[],
+	options: JunctionCoverageOptions
+): { samples: number } {
+	let samples = 0;
+	const steps = Math.round((options.radius * 2) / options.step);
+	for (let i = 0; i <= steps; i += 1) {
+		for (let j = 0; j <= steps; j += 1) {
+			const x = options.center[0] - options.radius + i * options.step + options.step / 5;
+			const z = options.center[1] - options.radius + j * options.step + options.step / 13;
+			for (const y of options.heights) {
+				const deepInside = options.walls.some((wall) => {
+					const local = wallLocal([x, z], wall);
+					const lateralRoom = wall.thickness / 2 - Math.abs(local.lateral);
+					const alongRoom = Math.min(local.along, local.length - local.along);
+					const base = wall.base ?? 0;
+					return (
+						lateralRoom > options.margin &&
+						alongRoom > options.margin &&
+						y > base + options.margin &&
+						y < base + wall.height - options.margin
+					);
+				});
+				if (!deepInside) continue;
+				samples += 1;
+				const owners = meshes.filter((mesh) => meshContains(mesh, [x, y, z])).map((mesh) => mesh.roomId);
+			expect(
+					owners.length,
+					`(${x.toFixed(3)}, ${y}, ${z.toFixed(3)}) owned by ${owners.join(' + ') || 'nothing'}`
+				).toBe(1);
+			}
+		}
+	}
+	return { samples };
+}
+
+/** Every emitted vertex has a finite position inside the given bounds. */
+export function assertVerticesWithinBounds(mesh: IndexedWallMesh, bounds: { min: readonly number[]; max: readonly number[] }): void {
+	for (let index = 0; index < mesh.positions.length; index += 3) {
+		for (const axis of [0, 1, 2] as const) {
+			const value = mesh.positions[index + axis]!;
+			expect(Number.isFinite(value), `vertex ${index / 3} axis ${axis}`).toBe(true);
+			expect(value, `vertex ${index / 3} axis ${axis} min`).toBeGreaterThanOrEqual(bounds.min[axis]! - 1e-6);
+			expect(value, `vertex ${index / 3} axis ${axis} max`).toBeLessThanOrEqual(bounds.max[axis]! + 1e-6);
+		}
+	}
+}
+
 /** Every emitted triangle has a non-degenerate area (no zero-span surface). */
 export function assertNoDegenerateTriangles(mesh: IndexedWallMesh, minimumArea = 1e-12): void {
 	for (let index = 0; index < mesh.indices.length; index += 3) {
