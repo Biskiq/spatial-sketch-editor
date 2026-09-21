@@ -1,7 +1,8 @@
 # Architecture Operating Cycle — Workflow Harvest
 
-Prerequisite 2 of `architecture-operating-cycle-plan.md`. This is a workflow
-harvest, not a product-code harvest and not Phase 0.
+Historical workflow harvest produced as Prerequisite 2 of the pre-implementation
+Architecture Operating Cycle plan. This is a workflow harvest, not a product-code
+harvest and not Phase 0.
 
 ## 0. Scope and evidence
 
@@ -33,9 +34,10 @@ the major-unknown list in the verdict — was ratified as the **hybrid** model: 
 compact stub at the artifact's original path plus a `git show <A>:<path>` exact-recovery line,
 with an archive copy only for multi-file bundles and non-text evidence. The authoritative close
 event (§15 Q1/Q2) and the next phase's state and sequencing (§15 Q3), and Q5–Q9, were likewise
-settled and folded into those owners. The owner-decision record lived in the now-closed
-implementation plan, which is historical evidence only and prescribes nothing. Read the items
-below as the pre-decision record they are.
+settled and folded into those owners. The implementation planning and review history for PR #66
+remains recoverable through Git/PR history — there is no live implementation-plan document, and
+no reconstruction from this harvest is required. Read the items below as the pre-decision record
+they are.
 
 **Read in full:** `AGENTS.md`, `docs/README.md`, `docs/roadmap/README.md`,
 `docs/roadmap/architecture-operating-cycle-plan.md`, `docs/operations/current.md`,

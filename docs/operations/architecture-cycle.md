@@ -10,9 +10,8 @@ OWNS: meta stage only
 PROVENANCE  strategic model      → ../roadmap/architecture-operating-cycle-plan.md
             live cycle state     → (this file)
             close / transition   → ../../.agents/skills/slice-closeout/SKILL.md
-            historical evidence, never instructions
-                                 → ../roadmap/architecture-operating-cycle-implementation-plan.md
-                                   ../roadmap/architecture-operating-cycle-workflow-harvest.md
+            historical planning evidence
+                                 → ../roadmap/architecture-operating-cycle-workflow-harvest.md
 BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in ./current.md.
             Nothing here restates either.
 ```

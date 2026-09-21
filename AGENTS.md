@@ -38,13 +38,14 @@ Conflict: **`docs/` reference files + router win** over this file for product de
     Source/tests/Git are implementation evidence, not another documentation
     tier. If they materially contradict `reference/`, use the reconciliation
     triage in `docs/README.md` rather than resolving by precedence alone.
-11. **Scope limits mutation, not inspection or verification.** A scoped task may
-    inspect callers, dependents, wiring, tests and other repository areas needed to
-    verify impact. Do not narrow required verification merely because the requested
-    code change is local. If correctness appears to require a change outside the
-    assigned scope, report it rather than making it unless scope is explicitly
-    expanded. Concrete editor test/check commands and lane semantics stay owned by
-    `apps/editor/tests/README.md`.
+11. **Scope limits mutation, not inspection or verification.** For
+    implementation/code tasks, local task scope never narrows the repository-level
+    verification required by the applicable test contract. Inspect callers,
+    dependents, wiring, tests and adjacent code as needed to establish impact. If
+    correctness appears to require a change outside the assigned scope, report it
+    rather than making it unless scope is explicitly expanded. Concrete editor
+    commands and lane semantics stay owned by `apps/editor/tests/README.md` and are
+    deliberately not duplicated here.
 
 ## Boot contract
 

@@ -643,16 +643,29 @@ Strategic rule, owned by the cross-cutting agent workflow (`AGENTS.md`):
 
 > Task scope limits what may be changed, not what may be inspected or verified.
 
-A scoped task may inspect callers, dependents, wiring, tests and other repository areas
-needed to verify impact. Implementation scope stays narrow; verification is allowed to
-see consequences outside that scope. Required verification is never narrowed merely
-because the requested code change is local, and a change that appears necessary outside
-the assigned scope is reported rather than made unless scope is explicitly expanded.
+A scoped task may inspect callers, dependents, wiring, tests and adjacent code needed
+to establish impact. Task scope is never a reason to narrow verification that is
+otherwise applicable:
 
-The concrete verification set — the complete editor suite, the typecheck, and the
-architecture lane with its never-path-gated semantics — remains owned by the test
-documentation (`apps/editor/tests/README.md`) and is deliberately not duplicated here,
-where it would rot.
+```text
+implementation/code tasks
+→ the standard repository verification owned by the applicable test contract
+
+documentation / other non-product work
+→ the verification appropriate to that work
+
+task scope itself
+→ never a reason to narrow otherwise-applicable verification
+```
+
+Implementation scope stays narrow; verification is allowed to see consequences outside
+that scope, and a change that appears necessary outside the assigned scope is reported
+rather than made unless scope is explicitly expanded.
+
+The concrete verification set — the editor suite, the typecheck, and the architecture
+lane with its never-path-gated semantics — and its lane semantics remain owned by the
+test documentation (`apps/editor/tests/README.md`) and are deliberately not duplicated
+here, where they would rot.
 
 ---
 
