@@ -102,7 +102,7 @@ This file owns the condition; `docs/operations/current.md` only mirrors it.
 1  docs/README.md "Where truth lives"          — the pull-based row (deliberate meta work)
 2  phase README FINAL PHASE GATE line          — the close path discovers the cycle from the
                                                  phase it is closing
-3  slice-closeout, phase close (preflight, 9)  — the procedure that performs the close writes
+3  slice-closeout, phase close (preflight, 8–9) — the procedure that performs the close writes
                                                  the stage and the META pointer
 ```
 
