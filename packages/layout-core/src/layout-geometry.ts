@@ -434,11 +434,29 @@ function compileWallFirstWithPhysicalWalls(
 		compileWallFirstJunctions(document, physicalWalls, floorElevation, wallIssues)
 	);
 	const joinsByWall = junctionJoinsByWall(junctions);
+	// Decision 12 — resolved Junction geometry (miters/bevels, difference steps,
+	// trim surfaces, trimmed footprints) expands the **owner Wall's** `bounds2`
+	// *and* `bounds3`. The planar expansion used to land without its vertical
+	// counterpart, which left `bounds3` — and therefore the Floor aggregate and
+	// the wall query AABB — covering less than the emitted mesh.
 	for (const wall of physicalWalls) {
 		const expansion = wallEndExpansion(joinsByWall.get(wall.wallId));
 		if (!expansion) continue;
 		includeBounds2(wall.bounds2, expansion.min, expansion.max);
+		includeBounds3(
+			wall.bounds3.min,
+			wall.bounds3.max,
+			[expansion.min[0], floorElevation, expansion.min[1]],
+			[expansion.max[0], floorElevation + wall.height, expansion.max[1]]
+		);
 		includePhysicalBounds([expansion.min[0], floorElevation, expansion.min[1]], [expansion.max[0], floorElevation + wall.height, expansion.max[1]]);
+		// The Wall query AABB was created before the Junction resolve, so it is
+		// stale by construction once resolved geometry extends the Wall. Reconcile
+		// it from the final bounds instead of leaving a pre-resolution record.
+		const index = queryBuilder.aabbs.findIndex((record) => record.kind === 'wall' && record.sourceId === wall.wallId);
+		if (index !== -1) {
+			queryBuilder.aabbs[index] = aabbRecord('wall', wall.wallId, ['wall', floor.id, wall.wallId], wall.bounds3.min, wall.bounds3.max);
+		}
 	}
 	for (const junction of junctions) {
 		includePhysicalBounds(junction.bounds3.min, junction.bounds3.max);
@@ -587,7 +605,24 @@ function compileWallFirstJunctions(
 				document.floor.id,
 				junctionId,
 				point,
-				legs.map((leg) => [leg.wallId, leg.end, leg.tangentOut, leg.thickness, leg.bottomY, leg.topY, leg.endpointOpen])
+				// Every resolution-affecting endpoint fact: thickness, frame, extent,
+				// role and the compiled Opening facts (solid bands). A changed endpoint
+				// Opening height/sill therefore changes the key even when
+				// `endpointOpen` stays `true`, which is exactly when the resolved
+				// Junction geometry changes. `legs` is already in deterministic
+				// (adjacency-angle, wallId) order, so the serialization is stable.
+				legs.map((leg) => ({
+					wallId: leg.wallId,
+					end: leg.end,
+					tangentOut: leg.tangentOut,
+					normalOut: leg.normalOut,
+					thickness: leg.thickness,
+					bottomY: leg.bottomY,
+					topY: leg.topY,
+					role: leg.role,
+					endpointOpen: leg.endpointOpen,
+					endpointSolidBands: leg.endpointSolidBands.map((band) => [band.bottomY, band.topY, band.solid, band.openingId ?? null])
+				}))
 			]),
 			junctionId,
 			point,
@@ -672,6 +707,10 @@ function wallEndExpansion(joins: readonly CompiledLegJoin[] | undefined): { min:
 		}
 		for (const p of join.endBoundary) consider(p);
 		if (join.ownedSeam) for (const p of join.ownedSeam.polygon) consider(p);
+		for (const surface of join.surfaces ?? []) {
+			consider(surface.from);
+			consider(surface.to);
+		}
 	}
 	if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return undefined;
 	return { min: [minX, minZ], max: [maxX, maxZ] };
