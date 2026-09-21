@@ -15,7 +15,7 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: P23.14 closed (accepted 2026-09-21); P23.15 planning
+STAGE: P23.14 closed (accepted 2026-09-21); P23.15 plan written, pending owner review
 CURRENT: P23.15 — Junction-correct wall-first 3D
 NEXT: P23.15 implementation, then P23.16 final closeout
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval

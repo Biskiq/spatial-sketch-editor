@@ -3,11 +3,13 @@
 PHASE: P23
 CHILD: P23.15 — Junction-correct wall-first 3D
 STAGE: P23.14 CLOSED (accepted 2026-09-21; implementation PR #61; closeout PR #71); P23.15
-       plan NOT written yet (the routed plan file does not exist — planning is the next action)
+       plan WRITTEN (2026-09-21) at the routed path — pending owner review; no
+       implementation has begun.
 
 NEXT:
-1. Write the P23.15 implementation-ready plan at the routed path, then owner review; no
-   implementation has begun.
+1. Owner review of the P23.15 plan, then implementation per its task sequence
+   (junction topology in compiled output → corner algebra → builder → validation →
+   consumer wiring → fixture matrix → perf/reference).
 2. After P23.15: P23.16 final closeout (phase gate).
 
 ROUTE (direct):
