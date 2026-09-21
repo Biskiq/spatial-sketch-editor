@@ -377,8 +377,8 @@ the active one, with only a prose `Status:` line distinguishing closed work from
 >
 > **Resolved 2026-09-21 — OD-4.** The mechanism is now ratified: the **hybrid** model
 > (path-preserving compact stub + `git show <A>:<path>` recovery; archive copy only for
-> multi-file bundles and non-text evidence). See the implementation plan §1 (OD-4) / §7 and the
-> post-harvest resolution in §0.
+> multi-file bundles and non-text evidence). The applied mechanics now live in
+> `.agents/skills/slice-closeout/SKILL.md`; see the post-harvest resolution in §0.
 
 ---
 

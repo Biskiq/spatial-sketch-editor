@@ -621,15 +621,15 @@ docs/operations/architecture-cycle.md
 docs/reference/*
 = landed and current architecture contracts
 
-implementation plan + workflow harvest
-= historical execution and planning evidence only
+workflow harvest
+= historical bounded planning evidence
 ```
 
-The implementation plan and workflow harvest are provenance: they explain how the
-installed behavior came to exist, but they carry no authority and prescribe nothing
-further. Exact phase-close write ordering, shell commands, anchor mechanics,
-acceptance matrices, and rehearsal records belong to the applied skill and the
-historical evidence — never to this plan.
+The workflow harvest is provenance: it explains how the installed behavior came to
+exist, but it carries no authority and prescribes nothing further. Exact phase-close
+write ordering, shell commands, anchor mechanics, acceptance matrices, and rehearsal
+records belong to the applied skill and to Git/PR history — never to this plan.
+PR #66 implementation and review chronology remains recoverable through Git/PR history.
 
 `docs/roadmap/README.md` remains the P-level status authority and the stable route to
 this plan. The temporary reconciliation input used to produce this plan was unrouted,

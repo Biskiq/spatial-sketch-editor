@@ -21,7 +21,7 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 ```text
 STAGE              WAITING
 STATUS             installed; no diagnosis due
-TRIGGER            S1–S5 landed (prerequisite infrastructure)
+TRIGGER            prerequisite cycle infrastructure landed
 PRODUCT CONTEXT    P23 (in progress) — the close that will open Phase 0
 OWNER ACTION       not required
 NEXT               none pending
@@ -39,7 +39,7 @@ EVIDENCE           empty
 
 | Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
 | --- | --- | --- | --- | --- | --- | --- |
-| `WAITING` | Cycle installed; nothing due | S1–S5 landed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
+| `WAITING` | Cycle installed; nothing due | prerequisite cycle infrastructure installed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
 | `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
 | `PHASE_0_ACTIVE` | Phase-0 evidence in progress: two fresh-context semantic architecture reviews + one bounded structural-workflow companion diagnostic | owner authorization | run both semantic reviews over the same range without reading each other's output before adjudication; run the structural-workflow diagnostic as separate evidence — it is not a third architecture reviewer | the Phase-0 evidence required for **both lanes** is available | `ADJUDICATION` | no |
 | `ADJUDICATION` | Owner classifies and decides in two lanes inside one lifecycle | the Phase-0 evidence required for both lanes exists | architecture lane: classify each candidate A/B/C/D and answer "what catches it next time?"; structural-workflow lane: adjudicate the workflow evidence separately (no consequential gap / existing-tool or workflow correction / narrow custom-tool gap) | both lanes adjudicated and the single overall transition recorded | `PHASE_1` or `STEADY` | **yes** |
@@ -51,7 +51,7 @@ EVIDENCE           empty
 ## Transitions
 
 ```text
-install (S1–S5)                        → WAITING
+prerequisite cycle infrastructure installed → WAITING
 WAITING      + phase owner-closed      → PHASE_0_DUE
 PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
 PHASE_0_ACTIVE + Phase-0 evidence for both lanes available → ADJUDICATION
