@@ -23,6 +23,8 @@ GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 mini
 
 ```text
 FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout gate
+  (On-demand — final closeout. Startup keeps only the safety rule: satisfying
+  the exit criteria makes P23 CLOSABLE, not closed.)
   gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
   satisfying its exit criteria makes P23 CLOSABLE, not closed.
   CLOSED requires an explicit owner request and ruling; closure then runs the owner-invoked
@@ -42,6 +44,11 @@ remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.14
 closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
 slice design evidence (superseded direction) → p23.14-shell-visual-system/design/ + research/
 ```
+
+**Startup stop:** an implementation-start agent has what it needs once phase
+status, current/next child, the exact route, invariants and authorities above
+are read — unless a contradiction requires deeper context. Gate and closeout
+detail in this file is on-demand.
 
 ## Authorities
 
@@ -78,6 +85,7 @@ routes the exact plan path.
 Landed P23 slice plans below are historical evidence (each carries its own Status line);
 they are not current instructions, and their full bodies become compact stubs at P23 close.
 
+(On-demand — closeout mechanics; read at slice closeout, not at slice start.)
 All new slice closeouts leave closed artifacts as path-preserving stubs holding a
 `git show <A>:<path>` recovery line, with an archive copy only for multi-file bundles or
 non-text evidence (mechanics: `slice-closeout`). Shipped narrative for P23.13 lives in
