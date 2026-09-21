@@ -29,7 +29,7 @@ QA → p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md
 durable shell contract → ../../reference/design-system/editor-shell-and-visual-system.md
 remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.14
 closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
-slice history/design evidence → p23.14-shell-visual-system/design/ + research/ (evidence only)
+slice design evidence (superseded direction) → p23.14-shell-visual-system/design/ + research/
 ```
 
 ## Authorities
@@ -39,8 +39,9 @@ slice history/design evidence → p23.14-shell-visual-system/design/ + research/
 - **Shell design — durable authority:**
   [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md),
   whose §0.1 states the authority graph, §0.2 records the owner ratifications (R1–R4) and §0.3
-  keeps the open owner calls unresolved. It is slice-independent — promoted out of the P23.14
-  slice, which is now history. This shell grammar is the **stable baseline later phases fit into
+  keeps the open owner calls unresolved. It is slice-independent: the slice-local design
+  direction is superseded and promoted here, while P23.14 itself remains open for owner
+  review. This shell grammar is the **stable baseline later phases fit into
   and depend on**: P23.15, P23.16, P24 and P26 enter through it rather than re-deciding shell
   composition, material, type or state language. Evidence annexes (evidence, not authority):
   [`editor-shell-ratifications.md`](../../reference/design-system/editor-shell-ratifications.md)
