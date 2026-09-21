@@ -176,6 +176,12 @@ advance the baton → register the next phase.**
 `IMPLEMENTATION GAP` (small): the current topology has the same *files* (tracker, router,
 contracts, phase README, baton) but no procedure that walks them at phase close.
 
+> **Owner decision 2026-09-20 (OD-1, §15):** the owner's declaration is the trigger of
+> record — P23.16 acceptance does not auto-close the phase. The phase README `STATUS:`
+> line, the tracker row, the baton and the closed-work step are consequences the closing
+> agent records. The CURRENT tables above are unchanged by that decision: the repository
+> still has no written phase-close owner, and writing that step is the gap.
+
 ---
 
 ## 4. Representative closeout evidence
@@ -303,13 +309,15 @@ finding, not a harvest conclusion.
 | Clickability | archived docs remain linkable (links tend to rot, but resolve while the bundle exists) | a SHA/path is not clickable — needs a documented recovery command instead of a link |
 | Removes | duplication of authority in the live tree | requires the same, plus a retention decision for pre-existing live plans |
 | Migration cost | unknown (never executed) | the 19 already-landed live plans (+ phase-README stubs + `docs/archive/README.md` wording + link repair), plus a decision on the grandfathered flat plans |
-| Contradiction with current rules? | — | skill step 8 currently says "archive the whole bundle"; the ratified model prefers in-place stubs. **The two must be reconciled, not silently merged** |
+|  Contradiction with current rules? | — | skill step 8 currently says "archive the whole bundle"; the ratified model prefers in-place stubs. **Reconciled by OD-2 (2026-09-20): the stub + exact-SHA model wins; step 8 is rewritten and the already-landed live plans migrate at P23 close** |
 
 **Tradeoff to hand to the planner:** the current rule's cost is *live-tree clutter and
 competing authority* (P23's live folder holds 19 already-landed plans beside the active
 one); the future model's
 cost is *lost clickability* and a one-time migration of the existing live plans. Neither
-is obviously better at Museum's scale; the planner needs an owner decision (§15, Q4).
+is obviously better at Museum's scale. **Decided 2026-09-20 (OD-2, §15):** the stub +
+exact-SHA model wins, step 8 is rewritten, and the already-landed live plans migrate at
+P23 close.
 
 ---
 
@@ -426,10 +434,10 @@ meta-roadmap." The above achieves that with **no startup cost**.
 
 | Ratified requirement | Current mechanism | Gap | Likely integration point | Confidence |
 | --- | --- | --- | --- | --- |
-| Phase 0 fires after P23 fully closes | nothing detects phase close; owner ruling commit is the only signal | trigger + owner + where the "due" state is visible | `slice-closeout` + phase README `GATE` (+ optional `current.md` line) | confirmed |
+| Phase 0 fires after P23 fully closes | nothing detects phase close; owner ruling commit is the only signal | written phase-close step + where the "due" state is visible (trigger **owner-decided: OD-1**) | `slice-closeout` + phase README `GATE` (+ optional `current.md` line) | confirmed |
 | Live meta-state file `docs/operations/architecture-cycle.md` | none (plan says "do not create yet") | the file and its route row | `docs/operations/` + one `docs/README.md` table row | confirmed |
 | Phase-close reconciliation/subtraction | promotion exists; subtraction does not | a subtraction step has no owner | `slice-closeout` | confirmed |
-| Closed-work artifacts shed authority | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution + a policy decision (whole bundle vs stub+SHA) | `slice-closeout` step 8 | confirmed |
+| Closed-work artifacts shed authority | stated archive rule, never executed; the live P23 folder keeps 19 already-landed plans with `Status:` lines | execution only — policy **owner-decided (OD-2)**: in-place compact stub + exact SHA | `slice-closeout` step 8 | confirmed |
 | Durable-ruling capture (Outcome 3, if justified) | same-PR promotion happens informally; destination is clear | a trigger/rule naming when capture is mandatory | `slice-closeout` step 3 / `docs/README.md` update rules | partial |
 | Direction format | scattered equivalents (AGENTS rule, reference note, plan non-goals, tech-debt "must not fix") | shared shape; `DONE WHEN` ownership is weakest | owning `reference/*` contract | partial |
 | Scope-change calibration | scope changes are a documentation commit (`62b2ebd`) | no place to ask the calibration question | reconciliation header / phase README `GATE` | partial |
@@ -448,8 +456,9 @@ The next plan works on these files. Nothing else in the repository needs to chan
 ```text
 MUST CHANGE (candidate, plan to decide)
   .agents/skills/slice-closeout/SKILL.md
-      - phase-completion step (recognize the dependency-last gate; who flips the phase)
-      - closed-work step reconciled with whatever archive policy the owner picks
+      - phase-completion step (recognize the dependency-last gate; owner declaration is the
+        trigger of record — OD-1; the agent then records the consequences)
+      - closed-work step rewritten to the in-place compact-stub + exact-SHA policy (OD-2)
       - optional: one capture-rule line (only if Phase 0 concludes capture is the failure)
   docs/roadmap/p23-layout-depth/README.md
       - GATE line becomes the phase-close trigger pointer (and later the P26 handoff)
@@ -492,15 +501,31 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
 
 ## 15. Open questions requiring owner decision
 
-1. **Who declares P23 closed?** Does P23.16 acceptance auto-trigger Phase 0, or does the
-   owner declare `shipped`? (No procedure exists; the precedent is an owner ruling commit.)
-2. **What is the trigger source of record** — the `roadmap/README.md` phase row changing
-   to `shipped`, the phase README `STATUS:` line, or the owner's declaration?
+### Resolved by owner (2026-09-20)
+
+- **OD-1 — phase-close trigger of record = owner declaration, recorded by the agent.**
+  P23 does not auto-close when P23.16 acceptance passes. The owner declares the phase
+  shipped; the closing agent then walks the phase README status, the `roadmap/README.md`
+  row, the baton and the closed-work step as consequences. Matches the only historical
+  precedent (`f8411f7`). Answers Q1 and Q2.
+- **OD-2 — closed-work policy = in-place compact stub + exact SHA/path.** The ratified
+  truncated-artifact model replaces whole-bundle archive: `slice-closeout` step 8 is
+  rewritten, and the 19 already-landed plans in the live P23 folder migrate at P23 close.
+  Answers Q4.
+
+### Still open
+
+1. **Who declares P23 closed?** — **RESOLVED (OD-1):** the owner declares; acceptance does
+   not auto-close. (Original question: does P23.16 acceptance auto-trigger Phase 0, or does
+   the owner declare `shipped`?)
+2. **What is the trigger source of record** — **RESOLVED (OD-1):** the owner's declaration;
+   the tracker row and the phase README `STATUS:` line are consequences of it.
 3. **Which phase does the baton advance to** after P23 — P26 (pipeline next, currently
    `planning`) and under what status? The pipeline implies P26; nothing states it.
-4. **Archive policy:** keep the stated whole-bundle archive (skill step 8), or move to the
-   ratified compact-stub + exact-SHA model? And if the latter, do the 19 already-landed
-   plans in the live P23 folder get migrated at P23 close?
+4. **Archive policy:** — **RESOLVED (OD-2):** compact stub + exact SHA/path replaces the
+   whole-bundle archive; the 19 already-landed plans in the live P23 folder migrate at P23
+   close (original question: whole bundle, or stub + SHA, and does the existing live work
+   migrate?).
 5. **Does `operations/current.md` carry a META line** while a cycle stage is open, or does
    discovery happen only through the phase README / skill?
 6. **Is `docs/operations/architecture-cycle.md` the right home** (plan's proposal), and does
@@ -517,8 +542,9 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
 ## 16. Harvest questions — direct answers
 
 1. **What exact event should trigger Phase 0 after P23?** P23.16 satisfying its exit
-   criteria *and* the owner declaring P23 shipped. The acceptance facts are in P23.16's
-   `**Exit criteria:**`; the declaration is an owner ruling (precedent: `f8411f7`).
+   criteria *and* the owner declaring P23 shipped — confirmed as the trigger of record by
+   **OD-1** (§15). The acceptance facts are in P23.16's `**Exit criteria:**`; the
+   declaration is an owner ruling (precedent: `f8411f7`).
 2. **How can an agent mechanically know?** It cannot today. The observable proxies are:
    the P23.16 plan's `Status:` line, the phase README `STATUS:`/`CURRENT:`, and the
    `roadmap/README.md` row. The tracker is written as drift-authoritative, so
@@ -551,8 +577,9 @@ verify scripts, `apps/editor/tests/README.md` as the test-rule authority.
    (`docs/operations/test-suite-harvest-2026-09-19.md`).
 10. **What conflicts with current archive behavior?** Skill step 8's whole-bundle archive
     is stated but never executed; the ratified model wants in-place compact stubs + SHA.
-    The conflict is real and needs an owner decision (§15 Q4) — plus a decision about the
-    the 19 already-landed plans already living in the live P23 folder.
+    **Decided 2026-09-20 (OD-2, §15):** the stub + exact-SHA model wins over step 8, and the
+    19 already-landed plans in the live P23 folder migrate at P23 close. What remains is
+    execution, not a policy decision.
 11. **How are durable owner rulings promoted today?** Informally but consistently:
     same-PR write into the owning `reference/*` contract with evidence in an annex, a QA
     record and `current.md` (`f7a31e2`, `02744b2`); or at close into a routed authority
@@ -583,15 +610,16 @@ HARVEST VERDICT:
   fact one owner, promotion already happens in practice, and the router is pull-based. The
   lifecycle needs **one new artifact** (`docs/operations/architecture-cycle.md`), **one
   new phase-close step** in `slice-closeout`, **one trigger pointer** in the P23 phase
-  README `GATE` line, and **one optional baton line** — with a separate owner decision on
-  the archive policy.
+  README `GATE` line, and **one optional baton line**. The two policy blockers are now
+  owner-decided: phase close is owner-declared (**OD-1**) and closed work becomes an
+  in-place compact stub + exact SHA (**OD-2**).
 - **likely change surface:** `.agents/skills/slice-closeout/SKILL.md`,
   `docs/operations/architecture-cycle.md` (new), `docs/README.md` (one table row),
   `docs/roadmap/p23-layout-depth/README.md` (`GATE`), optionally `docs/operations/current.md`.
   No source, test, schema, CI or roadmap-scope change.
-- **major unknowns:** (a) who/what declares a phase closed and which signal is the trigger
-  of record; (b) archive policy — whole bundle vs compact stub + SHA, and whether the
-  already-landed live plans migrate; (c) whether Phase 0 will justify any capture mechanism at
+- **major unknowns:** (a) which phase the baton advances to after P23 and under what status
+  (P26 implied, unstated); (b) executing the OD-2 migration — rewriting step 8 and stubbing
+  the 19 already-landed live plans; (c) whether Phase 0 will justify any capture mechanism at
   all, which determines whether the cycle file exists to be routed in the first place;
   (d) whether P26 (not P24) is indeed the Phase 2 validation window and how its close is
   recognized.
