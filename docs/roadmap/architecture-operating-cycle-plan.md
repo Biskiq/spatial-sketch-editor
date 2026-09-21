@@ -230,9 +230,10 @@ WAITING
 → STEADY
 ```
 
-Outcome 1 (nothing justified) goes directly from adjudication to `STEADY` with no
-manufactured validation window. Outcomes that justify at least one mechanism pass
-through `PHASE_1` and prospective validation before reaching `STEADY`.
+When neither adjudication lane justifies a mechanism, the cycle goes directly from
+adjudication to `STEADY` with no manufactured validation window. When either lane
+justifies at least one mechanism, the cycle passes through `PHASE_1` and prospective
+validation before reaching `STEADY`.
 
 ---
 
@@ -332,8 +333,9 @@ investigation.
 
 ### Fresh semantic reviews
 
-Run the review independently at least twice, over the same range. Reviewers look for
-repeated non-obvious choices about representation, ownership, or naming that a
+Run two fresh-context semantic reviews over the same historical range. They do not read
+each other's output before owner adjudication. Different reviewer/model perspectives
+are preferred where practical. Reviewers look for repeated non-obvious choices about representation, ownership, or naming that a
 contributor reading only the code could reasonably take for project convention — citing
 each concrete occurrence, stating the inferred convention in one sentence, and noting
 whether later occurrences repeat the earlier shape. Language, framework, and library
@@ -341,8 +343,7 @@ conventions, ordinary local duplication, and behavior already stated by current
 contracts are skipped. If there are fewer than three candidates, fewer than three are
 reported. Separately, reviewers ask whether any change contradicted a rule explicitly
 written at the time, which distinguishes newly formed precedent from rules not
-followed. Where practical, reviewer perspective is varied rather than drawn twice from
-the same distribution.
+followed. Reviewers generate candidates only and never ratify architecture.
 
 ### Structural-workflow companion diagnostic
 
@@ -382,8 +383,11 @@ or platform is created.
 
 ### Owner adjudication
 
-The owner classifies each candidate as A, B, C, or D. For every meaningful finding, the
-owner answers:
+Adjudication runs in two lanes inside one lifecycle: one state machine, one overall
+transition, no second meta-track.
+
+**Architecture lane.** The owner classifies each architecture candidate as A, B, C, or
+D. For every meaningful finding, the owner answers:
 
 > **If this happens again next month, what catches it?**
 
@@ -394,9 +398,46 @@ outcome — no new mechanism is justified merely because a pattern exists.
 A real precedent is never left unresolved. It is either explicitly ratified or
 explicitly contracted against so it cannot spread further.
 
+**Structural-workflow lane.** The owner classifies the workflow evidence separately as
+one of:
+
+```text
+no consequential gap
+→ continue with existing tools and verification; stop
+
+existing-tool or workflow correction justified
+→ correct verification or adopt existing tooling; no custom code
+
+narrow custom-tool gap justified
+→ one narrow stateless script for the precisely named relation,
+  admitted only under the rule in §9
+```
+
+A workflow finding never automatically justifies an architecture contract, and an
+architecture finding never automatically justifies a tooling or workflow mechanism.
+
+**Single overall transition.** The two lanes adjudicate separately but transition
+together:
+
+```text
+neither lane justifies a mechanism → STEADY (no validation window)
+either lane justifies ≥ 1 mechanism → PHASE_1 (install only what was justified)
+```
+
+An architecture Outcome 1 (mostly C/D) combined with a real consequential workflow gap
+therefore enters `PHASE_1` for the workflow correction alone — the architecture branch
+never vetoes the workflow lane, and the workflow lane never manufactures architecture
+machinery.
+
+**Forward-compatibility note.** The live cycle file currently encodes this transition
+as Outcome 1 (C/D) → `STEADY` versus Outcomes 2/3/4 → `PHASE_1`. Once this plan is
+ratified, that wording is reconciled to the two-lane rule above in the operational
+pass — no operational edit in this PR.
+
 ### Branch outcomes
 
-* **Outcome 1 — mostly C/D.** The existing development loop is sufficient. Retain
+* **Outcome 1 — neither lane justifies a mechanism (architecture mostly C/D, no
+  consequential workflow gap).** The existing development loop is sufficient. Retain
   normal review and existing architecture checks, continue documentation and closeout
   cleanup, and build no new architecture-cycle machinery. The cycle goes directly to
   `STEADY` with no validation window. This is a successful stop outcome.
