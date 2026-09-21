@@ -123,11 +123,17 @@ describe('P23.15 Task 2 — Junction-local resolution policy', () => {
 			leg('wl', [-1, 0], { end: 'end' })
 		]);
 		const { resolution } = resolveJunctionGeometry('j', ORIGIN, legs);
+		// The collinear antiparallel pair is one through Wall and suppresses its
+		// interface; the stem is a branch, trimmed flush at the Junction plane.
 		const suppressed = resolution.joins.filter((join) => join.kind === 'suppressed');
-		const corners = resolution.joins.filter((join) => join.corner !== null);
-		expect(suppressed).toHaveLength(1);
-		expect(suppressed[0]!.wallId).toBe('wr');
-		expect(corners).toHaveLength(2);
+		const trimmed = resolution.joins.filter((join) => join.kind === 'trim');
+		expect(suppressed.map((join) => join.wallId).sort()).toEqual(['wl', 'wr']);
+		expect(trimmed.map((join) => join.wallId)).toEqual(['ws']);
+		expect(trimmed[0]!.corner).toBeNull();
+		expect(trimmed[0]!.ownedSeam).toBeNull();
+		// No miter against an unrelated leg: that would both bury a surface and
+		// open a gap where the miter apexes cross.
+			expect(resolution.joins.every((join) => join.corner === null)).toBe(true);
 	});
 
 	it('resolves degree 4 without duplicate wedge owners', () => {
@@ -151,7 +157,9 @@ describe('P23.15 Task 2 — Junction-local resolution policy', () => {
 		]);
 		const ownerOf = (legs: CompiledJunctionLeg[]): string | undefined =>
 			resolveJunctionGeometry('j', ORIGIN, legs).resolution.joins.find((join) => join.ownedSeam)?.wallId;
-		expect(ownerOf(base)).toBe('wa'); // smaller wallId is the deterministic owner
+		// Ownership must not depend on an arbitrary angular zero: both legs are
+		// start legs, so the smaller `wallId` owns it.
+		expect(ownerOf(base)).toBe('wa');
 		expect(ownerOf(rotated)).toBe(ownerOf(base));
 	});
 

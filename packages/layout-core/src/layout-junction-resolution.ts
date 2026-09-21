@@ -336,42 +336,46 @@ export function resolveJunctionGeometry(
 		return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
 	}
 
-	// degree >= 3 — resolve across all incident legs. Each leg is paired with its
-	// angular predecessor; a tangent pair suppresses both, a real corner is
-	// emitted, and a wedge already covered by another leg is suppressed so the
-	// region is partitioned instead of re-painted.
+	// degree >= 3 — resolve across ALL incident legs.
+	//
+	// 1. Continuation partners first. A collinear antiparallel pair is one through
+	//    Wall split at this Junction, so it must suppress its shared interface.
+	//    Pairing each leg with its *angular neighbour* would instead miter the
+	//    through Wall against an unrelated branch, which both buries a surface and
+	//    opens a gap where the miter's apexes cross.
+	// 2. Every remaining leg is a branch. Its end is trimmed flush at the Junction
+	//    plane and the local region is filled by interpenetration with the through
+	//    Wall and the other branches: no miter, no owned wedge, no buried cap.
+	const partnerIndex = legs.map(() => -1);
+	for (let i = 0; i < legs.length; i += 1) {
+		if (partnerIndex[i] !== -1) continue;
+		for (let j = i + 1; j < legs.length; j += 1) {
+			if (partnerIndex[j] !== -1) continue;
+			if (!isTangentContinuation(legs[i]!, legs[j]!)) continue;
+			partnerIndex[i] = j;
+			partnerIndex[j] = i;
+			break;
+		}
+	}
 	for (let i = 0; i < legs.length; i += 1) {
 		const leg = legs[i]!;
-		const prev = legs[(i - 1 + legs.length) % legs.length]!;
-		if (isFoldPair(prev, leg)) {
+		const partner = partnerIndex[i];
+		if (partner !== -1) {
+			// A through-pair suppresses its interface, but a thickness or height
+			// difference still exposes a step — unless another leg's body covers the
+			// whole step, in which case it is buried and must stay suppressed. Only
+			// the Junction has every leg, so it decides here; the Wall builder obeys.
+			const other = legs[partner]!;
+			const exposed = continuationStepExposed(point, other, leg, legs);
+			joins.push(suppressedJoin(leg, bands, exposed ? neighborFacts(other) : undefined));
+			continue;
+		}
+		if (isFoldPair(legs[(i - 1 + legs.length) % legs.length]!, leg)) {
 			issues.push(foldIssue(junctionId));
 			joins.push(suppressedJoin(leg, bands, undefined, true));
 			continue;
 		}
-		if (isTangentContinuation(prev, leg)) {
-			// A straight through-pair suppresses its interface, but a thickness or
-			// height difference still exposes a step — unless another incident leg's
-			// body covers the whole step, in which case it is buried and must stay
-			// suppressed. Only the Junction has every leg, so it decides here and the
-			// Wall builder simply obeys.
-			joins.push(suppressedJoin(leg, bands, continuationStepExposed(point, prev, leg, legs) ? neighborFacts(prev) : undefined));
-			continue;
-		}
-		const resolved = resolveLegPairCorner(point, prev, leg, miterLimit);
-		if ('fold' in resolved) {
-			issues.push(foldIssue(junctionId));
-			joins.push(suppressedJoin(leg, bands, undefined, true));
-			continue;
-		}
-		const covered = wedgeCoveredByOthers(point, prev, leg, legs);
-		const seam = covered ? null : { sector: i, polygon: wedgePolygon(point, prev, leg) };
-		joins.push(
-			cornerJoin(leg, bands, cornerForEnd(resolved.corner, 'cur', leg.end), seam, {
-				canonicalRole: 'cur',
-				canonicalCorner: resolved.corner,
-				neighbor: neighborFacts(prev)
-			})
-		);
+		joins.push(trimJoin(leg, bands));
 	}
 
 	return { resolution: { junctionId, legOrder, joins, bounds2: joinsBounds2(point, joins) }, issues };
@@ -398,6 +402,25 @@ function neighborFacts(leg: CompiledJunctionLeg): CompiledJunctionNeighbor {
 		halfThickness: leg.halfThickness,
 		endpointOpen: leg.endpointOpen,
 		endpointSolidBands: leg.endpointSolidBands
+	};
+}
+
+/**
+ * A branch leg at a degree >= 3 Junction, trimmed flush at the Junction plane.
+ * Interpenetration with the through Wall (or the other branches) closes the local
+ * region, so no cap, wedge or miter is emitted for it — and no surface is
+ * double-painted where the bodies coincide.
+ */
+function trimJoin(leg: CompiledJunctionLeg, bands: Array<{ bottomY: number; topY: number }>): CompiledLegJoin {
+	return {
+		wallId: leg.wallId,
+		end: leg.end,
+		kind: 'trim',
+		endBoundary: [],
+		interfaceSuppressed: false,
+		ownedSeam: null,
+		bands: bands.map((band) => ({ bottomY: band.bottomY, topY: band.topY })),
+		corner: null
 	};
 }
 
@@ -490,25 +513,6 @@ function continuationStepExposed(
 		}
 	}
 	return false;
-}
-
-/** Is the wedge between two adjacent legs already covered by a third leg? */
-function wedgeCoveredByOthers(
-	junction: LayoutVec2,
-	prev: CompiledJunctionLeg,
-	cur: CompiledJunctionLeg,
-	legs: readonly CompiledJunctionLeg[]
-): boolean {
-	const polygon = wedgePolygon(junction, prev, cur);
-	const centroid: LayoutVec2 = [
-		(polygon[0]![0] + polygon[1]![0] + polygon[2]![0]) / 3,
-		(polygon[0]![1] + polygon[1]![1] + polygon[2]![1]) / 3
-	];
-	if (Math.hypot(centroid[0] - junction[0], centroid[1] - junction[1]) <= JUNCTION_BAND_EPSILON) return true;
-	return legs.some((leg) => {
-		if (leg === prev || leg === cur) return false;
-		return pointInLegFootprint(centroid, junction, leg);
-	});
 }
 
 /** Is `point` inside the leg's own solid footprint (half-thickness band)? */
