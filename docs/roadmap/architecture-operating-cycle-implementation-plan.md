@@ -1,6 +1,7 @@
 # Architecture Operating Cycle — Implementation Plan
 
-**Status:** implementation-ready, not executed. Owner review pending.
+**Status:** implementation-ready, not executed. Owner review pending (r3 — review corrections
+R1–R6 applied in §15.5).
 **Scope:** prerequisite infrastructure only. No Phase 0 execution. No Phase-0-selected mechanism.
 **Inputs:** `architecture-operating-cycle-plan.md` (ratified direction) ·
 `architecture-operating-cycle-workflow-harvest.md` (accepted planning evidence, r2).
@@ -208,6 +209,10 @@ P1–P22 and the rest of the historical repository are untouched; correctly arch
 One cheap mitigation is added in §5.3 so they cannot be mistaken for active instructions
 (a two-line wording change in the P23 README — not a migration).
 
+At P23 close the boundary applies to the phase's closed work as a whole — landed slice plans,
+closed slice workspaces, the P23.16 gate artifact and the closed phase-wide planning hubs (§7.2)
+— while the live P23 phase README is left alone.
+
 **Pushback:** none. The interim risk is real but bounded by the P23 README note in §5.3 and by
 each plan's own `Status:` line.
 
@@ -242,18 +247,20 @@ PLAN-LEVEL FINDINGS: 3 (all resolved mechanically inside this plan)
   concentrated in hubs that stay live (umbrella 21 files, reconciliation 12, addendum 12,
   directive 6; every landed slice plan ≤5). Because the stub stays **at the original path**
   (§7.1), the ~100 path references keep resolving after compaction. No tooling is needed.
-- **F-2 — the SHA anchor's durability depends on how the closeout PR is merged.** A recorded
+- **F-2 — the SHA anchor's durability must not depend on merge style.** A recorded
   `git show <A>:<path>` resolves on `main` only if commit A is an ancestor of `main`. Measured on
   the branch: **8 of the last 9 PRs used merge commits** (`#57`, `#58`, `#60`, `#61`, `#62`, `#63`,
   `#64`, `#65`), but **PR #59 did not** — `650f7c1` is a squash-style single-parent commit whose
-  branch commits are not ancestors of `main`. So the risk is real, not theoretical. §4 step 2 and
-  §7.3 make the merge style an explicit requirement with a post-merge verification, §7.3 also
-  gives a merge-style-**independent** variant (land the body first, compact after), and §13.4
-  records the recovery if the anchor is ever invalidated.
+  branch commits are not ancestors of `main`. So the risk is real, not theoretical. §7.3 therefore
+  makes the merge-style-**independent** route canonical (P2: land the body first, compact after)
+  and keeps the single merge-commit PR (P1) as an optimisation available only when guaranteed;
+  §4 step 2 requires post-merge anchor verification and §13.4 records the recovery if an anchor is
+  ever invalidated despite that.
 - **F-3 — "archive where useful" would be arbitrary per artifact, which OD-4/OD-8 ask to avoid.**
   §7.2 replaces judgment with a structural rule (multi-file bundle or non-text evidence → archive
-  copy; single prose artifact → stub + SHA only). The rule is keyed on artifact structure, not on
-  anyone's opinion of the content.
+  copy; single prose file → path-preserving stub + exact Git recovery; already archived → leave
+  alone). The rule is keyed on artifact structure, not on anyone's opinion of the content, and a
+  genuine exception is an explicit owner call rather than a third evaluation category.
 
 ---
 
@@ -326,8 +333,7 @@ reading the whole evidence set. No other fields without a demonstrated use.
 | `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms | mechanisms landed + recorded | `PHASE_2_VALIDATING` | no (unless action pending) |
 | `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes | `PHASE_3_EVALUATE` | no |
 | `PHASE_3_EVALUATE` | Keep / simplify / delete | validation window closed | record a verdict per mechanism | verdicts recorded; survivors folded into normal practice | `STEADY` | **yes** |
-| `STEADY` | No meta action; normal development | verdicts recorded, or Outcome 1 (nothing installed) | none | next major phase close | `PHASE_0_DUE` | no |
-| `DEFERRED` | Owner ruled the cycle deferred while noting it | owner ruling recorded (§13.3) | none for the cycle; the deferral is recorded debt | owner lifts the deferral | `PHASE_0_DUE` | no |
+| `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or Outcome 1 (nothing installed) | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
 
 ### 3.3 Transition table (including the Outcome-1 shortcut)
 
@@ -341,15 +347,24 @@ ADJUDICATION + Outcome 2/3/4           → PHASE_1
 PHASE_1      + justified mechanisms    → PHASE_2_VALIDATING  (window = next product phase)
 PHASE_2_VALIDATING + window phase ends → PHASE_3_EVALUATE
 PHASE_3_EVALUATE + verdicts            → STEADY
-STEADY       + next major phase close  → PHASE_0_DUE
-any stage    + owner deferral ruling   → DEFERRED
-DEFERRED     + owner lifts deferral    → PHASE_0_DUE
+STEADY       + ordinary major phase close → STEADY   (reconcile · subtract · close work; §4)
+STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → PHASE_0_DUE
 ```
 
-**Outcome-1 handling (OD-3).** With nothing installed, `PHASE_2_VALIDATING` is **not** entered —
-no validation obligation is manufactured. `STEADY` carries
-`TRIGGER: next major phase close` so the Phase 0 conclusion gets one cheap confirmation at the
-next close (one line in the cycle file, no audit). This is a recorded field, not a mechanism.
+**Steady state does not re-run Phase 0.** A major phase close is *hygiene*, not *diagnosis*: it
+performs the ordinary closeout work (reconciliation, subtraction of stale guidance, closed-work
+compaction, §4) and the cycle remains `STEADY`. Diagnosis restarts only on evidence — a new
+demonstrated architectural failure — or because the owner explicitly asks for a fresh
+retrospective. This follows the ratified plan's steady state (*"further mechanisms are introduced
+only in response to new demonstrated failures"*) and it is the point of the correction: a
+`PHASE_0_DUE` means two fresh independent audits plus owner adjudication, so making it automatic at
+every close would institutionalize the audits we are currently only *considering*.
+
+**Outcome-1 handling (OD-3, corrected).** With nothing installed, `PHASE_2_VALIDATING` is **not**
+entered — no validation obligation is manufactured. The cycle goes straight to `STEADY` with
+`TRIGGER: none pending` and `ACTIVE MECHANISMS: none`, where it stays across future phase closes
+until a failure or an owner request reopens diagnosis. The Outcome-1 result ("the current loop is
+sufficient") is therefore not silently converted into a permanent audit obligation.
 
 **Early mechanism verdicts.** A mechanism that clearly succeeds or fails early may move
 `PHASE_2_VALIDATING → PHASE_3_EVALUATE` before the window closes; the file records the reason.
@@ -397,8 +412,9 @@ Step 2  Gate acceptance verified  →  phase is CLOSABLE
         has changed yet.
         If already recorded for this content, reuse the evidence (no re-run for its own sake).
         Merge requirement: if this closeout performs the closed-work step (7) in the same PR,
-        the PR must land with a merge commit, not squashed — or use the §7.3 P2 variant (land
-        the body first, compact after), which is immune to merge style. Verify after merge.
+        use the §7.3 P2 route (land the accepted body first, compact afterwards), which is immune
+        to merge style; P1 (single merge-commit PR) is allowed only when that merge behaviour is
+        guaranteed. Whichever route, verify anchor reachability after merge.
 
 Step 3  Owner ratification  →  provenance
         An explicit owner ruling is required. Recorded as one line in the phase-close record
@@ -437,13 +453,19 @@ Step 9  Baton META pointer (§3.4) — added last, because it reflects OWNER ACT
 No locking, no state machine, no database. Three cheap conventions:
 
 ```text
-- The phase README "PHASE CLOSE" block (§4 step 4) is the close marker. If it exists, a
-  re-run verifies the four consequence surfaces (steps 5, 6, 7, 8) for drift and reports,
-  but performs no new transition.
+- The phase README "PHASE CLOSE" block (§4 step 4) is the close marker. It proves owner
+  authorization and prevents the closure *decision* from being repeated. It does NOT mean the
+  batch finished.
+- A re-run therefore never re-asks for owner ratification (step 3), inspects steps 5–9, and
+  ensures each consequence — WRITING any that are missing — then stops when all are satisfied.
+  A close that stopped after step 4 is completed by the re-run, not merely reported on.
 - Every step is "ensure value", never "increment". Re-running writes the same values.
 - Step 7 is a no-op for any artifact already carrying "AUTHORITY: NONE" (§7.1), so a second
   run cannot double-compact or lose a body.
 ```
+
+The marker's job is authorization and short-circuit of step 3; completion is judged by the four
+consequence surfaces (steps 5–8) plus the META line (step 9), never by the marker alone.
 
 Drift report shape (kept in the closeout record, not in the cycle file):
 
@@ -455,7 +477,9 @@ phase README: closed ✓ | roadmap row: shipped ✓ | baton: P26 ✓ | cycle: PH
 
 See §13 for the full table. Core rule: the close is **one ordered batch**; if a step fails,
 later steps are simply not performed (nothing downstream of a missing write), the closeout
-record notes where it stopped, and re-running resumes from the first unsatisfied step.
+record notes where it stopped, and re-running resumes from the first unsatisfied step —
+executing it, per §4.3. A `PHASE CLOSE` marker written at step 4 with, say, step 5 failed
+therefore means *authorized but incomplete*: the next run finishes steps 5–9.
 
 ---
 
@@ -594,22 +618,37 @@ detail. The stub is a router plus a recovery anchor, never a summary that compet
 ### 7.2 Layer 2 — archive rule (structural, not judged)
 
 ```text
-ARCHIVE A COPY  (move the full body to docs/archive/roadmap/<phase>/<slice>/…, keep a stub)
-  - the artifact is a multi-file bundle (design/QA/research directories, assets), or
-  - its body is non-text evidence (HTML/PNG/SVG/prototypes), or
-  - the body is the only readable copy of accepted evidence that a future reader will
-    plausibly need without Git
+ARCHIVE A COPY  (copy the full body into docs/archive/roadmap/<phase>/<slice>/…, keep a stub)
+  - the artifact is a multi-file bundle/workspace (design/QA/research directories, assets), or
+  - its body is non-text evidence (HTML/PNG/SVG/prototypes)
 
-STUB + SHA ONLY  (no archive copy)
-  - the artifact is a single prose file (a plan, a QA record, a reconciliation)
+STUB + EXACT GIT RECOVERY  (no archive copy)
+  - any single prose work artifact (a plan, a QA record, a reconciliation, an addendum)
 
-NEVER TOUCHED
-  - already-correctly-archived material · P1–P22 · the phase-wide hubs below
+LEAVE ALONE
+  - already-correctly-archived material · P1–P22 · the phase README (see below)
 ```
 
-**Phase-wide artifacts are not closed slice work and are never stubbed:** the umbrella, the
-remaining-roadmap reconciliation, the cross-view addendum, and the phase README stay live
-(they are the phase's spine, and they hold most inbound references — F-1).
+Two mechanical facts, no judgment: does the artifact consist of one prose file or more than one
+file / non-text evidence, and is it already archived? A prose file that genuinely deserves an
+archive copy later is an explicit owner exception recorded in the closeout, not a third category
+the closing agent evaluates case by case.
+
+**Closed phase-wide planning hubs.** The P23 umbrella, the remaining-roadmap reconciliation and
+the cross-view addendum are themselves **completed work artifacts** once P23 closes. Leaving their
+full planning bodies live indefinitely is exactly the state OD-4 exists to end: they remain the
+phase's most-linked documents (umbrella 21 referencing files, reconciliation 12, addendum 12 —
+F-1), so a later reader can still mistake ended planning for current instruction. They therefore
+compact like every other closed artifact:
+
+```text
+P23 README (phase router/status surface)          → stays live, never stubbed
+closed umbrella · reconciliation · addendum      → path-preserving compact stubs
+closed slice workspaces (incl. multi-file ones)  → stub at the live path + archive copy
+```
+
+Because the stubs keep the original paths, the inbound links F-1 measured keep resolving — which
+is the real reason the hub argument favours *stubbing in place* rather than *leaving the body*.
 
 ### 7.3 Layer 3 — exact Git recovery
 
@@ -637,21 +676,28 @@ spanning several commits or PRs needs no special handling — earlier commits re
 too, but A is the accepted state. A batch compaction of several artifacts may produce different
 A anchors; compute per artifact.
 
-**Is the anchor durable?** Only if A is an ancestor of `main`. Two ways to guarantee that,
-in order of preference:
+**Is the anchor durable?** Only if A is an ancestor of `main`. Two ways to guarantee that.
+**The canonical route is the merge-style-independent one (P2); P1 is an optimisation that is only
+allowed when merge-commit behaviour is explicitly guaranteed.**
 
 ```text
-P1  Preferred — one PR, two commits, merged with a MERGE COMMIT (not squash).
-    Evidence this is the repo's normal style: #57, #58, #60–#65 all produced
-    `Merge pull request #…` commits. Counter-example to respect: PR #59 landed as a
-    squash commit (`650f7c1`, single parent), so the style is not automatic — it must be
-    stated in the procedure for closed-work PRs (F-2).
+P2  CANONICAL — land the body first, compact afterwards.
+    PR/commit 1 publishes the accepted full body under any merge style; A is therefore an
+    ancestor of main immediately, before any stub exists. A later commit/PR (or the next
+    closeout) replaces it with the stub recording A. Cost: one extra commit boundary.
+    Benefit: closed-work durability does not depend on repository merge settings — which is
+    the whole point of the anchor.
 
-P2  Merge-style-independent — land the body first, compact afterwards.
-    PR/commit 1 publishes the full body (any merge style; A is then an ancestor of main
-    immediately, before any stub exists). A later commit/PR replaces it with the stub that
-    references A. One extra step, zero dependence on how anything is merged.
+P1  OPTIMISATION — one PR, two commits, merged with a MERGE COMMIT (not squash).
+    Allowed only when that merge behaviour is guaranteed for this PR (stated in the PR itself).
+    Repo evidence it usually holds: #57, #58, #60–#65 produced `Merge pull request #…` commits.
+    Counter-example: PR #59 landed as a squash commit (`650f7c1`, single parent), so the style
+    is never automatic. If the guarantee cannot be made, use P2.
 ```
+
+Rationale for flipping the previous default: closeout is infrequent, so an extra commit boundary
+is cheap, while a silently invalidated recovery anchor is expensive and invisible until someone
+tries to recover. P1 remains available for the common case, but correctness no longer rests on it.
 
 Post-merge verification, before the close is declared complete:
 
@@ -675,18 +721,22 @@ same PR invalidates it); `--amend` invalidates the anchor; and a `<path>@<branch
 recovery line is not deterministic across clones. The two-commit protocol needs no tooling and
 no post-hoc edit.
 
-**Which variant to use.** P1 (above) is the default because it is one PR. P2 is the fallback when
-the closeout must not depend on merge style — for example if the owner is unsure how the PR will
-be merged, or if a phase close is being executed by someone who cannot guarantee it. P2 costs one
-extra commit/PR and removes the F-2 class of risk entirely.
+**Which variant to use.** P2 (above) is the default: it removes the F-2 class of risk entirely at
+the cost of one extra commit boundary. P1 is used when the guarantee it needs is explicit — the
+closeout PR states that it lands with a merge commit — which keeps the single-PR path available
+without making correctness depend on it.
 
 ### 7.5 P23 migration boundary (OD-8)
 
 ```text
 WHEN      at actual P23 close, inside the §4 phase-close batch (step 7) — not now
-SCOPE     the P23 folder only: the already-landed slice plans + the P23.16 gate artifact
-LEAVES    P1–P22 · already-archived bundles · phase-wide hubs (§7.2) · reference/* · code
-SIZE      ~19 already-landed slice plans (hubs stay live) + this close's own artifacts
+SCOPE     the P23 folder only: **every closed P23 work artifact**, i.e. the ~19 already-landed
+          flat slice plans + closed slice workspaces (incl. multi-file bundles) + the P23.16
+          gate artifact + the closed phase-wide planning hubs (umbrella, reconciliation,
+          cross-view addendum, §7.2)
+LEAVES    P1–P22 · already-archived bundles · the live P23 phase README · reference/* · code
+SIZE      ~19 landed slice plans + ~3 phase-wide hubs + closed slice workspaces + this close's
+          own artifacts — a single bounded batch executed once, not an ongoing programme
 COST      stub writes are path-preserving, so inbound references keep resolving (F-1);
           archive copies apply only to bundle/non-text artifacts
 ORDER     (a) record A per artifact, (b) write stubs, (c) archive copies where §7.2 requires,
@@ -729,8 +779,8 @@ directories, so nothing exists at `WAITING`).
                         changed process rule     → the owning skill/router
                         mechanism + kill rule    → the mechanism's own file + cycle ACTIVE MECHANISMS
 6  close            → promotion done ⇒ the three evidence files lose authority and are deleted
-                      (a short archive copy is optional and only if the raw audits are judged
-                      historically useful; the cycle file keeps the compact outcome)
+                      (an archive copy is optional and is an explicit owner call, not a default;
+                      the cycle file keeps the compact outcome)
 ```
 
 ### 8.3 What survives
@@ -952,13 +1002,15 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 | B | final gate passes, owner has not closed | phase is *closable*; phase stays `in-progress`; gate artifact records acceptance; cycle stays `WAITING` | §4.2 steps 1–2 STOP |
 | C | owner closes the final phase | ratification recorded → phase README `PHASE CLOSE` → roadmap row `shipped` → baton → closed work → cycle `PHASE_0_DUE` → META appears | §4.2 steps 3–9 in order; drift report ✓ |
 | D | Phase 0 starts | `phase0-audit-a.md` + `phase0-audit-b.md` created `AUTHORITY: NONE`; cycle `PHASE_0_ACTIVE`; P26 design/planning unaffected | §8.2 steps 1–2 |
-| E | Phase 0 Outcome 1 (mostly C/D) | no Phase 1 mechanism; no Phase 2 obligation; cycle → `STEADY` with `TRIGGER: next major phase close`; P26 implementation may proceed after the confirmation step | §3.3 shortcut; §6.1 boundary check |
+| E | Phase 0 Outcome 1 (mostly C/D) | no Phase 1 mechanism; no Phase 2 obligation; cycle → `STEADY` with `TRIGGER: none pending` / `ACTIVE MECHANISMS: none`; P26 implementation may proceed once OD-3's Phase 0 step is satisfied | §3.3 shortcut; §6.1 boundary check |
 | F | Phase 0 requires Phase 1 | only justified mechanisms installed; one bounded reconciliation of the prepared P26 plan; P26 impl #1 then starts; cycle `PHASE_2_VALIDATING`, `VALIDATION WINDOW: P26` | §6.1/§6.2 |
 | G | ordinary P26 implementation PR | cycle not updated; no META in `current.md` | §3.4; §9.2 |
 | H | material P26 validation change | calibration entry recorded at the existing roadmap moment; boundary updated if needed; no new mechanism | §6.3 |
 | I | P26 closes | `PHASE_3_EVALUATE`; KEEP/SIMPLIFY/DELETE recorded per mechanism; → `STEADY` | §3.2/§3.3 |
 | J | closed work | artifact cannot be read as live instructions (`AUTHORITY: NONE` stub at its path); historical body readable where archived; `git show <A>:<path>` verified | §7.1–§7.5 |
 | K | cold-start context | ordinary agent never loads `architecture-cycle.md`; phase-close agent and deliberate meta work do | §9.3 table |
+| L | later phase closes while `STEADY` | ordinary reconciliation/subtraction/closed-work runs; cycle **stays** `STEADY`; no audits, no META | §3.2/§3.3 steady-state rule |
+| M | close authorized but a step failed | `PHASE CLOSE` marker present, later surface missing; re-run writes the missing steps 5–9 and does not repeat owner ratification | §4.3, §13.1 |
 | L | no collateral change | pipeline `P23 → P26 → P24 → P25`, all phase statuses, scopes and routes byte-identical; `AGENTS.md`, `work-checkpoint`, source, tests, CI untouched | diff review per slice |
 
 ---
@@ -968,9 +1020,12 @@ procedure; S4 is independent of S3 but shares §10.1; S5 last. Each slice is one
 ### 13.1 Partial close
 
 ```text
-symptom   evidence written but a later step missing (e.g. tracker row not updated)
-handling  re-run §4.2; each step is idempotent and "ensure value"; the drift report names the
-          first unsatisfied step. No step depends on the owner being present except step 3.
+symptom   authorization written (step 3/4) but a later step missing (e.g. tracker row not updated)
+handling  re-run §4.2. The "PHASE CLOSE" marker proves closure was authorized, so step 3 is
+          never repeated; steps 5–9 are "ensure value" and the re-run WRITES what is missing.
+          The drift report names the surfaces still unsatisfied. No step except step 3 depends on
+          the owner being present.
+result    "marker present + surface absent" means authorized-but-incomplete, never "already closed".
 ```
 
 ### 13.2 Wrong gate closure
@@ -982,21 +1037,21 @@ handling  revert in inverse write order (step 9 → 5), restore the phase README
           findings, an owner ruling is required before reverting.
 ```
 
-### 13.3 Owner deferral (the documented escape hatch)
+### 13.3 Ratified-gate amendment (no pre-designed bypass)
 
-If the owner wants to start P26 implementation before Phase 0 finishes, the cycle supports an
-explicit recorded deferral rather than a silent skip:
+The plan deliberately contains **no** state in which product implementation may proceed while
+Phase 0/Phase 1 is outstanding. OD-3 is a ratified gate: Phase 0 and any justified Phase 1
+response complete before the first P26 implementation slice. An earlier draft of this plan
+carried a `DEFERRED` stage as a recorded escape hatch; it has been **removed** in review, because
+pre-designing the bypass weakens the gate it exists to enforce and because no such condition is
+currently anticipated.
 
 ```text
-STAGE: DEFERRED
-STATUS: owner ruled P26 implementation may start with Phase 0 outstanding
-TRIGGER: owner ruling <date> (<anchor>)
-OWNER ACTION: not required
-NEXT: Phase 0 remains owed at <named future trigger>
+If, later, a real emergency requires P26 implementation to start with the cycle outstanding:
+  owner explicitly amends OD-3 (a new owner decision + this plan's successor change), OR
+  the cycle records the violation as debt against a named future trigger.
+Neither is a supported stage; both are owner-level events, not agent choices.
 ```
-
-The deferral is recorded debt, not a mechanism; it never installs anything and it keeps
-`PHASE_0_DUE` reachable. (New consideration surfaced by planning — see §15.)
 
 ### 13.4 Broken SHA anchor
 
@@ -1007,8 +1062,9 @@ handling  1. correct the stub's recovery line to the reachable form:
              git fetch origin refs/pull/<n>/head && git show <A>:<path>
           2. note the degradation in the closeout record
           3. re-verify with `git show <A>:<path> | head -3`
-prevention  §7.3 P1 (merge-commit requirement, stated for closed-work PRs) or P2 (body first,
-            compact after) — P2 is immune to merge style.
+prevention  §7.3 P2 (land the accepted body first, compact after) — the canonical route, immune to
+            merge style. P1 (one merge-commit PR) is allowed only when that behaviour is
+            guaranteed for the closeout PR.
 ```
 
 ### 13.5 Missing or stale state file
@@ -1064,26 +1120,48 @@ OWNER RECONSIDERATION REQUIRED: none
 ```
 
 Three plan-level findings (§1.11) are resolved mechanically inside this plan: link-repair cost
-is measurable and near zero (F-1), the SHA anchor requires merge-commit merging (F-2), and the
-archive layer needs a structural rule rather than judgment (F-3). None contradicts a ratified
-choice; all three are implementation details of OD-4/OD-9.
+is measurable and near zero (F-1), the SHA anchor must not depend on merge style (F-2, canonical
+route is now P2), and the archive layer needs a structural rule rather than judgment (F-3). None
+contradicts a ratified choice; all three are implementation details of OD-4/OD-9.
 
 ### 15.3 New considerations recorded for the owner (informational, no re-decision needed)
 
 ```text
-N-1  §13.3 DEFERRED state — a recorded escape hatch if P26 implementation must start while
-     Phase 0 is outstanding. Without it, OD-3's gate could silently be skipped, which is worse
-     than recording a deferral.
-N-2  §3.1 OWNER ACTION + EVIDENCE fields — two additions to the ratified field sketch, each
+N-1  §3.1 OWNER ACTION + EVIDENCE fields — two additions to the ratified field sketch, each
      carrying one job (mechanical META condition; Phase 0 resumability).
-N-3  §7.2 phase-wide hubs (umbrella/reconciliation/addendum/phase README) are never stubbed —
-     recorded because they hold most inbound references and are the phase's spine.
+N-2  §7.2 closed phase-wide hubs (umbrella/reconciliation/addendum) compact to stubs while the
+     phase README stays live — recorded because the hubs hold most inbound references, which is
+     why they stub *in place* rather than staying live in full.
 ```
+
+### 15.5 Review corrections applied at r3 (requested changes, `1339ed1` → this revision)
+
+```text
+R1  §3.2/§3.3 STEADY no longer auto-restarts Phase 0: a phase close does hygiene
+    (reconcile/subtract/close work) and stays STEADY; PHASE_0_DUE requires new demonstrated
+    failure or an explicit owner request. Outcome 1 no longer creates a recurring audit.
+R2  DEFERRED state removed from §3.2/§3.3; §13.3 rewritten as a ratified-gate amendment note
+    (no pre-designed OD-3 bypass). N-1 (§13.3) retired.
+R3  §4.3 marker semantics fixed: "PHASE CLOSE" short-circuits owner ratification only; a re-run
+    WRITES steps 5–9 that are missing. §4.4 and §13.1 made consistent with that.
+R4  §7.2 closed phase-wide planning hubs now compact to path-preserving stubs; only the phase
+    README stays live. §7.5 migration scope expanded to all closed P23 work artifacts and closed
+    slice workspaces.
+R5  §7.2 archive rule made deterministic (multi-file/non-text → archive copy; single prose file →
+    stub + Git recovery; already archived → leave alone). F-3 updated accordingly.
+R6  §7.3/§7.4 flip: P2 (land body first, compact after) is canonical; P1 (merge-commit PR) is an
+    optimisation allowed only when the merge behaviour is explicitly guaranteed.
+```
+
+No ratified owner decision (OD-1…OD-9) is reopened by these corrections; R1, R2, R3 and R4 remove
+internal inconsistencies that would otherwise have contradicted the ratified plan, and R5/R6 make
+two OD-4 mechanics deterministic. `OWNER RECONSIDERATION REQUIRED: none`.
 
 ### 15.4 Self-review before commit
 
 ```text
-✓ agrees with the ratified plan (§21 ownership, §25 prerequisites, §19 triggers, §20 state)
+✓ agrees with the ratified plan (§21 ownership, §25 prerequisites, §19 triggers, §20 steady state)
+✓ r3 review corrections R1–R6 applied and internally consistent (§15.5)
 ✓ agrees with the accepted harvest (§12 gap matrix → §10 tasks; §13 planning inputs → §11 slices)
 ✓ OD-1…OD-9 each represented (§15.1)
 ✓ P26 design/planning unblocked before Phase 0 (§6.1)
