@@ -33,8 +33,11 @@ Shipped phase diaries (workspace 1–3, phases 0–7, 4–5, 6.x, full-track Pha
 
 ### `roadmap/`
 
-Completed modern roadmap bundles, grouped by phase/slice (post-migration
-closeouts land here with a one-line stub in their phase README).
+Completed modern roadmap bundles, grouped by phase/slice. Closed-work
+artifacts keep a path-preserving stub in the live tree plus a
+`git show <A>:<path>` recovery line — that stub and anchor are what
+actually guarantee exact reconstruction; archive copies here are for
+multi-file bundles and non-text evidence only.
 
 ### `legacy/`
 
