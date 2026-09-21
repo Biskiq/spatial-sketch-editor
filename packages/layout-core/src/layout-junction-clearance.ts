@@ -167,12 +167,13 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		}
 		if (seamPolygonCollapsed(join.ownedSeam.polygon)) return junctionSeamFailure('junction_seam_overlap');
 	}
-	// An incident leg must be resolved to *something*. A suppressed interface
-	// (a straight continuation) and a fold are both resolved; a bare `miter` /
-	// `bevel` / `trim` without a corner is not.
-	if (join.kind !== 'terminal' && !join.corner && !join.interfaceSuppressed) {
-		return junctionSeamFailure('junction_seam_uncovered');
-	}
+	// Every incident leg must be resolved to *something*: a terminal cap, a
+// deterministic trim at the Junction plane (`terminal`/`trim`), a resolved
+// corner, or a suppressed interface. A join that is none of those leaves the
+// Wall end open.
+	const resolved =
+		join.kind === 'terminal' || join.kind === 'trim' || join.corner !== null || join.interfaceSuppressed;
+	if (!resolved) return junctionSeamFailure('junction_seam_uncovered');
 	return undefined;
 }
 
