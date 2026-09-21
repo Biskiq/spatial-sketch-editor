@@ -116,7 +116,7 @@ flattening the Spatial model:
 | Derived geometry | pure `compileLayoutGeometry()` (`@portfolio/layout-core`) |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Plan presentation | `CompiledLayoutGeometry` → `PlanRenderModel` → `PlanSvg.svelte` |
-| 3D wall meshes | `wall-mesh-builder` → `wall-geometry-adapter` |
+| 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) only |
 | Publication status, active version, revision | `publications` row (`apps/api`) |
 | Published snapshots + delivery manifests | immutable `releases` rows (`apps/api`); bytes resolved per-release at visitor boot |
@@ -139,8 +139,12 @@ cacheable, renderer-neutral, never serialized; both are owned by
 `@portfolio/layout-core`. No SVG strings, `THREE.*`, DOM,
 WebGL/WebGPU handles, materials, cameras, or UI state below the layout
 boundary. Plan and unified 3D consume the same compile; no consumer resamples
-curves or reinterprets opening topology. The Three adapter owns buffers,
-materials, resource lifetime, and raycast identity adaptation.
+curves or reinterprets opening topology. Junction resolution is derived in the
+same compile (network-aware, per-Wall attributed) and is never serialized: any
+Wall end resolved against a canonical Junction carries its resolved join, so a
+renderer triangulates compiled geometry instead of solving topology. The Three
+adapter owns buffers, materials, resource lifetime, and raycast identity
+adaptation.
 
 ## Hard don'ts
 

@@ -13,6 +13,7 @@ import type {
 import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
 import { type CurveSample } from './layout-geometry-curve';
 import {
+	p2311Measure,
 	resolveSharedCornerSide,
 	WALL_CLEARANCE_INSUFFICIENT_CODE,
 	WALL_OFFSET_FOLD_CODE,
@@ -332,17 +333,22 @@ export function buildStandaloneWallMesh(
 	const cornerStart = cornerFromJoin(ends?.start, squareEndCorner(first.point, first.normal, half));
 	const cornerEnd = cornerFromJoin(ends?.end, squareEndCorner(last.point, last.normal, half));
 	const breakpoints = standaloneHeightBreakpoints(wall, wallHeight);
-	const faces = buildWallFaces(
-		roomView,
-		wallAsCompiled,
-		wallAsCompiled,
-		wallAsCompiled,
-		cornerStart,
-		cornerEnd,
-		wallHeight,
-		breakpoints,
-		classify,
-		false
+	// P23.15 Task 7 — a measure point for the per-Wall Junction-aware build, beside
+	// the compile's `junction-resolution` mark, so the perf lane can attribute the
+	// cost of resolving ends to the compile and the cost of consuming them here.
+	const faces = p2311Measure('standalone-wall-build', () =>
+		buildWallFaces(
+			roomView,
+			wallAsCompiled,
+			wallAsCompiled,
+			wallAsCompiled,
+			cornerStart,
+			cornerEnd,
+			wallHeight,
+			breakpoints,
+			classify,
+			false
+		)
 	);
 	const bridges: BridgeFaces[] = [];
 	for (const [join, atEnd] of [
