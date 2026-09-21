@@ -25,9 +25,10 @@ GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 mini
 FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout gate
   gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
   satisfying its exit criteria makes P23 CLOSABLE, not closed.
-  CLOSED requires explicit owner ratification; closure then updates P-level status/baton
-  (slice-closeout, phase-close procedure) and runs the close preflight. For P23 the cycle is
-  WAITING, so the preflight's target is PHASE_0_DUE; the target is computed, never assumed.
+  CLOSED requires an explicit owner request and ruling; closure then runs the owner-invoked
+  phase-closeout procedure, which updates P-level status/baton and runs the close preflight.
+  For P23 the cycle is WAITING, so the preflight's target is PHASE_0_DUE; the target is computed,
+  never assumed.
   Landed P23 slice plans are evidence; they are not active instructions (see "Completed slices").
 ```
 

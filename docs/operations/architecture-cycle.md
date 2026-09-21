@@ -9,7 +9,7 @@ OWNS: meta stage only
 
 PROVENANCE  strategic model      → ../roadmap/architecture-operating-cycle-plan.md
             live cycle state     → (this file)
-            close / transition   → ../../.agents/skills/slice-closeout/SKILL.md
+            close / transition   → ../../.agents/skills/phase-closeout/SKILL.md (owner-invoked)
             historical planning evidence
                                  → ../roadmap/architecture-operating-cycle-workflow-harvest.md
 BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in ./current.md.
@@ -40,7 +40,7 @@ EVIDENCE           empty
 | Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
 | --- | --- | --- | --- | --- | --- | --- |
 | `WAITING` | Cycle installed; nothing due | prerequisite cycle infrastructure installed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
-| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-close step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
+| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-closeout step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
 | `PHASE_0_ACTIVE` | Phase-0 evidence in progress: two fresh-context semantic architecture reviews + one bounded structural-workflow companion diagnostic | owner authorization | run both semantic reviews over the same range without reading each other's output before adjudication; run the structural-workflow diagnostic as separate evidence — it is not a third architecture reviewer | the Phase-0 evidence required for **both lanes** is available | `ADJUDICATION` | no |
 | `ADJUDICATION` | Owner classifies and decides in two lanes inside one lifecycle | the Phase-0 evidence required for both lanes exists | architecture lane: classify each candidate A/B/C/D and answer "what catches it next time?"; structural-workflow lane: adjudicate the workflow evidence separately (no consequential gap / existing-tool or workflow correction / narrow custom-tool gap) | both lanes adjudicated and the single overall transition recorded | `PHASE_1` or `STEADY` | **yes** |
 | `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
@@ -98,8 +98,8 @@ window phase still closes normally.
 META line present  ⇔  this file's OWNER ACTION: required
 line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
 writer:      whoever applies a cycle transition that changes OWNER ACTION — the line is written
-             or removed in that same transition. slice-closeout phase-close step 9 is the
-             phase-close instance (WAITING → PHASE_0_DUE, PHASE_2_VALIDATING → PHASE_3_EVALUATE);
+             or removed in that same transition. phase-closeout step 9 is the phase-close
+             instance (WAITING → PHASE_0_DUE, PHASE_2_VALIDATING → PHASE_3_EVALUATE);
              a non-close transition counts the same way (e.g. PHASE_0_ACTIVE → ADJUDICATION sets
              OWNER ACTION: required with no close and no ruling), as does a stage change by
              owner ruling
@@ -115,8 +115,10 @@ This file owns the condition; `docs/operations/current.md` only mirrors it.
 1  docs/README.md "Where truth lives"          — the pull-based row (deliberate meta work)
 2  phase README FINAL PHASE GATE line          — the close path discovers the cycle from the
                                                  phase it is closing
-3  slice-closeout, phase close (preflight, 8–9) — the procedure that performs the close writes
-                                                 the stage and the META pointer
+3  phase-closeout (preflight, 8–9)             — the owner-invoked procedure that performs the
+                                                 phase close writes the stage and the META pointer
+                                                 (slice-closeout only makes the final gate
+                                                 CLOSABLE; it never touches the cycle)
 ```
 
 The tracker's `META:` line (`../roadmap/README.md`) repeats the same pointer for P-level readers;

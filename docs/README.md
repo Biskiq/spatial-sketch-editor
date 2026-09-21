@@ -175,7 +175,8 @@ proposals in roadmap, supersede stale claims. If no, change no docs merely
 for completeness.
 
 Docs = WHAT is true + WHERE truth lives. Skills = HOW to perform an occasional
-workflow (see `.agents/skills/`; most valuable first: `slice-closeout`).
+workflow (see `.agents/skills/`; most valuable first: `slice-closeout`, then the
+manual-only `phase-closeout`).
 
 ## Meta — how to write the handoff and the next plan
 
@@ -187,6 +188,7 @@ CHECKPOINT: continue same unit; handoff = start next unit.
 PLAN: phase README routes the exact plan path and owns child order/status; a slice workspace needs no README.
 PHASE: create README first; umbrella starts build program after discovery/design.
 SHIP: use slice-closeout skill.
+PHASE CLOSE: explicit owner request only → phase-closeout skill.
 ```
 
 ### Plan hygiene
@@ -231,6 +233,7 @@ UPDATE:
 - landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)
 - deferred bug → operations/tech-debt/
 - slice ship → slice-closeout skill
+- phase close (explicit owner request only) → phase-closeout skill
 - direction change → owner decision (scope decision)
 - archive pointer → router link + phase stub only
 ```

@@ -252,8 +252,9 @@ validation before reaching `STEADY`.
 * **Reference contracts own landed architectural truth.** Only landed behavior moves
   into `docs/reference/*`; roadmap proposals never silently become reference truth.
 * **The applied close procedure performs transitions; this plan does not.** Exact
-  phase-close write ordering, anchor mechanics, and recovery verification live in the
-  slice-closeout skill and the live cycle file — not here.
+  phase-close write ordering, cycle preflight, and recovery verification live in the
+  phase-closeout skill (with the closed-work and anchor mechanics in slice-closeout) and
+  the live cycle file — not here. Major-phase closure is owner-invoked only.
 
 ---
 
@@ -616,7 +617,10 @@ docs/operations/architecture-cycle.md
 = live cycle state
 
 .agents/skills/slice-closeout/SKILL.md
-= applied close and transition procedure
+= applied slice-close procedure (with the closed-work / anchor mechanics)
+
+.agents/skills/phase-closeout/SKILL.md
+= applied major-phase close and cycle-transition procedure (owner-invoked)
 
 docs/reference/*
 = landed and current architecture contracts
@@ -628,7 +632,7 @@ workflow harvest
 The workflow harvest is provenance: it explains how the installed behavior came to
 exist, but it carries no authority and prescribes nothing further. Exact phase-close
 write ordering, shell commands, anchor mechanics, acceptance matrices, and rehearsal
-records belong to the applied skill and to Git/PR history — never to this plan.
+records belong to the applied skills and to Git/PR history — never to this plan.
 PR #66 implementation and review chronology remains recoverable through Git/PR history.
 
 `docs/roadmap/README.md` remains the P-level status authority and the stable route to
