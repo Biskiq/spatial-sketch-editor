@@ -428,11 +428,6 @@ therefore enters `PHASE_1` for the workflow correction alone — the architectur
 never vetoes the workflow lane, and the workflow lane never manufactures architecture
 machinery.
 
-**Forward-compatibility note.** The live cycle file currently encodes this transition
-as Outcome 1 (C/D) → `STEADY` versus Outcomes 2/3/4 → `PHASE_1`. Once this plan is
-ratified, that wording is reconciled to the two-lane rule above in the operational
-pass — no operational edit in this PR.
-
 ### Branch outcomes
 
 * **Outcome 1 — neither lane justifies a mechanism (architecture mostly C/D, no
@@ -644,20 +639,20 @@ carried no authority, and has been deleted.
 
 ## 14. Scope versus verification
 
-Proposed immediate operational consequence of this plan, with promotion into workflow
-instructions deferred to the post-ratification operational pass:
+Strategic rule, owned by the cross-cutting agent workflow (`AGENTS.md`):
 
 > Task scope limits what may be changed, not what may be inspected or verified.
 
-Implementation scope stays narrow; verification is allowed to see consequences outside
-that scope. Before finishing, the project's full verification runs regardless of task
-scope, and a change that looks necessary outside the assigned scope is reported rather
-than made.
+A scoped task may inspect callers, dependents, wiring, tests and other repository areas
+needed to verify impact. Implementation scope stays narrow; verification is allowed to
+see consequences outside that scope. Required verification is never narrowed merely
+because the requested code change is local, and a change that appears necessary outside
+the assigned scope is reported rather than made unless scope is explicitly expanded.
 
-This pass makes no workflow-instruction change: `AGENTS.md`, skills, and test commands
-are untouched. The concrete verification set (the complete editor suite, the
-typecheck, and the architecture lane with its never-path-gated semantics) remains owned
-by the test documentation and is deliberately not duplicated here, where it would rot.
+The concrete verification set — the complete editor suite, the typecheck, and the
+architecture lane with its never-path-gated semantics — remains owned by the test
+documentation (`apps/editor/tests/README.md`) and is deliberately not duplicated here,
+where it would rot.
 
 ---
 
