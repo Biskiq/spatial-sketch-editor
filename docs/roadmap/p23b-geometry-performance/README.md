@@ -18,11 +18,12 @@ installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling p
 interpretation is recorded in the P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures,
 recorded baselines with provenance, budgets) remains OUTSTANDING — it is not completed, replaced or
 redefined by P23B.1
-CURRENT: P23B.1 planning — the harvest plan is authored for owner review; NO harvest executed
-NEXT: P23B.1 — internal geometry-pipeline harvest (SEQUENCE step 5), guided by the P23B.0 profiling
-      evidence. It is a read-only discovery slice (source inspection and investigation), still inside
-      the PHASE 0 GATE permission boundary; no optimization slice is authorized before the owner
-      ratifies an implementation plan
+CURRENT: P23B.1 harvest EXECUTED — the plan was accepted at review and the harvest record is landed
+      in the slice workspace, awaiting review. Discovery/evidence only: no optimization, defect fix
+      or benchmark change; the correctness mismatch it locates stays open for the owner ruling
+NEXT: P23B.1 review of the harvest record; on acceptance, P23B.2 — external precedent research
+      (SEQUENCE step 6), targeted at the diagnosed questions in the record §11. Until then the slice
+      stays inside the PHASE 0 GATE permission boundary and no optimization slice is authorized
 GATE: no implementation approved — P23B implementation waits on an owner-ratified child plan
 ```
 
@@ -71,11 +72,14 @@ all three inform synthesis.
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order) →
   2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
-harvest (P23B.1, authored for review) →
+harvest (P23B.1 — plan ACCEPTED, harvest EXECUTED awaiting review) →
    p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-internal-geometry-pipeline-harvest.md
+     (the accepted contract) · 2026-09-22-P23B.1-harvest-record.md (the executed harvest: FL-1 · CG-1 ·
+     SC-1 · CI-1 · TO-1 · RT-1 · PO-1 · PM-1 · UN-1)
 research / synthesis → none yet (P23B.2 · P23B.3 proposed)
 child plans → none yet (proposed only; no implementation-ready brief)
-measurement → none yet (P23B.0 proposed)
+measurement (P23B.0) → read-only profiling passes complete, no committed artifact; durable
+          benchmark/fixture/baseline work outstanding (see the P23B.1 harvest record §11.1)
 phase status/order → ../README.md
 P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md
@@ -120,9 +124,10 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 ```
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
-Phase 0 gate and the umbrella route are read. The only child artifact today is the P23B.1 harvest
-plan, authored for owner review; no harvest has been executed, no research or synthesis artifact
-exists, and no implementation is approved.
+Phase 0 gate and the umbrella route are read. The child artifacts today are the P23B.1 plan (the
+accepted contract) and its harvest record (the executed evidence, awaiting review); no research or
+synthesis artifact exists, no implementation is approved, and P23B.0's durable benchmark work stays
+outstanding.
 
 ## Non-goals
 
