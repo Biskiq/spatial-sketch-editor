@@ -336,7 +336,7 @@ export type CompiledJunctionBand = { bottomY: number; topY: number };
 export type CompiledJunctionSurface = {
 	ownerWallId: string;
 	end: 'start' | 'end';
-	kind: 'continuation-thickness-step' | 'continuation-height-step' | 'branch-trim';
+	kind: 'continuation-thickness-step' | 'continuation-height-step' | 'branch-trim' | 'junction-keel';
 	from: LayoutVec2;
 	to: LayoutVec2;
 	/** Outward plan normal (unit) pointing away from the owning Wall's material. */
@@ -421,6 +421,21 @@ export type CompiledLegJoin = {
 	 * interface belongs to the resolved Junction material instead.
 	 */
 	clipDistance?: number;
+	/**
+	 * P23.15 — the resolved Junction-local **keel** of a degree >= 3 sector
+	 * partition: the plan region of Junction material this Wall owns between its
+	 * own cap line and the two partition beams that bound its sector.
+	 *
+	 * It is the piece of the local partition a Wall-owned strip cannot express on
+	 * its own (a strip is a swept band; a sector narrows toward the Junction), so
+	 * `layout-core` publishes it as resolved solid regions instead of leaving it
+	 * to interpenetration. Every region is convex and wound CCW in plan (so the
+	 * normal of its top face is `+Y`); `bands` are the vertical bands this Wall
+	 * actually has material in. A builder only extrudes them (top/bottom faces per
+	 * band); the vertical sides they expose are carried as `surfaces` of kind
+	 * `junction-keel`, so no builder decides which side of a keel is interior.
+	 */
+	keel?: { regions: LayoutVec2[][]; bands: CompiledJunctionBand[] };
 };
 
 /** P23.15 — the local, renderer-neutral solve result for one Junction. */
