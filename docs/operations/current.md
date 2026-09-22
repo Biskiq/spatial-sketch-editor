@@ -1,23 +1,31 @@
 # Current
 
-PHASE: P26
-CHILD: none yet — P26 is in planning; no child plan exists
-STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P26 synthesis has
-       landed and is the authoritative research input; the design brief is the next artifact and no
-       implementation is approved.
-       The architecture cycle sits at PHASE_0_DUE — a separate, owner-gated track (see META below).
+PHASE: P23B
+CHILD: none in execution — P23B is in planning; the umbrella is landed and the child slices are
+       proposed, none approved
+STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
+       Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
+       proposed, no implementation approved. P26 remains in planning — its synthesis is the
+       authoritative research input and the design brief is still the next artifact.
+       The architecture cycle sits at PHASE_0_DUE — a separate, owner-gated track (see META below);
+       Phase 0 adjudication precedes P23B implementation.
 
 NEXT:
-1. P26 product work: author the P26 design brief from the landed synthesis
+1. P23B planning: owner review of the umbrella and the proposed child slices; measurement (P23B.0)
+   and the parallel internal harvest / external research (P23B.1 · P23B.2) are the first proposal.
+   No P23B implementation starts before Phase 0 adjudication and an owner-ratified child plan.
+2. Separately and only on owner authorization: the Phase 0 retrospective the P23 close made due.
+3. P26 product planning may continue in parallel: author the design brief from the landed synthesis
    (research/synthesis/p26-architectural-spatial-depth-synthesis.md), then proposals and a reconciled
    child plan. No P26 implementation starts without an approved plan.
-2. Separately and only on owner authorization: the Phase 0 retrospective the P23 close made due.
-3. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
-   named in the closed gate stub, not silently dropped.
+4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
+   named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
 ROUTE:
 phase status/order → ../roadmap/README.md
-P26 planning (next product work) → ../roadmap/p26-spatial-depth/README.md
+P23B planning (next pipeline phase) → ../roadmap/p23b-geometry-performance/README.md
+P23B umbrella → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
+P26 planning → ../roadmap/p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
 P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
 P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md (stub)
@@ -27,6 +35,8 @@ post-P23 debt → ../operations/tech-debt/README.md
 META: Architecture cycle — owner authorization for Phase 0 → ../operations/architecture-cycle.md
 
 BLOCKER:
+- P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0
+  adjudication (owner-gated, meta track) and then on an owner-ratified child plan
 - P26 has no compiled design brief or child plan yet; planning is the current work, not a blocker to it
 - owner authorizes Phase 0 to start (meta track, separate from product planning)
 

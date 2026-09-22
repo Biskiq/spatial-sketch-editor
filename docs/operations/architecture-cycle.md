@@ -24,7 +24,8 @@ STATUS             phase close recorded; retrospective diagnosis is owed
 TRIGGER            P23 owner-closed 2026-09-22 (owner ratification in PR #73; cycle was WAITING,
                    so the preflight's computed target was PHASE_0_DUE)
 PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviews; next pipeline
-                   phase is P26 (planning, design brief pending)
+                   phase is P23B (geometry performance, planning; umbrella landed, children
+                   proposed); P26 follows, still planning
 OWNER ACTION       required — owner authorizes Phase 0 to start
 NEXT               owner authorizes Phase 0 (two fresh-context semantic architecture reviews plus
                    the bounded structural-workflow companion diagnostic)
