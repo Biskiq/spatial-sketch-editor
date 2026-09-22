@@ -3,7 +3,7 @@
 PHASE: P23
 CHILD: P23.16 — Final whole-product integration and P23 closeout gate
 STAGE: P23.15 CLOSED (accepted 2026-09-21; PR #72 — plan, implementation and closeout on one
-       branch; artifacts compacted to stubs; PR #72 still OPEN at `d3252e3`, not yet on `main`).
+       branch; artifacts compacted to stubs; PR #72 still OPEN, not yet on `main`).
        P23.16 is the only remaining child and is the phase's declared FINAL PHASE GATE.
 
 NEXT:
