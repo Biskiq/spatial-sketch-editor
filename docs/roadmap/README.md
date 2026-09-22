@@ -19,12 +19,13 @@ slice-specific plans flat at `docs/roadmap/<phase>/` (flat slice plans already
 there are grandfathered legacy).
 
 ```text
-PIPELINE: P23 → P26 → P24 → P25
+PIPELINE: P23 → P23B → P26 → P24 → P25
 ```
 
 | Phase | Status | Goal | Workspace |
 |-------|--------|------|-----------|
 | P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
+| P23B | planning | geometry performance + stabilization over the P23 wall-first pipeline | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
 | P26 | planning | vertical structure + orthographic precision over one wall-first model | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | P24 | proposed | asset supply + staging authoring | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
 | P25 | proposed | destination + stop + panel + interaction | [`p25-experience/README.md`](./p25-experience/README.md) |
@@ -38,7 +39,7 @@ MODEL: per-increment routing → model-assessment.md
 ```
 
 `META` is a process track beside the product pipeline, not a phase in it: it enters no
-`P23 → P26 → P24 → P25` slot and adds no P-number. Its live state is
+`P23 → P23B → P26 → P24 → P25` slot and adds no P-number. Its live state is
 [`../operations/architecture-cycle.md`](../operations/architecture-cycle.md); its ratified
 design is [`architecture-operating-cycle-plan.md`](./architecture-operating-cycle-plan.md).
 

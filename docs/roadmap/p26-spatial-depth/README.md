@@ -10,6 +10,10 @@ FreeCAD/Bonsai harvests are supporting evidence, not architecture authority.
 
 ```text
 STATUS: planning
+PIPELINE: P23 (shipped) → P23B (planning) → P26 → P24 → P25 — P23B is inserted ahead of P26;
+          P26 research, synthesis and planning artifacts are unchanged and P26 planning continues in
+          parallel. It is not the primary next-work instruction: the immediate action is Phase 0
+          owner authorization
 STAGE: synthesis (authoritative research input landed; no design brief yet)
 CURRENT: research/synthesis/p26-architectural-spatial-depth-synthesis.md
 NEXT: design brief
