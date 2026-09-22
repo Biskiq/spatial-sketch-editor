@@ -2101,7 +2101,101 @@ describe('P23.6e slice 7 — legacy quarantine and single ownership (source cont
 			expect(treeSource, `legacy quarantine still carries ${removed}`).not.toContain(removed);
 		}
 	});
-});	describe('P23.6e review — Navigator presentation, activation and document reset', () => {
+});
+
+/*
+ * Document-replacement seam predicates (test rule 7 — one parser per grammar).
+ * `EditorApp.svelte`, `ProjectRow.svelte` and `EditorProjectMenu.svelte` are
+ * Svelte components with no render harness in this suite, so the invariant is
+ * proved over source shape (test rule 6), and every claim is bounded to the
+ * surfaces named here.
+ */
+
+/**
+ * The menu's document-replacing mutations: the function that replaces the
+ * document, and the mutation call that makes it a replacement. Every such
+ * function must fire `onReset?.()` after its mutation. A new document-replacing
+ * control is covered only once it is listed here — that is the guard's limit.
+ */
+const DOCUMENT_REPLACING_MENU_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
+	['importSceneJson', 'store.importDocument('],
+	['importLayoutJson', 'requestLayoutImportReplacement('],
+	['resetLayout', 'resetLayoutPreview('],
+	['importPackageArchive', 'store.importPackageArchive('],
+	['resetScene', 'store.resetToCheckedInDocument(']
+];
+
+/** Body of a top-level `function name(` in a component source, to its closing tab brace. */
+function requireFunctionBody(source: string, name: string, file: string): string {
+	const match = new RegExp(`function ${name}\\([\\s\\S]*?\\n\\t}`).exec(source);
+	if (!match) throw new Error(`${file}: function ${name} not found — the seam guard cannot see it`);
+	return match[0];
+}
+
+/** The nearest `function name(` preceding an index — the owner of a call site. */
+function enclosingFunctionName(source: string, index: number): string {
+	const owners = [...source.slice(0, index).matchAll(/function ([A-Za-z0-9_]+)\(/g)];
+	return owners.at(-1)?.[1] ?? '';
+}
+
+/** Every `ProjectRow` instance the editor shell mounts. */
+function projectRowInstances(appSource: string): string[] {
+	return appSource.match(/<ProjectRow\b[\s\S]*?\/>/g) ?? [];
+}
+
+/** The editor shell's menu hosts must each pass the document-scoped reset. */
+function expectMenuHostsWiredToDocumentReset(appSource: string): void {
+	const hosts = projectRowInstances(appSource);
+	expect(hosts.length, 'the shell mounts no ProjectRow — the guard cannot see the menu host').toBeGreaterThan(0);
+	for (const host of hosts) {
+		expect(host, 'a ProjectRow instance does not wire the document-scoped reset').toContain(
+			'onReset={resetDocumentScopedState}'
+		);
+	}
+	// Reject any differently wired `onReset` prop anywhere in the shell.
+	expect(appSource).not.toMatch(/onReset=\{(?!resetDocumentScopedState\})/);
+}
+
+/** The menu host must forward the reset to the menu it mounts. */
+function expectMenuForwardedDocumentReset(projectRowSource: string): void {
+	const menus = projectRowSource.match(/<EditorProjectMenu\b[\s\S]*?\/>/g) ?? [];
+	expect(menus.length, 'ProjectRow mounts no EditorProjectMenu').toBeGreaterThan(0);
+	for (const menu of menus) {
+		expect(menu, 'ProjectRow does not forward the document-scoped reset to the menu').toMatch(
+			/\{onReset\}|onReset=\{onReset\}/
+		);
+	}
+}
+
+/** Every document-replacing menu mutation must fire the reset after mutating. */
+function expectMenuMutationsFireDocumentReset(menuSource: string): void {
+	for (const [name, mutation] of DOCUMENT_REPLACING_MENU_MUTATIONS) {
+		const body = requireFunctionBody(menuSource, name, 'EditorProjectMenu.svelte');
+		const mutated = body.indexOf(mutation);
+		expect(mutated, `${name} no longer performs ${mutation}`).toBeGreaterThan(-1);
+		expect(body.indexOf('onReset?.()'), `${name} replaces the document without firing onReset`).toBeGreaterThan(
+			mutated
+		);
+	}
+}
+
+/** Every layout-bundle shell replacement must reset document-scoped state after it. */
+function expectShellReplacementSitesReset(appSource: string): void {
+	const install = 'installLayoutPreviewBundle(layoutPreview, bundle);';
+	let seen = 0;
+	for (let index = appSource.indexOf(install); index !== -1; index = appSource.indexOf(install, index + 1)) {
+		seen += 1;
+		const owner = enclosingFunctionName(appSource, index);
+		expect(owner, 'a layout-bundle install site has no enclosing function').not.toBe('');
+		const body = requireFunctionBody(appSource, owner, 'EditorApp.svelte');
+		expect(
+			body.indexOf('resetDocumentScopedState()'),
+			`${owner} installs a replacement bundle without resetting document-scoped state`
+		).toBeGreaterThan(body.indexOf(install));
+	}
+	expect(seen, 'the shell has no layout-bundle replacement site').toBeGreaterThan(0);
+}
+	describe('P23.6e review — Navigator presentation, activation and document reset', () => {
 	const navigatorSource = readLibSource('editor/hierarchy/HierarchyNavigator.svelte');
 	const rowSource = readLibSource('editor/hierarchy/HierarchyRow.svelte');
 	const appSource = readLibSource('editor/app/EditorApp.svelte');
@@ -2168,19 +2262,27 @@ describe('P23.6e slice 7 — legacy quarantine and single ownership (source cont
 		expect(mount![0]).not.toContain('revealDisclosure');
 	});
 
-	it('resets the Navigator on every document-replacing seam', () => {
+	it('resets document-scoped Navigator state across the five menu document replacements and both shell replacement sites', () => {
 		// Page/query/filters/disclosure/emphasis/Back must not outlive the document
-		// they described: reset, import, project load and pending-draft replacement
-		// all go through one seam.
+		// they described. The claim is bounded on purpose: this proves the five
+		// current menu replacement mutations, the editor shell's menu host and the
+		// two `installLayoutPreviewBundle` shell sites. It does NOT discover a
+		// replacement type that bypasses those surfaces — the frozen relic lane
+		// mounts the same menu from `EditorAppBar.svelte` without this reset and that
+		// drift is owner-waived — and a new replacement is covered only once it is
+		// listed in `DOCUMENT_REPLACING_MENU_MUTATIONS`.
 		const seam = /function resetDocumentScopedState\(\): void \{[\s\S]*?\n\t}/.exec(appSource);
 		expect(seam).not.toBeNull();
 		const seamBody = seam![0];
 		expect(seamBody).toContain('activeSelection.reset();');
 		expect(seamBody).toContain('hierarchyNavigator.reset();');
-		// Both project-load and pending-draft replacement call it...
-		expect(appSource.match(/^\t\t	?resetDocumentScopedState\(\);/gm)?.length).toBe(2);
-		// ...and every `onReset` seam uses it instead of resetting selection alone.
-		expect(appSource.match(/onReset=\{resetDocumentScopedState\}/g)?.length).toBe(2);
+		// Every menu replacement, its host wiring and every shell replacement site.
+		expectMenuMutationsFireDocumentReset(readLibSource('editor/EditorProjectMenu.svelte'));
+		expectMenuHostsWiredToDocumentReset(appSource);
+		expectMenuForwardedDocumentReset(readLibSource('editor/app/ProjectRow.svelte'));
+		expectShellReplacementSitesReset(appSource);
+		// The retired count-based pins are gone: they could not fail on a seam that
+		// bypassed them, which is the defect this correction addresses.
 		expect(appSource).not.toContain('onReset={() => activeSelection.reset()}');
 		// The Navigator reset itself clears the whole UI state, not a subset.
 		const storeSource = readLibSource('editor/app/hierarchy-navigator-state.svelte.ts');
@@ -2235,7 +2337,10 @@ describe('P23.6e review — every successful import routes through the document-
 	});
 
 	it('the shell still owns resetDocumentScopedState and passes it to the menu', () => {
-		expect(appSource.match(/onReset=\{resetDocumentScopedState\}/g)?.length).toBe(2);
+		// Shares the guard's wiring predicate rather than pinning a literal count,
+		// so the two cannot drift apart (test rule 7).
+		expect(appSource).toContain('function resetDocumentScopedState(): void {');
+		expectMenuHostsWiredToDocumentReset(appSource);
 	});
 });
 
