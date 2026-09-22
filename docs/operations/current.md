@@ -8,13 +8,16 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
        synthesis is the authoritative research input and the design brief is still the next artifact.
-       The architecture cycle sits at PHASE_0_DUE — a separate, owner-gated track (see META below);
-       Phase 0 adjudication and any justified Phase 1 response precede P23B implementation, and
-       validation-window ownership remains a cycle decision.
+       The architecture cycle is PHASE_0_ACTIVE — Phase 0 was owner-authorized 2026-09-22 and its
+       evidence is owed (nothing has been run); no owner action is required until the ADJUDICATION
+       transition. Phase 0 adjudication and any justified Phase 1 response precede P23B
+       implementation, and validation-window ownership remains a cycle decision.
 
 NEXT:
-1. IMMEDIATE — Phase 0 owner authorization (cycle, owner-gated; META below). This is the next action,
-   not P23B measurement and not the P26 design brief. Order in brief, which follows Phase 0 in
+1. IMMEDIATE — complete the Phase 0 evidence (authorized 2026-09-22; nothing has been run yet):
+   two fresh-context semantic architecture reviews over the same P23 range without cross-reading,
+   plus the bounded structural-workflow companion diagnostic. This is the next action, not P23B
+   measurement and not the P26 design brief. Order in brief, which follows Phase 0 in
    sequence: Phase 0 evidence → owner adjudication → Phase 1 or STEADY → P23B.0 measurement →
    P23B.1 harvest → P23B.2 external research → P23B.3 synthesis → owner ratification of the
    implementation plan and performance acceptance criteria → optimization slices, verify, review,
@@ -41,14 +44,10 @@ P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-
 P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md (stub)
 post-P23 debt → ../operations/tech-debt/README.md
 
-META: Architecture cycle — owner authorization for Phase 0 → ../operations/architecture-cycle.md
-
 BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0
-  adjudication and any justified Phase 1 response (owner-gated, meta track), then on an
-  owner-ratified child plan
+  adjudication and any justified Phase 1 response (meta track), then on an owner-ratified child plan
 - P26 has no compiled design brief or child plan yet; planning is the current work, not a blocker to it
-- owner authorizes Phase 0 to start (meta track, separate from product planning)
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
