@@ -7,15 +7,16 @@ STATE: ../../../operations/architecture-cycle.md   (sole live meta-state authori
 RANGE: ./2026-09-22-P0-frozen-evidence-range.md   (frozen; both reviewers get exactly this)
 ```
 
-One bounded cycle stage, four isolated workspaces. No output exists yet: this directory prepares
-**where** each investigation lands and **who owns it**, and records nothing about what any of them
-will find.
+One bounded cycle stage, four isolated workspaces. This directory prepares **where** each
+investigation lands and **who owns it**, and records nothing about what any of them will find. The
+mechanical control pass has since completed (`./mechanical-control-pass.md`); the three
+investigations have no output yet.
 
 ## Output destinations and assignment boundaries
 
 | Output | Owner workspace / branch | Responsibility |
 |---|---|---|
-| `mechanical-control-pass.md` | Coordination — `meta/phase0` | bounded structural control pass, run **before** semantic review |
+| `mechanical-control-pass.md` | Coordination — `meta/phase0` | bounded structural control pass, run **before** semantic review · **complete 2026-09-22** |
 | `review-a.md` | Reviewer A — `meta/phase0-review-a` | independent semantic architecture review |
 | `review-b.md` | Reviewer B — `meta/phase0-review-b` | independent semantic architecture review |
 | `structural-workflow.md` | Workflow — `meta/phase0-workflow` | structural-workflow companion diagnostic |
@@ -57,6 +58,7 @@ without its revision range is not usable as Phase-0 evidence.
   closed-work rule (path-preserving stub with a recovery anchor), like any other plan/research/QA
   artifact.
 - No second tracker, no permanent evidence registry and no standing audit is created here.
-- `PHASE_0_ACTIVE` is the current stage: the mechanical control pass and the three investigations
-  are owed and none has run. Evidence collection does not advance the cycle; the `ADJUDICATION`
-  transition does, and it is the owner's.
+- `PHASE_0_ACTIVE` is the current stage. The mechanical control pass is **complete** and written to
+  `./mechanical-control-pass.md`; the two semantic reviews and the workflow diagnostic are owed and
+  none has run, and neither review output exists. Evidence collection does not advance the cycle; the
+  `ADJUDICATION` transition does, and it is the owner's.
