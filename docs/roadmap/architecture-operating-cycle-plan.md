@@ -173,9 +173,9 @@ Do not create elaborate types or abstractions solely to make governance easier.
 
 Plans, research, QA, and implementation records help produce durable knowledge but are
 not automatically permanent authority. At completion they shed authority under the
-closed-work hybrid rule: a path-preserving stub at the original path records outcome,
-residuals, current contracts, and exact Git recovery, while an archive copy is kept only
-for multi-file bundles and non-text evidence. Archive is opt-in evidence, never
+closed-work hybrid rule owned by `slice-closeout`: a path-preserving stub at the
+original path records outcome, residuals, current contracts, and exact Git recovery, and the
+full body stays exactly recoverable from Git. Archive is opt-in evidence, never
 authority. The exact mechanics belong to the applied closeout procedure, not to this
 plan.
 

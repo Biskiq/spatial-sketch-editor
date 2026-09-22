@@ -147,8 +147,11 @@ Junction material is partitioned locally across all incident Walls — through
 continuations suppress their shared interface, branches are trimmed against the
 resolved Junction material, and every exposed Junction surface has one
 deterministic owner — so per-Wall meshes never rely on overlapping solids for
-closure. A Junction that has no straight-through continuation pair yet records
-that fact as a warning instead of passing silently. The Three
+closure. A Junction with no straight-through continuation pair (a Y or star) is
+partitioned by its own equal-clearance sector beams instead, and a configuration
+that admits no beam at all fails closed with a blocking
+`junction_partition_failed` issue and no mesh — no consumer ever renders
+overlapping Wall bodies. The Three
 adapter owns buffers, materials, resource lifetime, and raycast identity
 adaptation.
 

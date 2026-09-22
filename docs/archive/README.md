@@ -33,11 +33,15 @@ Shipped phase diaries (workspace 1–3, phases 0–7, 4–5, 6.x, full-track Pha
 
 ### `roadmap/`
 
-Completed modern roadmap bundles, grouped by phase/slice. Closed-work
-artifacts keep a path-preserving stub in the live tree plus a
-`git show <A>:<path>` recovery line — that stub and anchor are what
-actually guarantee exact reconstruction; archive copies here are for
-multi-file bundles and non-text evidence only.
+Completed modern roadmap bundles, grouped by phase/slice. **Archive here means browsable
+evidence** — PNG/SVG/HTML atlases, screenshots, plates, measurements — copied
+**byte-unmodified**, so Git stores one blob for both paths.
+
+Closed-work *prose* (plans, QA records, research, design studies, reconciliations) is not copied
+here: it keeps a path-preserving stub in the live tree plus a `git show <A>:<path>` recovery
+line, which is what actually guarantees exact reconstruction. Rule owner:
+[`.agents/skills/slice-closeout/SKILL.md`](../../.agents/skills/slice-closeout/SKILL.md)
+("Closed work — compaction, not deletion").
 
 ### `legacy/`
 

@@ -1,9 +1,11 @@
 ---
 name: consult-browser-reviewer
-description: Consult the signed-in ChatGPT browser reviewer about Museum Editor product, UX, plan, or architecture decisions. Invoke when the user says “consult with browser reviewer,” “ask the reviewer,” or equivalent.
+description: Consult the signed-in ChatGPT browser reviewer on Museum Editor product, UX, plan or architecture decisions. MANUAL-ONLY — never invoke unless the user explicitly requests it.
 ---
 
 # Consult Browser Reviewer
+
+Never invoke unless the user explicitly requests it; no review would be useful, recommendation or passing mention counts.
 
 Use the in-app Browser and the **Museum Editor — Product, UX & Architecture** ChatGPT project.
 

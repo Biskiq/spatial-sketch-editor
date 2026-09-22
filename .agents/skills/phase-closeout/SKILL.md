@@ -162,20 +162,15 @@ phase. The baton stays product-only here.
 
 ### Step 7 — Closed work
 
-Apply the hybrid closed-work rule defined in the `slice-closeout` skill ("Closed work (hybrid
-rule)") to the artifacts **this phase close itself changes or compacts** — same anchor safety,
-same P1/P2 rule, same recovery verification:
+Apply the closed-work rule **owned by** the `slice-closeout` skill ("Closed work (hybrid rule) —
+compaction, not deletion") to the artifacts **this phase close itself changes or compacts** — same default
+(stub + exact anchor for prose, research promoted before it is stubbed, archive copy only for
+renderable evidence, bytes copied unmodified), same P1/P2 anchor safety, same recovery
+verification, same preservation report.
 
-```text
-ARCHIVE A COPY (copy the full body to docs/archive/roadmap/<phase>/<slice>/…, keep a stub)
-  multi-file bundle/workspace (design/QA/research directories, assets), or non-text evidence
-
-STUB + EXACT GIT RECOVERY (no archive copy)
-  any single prose work artifact (plan, QA record, reconciliation, addendum)
-
-LEAVE ALONE
-  already-correctly-archived material · P1–P22 · the live phase README
-```
+Read the rule there and apply it; do **not** restate or re-decide it here, so the two procedures
+cannot drift apart. Phase close adds only the phase-wide scope: whole-phase integration, surviving
+cross-slice contradictions and the gate artifact below.
 
 The final-gate child was already fully closed by `slice-closeout`, including its own steps 8–11
 hygiene — this step does not finish an unfinished child. The one artifact deliberately held back

@@ -15,9 +15,9 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: P23.14 closed (accepted 2026-09-21); P23.15 plan owner-reviewed and implemented, live rows pending
-CURRENT: P23.15 — Junction-correct wall-first 3D (implementation landed, owner closeout pending)
-NEXT: P23.15 owner review of the landed implementation, then P23.16 final closeout
+STAGE: P23.15 closed (accepted 2026-09-21); only the P23.16 final closeout gate remains
+CURRENT: P23.16 — Final whole-product integration and P23 closeout gate (owner close pending)
+NEXT: owner-invoked P23.16 closeout gate; satisfying its exit criteria makes P23 CLOSABLE, not closed
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
 ```
 
@@ -35,18 +35,16 @@ FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout ga
 ```
 
 ```text
-ROUTE (active child P23.15 — direct; no intermediate slice router):
-plan → p23.15-junction-correct-wall-first-3d/2026-09-21-P23.15-junction-correct-wall-first-3d.md
-qa → p23.15-junction-correct-wall-first-3d/qa/2026-09-21-P23.15-junction-qa-record.md
-  (automated acceptance landed; live 3D rows manual-owed to an owner session)
-remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.15
-dependencies → landed P23.8 topology acceptance · P23.11 curved-Wall compiler shape ·
-  P23.13 Plan fixtures · canonical physical-Wall compilation
-shell grammar (any UI P23.15 touches enters through it) →
+ROUTE (active child P23.16 — direct; no intermediate slice router):
+gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.16
+dependencies → every P23 slice through P23.15 (P23.15 accepted 2026-09-21, PR #72)
+shell grammar (any UI P23.16 touches enters through it) →
   ../../reference/design-system/editor-shell-and-visual-system.md
-closeout gate → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
 closed slice, evidence only → p23.14-shell-visual-system/ (stubs) +
   ../../archive/roadmap/p23/p23.14-shell-visual-system/ (bundle copies)
+closed slice, evidence only → p23.15-junction-correct-wall-first-3d/ (stubs; plan, QA record and
+  research are single prose artifacts, so no archive copy)
 ```
 
 **Startup stop:** an implementation-start agent has what it needs once phase
@@ -81,6 +79,8 @@ detail in this file is on-demand.
 
 P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13,
 **P23.14** (shell visual system; accepted 2026-09-21 — implementation PR #61, closeout PR #71),
+**P23.15** (junction-correct wall-first 3D; accepted 2026-09-21 — PR #72 carries plan,
+implementation and closeout on one branch),
 plus the concurrent Junction-dissolve / Wall join child slice (PR #57, no tracker
 P-number; its Inspector/Navigator-row/Plan-menu entry points landed in P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only
@@ -100,11 +100,18 @@ P23.14 leaves no new carried rows: its residuals are held in its QA closeout rec
 (Inspector numeric `:invalid`), the manual-owed accessibility rows, the Inspector
 role-migration residue, the §0.3 open owner calls, and the two unverified Task 5 rows above.
 They are not P23.15 scope unless P23.15 touches the surface; they route to their owners.
+P23.15 adds one row: its J1–J8 live 3D rows are manual-owed in its QA closeout record, and
+P23.16's whole-product integration pass is their natural verifier. Incremental Junction
+invalidation stays an accepted non-goal (Decision 13), not a carried row.
 
 (On-demand — closeout mechanics; read at slice closeout, not at slice start.)
 All new slice closeouts leave closed artifacts as path-preserving stubs holding a
 `git show <A>:<path>` recovery line, with an archive copy only for multi-file bundles or
 non-text evidence (mechanics: `slice-closeout`). P23.14 is the first slice closed under the
-hybrid rule: 11 prose artifacts stubbed at their own paths, `context/` + `design/` bundles
-copied to `docs/archive/roadmap/p23/p23.14-shell-visual-system/`. Shipped narrative for
+hybrid rule: 11 prose artifacts stubbed at their own paths, its renderable evidence
+(screenshots, atlas HTML, proposal plates) copied to
+`docs/archive/roadmap/p23/p23.14-shell-visual-system/`. P23.15 is the first slice whose
+plan, implementation and closeout share one branch (P1): its three prose artifacts are stubs with
+`git show <A>:<path>` anchors (no archive copy), and PR #72 must land with a **merge commit** so
+those anchors stay reachable on `main`. Shipped narrative for
 P23.13 lives in `docs/archive/plans/`.
