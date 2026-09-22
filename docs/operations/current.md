@@ -5,7 +5,7 @@ CHILD: P23.16 — Final whole-product integration and P23 closeout gate
 STAGE: QA EXECUTED (2026-09-22) and the gate record is written. PR #73 is pushed and awaiting
        independent review; no closeout and no merge has been run. P23.16 is the only remaining
        child and is the phase's declared FINAL PHASE GATE. The owner-approved TD-3 amendment was
-       implemented inside this slice (`7c8dacb`) and issue #35 is closed against it.
+       implemented inside this slice (`be4e23b`) and issue #35 is closed against it.
 
 NEXT:
 1. Owner (or reviewer) reviews PR #73's implementation + evidence. The gate record is

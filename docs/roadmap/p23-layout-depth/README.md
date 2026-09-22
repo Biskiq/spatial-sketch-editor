@@ -123,7 +123,7 @@ Incremental Junction invalidation stays an accepted non-goal (Decision 13), not 
 Issue re-dispositions by owner ruling (2026-09-22), landed with the P23.16 gate: **#35** (canonical
 axis tokens in number fields) was not landed by P23.14, so it left the P23 prerequisite list and was
 recorded as **TD-3** in [`../../operations/tech-debt/README.md`](../../operations/tech-debt/README.md);
-the owner then amended it back into P23.16 as a bounded correction, and it was delivered (`7c8dacb`)
+the owner then amended it back into P23.16 as a bounded correction, and it was delivered (`be4e23b`)
 with the gate's A12 promoted from baseline audit to required-pass regression check. **#6** (legacy
 Bézier commit/render gap) is closed and re-disposed to post-P23 legacy-stack retirement (#26), which
 owns the path it describes. The authoritative disposition table is the reconciliation §Issue

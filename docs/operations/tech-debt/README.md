@@ -318,7 +318,7 @@ defect is invisible to every existing check. P23.14's shell tests only assert st
 
 ## TD-3 — Editor number fields do not use the canonical axis tokens (issue #35)
 
-**Status:** **fixed (`7c8dacb`)** — landed by P23.16 under owner amendment 2026-09-22 (the
+**Status:** **fixed (`be4e23b`)** — landed by P23.16 under owner amendment 2026-09-22 (the
 verification plan's baseline audit A12 was promoted from expected-failure to a required-pass
 canonical-token regression check, and the correction was folded into the gate's scope).
 **Found:** 2026-09-13 as issue #35; re-verified 2026-09-22 while building the P23.16 closeout
@@ -375,7 +375,7 @@ axis-chip background from the same tokens at the existing visual opacity
 - **Must not do:** repaint neutral number fields, or change the axis hues themselves (they are
   canonical and invariant). Neither was touched.
 
-### Acceptance contract — LANDED (`7c8dacb`)
+### Acceptance contract — LANDED (`be4e23b`)
 
 All five clauses are now satisfied; the plan's check **A12** is a required-pass canonical-token
 regression check rather than a baseline audit:
@@ -402,6 +402,6 @@ regression check rather than a baseline audit:
   the two components that carried the literals.
 - P23.16 verification plan — **A12** was written as the baseline audit of this debt; at execution
   (2026-09-22) the owner promoted it to a required-pass canonical-token regression check, and it
-  passes against `7c8dacb`.
+  passes against `be4e23b`.
 - [`../../reference/components/theme.md`](../../reference/components/theme.md) — the theme contract
   that declares the spatial colours invariant.
