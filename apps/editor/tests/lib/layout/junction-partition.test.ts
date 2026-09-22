@@ -395,6 +395,184 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 		}
 	});
 
+	it('partitions a 3-way Y with no antiparallel pair into per-Wall sectors', () => {
+		// No continuation pair exists here, so the Junction is resolved by its own
+		// sector beams: every leg's material is cut by the two beams that bound its
+		// sector, and the wedge a swept strip cannot express is a resolved keel.
+		const documentValue = scene([
+			{ id: 'wa', start: ['ja', [-4, 0]], end: ['j', [0, 0]] },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [2, 3.464]] },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [2, -3.464]] }
+		]);
+		const { compilation, union } = buildUnion(documentValue);
+		const junction = junctionOf(compilation, 'j');
+		expect(junction.legs).toHaveLength(3);
+		// Every incident leg is resolved (no unresolved warning path survives).
+		expect(compilation.issues.filter((issue) => issue.code === 'junction_partition_unresolved')).toEqual([]);
+		for (const join of junction.resolution.joins) {
+			expect(join.kind, join.wallId).toBe('miter');
+			expect(join.interfaceSuppressed, join.wallId).toBe(true);
+			expect(join.endBoundary, join.wallId).toHaveLength(2);
+			// Each Wall owns exactly one convex keel region around the Junction.
+			expect(join.keel?.regions ?? [], join.wallId).toHaveLength(1);
+			expect(join.keel!.regions[0], join.wallId).toHaveLength(3);
+			expect(join.keel!.bands.length, join.wallId).toBeGreaterThan(0);
+		}
+		// The three keels share the Junction point and tile the core: contiguous
+		// resolved material, no interpenetration.
+		const options = {
+			center: [0, 0] as [number, number],
+			radius: 0.6,
+			step: 0.05,
+			margin: 0.04,
+			extension: 0.4,
+			heights: [0.4, 1.5, 2.6],
+			walls: boxesOf(documentValue)
+		};
+		assertUnionCoverageAtJunction(union, options);
+		expect(assertWallOwnershipAtJunction(union, options).samples).toBeGreaterThan(100);
+	});
+
+	it('partitions a 5-way star and keeps Wall attribution order-independent', () => {
+		const walls: WallSeed[] = [
+			{ id: 'wa', start: ['ja', [4, 0]], end: ['j', [0, 0]] },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [2.6, 3.0]] },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [-2.0, 3.4]] },
+			{ id: 'wd', start: ['j', [0, 0]], end: ['jd', [-3.2, -1.6]] },
+			{ id: 'we', start: ['j', [0, 0]], end: ['je', [1.4, -3.4]] }
+		];
+		const documentValue = scene(walls);
+		const { compilation, union } = buildUnion(documentValue);
+		const junction = junctionOf(compilation, 'j');
+		expect(junction.legs).toHaveLength(5);
+		for (const join of junction.resolution.joins) expect(join.keel?.regions.length, join.wallId).toBe(1);
+		const options = {
+			center: [0, 0] as [number, number],
+			radius: 0.7,
+			step: 0.05,
+			margin: 0.04,
+			extension: 0.5,
+			heights: [0.4, 1.5, 2.6],
+			walls: boxesOf(documentValue)
+		};
+		assertUnionCoverageAtJunction(union, options);
+		expect(assertWallOwnershipAtJunction(union, options).samples).toBeGreaterThan(200);
+		// Reordering the canonical Wall array changes neither the resolved regions
+		// nor their ownership.
+		const reversed = scene([...walls].reverse());
+		const second = junctionOf(compileWallFirstLayoutGeometry(reversed), 'j');
+		for (const join of junction.resolution.joins) {
+			const other = second.resolution.joins.find((candidate) => candidate.wallId === join.wallId)!;
+			expect(JSON.stringify(other.keel), join.wallId).toBe(JSON.stringify(join.keel));
+			expect(JSON.stringify(other.endBoundary), join.wallId).toBe(JSON.stringify(join.endBoundary));
+		}
+	});
+
+	it('partitions a mixed-thickness Y and star across Walls of different thickness', () => {
+		const y = scene([
+			{ id: 'wa', start: ['ja', [-4, 0]], end: ['j', [0, 0]], thickness: 0.4 },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [2, 3.464]], thickness: 0.2 },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [2, -3.464]], thickness: 0.3 }
+		]);
+		const yResult = buildUnion(y);
+		const yOptions = {
+			center: [0, 0] as [number, number],
+			radius: 0.7,
+			step: 0.05,
+			margin: 0.03,
+			extension: 0.5,
+			heights: [0.4, 1.5, 2.6],
+			walls: boxesOf(y)
+		};
+		assertUnionCoverageAtJunction(yResult.union, yOptions);
+		expect(assertWallOwnershipAtJunction(yResult.union, yOptions).samples).toBeGreaterThan(200);
+		// The thick leg's keel reaches further than its own half-thickness, so the
+		// resolved Junction bounds must contain it.
+		const yJunction = junctionOf(yResult.compilation, 'j');
+		for (const join of yJunction.resolution.joins) {
+			for (const region of join.keel?.regions ?? []) {
+				for (const point of region) {
+					expect(point[0]).toBeGreaterThanOrEqual(yJunction.resolution.bounds2.min[0] - 1e-9);
+					expect(point[0]).toBeLessThanOrEqual(yJunction.resolution.bounds2.max[0] + 1e-9);
+				}
+			}
+		}
+
+		const star = scene([
+			{ id: 'wa', start: ['ja', [4, 0]], end: ['j', [0, 0]], thickness: 0.3 },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [2.6, 3.0]], thickness: 0.2 },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [-2.0, 3.4]], thickness: 0.25 },
+			{ id: 'wd', start: ['j', [0, 0]], end: ['jd', [-3.2, -1.6]], thickness: 0.2 },
+			{ id: 'we', start: ['j', [0, 0]], end: ['je', [1.4, -3.4]], thickness: 0.25 }
+		]);
+		const starResult = buildUnion(star);
+		const starOptions = {
+			center: [0, 0] as [number, number],
+			radius: 0.7,
+			step: 0.05,
+			margin: 0.03,
+			extension: 0.5,
+			heights: [0.4, 1.5, 2.6],
+			walls: boxesOf(star)
+		};
+		assertUnionCoverageAtJunction(starResult.union, starOptions);
+		expect(assertWallOwnershipAtJunction(starResult.union, starOptions).samples).toBeGreaterThan(200);
+	});
+
+	it('resolves a thin-neighbour Y that has no wedge form', () => {
+		// A leg 2.5x thicker than the neighbours facing it leaves material of its own
+		// band past their far faces, where no neighbour material reaches. The wedge
+		// form cannot express that wrap and declines; the difference form solves the
+		// same Junction exactly, so this now resolves — owned once, covered, and
+		// never left to interpenetration.
+		const documentValue = scene([
+			{ id: 'wa', start: ['ja', [-4, 0]], end: ['j', [0, 0]], thickness: 0.5 },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [2, 3.464]], thickness: 0.1 },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [2, -3.464]], thickness: 0.1 }
+		]);
+		const { compilation, union } = buildUnion(documentValue);
+		expect(compilation.issues).toEqual([]);
+		const options = {
+			center: [0, 0] as [number, number],
+			radius: 0.7,
+			step: 0.05,
+			margin: 0.03,
+			extension: 0.5,
+			heights: [0.4, 1.5, 2.6],
+			walls: boxesOf(documentValue)
+		};
+		assertUnionCoverageAtJunction(union, options);
+		expect(assertWallOwnershipAtJunction(union, options).samples).toBeGreaterThan(100);
+	});
+
+	it('fails closed when adjacent legs leave no separating beam', () => {
+		// `wb` leaves in exactly `wa`'s own direction (duplicate-direction authoring),
+		// so there is no facing offset line and therefore no equal-clearance beam
+		// between them: no rule can partition the Junction. It blocks (error, no
+		// warning path, no `junction_partition_unresolved`) and no mesh is produced —
+		// failing closed is the only alternative to rendering overlapping bodies.
+		const documentValue = scene([
+			{ id: 'wa', start: ['j', [0, 0]], end: ['ja', [4, 0]], thickness: 0.4 },
+			{ id: 'wb', start: ['j', [0, 0]], end: ['jb', [3.5, 0]], thickness: 0.2 },
+			{ id: 'wc', start: ['j', [0, 0]], end: ['jc', [0, 3.5]], thickness: 0.3 }
+		]);
+		const compilation = compileWallFirstLayoutGeometry(documentValue);
+		const blocking = compilation.issues.filter((issue) => issue.severity !== 'warning');
+		expect(blocking.map((issue) => issue.code)).toContain('junction_partition_failed');
+		expect(compilation.issues.some((issue) => issue.code === 'junction_partition_unresolved')).toBe(false);
+		const ends = legJoinsByWall(compilation.geometry.junctions);
+		for (const wall of compilation.geometry.walls) {
+			const resolved = ends.get(wall.wallId) ?? { start: null, end: null };
+			const editor = buildEditorWallMesh(wall, documentValue.floor.elevation, resolved);
+			const museum = buildMuseumWallMesh(wall, documentValue.floor.elevation, resolved);
+			// Blocking, empty mesh — the renderer never becomes the first place an
+			// unpartitioned Junction becomes visible.
+			expect(editor.mesh, wall.wallId).toBeUndefined();
+			expect(museum.mesh, wall.wallId).toBeUndefined();
+			expect(editor.issues.length, wall.wallId).toBeGreaterThan(0);
+		}
+	});
+
 	it('keeps every emitted vertex inside the owner Wall, Floor and document bounds', () => {
 		// Acute-angle, mixed-thickness fixture: the resolved miter genuinely reaches
 		// beyond the sampled centerline ± half-thickness box.

@@ -416,6 +416,15 @@ export function buildStandaloneWallMesh(
 		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
 		faces.sections.push({ ref, surfaceKey: classify(ref), faces: surfaceFaces });
 	}
+	// P23.15 — a resolved sector keel is *solid* resolved material (the Y / star
+	// partition), so it contributes horizontal faces here; its vertical sides are
+	// the resolved `junction-keel` surfaces above. Both are compiled facts: this
+	// path never decides where a keel is or who owns it.
+	const keelFaces = buildStandaloneKeel(roomView, ends);
+	if (keelFaces.length > 0) {
+		const ref: WallMeshSectionRef = { roomId: wall.wallId, segmentId: wall.wallId, sectionIndex: -1, kind: 'side' };
+		faces.sections.push({ ref, surfaceKey: classify(ref), faces: keelFaces });
+	}
 	const wallsFaces = [faces];
 	const mesh = emitMesh(wall.wallId, wallsFaces, classify, weldTolerance);
 	if (options.assertWinding) assertWindingAgreesWithNormals(mesh);
@@ -627,6 +636,63 @@ function buildStandaloneResolvedSurfaces(room: CompiledRoom, ends: ResolvedWallE
 					faceNormal,
 					BRIDGE_PICK
 				);
+			}
+		}
+	}
+	return faces;
+}
+
+/**
+ * P23.15 — extrude the **resolved** sector keels this Wall owns.
+ *
+ * A keel is the Junction-local plan region a degree >= 3 sector partition
+ * attributes to this Wall beyond its own cap line: the piece a swept Wall strip
+ * cannot express (a strip cannot narrow toward the Junction). Its polygon, its
+ * vertical bands and its ownership are all compiled facts; this function only
+ * fans each band into top and bottom faces, and leaves the vertical sides to the
+ * resolved `junction-keel` surfaces — so a side another Wall's material abuts
+ * stays interior by decision of `layout-core`, never by a builder's guess.
+ */
+function buildStandaloneKeel(room: CompiledRoom, ends: ResolvedWallEnds | null): Face[] {
+	const faces: Face[] = [];
+	for (const join of [ends?.start ?? null, ends?.end ?? null]) {
+		const keel = join?.keel;
+		if (!keel) continue;
+		for (const band of keel.bands) {
+			const yLo = room.floorElevation + band.bottomY;
+			const yHi = room.floorElevation + band.topY;
+			if (yHi - yLo <= LAYOUT_GEOMETRY_EPSILON) continue;
+			for (const region of keel.regions) {
+				if (region.length < 3) continue;
+				for (let index = 1; index + 1 < region.length; index += 1) {
+					const a = region[0]!;
+					const b = region[index]!;
+					const c = region[index + 1]!;
+					const area2 = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+					if (Math.abs(area2) <= LAYOUT_GEOMETRY_EPSILON) continue;
+					const span =
+						Math.hypot(b[0] - a[0], b[1] - a[1]) + Math.hypot(c[0] - b[0], c[1] - b[1]);
+					pushOrientedFace(
+						faces,
+						[
+							vertex(a[0], yHi, a[1], 0, 1, 0, 0, band.topY),
+							vertex(b[0], yHi, b[1], 0, 1, 0, span / 2, band.topY),
+							vertex(c[0], yHi, c[1], 0, 1, 0, span, band.topY)
+						],
+						[0, 1, 0],
+						BRIDGE_PICK
+					);
+					pushOrientedFace(
+						faces,
+						[
+							vertex(a[0], yLo, a[1], 0, -1, 0, 0, band.bottomY),
+							vertex(b[0], yLo, b[1], 0, -1, 0, span / 2, band.bottomY),
+							vertex(c[0], yLo, c[1], 0, -1, 0, span, band.bottomY)
+						],
+						[0, -1, 0],
+						BRIDGE_PICK
+					);
+				}
 			}
 		}
 	}
