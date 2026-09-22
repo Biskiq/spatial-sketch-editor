@@ -318,14 +318,17 @@ defect is invisible to every existing check. P23.14's shell tests only assert st
 
 ## TD-3 — Editor number fields do not use the canonical axis tokens (issue #35)
 
-**Status:** open — **deferred post-P23** (owner ruling 2026-09-22).
+**Status:** **fixed (`7c8dacb`)** — landed by P23.16 under owner amendment 2026-09-22 (the
+verification plan's baseline audit A12 was promoted from expected-failure to a required-pass
+canonical-token regression check, and the correction was folded into the gate's scope).
 **Found:** 2026-09-13 as issue #35; re-verified 2026-09-22 while building the P23.16 closeout
-verification plan, which is where the deferral was ruled (P23.14 landed its shell/Inspector work
-without this swap).
-**Defer to:** whoever next owns Inspector/field presentation (P24, or a later shell/Inspector
-slice). **Not P23**: the closeout gate verifies and reports it — P23.16 records a baseline audit
-and does not implement. Re-disposition is what removed it from P23's exit criteria; the issue
-stays open until its owner lands it.
+verification plan, which is where the deferral was first ruled (P23.14 landed its shell/Inspector
+work without this swap). The deferral below is kept as the historical record of why it left P23's
+exit criteria before that amendment; the disposition is superseded by the fix, not erased.
+**Defer to (historical):** whoever next owns Inspector/field presentation (P24, or a later
+shell/Inspector slice). **Not P23**: the closeout gate verifies and reports it — P23.16 records a
+baseline audit and does not implement. Re-disposition is what removed it from P23's exit criteria;
+the issue stays open until its owner lands it.
 
 ### Symptom
 
@@ -342,8 +345,9 @@ grep -n "#f05252\|#45c878\|#3b82f6" \
   apps/editor/src/lib/editor/fields/EditorVec3Field.svelte
 ```
 
-Three hits in each (`EditorNumberField.svelte:141-151`, `EditorVec3Field.svelte:161-171`). The
-canonical tokens already exist at `apps/editor/src/lib/editor/styles/tokens.css:210-212`
+Three hits in each (`EditorNumberField.svelte:141-151`, `EditorVec3Field.svelte:161-171`) at the
+pre-fix revision — the same grep is now empty (re-run it to confirm the fix). The canonical tokens
+already exist at `apps/editor/src/lib/editor/styles/tokens.css:210-212`
 (`--editor-axis-x/y/z`) and are consumed elsewhere in the editor
 (`LayoutPlanViewport.svelte`, `PlanCanvasChrome.svelte`).
 
@@ -359,39 +363,45 @@ values.
 No test references `--editor-axis-*`. Existing field suites drive behaviour (value, clamp,
 increment), so colour provenance — the actual contract here — has no cover.
 
-### Fix options
+### Fix taken (was: fix options)
 
-- **Option A (recommended):** point both components at `var(--editor-axis-x/y/z)` and derive the
-  axis-chip background from the same tokens at the existing visual opacity. Smallest change;
-  makes the literals disappear.
+**Option A**, as approved: both components now point at `var(--editor-axis-x/y/z)` and derive the
+axis-chip background from the same tokens at the existing visual opacity
+(`color-mix(in srgb, var(--editor-axis-*) 15%, transparent)` — the same arithmetic the previous
+`rgba()` literals performed, verified live to resolve to a 15% alpha in every theme).
+
 - **Option B:** keep the literals and add a contract test pinning them. **Rejected** — it freezes
   the duplication the theme contract forbids.
 - **Must not do:** repaint neutral number fields, or change the axis hues themselves (they are
-  canonical and invariant).
+  canonical and invariant). Neither was touched.
 
-### Then add (the issue's full acceptance contract)
+### Acceptance contract — LANDED (`7c8dacb`)
 
-The P23.16 plan's check **A12** audits only the source/test half below; these are what the fix
-owes, and they stay owed until its owner lands them:
+All five clauses are now satisfied; the plan's check **A12** is a required-pass canonical-token
+regression check rather than a baseline audit:
 
 1. Both components reference the canonical axis tokens; the duplicated `#f05252`, `#45c878` and
-   `#3b82f6` literals are gone from them.
-2. Axis-chip backgrounds derive from the same tokens, at the existing visual opacity.
-3. Neutral number fields are unchanged.
-4. The result is visually equivalent in **every shipped theme** (theme parity, not just the
-   default).
-5. A test asserts token usage rather than duplicated colour literals.
+   `#3b82f6` literals are gone from them (grep-clean over `src/lib/editor/fields/`).
+2. Axis-chip backgrounds derive from the same tokens, at the existing 15% visual opacity.
+3. Neutral number fields are unchanged — their rules were not edited.
+4. The result is visually equivalent in **every shipped theme**: all eight themes were exercised
+   live and read back identical chip inks (`rgb(240,82,82)` / `rgb(69,200,120)` /
+   `rgb(59,130,246)`) and identical 15% backgrounds, while field chrome continued to follow the
+   theme.
+5. `shell-type-roles.test.ts` asserts token usage and rejects the duplicated hex rather than
+   pinning the literals.
 
 ### Related
 
-- Issue **#35** — canonical axis tokens in editor number fields (open; the re-disposition is
-  recorded in the
+- Issue **#35** — canonical axis tokens in editor number fields (closed as delivered by P23.16
+  under the 2026-09-22 amendment; the earlier re-disposition and the fix are both recorded in the
   [P23 remaining-roadmap reconciliation](../../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md)
   §Issue disposition).
 - [`../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte`](../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte) ·
   [`EditorVec3Field.svelte`](../../../apps/editor/src/lib/editor/fields/EditorVec3Field.svelte) —
-  the two components that carry the literals.
-- P23.16 verification plan — **A12** is the baseline audit that shows this debt is still open;
-  its recorded failure is this entry, not a P23 gate regression.
+  the two components that carried the literals.
+- P23.16 verification plan — **A12** was written as the baseline audit of this debt; at execution
+  (2026-09-22) the owner promoted it to a required-pass canonical-token regression check, and it
+  passes against `7c8dacb`.
 - [`../../reference/components/theme.md`](../../reference/components/theme.md) — the theme contract
   that declares the spatial colours invariant.
