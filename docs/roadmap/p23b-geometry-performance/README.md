@@ -14,10 +14,15 @@ STATUS: planning
 STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
 owner-ratified and recorded in the SEQUENCE block below. SEQUENCE steps 1–3 completed 2026-09-22
 (Phase 0 authorized, evidence gathered and adjudicated, and the justified Phase 1 response
-installed); the open step is P23B.0
-CURRENT: none in execution — P23B planning
-NEXT: P23B.0 — reproduce the curved-room slowdown and establish the measured baseline on the existing
-      benchmark infrastructure (SEQUENCE step 4); read-only profiling, not committed benchmark code
+installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling passes; their settled
+interpretation is recorded in the P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures,
+recorded baselines with provenance, budgets) remains OUTSTANDING — it is not completed, replaced or
+redefined by P23B.1
+CURRENT: P23B.1 planning — the harvest plan is authored for owner review; NO harvest executed
+NEXT: P23B.1 — internal geometry-pipeline harvest (SEQUENCE step 5), guided by the P23B.0 profiling
+      evidence. It is a read-only discovery slice (source inspection and investigation), still inside
+      the PHASE 0 GATE permission boundary; no optimization slice is authorized before the owner
+      ratifies an implementation plan
 GATE: no implementation approved — P23B implementation waits on an owner-ratified child plan
 ```
 
@@ -66,7 +71,9 @@ all three inform synthesis.
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order) →
   2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
-harvest / research / synthesis → none yet (P23B.1 · P23B.2 · P23B.3 proposed)
+harvest (P23B.1, authored for review) →
+   p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-internal-geometry-pipeline-harvest.md
+research / synthesis → none yet (P23B.2 · P23B.3 proposed)
 child plans → none yet (proposed only; no implementation-ready brief)
 measurement → none yet (P23B.0 proposed)
 phase status/order → ../README.md
@@ -113,8 +120,9 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 ```
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
-Phase 0 gate and the umbrella route are read. No child plan or research artifact exists yet, and the
-immediate action is completing the Phase 0 evidence — not P23B measurement.
+Phase 0 gate and the umbrella route are read. The only child artifact today is the P23B.1 harvest
+plan, authored for owner review; no harvest has been executed, no research or synthesis artifact
+exists, and no implementation is approved.
 
 ## Non-goals
 
