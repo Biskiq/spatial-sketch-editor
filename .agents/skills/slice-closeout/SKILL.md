@@ -154,7 +154,16 @@ provenance     implementation PR / accepted revision
 evidence       the verification actually obtained — gate numbers, manual-owed rows, oracles
 entry points   the code, validation and regression tests that own the behaviour
 residuals      deferred or carried scope, named, with owners
-recovery       git show <A>:<path>  [· git show closed/<phase>.<slice>:<path>]
+recovery       git show <A>:<path>  [· git show closed/<slice-id>:<path>]
+```
+
+Entry points are the cheap reverse path from landed behaviour to its owning slice, so name all
+three roles where they exist — they are what makes a stub a debugging index rather than a summary:
+
+```text
+implementation  packages/.../foo.ts
+validation      packages/.../foo-validation.ts
+regressions     apps/.../foo.test.ts
 ```
 
 Task-by-task execution history, review chronology and reviewer commentary are **not** the stub's
@@ -207,21 +216,61 @@ exactly where that risk is highest. When reachability rests on a process promise
 owner wants anchors immune to history surgery, tag the anchor commit itself:
 
 ```bash
-git tag -a closed/<phase>.<slice> "$A" -m "<slice> closed work — anchor $A"
+git tag -a closed/<slice-id> "$A" -m "<slice-id> closed work — anchor $A"    # closed/p23.15
 ```
 
-Tag `A`, never the compaction commit, and determine `A` first. The closeout does not push, so flag
-the tag to the owner for pushing; without a push it protects only the local clone. With the tag
-created, the stub may record both refs, keeping the SHA for provenance. This repository has no tag
-convention today — it is new, so name it in the phase README the first time it is used.
+One unambiguous form: `<slice-id>` is the identifier the phase README already writes
+(`closed/p23.15`, `closed/p23.16`), and a phase close tags the phase (`closed/p23`) — never a
+`<phase>.<slice>` placeholder the writer has to decompose. Tag `A`, never the compaction commit,
+and determine `A` first. A close with several anchors names them all in the preservation report
+but needs only one tag: tag the **latest** anchor, because a tag keeps that commit *and every
+ancestor* reachable.
+
+The closeout does not push, so the preservation report must state **whether the tag was pushed**
+(`pushed` / `local only — not pushed`): an unpushed tag protects this clone only and not the remote
+repository. With the tag created, the stub may record both refs, keeping the SHA for provenance.
+This repository has no tag convention today — it is new, so name it in the phase README the first
+time it is used.
 
 ### Archive copying
 
-`docs/archive/**` means **browsable evidence**, never a second prose knowledge tree. Prose that
-used to be bundled (a design/QA/research tree) is stubbed instead: the anchor already guarantees
-exact recovery, so a copied body buys nothing and costs a duplicate blob plus a second link
-surface. This narrows the archive-copy scope ratified as OD-4 ("multi-file bundles and non-text
-evidence") to the part that carries real value — what you can only *look at*.
+`docs/archive/**` means **browsable evidence**, never a second prose knowledge tree.
+
+**OD-4 amendment — owner-required 2026-09-22 (skill audit `d3252e3`, finding 1).** OD-4 ratified the
+hybrid mechanism with "archive copy only for multi-file bundles and non-text evidence". That scope
+is narrowed here to **renderable evidence**: what you can only *look at*. Prose that merely sat
+inside a bundle directory (a `design/`, `QA/` or `research/` tree) is stubbed instead — the anchor
+already guarantees exact recovery, so a copied body buys nothing and costs a duplicate blob plus a
+second link surface. The original OD-4 wording is preserved as superseded provenance in the
+harvest (§0, §7.2); the amendment is recorded there too, because a skill edit cannot itself ratify
+a change to an owner decision.
+
+#### Non-text evidence — the live-path convention
+
+A Markdown stub cannot stand in for a `.png`, `.svg` or `.pdf`: the extension would break and every
+link to it with it. Evidence therefore sheds its body by shape:
+
+```text
+SINGLE EVIDENCE FILE        <dir>/<name>.<ext>
+  bytes  → docs/archive/roadmap/<phase>/<slice>/<dir>/<name>.<ext>   (unmodified)
+  live   → <dir>/<name>.<ext>.md    sibling stub: AUTHORITY: NONE, RECOVER:, ARCHIVE: <path>
+  links  → repointed to the archived copy — being viewable is what that copy is for
+
+EVIDENCE BUNDLE             <dir>/
+  the directory's evidence moves whole, internal structure preserved, so its own relative
+  links keep resolving; the live path stays occupied by a stub directory holding only
+  live   → <dir>/CLOSED.md          one bundle manifest listing every archived file + its
+                                    anchor (one write, not one stub per plate)
+
+HTML ENTRY POINT            <dir>/index.html
+  default                → the bundle manifest convention above
+  linked from a live doc → a valid HTML redirect stub at the live path
+                           (<meta http-equiv="refresh" content="0;url=<archive path>">),
+                           never a Markdown file carrying an `.html` name
+```
+
+The live → archived-**prose** invariant below does not cover these: an evidence link into
+`docs/archive/**` is the archive's purpose. Only prose may not be cited there.
 
 - Copy bytes **unmodified**. Do not rewrite relative links or prepend headers to suit the new
   depth: an unmodified copy is byte-identical, so Git stores one blob for both paths and the copy
@@ -229,9 +278,31 @@ evidence") to the part that carries real value — what you can only *look at*.
   second link-maintenance surface.
 - Preserve the bundle's internal structure so its own relative links keep resolving — an atlas
   HTML and the screenshots beside it move together at the same relative depth.
-- Links that escape the bundle go stale. That is expected: record it once in the nearest live
-  stub (or a one-line `CLOSED.md` beside the copy) and don't repair the copy.
+- Links that escape the bundle go stale. That is expected: record it once in the bundle manifest
+  (or the nearest live stub) and don't repair the copy.
+- Repair the **live** links that pointed at the moved evidence, per the convention above.
 - No size cap. Report the archived size in the preservation report so growth stays visible.
+
+Worked example (dry-run of this rule; the historical copy itself is grandfathered and is **not**
+rewritten): `docs/archive/roadmap/p23/p23.14-shell-visual-system/` holds 37 files — 32 renderable
+(27 PNG, 3 HTML, 1 JS, 1 CSS) and 5 prose (`context/shell-design-context.md`, the atlas
+reconciliation, the designer brief, `design/proposals/designer-a.md`,
+`design/proposals/designer-d/design-notes.md`). Under this rule:
+
+```text
+32 renderable files   keep their archive copy unchanged — context/ holds the 9 screenshots and
+                      design/proposals/designer-d/ holds its 2 HTML + 18 screens + JS + CSS beside
+                      each other at the original relative depth, so every internal link resolves
+0 prose copies        the 5 prose artifacts are the 5 stubs already at their live paths
+2 new manifests       context/CLOSED.md and design/proposals/designer-d/CLOSED.md — the live stub
+                      directories that keep those two paths occupied
+0 link repairs        nothing inside the archive is ever rewritten, so both paths keep sharing one
+                      blob; the 4 pre-existing live → archived-prose citations (p23-design-
+                      context.md ×2, the P23 reconciliation, tech-debt/README.md) predate the
+                      invariant, so they are grandfathered rather than repointed. A *new* close
+                      would repoint or promote them first. (The `ARCHIVE:` lines the stubs carry —
+                      5 real targets, 3 `none` — are stub → copy provenance, not violations.)
+```
 
 ### Live → archive dependencies
 
@@ -251,16 +322,19 @@ ruling.
 
 ## Closeout preservation report
 
-Close with this block written into the slice's closeout evidence (the QA-record stub), so
-preservation cost and the resulting live surface are explicit rather than assumed:
+Close with this block so preservation cost and the resulting live surface are explicit rather than
+assumed. **Destination:** a slice close writes it into that slice's QA-record stub. A phase close
+writes it into the final-gate artifact's stub — or into the phase-close record in the phase README
+when the gate artifact has none — never into a slice stub the phase close did not touch.
 
 ```text
 CLOSEOUT PRESERVATION — <slice> (<date>)
 prose compacted:                 N   stubs at their own paths
 reference promotions:            N   durable findings moved to their real owner in reference/*
 renderable evidence archived:    N files / <size>
+evidence stubs / manifests:      N   sibling stubs or bundle CLOSED.md manifests
 transient artifacts removed:     N
-historical anchor:               <sha> [· tag closed/<phase>.<slice>]
+historical anchor:               <sha> · tag closed/<slice-id> (pushed | local only — not pushed)
 new live → archive prose links:  0   non-zero is a violation to fix, not to report
 manual-owed verification rows:   N   kept distinct from automated evidence
 remaining deferred items:        N

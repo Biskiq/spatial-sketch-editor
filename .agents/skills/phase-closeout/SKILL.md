@@ -165,8 +165,11 @@ phase. The baton stays product-only here.
 Apply the closed-work rule **owned by** the `slice-closeout` skill ("Closed work (hybrid rule) —
 compaction, not deletion") to the artifacts **this phase close itself changes or compacts** — same default
 (stub + exact anchor for prose, research promoted before it is stubbed, archive copy only for
-renderable evidence, bytes copied unmodified), same P1/P2 anchor safety, same recovery
-verification, same preservation report.
+renderable evidence, bytes copied unmodified), same non-text evidence convention, same P1/P2 anchor
+safety, same recovery verification, same preservation report — written into the final-gate
+artifact's stub, or into the phase README's `PHASE CLOSE` block when the gate artifact has no stub,
+never into a slice stub this close did not touch. Phase-close tags are `closed/<phase>` (for
+example `closed/p23`), and the report states whether the tag was pushed.
 
 Read the rule there and apply it; do **not** restate or re-decide it here, so the two procedures
 cannot drift apart. Phase close adds only the phase-wide scope: whole-phase integration, surviving

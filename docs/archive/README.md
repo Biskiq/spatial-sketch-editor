@@ -39,7 +39,9 @@ evidence** — PNG/SVG/HTML atlases, screenshots, plates, measurements — copie
 
 Closed-work *prose* (plans, QA records, research, design studies, reconciliations) is not copied
 here: it keeps a path-preserving stub in the live tree plus a `git show <A>:<path>` recovery
-line, which is what actually guarantees exact reconstruction. Rule owner:
+line, which is what actually guarantees exact reconstruction. Non-text evidence keeps its live path
+occupied too — a sibling `<name>.<ext>.md` stub for a single file, or a `CLOSED.md` manifest for a
+directory whose contents moved. Rule owner:
 [`.agents/skills/slice-closeout/SKILL.md`](../../.agents/skills/slice-closeout/SKILL.md)
 ("Closed work — compaction, not deletion").
 
