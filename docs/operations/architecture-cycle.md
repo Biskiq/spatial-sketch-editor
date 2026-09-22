@@ -58,9 +58,9 @@ EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22
 | `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-closeout step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
 | `PHASE_0_ACTIVE` | Phase-0 evidence in progress: two fresh-context semantic architecture reviews + one bounded structural-workflow companion diagnostic | owner authorization | run both semantic reviews over the same range without reading each other's output before adjudication; run the structural-workflow diagnostic as separate evidence — it is not a third architecture reviewer | the Phase-0 evidence required for **both lanes** is available | `ADJUDICATION` | no |
 | `ADJUDICATION` | Owner classifies and decides in two lanes inside one lifecycle | the Phase-0 evidence required for both lanes exists | architecture lane: classify each candidate A/B/C/D and answer "what catches it next time?"; structural-workflow lane: adjudicate the workflow evidence separately (no consequential gap / existing-tool or workflow correction / narrow custom-tool gap) | both lanes adjudicated and the single overall transition recorded | `PHASE_1` or `STEADY` | **yes** |
-| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms, then reconcile the prepared window implementation plan and **remain here** with `STATUS: ready for validation` | the first implementation slice of the window phase starts | `PHASE_2_VALIDATING` | no (unless action pending) |
-| `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes | `PHASE_3_EVALUATE` | no |
-| `PHASE_3_EVALUATE` | Keep / simplify / delete | validation window closed | record a verdict per mechanism | verdicts recorded; survivors folded into normal practice | `STEADY` | **yes** |
+| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms: write `ACTIVE MECHANISMS`, `VALIDATION WINDOW: <phase> — selected, not open` and `STATUS: mechanisms installed — window plan not yet reconciled`. Then reconcile the window phase's prepared implementation plan against them and write `STATUS: ready for validation` — two writes, not one | STATUS is `ready for validation` and the selected window's first implementation slice starts | `PHASE_2_VALIDATING` | no (unless action pending) |
+| `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes, or a reasoned early mechanism verdict is recorded | `PHASE_3_EVALUATE` | no |
+| `PHASE_3_EVALUATE` | Keep / simplify / delete | the validation window closes, or a reasoned early mechanism verdict is recorded (the window stays open until its own phase closes) | record a verdict per mechanism | verdicts recorded **and** the window closed; survivors folded into normal practice | `STEADY` | **yes** |
 | `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or neither lane justified a mechanism | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
 
 ## Transitions
@@ -72,12 +72,25 @@ PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
 PHASE_0_ACTIVE + Phase-0 evidence for both lanes available → ADJUDICATION
 ADJUDICATION + neither lane justifies a mechanism → STEADY   (no PHASE_1, no PHASE_2)
 ADJUDICATION + either lane justifies ≥1 mechanism → PHASE_1
-PHASE_1      + justified mechanisms + reconciled window plan
+PHASE_1      + justified mechanisms installed
+                                       → PHASE_1             (STATUS: mechanisms installed —
+                                                              window plan not yet reconciled)
+PHASE_1      + the window phase's prepared implementation plan reconciled
                                        → PHASE_1             (STATUS: ready for validation)
-PHASE_1      + first implementation slice of the window phase starts
-                                       → PHASE_2_VALIDATING  (window = that phase, e.g. P26)
-PHASE_2_VALIDATING + window phase ends → PHASE_3_EVALUATE
-PHASE_3_EVALUATE + verdicts            → STEADY
+PHASE_1      + the selected window's first implementation slice starts, with
+               STATUS: ready for validation
+                                       → PHASE_2_VALIDATING  (window = that phase, e.g. P26, opens)
+PHASE_1      + that phase's first implementation slice while STATUS is still
+               installed-not-reconciled → no transition (STOP: readiness comes first)
+PHASE_1 | PHASE_2_VALIDATING | PHASE_3_EVALUATE
+             + a product phase other than the selected window closes
+                                       → same stage         (the close is recorded; the stage and the
+                                                              window are preserved)
+PHASE_2_VALIDATING + window phase closes → PHASE_3_EVALUATE  (window recorded closed)
+PHASE_3_EVALUATE + the selected window closes
+                                       → PHASE_3_EVALUATE    (unchanged; the window is now closed and
+                                                              the verdicts stay owed)
+PHASE_3_EVALUATE + verdicts recorded AND the window closed → STEADY
 STEADY       + ordinary major phase close → STEADY   (reconcile · subtract · close work)
 STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → PHASE_0_DUE
 ```
@@ -86,6 +99,22 @@ STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → 
 reconciling the prepared window plan leaves the cycle in `PHASE_1` with
 `STATUS: ready for validation`; `PHASE_2_VALIDATING` opens on the **first implementation slice**
 of the window phase, and no `VALIDATION WINDOW` is opened before it starts.
+
+**`VALIDATION WINDOW` values.** The field carries one phase and one state, and the two writes above
+are why it has more than two:
+
+```text
+empty                        WAITING → ADJUDICATION, and again when neither lane justifies a mechanism
+<phase> — selected, not open PHASE_1, from installation until the window's first implementation slice
+<phase> — open (started <date>)
+                             from that first slice through PHASE_2_VALIDATING, and it STAYS open if an
+                             early mechanism verdict moved the cycle into PHASE_3_EVALUATE
+<phase> — closed (<date>)    once the window phase itself closes, on either close path
+```
+
+An **open** window with an empty mechanism list stays a defect, and `PHASE_1` with an empty window is
+a STOP for the close preflight. A phase other than the selected window closing never changes this
+value.
 
 **Steady state does not re-run Phase 0.** A major phase close is *hygiene*, not *diagnosis*: it
 performs the ordinary closeout work (reconciliation, subtraction of stale guidance, closed-work

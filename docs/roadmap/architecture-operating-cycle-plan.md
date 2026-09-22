@@ -517,6 +517,23 @@ product development continues; the validation-window phase is never turned into 
 experiment-specific roadmap, and its scope is never redesigned to suit the mechanism.
 The installed mechanisms operate quietly alongside normal work.
 
+**A product phase may close without advancing the cycle.** During `PHASE_1`,
+`PHASE_2_VALIDATING` and `PHASE_3_EVALUATE`, an ordinary product phase that is *not* the
+selected validation window closes as usual and changes nothing here: the installed stage
+and the selected window survive it, and the close is recorded in that phase's own close
+block. Only the selected window's own close moves the cycle
+(`PHASE_2_VALIDATING → PHASE_3_EVALUATE`), and a reasoned early mechanism verdict may
+reach `PHASE_3_EVALUATE` while that window stays open until its own phase closes.
+
+**Readiness has two steps.** Mechanisms installed is not yet ready: the window phase's
+prepared implementation plan must be reconciled once against them before the cycle may
+say `STATUS: ready for validation`, and before any implementation slice of that phase.
+An implementation slice that starts while the cycle still reports installed-not-reconciled
+is a contradiction to stop and report, not a Phase 2 trigger.
+
+Window closure and recorded verdicts — never phase count or elapsed time — decide
+`STEADY`.
+
 ### Validation question
 
 For every retained mechanism, the project must be able to say what historical failure
@@ -638,6 +655,17 @@ PR #66 implementation and review chronology remains recoverable through Git/PR h
 `docs/roadmap/README.md` remains the P-level status authority and the stable route to
 this plan. The temporary reconciliation input used to produce this plan was unrouted,
 carried no authority, and has been deleted.
+
+The running cycle's own working artifacts live under `docs/roadmap/architecture-operating-cycle/`:
+
+```text
+phase-1 installation plan      = ./architecture-operating-cycle/phase-1/2026-09-22-P1-installation-plan.md
+                                 installed scope, the per-mechanism register and their Phase-3 criteria
+phase-0 record and evidence    = ./architecture-operating-cycle/phase-0/ (adjudication.md, reviews, pass)
+```
+
+They are work artifacts: at cycle completion they shed authority under the closed-work
+rule, like any other plan or research artifact.
 
 ---
 
