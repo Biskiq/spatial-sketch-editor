@@ -32,7 +32,7 @@ STAGE: closed
 CURRENT: no active child — P23 closed 2026-09-22; next pipeline phase is P23B (geometry
          performance & stabilization, planning)
 NEXT: P23B planning / P26 design brief (product work); the architecture cycle's Phase 0 is
-      separately owner-gated and precedes P23B implementation
+      separately owner-authorized (2026-09-22, evidence in progress) and precedes P23B implementation
 GATE: P23.16 accepted 2026-09-22 — its exit criteria are satisfied; P23 is CLOSED by owner ruling
 ```
 

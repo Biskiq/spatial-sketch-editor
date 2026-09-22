@@ -12,16 +12,19 @@ isolation and the landed reference contracts unchanged.
 ```text
 STATUS: planning
 STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
-owner-ratified and recorded in the SEQUENCE block below
+owner-ratified and recorded in the SEQUENCE block below. SEQUENCE step 1 (PR #74 merge → Phase 0
+authorization) completed 2026-09-22; the open step is the Phase 0 evidence
 CURRENT: none in execution — P23B planning
-NEXT: Phase 0 owner authorization (cycle, step 1 of the SEQUENCE below) — NOT P23B measurement
+NEXT: complete the Phase 0 evidence (cycle, SEQUENCE step 2; authorized 2026-09-22, nothing run yet)
+      — NOT P23B measurement
 GATE: no implementation approved — P23B implementation waits for Phase 0 adjudication and any
       justified Phase 1 response
 ```
 
 ```text
 PHASE 0 GATE:
-  The architecture cycle is PHASE_0_DUE (owner-gated, recorded by the P23 close; PR #73).
+  The architecture cycle is PHASE_0_ACTIVE — Phase 0 was owner-authorized 2026-09-22 (the due
+  trigger was the P23 close; PR #73) and its evidence is owed.
   Discovery, harvest, research, synthesis, planning and non-mutating profiling may proceed before
   and during Phase 0; committing benchmark code waits for implementation authorization.
   P23B IMPLEMENTATION does not start before Phase 0 adjudication AND any justified Phase 1
@@ -77,7 +80,7 @@ PIPELINE POSITION: P23 → P23B → P26 → P24 → P25
 - Umbrella: [`2026-09-22-P23B-geometry-performance-stabilization-umbrella.md`](./2026-09-22-P23B-geometry-performance-stabilization-umbrella.md)
 - P-level status/order: [`../README.md`](../README.md)
 - Product baton: [`../../operations/current.md`](../../operations/current.md)
-- Operating cycle (meta, owner-gated): [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md)
+- Operating cycle (meta, live state): [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md)
 - Carried P23 verification debt: [`../p23-layout-depth/README.md`](../p23-layout-depth/README.md) §Completed slices · [`../../operations/tech-debt/README.md`](../../operations/tech-debt/README.md)
 
 ## Proposed child slices — proposed only
@@ -106,7 +109,7 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
 Phase 0 gate and the umbrella route are read. No child plan or research artifact exists yet, and the
-immediate action is Phase 0 owner authorization — not P23B measurement.
+immediate action is completing the Phase 0 evidence — not P23B measurement.
 
 ## Non-goals
 

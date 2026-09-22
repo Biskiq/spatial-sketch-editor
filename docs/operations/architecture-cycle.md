@@ -19,21 +19,27 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 ## State
 
 ```text
-STAGE              PHASE_0_DUE
-STATUS             phase close recorded; retrospective diagnosis is owed
-TRIGGER            P23 owner-closed 2026-09-22 (owner ratification in PR #73; cycle was WAITING,
-                   so the preflight's computed target was PHASE_0_DUE)
+STAGE              PHASE_0_ACTIVE
+STATUS             owner-authorized; Phase-0 evidence owed — nothing collected yet
+TRIGGER            owner authorized Phase 0 to start 2026-09-22 (the due trigger was P23
+                   owner-closed 2026-09-22, owner ratification in PR #73; the close preflight's
+                   computed target was PHASE_0_DUE)
 PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviews; next pipeline
                    phase is P23B (geometry performance, planning; umbrella landed, children
                    proposed); P26 follows, still planning
-OWNER ACTION       required — owner authorizes Phase 0 to start
-NEXT               owner authorizes Phase 0 (two fresh-context semantic architecture reviews plus
-                   the bounded structural-workflow companion diagnostic)
-EXIT CONDITION     owner authorizes start
+OWNER ACTION       not required — evidence collection; the ADJUDICATION transition sets it to
+                   required again
+NEXT               complete the Phase-0 evidence: two fresh-context semantic architecture reviews
+                   over the same frozen P23 range (see EVIDENCE) without reading each other's
+                   output, plus the bounded structural-workflow companion diagnostic as separate
+                   evidence; then transition to ADJUDICATION
+EXIT CONDITION     the Phase-0 evidence required for both lanes is available
 VALIDATION WINDOW  empty
 ACTIVE MECHANISMS  none
 CALIBRATION        unchanged
-EVIDENCE           empty
+EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22) and the three
+                   investigation destinations under
+                   ../roadmap/architecture-operating-cycle/phase-0/
 ```
 
 `OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
