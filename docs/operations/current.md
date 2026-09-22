@@ -1,22 +1,24 @@
 # Current
 
 PHASE: P23
-CHILD: P23.15 — Junction-correct wall-first 3D
-STAGE: P23.14 CLOSED (accepted 2026-09-21; implementation PR #61; closeout PR #71); P23.15
-       plan WRITTEN (2026-09-21) at the routed path — pending owner review; no
-       implementation has begun.
+CHILD: P23.16 — Final whole-product integration and P23 closeout gate
+STAGE: P23.15 CLOSED (accepted 2026-09-21; PR #72 — plan, implementation and closeout on one
+       branch; artifacts compacted to stubs). P23.16 is the only remaining child and is the
+       phase's declared FINAL PHASE GATE.
 
 NEXT:
-1. Owner review of the P23.15 plan, then implementation per its task sequence
-   (junction topology in compiled output → corner algebra → builder → validation →
-   consumer wiring → fixture matrix → perf/reference).
-2. After P23.15: P23.16 final closeout (phase gate).
+1. Owner-invoked P23.16 closeout gate: run its exit criteria over the integrated product. The
+   live rows P23.15 could not exercise (its J1–J8 3D rows) are the natural first input.
+2. P23.16 makes P23 CLOSABLE, not closed. Closing P23 is a separate, owner-invoked
+   `phase-closeout` procedure, which owns the P-level status, the cycle transition and the
+   close preflight — nothing on this baton does that.
 
 ROUTE (direct):
-plan → ../roadmap/p23-layout-depth/p23.15-junction-correct-wall-first-3d/2026-09-21-P23.15-junction-correct-wall-first-3d.md
-remaining scope → ../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.15
+gate artifact → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md
+remaining scope → ../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.16
 shell grammar (any UI touched) → ../reference/design-system/editor-shell-and-visual-system.md
 phase status/order → ../roadmap/p23-layout-depth/README.md
+P23.15 (closed, evidence only) → ../roadmap/p23-layout-depth/p23.15-junction-correct-wall-first-3d/ (stubs)
 P23.14 (closed, evidence only) → ../roadmap/p23-layout-depth/p23.14-shell-visual-system/ (stubs)
 
 BLOCKER:

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve Spatial Sketch Editor. Small, focused pull requests are welcome—see the [`good first issue`](https://github.com/toni8699/spatial-sketch-editor/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) list for scoped tasks.
+Thanks for helping improve Spatial Sketch Editor. Small, focused pull requests are welcome—see the [`good first issue`](https://github.com/Biskiq/spatial-sketch-editor/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) list for scoped tasks.
 
 ## Get started
 
