@@ -12,25 +12,30 @@ isolation and the landed reference contracts unchanged.
 ```text
 STATUS: planning
 STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
-owner-ratified and recorded in the SEQUENCE block below. SEQUENCE step 1 (PR #74 merge → Phase 0
-authorization) completed 2026-09-22; the open step is the Phase 0 evidence
+owner-ratified and recorded in the SEQUENCE block below. SEQUENCE steps 1–3 completed 2026-09-22
+(Phase 0 authorized, evidence gathered and adjudicated, and the justified Phase 1 response
+installed); the open step is P23B.0
 CURRENT: none in execution — P23B planning
-NEXT: complete the Phase 0 evidence (cycle, SEQUENCE step 2; authorized 2026-09-22, nothing run yet)
-      — NOT P23B measurement
-GATE: no implementation approved — P23B implementation waits for Phase 0 adjudication and any
-      justified Phase 1 response
+NEXT: P23B.0 — reproduce the curved-room slowdown and establish the measured baseline on the existing
+      benchmark infrastructure (SEQUENCE step 4); read-only profiling, not committed benchmark code
+GATE: no implementation approved — P23B implementation waits on an owner-ratified child plan
 ```
 
 ```text
 PHASE 0 GATE:
-  The architecture cycle is PHASE_0_ACTIVE — Phase 0 was owner-authorized 2026-09-22 (the due
-  trigger was the P23 close; PR #73) and its evidence is owed.
-  Discovery, harvest, research, synthesis, planning and non-mutating profiling may proceed before
-  and during Phase 0; committing benchmark code waits for implementation authorization.
-  P23B IMPLEMENTATION does not start before Phase 0 adjudication AND any justified Phase 1
-  response, and then only on an owner-ratified child plan. A justified Phase 1 response is
-  installed first; if none is justified the cycle enters STEADY and P23B is unblocked. No audit is
-  run here and no cycle mechanism changes. Validation-window ownership remains a cycle decision.
+  Phase 0 is closed. The owner adjudicated both lanes 2026-09-22 (record →
+  ../architecture-operating-cycle/phase-0/adjudication.md) and the justified Phase 1 response is
+  installed, so the cycle sits at PHASE_1. The installed clauses are landed reference authority and
+  apply to P23B work as they stand: the Layout semantic-mutation boundary, Wall/Floor vertical
+  authority, the persisted canonical curve model, and Junction commit-time identity under ruling R1.
+  P23B records material early evidence about those mechanisms in its own artifacts. It does NOT open
+  formal validation: the selected window is the cycle's (P26), and P23B is an ordinary product phase.
+  Discovery, harvest, research, synthesis, planning and non-mutating profiling may proceed now;
+  committing benchmark code waits for implementation authorization.
+  P23B IMPLEMENTATION starts only on an owner-ratified child plan. P23B's owner-close is an ordinary
+  product close executed from PHASE_1 as a same-state close, and its PHASE CLOSE block records
+  `CYCLE TARGET: PHASE_1 (unchanged)` — the durable proof that the selected window's trigger
+  survived it. No audit is run here and no cycle mechanism changes.
   live state → ../../operations/architecture-cycle.md
 ```
 

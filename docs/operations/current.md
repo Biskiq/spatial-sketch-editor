@@ -8,20 +8,21 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
        synthesis is the authoritative research input and the design brief is still the next artifact.
-       The architecture cycle sits at ADJUDICATION — both lanes' Phase 0 evidence is complete and
-       integrated into main (the mechanical control pass, the two semantic reviews and the
-       structural-workflow diagnostic); the owner's classification and decision are required
-       (see META below) before any Phase 1 response is installed. Phase 0 adjudication and any
-       justified Phase 1 response precede P23B implementation, and validation-window ownership
-       remains a cycle decision.
+       The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
+       (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
+       pending there. P26 is the selected validation window: selected, not yet open. The cycle
+       reports ready for validation only once P26's prepared implementation plan is reconciled
+       against the installed mechanisms, and Phase 2 opens on P26's first implementation slice.
+       P23B implementation does not depend on that reconciliation — it waits only on its own gate.
 
 NEXT:
-1. IMMEDIATE — owner adjudication (cycle, owner-gated; META below). The Phase-0 evidence for both
-   lanes is complete and integrated, so the outstanding action is the owner's: classify each
-   architecture candidate A/B/C/D and adjudicate the structural-workflow evidence separately,
-   in one lifecycle, then record the single overall transition (PHASE_1 or STEADY). This is the
-   next action, not P23B measurement and not the P26 design brief. Order in brief, which follows
-   Phase 0 in sequence: Phase 0 evidence → owner adjudication → Phase 1 or STEADY → P23B.0 measurement →
+1. IMMEDIATE — P23B planning continues at its own gate: SEQUENCE step 4 (P23B.0) reproduces the
+   curved-room slowdown and establishes the measured baseline on the existing benchmark
+   infrastructure. The Phase 0 diagnosis and its justified Phase 1 response are complete and
+   installed, so nothing meta-track blocks this; a committed benchmark-infrastructure change still
+   needs implementation authorization, and no optimization slice is authorized before the owner
+   ratifies the implementation plan and the performance acceptance criteria. Order in brief: Phase 0
+   evidence → owner adjudication → Phase 1 installation → P23B.0 measurement →
    P23B.1 harvest → P23B.2 external research → P23B.3 synthesis → owner ratification of the
    implementation plan and performance acceptance criteria → optimization slices, verify, review,
    close out.
@@ -46,8 +47,6 @@ P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
 P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md (stub)
 P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md (stub)
 post-P23 debt → ../operations/tech-debt/README.md
-
-META: Architecture cycle — owner adjudication (classify candidates, record the transition) → ../operations/architecture-cycle.md
 
 BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0

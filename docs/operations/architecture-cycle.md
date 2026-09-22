@@ -19,32 +19,37 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 ## State
 
 ```text
-STAGE              ADJUDICATION
-STATUS             Phase-0 evidence for both lanes is available and integrated into main; the
-                   owner's classification, decision and single overall transition are outstanding
-TRIGGER            the Phase-0 evidence required for both lanes became available 2026-09-22
-                   (mechanical control pass merged in #76; review-a.md #77, review-b.md #78 and
-                   structural-workflow.md #79 merged on explicit owner authorization)
-PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviews; next pipeline
+STAGE              PHASE_1
+STATUS             mechanisms installed — window plan not yet reconciled (the two-step readiness the
+                   PHASE_1 row names). The owner's single overall transition out of ADJUDICATION
+                   was recorded 2026-09-22
+TRIGGER            adjudication justified capture (AC-1, AC-2, AC-3, AC-5) plus one bounded test
+                   correction; the owner authorized the bounded Phase 1 installation
+PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviewed; next pipeline
                    phase is P23B (geometry performance, planning; umbrella landed, children
-                   proposed); P26 follows, still planning
-OWNER ACTION       required — owner classifies each architecture candidate A/B/C/D and adjudicates
-                   the structural-workflow lane, then records the single overall transition
-NEXT               owner adjudication in two lanes inside one lifecycle: architecture lane —
-                   classify each candidate A/B/C/D and answer "what catches it next time?"; the
-                   structural-workflow lane is adjudicated separately, on its own evidence. The
-                   single overall transition is PHASE_1 (≥1 justified mechanism) or STEADY (none)
-EXIT CONDITION     both lanes adjudicated and the single overall transition recorded
-VALIDATION WINDOW  empty
-ACTIVE MECHANISMS  none
+                   proposed); P26 follows and is the selected validation window, still planning
+OWNER ACTION       not required — installation is agent work; the next owner action is the Phase 3
+                   verdict per mechanism
+NEXT               reconcile the selected window phase's prepared implementation plan against the
+                   installed mechanisms and then write STATUS: ready for validation. In parallel,
+                   P23B implementation and its ordinary owner-close proceed without changing this
+                   stage or the window
+EXIT CONDITION     STATUS: ready for validation, then the selected window's first implementation
+                   slice starts
+VALIDATION WINDOW  P26 — selected, not open
+ACTIVE MECHANISMS  M1 Layout semantic-mutation boundary (architecture.md) · M2 Wall/Floor vertical
+                   authority · M3 persisted canonical curve model · M4 Junction commit-time
+                   identity, ruling R1 — the last three in persistence.md · M5 Navigator
+                   document-replacement seam guard (editor app test contract) · M6 same-state
+                   phase-close rule (phase-closeout) · M7 durable lifecycle reminders (phase
+                   READMEs)
 CALIBRATION        unchanged
-EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22); evidence
-                   destinations under ../roadmap/architecture-operating-cycle/phase-0/ —
-                   mechanical-control-pass.md COMPLETE (three structural sets: persisted
-                   format/schema surface, canonical document-writer surface, visitor/editor
-                   dependency boundary; no candidate classified); review-a.md · review-b.md ·
-                   structural-workflow.md COMPLETE and on main — frozen, independent and read as
-                   they stand; adjudication.md still owed
+EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22). Phase-0 evidence
+                   complete and integrated under ../roadmap/architecture-operating-cycle/phase-0/
+                   (mechanical-control-pass.md · review-a.md · review-b.md ·
+                   structural-workflow.md · adjudication.md). The installed scope, its
+                   per-mechanism register and every Phase-3 criterion are in
+                   ../roadmap/architecture-operating-cycle/phase-1/2026-09-22-P1-installation-plan.md
 ```
 
 `OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
