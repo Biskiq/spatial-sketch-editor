@@ -32,7 +32,10 @@ In particular, the **closed-work mechanism** this harvest deliberately left neut
 "mechanism still an owner choice" cell in §12, the owner-preference note in §7.2, §15 Q4, and
 the major-unknown list in the verdict — was ratified as the **hybrid** model: a path-preserving
 compact stub at the artifact's original path plus a `git show <A>:<path>` exact-recovery line,
-with an archive copy only for multi-file bundles and non-text evidence. The authoritative close
+with an archive copy only for multi-file bundles and non-text evidence. (Scope **amended
+2026-09-22**: the archive-copy scope is narrowed to renderable evidence — see the OD-4 blocks in
+§7.2 and §15 Q4; the OD-4 wording quoted here is preserved as superseded provenance.) The
+authoritative close
 event (§15 Q1/Q2) and the next phase's state and sequencing (§15 Q3), and Q5–Q9, were likewise
 settled and folded into those owners. The implementation planning and review history for PR #66
 remains recoverable through Git/PR history — there is no live implementation-plan document, and
@@ -379,6 +382,16 @@ the active one, with only a prose `Status:` line distinguishing closed work from
 > (path-preserving compact stub + `git show <A>:<path>` recovery; archive copy only for
 > multi-file bundles and non-text evidence). The applied mechanics now live in
 > `.agents/skills/slice-closeout/SKILL.md`; see the post-harvest resolution in §0.
+>
+> **Amended 2026-09-22 — owner-required (skill audit `d3252e3` finding 1).** OD-4's *mechanism*
+> (hybrid: path-preserving compact stub + exact anchor) stands unchanged. Its archive-copy *scope*
+> is narrowed from "multi-file bundles and non-text evidence" to **renderable evidence only** —
+> PNG/SVG/HTML atlases, screenshots, plates, measurements, things whose value is that one can look
+> at them. Prose that merely sat inside a bundle directory is stubbed rather than copied: measured
+> evidence showed a copied prose body buys nothing the anchor does not already guarantee, forks a
+> real duplicate blob whenever its links are rewritten, and adds a second link surface. The
+> paragraph above is kept verbatim as the superseded OD-4 record; the amendment is recorded here
+> because a skill edit cannot ratify a change to an owner decision on its own.
 
 ---
 
@@ -602,6 +615,8 @@ cannot settle either, and both are open questions again:
    → **Resolved 2026-09-21 by OD-4: the hybrid** (path-preserving compact stub +
    `git show <A>:<path>`; archive copy only for multi-file bundles and non-text evidence). The
    19 already-landed live plans migrate as one bounded batch at P23 close.
+   → **Amended 2026-09-22** (owner-required, skill audit `d3252e3` finding 1): the mechanism is
+   unchanged; the archive-copy scope narrows to **renderable evidence only**. See §7.2.
 5. **Does `operations/current.md` carry a META line** while a cycle stage is open, or does
    discovery happen only through the phase README / skill?
 6. **Is `docs/operations/architecture-cycle.md` the right home** (plan's proposal), and does

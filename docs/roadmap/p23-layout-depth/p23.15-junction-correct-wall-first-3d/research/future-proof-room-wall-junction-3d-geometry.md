@@ -14,4 +14,6 @@ continuity as distinct from Junction existence, degree ≥ 3 reconciliation, and
 preserved polygon / oval / curve+curve extension point. Its conclusion **was** taken
 up by the plan; the landed contract, not this brief, is the authority.
 
-Single prose artifact, so no archive copy — the anchor above is the exact recovery.
+Single prose artifact, so no archive copy — the anchor above is the exact recovery. Durable tag:
+**`closed/p23.15`** (annotated → `1f1d265`, covering this anchor; created and pushed to `origin`
+2026-09-22).
