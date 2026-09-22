@@ -20,7 +20,9 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 
 ```text
 STAGE              PHASE_0_ACTIVE
-STATUS             owner-authorized; Phase-0 evidence owed — nothing collected yet
+STATUS             owner-authorized; Phase-0 evidence in progress — mechanical control pass
+                   complete 2026-09-22 (three structural sets measured, nothing classified); both
+                   semantic reviews and the workflow diagnostic still owed
 TRIGGER            owner authorized Phase 0 to start 2026-09-22 (the due trigger was P23
                    owner-closed 2026-09-22, owner ratification in PR #73; the close preflight's
                    computed target was PHASE_0_DUE)
@@ -29,18 +31,21 @@ PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 review
                    proposed); P26 follows, still planning
 OWNER ACTION       not required — evidence collection; the ADJUDICATION transition sets it to
                    required again
-NEXT               complete the Phase-0 evidence: the bounded mechanical control pass
-                   (coordination workspace), two fresh-context semantic architecture reviews over
-                   the same frozen P23 range (see EVIDENCE) without reading each other's output,
-                   plus the bounded structural-workflow companion diagnostic as separate
-                   evidence; then transition to ADJUDICATION
+NEXT               complete the remaining Phase-0 evidence: two fresh-context semantic
+                   architecture reviews over the same frozen P23 range (see EVIDENCE) without
+                   reading each other's output, plus the bounded structural-workflow companion
+                   diagnostic as separate evidence; then transition to ADJUDICATION. The
+                   mechanical control pass is complete and no longer outstanding
 EXIT CONDITION     the Phase-0 evidence required for both lanes is available
 VALIDATION WINDOW  empty
 ACTIVE MECHANISMS  none
 CALIBRATION        unchanged
-EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22) and the evidence
-                   destinations (mechanical pass · review-a · review-b · structural-workflow ·
-                   adjudication) under ../roadmap/architecture-operating-cycle/phase-0/
+EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22); evidence
+                   destinations under ../roadmap/architecture-operating-cycle/phase-0/ —
+                   mechanical-control-pass.md COMPLETE (three structural sets: persisted
+                   format/schema surface, canonical document-writer surface, visitor/editor
+                   dependency boundary; no candidate classified); review-a.md · review-b.md ·
+                   structural-workflow.md · adjudication.md still empty
 ```
 
 `OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
