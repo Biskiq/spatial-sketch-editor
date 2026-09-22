@@ -202,33 +202,14 @@ unpushed tag protects this clone only. Name the convention in the phase README a
 
 ### Archive copying
 
-`docs/archive/**` means browsable evidence, never a second prose knowledge tree. A Markdown stub
-cannot stand in for a `.png`, `.svg` or `.pdf` — the extension would break and every link with it —
-so evidence sheds its body by shape:
-
-```text
-SINGLE EVIDENCE FILE   <dir>/<name>.<ext>
-  bytes → docs/archive/roadmap/<phase>/<slice>/<dir>/<name>.<ext>   (unmodified)
-  live  → <dir>/<name>.<ext>.md   sibling stub: AUTHORITY: NONE, RECOVER:, ARCHIVE: <path>
-  links → repointed to the archived copy — being viewable is what that copy is for
-
-EVIDENCE BUNDLE        <dir>/   the evidence moves whole, internal structure preserved so its own
-  relative links keep resolving; the live path stays occupied by a stub directory holding only
-  live  → <dir>/CLOSED.md   one manifest: every archived file + its anchor
-
-HTML ENTRY POINT       <dir>/index.html → the manifest convention above; if a live doc links to it,
-  write a valid HTML redirect stub at the live path instead (meta refresh to the archive copy),
-  never a Markdown file carrying an `.html` name.
-```
-
-A mixed bundle therefore keeps prose stubs at their own paths, keeps the renderable copy, and gets one
-manifest per moved directory.
-
-- Copy bytes **unmodified**: a byte-identical copy costs no object storage, because Git stores one
-  blob for both paths, while a rewritten copy forks a real duplicate and adds a second
-  link-maintenance surface. Links that escape a bundle go stale as a result — record that in its
-  manifest or nearest live stub, and do not repair the copy, but do repair the **live** links that
-  pointed at moved evidence. No size cap: report the archived size so growth stays visible.
+`docs/archive/**` is browsable evidence, never a second prose knowledge tree: prose that merely sat
+inside a bundle directory is stubbed instead, because the anchor already guarantees recovery. A
+Markdown stub cannot stand in for a `.png`, `.svg` or `.pdf` — the extension would break and every
+link with it — so evidence sheds its body by shape (single file, bundle, or HTML entry point), and
+the live path stays occupied either way. Copy bytes **unmodified**, so both paths share one blob;
+do not rewrite links inside a copy, and do not repair the copy — repair the **live** links that
+pointed at the moved evidence. The path and manifest convention, the stale-outbound-link record and
+the no-size-cap rule are owned by `docs/archive/README.md` ("Closed-work evidence").
 
 > A slice closeout must not create a **new** live-document dependency on archived prose.
 
