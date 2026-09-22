@@ -4,15 +4,19 @@
 **Depends on:** P23 closed 2026-09-22 — the wall-first Plan editor minimum with one canonical
 geometry compiler (`compileLayoutGeometry()` family) serving Plan, 3D and visitor.
 **Phase 0 gate:** P23B **implementation** waits for Phase 0 adjudication **and any justified Phase 1
-response** (owner direction recorded here; the cycle is `PHASE_0_DUE` and owner-gated).
-Validation-window ownership remains a cycle decision. Discovery, harvest, research, synthesis and
-planning — including P23B.0's measurement *planning* and non-mutating profiling — may proceed
-before and during Phase 0; committing benchmark code waits for implementation authorization.
+response** (owner direction recorded here; the cycle is `PHASE_0_DUE` and owner-gated). A justified
+Phase 1 response is installed first; if none is justified the cycle enters STEADY and P23B is
+unblocked.
+**Ratified order:** the owner-ratified post-P23 execution order lives in exactly one place — the
+phase README's `SEQUENCE` block. This umbrella owns rationale, boundaries and dependencies only.
+**Ownership boundary:** every Phase 1/STEADY conditional and the validation-window decision belong to
+the canonical Architecture Operating Cycle, not to this plan.
 **Evidence basis:** the owner-observed interaction symptom below; the landed canonical geometry
 pipeline; the existing G3 benchmark harness. **No profiling, harvest or research has been executed
-for this plan yet** — this document is scope and order, not findings.
-**Planning model:** progressive — this umbrella owns WHAT/WHY/BOUNDARIES/ORDER/RESEARCH GATES and
-high-level acceptance. It authorizes no implementation, no numerical target and no child slice.
+for this plan yet** — this document is scope and dependencies, not findings.
+**Planning model:** progressive — this umbrella owns WHAT/WHY/BOUNDARIES/DEPENDENCIES/RESEARCH GATES
+and high-level acceptance; the phase README owns the ratified order. It authorizes no
+implementation, no numerical target and no child slice.
 
 ## Outcome
 
@@ -59,7 +63,8 @@ recorded here when it happens, never an implication of this umbrella.
 ```text
 IN
 - performance profiling and reproducible, versioned benchmarks
-- parallel internal codebase harvest + external precedent research, then one synthesis
+- sequential evidence chain: internal codebase harvest → external precedent research → one
+  synthesis (sequential for evidence quality, not elapsed time)
 - optimization of: compilation · invalidation · caching/reuse · rendering · interaction
 - conditional Rust/WASM evaluation, driven by measured bottlenecks only
 - correctness, performance-regression and closeout gates
@@ -89,16 +94,17 @@ OUT (explicit non-goals)
 
 ## Proposed child slices — proposed only, none approved
 
-Sequence below is the *proposed* order; the phase README owns final order and status, and
-`depends-on` — not the P-number — pins execution. No child is implementation-ready and no numeric
-budget appears here: budgets come from measured evidence and an owner ratification.
+The phase README's `SEQUENCE` block owns order and gate placement; this table is inventory and
+dependencies, and does not restate it. `depends-on` — not the P-number — pins execution. No child is
+implementation-ready and no numeric budget appears here: budgets come from measured evidence and the
+owner ratification gate.
 
 | # | Proposed slice | Kind | Purpose |
 |---|----------------|------|---------|
 | P23B.0 | Measurement foundation | measurement | Make the symptom reproducible: fixture set (including the observed three-room / four-Bézier-wall case), profiling method, recorded baselines with provenance, and a bottleneck ledger naming where time actually goes |
-| P23B.1 | Internal geometry-pipeline harvest | discovery (parallel) | Trace the pipeline end-to-end — compile, resolve, cache/invalidation, Plan render model, 3D mesh, interaction — into a stage-cost map and a cache/invalidation inventory |
-| P23B.2 | External precedent research | discovery (parallel) | How mature CAD/DCC/web editors structure incremental compilation, invalidation, caching, curve tessellation and batched rendering at authoring densities |
-| P23B.3 | Synthesis + optimization direction | synthesis | One authoritative conclusion: which optimization areas are in scope, in what order, and whether Rust/WASM evaluation is warranted at all |
+| P23B.1 | Internal geometry-pipeline harvest | discovery | Trace the pipeline end-to-end — compile, resolve, cache/invalidation, Plan render model, 3D mesh, interaction — into a stage-cost map and a cache/invalidation inventory, guided by the P23B.0 profiling evidence |
+| P23B.2 | External precedent research | discovery | How mature systems solve the **diagnosed** problems — Pascal, Three.js, mature geometry systems, Workers, Rust/WASM: incremental compilation, invalidation, caching, curve tessellation, batched rendering |
+| P23B.3 | Synthesis + optimization direction | synthesis | One authoritative conclusion from measurement + internal findings + external research: which optimization areas are in scope, in what order, and whether Rust/WASM evaluation is warranted at all |
 | P23B.4 | Compilation + invalidation optimization | optimization | Reduce per-edit recomputation and unnecessary re-derivation on the canonical compile path |
 | P23B.5 | Caching and reuse optimization | optimization | Make cache keys, reuse guards and invalidation honest and demonstrably sufficient — reuse only what is provably equivalent |
 | P23B.6 | Rendering optimization | optimization | Plan render-model/3D mesh cost at authoring densities, without changing compiled truth or parity |
@@ -107,9 +113,11 @@ budget appears here: budgets come from measured evidence and an owner ratificati
 | P23B.9 | Correctness + performance-regression gate | gate | Prove equivalence and hold the line against regression on named fixtures |
 | P23B.10 | Phase closeout gate | gate | Final phase gate; makes P23B closable (closure stays an owner-invoked decision) |
 
-Dependencies, stated without scheduling: P23B.0 precedes every optimization slice; P23B.1 and
-P23B.2 are parallel and precede P23B.3; P23B.3 gates P23B.4–P23B.8; P23B.8 may close with a
-recorded "not justified"; P23B.9 precedes P23B.10.
+Dependencies, stated without restating the order: the evidence chain is sequential **by design**, not
+for elapsed time — P23B.0's measurement informs P23B.1's harvest; P23B.1 informs P23B.2's external
+research; all three inform P23B.3's synthesis. P23B.3's output becomes the implementation plan the
+owner ratifies (with the performance acceptance criteria) before any optimization slice is
+authorized. P23B.8 may close with a recorded "not justified"; P23B.9 precedes P23B.10.
 
 ## Measurement basis — extend what exists, invent nothing
 
@@ -126,10 +134,10 @@ The repository already owns a versioned benchmark contract and must not grow a s
 P23B.0's job is to extend this harness to the observed authoring case and to the curve/multi-room
 densities that matter, with recorded provenance — not to build a new rig.
 
-**What may proceed now, and what may not.** Measurement *planning* (fixture design, profiling
-method, ledger shape) and ad-hoc, non-mutating profiling may proceed before Phase 0 adjudication.
-Committing benchmark code — fixtures, harness changes, recorded baselines, budgets — is
-implementation work and waits for implementation authorization.
+**What may proceed now, and what may not.** Read-only profiling and measurement planning may precede
+implementation authorization; committed benchmark-infrastructure changes (fixtures, harness,
+baselines, budgets) may not. The permission boundary is stated once, in the phase README's
+`PHASE 0 GATE` block.
 
 ## Discovery anchors (starting points, not an exhaustive list)
 
@@ -191,7 +199,8 @@ CLOSEOUT GATE
   owed and explicit; P23B neither claims nor silently closes them, and adds its own owed rows
   through its gates.
 - **P26** research and planning artifacts are untouched. P26's implementation now follows P23B in
-  the pipeline; P26 planning may continue in parallel.
+  the pipeline; P26 planning may continue in parallel, but it is not the primary next-work
+  instruction — Phase 0 owner authorization is.
 - **P24 / P25** are downstream and unaffected in scope.
 - **Operating cycle:** the cycle is `PHASE_0_DUE` with `OWNER ACTION: required` and an empty
   validation window. This plan does not change cycle mechanisms, does not run audits, and invents

@@ -5,20 +5,26 @@ CHILD: none in execution — P23B is in planning; the umbrella is landed and the
        proposed, none approved
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
-       proposed, no implementation approved. P26 remains in planning — its synthesis is the
-       authoritative research input and the design brief is still the next artifact.
+       proposed, no implementation approved. The post-P23 execution order is owner-ratified and
+       deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
+       synthesis is the authoritative research input and the design brief is still the next artifact.
        The architecture cycle sits at PHASE_0_DUE — a separate, owner-gated track (see META below);
        Phase 0 adjudication and any justified Phase 1 response precede P23B implementation, and
        validation-window ownership remains a cycle decision.
 
 NEXT:
-1. P23B planning: owner review of the umbrella and the proposed child slices; measurement planning
-   (P23B.0) — including non-mutating profiling — and the parallel internal harvest / external
-   research (P23B.1 · P23B.2) may proceed now. No P23B implementation, and no committed benchmark
-   code, starts before Phase 0 adjudication plus any justified Phase 1 response and an
-   owner-ratified child plan.
-2. Separately and only on owner authorization: the Phase 0 retrospective the P23 close made due.
-3. P26 product planning may continue in parallel: author the design brief from the landed synthesis
+1. IMMEDIATE — Phase 0 owner authorization (cycle, owner-gated; META below). This is the next action,
+   not P23B measurement and not the P26 design brief. Order in brief, which follows Phase 0 in
+   sequence: Phase 0 evidence → owner adjudication → Phase 1 or STEADY → P23B.0 measurement →
+   P23B.1 harvest → P23B.2 external research → P23B.3 synthesis → owner ratification of the
+   implementation plan and performance acceptance criteria → optimization slices, verify, review,
+   close out.
+   AUTHORITATIVE SEQUENCE (order and gate placement, recorded once) →
+   ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
+2. Read-only profiling and measurement planning may precede implementation authorization; committed
+   benchmark-infrastructure changes (fixtures, harness, baselines, budgets) may not.
+3. P26 product planning may continue in parallel, but it is not the primary next-work instruction:
+   author the design brief from the landed synthesis
    (research/synthesis/p26-architectural-spatial-depth-synthesis.md), then proposals and a reconciled
    child plan. No P26 implementation starts without an approved plan.
 4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
@@ -26,8 +32,8 @@ NEXT:
 
 ROUTE:
 phase status/order → ../roadmap/README.md
-P23B planning (next pipeline phase) → ../roadmap/p23b-geometry-performance/README.md
-P23B umbrella → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
+P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
+P23B umbrella (rationale/boundaries only) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
 P26 planning → ../roadmap/p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
 P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE

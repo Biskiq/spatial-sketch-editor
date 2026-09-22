@@ -11,10 +11,10 @@ isolation and the landed reference contracts unchanged.
 
 ```text
 STATUS: planning
-STAGE: umbrella landed; child slices proposed, none approved
+STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
+owner-ratified and recorded in the SEQUENCE block below
 CURRENT: none in execution — P23B planning
-NEXT: owner review of the umbrella and the proposed child slices; measurement (P23B.0) and the
-      parallel harvest/research (P23B.1 · P23B.2) are the first proposal
+NEXT: Phase 0 owner authorization (cycle, step 1 of the SEQUENCE below) — NOT P23B measurement
 GATE: no implementation approved — P23B implementation waits for Phase 0 adjudication and any
       justified Phase 1 response
 ```
@@ -25,20 +25,44 @@ PHASE 0 GATE:
   Discovery, harvest, research, synthesis, planning and non-mutating profiling may proceed before
   and during Phase 0; committing benchmark code waits for implementation authorization.
   P23B IMPLEMENTATION does not start before Phase 0 adjudication AND any justified Phase 1
-  response, and then only on an owner-ratified child plan. No audit is run here and no cycle
-  mechanism changes. Validation-window ownership remains a cycle decision.
+  response, and then only on an owner-ratified child plan. A justified Phase 1 response is
+  installed first; if none is justified the cycle enters STEADY and P23B is unblocked. No audit is
+  run here and no cycle mechanism changes. Validation-window ownership remains a cycle decision.
   live state → ../../operations/architecture-cycle.md
 ```
 
 ```text
+SEQUENCE — the owner-ratified post-P23 order. THIS BLOCK IS THE ONE AUTHORITATIVE COPY;
+no other document restates the order. It is deliberately sequential for evidence quality, not
+optimized for elapsed time: measurement informs harvest, harvest informs external research, and
+all three inform synthesis.
+ 1  PR #74 merge → Phase 0 owner authorization
+ 2  Phase 0 completed: two independent architecture reviews + the separate structural-workflow
+    diagnostic, then owner adjudication                                    [CYCLE]
+ 3  Install any justified Phase 1 response; if none is justified, enter STEADY   [CYCLE]
+ 4  P23B.0 — reproduce the curved-room slowdown and establish the measured baseline on the
+    existing benchmark infrastructure (read-only profiling until implementation authorization;
+    the permission boundary is stated once, in the PHASE 0 GATE block above)
+ 5  P23B.1 — internal codebase harvest, guided by the profiling evidence
+ 6  P23B.2 — external precedent research (Pascal, Three.js, mature geometry systems, Workers,
+    Rust/WASM), targeted at the diagnosed problems
+ 7  P23B.3 — synthesize measurement, internal findings and external research into the
+    optimization direction
+ 8  OWNER RATIFICATION GATE — owner ratifies the implementation plan and the performance
+    acceptance criteria; no optimization slice is authorized before this gate
+ 9  P23B.4–P23B.8 execute, verify and review; then the P23B.9 correctness +
+    performance-regression gate and the P23B.10 closeout gate
+```
+
+```text
 ROUTE:
-umbrella (WHAT/WHY/BOUNDARIES/ORDER/GATES) →
+umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order) →
   2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
 harvest / research / synthesis → none yet (P23B.1 · P23B.2 · P23B.3 proposed)
 child plans → none yet (proposed only; no implementation-ready brief)
 measurement → none yet (P23B.0 proposed)
 phase status/order → ../README.md
-P26 planning (unaffected) → ../p26-spatial-depth/README.md
+P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md
 ```
 
@@ -63,15 +87,14 @@ and no numerical performance target is committed. Contracts that already exist a
 extended rather than duplicated: `apps/editor/src/lib/bench/` (versioned bench contract,
 provenance, budgets, recorded baseline) and the PERF test lane.
 
-P23B.0's measurement *planning* and non-mutating profiling may proceed before Phase 0 adjudication;
-committing benchmark code (fixtures, harness, baselines, budgets) waits for implementation
-authorization.
+Inventory only — the order and its gates are the SEQUENCE block above; rationale and dependencies
+are the umbrella's.
 
 ```text
-P23B.0  measurement foundation — reproducible benchmark + bottleneck ledger
-P23B.1  internal geometry-pipeline harvest        ┐ parallel discovery
-P23B.2  external precedent research               ┘ → P23B.3 synthesis
-P23B.3  synthesis + optimization direction (gates P23B.4–P23B.8)
+P23B.0  measurement foundation — reproduce the curved-room slowdown + measured baseline
+P23B.1  internal geometry-pipeline harvest (guided by the P23B.0 evidence)
+P23B.2  external precedent research (targeted at the diagnosed problems)
+P23B.3  synthesis + optimization direction  → owner ratification gate → P23B.4–P23B.8
 P23B.4  compilation + invalidation optimization
 P23B.5  caching and reuse optimization
 P23B.6  rendering optimization
@@ -81,9 +104,9 @@ P23B.9  correctness + performance-regression gate
 P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 ```
 
-**Startup stop:** a reader has what this phase currently needs once status, the Phase 0 gate, the
-umbrella route and the proposed-children list above are read — no child plan or research artifact
-exists yet.
+**Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
+Phase 0 gate and the umbrella route are read. No child plan or research artifact exists yet, and the
+immediate action is Phase 0 owner authorization — not P23B measurement.
 
 ## Non-goals
 
