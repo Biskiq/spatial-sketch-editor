@@ -1,6 +1,6 @@
 # P26 — Spatial Depth
 
-**Phase goal (research stage):** make Layout genuinely spatial — one canonical
+**Phase goal:** make Layout genuinely spatial — one canonical
 wall-first model acquires controlled vertical structure plus a precise
 orthographic surface for authoring it. Plan stays horizontal authority;
 contextual Orthographic (Section, Wall Elevation, Ceiling Focus) becomes the
@@ -11,12 +11,11 @@ FreeCAD/Bonsai harvests are supporting evidence, not architecture authority.
 ```text
 STATUS: planning
 PIPELINE: P23 (shipped) → P23B (planning) → P26 → P24 → P25 — P23B is inserted ahead of P26;
-          P26 research, synthesis and planning artifacts are unchanged and P26 planning continues in
-          parallel. It is not the primary next-work instruction: the immediate work is P23B.0
-          measurement
-STAGE: synthesis (authoritative research input landed; no design brief yet)
-CURRENT: research/synthesis/p26-architectural-spatial-depth-synthesis.md
-NEXT: design brief
+          P26 planning continues in parallel and is not the primary next-work instruction.
+          The immediate work is P23B.0 measurement
+STAGE: design brief (assignment written; proposals and a reconciled direction are not started)
+CURRENT: design/briefs/2026-09-22-p26-designer-brief.md
+NEXT: independent design proposals, then a reconciled direction — no implementation plan in this step
 GATE: no implementation approved. P26 is the SELECTED VALIDATION WINDOW of the architecture cycle —
       selected, not open (live state → ../../operations/architecture-cycle.md). Two consequences for
       this phase's own artifacts:
@@ -32,10 +31,14 @@ GATE: no implementation approved. P26 is the SELECTED VALIDATION WINDOW of the a
 ROUTE:
 research → research/broad/ + research/harvests/
 synthesis (authoritative) → research/synthesis/p26-architectural-spatial-depth-synthesis.md
-design → none yet (brief / proposals / final-direction pending)
+design → design/briefs/2026-09-22-p26-designer-brief.md (assignment, not a contract; proposals / final-direction still pending)
 reconciliation → none yet
 plan → none yet (umbrella + child plans pending)
 ```
+
+## Design
+
+- Assignment: [`design/briefs/2026-09-22-p26-designer-brief.md`](./design/briefs/2026-09-22-p26-designer-brief.md) — self-contained brief for independent designers. An assignment, not a contract. Proposals are not started.
 
 ## Research (supporting evidence)
 
