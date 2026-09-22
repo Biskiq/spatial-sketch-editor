@@ -9,12 +9,14 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
        synthesis is the authoritative research input and the design brief is still the next artifact.
        The architecture cycle is PHASE_0_ACTIVE — Phase 0 was owner-authorized 2026-09-22 and its
-       evidence is owed (nothing has been run); no owner action is required until the ADJUDICATION
+       evidence is in progress (the mechanical control pass is complete; the two semantic reviews
+       and the workflow diagnostic are owed); no owner action is required until the ADJUDICATION
        transition. Phase 0 adjudication and any justified Phase 1 response precede P23B
        implementation, and validation-window ownership remains a cycle decision.
 
 NEXT:
-1. IMMEDIATE — complete the Phase 0 evidence (authorized 2026-09-22; nothing has been run yet):
+1. IMMEDIATE — complete the remaining Phase 0 evidence (authorized 2026-09-22; the mechanical
+   control pass is complete and committed, and no candidate is classified):
    two fresh-context semantic architecture reviews over the same P23 range without cross-reading,
    plus the bounded structural-workflow companion diagnostic. This is the next action, not P23B
    measurement and not the P26 design brief. Order in brief, which follows Phase 0 in
