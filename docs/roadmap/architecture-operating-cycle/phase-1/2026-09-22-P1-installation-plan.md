@@ -1,10 +1,12 @@
 # Architecture Operating Cycle — Phase 1 installation plan (one bounded PR)
 
 ```text
-STATUS:   DRAFT FOR INDEPENDENT REVIEW — plan only. Nothing in this document is installed,
-          ratified or classified. Every classification, ruling and contract delta below is
-          PENDING OWNER RATIFICATION at the gates in §10. Writing this plan does not advance
-          PHASE_0_ACTIVE, ADJUDICATION or PHASE_1, and it is not Phase-0 evidence.
+STATUS:   INSTALLED on `meta/phase1` (PR #80): the approved scope below was implemented in the
+          ordered slices of §11 and the live state is the cycle file. The owner authorized the
+          bounded direction 2026-09-22 and ratified ruling **R1**; the classification record is
+          ../phase-0/adjudication.md, the installed clauses are in `docs/reference/`, and the
+          verification and mutation evidence is in the PR body. The §10 gates are the record of what
+          was decided, not open questions.
 ROLE:     the implementation plan for one bounded Phase 1 PR, including the P23B → P26 lifecycle
           handoff reconciliation (§6) and the durable reminders that carry the remaining cycle
           actions through P23B, P26, Phase 3 and STEADY (§7).
@@ -33,15 +35,17 @@ execution, verification and scope detail.
 Everything below was checked at planning time; it is the factual floor the rest of the plan stands on.
 
 ```text
-repository          branch main, HEAD 722280f (clean); no Phase-0 output file exists on main
-evidence PRs        #77 review-a (draft) · #78 review-b (draft) · #79 structural-workflow (draft)
-                    — all three frozen and pushed, mutually unread by their authors, open as drafts
-                    and NOT merged; #75 (workspace) and #76 (mechanical pass) are merged
-phase-0 workspace   ../architecture-operating-cycle/phase-0/ holds README.md, the frozen brief,
-                    the frozen range and mechanical-control-pass.md; review-a.md, review-b.md,
-                    structural-workflow.md and adjudication.md do not exist on main yet
-live cycle state    PHASE_0_ACTIVE · OWNER ACTION: not required · VALIDATION WINDOW: empty ·
-                    ACTIVE MECHANISMS: none
+repository          branch main, HEAD 722280f when this plan was authored (clean); the plan is
+                    implemented on `meta/phase1` (PR #80) and every source it cites is on main
+evidence PRs        #77 review-a · #78 review-b · #79 structural-workflow — authored as drafts,
+                    frozen and mutually unread by their authors, then merged into main on explicit
+                    owner authorization; #75 (workspace) and #76 (mechanical pass) merged earlier
+phase-0 workspace   ../phase-0/ holds README.md, the frozen brief, the frozen range,
+                    mechanical-control-pass.md, review-a.md, review-b.md, structural-workflow.md
+                    and adjudication.md — all complete
+live cycle state    at authoring time: PHASE_0_ACTIVE, OWNER ACTION not required, window empty.
+                    After installation: PHASE_1, STATUS mechanisms-installed-not-yet-reconciled,
+                    VALIDATION WINDOW P26 selected-not-open. The cycle file owns live values
 product state       P23 shipped; P23B planning (no approved child plan); P26 planning (no design
                     brief); pipeline P23 → P23B → P26 → P24 → P25
 ```

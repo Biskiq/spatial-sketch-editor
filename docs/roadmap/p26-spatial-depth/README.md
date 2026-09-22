@@ -12,12 +12,20 @@ FreeCAD/Bonsai harvests are supporting evidence, not architecture authority.
 STATUS: planning
 PIPELINE: P23 (shipped) → P23B (planning) → P26 → P24 → P25 — P23B is inserted ahead of P26;
           P26 research, synthesis and planning artifacts are unchanged and P26 planning continues in
-          parallel. It is not the primary next-work instruction: the immediate action is completing
-          the Phase 0 evidence
+          parallel. It is not the primary next-work instruction: the immediate work is P23B.0
+          measurement
 STAGE: synthesis (authoritative research input landed; no design brief yet)
 CURRENT: research/synthesis/p26-architectural-spatial-depth-synthesis.md
 NEXT: design brief
-GATE: no implementation approved
+GATE: no implementation approved. P26 is the SELECTED VALIDATION WINDOW of the architecture cycle —
+      selected, not open (live state → ../../operations/architecture-cycle.md). Two consequences for
+      this phase's own artifacts:
+      · When P26's implementation plan is written or reconciled, account for the installed mechanisms
+        and do not redesign P26 around them; that reconciliation writes `STATUS: ready for validation`
+        in the cycle file and is what makes the window ready — installation alone does not.
+      · STOP while the cycle still says installed-not-reconciled: only after `STATUS: ready for
+        validation` may P26's first implementation slice start `PHASE_2_VALIDATING`, through the
+        authorized procedure, recorded in the cycle file before implementation proceeds.
 ```
 
 ```text

@@ -3,10 +3,12 @@
 **Created:** 2026-09-22 · **Status:** planning (tracker authoritative)
 **Depends on:** P23 closed 2026-09-22 — the wall-first Plan editor minimum with one canonical
 geometry compiler (`compileLayoutGeometry()` family) serving Plan, 3D and visitor.
-**Phase 0 gate:** P23B **implementation** waits for Phase 0 adjudication **and any justified Phase 1
-response** (owner direction recorded here; the cycle is `PHASE_0_ACTIVE` — Phase 0 authorized
-2026-09-22, evidence in progress). A justified Phase 1 response is installed first; if none is
-justified the cycle enters STEADY and P23B is unblocked.
+**Phase 0 gate:** satisfied. Phase 0 was adjudicated 2026-09-22 (record →
+`../architecture-operating-cycle/phase-0/adjudication.md`) and the justified Phase 1 response is
+installed, so the cycle sits at `PHASE_1` with `P26` selected as the validation window (live state →
+`../../operations/architecture-cycle.md`). P23B **implementation** therefore waits only on an
+owner-ratified child plan. Had adjudication justified nothing, the cycle would have entered STEADY and
+P23B would have been unblocked the same way.
 **Ratified order:** the owner-ratified post-P23 execution order lives in exactly one place — the
 phase README's `SEQUENCE` block. This umbrella owns rationale, boundaries and dependencies only.
 **Ownership boundary:** every Phase 1/STEADY conditional and the validation-window decision belong to
@@ -200,13 +202,13 @@ CLOSEOUT GATE
   through its gates.
 - **P26** research and planning artifacts are untouched. P26's implementation now follows P23B in
   the pipeline; P26 planning may continue in parallel, but it is not the primary next-work
-  instruction — completing the Phase 0 evidence is.
+  instruction — P23B.0 measurement is.
 - **P24 / P25** are downstream and unaffected in scope.
-- **Operating cycle:** the cycle is `PHASE_0_ACTIVE` (Phase 0 authorized 2026-09-22; evidence owed,
-  `VALIDATION WINDOW` still empty). This plan does not change cycle mechanisms, does not run audits,
-  and invents no standing audit. P23B implementation waits for Phase 0 adjudication **and any
-  justified Phase 1 response**; validation-window ownership remains a cycle decision, not a P23B
-  planning decision.
+- **Operating cycle:** the cycle is `PHASE_1` with mechanisms installed — Phase 0 adjudicated
+  2026-09-22 and the justified capture installed — and `VALIDATION WINDOW` is `P26` (selected, not
+  open). This plan does not change cycle mechanisms, does not run audits, and invents no standing
+  audit. P23B implementation waits on an owner-ratified child plan; validation-window ownership
+  remains a cycle decision, not a P23B planning decision.
 
 ## Open owner calls
 
