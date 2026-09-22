@@ -173,8 +173,10 @@ P2 — recovery/exception
   later commit or PR.
 ```
 
-Never use `--amend` — it rewrites `A` and invalidates the written anchor. If a squash or force-push
-already invalidated the recovery line, annotate it to the reachable form
+A same-PR close therefore requires durable anchor reachability: P1's anchors are only reachable if
+the PR actually lands as a merge commit, so the merge method is part of the closeout record, not an
+assumption. Never use `--amend` — it rewrites `A` and invalidates the written anchor. If a squash or
+force-push already invalidated the recovery line, annotate it to the reachable form
 (`git fetch origin refs/pull/<n>/head && git show <A>:<path>`) and record the degradation. Verify in
 the same session — after the merge for P1 — before declaring the close complete:
 
