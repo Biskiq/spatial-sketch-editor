@@ -71,11 +71,27 @@ Read the cycle `STAGE` in `docs/operations/architecture-cycle.md`; compute the l
 any close write:
 
 ```text
-WAITING            → PHASE_0_DUE
-PHASE_2_VALIDATING → PHASE_3_EVALUATE
-STEADY             → STEADY (unchanged; record the close only)
-any other stage    → no legal transition
+WAITING                                                   → PHASE_0_DUE
+PHASE_1 | PHASE_2_VALIDATING | PHASE_3_EVALUATE,
+  closing phase ≠ selected validation window              → same stage (unchanged; record the close
+                                                            only — stage and window preserved)
+PHASE_2_VALIDATING, closing phase = selected window       → PHASE_3_EVALUATE (the window closes with it)
+PHASE_3_EVALUATE, closing phase = selected window          → PHASE_3_EVALUATE (unchanged; the window is
+                                                            now closed, verdicts stay owed)
+PHASE_1, closing phase = selected window                  → no legal transition (the window never
+                                                            opened)
+PHASE_0_ACTIVE | ADJUDICATION, any close                  → no legal transition
+STEADY, any close                                         → STEADY (unchanged; record the close only)
 ```
+
+Window identity is the cycle file's `VALIDATION WINDOW` value, never the phase name: a close is a
+window close only when the closing phase is the selected one. A product phase other than the window
+closes during `PHASE_1`, `PHASE_2_VALIDATING` or `PHASE_3_EVALUATE` without advancing the cycle — the
+installed stage and the window survive it.
+
+Two inconsistent states STOP before computing, in every stage: `PHASE_1` with an empty
+`VALIDATION WINDOW`, and an **open** window with `ACTIVE MECHANISMS: none` (already a defect in the
+cycle file).
 
 No legal transition → STOP before any phase-status change (steps 4–9 do not run). Legal → hold the
 target `T`; step 8 writes it. On a re-run, read the persisted `CYCLE TARGET` instead of recomputing.
@@ -89,7 +105,9 @@ STATUS: shipped           # mirror; docs/roadmap/README.md is the status authori
 STAGE: closed
 CLOSED: <date> — owner ratification recorded in <anchor>
 FINAL GATE: <child> (<artifact>) — accepted <date>
-CYCLE TARGET: <T>         # PHASE_0_DUE | PHASE_3_EVALUATE | STEADY, persisted from the preflight
+CYCLE TARGET: <T>         # PHASE_0_DUE | PHASE_1 (unchanged) | PHASE_2_VALIDATING (unchanged) |
+                          # PHASE_3_EVALUATE | PHASE_3_EVALUATE (unchanged; window closed) | STEADY,
+                          # persisted from the preflight
 CLOSED WORK: <stubs/archive summary or pointer>
 ```
 
@@ -130,6 +148,12 @@ one. `PHASE_0_DUE` → also write `TRIGGER`, `PRODUCT CONTEXT`, `OWNER ACTION: r
 `PHASE_3_EVALUATE` → `OWNER ACTION: required` (verdicts are an owner call). `STEADY` → record the close,
 add nothing.
 
+A **same-state** target writes no stage. It performs the "ensure value" pass — stage and
+`ACTIVE MECHANISMS` stay as they are — and the close is recorded in the phase README alone. On **both**
+window-close paths — the `PHASE_2_VALIDATING → PHASE_3_EVALUATE` transition and the same-state close
+from an early `PHASE_3_EVALUATE` — also flip `VALIDATION WINDOW` to `closed (<date>)`. A close that is
+not the selected window's changes no window value, in any stage. Continue to step 9 in every case.
+
 ### Step 9 — META pointer
 
 Add the `META:` line to `docs/operations/current.md` only when step 8's state has
@@ -140,6 +164,11 @@ META: Architecture cycle — <action> → ../operations/architecture-cycle.md
 ```
 
 `STEADY` → no META line. Remove it when `OWNER ACTION` returns to `not required`.
+
+The invariant is `OWNER ACTION` ⇔ pointer, so a same-state close that leaves `OWNER ACTION` unchanged
+leaves the pointer as it is: a non-window close in an installed stage adds nothing, and a same-state
+window close from an early `PHASE_3_EVALUATE` is already under `OWNER ACTION: required`, so its
+verdict pointer stays rather than being re-added or removed.
 
 ### Idempotence
 
