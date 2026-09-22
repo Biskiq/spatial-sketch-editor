@@ -39,11 +39,38 @@ evidence** — PNG/SVG/HTML atlases, screenshots, plates, measurements — copie
 
 Closed-work *prose* (plans, QA records, research, design studies, reconciliations) is not copied
 here: it keeps a path-preserving stub in the live tree plus a `git show <A>:<path>` recovery
-line, which is what actually guarantees exact reconstruction. Non-text evidence keeps its live path
-occupied too — a sibling `<name>.<ext>.md` stub for a single file, or a `CLOSED.md` manifest for a
-directory whose contents moved. Rule owner:
-[`.agents/skills/slice-closeout/SKILL.md`](../../.agents/skills/slice-closeout/SKILL.md)
+line, which is what actually guarantees exact reconstruction.
+
+#### Closed-work evidence — the live-path convention
+
+This section owns *how* evidence is moved; the decision that evidence — and only evidence — is
+copied at all belongs to [`slice-closeout`](../../.agents/skills/slice-closeout/SKILL.md)
 ("Closed work — compaction, not deletion").
+
+```text
+SINGLE EVIDENCE FILE   <dir>/<name>.<ext>
+  bytes → docs/archive/roadmap/<phase>/<slice>/<dir>/<name>.<ext>   (unmodified)
+  live  → <dir>/<name>.<ext>.md   sibling stub: AUTHORITY: NONE, RECOVER:, ARCHIVE: <path>
+  links → repointed to the archived copy — being viewable is what that copy is for
+
+EVIDENCE BUNDLE        <dir>/   the evidence moves whole, internal structure preserved so its own
+  relative links keep resolving; the live path stays occupied by a stub directory holding only
+  live  → <dir>/CLOSED.md   one manifest: every archived file + its anchor
+
+HTML ENTRY POINT       <dir>/index.html → the manifest convention above; if a live doc links to it,
+  write a valid HTML redirect stub at the live path instead (meta refresh to the archive copy),
+  never a Markdown file carrying an `.html` name.
+```
+
+A mixed bundle therefore keeps prose stubs at their own paths, keeps the renderable copy, and gets
+one manifest per moved directory.
+
+- Copy bytes **unmodified**: a byte-identical copy costs no object storage, because Git stores one
+  blob for both paths, while a rewritten copy forks a real duplicate and adds a second
+  link-maintenance surface.
+- Links that escape a bundle go stale as a result. Record that once in its manifest or nearest live
+  stub; do not repair the copy, but do repair the **live** links that pointed at moved evidence.
+- No size cap: a closeout reports the archived size so growth stays visible.
 
 ### `legacy/`
 
