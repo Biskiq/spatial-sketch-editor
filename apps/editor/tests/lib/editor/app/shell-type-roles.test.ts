@@ -58,6 +58,13 @@ const TYPE_ROLES = [
 	'tray-tool'
 ];
 
+/**
+ * Issue #35 — the axis hex values the field components must never carry:
+ * canonical axis colour lives only in `tokens.css` (`--editor-axis-x/y/z`;
+ * the gizmo aliases in the same block share the rule).
+ */
+const AXIS_HEX: Record<string, string> = { x: 'f05252', y: '45c878', z: '3b82f6' };
+
 /** Recurring groups sized by FIT rather than by button semantics. */
 const GEOMETRY_ROLES = [
 	'--editor-icon-size-sm',
@@ -253,17 +260,32 @@ describe('P21.5 Slice 3 inspector density + selection isolation', () => {
 		expect(field).toContain('font-variant-numeric: tabular-nums;');
 		expect(field).toContain("data-tone={chipTone}");
 		expect(field).toContain('aria-label={label}');
-		// Axis tones follow the canonical gizmo mapping (X red / Y green / Z blue).
+		// Axis tones follow the canonical gizmo mapping (X red / Y green / Z
+		// blue), resolved through the canonical `--editor-axis-*` tokens (issue
+		// #35) — never duplicated hex literals. The chip background keeps the
+		// established 15% axis opacity over the field control background.
 		expect(field).toContain("data-tone='x'");
-		expect(field).toContain('#f05252');
-		expect(field).toContain('#45c878');
-		expect(field).toContain('#3b82f6');
+		for (const axis of ['x', 'y', 'z'] as const) {
+			expect(field).toContain(`var(--editor-axis-${axis})`);
+			expect(field, `duplicated axis hex for ${axis}`).not.toMatch(
+				new RegExp(AXIS_HEX[axis], 'i')
+			);
+		}
+		expect(field).toContain('15%');
 		// No TransformInputRow fork exists; the shared field is reused.
 		expect(fs.existsSync(path.join(LIB_DIR, 'editor/components/TransformInputRow.svelte'))).toBe(false);
 		const vec3 = readLibSource('editor/fields/EditorVec3Field.svelte');
 		expect(vec3).toContain('axis-chip');
 		expect(vec3).toContain('height: 28px;');
 		expect(vec3).toContain('font-variant-numeric: tabular-nums;');
+		// Same canonical-token rule for the Vec3 rows (issue #35).
+		for (const axis of ['x', 'y', 'z']) {
+			expect(vec3).toContain(`var(--editor-axis-${axis})`);
+			expect(vec3, `duplicated axis hex for ${axis}`).not.toMatch(
+				new RegExp(AXIS_HEX[axis], 'i')
+			);
+		}
+		expect(vec3).toContain('15%');
 	});
 	it('folds the transform axis legend into per-field chips (density only, scale semantics intact)', () => {
 		const inspector = readLibSource('editor/EditorTransformInspector.svelte');

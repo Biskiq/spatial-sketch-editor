@@ -14,29 +14,46 @@ authority; Layout and Scene ownership separate; one camera graph/route/motion;
 wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
-STATUS: in-progress
-STAGE: P23.15 closed (accepted 2026-09-21); only the P23.16 final closeout gate remains
-CURRENT: P23.16 — Final whole-product integration and P23 closeout gate (owner close pending)
-NEXT: owner-invoked P23.16 closeout gate; satisfying its exit criteria makes P23 CLOSABLE, not closed
-GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
+PHASE CLOSE:
+STATUS: shipped
+STAGE: closed
+CLOSED: 2026-09-22 — owner ratification recorded in PR #73 (closeout branch P23.16, HEAD 645f43e)
+FINAL GATE: P23.16 — Final whole-product integration and P23 closeout gate
+            (2026-09-08-P23.16-final-whole-product-integration-closeout.md) — accepted 2026-09-22
+CYCLE TARGET: PHASE_0_DUE   (persisted from the close preflight; cycle was WAITING)
+CLOSED WORK: 3 prose stubs at their own paths (P23.16 plan, P23.16 QA/gate record, the gate
+             artifact), anchors 645f43e / 650f7c15, tags closed/p23.16 · closed/p23 · closed/p23.15;
+             0 renderable-evidence copies (none existed); preservation report in the gate stub
+```
+
+```text
+STATUS: shipped
+STAGE: closed
+CURRENT: no active child — P23 closed 2026-09-22; next pipeline phase is P26 (planning)
+NEXT: P26 design brief (product work); the architecture cycle's Phase 0 is separately owner-gated
+GATE: P23.16 accepted 2026-09-22 — its exit criteria are satisfied; P23 is CLOSED by owner ruling
 ```
 
 ```text
 FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout gate
-  (On-demand — final closeout. Startup keeps only the safety rule: satisfying
-  the exit criteria makes P23 CLOSABLE, not closed.)
-  gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
-  satisfying its exit criteria makes P23 CLOSABLE, not closed.
-  CLOSED requires an explicit owner request and ruling; closure then runs the owner-invoked
-  phase-closeout procedure, which updates P-level status/baton and runs the close preflight.
-  For P23 the cycle is WAITING, so the preflight's target is PHASE_0_DUE; the target is computed,
-  never assumed.
+  ACCEPTED 2026-09-22; P23 was then CLOSED by explicit owner request and ruling, which ran the
+  owner-invoked phase-closeout procedure (P-level status, baton, close preflight).
+  gate artifact (closed work, stub) → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+  exit criteria → the accepted gate artifact's stub + the P23.16 QA/gate record stub; satisfying
+  them made P23 CLOSABLE, and closure was an owner decision, never automatic.
+  The close preflight read the cycle as WAITING, so its computed target was PHASE_0_DUE; that target
+  is persisted in the PHASE CLOSE block above and written to the cycle. It was computed, not assumed.
   Landed P23 slice plans are evidence; they are not active instructions (see "Completed slices").
 ```
 
 ```text
-ROUTE (active child P23.16 — direct; no intermediate slice router):
-gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+ROUTE (P23.16 closed — evidence only; no intermediate slice router):
+verification plan (closed work, stub) →
+  p23.16-whole-product-integration-closeout/2026-09-22-P23.16-verification-plan.md
+QA/gate record (closed work, stub — A1–A14, M1–M17, E1–E8 results) →
+  p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md
+gate artifact (exit criteria; closed work, stub) →
+  2026-09-08-P23.16-final-whole-product-integration-closeout.md
 remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.16
 dependencies → every P23 slice through P23.15 (P23.15 accepted 2026-09-21, PR #72)
 shell grammar (any UI P23.16 touches enters through it) →
@@ -77,11 +94,14 @@ detail in this file is on-demand.
 
 ## Completed slices
 
-P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13,
+P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13, **P23.16** (whole-product integration + TD-3/#35; accepted and closed
+2026-09-22 — PR #73 carries plan, implementation, verification and closeout on one branch, tag
+`closed/p23.16`),
 **P23.14** (shell visual system; accepted 2026-09-21 — implementation PR #61, closeout PR #71),
 **P23.15** (junction-correct wall-first 3D; accepted 2026-09-21 — PR #72 carries plan,
-implementation and closeout on one branch; its three closeout anchors are insured by the tag
-`closed/p23.15`),
+implementation and closeout on one branch and landed by **rebase** under an owner decision
+(2026-09-22), so the pushed tag `closed/p23.15` is the recovery form for its three closeout
+anchors rather than an `main`-ancestry fallback),
 plus the concurrent Junction-dissolve / Wall join child slice (PR #57, no tracker
 P-number; its Inspector/Navigator-row/Plan-menu entry points landed in P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only
@@ -90,7 +110,10 @@ plans/artifacts live in that slice's workspace, and this phase README routes the
 plan path.
 
 Landed P23 slice plans below are historical evidence (each carries its own Status line);
-they are not current instructions, and their full bodies become compact stubs at P23 close.
+they are not current instructions. Slices closed under the hybrid preservation rule (P23.14, P23.15,
+P23.16) already carry path-preserving stubs with a `git show <A>:<path>` recovery line — the
+closeout convention below; the older grandfathered flat plan docs in this folder keep their full
+bodies as historical evidence rather than being swept into stubs by the phase close.
 
 Carried rows: P23.13 carried four rows into P23.14 by owner ruling (Task 5's two behaviour
 rows — opening-insert commit, undo-with-field-open cancel — the Task 8 coarse-pointer pass,
@@ -104,7 +127,27 @@ They are not P23.15 scope unless P23.15 touches the surface; they route to their
 P23.15 adds J1–J9: by owner decision (2026-09-22) the visual half of each is owner-carried to
 P23.16 rather than blocking PR #72's merge, and no interactive session was run at closeout — so all
 nine rows are owed, not claimed. P23.16's whole-product integration pass is their natural verifier.
+**P23.16 QA executed and accepted 2026-09-22**
+([record stub](./p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md), full
+body via its anchor):
+all nine J-rows remain **owed** — they need nine purpose-built junction fixtures plus the published
+visitor half — with the same single owner action (a signed-in publish session). The carried P23.13
+Task 5 rows and the P23.14 accessibility rows are resolved or re-recorded there: opening-insert on
+click passes live; the undo-while-a-field-is-open row RE-CONFIRMS the P23.13 owner decision
+(display-only, commit honest) rather than a cancel; the reference capture is taken, the
+screen-reader and device rows stay owed. The legacy relic smoke is **waived by owner decision**
+(frozen relics, no active maintenance).
 Incremental Junction invalidation stays an accepted non-goal (Decision 13), not a carried row.
+
+Issue re-dispositions by owner ruling (2026-09-22), landed with the P23.16 gate: **#35** (canonical
+axis tokens in number fields) was not landed by P23.14, so it left the P23 prerequisite list and was
+recorded as **TD-3** in [`../../operations/tech-debt/README.md`](../../operations/tech-debt/README.md);
+the owner then amended it back into P23.16 as a bounded correction, and it was delivered (`be4e23b`)
+with the gate's A12 promoted from baseline audit to required-pass regression check. **#6** (legacy
+Bézier commit/render gap) is closed and re-disposed to post-P23 legacy-stack retirement (#26), which
+owns the path it describes. The authoritative disposition table is the reconciliation §Issue
+disposition; with both ruled, no prerequisite P23 issue remains open, which is what the P23.16
+plan's E7 row records.
 
 (On-demand — closeout mechanics; read at slice closeout, not at slice start.)
 All new slice closeouts leave closed artifacts as path-preserving stubs holding a
@@ -125,3 +168,13 @@ tag over the QA-record anchor `1f1d265` (all three P23.15 anchors are its ancest
 **pushed to `origin`** 2026-09-22. Naming: `closed/<slice-id>` for a slice, `closed/<phase>` for a
 phase close. Shipped narrative for
 P23.13 lives in `docs/archive/plans/`.
+
+**P23 closed 2026-09-22.** The close (phase-closeout, owner-invoked) compacted three prose artifacts to
+stubs at their own paths — the P23.16 plan and QA/gate record (anchor `645f43e`) and the gate artifact
+(anchor `650f7c15`) — with **no renderable evidence to archive**. Tags: **`closed/p23.16`** and
+**`closed/p23`** over `645f43e`, plus the pre-existing `closed/p23.15`. `closed/p23` covers the P23.14
+anchors and both P23.16 anchors; it does **not** cover the three P23.15 anchors, because PR #72 landed
+by rebase under an owner decision — `closed/p23.15` remains their recovery form. Every recorded anchor
+was verified this close (`git merge-base --is-ancestor <A> <tag>`) and resolves to its full body. The
+phase's preservation report is in the gate artifact's stub; P-level status is `shipped` in
+[`../README.md`](../README.md).

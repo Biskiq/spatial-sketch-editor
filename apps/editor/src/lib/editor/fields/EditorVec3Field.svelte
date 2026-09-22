@@ -156,19 +156,23 @@
 		font: 700 10px/1 var(--editor-font);
 	}
 
+	/* Issue #35 — axis tones resolve through the canonical `--editor-axis-*`
+	   tokens (tokens.css §8, theme-invariant). The chip background mixes the
+	   axis token at 15% over transparent — the same arithmetic as the previous
+	   rgba() literals, but a single source of truth. */
 	label[data-tone='x'] .axis-chip {
-		background: rgba(240, 82, 82, 0.15);
-		color: #f05252;
+		background: color-mix(in srgb, var(--editor-axis-x) 15%, transparent);
+		color: var(--editor-axis-x);
 	}
 
 	label[data-tone='y'] .axis-chip {
-		background: rgba(69, 200, 120, 0.15);
-		color: #45c878;
+		background: color-mix(in srgb, var(--editor-axis-y) 15%, transparent);
+		color: var(--editor-axis-y);
 	}
 
 	label[data-tone='z'] .axis-chip {
-		background: rgba(59, 130, 246, 0.15);
-		color: #3b82f6;
+		background: color-mix(in srgb, var(--editor-axis-z) 15%, transparent);
+		color: var(--editor-axis-z);
 	}
 
 	input {
