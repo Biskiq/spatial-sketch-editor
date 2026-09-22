@@ -898,7 +898,7 @@ Desktop reference: **1440 × 900 CSS px**. These values are the reference compos
 
 ![PLATE Scene Plan reference frame, 1440 by 900](./plate-scene-plan-1440x900.png)
 
-The specimen is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column.
+The specimen is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column. The tables in this appendix are the metric authority. If a painted label in the specimen disagrees with a table, follow the table.
 
 ### A.2 Layout dimensions
 
