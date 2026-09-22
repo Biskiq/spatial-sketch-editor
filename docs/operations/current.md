@@ -25,14 +25,14 @@ P23.15 (closed, evidence only) → ../roadmap/p23-layout-depth/p23.15-junction-c
 P23.14 (closed, evidence only) → ../roadmap/p23-layout-depth/p23.14-shell-visual-system/ (stubs)
 
 BLOCKER:
-- two P23-owned issues still need a re-disposition ruling: #35 (canonical axis tokens —
-  P23.14 closed without the swap; raw hex still in the number-field components) and #6
-  (legacy Bézier commit/render gap — P23.11 scoped the validation class to canonical curved
-  Walls only). #34 #38 #39 #40 #41 were closed 2026-09-22 against recorded evidence.
 - the P23.15 J1–J9 visual rows and the carried P23.14/P23.13 rows are owed and need one
   interactive session (plan §3–§5)
 
 CLEARED (2026-09-22):
+- issues: #34 #38 #39 #40 #41 closed against recorded evidence; #6 closed by owner and
+  re-disposed to post-P23 legacy-stack retirement (#26); #35 was never landed by P23.14, so by
+  the same ruling it is folded into this gate as a verification target (plan A12) — expect a
+  recorded failure and an explicit post-P23 debt entry, not an implementation change here.
 - PR #72 landed by rebase under an owner decision (rebase rather than squash, commits kept
   separate), so the P23.15 bare-SHA anchors are not ancestors of `main`; recovery is the
   pushed tag `closed/p23.15`. The three stubs' merge-commit claim was corrected to record the
