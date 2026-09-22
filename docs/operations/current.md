@@ -8,12 +8,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        proposed, no implementation approved. P26 remains in planning — its synthesis is the
        authoritative research input and the design brief is still the next artifact.
        The architecture cycle sits at PHASE_0_DUE — a separate, owner-gated track (see META below);
-       Phase 0 adjudication precedes P23B implementation.
+       Phase 0 adjudication and any justified Phase 1 response precede P23B implementation, and
+       validation-window ownership remains a cycle decision.
 
 NEXT:
-1. P23B planning: owner review of the umbrella and the proposed child slices; measurement (P23B.0)
-   and the parallel internal harvest / external research (P23B.1 · P23B.2) are the first proposal.
-   No P23B implementation starts before Phase 0 adjudication and an owner-ratified child plan.
+1. P23B planning: owner review of the umbrella and the proposed child slices; measurement planning
+   (P23B.0) — including non-mutating profiling — and the parallel internal harvest / external
+   research (P23B.1 · P23B.2) may proceed now. No P23B implementation, and no committed benchmark
+   code, starts before Phase 0 adjudication plus any justified Phase 1 response and an
+   owner-ratified child plan.
 2. Separately and only on owner authorization: the Phase 0 retrospective the P23 close made due.
 3. P26 product planning may continue in parallel: author the design brief from the landed synthesis
    (research/synthesis/p26-architectural-spatial-depth-synthesis.md), then proposals and a reconciled
@@ -36,7 +39,8 @@ META: Architecture cycle — owner authorization for Phase 0 → ../operations/a
 
 BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0
-  adjudication (owner-gated, meta track) and then on an owner-ratified child plan
+  adjudication and any justified Phase 1 response (owner-gated, meta track), then on an
+  owner-ratified child plan
 - P26 has no compiled design brief or child plan yet; planning is the current work, not a blocker to it
 - owner authorizes Phase 0 to start (meta track, separate from product planning)
 

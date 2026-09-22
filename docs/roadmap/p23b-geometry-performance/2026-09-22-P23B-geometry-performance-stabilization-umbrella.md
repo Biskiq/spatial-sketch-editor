@@ -3,9 +3,11 @@
 **Created:** 2026-09-22 · **Status:** planning (tracker authoritative)
 **Depends on:** P23 closed 2026-09-22 — the wall-first Plan editor minimum with one canonical
 geometry compiler (`compileLayoutGeometry()` family) serving Plan, 3D and visitor.
-**Phase 0 gate:** P23B **implementation** waits for Phase 0 adjudication (owner direction recorded
-here; the cycle is `PHASE_0_DUE` and owner-gated). Discovery, harvest, research, synthesis and
-planning may proceed before and during Phase 0.
+**Phase 0 gate:** P23B **implementation** waits for Phase 0 adjudication **and any justified Phase 1
+response** (owner direction recorded here; the cycle is `PHASE_0_DUE` and owner-gated).
+Validation-window ownership remains a cycle decision. Discovery, harvest, research, synthesis and
+planning — including P23B.0's measurement *planning* and non-mutating profiling — may proceed
+before and during Phase 0; committing benchmark code waits for implementation authorization.
 **Evidence basis:** the owner-observed interaction symptom below; the landed canonical geometry
 pipeline; the existing G3 benchmark harness. **No profiling, harvest or research has been executed
 for this plan yet** — this document is scope and order, not findings.
@@ -124,6 +126,11 @@ The repository already owns a versioned benchmark contract and must not grow a s
 P23B.0's job is to extend this harness to the observed authoring case and to the curve/multi-room
 densities that matter, with recorded provenance — not to build a new rig.
 
+**What may proceed now, and what may not.** Measurement *planning* (fixture design, profiling
+method, ledger shape) and ad-hoc, non-mutating profiling may proceed before Phase 0 adjudication.
+Committing benchmark code — fixtures, harness changes, recorded baselines, budgets — is
+implementation work and waits for implementation authorization.
+
 ## Discovery anchors (starting points, not an exhaustive list)
 
 Evidence to inspect, listed so the harvest starts from real seams rather than a symbol hunt:
@@ -188,8 +195,8 @@ CLOSEOUT GATE
 - **P24 / P25** are downstream and unaffected in scope.
 - **Operating cycle:** the cycle is `PHASE_0_DUE` with `OWNER ACTION: required` and an empty
   validation window. This plan does not change cycle mechanisms, does not run audits, and invents
-  no standing audit. Whether P23B is the cycle's validation window is a cycle decision, not a P23B
-  planning decision.
+  no standing audit. P23B implementation waits for Phase 0 adjudication **and any justified Phase 1
+  response**; validation-window ownership remains a cycle decision, not a P23B planning decision.
 
 ## Open owner calls
 
@@ -208,4 +215,5 @@ umbrella-internal subtrack label in the P24A/P24B sense. It consumes no existing
 shifts no other phase, and its children are ordinary phase children in one flat `P23B.x` namespace.
 
 This umbrella authorizes **no** implementation: a child optimization slice becomes actionable only
-after P23B.0/P23B.3 evidence, an owner-ratified child plan, and Phase 0 adjudication.
+after P23B.0/P23B.3 evidence, an owner-ratified child plan, and Phase 0 adjudication plus any
+justified Phase 1 response.

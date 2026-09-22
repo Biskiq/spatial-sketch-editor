@@ -15,16 +15,18 @@ STAGE: umbrella landed; child slices proposed, none approved
 CURRENT: none in execution — P23B planning
 NEXT: owner review of the umbrella and the proposed child slices; measurement (P23B.0) and the
       parallel harvest/research (P23B.1 · P23B.2) are the first proposal
-GATE: no implementation approved — and P23B implementation waits for Phase 0 adjudication
+GATE: no implementation approved — P23B implementation waits for Phase 0 adjudication and any
+      justified Phase 1 response
 ```
 
 ```text
 PHASE 0 GATE:
   The architecture cycle is PHASE_0_DUE (owner-gated, recorded by the P23 close; PR #73).
-  Discovery, harvest, research, synthesis and planning may proceed before and during Phase 0.
-  P23B IMPLEMENTATION does not start before Phase 0 adjudication, and then only on an
-  owner-ratified child plan. No audit is run here and no cycle mechanism changes.
-  Whether P23B is the cycle's validation window is the cycle's decision — not this README's.
+  Discovery, harvest, research, synthesis, planning and non-mutating profiling may proceed before
+  and during Phase 0; committing benchmark code waits for implementation authorization.
+  P23B IMPLEMENTATION does not start before Phase 0 adjudication AND any justified Phase 1
+  response, and then only on an owner-ratified child plan. No audit is run here and no cycle
+  mechanism changes. Validation-window ownership remains a cycle decision.
   live state → ../../operations/architecture-cycle.md
 ```
 
@@ -60,6 +62,10 @@ Status here and in the umbrella is `proposed`. None is approved, none is impleme
 and no numerical performance target is committed. Contracts that already exist and must be
 extended rather than duplicated: `apps/editor/src/lib/bench/` (versioned bench contract,
 provenance, budgets, recorded baseline) and the PERF test lane.
+
+P23B.0's measurement *planning* and non-mutating profiling may proceed before Phase 0 adjudication;
+committing benchmark code (fixtures, harness, baselines, budgets) waits for implementation
+authorization.
 
 ```text
 P23B.0  measurement foundation — reproducible benchmark + bottleneck ledger
