@@ -10,9 +10,9 @@ BRIEF: ./2026-09-22-P0-investigation-brief.md     (frozen; fixes the three assig
 
 One bounded cycle stage, four isolated workspaces. This directory prepares **where** each
 investigation lands and **who owns it**, and records nothing about what any of them will find. The
-mechanical control pass has since completed (`./mechanical-control-pass.md`), and the three
-investigations' assignments are frozen in `./2026-09-22-P0-investigation-brief.md`; the three
-investigations have no output yet.
+mechanical control pass completed first and the three investigations' assignments were frozen in
+`./2026-09-22-P0-investigation-brief.md` before any lane started; all four outputs now exist, and
+their findings are recorded as they stand.
 
 ## Output destinations and assignment boundaries
 
@@ -20,10 +20,10 @@ investigations have no output yet.
 |---|---|---|
 | `2026-09-22-P0-investigation-brief.md` | Coordination — `meta/phase0` | assignment freeze for the three investigations · **frozen 2026-09-22, before any output** |
 | `mechanical-control-pass.md` | Coordination — `meta/phase0` | bounded structural control pass, run **before** semantic review · **complete 2026-09-22** |
-| `review-a.md` | Reviewer A — `meta/phase0-review-a` | independent semantic architecture review |
-| `review-b.md` | Reviewer B — `meta/phase0-review-b` | independent semantic architecture review |
-| `structural-workflow.md` | Workflow — `meta/phase0-workflow` | structural-workflow companion diagnostic |
-| `adjudication.md` | Coordination — `meta/phase0` | owner adjudication record and the evidence integration |
+| `review-a.md` | Reviewer A — `meta/phase0-review-a` | independent semantic architecture review · **complete and on `main` (#77)** |
+| `review-b.md` | Reviewer B — `meta/phase0-review-b` | independent semantic architecture review · **complete and on `main` (#78)** |
+| `structural-workflow.md` | Workflow — `meta/phase0-workflow` | structural-workflow companion diagnostic · **complete and on `main` (#79)** |
+| `adjudication.md` | Coordination — `meta/phase0` | owner adjudication record and the evidence integration · **written 2026-09-22 with the Phase 1 installation** |
 
 ```text
 2026-09-22-P0-investigation-brief.md
@@ -64,8 +64,7 @@ without its revision range is not usable as Phase-0 evidence.
   closed-work rule (path-preserving stub with a recovery anchor), like any other plan/research/QA
   artifact.
 - No second tracker, no permanent evidence registry and no standing audit is created here.
-- `PHASE_0_ACTIVE` is the current stage. The mechanical control pass is **complete** and written to
-  `./mechanical-control-pass.md`; the two semantic reviews and the workflow diagnostic are owed and
-  none has run, and neither review output exists. Their assignments are frozen in
-  `./2026-09-22-P0-investigation-brief.md` and no lane has started. Evidence collection does not
-  advance the cycle; the `ADJUDICATION` transition does, and it is the owner's.
+- The live stage is owned by the `STATE` route above, not by this index. The mechanical control pass,
+  both semantic reviews and the workflow diagnostic are complete, and their assignments were frozen
+  before any lane started. Evidence collection does not advance the cycle; the `ADJUDICATION`
+  transition does, and it is the owner's.
