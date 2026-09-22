@@ -12,11 +12,11 @@ NOT:      a second authority · a status tracker · an activity log · a contrac
           Phase-0 evidence · authorization to implement · a replacement for the Phase-0 outputs
 OWNER:    coordination workspace (meta/phase1). The owner ratifies the candidate classifications,
           each contract delta, the guard correction and the PR scope.
-STATE:    ../../operations/architecture-cycle.md   (sole live meta-state authority)
+STATE:    ../../../operations/architecture-cycle.md   (sole live meta-state authority)
 METHOD:   ../../architecture-operating-cycle-plan.md §8–§13 (canonical lifecycle rules)
-EVIDENCE: ../architecture-operating-cycle/phase-0/review-a.md · review-b.md · structural-workflow.md ·
-          mechanical-control-pass.md — frozen, independent, read as they stand; §2.3 records only
-          evidence-reading notes about them, and never rewrites them
+EVIDENCE: ../phase-0/review-a.md · ../phase-0/review-b.md · ../phase-0/structural-workflow.md ·
+          ../phase-0/mechanical-control-pass.md — frozen, independent, read as they stand; §2.3
+          records only evidence-reading notes about them, and never rewrites them
 RANGE:    f8411f7..b5f75e7 (the frozen P23 range) for retrospective claims; current `main` HEAD for
           present behaviour, contracts and paths
 ```
@@ -191,7 +191,7 @@ is *found*.
 
 | Option | What it would require |
 |---|---|
-| **R2 — accepted snap identity is mandatory.** Coincidence never joins topology; only an accepted snap reuses a Junction ID, and unsnapped coincidence must not connect | This **changes product behavior** → a P23B/P26 work item with its own acceptance cases, not a Phase 1 mechanism. Phase 1 would then record the ruling and the resulting work item instead of a clause |
+| **R2 — accepted snap identity is mandatory.** Coincidence never joins topology; only an accepted snap reuses a Junction ID, and unsnapped coincidence must not connect | This **changes product behavior** → not a Phase 1 mechanism, and not installed by this PR. Adopting R2 would need an explicit target contract plus an owned migration of the landed commit-time behavior: recording a future product work item alone would not resolve the precedent this candidate rests on |
 | **R3 — leave open** | **Rejected:** the canonical plan does not allow a real precedent to be left unresolved, and an unclassified open candidate cannot complete adjudication |
 
 Acceptance cases any ruling must be checked against — the test list under R1, and the recorded open
@@ -505,7 +505,7 @@ limitation, expected cost and the eventual Phase 3 criterion. Verdicts are Phase
 | M1 | Layout semantic-mutation clause (`architecture.md`) | P23.1→P23.6c planners recurred across six slices with no durable statement (AC-1) | Fix the layering rule only: canonical Layout semantic mutation is planned in layout-core, results and inputs stay operation-specific, and interaction/preview/selection/history stay in the editor | Doc clause reviewed against 41 planners at HEAD; Phase 2 asks whether a new operation was authored outside the boundary unnoticed | States a boundary, not a protocol; implies no shared result shape and no enforcement | ~6 lines | KEEP if P23B/P26 authors follow it without discussion; SIMPLIFY to one sentence if the effort/exception prose is unused; DELETE if it is never cited and ownership alone conveys it |
 | M2 | Vertical-authority clause (`persistence.md`) | P23.6H/I made Wall height the only authored vertical extent; nothing durable said so (AC-2) | Persist the rule: Wall owns extent, Floor is datum, ceilings are derived; one-floor scope | Compared against `layout-wall-heights.ts` and the types header at HEAD | Says nothing about storeys/slabs; explicitly scoped to the landed one-floor model | ~4 lines | KEEP if a P26 vertical slice reads it before designing; SIMPLIFY when P26 supersedes it with a multi-level contract; DELETE then, not before |
 | M3 | Persisted-curve clause (`persistence.md`) | P23.11 selected the persisted `line`/`cubic-chain` model; only the code and the slice plan said so (AC-3) | Persist the shape, the identity-bearing Wall direction (Opening offsets measure from start) and read-path authority | Compared against `layout-wall-first-types.ts:10-16,66-156` and the codec invariants at HEAD | Architectural wall centerlines only; transfers to no other curve consumer; does not constrain how the compiler renders | ~5 lines | KEEP if it prevents a re-fit/orientation regression in P23B/P26; DELETE if the code and API make it evident |
-| M4 | Junction identity-tolerance clause (`persistence.md`) — **ruling R1** | P23.1→P23.15 commit-time coincidence identity exists in code and slice plans but in no reference contract (AC-5) | State the commit-time identity rule beside the North Star proximity rule: global resolution, participant-scoped retirement, and snapping kept separate | Clause checked against `layout-junction-identity.ts`, the global resolution site and the scoped retirement site; the §3.3 acceptance cases listed as the test surface | Resolution is baseline-wide and world-space, so a near-exact unsnapped point can join an existing node — stated, not hidden | ~5 lines | KEEP if P26 vertical work does not re-litigate identity; SIMPLIFY/DELETE if R2 is later adopted and the rule is replaced by mandatory snap identity |
+| M4 | Junction identity-tolerance clause (`persistence.md`) — **ruling R1** | P23.1→P23.15 commit-time coincidence identity exists in code and slice plans but in no reference contract (AC-5) | State the commit-time identity rule beside the North Star proximity rule: global resolution, participant-scoped retirement, and snapping kept separate | Clause checked against `layout-junction-identity.ts`, the global resolution site and the scoped retirement site; the §3.3 acceptance cases listed as the test surface | Resolution is baseline-wide and world-space, so a near-exact unsnapped point can join an existing node — stated, not hidden | ~5 lines | KEEP if P26 vertical work does not re-litigate identity; SIMPLIFY/DELETE if R2 is later adopted and the rule is replaced by mandatory snap identity (R2 itself needs an explicit target contract and an owned migration) |
 | M5 | Bounded guard correction (§5) | D4/S1: a seam guard whose claim exceeded the seams it verified | Make a test's claim match what it verifies, deriving checks for all five menu mutations, their app callback wiring and the two shell replacement sites | Mutation proof for menu calls, callback wiring and each shell site + unchanged pass + full-suite run | Still cannot discover seams that bypass the named surfaces; the title and comment say so | ~45 lines in one test file | KEEP if it fails on a real future seam; SIMPLIFY to the derived predicates alone if the prose is unused; DELETE if it certifies nothing over behavioral coverage |
 | M6 | Same-state close rule (§6.2) | Cycle-machinery defect found here: P23B could not close from `PHASE_1`, and the window could not close from an early Phase 3 | Let a product close (and the window's own close from Phase 3) record without advancing the cycle | The §6.3 truth table, checked line-by-line against the three documents | Adds same-state rows; the STOP cases stay deliberate | one table + ~10 lines | KEEP if P26's window opens and closes correctly after P23B closes; SIMPLIFY if window identity can be derived without the extra rows; DELETE never — a broken close path is worse than a redundant rule |
 | M7 | Durable reminders (§7) | Installed mechanisms would otherwise be forgotten between Phase 1 and Phase 3 | Put each remaining action where the milestone is already read, including the ready-for-validation write | §12 A1–A3 and A10 (state/routing consistency checks) | Five one-line edits across three documents; each depends on its owning document staying authoritative | ~6 lines total | KEEP if a Phase 2/3 agent arrives without re-reading this plan; SIMPLIFY by removing lines never encountered |
@@ -597,7 +597,7 @@ C4 persistence.md §Layout (M4 — ruling R1):
 | D3 | Clause wording for M1–M4 | C3, C4 | As drafted — M1 describes the layering boundary only and prescribes no input or result shape (alignment returns a value, topology planners return a document); M2 keeps the one-floor limit; M3 adds the identity-bearing direction and permits compiler sampling; M4 separates global resolution from scoped retirement |
 | D4 | AC-6: **no clause** — the North Star already owns the default and the exception requirement | C4 | No clause |
 | D5 | AC-7/AC-8/AC-9/AC-10: no clauses and no A ratification; the relic mirror and diagnostic naming stay **D** | C3, C4 | No clauses |
-| D6 | Junction coincidence: **R1** (commit-time identity tolerance ratified as a clause — global resolution, scoped retirement, snapping separate, unsnapped coincidence can connect) or **R2** (accepted snap identity mandatory → a recorded product work item, no clause) | C4, possibly a new work item | **R1** |
+| D6 | Junction coincidence: **R1** (commit-time identity tolerance ratified as a clause — global resolution, scoped retirement, snapping separate, unsnapped coincidence can connect) or **R2** (accepted snap identity mandatory → nothing installed now; adopting it later needs an explicit target contract and an owned migration, not only a recorded product work item) | C4, possibly a future contract + migration | **R1** |
 | D7 | Workflow lane: approve "no custom tool, corrections already applied" plus the §5 guard correction covering all five menu seams, callback wiring and both shell replacement sites; confirm no `ARCH_FILES` change | C5 | Approve §5; keep lane membership |
 | D8 | Lifecycle/window: select **P26** as the formal window; allow P23B's close to leave `PHASE_1` and its window unchanged; split installed from ready-for-validation, require the ready status before Phase 2, and let the window-plan reconciliation write it; reconcile early Phase-3 entry in the stage rows; add the early-Phase-3 window-close path, mark the window closed on both close paths, and continue through META step 9; require window closure **and** verdicts for `PHASE_3_EVALUATE → STEADY` only | C6, C7, C8, C9, C10 | Approve as specified |
 | D9 | Optional: a machine doc-consistency test for the transition table | C5 scope only | Decline for now; the deterministic checks in §12 A1 suffice until Phase 0 justifies a guard |
@@ -743,7 +743,8 @@ NOT  a new status tracker, dashboard, process tier, standing roadmap or cycle fi
 NOT  an ARCH_FILES/lane-membership change (owner option only)
 NOT  product-scope mutation: no P23B or P26 implementation, no performance work, no schema,
      persisted-format, route or capability change, no P23 reopened decision
-NOT  the R2 junction behavior change (it would be a recorded work item, not a Phase 1 clause)
+NOT  the R2 junction behavior change (not a Phase 1 clause; if ever selected it needs an explicit
+     target contract and an owned migration, not only a recorded work item)
 NOT  promotion of the identity ledger/cursor, the compatibility facades, the relic mirror, the
      slice-numbered diagnostic names, or the Scene runtime discriminator
 NOT  a multi-level vertical model, storey/slab generalization, or a NURBS/CAD curve model
@@ -815,7 +816,9 @@ window closes             P26 owner-close (from PHASE_2 or from an early PHASE_3
                           closed on either path → PHASE_3_EVALUATE once the stage is not already there
 finish                    Phase 3 verdicts → subtraction → STEADY
 carried forward           · the R2 alternative, if the owner prefers mandatory snap identity: recorded
-                            as a product work item with its acceptance cases (§3.3)
+                            as a product work item with its acceptance cases (§3.3); a recorded work
+                            item alone would not resolve the precedent — R2 needs an explicit target
+                            contract and an owned migration
                           · the AC-7 parity test's lane membership, if the owner wants it always-on
                           · the guard's stated limitation (recorded in the test comment)
                           · P23's 13 owner-carried verification rows and 5 deferred debt items —
@@ -838,7 +841,7 @@ discovery                 live stage and fields      → architecture-cycle.md
 | AC-2 Wall vertical authority | A §3 | B | Contract clause, one-floor limit | C4 | D2, D3 |
 | AC-3 persisted curve model + Wall direction | A §4 | B | Contract clause (direction; sampling allowed) | C4 | D2, D3 |
 | AC-4 identity ledger / single cursor | A §5 | C / D | No change; not promoted | — | D2, D5 |
-| AC-5 junction coincidence | B C2 | B | Ruling **R1** captured as a clause (R2 = product work item) | C4 | D2, D6 |
+| AC-5 junction coincidence | B C2 | B | Ruling **R1** captured as a clause (R2 not selected; adopting it would need an explicit target contract and an owned migration) | C4 | D2, D6 |
 | AC-6 field evolution treatments | B C3 | C | No clause — North Star owns it | — | D2, D4 |
 | AC-7 relic mirror | B C5 | D | No change, no ratification; parity already asserted | — | D2, D5 |
 | AC-8 compatibility facades | B C6 | C / D | No change — already-contracted compatibility | — | D2, D5 |
@@ -862,7 +865,8 @@ all ten architecture topics present, contradictions recorded separately   ✓ §
 does not duplicate live status        ✓ live state is cited, never restated; §7 routes to it
 does not invent an authority          ✓ every change lands in the document that already owns it
 does not mutate product scope         ✓ no product behavior, schema, route or performance change;
-                                        R2 is recorded as a work item, not smuggled in
+                                        R2 is not smuggled in — not selected, and a later R2 would
+                                        need its own target contract and owned migration
 does not restart diagnosis at P23B close ✓ no Phase 0, no audit, no auto-transition
 does not resolve owner decisions      ✓ classifications, clauses, ruling and scope are gated (§10)
 does not duplicate the canonical plan ✓ §6 quotes only the one preflight block it must change
