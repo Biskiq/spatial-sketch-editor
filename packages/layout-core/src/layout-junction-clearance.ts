@@ -14,12 +14,14 @@
  *
  * ```text
  * junction_seam_degenerate  a coordinate is not finite, or a resolved band has
- *                           no vertical span (a zero-height surface)
+ *                           no vertical span (a zero-height surface); a keel
+ *                           carrying no region or band is the same failure
  * junction_seam_fold        two incident legs have exactly collinear outward
  *                           rays in the same direction: their offset solids
  *                           coincide
- * junction_seam_overlap     an owned seam polygon has no area, so the resolved
- *                           seam surface has collapsed past its own offset line
+ * junction_seam_overlap     an owned seam polygon or keel region has no area
+ *                           (collapsed past its own offset line), or a keel
+ *                           region is not the declared convex CCW polygon
  * junction_seam_uncovered   an incident leg was resolved to nothing: it is
  *                           neither a terminal cap, nor a corner, nor a
  *                           suppressed interface, so its end is left open
@@ -68,9 +70,9 @@ export const JUNCTION_SEAM_MESSAGES: Readonly<Record<JunctionSeamCode, string>> 
 	junction_seam_uncovered:
 		'Junction seam leaves an incident Wall end unresolved: it is neither a terminal cap, nor a resolved corner, nor a suppressed interface.',
 	junction_seam_overlap:
-		'Junction seam geometry overlaps illegitimately: a resolved seam surface has collapsed past its own offset line.',
+		'Junction seam geometry overlaps illegitimately: a resolved seam surface has collapsed past its own offset line, or a keel region is collapsed or not the declared convex CCW polygon.',
 	junction_seam_degenerate:
-		'Junction seam geometry is degenerate: a coordinate is not finite, or a resolved band has no vertical span.',
+		'Junction seam geometry is degenerate: a coordinate is not finite, a resolved band has no vertical span, or a keel carries no region or band.',
 	junction_seam_fold:
 		'Junction has two legs pointing the same direction (fold); their offset regions would coincide.'
 };
@@ -108,6 +110,36 @@ function seamPolygonCollapsed(polygon: readonly Vec2Like[]): boolean {
 	const diagonal = Math.hypot(maxX - minX, maxY - minY);
 	if (!(diagonal > 0)) return true;
 	return Math.abs(doubleSignedArea(polygon)) <= JUNCTION_SEAM_EPSILON * diagonal * diagonal;
+}
+
+/**
+ * Is a resolved keel region malformed — not the convex, CCW-wound polygon
+ * `CompiledLegJoin['keel']` declares? Finite vertices only (the caller checks
+ * those first, so `seamPolygonCollapsed` sees real coordinates).
+ *
+ * The test is scale-free like `seamPolygonCollapsed`, which also covers "under
+ * three vertices" and "no area at its own scale"; beyond that the declared
+ * shape is pinned: the winding must be CCW (a keel's top-face normal is `+Y`)
+ * and no turn may be reflex. The builders fan-triangulate each region from its
+ * first vertex, which is correct for exactly this shape — any other would
+ * silently drop or overlap emitted material, so it must fail closed here.
+ */
+function keelRegionInvalid(polygon: readonly Vec2Like[]): boolean {
+	if (seamPolygonCollapsed(polygon)) return true;
+	if (!(doubleSignedArea(polygon) > 0)) return true;
+	const count = polygon.length;
+	for (let index = 0; index < count; index += 1) {
+		const a = polygon[index]!;
+		const b = polygon[(index + 1) % count]!;
+		const c = polygon[(index + 2) % count]!;
+		const ab: Vec2Like = [b[0] - a[0], b[1] - a[1]];
+		const bc: Vec2Like = [c[0] - b[0], c[1] - b[1]];
+		const scale = Math.hypot(ab[0], ab[1]) * Math.hypot(bc[0], bc[1]);
+		// A turn is reflex if its sine falls below the (scale-free) tolerance;
+		// collinear vertices are legal, so near-zero turns pass.
+		if (cross(ab, bc) < -JUNCTION_SEAM_EPSILON * scale) return true;
+	}
+	return false;
 }
 
 function cross(a: Vec2Like, b: Vec2Like): number {
@@ -189,6 +221,32 @@ export function joinSeamFailure(join: CompiledLegJoin): JunctionSeamFailure | un
 		}
 		if (entry.toDistance - entry.fromDistance <= JUNCTION_SEAM_EPSILON) {
 			return junctionSeamFailure('junction_seam_overlap');
+		}
+	}
+	// P23.15 — a resolved sector keel is emitted physical geometry (the builders
+	// extrude its regions into top/bottom faces), so it is validated like every
+	// other resolved fact. The declared shape of `CompiledLegJoin['keel']` is
+	// pinned here too: each region is a convex CCW plan polygon with real area,
+	// each band has a real vertical span. A malformed keel must fail closed at
+	// this predicate — never reach a builder whose fan triangulation would
+	// silently skip it and drop the material.
+	if (join.keel) {
+		if (join.keel.regions.length === 0 || join.keel.bands.length === 0) {
+			return junctionSeamFailure('junction_seam_degenerate');
+		}
+		for (const region of join.keel.regions) {
+			for (const point of region) {
+				if (!finite2(point)) return junctionSeamFailure('junction_seam_degenerate');
+			}
+			if (keelRegionInvalid(region)) return junctionSeamFailure('junction_seam_overlap');
+		}
+		for (const band of join.keel.bands) {
+			if (!Number.isFinite(band.bottomY) || !Number.isFinite(band.topY)) {
+				return junctionSeamFailure('junction_seam_degenerate');
+			}
+			if (band.topY - band.bottomY <= JUNCTION_SEAM_EPSILON) {
+				return junctionSeamFailure('junction_seam_degenerate');
+			}
 		}
 	}
 	if (join.clipDistance !== undefined) {

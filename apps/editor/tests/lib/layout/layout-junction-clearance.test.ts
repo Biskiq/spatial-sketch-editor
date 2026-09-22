@@ -285,6 +285,72 @@ describe('P23.15 Task 4 — junction seam acceptance', () => {
 		);
 	});
 
+	it('pins keel validation: malformed resolved keel material fails closed everywhere', () => {
+		// A resolved keel is emitted physical geometry — the builders extrude its
+		// regions into top/bottom faces — so the canonical predicate validates it
+		// like every other resolved fact and the parity triad rejects the same
+		// malformed keel before any builder can silently skip it.
+		const band = { bottomY: 0, topY: 3 };
+		const region: LayoutVec2[] = [[0, 0], [0.2, 0], [0.1, 0.15]];
+		// Positive control: the declared shape (convex CCW polygon + real band).
+		expect(joinSeamFailure(join({ keel: { regions: [region], bands: [band] } }))).toBeUndefined();
+
+		// Degenerate class: a keel that carries no material, a non-finite vertex,
+		// or a band with no vertical span.
+		const degenerate = [
+			join({ keel: { regions: [], bands: [band] } }),
+			join({ keel: { regions: [region], bands: [] } }),
+			join({ keel: { regions: [[[0, 0], [NaN, 0], [0.1, 0.15]]], bands: [band] } }),
+			join({ keel: { regions: [region], bands: [{ bottomY: 1, topY: 1 }] } }),
+			join({ keel: { regions: [region], bands: [{ bottomY: 0, topY: NaN }] } })
+		];
+		for (const constructed of degenerate) {
+			expect(joinSeamFailure(constructed)?.code).toBe('junction_seam_degenerate');
+			expect(triad(constructed)).toEqual({
+				compile: 'junction_seam_degenerate',
+				editor: 'junction_seam_degenerate',
+				museum: 'junction_seam_degenerate'
+			});
+		}
+
+		// Overlap class: the region is not the declared convex CCW polygon — under
+		// three vertices, collapsed at its own scale (collinear), a reflex turn, or
+		// CW wound (a keel's top-face normal must be `+Y`). The builders
+		// fan-triangulate from the first vertex, which is wrong for exactly these
+		// shapes — so they must be rejected, not silently skipped.
+		const malformed: LayoutVec2[][][] = [
+			[[[0, 0], [0.2, 0]]],
+			[[[0, 0], [0.1, 0], [0.2, 0]]],
+			[[[0, 0], [0.2, 0.2], [0.4, 0], [0.4, 0.3], [0, 0.3]]],
+			[[[0, 0], [0.1, 0.15], [0.2, 0]]]
+		];
+		for (const regions of malformed) {
+			const constructed = join({ keel: { regions, bands: [band] } });
+			expect(joinSeamFailure(constructed)?.code).toBe('junction_seam_overlap');
+			expect(triad(constructed)).toEqual({
+				compile: 'junction_seam_overlap',
+				editor: 'junction_seam_overlap',
+				museum: 'junction_seam_overlap'
+			});
+		}
+		// The Junction-level path reports the same code for the same keel.
+		const collapsed = join({ keel: { regions: [[[0, 0], [0.1, 0], [0.2, 0]]], bands: [band] } });
+		expect(
+			junctionSeamFailureOf({
+				junctionId: 'j',
+				point: [0, 0],
+				legs: [leg('wa', 0), leg('wb', 90)],
+				resolution: resolution([collapsed])
+			})?.code
+		).toBe('junction_seam_overlap');
+
+		// The shape pin must never false-positive on what the solver actually
+		// emits: a real Y/star partition's keels all pass the same predicate.
+		const star = resolveJunctionGeometry('j', [0, 0], [leg('wa', 0), leg('wb', 120), leg('wc', 240)]);
+		expect(star.resolution.joins.some((entry) => entry.keel !== undefined)).toBe(true);
+		for (const entry of star.resolution.joins) expect(joinSeamFailure(entry)).toBeUndefined();
+	});
+
 	it('accepts every ordinary Junction the compiler compiles today', () => {
 		const straight = compileWallFirstLayoutGeometry(straightDocument());
 		expect(straight.issues.filter((issue) => issue.severity !== 'warning')).toEqual([]);

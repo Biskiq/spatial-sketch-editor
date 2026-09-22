@@ -434,6 +434,9 @@ export type CompiledLegJoin = {
 	 * actually has material in. A builder only extrudes them (top/bottom faces per
 	 * band); the vertical sides they expose are carried as `surfaces` of kind
 	 * `junction-keel`, so no builder decides which side of a keel is interior.
+	 * This shape contract is validated at canonical acceptance (`joinSeamFailure`):
+	 * a region that is not a real convex CCW polygon, or a band with no vertical
+	 * span, fails closed instead of reaching a builder.
 	 */
 	keel?: { regions: LayoutVec2[][]; bands: CompiledJunctionBand[] };
 };
