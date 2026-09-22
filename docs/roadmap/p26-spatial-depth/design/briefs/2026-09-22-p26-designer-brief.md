@@ -93,7 +93,7 @@ What a designer needs to know about PLATE:
 - The product is one world. **Scene** and **Camera** are domains of attention, not separate applications. **Plan** and **3D** are the durable views. Scene Plan has a local mode pair, **Layout** and **Arrange**. Camera owns the timeline. Architecture authoring belongs to Scene, not to Camera.
 - Information has a rank, and the rank must stay visible: **Project → Domain (Scene / Camera) → View (Plan / 3D) → Contextual instrument → Local mode → Tool → Selection / gesture / status**. Scene/Camera is the vertical axis. Plan/3D is the horizontal axis. Those two axes stay legible while an instrument is open.
 - The screen is a cool chassis around a warm working surface. Chassis regions are the domain spine, project head, navigator (left), inspector (right), view bar, and status rail. The working surface is **Paper**: the plan or the 3D view. Controls that act on the work are **Instrument** (the tool tray, numeric fields, mode controls). Paper holds the drawing, selection, guides, and handles. Paper does not accumulate application controls. Do not invent a fourth material.
-- The reference desktop frame is **1440 × 900**. Navigator, inspector, and the central work column already have jobs. A section view occupies the work column. It does not become a new application frame.
+- The reference desktop frame is **1440 × 900**. Navigator, inspector, and the central work column already have jobs. A section view occupies the work column. It does not become a new application frame. Frame, colors, type, and one composition specimen are in Appendix A. Use that appendix for shell metrics.
 - One selection identity. The navigator, the view, the inspector, search, and status readouts name the same object. A retained selection survives a view change. The inspector header and the inspector body describe the same target.
 - One writer for each fact. A control lives in one host. A second surface may display the same fact and may not edit it a second time.
 - Names may duplicate. A compact reference plus the canonical identity is how two walls with the same name stay distinct. The inspector is where a name is edited.
@@ -710,7 +710,7 @@ For **each** direction, include all of the following.
 6. **Selection and Inspector.** The opening loop in §6.7. Show the same identity in the navigator, the view, and the inspector. The handle and the inspector edit one architectural value and cannot diverge. No third control writes that value.
 7. **A dense case** from §9, not only a two-wall diagram.
 8. **Empty, failure, and unsupported states** from §6.9, at least: empty project, deleted wall during elevation, oblique wall, illegal opening, room-stretch attempt, no ceiling authored.
-9. **PLATE compatibility.** One frame that shows the instrument inside the shipped shell composition. Annotate return, domain, and view. Do not restyle the chassis.
+9. **PLATE compatibility.** One frame that shows the instrument inside the shipped shell composition in Appendix A. Annotate return, domain, and view. Do not restyle the chassis. Match the appendix frame, colors, and type ladder.
 10. **Trade-offs and unresolved decisions.** For every open question in §6 that you answered, name the alternative you rejected and why. For anything you did not settle (spanning topology, fit-to-ceiling, the exact default depth, whether Ceiling Focus is in the first release), leave it marked unresolved. Do not convert a research limit into a fake certainty.
 
 Label every board with the direction name and the scenario id.
@@ -744,7 +744,7 @@ Do not add rooms, roofs, or levels beyond what a scenario asks. You may simplify
 
 Cut line in plan runs north–south through the center of the door, looking east. Span covers North and South. Finite depth reaches North’s east wall and stops before the East gallery.
 
-The board shows: cut poche on the walls the plane crosses (including the shared wall at the door), the door as an opening with its own identity rather than an anonymous hole, North’s east window in projection if you allow a facing wall beyond the cut to read as projected, the curved partition if it falls inside the depth, and the East gallery absent with a reason.
+The plane crosses the shared wall at the center of the door. Cut poche is only the wall material that plane intersects: the lintel above the door head, and the solid exterior walls the plane crosses. The door void is not filled with poche. Inside that void the opening is drawn as its own identity (head, sill, and the opening object). Also show North’s east window in projection if a facing wall beyond the cut may read as projected, the curved partition if it falls inside the depth, and the East gallery absent with a reason.
 
 On this board, edit a value the cross-section can show truthfully (the door’s head or sill, or the cut wall’s height at this station) and show the inspector. If the projected east window is not honestly editable from this view, show the redirect to its elevation instead of a fake precise handle. The along-wall gable is S3, not this board.
 
@@ -755,13 +755,25 @@ On this board, edit a value the cross-section can show truthfully (the door’s 
 - Edit width, sill, and head.
 - Raise the wall top into a gable with the ridge over the door. The inspector shows the same profile.
 - Then delete the wall from the navigator while the elevation is open, and show the recovery.
-- Separately, open an elevation of the curved partition. Show follow when a bend point moves. Show the oblique case: the author asks for an elevation of a wall that faces the wrong way, and the product refuses with a reason.
+- Separately, open an elevation of the curved partition. Show follow when a bend point moves.
+- Wall-derived elevation aligns its plane with the wall that was opened, so that wall is face-on by construction. The oblique case is a different wall. While the shared-wall elevation is open (its plane parallel to that east–west wall), the author selects North’s east wall — it meets the shared wall at a right angle and is edge-on in this view — and asks to edit that east wall’s window as if this view were its elevation. Refuse or redirect, with a reason, to an elevation whose plane is derived from the east wall. Do not put a precise width handle on the edge-on wall.
 
 ### S4 — Twelve-room wing (density)
 
-A 3 × 4 grid of rooms, 6 × 5 each, sharing walls, alternating wall heights 3.0 and 4.2. Two doors and one window per room on average. One curved wall. One section cut through a row, finite depth of about one room, so eleven rooms are excluded.
+Twelve rooms in three rows by four columns. Each room is 6 m east–west by 5 m north–south. They share walls. Wall heights alternate 3.0 and 4.2. About two doors and one window per room. One curved wall. Four rooms are named “Gallery”, so the navigator must keep them distinct by reference.
 
-Show that the drawing stays readable, that the navigator still names the selected wall by reference when names collide (“Gallery” appears four times), and that Reveal can surface one excluded opening without turning the section into an infinite elevation.
+```text
+        Col 1    Col 2    Col 3    Col 4
+Row N   N1       N2       N3       N4
+Row M   M1       M2       M3       M4
+Row S   S1       S2       S3       S4
+```
+
+The section cut runs north–south through the center of column 2, looking east. Span includes all three rows, so the plane cuts N2, M2, and S2. Finite depth is one module, 6 m, so column 3 (N3, M3, S3) is inside the depth and may appear projected. Column 4 (N4, M4, S4) is outside depth. Column 1 (N1, M1, S1) is behind the look direction and is excluded.
+
+Included: six rooms (column 2 cut, column 3 projected). Excluded: six rooms (column 1 behind the view, column 4 beyond the depth), each with a reason. This cut does not exclude eleven rooms.
+
+Show that the drawing stays readable, that the navigator still names the selected wall by reference when the name “Gallery” repeats, and that Reveal can surface one opening in column 4 without extending the depth to the whole wing.
 
 ### S5 — Ceilings
 
@@ -775,7 +787,9 @@ On S1:
 
 ### S6 — Depth and Reveal
 
-From S2, shorten depth until North’s east window is outside it. The window remains the selection. The author sees “outside depth” (or your wording) and a Reveal action. Show the result of Reveal, and show undo of that action if Reveal changed the instrument.
+From S2, shorten depth until North’s east window is outside it. The window remains the selection. The author sees “outside depth” (or your wording) and a Reveal action. Show the result of Reveal.
+
+Reveal changes the instrument (depth, crop, or a temporary show). That is editor view state. Reversing it restores the previous instrument and must not create a `LayoutDocument` history entry. Storyboard that reversal separately from architectural undo: a later edit to the revealed opening’s sill is the layout transaction; undoing that edit restores the sill and does not rewind the view.
 
 Also exclude by vertical crop: crop out everything below 1.0 m so the door sill is outside the crop, and show that reason as distinct from outside depth.
 
@@ -800,7 +814,7 @@ The loop in §6.7, using S1’s door. Include undo. Include 3D with the same sel
 
 ### S10 — PLATE frame
 
-One 1440 × 900 frame of S2 inside the shipped composition: domain spine (Scene), view axis (the instrument under Plan, not beside it as a third peer), navigator, inspector, tool tray, status. Return to Plan is visible without a tooltip. Camera timeline is absent because this is not the Camera domain.
+One 1440 × 900 frame of S2 inside the composition in Appendix A: domain spine (Scene), view axis (the instrument under Plan, not beside it as a third peer), navigator, inspector, tool tray, status. Return to Plan is visible without a tooltip. Camera timeline is absent because this is not the Camera domain. Use the appendix colors and type ladder.
 
 ---
 
@@ -869,3 +883,75 @@ You do not need to open these. They are the evidence behind §4. Dates and revis
 | Sweet Home 3D, Blueprint3D | Endpoint heights; a browser plan-to-3D prototype | Stood down. Not inputs to this brief. |
 
 Shipped product facts in §2 and §3 come from the current architecture and layout contracts: wall-first layout (`formatVersion` 5), one compiler, PLATE, world-local scene placement, and the P23 close (2026-09-22). P23B’s scope comes from its planning umbrella: cost, not capability, and still in planning.
+
+Appendix A is taken from the ratified shell contract `docs/reference/design-system/editor-shell-and-visual-system.md` (PLATE, owner-ratified, P23.14 closed 2026-09-21): §5 reference geometry, §6.1 PLATE Light colors, §7 type ladder and control roles, §8–§11 for what each region holds. The specimen is a Scene / Plan composition drawn from those sections. It is not a historical proposal and not a product screenshot.
+
+---
+
+## Appendix A — PLATE reference
+
+This is the shell you reproduce. Numbers below are the ratified contract at scale 1. Do not invent a fourth material, a third top-level view, or a local font size to make a section look technical.
+
+### A.1 Canonical frame
+
+Desktop reference: **1440 × 900 CSS px**. These values are the reference composition. Smaller viewports keep the same hierarchy and ownership before they keep the same pixels.
+
+![PLATE Scene Plan reference frame, 1440 by 900](./plate-scene-plan-1440x900.png)
+
+The specimen is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column.
+
+### A.2 Layout dimensions
+
+| Region | Geometry | Role in this frame |
+|---|---|---|
+| Domain spine | x 0, y 0, 56 × 900 | Scene and Camera stations only. Active station: 74 px tall, 11 px label, 24 px icon, 3 px inboard edge-light in the domain accent. Not a full accent fill. |
+| Project head | x 56, y 0, 1384 × 36 | Project context. Identity at 14 px. Controls on the 26 px `md` role. |
+| Navigator | x 56, y 36, 268 × 840 | Hierarchy. Row 29 px, 12 px row text, 10 px mono reference. |
+| Inspector | x 1140, y 36, 300 × 840 | One target. Section heading 10 px, weight 600. |
+| Central work column | x 324, y 36, 816 × 840 | View bar, tool tray, and paper. |
+| View bar | x 324, y 36, 816 × 34 | Plan and 3D tabs. Scene Plan adds `MODE` as a quiet caption, then Layout and Arrange at 11 px on 24 px controls. Utilities at 10 px. |
+| Tool tray | 44 px wide, on the paper’s left edge, tools about 42 px | Tool vocabulary only. Group label 7 px, tool label 8 px. `TRANSFORM` may use the 6 px floor. Armed = one step darker, full ink, no accent outline. |
+| Status rail | x 56, y 876, 1384 × 24 | 10 px status text. |
+| Paper | remainder of the work column under the view bar and beside the tray | Plan paper for Scene Plan and Camera Plan. Orthographic instruments use this surface. |
+| Camera drawer | 48 px collapsed, 288 px expanded | Camera domain only. Absent on this Scene frame. |
+
+Chassis corners are square. Instrument controls may use about a 3 px radius. Paper handles may use about a 2 px radius. Separation is a 1 px hairline, a tonal step, and alignment. No decorative shadow on chassis surfaces.
+
+### A.3 Core colors — PLATE Light
+
+| Role | Hex | Where it goes |
+|---|---|---|
+| Plan paper | `#F5F7F8` | Scene Plan and Camera Plan. Orthographic paper uses this drawing surface. |
+| Other paper | `#F5F2E9` | Non-plan paper only. Do not recolor Plan paper to this. |
+| Chassis | `#D9DDE0` | Spine, head, navigator, inspector, view bar, status. |
+| Chassis recessed | `#CBD0D4` | The darker step. Pressed view tabs and the armed tool use a recess, not a new hue. |
+| Instrument | `#E8E5DD` | Tool tray, numeric fields, mode controls. |
+| Primary ink | `#252A2E` | Labels and readings. |
+| Secondary ink | `#697177` | Meta, references, quiet captions. |
+| Scene accent | `#A37A3D` | Spine edge-light and chassis domain cue. It does not flood the paper. |
+| Camera accent | `#347D89` | Camera station only. |
+| Selection | `#2F8CFF` | Selected object. Paper owns this, not the chassis. |
+| Selection edge | `#145DA8` | Dark edge of a selection. |
+| Snap / guide | `#146D68` | The accepted snap and guides. |
+| Refusal | `#9B3149` | Invalid proposal. Never hue alone: pair it with a reason. |
+| Armed token | `#C58B35` | Available for other surfaces. The tool tray does not have to spend it. |
+
+### A.4 Typography
+
+Two voices. The contract does not name font families: a warm humanist sans for ordinary UI, and a narrow mechanical mono for measurements, coordinates, ids, references, timestamps, and precision values.
+
+Closed ladder at scale 1. These are the only sizes, except the tool-tray exception:
+
+| Step | Size | Use |
+|---|---:|---|
+| `-2xs` | 9 px | Mono measures only (timeline ticks) |
+| `-xs` | 10 px | Meta, references, status, view-bar utilities |
+| `-sm` | 11 px | Spine labels, MODE pair |
+| `-md` | 12 px | Rows, labels, property labels, view tabs |
+| `-lg` | 13 px | Property values, navigator scope headers |
+| `-xl` | 15 px | Panel headings |
+| `-2xl` | 20 px | Project identity only, when it truly needs it |
+
+Tool tray only: group 7 px, tool 8 px, and 6 px for a group word that cannot fit (`TRANSFORM`). Do not use 6 px anywhere else.
+
+Control heights travel with type: `lg` 30 px, `md` 26 px, `sm` 24 px, `xs` 20 px. Two product-wide scales exist (`type` and `control`); design at scale 1. Do not mint a size inside a component to fit a new instrument.
