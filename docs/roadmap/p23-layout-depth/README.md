@@ -109,6 +109,15 @@ They are not P23.15 scope unless P23.15 touches the surface; they route to their
 P23.15 adds J1–J9: by owner decision (2026-09-22) the visual half of each is owner-carried to
 P23.16 rather than blocking PR #72's merge, and no interactive session was run at closeout — so all
 nine rows are owed, not claimed. P23.16's whole-product integration pass is their natural verifier.
+**P23.16 QA executed 2026-09-22**
+([record](./p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md)):
+all nine J-rows remain **owed** — they need nine purpose-built junction fixtures plus the published
+visitor half — with the same single owner action (a signed-in publish session). The carried P23.13
+Task 5 rows and the P23.14 accessibility rows are resolved or re-recorded there: opening-insert on
+click passes live; the undo-while-a-field-is-open row RE-CONFIRMS the P23.13 owner decision
+(display-only, commit honest) rather than a cancel; the reference capture is taken, the
+screen-reader and device rows stay owed. The legacy relic smoke is **waived by owner decision**
+(frozen relics, no active maintenance).
 Incremental Junction invalidation stays an accepted non-goal (Decision 13), not a carried row.
 
 Issue re-dispositions by owner ruling (2026-09-22), landed with the P23.16 gate: **#35** (canonical

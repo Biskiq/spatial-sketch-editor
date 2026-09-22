@@ -459,6 +459,7 @@ jump from P23.15 to P23.7.
 | #40 — Project Row popover coordination | delivered | P23.14; closed 2026-09-22 against the coordinated Head popovers and their suite. |
 | #41 — Document menu focus lifecycle | delivered | P23.14; closed 2026-09-22 against the Document-menu focus lifecycle and its suite. |
 | #44 — repository verification command docs | unrelated | Contributor documentation debt; useful independently, but not a P23 product exit criterion. |
+| #52 — low-edge-count Rooms (2-Wall cycles, single-Wall loops, circular Rooms) | defer post-P23 | Enhancement opened 2026-09-15 as a follow-up to P23.11's canonical curved Walls. No P23 exit criterion depends on it; the covered shapes are nonessential authoring convenience, not Build-loop correctness. Added to this table by the P23.16 gate (A8 surfaced it undisposed); owner unassigned. |
 
 GitHub currently has no issue or pull request numbered #42 or #43 in this
 repository; they therefore have no disposition.

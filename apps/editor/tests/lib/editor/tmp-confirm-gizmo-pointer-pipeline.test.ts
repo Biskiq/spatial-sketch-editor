@@ -12,7 +12,11 @@
  * change. Component contract coverage pins that mount rule; this lower-level
  * seed keeps the real Three pointer/session pipeline and refusal defenses.
  *
- * Delete or promote these cases into the permanent suites later.
+ * S11 RULING (P23.16 gate, 2026-09-22) — KEEP as a permanent regression guard.
+ * It is the only suite that drives the REAL TransformControls pointer/session
+ * pipeline end to end; the host/adapter suites cover the same seam with fakes.
+ * The `tmp-` filename is retained so the dated harvest inventory rows stay
+ * accurate; treat this file as permanent coverage, not as pending cleanup.
  */
 
 import { describe, expect, it } from 'vitest';
