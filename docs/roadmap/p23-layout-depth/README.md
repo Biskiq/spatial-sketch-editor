@@ -104,16 +104,18 @@ P23.14 leaves no new carried rows: its residuals are held in its QA closeout rec
 (Inspector numeric `:invalid`), the manual-owed accessibility rows, the Inspector
 role-migration residue, the §0.3 open owner calls, and the two unverified Task 5 rows above.
 They are not P23.15 scope unless P23.15 touches the surface; they route to their owners.
-P23.15 adds one row: its J1–J8 live 3D rows are manual-owed in its QA closeout record, and
-P23.16's whole-product integration pass is their natural verifier. Incremental Junction
-invalidation stays an accepted non-goal (Decision 13), not a carried row.
+P23.15 adds J1–J9: by owner decision (2026-09-22) the visual half of each is owner-carried to
+P23.16 rather than blocking PR #72's merge, and no interactive session was run at closeout — so all
+nine rows are owed, not claimed. P23.16's whole-product integration pass is their natural verifier.
+Incremental Junction invalidation stays an accepted non-goal (Decision 13), not a carried row.
 
 (On-demand — closeout mechanics; read at slice closeout, not at slice start.)
 All new slice closeouts leave closed artifacts as path-preserving stubs holding a
 `git show <A>:<path>` recovery line, with an archive copy only for **renderable evidence** —
-PNG/SVG/HTML atlases, screenshots, plates, measurements (mechanics: `slice-closeout`; this is
-OD-4's mechanism with its archive-copy scope amended 2026-09-22, narrowing it from "multi-file
-bundles and non-text evidence", which had swept prose directories in with the evidence). P23.14 is the first slice closed under the
+PNG/SVG/HTML atlases, screenshots, plates, measurements (mechanics: `slice-closeout`). This is
+OD-4's hybrid mechanism with its archive-copy scope narrowed by owner ruling 2026-09-22, from
+"multi-file bundles and non-text evidence" — a scope that had swept prose directories in with the
+evidence. The superseded wording is kept in the operating-cycle harvest §7.2. P23.14 is the first slice closed under the
 hybrid rule: 11 prose artifacts stubbed at their own paths, its renderable evidence
 (screenshots, atlas HTML, proposal plates) copied to
 `docs/archive/roadmap/p23/p23.14-shell-visual-system/`. P23.15 is the first slice whose
