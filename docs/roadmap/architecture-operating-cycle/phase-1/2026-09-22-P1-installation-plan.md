@@ -15,8 +15,8 @@ OWNER:    coordination workspace (meta/phase1). The owner ratifies the candidate
 STATE:    ../../operations/architecture-cycle.md   (sole live meta-state authority)
 METHOD:   ../../architecture-operating-cycle-plan.md §8–§13 (canonical lifecycle rules)
 EVIDENCE: ../architecture-operating-cycle/phase-0/review-a.md · review-b.md · structural-workflow.md ·
-          mechanical-control-pass.md — frozen, independent, read as they stand; this plan records
-          errata in §2.3 and never rewrites them
+          mechanical-control-pass.md — frozen, independent, read as they stand; §2.3 records only
+          evidence-reading notes about them, and never rewrites them
 RANGE:    f8411f7..b5f75e7 (the frozen P23 range) for retrospective claims; current `main` HEAD for
           present behaviour, contracts and paths
 ```
@@ -71,7 +71,8 @@ Two consequences worth stating before any ruling:
   from `docs/reference/*`. That is the "intended but undocumented" shape, not an accident, so the
   Phase 1 response is capture — not detection machinery.
 - **P23B is the first product phase to run under an installed cycle.** Its owner-close must be legal
-  while the cycle is still `PHASE_1 — ready for validation`. Today it is not (§6).
+  while the cycle is still `PHASE_1` — installed, and ready for validation once the window phase's
+  plan is reconciled. Today it is not closable (§6).
 
 ---
 
@@ -122,25 +123,20 @@ These are historical text conflicts, not architecture candidates; none is a Phas
 | Precedence caveat (load-bearing) | Until `f7a31e2` (09-19), rule 10 placed "source code + tests" first, so these conflicts resolved **against** the stale text by the rules then in force | Must be carried into `adjudication.md`, or the contradictions read as unauthorized drift |
 | Considered and **not** established | Visitor isolation vs the `layout-core` barrel (no chunk build performed); museum "frozen"/"read-only" vs source edits; the geometry boundary vs snap CSS-px parameters and dev-gated perf marks; test rule 16 vs production code (out of its stated scope) | Recorded, not resolved — no Phase 1 change either way |
 
-### 2.3 Corrected and disambiguated claims (errata — recorded here and in `adjudication.md`)
+### 2.3 Evidence-reading notes (about the frozen outputs)
 
-Corrections to claims *about* the frozen evidence. The frozen outputs are not edited.
+How to read the frozen evidence, so two reviewers' units are not mistaken for a conflict. The frozen
+outputs are not edited and nothing here is a finding.
 
-1. **Withdrawn (this plan's earlier claim).** An earlier draft of this erratum argued that
-   reviewer B's "41 planners, 1 with a non-editor caller" was refuted by whole-package museum
-   imports and an API type import. That argument is wrong and is withdrawn: reviewer B's denominator
-   is the 41 **named** `plan*` exports with a per-symbol caller probe, and specifier-level
-   whole-package imports do not refute a per-symbol finding. The claim stands as review evidence.
-2. **AC-9's reconciliation date.** `650f7c1` (#59, 09-18) is **inside** the frozen range
-   (`git merge-base --is-ancestor 650f7c1 b5f75e7`), not after it. The contradictions in §2.2 are
-   therefore in-range resolution evidence — the loop caught them within the window — and the phase
-   close, not this plan, is outside the range.
-3. **Reviewer A and Reviewer B agree on the planner count in magnitude** (41 exports) and this is
+1. **Reviewer A and Reviewer B agree on the planner count in magnitude** (41 exports) and this is
    independently reproduced at HEAD. Their module lists differ only because A counts modules and B
-   counts landing commits. Not a contradiction; recorded so a later reader does not treat it as one.
-4. **The mechanical-pass defects corrected by `722280f` are pre-Phase-1 history**, and
+   counts landing commits. Reviewer B additionally counts **named** callers per export
+   (one non-editor caller) — a per-symbol measure, not a whole-package import measure.
+2. **The mechanical-pass defects corrected by `722280f` are pre-Phase-1 history**, and
    `structural-workflow.md` §7.4 already labels them as out-of-range context. Nothing here depends on
    an uncorrected number from that pass.
+3. **`650f7c1` (#59, 09-18) is inside the frozen range** (`git merge-base --is-ancestor 650f7c1
+   b5f75e7`), which is why §2.2's contradictions are recorded as in-range resolution evidence.
 
 ---
 
@@ -170,20 +166,26 @@ contracted against. This plan therefore proposes a ruling and records the altern
 ### 3.2 Proposed ruling — R1 (recommended)
 
 ```text
-R1  On Wall commit, a draft endpoint that falls within the 1e-9 IDENTITY tolerance of an existing
-    Junction adopts that Junction's stored coordinate and its ID, and connectivity follows from the
-    committed record. Screen-space proximity on its own has no topological effect: a snap that is
-    not accepted, or a hover/acquire radius, connects nothing. The tolerance applies only among the
-    records participating in the committed operation; a pre-existing duplicate-node defect is left
-    untouched rather than silently merged. This is deliberately narrow: exact unsnapped input CAN
-    therefore connect when it coincides within tolerance, and that is stated plainly rather than
-    implied.
+R1  Resolution is global: at commit, a draft endpoint that falls within the 1e-9 IDENTITY tolerance
+    of any Junction in the baseline adopts that Junction's stored coordinate and its ID, and
+    connectivity follows from the committed record. That is a baseline-wide lookup.
+
+    Retirement is scoped: when noding meets coincident duplicate records, only those participating in
+    the committed relationship are retired in favour of the kept record. A baseline that already
+    carried two records for one node is a pre-existing identity defect and is left untouched, because
+    a draw must not rewrite walls the gesture never touched.
+
+    Snapping is separate: an unaccepted snap suggestion, a hover/acquire radius and screen-space
+    proximity have no effect by themselves. What connects is the COMMITTED coordinate falling within
+    the identity tolerance — so exact or near-exact unsnapped input can connect, and that is stated
+    plainly rather than implied.
 ```
 
 R1 is capture (a **B** ruling), not new behavior: it describes what the planners already do, and it
 puts the identity tolerance beside the North Star's proximity rule so the two are read together.
-Residual risk to record, not hide: the tolerance is world-space, so an unsnapped exact or near-exact
-point can join an existing node.
+Residual risk to record, not hide: resolution is world-space and baseline-wide, so an unsnapped
+near-exact point can join an existing node — the scoped paragraph limits what is *retired*, not what
+is *found*.
 
 ### 3.3 Alternative and rejected options
 
@@ -296,10 +298,13 @@ any other stage    → no legal transition      → STOP before any phase-status
 ```
 
 The ratified pipeline is `P23 (closed) → P23B → P26 → P24 → P25`, and the sequence is
-`ADJUDICATION → Phase 1 installed → PHASE_1 (ready for validation) → P23B implementation → P23B
-owner-close → P26 first slice → PHASE_2_VALIDATING → … → P26 close → PHASE_3_EVALUATE → verdicts →
-STEADY`. P23B is a real product phase and **not** the formal validation window (the expected window
-is P26). Two distinct defects follow:
+`ADJUDICATION → Phase 1 installed (PHASE_1, mechanisms listed, window selected) → the window phase's
+implementation plan reconciled → PHASE_1 ready for validation → P23B implementation → P23B owner-close
+→ P26 first slice → PHASE_2_VALIDATING → … → P26 close → PHASE_3_EVALUATE → verdicts → STEADY`. The
+reconciliation step may land before or during P23B work; it is a planning event, not a product close.
+
+P23B is a real product phase and **not** the formal validation window (the expected window is P26).
+Two distinct defects follow:
 
 ```text
 (i)  PHASE_1 + P23B owner-close  → "any other stage" → STOP. The owner cannot legally close P23B,
@@ -345,40 +350,61 @@ Why this is the right shape and not a loosening:
 Required supporting deltas (exact text in §9):
 
 ```text
-architecture-cycle.md  PHASE_1 row: the required action names the fields the installation writes
-                       (STATUS: ready for validation · ACTIVE MECHANISMS · VALIDATION WINDOW)
-                       Transitions block: the same-state rows above
+architecture-cycle.md  PHASE_1 row: the required action names BOTH writes, because they are separate
+                       events —
+                         (a) the installation writes ACTIVE MECHANISMS and VALIDATION WINDOW, with
+                             STATUS: mechanisms installed — window plan not yet reconciled;
+                         (b) reconciling the window phase's prepared implementation plan writes
+                             STATUS: ready for validation.
+                       The canonical rule (plan §10) makes reconciliation part of the state, so (a)
+                       must NOT report ready-for-validation and P26 must not be treated as open for
+                       validation before (b).
+                       Transitions block: the same-state rows above, plus
+                         PHASE_1 + window implementation plan reconciled → PHASE_1
+                                                              (STATUS: ready for validation)
                        VALIDATION WINDOW value convention:
                          empty                        … WAITING → ADJUDICATION
                          <phase> — selected, not open … PHASE_1
-                         <phase> — open (started <date>) … PHASE_2_VALIDATING
-                         <phase> — closed (<date>)    … after the window phase closes
-                       This replaces the blanket "no VALIDATION WINDOW is opened before it starts"
-                       sentence with the selected/open distinction. An **open** window with an empty
-                       mechanism list stays a defect.
+                         <phase> — open (started <date>) … from the window's first implementation slice
+                                                      through PHASE_2_VALIDATING, and it STAYS open if
+                                                      PHASE_3_EVALUATE was entered early
+                         <phase> — closed (<date>)    … once the window phase itself closes
+                       An **open** window with an empty mechanism list stays a defect.
                        PHASE_3_EVALUATE exit condition: verdicts recorded AND the window closed;
                        early entry leaves the window open until its phase closes.
 phase-closeout step 4  CYCLE TARGET enum gains `PHASE_1 (unchanged)`, `PHASE_2_VALIDATING (unchanged)`
                        and `PHASE_3_EVALUATE (unchanged; window closed)` beside
                        PHASE_0_DUE | PHASE_3_EVALUATE | STEADY
 phase-closeout step 8  a same-state case writes no stage; it performs the "ensure value" pass (stage,
-                       ACTIVE MECHANISMS intact) and, when the closing phase IS the window, flips
-                       VALIDATION WINDOW to `closed (<date>)` and stops
+                       ACTIVE MECHANISMS intact). On BOTH window-close paths — the existing
+                       PHASE_2_VALIDATING → PHASE_3_EVALUATE transition AND the same-state close from
+                       an early PHASE_3_EVALUATE — it also flips VALIDATION WINDOW to `closed (<date>)`,
+                       then stops. A non-window close in any installed stage changes no window value.
 canonical plan         one short strategic clause: a product phase may close during PHASE_1 /
-                       PHASE_2_VALIDATING / PHASE_3_EVALUATE without advancing the cycle; window
-                       closure and recorded verdicts, never phase count, decide STEADY
+                       PHASE_2_VALIDATING / PHASE_3_EVALUATE without advancing the cycle; and the
+                       phase's readiness has two steps — mechanisms installed, then the window
+                       phase's prepared implementation plan reconciled. Window closure and recorded
+                       verdicts, never phase count, decide STEADY
 ```
 
 **Not changed:** entry guard (owner-invoked only), owner-ratification requirement, steps 5–7, the
 META-line condition, and the rule that a close never transitions the cycle by itself. Phase-closeout's
 preflight is extended, never bypassed.
 
-**Ordering inside the cycle (corrects a defect in this plan's earlier draft).** The installation must
-not jump `PHASE_0_ACTIVE → PHASE_1`. The owner rulings are made in `ADJUDICATION`, which requires the
-`PHASE_0_ACTIVE → ADJUDICATION` transition first (stage, `OWNER ACTION: required`, the `current.md`
-META line). That transition is prerequisite **E1** in §11 and is not part of the installation batch.
-`ADJUDICATION → PHASE_1` (or `→ STEADY`) is then the owner's single overall transition, and the
-installation commit records it.
+**Ordering inside the cycle.** The installation must not jump `PHASE_0_ACTIVE → PHASE_1`. The owner
+rulings are made in `ADJUDICATION`, which requires the `PHASE_0_ACTIVE → ADJUDICATION` transition
+first (stage, `OWNER ACTION: required`, the `current.md` META line). That transition is prerequisite
+**E1** in §11 and is not part of the installation batch. `ADJUDICATION → PHASE_1` (or `→ STEADY`) is
+then the owner's single overall transition, and the installation commit records it.
+
+**Readiness has two steps, and installation is only the first.** Canonical §10 defines the
+ready-for-validation state as *mechanisms installed **and** the validation-window phase's prepared
+implementation plan reconciled once against them*. P26 currently has no design brief and no plan
+(`p26-spatial-depth/README.md`: `STAGE: synthesis`, `NEXT: design brief`). So the installation commit
+writes `STATUS: mechanisms installed — window plan not yet reconciled`, and `STATUS: ready for
+validation` is written later, when P26's implementation plan is reconciled against the installed
+mechanisms (the §7 P26 row owns that encounter). Treating the two as one event would report a
+validation window that no plan yet exists to validate.
 
 **Window selection stays the owner's.** This plan assumes **P26** as the selected window (the expected
 window) and marks that as gate D8, not a decision. If the owner selects P23B instead, the existing
@@ -395,17 +421,22 @@ the closing phase named:
 | `WAITING` | any | `PHASE_0_DUE` | `PHASE_0_DUE` |
 | `PHASE_1` | P23B (≠ window) | stage unchanged; window preserved | `PHASE_1 (unchanged)` |
 | `PHASE_1` | P26 (= selected window) | **STOP** | none written |
-| `PHASE_2_VALIDATING` | P26 (= selected window) | `PHASE_3_EVALUATE` | `PHASE_3_EVALUATE` |
+| `PHASE_2_VALIDATING` | P26 (= selected window) | `PHASE_3_EVALUATE`; window flips to `closed` | `PHASE_3_EVALUATE` |
 | `PHASE_2_VALIDATING` | a phase ≠ window | stage unchanged; window preserved | `PHASE_2_VALIDATING (unchanged)` |
 | `PHASE_3_EVALUATE` (entered early) | P26 (= selected window) | stage unchanged; window now `closed` | `PHASE_3_EVALUATE (unchanged; window closed)` |
 | `PHASE_3_EVALUATE` | a phase ≠ window (e.g. P24) | stage unchanged | `PHASE_3_EVALUATE (unchanged)` |
 | `PHASE_0_ACTIVE` · `ADJUDICATION` | any | **STOP** | none written |
 | `STEADY` | any | `STEADY` | `STEADY` |
 
+One stage-internal event is not a close and gets no preflight row: `PHASE_1` + the window phase's
+implementation plan reconciled → `PHASE_1` with `STATUS: ready for validation`. It is recorded by
+the agent doing the reconciliation (the §7 P26 row), and it does not touch the stage.
+
 Plus three consistency preconditions the preflight must assert before computing: `PHASE_1` with an
 empty `VALIDATION WINDOW` is a defect (STOP); an **open** window with `ACTIVE MECHANISMS: none` is a
-defect (already stated in the cycle file, retained); and `PHASE_3_EVALUATE → STEADY` requires **both**
-the window closed and verdicts recorded.
+defect (already stated in the cycle file, retained); and the `PHASE_3_EVALUATE → STEADY` transition
+requires **both** the window closed and verdicts recorded — qualified to that transition only, so the
+windowless `ADJUDICATION → STEADY` branch is unaffected.
 
 Verification is by reading three exact blocks for agreement — the preflight in the skill, the
 `Transitions` block and the `PHASE_1` row in `architecture-cycle.md`, and this table — with recorded
@@ -425,10 +456,10 @@ already owned and adding text would duplicate it.
 | Milestone | Where the agent already is | Edit |
 |---|---|---|
 | Owner adjudication | `architecture-cycle.md` `ADJUDICATION` row + the `current.md` META line | **No change** — the row already requires the two-lane classification, and the META pointer is the mechanical route |
-| Phase 1 PR accepted | `architecture-cycle.md` `PHASE_1` row (the installation transition writes it) | Row's required action names the fields written: `STATUS: ready for validation`, `ACTIVE MECHANISMS: <per-mechanism>`, `VALIDATION WINDOW: <phase> — selected, not open` |
+| Phase 1 PR accepted (installed) | `architecture-cycle.md` `PHASE_1` row (the installation transition writes it) | Row's required action names the fields written: `STATUS: mechanisms installed — window plan not yet reconciled`, `ACTIVE MECHANISMS: <per-mechanism>`, `VALIDATION WINDOW: <phase> — selected, not open`. It also names the second write, so "ready for validation" is not claimed here |
 | P23B implementation | P23B README §`PHASE 0 GATE` | One line: the installed contracts apply to P23B work; material early evidence is recorded in P23B artifacts, and P23B does not open formal validation |
 | P23B owner-close | `phase-closeout` preflight (§6.2) + P23B README close path | Same-state row; the P23B `PHASE CLOSE` block persists `CYCLE TARGET: PHASE_1 (unchanged)` — the durable record that the P26 trigger survived |
-| P26 planning reconciliation | P26 README §`STATUS`/`GATE` | One line: when P26's implementation plan is written or reconciled, account for the installed mechanisms; do not redesign P26 around them |
+| P26 planning reconciliation (writes the ready state) | P26 README §`STATUS`/`GATE` + `architecture-cycle.md` `PHASE_1` row | One line: when P26's implementation plan is written or reconciled, account for the installed mechanisms, do not redesign P26 around them, and record `STATUS: ready for validation` in the cycle file — that reconciliation, not the installation, is what makes the window ready |
 | First P26 implementation slice | P26 README `GATE` line + `architecture-cycle.md` `PHASE_1` exit condition | One line in P26 README: the first implementation slice starts `PHASE_2_VALIDATING` through the authorized procedure, recorded in the cycle file before implementation proceeds |
 | P26 development | `architecture-cycle.md` `PHASE_2_VALIDATING` row | **No change** — it already says "none — observe" and names calibration on material scope change |
 | P26 owner-close (window close) | `phase-closeout` preflight (window-qualified row) | Covered by §6.2; the window flips to `closed` |
@@ -452,13 +483,13 @@ limitation, expected cost and the eventual Phase 3 criterion. Verdicts are Phase
 
 | ID | Mechanism | Originating failure | Responsibility | Verification | Limitation | Cost | Phase 3 criterion |
 |---|---|---|---|---|---|---|---|
-| M1 | Layout semantic-mutation clause (`architecture.md`) | P23.1→P23.6c planners recurred across six slices with no durable statement (AC-1) | Fix the layering rule: canonical Layout semantic mutation is planned in layout-core with operation-specific results; interaction/preview/selection/history stay in the editor | Doc clause reviewed against 41 planners at HEAD; Phase 2 asks whether a new operation was authored outside the boundary unnoticed | States a boundary, not a protocol; implies no shared result shape and no enforcement | ~6 lines | KEEP if P23B/P26 authors follow it without discussion; SIMPLIFY to one sentence if the effort/exception prose is unused; DELETE if it is never cited and ownership alone conveys it |
+| M1 | Layout semantic-mutation clause (`architecture.md`) | P23.1→P23.6c planners recurred across six slices with no durable statement (AC-1) | Fix the layering rule only: canonical Layout semantic mutation is planned in layout-core, results and inputs stay operation-specific, and interaction/preview/selection/history stay in the editor | Doc clause reviewed against 41 planners at HEAD; Phase 2 asks whether a new operation was authored outside the boundary unnoticed | States a boundary, not a protocol; implies no shared result shape and no enforcement | ~6 lines | KEEP if P23B/P26 authors follow it without discussion; SIMPLIFY to one sentence if the effort/exception prose is unused; DELETE if it is never cited and ownership alone conveys it |
 | M2 | Vertical-authority clause (`persistence.md`) | P23.6H/I made Wall height the only authored vertical extent; nothing durable said so (AC-2) | Persist the rule: Wall owns extent, Floor is datum, ceilings are derived; one-floor scope | Compared against `layout-wall-heights.ts` and the types header at HEAD | Says nothing about storeys/slabs; explicitly scoped to the landed one-floor model | ~4 lines | KEEP if a P26 vertical slice reads it before designing; SIMPLIFY when P26 supersedes it with a multi-level contract; DELETE then, not before |
 | M3 | Persisted-curve clause (`persistence.md`) | P23.11 selected the persisted `line`/`cubic-chain` model; only the code and the slice plan said so (AC-3) | Persist the shape, the identity-bearing Wall direction (Opening offsets measure from start) and read-path authority | Compared against `layout-wall-first-types.ts:10-16,66-156` and the codec invariants at HEAD | Architectural wall centerlines only; transfers to no other curve consumer; does not constrain how the compiler renders | ~5 lines | KEEP if it prevents a re-fit/orientation regression in P23B/P26; DELETE if the code and API make it evident |
-| M4 | Junction identity-tolerance clause (`persistence.md`) — **ruling R1** | P23.1→P23.15 commit-time coincidence identity exists in code and slice plans but in no reference contract (AC-5) | State the narrow commit-time identity rule beside the North Star proximity rule, and say plainly that exact unsnapped input can connect | Clause checked against `layout-junction-identity.ts` and the five adoption sites; the §3.3 acceptance cases listed as the test surface | World-space tolerance; a near-exact unsnapped point can join an existing node — stated, not hidden | ~5 lines | KEEP if P26 vertical work does not re-litigate identity; SIMPLIFY/DELETE if R2 is later adopted and the rule is replaced by mandatory snap identity |
+| M4 | Junction identity-tolerance clause (`persistence.md`) — **ruling R1** | P23.1→P23.15 commit-time coincidence identity exists in code and slice plans but in no reference contract (AC-5) | State the commit-time identity rule beside the North Star proximity rule: global resolution, participant-scoped retirement, and snapping kept separate | Clause checked against `layout-junction-identity.ts`, the global resolution site and the scoped retirement site; the §3.3 acceptance cases listed as the test surface | Resolution is baseline-wide and world-space, so a near-exact unsnapped point can join an existing node — stated, not hidden | ~5 lines | KEEP if P26 vertical work does not re-litigate identity; SIMPLIFY/DELETE if R2 is later adopted and the rule is replaced by mandatory snap identity |
 | M5 | Bounded guard correction (§5) | D4/S1: a seam guard whose claim exceeded the seams it verified | Make a test's claim match what it verifies, and derive rather than count across all five current seams | Mutation proof (three mutations, named assertions) + unchanged pass + full-suite run | Still cannot discover seams that bypass the named surfaces; the title and comment say so | ~45 lines in one test file | KEEP if it fails on a real future seam; SIMPLIFY to the derived predicates alone if the prose is unused; DELETE if it certifies nothing over behavioral coverage |
 | M6 | Same-state close rule (§6.2) | Cycle-machinery defect found here: P23B could not close from `PHASE_1`, and the window could not close from an early Phase 3 | Let a product close (and the window's own close from Phase 3) record without advancing the cycle | The §6.3 truth table, checked line-by-line against the three documents | Adds same-state rows; the STOP cases stay deliberate | one table + ~10 lines | KEEP if P26's window opens and closes correctly after P23B closes; SIMPLIFY if window identity can be derived without the extra rows; DELETE never — a broken close path is worse than a redundant rule |
-| M7 | Durable reminders (§7) | Installed mechanisms would otherwise be forgotten between Phase 1 and Phase 3 | Put each remaining action where the milestone is already read | §12 A1–A3 (state/routing consistency checks) | Four one-line edits; each depends on its owning document staying authoritative | ~5 lines total | KEEP if a Phase 2/3 agent arrives without re-reading this plan; SIMPLIFY by removing lines never encountered |
+| M7 | Durable reminders (§7) | Installed mechanisms would otherwise be forgotten between Phase 1 and Phase 3 | Put each remaining action where the milestone is already read, including the ready-for-validation write | §12 A1–A3 and A10 (state/routing consistency checks) | Five one-line edits across three documents; each depends on its owning document staying authoritative | ~6 lines total | KEEP if a Phase 2/3 agent arrives without re-reading this plan; SIMPLIFY by removing lines never encountered |
 
 Ruled **not installed** (recorded so the absence is deliberate): the new-persisted-field sentence
 (AC-6 → C, no clause), the Scene dual-shape clause (AC-10 → C/D, no clause), the facade clause
@@ -500,11 +531,14 @@ Clause text to be installed (draft — the owner's wording wins at gate D3):
 ```text
 C3 architecture.md §Ownership / §Geometry boundary (M1):
   "Canonical Layout semantic mutation is planned in @portfolio/layout-core: each operation has its own
-   pure planning function that takes the canonical layout plus semantic intent and returns either a
-   planned replacement document (with changed-object lineage) or a named rejection. The editor owns
+   pure planning function that accepts the state the decision needs (the canonical layout document or
+   its compiled geometry) and returns either a planned result or a named rejection. The editor owns
    interaction, transient preview, selection and the single history transaction. This is a layering
-   boundary, not a protocol: results stay operation-specific, and no shared result type, base class or
-   command framework is required or implied. Scene edits are not covered by this clause."
+   boundary, not a protocol: inputs and results stay operation-specific — a topology-changing operation
+   plans a replacement document with changed-object lineage, an alignment or measurement operation
+   plans a value for the editor to apply, and neither shape is imposed on the other — and no shared
+   result type, base class or command framework is required or implied. Scene edits are not covered by
+   this clause."
 
 C4 persistence.md §Layout (M2):
   "Vertical authority: LayoutWall.height is the only authored vertical extent, measured upward from the
@@ -522,13 +556,15 @@ C4 persistence.md §Layout (M3):
    reconstructing canonical geometry — the canonical compiler may sample a curve in order to render it."
 
 C4 persistence.md §Layout (M4 — ruling R1):
-  "Junction identity at commit: a draft endpoint that falls within the 1e-9 identity tolerance of an
-   existing Junction adopts that Junction's stored coordinate and its ID, and connectivity follows
-   from the committed record. This is an identity tolerance only — screen-space proximity, a snap that
-   is not accepted, and hover/acquisition radii connect nothing by themselves. The tolerance applies
-   among the records participating in the committed operation; a pre-existing duplicate-node defect is
-   left untouched rather than silently merged. Exact or near-exact unsnapped input can therefore
-   connect within tolerance, deliberately."
+  "Junction identity at commit. Resolution is global: a draft endpoint falling within the 1e-9
+   identity tolerance of any Junction in the baseline adopts that Junction's stored coordinate and ID,
+   and connectivity follows from the committed record. Retirement is scoped: when noding meets
+   coincident duplicate records, only those participating in the committed relationship are retired in
+   favour of the kept record, and a baseline already carrying two records for one node is a
+   pre-existing identity defect that a gesture must not silently rewrite. This is an identity tolerance
+   only — an unaccepted snap suggestion, a hover/acquisition radius and screen-space proximity have no
+   effect by themselves — but the committed coordinate is what connects, so exact or near-exact
+   unsnapped input can join an existing Junction, deliberately."
 ```
 
 ---
@@ -537,14 +573,14 @@ C4 persistence.md §Layout (M4 — ruling R1):
 
 | ID | Decision | Blocks | Recommendation |
 |---|---|---|---|
-| D1 | Scope: one bounded installation PR, **after** the `PHASE_0_ACTIVE → ADJUDICATION` transition (§6.2 ordering, prerequisite E1) and the corrected candidate table | all implementation | Approve as scoped; no direct jump to `PHASE_1` |
+| D1 | Scope and timing: one bounded installation PR, **after** the `PHASE_0_ACTIVE → ADJUDICATION` transition (§6.2 ordering, prerequisite E1) and the corrected candidate table; installation leaves `PHASE_1` installed, and "ready for validation" is a separate later write | all implementation | Approve as scoped; no direct jump to `PHASE_1`; no ready claim at installation |
 | D2 | Classifications for all ten topics: AC-1/AC-2/AC-3 **B** · AC-4 **C/D** · AC-5 **B** (with the R1 ruling) · AC-6 **C** · AC-7 **D** · AC-8 **C/D** · AC-9 **D** · AC-10 **C/D**; X1–X3 kept as resolved historical contradictions outside A/B/C/D | C1, C3, C4 | As listed |
-| D3 | Clause wording for M1/M2/M3 | C3, C4 | As drafted (operation-specific planner results; one-floor vertical limit; direction + sampling allowed) |
+| D3 | Clause wording for M1–M4 | C3, C4 | As drafted — M1 describes the layering boundary only and prescribes no input or result shape (alignment returns a value, topology planners return a document); M2 keeps the one-floor limit; M3 adds the identity-bearing direction and permits compiler sampling; M4 separates global resolution from scoped retirement |
 | D4 | AC-6: **no clause** — the North Star already owns the default and the exception requirement | C4 | No clause |
 | D5 | AC-7/AC-8/AC-9/AC-10: no clauses and no A ratification; the relic mirror and diagnostic naming stay **D** | C3, C4 | No clauses |
-| D6 | Junction coincidence: **R1** (narrow commit-time identity tolerance, ratified as a clause) or **R2** (accepted snap identity mandatory → a recorded product work item, no clause) | C4, possibly a new work item | **R1** |
+| D6 | Junction coincidence: **R1** (commit-time identity tolerance ratified as a clause — global resolution, scoped retirement, snapping separate, unsnapped coincidence can connect) or **R2** (accepted snap identity mandatory → a recorded product work item, no clause) | C4, possibly a new work item | **R1** |
 | D7 | Workflow lane: approve "no custom tool, corrections already applied" plus the §5 guard correction covering all five menu seams; confirm no `ARCH_FILES` change | C5 | Approve §5; keep lane membership |
-| D8 | Lifecycle/window: select **P26** as the formal window; allow P23B's close to leave `PHASE_1` and its window unchanged; add the early-Phase-3 window-close path; require window closure **and** verdicts before `STEADY` | C6, C7, C8, C9, C10 | Approve as specified |
+| D8 | Lifecycle/window: select **P26** as the formal window; allow P23B's close to leave `PHASE_1` and its window unchanged; split installed from ready-for-validation and let the window-plan reconciliation write the ready status; add the early-Phase-3 window-close path and mark the window closed on both close paths; require window closure **and** verdicts for `PHASE_3_EVALUATE → STEADY` only | C6, C7, C8, C9, C10 | Approve as specified |
 | D9 | Optional: a machine doc-consistency test for the transition table | C5 scope only | Decline for now; the deterministic checks in §12 A1 suffice until Phase 0 justifies a guard |
 | D10 | Confirm the direct-to-STEADY branch stays legal: if adjudication justifies no mechanism, this plan is not executed | this PR's implementation | Confirm |
 
@@ -570,7 +606,7 @@ S0  dependency      merge main (with #77/#78/#79) into meta/phase1. No file chan
                     GATE: adjudication links cannot resolve before this.
 S1  adjudication    C1 — write adjudication.md: the ten topics with their classifications, per-topic
                     evidence links to the frozen outputs, counterevidence kept beside each, the
-                    §2.2 contradictions set with the precedence caveat, the §2.3 errata, the ratified
+                    §2.2 contradictions set with the precedence caveat, the §2.3 reading notes, the
                     rulings, and the register's origin column.
                     GATE D2, D4, D5, D6, D7.
 S2  contracts       C3, C4 — the minimal reference deltas only (M1–M4 as ruled). No clause without a
@@ -580,8 +616,11 @@ S3  guard           C5 — the bounded test correction + mutation proof recorded
 S4  lifecycle       C6, C8 — preflight rows (including the Phase-3 window close), CYCLE TARGET enum,
                     step-8 wording, one canonical-plan clause. GATE D8.
 S5  installation    C7, C9, C10, C11 — one atomic commit: cycle file → PHASE_1 with ACTIVE MECHANISMS,
-                    VALIDATION WINDOW (selected, not open), OWNER ACTION: not required; META line
-                    removed if present; P23B/P26 gate lines and the baton's cycle sentence reconciled.
+                    VALIDATION WINDOW (selected, not open), STATUS: mechanisms installed — window plan
+                    not yet reconciled, OWNER ACTION: not required; META line removed if present; P23B
+                    gate line, P26 gate lines and the baton's cycle sentence reconciled. This commit
+                    does NOT report ready-for-validation (canonical §10): that is a later write made
+                    by whoever reconciles P26's implementation plan against the mechanisms.
                     GATE D1, D8. This is the only commit that changes live state.
 S6  routing        C8 §13 route line for the phase-1 plan (may fold into S4) — discovery for the
                     installed plan without touching the cycle file's three-seam ROUTES rule.
@@ -597,15 +636,19 @@ never leaves the cycle pointing at a mechanism that was not installed.
 
 ```text
 A1  Transitions agree. The skill preflight, architecture-cycle.md Transitions/PHASE_1 row and the §6.3
-    truth table enumerate the same set, including all four same-state rows, the Phase-3 window close,
-    and the STOP cases. Check: read the three exact blocks; record the expected strings in the PR.
+    truth table enumerate the same set: the same-state rows (non-window close in each installed stage,
+    the window close from an early Phase 3, STEADY), the PHASE_2_VALIDATING window close, the
+    PHASE_1 stage-internal reconciliation write, and the STOP cases. Check: read the three exact blocks;
+    record the expected strings in the PR.
 A2  State consistency. After S5 no document says PHASE_0_ACTIVE or ADJUDICATION as the current stage;
     architecture-cycle.md, current.md, P23B README, P26 README and roadmap/README.md agree on stage,
-    mechanism list and window value; PHASE_1 shows the window as selected-not-open; no document claims
-    Phase 2 has started.
+    mechanism list and window value; PHASE_1 shows the window as selected-not-open and its STATUS as
+    installed-not-yet-reconciled; no document claims ready-for-validation or that Phase 2 has started.
 A3  Field semantics. "selected", "open" and "closed" are distinct in the cycle file; an open window
-    with no mechanisms remains a defect; PHASE_1 with no selected window is a STOP condition; STEADY
-    requires window closed AND verdicts recorded.
+    with no mechanisms remains a defect; PHASE_1 with no selected window is a STOP condition; the
+    closed-window requirement applies to the PHASE_3_EVALUATE → STEADY transition only, so
+    ADJUDICATION → STEADY (no window ever opened) is unaffected; and both window-close paths — the
+    PHASE_2_VALIDATING transition and the same-state close from an early PHASE_3 — flip the value.
 A4  Guard correction. The retitled test passes unmutated and its title names the five surfaces;
     mutation (a) (remove `onReset?.()` from resetScene) and mutation (b) (remove it from
     importLayoutJson's `requestLayoutImportReplacement` seam) each fail a named assertion; mutation (c)
@@ -622,6 +665,9 @@ A8  Verification run: `npm test` (complete suite) · `npm run check` · `npm run
     path-gated). The test change alone is not sufficient evidence for a PR.
 A9  Subtract. The PR leaves no superseded sentence behind: every sentence replaced in C3–C11 is
     rewritten in place rather than appended to.
+A10 Readiness. The installed state and the ready-for-validation state are distinct everywhere: S5's
+    commit does not claim the latter, and the reconciliation write (P26 plan reconciled against the
+    mechanisms) is the only thing that produces it.
 ```
 
 Because the deliverable is a process change, A1–A3 are deterministic documentation/state-transition
@@ -646,10 +692,13 @@ stop inside S4    the skill/plan text may change before the cycle does. Safe by 
                   preflight is read only at a close and its new rows are additive. Recovery: re-run the
                   edit or revert C6/C8; no state field references the preflight text.
 stop inside S5    the only risky point. S5 is one commit for that reason: either the cycle is PHASE_1
-                  with mechanisms, a selected window and reconciled dependents, or nothing changed.
+                  installed (mechanisms, selected window, reconciled dependents) or nothing changed.
                   If the commit is undone, the cycle returns to the previously persisted stage
                   (ADJUDICATION); re-apply S5 once, never partially. The installation is "ensure
                   value", so a second run writes the same values.
+stop at ready     S5 done but P26 has no reconciled plan: the cycle legitimately stays PHASE_1 with
+                  STATUS: mechanisms installed. Nothing is broken and nothing is owed to Phase 2 —
+                  the stage simply has not reached its ready state.
 reverting S5 only  leaves contracts/guard (S2/S3) landed while the cycle returns to ADJUDICATION:
                   acceptable, because M1–M5 are reference/test changes and reference contracts are
                   authoritative only for what actually landed. Record the split in adjudication.md.
@@ -674,8 +723,8 @@ NOT  the R2 junction behavior change (it would be a recorded work item, not a Ph
 NOT  promotion of the identity ledger/cursor, the compatibility facades, the relic mirror, the
      slice-numbered diagnostic names, or the Scene runtime discriminator
 NOT  a multi-level vertical model, storey/slab generalization, or a NURBS/CAD curve model
-NOT  rewriting, re-scoring or summarising the frozen Phase-0 outputs; errata live in §2.3 and
-     adjudication.md
+NOT  rewriting, re-scoring or summarising the frozen Phase-0 outputs; the notes in §2.3 and
+     adjudication.md annotate how to read them
 NOT  executing the direct-to-STEADY branch, or pre-empting the owner's adjudication by installing
      mechanisms "in anticipation"
 NOT  any change to AGENTS.md startup, ordinary slice boot context, or unrelated product tasks
@@ -683,15 +732,20 @@ NOT  any change to AGENTS.md startup, ordinary slice boot context, or unrelated 
 
 ---
 
-## 15. Completion semantics — four different checkpoints
+## 15. Completion semantics — five different checkpoints
 
 ```text
-PHASE 1 COMPLETE     approved mechanisms installed · contracts updated and verified · live state
-                     consistent · selected validation-window implementation plan reconciled · the
-                     cycle remains PHASE_1 "ready for validation" with ACTIVE MECHANISMS listed and
-                     VALIDATION WINDOW selected-but-not-open.
-                     Phase 1 complete does NOT mean Phase 2 started, and NOT that P23B is unblocked
-                     by anything other than its own gate.
+PHASE 1 INSTALLED    approved mechanisms installed · contracts updated and verified · live state
+                     consistent · the cycle is PHASE_1 with ACTIVE MECHANISMS listed, VALIDATION
+                     WINDOW selected-but-not-open, and STATUS: mechanisms installed — window plan not
+                     yet reconciled. This is what the installation commit produces.
+                     Phase 1 installed does NOT mean Phase 2 started, NOT that the window is ready,
+                     and NOT that P23B is unblocked by anything other than its own gate.
+
+PHASE 1 COMPLETE     the selected window phase's prepared implementation plan has been reconciled
+                     once against the installed mechanisms, and the cycle records STATUS: ready for
+                     validation — mechanisms installed, window selected, still not open, stage still
+                     PHASE_1. Only here does the canonical ready-for-validation state exist.
 
 PHASE 2 STARTED      the first implementation slice of the explicitly selected window (P26) actually
                      begins, and the transition to PHASE_2_VALIDATING is recorded through the
@@ -707,9 +761,10 @@ PROJECT COMPLETE     Phase 3 verdicts (KEEP / SIMPLIFY / DELETE per mechanism), 
                      recorded. Only then is the architecture-cycle design project over.
 ```
 
-**Merging this PR does not complete the lifecycle.** It installs the response to Phase 0 and leaves the
-cycle ready for validation; the completion records are the P23B close (`CYCLE TARGET: PHASE_1`), the
-P26 window's first slice, the P26 close, the Phase 3 verdicts and the STEADY transition.
+**Merging this PR does not complete the lifecycle, and it does not even reach "ready for
+validation".** It installs the response to Phase 0; readiness waits on P26's plan reconciliation, and
+the later completion records are the P23B close (`CYCLE TARGET: PHASE_1`), the P26 window's first
+slice, the P26 close, the Phase 3 verdicts and the STEADY transition.
 
 ### 15.1 Recorded future opportunity (non-blocking, not authorized here)
 
@@ -724,14 +779,15 @@ rule 6).
 ## 16. Residual roadmap after this PR
 
 ```text
-immediately after merge   cycle = PHASE_1 ready for validation; mechanisms listed; window selected
+immediately after merge   cycle = PHASE_1 installed — mechanisms listed, window selected, status
+                          "window plan not yet reconciled" (NOT yet ready for validation)
 next product work         P23B planning continues (SEQUENCE step 4 onward); the installed contracts
                           apply to P23B work; early material evidence recorded in P23B artifacts
 parallel                  P26 design brief, then implementation-plan reconciliation against the
-                          installed mechanisms
-window opens              first P26 implementation slice → PHASE_2_VALIDATING
+                          installed mechanisms → PHASE_1 STATUS: ready for validation
+window opens              first P26 implementation slice → PHASE_2_VALIDATING, window open
 window closes             P26 owner-close (from PHASE_2 or from an early PHASE_3) → window recorded
-                          closed → PHASE_3_EVALUATE once the stage is not already there
+                          closed on either path → PHASE_3_EVALUATE once the stage is not already there
 finish                    Phase 3 verdicts → subtraction → STEADY
 carried forward           · the R2 alternative, if the owner prefers mandatory snap identity: recorded
                             as a product work item with its acceptance cases (§3.3)
@@ -753,7 +809,7 @@ discovery                 live stage and fields      → architecture-cycle.md
 
 | Topic | Reviewer(s) | Classification | Disposition | Change | Gate |
 |---|---|---|---|---|---|
-| AC-1 Layout planner boundary | A §2 · B C1 | B | Contract clause (operation-specific results) | C3 | D2, D3 |
+| AC-1 Layout planner boundary | A §2 · B C1 | B | Contract clause: layering only, operation-specific inputs and results | C3 | D2, D3 |
 | AC-2 Wall vertical authority | A §3 | B | Contract clause, one-floor limit | C4 | D2, D3 |
 | AC-3 persisted curve model + Wall direction | A §4 | B | Contract clause (direction; sampling allowed) | C4 | D2, D3 |
 | AC-4 identity ledger / single cursor | A §5 | C / D | No change; not promoted | — | D2, D5 |
@@ -768,7 +824,7 @@ discovery                 live stage and fields      → architecture-cycle.md
 | WF-2 blind/self-certifying checks | C §6 | — | Existing correction, already applied | — | D7 |
 | WF-3 Navigator seam guard | C §4.1 (S1) | — | Bounded correction, all five seams | C5 | D7 |
 | WF-4 navigation reach | C C1/C4 | — | No gap | — | D7 |
-| Cycle close defects (i) and (ii) | found here (§6) | — | Same-state close rule + window values + ordering E1 | C6, C7, C8 | D1, D8 |
+| Cycle close defects (i) and (ii) | found here (§6) | — | Same-state close rule + window values + ordering E1; installed/ready split; window closed on both close paths | C6, C7, C8, C9, C10 | D1, D8 |
 
 No topic is dropped silently; every "no change" row carries its reason in §2, §3, §4 or §8.
 
