@@ -16,4 +16,5 @@ up by the plan; the landed contract, not this brief, is the authority.
 
 Single prose artifact, so no archive copy — the anchor above is the exact recovery. Durable tag:
 **`closed/p23.15`** (annotated → `1f1d265`, covering this anchor; created and pushed to `origin`
-2026-09-22).
+2026-09-22). PR #72 landed by rebase (owner decision), so `main` does not carry this SHA — recover
+through the tag.

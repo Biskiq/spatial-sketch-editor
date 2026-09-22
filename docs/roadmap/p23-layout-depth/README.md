@@ -15,9 +15,10 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: P23.15 closed (accepted 2026-09-21); only the P23.16 final closeout gate remains
-CURRENT: P23.16 — Final whole-product integration and P23 closeout gate (owner close pending)
-NEXT: owner-invoked P23.16 closeout gate; satisfying its exit criteria makes P23 CLOSABLE, not closed
+STAGE: P23.15 closed (accepted 2026-09-21); P23.16 verification plan written — owner review pending
+CURRENT: P23.16 — Final whole-product integration and P23 closeout gate (plan awaiting review; no QA run)
+NEXT: owner reviews the P23.16 verification plan, then QA executes; satisfying its exit criteria makes
+      P23 CLOSABLE, not closed
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
 ```
 
@@ -36,7 +37,10 @@ FINAL PHASE GATE: P23.16 — Final whole-product integration and P23 closeout ga
 
 ```text
 ROUTE (active child P23.16 — direct; no intermediate slice router):
-gate artifact → 2026-09-08-P23.16-final-whole-product-integration-closeout.md
+verification plan (awaiting owner review) →
+  p23.16-whole-product-integration-closeout/2026-09-22-P23.16-verification-plan.md
+gate artifact (exit criteria, authoritative scope) →
+  2026-09-08-P23.16-final-whole-product-integration-closeout.md
 remaining scope → 2026-09-14-P23-remaining-roadmap-reconciliation.md §P23.16
 dependencies → every P23 slice through P23.15 (P23.15 accepted 2026-09-21, PR #72)
 shell grammar (any UI P23.16 touches enters through it) →
@@ -80,8 +84,9 @@ detail in this file is on-demand.
 P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13,
 **P23.14** (shell visual system; accepted 2026-09-21 — implementation PR #61, closeout PR #71),
 **P23.15** (junction-correct wall-first 3D; accepted 2026-09-21 — PR #72 carries plan,
-implementation and closeout on one branch; its three closeout anchors are insured by the tag
-`closed/p23.15`),
+implementation and closeout on one branch and landed by **rebase** under an owner decision
+(2026-09-22), so the pushed tag `closed/p23.15` is the recovery form for its three closeout
+anchors rather than an `main`-ancestry fallback),
 plus the concurrent Junction-dissolve / Wall join child slice (PR #57, no tracker
 P-number; its Inspector/Navigator-row/Plan-menu entry points landed in P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only
