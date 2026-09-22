@@ -15,7 +15,7 @@ wall-first Junction/Wall/Opening ownership with persistent semantic Rooms.
 
 ```text
 STATUS: in-progress
-STAGE: P23.15 closed (accepted 2026-09-21; PR #72 merge pending); only the P23.16 final closeout gate remains
+STAGE: P23.15 closed (accepted 2026-09-21); only the P23.16 final closeout gate remains
 CURRENT: P23.16 — Final whole-product integration and P23 closeout gate (owner close pending)
 NEXT: owner-invoked P23.16 closeout gate; satisfying its exit criteria makes P23 CLOSABLE, not closed
 GATE: P23.16 closeout gate below; P24 implementation waits for accepted P23 minimum + approval
@@ -77,14 +77,11 @@ detail in this file is on-demand.
 
 ## Completed slices
 
-All of these landed on `main`, except where an entry says otherwise.
-
 P23.0, P23.8, P23.1–P23.6e, P23.9 (+regression), P23.10, P23.11, P23.12, P23.13,
 **P23.14** (shell visual system; accepted 2026-09-21 — implementation PR #61, closeout PR #71),
 **P23.15** (junction-correct wall-first 3D; accepted 2026-09-21 — PR #72 carries plan,
-implementation and closeout on one branch, plus the closeout correction pass; **PR #72 is still
-open, so this slice is not yet on `main`** — it must land with a merge commit, or its three closeout
-anchors stop being reachable from `main` — the tagged ref `closed/p23.15` insures them either way),
+implementation and closeout on one branch; its three closeout anchors are insured by the tag
+`closed/p23.15`),
 plus the concurrent Junction-dissolve / Wall join child slice (PR #57, no tracker
 P-number; its Inspector/Navigator-row/Plan-menu entry points landed in P23.14).
 Flat `P23.x` plan docs in this folder are legacy/grandfathered only
@@ -120,8 +117,8 @@ hybrid rule: 11 prose artifacts stubbed at their own paths, its renderable evide
 (screenshots, atlas HTML, proposal plates) copied to
 `docs/archive/roadmap/p23/p23.14-shell-visual-system/`. P23.15 is the first slice whose
 plan, implementation and closeout share one branch (P1): its three prose artifacts are stubs with
-`git show <A>:<path>` anchors (no archive copy), and PR #72 must land with a **merge commit** so
-those anchors stay reachable on `main`.
+`git show <A>:<path>` anchors (no archive copy), tagged `closed/p23.15` so they stay reachable
+even if the branch is rewritten.
 
 First use of the durable-anchor tag convention (`slice-closeout`): **`closed/p23.15`** — an annotated
 tag over the QA-record anchor `1f1d265` (all three P23.15 anchors are its ancestors), created and

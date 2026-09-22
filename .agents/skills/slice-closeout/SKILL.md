@@ -5,74 +5,92 @@ description: Close a shipped roadmap slice/child deterministically. Use when a r
 
 # Slice Closeout
 
-Deterministic slice lifecycle: plan → implementation → QA → reference update → handoff → closed work
-→ preservation report. Closing a declared final phase gate makes the phase *closable*; it never
-closes the phase.
+Close one accepted slice. Compact closed work; never delete it. Keep the live surface small and the
+path from landed behaviour back to its owning slice cheap.
 
-Closed work is *compacted, never deleted*: keep the live knowledge surface small and deterministic,
-and the path from landed behaviour back to its owning slice cheap.
+Closing the declared final gate makes the phase CLOSABLE, never CLOSED.
 
-## Guard — is this the phase's declared final gate?
-
-Read the phase README (`docs/roadmap/<phase>/README.md`) **before step 1** and compare this child
-against its declared final gate:
+## Workflow — P1 (default)
 
 ```text
-no FINAL PHASE GATE line, or it names another child
-  → ordinary child close: run steps 1–11.
-
-FINAL PHASE GATE names this child
-  → run steps 1–6, set the pending-owner baton (step 7 override), finish the slice's own hygiene
-    (steps 8–11, with the step-8 gate-artifact exception), then STOP. The child is fully closed;
-    the phase becomes CLOSABLE, not CLOSED. See "Final-gate hand-off".
+implement → PR review → fix/re-review until implementation accepted → run this skill on the same
+branch → closeout self-check → merge commit → post-merge anchor verification
 ```
 
-The declared line is the only signal — never child numbering, "this looks like the last child", or the
-gate artifact's title — so a normal child close cannot close its parent, and **no child close ever
-touches P-level status or the Architecture Cycle**.
+Implementation acceptance authorizes routine closeout. NEVER require a second review of the closeout
+diff: this skill owns the mechanical documentation and preservation verification.
+
+```text
+implementation accepted   code, architecture and required acceptance evidence passed review
+merge-ready               closeout complete and its self-check passed
+```
+
+## Guard — declared final gate?
+
+Read `docs/roadmap/<phase>/README.md` before step 1. Compare this child with the FINAL PHASE GATE line:
+
+```text
+no line, or it names another child → ordinary close: run steps 1–11
+it names this child               → run steps 1–6, set the pending-owner baton (step 7 override),
+                                    finish steps 8–11 (step-8 gate-artifact exception), STOP
+```
+
+Finality comes only from that line — never child numbering or the gate artifact's title. On STOP:
+
+```text
+no P-level status change · no PHASE CLOSE block · no architecture-cycle transition · no cycle META ·
+no automatic phase-closeout
+```
 
 ## Procedure
 
-1. Verify acceptance: run the rows the plan requires plus `npm test`, `npm run check`,
-   `npm run build`, and record the gate numbers. Reuse unchanged evidence rather than re-running an
-   expensive gate. **Missing acceptance evidence stops the closeout** — report it, never close on
-   assumption.
-2. Retire any active checkpoint: promote its durable findings first (deferred bug →
-   `operations/tech-debt/`; completed research → owning artifact; landed behaviour → `reference/*`;
-   verification → closeout; status → phase README), then delete the checkpoint and any `current.md`
-   RESUME pointer. Never archive a raw checkpoint.
-3. Update `docs/reference/...` only where the slice established or changed durable knowledge a
-   future agent would otherwise rediscover, and reconcile the stale claims it invalidates. Only
-   landed behaviour moves: **roadmap proposals and rejected or speculative research never become
-   reference truth.** Promote a closing artifact's durable conclusion to its real owner before the
-   artifact closes, but never promote review chronology — Git/PR history owns deliberation. (Durable
-   plan-writing is owned by `docs/README.md`, "Plan hygiene".)
-4. Write or update the closeout evidence: acceptance record, rulings, residuals.
-5. Mark the slice shipped in its phase README — which owns child status/order and routes each
-   child's exact plan/QA artifact. Do not create a slice README or index for status.
-6. Update `docs/roadmap/README.md` only if P-level execution, planning or order changed; a slice
-   close never changes the phase's own P-level status.
-7. Update `docs/operations/current.md` to the next work item (baton, not history). **Final-gate
-   override:** there the next work item is the phase-close decision — set that baton, then finish
-   steps 8–11 and STOP.
-8. Closed work: apply "Closed work (hybrid rule)" to every artifact this close touches, and write
-   the Closeout Preservation Report. **Final-gate exception:** leave the declared gate artifact live
-   while it serves as phase-close evidence (`phase-closeout` step 2 re-reads it), compacting the
-   child's other work now — and if `FINAL PHASE GATE` is later reassigned, the change that reassigns
-   it must also process the former gate artifact as ordinary closed work.
-9. Prune transient/stale artifacts (empty states, superseded husks, `__qa-*` plates).
-10. Repair links for every path this close moved **in the live tree** — Markdown, HTML/image and
-    prototype relative paths, case-sensitively. Never rewrite links inside an archived copy: the
-    live stub is the link target.
-11. Verify no live router (`docs/README.md`, `docs/roadmap/README.md`, phase READMEs,
-    `docs/operations/current.md`) treats closed material as authority, and that this close created
-    no **new** live → archived-prose link. There is no checked-in docs/link checker: run the manual
-    search over every moved or stubbed path, evidence assets included. **Report an invalid
-    preservation link or missing evidence — never accept it silently.**
+1. Verify acceptance: run the rows the plan requires plus `npm test`, `npm run check`, `npm run build`; record gate numbers. Reuse unchanged evidence; re-run only when a change invalidates it. Missing acceptance evidence → STOP, report it.
+2. Retire any active checkpoint: promote durable findings first (deferred bug → `operations/tech-debt/`; research → owning artifact; landed behaviour → `reference/*`; verification → closeout; status → phase README), then delete the checkpoint and any `current.md` RESUME pointer. NEVER archive a raw checkpoint.
+3. Update `docs/reference/...` only where the slice changed durable knowledge a future agent would rediscover; reconcile the stale claims it invalidates. Only landed behaviour moves: roadmap proposals and rejected or speculative research NEVER become reference truth. Promote a closing artifact's durable conclusion to its owner; never promote review chronology. Plan hygiene → `docs/README.md`.
+4. Write or update closeout evidence: acceptance record, rulings, residuals.
+5. Mark the slice shipped in the phase README, which owns child status/order and routes the child's plan/QA artifact. Do not create a slice README or status index.
+6. Update `docs/roadmap/README.md` only if P-level execution, planning or order changed. A slice close never changes the phase's P-level status.
+7. Update `docs/operations/current.md` to the next work item. Final-gate override: the next item is the phase-close decision. Then finish steps 8–11 and STOP.
+8. Compact closed work ("Closed work") and write the preservation report. Final-gate exception: keep the gate artifact live while it is phase-close evidence; compact the child's other work. If FINAL PHASE GATE is later reassigned, process the former gate artifact as ordinary closed work.
+9. Prune transient artifacts (empty states, superseded husks, `__qa-*` plates).
+10. Repair links for every path this close moved in the live tree — Markdown, HTML/image and prototype paths, case-sensitively. NEVER rewrite links inside an archive copy; the live stub is the target.
+11. Confirm no live router (`docs/README.md`, `docs/roadmap/README.md`, phase READMEs, `docs/operations/current.md`) treats closed material as authority, and that this close added no new live → archived-prose link. No docs/link checker exists: search every moved or stubbed path by hand, evidence included. Invalid preservation link or missing evidence → report it, NEVER accept it silently.
+
+## Self-check — required before reporting merge-ready
+
+```text
+acceptance    every claim matches recorded evidence; manual-owed rows stay explicit and are carried
+              only by owner ruling
+promotion     durable conclusions sit with their correct reference owners
+preservation  stubs, Git anchors, tags and archive/evidence links all valid
+routing       routers, child status and next-work baton agree
+stable        documentation is merge-stable: no pending-merge statement, no pinned branch-head SHA
+              that this PR's own merge invalidates
+report        preservation report complete
+scope         no implementation code changed during closeout
+P1            required merge method and post-merge anchor verification recorded
+```
+
+A failing line → fix or report it. Do not report merge-ready while one is open.
+
+## Exceptional review trigger
+
+Do not reopen review for routine status updates, reference reconciliation, stub creation or archive
+compaction. Return to review only if closeout introduces or discovers:
+
+```text
+- a substantive product or architecture decision
+- changed scope or acceptance criteria
+- missing or contradictory acceptance evidence
+- an unresolved correctness issue
+- implementation-code changes
+```
+
+If implementation changed, revalidate the affected evidence before closing.
 
 ## Final-gate hand-off
 
-Reached only from the guard. The child is fully closed; the phase is CLOSABLE and stays in-progress.
+The child is fully closed; the phase is CLOSABLE and stays in-progress.
 
 ```text
 PHASE:    <phase>
@@ -83,51 +101,39 @@ ROUTE:    phase README FINAL PHASE GATE block + the gate artifact
 BLOCKER:  owner phase-close decision
 ```
 
-STOP means the slice is done and the baton is set — nothing about the phase closes here:
+Closing the final slice and the phase in one task is already authorized: continue into
+`phase-closeout`, which validates the owner request itself. An accepted gate or a pending baton never
+manufactures that authorization.
+
+## Closed work (hybrid rule)
 
 ```text
-- no P-level phase status change
-- no `PHASE CLOSE` block
-- no `architecture-cycle.md` transition
-- no cycle META write or removal
-- no automatic `phase-closeout`
-```
+STUB + EXACT GIT RECOVERY — default for anything readable
+  prose artifacts: plan · QA/acceptance record · reconciliation · addendum · research · design
+  study · owner-rulings record. The body leaves the live tree; a stub stays at its path.
 
-**Same-task authorization.** Closing the final slice *and* the phase in one task is already
-authorized: continue into `phase-closeout`, which validates the owner request itself. An accepted
-gate or a pending baton never manufactures it.
-
-## Closed work (hybrid rule) — compaction, not deletion
-
-```text
-STUB + EXACT GIT RECOVERY — the default for anything readable
-  any prose work artifact: plan · QA/acceptance record · reconciliation · addendum · research ·
-  design study · owner-rulings record. The body leaves the live tree; a stub stays at its path.
-
-ARCHIVE A COPY (docs/archive/roadmap/<phase>/<slice>/…, plus the stub at the live path)
-  renderable evidence only: PNG/SVG/HTML atlases, screenshots, plates, measurements — things whose
-  value is that one can look at them.
+ARCHIVE A COPY (docs/archive/roadmap/<phase>/<slice>/…)
+  renderable evidence only: PNG/SVG/HTML atlases, screenshots, plates, measurements.
 
 LEAVE ALONE
-  already-correctly-archived material · P1–P22 · older closed slices · the live phase README. Never
-  rewrite them for consistency: migrate only what this close touches, or what an owner ruling
-  directs (OD-4's bounded batch migration of the grandfathered P23 plans at P23 close is one).
+  already-archived material · P1–P22 · older closed slices · the live phase README. Migrate only what
+  this close touches, or what an owner ruling directs.
 ```
 
-**Ratified rule (owner ruling 2026-09-22):** hybrid preservation — prose defaults to stub + exact
-anchor, renderable evidence to an archive copy. Provenance and the superseded OD-4 wording live in
-the operating-cycle harvest (§0, §7.2).
+Owner ruling 2026-09-22: hybrid preservation — prose → stub + anchor, renderable evidence → archive
+copy. Evidence path/manifest mechanics → `docs/archive/README.md` ("Closed-work evidence"). Provenance
+and the superseded OD-4 wording → operating-cycle harvest §0, §7.2.
 
-### What the stub must carry
+### Stub contents
 
-Enough that a future agent answers **without archaeology**:
+Answer a future agent without archaeology:
 
 ```text
-delivered      what the slice actually shipped, one or two lines
-contract       the final accepted contract/decision, or the reference/* doc that now owns it
+delivered      what shipped, one or two lines
+contract       final accepted contract, or the reference/* doc that owns it
 provenance     implementation PR / accepted revision
-evidence       the verification actually obtained — gate numbers, manual-owed rows, oracles
-entry points   the code, validation and regression tests that own the behaviour, as plain paths:
+evidence       verification obtained — gate numbers, manual-owed rows, oracles
+entry points   code, validation and regression tests that own the behaviour, as plain paths:
                  implementation  packages/.../foo.ts
                  validation      packages/.../foo-validation.ts
                  regressions     apps/.../foo.test.ts
@@ -135,94 +141,77 @@ residuals      deferred or carried scope, named, with owners
 recovery       git show <A>:<path>  [· git show closed/<slice-id>:<path>]
 ```
 
-The entry points are the debugging index — the cheap reverse path from behaviour to owning slice.
-Task-by-task history and reviewer commentary are not the stub's job (Git/PR history owns
-deliberation), and provenance comments are never scattered through production code. A stub must
-never read as live instruction: `AUTHORITY: NONE`, nothing competing with `reference/*`.
+Entry points are the debugging index: the reverse path from behaviour to owning slice. Omit task
+history and reviewer commentary — Git/PR history owns deliberation — and never add provenance comments
+to production code. A stub reads as `AUTHORITY: NONE` and competes with nothing in `reference/*`.
 
-### Research artifacts — classify, don't blanket-rule
+### Research artifacts
 
 ```text
-A  durable current knowledge       findings still needed to understand current behaviour →
-                                   promote/reconcile into the owning docs/reference/** doc, then
-                                   stub. Live architecture must never depend on an unowned
-                                   roadmap research file.
-B  decision-support research       alternatives, rejected approaches, explorations, harvests →
-                                   stub + anchor once its conclusions are promoted (A) or spent.
-                                   No archive copy: this is exactly what the anchor is for.
-C  independently valuable evidence atlases, screenshots, plates, measurements → archive a copy.
+A durable current knowledge       findings still needed to understand current behaviour → promote
+                                  into the owning docs/reference/** doc, then stub. Live architecture
+                                  MUST NOT depend on an unowned roadmap research file.
+B decision-support research       alternatives, rejected approaches, explorations, harvests → stub +
+                                  anchor once promoted or spent. No archive copy.
+C independently valuable evidence atlases, screenshots, plates, measurements → archive a copy.
 ```
 
 One artifact may be both A and C.
 
-### Anchor mechanics — P1 is the default
+### Anchor mechanics
 
-Compute the anchor **before** writing the stub; `A` is the last commit containing the full body:
+Compute the anchor before writing the stub. `A` is the last commit containing the full body:
 
 ```bash
 A=$(git log -1 --format=%H -- <path>)
 ```
 
 ```text
-P1 — DEFAULT (owner-ratified 2026-09-22)
-  implement → accept → closeout commit on the same branch → review → merge commit → post-merge
-  anchor verification. Record A and the merge method the PR must use.
-
-P2 — recovery/exception
-  the accepted full body already landed on `main` in an earlier PR: verify A, then compact in a
-  later commit or PR.
+P1 default    implement → accept → closeout commit on the same branch → review → merge commit →
+              post-merge anchor verification. Record A and the merge method: P1 anchors are reachable
+              only if the PR lands as a merge commit.
+P2 exception  the accepted full body already landed on `main` in an earlier PR: verify A, then compact
+              in a later commit or PR.
 ```
 
-A same-PR close therefore requires durable anchor reachability: P1's anchors are only reachable if
-the PR actually lands as a merge commit, so the merge method is part of the closeout record, not an
-assumption. Never use `--amend` — it rewrites `A` and invalidates the written anchor. If a squash or
-force-push already invalidated the recovery line, annotate it to the reachable form
-(`git fetch origin refs/pull/<n>/head && git show <A>:<path>`) and record the degradation. Verify in
-the same session — after the merge for P1 — before declaring the close complete:
+- NEVER `--amend`: it rewrites `A` and invalidates the written anchor.
+- Squash or force-push invalidated the recovery line → annotate it to
+  `git fetch origin refs/pull/<n>/head && git show <A>:<path>` and record the degradation.
+- Verify in the same session, after merge for P1, before reporting complete:
 
 ```bash
 git merge-base --is-ancestor <A> main && echo "anchor reachable"
 git show <A>:<path> | head -3
 ```
 
-**Durable tag.** A bare SHA survives only while reachable, and P1 is where that risk is highest:
+Tag the anchor commit:
 
 ```bash
 git tag -a closed/<slice-id> "$A" -m "<slice-id> closed work — anchor $A"    # closed/p23.15
 ```
 
-`<slice-id>` is the identifier the phase README already writes (`closed/p23.15`); a phase close tags
-the phase (`closed/p23`). Tag `A`, never the compaction commit, and determine `A` first.
-
-A tag keeps its commit *and its ancestors* reachable — so **verify every anchor this close records is
-an ancestor of the tag target, and never assume it.** If one is not, tag a common reachable
-preservation commit or add a second tag; a close with several anchors names them all in the
-preservation report. The closeout does not push, so the report states whether the tag was pushed — an
-unpushed tag protects this clone only. Name the convention in the phase README at its first use.
+- `<slice-id>` is the identifier the phase README writes; a phase close tags the phase (`closed/p23`).
+- Tag `A`, never the compaction commit; determine `A` first.
+- A tag keeps its target and every ancestor reachable. Verify each recorded anchor is an ancestor of the tag target — NEVER assume. Not an ancestor → tag a common reachable preservation commit, or add another tag.
+- Name every anchor in the preservation report. This skill does not push: report the tag's push state (an unpushed tag protects this clone only). Name the convention in the phase README at first use.
 
 ### Archive copying
 
-`docs/archive/**` is browsable evidence, never a second prose knowledge tree: prose that merely sat
-inside a bundle directory is stubbed instead, because the anchor already guarantees recovery. A
-Markdown stub cannot stand in for a `.png`, `.svg` or `.pdf` — the extension would break and every
-link with it — so evidence sheds its body by shape (single file, bundle, or HTML entry point), and
-the live path stays occupied either way. Copy bytes **unmodified**, so both paths share one blob;
-do not rewrite links inside a copy, and do not repair the copy — repair the **live** links that
-pointed at the moved evidence. The path and manifest convention, the stale-outbound-link record and
-the no-size-cap rule are owned by `docs/archive/README.md` ("Closed-work evidence").
+`docs/archive/**` holds browsable evidence, never a second prose knowledge tree. A Markdown stub cannot
+stand in for a `.png`/`.svg`/`.pdf` — the extension would break and every link with it — so evidence
+keeps a live path by shape (sibling stub, bundle `CLOSED.md`, or HTML redirect stub), with bytes
+copied unmodified. Mechanics → `docs/archive/README.md`.
 
-> A slice closeout must not create a **new** live-document dependency on archived prose.
+A close MUST NOT create a new live-document dependency on archived prose. A live doc needing prose
+research → promote it into that information's live owner first, then stub the artifact; live docs cite
+the stub at its own path. Evidence links into the archive are its purpose. Leave pre-existing
+dependencies alone unless this close touches them.
 
-If a live doc needs something from a prose research or design artifact, promote it into that
-information's live owner first, then stub the artifact; live docs cite the stub at its own path.
-Evidence links into `docs/archive/**` are the archive's purpose and are unaffected; dependencies made
-before this rule are left alone unless this close touches them.
+## Preservation report
 
-## Closeout preservation report
-
-Write it into the slice's QA-record stub. A phase close writes it into the final-gate artifact's stub
-— or the phase README's `PHASE CLOSE` block when the gate artifact has none — never into a slice stub
-the phase close did not touch.
+Write it into the slice's QA-record stub. A phase close writes it into the final-gate artifact's stub,
+or the phase README's `PHASE CLOSE` block when the gate artifact has none — never into a slice stub the
+phase close did not touch.
 
 ```text
 CLOSEOUT PRESERVATION — <slice> (<date>)
