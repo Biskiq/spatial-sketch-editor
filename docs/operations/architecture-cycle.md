@@ -19,24 +19,22 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 ## State
 
 ```text
-STAGE              PHASE_0_ACTIVE
-STATUS             owner-authorized; Phase-0 evidence in progress — mechanical control pass
-                   complete 2026-09-22 (three structural sets measured, nothing classified); both
-                   semantic reviews and the workflow diagnostic still owed
-TRIGGER            owner authorized Phase 0 to start 2026-09-22 (the due trigger was P23
-                   owner-closed 2026-09-22, owner ratification in PR #73; the close preflight's
-                   computed target was PHASE_0_DUE)
+STAGE              ADJUDICATION
+STATUS             Phase-0 evidence for both lanes is available and integrated into main; the
+                   owner's classification, decision and single overall transition are outstanding
+TRIGGER            the Phase-0 evidence required for both lanes became available 2026-09-22
+                   (mechanical control pass merged in #76; review-a.md #77, review-b.md #78 and
+                   structural-workflow.md #79 merged on explicit owner authorization)
 PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviews; next pipeline
                    phase is P23B (geometry performance, planning; umbrella landed, children
                    proposed); P26 follows, still planning
-OWNER ACTION       not required — evidence collection; the ADJUDICATION transition sets it to
-                   required again
-NEXT               complete the remaining Phase-0 evidence: two fresh-context semantic
-                   architecture reviews over the same frozen P23 range (see EVIDENCE) without
-                   reading each other's output, plus the bounded structural-workflow companion
-                   diagnostic as separate evidence; then transition to ADJUDICATION. The
-                   mechanical control pass is complete and no longer outstanding
-EXIT CONDITION     the Phase-0 evidence required for both lanes is available
+OWNER ACTION       required — owner classifies each architecture candidate A/B/C/D and adjudicates
+                   the structural-workflow lane, then records the single overall transition
+NEXT               owner adjudication in two lanes inside one lifecycle: architecture lane —
+                   classify each candidate A/B/C/D and answer "what catches it next time?"; the
+                   structural-workflow lane is adjudicated separately, on its own evidence. The
+                   single overall transition is PHASE_1 (≥1 justified mechanism) or STEADY (none)
+EXIT CONDITION     both lanes adjudicated and the single overall transition recorded
 VALIDATION WINDOW  empty
 ACTIVE MECHANISMS  none
 CALIBRATION        unchanged
@@ -45,7 +43,8 @@ EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22
                    mechanical-control-pass.md COMPLETE (three structural sets: persisted
                    format/schema surface, canonical document-writer surface, visitor/editor
                    dependency boundary; no candidate classified); review-a.md · review-b.md ·
-                   structural-workflow.md · adjudication.md still empty
+                   structural-workflow.md COMPLETE and on main — frozen, independent and read as
+                   they stand; adjudication.md still owed
 ```
 
 `OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
