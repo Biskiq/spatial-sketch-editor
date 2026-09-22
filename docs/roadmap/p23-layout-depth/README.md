@@ -111,6 +111,14 @@ P23.16 rather than blocking PR #72's merge, and no interactive session was run a
 nine rows are owed, not claimed. P23.16's whole-product integration pass is their natural verifier.
 Incremental Junction invalidation stays an accepted non-goal (Decision 13), not a carried row.
 
+Issue re-dispositions by owner ruling (2026-09-22), landed with the P23.16 gate: **#35** (canonical
+axis tokens in number fields) was not landed by P23.14, so it is no longer a P23 prerequisite —
+recorded as **TD-3** in [`../../operations/tech-debt/README.md`](../../operations/tech-debt/README.md),
+with the gate keeping a baseline audit only. **#6** (legacy Bézier commit/render gap) is closed and
+re-disposed to post-P23 legacy-stack retirement (#26), which owns the path it describes. The
+authoritative disposition table is the reconciliation §Issue disposition; with both ruled, no
+prerequisite P23 issue remains open, which is what the P23.16 plan's E7 row records.
+
 (On-demand — closeout mechanics; read at slice closeout, not at slice start.)
 All new slice closeouts leave closed artifacts as path-preserving stubs holding a
 `git show <A>:<path>` recovery line, with an archive copy only for **renderable evidence** —

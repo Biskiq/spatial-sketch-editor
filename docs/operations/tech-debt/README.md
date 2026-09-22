@@ -313,3 +313,85 @@ defect is invisible to every existing check. P23.14's shell tests only assert st
 - P23.14 QA record finding **F4** — [`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md) (closed-work stub; the full F4 text is behind its `git show` anchor — the defect and its owed tests are reproduced above, not there)
 - Durable shell contract §0.4 (implementation debt, not design) — [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md)
 - [`../../../apps/editor/src/lib/editor/EditorInspector.svelte`](../../../apps/editor/src/lib/editor/EditorInspector.svelte) — the covered rows.
+
+---
+
+## TD-3 — Editor number fields do not use the canonical axis tokens (issue #35)
+
+**Status:** open — **deferred post-P23** (owner ruling 2026-09-22).
+**Found:** 2026-09-13 as issue #35; re-verified 2026-09-22 while building the P23.16 closeout
+verification plan, which is where the deferral was ruled (P23.14 landed its shell/Inspector work
+without this swap).
+**Defer to:** whoever next owns Inspector/field presentation (P24, or a later shell/Inspector
+slice). **Not P23**: the closeout gate verifies and reports it — P23.16 records a baseline audit
+and does not implement. Re-disposition is what removed it from P23's exit criteria; the issue
+stays open until its owner lands it.
+
+### Symptom
+
+The X/Y/Z channel colours in number fields are hard-coded hex, so a spatial colour that the theme
+contract declares canonical is duplicated in two components. Any theme or axis-palette revision
+has to edit both in lockstep, and the invariance the contract claims is unenforced — no test would
+fail if they drifted.
+
+### Reproduce
+
+```bash
+grep -n "#f05252\|#45c878\|#3b82f6" \
+  apps/editor/src/lib/editor/fields/EditorNumberField.svelte \
+  apps/editor/src/lib/editor/fields/EditorVec3Field.svelte
+```
+
+Three hits in each (`EditorNumberField.svelte:141-151`, `EditorVec3Field.svelte:161-171`). The
+canonical tokens already exist at `apps/editor/src/lib/editor/styles/tokens.css:210-212`
+(`--editor-axis-x/y/z`) and are consumed elsewhere in the editor
+(`LayoutPlanViewport.svelte`, `PlanCanvasChrome.svelte`).
+
+### Root cause
+
+Not a regression and not a broken contract: the field components simply inline the axis palette
+instead of reading the tokens the rest of the editor uses. `--editor-axis-*` is defined as
+invariant and theme-independent, so these literals are a second source of truth for the same
+values.
+
+### Why the suite is green
+
+No test references `--editor-axis-*`. Existing field suites drive behaviour (value, clamp,
+increment), so colour provenance — the actual contract here — has no cover.
+
+### Fix options
+
+- **Option A (recommended):** point both components at `var(--editor-axis-x/y/z)` and derive the
+  axis-chip background from the same tokens at the existing visual opacity. Smallest change;
+  makes the literals disappear.
+- **Option B:** keep the literals and add a contract test pinning them. **Rejected** — it freezes
+  the duplication the theme contract forbids.
+- **Must not do:** repaint neutral number fields, or change the axis hues themselves (they are
+  canonical and invariant).
+
+### Then add (the issue's full acceptance contract)
+
+The P23.16 plan's check **A12** audits only the source/test half below; these are what the fix
+owes, and they stay owed until its owner lands them:
+
+1. Both components reference the canonical axis tokens; the duplicated `#f05252`, `#45c878` and
+   `#3b82f6` literals are gone from them.
+2. Axis-chip backgrounds derive from the same tokens, at the existing visual opacity.
+3. Neutral number fields are unchanged.
+4. The result is visually equivalent in **every shipped theme** (theme parity, not just the
+   default).
+5. A test asserts token usage rather than duplicated colour literals.
+
+### Related
+
+- Issue **#35** — canonical axis tokens in editor number fields (open; the re-disposition is
+  recorded in the
+  [P23 remaining-roadmap reconciliation](../../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md)
+  §Issue disposition).
+- [`../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte`](../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte) ·
+  [`EditorVec3Field.svelte`](../../../apps/editor/src/lib/editor/fields/EditorVec3Field.svelte) —
+  the two components that carry the literals.
+- P23.16 verification plan — **A12** is the baseline audit that shows this debt is still open;
+  its recorded failure is this entry, not a P23 gate regression.
+- [`../../reference/components/theme.md`](../../reference/components/theme.md) — the theme contract
+  that declares the spatial colours invariant.

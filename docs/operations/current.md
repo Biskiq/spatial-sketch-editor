@@ -29,10 +29,11 @@ BLOCKER:
   interactive session (plan §3–§5)
 
 CLEARED (2026-09-22):
-- issues: #34 #38 #39 #40 #41 closed against recorded evidence; #6 closed by owner and
-  re-disposed to post-P23 legacy-stack retirement (#26); #35 was never landed by P23.14, so by
-  the same ruling it is folded into this gate as a verification target (plan A12) — expect a
-  recorded failure and an explicit post-P23 debt entry, not an implementation change here.
+- issues: #34 #38 #39 #40 #41 closed against recorded evidence; #6 closed and re-disposed to
+  post-P23 legacy-stack retirement (#26); #35 was never landed by P23.14, so it is re-disposed as
+  post-P23 debt (TD-3 in the tech-debt ledger) and no prerequisite P23 issue remains open. The
+  gate keeps A12 as a baseline audit of #35 only — its expected failure is that debt, not a
+  regression, and it claims no verdict.
 - PR #72 landed by rebase under an owner decision (rebase rather than squash, commits kept
   separate), so the P23.15 bare-SHA anchors are not ancestors of `main`; recovery is the
   pushed tag `closed/p23.15`. The three stubs' merge-commit claim was corrected to record the

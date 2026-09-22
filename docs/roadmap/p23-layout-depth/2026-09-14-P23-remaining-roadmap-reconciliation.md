@@ -443,21 +443,21 @@ jump from P23.15 to P23.7.
 
 | Issue | Disposition | P23 owner / rationale |
 |---|---|---|
-| #6 — Bézier commit/render validation gap | include in P23 | P23.11 adopts the validation failure class for canonical curved Walls only; legacy Room-owned curves remain internal-dependency smoke, not a product editing contract. |
+| #6 — Bézier commit/render validation gap | defer post-P23 | **Owner ruling 2026-09-22: closed, re-disposed.** P23.11 adopted the validation failure class for canonical curved Walls only; the legacy Room-owned curve path is post-P23 legacy-stack retirement (#26). |
 | #26 — retire legacy Room-owned Layout stack | defer post-P23 | Explicit architecture-debt cleanup after P23; closeout performs smoke only and adds no compatibility behavior. |
 | #28 — Layout Room multi-select | defer post-P23 | A credible minimum needs reliable single-target editing, not selection sets; connected-group Room move already covers the contiguous-unit case. |
 | #29 — direct Wall/Junction manipulation + vertex insertion | delivered | P23.10 landed through PR #49; retained here as a prerequisite contract rather than remaining implementation scope. |
 | #31 — Camera Connections list semantics | unrelated | Camera-only presentation debt; no change to the P23 Layout workflow or Camera authority. |
 | #32 — accessible 3D Grid popover | defer post-P23 | Valid debt, but the control is a 3D utility outside the 2D Build accessibility boundary. |
 | #33 — texture-library filtered empty state | unrelated | Asset-library/P24 supply presentation, not P23 architecture. |
-| #34 — status-bar hint contrast | include in P23 | P23.14; visible throughout the Plan editing workflow. |
-| #35 — canonical axis tokens in number fields | include in P23 | P23.14; directly affects Inspector consistency. |
+| #34 — status-bar hint contrast | delivered | P23.14 resolved it by removing the status-hint group (shell contract §14); closed 2026-09-22 against the recorded evidence. |
+| #35 — canonical axis tokens in number fields | defer post-P23 | **Owner ruling 2026-09-22: re-disposed as debt.** P23.14 landed the shell/Inspector work without this swap, so it is no longer a prerequisite; recorded as **TD-3** in the tech-debt ledger, with the full acceptance contract carried there. |
 | #36 — 3D View popover ARIA/focus | defer post-P23 | Valid global 3D-shell debt; not required to claim the 2D Plan editor minimum. |
 | #37 — Material Choice dialog focus lifecycle | defer post-P23 | Align with P24 material authoring rather than expanding P23. |
-| #38 — shared context-menu keyboard navigation | include in P23 | P23.14; canonical Wall/Room actions use the shared menu. |
-| #39 — editor tablist keyboard behavior | include in P23 | P23.14; directly includes Hierarchy navigation and preserves P23.6e state. |
-| #40 — Project Row popover coordination | include in P23 | P23.14; prevents overlapping shell controls during the Save/Document workflow. |
-| #41 — Document menu focus lifecycle | include in P23 | P23.14; Save/import/export/reset are part of P23 closeout. |
+| #38 — shared context-menu keyboard navigation | delivered | P23.14; closed 2026-09-22 against `ContextMenu.svelte` + its suite. |
+| #39 — editor tablist keyboard behavior | delivered | P23.14; closed 2026-09-22 against the shared roving-focus model and its suite. |
+| #40 — Project Row popover coordination | delivered | P23.14; closed 2026-09-22 against the coordinated Head popovers and their suite. |
+| #41 — Document menu focus lifecycle | delivered | P23.14; closed 2026-09-22 against the Document-menu focus lifecycle and its suite. |
 | #44 — repository verification command docs | unrelated | Contributor documentation debt; useful independently, but not a P23 product exit criterion. |
 
 GitHub currently has no issue or pull request numbered #42 or #43 in this
