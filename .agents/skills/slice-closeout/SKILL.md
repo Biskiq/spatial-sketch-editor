@@ -17,8 +17,9 @@ implement → PR review → fix/re-review until implementation accepted → run 
 branch → closeout self-check → merge commit → post-merge anchor verification
 ```
 
-Implementation acceptance authorizes routine closeout. NEVER require a second review of the closeout
-diff: this skill owns the mechanical documentation and preservation verification.
+Implementation acceptance authorizes routine closeout. Routine closeout requires no second review;
+exceptional triggers below reopen review. This skill owns mechanical documentation and preservation
+verification.
 
 ```text
 implementation accepted   code, architecture and required acceptance evidence passed review
