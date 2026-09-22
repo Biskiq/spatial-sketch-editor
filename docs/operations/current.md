@@ -52,8 +52,9 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0
-  adjudication and any justified Phase 1 response (meta track), then on an owner-ratified child plan
+- P23B has no measured baseline and no approved child plan; its implementation waits on an
+  owner-ratified child plan. Phase 0 adjudication and the justified Phase 1 response are already
+  installed and do not block that gate
 - P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
 
 CLOSED (2026-09-22):
