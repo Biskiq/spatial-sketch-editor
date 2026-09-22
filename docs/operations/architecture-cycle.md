@@ -29,17 +29,18 @@ PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 review
                    proposed); P26 follows, still planning
 OWNER ACTION       not required — evidence collection; the ADJUDICATION transition sets it to
                    required again
-NEXT               complete the Phase-0 evidence: two fresh-context semantic architecture reviews
-                   over the same frozen P23 range (see EVIDENCE) without reading each other's
-                   output, plus the bounded structural-workflow companion diagnostic as separate
+NEXT               complete the Phase-0 evidence: the bounded mechanical control pass
+                   (coordination workspace), two fresh-context semantic architecture reviews over
+                   the same frozen P23 range (see EVIDENCE) without reading each other's output,
+                   plus the bounded structural-workflow companion diagnostic as separate
                    evidence; then transition to ADJUDICATION
 EXIT CONDITION     the Phase-0 evidence required for both lanes is available
 VALIDATION WINDOW  empty
 ACTIVE MECHANISMS  none
 CALIBRATION        unchanged
-EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22) and the three
-                   investigation destinations under
-                   ../roadmap/architecture-operating-cycle/phase-0/
+EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22) and the evidence
+                   destinations (mechanical pass · review-a · review-b · structural-workflow ·
+                   adjudication) under ../roadmap/architecture-operating-cycle/phase-0/
 ```
 
 `OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);

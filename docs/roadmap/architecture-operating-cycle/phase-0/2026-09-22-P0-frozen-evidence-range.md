@@ -85,8 +85,9 @@ written and not followed.
   commits and the rebased work is on `main`.
 - **Planning documents are not evidence.** The range contains plans, reconciliations and proposals.
   Only landed behaviour and the contracts as they stood count.
-- **The mechanical control pass has not been run.** It is owed Phase-0 work, and no result is
-  recorded or implied here.
+- **The mechanical control pass has not been run.** It is owed Phase-0 work, assigned to the
+  coordination workspace and written to `./mechanical-control-pass.md`, and kept separate from the
+  structural-workflow diagnostic. No result is recorded or implied here.
 
 ## Method ownership
 
