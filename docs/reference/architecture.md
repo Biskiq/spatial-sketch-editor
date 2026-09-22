@@ -127,6 +127,20 @@ flattening the Spatial model:
 Generated geometry, Three objects, renderer handles, selection, and history
 are never serialized.
 
+**Layout semantic mutation.** Canonical Layout semantic mutation is planned
+in `@portfolio/layout-core`. Each authoring operation owns its own pure
+planning function, and the operation's semantics decide what that function
+accepts and returns: a topology-changing chain plans a replacement
+`LayoutDocumentWallFirst` (with created/split lineage and retired Room IDs),
+while an alignment or measurement operation plans a value for the editor to
+apply. This is a layering boundary, not a protocol — a shared result type,
+base class or command framework is neither required nor implied, and no
+operation is obliged to adopt another's shape. The editor owns interaction,
+transient preview, selection and the single history transaction. Scene edits
+are outside this rule. Captured from P23.1→P23.6c, where the pattern recurred
+across six slices (41 `plan*` exports in `layout-core`, none at the P23 base)
+while no reference contract stated it.
+
 ## Where to look (per surface)
 
 Doc routing lives in the router ([`../README.md`](../README.md) §Where truth
