@@ -87,7 +87,8 @@ written and not followed.
   Only landed behaviour and the contracts as they stood count.
 - **The mechanical control pass has been run** (coordination workspace, 2026-09-22) and is written
   to `./mechanical-control-pass.md`, kept separate from the structural-workflow diagnostic. It
-  measured three structural sets over exactly this range and classified nothing; candidates and
+  measured three structural sets at exactly this range's two endpoints and classified nothing; its
+  "unchanged" results are two-endpoint readings, not whole-range histories. Candidates and
   classification remain the reviews' and the owner's, and the pass was not used to narrow the range
   or to pre-empt either review.
 

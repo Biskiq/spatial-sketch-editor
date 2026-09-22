@@ -13,7 +13,11 @@ METHOD:  ../../architecture-operating-cycle-plan.md §8 "Mechanical control pass
 ```
 
 This pass asks one question of each set: **did an already meaningful bounded structural set expand
-or change across the frozen range?** Every number below is an observation about the range. No
+or change between the two endpoints of the frozen range?** Every number below is an observation
+about those two revisions. **Every comparison here is a two-endpoint comparison:** membership is
+read at `base` and at `end`, and "unchanged" / "identical" always means "the same at those two
+revisions" — never "nothing moved inside the range". A set that expanded and contracted mid-range
+reads as unchanged here, and no per-set time series was built (see Coverage limitations). No
 observation here is a finding about architecture, and none is classified — classification is the
 owner's, at adjudication. A set that did not change is recorded as plainly as one that did.
 
@@ -30,6 +34,19 @@ what the check cannot establish. Where a set's membership is decided by a filena
 stated as the limitation rather than hidden — a name-based set is a *named surface*, not the whole
 surface.
 
+**Count labelling.** A reported number is one of three things, and the tables now say which:
+
+- **probe output** — the printed command, run exactly as printed, prints that number;
+- **derived** — a filter, de-duplication or subtraction step applied to probe output, with that step
+  printed next to the number (for example counting distinct exported names rather than grep lines);
+- **inspection-derived** — read out of the tree by hand, because no single printed command produces
+  it. Labelled so it is not mistaken for reproducible probe output, and its derivation is stated as
+  *not reproducible from this document* where that is the case.
+
+A label the printed command does not produce is a defect, not a rounding difference. Where a label
+and its command disagreed, the correction is recorded below and the command is printed with the
+filter it needs.
+
 Two probes were corrected mid-pass, and the corrections are recorded because they changed numbers
 (the corrected commands are the ones printed below):
 
@@ -38,6 +55,23 @@ Two probes were corrected mid-pass, and the corrections are recorded because the
   a substring match on the module path;
 - a first write-path probe on `.replace(` matched `String.replace` throughout the editor and was
   discarded in favour of the host-and-document-qualified form below.
+
+A later review of this artifact corrected four labels and one number. None of them changes a measured
+set; they are recorded because a reader must be able to recompute every number from the printed
+commands:
+
+- the `formatVersion` file count was labelled **non-test** while the printed probe carried no test
+  filter. The filter is now printed on the probe, and both totals are reported (2 → 109 unfiltered;
+  0 → 32 non-test). The reported 0 → 32 was correct and is unchanged;
+- the test-file row reported **6 → 14**. The printed probe yields **5 → 13** at the endpoints, and
+  the artifact's own narrative names exactly 8 end-only guard files against 5 shared ones. The row
+  is corrected to 5 → 13;
+- the exported write-side row reported **15 → 17** without stating how it was produced. 15 → 17 is
+  the count of **distinct exported names**; the printed probe without de-duplication prints 19 → 21
+  lines. Both counts are now printed with the row;
+- the explicit-constant row mixed a probe count with a hand-derived one in a single `+4` cell. It is
+  split into a probe row (0 → 3) and a labelled inspection row (0 → 1), and the packages-only
+  `FORMAT_VERSION` row now carries the probe that produces it.
 
 Ranges are abbreviated `base` = `f8411f7`, `end` = `b5f75e7` throughout.
 
@@ -51,8 +85,9 @@ greppable.
 ### Probes
 
 ```bash
-git grep -lE 'formatVersion' <rev> -- packages apps            # files mentioning the field
-git grep -nE "export const [A-Z_]+FORMAT_VERSION" <rev> -- 'packages/*' 'apps/*'
+git grep -lE 'formatVersion' <rev> -- packages apps | grep -vE '\.test\.|\.spec\.|/tests?/'   # non-test
+git grep -nE "export const [A-Z_]+FORMAT_VERSION" <rev> -- 'packages/*' 'apps/*'      # probe-matched
+git grep -lE 'FORMAT_VERSION' <rev> -- 'packages/*' | grep -vE '\.test\.'            # packages only
 git ls-tree -r --name-only <rev> \
   | grep -E '(codec|compat|legacy|standalone|shipped-static)' | grep -E '\.ts$' | grep -v '/tests/'
 git grep -hE "^export (async )?function [A-Za-z]*([Cc]ompat|[Ll]egacy|[Vv]ersionless|Decode)[A-Za-z]*" \
@@ -64,22 +99,38 @@ git ls-tree -r --name-only <rev> -- apps/editor/tests | grep -iE 'format|codec|c
 
 | Measure | base | end | Change |
 | --- | --- | --- | --- |
-| Files mentioning `formatVersion` (non-test) | 0 | 32 | +32 |
-| Explicit `*_FORMAT_VERSION` constants | 0 | 3 (＋1 derived) | +4 |
-| Named codec/compat/legacy modules (non-test `.ts`) | 13 | 21 | +8, −0 |
-| Exported compat/legacy/decode entry points | 1 | 9 | +8 |
-| Non-test modules referencing a format discriminator | 0 | 10 | +10 |
-| Test files naming format/codec/compat/migration | 6 | 14 | +8 |
+| Files mentioning `formatVersion` — probe output, non-test | 0 | 32 | +32 |
+| ↳ the same probe before its test-exclusion step | 2 | 109 | +107 |
+| Explicit `*_FORMAT_VERSION` constants — probe output | 0 | 3 | +3 |
+| ↳ derived version constant — inspection-derived, the probe's regex does not match it | 0 | 1 | +1 |
+| Packages modules mentioning a `FORMAT_VERSION` constant, non-test — probe output | 0 | 10 | +10 |
+| Named codec/compat/legacy modules (non-test `.ts`) — probe output | 13 | 21 | +8, −0 |
+| Exported compat/legacy/decode entry points — probe output | 1 | 9 | +8 |
+| Test files naming format/codec/compat/migration — probe output | 5 | 13 | +8 |
+
+Row provenance, because a count is only usable with it: the `probe output` rows are the printed
+commands run as printed; the `↳` rows are the two derived/inspection rows the Method section
+describes. The packages row is packages-only **by construction** — the eleventh non-test module
+mentioning the constant, `apps/editor/src/lib/editor/store/document-format-policy.svelte.ts`, sits
+in the editor app and is outside that row's pathspec — and it counts modules that *mention* the
+constant, declaration sites included, so it is a mention census, not a reference-site census. All
+six Set-1 `probe output` rows stay reproducible from the block above, one printed probe per row;
+the one inspection row does not, and says so. All rows are two-endpoint readings.
 
 At `base` the range's own base commit contains **no** `formatVersion` occurrence outside tests and
 no format-version constant: persisted identity was carried by shape alone. At `end`:
 
 ```text
-LAYOUT_WALL_FIRST_FORMAT_VERSION = 5      packages/layout-core/src/layout-wall-first-types.ts:49
-KNOWN_LAYOUT_FORMAT_VERSIONS = [5]        packages/layout-core/src/layout-wall-first-types.ts:52
-PACKAGE_MANIFEST_FORMAT_VERSION = 2       packages/project-model/src/package-format.ts:14
-SCENE_WORLD_LOCAL_FORMAT_VERSION = 1      packages/project-model/src/scene.ts:383
+LAYOUT_WALL_FIRST_FORMAT_VERSION = 5      packages/layout-core/src/layout-wall-first-types.ts:49   probe
+KNOWN_LAYOUT_FORMAT_VERSIONS = [LAYOUT_WALL_FIRST_FORMAT_VERSION]
+                                          packages/layout-core/src/layout-wall-first-types.ts:52   derived
+PACKAGE_MANIFEST_FORMAT_VERSION = 2       packages/project-model/src/package-format.ts:14       probe
+SCENE_WORLD_LOCAL_FORMAT_VERSION = 1      packages/project-model/src/scene.ts:383               probe
 ```
+
+`KNOWN_LAYOUT_FORMAT_VERSIONS` is the `+1` inspection row: it is plural and built from the constant
+above it, so the `export const [A-Z_]+FORMAT_VERSION` regex does not match it. It is the only constant
+listed here that the probe does not itself find, which is why the row that carried it was split.
 
 The eight modules added to the named set (no module removed — the base set is a strict subset of the
 end set):
@@ -95,7 +146,9 @@ apps/editor/src/lib/project/compat-runtime.ts              packages/project-mode
 Eight of the nine compat/legacy entry points are new; `legacyBezierToAutoBezier` is the one that
 existed at `base`. The guard set grew in step: `project-format-writers`, `project-format-policy`,
 `project-format-visitor-parity`, `project-format-writer-fixtures`, `layout-migration`,
-`layout-migration-math`, `layout-wall-first-codec` and `project-compat` test files are all end-only.
+`layout-migration-math`, `layout-wall-first-codec` and `project-compat` test files are all end-only —
+those 8 end-only files against the 5 naming files already present at `base` are exactly the 5 → 13
+test-file row above.
 
 ### Provenance anchors
 
@@ -152,11 +205,11 @@ git grep -hE "^export (async )?function (serialize|encode|write|to)[A-Za-z0-9]*"
 | Files carrying those code sites | 2 | 2 | none |
 | Comment references to the same call | 0 | 2 | +2 (comments only) |
 | `apps/editor/src/lib/editor/store/` modules | 21 | 22 | +1, −0 |
-| Exported write-side entry points | 15 | 17 | +2, −0 |
+| Exported write-side entry points — distinct exported names (derived); the same probe un-deduplicated prints 19 → 21 lines | 15 | 17 | +2, −0 |
 
-The host-write surface is **unchanged**: the same ten code sites in the same two files
-(`editor-store.svelte.ts` once, `history-controller.svelte.ts` nine times), with only line numbers
-shifted. The end tree adds two comment references to the same call
+The host-write surface is **unchanged between the two endpoints**: the same ten code sites in the
+same two files (`editor-store.svelte.ts` once, `history-controller.svelte.ts` nine times), with only
+line numbers shifted. The end tree adds two comment references to the same call
 (`LayoutPlanViewport.svelte`, `layout-preview-state.svelte.ts`) and no code site, so counting raw
 grep lines at `end` yields 12 where counting code sites yields 10. The store layer gained exactly one module and lost none —
 `apps/editor/src/lib/editor/store/document-format-policy.svelte.ts` — whose own header describes it
@@ -165,13 +218,20 @@ guard call each. The two added write-side entry points are `serializeWallFirstLa
 `serializeWallFirstProject`; nothing was removed, so `serializeLayoutDocument`,
 `serializeSceneDocument`, `serializeProject` and `serializeBaseline` all still exist at `end`.
 
+The write-side row is the pass's clearest derived count, and it is labelled as such: the probe
+prints **lines**, and three names are declared in more than one module (`serializeProject` three
+times, `serializeSceneDocument` and `toWallBufferGeometry` twice), so it prints 19 lines at `base`
+and 21 at `end`. De-duplicating to distinct exported names gives the reported 15 → 17. No name was
+dropped from the set to get there; the de-duplication step is `| sed 's/(.*//' | sort -u | wc -l`,
+appended to the probe printed above.
+
 ### What this check cannot establish
 
 - **That the write-side entry-point set is what its name says.** The `write*`/`to*` prefixes also
   catch non-document helpers (`writeEditorCameraFrustumLinePositions`, `writePlacementTransform`,
-  `toWallBufferGeometry`, UI toggles). The 15 → 17 numbers are therefore a deliberate over-inclusive
-  superset, not a document-writer census; only the two *additions* were inspected, and both are
-  serializers.
+  `toWallBufferGeometry`, the `toggle*` UI switches). The 15 → 17 numbers — distinct names, as the
+  row now states — are therefore a deliberate over-inclusive superset, not a document-writer census;
+  only the two *additions* were inspected, and both are serializers.
 - **Growth *inside* an existing writer.** Module and symbol membership is blind to a writer doubling
   in size, gaining branches, or acquiring a second responsibility without a new name.
 - **Whether a write path exists that is not a host-qualified `.replace(`.** The store's own comment
@@ -200,15 +260,20 @@ git grep -nE "from ['\"](@portfolio/editor|@biskiq/|editor)" <rev> -- $SCOPE   #
 | Measure | base | end | Change |
 | --- | --- | --- | --- |
 | Editor-scope imports from visitor/museum scope | 0 | 0 | none |
-| Distinct import specifiers from that scope | 31 | 31 | **identical set** |
-| One-level transitive reach from those imports into `lib/editor` | 0 | 0 | none |
+| Distinct import specifiers from that scope | 31 | 31 | **identical at the two endpoints** |
+| One-level transitive reach from those imports into `lib/editor` | 0 | 0 | none · inspection-derived |
 | Dynamic `import()` / `require()` in that scope | 0 | 0 | none |
 | Bare `@portfolio/editor` reach from that scope | 0 | 0 | none |
 
-The base and end specifier sets diff **empty** — no specifier was added or removed across the 432
-commits: 31 specifiers from 21 files in that scope, both counts identical at the two endpoints
-(counted with `git grep -l`; `git ls-tree` does not expand these `**` pathspecs in this
-environment, so it is not the source of the file count). The visitor scope's imports resolve to `$lib/content`,
+The two endpoint specifier sets diff **empty** — 31 specifiers from 21 files in that scope at
+`base`, and the same 31 from the same 21 files at `end` (counted with `git grep -l`; `git ls-tree`
+does not expand these `**` pathspecs in this environment, so it is not the source of the file
+count). Stated precisely, because the wording matters: this is a two-endpoint result. It shows the
+specifier set is identical at the two revisions measured; it does **not** show that no specifier was
+added and removed inside the 432 commits between them, which this probe cannot see. The one-level
+transitive-reach row above is inspection-derived — no command in this document produces that count —
+so unlike the four probe rows it is not reproducible from the artifact, and the direct-dependency
+walk it rests on is not reconstructable here. The visitor scope's imports resolve to `$lib/content`,
 `$lib/layout` (geometry and wall-mesh only), `$lib/project` (codec and types), `$lib/render`
 (wall-geometry adapter), `$lib/types`, `@portfolio/camera-core`, `@portfolio/project-model` and
 `three`, plus relative siblings. The guard files also hold: `visitor-import-boundary.test.ts` and
@@ -246,7 +311,9 @@ existed. Any comparison of "guards at base vs guards at end" must be made agains
 - **Two endpoints only.** Change is measured between `base` and `end`. A set that expanded and
   contracted mid-range — or oscillated — reads as "unchanged" in these tables. The
   `2026-09-09` concentration in Set 1 is visible only because an introducing commit was looked up
-  for the added members; no per-set time series was built.
+  for the added members; no per-set time series was built. Every "unchanged", "identical" and
+  "no module removed" statement above is a two-endpoint statement and inherits this limit: none of
+  them is evidence about the 432 commits between the endpoints.
 - **Merged-PR granularity, code-only reach.** Probes read the final tree at each endpoint. Nothing
   here observed review behaviour, and PR discussion is not consulted (frozen-range rule).
 - **Path- and name-based membership throughout.** Each set's boundary is a path family or a filename
