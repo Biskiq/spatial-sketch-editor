@@ -23,6 +23,6 @@ The ceiling model is deliberately ambitious: independent regions can span rooms,
 5. S8/S9: architectural column/platform, passive prop, empty/invalid/unsupported states.
 6. Ratification table at the end of the specification.
 
-**Delivery boundary:** branch `codex/p26-register-design`, based on `8d583172c6edc8814c416a3ba5786cf7652ab4c0`. No commit, implementation approval, direction ratification, phase-status advancement or P23B/cycle gate change is implied.
+**Delivery boundary:** design-only package committed for review on branch `codex/p26-register-design`, based on `8d583172c6edc8814c416a3ba5786cf7652ab4c0`. Review-ready is not ratified: no implementation approval, direction ratification, phase-status advancement or P23B/cycle gate change is implied.
 
 Verification and prototype limits are recorded in [review-notes.md](./review-notes.md).
