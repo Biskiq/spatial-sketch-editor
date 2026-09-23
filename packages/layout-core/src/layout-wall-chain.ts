@@ -984,9 +984,19 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 	// commit. It is the SAME gate `validateWallFirstTopology` runs — never a
 	// second crossing algorithm — and any curve crossing that would need
 	// automatic curved noding rejects the whole authoring command.
+	//
+	// P23B.3a — SUBJECT: this gate still examines the WHOLE DOCUMENT here, which is
+	// the documented pre-policy subject, not an oversight. P23B.3a S4 re-scoped the
+	// canonical gate's subject to the connected component; THIS gate (and the chord
+	// classifier below it) is re-scoped by S5, which is the step that owns the
+	// chain path's verdict change. Adopting the component subject here at S4 would
+	// move a case S5 owns — the S1 reference register asserts the chain path did NOT
+	// move at S4 (T8's chain-authoring observation). S5 removes this explicit
+	// subject; nothing else should pass it.
 	const curveCrossing = detectWallCurveTopologyCrossings(
 		document,
-		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
+		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const)),
+		{ subject: 'document' }
 	);
 	if (curveCrossing) {
 		return curveCrossing.kind === 'self'

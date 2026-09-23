@@ -26,6 +26,7 @@ import {
 	type LayoutWallOpening
 } from '$lib/layout/layout-wall-first-types';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
+import { wallsShareTopologyComponent } from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;
@@ -710,11 +711,68 @@ describe('P23.6a — destination topology is the existing canonical gate', () =>
 		expect(planWallFirstRoomMove(document, 'room-1', [20, 0]).kind).toBe('rejected');
 	});
 
-	it('rejects a destination that overlaps an unrelated Wall', () => {
+	it('permits a destination that overlaps an UNRELATED Wall, and does not join it (P23B.3a S4 / F2)', () => {
 		const document = isolatedRoomDocument();
-		// Straddling the roomless partition Wall at x = 20 crosses it.
-		const rejected = rejection(planWallFirstRoomMove(document, 'room-1', [17, 0]));
-		expect(rejected.code).toBe('topology_invalid');
+		// Straddling the roomless partition Wall at x = 20 crosses it. The PRE-POLICY
+		// verdict was `topology_invalid` here, because the canonical gate compared every
+		// Wall pair in the document. P23B.3a S4 scoped that gate's subject to the
+		// connected component, and `wall-rl` shares no Junction id with the moved group,
+		// so the overlap is permitted geometry: an independent Room may be moved across
+		// another independent structure, and spatial overlap is NOT connectivity.
+		const plan = planWallFirstRoomMove(document, 'room-1', [17, 0]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+
+		// Only the operated group moved, and the Room kept its identity.
+		expect(plan.movedRoomIds).toEqual(['room-1']);
+		expect(plan.changedWallIds).toEqual(['wall-a1', 'wall-b', 'wall-c', 'wall-d']);
+		expect(plan.document.rooms.map((room) => [room.id, room.name])).toEqual([
+			['room-1', 'Alone']
+		]);
+
+		// NO IMPLICIT JOIN: no adopted Junction, no shared Wall, no new id, and the
+		// unrelated partition was neither split nor translated.
+		expect(
+			wallsShareTopologyComponent(plan.document, 'wall-rl', 'wall-a1')
+		).toBe(false);
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual(
+			document.walls.map((wall) => wall.id)
+		);
+		expect(plan.document.junctions.map((junction) => junction.id)).toEqual(
+			document.junctions.map((junction) => junction.id)
+		);
+		const unrelated = (candidate: LayoutDocumentWallFirst) =>
+			candidate.junctions.filter(
+				(junction) => junction.id === 'j-x' || junction.id === 'j-y'
+			);
+		expect(unrelated(plan.document)).toEqual(unrelated(document));
+		// The planner is pure: the caller's document is untouched.
+		expect(document.junctions.find((junction) => junction.id === 'j-a')?.point).toEqual([0, 0]);
+	});
+
+	it('keeps a SAME-COMPONENT destination conflict refused (the relocation is rigid)', () => {
+		// The movable unit is the connected Room group, so a move can never create a
+		// conflict INSIDE the group: every member translates by the same delta and the
+		// group's internal geometry is preserved exactly. The intrinsic destination
+		// refusals that remain are therefore the ones this suite's other cases pin —
+		// coincident Junctions (the canonical coincidence rule, S5's subject), zero-length
+		// Walls, Room boundary/role, Opening fit and portal relations. This case pins the
+		// rigid-group half of that reasoning on the very document S4 made admissible.
+		const document = isolatedRoomDocument();
+		const plan = planWallFirstRoomMove(document, 'room-1', [17, 0]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		const before = document.walls.map((wall) => ({
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId
+		}));
+		const after = plan.document.walls.map((wall) => ({
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId
+		}));
+		expect(after).toEqual(before);
 	});
 });
 

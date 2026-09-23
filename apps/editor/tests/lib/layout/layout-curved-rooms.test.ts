@@ -310,9 +310,12 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 		expect(issue?.message).toContain('intersects itself');
 	});
 
-	it('rejects a straight/curve crossing whose chords miss each other', () => {
+	it('permits a straight/curve chord-missing crossing between INDEPENDENT Walls (S4 subject)', () => {
 		// Chords are the parallel lines z = 0 and z = 4, so the chord-level
-		// classifier sees `none`; the curve dips through the straight Wall.
+		// classifier sees `none`; the curve dips through the straight Wall. The two
+		// Walls share no Junction id, so P23B.3a S4 scopes this pair OUT of the
+		// sampled authority's subject: the crossing is permitted geometry (F4) and no
+		// longer a verdict at all. The connected counterpart below is still refused.
 		const document = documentOf(
 			{ 'j-a': [0, 0], 'j-b': [8, 0], 'j-c': [0, 4], 'j-d': [8, 4] },
 			[
@@ -320,15 +323,31 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 				{ id: 'wall-curved', start: 'j-c', end: 'j-d', centerline: curve([0, 4], [8, 4], [4, -4]) }
 			]
 		);
-		const issue = validateWallFirstTopology(document);
-		expect(issue?.code).toBe('unsupported_wall_topology');
-		expect(issue?.message).toContain('centerline crossing');
+		expect(validateWallFirstTopology(document)).toBeUndefined();
 	});
 
-	it('rejects a curve/curve crossing whose chords miss each other', () => {
+	it('still rejects the same chord-missing straight/curve crossing WITHIN one connected group', () => {
+		// The identical shape of crossing — a curve leaving the straight Wall's own
+		// Junction and bowing back across it, with chords that meet only AT that
+		// Junction — inside ONE component instead of two. Component scoping cannot
+		// reach an intra-group crossing, so the sampled authority keeps reporting it.
+		const document = documentOf(
+			{ 'j-a': [0, 0], 'j-m': [6, 0], 'j-b': [6, 4] },
+			[
+				{ id: 'wall-straight', start: 'j-a', end: 'j-m' },
+				{ id: 'wall-curved', start: 'j-m', end: 'j-b', centerline: curve([6, 0], [6, 4], [1, -2]) }
+			]
+		);
+		const issue = validateWallFirstTopology(document);
+		expect(issue?.code).toBe('unsupported_wall_topology');
+		expect(issue?.message).toContain('cross away from their shared Junction');
+	});
+
+	it('permits a curve/curve chord-missing crossing between INDEPENDENT Walls (S4 subject)', () => {
 		// Chords z = 0 and z = 4 are parallel and never meet. The curves are
 		// forced to cross: `wall-a` rises to 4 while `wall-b` dips to 0, so
-		// their order swaps between x = 0 and x = 4.
+		// their order swaps between x = 0 and x = 4. Independent components, so S4
+		// admits the pair; the connected counterpart below is still refused.
 		const document = documentOf(
 			{ 'j-a': [0, 0], 'j-b': [8, 0], 'j-c': [0, 4], 'j-d': [8, 4] },
 			[
@@ -336,8 +355,25 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 				{ id: 'wall-b', start: 'j-c', end: 'j-d', centerline: curve([0, 4], [8, 4], [4, 0]) }
 			]
 		);
+		expect(validateWallFirstTopology(document)).toBeUndefined();
+	});
+
+	it('still rejects a curve/curve crossing WITHIN one connected group', () => {
+		// The same two bows, now linked into ONE component by the straight Wall
+		// `wall-link` (it shares j-b and j-d with them). Neither bow shares a Junction
+		// with the other, so the pair is a plain same-component curve crossing — exactly
+		// what the sampled authority must keep reporting.
+		const document = documentOf(
+			{ 'j-a': [0, 0], 'j-b': [8, 0], 'j-c': [0, 4], 'j-d': [8, 4] },
+			[
+				{ id: 'wall-a', start: 'j-a', end: 'j-b', centerline: curve([0, 0], [8, 0], [4, 4]) },
+				{ id: 'wall-b', start: 'j-c', end: 'j-d', centerline: curve([0, 4], [8, 4], [4, 0]) },
+				{ id: 'wall-link', start: 'j-b', end: 'j-d' }
+			]
+		);
 		const issue = validateWallFirstTopology(document);
 		expect(issue?.code).toBe('unsupported_wall_topology');
+		expect(issue?.message).toContain('centerline crossing');
 	});
 
 	it('keeps explicit shared-Junction endpoint contact valid', () => {
@@ -367,6 +403,9 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 	});
 
 	it('leaves two straight Walls on the chord fast path', () => {
+		// S4 — a proper crossing between two INDEPENDENT straight Walls is permitted
+		// geometry now (F4's straight counterpart), and the pair is still decided by the
+		// chord classifier alone: straight/straight pairs never reach the sampled gate.
 		const crossing = documentOf(
 			{ 'j-a': [0, 0], 'j-b': [4, 0], 'j-c': [2, -2], 'j-d': [2, 2] },
 			[
@@ -374,7 +413,7 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 				{ id: 'wall-v', start: 'j-c', end: 'j-d' }
 			]
 		);
-		expect(validateWallFirstTopology(crossing)?.code).toBe('unsupported_wall_topology');
+		expect(validateWallFirstTopology(crossing)).toBeUndefined();
 		const disjoint = documentOf(
 			{ 'j-a': [0, 0], 'j-b': [4, 0], 'j-c': [0, 3], 'j-d': [4, 3] },
 			[
@@ -383,5 +422,20 @@ describe('P23.11 slice 3 — curve-level crossing validation', () => {
 			]
 		);
 		expect(validateWallFirstTopology(disjoint)).toBeUndefined();
+		// The chord path is still the authority INSIDE one component: two straight
+		// Walls sharing a Junction whose spans overlap collinearly beyond it are a
+		// malformed graph edge. (Two properly crossing straight Walls cannot share a
+		// Junction at all — one of them would have to be split — so this is the
+		// same-component straight/straight relation that exists.)
+		const sameComponentOverlap = documentOf(
+			{ 'j-a': [0, 0], 'j-b': [4, 0], 'j-c': [2, 0] },
+			[
+				{ id: 'wall-h', start: 'j-a', end: 'j-b' },
+				{ id: 'wall-v', start: 'j-c', end: 'j-b' }
+			]
+		);
+		const issue = validateWallFirstTopology(sameComponentOverlap);
+		expect(issue?.code).toBe('unsupported_wall_topology');
+		expect(issue?.message).toContain('overlap beyond their explicit shared Junction');
 	});
 });

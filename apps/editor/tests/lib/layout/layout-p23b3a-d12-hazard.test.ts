@@ -259,18 +259,25 @@ function ownedObjectRoomId(document: LayoutDocumentWallFirst, objectId: string) 
 }
 
 describe('P23B.3a S3 — the D-12 hazard, measured against the current reconciliation', () => {
-	it('records the pre-state verdicts, which differ across the three overlap shapes', () => {
+	it('records the pre-state verdicts, re-based at S4 onto the component-scoped subject', () => {
 		// The codec accepts all three: topology is explicitly outside its scope.
 		for (const document of [EXACT_COINCIDENCE, PARTIAL_OVERLAP, FULL_CONTAINMENT]) {
 			expect(validateWallFirstLayoutDocument(document).success).toBe(true);
 		}
-		// 1. EXACT COINCIDENCE — refused, and by the DOCUMENT-WIDE coincidence rule
-		//    first (the OBSTACLE S5 re-scopes), not by wall geometry.
+		// 1. EXACT COINCIDENCE — still refused, and by the DOCUMENT-WIDE coincidence
+		//    rule first (the OBSTACLE S5 re-scopes), not by wall geometry. S4 did not
+		//    touch this half: the coincidence rule is S5's subject.
 		expect(validateWallFirstTopology(EXACT_COINCIDENCE)?.code).toBe('duplicate_junction_point');
-		// 2. PARTIAL OVERLAP — refused by the document-global wall-geometry rule.
-		expect(validateWallFirstTopology(PARTIAL_OVERLAP)?.code).toBe('unsupported_wall_topology');
-		// 3. FULL CONTAINMENT — ALREADY ADMITTED today: the contained enclosure's
-		//    Walls intersect nothing and there is no coincident Junction to catch.
+		// 2. PARTIAL OVERLAP — S3 RECORDED 'unsupported_wall_topology' HERE, refused by
+		//    the then-document-global wall-geometry rule. THAT HALF FLIPPED AT S4, which
+		//    scoped the gate's subject to the connected component: the two enclosures
+		//    share no Junction id, so their collinear overlap is permitted geometry (F5)
+		//    and the document is ADMITTED. The pre-policy verdict survives as the
+		//    recorded history above rather than as an assertion (AM-1).
+		expect(validateWallFirstTopology(PARTIAL_OVERLAP)).toBeUndefined();
+		// 3. FULL CONTAINMENT — ALREADY ADMITTED before the policy: the contained
+		//    enclosure's Walls intersect nothing and there is no coincident Junction to
+		//    catch. Unchanged by S4.
 		expect(validateWallFirstTopology(FULL_CONTAINMENT)).toBeUndefined();
 	});
 

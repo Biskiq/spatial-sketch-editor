@@ -346,17 +346,40 @@ describe('P23.11 pass — the crossing predicates keep their exact answer', () =
 		expect(mismatches).toEqual([]);
 	});
 
-	it('still rejects a bow that crosses another Wall and accepts a clear one (end to end)', () => {
+	it('accepts a bow that crosses INDEPENDENT Walls and a clear one, without repairing either (end to end)', () => {
 		// The gate's own contract, through the shipped planner, on the fixture the
-		// investigation measured.
+		// investigation measured. `bend-10-wall` is ten graph-INDEPENDENT Walls — each has
+		// its own Junctions, and the nearest neighbour sits at z = 25 — so P23B.3a S4
+		// makes the crossing permitted geometry: the PRE-POLICY verdict for this exact
+		// intent was `topology_invalid`, and the policy replaced it for an independent
+		// overlap. The sampled predicate's own exact answer is still pinned by the parity
+		// cases above; the same-component refusal it still owes is pinned by the P23.11
+		// curve suites and by the P23B.3a S4 oracle.
 		const crossing = stateFor('bend-10-wall');
-		const crossingResult = updateWallFirstWallBend(crossing, TARGET_WALL, { distance: 3, point: [3, 60] });
-		expect(crossingResult.success).toBe(false);
-		expect(crossingResult.success ? null : crossingResult.code).toBe('topology_invalid');
+		const wallsBefore = liveDocument(crossing).walls.map((wall) => wall.id);
+		const junctionsBefore = liveDocument(crossing).junctions.map((junction) => junction.id);
+		expect(updateWallFirstWallBend(crossing, TARGET_WALL, { distance: 3, point: [3, 25] }).success).toBe(true);
+		// Permitted is not "repaired": the accepted bend created no Wall, no Junction and
+		// no fragment to resolve the crossing, and the bent Wall carries the new curve.
+		expect(liveDocument(crossing).walls.map((wall) => wall.id)).toEqual(wallsBefore);
+		expect(liveDocument(crossing).junctions.map((junction) => junction.id)).toEqual(junctionsBefore);
+		expect(liveDocument(crossing).walls[0]!.centerline.kind).toBe('cubic-chain');
 
 		const clear = stateFor('bend-10-wall');
 		expect(updateWallFirstWallBend(clear, TARGET_WALL, { distance: 3, point: [3, 0.28] }).success).toBe(true);
 		expect(liveDocument(clear).walls[0]!.centerline.kind).toBe('cubic-chain');
+
+		// The refusal that remains here is a different rule, and the differential is
+		// recorded rather than assumed: a bow folded back within a Wall's own thickness
+		// fails the geometry COMPILE, which is policy-independent. Pre-policy the topology
+		// gate refused this intent first (so it read `topology_invalid`); now the crossing
+		// gate correctly reports nothing and the compile's own rule reports the intrinsic
+		// `geometry_invalid`.
+		const folded = stateFor('bend-10-wall');
+		const foldedResult = updateWallFirstWallBend(folded, TARGET_WALL, { distance: 3, point: [3, 60] });
+		expect(foldedResult.success).toBe(false);
+		expect(foldedResult.success ? null : foldedResult.code).toBe('geometry_invalid');
+		expect(liveDocument(folded).walls[0]!.centerline.kind).toBe('line');
 	});
 });
 
