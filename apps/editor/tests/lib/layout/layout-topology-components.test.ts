@@ -94,8 +94,8 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 			boundary: [
 				{ wallId: 'wall-a1', direction: 'forward' },
 				{ wallId: 'wall-e', direction: 'forward' },
-				{ wallId: 'wall-c2', direction: 'backward' },
-				{ wallId: 'wall-d', direction: 'backward' }
+				{ wallId: 'wall-c2', direction: 'reverse' },
+				{ wallId: 'wall-d', direction: 'reverse' }
 			],
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
@@ -107,7 +107,7 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 				{ wallId: 'wall-a2', direction: 'forward' },
 				{ wallId: 'wall-b', direction: 'forward' },
 				{ wallId: 'wall-c1', direction: 'forward' },
-				{ wallId: 'wall-e', direction: 'backward' }
+				{ wallId: 'wall-e', direction: 'reverse' }
 			],
 			floorThickness: 0.1,
 			ceilingThickness: 0.1
@@ -122,7 +122,7 @@ describe('P23B.3a S2 — general Wall/Junction connectivity', () => {
 		expect(wallsShareTopologyComponent(document, 'wall-a1', 'wall-e')).toBe(true);
 		expect(wallsShareTopologyComponent(document, 'wall-a1', 'wall-c2')).toBe(true);
 		// Everything in the fixture is one group (the two enclosures share wall-e).
-		expect(wallIdsConnectedTo(document, 'wall-e').sort()).toEqual(
+		expect([...wallIdsConnectedTo(document, 'wall-e')].sort()).toEqual(
 			[
 				'wall-a1',
 				'wall-a2',
