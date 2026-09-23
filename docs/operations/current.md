@@ -10,7 +10,12 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        synthesis is the authoritative research input and the designer brief is written
        (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). One independent proposal is
        review-ready and unratified (p26-spatial-depth/design/proposals/register/README.md, branch
-       codex/p26-register-design); it changes no production code and starts no implementation.
+       codex/p26-register-design); it changes no production code and starts no implementation. Four
+       decision items it raised were dispositioned by the owner on 2026-09-23 — independent
+       Layout-owned ceiling regions affirmed; independently authored opening arch rise approved; the
+       twelve-room finite-depth semantics confirmed; several fixtures in one project closed as a
+       non-decision. None of those ratifies the proposal, selects it over another submission, or
+       changes P23B's priority; the full record is in its review-notes.md §7.2.
        The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
        (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
        pending there. P26 is the selected validation window: selected, not yet open. The cycle

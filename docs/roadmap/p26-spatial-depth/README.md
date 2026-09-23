@@ -40,7 +40,7 @@ plan → none yet (umbrella + child plans pending)
 ## Design
 
 - Assignment: [`design/briefs/2026-09-22-p26-designer-brief.md`](./design/briefs/2026-09-22-p26-designer-brief.md) — self-contained brief for independent designers. An assignment, not a contract.
-- Independent exploration: [REGISTER](./design/proposals/register/README.md) — codebase-aware primary direction, interaction/ceiling specification, and visual atlas covering S1–S10. **Unratified**; no reconciliation or implementation approval implied. Its atlas is self-verifying: `node design/proposals/register/check-atlas.mjs` renders every board, asserts the scenario consistency matrix, probes every displayed control, and fails if the exported vectors drift from the atlas. Review evidence and open owner decisions: [review-notes.md](./design/proposals/register/review-notes.md).
+- Independent exploration: [REGISTER](./design/proposals/register/README.md) — codebase-aware primary direction, interaction/ceiling specification, and visual atlas covering S1–S10. **Unratified**; no reconciliation or implementation approval implied. Its atlas is self-verifying: `node design/proposals/register/check-atlas.mjs` renders every board, asserts the scenario consistency matrix, probes every displayed control, and fails if the exported vectors drift from the atlas. Review evidence, recorded owner rulings and prototype limits: [review-notes.md](./design/proposals/register/review-notes.md). Those rulings dispose of four specific decision items (ceiling regions, opening arch rise, twelve-room finite-depth semantics, fixture multiplicity); they ratify neither REGISTER nor any other submission.
 
 ## Research (supporting evidence)
 

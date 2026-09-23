@@ -121,6 +121,31 @@ for(const [id] of MATRIX){
 if(unhandled.length)fail('displayed controls with no effect',[...new Set(unhandled)].join('; '));
 note.push(`${allActions.size} distinct control actions probed`);
 
+// ---------------------------------------------------------------- ownership
+// Single-control ownership: a handle the legend calls illustrated must not be a second owner of a command
+// that already has a live control, and following it must change nothing but the status line.
+const illustIn=html=>[...new Set([...html.matchAll(/data-action="([^"]+)" class="grip illust"/g)].map(m=>m[1]))];
+const buttonActions=new Set(),illustActions=new Set();
+for(const id of boards){
+  run(`go(${JSON.stringify(id)})`);
+  const html=frameHtml();
+  for(const m of html.matchAll(/<button[^>]*data-action="([^"]+)"/g))buttonActions.add(m[1]);
+  for(const a of illustIn(html))illustActions.add(a);
+}
+const bothOwners=[...illustActions].filter(a=>buttonActions.has(a));
+if(bothOwners.length)fail('actions owned by both an illustrated handle and a live command',bothOwners.join('; '));
+for(const id of boards){
+  run(`go(${JSON.stringify(id)})`);
+  for(const a of illustIn(frameHtml())){
+    run(`go(${JSON.stringify(id)})`);
+    const before=run("JSON.stringify({...state,message:null})");
+    try{run(`act(${JSON.stringify(a)})`);}catch(e){fail(`illustrated handle ${a} on ${id} throws`,e.message);continue;}
+    const after=run("JSON.stringify({...state,message:null})");
+    if(before!==after)fail(`illustrated handle ${a} on ${id} edits the document`,'an illustrated handle must narrate its gesture, not perform it');
+  }
+}
+note.push(`${illustActions.size} illustrated handles verified as non-editing`);
+
 // ---------------------------------------------------------------- disclosed geometry
 // Claims a board makes in words must be visible in its own drawing.
 const drawFor=id=>{run('go('+JSON.stringify(id)+')');return run('svg(draw())');};
@@ -156,6 +181,16 @@ if(!curveBefore||!curveAfter)fail('board curve does not report its foreshortenin
 else if(!(curveBefore.image<curveBefore.wall))fail('board curve presents a flattened projection as an elevation','image '+curveBefore.image+' m of wall '+curveBefore.wall+' m');
 else if(Math.abs(curveAfter.image-curveBefore.image)<0.1)fail('board curve shows an unchanged image after the bend','image '+curveBefore.image+' → '+curveAfter.image);
 else if(Math.abs(angleAfter-angleBefore)<5)fail('board curve shows an unchanged tangent after the bend',angleBefore.toFixed(1)+'° → '+angleAfter.toFixed(1)+'°');
+// The status line must describe the state the drawing shows, not the gesture that produced it.
+run("go('curve')");run("act('bend')");
+if(!/After the bend edit/.test(run('svg(draw())')))fail('board curve does not redraw after the bend','');
+if(!/changed canonical curve/.test(run('state.message')))fail('board curve status does not report the bend','');
+run("act('bend')");
+if(!/Before the bend edit/.test(run('svg(draw())')))fail('board curve does not restore the bend specimen','');
+if(/changed canonical curve/.test(run('state.message')))fail('board curve status still claims a changed curve after the specimen was restored','');
+// Labels a line must cross stay readable only if the drawing gives its text a paper halo.
+if(!drawFor('section').includes('paint-order:stroke'))fail('drawing text carries no paper halo','a label crossed by the cut line or the partition becomes unreadable');
+if(!drawFor('spanning').includes('paint-order:stroke'))fail('plan text carries no paper halo','');
 // The range editor must offer its own depth and direction controls, not reuse the span grip.
 const editcut=drawFor('editcut');
 for(const a of['depthEdge','lookFlip'])if(!editcut.includes('data-action="'+a+'"'))fail('board editcut has no '+a+' control','');
