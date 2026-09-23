@@ -8,7 +8,9 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
        synthesis is the authoritative research input and the designer brief is written
-       (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Proposals are not started.
+       (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). One independent proposal is
+       review-ready and unratified (p26-spatial-depth/design/proposals/register/README.md, branch
+       codex/p26-register-design); it changes no production code and starts no implementation.
        The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
        (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
        pending there. P26 is the selected validation window: selected, not yet open. The cycle
@@ -33,10 +35,12 @@ NEXT:
    benchmark-infrastructure changes (fixtures, harness, baselines, budgets) may not.
 3. P26 product planning may continue in parallel, but it is not the primary next-work instruction.
    The designer brief is written
-   (../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Next P26 artifact,
-   when that work is picked up, is independent design proposals and then a reconciled direction
-   and child plan. No P26 implementation starts without an approved plan. The brief does not open
-   the validation window.
+   (../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md), and an independent
+   proposal is review-ready at ../roadmap/p26-spatial-depth/design/proposals/register/README.md.
+   That artifact is unratified: it is evidence for owner review, not a ratified direction and not an
+   implementation plan. Next P26 artifacts, when that work is picked up, are the remaining independent
+   submissions and then a reconciled direction and child plan. No P26 implementation starts without
+   an approved plan. The brief does not open the validation window.
 4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
@@ -45,6 +49,7 @@ phase status/order → ../roadmap/README.md
 P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
 P23B umbrella (rationale/boundaries only) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
 P26 planning → ../roadmap/p26-spatial-depth/README.md
+P26 independent proposal (unratified, design-only) → ../roadmap/p26-spatial-depth/design/proposals/register/README.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
 P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
 P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md (stub)
@@ -55,7 +60,7 @@ BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on an
   owner-ratified child plan. Phase 0 adjudication and the justified Phase 1 response are already
   installed and do not block that gate
-- P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
+- P26 has a designer brief and one independent proposal, and no child plan yet; proposal reconciliation is not started. Planning is the current work, not a blocker to it
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass

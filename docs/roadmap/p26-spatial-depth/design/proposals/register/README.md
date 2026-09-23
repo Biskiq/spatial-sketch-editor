@@ -6,7 +6,7 @@ One primary direction, created from the brief, synthesis, durable contracts and 
 
 **Start with [the interactive visual atlas](./atlas.html).** It contains a full 1440 × 900 PLATE instrument frame, scenario boards, a working numeric-edit/Undo demonstration, and separate Reveal/restore-view controls. [Interaction and ceiling specification](./direction.md) supplies the full behavior; [implementation evidence](./evidence.md) distinguishes inspected capabilities from proposed seams.
 
-Standalone vectors: [Section frame](./section-1440x900.svg) · [Ceiling Focus frame](./ceiling-focus-1440x900.svg) · [Twelve-room frame](./twelve-room-1440x900.svg). Each is exactly 1440 × 900; the atlas has 27 annotated states. These are design drawings, not captures of implemented P26 features. Regenerate the vectors with `node docs/roadmap/p26-spatial-depth/design/proposals/register/export-frames.mjs`.
+Standalone vectors: [Section frame](./section-1440x900.svg) · [Ceiling Focus frame](./ceiling-focus-1440x900.svg) · [Twelve-room frame](./twelve-room-1440x900.svg). Each is exactly 1440 × 900; the atlas has 29 annotated states. These are design drawings, not captures of implemented P26 features. Regenerate the vectors with `node docs/roadmap/p26-spatial-depth/design/proposals/register/export-frames.mjs`, then verify the package with `node docs/roadmap/p26-spatial-depth/design/proposals/register/check-atlas.mjs`. That checker renders every board, asserts the scenario consistency matrix (durable view, Navigator selection, status reference and Inspector identity agree), probes every displayed control for a real handler, checks that each board's drawing discloses the geometry its narration claims, and fails if the exported vectors have drifted from the atlas.
 
 ![REGISTER — Section through the shared door](./section-1440x900.svg)
 
@@ -16,10 +16,10 @@ The ceiling model is deliberately ambitious: independent regions can span rooms,
 
 ## Review route
 
-1. Atlas S1/S2/S10: place a cut through the shared door, edit its head, commit, then return.
-2. S3/S7: one opening through elevation, numeric input, Undo and 3D; gable, arch, curve-follow and deleted host recovery.
+1. Atlas S1/S2/S10: place a cut through the shared door, edit its head, commit, then return. “Edit the cut you placed” shows the committed range and its own span, depth and look-direction controls.
+2. S3/S7: one opening through elevation, numeric input, Undo and 3D; gable, arch, curve-follow and deleted host recovery through the Project Head's global Undo.
 3. S5: authored versus generated overhead, spanning shed, partial/multiple regions, overlap joint, reflected focus.
-4. S4/S6: twelve-room density, reason-coded exclusions, selective Reveal and independent view restoration.
+4. S4/S6: twelve-room density, reason-coded exclusions, selective Reveal of one source, and independent view restoration.
 5. S8/S9: architectural column/platform, passive prop, empty/invalid/unsupported states.
 6. Ratification table at the end of the specification.
 

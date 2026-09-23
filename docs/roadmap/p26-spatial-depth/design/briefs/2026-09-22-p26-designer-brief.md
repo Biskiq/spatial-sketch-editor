@@ -884,7 +884,7 @@ You do not need to open these. They are the evidence behind §4. Dates and revis
 
 Shipped product facts in §2 and §3 come from the current architecture and layout contracts: wall-first layout (`formatVersion` 5), one compiler, PLATE, world-local scene placement, and the P23 close (2026-09-22). P23B’s scope comes from its planning umbrella: cost, not capability, and still in planning.
 
-Appendix A is taken from the ratified shell contract `docs/reference/design-system/editor-shell-and-visual-system.md` (PLATE, owner-ratified, P23.14 closed 2026-09-21): §5 reference geometry, §6.1 PLATE Light colors, §7 type ladder and control roles, §8–§11 for what each region holds. The specimen is a Scene / Plan composition drawn from those sections. It is not a historical proposal and not a product screenshot.
+Appendix A is taken from the ratified shell contract `docs/reference/design-system/editor-shell-and-visual-system.md` (PLATE, owner-ratified, P23.14 closed 2026-09-21): §5 reference geometry, §6.1 PLATE Light colors, §7 type ladder and control roles, §8–§11 for what each region holds. Earlier revisions of this brief carried a Scene / Plan composition plate. The owner deleted that plate because its painted labels no longer matched the contract, so the tables below are the only metric authority. Do not reconstruct a plate from memory, and do not treat any submission's painted frame as a substitute for them.
 
 ---
 
@@ -896,9 +896,7 @@ This is the shell you reproduce. Numbers below are the ratified contract at scal
 
 Desktop reference: **1440 × 900 CSS px**. These values are the reference composition. Smaller viewports keep the same hierarchy and ownership before they keep the same pixels.
 
-![PLATE Scene Plan reference frame, 1440 by 900](./plate-scene-plan-1440x900.png)
-
-The specimen is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column. The tables in this appendix are the metric authority. If a painted label in the specimen disagrees with a table, follow the table.
+The reference composition is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column. Where a submission draws that frame, the tables in this appendix are the metric authority and the drawing must follow them.
 
 ### A.2 Layout dimensions
 

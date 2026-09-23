@@ -1,111 +1,129 @@
-# REGISTER — review evidence and prototype limits
+# REGISTER — independent review evidence and prototype limits
 
 **Design artifact only · unratified · 2026-09-22.** The product specification is [direction.md](./direction.md); [evidence.md](./evidence.md) records the inspected baseline. No P26 product acceptance is claimed. Completion here means *review-ready*, not ratified or implementation-ready.
 
-## Completion pass — verification actually run
+This pass was an independent semantic review of the submission on PR #83 (branch `codex/p26-register-design`, starting HEAD `01cb3af`, base `8d583172`). It re-derived the earlier review's leads against the current branch instead of applying them as a fix list, rejected the ones the code disproved, found defects the earlier pass did not report, and changed the atlas, its specification and its verification. **No production code changed:** `git diff 8d583172 HEAD -- apps packages` is empty.
 
-Performed on branch `codex/p26-register-design` on top of `769d69f`. The pass only fixed presentation and consistency. It did not redesign REGISTER, and it changed no production code.
+## 1. What is verified, and how
 
-**Visual QA.** Viewed all **27** boards at full frame and the drawing canvas at 1:1 (one frame CSS pixel per screenshot pixel) in the in-app browser. The fit-to-window view was also checked at a realistic 1280 × 800 laptop viewport: the frame scales to 1240 px with no horizontal page scroll. Rendered the three exported SVGs with `rsvg-convert` at native 1440 × 900 and at 0.6 scale (864 × 540), and inspected all six renders.
+Four independent layers, all of which can be re-run by a reviewer:
 
-**Automated sweep of every board.** For each of the 27 boards the sweep checks:
+1. **Executable consistency matrix.** `node docs/roadmap/p26-spatial-depth/design/proposals/register/check-atlas.mjs` renders every board, then asserts the scenario matrix in §2 below: the durable view control, the Navigator row, the status reference and the Inspector identity must all describe the same canonical source. It also probes every displayed control for a real handler and fails on any control that changes no state, selection or message.
+2. **Disclosed geometry.** The same checker asserts that each board draws the geometry its own narration claims — that the two S1/S2 ceiling gaps are dimensioned, that the C-SPAN underside is drawn at 3.55/4.55 with a 0.745 gap, that a 3D board draws exactly one floor datum and the canonical wall and ceiling planes, that C-SPAN's board does *not* draw the generated closure it replaces, that the footprint board draws a 7 × 3.22 m region overlapping a 7 × 3.28 m region, that the curved elevation is foreshortened *and* changes with the canonical curve, that the excluded-selection board keeps the source its narration says stays, and that an edge-on source exposes no fields of the plane it is perpendicular to.
+3. **Live-renderer layout audit.** Measurements below are taken from the real renderer, not estimated, because a zero-clipping claim measured from estimates is not evidence. Run in the app's browser with every board loaded:
 
-- canvas text clipped at the Paper edge;
-- overlapping labels;
-- drawing content hidden under a Paper message;
-- horizontal overflow in the shell rows (Navigator, contextual host, head, status, Inspector properties);
-- registration-map text overflow;
-- `undefined`/`NaN` in the frame;
-- malformed SVG path numbers;
-- a frame size other than 1440 × 900 CSS px.
+   ```js
+   const boxes=[...document.querySelector('#frame .canvas svg').querySelectorAll('text')]
+     .map(t=>({b:t.getBBox(),txt:t.textContent}));
+   // flag b.x < -1.5, b.x+b.width > 772+1.5, b.y outside 0..738, bbox pairs overlapping >45% of the smaller box,
+   // and #frame .navrow / .inspector .property / .status span / .context / .ranges with scrollWidth > clientWidth.
+   ```
+   **Result after the corrections: clean on all 29 boards** — no clipped text, no overlapping labels, no shell overflow. The same run before the corrections found 12 defects (§4). The page also has no horizontal scroll at 1280 × 800, the frame scales to 1240 px, and the 1:1 toggle restores a 1440 px stage slot.
+4. **Scripted journeys in the live page.** Seven end-to-end journeys, driven through the real controls (see §5).
 
-**Result: 0 findings on all 27 boards and an empty console.** The first sweep before fixes had findings on 15 boards.
+## 2. Scenario consistency matrix
 
-**Defects found and corrected:**
+“Kind” is the honest status of the state shown: **accepted** (committed canonical geometry), **draft** (not in the document), **view** (view state only, no Layout history), **refusal** (a rejected proposal over unchanged geometry).
 
-| Defect | Consequence | Correction |
+| Board | Durable view | Canonical selection | Registration map | Geometry and dimensions shown | Membership | Inspector | Controls → transition | Kind |
+|---|---|---|---|---|---|---|---|---|
+| `section` | Section A | O-DOOR | Section A, read-only location | Floor Y +0.15; walls 4.20 / 3.20 / 3.35 / 2.80; door head 2.10, sill 0.00; generated closure 4.35 and 3.35 with the 1.00 and 0.40 gaps and the derivation rule | North + South cut; O-DOOR; projected O-WINDOW at 8.00, W-CURVE 2.40 high, prop at 4.90; East gallery outside 4.50 | O-DOOR opening: width / sill / head writers, height readout, host W-SHARED | head and sill grips, Inspector commit, depth, Cut only, Crop…, Edit cut, Fit | accepted |
+| `entry` | Place section | O-DOOR | Placement | Translucent 4.50 m range over the two galleries, span 11.00 m, look east | Nothing created; third click chooses the look side | O-DOOR retained | Open section, depth, Cancel section, tray Section | draft |
+| `editcut` | Plan · editing the range | O-DOOR | Committed range · controls in the strip | Committed cut with span 11.00 m, 4.50 m depth, endpoint and depth-edge grips, look arrow | No architecture created or changed | O-DOOR retained | Resume section, span / depth / look controls (illustrated drags), Discard section | view |
+| `elevation` | Wall Elevation | O-DOOR | W-SHARED elevation | 8.00 m host, floor +0.15, door 1.00 wide head 2.10 | Host wall and face; background 0.30 m | O-DOOR: width / sill / head, host, floor | jamb / head / sill grips, face switch, Crop…, Return to Plan, Undo, 3D | accepted |
+| `gable` | Wall Elevation | W-SHARED | W-SHARED elevation | Eaves 3.20, ridge 4.20, ridge station 4.00 | One wall top for two room contexts | W-SHARED wall profile and relationships | eave / ridge grips (illustrated), note that the elevation owns them | accepted, profile edit proposed |
+| `arch` | Wall Elevation | O-WINDOW | W-EAST elevation | Window 1.80 wide, sill 1.10, head 2.30, rise 0.90 → 0.45 | Host W-EAST; head stays fixed, spring line moves | O-WINDOW: width / sill / head, Arch rise; stated as a new shared parameter, not shipped | rise grip (illustrated), commit, host-elevation note | proposal beyond shipped behaviour |
+| `curve` | Wall Elevation | W-CURVE | W-CURVE tangent | Foreshortened image 2.80 m of a 4.13 m wall; station 2.06 m derived; plan inset shows the curve, the tangent plane and its arc stations | Host W-CURVE 2.40 high; background 0.30 m | W-CURVE wall profile; Move bend / Restore bend | bend grip, Locate in Plan, vertical station grip | proposed representation |
+| `spanning` | Ceiling | DRAFT → C-SPAN | Plan | Two room seeds, preview 8 × 11 m; shared wall is not a boundary; shed 3.55 → 4.55, thickness 0.15 | Footprint independent of rooms once created | Draft region: outline closed, Form Shed, low / high edges, Use Closure | Use room outline / Draw region, Create ceiling (one Layout transaction), Inspector, 3D | draft → accepted |
+| `ceiling-section` | Section A | C-SPAN | Section A | Shed profile low Y 3.55, high Y 4.55; 0.745 gap at the shared wall, 1.60 at the high edge, North's wall crossing 0.80 through the low edge | Both rooms inside the footprint | C-SPAN underside form / edges / thickness / Use / rooms overlapped | lift grip (illustrated), open profile section, footprint in Plan, 3D | accepted |
+| `ceiling-three` | 3D | C-SPAN | remembered | One spanning underside over both galleries; the generated plane is absent inside the footprint | One source, one history entry | C-SPAN | lift grip (illustrated) | view |
+| `multiple` | Ceiling | C-GABLE | Section A remembered | C-FLAT 7 × 3.22 m and C-GABLE 7 × 3.28 m in footprint, 0.50 m overlap band, both undersides Y 3.35 | North only; east 1.00 m strip and all of South stay generated (Y 4.35 / 3.35) | C-GABLE underside, relationship, rooms overlapped | Edit footprint, Open profile section, Focus ceiling, Section B, 3D | accepted |
+| `joint` | Section B | C-GABLE | Section B, normal to the ridge | 0.50 m footprint overlap against 0.35 m of real solid crossing; separated-stack reference beside it | Both canonical sources retained | C-GABLE with Trim / Undo joint | Trim gable against flat, Undo joint | accepted once trimmed |
+| `focus` | Ceiling Focus | C-GABLE | Plan orientation (Plan east → right; Focus east → left) | Cut Y 1.75 = floor +1.60; 5.00 m upward range → Y 6.75; reflected plan with upright labels | The same footprint geometry, mirrored | C-GABLE underside with whole-surface lift | Cut Y field, Reset to floor +1.60, footprint, profile section | view |
+| `dense-plan` | Place section | W-N2M2 | 6 in / 6 out | 24 × 15 m wing, twelve 6 × 5 m rooms, heights alternating 3.00 / 4.20, 15 doors, 12 windows, one curved boundary; 6.00 m range through column 2 | Columns 2 cut, 3 projected, 1 behind, 4 outside depth | W-N2M2 wall profile, bounds R-N2 / R-M2 | Open the section cut, depth, Cancel section | accepted |
+| `dense` | Section A | W-N2M2 | 6 in / 6 out | Three cut rooms, three projected rooms; column 1 behind, column 4 beyond depth | Six room contexts in, six out with reasons | W-N2M2 wall; repeated “Gallery” rooms keep references | Find an excluded source to reveal, depth, Cut only, Edit cut | accepted |
+| `dense-reveal` | Section A | O-N4 | 6 in / 6 out → 1 revealed | One window and its host wall admitted at the true projected station; depth stays 6.00 m | Column 4's other rooms, walls and openings stay excluded | O-N4: membership state, range depth, identity note | Reveal → Restore view | view (temporary membership) |
+| `excluded` | Section A | O-WINDOW | Section A | 2.00 m range; the curved partition and the east window leave the drawing, the prop at 4.90 m stays | Exclusion is a reason, not a lost object | O-WINDOW with the “outside depth” warning | Reveal, Restore view, depth, Edit cut, sill edit + Undo | view |
+| `crop` | Section A | O-DOOR | Section A | Crop min Y 1.00; head visible, sill Y 0.15 excluded; no sill grip offered | The target keeps identity below the crop | O-DOOR with the crop warning | Reveal, Restore view, head grip, Edit cut | view |
+| `return` | Plan | O-DOOR | Section A remembered | Location and selection restored; the temporary cut is a quiet line and arrow | No vertical dimension forest in Plan | O-DOOR | Resume section, Edit cut, Discard section, 3D | view |
+| `three` | 3D | O-DOOR | remembered | Wall tops 4.35 / 3.35 / 2.95, ceilings 4.35 / 3.35, 1.00 and 0.40 gaps, one floor datum, no opening-detail gizmos | North + South + shared wall; East gallery beyond | O-DOOR with the precision redirect | Open elevation; coarse-handle note | view |
+| `objects` | Section C | P-PLAT | Section C (illustrative location) | Column 0.40 × 0.40, top 3.35; platform 3 × 2 m, top 0.60, base 0.40, thickness 0.20, 0.45 rise, 0.25 visible air gap | Architecture vs passive Scene artwork | P-PLAT vertical extent and footprint | platform lift grip (illustrated) | accepted |
+| `invalid` | Wall Elevation | O-DOOR | W-SHARED elevation | Head 3.70 refused against a 3.20 wall top; dashed candidate over the accepted wall | Document unchanged | O-DOOR with the refusal reason; the typed field stays editable | correct the field, lower the grip, cancel | refusal |
+| `ridge` | Wall Elevation | W-SHARED | W-SHARED elevation | Ridge dragged onto the eave refused; last committed gable remains beneath | No automatic shape conversion | W-SHARED gable profile | move inward or choose Slope | refusal |
+| `deleted` | Wall Elevation | none (—) | Host unavailable · global Undo restores it | Empty instrument: no face, no handles, no background | Nothing stale remains | No selection; recovery is named | Return to Plan; Project Head global Undo → restores id and elevation | recovery |
+| `oblique` | Wall Elevation | O-WINDOW | W-SHARED elevation | O-WINDOW edge-on at the W-EAST junction; no width grip | Paper keeps W-SHARED's plane; Inspector keeps O-WINDOW | Edge-on target block naming W-EAST; no per-plane fields | Open W-EAST elevation, Back, Return to Plan | redirect |
+| `empty` | Place section | none (—) | No instrument | No architecture; Section tool armed; default depth 5.00 m | Nothing to imply or invent | No selection; points at drawing a wall | Cancel section | empty |
+| `miss` | Section A | O-DOOR | Section A | No intersections: no poche, projected context only | A cut through nothing is not a building | O-DOOR | Edit cut, Fit | empty cut |
+| `unclosed` | Ceiling | DRAFT | Plan | Open custom footprint, trailing edge dashed, no ceiling installed | Draft only; nothing in the document | Draft region: outline open, Flat, Suspended | Close outline, Backspace / Escape, Create once closed | draft |
+| `stretch` | Plan | O-DOOR | Section A remembered | Two-room marquee with no stretch handles | Explicit refusal; no hidden topology repair | O-DOOR | Clear the marquee | refusal |
+
+## 3. Verdicts on the previous review's leads
+
+| Earlier lead | Verdict | Evidence and correction |
 |---|---|---|
-| Two SVG path templates joined numbers with no separator (`…331.2 275` rendered as `…331.2275`). | The projected east window and curved partition were malformed in Section A. The same malformed paths appeared in the exported Section frame and the excluded/crop boards. | Separator added. Window and partition now draw correctly in the atlas and the export. |
-| The S5 **Trim gable against flat** action shared its name with the `joint` board id. | Clicking it only reloaded the board. The trim/undo-joint demonstration the notes described never ran. | Action renamed; trim and undo now verified. |
-| The depth value carried over between boards. | After S6, the crop, return and Section C boards showed depth 2.00 instead of 4.50. Changing depth below 4 on S2 jumped to S6 while keeping O-DOOR, so O-DOOR was flagged "outside depth". | Each board sets its own depth. A depth change never changes selection or board; O-WINDOW simply leaves the drawing. |
-| The registration map always showed Section A. | Contradicted every elevation, curve, Section B, Section C, Ceiling Focus and empty board. | One map per instrument: host wall and face with look direction, curve tangent, Section B normal to the C-GABLE ridge, Section C (illustrative), Focus plan orientation, empty state. Header and caption follow the map. |
-| The contextual strip did not match spec §§2, 4, 5. | Elevations offered Depth/Cut only/Edit cut. Focus lacked the floor-relative and look-up readouts. Plan boards claimed an active section. | Strip content now depends on the instrument kind: <ul><li>**Section:** "Looking east" and the range row.</li><li>**Elevation:** face switch and "Background 0.30 m".</li><li>**Curve:** arc-length station.</li><li>**Focus:** Cut Y, floor +1.60, "up 5.00 m → Y 6.75" and Reset to floor +1.60.</li><li>**Plan:** "Resume section" / "Discard section".</li><li>**Tools:** section placement and the ceiling tool.</li></ul> |
-| Ceiling-profile section title mismatch. | Opening the C-GABLE profile section was titled Section A in the strip but Section B on Paper. | Unified as Section B. |
-| The S9 edge-on board drew a W-EAST window elevation. | Title "Head stays fixed. The spring line moves." and a West face, while the scenario is W-SHARED elevation with O-WINDOW edge-on. | Now shows W-SHARED's north face with the W-EAST junction edge-on at screen-left. East/west (or north/south) orientation letters were added to all wall elevations. |
-| Selected state was inconsistent. | O-DOOR edges and elevation grips were drawn as selected while O-WINDOW or W-SHARED was the target. The plan door rect was highlighted during the ceiling draft. | The selected treatment follows the canonical target only. |
-| The empty-project board showed the Two galleries hierarchy with O-DOOR selected. | Contradicted "an empty project". | Empty Navigator, "Untitled project", no selection, default depth 5.00 m, Section tool armed. |
-| The S9 deleted-host board still listed W-SHARED with editable Gable properties. | Kept a stale editable source (spec §4). | Navigator marks it deleted and the Inspector shows no selection. Undo deletion restores W-SHARED as the selection. |
-| The S9 unclosed-outline board selected the existing C-GABLE with full properties. | "Close outline" jumped to the room-seeded S5 C-SPAN story. | The draft region is the target and is not in the document. Suspended is proposed (spec §5); Create is disabled until the outline closes. Closing stays on the board with no history. |
-| The C-SPAN Inspector said "Uncovered east strip retains generated Y 4.35". | C-SPAN covers both rooms entirely. | Region-specific text. |
-| Navigator missing C-FLAT. | Listed C-GABLE without C-FLAT on the multiple, joint and Focus boards. | C-FLAT listed. |
-| The S9 room-stretch board was titled "The same O-DOOR, back in Plan". | Title contradicted the scenario. | Titled for the refusal; draws the attempted two-room marquee without handles. |
-| The tray always showed Select armed. | Wrong for section placement, the empty state and the ceiling tool. | The armed tool follows the board (`aria-pressed` too). |
-| Paper messages covered the stroke legend. | The legend was hidden on six boards. | Messages moved to the top of Paper. |
-| Overlapping or clipped labels. | Span vs. footer, HIGH Y vs. room name, 0.50 and 11.00 vertical dimensions, platform rise and artwork labels, gable eave label on its own line, "+0.15" datum clipped at the Paper edge. Focus labels ran into geometry after mirroring; anchors are now mirrored with the geometry. Room labels sat under the twelve-room cut line. | All repositioned. |
-| Height missing from the Inspector. | Spec §4 makes height a readout beside the sill/head writers. | Added to the atlas and the Section export. |
-| Crop… jumped to the S6 section crop board from any instrument. | Wrong board and selection outside Section. | Crop… opens the S6 board only from Section. Elsewhere it reports the crop behaviour. |
-| Duplicate Undo deletion. | Appeared in the Inspector as well as on Paper. | Kept on Paper only. |
-| Redundant "Open elevation". | Offered while that elevation was already active. | Replaced with a note. |
+| S7's 3D drawing contains two competing floor outlines | **Rejected** | Each 3D board draws exactly one floor polygon. What reads as a second outline is the translucent floor wash plus `ghostWalls()` outlines for the *near* wall edges; the drawing states "Wall faces are translucent and the near walls are outlines only." `check-atlas.mjs` now counts floor datums per 3D board. |
+| The curved-wall elevation shows a top-down curve instead of an elevation | **Confirmed** | The board drew the curve and its tangent in plan and called it an elevation. It now draws the vertical face as the foreshortened tangent plane sees it (image 2.80 m of a 4.13 m wall, station derived by arc length) and keeps a labelled plan inset that shows where that plane sits. |
+| The before/after tangent illustration may not follow the changed curve | **Confirmed** | The canonical bend rotated the midpoint tangent by 1° (1.9° → 2.9°), so the "after" image was effectively identical (2.800 → 2.799 m) and proved nothing. The bend specimen now rotates the tangent 30.7° (1.9° → 32.6°), changes the arc length 4.13 → 3.75 m and the projected image 2.80 → 2.56 m. The checker requires an image shift ≥ 0.1 m **and** a tangent shift ≥ 5°. |
+| The S1/S2 section labels the 1.00 m gap but not the 0.40 m gap | **Confirmed** | Both gaps are dimensioned, and one rule line now explains them: derived closure sits at the maximum boundary-wall height (North 4.20 → Y 4.35; South 3.20 → Y 3.35), so the shorter exterior wall sits 0.40 m below the plane. The same rule is repeated on the 3D boards. The intentional gaps are now visibly separated from drawing discontinuities. |
+| The 3D spatial-proof board may not represent the unequal wall heights and ceilings | **Partly confirmed** | The drawn heights and the labels were individually right, but nothing tied them together and nothing checked them. The board now labels all three wall tops and both ceilings, and the checker asserts the drawn planes equal the canonical heights (4.20 / 3.20 / 2.80 above the floor datum → 4.35 / 3.35 / 2.95 world). |
+| Revealing O-N4 in the twelve-room case while another wall stays selected | **Confirmed** | Reveal was offered on the twelve-room cut while W-N2M2 was the selection, so a "reveal" would have admitted a source unrelated to the visible selection. Reveal now lives on its own board where O-N4 *is* the selection and is reachable from the wall's Inspector. The checker asserts the Navigator row moves from "outside depth · revealable" to "revealed for this view" and back. |
+| W-CURVE selection not appearing consistently in Navigator | **Rejected** | The Navigator row `⌒ Curved partition / W-CURVE` carries the selection state on the curve board, the status rail agrees, and the matrix asserts it. |
+| O-WINDOW displayed under an incorrect host context | **Confirmed** | During an edge-on visit the Inspector offered the same-plane width / sill / head writers for a source perpendicular to that plane. An edge-on source now shows an **Edge-on target** block naming its own host and the redirect action, with no per-plane fields; the checker forbids the field form on that board. |
+| Architectural platform selection without a Navigator representation | **Rejected** | Structure → Column `P-COL` and Walking platform `P-PLAT` rows exist under Scene content and follow selection; the matrix asserts `P-PLAT` is the selected row on the S8 board. |
+| Return transitions retaining one target while displaying a different fixture | **Confirmed** | Demonstration toggles (bend, trim, cut-only, face, draft / creation flags, outline state) survived board navigation, so a board could open inside another board's fixture. `go()` now restores each board's canonical state, and the matrix re-checks it on every visit. |
+| Deleted-host recovery appears to restore an entity without Undo | **Confirmed** | The board carried a separate Inspector storyboard action *and* Paper wording for recovery, while global Undo consumed any earlier opening edit first. Recovery is now the Project Head's global Undo alone: on that board Undo restores the host deterministically, the duplication is gone, and `direction.md` §"Source loss" and the §8 recovery table were corrected to match the ratified single-control-ownership rule. |
+| Section endpoint grips invoking opening-head/sill actions | **Rejected, one real defect found in passing** | Endpoints use range actions. The depth edge did reuse the span action and told the user dragging "changes the span"; it now has its own action and message, and the look arrow gained its own illustrated control label. |
+| Wall-profile grips invoking opening-head actions | **Rejected** | Gable, ridge, rise and station grips use profile actions; the Inspector shows the same values. |
+| Cancel and Discard leaving the cancelled instrument or draft active | **Rejected** | Verified live: Cancel section, Cancel ceiling and Discard section all return the tray to Select, drop the instrument strip, keep nothing in the drawing and write no Layout history. |
+| Controls that silently do nothing or jump to an unrelated scenario | **Confirmed (four cases)** | (1) The S5 room-outline draft's Create button was disabled forever, so a spanning region could not be created at all — the create action was unreachable; it now commits C-SPAN as one transaction. (2) The footprint board's own narration said "Inspect overlap in Section" and the twelve-room plan said "Open the section to compare", but neither board offered a control; both were added. (3) Redo reported nothing when there was no redo history; it now says so. (4) The tray Elevation button on the W-EAST window board fell through to the S1 door elevation; it now opens the selected source's elevation. The checker probes all displayed actions per board. |
 
-**Interactive demonstration re-run** (scripted clicks and form submissions against the live atlas):
+## 4. Found independently in this pass
 
-- **Opening head:** head 2.10 → 2.30 commit (1 history entry), then Return to Plan and Undo → 2.10 (0 entries). 3D keeps O-DOOR.
-- **Reveal and Undo are independent:** on S6, Reveal, then sill 1.10 → 1.20 commit, then Undo → 1.10 with Reveal still active. Restore view then clears Reveal and leaves the sill unchanged.
-- **Refusal:** head 4.50 is refused. The document stays unchanged and the typed value stays in the field (`aria-invalid`).
-- **No-op:** resubmitting 2.10 writes no history.
-- **Draft ceiling:** Create stays disabled until the outline closes.
-- **Focus cut:** 2.00 → readouts "floor +1.85 · up 5.00 m → Y 7.00", and Reset returns to 1.75.
-- **Joint:** trim, then undo joint.
-- **Deleted host:** Undo deletion restores W-SHARED as the selection.
-- **Face switch:** keeps W-SHARED/O-DOOR.
+- **Cross-fixture identity leak.** On the reveal board, the Inspector rendered the S4 window `O-N4` as "Gallery door / Opening · W-SHARED" with the S1 door's dimensions and host. It now has its own state: Gallery window, room N4, membership, range depth and a note that the wing is a separate fixture whose openings are not described by the S1 geometry.
+- **Twelve genuine layout defects.** The first live-renderer audit (real bounding boxes) returned 12 findings, including four clipped lines in the S5 separated-stack panel, a clipped C-SPAN line on both ceiling boards, and two mirrored-label collisions on the reflected Ceiling Focus board. All are fixed; the audit is now clean. The earlier pass recorded a zero-clipping sweep, and this pass could not reproduce it: the estimate-based sweep did not see these. A zero-clipping claim is only as good as the measurement behind it.
+- **A plan sheet showing a height diagram.** The ceiling-footprint board — whose durable view is *Ceiling footprint* — drew its two regions as stacked horizontal bands, i.e. a section-like height diagram on a plan. It now draws real footprints (7 × 3.22 m and 7 × 3.28 m) with the 0.50 m overlap band, the 1.00 m generated east strip and South's generated closure, so "overhead coverage is not room ownership" is visible rather than asserted.
+- **A draft card that contradicted its own narration.** The room-outline draft showed Flat / Suspended / underside Y 3.05 while the board narrated shed / Closure / 3.55–4.55. The draft card now matches the scenario it belongs to, and the room-free draft keeps its own Flat / Suspended reading.
+- **A stale instruction.** The wall Inspector told the reader to use a Reveal control on the instrument bar that was no longer there; it now points to the board that owns Reveal.
+- **Verification that can rot.** The exported vectors were hand-composed around the atlas's drawings, so a drawing could change while the export went stale. The exporter is now a module, `check-atlas.mjs` compares each committed vector against a fresh render (including the embedded drawing), and a drift is a failure.
 
-**Twenty-seven scenarios against the spec.** Board count 27. The S1–S10 references are unchanged. The figures agree with direction.md:
+## 5. Journeys actually exercised in the live atlas
 
-- **Section and ceilings:** S2 depth 4.50, East gallery excluded; 1.00 m generated gap at the shared wall; C-SPAN 3.55 → 4.55 with a 0.745 gap at the shared wall; C-FLAT/C-GABLE 0.50 m overlap; 1 m east strip at Y 4.35.
-- **Ceiling Focus:** default cut floor +1.60 = Y 1.75, 5.00 m upward range.
-- **Twelve-room wing (S4):** 24 × 15 m, 6 in / 6 out, cut at column 2.
-- **Column and platform (S8):** 0.40 × 0.40 column, base 0.15 / top 3.35; platform top 0.60, base 0.40, thickness 0.20.
-- **Wall elevation:** the S7 opening demonstration; S3 window rise 0.90 → 0.45.
+1. **Place → edit → commit → return → Undo → 3D.** Head 2.10 → 2.30 committed as one transaction; Return to Plan keeps the location and O-DOOR; Undo restores 2.10 with the view unchanged (history 1 → 0); 3D keeps O-DOOR selected.
+2. **Depth → excluded selection → Reveal → edit → Undo → Restore view.** Depth 4.50 → 3.00 keeps O-WINDOW selected and outside the drawing with a reason; Reveal admits the window plus its host-wall context; sill 0.40 commits and Undo returns 1.10 while Reveal stays; Restore view clears the reveal and leaves the sill alone.
+3. **Curved elevation → change the wall → resume at the same station.** The bend toggle changes the derived station (2.06 → 1.87 m), the arc length and the projected image; Locate in Plan keeps W-CURVE; revisiting the board restores the canonical before-state rather than the previous visitor's toggle.
+4. **Spanning ceiling → Section → 3D.** Room-outline draft (outline closed by construction) → Create commits C-SPAN as one Layout transaction → the plan shows the committed region → the profile section keeps C-SPAN → 3D shows the same region.
+5. **Partial and overlapping regions → joint.** The footprint board shows the overlap and hands over to Section B, where the crossing is marked, Trim commits, Undo joint returns it to a proposal, and the separated-stack case needs no decision.
+6. **Delete the elevation host → recover.** The Navigator explains the deletion, the Inspector has no stale face, and the Project Head's global Undo restores W-SHARED and its elevation as the selection.
+7. **Twelve-room section → Reveal one source.** Depth stays 6.00 m, one column-4 window is admitted with its host wall, the Navigator marks it for this view only, and Restore view returns it to excluded without touching history.
+8. **Cancel and Discard.** Empty, room-free draft, remembered range and spanning draft all return to Select with nothing retained.
 
-**Exports.** Regenerated with `node docs/roadmap/p26-spatial-depth/design/proposals/register/export-frames.mjs`. Exporter updates:
+Exports: regenerated with `node …/export-frames.mjs` — all three are exactly 1440 × 900, contain no `NaN`/`undefined`, and `check-atlas.mjs` currently reports **29 boards · 45 distinct control actions · 3 exported frames current**.
 
-- The map header and caption now come from the atlas's own map functions.
-- The Focus and placement strips match the atlas.
-- The twelve-room frame now reads as Plan placement: Open section, Section tool armed, no Plan-side Reveal.
-- Navigator references are right-aligned; SVG had collapsed the space padding.
+## 6. Prototype limits — stated plainly
 
-All three are exactly `width="1440" height="900"`, pass `xmllint`, and contain no `NaN`, `undefined` or malformed numbers.
+The atlas is a scenario player with a small working opening-edit history, a working depth/crop/reveal lease, and a working room-outline ceiling creation. It is **not** a geometry implementation. It does not execute the canonical compiler, persist a project, implement arbitrary pointer dragging, or simulate occlusion. Specifically:
 
-**Syntax and whitespace.** Atlas script parses (`new Function`), `node --check export-frames.mjs` passes, `git diff --check` is clean.
+- Blue solid grips are wired; dashed grips are illustrated drags (`aria-label` says so). Illustrated: range endpoints and look arrow, depth edge, eave / ridge / rise / station grips, whole-underside lift, platform top, curve bend.
+- **Committing** is real only for opening edits and the room-outline ceiling creation. The room-free draft's Create, the joint trim, the bend, the profile conversions and the arch rise describe designed transactions and are annotated as such; they do not add regions or alter canonical geometry.
+- Deletion recovery is the global Undo only; the prototype does not model a real deletion transaction list.
+- Board changes swap fixtures and load the relevant target; they do not carry live state between drawings, except where a journey above says state survives a *view* change.
+- The Section B and Section C registration-map locations are illustrative; the S4 wing is a separate fixture from the two-gallery S1 scene; ceiling regions are not persisted between boards.
+- The Navigator is a hierarchy with a working text filter, not a full canonical selection reducer. Accessibility and contrast are design intent, not audited here; no screen-reader or contrast tooling was run.
+- Production test lanes were not run, because no production code changed.
 
-**Links and sources.** 53 relative links across the README, direction, evidence, review notes, atlas and the P26 router all resolve. Every `#L` anchor is within its file both at baseline `8d583172` and at HEAD. Spot checks confirmed each anchor lands on the cited construct: `buildArchProfile`, the derived room ceiling, the Wall type, `resolveLayoutSnap`, the opening-mutation guard, the preview preflight, `beginLayout`, the view-mode types. `git diff 8d58317 HEAD -- apps packages` is empty.
+## 7. Owner decisions
 
-**Not run:** production test lanes, since no production code changed. No automated screen-reader or contrast audit; the notes on accessible SVG grips and keyboard paths remain design intent (direction §9).
+**Resolved in this pass (owner guidance applied).**
 
-## Read the atlas as a bounded prototype
+1. **PLATE reference plate.** The owner deleted `design/briefs/plate-scene-plan-1440x900.png` deliberately. The broken embed is removed and the dependent wording in the brief is rewritten: the appendix tables are the only metric authority, and a submission's painted frame must follow them. The file was not restored.
+2. **Two Undo paths for a deleted host.** Resolved under single-control ownership: the Project Head's global Undo owns recovery, the board-level and Inspector duplicates are gone, and the specification now says so.
+3. **Remaining minor control corrections.** Applied as owner guidance directs (distinct depth / look actions, a reported no-op Redo, the selected source's elevation from the tray) rather than reopened as questions.
 
-The atlas is a scenario player with a small functional opening-edit/history and view-lease demonstration. It is **not a miniature geometry implementation**. It does not:
+**Still open for owner ratification.**
 
-- execute the canonical compiler;
-- persist a project;
-- implement arbitrary pointer dragging;
-- simulate all occlusion cases;
-- certify performance or accessibility.
+1. **Ceiling region model.** Independent, room-free regions that span rooms, overlap in footprint, coexist at different heights and form explicitly trimmed joints. The atlas keeps this ambition and does not narrow it, but the model itself is a product decision (direction §5 and §12).
+2. **Arch rise as a shared profile parameter.** The S3 window demonstration needs a new authored parameter. It is labelled as not shipped behaviour; it is a decision, not a rendering.
+3. **S4 wing depth semantics.** The twelve-room fixture treats a finite range measured from the cut plane as the unit of inclusion, with column 4 revealable one source at a time. If the wing's depth should instead follow a section box or a named range, that changes the demonstration.
+4. **Fixture separation.** The S1 two-gallery scene, the S4 wing and the ceiling-region boards are separate fixtures in one document. Whether a real project holds several such wings side by side, and what that does to the Navigator, is not settled here.
 
-Blue opening grips focus the matching numeric field. Ceiling creation, curve-follow, joint resolution and host-deletion recovery are illustrated transitions: their messages describe design behaviour, not production transactions. Global Undo in the prototype demonstrates opening edits only. Dedicated joint and deletion controls show those storyboard reversals separately.
-
-Board changes swap fixtures. Actions that cross scenarios (Open elevation, Return, Open profile section, Edit cut) load the relevant board and its fixture target rather than carrying live state between drawings. The Section C and Section B map locations are illustrative. Ceiling creation shows its message but does not add a new region to the fixture.
-
-Use the specification for the complete per-property gesture/validation rules and the delivery distinction. In particular, source-specific Reveal, independently authored arch rise, coverage subtraction, ceiling joints and datum-safe reflected derivation require the architecture seams described there. These SVGs do not prove their feasibility.
-
-The Navigator is a visual hierarchy with a working text filter. Its rows are not a fully implemented canonical selection reducer. Unimplemented shell actions are painted as labels rather than working application controls. Reviewer controls above and below the frame are atlas UI, not proposed editor chrome. The opening's host offset (a writer in spec §4) is not shown in the Inspector demonstration.
-
-## Outstanding owner decisions
-
-1. **PLATE reference PNG deletion.** Commit `769d69f` ("P26 proposal") on this branch deletes `design/briefs/plate-scene-plan-1440x900.png`. The [designer brief](../../briefs/2026-09-22-p26-designer-brief.md) still embeds it at line 899, so merging as-is leaves a broken image in the brief. This pass preserved the deletion as instructed and did not restore the file. Before merge, either restore the PNG or accept the deletion and update the brief's reference.
-2. **Paper-level "Undo deletion" vs. single Undo host.** Spec §4 puts "Undo deletion" on Paper for the deleted-host state. The §9 ownership table assigns global Undo to the Project Head. The atlas treats the Paper action as a contextual shortcut into the same chronological history. Ratify that reading or remove the Paper action.
-3. **Tray grouping of the Ceiling tool.** The tray places Ceiling under INSPECT, but spec §5 also makes it the authoring entry point (Use room outline / Draw region). Grouping is a PLATE tray-composition question and is left for review.
-
-The direction-level ratification table remains in [direction.md §12](./direction.md#12-decisions-for-owner-ratification).
-
-No other P26 submissions were opened or incorporated. Routing was changed only to make this unratified artifact discoverable.
+The direction-level ratification table remains in [direction.md §12](./direction.md#12-decisions-for-owner-ratification). No other P26 submissions were opened or incorporated, and nothing in this pass ratifies REGISTER or advances the P26 gate.
