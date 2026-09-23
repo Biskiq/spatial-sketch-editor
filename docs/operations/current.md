@@ -7,7 +7,8 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
-       synthesis is the authoritative research input and the design brief is still the next artifact.
+       synthesis is the authoritative research input and the designer brief is written
+       (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Proposals are not started.
        The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
        (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
        pending there. P26 is the selected validation window: selected, not yet open. The cycle
@@ -20,7 +21,9 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        landed: the two historical P23B.0 read-only pass reports (archived verbatim, NOT benchmark
        baselines), the P23B.1 plan + harvest record, and the P23B.2 external research report — so
        SEQUENCE step 6 is satisfied as to artifact. Both the harvest record and the research report are
-       still marked awaiting review by their own status blocks.NEXT:
+       still marked awaiting review by their own status blocks.
+
+NEXT:
 1. IMMEDIATE — the P23B RATIFICATION GATE (SEQUENCE step 8): the owner reviews P23B.3 and RATIFIES the
    synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D;
    it blocks verdict reuse and the negative fixture's polarity), and ACCEPTS/PART-RETURNS the P23B.2
@@ -34,10 +37,12 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
    ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
 2. Read-only profiling and measurement planning may precede implementation authorization; committed
    benchmark-infrastructure changes (fixtures, harness, baselines, budgets) may not.
-3. P26 product planning may continue in parallel, but it is not the primary next-work instruction:
-   author the design brief from the landed synthesis
-   (research/synthesis/p26-architectural-spatial-depth-synthesis.md), then proposals and a reconciled
-   child plan. No P26 implementation starts without an approved plan.
+3. P26 product planning may continue in parallel, but it is not the primary next-work instruction.
+   The designer brief is written
+   (../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Next P26 artifact,
+   when that work is picked up, is independent design proposals and then a reconciled direction
+   and child plan. No P26 implementation starts without an approved plan. The brief does not open
+   the validation window.
 4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
@@ -51,6 +56,7 @@ P23B.2 external research (landed verbatim, awaiting review) → ../roadmap/p23b-
 P23B.0 archived read-only measurement reports (historical evidence, not baselines) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
 P23B curved-crossing owner decision (required) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
 P26 planning → ../roadmap/p26-spatial-depth/README.md
+P26 designer brief (written, does not open the validation window) → ../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
 P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
 P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md (stub)
@@ -59,13 +65,14 @@ post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on the owner
-  ratifying P23B.3 and the performance acceptance criteria (SEQUENCE step 8)
+  ratifying P23B.3 and the performance acceptance criteria (SEQUENCE step 8). Phase 0 adjudication
+  and the justified Phase 1 response are already installed and do not block that gate
 - P23B.3 is unratified, and the curved-crossing policy is OPEN, so the two halves of the scoped-
   validation direction (verdict reuse and the negative fixture's polarity) cannot be planned to
   completion. Owner decisions recorded in the P23B.3 synthesis §9.1/§9.2
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified
-- P26 has no compiled design brief or child plan yet; planning is the current work, not a blocker to it
+- P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
