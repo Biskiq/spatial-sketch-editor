@@ -22,20 +22,27 @@ research report (Q1–Q9, source index with pinned revisions, validity precedent
 explicit unknowns) is landed and awaiting evidence review. Step 7 (P23B.3) is AUTHORED: synthesis +
 optimization direction, the curved-crossing owner decision record, the implementation/dependency map,
 and concrete plans for P23B.0-durable and P23B.4–P23B.10. Nothing is implemented.
-One further revision is folded in: the OWNER-DIRECTED DIRECTION for independent spatial placement with
-explicit topological connection is recorded as decision-record OPTION E, with the topology ownership
-model traced from source (decision record §2.11) and the per-slice consequences carried through
-P23B.0-durable and P23B.4–P23B.10. Option E is recorded as DIRECTION, not as a ratified implementation:
-its acceptance criteria, its delivery path and its scope are open (D-9/D-10/D-11).
-CURRENT: P23B.3 AUTHORED, AWAITING OWNER RATIFICATION (SEQUENCE step 8). All required evidence exists;
-      discovery, synthesis and planning only — no optimization, no defect fix, no benchmark/fixture/
-      baseline change, no mechanism, no cycle transition. The P23B.1 harvest record and the P23B.2
-      research report are each still marked awaiting review by their own status.
-NEXT: owner review of P23B.3 at the ratification gate: ratify the synthesis + acceptance criteria, rule
-      on the curved-crossing policy AND Option E (see the decision record §5 — D-1 · D-7 · D-9 · D-10 ·
-      D-11 are the open ones), and accept or return the P23B.2 evidence. Until then NO benchmark
-      implementation, no topology fix and no P23B.4–P23B.8 optimization is authorized, and the slice stays
-      inside the PHASE 0 GATE permission boundary.
+One further revision is folded in, and it now carries an OWNER ACCEPTANCE: the owner-directed DIRECTION
+for independent spatial placement with explicit topological connection is recorded as decision-record
+OPTION E, with the topology ownership model traced from source (decision record §2.11) and the per-slice
+consequences carried through P23B.0-durable and P23B.4–P23B.10. Two architecture corrections from the
+owner's review are folded in with it: the COINCIDENCE RULE (**D-9** — explicit graph identity governs
+connectivity, coincidence is permitted ACROSS independent components while duplicate-node validity is
+RETAINED WITHIN one, and only an explicit join adopts a Junction id; NO new representation, group id or
+schema field), and the RECONCILIATION IDENTITY proof obligation (**D-12**, decision record §2.11.3) that
+overlap alone must not merge, retire or ambiguously reassign persistent Room identity. **D-11** directs
+that the policy change lands BEFORE the durable baseline, leaving two arrangements (in-phase slice ahead
+of P23B.0-dur, or a separate product-policy PR merged first then `p23b` synchronized).
+CURRENT: P23B.3 AUTHORED, OPTION E DIRECTION ACCEPTED, IMPLEMENTATION PLAN AWAITING RATIFICATION
+      (SEQUENCE step 8). All required evidence exists; discovery, synthesis and planning only — no
+      optimization, no defect fix, no benchmark/fixture/baseline change, no mechanism, no cycle
+      transition. The P23B.1 harvest record and the P23B.2 research report are each still marked awaiting
+      review by their own status.
+NEXT: owner review of P23B.3 at the ratification gate: ratify the synthesis + acceptance criteria, and
+      name the remaining items — the policy's delivery SLOT (D-7), the comment-correction slot (D-8), the
+      D-11 ARRANGEMENT, and the owner of the reconciliation proof (D-12) — then accept or return the
+      P23B.2 evidence. Until then NO benchmark implementation, no topology fix and no P23B.4–P23B.8
+      optimization is authorized, and the phase stays inside the PHASE 0 GATE permission boundary.
 GATE: PHASE 0 GATE is satisfied (below) but the RATIFICATION GATE (SEQUENCE step 8) is NOT: no
       implementation is approved until the owner ratifies the implementation plan and the performance
       acceptance criteria. P23B.3 is the document that gate reviews. No numerical target is proposed.
