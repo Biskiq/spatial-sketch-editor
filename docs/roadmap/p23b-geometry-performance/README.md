@@ -90,7 +90,10 @@ harvest (P23B.1 — plan ACCEPTED; harvest record EXECUTED, awaiting review) →
 research (P23B.2 — verbatim report landed, awaiting evidence review; folded into P23B.3 as context,
         never as authority) →
   p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
-  (source index has pinned URLs; chat-specific <Cite> tags preserved in the verbatim text)
+  (source index has pinned URLs; chat-specific <Link>/<Cite> tags preserved in the verbatim text)
+  p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-research-navigation.md
+  (the GitHub-readable companion: the 12 inline links and the 17 citations mapped to their sections;
+  ADDITIVE — the report above is never edited to make its tags render)
 synthesis (P23B.3 — AUTHORED, awaiting owner ratification) →
   p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
     (the authoritative reconciliation + direction + §8 dependency evidence + §9 owner decisions)
