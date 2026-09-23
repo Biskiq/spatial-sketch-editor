@@ -13,7 +13,7 @@ STATUS: planning
 PIPELINE: P23 (shipped) → P23B (planning) → P26 → P24 → P25 — P23B is inserted ahead of P26;
           P26 planning continues in parallel and is not the primary next-work instruction.
           The immediate work is P23B.0 measurement
-STAGE: design brief (assignment written; proposals and a reconciled direction are not started)
+STAGE: independent design exploration (REGISTER artifact available, unratified; reconciliation pending)
 CURRENT: design/briefs/2026-09-22-p26-designer-brief.md
 NEXT: independent design proposals, then a reconciled direction — no implementation plan in this step
 GATE: no implementation approved. P26 is the SELECTED VALIDATION WINDOW of the architecture cycle —
@@ -31,14 +31,16 @@ GATE: no implementation approved. P26 is the SELECTED VALIDATION WINDOW of the a
 ROUTE:
 research → research/broad/ + research/harvests/
 synthesis (authoritative) → research/synthesis/p26-architectural-spatial-depth-synthesis.md
-design → design/briefs/2026-09-22-p26-designer-brief.md (assignment, not a contract; proposals / final-direction still pending)
+design assignment → design/briefs/2026-09-22-p26-designer-brief.md (assignment, not a contract)
+independent exploration → design/proposals/register/README.md (REGISTER; unratified, not an implementation plan)
 reconciliation → none yet
 plan → none yet (umbrella + child plans pending)
 ```
 
 ## Design
 
-- Assignment: [`design/briefs/2026-09-22-p26-designer-brief.md`](./design/briefs/2026-09-22-p26-designer-brief.md) — self-contained brief for independent designers. An assignment, not a contract. Proposals are not started.
+- Assignment: [`design/briefs/2026-09-22-p26-designer-brief.md`](./design/briefs/2026-09-22-p26-designer-brief.md) — self-contained brief for independent designers. An assignment, not a contract.
+- Independent exploration: [REGISTER](./design/proposals/register/README.md) — codebase-aware primary direction, interaction/ceiling specification, and visual atlas covering S1–S10. **Unratified**; no reconciliation or implementation approval implied.
 
 ## Research (supporting evidence)
 
