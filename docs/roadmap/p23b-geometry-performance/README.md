@@ -35,20 +35,24 @@ construction **· D-12 OWNED BY THAT SLICE**, whose dedicated reconciliation ora
 record §4.2.2) must pass before the slice is accepted. The earlier "one missing representation" framing is
 RETRACTED: the obstacle was a document-wide invariant plus `planWallChain`'s adoption reflex, not the
 schema.
-CURRENT: P23B.3 RULED AND STAGED, AWAITING IMPLEMENTATION-PLAN RATIFICATION (SEQUENCE step 8). The
-      owner-authorized Arrangement-1 staging has landed: the umbrella scope amendment, the `SEQUENCE`
-      insertion of **P23B.3a** as step 9, and the named slice workspace with its acceptance contract.
-      Discovery, synthesis, planning and staging only — no optimization, no defect fix, no benchmark/
-      fixture/baseline change, no production mechanism, no cycle transition. The implementation plan —
-      including P23B.3a's own acceptance criteria — is NOT yet ratified, and no production code has been
-      written. The P23B.1 harvest record and the P23B.2 research report are each still marked awaiting
-      review by their own status.
-NEXT: owner ratification of the implementation plan and acceptance criteria — now including **P23B.3a**'s
-      own criteria — and acceptance or return of the P23B.2 evidence. **D-7 and D-8 are resolved:** the
-      slice is P23B.3a, and the `layout-duplicate.ts` comment correction lands inside it alongside the
-      behaviour change. Until ratification, NO benchmark implementation, no topology change and no
-      P23B.4–P23B.8 optimization is authorized, and the phase stays inside the PHASE 0 GATE permission
-      boundary.
+CURRENT: P23B.3 RATIFIED (owner, 2026-09-22 at `e139a18b`) WITH THREE BINDING P23B.3a EXECUTION
+      AMENDMENTS — so SEQUENCE step 8's ratification gate is SATISFIED for the implementation plan and
+      the performance acceptance criteria, and **P23B.3a's execution is the authorized next work**
+      (SEQUENCE step 9). The owner-authorized Arrangement-1 staging landed earlier and is NOT rewritten:
+      the umbrella scope amendment, the `SEQUENCE` insertion of **P23B.3a** as step 9, and the named
+      slice workspace with its acceptance contract. The three amendments: **AM-1** S4 must not require a
+      case's pre- and post-policy verdicts green at once; **AM-2** D-12 requires an explicit
+      IMPLEMENTATION-and-proof step (S3a), not an oracle alone; **AM-3** F8 is scoped to the
+      NO-IMPLICIT-JOIN guarantee while Join/Connect stays deferred. Also ruled: S3's known-red
+      reproduction stays outside every mandatory green lane until S3a fixes it. The P23B.1 harvest
+      record and the P23B.2 research report are each still marked awaiting review by their own status.
+NEXT: execute **P23B.3a** against its ratified S1–S8 workflow, stopping at that slice's implementation
+      review with OR-D12-1…6 evidence. **D-7 and D-8 are resolved:** the slice is P23B.3a, and the
+      `layout-duplicate.ts` comment correction lands inside it alongside the behaviour change.
+      Ratification authorizes THIS SLICE's implementation only: **P23B.0-durable does not start until the
+      policy implementation and OR-D12-1…6 are ACCEPTED**, and no optimization slice (P23B.4–P23B.8) is
+      authorized by this ratification. The phase stays inside the PHASE 0 GATE permission boundary, the
+      SEQUENCE is unchanged, and PR #82 stays OPEN.
 GATE: PHASE 0 GATE is satisfied (below) but the RATIFICATION GATE (SEQUENCE step 8) is NOT: no
       implementation is approved until the owner ratifies the implementation plan and the performance
       acceptance criteria. P23B.3 is the document that gate reviews. No numerical target is proposed.
@@ -191,9 +195,12 @@ P23B.1  internal geometry-pipeline harvest — plan ACCEPTED; harvest record EXE
 P23B.2  external precedent research — report LANDED VERBATIM (Q1–Q8 answered, Q9 deferred), awaiting
         evidence review; folded into P23B.3
 P23B.3  synthesis + optimization direction — AUTHORED, awaiting owner ratification
-P23B.3a independent placement + topology policy (Option E) — PLANNED, unratified. The OWNER-SELECTED
+P23B.3a independent placement + topology policy (Option E) — RATIFIED (owner, 2026-09-22 at `e139a18b`),
+        IMPLEMENTATION AUTHORIZED, with the three binding execution amendments (AM-1…AM-3) and the S3
+        mandatory-green quarantine recorded in its plan's STATUS block. The OWNER-SELECTED
         topology-policy slice (D-11 = ARRANGEMENT 1), placed BEFORE the durable P23B.0 measurement; it
-        owns the general connectivity proof and the reconciliation identity proof (D-12)
+        owns the general connectivity proof and the D-12 reconciliation identity guarantee — IMPLEMENTED
+        and PROVED (S3a), not merely measured
 P23B.4  compilation + invalidation optimization — PLANNED, unratified
 P23B.5  caching and reuse optimization — PLANNED, unratified
 P23B.6  rendering optimization — PLANNED, unratified
