@@ -497,17 +497,22 @@ export function planWallChain(options: {
 				predecessorWitnesses.set(room.id, interiorWitness(polygon));
 			}
 			// True P23.8 correspondence components: connected components of
-			// the bipartite predecessor-Room ↔ candidate-face graph. An edge
+			// the bipartite predecessor-Room ↕ candidate-face graph. An edge
 			// exists when the predecessor witness lies strictly inside the
 			// face or the predecessor polygon overlaps the face with
-			// positive area. Faces with no predecessor form independent
-			// 0→1 birth components. Never one-component-per-face.
-			const components = buildCorrespondenceComponents(
-				extraction.faces,
-				options.baseline.rooms.map((room) => room.id),
+			// positive area — AND (P23B.3a D-12) authored identity puts both
+			// sides in the same connected component, so an authored Wall
+			// landing over an INDEPENDENT group can never claim its Rooms.
+			// Faces with no predecessor form independent 0→1 birth
+			// components. Never one-component-per-face.
+			const components = buildCorrespondenceComponents({
+				faces: extraction.faces,
+				predecessorRoomIds: options.baseline.rooms.map((room) => room.id),
 				predecessorWitnesses,
-				predecessorPolygons
-			);
+				predecessorPolygons,
+				candidateDocument: candidate,
+				baselineRooms: options.baseline.rooms
+			});
 			const result = reconcileRooms({
 				baseline: options.baseline,
 				candidateDocument: candidate,

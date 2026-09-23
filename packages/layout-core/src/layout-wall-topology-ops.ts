@@ -407,12 +407,14 @@ export function planWallRoleChange(
 			predecessorPolygons.set(room.id, polygon);
 			predecessorWitnesses.set(room.id, interiorWitness(polygon));
 		}
-		const components = buildCorrespondenceComponents(
-			extraction.faces,
-			document.rooms.map((room) => room.id),
+		const components = buildCorrespondenceComponents({
+			faces: extraction.faces,
+			predecessorRoomIds: document.rooms.map((room) => room.id),
 			predecessorWitnesses,
-			predecessorPolygons
-		);
+			predecessorPolygons,
+			candidateDocument: candidate,
+			baselineRooms: document.rooms
+		});
 		const result = reconcileRooms({
 			baseline: document,
 			candidateDocument: candidate,
@@ -536,12 +538,14 @@ function planWallRemovalSet(
 			predecessorPolygons.set(room.id, polygon);
 			predecessorWitnesses.set(room.id, interiorWitness(polygon));
 		}
-		const components = buildCorrespondenceComponents(
-			extraction.faces,
-			document.rooms.map((room) => room.id),
+		const components = buildCorrespondenceComponents({
+			faces: extraction.faces,
+			predecessorRoomIds: document.rooms.map((room) => room.id),
 			predecessorWitnesses,
-			predecessorPolygons
-		);
+			predecessorPolygons,
+			candidateDocument: candidate,
+			baselineRooms: document.rooms
+		});
 		const result = reconcileRooms({
 			baseline: document,
 			candidateDocument: candidate,

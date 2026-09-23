@@ -39,7 +39,7 @@ export type LayoutTopologyComponent = {
  * references form a component of exactly themselves.
  */
 export function topologyComponentKeyByWallId(
-	document: LayoutDocumentWallFirst
+	document: Pick<LayoutDocumentWallFirst, 'walls'>
 ): Map<string, string> {
 	const parent = new Map<string, string>();
 	const find = (value: string): string => {

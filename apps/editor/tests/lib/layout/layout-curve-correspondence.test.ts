@@ -26,12 +26,14 @@ describe('curved neighbour Room correspondence', () => {
 		const witnesses = new Map(
 			document.rooms.map((room) => [room.id, interiorWitness(polygons.get(room.id)!)])
 		);
-		const components = buildCorrespondenceComponents(
+		const components = buildCorrespondenceComponents({
 			faces,
-			document.rooms.map((room) => room.id),
-			witnesses,
-			polygons
-		);
+			predecessorRoomIds: document.rooms.map((room) => room.id),
+			predecessorWitnesses: witnesses,
+			predecessorPolygons: polygons,
+			candidateDocument: document,
+			baselineRooms: document.rooms
+		});
 		expect(components.map((component) =>
 			`${component.predecessorRoomIds.length}→${component.candidateFaceKeys.length}`
 		)).toEqual(['1→1', '1→1']);

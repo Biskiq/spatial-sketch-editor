@@ -41,6 +41,7 @@ import type {
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 import { wallCenterlineSamples } from './layout-wall-centerline';
+import { topologyComponentKeyByWallId } from './layout-topology-components';
 import {
 	type DerivedCandidateFace,
 	type FaceExtractionResult,
@@ -196,19 +197,105 @@ function polygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
 }
 
 /**
+ * Identity authority for correspondence unions (P23B.3a D-12).
+ *
+ * A predecessor Room's key comes from its SURVIVING boundary Walls in the
+ * candidate document; a candidate face's key comes from its own boundary Walls.
+ * Component labels are the general Wall/Junction connectivity test's, so this
+ * authority is explicit authored identity — never coordinates, never area.
+ */
+export type CorrespondenceAuthorization = {
+	faceComponentKeyByKey: ReadonlyMap<string, string>;
+	predecessorComponentKeyByRoomId: ReadonlyMap<string, string>;
+};
+
+/**
+ * Derive the D-12 authorization for one reconciliation pass.
+ *
+ * A side that has no resolvable component (the operation replaced every Wall of
+ * that Room, so no authored identity survives) is left UNDEFINED and the caller
+ * falls back to geometric evidence for that pair alone — the legacy behaviour
+ * the old rule existed for. Where BOTH sides resolve, the component labels must
+ * MATCH for a union to be authorized at all.
+ */
+export function correspondenceAuthorization(options: {
+	baselineRooms: readonly LayoutWallFirstRoom[];
+	candidateDocument: Pick<LayoutDocumentWallFirst, 'walls' | 'junctions'>;
+	faces: readonly DerivedCandidateFace[];
+}): CorrespondenceAuthorization {
+	const keyByWallId = topologyComponentKeyByWallId(options.candidateDocument);
+	const faceComponentKeyByKey = new Map<string, string>();
+	for (const face of options.faces) {
+		for (const ref of face.boundary) {
+			const key = keyByWallId.get(ref.wallId);
+			if (key !== undefined) {
+				faceComponentKeyByKey.set(face.key, key);
+				break;
+			}
+		}
+	}
+	const predecessorComponentKeyByRoomId = new Map<string, string>();
+	for (const room of options.baselineRooms) {
+		for (const ref of room.boundary) {
+			const key = keyByWallId.get(ref.wallId);
+			if (key !== undefined) {
+				predecessorComponentKeyByRoomId.set(room.id, key);
+				break;
+			}
+		}
+	}
+	return { faceComponentKeyByKey, predecessorComponentKeyByRoomId };
+}
+
+/**
+ * May this predecessor Room and this candidate face be unioned by EVIDENCE?
+ *
+ * Yes when the two component labels agree. When either side is unresolvable the
+ * pair is left to the geometric evidence, because no identity claim can be made
+ * about it in either direction.
+ */
+function unionAuthorized(
+	authorization: CorrespondenceAuthorization,
+	predecessorRoomId: string,
+	faceKey: string
+): boolean {
+	const predecessorKey = authorization.predecessorComponentKeyByRoomId.get(predecessorRoomId);
+	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
+	if (predecessorKey === undefined || faceKeyValue === undefined) return true;
+	return predecessorKey === faceKeyValue;
+}
+
+/**
  * True P23.8 correspondence components: connected components of the
  * bipartite predecessor-Room ↔ candidate-face graph. An edge exists when the
  * predecessor witness lies strictly inside the face or the predecessor
- * polygon overlaps the face with positive area. Faces with no predecessor
- * form independent 0→1 birth components. Groups are sorted deterministically
- * by their smallest face key.
+ * polygon overlaps the face with positive area — AND (P23B.3a D-12) the two
+ * sides share a connected component of authored Wall identity, so geometry
+ * alone can never union two graph-independent structures. Faces with no
+ * predecessor form independent 0→1 birth components. Groups are sorted
+ * deterministically by their smallest face key.
  */
-export function buildCorrespondenceComponents(
-	faces: readonly DerivedCandidateFace[],
-	predecessorRoomIds: readonly string[],
-	predecessorWitnesses: ReadonlyMap<string, LayoutVec2>,
-	predecessorPolygons: ReadonlyMap<string, readonly LayoutVec2[]>
-): ComponentLineage[] {
+export function buildCorrespondenceComponents(options: {
+	faces: readonly DerivedCandidateFace[];
+	predecessorRoomIds: readonly string[];
+	predecessorWitnesses: ReadonlyMap<string, LayoutVec2>;
+	predecessorPolygons: ReadonlyMap<string, readonly LayoutVec2[]>;
+	/**
+	 * CANDIDATE Wall/Junction graph — the identity authority for AUTHORIZED
+	 * unions (P23B.3a D-12). Required: there is deliberately no way to build
+	 * correspondence from geometry alone, because spatial overlap must never be
+	 * able to union two graph-independent structures on its own.
+	 */
+	candidateDocument: Pick<LayoutDocumentWallFirst, 'walls' | 'junctions'>;
+	/** Predecessor Rooms whose surviving boundary Walls anchor their identity. */
+	baselineRooms: readonly LayoutWallFirstRoom[];
+}): ComponentLineage[] {
+	const { faces, predecessorRoomIds, predecessorWitnesses, predecessorPolygons } = options;
+	const authorization = correspondenceAuthorization({
+		baselineRooms: options.baselineRooms,
+		candidateDocument: options.candidateDocument,
+		faces
+	});
 	const faceCount = faces.length;
 	const predecessorCount = predecessorRoomIds.length;
 	const parent = Array.from({ length: predecessorCount + faceCount }, (_, index) => index);
@@ -237,7 +324,15 @@ export function buildCorrespondenceComponents(
 			// `polygonIntersectionArea` (still used below for survivor ranking)
 			// reported a phantom sliver for oblique shared edges.
 			const overlap = polygon !== undefined && polygonsShareInteriorArea(polygon, face.polygon);
-			if (inside || overlap) union(predIndex, predecessorCount + faceIndex);
+			if (!inside && !overlap) return;
+			// P23B.3a D-12 — AUTHORIZATION. Geometry is evidence, not permission: a
+			// predecessor Room and a candidate face may join only when authored
+			// identity puts them in the SAME connected component of the candidate Wall
+			// graph. Two coincident or contained graph-INDEPENDENT Rooms therefore stay
+			// two correspondence components, so overlap alone can never merge, retire or
+			// reassign an unrelated Room's identity or its owned objects.
+			if (!unionAuthorized(authorization, roomId, face.key)) return;
+			union(predIndex, predecessorCount + faceIndex);
 		});
 	});
 	const groups = new Map<number, { faces: string[]; predecessors: string[] }>();

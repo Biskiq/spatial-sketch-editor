@@ -89,11 +89,13 @@ export function selfComponents(document: LayoutDocumentWallFirst): string[] {
 			interiorWitness(roomBoundaryPolygon(document, room.id)!)
 		])
 	);
-	return buildCorrespondenceComponents(
+	return buildCorrespondenceComponents({
 		faces,
-		document.rooms.map((room) => room.id),
-		witnesses,
-		polygons
-	).map((component) => `${component.predecessorRoomIds.length}→${component.candidateFaceKeys.length}`);
+		predecessorRoomIds: document.rooms.map((room) => room.id),
+		predecessorWitnesses: witnesses,
+		predecessorPolygons: polygons,
+		candidateDocument: document,
+		baselineRooms: document.rooms
+	}).map((component) => `${component.predecessorRoomIds.length}→${component.candidateFaceKeys.length}`);
 }
 
