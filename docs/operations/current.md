@@ -27,8 +27,10 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        **D-11 ARRANGEMENT 1** (a dedicated, narrowly scoped topology-policy slice placed BEFORE
        `P23B.0-durable`, inside this branch and PR, so the recorded baseline is POST-POLICY by
        construction), and **D-12 owned by that slice** (the reconciliation identity proof, discharged
-       before the slice's acceptance). The implementation plan is still awaiting ratification, and the
-       policy slice has not been staged — `SEQUENCE` is unchanged. All required evidence is
+       before the slice's acceptance). The implementation plan is still awaiting ratification, but the
+       slice IS now STAGED as **P23B.3a — Independent Placement & Topology Policy**, inserted into the
+       authoritative `SEQUENCE` as step 9 ahead of the durable measurement, with the umbrella scope
+       amendment and its own plan workspace. All required evidence is
        landed: the two historical P23B.0 read-only pass reports (archived verbatim, NOT benchmark
        baselines), the P23B.1 plan + harvest record, and the P23B.2 external research report — so
        SEQUENCE step 6 is satisfied as to artifact. Both the harvest record and the research report are
@@ -38,15 +40,16 @@ NEXT:
 1. IMMEDIATE — the P23B RATIFICATION GATE (SEQUENCE step 8): the owner reviews P23B.3 and RATIFIES the
    synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D,
    plus the owner-directed Option E; it blocks verdict reuse and the negative fixture's polarity),
-   then STAGES the ruling: the Arrangement-1 umbrella scope amendment plus the `SEQUENCE` insertion
-   placing the topology-policy slice ahead of `P23B.0-durable`. Also resolves the two remaining slots —
-   the policy slice's NAME (D-7) and the comment-correction slot (D-8) — and ACCEPTS/PART-RETURNS the
-   P23B.2 evidence. No benchmark implementation, topology fix or optimization (P23B.0-durable, P23B.4–P23B.8)
+   The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
+   step 9 · the named slice workspace), and **D-7 and D-8 are RESOLVED** — the slice is P23B.3a and the
+   `layout-duplicate.ts` comment correction lands inside it. What remains at the gate: ratify the plans
+   (including P23B.3a's own acceptance criteria) and ACCEPT/PART-RETURN the P23B.2 evidence.
+   No benchmark implementation, topology change or optimization (P23B.3a, P23B.0-durable, P23B.4–P23B.8)
    starts before that ratification. Order in brief: Phase 0
    evidence → owner adjudication → Phase 1 installation → P23B.0 read-only measurement → P23B.1 harvest
    → P23B.2 external research → P23B.3 synthesis → owner ratification of the implementation plan and
-   performance acceptance criteria → durable P23B.0 measurement → optimization slices, verify, review,
-   close out.
+   performance acceptance criteria → **P23B.3a topology policy** → durable P23B.0 measurement against
+   the post-policy gates → optimization slices, verify, review, close out.
    AUTHORITATIVE SEQUENCE (order and gate placement, recorded once) →
    ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
 2. Read-only profiling and measurement planning may precede implementation authorization; committed
@@ -63,7 +66,8 @@ NEXT:
 ROUTE:
 phase status/order → ../roadmap/README.md
 P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
-P23B umbrella (rationale/boundaries only) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
+P23B umbrella (rationale/boundaries only; includes the owner-approved P23B.3a scope amendment) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
+P23B.3a topology policy (owner-selected slice; SEQUENCE step 9; holds the D-12 acceptance contract) → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
 P23B.3 synthesis + direction (authored, awaiting ratification) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
 P23B.3 operational dependency map / child plan index → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md
 P23B.2 external research (landed verbatim, awaiting review) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
@@ -90,10 +94,10 @@ BLOCKER:
   never coordinates alone; coincidence is permitted across independent components while duplicate-node
   validity is retained within one; and NO new representation is needed (the obstacle was a document-wide
   validation invariant plus planWallChain's adoption reflex, not a schema gap). D-11 selects
-  ARRANGEMENT 1 and D-12 is owned by that policy slice. What is STILL OPEN: the policy slice's NAME
-  (D-7), the comment-correction slot (D-8), and the staging commit itself (umbrella amendment + SEQUENCE
-  insertion) — the policy slice is NOT yet staged. No implementation may assume any of them, and the
-  implementation plan is not ratified yet
+  ARRANGEMENT 1 and D-12 is owned by that policy slice. D-7 and D-8 are RESOLVED, and the slice is
+  STAGED as P23B.3a (SEQUENCE step 9, umbrella amendment landed). What is STILL OPEN is ratification of
+  the implementation plan and acceptance criteria, plus the P23B.2 evidence decision. No implementation
+  may start before that ratification, and no production code has been written
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified
 - P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
