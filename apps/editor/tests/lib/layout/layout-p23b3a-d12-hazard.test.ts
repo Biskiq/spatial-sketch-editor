@@ -37,6 +37,12 @@
  * Wall/Junction test (`wallJunctionComponents`), never `connectedRoomIds`, and
  * exercise every caller: wall delete · role change · dissolve · migration ·
  * Room move · chain. Role change is the caller exercised here.
+ *
+ * The D-12 FALLBACK proof has its own suite at the end of this file: faces are
+ * always extracted from the candidate document they are reconciled against, and
+ * the assertion is the reconciliation OUTCOME. Its comment records which
+ * boundary replacements a shipped planner can actually reach — and which it
+ * cannot, so the limitation is documented rather than covered by new capability.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -44,25 +50,30 @@ import {
 	buildCorrespondenceComponents,
 	connectedRoomIds,
 	correspondenceAuthorization,
+	createAuthoringRoomAllocator,
 	createEmptyWallFirstLayoutDocument,
 	decodeLayoutValueCompatible,
 	extractBoundaryCandidateFaces,
 	interiorWitness,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	migrateLegacyLayoutDocument,
+	reconcileRooms,
 	roomBoundaryPolygon,
 	planDeleteWall,
 	planDissolveJunction,
+	planRemoveRoom,
 	planWallChain,
 	planWallFirstRoomMove,
 	planWallRoleChange,
+	planWallSubdivision,
 	validateWallFirstLayoutDocument,
 	validateWallFirstTopology,
 	type LayoutDocument,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type LayoutWall,
-	type LayoutWallCenterline
+	type LayoutWallCenterline,
+	type NodingIdAllocator
 } from '@portfolio/layout-core';
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
@@ -509,56 +520,6 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		expect(result.document.rooms.map((room) => room.id).sort()).toEqual(['room-1', 'room-2']);
 	});
 
-	it('D-12 fallback — a predecessor that LOST all boundary identity cannot claim an unrelated Room\'s face', () => {
-		// The hole this closes: when the operated Room's own boundary identity is gone
-		// (every Wall of it replaced) the component labels cannot be compared, and the
-		// old fallback let geometry alone authorize a union — so the identity-less
-		// Room could be handed the UNRELATED Room's face. The contract now denies a
-		// union when the face is already attributed by authored identity to a
-		// component that some OTHER predecessor claims.
-		const baseline = EXACT_COINCIDENCE;
-		const extraction = extractBoundaryCandidateFaces(baseline);
-		const predecessorWitnesses = new Map<string, LayoutVec2>();
-		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
-		for (const room of baseline.rooms) {
-			const polygon = roomBoundaryPolygon(baseline, room.id)!;
-			predecessorPolygons.set(room.id, polygon);
-			predecessorWitnesses.set(room.id, interiorWitness(polygon));
-		}
-		// `room-c`'s boundary Walls are REPLACED, so it holds no surviving identity,
-		// while `room-k` keeps its own. The candidate therefore keeps k's attribution
-		// and has nothing to attribute to c.
-		const replaced = {
-			...baseline,
-			walls: baseline.walls.map((wall) =>
-				wall.id.startsWith('c-') ? { ...wall, id: `${wall.id}-replaced` } : wall
-			)
-		};
-		const components = buildCorrespondenceComponents({
-			faces: extraction.faces,
-			predecessorRoomIds: baseline.rooms.map((room) => room.id),
-			predecessorWitnesses,
-			predecessorPolygons,
-			candidateDocument: replaced,
-			baselineRooms: baseline.rooms
-		});
-		const authorization = correspondenceAuthorization({
-			baselineRooms: baseline.rooms,
-			candidateDocument: replaced,
-			faces: extraction.faces
-		});
-		// k's identity resolves; c's does not.
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-k')).toBeDefined();
-		expect(authorization.predecessorComponentKeyByRoomId.get('room-c')).toBeUndefined();
-		// The identity-less predecessor shares NO component with the face that k owns,
-		// so it cannot be unioned into it, and k is never unioned with c.
-		for (const component of components) {
-			const hasUnrelated = component.predecessorRoomIds.includes('room-k');
-			const hasIdentityLess = component.predecessorRoomIds.includes('room-c');
-			expect(hasUnrelated && hasIdentityLess).toBe(false);
-		}
-	});
-
 	it('OR-D12-6 Room move — moving the OPERATED Room leaves the unrelated Room intact', () => {
 		// Room move and migration declare their own exact boundary-lineage
 		// components rather than deriving them geometrically, so this is the caller
@@ -567,5 +528,200 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'Room move');
+	});
+});
+
+/**
+ * P23B.3a S3a — the D-12 fallback on COHERENT inputs, plus what boundary
+ * replacement can actually reach.
+ *
+ * The first draft of this proof was not coherent (found in review): it renamed
+ * the operated Room's Wall ids in the candidate but extracted faces from the
+ * BASELINE, so the candidate graph and the candidate faces described two
+ * different documents. It showed the low-level guard on input no caller can
+ * produce. Both cases here fix that: faces always come from the candidate
+ * document they are reconciled against, and the assertion is the OUTCOME of a
+ * real reconciliation pass rather than the intermediate grouping.
+ *
+ * D-12's three cases, each proven separately:
+ *
+ * (a) UNAUTHORIZED REASSIGNMENT — never. A predecessor that lost every boundary
+ *     identity cannot claim a face that authored identity attributes to another
+ *     component. Reachable path: `planRemoveRoom` on the exact-coincidence
+ *     pre-state, where the operated Room's whole ring goes and only the unrelated
+ *     Room's Wall graph remains.
+ * (b) AUTHORIZED CONTINUATION — a Room keeps its identity across a Wall-ID change
+ *     when the operation supplies the lineage. Reachable path: `planWallSubdivision`,
+ *     whose noder gives the survivor the original Wall id plus a new fragment, and
+ *     whose precision path declares the 1→1 boundary-cycle lineage explicitly.
+ * (c) UNRESOLVABLE LINEAGE — retirement, never a manufactured replacement. The same
+ *     removal retires the Room whose enclosure is gone and creates nothing in its
+ *     place.
+ *
+ * WHICH OPERATION REPLACES A WHOLE BOUNDARY? None shipped — recorded as a
+ * limitation rather than answered with new capability. The four geometric
+ * reconciliation callers, checked one by one:
+ *
+ * - `planWallRoleChange` keeps every Wall id;
+ * - `planWallRemovalSet` / `planRemoveRoom` removes Walls; a Room whose whole ring
+ *   is removed stops enclosing a face, so it RETIRES (case c) instead of being
+ *   replaced;
+ * - `planWallChain` nodes new Walls into the existing graph, and the noder's split
+ *   survivor keeps the original Wall id (P23.12 §3), so the predecessor still
+ *   resolves;
+ * - `planDissolveJunction` joins two Walls onto the survivor's id;
+ * - `planWallFirstRoomMove` and `finalizeWallGeometryCandidate` (the precision
+ *   path) do not use this gate at all: they declare explicit 1→1 boundary-cycle
+ *   lineage, which is how an operation that DOES change a boundary reference must
+ *   supply its identity (case b at the contract level);
+ * - migration replaces no Wall identity: it keys on geometry only and refuses
+ *   collapsed lineage (already proven above).
+ *
+ * So a Room whose authored boundary identity is entirely gone is always a Room
+ * whose enclosure is gone too: it takes rule 3's denial into retirement, never
+ * into the unrelated Room it overlapped. The one shape that WOULD produce a
+ * replacement face — the same enclosure re-authored under new Wall ids with no
+ * declared lineage — is not producible by a shipped planner. The first case below
+ * records what the guard does with it so its total behaviour is known; the second
+ * proves the reachable paths. If such an operation is ever added, it must declare
+ * explicit lineage like the precision path instead of leaning on that branch.
+ */
+describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable boundary replacement', () => {
+	const nodingAllocator: NodingIdAllocator = {
+		nextWallId: (_document, seed) => `${seed}-frag`,
+		nextJunctionId: (_document, seed) => `${seed}-j`
+	};
+
+	/** Baseline-relative predecessor evidence, exactly as the callers derive it. */
+	function predecessorEvidence(document: LayoutDocumentWallFirst) {
+		const predecessorWitnesses = new Map<string, LayoutVec2>();
+		const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
+		for (const room of document.rooms) {
+			const polygon = roomBoundaryPolygon(document, room.id)!;
+			predecessorPolygons.set(room.id, polygon);
+			predecessorWitnesses.set(room.id, interiorWitness(polygon));
+		}
+		return { predecessorWitnesses, predecessorPolygons };
+	}
+
+	it('(a)+(c) coherent inputs — an identity-less predecessor cannot claim the unrelated face, and the outcome is its documented retirement', () => {
+		// The candidate a whole-boundary REPLACEMENT would produce: every `c-*` Wall
+		// carries a NEW authored id, so `room-c`'s baseline boundary references nothing
+		// that survives. The faces are extracted from THIS document, so the graph and
+		// the faces describe one candidate.
+		const baseline = EXACT_COINCIDENCE;
+		const candidate: LayoutDocumentWallFirst = {
+			...baseline,
+			walls: baseline.walls.map((wall) =>
+				wall.id.startsWith('c-') ? { ...wall, id: `${wall.id}-replaced` } : wall
+			)
+		};
+		const extraction = extractBoundaryCandidateFaces(candidate);
+		expect(extraction.faces).toHaveLength(2);
+		const { predecessorWitnesses, predecessorPolygons } = predecessorEvidence(baseline);
+		const components = buildCorrespondenceComponents({
+			faces: extraction.faces,
+			predecessorRoomIds: baseline.rooms.map((room) => room.id),
+			predecessorWitnesses,
+			predecessorPolygons,
+			candidateDocument: candidate,
+			baselineRooms: baseline.rooms
+		});
+		const authorization = correspondenceAuthorization({
+			baselineRooms: baseline.rooms,
+			candidateDocument: candidate,
+			faces: extraction.faces
+		});
+		// `room-k` keeps authored identity in the candidate graph; `room-c` does not.
+		expect(authorization.predecessorComponentKeyByRoomId.get('room-k')).toBeDefined();
+		expect(authorization.predecessorComponentKeyByRoomId.get('room-c')).toBeUndefined();
+		// A face extracted from the candidate ALWAYS resolves (every candidate Wall is
+		// labelled), which is why the one-sided denial is the branch that fires here
+		// and the defensive neither-resolves branch is not what this proves.
+		expect([...authorization.faceComponentKeyByKey.keys()]).toHaveLength(2);
+		// The identity-less predecessor is never unioned with the unrelated Room.
+		for (const component of components) {
+			expect(
+				component.predecessorRoomIds.includes('room-k') &&
+					component.predecessorRoomIds.includes('room-c')
+			).toBe(false);
+		}
+		expect(components.flatMap((component) => [...component.predecessorRoomIds])).toEqual([
+			'room-k'
+		]);
+
+		// --- the OUTCOME of a real reconciliation pass, not the grouping --------
+		const result = reconcileRooms({
+			baseline,
+			candidateDocument: candidate,
+			extraction,
+			components,
+			predecessorWitnesses,
+			predecessorPolygons,
+			allocator: createAuthoringRoomAllocator()
+		});
+		expect('kind' in result && result.kind === 'rejected').toBe(false);
+		if ('kind' in result) return;
+		// The unrelated Room is preserved with its name and its owned object, and no
+		// merge happened. MEASURED pre-fix (this file re-run with the geometry-only
+		// union restored): the two predecessors unioned into ONE component, so the loop
+		// assertion above tripped and this reconciliation outcome was never reached —
+		// i.e. geometry alone did authorize the union.
+		expect(roomsOf(result.document)).toContainEqual(['room-k', 'Room k']);
+		expect(ownedObjectRoomId(result.document, 'obj-k')).toBe('room-k');
+		expect(result.lineage.filter((record) => record.kind === 'merge-survivor')).toEqual([]);
+		// The identity-less predecessor retires, and its geometrically identical but
+		// newly authored enclosure is a P23.8 0→1 birth under a FRESH identity:
+		// recorded, not endorsed. No shipped planner produces this candidate (see the
+		// suite comment), and no reachable path manufactures a replacement Room.
+		expect(result.retiredRoomIds).toEqual(['room-c']);
+		const created = result.lineage.filter((record) => record.kind === 'created');
+		expect(created).toHaveLength(1);
+		expect(created[0]!.roomId).not.toBe('room-k');
+		expect(created[0]!.roomId).not.toBe('room-c');
+		expect(roomsOf(result.document).map(([id]) => id).sort()).toEqual(
+			['room-k', created[0]!.roomId].sort()
+		);
+	});
+
+	it('(a)+(c) reachable — removing the operated Room\'s whole ring retires it without merging it into the unrelated Room', () => {
+		// A real planner on the exact-coincidence pre-state. The operated Room's entire
+		// boundary goes, so it holds NO surviving identity while the unrelated Room's
+		// face is still authored — the one-sided branch, reachable. MEASURED pre-fix
+		// (geometry-only union restored): the plan's only Room was
+		// `[['room-c', 'Room c']]` — the lexical survivor took the enclosure, so the
+		// UNRELATED Room was the one retired and `obj-k` the association remapped.
+		const plan = planRemoveRoom(EXACT_COINCIDENCE, 'room-c');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		// (c) The documented retirement contract with nothing manufactured in its
+		// place: the enclosure is gone, so no face is born for it.
+		expect(plan.lineage).toEqual([]);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toEqual([
+			['opening:k:door:1', 'k-a1']
+		]);
+	});
+
+	it('(b) reachable — a Wall-ID change an operation DOES declare keeps the Room\'s identity', () => {
+		// `planWallSubdivision` rewrites the Room's boundary onto a NEW Wall fragment
+		// while the noder's survivor keeps the original Wall id, and the precision path
+		// declares the 1→1 lineage explicitly — the contract an operation that changes
+		// a boundary reference must use. The unrelated Room is untouched.
+		const plan = planWallSubdivision(FULL_CONTAINMENT, 'c-a1', 2, nodingAllocator);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		const operated = plan.document.rooms.find((room) => room.id === 'room-c')!;
+		// Identity survives the Wall-ID change...
+		expect(operated.name).toBe('Room c');
+		const originalIds = new Set(['c-a1', 'c-b1', 'c-c1', 'c-d1']);
+		expect(operated.boundary.some((ref) => ref.wallId === 'c-a1')).toBe(true);
+		expect(operated.boundary.filter((ref) => !originalIds.has(ref.wallId))).toHaveLength(1);
+		// ...and so does the unrelated Room, with its owned object.
+		expect(plan.document.rooms.map((room) => room.id)).toContain('room-k');
+		expect(plan.document.rooms.find((room) => room.id === 'room-k')?.name).toBe('Room k');
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 	});
 });

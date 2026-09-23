@@ -212,11 +212,17 @@ export type CorrespondenceAuthorization = {
 /**
  * Derive the D-12 authorization for one reconciliation pass.
  *
- * A side that has no resolvable component (the operation replaced every Wall of
- * that Room, so no authored identity survives) is left UNDEFINED and the caller
- * falls back to geometric evidence for that pair alone — the legacy behaviour
- * the old rule existed for. Where BOTH sides resolve, the component labels must
- * MATCH for a union to be authorized at all.
+ * A PREDECESSOR Room with no resolvable component (the operation removed every
+ * Wall its boundary referenced, so no authored identity survives) is left
+ * UNDEFINED. Where BOTH sides resolve, the component labels must MATCH for a
+ * union to be authorized at all.
+ *
+ * A CANDIDATE FACE extracted from the candidate Wall graph always resolves:
+ * `topologyComponentKeyByWallId` labels every Wall in the document, and an
+ * extracted face's boundary references that same document's Walls. So the
+ * undefined-face case below exists only for a caller that hands faces which do
+ * not belong to `candidateDocument` (the geometric callers never do); the
+ * ordinary asymmetric case is an undefined PREDECESSOR beside a resolved face.
  */
 export function correspondenceAuthorization(options: {
 	baselineRooms: readonly LayoutWallFirstRoom[];
@@ -255,15 +261,20 @@ export function correspondenceAuthorization(options: {
  * 1. BOTH sides resolve -> the component labels must MATCH. This is the rule that
  *    keeps two coincident or contained graph-independent Rooms apart.
  * 2. NEITHER side resolves -> geometry is the only evidence that exists, so it
- *    decides. This is the branch a legitimate rebuild travels: a Room whose whole
- *    boundary was replaced has no surviving identity on either side, so there is
- *    no identity claim to contradict.
+ *    decides. This is a DEFENSIVE branch, not a path a shipped planner travels:
+ *    a candidate face extracted from the candidate Wall graph always resolves
+ *    (see `correspondenceAuthorization`), so "neither side" requires faces that do
+ *    not belong to the candidate document. The predicate stays total rather than
+ *    silently reversing for that malformed input.
  * 3. EXACTLY ONE side resolves -> DENIED. No match can be established, and
  *    geometry alone must never union an attributed structure with an
  *    unattributed one: without this, a Room that lost its own boundary identity
  *    could be handed an unrelated overlapping Room's face — and, symmetrically,
  *    a surviving Room could claim an identity-less structure that is not its
- *    successor merely because the two overlap.
+ *    successor merely because the two overlap. This is the branch a Room whose
+ *    whole boundary disappeared actually takes (`planRemoveRoom`), and the
+ *    documented outcome there is retirement of that Room (its enclosure is gone),
+ *    never a merge into the unrelated Room it happened to overlap.
  */
 function unionAuthorized(
 	authorization: CorrespondenceAuthorization,
