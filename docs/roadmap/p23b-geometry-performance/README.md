@@ -18,12 +18,11 @@ installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling p
 interpretation is recorded in the P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures,
 recorded baselines with provenance, budgets) remains OUTSTANDING — it is not completed, replaced or
 redefined by P23B.1
-CURRENT: P23B.1 harvest EXECUTED — the plan was accepted at review and the harvest record is landed
-      in the slice workspace, awaiting review. Discovery/evidence only: no optimization, defect fix
-      or benchmark change; the correctness mismatch it locates stays open for the owner ruling
-NEXT: P23B.1 review of the harvest record; on acceptance, P23B.2 — external precedent research
-      (SEQUENCE step 6), targeted at the diagnosed questions in the record §11. Until then the slice
-      stays inside the PHASE 0 GATE permission boundary and no optimization slice is authorized
+CURRENT: P23B.1 harvest EXECUTED, awaiting review; P23B.2 external research report captured
+      verbatim in its slice workspace on the same PR branch, awaiting evidence review. Discovery/
+      evidence only: no optimization, defect fix or benchmark change. Curved-crossing policy OPEN
+NEXT: review P23B.1 harvest and P23B.2 research evidence before P23B.3 synthesis (SEQUENCE step 7);
+      no optimization slice is authorized before the owner ratification gate
 GATE: no implementation approved — P23B implementation waits on an owner-ratified child plan
 ```
 
@@ -76,7 +75,10 @@ harvest (P23B.1 — plan ACCEPTED, harvest EXECUTED awaiting review) →
    p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-internal-geometry-pipeline-harvest.md
      (the accepted contract) · 2026-09-22-P23B.1-harvest-record.md (the executed harvest: FL-1 · CG-1 ·
      SC-1 · CI-1 · TO-1 · RT-1 · PO-1 · PM-1 · UN-1)
-research / synthesis → none yet (P23B.2 · P23B.3 proposed)
+research (P23B.2 — verbatim report captured, awaiting evidence review) →
+  p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
+  (source index has pinned URLs; chat-specific <Cite> tags preserved in the verbatim text)
+synthesis (P23B.3) → none yet (proposed only)
 child plans → none yet (proposed only; no implementation-ready brief)
 measurement (P23B.0) → read-only profiling passes complete, no committed artifact; durable
           benchmark/fixture/baseline work outstanding (see the P23B.1 harvest record §11.1)
@@ -125,9 +127,9 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
 Phase 0 gate and the umbrella route are read. The child artifacts today are the P23B.1 plan (the
-accepted contract) and its harvest record (the executed evidence, awaiting review); no research or
-synthesis artifact exists, no implementation is approved, and P23B.0's durable benchmark work stays
-outstanding.
+accepted contract), its harvest record (executed evidence, awaiting review), and the P23B.2 verbatim
+external research report (awaiting evidence review). No synthesis artifact exists, no implementation
+is approved, and P23B.0's durable benchmark work stays outstanding.
 
 ## Non-goals
 
