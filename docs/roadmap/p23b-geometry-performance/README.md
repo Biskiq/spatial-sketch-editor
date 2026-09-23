@@ -11,28 +11,19 @@ isolation and the landed reference contracts unchanged.
 
 ```text
 STATUS: planning
-STAGE: umbrella landed; child slices proposed. The post-P23 execution order is owner-ratified and recorded
-in the SEQUENCE block below. SEQUENCE steps 1–3 completed 2026-09-22 (Phase 0 authorized, evidence gathered
-and adjudicated, the justified Phase 1 response installed). Step 4 (P23B.0) completed its two READ-ONLY
-profiling passes; their settled interpretation is recorded in the P23B.1 plan §2, and P23B.0's DURABLE work
-(committed fixtures, recorded baselines, provenance, budgets) remains OUTSTANDING — it is not completed,
-replaced or redefined by P23B.1 or by P23B.3. Step 5 (P23B.1) executed its harvest. Step 6 (P23B.2 —
-external precedent research) WAS NEVER EXECUTED: no artifact, directory or commit exists, and PR #82's
-description claiming one is inaccurate. Step 7 (P23B.3) has now been authored: synthesis, the
-curved-crossing owner decision record and the complete implementation/dependency map through P23B.10,
-together with concrete child plans for P23B.0-durable and P23B.4–P23B.10. Nothing is implemented.
-CURRENT: P23B.3 AUTHORED, AWAITING OWNER RATIFICATION (SEQUENCE step 8). Discovery, synthesis and planning
-      only: no optimization, no defect fix, no benchmark/fixture/baseline change, no mechanism, no cycle
-      transition. The P23B.1 harvest record is still marked awaiting review by its own STATUS block; its
-      code anchors were re-verified by symbol at this HEAD and are used as credible source-derived
-      evidence.
-NEXT: owner review of P23B.3 at the ratification gate: ratify the synthesis + acceptance criteria, rule on
-      the curved-crossing policy, and decide the P23B.2 sequencing call. Until then NO benchmark
-      implementation, no topology fix and no P23B.4–P23B.8 optimization is authorized, and the slice stays
-      inside the PHASE 0 GATE permission boundary.
-GATE: PHASE 0 GATE is satisfied (below) but the RATIFICATION GATE (SEQUENCE step 8) is NOT: no
-      implementation is approved until the owner ratifies the implementation plan and the performance
-      acceptance criteria. P23B.3 is the document that gate reviews. No numerical target is proposed.
+STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
+owner-ratified and recorded in the SEQUENCE block below. SEQUENCE steps 1–3 completed 2026-09-22
+(Phase 0 authorized, evidence gathered and adjudicated, and the justified Phase 1 response
+installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling passes; their reports
+are archived verbatim as historical evidence, and the settled interpretation is recorded in the
+P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures, recorded baselines with provenance,
+budgets) remains OUTSTANDING — archiving the reports is not a recorded benchmark baseline
+CURRENT: P23B.1 harvest EXECUTED, awaiting review; P23B.2 external research report captured
+      verbatim in its slice workspace on the same PR branch, awaiting evidence review. Discovery/
+      evidence only: no optimization, defect fix or benchmark change. Curved-crossing policy OPEN
+NEXT: review P23B.1 harvest and P23B.2 research evidence before P23B.3 synthesis (SEQUENCE step 7);
+      no optimization slice is authorized before the owner ratification gate
+GATE: no implementation approved — P23B implementation waits on an owner-ratified child plan
 ```
 
 ```text
@@ -76,40 +67,26 @@ all three inform synthesis.
     performance-regression gate and the P23B.10 closeout gate
 ```
 
-> **SEQUENCE is unchanged.** The block above is byte-identical to its ratified form. P23B.3 did not
-> reorder, restate or reinterpret it, and it is not amended here. Step 6 was not executed, which is a
-> factual gap in the evidence chain reported in P23B.3 §1.2 and §9.2 — not a change to the order.
-
 ```text
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order) →
   2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
-harvest (P23B.1 — plan ACCEPTED; harvest record EXECUTED, awaiting review) →
-  p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-internal-geometry-pipeline-harvest.md
-    (the accepted contract) · 2026-09-22-P23B.1-harvest-record.md (the executed harvest: FL-1 · CG-1 ·
-    SC-1 · CI-1 · TO-1 · RT-1 · PO-1 · PM-1 · UN-1)
-synthesis (P23B.3 — AUTHORED, awaiting owner ratification) →
-  p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
-    (the authoritative reconciliation + direction + §8 dependency evidence + §9 owner decisions)
-  p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md
-    (the operational map: prerequisites, gates, oracles, abandonment, deferrals)
-  p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
-    (the correctness/policy decision record — owner decision required)
-research (P23B.2) → NONE. The slice was never executed; no artifact exists. The diagnosed external
-    question list survives as the harvest §11 brief + P23B.3 §6.4, and the sequencing call is owner
-    decision §9.2 of the synthesis
-child plans (plans only — no implementation is approved) →
-  p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md   (prerequisite)
-  p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
-  p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md
-  p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
-  p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
-  p23b.8-rust-wasm-evaluation/2026-09-22-P23B.8-rust-wasm-evaluation.md
-  p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md
-  p23b.10-phase-closeout/2026-09-22-P23B.10-phase-closeout.md
-measurement (P23B.0) → read-only profiling passes complete, no committed artifact; durable
-          benchmark/fixture/baseline work outstanding → the P23B.0-durable plan above and the P23B.1
-          harvest record §11.1
+harvest (P23B.1 — plan ACCEPTED, harvest EXECUTED awaiting review) →
+   p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-internal-geometry-pipeline-harvest.md
+     (the accepted contract) · 2026-09-22-P23B.1-harvest-record.md (the executed harvest: FL-1 · CG-1 ·
+     SC-1 · CI-1 · TO-1 · RT-1 · PO-1 · PM-1 · UN-1)
+research (P23B.2 — verbatim report captured, awaiting evidence review) →
+  p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
+  (source index has pinned URLs; chat-specific <Cite> tags preserved in the verbatim text)
+synthesis (P23B.3) → none yet (proposed only)
+child plans → none yet (proposed only; no implementation-ready brief)
+measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
+  p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
+  p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
+  (historical local /private/tmp runner paths in Pass A are not committed; reported source hashes
+  cannot be independently verified from repository fixture bytes)
+durable measurement (P23B.0) → fixtures, harness, reproducible recorded baseline and budgets
+          outstanding (see the P23B.1 harvest record §11.1)
 phase status/order → ../README.md
 P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md
@@ -124,55 +101,40 @@ PIPELINE POSITION: P23 → P23B → P26 → P24 → P25
 ## Authorities
 
 - Umbrella: [`2026-09-22-P23B-geometry-performance-stabilization-umbrella.md`](./2026-09-22-P23B-geometry-performance-stabilization-umbrella.md)
-- P23B.3 synthesis and direction: [`p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md`](./p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md)
-- P23B.3 operational dependency map: [`p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md`](./p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md)
-- Curved-crossing owner decision record: [`p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md`](./p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md)
 - P-level status/order: [`../README.md`](../README.md)
 - Product baton: [`../../operations/current.md`](../../operations/current.md)
 - Operating cycle (meta, live state): [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md)
 - Carried P23 verification debt: [`../p23-layout-depth/README.md`](../p23-layout-depth/README.md) §Completed slices · [`../../operations/tech-debt/README.md`](../../operations/tech-debt/README.md)
 
-## Child slices — planning status
+## Proposed child slices — proposed only
 
-`planned` means a plan exists and is **unratified**; it does not mean approved, implementation-ready or
-complete. `proposed` means no plan exists. Contracts that already exist and must be extended rather than
-duplicated: `apps/editor/src/lib/bench/` (versioned bench contract, provenance, budgets, recorded
-baseline) and the PERF test lane.
+Status here and in the umbrella is `proposed`. None is approved, none is implementation-ready,
+and no numerical performance target is committed. Contracts that already exist and must be
+extended rather than duplicated: `apps/editor/src/lib/bench/` (versioned bench contract,
+provenance, budgets, recorded baseline) and the PERF test lane.
 
-Plan status, not order — the order and its gates are the SEQUENCE block above; dependencies are P23B.3 §8
-and the dependency map.
-
-```text
-P23B.0  measurement foundation — read-only passes DONE; the durable completion is PLANNED (prerequisite)
-P23B.1  internal geometry-pipeline harvest — plan ACCEPTED; harvest record EXECUTED, awaiting review
-P23B.2  external precedent research — NOT EXECUTED (no artifact); sequencing call is synthesis §9.2
-P23B.3  synthesis + optimization direction — AUTHORED, awaiting owner ratification
-P23B.4  compilation + invalidation optimization — PLANNED, unratified
-P23B.5  caching and reuse optimization — PLANNED, unratified
-P23B.6  rendering optimization — PLANNED, unratified
-P23B.7  interaction optimization — PLANNED, unratified
-P23B.8  conditional Rust/WASM + Worker evaluation (decision only; "not justified" is a valid close) —
-        PLANNED, unratified
-P23B.9  correctness + performance-regression gate — PLANNED, unratified
-P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) — PLANNED, unratified
-```
-
-**Owner decisions open at this gate** (synthesis §9 and the decision record):
+Inventory only — the order and its gates are the SEQUENCE block above; rationale and dependencies
+are the umbrella's.
 
 ```text
-1  RATIFY P23B.3 + the acceptance criteria for every slice plan (or amend them).
-2  RULE on curved-crossing validity (options A–D, decision record §5). It blocks M-2b verdict reuse and
-   the polarity of the negative fixture.
-3  DECIDE the P23B.2 sequencing call: authorize P23B.2 and re-open P23B.3 to fold its findings, or
-   ratify P23B.3 with the external-precedent dimension explicitly not established (synthesis §9.2).
-4  Optional: the umbrella's five pre-existing open calls (fixtures/device profiles, enforced budgets,
-   P23 Decision 13, Rust/WASM authorization, any numeric target) — synthesis §9.3 records the position.
+P23B.0  measurement foundation — reproduce the curved-room slowdown + measured baseline
+P23B.1  internal geometry-pipeline harvest (guided by the P23B.0 evidence)
+P23B.2  external precedent research (targeted at the diagnosed problems)
+P23B.3  synthesis + optimization direction  → owner ratification gate → P23B.4–P23B.8
+P23B.4  compilation + invalidation optimization
+P23B.5  caching and reuse optimization
+P23B.6  rendering optimization
+P23B.7  interaction optimization
+P23B.8  conditional Rust/WASM evaluation (decision only; "not justified" is a valid close)
+P23B.9  correctness + performance-regression gate
+P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 ```
 
-**Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the phase
-gate and the ROUTE block are read. P23B.3's three artifacts and the eight child plans are written but
-unratified; no implementation is approved; the P23B.1 harvest record is awaiting review; P23B.2 does not
-exist; durable P23B.0 measurement work is outstanding.
+**Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
+Phase 0 gate and the umbrella route are read. The child artifacts today are the two archived P23B.0 read-only measurement reports (evidence only),
+the P23B.1 plan (the accepted contract), its harvest record (executed evidence, awaiting review), and
+the P23B.2 verbatim external research report (awaiting evidence review). No synthesis artifact exists,
+no implementation is approved, and P23B.0's durable benchmark work stays outstanding.
 
 ## Non-goals
 
