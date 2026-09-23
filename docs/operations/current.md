@@ -20,13 +20,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        plans for P23B.0-durable and P23B.4–P23B.10 are written and unratified. The owner-directed
        direction for INDEPENDENT SPATIAL PLACEMENT with explicit topological connection is folded in as
        decision-record OPTION E, together with the source-traced topology ownership model and its
-       per-slice consequences. The owner ACCEPTED the Option E direction and clarified its two hardest
-       points: D-9 is now a RULE (connectivity is explicit graph identity, never coordinates alone;
-       coincidence is permitted ACROSS independent components while duplicate-node validity is RETAINED
-       WITHIN one; only an explicit join adopts a Junction id — and NO new representation is introduced),
-       and D-12 records the reconciliation identity proof obligation (overlap alone must not merge, retire
-       or ambiguously reassign persistent Room identity). D-11 directs the policy change to land BEFORE
-       the durable baseline. The implementation plan is still awaiting ratification. All required evidence is
+       per-slice consequences. The owner RULED on 2026-09-22: **D-1 Option E**, **D-9 confirmed as
+       written** (explicit Junction identity governs connectivity; coincident INDEPENDENT components are
+       permitted; accidental duplicates WITHIN one connected component stay invalid; only an explicit join
+       adopts an id — NO new representation is introduced), **D-10** Join/Connect at planning level,
+       **D-11 ARRANGEMENT 1** (a dedicated, narrowly scoped topology-policy slice placed BEFORE
+       `P23B.0-durable`, inside this branch and PR, so the recorded baseline is POST-POLICY by
+       construction), and **D-12 owned by that slice** (the reconciliation identity proof, discharged
+       before the slice's acceptance). The implementation plan is still awaiting ratification, and the
+       policy slice has not been staged — `SEQUENCE` is unchanged. All required evidence is
        landed: the two historical P23B.0 read-only pass reports (archived verbatim, NOT benchmark
        baselines), the P23B.1 plan + harvest record, and the P23B.2 external research report — so
        SEQUENCE step 6 is satisfied as to artifact. Both the harvest record and the research report are
@@ -36,11 +38,10 @@ NEXT:
 1. IMMEDIATE — the P23B RATIFICATION GATE (SEQUENCE step 8): the owner reviews P23B.3 and RATIFIES the
    synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D,
    plus the owner-directed Option E; it blocks verdict reuse and the negative fixture's polarity),
-   and names the REMAINING items: the policy's delivery SLOT (D-7 — an in-phase slice ahead of
-   P23B.0-dur, which needs an umbrella scope amendment and an owner-approved §SEQUENCE insertion, or a
-   separate product-policy PR merged first then `p23b` synchronized), the comment-correction slot (D-8),
-   which D-11 ARRANGEMENT to use, the owner of the reconciliation identity proof (D-12), and whether
-   Join/Connect stays at planning level (D-10); then ACCEPTS/PART-RETURNS the P23B.2 evidence. No benchmark implementation, topology fix or optimization (P23B.0-durable, P23B.4–P23B.8)
+   then STAGES the ruling: the Arrangement-1 umbrella scope amendment plus the `SEQUENCE` insertion
+   placing the topology-policy slice ahead of `P23B.0-durable`. Also resolves the two remaining slots —
+   the policy slice's NAME (D-7) and the comment-correction slot (D-8) — and ACCEPTS/PART-RETURNS the
+   P23B.2 evidence. No benchmark implementation, topology fix or optimization (P23B.0-durable, P23B.4–P23B.8)
    starts before that ratification. Order in brief: Phase 0
    evidence → owner adjudication → Phase 1 installation → P23B.0 read-only measurement → P23B.1 harvest
    → P23B.2 external research → P23B.3 synthesis → owner ratification of the implementation plan and
@@ -85,12 +86,13 @@ BLOCKER:
 - P23B.3 is unratified, and the curved-crossing policy is OPEN, so the two halves of the scoped-
   validation direction (verdict reuse and the negative fixture's polarity) cannot be planned to
   completion. Owner decisions recorded in the P23B.3 synthesis §9.1/§9.2
-- Option E's DIRECTION is ACCEPTED (D-1) and D-9 is CLARIFIED — connectivity is explicit graph identity,
+- Option E is RULED (D-1) with D-9 CONFIRMED as written — connectivity is explicit graph identity,
   never coordinates alone; coincidence is permitted across independent components while duplicate-node
   validity is retained within one; and NO new representation is needed (the obstacle was a document-wide
-  validation invariant plus planWallChain's adoption reflex, not a schema gap). What is STILL OPEN: the
-  policy's delivery SLOT (D-7), the comment-correction slot (D-8), the D-11 ARRANGEMENT, and the owner of
-  the reconciliation identity proof (D-12). No implementation may assume any of them, and the
+  validation invariant plus planWallChain's adoption reflex, not a schema gap). D-11 selects
+  ARRANGEMENT 1 and D-12 is owned by that policy slice. What is STILL OPEN: the policy slice's NAME
+  (D-7), the comment-correction slot (D-8), and the staging commit itself (umbrella amendment + SEQUENCE
+  insertion) — the policy slice is NOT yet staged. No implementation may assume any of them, and the
   implementation plan is not ratified yet
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified

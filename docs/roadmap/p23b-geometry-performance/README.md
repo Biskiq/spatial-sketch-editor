@@ -22,27 +22,31 @@ research report (Q1–Q9, source index with pinned revisions, validity precedent
 explicit unknowns) is landed and awaiting evidence review. Step 7 (P23B.3) is AUTHORED: synthesis +
 optimization direction, the curved-crossing owner decision record, the implementation/dependency map,
 and concrete plans for P23B.0-durable and P23B.4–P23B.10. Nothing is implemented.
-One further revision is folded in, and it now carries an OWNER ACCEPTANCE: the owner-directed DIRECTION
+One further revision is folded in, and it now carries the OWNER'S RULINGS: the owner-directed DIRECTION
 for independent spatial placement with explicit topological connection is recorded as decision-record
 OPTION E, with the topology ownership model traced from source (decision record §2.11) and the per-slice
-consequences carried through P23B.0-durable and P23B.4–P23B.10. Two architecture corrections from the
-owner's review are folded in with it: the COINCIDENCE RULE (**D-9** — explicit graph identity governs
-connectivity, coincidence is permitted ACROSS independent components while duplicate-node validity is
-RETAINED WITHIN one, and only an explicit join adopts a Junction id; NO new representation, group id or
-schema field), and the RECONCILIATION IDENTITY proof obligation (**D-12**, decision record §2.11.3) that
-overlap alone must not merge, retire or ambiguously reassign persistent Room identity. **D-11** directs
-that the policy change lands BEFORE the durable baseline, leaving two arrangements (in-phase slice ahead
-of P23B.0-dur, or a separate product-policy PR merged first then `p23b` synchronized).
-CURRENT: P23B.3 AUTHORED, OPTION E DIRECTION ACCEPTED, IMPLEMENTATION PLAN AWAITING RATIFICATION
-      (SEQUENCE step 8). All required evidence exists; discovery, synthesis and planning only — no
-      optimization, no defect fix, no benchmark/fixture/baseline change, no mechanism, no cycle
-      transition. The P23B.1 harvest record and the P23B.2 research report are each still marked awaiting
-      review by their own status.
-NEXT: owner review of P23B.3 at the ratification gate: ratify the synthesis + acceptance criteria, and
-      name the remaining items — the policy's delivery SLOT (D-7), the comment-correction slot (D-8), the
-      D-11 ARRANGEMENT, and the owner of the reconciliation proof (D-12) — then accept or return the
-      P23B.2 evidence. Until then NO benchmark implementation, no topology fix and no P23B.4–P23B.8
-      optimization is authorized, and the phase stays inside the PHASE 0 GATE permission boundary.
+consequences carried through P23B.0-durable and P23B.4–P23B.10. The owner RULED on 2026-09-22:
+**D-1 Option E · D-9 CONFIRMED as written** (explicit Junction identity governs connectivity; coincident
+INDEPENDENT components are permitted; accidental duplicates WITHIN one connected component stay invalid;
+only an explicit join adopts an id — NO new representation, group id or schema field) **· D-10
+Join/Connect at planning level · D-11 ARRANGEMENT 1** — a dedicated, narrowly scoped topology-policy slice
+placed BEFORE `P23B.0-durable`, inside this branch and PR, so the recorded baseline is POST-POLICY by
+construction **· D-12 OWNED BY THAT SLICE**, whose dedicated reconciliation oracle (OR-D12-1…6, decision
+record §4.2.2) must pass before the slice is accepted. The earlier "one missing representation" framing is
+RETRACTED: the obstacle was a document-wide invariant plus `planWallChain`'s adoption reflex, not the
+schema.
+CURRENT: P23B.3 RULED, AWAITING IMPLEMENTATION-PLAN RATIFICATION (SEQUENCE step 8). All required evidence
+      exists; discovery, synthesis and planning only — no optimization, no defect fix, no benchmark/
+      fixture/baseline change, no mechanism, no cycle transition. The implementation plan — including the
+      policy slice's own acceptance criteria — is NOT yet ratified, and the policy slice has NOT been
+      staged: `SEQUENCE` is unchanged in this pass. The P23B.1 harvest record and the P23B.2 research
+      report are each still marked awaiting review by their own status.
+NEXT: owner ratification of the implementation plan and acceptance criteria, then the Arrangement-1
+      staging commit — the umbrella scope amendment plus the `SEQUENCE` insertion placing the policy slice
+      AHEAD of P23B.0-durable. Still open alongside it: the policy slice's NAME (**D-7**), the
+      comment-correction slot (**D-8**), and acceptance or return of the P23B.2 evidence. Until then NO
+      benchmark implementation, no topology fix and no P23B.4–P23B.8 optimization is authorized, and the
+      phase stays inside the PHASE 0 GATE permission boundary.
 GATE: PHASE 0 GATE is satisfied (below) but the RATIFICATION GATE (SEQUENCE step 8) is NOT: no
       implementation is approved until the owner ratifies the implementation plan and the performance
       acceptance criteria. P23B.3 is the document that gate reviews. No numerical target is proposed.
