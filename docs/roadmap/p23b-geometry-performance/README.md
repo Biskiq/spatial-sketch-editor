@@ -22,12 +22,18 @@ research report (Q1–Q9, source index with pinned revisions, validity precedent
 explicit unknowns) is landed and awaiting evidence review. Step 7 (P23B.3) is AUTHORED: synthesis +
 optimization direction, the curved-crossing owner decision record, the implementation/dependency map,
 and concrete plans for P23B.0-durable and P23B.4–P23B.10. Nothing is implemented.
+One further revision is folded in: the OWNER-DIRECTED DIRECTION for independent spatial placement with
+explicit topological connection is recorded as decision-record OPTION E, with the topology ownership
+model traced from source (decision record §2.11) and the per-slice consequences carried through
+P23B.0-durable and P23B.4–P23B.10. Option E is recorded as DIRECTION, not as a ratified implementation:
+its acceptance criteria, its delivery path and its scope are open (D-9/D-10/D-11).
 CURRENT: P23B.3 AUTHORED, AWAITING OWNER RATIFICATION (SEQUENCE step 8). All required evidence exists;
       discovery, synthesis and planning only — no optimization, no defect fix, no benchmark/fixture/
       baseline change, no mechanism, no cycle transition. The P23B.1 harvest record and the P23B.2
       research report are each still marked awaiting review by their own status.
 NEXT: owner review of P23B.3 at the ratification gate: ratify the synthesis + acceptance criteria, rule
-      on the curved-crossing policy, and accept or return the P23B.2 evidence. Until then NO benchmark
+      on the curved-crossing policy AND Option E (see the decision record §5 — D-1 · D-7 · D-9 · D-10 ·
+      D-11 are the open ones), and accept or return the P23B.2 evidence. Until then NO benchmark
       implementation, no topology fix and no P23B.4–P23B.8 optimization is authorized, and the slice stays
       inside the PHASE 0 GATE permission boundary.
 GATE: PHASE 0 GATE is satisfied (below) but the RATIFICATION GATE (SEQUENCE step 8) is NOT: no
@@ -100,7 +106,9 @@ synthesis (P23B.3 — AUTHORED, awaiting owner ratification) →
   p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md
     (the operational map: prerequisites, gates, oracles, abandonment, deferrals)
   p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
-    (the correctness/policy decision record — owner decision required)
+    (the correctness/policy decision record — owner decision required. Options A–D historical; §2.10
+    records the OWNER-DIRECTED Option E as direction; §2.11 is the source-traced topology ownership
+    model; §4.1 gives the Path 1 / Path 2 delivery decision; §6 is the acceptance-test design)
 child plans (plans only — no implementation is approved) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md   (prerequisite)
   p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md

@@ -17,7 +17,11 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        P23B implementation does not depend on that reconciliation — it waits only on its own gate.
        P23B.3 (synthesis + optimization direction + the operational dependency map + the curved-crossing
        owner decision record) is AUTHORED and awaits owner ratification at SEQUENCE step 8; its child
-       plans for P23B.0-durable and P23B.4–P23B.10 are written and unratified. All required evidence is
+       plans for P23B.0-durable and P23B.4–P23B.10 are written and unratified. The owner-directed
+       direction for INDEPENDENT SPATIAL PLACEMENT with explicit topological connection is folded in as
+       decision-record OPTION E, together with the source-traced topology ownership model and its
+       per-slice consequences. Option E is recorded as DIRECTION, not as a ratified implementation: its
+       acceptance criteria, delivery path and scope are open (D-9/D-10/D-11). All required evidence is
        landed: the two historical P23B.0 read-only pass reports (archived verbatim, NOT benchmark
        baselines), the P23B.1 plan + harvest record, and the P23B.2 external research report — so
        SEQUENCE step 6 is satisfied as to artifact. Both the harvest record and the research report are
@@ -25,9 +29,12 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
 
 NEXT:
 1. IMMEDIATE — the P23B RATIFICATION GATE (SEQUENCE step 8): the owner reviews P23B.3 and RATIFIES the
-   synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D;
-   it blocks verdict reuse and the negative fixture's polarity), and ACCEPTS/PART-RETURNS the P23B.2
-   evidence. No benchmark implementation, topology fix or optimization (P23B.0-durable, P23B.4–P23B.8)
+   synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D,
+   plus the owner-directed Option E; it blocks verdict reuse and the negative fixture's polarity),
+   chooses the DELIVERY PATH (Path 1 in-phase — which needs an umbrella scope amendment and an
+   owner-approved §SEQUENCE insertion — or Path 2 as a separate product slice), resolves whether
+   coordinate coincidence still implies Junction identity (D-9) and whether Join/Connect stays at
+   planning level (D-10), and ACCEPTS/PART-RETURNS the P23B.2 evidence. No benchmark implementation, topology fix or optimization (P23B.0-durable, P23B.4–P23B.8)
    starts before that ratification. Order in brief: Phase 0
    evidence → owner adjudication → Phase 1 installation → P23B.0 read-only measurement → P23B.1 harvest
    → P23B.2 external research → P23B.3 synthesis → owner ratification of the implementation plan and
@@ -55,7 +62,8 @@ P23B.3 operational dependency map / child plan index → ../roadmap/p23b-geometr
 P23B.2 external research (landed verbatim, awaiting review) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
 P23B.2 readable navigation for that report (additive; the report is never edited) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-research-navigation.md
 P23B.0 archived read-only measurement reports (historical evidence, not baselines) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
-P23B curved-crossing owner decision (required) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
+P23B curved-crossing owner decision + Option E direction (required) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
+  (§2.10 Option E as owner-directed direction · §2.11 the source-traced topology ownership model · §4.1 the Path 1 / Path 2 delivery decision · §6 the acceptance-test design)
 P26 planning → ../roadmap/p26-spatial-depth/README.md
 P26 designer brief (written, does not open the validation window) → ../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
@@ -71,6 +79,10 @@ BLOCKER:
 - P23B.3 is unratified, and the curved-crossing policy is OPEN, so the two halves of the scoped-
   validation direction (verdict reuse and the negative fixture's polarity) cannot be planned to
   completion. Owner decisions recorded in the P23B.3 synthesis §9.1/§9.2
+- Option E has no delivery path and no resolution of its one missing representation: D-7/D-11 (Path 1 vs
+  Path 2), D-9 (does coordinate coincidence still imply Junction identity — two of the owner's stated
+  requirements are not literally satisfiable until it is answered) and D-10 (Join/Connect scope). No
+  implementation may assume any of them
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified
 - P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
