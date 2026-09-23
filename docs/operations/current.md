@@ -1,8 +1,8 @@
 # Current
 
 PHASE: P23B
-CHILD: none in execution — P23B is in planning; the umbrella is landed and the child slices are
-       proposed, none approved
+CHILD: none in execution — P23B is in planning; the umbrella is landed, P23B.3 is authored and the child
+       plans exist, but NOTHING is approved and no implementation has started
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
@@ -14,17 +14,22 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        reports ready for validation only once P26's prepared implementation plan is reconciled
        against the installed mechanisms, and Phase 2 opens on P26's first implementation slice.
        P23B implementation does not depend on that reconciliation — it waits only on its own gate.
-
-NEXT:
-1. IMMEDIATE — P23B planning continues at its own gate: SEQUENCE step 4 (P23B.0) reproduces the
-   curved-room slowdown and establishes the measured baseline on the existing benchmark
-   infrastructure. The Phase 0 diagnosis and its justified Phase 1 response are complete and
-   installed, so nothing meta-track blocks this; a committed benchmark-infrastructure change still
-   needs implementation authorization, and no optimization slice is authorized before the owner
-   ratifies the implementation plan and the performance acceptance criteria. Order in brief: Phase 0
-   evidence → owner adjudication → Phase 1 installation → P23B.0 measurement →
-   P23B.1 harvest → P23B.2 external research → P23B.3 synthesis → owner ratification of the
-   implementation plan and performance acceptance criteria → optimization slices, verify, review,
+       P23B.3 (synthesis + optimization direction + the operational dependency map + the curved-crossing
+       owner decision record) is AUTHORED and awaits owner ratification at SEQUENCE step 8; its child
+       plans for P23B.0-durable and P23B.4–P23B.10 are written and unratified. Two factual gaps are
+       recorded rather than papered over: P23B.2 (external precedent research, SEQUENCE step 6) was NEVER
+       EXECUTED and no artifact exists, and the two historical P23B.0 read-only profiling reports are not
+       in the repository (their numbers survive only as reported values in the P23B.1 plan §2). PR #82's
+       description claims both, which is inaccurate.NEXT:
+1. IMMEDIATE — the P23B RATIFICATION GATE (SEQUENCE step 8): the owner reviews P23B.3 and RATIFIES the
+   synthesis plus the performance acceptance criteria, RULES on curved-crossing validity (options A–D;
+   it blocks verdict reuse and the negative fixture's polarity), and DECIDES the P23B.2 sequencing call
+   (authorize the missing external research and re-open P23B.3, or ratify with the external-precedent
+   dimension explicitly not established). No benchmark implementation, topology fix or optimization
+   (P23B.0-durable, P23B.4–P23B.8) starts before that ratification. Order in brief: Phase 0
+   evidence → owner adjudication → Phase 1 installation → P23B.0 read-only measurement → P23B.1 harvest
+   → P23B.2 external research → P23B.3 synthesis → owner ratification of the implementation plan and
+   performance acceptance criteria → durable P23B.0 measurement → optimization slices, verify, review,
    close out.
    AUTHORITATIVE SEQUENCE (order and gate placement, recorded once) →
    ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
@@ -41,6 +46,9 @@ ROUTE:
 phase status/order → ../roadmap/README.md
 P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
 P23B umbrella (rationale/boundaries only) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
+P23B.3 synthesis + direction (authored, awaiting ratification) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
+P23B.3 operational dependency map / child plan index → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md
+P23B curved-crossing owner decision (required) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-curved-crossing-owner-decision.md
 P26 planning → ../roadmap/p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
 P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
@@ -49,8 +57,12 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B has no measured baseline and no approved child plan; its implementation waits on Phase 0
-  adjudication and any justified Phase 1 response (meta track), then on an owner-ratified child plan
+- P23B has no measured baseline and no approved child plan; its implementation waits on the owner
+  ratifying P23B.3 and the performance acceptance criteria (SEQUENCE step 8)
+- P23B.2 was never executed, so P23B.3 cannot reconcile external precedent; no mechanism is admitted on
+  an external precedent that was never established. Owner decision recorded in the P23B.3 synthesis §9.2
+- The two historical P23B.0 read-only profiling reports are not in the repository; PR #82's description
+  claims them (and a P23B.2 report) as branch contents. The phase README is the accurate record
 - P26 has no compiled design brief or child plan yet; planning is the current work, not a blocker to it
 
 CLOSED (2026-09-22):
