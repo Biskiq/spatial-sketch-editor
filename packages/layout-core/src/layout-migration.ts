@@ -81,6 +81,7 @@ export type MigrationRejectionCode =
 	| 'open-room-boundary'
 	| 'node-derivation-rejected'
 	| 'conflicting-coincident-walls'
+	| 'ambiguous-room-correspondence'
 	| 'room-reconciliation-rejected'
 	| 'candidate-validation-failed';
 
@@ -1078,6 +1079,25 @@ function reconcileFaces(document: LayoutDocumentWallFirst, floor: LegacyFloor): 
 			.filter((room) => pointStrictlyInsidePolygon(face.polygon, witnesses.get(room.id)!))
 			.map((room) => room.id)
 			.sort();
+		// FAIL-CLOSED COMPATIBILITY (P23B.3a S3a, D-12). Legacy Room records carry
+		// NO authored Wall identity, so reconciliation here can key only on geometry.
+		// When two DISTINCT legacy Rooms claim the SAME candidate face, that claim is
+		// not authorized lineage: two identities are collapsing into one structure,
+		// and merging them would silently retire a Room and reassign its associated
+		// objects. Refuse deterministically instead, so the caller keeps the original
+		// project on the read-only `legacy-compatible` path (project-compat.ts) with
+		// the legacy payload preserved. A legitimate shared-Wall migration is not
+		// affected: those Rooms enclose DIFFERENT faces and each claims exactly one.
+		if (predecessorIds.length > 1) {
+			return rejected('ambiguous-room-correspondence', [
+				{
+					path: '$.floors[0].rooms',
+					code: 'ambiguous-room-correspondence',
+					message: `Legacy Rooms ${predecessorIds.join(', ')} all resolve to candidate face '${face.key}'; collapsed Room lineage is not authorized, so the project stays legacy-compatible`,
+					targetId: predecessorIds[1]
+				}
+			]);
+		}
 		components.push({
 			candidateFaceKeys: [face.key],
 			predecessorRoomIds: predecessorIds

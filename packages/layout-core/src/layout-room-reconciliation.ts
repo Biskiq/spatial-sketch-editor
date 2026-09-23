@@ -250,9 +250,20 @@ export function correspondenceAuthorization(options: {
 /**
  * May this predecessor Room and this candidate face be unioned by EVIDENCE?
  *
- * Yes when the two component labels agree. When either side is unresolvable the
- * pair is left to the geometric evidence, because no identity claim can be made
- * about it in either direction.
+ * THE CONTRACT (P23B.3a D-12 — a POSITIVE identity match or nothing):
+ *
+ * 1. BOTH sides resolve -> the component labels must MATCH. This is the rule that
+ *    keeps two coincident or contained graph-independent Rooms apart.
+ * 2. NEITHER side resolves -> geometry is the only evidence that exists, so it
+ *    decides. This is the branch a legitimate rebuild travels: a Room whose whole
+ *    boundary was replaced has no surviving identity on either side, so there is
+ *    no identity claim to contradict.
+ * 3. EXACTLY ONE side resolves -> DENIED. No match can be established, and
+ *    geometry alone must never union an attributed structure with an
+ *    unattributed one: without this, a Room that lost its own boundary identity
+ *    could be handed an unrelated overlapping Room's face — and, symmetrically,
+ *    a surviving Room could claim an identity-less structure that is not its
+ *    successor merely because the two overlap.
  */
 function unionAuthorized(
 	authorization: CorrespondenceAuthorization,
@@ -261,7 +272,8 @@ function unionAuthorized(
 ): boolean {
 	const predecessorKey = authorization.predecessorComponentKeyByRoomId.get(predecessorRoomId);
 	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
-	if (predecessorKey === undefined || faceKeyValue === undefined) return true;
+	if (predecessorKey === undefined && faceKeyValue === undefined) return true;
+	if (predecessorKey === undefined || faceKeyValue === undefined) return false;
 	return predecessorKey === faceKeyValue;
 }
 

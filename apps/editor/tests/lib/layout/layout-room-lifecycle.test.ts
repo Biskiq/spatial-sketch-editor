@@ -173,16 +173,19 @@ function sceneReferencingRoom(roomId: string): SceneDocument {
 }
 
 /**
- * P23.6d review blocker fixture — a topology that reconciles a retirement the
- * selected Room does NOT own: a 10×8 outer enclosure with a 4×4 inner Room
- * fully inside it (roomless walls between them, so neither boundary references
- * the other's Walls). Removing the OUTER room's exclusive Walls (the only
- * intent) dissolves both rings into exactly the inner room's face, so
- * reconciliation MERGES outer→inner-face: the surviving face is fully inside
- * BOTH predecessor polygons (an overlap tie), the winner is the lexical ID
- * (`room-a` — the selected outer room) and `room-z` (the inner room) retires
- * as collateral. Pinned at the top of the Scene-safety tests so the
- * retirement is proven, not assumed.
+ * P23B.3a D-12 fixture — a 10×8 outer enclosure (`room-a`) with a 4×4 inner
+ * Room (`room-z`) fully inside it, roomless Walls between them so neither
+ * boundary references the other's Walls. The two Rooms share no Junction id.
+ *
+ * THIS FIXTURE USED TO PRODUCE A COLLATERAL RETIREMENT, and no longer does.
+ * Removing the OUTER room's exclusive Walls dissolves both rings into exactly
+ * the inner room's face, and the old geometric correspondence merged both
+ * predecessors into it — the surviving face lies inside BOTH predecessor
+ * polygons (an overlap tie), so the lexical ID won and `room-z` retired as
+ * collateral. Reconciliation now requires a POSITIVE identity match, so the
+ * face belongs to `room-z` (whose Walls survive) and the selected `room-a` —
+ * the Room this operation actually dismantled — is the one that retires.
+ * The overlap tie-break no longer decides anyone's identity.
  */
 function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 	const junctions: Array<[string, number, number]> = [
@@ -789,17 +792,41 @@ describe('P23.6d editor adapters — history and selection', () => {
 		);
 	});
 
-	it('rejects when a COLLATERAL retirement is scene-referenced even though the selected Room is clean', () => {
-		// The selected outer room survives (deterministic merge-winner tie-break);
-		// reconciliation still retires the inner room — checking only the
-		// selected `roomId` would miss it.
+	it('P23B.3a D-12 — removing the OUTER nested Room retires the Room it dismantled and preserves the inner one', () => {
+		// Superseded behaviour, recorded here: reconciliation used to merge both
+		// predecessors into the inner Room's face on an overlap tie and retire
+		// `room-z` as COLLATERAL while the selected outer Room survived. Identity now
+		// follows authored Walls: `room-a`'s Walls are the ones this operation
+		// removes, so `room-a` retires and the nested `room-z` keeps its identity.
 		const nested = nestedOuterInnerDocument();
 		expect(roomExclusiveBoundaryWallIds(nested, 'room-a')).toEqual(['wall-o1', 'wall-o2', 'wall-o3', 'wall-o4']);
 		const plan = success(planRemoveRoom(nested, 'room-a'));
-		expect(plan.retiredRoomIds).toEqual(['room-z']);
-		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-a']);
+		expect(plan.retiredRoomIds).toEqual(['room-a']);
+		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-z']);
+	});
 
+	it('P23B.3a D-12 — a scene reference to the PRESERVED nested Room no longer blocks the removal', () => {
+		// The scene guard fires for the Rooms a removal actually retires. Since the
+		// nested Room is no longer retired, referencing it must not cancel the
+		// command — the guard would otherwise block on a Room that keeps existing.
+		const nested = nestedOuterInnerDocument();
 		const scene = sceneReferencingRoom('room-z');
+		const { store, layoutPreview } = makeStore(nested, scene);
+		const outcome = runLayoutMutation(
+			layoutMutationRunnerFor(store, layoutPreview),
+			() => removeWallFirstRoom(layoutPreview, 'room-a', store.document),
+			(result) => result.success
+		);
+		expect(outcome.kind).toBe('committed');
+		expect(wallFirstDocument(layoutPreview).rooms.map((room) => room.id)).toEqual(['room-z']);
+		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-a', store.document)).toEqual([]);
+	});
+
+	it('rejects atomically when the Room the removal RETIRES is scene-referenced', () => {
+		// Same fixture, the other half: the Room that retires is `room-a`, so a scene
+		// reference to it cancels and names it — and nothing is installed.
+		const nested = nestedOuterInnerDocument();
+		const scene = sceneReferencingRoom('room-a');
 		const { store, layoutPreview } = makeStore(nested, scene);
 		const layoutBefore = serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview));
 		const outcome = runLayoutMutation(
@@ -814,12 +841,10 @@ describe('P23.6d editor adapters — history and selection', () => {
 		if (failure.success) throw new Error('expected failure');
 		expect(store.canUndo).toBe(false);
 		expect(serializeWallFirstLayoutDocument(wallFirstDocument(layoutPreview))).toBe(layoutBefore);
-		// The blocked reason names the collateral Room, not the selected one.
-		expect(failure.message).toContain('room-z');
-		expect(failure.message).not.toContain('room-a');
+		expect(failure.message).toContain('room-a');
 		// Read-only preview agrees with the executor's policy (no second rule).
 		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-a', store.document)).toEqual([
-			'room-z'
+			'room-a'
 		]);
 		expect(wallFirstRoomSceneBlockedRoomIds(layoutPreview, 'room-missing', store.document)).toEqual([]);
 	});
