@@ -14,10 +14,10 @@ STATUS: planning
 STAGE: umbrella landed; child slices proposed, none approved; the post-P23 execution order is
 owner-ratified and recorded in the SEQUENCE block below. SEQUENCE steps 1–3 completed 2026-09-22
 (Phase 0 authorized, evidence gathered and adjudicated, and the justified Phase 1 response
-installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling passes; their settled
-interpretation is recorded in the P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures,
-recorded baselines with provenance, budgets) remains OUTSTANDING — it is not completed, replaced or
-redefined by P23B.1
+installed). SEQUENCE step 4 (P23B.0) has completed its two read-only profiling passes; their reports
+are archived verbatim as historical evidence, and the settled interpretation is recorded in the
+P23B.1 plan §2. P23B.0's DURABLE work (committed fixtures, recorded baselines with provenance,
+budgets) remains OUTSTANDING — archiving the reports is not a recorded benchmark baseline
 CURRENT: P23B.1 harvest EXECUTED, awaiting review; P23B.2 external research report captured
       verbatim in its slice workspace on the same PR branch, awaiting evidence review. Discovery/
       evidence only: no optimization, defect fix or benchmark change. Curved-crossing policy OPEN
@@ -80,8 +80,13 @@ research (P23B.2 — verbatim report captured, awaiting evidence review) →
   (source index has pinned URLs; chat-specific <Cite> tags preserved in the verbatim text)
 synthesis (P23B.3) → none yet (proposed only)
 child plans → none yet (proposed only; no implementation-ready brief)
-measurement (P23B.0) → read-only profiling passes complete, no committed artifact; durable
-          benchmark/fixture/baseline work outstanding (see the P23B.1 harvest record §11.1)
+measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
+  p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
+  p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
+  (historical local /private/tmp runner paths in Pass A are not committed; reported source hashes
+  cannot be independently verified from repository fixture bytes)
+durable measurement (P23B.0) → fixtures, harness, reproducible recorded baseline and budgets
+          outstanding (see the P23B.1 harvest record §11.1)
 phase status/order → ../README.md
 P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md
@@ -126,10 +131,10 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked)
 ```
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the
-Phase 0 gate and the umbrella route are read. The child artifacts today are the P23B.1 plan (the
-accepted contract), its harvest record (executed evidence, awaiting review), and the P23B.2 verbatim
-external research report (awaiting evidence review). No synthesis artifact exists, no implementation
-is approved, and P23B.0's durable benchmark work stays outstanding.
+Phase 0 gate and the umbrella route are read. The child artifacts today are the two archived P23B.0 read-only measurement reports (evidence only),
+the P23B.1 plan (the accepted contract), its harvest record (executed evidence, awaiting review), and
+the P23B.2 verbatim external research report (awaiting evidence review). No synthesis artifact exists,
+no implementation is approved, and P23B.0's durable benchmark work stays outstanding.
 
 ## Non-goals
 
