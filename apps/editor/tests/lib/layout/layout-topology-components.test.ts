@@ -23,10 +23,15 @@ import { describe, expect, it } from 'vitest';
 import {
 	connectedRoomIds,
 	createEmptyWallFirstLayoutDocument,
+	deriveChainSpans,
+	junctionsShareTopologyComponent,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	roomIdsConnectedByTopology,
+	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByRoomId,
 	topologyComponentKeyByWallId,
+	UNATTACHED_JUNCTION_COMPONENT,
+	wallCubicChain,
 	wallIdsConnectedTo,
 	wallJunctionComponents,
 	wallsShareTopologyComponent,
@@ -217,9 +222,18 @@ describe('P23B.3a S2 — general Wall/Junction connectivity', () => {
 		expect(first.map((component) => component.key)).toEqual(['wall-a1']);
 	});
 
-	it('counts a curved chain as ONE Wall node, and keeps independent groups apart', () => {
-		// Two enclosures plus a standalone curved Wall elsewhere: three components.
+	it('counts a CURVED chain as ONE Wall node, and keeps independent groups apart', () => {
+		// Two enclosures plus a standalone cubic-chain Wall elsewhere: two components.
 		const base = sharedWallDocument();
+		const curved = wall('wall-bow', 'j-bow-a', 'j-bow-b');
+		curved.centerline = wallCubicChain(
+			[{ id: 'wall-bow:knot:1', point: [24, 4] as LayoutVec2 }],
+			deriveChainSpans([
+				[20, 0],
+				[24, 4],
+				[28, 0]
+			] as LayoutVec2[])
+		);
 		const withCurve: LayoutDocumentWallFirst = {
 			...base,
 			junctions: [
@@ -227,15 +241,42 @@ describe('P23B.3a S2 — general Wall/Junction connectivity', () => {
 				{ id: 'j-bow-a', point: [20, 0] as LayoutVec2 },
 				{ id: 'j-bow-b', point: [28, 0] as LayoutVec2 }
 			],
-			walls: [...base.walls, wall('wall-bow', 'j-bow-a', 'j-bow-b')]
+			walls: [...base.walls, curved]
 		};
 		const components = wallJunctionComponents(withCurve);
 		expect(components).toHaveLength(2);
 		const bowComponent = components.find((component) =>
 			component.wallIds.includes('wall-bow')
 		)!;
+		// The chain is ONE node: its interior knot adds a point, not a Wall and not a
+		// Junction, so the component still carries exactly its two endpoint Junctions.
 		expect(bowComponent.wallIds).toEqual(['wall-bow']);
+		expect(bowComponent.junctionIds).toEqual(['j-bow-a', 'j-bow-b']);
 		expect(bowComponent.roomIds).toEqual([]);
 		expect(wallsShareTopologyComponent(withCurve, 'wall-bow', 'wall-a1')).toBe(false);
+	});
+
+	it('answers for a Junction that NO Wall references, so a scoped coincidence rule cannot drop it', () => {
+		const base = sharedWallDocument();
+		const withOrphans: LayoutDocumentWallFirst = {
+			...base,
+			junctions: [
+				...base.junctions,
+				// Two authored Junctions no Wall references, at exactly the same point.
+				{ id: 'j-orphan-1', point: [40, 0] as LayoutVec2 },
+				{ id: 'j-orphan-2', point: [40, 0] as LayoutVec2 }
+			]
+		};
+		const keyByJunctionId = topologyComponentKeyByJunctionId(withOrphans);
+		// Both unattached, so both take the explicit unattached label...
+		expect(keyByJunctionId.get('j-orphan-1')).toBe(UNATTACHED_JUNCTION_COMPONENT);
+		expect(keyByJunctionId.get('j-orphan-2')).toBe(UNATTACHED_JUNCTION_COMPONENT);
+		// ... which keeps their coincidence INVALID rather than silently unclassified.
+		expect(junctionsShareTopologyComponent(withOrphans, 'j-orphan-1', 'j-orphan-2')).toBe(true);
+		// An unattached Junction is never in a Wall component (D-9: no shared identity).
+		expect(keyByJunctionId.get('j-a')).toBe(keyByJunctionId.get('j-b'));
+		expect(junctionsShareTopologyComponent(withOrphans, 'j-orphan-1', 'j-a')).toBe(false);
+		// Wall components are unaffected: the orphans form none of their own.
+		expect(wallJunctionComponents(withOrphans)).toHaveLength(1);
 	});
 });

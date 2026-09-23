@@ -146,14 +146,19 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 	},
 	{
 		id: 'R-a',
-		pins: 'a duplicated Room whose endpoint CHORDS stay disjoint while its curve crosses is ADMITTED today (chord-only batch gate)',
-		flipStep: 'S7',
-		post: 'F6',
+		// TWO verdicts travel in this case. ADMISSION by the chord-exact batch gate is
+		// permanent and never flips. What flips is the CANONICAL gate's rejection of the
+		// document the batch gate just admitted — an independent-group crossing, which
+		// S4 stops rejecting. Admission is therefore NOT an S7 transition, and S7's job
+		// is batch↔validator PARITY rather than an ingress change.
+		pins: 'the chord-exact batch gate ADMITS a duplicated Room whose endpoint CHORDS stay disjoint while its curve crosses (permanent), and the canonical gate REJECTS the document it admitted (flips)',
+		flipStep: 'S4',
+		post: 'F4',
 		owner: 'this file'
 	},
 	{
 		id: 'R-b',
-		pins: 'a refused duplicate leaves the source document byte-identical',
+		pins: 'a refused duplicate leaves the source document byte-identical — pinned permanently on a SAME-COMPONENT refusal, with the independent-overlap refusal recorded as a pre-policy observation that flips',
 		flipStep: 'never',
 		owner: 'this file'
 	},
@@ -166,9 +171,11 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 	},
 	{
 		id: 'R-d',
-		pins: 'the import path ADMITS a document carrying an independent-group crossing (F-C6)',
-		flipStep: 'S7',
-		post: 'F6',
+		// The ingress verdict does NOT flip: the codec admits such a document today and
+		// must keep admitting it (F6). S7 owns proving batch/validator/import PARITY and
+		// continued correct import behaviour, not an admission transition.
+		pins: 'the import path ADMITS a document carrying an independent-group crossing today AND keeps admitting it post-policy (no flip; S7 owns parity, not ingress)',
+		flipStep: 'never',
 		owner: 'this file'
 	}
 ];
@@ -416,6 +423,31 @@ function curvedBowAndRoomDocument(): LayoutDocumentWallFirst {
 	return { ...base, rooms: [roomFromFace('room-1', 'Alone', faceOwningWall(base, 'wall-a1'))] };
 }
 
+/**
+ * Isolated `room-1` plus a STATIONARY partition stub reaching one of the room's
+ * own Junctions (j-c). Same component, so the refusal it causes is intrinsic and
+ * survives any subject-scoping change.
+ */
+function stubAttachedRoomDocument(): LayoutDocumentWallFirst {
+	const base = isolatedRoomDocument();
+	return {
+		...base,
+		junctions: [...base.junctions, { id: 'j-c-out', point: [6, 8] as LayoutVec2 }],
+		walls: [
+			...base.walls,
+			{
+				id: 'wall-stub',
+				startJunctionId: 'j-c',
+				endJunctionId: 'j-c-out',
+				role: 'partition',
+				thickness: 0.2,
+				height: 3,
+				centerline: LINE
+			}
+		]
+	};
+}
+
 const ISOLATED_ROOM = isolatedRoomDocument();
 const TWO_INDEPENDENT_ROOMS = twoIndependentRoomsDocument();
 const SHARED_WALL_ROOMS = sharedWallRoomsDocument();
@@ -526,14 +558,19 @@ describe('P23B.3a S1 — reference verdicts that the policy changes (T1/T2/T3/T4
 		expect(issue?.message).toContain('collinear-overlap');
 	});
 
-	it('R-a — a cloned Room whose CHORDS stay disjoint while the cloned walls cross a curve is ADMITTED today', () => {
+	it('R-a — the chord-exact batch gate ADMITS the cloned crossing (permanent) while the canonical gate REJECTS it (flips at S4)', () => {
 		// Pre-state validity: the base document is clean under both gates.
 		expect(validateWallFirstTopology(CURVED_BOW_AND_ROOM)).toBeUndefined();
 		const plan = planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] });
 		const admitted = success(plan);
-		// The chord-only batch gate sees nothing: every cloned chord is clear of the bow's chord.
+		// HALF 1 — PERMANENT: the chord-only batch gate sees nothing, because every
+		// cloned chord is clear of the bow's chord. This admission is not an S7
+		// transition; it is true today and stays true.
 		expect(admitted.createdWallIds.length).toBe(4);
-		// ... while the canonical (full) gate rejects the very document just admitted.
+		// HALF 2 — FLIPS AT S4: the canonical (full) gate rejects the very document
+		// just admitted, because the two groups are graph-INDEPENDENT and their curves
+		// cross. That rejection is the pre-policy verdict; S4 retires this assertion
+		// and `R-c` it makes possible goes with it.
 		const issue = validateWallFirstTopology(admitted.document);
 		expect(issue?.code).toBe('unsupported_wall_topology');
 		expect(issue?.message).toContain('centerline crossing');
@@ -553,7 +590,7 @@ describe('P23B.3a S1 — reference verdicts that the policy changes (T1/T2/T3/T4
 		expect(plan.rejection.message).toContain('wall-bow');
 	});
 
-	it('R-d — the import path ADMITS a document carrying an independent-group crossing (F-C6)', () => {
+	it('R-d — the import path ADMITS an independent-group crossing today AND must keep admitting it (no flip)', () => {
 		const admitted = success(
 			planDuplicateIsolatedRoom(CURVED_BOW_AND_ROOM, { roomId: 'room-1', delta: [10, 0] })
 		);
@@ -562,6 +599,10 @@ describe('P23B.3a S1 — reference verdicts that the policy changes (T1/T2/T3/T4
 			preview,
 			serializeWallFirstLayoutDocument(admitted.document)
 		);
+		// Ingestion is already permissive because the codec carries no topology rule.
+		// Post-policy it stays permissive for the SAME document (F6), so this is not a
+		// transition: S7's obligation is to prove the batch gate, the canonical
+		// validator and the import path AGREE about this document, not to change it.
 		expect(imported).toBe(true);
 	});
 });
@@ -592,7 +633,35 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		expect(issue?.message).toContain('non-boundary');
 	});
 
-	it('T8 — a genuinely invalid operation is refused atomically', () => {
+	it('T8 (PERMANENT) — a SAME-COMPONENT collinear overlap is refused atomically and keeps being refused', () => {
+		// Same connected group: the authored chain runs from j-a to j-m, two of the
+		// enclosure's OWN junctions, exactly along the existing boundary Wall
+		// wall-a1. Collinear overlap beyond an explicit shared Junction is an
+		// intrinsic, same-component failure that component scoping cannot relax, so it
+		// must keep failing after the policy — unlike an independent crossing, which
+		// the planner legitimately NODES inside a group.
+		const snapshot = JSON.stringify(SHARED_WALL_ROOMS);
+		const plan = planWallChain({
+			baseline: SHARED_WALL_ROOMS,
+			points: [
+				[0, 0],
+				[3, 0]
+			],
+			close: false,
+			role: 'partition'
+		});
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind !== 'rejected') return;
+		expect(plan.rejection.code).toBe('collinear_overlap');
+		expect(plan.rejection.message).toContain('overlap beyond their explicit shared junction');
+		expect(JSON.stringify(SHARED_WALL_ROOMS)).toBe(snapshot);
+	});
+
+	it('T8 (pre-policy observation) — an INDEPENDENT crossing is refused atomically today', () => {
+		// OBSERVATION, NOT A PERMANENT EXPECTATION: the authored chain is an
+		// independent component, so Option E turns this rejection into permitted
+		// geometry (T4 → F4). Recorded because the atomicity half still has to hold
+		// after S4 — only the verdict flips.
 		const snapshot = JSON.stringify(TWO_CROSSING_CURVED_WALLS);
 		const plan = planWallChain({
 			baseline: TWO_CROSSING_CURVED_WALLS,
@@ -642,7 +711,23 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		expect(coincident).toHaveLength(1);
 	});
 
-	it('R-b — a refused duplicate leaves the source document byte-identical', () => {
+	it('R-b (PERMANENT) — a SAME-COMPONENT refusal leaves the source document byte-identical', () => {
+		// A stationary partition stub reaching one of the group's own Junctions: the
+		// refusal is intrinsic to the group's connectivity, so it must survive the
+		// policy and remain atomic.
+		const withStub = stubAttachedRoomDocument();
+		const snapshot = JSON.stringify(withStub);
+		const plan = planDuplicateIsolatedRoom(withStub, { roomId: 'room-1', delta: [10, 0] });
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind !== 'rejected') return;
+		expect(plan.rejection.code).toBe('room_not_isolated');
+		expect(JSON.stringify(withStub)).toBe(snapshot);
+	});
+
+	it('R-b (pre-policy observation) — an INDEPENDENT-overlap refusal leaves the source document byte-identical', () => {
+		// OBSERVATION, NOT A PERMANENT EXPECTATION: the clone is an independent
+		// component, so this refusal is exactly what S7 re-bases. The atomicity half
+		// is recorded here and must still hold afterwards.
 		const snapshot = JSON.stringify(ISOLATED_ROOM);
 		const plan = planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [1, 0] });
 		expect(plan.kind).toBe('rejected');

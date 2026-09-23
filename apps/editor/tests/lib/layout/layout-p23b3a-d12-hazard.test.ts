@@ -6,16 +6,27 @@
  * retains or changes identity only per that operation's own existing authorized
  * lineage contract; spatial overlap ALONE may never cause either change.
  *
- * The pre-states below are constructible and are exactly what the policy makes
- * admissible at S4 — two GRAPH-INDEPENDENT Rooms that share no Junction id and
- * overlap only geometrically. Each case records what the reconciliation does
- * TODAY. The guarantee cases are written with `it.fails`, so the FINDING is a
- * required check while the GUARANTEE is deliberately NOT in a mandatory green
- * lane (the ratified S3 quarantine); S3a makes them ordinary `it` cases that
- * must pass, and the observed pre-fix behaviour stays recorded here as the
- * historical half of the differential.
+ * The pre-states are two graph-INDEPENDENT Rooms that share no Junction id and
+ * overlap only geometrically — `room-k` is the UNRELATED one, `room-c` is the
+ * OPERATED one. They are exactly what the policy makes admissible at S4.
  *
- * OR-D12-5 and OR-D12-6 obligations for S3a: evaluate these against the GENERAL
+ * HOW THE TWO KINDS OF CASE ARE WRITTEN, and why:
+ *
+ * - the MEASURED OUTCOME of each shape is asserted as an ordinary, passing test,
+ *   so the pre-fix result is recorded precisely rather than described. These
+ *   observations are replaced at S3a (the guarantee tests below take over) with
+ *   the measured numbers kept here as the historical half of the differential;
+ * - the GUARANTEE is asserted only about the UNRELATED Room's identity and
+ *   ownership. It never requires the OPERATED Room to survive: a role change on
+ *   the operated Room's Wall legitimately retires that Room under its own
+ *   lineage contract, and demanding its survival would make the case pass or
+ *   fail for a reason that has nothing to do with D-12;
+ * - where the guarantee already HOLDS, the case is an ordinary passing test; where
+ *   it does not, `it.fails` keeps the FINDING as a required check while the
+ *   guarantee itself stays outside every mandatory green lane (the ratified S3
+ *   quarantine). S3a converts the remaining `it.fails` into ordinary `it` cases.
+ *
+ * OR-D12-5 and OR-D12-6 obligations for S3a: evaluate against the GENERAL
  * Wall/Junction test (`wallJunctionComponents`), never `connectedRoomIds`, and
  * exercise every caller: wall delete · role change · dissolve · migration ·
  * Room move · chain. Role change is the caller exercised here.
@@ -87,18 +98,41 @@ function enclosure(options: Enclosure) {
 }
 
 /**
- * Two graph-independent Rooms: `k` is the UNRELATED one, `c` is the OPERATED
- * one. They share no Junction id — only coordinates.
+ * Two graph-independent Rooms plus the UNRELATED Room's OWNED state: one
+ * associated object and one hosted Opening, so "identity" means id and name and
+ * "ownership" means the object→Room and Opening→Wall bindings.
  */
-function pairDocument(inner: Enclosure, outer: Enclosure): LayoutDocumentWallFirst {
+function pairDocument(operated: Enclosure, unrelated: Enclosure): LayoutDocumentWallFirst {
 	const base = emptyDocument();
-	const outerEnclosure = enclosure(outer);
-	const innerEnclosure = enclosure(inner);
+	const unrelatedEnclosure = enclosure(unrelated);
+	const operatedEnclosure = enclosure(operated);
 	return {
 		...base,
-		junctions: [...outerEnclosure.junctions, ...innerEnclosure.junctions],
-		walls: [...outerEnclosure.walls, ...innerEnclosure.walls],
-		rooms: [outerEnclosure.room, innerEnclosure.room]
+		junctions: [...unrelatedEnclosure.junctions, ...operatedEnclosure.junctions],
+		walls: [...unrelatedEnclosure.walls, ...operatedEnclosure.walls],
+		rooms: [unrelatedEnclosure.room, operatedEnclosure.room],
+		openings: [
+			{
+				id: 'opening:k:door:1',
+				wallId: 'k-a1',
+				kind: 'door',
+				offset: 1,
+				width: 0.9,
+				height: 2.1,
+				sillHeight: 0,
+				profile: 'rectangular'
+			}
+		],
+		objects: [
+			{
+				id: 'obj-k',
+				kind: 'box',
+				position: [3, 0.5, 2],
+				rotation: [0, 0, 0],
+				dimensions: [1, 1, 1],
+				roomId: 'room-k'
+			}
+		]
 	};
 }
 
@@ -120,10 +154,18 @@ const FULL_CONTAINMENT = pairDocument(
 	{ prefix: 'k', x: 0, z: 0, width: 6, depth: 4 }
 );
 
-function operatedWallId(document: LayoutDocumentWallFirst): string {
-	// The operated Room is `room-c`; its south Wall `c-a1` is boundary role today.
+/** The operation under test: change the OPERATED Room's own south Wall to partition. */
+function operateOnOperatedRoom(document: LayoutDocumentWallFirst) {
 	expect(document.rooms.map((room) => room.id)).toContain('room-c');
-	return 'c-a1';
+	return planWallRoleChange(document, 'c-a1', 'partition');
+}
+
+function roomsOf(document: LayoutDocumentWallFirst) {
+	return document.rooms.map((room) => [room.id, room.name] as const);
+}
+
+function ownedObjectRoomId(document: LayoutDocumentWallFirst, objectId: string) {
+	return document.objects.find((object) => object.id === objectId)?.roomId;
 }
 
 describe('P23B.3a S3 — the D-12 hazard, measured against the current reconciliation', () => {
@@ -138,42 +180,76 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		// 2. PARTIAL OVERLAP — refused by the document-global wall-geometry rule.
 		expect(validateWallFirstTopology(PARTIAL_OVERLAP)?.code).toBe('unsupported_wall_topology');
 		// 3. FULL CONTAINMENT — ALREADY ADMITTED today: the contained enclosure's
-		//    Walls intersect nothing, and there is no coincident Junction to catch.
-		//    RECORDED FINDING: the identity hazard OR-D12-3 describes is therefore
-		//    reachable NOW, not only once the policy lands.
+		//    Walls intersect nothing and there is no coincident Junction to catch.
 		expect(validateWallFirstTopology(FULL_CONTAINMENT)).toBeUndefined();
 	});
 
+	it('MEASURED PRE-FIX, exact coincidence — the UNRELATED Room is retired and its owned object is TRANSFERRED', () => {
+		const plan = operateOnOperatedRoom(EXACT_COINCIDENCE);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		// Only the operated Room survives; the unrelated `room-k` is gone entirely...
+		expect(roomsOf(plan.document)).toEqual([['room-c', 'Room c']]);
+		expect(plan.retiredRoomIds).toEqual(['room-k']);
+		// ... and `room-k`'s OWNED object has been reassigned to `room-c`, while the
+		// Opening keeps its own Wall binding. This is the D-12 defect in its purest
+		// form: spatial overlap alone changed an unrelated group's identity AND
+		// ownership. S3a must make the guarantee case below pass.
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-c');
+		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toEqual([
+			['opening:k:door:1', 'k-a1']
+		]);
+	});
+
+	it('MEASURED PRE-FIX, partial overlap — the UNRELATED Room survives; the OPERATED Room is retired', () => {
+		const plan = operateOnOperatedRoom(PARTIAL_OVERLAP);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		// The face is attributed to its own predecessor here, so `room-k` keeps its
+		// id, its name and its object, and the operation's own Room is the one that
+		// retires — a legitimate lineage effect of the operation, not a D-12 defect.
+		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+	});
+
+	it('MEASURED PRE-FIX, containment — same shape of result: containment alone is NOT the defect', () => {
+		const plan = operateOnOperatedRoom(FULL_CONTAINMENT);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		// Recorded so the hazard is not over-claimed: containing the operated Room
+		// does not by itself reassign the unrelated Room's identity or ownership.
+		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+	});
+
 	it.fails(
-		'OR-D12-1 (KNOWN RED) — through a role change on the OTHER Room, the unrelated coincident Room keeps its identity',
+		'OR-D12-1 (KNOWN RED) — exact coincidence: the UNRELATED Room keeps its identity AND its owned object',
 		() => {
-			const plan = planWallRoleChange(EXACT_COINCIDENCE, operatedWallId(EXACT_COINCIDENCE), 'partition');
+			const plan = operateOnOperatedRoom(EXACT_COINCIDENCE);
 			expect(plan.kind).toBe('success');
 			if (plan.kind !== 'success') return;
-			// OBSERVED TODAY: the two coincident Rooms collapse into ONE
-			// correspondence component, so `room-k` — untouched by this operation —
-			// is retired and its identity is lost. Only the operated `room-c` remains.
-			expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['room-c', 'room-k']);
+			// ONLY the unrelated group is asserted on: the operated Room's own fate is
+			// its operation's business and is deliberately not required here.
+			expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+			expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
 		}
 	);
 
-	it.fails(
-		'OR-D12-2 (KNOWN RED) — with a partial overlap, each face is attributed to its own predecessor',
-		() => {
-			const plan = planWallRoleChange(PARTIAL_OVERLAP, operatedWallId(PARTIAL_OVERLAP), 'partition');
-			expect(plan.kind).toBe('success');
-			if (plan.kind !== 'success') return;
-			expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['room-c', 'room-k']);
-		}
-	);
+	it('OR-D12-2 (already holds, must keep holding) — partial overlap keeps the unrelated identity and ownership', () => {
+		const plan = operateOnOperatedRoom(PARTIAL_OVERLAP);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+	});
 
-	it.fails(
-		'OR-D12-3 (KNOWN RED) — containment is not a lineage event for the unrelated Room',
-		() => {
-			const plan = planWallRoleChange(FULL_CONTAINMENT, operatedWallId(FULL_CONTAINMENT), 'partition');
-			expect(plan.kind).toBe('success');
-			if (plan.kind !== 'success') return;
-			expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['room-c', 'room-k']);
-		}
-	);
+	it('OR-D12-3 (already holds, must keep holding) — containment is not a lineage event for the unrelated Room', () => {
+		const plan = operateOnOperatedRoom(FULL_CONTAINMENT);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+	});
 });

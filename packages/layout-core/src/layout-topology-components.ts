@@ -116,9 +116,10 @@ export function wallJunctionComponents(
 		}
 	}
 
+	const keyByRoomId = topologyComponentKeyByRoomId(document, keyByWallId);
 	const roomIdsByKey = new Map<string, string[]>();
 	for (const room of document.rooms) {
-		const key = topologyComponentKeyByRoomId(document, keyByWallId).get(room.id);
+		const key = keyByRoomId.get(room.id);
 		if (!key) continue;
 		const rooms = roomIdsByKey.get(key);
 		if (rooms) rooms.push(room.id);
@@ -154,6 +155,59 @@ export function topologyComponentKeyByRoomId(
 		}
 	}
 	return keyByRoomId;
+}
+
+/**
+ * Label used for authored Junctions that NO Wall references.
+ *
+ * Deliberately NOT a graph component: an unattached Junction is not connected to
+ * anything, yet a component-scoped coincidence rule must still answer for it. All
+ * unattached Junctions share this one label so that two coincident unattached
+ * Junctions stay INVALID — the rule keeps the check that exists today instead of
+ * silently dropping it for the case it cannot classify. The consequence the other
+ * way is explicit and intended (D-9): an unattached Junction and a Junction that
+ * belongs to a Wall component are never in the same component, so their coincidence
+ * is permitted geometry, exactly like two coincident independent Wall groups.
+ */
+export const UNATTACHED_JUNCTION_COMPONENT = 'unattached-junctions';
+
+/**
+ * Component label per authored Junction id.
+ *
+ * A Junction referenced by at least one Wall takes the component key of the first
+ * Wall (in document order) that references it. A Junction referenced by no Wall
+ * takes {@link UNATTACHED_JUNCTION_COMPONENT}.
+ */
+export function topologyComponentKeyByJunctionId(
+	document: LayoutDocumentWallFirst,
+	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document)
+): Map<string, string> {
+	const keyByJunctionId = new Map<string, string>();
+	for (const wall of document.walls) {
+		const key = keyByWallId.get(wall.id);
+		if (key === undefined) continue;
+		for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+			if (!keyByJunctionId.has(junctionId)) keyByJunctionId.set(junctionId, key);
+		}
+	}
+	for (const junction of document.junctions) {
+		if (!keyByJunctionId.has(junction.id)) {
+			keyByJunctionId.set(junction.id, UNATTACHED_JUNCTION_COMPONENT);
+		}
+	}
+	return keyByJunctionId;
+}
+
+/** Do these two Junctions belong to the same connected component (or are both unattached)? */
+export function junctionsShareTopologyComponent(
+	document: LayoutDocumentWallFirst,
+	firstJunctionId: string,
+	secondJunctionId: string
+): boolean {
+	if (firstJunctionId === secondJunctionId) return true;
+	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
+	const key = keyByJunctionId.get(firstJunctionId);
+	return key !== undefined && key === keyByJunctionId.get(secondJunctionId);
 }
 
 /** Do these two Walls belong to the same connected component? */
