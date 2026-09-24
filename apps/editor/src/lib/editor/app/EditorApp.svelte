@@ -246,15 +246,6 @@
 		sessionStatus = 'checking';
 	}
 	const layoutPreview = $state(createEmptyWallFirstLayoutPreviewState());
-	if (seededLayout) {
-		const bundle = derivePreviewBundle(
-			bootProject.id,
-			bootProject.name,
-			seededLayout,
-			bootProject.scene
-		);
-		installLayoutPreviewBundle(layoutPreview, bundle);
-	}
 	const layoutInteraction = $state({ ...createLayoutInteractionState(), viewMode: 'plan' as const });
 	// Construct before the store: the selection activation hook gates its
 	// cross-domain clear through the current Scene Plan authority.
@@ -309,6 +300,24 @@
 		activeSelection.reset();
 		hierarchyNavigator.reset();
 	}
+	/**
+	 * PERF route seed (dev-only). A seeded boot document is installed through
+	 * the same replacement seam an import uses: one derived bundle, then the
+	 * document-scoped reset every layout-bundle install owes the shell. With no
+	 * seed the function is inert, so the shipped boot path is unchanged.
+	 */
+	function installSeededProjectDocument(): void {
+		if (!seededLayout) return;
+		const bundle = derivePreviewBundle(
+			bootProject.id,
+			bootProject.name,
+			seededLayout,
+			bootProject.scene
+		);
+		installLayoutPreviewBundle(layoutPreview, bundle);
+		resetDocumentScopedState();
+	}
+	installSeededProjectDocument();
 	store.registerLayoutHistory({
 		capture: () => captureLayoutPreviewSnapshot(layoutPreview),
 		replace: (snapshot) => {

@@ -2859,7 +2859,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		onLayoutTransactionCancel();
 	}
 
-	function onPointerDown(event: PointerEvent) {
+	/**
+	 * P23B W4 — the measured press. The handler below stays the shipped one;
+	 * this adapter only brackets it with the path/boundary marks, so no product
+	 * behaviour and no handler text moves into the instrumentation.
+	 */
+	function p23bPointerDown(event: PointerEvent) {
 		const path: BenchInteractionPath | null =
 			event.button === 1 && interaction.planViewMode === 'layout'
 				? 'plan-pan-zoom'
@@ -2869,15 +2874,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 						? 'selection'
 						: null;
 		if (!path) {
-			return onPointerDownUnmeasured(event);
+			return onPointerDown(event);
 		}
 		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'input', () => onPointerDownUnmeasured(event));
+		const result = p23bMeasureInteraction(path, 'input', () => onPointerDown(event));
 		p23bAfterInteraction(path);
 		return result;
 	}
 
-	function onPointerDownUnmeasured(event: PointerEvent) {
+	function onPointerDown(event: PointerEvent) {
 		// P23.13 S8 / §6 — "until the next deliberate action": any new press clears
 		// the persisted refusal, so a mark can never sit under a gesture the user
 		// has already moved on to.
@@ -3390,16 +3395,16 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		return null;
 	}
 
-	function onPointerMove(event: PointerEvent) {
+	function p23bPointerMove(event: PointerEvent) {
 		const path = p23bPointerInteractionPath(event);
-		if (!path) return onPointerMoveUnmeasured(event);
+		if (!path) return onPointerMove(event);
 		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'input', () => onPointerMoveUnmeasured(event));
+		const result = p23bMeasureInteraction(path, 'input', () => onPointerMove(event));
 		p23bAfterInteraction(path);
 		return result;
 	}
 
-	function onPointerMoveUnmeasured(event: PointerEvent) {
+	function onPointerMove(event: PointerEvent) {
 		// P23.9 segment-first — pending segment preview follows the snapped
 		// cursor once a run has started. `pointerleave` clears only the
 		// cursor/snap preview, never the run (click-click needs SVG exit).
@@ -3661,7 +3666,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		}
 	}
 
-	function onPointerUp(event: PointerEvent) {
+	function p23bPointerUp(event: PointerEvent) {
 		const path = p23bPointerInteractionPath(event) ??
 			(event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
 				? 'selection'
@@ -3669,15 +3674,15 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// Wall-chain acceptance is a click event; its `release` mark wraps the
 		// canonical commit below, so the preceding pointerup housekeeping is not
 		// counted as a second authoring release sample.
-		if (path === 'wall-authoring') return onPointerUpUnmeasured(event);
-		if (!path) return onPointerUpUnmeasured(event);
+		if (path === 'wall-authoring') return onPointerUp(event);
+		if (!path) return onPointerUp(event);
 		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'release', () => onPointerUpUnmeasured(event));
+		const result = p23bMeasureInteraction(path, 'release', () => onPointerUp(event));
 		p23bAfterInteraction(path);
 		return result;
 	}
 
-	function onPointerUpUnmeasured(event: PointerEvent) {
+	function onPointerUp(event: PointerEvent) {
 		planPointerButtonDown = false;
 		// P23.2 clear rule — a released pointer ends feedback; commits consume
 		// the already-resolved candidate positions captured during the drag.
@@ -4030,17 +4035,17 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (svgElement?.hasPointerCapture(event.pointerId)) svgElement.releasePointerCapture(event.pointerId);
 	}
 
-	function onClick(event: MouseEvent) {
+	function p23bClick(event: MouseEvent) {
 		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
 			p23bActivateInteraction('wall-authoring');
-			const result = p23bMeasureInteraction('wall-authoring', 'release', () => onClickUnmeasured(event));
+			const result = p23bMeasureInteraction('wall-authoring', 'release', () => onClick(event));
 			p23bAfterInteraction('wall-authoring');
 			return result;
 		}
-		return onClickUnmeasured(event);
+		return onClick(event);
 	}
 
-	function onClickUnmeasured(event: MouseEvent) {
+	function onClick(event: MouseEvent) {
 		if (suppressNextClick) {
 			suppressNextClick = false;
 			return;
@@ -5321,14 +5326,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (onCommit([...interaction.polygonPoints])) clearLayoutDraft(interaction);
 	}
 
-	function onWheel(event: WheelEvent) {
+	function p23bWheel(event: WheelEvent) {
 		p23bActivateInteraction('plan-pan-zoom');
-		const result = p23bMeasureInteraction('plan-pan-zoom', 'input', () => onWheelUnmeasured(event));
+		const result = p23bMeasureInteraction('plan-pan-zoom', 'input', () => onWheel(event));
 		p23bAfterInteraction('plan-pan-zoom');
 		return result;
 	}
 
-	function onWheelUnmeasured(event: WheelEvent) {
+	function onWheel(event: WheelEvent) {
 		const screen = screenPoint(event);
 		if (!screen) return;
 		event.preventDefault();
@@ -5700,13 +5705,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		role="application"
 		tabindex="0"
 		aria-label="2D layout plan"
-		onpointerdown={onPointerDown}
-		onpointermove={onPointerMove}
-		onpointerup={onPointerUp}
+		onpointerdown={p23bPointerDown}
+		onpointermove={p23bPointerMove}
+		onpointerup={p23bPointerUp}
 		onpointercancel={onPointerCancel}
 		onlostpointercapture={onLostPointerCapture}
-		onclick={onClick}
-		onwheel={onWheel}
+		onclick={p23bClick}
+		onwheel={p23bWheel}
 		onkeydown={onKeyDown}
 		oncontextmenu={onPlanContextMenu}
 		onpointerleave={() => {

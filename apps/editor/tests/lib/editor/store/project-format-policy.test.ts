@@ -164,7 +164,13 @@ const DIRECT_WRITE_EXCEPTIONS: Record<string, string> = {
 	// wall-first document locally to feed `importLayoutPreviewJson`; it never
 	// writes a live editor document and never reaches a transaction.
 	'bench/p2311-bend-fixtures.ts':
-		'P23.11 diagnostic fixture factory — builds a throwaway wall-first document; never mutates a live document'
+		'P23.11 diagnostic fixture factory — builds a throwaway wall-first document; never mutates a live document',
+	// P23B.0 durable fixture factory — the CLASS 5 matrix and CLASS 2/3/4
+	// constructors build throwaway wall-first documents that the fixture
+	// contract, the browser harness and the recorder read; no live editor
+	// document is ever reached.
+	'bench/p23b-fixtures.ts':
+		'P23B.0 durable fixture factory — builds throwaway wall-first documents for the committed fixture ledger; never mutates a live document'
 };
 
 describe('P23.0 F0 stage 1 — central format-dispatch policy tables', () => {
