@@ -20,21 +20,21 @@ was ratified by the owner on 2026-09-22 at `e139a18b`, including the implementat
 acceptance criteria and curved-crossing/Option E rulings. Step 8's ratification gate is satisfied.
 P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was accepted and shipped on
 2026-09-24 after S1–S8 and OR-D12-1…6 passed. S5/S6 re-reviews are complete by owner confirmation; no
-separate GitHub review entries exist for them. P23B.0-durable is next at step 10; its plan was reconciled
-against the SHIPPED post-policy gates on 2026-09-24 (Stage A) and remains unratified, so
-measurement-infrastructure implementation waits on its own authorization.
+separate GitHub review entries exist for them. P23B.0-durable is next at step 10; its Stage A plan was
+ratified by the owner on 2026-09-24 at revision `4b32034f`, with O-1–O-4 approved and W1–W7 authorized.
+Stage B has not started. P23B.4 remains gated until P23B.0's baseline is accepted.
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
 planning-level contract; D-12 reconciliation identity was implemented and proved in P23B.3a.
 The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
-GATE: PHASE 0 GATE and P23B.3's ratification gate are satisfied. The latter authorized P23B.3a; it does
-not authorize P23B.0-durable's planned measurement-infrastructure changes or any P23B.4–P23B.8
-optimization. P23B.0-durable remains PLANNED, UNRATIFIED. No numerical performance target is proposed.
-NEXT: owner review and ratification of the final Stage A P23B.0-durable plan, including the separate
-CLASS 5 identity and role for the supplied 40-Wall responsiveness case, the bounded interaction workload,
-proposed reference environment and harness/baseline scope; the Stage A packet is routed below. Once
-authorized, execute sequence step 10 against the post-policy gates before any optimization work.
+GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
+separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
+measurement work. No P23B.4–P23B.8 optimization is authorized before P23B.0's post-policy baseline is
+accepted. No numerical performance target is proposed.
+NEXT: P23B.0-durable Stage B is authorized but has not started. When it starts, execute W1–W7 on the
+owner-authorized continuation branch/PR and preserve slice acceptance and closeout order. P23B.4 remains
+gated until the P23B.0 baseline is accepted; the Stage A packet and approved plan are routed below.
 ```
 
 ```text
@@ -180,8 +180,9 @@ Plan status, not order — the order and its gates are the SEQUENCE block above;
 and the dependency map.
 
 ```text
-P23B.0  measurement foundation — read-only passes DONE and archived; the durable completion is PLANNED
-        (prerequisite), including the committed control matrix the reports only reported
+P23B.0  measurement foundation — plan RATIFIED by owner 2026-09-24 at `4b32034f`; W1–W7 authorized,
+        not started. Durable fixtures, control matrix, provenance-backed baseline and budgets remain
+        outstanding; accepted P23B.0 baseline gates P23B.4.
 P23B.1  internal geometry-pipeline harvest — plan ACCEPTED; harvest record EXECUTED, awaiting review
 P23B.2  external precedent research — report LANDED VERBATIM (Q1–Q8 answered, Q9 deferred), awaiting
         evidence review; folded into P23B.3
@@ -201,21 +202,18 @@ P23B.9  correctness + performance-regression gate — PLANNED, unratified
 P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) — PLANNED, unratified
 ```
 
-**Owner decisions still open:**
+**Other owner decisions still open:**
 
 ```text
-1  Ratify the final Stage A P23B.0-durable plan before committing measurement infrastructure. Stage A has
-   supplied and identified the owner responsiveness payload, workload families and proposed reference
-   environment; the owner-case fixture, W2 assertions, harness and baseline remain unimplemented.
-2  Accept, part-return or require a review of the separate P23B.2 research evidence.
-3  Resolve the umbrella's remaining open calls when their owning slices reach those gates (device profiles,
+1  Accept, part-return or require a review of the separate P23B.2 research evidence.
+2  Resolve the umbrella's remaining open calls when their owning slices reach those gates (device profiles,
    enforced budgets, P23 Decision 13, Rust/WASM authorization and any numeric target).
 ```
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the phase
-gate and the ROUTE block are read. P23B.3a is shipped. The remaining durable P23B.0 work is outstanding
-and unratified; the P23B.1 harvest and P23B.2 research report retain their own review statuses. Later
-optimization slices remain planned, unratified and downstream of the durable baseline.
+gate and the ROUTE block are read. P23B.3a is shipped. P23B.0 is ratified and W1–W7 are authorized but
+not started; the P23B.1 harvest and P23B.2 research report retain their own review statuses. Later
+optimization slices remain downstream of the accepted durable baseline.
 
 ## Non-goals
 
