@@ -9,6 +9,7 @@ import {
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import repro from './fixtures/curved-correspondence-repro.json';
+import { hostWallAtSpan } from '../../helpers/angled-plan-fixtures';
 
 function suppliedLayout(): LayoutDocumentWallFirst {
 	const parsed = parseWallFirstLayoutDocumentJson(JSON.stringify(repro));
@@ -41,11 +42,20 @@ describe('curved neighbour Room correspondence', () => {
 
 	it('can split the larger Room from the top Wall to the bottom Wall', () => {
 		const baseline = suppliedLayout();
+		const start: [number, number] = [1.7, -3.5];
+		const end: [number, number] = [0.5, 3.666666666666667];
+		// P23B.3a S6 — both ends land on the larger Room's own Walls (a wall-span
+		// snap), so the divider DECLARES those hosts: extending the enclosure's group
+		// is what splits the Room, and the declaration is what says so.
 		const plan = planWallChain({
 			baseline,
-			points: [[1.7, -3.5], [0.5, 3.666666666666667]],
+			points: [start, end],
 			close: false,
-			role: 'boundary'
+			role: 'boundary',
+			endpointHostSnaps: [
+				{ pointIndex: 0, wallId: hostWallAtSpan(baseline, start)! },
+				{ pointIndex: 1, wallId: hostWallAtSpan(baseline, end)! }
+			]
 		});
 		expect(plan.kind, plan.kind === 'success' ? '' : JSON.stringify(plan)).toBe('success');
 		if (plan.kind === 'success') expect(plan.document.rooms).toHaveLength(3);

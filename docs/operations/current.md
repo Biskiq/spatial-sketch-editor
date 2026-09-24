@@ -61,8 +61,16 @@ NEXT:
    blocker — the unattached-Junction sentinel was a STRING that a valid authored Wall id could claim,
    mis-classifying an unattached Junction as connected to that Wall — and the focused S5 correction now
    makes the sentinel collision-proof (a symbol, no schema change) with a codec-valid regression, so S5
-   awaits RE-review.
-   S6–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
+   awaits RE-review; and S6 (the AUTHORING INTENT SPLIT in `planWallChain`, completing T3 → F3) has
+   landed with its own oracle: an operation that DECLARES the group it extends keeps adoption and in-group
+   noding, while an operation that declares nothing mints its own Junction records, splits no host Wall and
+   joins nothing — with the editor half of the same step (one shared click→declaration rule, the run
+   start's own declaration in the interaction state, and a per-endpoint `WallSegmentConnection` on
+   `commitWallSegment`) so continuations, dividers and the CLOSING click stay class 3 end to end. S6 awaits
+   review, and carries one recorded OPEN CONTRACT QUESTION: whether a host-Wall declaration may authorize
+   noding for a group the operation crosses rather than touches (F7/F8's snap wording), which is what keeps
+   the four ratified P23.6e/P23.11 in-group noding regressions green today.
+   S7–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
    step 9 · the named slice workspace), and **D-7 and D-8 are RESOLVED** — the slice is P23B.3a and the

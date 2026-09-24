@@ -197,11 +197,23 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 });
 
 describe('P23.6e extra — noding never asks for a degenerate split', () => {
-	/** Two Walls crossing at one Junction: the crossing point is computed, not snapped. */
+	/**
+	 * Two Walls crossing at one Junction: the crossing point is computed, not
+	 * snapped.
+	 *
+	 * P23B.3a S6 — the second Wall DECLARES that it extends the first Wall's group,
+	 * because a crossing no longer creates shared topology by itself (F8's scoped
+	 * negative half: not coincident coordinates, not a crossing). Pre-policy the
+	 * node existed because the planner examined every draft against every Wall; the
+	 * declaration is what the operation now says instead, and in-group noding then
+	 * behaves exactly as it did before.
+	 */
 	function crossedPlan(): LayoutDocumentWallFirst {
 		let document = baseDocument();
 		document = commit(document, p(-0.5, 2.34), p(-3.5, 6));
-		document = commit(document, p(-0.5, 4.88), p(-4.5, 2.63));
+		document = commit(document, p(-0.5, 4.88), p(-4.5, 2.63), {
+			hosts: [document.walls[0]!.id]
+		});
 		return document;
 	}
 
@@ -213,8 +225,18 @@ describe('P23.6e extra — noding never asks for a degenerate split', () => {
 		expect(crossing).toBeDefined();
 
 		// A Wall drawn exactly along one crossed arm: it passes through the
-		// crossing Junction and ends on existing Junctions.
-		const result = plan(document, p(-3.5, 6), p(-0.5, 2.34));
+		// crossing Junction and ends on existing Junctions. P23B.3a S6 — the
+		// redraw DECLARES those two Junctions (T13's operation: an intentional
+		// extension of the group), which is what makes the overlap a within-group
+		// collinear conflict instead of permitted independent geometry.
+		const junctionAt = (x: number, z: number): string =>
+			document.junctions.find(
+				(junction) =>
+					Math.abs(junction.point[0] - x) < 1e-9 && Math.abs(junction.point[1] - z) < 1e-9
+			)!.id;
+		const result = plan(document, p(-3.5, 6), p(-0.5, 2.34), {
+			junctions: [junctionAt(-3.5, 6), junctionAt(-0.5, 2.34)]
+		});
 		expect(result.kind).toBe('rejected');
 		if (result.kind !== 'rejected') return;
 		// Truthful, actionable rejection — never the degenerate split message
@@ -262,7 +284,12 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 		};
 
 		// The chain passes straight through the existing corner at the origin.
-		const result = plan(baseline, p(-2, -2), p(2, 2));
+		// P23B.3a S6 — it DECLARES that it extends wall-a's group, which is the
+		// statement that makes an existing Junction in its path a node to route
+		// through rather than a coincident record to mint beside. Without a
+		// declaration the policy requires the opposite verdict; the companion test
+		// below pins that half.
+		const result = plan(baseline, p(-2, -2), p(2, 2), { hosts: ['wall-a'] });
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;
 
@@ -284,6 +311,46 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 			'wall-chain-1-b'
 		]);
 		expect(result.document.junctions.filter((junction) => junction.id.includes('chain'))).toHaveLength(2);
+	});
+
+	it('an UNDECLARED chain beside a coincident Junction keeps its own record (P23B.3a S6)', () => {
+		// The independent-placement half of the case above: the same geometry with
+		// nothing declared is its own component, so the corner stays the group's node
+		// and the chain mints its own record at the same coordinate. Two records,
+		// no shared topology — permitted by the component-scoped coincidence rule
+		// (D-9) and rejected by nothing.
+		const baseline: LayoutDocumentWallFirst = {
+			...baseDocument(),
+			junctions: [
+				{ id: 'junction-a', point: p(0, 0) },
+				{ id: 'junction-b', point: p(4, 0) }
+			],
+			walls: [
+				{
+					id: 'wall-a',
+					startJunctionId: 'junction-a',
+					endJunctionId: 'junction-b',
+					role: 'boundary',
+					thickness: 0.2,
+					height: 3,
+					centerline: { kind: 'line' } as const
+				}
+			]
+		};
+		const result = plan(baseline, p(-2, -2), p(2, 2), { hosts: [] });
+		expect(result.kind).toBe('success');
+		if (result.kind !== 'success') return;
+		const atOrigin = result.document.junctions.filter(
+			(junction) =>
+				Math.abs(junction.point[0]) < 1e-9 && Math.abs(junction.point[1]) < 1e-9
+		);
+		// The origin keeps exactly the group's node: a permitted overlap through an
+		// existing Junction adds no record, no split and no connectivity — only the
+		// chain's own two endpoints are new.
+		expect(atOrigin.map((junction) => junction.id)).toEqual(['junction-a']);
+		expect(result.document.junctions).toHaveLength(baseline.junctions.length + 2);
+		expect(result.document.walls.find((wall) => wall.id === 'wall-a')).toEqual(baseline.walls[0]);
+		expect(result.splitWallIds).toHaveLength(0);
 	});
 });
 

@@ -61,13 +61,27 @@ export function wallChainClosureEvidence(input: {
 	role: LayoutWallRole;
 	/** The run's continuation height, when it carries one. */
 	height?: number;
+	/**
+	 * P23B.3a S6 — DECLARED anchors for the closing leg: the live leg's start
+	 * Junction and the run's start Junction. A closure is the run EXTENDING its
+	 * own group (operation class 3), so the probe plans it the same way the commit
+	 * does — with the identities the run owns — instead of relying on the
+	 * coordinates happening to coincide, which the policy no longer honours.
+	 */
+	startJunctionId?: string | null;
+	runStartJunctionId?: string | null;
 }): PlanClosureEvidence {
+	const declaredJunctionSnaps = [
+		...(input.startJunctionId ? [{ pointIndex: 0, junctionId: input.startJunctionId }] : []),
+		...(input.runStartJunctionId ? [{ pointIndex: 1, junctionId: input.runStartJunctionId }] : [])
+	];
 	const plan = planWallSegment({
 		baseline: input.baseline,
 		start: [...input.start] as LayoutVec2,
 		end: [...input.end] as LayoutVec2,
 		role: input.role,
-		...(input.height !== undefined ? { height: input.height } : {})
+		...(input.height !== undefined ? { height: input.height } : {}),
+		...(declaredJunctionSnaps.length > 0 ? { endpointJunctionSnaps: declaredJunctionSnaps } : {})
 	});
 	if (plan.kind === 'rejected') return { yieldsFace: false, faces: [] };
 	const faces: LayoutVec2[][] = [];

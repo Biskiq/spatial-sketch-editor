@@ -14,9 +14,8 @@
  * row, and the register below names each one:
  *
  * ```text
- * ASSERTED HERE, STILL PRE-POLICY   T1, T3 — the duplicate batch gate (S7) and the
- *                                   chain planner's adoption (S6) own their flip, so
- *                                   they keep asserting the verdict the shipped code
+ * ASSERTED HERE, STILL PRE-POLICY   T1 — the duplicate batch gate (S7) owns its flip,
+ *                                   so it keeps asserting the verdict the shipped code
  *                                   produces today.
  * ASSERTED HERE, NEVER FLIPS        T6 · T7 · T9–T13 · R-b · R-d — plus T8's PERMANENT
  *                                   half (a SAME-COMPONENT collinear overlap stays
@@ -31,7 +30,20 @@
  *                                   was the last document-subject gate, so S5 admits the
  *                                   INDEPENDENT crossing and asserts that the authored
  *                                   Wall joins nothing (F8's scoped negative half, AM-3).
+ * FLIPPED AT S6                     T3 — the chain planner's implicit ADOPTION of a
+ *                                   coincident Junction is withdrawn from INDEPENDENT
+ *                                   placement, so its successor F3 (distinct Junction
+ *                                   ids, no connectivity, no Wall fragmentation) is
+ *                                   asserted in the S6 suite below and the S1 adoption
+ *                                   verdict survives here as recorded history.
  * ```
+ *
+ * S6 (the authoring-intent split in `planWallChain`) has LANDED. Two of the NEVER-FLIPS
+ * rows are RE-BASED IN PLACE, not flipped: T8's permanent same-component refusal and T13
+ * still assert exactly the verdict they always did, and now DECLARE the anchor that makes
+ * the operation an intentional extension (operation class 3). The declared-intent split
+ * changes what a caller must SAY, never what an intentional extension produces — that is
+ * precisely the containment rule the policy's M-3a-4 exists to protect.
  *
  * Nothing in this file is a target: it is a record of what the shipped
  * implementation does, and it changes exactly where a row names a flipping step.
@@ -86,7 +98,7 @@ type ReferenceRow = {
 	 * Its presence means the S1 expectation is retired: it is kept in `pins` as
 	 * recorded history and is no longer asserted anywhere (AM-1).
 	 */
-	landedAt?: 'S4' | 'S5';
+	landedAt?: 'S4' | 'S5' | 'S6';
 	/** The post-policy counterpart, when the case flips. */
 	post?: string;
 	/** `this file` asserts it executably; an existing suite owns the rest. */
@@ -112,8 +124,10 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 	},
 	{
 		id: 'T3',
-		pins: 'two INDEPENDENT Walls with identical endpoint coordinates share ONE Junction id (authoring adoption)',
+		// RETIRED AT S6 — kept as the historical half of the differential.
+		pins: 'two INDEPENDENT Walls with identical endpoint coordinates shared ONE Junction id — the implicit join the policy REFUSED',
 		flipStep: 'S6',
+		landedAt: 'S6',
 		post: 'F3',
 		owner: 'this file'
 	},
@@ -155,10 +169,10 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 		// INDEPENDENT crossing: the chain gate (`validateChainTopology`, its sampled call
 		// included) was the LAST document-subject gate, and S5 scoped it, so the crossing
 		// is now admitted and nothing is joined (F8's scoped negative half).
-		pins: 'a genuinely invalid operation is REFUSED ATOMICALLY inside one connected group (permanent), while the chain path REFUSED an INDEPENDENT crossing (RETIRED at S5 \u2014 the chain gate takes the component subject now, so the crossing is admitted and the authored Wall joins nothing)',
+		pins: 'a genuinely invalid operation is REFUSED ATOMICALLY inside one connected group (permanent), while the chain path REFUSED an INDEPENDENT crossing (RETIRED at S5 — the chain gate takes the component subject now, so the crossing is admitted and the authored Wall joins nothing)',
 		flipStep: 'S5',
 		landedAt: 'S5',
-		post: 'F8 (scoped negative half \u2014 AM-3; the deliberate-join half is a contract with no test)',
+		post: 'F8 (scoped negative half — AM-3; the deliberate-join half is a contract with no test)',
 		owner: 'this file'
 	},
 	{
@@ -204,7 +218,7 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 		// admitted — an independent-group crossing, which S4 stops rejecting. The
 		// agreement is therefore NOT an S7 transition, and S7's remaining job is
 		// batch↔validator PARITY rather than an ingress change.
-		pins: 'the chord-exact batch gate ADMITS a duplicated Room whose endpoint CHORDS stay disjoint while its curve crosses (permanent), while the canonical gate REJECTED the document it admitted (RETIRED at S4 \u2014 the two gates now agree)',
+		pins: 'the chord-exact batch gate ADMITS a duplicated Room whose endpoint CHORDS stay disjoint while its curve crosses (permanent), while the canonical gate REJECTED the document it admitted (RETIRED at S4 — the two gates now agree)',
 		flipStep: 'S4',
 		landedAt: 'S4',
 		post: 'F4',
@@ -610,7 +624,7 @@ describe('P23B.3a S1 — the reference register', () => {
 		// produces, and never required green beside its successor. The S1 verdict
 		// itself stays in `pins` as the historical half of the differential.
 		const landed = REFERENCE_ROWS.filter((row) => row.landedAt !== undefined);
-		expect(landed.map((row) => row.id)).toEqual(['T2', 'T4', 'T5', 'T8', 'R-a', 'R-c']);
+		expect(landed.map((row) => row.id)).toEqual(['T2', 'T3', 'T4', 'T5', 'T8', 'R-a', 'R-c']);
 		for (const row of landed) {
 			// The step that RETIRED the S1 expectation is the step the row names, so a
 			// later step can never quietly inherit an earlier step's flip.
@@ -625,11 +639,11 @@ describe('P23B.3a S1 — the reference register', () => {
 		const stillPrePolicy = REFERENCE_ROWS.filter(
 			(row) => row.landedAt === undefined && row.flipStep !== 'never'
 		).map((row) => row.id);
-		expect(stillPrePolicy).toEqual(['T1', 'T3']);
+		expect(stillPrePolicy).toEqual(['T1']);
 	});
 });
 
-describe('P23B.3a S1 — reference verdicts whose flip step has NOT landed yet (T1, T3)', () => {
+describe('P23B.3a S1 — reference verdicts whose flip step has NOT landed yet (T1)', () => {
 	it('T1 — duplicating a Room onto its own position is refused by the chord-exact batch gate', () => {
 		// S7 owns this flip: the duplicate path runs `validateBatchWallTopology`, which
 		// S4 does not touch.
@@ -640,19 +654,28 @@ describe('P23B.3a S1 — reference verdicts whose flip step has NOT landed yet (
 		expect(plan.rejection.message).toContain('collinear-overlap');
 	});
 
-	it('T3 — two INDEPENDENT Walls with identical endpoint coordinates adopt ONE Junction id', () => {
-		// S6 owns this flip: the implicit Junction is created by the CHAIN PLANNER's own
-		// ADOPTION, so no gate re-scope can remove it \u2014 re-scoping a gate changes which
-		// pairs are EXAMINED, never what authoring decides to build. S5 has since scoped the
-		// chain gate; the adoption behaviour is untouched by it (T13 pins the same edge from
-		// the other side: a deliberate extension inside a group still adopts).
-		const baseline = documentOf({
+});
+
+describe('P23B.3a S6 — the FLIPPED verdict (F3), asserted where the S1 row was retired', () => {
+	function twoIndependentWalls(): LayoutDocumentWallFirst {
+		return documentOf({
 			junctions: [
 				['j-1', 0, 0],
 				['j-2', 4, 0]
 			],
 			walls: [{ id: 'wall-a', start: 'j-1', end: 'j-2', role: 'partition' }]
 		});
+	}
+
+	it('T3 → F3 — two INDEPENDENT Walls with identical endpoint coordinates share NO Junction and join nothing', () => {
+		// S1 pinned the opposite here: the chain planner ADOPTED the coincident
+		// Junction, so two INDEPENDENT Walls ended up with ONE node — the "touching IS
+		// joining" reflex. S6 withdraws that reflex from INDEPENDENT placement
+		// (operation class 2, §4.0.1 / M-3a-4): the discriminator is the operation's
+		// DECLARED intent, never the geometry, so an operation that declares nothing
+		// mints its own Junction record even at a coordinate an existing record
+		// already occupies. Together with T13 this is the D-9 rule in test form.
+		const baseline = twoIndependentWalls();
 		const plan = planWallChain({
 			baseline,
 			points: [
@@ -664,12 +687,51 @@ describe('P23B.3a S1 — reference verdicts whose flip step has NOT landed yet (
 		});
 		const authored = success(plan);
 		const added = authored.document.walls.find((wall) => wall.id !== 'wall-a')!;
-		// PRE-POLICY: touching IS joining — the new Wall reuses the existing Junction.
+		// F3 (1) DISTINCT ids: the coincident coordinate is a new record, not j-2.
+		expect(added.startJunctionId).not.toBe('j-2');
+		// F3 (2) NO CONNECTIVITY: the two Walls are separate components, so neither
+		// the crossing rule nor the coincidence rule may pair them.
+		expect(wallsShareTopologyComponent(authored.document, 'wall-a', added.id)).toBe(false);
+		// F3 (3) NO WALL FRAGMENTATION: the baseline Wall is byte-identical and the
+		// authored Wall is the whole request — nothing was split to make a join.
+		expect(authored.document.walls).toHaveLength(2);
+		expect(authored.document.walls.find((wall) => wall.id === 'wall-a')).toEqual(baseline.walls[0]);
+		expect(authored.splitWallIds).toHaveLength(0);
+		expect(authored.authoredWallIds).toEqual([added.id]);
+		const coincident = authored.document.junctions.filter(
+			(junction) => Math.hypot(junction.point[0] - 4, junction.point[1] - 0) < 1e-9
+		);
+		expect(coincident.map((junction) => junction.id).sort()).toEqual(
+			['j-2', added.startJunctionId].sort()
+		);
+		// The two coincident records are permitted geometry now, so the shipped gate
+		// accepts what the planner produced: the planner and the gate agree (R-3).
+		expect(validateWallFirstTopology(authored.document)).toBeUndefined();
+	});
+
+	it('F3 differential — the SAME geometry with a DECLARED anchor adopts instead (class 3 unchanged)', () => {
+		// The declaration is the whole difference: with the anchor named, the
+		// extension is exactly what it always was — ONE Junction id, the new Wall
+		// joined to the group it named (T13's contract, reached by declaring it).
+		const plan = planWallChain({
+			baseline: twoIndependentWalls(),
+			points: [
+				[4, 0],
+				[4, 4]
+			],
+			close: false,
+			role: 'partition',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-2' }]
+		});
+		const authored = success(plan);
+		const added = authored.document.walls.find((wall) => wall.id !== 'wall-a')!;
 		expect(added.startJunctionId).toBe('j-2');
+		expect(wallsShareTopologyComponent(authored.document, 'wall-a', added.id)).toBe(true);
 		const coincident = authored.document.junctions.filter(
 			(junction) => Math.hypot(junction.point[0] - 4, junction.point[1] - 0) < 1e-9
 		);
 		expect(coincident).toHaveLength(1);
+		expect(validateWallFirstTopology(authored.document)).toBeUndefined();
 	});
 });
 
@@ -818,6 +880,13 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		// intrinsic, same-component failure that component scoping cannot relax, so it
 		// must keep failing after the policy — unlike an independent crossing, which
 		// the planner legitimately NODES inside a group.
+		//
+		// S6 RE-BASED THIS TEST IN PLACE, verdict unchanged: the operation now
+		// DECLARES the anchor it starts from (class 3 — intentionally extending this
+		// group), and that declaration is the only thing that changed. The refusal,
+		// its code, its message and its atomicity are exactly what S1 pinned; the
+		// identical geometry WITHOUT the declaration is the independent-placement case
+		// that F3/F8 admit (mints its own Junction, joins nothing).
 		const snapshot = JSON.stringify(SHARED_WALL_ROOMS);
 		const plan = planWallChain({
 			baseline: SHARED_WALL_ROOMS,
@@ -826,7 +895,11 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 				[3, 0]
 			],
 			close: false,
-			role: 'partition'
+			role: 'partition',
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: 'j-a' },
+				{ pointIndex: 1, junctionId: 'j-m' }
+			]
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -936,6 +1009,10 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 	});
 
 	it('T13 — intentionally extending a connected group still adopts one of ITS OWN Junctions', () => {
+		// S6 RE-BASED THIS TEST IN PLACE, verdict unchanged: "intentional" is now
+		// DECLARED rather than inferred, so the operation names the Junction of the
+		// group it extends. That declaration is exactly what M-3a-4 retains adoption
+		// FOR — remove it and T3 → F3 above shows the same geometry joining nothing.
 		const plan = planWallChain({
 			baseline: SHARED_WALL_ROOMS,
 			points: [
@@ -943,7 +1020,8 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 				[10, 4]
 			],
 			close: false,
-			role: 'partition'
+			role: 'partition',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'j-c' }]
 		});
 		const authored = success(plan);
 		const baselineWallIds = new Set(SHARED_WALL_ROOMS.walls.map((wall) => wall.id));

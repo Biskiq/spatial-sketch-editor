@@ -1367,23 +1367,83 @@ export function commitWallChain(
  * canonical `planWallSegment` birth rule (`resolveWallBirthHeight`) derives the
  * height from document topology — the editor never owns that decision.
  */
+/**
+ * P23B.3a S6 — the declared anchor of ONE endpoint of a segment.
+ *
+ * `junctionId` is the stronger declaration (it names the identity the operation
+ * extends); `hostWallId` names the host Wall span the author attached to, which
+ * is what lets a segment divide the Room it is drawn into. Neither is inferred
+ * from geometry anywhere: the caller passes exactly the anchor its gesture
+ * declared, and an empty declaration means independent placement.
+ */
+export type WallAnchorDeclaration = {
+	junctionId?: string | null;
+	hostWallId?: string | null;
+};
+
+/**
+ * P23B.3a S6 — the segment's DECLARED connection, one entry per endpoint.
+ *
+ * Both ends matter and they are different declarations: a continuation leg
+ * extends the run from its START, while the click that CLOSES a run attaches its
+ * END to the run's own start Junction — the identity P23.9 closure reads
+ * (`endJunctionId === runStartJunctionId`), which can no longer be inferred from
+ * the coordinates being equal.
+ */
+export type WallSegmentConnection = {
+	start?: WallAnchorDeclaration;
+	end?: WallAnchorDeclaration;
+};
+
 export function commitWallSegment(
 	state: LayoutPreviewState,
 	start: LayoutVec2,
 	end: LayoutVec2,
 	role: ChainWallRole,
 	height?: number,
-	endpointHostWallId?: string
+	endpointHostWallId?: string,
+	/**
+	 * P23B.3a S6 — the segment's DECLARED connection, per endpoint. Supplying
+	 * either one is the operation stating that this segment EXTENDS the group that
+	 * anchor belongs to (operation class 3): a run continuation names the run's
+	 * own canonical Junction at `start`, the closing click names the run's start
+	 * Junction at `end`, and an endpoint that snapped onto an existing Wall's span
+	 * names that host. Supplying neither (and no `endpointHostWallId`) is
+	 * INDEPENDENT placement (class 2), where coincident coordinates join nothing.
+	 */
+	connection?: WallSegmentConnection
 ): WallFirstPrecisionMutationResult {
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return { success: false, message: state.lastMutationMessage ?? 'Wall-first layout is not active' };
+	const anchorByPointIndex = new Map<number, WallAnchorDeclaration>();
+	const startAnchor = connection?.start;
+	if (startAnchor && (startAnchor.junctionId || startAnchor.hostWallId)) {
+		anchorByPointIndex.set(0, startAnchor);
+	}
+	// The single-end spelling is the END anchor's host form, so it composes with
+	// (never overrides) an explicit `connection.end`.
+	const endAnchor = connection?.end;
+	const endHostWallId = endAnchor?.hostWallId ?? endpointHostWallId;
+	if (endAnchor?.junctionId || endHostWallId) {
+		anchorByPointIndex.set(1, {
+			...(endAnchor?.junctionId ? { junctionId: endAnchor.junctionId } : {}),
+			...(endHostWallId ? { hostWallId: endHostWallId } : {})
+		});
+	}
+	const declaredJunctionSnaps = [...anchorByPointIndex]
+		.filter(([, anchor]) => anchor.junctionId)
+		.map(([pointIndex, anchor]) => ({ pointIndex, junctionId: anchor.junctionId! }));
+	const declaredHostSnaps = [...anchorByPointIndex]
+		.filter(([, anchor]) => anchor.hostWallId)
+		.map(([pointIndex, anchor]) => ({ pointIndex, wallId: anchor.hostWallId! }));
 	const plan = planWallSegment({
 		baseline: layout,
 		start,
 		end,
 		role,
 		...(height !== undefined ? { height } : {}),
-		...(endpointHostWallId !== undefined ? { endpointHostWallId } : {})
+		...(declaredJunctionSnaps.length > 0 ? { endpointJunctionSnaps: declaredJunctionSnaps } : {}),
+		...(declaredHostSnaps.length > 0 ? { endpointHostSnaps: declaredHostSnaps } : {})
 	});
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;

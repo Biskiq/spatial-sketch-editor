@@ -39,6 +39,42 @@ function expectRejected(plan: ReturnType<typeof planWallChain>, code: string) {
 	return plan;
 }
 
+/**
+ * The Wall of `document` whose two endpoints both sit on `z` — the host a
+ * divider T-nodes into.
+ */
+function horizontalWallAt(document: LayoutDocumentWallFirst, z: number): string {
+	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const wall = document.walls.find((candidate) => {
+		const start = junctionById.get(candidate.startJunctionId)!;
+		const end = junctionById.get(candidate.endJunctionId)!;
+		return start.point[1] === z && end.point[1] === z;
+	});
+	if (!wall) throw new Error(`no horizontal wall at z=${z}`);
+	return wall.id;
+}
+
+/** The Wall of `document` whose centerline runs vertically at x. */
+function verticalWallAt(document: LayoutDocumentWallFirst, x: number): string {
+	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
+	const wall = document.walls.find((candidate) => {
+		const start = junctionById.get(candidate.startJunctionId)!;
+		const end = junctionById.get(candidate.endJunctionId)!;
+		return start.point[0] === x && end.point[0] === x;
+	});
+	if (!wall) throw new Error(`no vertical wall at x=${x}`);
+	return wall.id;
+}
+
+/** The authored Junction of `document` whose point is exactly (x, z). */
+function junctionIdAt(document: LayoutDocumentWallFirst, x: number, z: number): string {
+	const junction = document.junctions.find(
+		(candidate) => candidate.point[0] === x && candidate.point[1] === z
+	);
+	if (!junction) throw new Error(`no junction at (${x}, ${z})`);
+	return junction.id;
+}
+
 describe('P23.9 open wall chains', () => {
 	it('commits an open two-point chain once and creates no Room', () => {
 		const baseline = baseDocument();
@@ -179,9 +215,21 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		expect(withRoom.rooms).toHaveLength(1);
 
 		// Vertical divider from the top wall midpoint to the bottom wall midpoint:
-		// T-nodes into both existing walls, splitting the room in two.
+		// T-nodes into both existing walls, splitting the room in two. P23B.3a S6 —
+		// the DECLARED host anchors are what make this an extension of the
+		// enclosure's own group; without them the same draft is independent
+		// placement and splits nothing.
 		const divider = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(2, 0), p(2, 3)], close: false, role: 'boundary' })
+			planWallChain({
+				baseline: withRoom,
+				points: [p(2, 0), p(2, 3)],
+				close: false,
+				role: 'boundary',
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: horizontalWallAt(withRoom, 0) },
+					{ pointIndex: 1, wallId: horizontalWallAt(withRoom, 3) }
+				]
+			})
 		);
 		expect(divider.document.rooms).toHaveLength(2);
 		expect(divider.splitWallIds).toHaveLength(2);
@@ -196,20 +244,54 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		expect(roomIds).toHaveLength(2);
 	});
 
-	it('a boundary chain that overlaps an existing wall rejects atomically', () => {
+	it('a chain drawn exactly along an existing wall rejects atomically — when it declares that group', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
 			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
 		);
-		// A chain drawn exactly along the existing wall (0,0)→(4,0).
+		// A chain drawn exactly along the existing wall (0,0)→(4,0), DECLARING the
+		// Junction it starts from (P23B.3a S6): the overlap is now inside one
+		// connected group, which is the permanent collinear rule and still refuses
+		// atomically. The same draft with NO declaration is permitted independent
+		// overlap — asserted in the S6 oracle and in the flips below.
 		expectRejected(
 			planWallChain({
 				baseline: enclosure.document,
 				points: [p(0, 0), p(4, 0)],
 				close: false,
-				role: 'boundary'
+				role: 'boundary',
+				endpointJunctionSnaps: [
+					{ pointIndex: 0, junctionId: junctionIdAt(enclosure.document, 0, 0) }
+				]
 			}),
 			'collinear_overlap'
+		);
+	});
+
+	it('a chain drawn along an existing wall WITHOUT a declared connection is permitted independent overlap', () => {
+		// PRE-S6 (recorded history): this draft rejected with `collinear_overlap`,
+		// because every draft was examined against every Wall in the document. S6
+		// makes implicit placement its own component and S4/S5 already permit
+		// collinear overlap BETWEEN components (F5), so the same draft is admitted
+		// geometry now: no Wall is split, trimmed or merged, and the drawn Wall keeps
+		// its own Junction identity.
+		const baseline = baseDocument();
+		const enclosure = expectSuccess(
+			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+		);
+		const hostWallIds = new Set(enclosure.document.walls.map((wall) => wall.id));
+		const plan = expectSuccess(
+			planWallChain({
+				baseline: enclosure.document,
+				points: [p(0, 0), p(4, 0)],
+				close: false,
+				role: 'partition'
+			})
+		);
+		expect(plan.splitWallIds).toHaveLength(0);
+		// Every baseline Wall survives exactly as authored.
+		expect(plan.document.walls.filter((wall) => hostWallIds.has(wall.id))).toEqual(
+			enclosure.document.walls
 		);
 	});
 
@@ -219,9 +301,17 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
 		);
 		const withRoom = enclosure.document;
-		// Dead-end spur hitting the bottom wall's interior at x=3.
+		// Dead-end spur hitting the bottom wall's interior at x=3. P23B.3a S6 — the
+		// endpoint DECLARES its host (the author snapped onto that Wall), so the T is
+		// an extension of the enclosure's own group and still subdivides it.
 		const spur = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(3, -2), p(3, 0)], close: false, role: 'boundary' })
+			planWallChain({
+				baseline: withRoom,
+				points: [p(3, -2), p(3, 0)],
+				close: false,
+				role: 'boundary',
+				endpointHostSnaps: [{ pointIndex: 1, wallId: horizontalWallAt(withRoom, 0) }]
+			})
 		);
 		// The hit wall is split; the spur's endpoint junction is reused (no new
 		// junction at the touch point).
@@ -236,24 +326,29 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		expect(fragment.length).toBeGreaterThanOrEqual(2);
 	});
 
-	it('an X crossing between the chain and an existing wall nodes explicitly', () => {
+	it('an UNDECLARED X crossing between the chain and an existing wall is permitted, un-noded geometry', () => {
+		// PRE-S6 (recorded history): this draft NODED both crossed walls and
+		// fragmented the chain at each crossing, because every draft was examined
+		// against every Wall in the document. S6 withdraws that reflex from
+		// INDEPENDENT placement (operation class 2): the chain declares no
+		// connection, so it is its own component, its crossings are cross-group, and
+		// the crossing is the permitted geometry S4/S5 already admit (F8's scoped
+		// negative half) — nothing is split, adopted or merged.
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
 			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
 		);
 		const withRoom = enclosure.document;
-		// A long partition crossing the whole room east-west at z=1.5, extending
-		// past both side walls: crosses wall (4,0)→(4,3) and (0,3)→(0,0)? No —
-		// inside the rect it only crosses nothing; extend outside to cross the
-		// left and right boundary walls.
 		const crossing = expectSuccess(
 			planWallChain({ baseline: withRoom, points: [p(-1, 1.5), p(5, 1.5)], close: false, role: 'partition' })
 		);
-		// Both side walls noded at the crossing junction; the chain wall also
-		// fragments at both crossings, and two new junctions arrive from the
-		// chain endpoints (the crossing junction is shared).
-		expect(crossing.splitWallIds).toHaveLength(3);
-		expect(crossing.document.junctions.length).toBe(withRoom.junctions.length + 3 + 1);
+		expect(crossing.splitWallIds).toHaveLength(0);
+		expect(crossing.document.walls).toHaveLength(withRoom.walls.length + 1);
+		expect(crossing.document.junctions).toHaveLength(withRoom.junctions.length + 2);
+		// The baseline Walls are byte-identical: a permitted crossing is not a repair.
+		for (const wall of withRoom.walls) {
+			expect(crossing.document.walls.find((candidate) => candidate.id === wall.id)).toEqual(wall);
+		}
 	});
 
 	it('a partition inside a Room leaves the Room 1→1', () => {
@@ -291,10 +386,8 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' });
 		expect(baseline).toEqual(snapshot);
 	});
-});
-
-describe('P23.9 junction reuse', () => {
-	it('reuses an existing junction when a chain endpoint lands on it', () => {
+});	describe('P23.9 junction reuse', () => {
+	it('reuses an existing junction when the chain DECLARES it', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
 			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
@@ -303,9 +396,17 @@ describe('P23.9 junction reuse', () => {
 		const cornerJunction = withRoom.walls[0]!.startJunctionId;
 		const before = withRoom.junctions.length;
 
-		// Spur starting exactly at an existing corner junction.
+		// Spur starting exactly at an existing corner junction and DECLARING it
+		// (P23B.3a S6 — the deliberate reuse the node snap expresses; an undeclared
+		// coincidence mints its own Junction instead, asserted in the S6 oracle).
 		const spur = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(0, 0), p(0, -2)], close: false, role: 'partition' })
+			planWallChain({
+				baseline: withRoom,
+				points: [p(0, 0), p(0, -2)],
+				close: false,
+				role: 'partition',
+				endpointJunctionSnaps: [{ pointIndex: 0, junctionId: cornerJunction }]
+			})
 		);
 		expect(spur.createdJunctionIds).toHaveLength(1); // only the far endpoint
 		const spurWall = spur.document.walls.find((wall) => wall.id === spur.createdWallIds[0])!;
@@ -345,10 +446,24 @@ describe('P23.9 junction reuse', () => {
 
 	it('one boundary chain splitting two rooms commits once with both splits', () => {
 		const baseline = twoRoomBaseline();
-		// East-west divider across both rooms plus the open gap between them:
-		// two independent 1→2 components in a single chain command.
+		// East-west divider across both rooms: two 1→2 splits in a single chain
+		// command. P23B.3a S6 records the pre-policy shape here as history — the
+		// chain used to be drawn from (-1, 1.5) to (11, 1.5), overshooting into free
+		// space, and the planner inferred a connection to any Wall it crossed. The
+		// divider now TERMINATES on the two outer Walls and declares them (operation
+		// class 3, what an author's wall-span snap expresses), and the overshooting
+		// shape asserts the opposite verdict in the companion test below.
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [p(-1, 1.5), p(11, 1.5)], close: false, role: 'boundary' })
+			planWallChain({
+				baseline,
+				points: [p(0, 1.5), p(10, 1.5)],
+				close: false,
+				role: 'boundary',
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: verticalWallAt(baseline, 0) },
+					{ pointIndex: 1, wallId: verticalWallAt(baseline, 10) }
+				]
+			})
 		);
 		expect(plan.document.rooms).toHaveLength(4);
 		// One survivor per split: both predecessor IDs persist by lineage.
@@ -357,16 +472,36 @@ describe('P23.9 junction reuse', () => {
 		expect(survivors).toHaveLength(2);
 	});
 
+	it('the SAME divider is independent placement when nothing is declared (P23B.3a S6)', () => {
+		// The pre-policy shape, now read as class 2: endpoints in free space declare
+		// nothing, so the chain neither adopts a Junction nor splits a host — both
+		// Rooms stay whole and every baseline Wall is byte-identical. Overlap is
+		// permitted geometry; it is never a join.
+		const baseline = twoRoomBaseline();
+		const snapshot = structuredClone(baseline);
+		const plan = expectSuccess(
+			planWallChain({ baseline, points: [p(-1, 1.5), p(11, 1.5)], close: false, role: 'boundary' })
+		);
+		expect(plan.splitWallIds).toHaveLength(0);
+		expect(plan.document.rooms).toHaveLength(2);
+		expect(plan.document.walls).toHaveLength(baseline.walls.length + 1);
+		expect(baseline).toEqual(snapshot);
+	});
+
 	it('a chain with a valid prefix plus an overlapping leg rejects atomically', () => {
 		const baseline = twoRoomBaseline();
 		const snapshot = structuredClone(baseline);
 		// Leg 1 stubs into the left room's bottom-wall interior (valid T);
 		// leg 2 runs along the existing bottom wall (collinear overlap).
+		// P23B.3a S6 — the T is DECLARED (the author attached leg 1's endpoint to
+		// the bottom Wall's span), which is what makes the collinear leg a
+		// same-component overlap rather than permitted independent geometry.
 		const plan = planWallChain({
 			baseline,
 			points: [p(2, -1), p(2, 0), p(4, 0)],
 			close: false,
-			role: 'boundary'
+			role: 'boundary',
+			endpointHostSnaps: [{ pointIndex: 1, wallId: horizontalWallAt(baseline, 0) }]
 		});
 		expectRejected(plan, 'collinear_overlap');
 		// Nothing committed: the valid prefix does not survive the rejection.
@@ -455,13 +590,17 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		expect(startPoint).toEqual([0, 0]);
 		expect(endPoint).toEqual([4, 0]);
 
-		// Continuous drawing: the canonical end becomes the next start (exact
-		// coordinate reuse, no tool re-entry).
+		// Continuous drawing: the canonical end becomes the next start (no tool
+		// re-entry). P23B.3a S6 — the run DECLARES that continuation, because
+		// intent is declared and never inferred from coordinates: passing the
+		// run's own canonical Junction IS the operation saying "extend this run"
+		// (operation class 3), and adoption then happens exactly as it always did.
 		const second = planWallSegment({
 			baseline: first.document,
 			start: endPoint,
 			end: p(4, 3),
-			role: 'boundary'
+			role: 'boundary',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: first.endJunctionId }]
 		});
 		expect(second.kind).toBe('success');
 		if (second.kind !== 'success') return;
@@ -471,22 +610,61 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		expect(second.startJunctionId).toBe(first.endJunctionId);
 	});
 
+	it('the SAME continuation WITHOUT the declaration is independent placement (P23B.3a S6)', () => {
+		// The differential for the case above and the point of the whole step: the
+		// coordinates are identical, the declaration is the only difference, and
+		// without it the second segment mints its own Junction — no shared topology,
+		// no silent join (F3/F8's scoped negative half).
+		const baseline = baseDocument();
+		const first = planWallSegment({ baseline, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		expect(first.kind).toBe('success');
+		if (first.kind !== 'success') return;
+		const endPoint = junctionPoint(first.document, first.endJunctionId);
+		const second = planWallSegment({
+			baseline: first.document,
+			start: endPoint,
+			end: p(4, 3),
+			role: 'boundary'
+		});
+		expect(second.kind).toBe('success');
+		if (second.kind !== 'success') return;
+		expect(second.startJunctionId).not.toBe(first.endJunctionId);
+		expect(second.document.walls).toHaveLength(2);
+		expect(second.document.rooms).toHaveLength(0);
+		// Two coincident records at (4, 0) — one per segment — and the baseline Wall
+		// is untouched by the second placement.
+		const coincident = second.document.junctions.filter(
+			(junction) => Math.hypot(junction.point[0] - 4, junction.point[1]) < 1e-9
+		);
+		expect(coincident).toHaveLength(2);
+		expect(second.document.walls.find((wall) => wall.id === first.authoredWallIds[0])).toEqual(
+			first.document.walls[0]
+		);
+	});
+
 	it('room closure: AB+BC+CD then DA onto the run-start Junction births one Room atomically', () => {
 		const empty = baseDocument();
 		const ab = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0), role: 'boundary' });
 		if (ab.kind !== 'success') throw new Error('ab failed');
+		// P23B.3a S6 — every continuation leg DECLARES the run Junction it starts
+		// from (class 3), and the closing leg declares the run's start Junction as
+		// the endpoint it extends to. Closure is still Junction identity; what
+		// changed is that the caller now says so instead of the planner inferring it
+		// from coordinates.
 		const bc = planWallSegment({
 			baseline: ab.document,
 			start: junctionPoint(ab.document, ab.endJunctionId),
 			end: p(4, 3),
-			role: 'boundary'
+			role: 'boundary',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: ab.endJunctionId }]
 		});
 		if (bc.kind !== 'success') throw new Error('bc failed');
 		const cd = planWallSegment({
 			baseline: bc.document,
 			start: junctionPoint(bc.document, bc.endJunctionId),
 			end: p(0, 3),
-			role: 'boundary'
+			role: 'boundary',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: bc.endJunctionId }]
 		});
 		if (cd.kind !== 'success') throw new Error('cd failed');
 		expect(cd.document.rooms).toHaveLength(0);
@@ -495,7 +673,11 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: cd.document,
 			start: junctionPoint(cd.document, cd.endJunctionId),
 			end: junctionPoint(cd.document, runStart),
-			role: 'boundary'
+			role: 'boundary',
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: cd.endJunctionId },
+				{ pointIndex: 1, junctionId: runStart }
+			]
 		});
 		expect(da.kind).toBe('success');
 		if (da.kind !== 'success') return;
@@ -528,15 +710,49 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const snapshot = structuredClone(enclosure.document);
+		// P23B.3a S6 — redrawing the enclosure's own Wall along its exact span is an
+		// INTENTIONAL extension of that group, so the operation declares both of the
+		// Junctions it joins (class 3). Collinear overlap within a group is an
+		// intrinsic failure that the policy does not relax, so the refusal — and its
+		// atomicity — are exactly what P23.9 pinned.
 		const rejected = planWallSegment({
+			baseline: enclosure.document,
+			start: p(0, 0),
+			end: p(4, 0),
+			role: 'boundary',
+			endpointJunctionSnaps: [
+				{ pointIndex: 0, junctionId: junctionIdAt(enclosure.document, 0, 0) },
+				{ pointIndex: 1, junctionId: junctionIdAt(enclosure.document, 4, 0) }
+			]
+		});
+		expect(rejected.kind).toBe('rejected');
+		if (rejected.kind !== 'rejected') return;
+		expect(rejected.rejection.code).toBe('collinear_overlap');
+		expect(enclosure.document).toEqual(snapshot);
+	});
+
+	it('the SAME overlapping segment WITHOUT a declaration is permitted, un-noded geometry (P23B.3a S6)', () => {
+		// The class-2 half, which P23.9 could not express: identical coordinates, no
+		// declaration, so no shared topology — the new Wall is its own component and
+		// the enclosure is byte-identical afterwards (F5's permitted overlap and
+		// F8's scoped negative half).
+		const empty = baseDocument();
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
+		const snapshot = structuredClone(enclosure.document);
+		const placed = planWallSegment({
 			baseline: enclosure.document,
 			start: p(0, 0),
 			end: p(4, 0),
 			role: 'boundary'
 		});
-		expect(rejected.kind).toBe('rejected');
-		if (rejected.kind !== 'rejected') return;
-		expect(rejected.rejection.code).toBe('collinear_overlap');
+		expect(placed.kind).toBe('success');
+		if (placed.kind !== 'success') return;
+		expect(placed.splitWallIds).toHaveLength(0);
+		expect(placed.document.walls).toHaveLength(enclosure.document.walls.length + 1);
+		for (const wall of enclosure.document.walls) {
+			expect(placed.document.walls.find((candidate) => candidate.id === wall.id)).toEqual(wall);
+		}
 		expect(enclosure.document).toEqual(snapshot);
 	});
 
@@ -554,7 +770,22 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			}))
 		};
 		const survivorId = withMeta.rooms[0]!.id;
-		const divider = planWallSegment({ baseline: withMeta, start: p(2, 0), end: p(2, 3), role: 'boundary' });
+		// P23B.3a S6 — the divider DECLARES both hosts it terminates on (the
+		// enclosure's bottom and top Walls), which is what an author expresses by
+		// snapping the segment's endpoints onto those faces. Without the declaration
+		// the same segment is independent placement and splits nothing (asserted
+		// below), so the Room contract here is reached by declaring the intent, not
+		// by the coordinates happening to land on the Walls.
+		const divider = planWallSegment({
+			baseline: withMeta,
+			start: p(2, 0),
+			end: p(2, 3),
+			role: 'boundary',
+			endpointHostSnaps: [
+				{ pointIndex: 0, wallId: horizontalWallAt(withMeta, 0) },
+				{ pointIndex: 1, wallId: horizontalWallAt(withMeta, 3) }
+			]
+		});
 		expect(divider.kind).toBe('success');
 		if (divider.kind !== 'success') return;
 		expect(divider.document.rooms).toHaveLength(2);
@@ -576,7 +807,17 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		const empty = baseDocument();
 		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
-		const divider = planWallSegment({ baseline: enclosure.document, start: p(2, 0), end: p(2, 3), role: 'boundary' });
+		const divider = planWallSegment({
+			baseline: enclosure.document,
+			start: p(2, 0),
+			end: p(2, 3),
+			role: 'boundary',
+			// P23B.3a S6 — both hosts declared (see the 1→2 divider suite above).
+			endpointHostSnaps: [
+				{ pointIndex: 0, wallId: horizontalWallAt(enclosure.document, 0) },
+				{ pointIndex: 1, wallId: horizontalWallAt(enclosure.document, 3) }
+			]
+		});
 		if (divider.kind !== 'success') throw new Error('divider failed');
 		expect(divider.document.rooms).toHaveLength(2);
 		const compiled = compileWallFirstLayoutGeometry(divider.document);

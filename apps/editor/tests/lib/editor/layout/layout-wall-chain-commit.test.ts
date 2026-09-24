@@ -95,6 +95,14 @@ describe('P23.9 commitWallSegment editor path (segment-first)', () => {
 		return [...junction.point] as [number, number];
 	}
 
+	function junctionIdAt(document: LayoutDocumentWallFirst, x: number, z: number): string {
+		const junction = document.junctions.find(
+			(candidate) => candidate.point[0] === x && candidate.point[1] === z
+		);
+		if (!junction) throw new Error(`missing junction at ${x},${z}`);
+		return junction.id;
+	}
+
 	it('click A, click B commits one Wall; click C commits a second; Undo reverts only BC', () => {
 		const state = wallFirstPreviewState();
 		const ab = commitWallSegment(state, [0, 0], [4, 0], 'boundary');
@@ -105,7 +113,13 @@ describe('P23.9 commitWallSegment editor path (segment-first)', () => {
 		expect(wallFirstDocument(state).walls).toHaveLength(1);
 
 		const bPoint = junctionPoint(wallFirstDocument(state), ab.endJunctionId);
-		const bc = commitWallSegment(state, bPoint, [4, 3], 'boundary');
+		// P23B.3a S6 — the continuation DECLARES the run's own canonical Junction
+		// (the value `advanceWallChainContinuation` carries and the viewport passes),
+		// which is what makes the second Wall share B instead of minting a coincident
+		// record of its own.
+		const bc = commitWallSegment(state, bPoint, [4, 3], 'boundary', undefined, undefined, {
+			start: { junctionId: ab.endJunctionId }
+		});
 		expect(bc.success).toBe(true);
 		if (!bc.success || bc.operation !== 'wall-segment-commit') return;
 		expect(wallFirstDocument(state).walls).toHaveLength(2);
@@ -117,9 +131,17 @@ describe('P23.9 commitWallSegment editor path (segment-first)', () => {
 		const state = wallFirstPreviewState();
 		const ab = commitWallSegment(state, [0, 0], [4, 0], 'boundary');
 		if (!ab.success || ab.operation !== 'wall-segment-commit') throw new Error('ab failed');
-		const bc = commitWallSegment(state, junctionPoint(wallFirstDocument(state), ab.endJunctionId), [4, 3], 'boundary');
+		// P23B.3a S6 — every leg here declares the identity it extends: the run's own
+		// Junction at its start, and (closing leg) the run-start Junction at its end.
+		// Closure is still `endJunctionId === runStartJunctionId`; it is now stated
+		// rather than deduced from two coordinates being equal.
+		const bc = commitWallSegment(state, junctionPoint(wallFirstDocument(state), ab.endJunctionId), [4, 3], 'boundary', undefined, undefined, {
+			start: { junctionId: ab.endJunctionId }
+		});
 		if (!bc.success || bc.operation !== 'wall-segment-commit') throw new Error('bc failed');
-		const cd = commitWallSegment(state, junctionPoint(wallFirstDocument(state), bc.endJunctionId), [0, 3], 'boundary');
+		const cd = commitWallSegment(state, junctionPoint(wallFirstDocument(state), bc.endJunctionId), [0, 3], 'boundary', undefined, undefined, {
+			start: { junctionId: bc.endJunctionId }
+		});
 		if (!cd.success || cd.operation !== 'wall-segment-commit') throw new Error('cd failed');
 		expect(wallFirstDocument(state).rooms).toHaveLength(0);
 		const runStart = ab.startJunctionId;
@@ -127,7 +149,13 @@ describe('P23.9 commitWallSegment editor path (segment-first)', () => {
 			state,
 			junctionPoint(wallFirstDocument(state), cd.endJunctionId),
 			junctionPoint(wallFirstDocument(state), runStart),
-			'boundary'
+			'boundary',
+			undefined,
+			undefined,
+			{
+				start: { junctionId: cd.endJunctionId },
+				end: { junctionId: runStart }
+			}
 		);
 		expect(da.success).toBe(true);
 		if (!da.success || da.operation !== 'wall-segment-commit') return;
@@ -141,8 +169,15 @@ describe('P23.9 commitWallSegment editor path (segment-first)', () => {
 		const ab = commitWallSegment(state, [0, 0], [4, 0], 'boundary');
 		expect(ab.success).toBe(true);
 		const before = serializeWallFirstLayoutDocument(wallFirstDocument(state));
-		// Overlap along the existing wall rejects.
-		const rejected = commitWallSegment(state, [0, 0], [4, 0], 'boundary');
+		// Overlap along the existing wall rejects. P23B.3a S6 — redrawing the Wall
+		// exactly along its span is an INTENTIONAL extension of its group, so both of
+		// its Junctions are declared (class 3); the refusal and its atomicity are the
+		// P23.9 contract, unchanged.
+		const document = wallFirstDocument(state);
+		const rejected = commitWallSegment(state, [0, 0], [4, 0], 'boundary', undefined, undefined, {
+			start: { junctionId: junctionIdAt(document, 0, 0) },
+			end: { junctionId: junctionIdAt(document, 4, 0) }
+		});
 		expect(rejected.success).toBe(false);
 		expect(serializeWallFirstLayoutDocument(wallFirstDocument(state))).toBe(before);
 	});

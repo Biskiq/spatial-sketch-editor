@@ -26,7 +26,16 @@
  * - snapping is a suggestion (the editor resolves coordinates before this
  *   planner runs); committed topology here is explicit;
  * - collinear overlap rejects — no auto-merge/trim;
- * - new-schema data never contains an un-noded visual crossing.
+ * - new-schema data never contains an un-noded visual crossing;
+ * - **authoring intent is DECLARED, never inferred from geometry** (P23B.3a S6,
+ *   decision record §4.0.1 / M-3a-4). An operation that deliberately connects to
+ *   existing geometry declares the identity it connects to
+ *   (`endpointJunctionSnaps` / `endpointHostSnaps`) — operation class 3,
+ *   extending a group it belongs to — and keeps today's adoption and noding
+ *   inside that group. An operation that declares NOTHING is independent
+ *   placement (class 2): it mints its own Junction records even at coordinates
+ *   an existing Junction already occupies, splits no host Wall and adopts no
+ *   identity, so spatial overlap never becomes connectivity by accident.
  */
 import type {
 	LayoutDocumentWallFirst,
@@ -56,7 +65,11 @@ import {
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
-import { topologyComponentKeyByWallId } from './layout-topology-components';
+import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId,
+	type JunctionTopologyComponentKey
+} from './layout-topology-components';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import { wallCenterlineSamples } from './layout-wall-centerline';
@@ -91,6 +104,34 @@ export const WALL_CHAIN_DEFAULTS = {
 export type WallEndpointHostSnap = {
 	pointIndex: number;
 	wallId: string;
+};
+
+/**
+ * P23B.3a S6 — DECLARED CONNECTION ANCHOR, junction form.
+ *
+ * The operation's explicit statement that draft point `pointIndex` CONNECTS to
+ * the existing Junction `junctionId`: operation class 3, extending an already
+ * connected group. It is the Junction-form twin of `WallEndpointHostSnap`, which
+ * declares the same thing for a host Wall's span.
+ *
+ * WHY IT EXISTS. Option E separates spatial placement from topological
+ * connection, so coordinate coincidence can no longer mean connectivity: the
+ * draft-point reuse this planner used to infer from a coincident coordinate is
+ * now an EXPLICIT declaration, made by the caller that knows what the gesture
+ * meant. `planWallChain` adopts an existing Junction id when — and only when —
+ * this anchor declares it. A chain that declares nothing is INDEPENDENT
+ * placement: it mints its own Junction records (even at coordinates an existing
+ * Junction already occupies), acquires no shared topology, splits no host Wall,
+ * and remains its own component to the validity gates.
+ *
+ * The declaration is the OPERATION's intent, never the geometry (decision
+ * record §4.0.1 / M-3a-4): a caller that means "extend this group" says so; a
+ * caller that means "place this independently" says nothing and therefore
+ * cannot join anything by accident.
+ */
+export type WallEndpointJunctionSnap = {
+	pointIndex: number;
+	junctionId: string;
 };
 
 /** Why a chain sketch rejected; stable machine codes. */
@@ -207,8 +248,29 @@ export function planWallChain(options: {
 	thickness?: number;
 	height?: number;
 	allocator?: WallChainIdAllocator;
-	/** Existing authoring snap identities, keyed by draft point index. */
+	/**
+	 * P23B.3a S6 — DECLARED host-Wall connections, keyed by draft point index.
+	 *
+	 * The annotation names the point that expresses the attachment (the endpoint
+	 * the author snapped onto a Wall's face); what it MEANS is that this operation
+	 * joins the host Wall's connected group, which is why noding — host splits, X
+	 * crossings and Ts — applies inside that group and nowhere else. An endpoint
+	 * that lands on the host's span is the ordinary case; a caller may also use it
+	 * for a group whose geometry the operation crosses rather than touches, since
+	 * the statement is about the GROUP, not about the coordinate. With no
+	 * declaration (and none of `endpointJunctionSnaps`) the chain is INDEPENDENT
+	 * placement: a crossing is permitted overlap that creates no shared topology.
+	 */
 	endpointHostSnaps?: readonly WallEndpointHostSnap[];
+	/**
+	 * P23B.3a S6 — DECLARED Junction connection anchors, keyed by draft point
+	 * index. Together with `endpointHostSnaps` this IS the operation's declared
+	 * intent: supplying either one makes the chain an EXTENSION of the group(s)
+	 * it names (class 3 — adoption and in-group noding apply); supplying neither
+	 * declares INDEPENDENT placement (class 2 — no adoption, no noding, no
+	 * fragmentation of any pre-existing Wall).
+	 */
+	endpointJunctionSnaps?: readonly WallEndpointJunctionSnap[];
 }): WallChainPlan {
 	const allocator = options.allocator ?? defaultChainAllocator();
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
@@ -229,14 +291,52 @@ export function planWallChain(options: {
 	if (points.some((point) => point.some((value) => !Number.isFinite(value)))) {
 		return reject({ code: 'non_finite_point', message: 'Chain points must be finite coordinates' });
 	}
-	const junctionPoints = options.baseline.junctions.map((junction) => ({ id: junction.id, point: junction.point }));
-	// Resolve each draft point to an existing junction when it coincides with
-	// one (snap is a suggestion; explicit junction reuse is the commit
-	// semantic). Reused points adopt the junction's stored coordinate, so a
-	// tolerant match still yields exactly one spelling of the node.
-	const resolved: Array<{ junctionId: string | null; point: LayoutVec2 }> = points.map((point) => {
-		const existing = junctionPoints.find((junction) => coincidesAsJunction(junction.point, point));
-		return existing ? { junctionId: existing.id, point: [...existing.point] as LayoutVec2 } : { junctionId: null, point };
+	// P23B.3a S6 — DECLARED CONNECTION ANCHORS, never coordinate coincidence (the
+	// D-9 authoring rule, decision record §4.0.1 classes 2 and 3). A draft point
+	// adopts an existing Junction id only when the operation DECLARED that
+	// identity; the draft point then normalizes onto the stored coordinate, so a
+	// tolerant match still yields exactly one spelling of the node. Ordinary
+	// spatial placement (class 2) declares no anchor, so a point whose coordinates
+	// coincide with an existing Junction mints its own record at those same
+	// coordinates: distinct Junction identity, no connectivity, no adoption —
+	// which the component-scoped validity gates (S4/S5) permit between independent
+	// components.
+	//
+	// A declared anchor that no longer coincides with its draft point is a stale
+	// caller claim, not a hint: the chain REFUSES rather than silently building
+	// topology the caller did not ask for.
+	const baselineJunctionById = new Map(options.baseline.junctions.map((junction) => [junction.id, junction]));
+	const declaredAnchorByPointIndex = new Map<number, string>();
+	for (const snap of options.endpointJunctionSnaps ?? []) {
+		if (declaredAnchorByPointIndex.has(snap.pointIndex)) {
+			return reject({
+				code: 'invalid_candidate_document',
+				message: `Draft point ${snap.pointIndex} declares more than one Junction anchor`
+			});
+		}
+		declaredAnchorByPointIndex.set(snap.pointIndex, snap.junctionId);
+	}
+	for (const [pointIndex, junctionId] of declaredAnchorByPointIndex) {
+		const declared = baselineJunctionById.get(junctionId);
+		const point = points[pointIndex];
+		if (!declared || !point) {
+			return reject({
+				code: 'invalid_candidate_document',
+				message: `Declared Junction anchor '${junctionId}' names draft point ${pointIndex}, which this chain does not have`
+			});
+		}
+		if (!coincidesAsJunction(declared.point, point)) {
+			return reject({
+				code: 'invalid_candidate_document',
+				message: `Declared Junction anchor '${junctionId}' does not coincide with draft point ${pointIndex}`
+			});
+		}
+	}
+	const resolved: Array<{ junctionId: string | null; point: LayoutVec2 }> = points.map((point, pointIndex) => {
+		const declaredId = declaredAnchorByPointIndex.get(pointIndex);
+		if (declaredId === undefined) return { junctionId: null, point };
+		const declared = baselineJunctionById.get(declaredId)!;
+		return { junctionId: declared.id, point: [...declared.point] as LayoutVec2 };
 	});
 
 	// A final point coinciding with the chain's own first point closes the
@@ -562,13 +662,32 @@ export function planWallChain(options: {
 	}
 
 	const finalJunctionIds = new Set(validated.document.junctions.map((junction) => junction.id));
+	// P23B.3a S6 — the last-resort coordinate recovery may only reach identities in
+	// the component this operation authored. Coincident records in unrelated
+	// components are legal now, so an unrestricted lookup could hand a chain an
+	// unrelated group's Junction as its own start/end — the implicit join this step
+	// removes, leaking back out through the return value.
+	const finalComponentKeyByWallId = topologyComponentKeyByWallId(validated.document);
+	const finalJunctionComponentKeyById = topologyComponentKeyByJunctionId(
+		validated.document,
+		finalComponentKeyByWallId
+	);
+	const authoredComponentKeys = new Set<string | symbol>(
+		[...authoredWallIds]
+			.map((wallId) => finalComponentKeyByWallId.get(wallId))
+			.filter((key): key is string => key !== undefined)
+	);
 	const resolveFinalJunctionId = (entry: { junctionId: string | null; point: LayoutVec2 }): string | null => {
 		if (!entry.junctionId) return null;
 		const redirectedId = resolveJunctionId(entry.junctionId);
 		if (finalJunctionIds.has(redirectedId)) return redirectedId;
-		return validated.document.junctions.find((junction) =>
-			coincidesAsJunction(junction.point, entry.point)
-		)?.id ?? null;
+		return (
+			validated.document.junctions.find((junction) => {
+				if (!coincidesAsJunction(junction.point, entry.point)) return false;
+				const key = finalJunctionComponentKeyById.get(junction.id);
+				return key !== undefined && authoredComponentKeys.has(key);
+			})?.id ?? null
+		);
 	};
 	const startJunctionId = resolveFinalJunctionId(resolved[0]!);
 	const endJunctionId = resolveFinalJunctionId(close ? resolved[0]! : resolved[resolved.length - 1]!);
@@ -607,12 +726,40 @@ type NodingFix =
 	| { kind: 'adopt'; keepJunctionId: string; duplicateJunctionIds: string[] }
 	| { kind: 'reject'; rejection: WallChainRejection };
 
-/** The Junction whose point coincides with `point`, if any. */
-function junctionAtPoint(
+/**
+ * The Junction this operation may ADOPT at `point` (P23B.3a S6).
+ *
+ * A record is adoptable when it is an endpoint of one of the relationship's own
+ * Walls, or when it belongs to the component those Walls are in. A coincident
+ * record from an UNRELATED component is never adoptable: adopting it would be an
+ * implicit cross-group join — the exact authoring reflex the declared-intent
+ * split removes. Own endpoints are preferred over other component members, and
+ * document order decides within each pass, so the choice stays deterministic.
+ */
+function adoptableJunctionAt(
 	document: LayoutDocumentWallFirst,
-	point: LayoutVec2
+	walls: readonly LayoutWall[],
+	point: LayoutVec2,
+	junctionComponentKeyById: ReadonlyMap<string, JunctionTopologyComponentKey>,
+	componentKeyByWallId: ReadonlyMap<string, string>
 ): LayoutJunction | undefined {
-	return document.junctions.find((junction) => coincidesAsJunction(junction.point, point));
+	const ownJunctionIds = new Set<string>();
+	const ownComponentKeys = new Set<string | symbol>();
+	for (const wall of walls) {
+		ownJunctionIds.add(wall.startJunctionId);
+		ownJunctionIds.add(wall.endJunctionId);
+		const key = componentKeyByWallId.get(wall.id);
+		if (key !== undefined) ownComponentKeys.add(key);
+	}
+	const coincident = document.junctions.filter((junction) =>
+		coincidesAsJunction(junction.point, point)
+	);
+	const ownEndpoint = coincident.find((junction) => ownJunctionIds.has(junction.id));
+	if (ownEndpoint) return ownEndpoint;
+	return coincident.find((junction) => {
+		const key = junctionComponentKeyById.get(junction.id);
+		return key !== undefined && ownComponentKeys.has(key);
+	});
 }
 
 /**
@@ -687,6 +834,17 @@ function nextNodingFix(
 	endpointHostWallIds: ReadonlyMap<string, string>
 ): NodingFix | null {
 	const chainSet = new Set(chainDerivedWallIds);
+	// P23B.3a S6 — the operation's DECLARED scope. `declaredHostWallIds` are the
+	// pre-existing Walls this chain explicitly anchored to; any other pre-existing
+	// Wall is authorizable only by CONNECTIVITY (the chain is already in its
+	// component, because it adopted one of that group's Junctions or earlier
+	// noding joined them). With no anchors the chain is its own component, so no
+	// pre-existing Wall is authorizable and this function finds no fix at all:
+	// independent placement neither adopts nor splits, and its overlaps stay the
+	// permitted geometry S4/S5 admit.
+	const declaredHostWallIds = new Set(endpointHostWallIds.values());
+	const componentKeyByWallId = topologyComponentKeyByWallId(document);
+	const junctionComponentKeyById = topologyComponentKeyByJunctionId(document, componentKeyByWallId);
 	const segments = new Map<string, TopologySegment>();
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	for (const wall of document.walls) {
@@ -703,6 +861,18 @@ function nextNodingFix(
 			const b = walls[second]!;
 			const oneIsChain = chainSet.has(a.id) || chainSet.has(b.id);
 			if (!oneIsChain) continue; // pre-existing relationships are already noded
+			// AUTHORIZATION (above): only a DECLARED host Wall, or a Wall the chain
+			// is already connected to, may acquire topology from this operation. A
+			// cross-group pair is skipped outright — no adoption, no split — which is
+			// what keeps an independent overlap from becoming a join.
+			const chainWallId = chainSet.has(a.id) ? a.id : b.id;
+			const hostWallId = chainSet.has(a.id) ? b.id : a.id;
+			if (
+				!declaredHostWallIds.has(hostWallId) &&
+				componentKeyByWallId.get(chainWallId) !== componentKeyByWallId.get(hostWallId)
+			) {
+				continue;
+			}
 			const segmentB = segments.get(b.id)!;
 			const shared = a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
 				? [a.startJunctionId]
@@ -743,7 +913,13 @@ function nextNodingFix(
 				// A crossing that lands on an existing Junction is a node, not an X:
 				// splitting a wall that already ends there has a degenerate
 				// distance, so node through the Junction instead.
-				const existing = junctionAtPoint(document, classified.point);
+				const existing = adoptableJunctionAt(
+					document,
+					[a, b],
+					classified.point,
+					junctionComponentKeyById,
+					componentKeyByWallId
+				);
 				if (existing) {
 					const throughJunction = teeThroughJunction([segmentA, segmentB], existing);
 					if (throughJunction) return throughJunction;
@@ -776,7 +952,13 @@ function nextNodingFix(
 				// near-miss case: the click landed a hair short of the Junction it
 				// meant). Adopt that identity instead of planning a split whose
 				// distance would be degenerate (`Split distance …`).
-				const coincident = junctionAtPoint(document, classified.point);
+				const coincident = adoptableJunctionAt(
+					document,
+					[a, b],
+					classified.point,
+					junctionComponentKeyById,
+					componentKeyByWallId
+				);
 				if (coincident) {
 					// `a`/`b` are the endpoint wall and the interior wall of this T.
 					const duplicates = duplicateJunctionsAt(
@@ -999,8 +1181,9 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 	// commit, so the two halves of this gate cannot disagree — and neither can this
 	// gate and `validateWallFirstTopology`. NOT changed here: this planner's own
 	// AUTHORING behaviour. Adoption and crossing-split still run exactly as they do
-	// today; withdrawing them from INDEPENDENT placement is the authoring-intent split
-	// (S6), not this step.
+	// for an operation that DECLARES the group it extends; withdrawing them from
+	// INDEPENDENT placement is the authoring-intent split S6 landed in the draft
+	// normalization and `nextNodingFix` above/without touching this verdict.
 	const curveCrossing = detectWallCurveTopologyCrossings(
 		document,
 		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
@@ -1108,10 +1291,48 @@ export function planWallSegment(options: {
 	allocator?: WallChainIdAllocator;
 	/** Existing `wall-span` snap identity for the authored endpoint. */
 	endpointHostWallId?: string;
+	/**
+	 * P23B.3a S6 — DECLARED connection anchors (host-Wall form), keyed by point
+	 * index exactly like `endpointJunctionSnaps`: a segment that terminates on an
+	 * existing Wall's span (a divider landing on the enclosure) says so here, and
+	 * that declaration is what authorizes noding inside that host's group.
+	 *
+	 * The Junction form is the stronger statement (it names the identity the
+	 * operation extends); this form names the host span the author attached to and
+	 * lets the canonical noding rule split that host, sharing the Junction it
+	 * mints. `endpointHostWallId` is the single-end spelling of this same anchor
+	 * and both are honoured together.
+	 */
+	endpointHostSnaps?: readonly WallEndpointHostSnap[];
+	/**
+	 * P23B.3a S6 — DECLARED connection anchors for this segment (junction form),
+	 * keyed by point index: `0` is `start`, `1` is `end`. Supplying either one is
+	 * the operation declaring that it EXTENDS the group it names (class 3), so
+	 * adoption and noding apply inside that group; supplying neither — and no
+	 * `endpointHostWallId` — declares INDEPENDENT placement (class 2), where no
+	 * coordinate coincidence is adopted and no host Wall is split. A run
+	 * continuation passes the run's own canonical Junction; a deliberate node
+	 * snap passes the Junction the author snapped to.
+	 */
+	endpointJunctionSnaps?: readonly WallEndpointJunctionSnap[];
 }): WallChainPlan {
-	const startJunction = options.baseline.junctions.find((junction) =>
+	const declaredStartJunctionId = options.endpointJunctionSnaps?.find(
+		(snap) => snap.pointIndex === 0
+	)?.junctionId;
+	// Birth height (P23.6I) is a vertical-coherence rule, not a topology rule, so
+	// it keeps its coordinate fallback: a segment whose start sits on a Junction
+	// inherits that Junction's height whether or not the operation declared the
+	// identity. A declared anchor is authoritative when both are present.
+	const coordinateStartJunction = options.baseline.junctions.find((junction) =>
 		coincidesAsJunction(junction.point, options.start)
 	);
+	// S6 — one merged declaration list: the single-end spelling (`endpointHostWallId`,
+	// what the editor passes for the endpoint the author snapped to) plus the
+	// general per-point form a headless caller uses to declare both ends.
+	const declaredHostSnaps: WallEndpointHostSnap[] = [
+		...(options.endpointHostWallId ? [{ pointIndex: 1, wallId: options.endpointHostWallId }] : []),
+		...(options.endpointHostSnaps ?? [])
+	];
 	return planWallChain({
 		baseline: options.baseline,
 		points: [options.start, options.end],
@@ -1119,12 +1340,13 @@ export function planWallSegment(options: {
 		role: options.role,
 		height: resolveWallBirthHeight(
 			options.baseline,
-			startJunction?.id ?? null,
+			declaredStartJunctionId ?? coordinateStartJunction?.id ?? null,
 			options.height
 		),
 		...(options.thickness !== undefined ? { thickness: options.thickness } : {}),
-		...(options.endpointHostWallId
-			? { endpointHostSnaps: [{ pointIndex: 1, wallId: options.endpointHostWallId }] }
+		...(declaredHostSnaps.length > 0 ? { endpointHostSnaps: declaredHostSnaps } : {}),
+		...(options.endpointJunctionSnaps && options.endpointJunctionSnaps.length > 0
+			? { endpointJunctionSnaps: options.endpointJunctionSnaps }
 			: {}),
 		...(options.allocator !== undefined ? { allocator: options.allocator } : {})
 	});

@@ -634,6 +634,11 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 		// Junction `c-b`, so the two Walls are ONE component and the crossing is the
 		// unsupported relation this gate exists for — same code, same diagnostic and the
 		// same atomicity as before S5. The gate's subject moved; its predicate did not.
+		//
+		// P23B.3a S6 — "starts at the curved Wall's own Junction" is now DECLARED
+		// (operation class 3), because attaching to that group is exactly what the
+		// planner must be told and never infer. Remove the declaration and the same
+		// crossing is admitted and un-noded, which S5's F8 case asserts.
 		const baseline = curvedWallDocument();
 		const snapshot = JSON.stringify(baseline);
 		const plan = planWallChain({
@@ -643,7 +648,8 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 				[2, 4]
 			],
 			close: false,
-			role: 'partition'
+			role: 'partition',
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'c-b' }]
 		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
@@ -692,6 +698,37 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 		document.walls = [
 			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', role: 'partition', thickness: 0.2, height: 3, centerline: LINE }
 		];
+		// P23B.3a S6 — the author's chain attaches to the host Wall (the declaration a
+		// wall-span snap makes), so the X crossing is a WITHIN-GROUP relation and is
+		// noded exactly as it was before the policy. An UNDECLARED X between two
+		// commands is permitted, un-noded overlap instead (F8's scoped negative half),
+		// asserted immediately below.
+		const plan = planWallChain({
+			baseline: document,
+			points: [
+				[4, -3],
+				[4, 3]
+			],
+			close: false,
+			role: 'partition',
+			endpointHostSnaps: [{ pointIndex: 0, wallId: 'host' }]
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		// The X crossing is noded, not rejected.
+		expect(plan.document.walls.length).toBeGreaterThan(2);
+	});
+
+	it('leaves the same X crossing un-noded when the chain declares no connection', () => {
+		const document = createEmptyWallFirstLayoutDocument();
+		document.formatVersion = LAYOUT_WALL_FIRST_FORMAT_VERSION;
+		document.junctions = [
+			{ id: 's-a', point: [0, 0] },
+			{ id: 's-b', point: [8, 0] }
+		];
+		document.walls = [
+			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', role: 'partition', thickness: 0.2, height: 3, centerline: LINE }
+		];
 		const plan = planWallChain({
 			baseline: document,
 			points: [
@@ -703,8 +740,10 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
-		// The X crossing is noded, not rejected.
-		expect(plan.document.walls.length).toBeGreaterThan(2);
+		// One authored Wall, one untouched host: the crossing is a permitted overlap.
+		expect(plan.document.walls).toHaveLength(2);
+		expect(plan.splitWallIds).toHaveLength(0);
+		expect(plan.document.walls.find((wall) => wall.id === 'host')).toEqual(document.walls[0]);
 	});
 });
 
@@ -838,12 +877,16 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 	});
 
 	it('reuses an authored endpoint that resolves at an existing host Junction', () => {
+		// P23B.3a S6 — the endpoint resolved onto the host Junction `c-a`, and the
+		// operation declares it: adoption is what a declared anchor buys, never what a
+		// sub-ulp coordinate buys on its own.
 		const baseline = curvedWallDocument();
 		const plan = planWallSegment({
 			baseline,
 			start: [-2, 0],
 			end: [5e-10, -5e-10],
-			role: 'partition'
+			role: 'partition',
+			endpointJunctionSnaps: [{ pointIndex: 1, junctionId: 'c-a' }]
 		});
 		if (plan.kind !== 'success') throw new Error(`expected endpoint adoption, got ${JSON.stringify(plan.rejection)}`);
 		const authored = wallOf(plan.document, plan.authoredWallIds[0]!);
