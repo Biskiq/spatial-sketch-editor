@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
 	p23bActivateInteraction,
 	p23bAfterInteraction,
+	p23bInteractionEnd,
+	p23bInteractionStart,
 	p23bMeasureActiveAdapter,
 	p23bMeasureActiveReactive,
 	p23bMeasureInteraction
@@ -45,5 +47,24 @@ describe('P23B interaction measurements', () => {
 		const value = p23bMeasureInteraction('bend-knot-edit', 'reactive', () => 42);
 		expect(value).toBe(42);
 		expect(performance.getEntriesByName('p2311:p23b:bend-knot-edit:reactive', 'measure')).toHaveLength(1);
+	});
+
+	it('names a deferred press boundary from the gesture it opened', () => {
+		globals.__P2311_PERF__ = true;
+		const started = p23bInteractionStart();
+		p23bInteractionEnd('input', 'plan-drag-edit', started);
+
+		expect(performance.getEntriesByName('p2311:p23b:plan-drag-edit:input', 'measure')).toHaveLength(1);
+		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toEqual([]);
+		expect(performance.getEntriesByType('mark').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
+	});
+
+	it('leaves a deferred press boundary unmeasured while disabled', () => {
+		globals.__P2311_PERF__ = false;
+		const started = p23bInteractionStart();
+		p23bInteractionEnd('input', 'plan-drag-edit', started);
+
+		expect(started).toBeUndefined();
+		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
 	});
 });

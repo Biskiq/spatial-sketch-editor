@@ -203,6 +203,8 @@
 	import {
 		p23bActivateInteraction,
 		p23bAfterInteraction,
+		p23bInteractionEnd,
+		p23bInteractionStart,
 		p23bMeasureActiveAdapter,
 		p23bMeasureInteraction
 	} from './p23b-interaction-measure';
@@ -2859,25 +2861,38 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		onLayoutTransactionCancel();
 	}
 
+	/** The path a press starts from, before the handler has run. */
+	function p23bPointerPressIntentPath(event: PointerEvent): BenchInteractionPath | null {
+		return event.button === 1 && interaction.planViewMode === 'layout'
+			? 'plan-pan-zoom'
+			: wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout'
+				? 'wall-authoring'
+				: event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
+					? 'selection'
+					: null;
+	}
+
 	/**
 	 * P23B W4 — the measured press. The handler below stays the shipped one;
 	 * this adapter only brackets it with the path/boundary marks, so no product
 	 * behaviour and no handler text moves into the instrumentation.
+	 *
+	 * A press does not know its own path until it has run: the same select-tool
+	 * press either selects and stops or opens a direct edit, depending on what it
+	 * hits. The boundary is therefore timed first and named from the state the
+	 * handler left behind, so a drag or bend press is counted as that gesture and
+	 * never also as a selection sample.
 	 */
 	function p23bPointerDown(event: PointerEvent) {
-		const path: BenchInteractionPath | null =
-			event.button === 1 && interaction.planViewMode === 'layout'
-				? 'plan-pan-zoom'
-				: wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout'
-					? 'wall-authoring'
-					: event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
-						? 'selection'
-						: null;
-		if (!path) {
+		const intent = p23bPointerPressIntentPath(event);
+		if (!intent) {
 			return onPointerDown(event);
 		}
+		const started = p23bInteractionStart();
+		const result = onPointerDown(event);
+		const path = p23bPointerPressPath(event) ?? intent;
+		p23bInteractionEnd('input', path, started);
 		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'input', () => onPointerDown(event));
 		p23bAfterInteraction(path);
 		return result;
 	}
@@ -3372,6 +3387,36 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		}
 	}
 
+	/**
+	 * P23B — both shipped bend gestures are bends: a `wall-bend` inserts a knot
+	 * on the arc and a `curve-control-move` drags the knot the user grabbed. They
+	 * share the `bend-knot-edit` path; every other direct edit is a rigid move.
+	 */
+	function p23bArchitectureEditPath(
+		edit: NonNullable<typeof interaction.architectureEdit>
+	): BenchInteractionPath {
+		return edit.kind === 'wall-bend' || edit.kind === 'curve-control-move'
+			? 'bend-knot-edit'
+			: 'plan-drag-edit';
+	}
+
+	/**
+	 * P23B — which direct edit the press just opened. Read immediately after the
+	 * shipped `pointerdown` handler, so the press boundary carries the gesture's
+	 * path instead of the selection it started from. A gesture that is still only
+	 * pending (a held legacy bend, an armed tool) has no edit state yet and
+	 * answers with `null`.
+	 */
+	function p23bPointerPressPath(event: PointerEvent): BenchInteractionPath | null {
+		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
+		const edit = interaction.architectureEdit;
+		if (edit?.pointerId === event.pointerId) return p23bArchitectureEditPath(edit);
+		if (interiorAnchorPointerId === event.pointerId) return 'bend-knot-edit';
+		if (pendingWallBend?.pointerId === event.pointerId) return 'bend-knot-edit';
+		if (pointerId === event.pointerId && interaction.roomUnitDrag) return 'plan-drag-edit';
+		return null;
+	}
+
 	function p23bPointerInteractionPath(event: PointerEvent): BenchInteractionPath | null {
 		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
 		const edit = interaction.architectureEdit;
@@ -3383,9 +3428,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			if (!architectureEditMovedOnRelease(architectureEditMoved, architectureEditStartScreen, screenPoint(event))) {
 				return null;
 			}
-			return edit.kind === 'wall-bend' || edit.kind === 'curve-control-move'
-				? 'bend-knot-edit'
-				: 'plan-drag-edit';
+			return p23bArchitectureEditPath(edit);
 		}
 		if (interiorAnchorPointerId === event.pointerId) return 'bend-knot-edit';
 		if (pointerId === event.pointerId && interaction.roomUnitDrag) return 'plan-drag-edit';

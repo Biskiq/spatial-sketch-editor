@@ -32,6 +32,33 @@ export function p23bActivateInteraction(path: BenchInteractionPath): void {
 }
 
 /**
+ * Open a synchronous boundary whose path is only known once the shipped handler
+ * has run. A Plan press resolves as a plain selection or as the first half of a
+ * direct edit depending on what it hits, so that boundary is timed first and
+ * named second (see {@link p23bInteractionEnd}). Returns `undefined` while the
+ * marks are disabled, which keeps the disabled path as cheap as the plain
+ * handler call.
+ */
+export function p23bInteractionStart(): number | undefined {
+	return p23bInteractionPerfEnabled() ? performance.now() : undefined;
+}
+
+/**
+ * Close a boundary opened with {@link p23bInteractionStart} under the path the
+ * handler actually produced. One interaction stays one path: the press that
+ * opened a drag or a bend is never also recorded as the selection it started
+ * from.
+ */
+export function p23bInteractionEnd(
+	boundary: BenchInteractionBoundary,
+	path: BenchInteractionPath,
+	startTime: number | undefined
+): void {
+	if (startTime === undefined) return;
+	recordBoundary(path, boundary, startTime, ++sequence);
+}
+
+/**
  * Mark the Svelte flush and next browser frame after a synchronous input. The
  * frame is only a requestAnimationFrame boundary: it does not assert GPU upload
  * or presentation.
@@ -70,6 +97,15 @@ function recordAsyncBoundary(
 	run: number
 ): void {
 	if (!p23bInteractionPerfEnabled()) return;
+	recordBoundary(path, boundary, startTime, run);
+}
+
+function recordBoundary(
+	path: BenchInteractionPath,
+	boundary: BenchInteractionBoundary,
+	startTime: number,
+	run: number
+): void {
 	const start = `p2311:p23b:${run}:${boundary}:start`;
 	const end = `p2311:p23b:${run}:${boundary}:end`;
 	performance.mark(start, { startTime });
