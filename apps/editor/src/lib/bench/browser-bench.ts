@@ -1,12 +1,12 @@
-import type { LayoutDocument } from '$lib/layout/layout-types';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
+import type { BenchLayoutDocument } from './plan-bench';
+import { compileLayoutGeometry, compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
 import {
 	buildPlanRenderModel,
 	type PlanRenderModel,
 	type PlanRenderPrimitive
 } from '$lib/layout/plan-render-model';
-import type { CompiledLayoutGeometry, LayoutBounds2 } from '$lib/layout/layout-geometry-types';
-import { buildRoomWallMesh, type WallMeshSectionRef, type WallMeshSurfaceKey } from '$lib/layout/wall-mesh-builder';
+import { legJoinsByWall, type CompiledLayoutGeometry, type LayoutBounds2 } from '$lib/layout/layout-geometry-types';
+import { buildRoomWallMesh, buildStandaloneWallMesh, type WallMeshSectionRef, type WallMeshSurfaceKey } from '$lib/layout/wall-mesh-builder';
 import { chopinRoomPresentation } from '$lib/content/chopin-room-presentation';
 import { timeOp } from './bench-harness';
 import type { BenchProvenance, BenchSample, BenchTier, BenchTierResult } from './bench-types';
@@ -173,6 +173,28 @@ export function estimateWallMeshTopology(
 	let triangles = 0;
 	const tints = new Set<string>();
 	const excluded = policy.excludedRoomIds ?? [];
+	const roomOwnedWallCount = compiled.rooms.reduce((sum, room) => sum + room.walls.length, 0);
+	if (roomOwnedWallCount === 0 && compiled.walls.length > 0) {
+		const endsByWall = legJoinsByWall(compiled.junctions);
+		const elevationByFloor = new Map(compiled.floors.map((floor) => [floor.floorId, floor.elevation] as const));
+		for (const wall of compiled.walls) {
+			const result = buildStandaloneWallMesh(
+				wall,
+				elevationByFloor.get(wall.floorId) ?? 0,
+				endsByWall.get(wall.wallId) ?? null,
+				{ classifySurface: policy.classifySurface }
+			);
+			if (!result.mesh) {
+				const details = result.issues.map((issue) => `${issue.code}: ${issue.message}`).join('; ');
+				throw new Error(`wall mesh build failed for wall ${wall.wallId}: ${details}`);
+			}
+			objectCount += 1;
+			drawCalls += result.mesh.materialGroups.length;
+			triangles += result.mesh.indices.length / 3;
+			tints.add(policy.presentation[wall.wallId]?.tint ?? policy.presentation[wall.role]?.tint ?? wall.role);
+		}
+		return { objectCount, materialCount: tints.size, drawCalls, triangles };
+	}
 	for (const room of compiled.rooms) {
 		// Bespoke-shell rooms are omitted here exactly as LayoutMuseumShell
 		// omits them before building, so the estimates match the live scene.
@@ -191,7 +213,7 @@ export function estimateWallMeshTopology(
 }
 
 export function measureBrowserTier(
-	fixture: LayoutDocument,
+	fixture: BenchLayoutDocument,
 	tier: BenchTier,
 	provenance: BenchProvenance,
 	options: BrowserTierOptions = {},
@@ -202,7 +224,9 @@ export function measureBrowserTier(
 	const samples = options.samples ?? 5;
 	// Stamp the actual run configuration so the report reflects what ran.
 	const effectiveProvenance: BenchProvenance = { ...provenance, warmup, samples };
-	const compiled = compileLayoutGeometry(fixture).geometry;
+	const compiled = ('formatVersion' in fixture
+		? compileWallFirstLayoutGeometry(fixture)
+		: compileLayoutGeometry(fixture)).geometry;
 	const model = buildPlanRenderModel(compiled);
 	const result: BenchSample[] = [];
 
@@ -257,8 +281,10 @@ function browserHeapBytes(): number | null {
 	return typeof memory?.usedJSHeapSize === 'number' ? memory.usedJSHeapSize : null;
 }
 
-function countRooms(document: LayoutDocument): number {
-	return document.floors.reduce((sum, floor) => sum + floor.rooms.length, 0);
+function countRooms(document: BenchLayoutDocument): number {
+	return 'formatVersion' in document
+		? document.rooms.length
+		: document.floors.reduce((sum, floor) => sum + floor.rooms.length, 0);
 }
 
 function round(value: number): number {

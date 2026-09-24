@@ -26,6 +26,7 @@ import type {
 	LayoutVec2
 } from '$lib/layout/layout-types';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+import { p23bMeasureActiveReactive } from './p23b-interaction-measure';
 import {
 	layoutAuthoredCanonicalJson,
 	layoutIdentityCursor,
@@ -713,14 +714,14 @@ function resolvePreviewCompile(
 	reuse: PreviewCompileReuse | undefined
 ): LayoutPreviewModelResult {
 	if (reuse && reusesAcceptedCompile(layout, reuse)) {
-		return p2311Measure('preview-compile-reused', () => ({
+		return p23bMeasureActiveReactive(() => p2311Measure('preview-compile-reused', () => ({
 			model: projectLayoutPreviewModel(reuse.geometry),
 			geometry: reuse.geometry,
 			issues: [...reuse.issues],
 			bounds: reuse.geometry.bounds
-		}));
+		})));
 	}
-	return p2311Measure('preview-compile', () => buildLayoutPreviewModel(layout));
+	return p23bMeasureActiveReactive(() => p2311Measure('preview-compile', () => buildLayoutPreviewModel(layout)));
 }
 
 function reusesAcceptedCompile(layout: EditorLayoutDocument, reuse: PreviewCompileReuse): boolean {
@@ -970,7 +971,7 @@ export function importLayoutPreviewJson(state: LayoutPreviewState, json: string)
 		// installed document.
 		const bundle = deriveInstallBundle(state, incoming, state.project.name, undefined, true);
 		state.source = 'imported';
-		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
+		p23bMeasureActiveReactive(() => p2311Measure('preview-install', () => commitPreviewBundle(state, bundle)));
 		state.previewVersion += 1;
 		state.reframeVersion += 1;
 		// The baseline is the **installed, normalized** document, never the raw
@@ -1209,7 +1210,7 @@ export function commitLayoutObjectPreset(
 	try {
 		const bundle = deriveInstallBundle(state, plan.document);
 		state.source = 'draft';
-		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
+		p23bMeasureActiveReactive(() => p2311Measure('preview-install', () => commitPreviewBundle(state, bundle)));
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
@@ -1276,7 +1277,7 @@ function applyWallFirstDocumentPlan(
 		// document; the install consumes it instead of compiling it again.
 		const bundle = deriveInstallBundle(state, document, state.project.name, acceptance);
 		state.source = 'draft';
-		p2311Measure('preview-install', () => commitPreviewBundle(state, bundle));
+		p23bMeasureActiveReactive(() => p2311Measure('preview-install', () => commitPreviewBundle(state, bundle)));
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;

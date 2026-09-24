@@ -3,11 +3,27 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 import { chopinProject } from '$lib/content/chopin-project';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../tests/lib/layout/__fixtures__/layout-scale-fixtures';
+import fixtureLedger from '../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
+import {
+	buildP23BCorrectnessFixture,
+	buildP23BMatrixFixture,
+	P23B_CORRECTNESS_SPECS,
+	P23B_MATRIX_SPECS,
+	P23B_OWNER_FIXTURE_ID,
+	P23B_OWNER_LAYOUT
+} from './p23b-fixtures';
 import { measureNodeTier, makeNodeProvenance, DEFAULT_NODE_OPTIONS, type NodeTierOptions } from './plan-bench';
 import { chopinWallMeshRenderPolicyFactory, measureBrowserTier, type BrowserTierOptions } from './browser-bench';
+import {
+	compileWallFirstLayoutGeometry,
+	serializeWallFirstLayoutDocument,
+	validateWallFirstLayoutDocument,
+	validateWallFirstTopology
+} from '$lib/layout/layout-geometry';
 import {
 	BENCH_METHOD_VERSION,
 	type BenchMetricName,
@@ -15,19 +31,21 @@ import {
 	type BenchTier,
 	type BenchTierResult,
 	type Budget,
-	type BudgetBaseline
+	type BudgetBaseline,
+	type P23BBrowserRunReport
 } from './bench-types';
 
 /**
- * Executable version-3 baseline recorder. Invoked via the `bench:record` npm
+ * Executable version-4 baseline recorder. Invoked via the `bench:record` npm
  * script (never a default-suite test, so `npm test` cannot rewrite the checked-in
  * baseline). Measures the Node + browser tiers for Chopin and the generated
- * scale fixtures, stamps version 3 provenance (HEAD SHA + `treeDirty` flag +
+ * scale fixtures, stamps version 4 provenance (HEAD SHA + `treeDirty` flag +
  * deterministic `contentHash` of the relevant sources), and writes
  * `g3-baseline.json`.
  */
 
 const APPS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const REPO_ROOT = resolve(APPS_ROOT, '../..');
 /** Output path for the recorded baseline (used by the `bench:record` CLI runner). */
 export const BASELINE_PATH = resolve(APPS_ROOT, 'src/lib/bench/baselines/g3-baseline.json');
 
@@ -149,12 +167,25 @@ function gitTreeDirty(): boolean {
  * order-independent.
  */
 const CONTENT_SOURCES = [
+	'../../packages/layout-core/src/index.ts',
+	'../../packages/project-model/src/index.ts',
+	'../../packages/camera-core/src/index.ts',
 	'src/lib/bench/bench-harness.ts',
 	'src/lib/bench/bench-report.ts',
 	'src/lib/bench/bench-types.ts',
 	'src/lib/bench/browser-bench.ts',
 	'src/lib/bench/plan-bench.ts',
+	'src/lib/bench/p23b-fixtures.ts',
 	'src/lib/bench/record-baseline.ts',
+	'src/lib/editor/layout/p23b-interaction-measure.ts',
+	'src/lib/editor/layout/LayoutPlanViewport.svelte',
+	'src/lib/editor/layout/LayoutPreviewScene.svelte',
+	'src/lib/editor/layout/layout-preview-state.svelte.ts',
+	'src/lib/editor/camera/EditorCameraPreviewControls.svelte',
+	'src/lib/editor/camera/EditorCameraRig.svelte',
+	'src/lib/editor/app/EditorApp.svelte',
+	'src/routes/dev/perf/p23b/+page.svelte',
+	'src/routes/dev/perf/p23b/+page.server.ts',
 	'src/lib/bench/three-stats.ts',
 	'src/lib/content/chopin-project.json',
 	'src/lib/content/chopin-project.ts',
@@ -305,12 +336,186 @@ function recordTier(tier: BenchTier): BenchTierResult {
  * Record the Node + browser tiers. `full` (default false) includes the slow
  * 1,000-room `large` tier; the checked-in baseline is recorded with `--full`.
  */
-export function recordBaseline(options: { full?: boolean } = {}): BudgetBaseline {
+export function recordBaseline(options: { full?: boolean; p23bBrowserReport?: P23BBrowserRunReport; requireCleanHead?: boolean } = {}): BudgetBaseline {
 	const full = options.full ?? false;
 	const tiers = full ? [...TIER_ORDER] : TIER_ORDER.filter((tier) => tier !== 'large');
+	const browserReport = options.p23bBrowserReport;
+	if (browserReport) validateP23BBrowserReport(browserReport, { requireCleanHead: options.requireCleanHead });
+	const p23bContentHash = browserReport ? contentHash() : undefined;
 	return {
 		methodVersion: BENCH_METHOD_VERSION,
+		...(browserReport ? { methodVersionReason: browserReport.methodVersionReason } : {}),
 		budgets: BUDGETS,
-		tiers: tiers.map(recordTier)
+		tiers: tiers.map(recordTier),
+		...(browserReport ? {
+			workloads: browserReport.workloads.map((workload) => ({
+				...workload,
+				provenance: { ...workload.provenance, contentHash: p23bContentHash }
+			})),
+			...(browserReport.interactions ? { interactions: browserReport.interactions } : {}),
+			...(browserReport.interactionSampleCounts ? { interactionSampleCounts: browserReport.interactionSampleCounts } : {}),
+			interactionProtocol: browserReport.interactionProtocol,
+			nestedMarks: browserReport.nestedMarks,
+			markNestingNote: browserReport.markNestingNote,
+			measurementLimitations: browserReport.measurementLimitations
+		} : {})
 	};
+}
+
+function sha256(value: string | Buffer): string {
+	const hash = createHash('sha256');
+	if (typeof value === 'string') hash.update(value, 'utf8');
+	else hash.update(value.toString('latin1'), 'latin1');
+	return hash.digest('hex');
+}
+
+function p23bDocumentShape(document: typeof P23B_OWNER_LAYOUT) {
+	const centerlineKinds = document.walls.reduce<Record<string, number>>((counts, wall) => {
+		counts[wall.centerline.kind] = (counts[wall.centerline.kind] ?? 0) + 1;
+		return counts;
+	}, {});
+	return {
+		rooms: document.rooms.length,
+		walls: document.walls.length,
+		junctions: document.junctions.length,
+		openings: document.openings.length,
+		curvedWalls: document.walls.filter((wall) => wall.centerline.kind === 'cubic-chain').length,
+		centerlineKinds
+	};
+}
+
+/** Re-run the exact W2 identity, shape and shipped-gate checks before baseline writes. */
+function assertP23BFixtureContracts(): void {
+	const expectedIds = new Set<string>();
+	const verify = (
+		id: string,
+		document: typeof P23B_OWNER_LAYOUT,
+		semanticClass: number,
+		role: string
+	): void => {
+		const entry = fixtureLedger.fixtures.find((fixture) => fixture.id === id);
+		if (!entry) throw new Error(`P23B fixture ledger is missing ${id}`);
+		expectedIds.add(id);
+		const canonical = serializeWallFirstLayoutDocument(document);
+		const layoutValidation = validateWallFirstLayoutDocument(document);
+		const topology = validateWallFirstTopology(document);
+		const compiled = compileWallFirstLayoutGeometry(document);
+		const actualVerdict = {
+			codec: layoutValidation.success ? 'accepted' : 'rejected',
+			topology: topology?.code ?? 'admitted',
+			compilerIssues: compiled.issues.map((issue) => issue.code)
+		};
+		if (entry.semanticClass !== semanticClass || entry.role !== role) {
+			throw new Error(`P23B class/role identity changed for ${id}`);
+		}
+		if (sha256(canonical) !== entry.canonicalLayoutSha256) throw new Error(`P23B canonical identity changed for ${id}`);
+		if (!isDeepStrictEqual(p23bDocumentShape(document), entry.documentShape)) throw new Error(`P23B geometry shape changed for ${id}`);
+		if (!isDeepStrictEqual(actualVerdict, entry.shippedVerdict)) throw new Error(`P23B shipped-validator verdict changed for ${id}`);
+	};
+
+	for (const spec of P23B_MATRIX_SPECS) verify(spec.id, buildP23BMatrixFixture(spec), 5, spec.role);
+	verify(P23B_OWNER_FIXTURE_ID, P23B_OWNER_LAYOUT, 5, 'owner-responsiveness');
+	for (const spec of P23B_CORRECTNESS_SPECS) verify(spec.id, buildP23BCorrectnessFixture(spec), spec.semanticClass, spec.role);
+	if (expectedIds.size !== fixtureLedger.fixtures.length) throw new Error('P23B fixture ledger has missing or unexpected entries');
+
+	const owner = fixtureLedger.fixtures.find((fixture) => fixture.id === P23B_OWNER_FIXTURE_ID);
+	if (!owner || owner.source.kind !== 'exact-owner-payload') throw new Error('P23B owner fixture source contract is invalid');
+	const rawOwner = readFileSync(resolve(REPO_ROOT, owner.source.path));
+	const canonicalOwner = Buffer.from(serializeWallFirstLayoutDocument(P23B_OWNER_LAYOUT), 'utf8');
+	if (
+		rawOwner.byteLength !== owner.source.bytes ||
+		sha256(rawOwner) !== owner.rawPayloadSha256 ||
+		rawOwner.toString('hex') !== canonicalOwner.toString('hex')
+	) {
+		throw new Error('P23B owner payload does not match its exact-byte ledger identity');
+	}
+}
+
+/** Validate imported browser measurements against the immutable fixture ledger. */
+export function validateP23BBrowserReport(
+	report: P23BBrowserRunReport,
+	options: { requireCleanHead?: boolean } = {}
+): void {
+	if (report.methodVersion !== BENCH_METHOD_VERSION) throw new Error(`P23B browser report method ${report.methodVersion} != ${BENCH_METHOD_VERSION}`);
+	if (!report.methodVersionReason.trim()) throw new Error('P23B browser report is missing the method-version reason');
+	if (!report.markNestingNote.trim()) throw new Error('P23B browser report is missing the mark-nesting note');
+	assertP23BFixtureContracts();
+	if (
+		!report.browser.sessionId ||
+		!report.browser.browser?.name ||
+		!report.browser.browser.version ||
+		!report.browser.browser.userAgent ||
+		!Number.isFinite(report.browser.devicePixelRatio) ||
+		!report.browser.machine ||
+		!report.browser.operatingSystem ||
+		!report.browser.nodeVersion
+	) {
+		throw new Error('P23B browser report is missing browser/session/DPR/machine/OS/Node provenance');
+	}
+	if (report.browser.treeDirty !== false) throw new Error('P23B baseline requires a clean recorded source tree');
+	if (report.browser.policyCommitSha !== 'c11938fe0d5c721a896bb92dcb722f2273480feb') {
+		throw new Error('P23B baseline does not name the shipped P23B.3a policy commit');
+	}
+	if (!report.browser.graphics?.source || !report.browser.graphics.api) throw new Error('P23B browser report is missing graphics provenance');
+	if (options.requireCleanHead && (report.browser.commitSha !== gitHeadSha() || gitTreeDirty())) {
+		throw new Error('P23B baseline report must match the current clean HEAD');
+	}
+	if (report.warmup !== 5 || report.samples !== 20) throw new Error('P23B baseline must use 5 warm-up and 20 measured samples');
+	if (!report.measurementLimitations.length) throw new Error('P23B browser report must record measurement limits');
+	const paths = ['selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'] as const;
+	const boundaries = ['input', 'release', 'reactive', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	for (const path of paths) {
+		if (!report.interactionProtocol[path]?.target || !report.interactionProtocol[path]?.snapGrid) {
+			throw new Error(`P23B browser report is missing the fixed target/settings for ${path}`);
+		}
+		if (!(report.interactionSampleCounts[path]! > 0)) throw new Error(`P23B browser report has no owner input samples for ${path}`);
+		const pathReport = report.interactions[path];
+		if (!pathReport) throw new Error(`P23B browser report has no interaction results for ${path}`);
+		for (const boundary of boundaries) {
+			const value = pathReport[boundary];
+			if (!value) throw new Error(`P23B browser report must record a sample or explicit unavailable reason for ${path}/${boundary}`);
+			if ('unavailable' in value) {
+				if (!value.unavailable.trim()) throw new Error(`P23B unavailable boundary lacks a reason for ${path}/${boundary}`);
+				if (boundary === 'input' || boundary === 'release') throw new Error(`P23B owner input/release sample missing for ${path}`);
+			} else if (!(value.count > 0) || !Number.isFinite(value.p50) || !Number.isFinite(value.p95)) {
+				throw new Error(`P23B interaction boundary has invalid samples for ${path}/${boundary}`);
+			}
+		}
+	}
+	const expected = new Map<string, { role: string; hash: string; raw: string | null }>();
+	for (const spec of P23B_MATRIX_SPECS) {
+		const ledger = fixtureLedger.fixtures.find((item) => item.id === spec.id);
+		if (!ledger) throw new Error(`Missing ledger entry for ${spec.id}`);
+		expected.set(spec.id, { role: spec.role, hash: ledger.canonicalLayoutSha256, raw: null });
+	}
+	const owner = fixtureLedger.fixtures.find((item) => item.id === P23B_OWNER_FIXTURE_ID);
+	if (!owner) throw new Error(`Missing ledger entry for ${P23B_OWNER_FIXTURE_ID}`);
+	expected.set(P23B_OWNER_FIXTURE_ID, { role: 'owner-responsiveness', hash: owner.canonicalLayoutSha256, raw: owner.rawPayloadSha256 });
+	if (report.workloads.length !== expected.size) throw new Error(`P23B baseline requires exactly ${expected.size} workloads`);
+	const seen = new Set<string>();
+	for (const workload of report.workloads) {
+		const identity = expected.get(workload.fixtureId);
+		if (!identity || seen.has(workload.fixtureId)) throw new Error(`Unexpected or duplicate P23B workload ${workload.fixtureId}`);
+		seen.add(workload.fixtureId);
+		if (workload.semanticClass !== 5 || workload.role !== identity.role || workload.canonicalLayoutSha256 !== identity.hash || (workload.rawPayloadSha256 ?? null) !== identity.raw) {
+			throw new Error(`P23B workload identity does not match the ledger: ${workload.fixtureId}`);
+		}
+		if (workload.provenance.sessionId !== report.browser.sessionId || workload.provenance.methodVersion !== BENCH_METHOD_VERSION) {
+			throw new Error(`P23B workload provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		if (workload.provenance.warmup !== report.warmup || workload.provenance.samples !== report.samples) {
+			throw new Error(`P23B sampling provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		const { date: _baseDate, ...baseProvenance } = report.browser;
+		const { date: _workloadDate, ...workloadProvenance } = workload.provenance;
+		if (!isDeepStrictEqual(workloadProvenance, baseProvenance)) {
+			throw new Error(`P23B workload environment provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		if (workload.samples.length === 0) throw new Error(`P23B workload has no samples: ${workload.fixtureId}`);
+		for (const sample of workload.samples) {
+			if (sample.unit === 'ms' && (!Number.isFinite(sample.p50) || !Number.isFinite(sample.p95))) {
+				throw new Error(`P23B timing sample lacks p50/p95: ${workload.fixtureId}/${sample.metric}`);
+			}
+		}
+	}
 }

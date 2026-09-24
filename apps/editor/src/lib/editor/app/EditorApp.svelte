@@ -6,6 +6,7 @@
 	import type { Asset } from '$lib/types/assets';
 	import { onMount, setContext, tick, untrack } from 'svelte';
 	import { env } from '$env/dynamic/public';
+	import { dev } from '$app/environment';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { TextureLoader } from 'three';
@@ -37,7 +38,7 @@
 	import type { ProjectDocument } from '$lib/project/project-types';
 	import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 	import { serializeSceneDocument } from '$lib/content/scene-codec';
-	import type { SceneTextureAsset } from '$lib/content/scene';
+	import type { SceneDocument, SceneTextureAsset } from '$lib/content/scene';
 	import { serializeLayoutDocument, serializeWallFirstLayoutDocument } from '$lib/layout/layout-codec';
 	import { hasBlockingLayoutIssues } from '$lib/layout/layout-geometry-validation';
 	import {
@@ -139,16 +140,24 @@
 		loadOwnedProject = false,
 		resumePendingSave = false,
 		projectPersistence = null,
-		surface = 'spatial'
+		surface = 'spatial',
+		initialLayout,
+		initialScene
 	}: {
 		projectId?: string | null;
 		loadOwnedProject?: boolean;
 		resumePendingSave?: boolean;
 		projectPersistence?: ProjectPersistenceConfig | null;
 		surface?: 'spatial' | 'preview' | 'publish';
+		/** Dev-only seed for the existing editor session, used by the PERF route. */
+		initialLayout?: LayoutDocumentWallFirst;
+		/** Separate dev-only Scene seed for the existing guided-camera PERF path. */
+		initialScene?: SceneDocument;
 	} = $props();
 	const configuredProjectPersistence = untrack(() => projectPersistence);
 	const initialProjectId = untrack(() => routeProjectId || 'project:untitled');
+	const seededLayout = untrack(() => dev ? initialLayout : undefined);
+	const seededScene = untrack(() => dev ? initialScene : undefined);
 
 	// the editor boots blank on every load: one canonical empty WALL-FIRST
 	// project (wall-first Layout + world-local Scene) seeds both the scene-only
@@ -156,10 +165,15 @@
 	// Junction/Wall/Room/Opening authoring path is reachable from a new project
 	// without importing JSON. Legacy documents stay loadable through the
 	// compatible decoders.
-	const bootProject = createEmptyWallFirstProject({
+	const emptyBootProject = createEmptyWallFirstProject({
 		id: initialProjectId,
 		name: 'Untitled project'
 	});
+	const bootProject = {
+		...emptyBootProject,
+		...(seededLayout ? { layout: seededLayout } : {}),
+		...(seededScene ? { scene: seededScene } : {})
+	};
 	let projectId = $state<string | null>(untrack(() => routeProjectId));
 	let projectName = $state(bootProject.name);
 	let savedProjectName = $state(bootProject.name);
@@ -232,6 +246,15 @@
 		sessionStatus = 'checking';
 	}
 	const layoutPreview = $state(createEmptyWallFirstLayoutPreviewState());
+	if (seededLayout) {
+		const bundle = derivePreviewBundle(
+			bootProject.id,
+			bootProject.name,
+			seededLayout,
+			bootProject.scene
+		);
+		installLayoutPreviewBundle(layoutPreview, bundle);
+	}
 	const layoutInteraction = $state({ ...createLayoutInteractionState(), viewMode: 'plan' as const });
 	// Construct before the store: the selection activation hook gates its
 	// cross-domain clear through the current Scene Plan authority.

@@ -23,8 +23,9 @@
 	} from './layout-wall-material';
 	import type { CompiledLayoutGeometry } from '$lib/layout/layout-geometry-types';
 import type { IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
-import { sphereRenderScale } from './layout-object-editing';
-import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate';
+	import { sphereRenderScale } from './layout-object-editing';
+	import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate';
+	import { p23bMeasureActiveAdapter } from './p23b-interaction-measure';
 	import {
 		buildWallHighlightMesh,
 		matchOpeningRanges,
@@ -124,14 +125,14 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 	// generation when the active source (`geometry`/`wallMeshesByRoom` or the
 	// transient bundle) changes or on unmount.
 	$effect(() => {
-		const built = p2311Measure('3d-room-adapter', () => {
+		const built = p23bMeasureActiveAdapter(() => p2311Measure('3d-room-adapter', () => {
 			const adapted = new Map<string, AdaptedRoom>();
 			for (const room of activeGeometry.rooms) {
 				const mesh = activeWallMeshes.get(room.roomId);
 				if (mesh) adapted.set(room.roomId, toWallBufferGeometry(mesh, wallMaterialFactory));
 			}
 			return adapted;
-		});
+		}));
 		adaptedRooms = built;
 		return () => {
 			p2311Measure('3d-room-dispose', () => { for (const adapted of built.values()) adapted.dispose(); });
@@ -148,14 +149,14 @@ import type { LayoutGizmoCandidateBundle } from '../gizmo/layout-gizmo-candidate
 		const p2311Enabled = import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__;
 		const flushMark = p2311Enabled ? `p2311:3d-wall-flush-start:${p2311WallFlushSequence++}` : '';
 		if (flushMark) performance.mark(flushMark);
-		const built = p2311Measure('3d-wall-adapter', () => {
+		const built = p23bMeasureActiveAdapter(() => p2311Measure('3d-wall-adapter', () => {
 			const adapted = new Map<string, AdaptedRoom>();
 			for (const wall of activeGeometry.walls ?? []) {
 				const mesh = activeWallMeshesByWall.get(wall.wallId);
 				if (mesh) adapted.set(wall.wallId, toWallBufferGeometry(mesh, wallMaterialFactory));
 			}
 			return adapted;
-		});
+		}));
 		adaptedWalls = built;
 		if (flushMark) {
 			void tick().then(() => {

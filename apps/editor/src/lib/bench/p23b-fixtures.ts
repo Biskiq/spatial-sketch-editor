@@ -51,8 +51,19 @@ export const P23B_MATRIX_SPECS: readonly P23BMatrixSpec[] = (['12-wall', '40-wal
 export const P23B_OWNER_FIXTURE_ID = 'owner-40-curved-v1';
 export const P23B_OWNER_LAYOUT = owner40Payload as unknown as LayoutDocumentWallFirst;
 
+export type P23BCorrectnessCaseId =
+	| 'd12-exact-coincidence-v1'
+	| 'd12-partial-overlap-v1'
+	| 'd12-full-containment-v1'
+	| 'N-2'
+	| 'N-2i'
+	| 'class4-self-intersection-v1'
+	| 'class4-zero-length-wall-v1'
+	| 'class4-open-room-boundary-v1'
+	| 'class4-component-duplicate-junction-v1';
+
 export type P23BCorrectnessSpec = {
-	id: string;
+	id: P23BCorrectnessCaseId;
 	semanticClass: 2 | 3 | 4;
 	role: 'regression' | 'positive' | 'negative';
 	case: string;
@@ -283,7 +294,7 @@ export function buildP23BCorrectnessFixture(spec: P23BCorrectnessSpec): LayoutDo
 		case 'class4-zero-length-wall-v1': return buildZeroLengthFixture();
 		case 'class4-open-room-boundary-v1': return buildOpenRoomBoundaryFixture();
 		case 'class4-component-duplicate-junction-v1': return buildComponentDuplicateJunctionFixture();
-		default: return assertNever(spec);
+		default: return assertNever(spec.id);
 	}
 }
 

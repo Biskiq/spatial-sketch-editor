@@ -69,6 +69,23 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 	if (baseline.methodVersion !== BENCH_METHOD_VERSION) {
 		problems.push(`methodVersion ${baseline.methodVersion} != ${BENCH_METHOD_VERSION}`);
 	}
+	if (!baseline.methodVersionReason?.trim()) problems.push('missing method-version reason');
+	if (baseline.workloads?.length !== 7) problems.push('P23B baseline must contain exactly seven timing workloads');
+	if (!baseline.measurementLimitations?.length) problems.push('P23B baseline is missing measurement limitations');
+	if (!baseline.markNestingNote?.trim()) problems.push('P23B baseline is missing the mark-nesting note');
+	const interactionPaths = [
+		'selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'
+	] as const;
+	const interactionBoundaries = ['input', 'release', 'reactive', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	for (const path of interactionPaths) {
+		if (!(baseline.interactionSampleCounts?.[path]! > 0)) problems.push(`P23B baseline is missing input samples for ${path}`);
+		if (!baseline.interactionProtocol?.[path]?.target || !baseline.interactionProtocol[path]?.snapGrid) {
+			problems.push(`P23B baseline is missing the fixed target/settings for ${path}`);
+		}
+		for (const boundary of interactionBoundaries) {
+			if (!baseline.interactions?.[path]?.[boundary]) problems.push(`P23B baseline is missing ${path}/${boundary}`);
+		}
+	}
 	for (const metric of [...ENFORCED_BUDGET_METRICS, ...ADVISORY_BUDGET_METRICS]) {
 		const budget = baseline.budgets[metric];
 		if (!budget) problems.push(`missing budget for ${metric}`);

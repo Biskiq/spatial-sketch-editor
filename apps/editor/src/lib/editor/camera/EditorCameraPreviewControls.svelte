@@ -2,11 +2,26 @@
 	import { Crosshair, Pause, Play, Scan } from 'lucide-svelte';
 	import type { EditorStore } from '../editor-store.svelte';
 	import { useCameraTimeline } from '../hooks/use-camera-timeline.svelte';
+	import { p23bActivateInteraction, p23bAfterInteraction, p23bMeasureInteraction } from '../layout/p23b-interaction-measure';
 
 	let { store }: { store: EditorStore } = $props();
 	const preview = $derived(store.cameraPreview);
 	// svelte-ignore state_referenced_locally
 	const timelineApi = useCameraTimeline(store);
+
+	function playPreview() {
+		p23bActivateInteraction('guided-3d-navigation');
+		const result = p23bMeasureInteraction('guided-3d-navigation', 'input', () => store.playCameraPreview());
+		p23bAfterInteraction('guided-3d-navigation');
+		return result;
+	}
+
+	function pausePreview() {
+		p23bActivateInteraction('guided-3d-navigation');
+		const result = p23bMeasureInteraction('guided-3d-navigation', 'release', () => store.pauseCameraPreview());
+		p23bAfterInteraction('guided-3d-navigation');
+		return result;
+	}
 </script>
 
 {#if preview}
@@ -34,7 +49,7 @@
 						class="active"
 						aria-label="Pause"
 						title="Pause"
-						onclick={() => store.pauseCameraPreview()}
+						onclick={pausePreview}
 					><Pause size={14} aria-hidden="true" /></button>
 				{:else}
 					<button
@@ -43,7 +58,7 @@
 						aria-label="Play"
 						title="Play"
 						disabled={!timelineApi.canPlay}
-						onclick={() => store.playCameraPreview()}
+						onclick={playPreview}
 					><Play size={14} aria-hidden="true" /></button>
 				{/if}
 			</div>

@@ -199,6 +199,13 @@
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
+	import type { BenchInteractionPath } from '$lib/bench/bench-types';
+	import {
+		p23bActivateInteraction,
+		p23bAfterInteraction,
+		p23bMeasureActiveAdapter,
+		p23bMeasureInteraction
+	} from './p23b-interaction-measure';
 // P23.12 D5 — the Plan's selection feedback asks the shared display-identity
 // layer how an entity reads; it never queries the ledger itself.
 import {
@@ -888,7 +895,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		const input = updateLayoutArchitectureEdit(interaction, target);
 		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
 		restoreArchitectureEditBaseline();
-		const result = p2311Measure('adapter-plan-apply', () =>
+		const result = p23bMeasureActiveAdapter(() => p2311Measure('adapter-plan-apply', () =>
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
 				: gesture.kind === 'wall-move'
@@ -901,7 +908,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 								distance: gesture.bendDistance,
 								point: input
 							})
-						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input));
+						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input)));
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -2853,6 +2860,24 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerDown(event: PointerEvent) {
+		const path: BenchInteractionPath | null =
+			event.button === 1 && interaction.planViewMode === 'layout'
+				? 'plan-pan-zoom'
+				: wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout'
+					? 'wall-authoring'
+					: event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
+						? 'selection'
+						: null;
+		if (!path) {
+			return onPointerDownUnmeasured(event);
+		}
+		p23bActivateInteraction(path);
+		const result = p23bMeasureInteraction(path, 'input', () => onPointerDownUnmeasured(event));
+		p23bAfterInteraction(path);
+		return result;
+	}
+
+	function onPointerDownUnmeasured(event: PointerEvent) {
 		// P23.13 S8 / §6 — "until the next deliberate action": any new press clears
 		// the persisted refusal, so a mark can never sit under a gesture the user
 		// has already moved on to.
@@ -3342,7 +3367,32 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		}
 	}
 
+	function p23bPointerInteractionPath(event: PointerEvent): BenchInteractionPath | null {
+		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
+		const edit = interaction.architectureEdit;
+		if (edit?.pointerId === event.pointerId) {
+			return edit.kind === 'wall-bend' || edit.kind === 'curve-control-move'
+				? 'bend-knot-edit'
+				: 'plan-drag-edit';
+		}
+		if (interiorAnchorPointerId === event.pointerId) return 'bend-knot-edit';
+		if (pointerId === event.pointerId && interaction.roomUnitDrag) return 'plan-drag-edit';
+		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
+			return 'wall-authoring';
+		}
+		return null;
+	}
+
 	function onPointerMove(event: PointerEvent) {
+		const path = p23bPointerInteractionPath(event);
+		if (!path) return onPointerMoveUnmeasured(event);
+		p23bActivateInteraction(path);
+		const result = p23bMeasureInteraction(path, 'input', () => onPointerMoveUnmeasured(event));
+		p23bAfterInteraction(path);
+		return result;
+	}
+
+	function onPointerMoveUnmeasured(event: PointerEvent) {
 		// P23.9 segment-first — pending segment preview follows the snapped
 		// cursor once a run has started. `pointerleave` clears only the
 		// cursor/snap preview, never the run (click-click needs SVG exit).
@@ -3488,7 +3538,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				start = `p2311:pointer-start:${event.timeStamp}`;
 				performance.mark(start);
 			}
-			p2311Measure(isBend ? 'pointermove-bend' : 'pointermove-rigid', () => previewArchitectureEdit(event));
+			const path = isBend ? 'bend-knot-edit' : 'plan-drag-edit';
+			p23bMeasureInteraction(path, 'reactive', () =>
+				p2311Measure(isBend ? 'pointermove-bend' : 'pointermove-rigid', () => previewArchitectureEdit(event))
+			);
 			if (start) {
 				void tick().then(() => {
 					performance.measure('p2311:svg-flush-latency', start);
@@ -3602,6 +3655,22 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onPointerUp(event: PointerEvent) {
+		const path = p23bPointerInteractionPath(event) ??
+			(event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
+				? 'selection'
+				: null);
+		// Wall-chain acceptance is a click event; its `release` mark wraps the
+		// canonical commit below, so the preceding pointerup housekeeping is not
+		// counted as a second authoring release sample.
+		if (path === 'wall-authoring') return onPointerUpUnmeasured(event);
+		if (!path) return onPointerUpUnmeasured(event);
+		p23bActivateInteraction(path);
+		const result = p23bMeasureInteraction(path, 'release', () => onPointerUpUnmeasured(event));
+		p23bAfterInteraction(path);
+		return result;
+	}
+
+	function onPointerUpUnmeasured(event: PointerEvent) {
 		planPointerButtonDown = false;
 		// P23.2 clear rule — a released pointer ends feedback; commits consume
 		// the already-resolved candidate positions captured during the drag.
@@ -3705,7 +3774,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (interaction.architectureEdit?.pointerId === event.pointerId) {
 			// Only the pointer that opened the gesture may commit it: another
 			// contact's release must never finalize someone else's candidate.
-			commitArchitectureEditGesture(event);
+			const edit = interaction.architectureEdit;
+			const path = edit?.kind === 'wall-bend' || edit?.kind === 'curve-control-move'
+				? 'bend-knot-edit'
+				: 'plan-drag-edit';
+			p23bMeasureInteraction(path, 'reactive', () => commitArchitectureEditGesture(event));
 			return;
 		}
 		if (pointerId !== event.pointerId) return;
@@ -3939,6 +4012,16 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onClick(event: MouseEvent) {
+		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
+			p23bActivateInteraction('wall-authoring');
+			const result = p23bMeasureInteraction('wall-authoring', 'release', () => onClickUnmeasured(event));
+			p23bAfterInteraction('wall-authoring');
+			return result;
+		}
+		return onClickUnmeasured(event);
+	}
+
+	function onClickUnmeasured(event: MouseEvent) {
 		if (suppressNextClick) {
 			suppressNextClick = false;
 			return;
@@ -5220,6 +5303,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	}
 
 	function onWheel(event: WheelEvent) {
+		p23bActivateInteraction('plan-pan-zoom');
+		const result = p23bMeasureInteraction('plan-pan-zoom', 'input', () => onWheelUnmeasured(event));
+		p23bAfterInteraction('plan-pan-zoom');
+		return result;
+	}
+
+	function onWheelUnmeasured(event: WheelEvent) {
 		const screen = screenPoint(event);
 		if (!screen) return;
 		event.preventDefault();

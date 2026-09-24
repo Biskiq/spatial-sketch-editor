@@ -83,7 +83,9 @@ describe('P23B durable fixture contracts', () => {
 		const record = {
 			id: P23B_OWNER_FIXTURE_ID,
 			rawBytes: raw.byteLength,
-			rawSha256: sha256(raw),
+			// Hash the decoded UTF-8 text; the fixture is UTF-8 JSON and the decode
+			// round-trip is separately pinned by the exact byte length assertion.
+			rawSha256: sha256(rawText),
 			canonicalSha256: sha256(canonical),
 			byteEqualToSource: canonical === rawText,
 			shape: ownerShape,
