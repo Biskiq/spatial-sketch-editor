@@ -117,7 +117,8 @@ child plans and execution status →
   p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
     (SHIPPED, SEQUENCE step 9; path-preserving closed-plan stub; QA/acceptance stub in its qa/ directory)
   p23b.3a-independent-placement-topology-policy/qa/2026-09-24-P23B.3a-qa-gate-record.md
-    (path-preserving closed QA/acceptance stub; recovery tag: closed/p23b.3a)
+    (path-preserving closed QA/acceptance stub; recovery tag closed/p23b.3a is local only, not pushed;
+    P1 merge method is a merge commit)
   p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md   (prerequisite)
   p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
   p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md

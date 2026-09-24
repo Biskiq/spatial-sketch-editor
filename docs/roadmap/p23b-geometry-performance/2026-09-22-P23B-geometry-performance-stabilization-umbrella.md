@@ -98,10 +98,10 @@ RULED BY:    the owner, 2026-09-22 (decision record §2.10, §4.2)
          are permitted; accidental duplicates WITHIN one connected component stay invalid; only an
          explicit join adopts an id; NO new representation
   · D-10 Join/Connect stays at PLANNING level — no new UI, mode or command in this slice
-  · D-11 ARRANGEMENT 1 — the slice lands BEFORE the durable P23B.0 measurement, in this branch and PR
+  · D-11 ARRANGEMENT 1 — the slice landed BEFORE the durable P23B.0 measurement, in this branch and PR
   · D-12 the slice OWNS the general Wall/Junction connectivity proof and reconciliation identity
          preservation; BOTH pass before its acceptance
-  · D-8  the misleading `layout-duplicate.ts` comment correction lands HERE, alongside the behaviour
+  · D-8  the misleading `layout-duplicate.ts` comment correction landed HERE, alongside the behaviour
          change it describes
 
 WHAT THE AMENDMENT BOUNDS (so the exception cannot widen)
