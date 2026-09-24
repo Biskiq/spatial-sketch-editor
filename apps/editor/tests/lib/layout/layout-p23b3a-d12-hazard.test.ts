@@ -259,15 +259,20 @@ function ownedObjectRoomId(document: LayoutDocumentWallFirst, objectId: string) 
 }
 
 describe('P23B.3a S3 — the D-12 hazard, measured against the current reconciliation', () => {
-	it('records the pre-state verdicts, re-based at S4 onto the component-scoped subject', () => {
+	it('records the pre-state verdicts, re-based at S4/S5 onto the component-scoped subject', () => {
 		// The codec accepts all three: topology is explicitly outside its scope.
 		for (const document of [EXACT_COINCIDENCE, PARTIAL_OVERLAP, FULL_CONTAINMENT]) {
 			expect(validateWallFirstLayoutDocument(document).success).toBe(true);
 		}
-		// 1. EXACT COINCIDENCE — still refused, and by the DOCUMENT-WIDE coincidence
-		//    rule first (the OBSTACLE S5 re-scopes), not by wall geometry. S4 did not
-		//    touch this half: the coincidence rule is S5's subject.
-		expect(validateWallFirstTopology(EXACT_COINCIDENCE)?.code).toBe('duplicate_junction_point');
+		// 1. EXACT COINCIDENCE — S3 RECORDED 'duplicate_junction_point' HERE, refused by
+		//    the then-DOCUMENT-WIDE coincidence rule. THAT HALF FLIPPED AT S5, which
+		//    scoped the rule to the connected component (D-9): the two enclosures' Junctions
+		//    share no component, so identical coordinates are permitted geometry and the
+		//    document is ADMITTED. The pre-policy verdict survives as the recorded history
+		//    above rather than as an assertion (AM-1). The containment direction — coincident
+		//    nodes INSIDE one component stay invalid — is pinned by the S5 oracle, and the
+		//    same scoping is what keeps this hazard's own operations admissible.
+		expect(validateWallFirstTopology(EXACT_COINCIDENCE)).toBeUndefined();
 		// 2. PARTIAL OVERLAP — S3 RECORDED 'unsupported_wall_topology' HERE, refused by
 		//    the then-document-global wall-geometry rule. THAT HALF FLIPPED AT S4, which
 		//    scoped the gate's subject to the connected component: the two enclosures
@@ -277,7 +282,7 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		expect(validateWallFirstTopology(PARTIAL_OVERLAP)).toBeUndefined();
 		// 3. FULL CONTAINMENT — ALREADY ADMITTED before the policy: the contained
 		//    enclosure's Walls intersect nothing and there is no coincident Junction to
-		//    catch. Unchanged by S4.
+		//    catch. Unchanged by S4 and by S5's coincidence scoping.
 		expect(validateWallFirstTopology(FULL_CONTAINMENT)).toBeUndefined();
 	});
 

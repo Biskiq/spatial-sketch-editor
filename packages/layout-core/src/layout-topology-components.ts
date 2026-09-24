@@ -2,10 +2,13 @@
  * `layout-topology-components.ts` — the GENERAL Wall/Junction connectivity test
  * (P23B.3a M-3a-1, decision record §2.11.3 GAP 1).
  *
- * Connectivity is **explicit graph identity**: two Walls belong to the same
- * component when they reference the same authored Junction id. Coordinates are
- * never consulted, so two Walls whose endpoints sit at exactly the same point
- * are INDEPENDENT unless an explicit Junction id joins them (the D-9 rule).
+ * Connectivity is **explicit graph identity**, and the rule is the TRANSITIVE
+ * CLOSURE of it: two Walls are in one component when a chain of Walls joins them
+ * through shared authored Junction ids. Sharing a Junction id directly is one such
+ * edge, not the rule — two Walls with no id in common can still be one component
+ * through a third Wall. Coordinates are never consulted, so two Walls whose
+ * endpoints sit at exactly the same point are INDEPENDENT unless explicit Junction
+ * identity joins them (the D-9 rule).
  *
  * Why this exists beside `connectedRoomIds`: that helper is **Room-only** — it
  * walks Room boundaries, so a standalone Wall, a partition stub or an unenclosed

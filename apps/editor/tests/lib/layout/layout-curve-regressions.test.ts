@@ -8,7 +8,9 @@
  *   identity-preserving insertion) survive byte-identically;
  * - **curved-crossing gate** — a new straight Wall that bows across an existing
  *   curved Wall whose endpoint chord is clear rejects through the canonical
- *   sampled authority, with no partial mutation;
+ *   sampled authority, with no partial mutation — SINCE P23B.3a S5 that holds for
+ *   the COMPONENT the two Walls share, while an INDEPENDENT bow crossing is
+ *   permitted geometry that adopts and splits nothing;
  * - **visible Add Bend Point** — a straight Wall converts and inserts in one
  *   atomic candidate, geometry unchanged.
  *
@@ -38,12 +40,14 @@ import {
 	proposeWallCurveShape,
 	planWallSplit,
 	sampleSegment,
+	validateWallFirstTopology,
 	wallCurveKnotArcDistance,
 	wallCenterlineSegment,
 	wallCubicChain,
 	wallCurveChainLength,
 	wallOffsetClearanceFailure,
 	wallFirstWallSpan,
+	wallsShareTopologyComponent,
 	legJoinsByWall,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
@@ -593,13 +597,18 @@ function compiledOpeningCenter(document: LayoutDocumentWallFirst, openingId: str
 	return [...opening.center.point] as LayoutVec2;
 }
 
-describe('P23.11 fix 3 — authoring rejects a crossing against a curved Wall', () => {
-	it('rejects a straight Wall that crosses the bow while the chord stays clear', () => {
+describe('P23.11 fix 3 — authoring crosses a curved Wall only where the component gate allows it', () => {
+	it('admits a straight Wall that crosses an INDEPENDENT bow while the chord stays clear (P23B.3a S5)', () => {
 		const baseline = curvedWallDocument();
 		const snapshot = JSON.stringify(baseline);
 		// The curved Wall's endpoint chord is z = 0 from x = 0…6. This straight
 		// Wall runs at z = 2, so the chord classifier sees nothing — but it
-		// crosses the bowed centerline twice.
+		// crosses the bowed centerline twice. PRE-POLICY that was
+		// `self_intersecting_chain`, because the chain gate compared EVERY Wall pair in
+		// the document; S5 gave the gate the connected component as its subject (chord
+		// loop and sampled call alike), and this Wall shares no Junction with `curved`,
+		// so the crossing is permitted geometry: nothing is adopted, `curved` is not
+		// split, and the canonical gate accepts what the planner built (R-3).
 		const plan = planWallChain({
 			baseline,
 			points: [
@@ -609,12 +618,39 @@ describe('P23.11 fix 3 — authoring rejects a crossing against a curved Wall', 
 			close: false,
 			role: 'partition'
 		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		const authoredId = plan.createdWallIds[0]!;
+		expect(plan.splitWallIds).toEqual([]);
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual(['curved', authoredId]);
+		expect(wallsShareTopologyComponent(plan.document, 'curved', authoredId)).toBe(false);
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+		// No partial Wall/Junction/Room mutation.
+		expect(JSON.stringify(baseline)).toBe(snapshot);
+	});
+
+	it('still refuses the SAME crossing when the chain ATTACHES to the curved Wall', () => {
+		// The containment half (R-1): the authored chain starts at the curved Wall's own
+		// Junction `c-b`, so the two Walls are ONE component and the crossing is the
+		// unsupported relation this gate exists for — same code, same diagnostic and the
+		// same atomicity as before S5. The gate's subject moved; its predicate did not.
+		const baseline = curvedWallDocument();
+		const snapshot = JSON.stringify(baseline);
+		const plan = planWallChain({
+			baseline,
+			points: [
+				[6, 0],
+				[2, 4]
+			],
+			close: false,
+			role: 'partition'
+		});
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
 		// Rejected by the canonical topology gate, not a bespoke crossing check.
 		expect(plan.rejection.code).toBe('self_intersecting_chain');
 		expect(plan.rejection.wallIds).toContain('curved');
-		// No partial Wall/Junction/Room mutation.
+		expect(plan.rejection.message).toContain('crossing away from their shared Junction');
 		expect(JSON.stringify(baseline)).toBe(snapshot);
 	});
 

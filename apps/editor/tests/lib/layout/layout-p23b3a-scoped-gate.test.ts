@@ -1,12 +1,29 @@
 /**
- * P23B.3a S4 — the component-scoped SUBJECT, and its own oracle.
+ * P23B.3a S4/S5 — the component-scoped SUBJECT, and its own oracle.
  *
  * S4 re-scoped the subject of the canonical gate (`validateWallFirstTopology`,
  * and with it the sampled crossing authority `detectWallCurveTopologyCrossings`)
- * from "all Walls in the document" to "Walls in the same connected component".
- * This file is that step's evidence, and it asserts the three obligations the
- * slice's acceptance criteria name for a re-scope (OR-3a, OR-3b, OR-4a) rather
- * than restating the cases the S1 reference register already owns.
+ * from "all Walls in the document" to "Walls in the connected component". S5
+ * COMPLETED the authority, so no gate is left on the pre-policy subject:
+ *
+ * ```text
+ * S4  the canonical pairwise and sampled checks; the separate CHAIN gate
+ *     (`validateChainTopology`) deliberately kept its document subject behind a
+ *     transitional `{ subject: 'document' }` option, so for one step the two gates
+ *     could still disagree about the same pair (risk R-3);
+ * S5  the chain gate is scoped the same way — its chord loop AND its sampled call —
+ *     and that transitional option is REMOVED from production, so there is no way
+ *     left to ask for the pre-policy subject; the COINCIDENCE rule
+ *     (`duplicate_junction_point`) is scoped too (D-9), which is what makes
+ *     identical endpoint coordinates between INDEPENDENT components representable
+ *     and valid.
+ * ```
+ *
+ * This file asserts the three obligations the slice's acceptance criteria name for
+ * a re-scope (OR-3a, OR-3b, OR-4a), the S5 chain-gate parity, and the D-9
+ * coincidence proof (independent coincidence admitted, accidental duplicates
+ * inside ONE component still refused) — rather than restating the cases the S1
+ * reference register already owns (T8's flip lives there).
  *
  * ```text
  * OR-3a  SCOPED SUBJECT ≡ the same verdict the pre-policy gate produced for pairs
@@ -24,25 +41,20 @@
  *        itself is a pure read.
  * ```
  *
- * TWO BOUNDARIES THIS FILE PINS SO NEITHER IS MISREAD AS PART OF S4:
- *
- * ```text
- * · the COINCIDENCE rule (`duplicate_junction_point`) is still document-global
- *   here. D-9's scoping is P23B.3a S5's subject, so two exactly-coincident
- *   independent structures are STILL refused today, and this file asserts that
- *   rather than pretending S4 delivered it;
- * · the CHAIN gate (`validateChainTopology`) still examines the whole document.
- *   Its re-scope is S5's, which is why `detectWallCurveTopologyCrossings` keeps an
- *   explicit `{ subject: 'document' }` form for that caller and for the parity
- *   assertion below.
- * ```
+ * WHAT IS *NOT* PART OF THIS RE-SCOPE is pinned in the same place: the INTENT
+ * guards and authoring behaviour. `planWallChain` still adopts a Junction and still
+ * nodes a crossing it can node — withdrawing that from INDEPENDENT placement is the
+ * authoring-intent split (S6, T3 → F3), so the canonical gate's new subject alone
+ * never decides an authoring verdict here.
  */
 import { describe, expect, it } from 'vitest';
 
 import {
 	deriveChainSpans,
 	detectWallCurveTopologyCrossings,
+	junctionsShareTopologyComponent,
 	planExactJunctionMove,
+	planWallChain,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	validateWallFirstTopology,
 	wallCubicChain,
@@ -341,27 +353,25 @@ function stubAcrossRoomBoundary(attached: boolean): LayoutDocumentWallFirst {
 
 // ---------------------------------------------------------------------------
 
-describe('P23B.3a S4 — the sampled authority’s subject', () => {
-	it('defaults to the connected component, and keeps the document subject explicitly for the chain gate', () => {
-		// The independent pair is skipped by the DEFAULT subject...
+describe('P23B.3a S4/S5 — the sampled authority has exactly ONE subject', () => {
+	it('defaults to the connected component, with no pre-policy escape left for any caller', () => {
+		// The independent pair is skipped: their crossing is permitted geometry…
 		expect(
 			detectWallCurveTopologyCrossings(
 				INDEPENDENT_CURVE_CROSSING,
 				segmentsOf(INDEPENDENT_CURVE_CROSSING)
 			)
 		).toBeUndefined();
-		// ...and the crossing it hides is still there for the caller that asks for the
-		// pre-policy subject — which is exactly the Wall-chain gate until S5 re-scopes it.
-		expect(
-			detectWallCurveTopologyCrossings(
-				INDEPENDENT_CURVE_CROSSING,
-				segmentsOf(INDEPENDENT_CURVE_CROSSING),
-				{ subject: 'document' }
-			)
-		).toEqual({ kind: 'pair', wallIds: ['wall-up', 'wall-down'] });
+		// …and the transitional `{ subject: 'document' }` form S4 kept for the ONE
+		// remaining document-subject caller (the chain gate) is GONE. The two-argument
+		// call above is the entire public signature now, so no caller can make this gate
+		// answer for a pair the shipped policy permits — which is the whole point of
+		// scoping the chain gate in the same commit (R-3). The chain path's own verdict is
+		// asserted through its planner in the S5 block below, and T8's flip lives in the
+		// reference register.
 
-		// A pair INSIDE one component is reported under BOTH subjects: the component
-		// subject contracts the examined set and nothing else (INV-2).
+		// A pair INSIDE one component is still reported: the component subject contracts
+		// the examined set and nothing else (INV-2).
 		const connected = documentOf({
 			junctions: [
 				['c-a', 0, 0],
@@ -380,17 +390,11 @@ describe('P23B.3a S4 — the sampled authority’s subject', () => {
 			]
 		});
 		expect(wallsShareTopologyComponent(connected, 'c-straight', 'c-bowed')).toBe(true);
-		const expected = {
+		expect(detectWallCurveTopologyCrossings(connected, segmentsOf(connected))).toEqual({
 			kind: 'pair',
 			wallIds: ['c-straight', 'c-bowed'],
 			sharedJunctionId: 'c-m'
-		};
-		expect(detectWallCurveTopologyCrossings(connected, segmentsOf(connected))).toEqual(expected);
-		expect(
-			detectWallCurveTopologyCrossings(connected, segmentsOf(connected), {
-				subject: 'document'
-			})
-		).toEqual(expected);
+		});
 		const issue = validateWallFirstTopology(connected);
 		expect(issue?.code).toBe('unsupported_wall_topology');
 		expect(issue?.targetId).toBe('c-bowed');
@@ -554,11 +558,86 @@ describe('P23B.3a S4 / OR-3b — permitted overlap BETWEEN groups, preserved fai
 		expect(selfIssue?.message).toContain('intersects itself');
 	});
 
-	it('leaves the COINCIDENCE rule alone — two coincident independent structures are still refused (S5 owns that)', () => {
-		// The boundary of S4, asserted so it cannot be mistaken for delivered policy:
-		// D-9's component-scoped coincidence is P23B.3a S5's subject. Two enclosures at
-		// exactly the same coordinates overlap geometrically AND carry coincident
-		// Junctions, and the document-global coincidence rule still refuses them.
+});
+
+describe('P23B.3a S5 / R-3 — the WALL-CHAIN gate takes the SAME subject in both halves', () => {
+	it('chord half — an INDEPENDENT collinear pair no longer refuses an unrelated authored chain', () => {
+		// `planWallChain` is the chain gate's production caller, so its verdict is the
+		// evidence. The pre-policy gate examined EVERY pair of the candidate document, so
+		// the two independent Walls' collinear overlap (wall-left 0…6, wall-right 3…9 at
+		// z = 0) refused the whole command even though nothing in the authored chain
+		// touches them — the pre-policy refusal this case records. S5 scopes the chord loop
+		// exactly as S4 scoped the canonical one: the pair spans two components, so it is
+		// skipped and the command is admitted.
+		const baseline = INDEPENDENT_COLLINEAR_OVERLAP;
+		const plan = planWallChain({
+			baseline,
+			points: [
+				[-5, 10],
+				[-1, 10]
+			],
+			close: false,
+			role: 'partition'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.createdWallIds).toHaveLength(1);
+		// The authored chain is a THIRD component: it adopted nothing, split nothing and
+		// joined nothing — the gate skip is a verdict change, not a connectivity change.
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
+			'wall-left',
+			'wall-right',
+			plan.createdWallIds[0]
+		]);
+		expect(wallsShareTopologyComponent(plan.document, 'wall-left', 'wall-right')).toBe(false);
+		for (const wallId of ['wall-left', 'wall-right']) {
+			expect(
+				wallsShareTopologyComponent(plan.document, wallId, plan.createdWallIds[0]!)
+			).toBe(false);
+		}
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+	});
+
+	it('sampled half — an independent crossing is admitted, and the result is the document the canonical gate accepts', () => {
+		// The same parity for the sampled authority: the two INDEPENDENT curved Walls
+		// cross, and the			authored straight Wall crosses both bows while its chords stay
+		// clear. Under the pre-policy subject this was `self_intersecting_chain`; S5 gives
+		// the chain gate the canonical subject, so the same authoring command succeeds.
+		const plan = planWallChain({
+			baseline: INDEPENDENT_CURVE_CROSSING,
+			points: [
+				[-1, 3],
+				[11, 3]
+			],
+			close: false,
+			role: 'partition'
+		});
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.createdWallIds).toHaveLength(1);
+		const authored = plan.document.walls.find((wall) => wall.id === plan.createdWallIds[0])!;
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
+			'wall-up',
+			'wall-down',
+			authored.id
+		]);
+		// The crossing is visual only: no shared Junction, no split (the two curved Walls
+		// keep their own endpoints), and the canonical gate agrees with the chain gate
+		// about the document the planner produced — the two gates can no longer disagree.
+		for (const wallId of ['wall-up', 'wall-down']) {
+			expect(wallsShareTopologyComponent(plan.document, wallId, authored.id)).toBe(false);
+		}
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+	});
+});
+
+describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => {
+	it('admits two INDEPENDENT structures at identical coordinates, and joins nothing', () => {
+		// The pre-policy verdict here was `duplicate_junction_point`: the rule compared
+		// EVERY Junction pair in the document, so equal coordinates alone were refused.
+		// S5 scopes it the same way S4 scoped the intersection checks — a coincident node
+		// is an accident only where the two nodes describe ONE graph — so the document is
+		// ADMITTED, exactly like the overlapping pairs OR-3b permits.
 		const near = enclosure('p', 0, 0, 6, 4);
 		const far = enclosure('q', 0, 0, 6, 4);
 		const coincident = documentOf({
@@ -566,8 +645,67 @@ describe('P23B.3a S4 / OR-3b — permitted overlap BETWEEN groups, preserved fai
 			walls: [...near.walls, ...far.walls],
 			rooms: [near.room, far.room]
 		});
+		// The coordinates really are identical — the permission is NOT "the fixture drifted".
+		const pointOf = (id: string) => coincident.junctions.find((junction) => junction.id === id)!.point;
+		expect(pointOf('p-a')).toEqual(pointOf('q-a'));
+		expect(pointOf('p-c')).toEqual(pointOf('q-c'));
+		expect(junctionsShareTopologyComponent(coincident, 'p-a', 'q-a')).toBe(false);
 		expect(wallsShareTopologyComponent(coincident, 'p-a1', 'q-a1')).toBe(false);
-		expect(validateWallFirstTopology(coincident)?.code).toBe('duplicate_junction_point');
+		expect(validateWallFirstTopology(coincident)).toBeUndefined();
+		// No implicit join, merge or repair: identity is exactly what was authored.
+		expect(coincident.junctions).toHaveLength(8);
+		expect(coincident.walls).toHaveLength(8);
+		expect(coincident.rooms.map((room) => room.id)).toEqual(['room-p', 'room-q']);
+	});
+
+	it('still refuses coincident Junctions INSIDE one component — the accidental duplicate', () => {
+		// The containment half of D-9, on the same shape: a second Wall attached to the
+		// FIRST structure's own Junction `p-a` whose far end lands exactly on `p-b`. Both
+		// nodes are in ONE component, so the coincidence is the accidental duplicate the
+		// rule exists for and stays invalid — code, message and target unchanged (INV-2).
+		const near = enclosure('p', 0, 0, 6, 4);
+		const folded = documentOf({
+			junctions: [...near.junctions, ['p-dup', 6, 0]],
+			walls: [...near.walls, { id: 'p-fold', start: 'p-a', end: 'p-dup', role: 'partition' }],
+			rooms: [near.room]
+		});
+		expect(junctionsShareTopologyComponent(folded, 'p-b', 'p-dup')).toBe(true);
+		const issue = validateWallFirstTopology(folded);
+		expect(issue?.code).toBe('duplicate_junction_point');
+		expect(issue?.targetId).toBe('p-dup');
+		expect(issue?.message).toContain("Junction 'p-dup' duplicates the point of 'p-b'");
+	});
+
+	it('keeps the explicit UNATTACHED-JUNCTION rule in both directions', () => {
+		// A Junction no Wall references carries the single `UNATTACHED_JUNCTION_COMPONENT`
+		// label, so two coincident dangling Junctions are one "component" for this rule and
+		// stay INVALID — the check is kept, not silently dropped for the case it cannot
+		// classify. (The dangling Junctions are at [40, 40], nowhere near the enclosure.)
+		const near = enclosure('p', 0, 0, 6, 4);
+		const danglingPair = documentOf({
+			junctions: [
+				...near.junctions,
+				['dangling-a', 40, 40],
+				['dangling-b', 40, 40]
+			],
+			walls: [...near.walls],
+			rooms: [near.room]
+		});
+		expect(junctionsShareTopologyComponent(danglingPair, 'dangling-a', 'dangling-b')).toBe(true);
+		const issue = validateWallFirstTopology(danglingPair);
+		expect(issue?.code).toBe('duplicate_junction_point');
+		expect(issue?.targetId).toBe('dangling-b');
+
+		// The other direction is explicit and intended (D-9): an unattached Junction is
+		// never in a Wall component, so its coincidence with a Wall's Junction is the
+		// permitted case above — the dangling node is NOT a second Junction at `p-a`.
+		const danglingOnWall = documentOf({
+			junctions: [...near.junctions, ['dangling-c', 0, 0]],
+			walls: [...near.walls],
+			rooms: [near.room]
+		});
+		expect(junctionsShareTopologyComponent(danglingOnWall, 'dangling-c', 'p-a')).toBe(false);
+		expect(validateWallFirstTopology(danglingOnWall)).toBeUndefined();
 	});
 });
 

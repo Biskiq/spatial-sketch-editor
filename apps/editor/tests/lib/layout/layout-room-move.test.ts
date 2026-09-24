@@ -26,7 +26,10 @@ import {
 	type LayoutWallOpening
 } from '$lib/layout/layout-wall-first-types';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
-import { wallsShareTopologyComponent } from '@portfolio/layout-core';
+import {
+	junctionsShareTopologyComponent,
+	wallsShareTopologyComponent
+} from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;
@@ -703,12 +706,39 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 });
 
 describe('P23.6a — destination topology is the existing canonical gate', () => {
-	it('rejects a destination that lands a Junction on an existing Junction point', () => {
+	it('permits a destination that lands a Junction on an INDEPENDENT Junction point, and joins nothing (P23B.3a S5 / D-9)', () => {
 		const document = isolatedRoomDocument();
-		// [20, 0] puts j-a exactly on j-x: duplicate Junction point, never a merge.
-		const rejected = rejection(planWallFirstRoomMove(document, 'room-1', [20, 0]));
-		expect(['topology_invalid', 'opening_set_invalid']).toContain(rejected.code);
-		expect(planWallFirstRoomMove(document, 'room-1', [20, 0]).kind).toBe('rejected');
+		// [20, 0] puts j-a exactly on j-x and j-d exactly on j-y, with wall-d collinear on
+		// wall-rl. The PRE-POLICY verdict here was `topology_invalid`
+		// (`duplicate_junction_point`): the coincidence rule compared EVERY Junction pair
+		// in the document, so equal coordinates alone were refused. P23B.3a S5 scopes that
+		// rule the same way S4 scoped the intersection gates — a coincident node is an
+		// accident only where the two nodes describe ONE graph — so identical coordinates
+		// between independent structures are permitted geometry, exactly like the overlap
+		// case below, and NO implicit join is created. The accidental-duplicate direction
+		// (both nodes in one component) is pinned by the S5 oracle.
+		const plan = planWallFirstRoomMove(document, 'room-1', [20, 0]);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.movedRoomIds).toEqual(['room-1']);
+		expect(plan.changedJunctionIds).toEqual(['j-a', 'j-b', 'j-c', 'j-d']);
+		// The coincidence is real, and it is NOT connectivity.
+		const pointOf = (candidate: LayoutDocumentWallFirst, junctionId: string) =>
+			candidate.junctions.find((junction) => junction.id === junctionId)?.point;
+		expect(pointOf(plan.document, 'j-a')).toEqual([20, 0]);
+		expect(pointOf(plan.document, 'j-x')).toEqual([20, 0]);
+		expect(junctionsShareTopologyComponent(plan.document, 'j-a', 'j-x')).toBe(false);
+		expect(junctionsShareTopologyComponent(plan.document, 'j-d', 'j-y')).toBe(false);
+		expect(wallsShareTopologyComponent(plan.document, 'wall-d', 'wall-rl')).toBe(false);
+		// Nothing was added, merged or repaired: same Junctions, same Walls, no adopt,
+		// no split.
+		expect(plan.document.junctions.map((junction) => junction.id)).toEqual(
+			document.junctions.map((junction) => junction.id)
+		);
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual(
+			document.walls.map((wall) => wall.id)
+		);
+		expect(pointOf(plan.document, 'j-y')).toEqual([20, 4]);
 	});
 
 	it('permits a destination that overlaps an UNRELATED Wall, and does not join it (P23B.3a S4 / F2)', () => {

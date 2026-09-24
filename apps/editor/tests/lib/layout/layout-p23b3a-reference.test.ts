@@ -1,6 +1,6 @@
 /**
  * P23B.3a S1 — PRE-POLICY REFERENCE FREEZE (the dependency map's
- * REFERENCE-FIRST ORACLE RULE). S4 has since FLIPPED four of its rows.
+ * REFERENCE-FIRST ORACLE RULE). S4 and S5 have since FLIPPED rows.
  *
  * This file pins the verdicts the SHIPPED gates produce for the decision
  * record §6 acceptance cases (T1–T13) and the RT-1 regression cases (R-a…R-d).
@@ -18,15 +18,19 @@
  *                                   chain planner's adoption (S6) own their flip, so
  *                                   they keep asserting the verdict the shipped code
  *                                   produces today.
- * ASSERTED HERE, NEVER FLIPS        T6–T13, R-b, R-d — including T8's chain-authoring
- *                                   observation, whose owning step is S5: S4 re-scoped
- *                                   the CANONICAL gate only, and the chain gate keeps
- *                                   its document subject until S5 re-scopes it.
+ * ASSERTED HERE, NEVER FLIPS        T6 · T7 · T9–T13 · R-b · R-d — plus T8's PERMANENT
+ *                                   half (a SAME-COMPONENT collinear overlap stays
+ *                                   refused atomically), which is asserted in the very
+ *                                   test that now also carries its S5 successor.
  * FLIPPED AT S4                     T2 · T4 · T5 · R-a · R-c — their S1 pre-policy
  *                                   expectations are RETIRED and their successors
  *                                   (F2 · F4 · F5) are asserted in the S4 suite below.
  *                                   The retired verdicts survive here as RECORDED
  *                                   history (`pins`), never as active assertions.
+ * FLIPPED AT S5                     T8's chain-authoring observation — the chain gate
+ *                                   was the last document-subject gate, so S5 admits the
+ *                                   INDEPENDENT crossing and asserts that the authored
+ *                                   Wall joins nothing (F8's scoped negative half, AM-3).
  * ```
  *
  * Nothing in this file is a target: it is a record of what the shipped
@@ -82,7 +86,7 @@ type ReferenceRow = {
 	 * Its presence means the S1 expectation is retired: it is kept in `pins` as
 	 * recorded history and is no longer asserted anywhere (AM-1).
 	 */
-	landedAt?: 'S4';
+	landedAt?: 'S4' | 'S5';
 	/** The post-policy counterpart, when the case flips. */
 	post?: string;
 	/** `this file` asserts it executably; an existing suite owns the rest. */
@@ -145,8 +149,16 @@ const REFERENCE_ROWS: readonly ReferenceRow[] = [
 	},
 	{
 		id: 'T8',
-		pins: 'a genuinely invalid operation is REFUSED ATOMICALLY, inside one connected group; the chain path\u2019s refusal of an INDEPENDENT crossing is a separate pre-policy OBSERVATION whose flip S5 owns \u2014 S4 re-scoped the canonical gate only, so it still holds here',
-		flipStep: 'never',
+		// TWO verdicts travel in this case, and only one of them moved. The atomic
+		// refusal of a SAME-COMPONENT collinear overlap is permanent and is asserted in
+		// the same test below. What flipped at S5 is the chain path's refusal of an
+		// INDEPENDENT crossing: the chain gate (`validateChainTopology`, its sampled call
+		// included) was the LAST document-subject gate, and S5 scoped it, so the crossing
+		// is now admitted and nothing is joined (F8's scoped negative half).
+		pins: 'a genuinely invalid operation is REFUSED ATOMICALLY inside one connected group (permanent), while the chain path REFUSED an INDEPENDENT crossing (RETIRED at S5 \u2014 the chain gate takes the component subject now, so the crossing is admitted and the authored Wall joins nothing)',
+		flipStep: 'S5',
+		landedAt: 'S5',
+		post: 'F8 (scoped negative half \u2014 AM-3; the deliberate-join half is a contract with no test)',
 		owner: 'this file'
 	},
 	{
@@ -598,9 +610,11 @@ describe('P23B.3a S1 — the reference register', () => {
 		// produces, and never required green beside its successor. The S1 verdict
 		// itself stays in `pins` as the historical half of the differential.
 		const landed = REFERENCE_ROWS.filter((row) => row.landedAt !== undefined);
-		expect(landed.map((row) => row.id)).toEqual(['T2', 'T4', 'T5', 'R-a', 'R-c']);
+		expect(landed.map((row) => row.id)).toEqual(['T2', 'T4', 'T5', 'T8', 'R-a', 'R-c']);
 		for (const row of landed) {
-			expect(row.flipStep).toBe('S4');
+			// The step that RETIRED the S1 expectation is the step the row names, so a
+			// later step can never quietly inherit an earlier step's flip.
+			expect(row.landedAt).toBe(row.flipStep);
 			expect(row.post).toBeDefined();
 			// The retired verdict is still described, not deleted: the words the S1
 			// freeze used for the pre-policy behaviour survive in `pins`.
@@ -627,9 +641,11 @@ describe('P23B.3a S1 — reference verdicts whose flip step has NOT landed yet (
 	});
 
 	it('T3 — two INDEPENDENT Walls with identical endpoint coordinates adopt ONE Junction id', () => {
-		// S6 owns this flip: the implicit Junction is created by the CHAIN PLANNER, so
-		// re-scoping the canonical gate at S4 cannot remove it. PlanWallChain's own
-		// gate keeps its document subject until S5 for the same reason.
+		// S6 owns this flip: the implicit Junction is created by the CHAIN PLANNER's own
+		// ADOPTION, so no gate re-scope can remove it \u2014 re-scoping a gate changes which
+		// pairs are EXAMINED, never what authoring decides to build. S5 has since scoped the
+		// chain gate; the adoption behaviour is untouched by it (T13 pins the same edge from
+		// the other side: a deliberate extension inside a group still adopts).
 		const baseline = documentOf({
 			junctions: [
 				['j-1', 0, 0],
@@ -819,14 +835,19 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		expect(JSON.stringify(SHARED_WALL_ROOMS)).toBe(snapshot);
 	});
 
-	it('T8 (pre-policy observation, NOT yet flipped) — an INDEPENDENT crossing is refused atomically', () => {
-		// OBSERVATION, NOT A PERMANENT EXPECTATION, and its owning step is S5 — NOT
-		// S4. S4 re-scoped the CANONICAL gate; the chain path runs its own
-		// `validateChainTopology`, whose subject (the sampled authority's included) S5
-		// re-scopes. So this verdict is unchanged by S4 and must stay unchanged until
-		// S5 lands, which is exactly what the ratified S4 step says ("T6–T8 … assert
-		// they did NOT move here and at every later step"). The ATOMICITY half has to
-		// hold after S5 too; only the verdict flips there.
+	it('T8 → F8 (S5) — an INDEPENDENT crossing is ADMITTED, and the authored Wall joins nothing', () => {
+		// The chain path's own gate (`validateChainTopology`, its sampled call included)
+		// was the LAST document-subject gate; S5 scoped it in the same commit as the
+		// coincidence rule, so the crossing this case pinned as a refusal is permitted
+		// geometry now. Its S1 expectation is RETIRED here — the step that owns the flip
+		// (AM-1) — and survives as the recorded history in the register above.
+		//
+		// F8 is asserted ONLY in its SCOPED NEGATIVE HALF (AM-3): the authored Wall crosses
+		// two independent curved Walls and adopts NOTHING — no shared Junction is created at
+		// either crossing, neither curved Wall is split, and the canonical gate accepts the
+		// document the chain planner produced (so the two gates agree about it; R-3). The
+		// positive half ("a deliberate join is the only way") is a CONTRACT: no test asserts it
+		// until a join operation ships (D-10).
 		const snapshot = JSON.stringify(TWO_CROSSING_CURVED_WALLS);
 		const plan = planWallChain({
 			baseline: TWO_CROSSING_CURVED_WALLS,
@@ -837,7 +858,27 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 			close: false,
 			role: 'partition'
 		});
-		expect(plan.kind).toBe('rejected');
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		expect(plan.createdWallIds).toHaveLength(1);
+		const authored = plan.document.walls.find((wall) => wall.id === plan.createdWallIds[0])!;
+		// The authored chain is exactly the request, not a re-routed or noded path.
+		const pointById = new Map(plan.document.junctions.map((junction) => [junction.id, junction.point]));
+		expect(pointById.get(authored.startJunctionId)).toEqual([-1, 3]);
+		expect(pointById.get(authored.endJunctionId)).toEqual([11, 3]);
+		// Both curved Walls survive un-split, and the new Wall is a THIRD component: the
+		// crossing is a visual overlap, never a topology edge.
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
+			'wall-up',
+			'wall-down',
+			authored.id
+		]);
+		for (const wallId of ['wall-up', 'wall-down']) {
+			expect(wallsShareTopologyComponent(plan.document, wallId, authored.id)).toBe(false);
+		}
+		expect(wallsShareTopologyComponent(plan.document, 'wall-up', 'wall-down')).toBe(false);
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+		// ATOMICITY has to hold on the admitted path too: the source document is untouched.
 		expect(JSON.stringify(TWO_CROSSING_CURVED_WALLS)).toBe(snapshot);
 	});
 

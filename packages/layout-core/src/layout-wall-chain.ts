@@ -56,6 +56,7 @@ import {
 import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
 import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
+import { topologyComponentKeyByWallId } from './layout-topology-components';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
 import { wallCenterlineSamples } from './layout-wall-centerline';
@@ -963,10 +964,17 @@ function wallById(document: LayoutDocumentWallFirst, wallId: string): LayoutWall
 }
 
 /**
- * Final topology gate over the committed candidate: every wall pair must
- * relate only through explicit shared junctions (or be disjoint). This is
- * the same bar `validatePrecisionTopology` holds P23.1 candidates to — the
- * P23.9 plan forbids un-noded visual crossings in committed data.
+ * Final topology gate over the committed candidate: every wall pair IN ONE
+ * CONNECTED COMPONENT must relate only through explicit shared junctions (or be
+ * disjoint). This is the same bar `validateWallFirstTopology` holds the P23.1
+ * precision and P23.6a Room-move candidates to — the P23.9 plan forbids un-noded
+ * visual crossings in committed data — and, since P23B.3a S5, the same SUBJECT:
+ * the connected component, not the document.
+ *
+ * Connectivity is the TRANSITIVE closure of explicit authored Junction identity,
+ * never coordinates: two Walls with no Junction id in common can still be one
+ * component through a third Wall, and two Walls whose endpoints merely coincide are
+ * in different components. Labelling is the S2 general Wall/Junction test.
  */
 function validateChainTopology(document: LayoutDocumentWallFirst): WallChainRejection | null {
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
@@ -985,18 +993,17 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 	// second crossing algorithm — and any curve crossing that would need
 	// automatic curved noding rejects the whole authoring command.
 	//
-	// P23B.3a — SUBJECT: this gate still examines the WHOLE DOCUMENT here, which is
-	// the documented pre-policy subject, not an oversight. P23B.3a S4 re-scoped the
-	// canonical gate's subject to the connected component; THIS gate (and the chord
-	// classifier below it) is re-scoped by S5, which is the step that owns the
-	// chain path's verdict change. Adopting the component subject here at S4 would
-	// move a case S5 owns — the S1 reference register asserts the chain path did NOT
-	// move at S4 (T8's chain-authoring observation). S5 removes this explicit
-	// subject; nothing else should pass it.
+	// P23B.3a S5 — SUBJECT: the sampled authority is called with ITS shipped subject
+	// (the connected component); the transitional document-subject form S4 left for
+	// this caller is gone. The chord loop below is scoped the same way, in the same
+	// commit, so the two halves of this gate cannot disagree — and neither can this
+	// gate and `validateWallFirstTopology`. NOT changed here: this planner's own
+	// AUTHORING behaviour. Adoption and crossing-split still run exactly as they do
+	// today; withdrawing them from INDEPENDENT placement is the authoring-intent split
+	// (S6), not this step.
 	const curveCrossing = detectWallCurveTopologyCrossings(
 		document,
-		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const)),
-		{ subject: 'document' }
+		new Map(entries.map((entry) => [entry.wall.id, entry.segment] as const))
 	);
 	if (curveCrossing) {
 		return curveCrossing.kind === 'self'
@@ -1014,10 +1021,17 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 			  };
 	}
 	const segments = entries.map((entry) => entry.segment);
+	// P23B.3a S5 — the chord half takes the SAME subject as everything above it: a
+	// pair from two different components is permitted geometry, so it is skipped
+	// before the unchanged classifier sees it. Every pair that shares an explicit
+	// Junction is in one component by construction, so the `shared-explicit-junction`
+	// branch below is never skipped and no same-component verdict is lost.
+	const keyByWallId = topologyComponentKeyByWallId(document);
 	for (let first = 0; first < entries.length; first += 1) {
 		for (let second = first + 1; second < entries.length; second += 1) {
 			const a = entries[first]!.wall;
 			const b = entries[second]!.wall;
+			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 			const shared = a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
 				? [a.startJunctionId]
 				: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId

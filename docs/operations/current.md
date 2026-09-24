@@ -52,10 +52,14 @@ NEXT:
    at that slice's implementation review with OR-D12-1…6 evidence.
    IN EXECUTION, not awaiting authorization: S1 (reference freeze), S2 (general connectivity test), S3
    (the D-12 hazard, quarantined) and S3a (the D-12 implementation-and-proof, **ACCEPTED by the owner**
-   at `ba54e9cf`) have landed, and S4 (the component-scoped subject for `validateWallFirstTopology` and
-   the sampled crossing authority, with its own oracle) has landed and awaits review. S5–S8 remain, and
-   the policy is still NOT DELIVERED: no fixture or document may cite Option E as shipped until the
-   slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
+   at `ba54e9cf`) have landed; S4 (the component-scoped subject for `validateWallFirstTopology` and the
+   sampled crossing authority, with its own oracle) has landed and is **ACCEPTED by the owner** (review
+   of `858d796f`: no implementation blocker, with three instructions carried into S5 and one non-blocking
+   OR-3a variant-coverage note owed before closeout); and S5 (the chain gate re-scoped in BOTH halves
+   with the transitional `{ subject: 'document' }` escape removed, plus the component-scoped
+   `duplicate_junction_point` coincidence rule D-9, with its own oracle) has landed and awaits review.
+   S6–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
+   shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
    step 9 · the named slice workspace), and **D-7 and D-8 are RESOLVED** — the slice is P23B.3a and the
    `layout-duplicate.ts` comment correction lands inside it. Still open alongside it: the P23B.2 evidence
