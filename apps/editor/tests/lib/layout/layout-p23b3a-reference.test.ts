@@ -711,14 +711,95 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		// is the connected component: a clone introduces a NEW Junction id at each
 		// coincident coordinate, so the two structures are independent and the
 		// overlap is permitted placement (F1/F5, D-9).
-		const snapshot = JSON.stringify(ISOLATED_ROOM);
+		const sourceDocument: LayoutDocumentWallFirst = {
+			...ISOLATED_ROOM,
+			openings: [
+				{
+					id: 'opening-source',
+					wallId: 'wall-a1',
+					kind: 'door',
+					offset: 3,
+					width: 0.9,
+					height: 2.1,
+					sillHeight: 0,
+					profile: 'rectangular'
+				}
+			],
+			objects: [
+				{
+					id: 'obj-1',
+					kind: 'box',
+					position: [1, 0.5, 1],
+					rotation: [0, 0, 0],
+					dimensions: [1, 1, 1],
+					roomId: 'room-1'
+				}
+			]
+		};
+		const snapshot = JSON.stringify(sourceDocument);
 		const plan = success(
-			planDuplicateIsolatedRoom(ISOLATED_ROOM, { roomId: 'room-1', delta: [0, 0] })
+			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] })
 		);
 		expect(plan.createdRoomId).toBe('room-1-copy');
+		expect(plan.createdJunctionIds).toEqual(['j-a-copy', 'j-b-copy', 'j-c-copy', 'j-d-copy']);
+		expect(plan.createdWallIds).toEqual([
+			'wall-a1-copy',
+			'wall-b-copy',
+			'wall-c-copy',
+			'wall-d-copy'
+		]);
+		expect(plan.createdOpeningIds).toEqual(['opening-source-copy']);
+		expect(plan.createdObjectIds).toEqual(['obj-1-copy']);
+		const repeatedPlan = success(
+			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] })
+		);
+		expect({
+			roomId: repeatedPlan.createdRoomId,
+			junctionIds: repeatedPlan.createdJunctionIds,
+			wallIds: repeatedPlan.createdWallIds,
+			openingIds: repeatedPlan.createdOpeningIds,
+			objectIds: repeatedPlan.createdObjectIds
+		}).toEqual({
+			roomId: plan.createdRoomId,
+			junctionIds: plan.createdJunctionIds,
+			wallIds: plan.createdWallIds,
+			openingIds: plan.createdOpeningIds,
+			objectIds: plan.createdObjectIds
+		});
 
-		const sourceJunctionIds = new Set(ISOLATED_ROOM.junctions.map((junction) => junction.id));
-		const sourceWallIds = new Set(ISOLATED_ROOM.walls.map((wall) => wall.id));
+		const sourceJunctionIds = new Set(sourceDocument.junctions.map((junction) => junction.id));
+		const sourceWallIds = new Set(sourceDocument.walls.map((wall) => wall.id));
+		const sourceRoomIds = new Set(['room-1']);
+		const sourceOpeningIds = new Set(sourceDocument.openings.map((opening) => opening.id));
+		const sourceObjectIds = new Set(
+			sourceDocument.objects
+				.filter((object) => object.roomId === 'room-1')
+				.map((object) => object.id)
+		);
+		const sourceGroupIds = {
+			junctions: sourceJunctionIds,
+			walls: sourceWallIds,
+			rooms: sourceRoomIds,
+			openings: sourceOpeningIds,
+			objects: sourceObjectIds
+		};
+		const cloneGroupIds = {
+			junctions: new Set(plan.createdJunctionIds),
+			walls: new Set(plan.createdWallIds),
+			rooms: new Set([plan.createdRoomId]),
+			openings: new Set(plan.createdOpeningIds),
+			objects: new Set(plan.createdObjectIds)
+		};
+		const groupRecords = (document: LayoutDocumentWallFirst, ids: typeof sourceGroupIds) => ({
+			junctions: document.junctions.filter((junction) => ids.junctions.has(junction.id)),
+			walls: document.walls.filter((wall) => ids.walls.has(wall.id)),
+			rooms: document.rooms.filter((room) => ids.rooms.has(room.id)),
+			openings: document.openings.filter((opening) => ids.openings.has(opening.id)),
+			objects: document.objects.filter((object) => ids.objects.has(object.id))
+		});
+		const sourceGroupBefore = groupRecords(sourceDocument, sourceGroupIds);
+		expect(sourceGroupBefore.openings).toHaveLength(1);
+		expect(sourceGroupBefore.objects).toHaveLength(1);
 		const pointById = new Map(
 			plan.document.junctions.map((junction) => [junction.id, junction.point])
 		);
@@ -733,7 +814,7 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		expect(plan.createdWallIds.every((id) => !sourceWallIds.has(id))).toBe(true);
 		for (const id of plan.createdJunctionIds) {
 			const point = pointById.get(id)!;
-			const coincides = ISOLATED_ROOM.junctions.filter(
+			const coincides = sourceDocument.junctions.filter(
 				(junction) =>
 					Math.hypot(junction.point[0] - point[0], junction.point[1] - point[1]) < 1e-9
 			);
@@ -751,30 +832,41 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		}
 		// Nothing was fragmented to make a join, and nothing was adopted.
 		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
-			...ISOLATED_ROOM.walls.map((wall) => wall.id),
+			...sourceDocument.walls.map((wall) => wall.id),
 			...plan.createdWallIds
 		]);
 		expect(plan.document.junctions.map((junction) => junction.id)).toEqual([
-			...ISOLATED_ROOM.junctions.map((junction) => junction.id),
+			...sourceDocument.junctions.map((junction) => junction.id),
 			...plan.createdJunctionIds
 		]);
 
 		// F1 (3) BOTH GROUPS INDEPENDENTLY EDITABLE — the canonical gate accepts what the
-		// planner produced (planner and gate agree), and moving the CLONE alone leaves
-		// the source group exactly where it was.
+		// planner produced (planner and gate agree), and moving either group leaves every
+		// authored record in the other group unchanged.
 		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
-		const sourceWallsBefore = JSON.stringify(
-			plan.document.walls.filter((wall) => sourceWallIds.has(wall.id))
-		);
 		const moved = success(planWallFirstRoomMove(plan.document, 'room-1-copy', [30, 0]));
 		expect(moved.movedRoomIds).toEqual(['room-1-copy']);
-		expect(
-			JSON.stringify(moved.document.walls.filter((wall) => sourceWallIds.has(wall.id)))
-		).toBe(sourceWallsBefore);
+		expect(groupRecords(moved.document, sourceGroupIds)).toEqual(sourceGroupBefore);
 		expect(moved.document.rooms.map((room) => room.id)).toEqual(['room-1', 'room-1-copy']);
+		for (const cloneWallId of plan.createdWallIds) {
+			for (const sourceWallId of sourceWallIds) {
+				expect(wallsShareTopologyComponent(moved.document, cloneWallId, sourceWallId)).toBe(false);
+			}
+		}
+
+		const cloneGroupAfterCloneMove = groupRecords(moved.document, cloneGroupIds);
+		const movedSource = success(planWallFirstRoomMove(moved.document, 'room-1', [0, 20]));
+		expect(movedSource.movedRoomIds).toEqual(['room-1']);
+		expect(movedSource.document.junctions.find((junction) => junction.id === 'j-a')?.point).toEqual([
+			0, 20
+		]);
+		expect(
+			movedSource.document.junctions.find((junction) => junction.id === 'j-a-copy')?.point
+		).toEqual([30, 0]);
+		expect(groupRecords(movedSource.document, cloneGroupIds)).toEqual(cloneGroupAfterCloneMove);
 
 		// Atomicity: the planner never mutated its input.
-		expect(JSON.stringify(ISOLATED_ROOM)).toBe(snapshot);
+		expect(JSON.stringify(sourceDocument)).toBe(snapshot);
 	});
 
 	it('S7 PARITY — a Wall-introducing batch is judged by the CANONICAL gate, so the duplicate path and the gate cannot disagree', () => {

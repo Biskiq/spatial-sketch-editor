@@ -60,8 +60,8 @@ NEXT:
    `duplicate_junction_point` coincidence rule D-9, with its own oracle) has landed; review found ONE
    blocker — the unattached-Junction sentinel was a STRING that a valid authored Wall id could claim,
    mis-classifying an unattached Junction as connected to that Wall — and the focused S5 correction now
-   makes the sentinel collision-proof (a symbol, no schema change) with a codec-valid regression, so S5
-   awaits RE-review; and S6 (the AUTHORING INTENT SPLIT in `planWallChain`, completing T3 → F3) has
+   makes the sentinel collision-proof (a symbol, no schema change) with a codec-valid regression; its
+   re-review is COMPLETE by owner confirmation. S6 (the AUTHORING INTENT SPLIT in `planWallChain`, completing T3 → F3) has
    landed with its own oracle: an operation that DECLARES the group it extends keeps adoption and in-group
    noding, while an operation that declares nothing mints its own Junction records, splits no host Wall and
    joins nothing — with the editor half of the same step (one shared click→declaration rule, the run
@@ -84,15 +84,16 @@ NEXT:
    independent components reject deterministically (class 4, the deliberate Join/Connect D-10 defers) instead
    of being bridged or silently narrowed, and an undeclared component the chain crosses stays untouched. The
    pre-policy two-Room single-divider regression is re-based to assert that rejection with its old 4-Room
-   outcome recorded as history. S6 now awaits RE-review.
+   outcome recorded as history. Its re-review is COMPLETE by owner confirmation.
    S7 (DUPLICATE / IMPORT GATE PARITY, with the D-8 comment correction in the SAME commit as the behaviour it
-   describes) has landed: the duplicate path's own chord-exact Wall-pair loop is DELETED and
-   `finalizeCandidate` calls the ONE canonical authority (`validateWallFirstTopology`, the function the
-   precision, Room-move and chain gates already share) whenever a batch introduces Walls, so the duplicate
-   verdict and the canonical verdict cannot disagree by construction — the F-C1 ingress hole closed by WIRING,
-   never by a second crossing rule. Ingestion is deliberately untouched: the codec still carries no geometric
-   rule and the import path is unchanged (F-C6 is a scope, not a licence to make the codec semantic), which the
-   new oracle asserts by importing a document the topology authority refuses at the same moment. T1 → F1 is
+   describes) was ACCEPTED at `5e310694`: no implementation blocker was found. The duplicate path's own
+   chord-exact Wall-pair loop is DELETED and `finalizeCandidate` calls the canonical
+   `validateWallFirstTopology` whenever a batch introduces Walls. Duplicate, precision and Room-move invoke
+   that canonical topology validator. Chain retains its separate final gate: it uses the shared sampled
+   crossing detector and component policy, while keeping its own chord-pair loop. Import remains codec-valid
+   ingestion, separate from topology validation: the codec still carries no geometric rule and the import
+   path is unchanged (F-C6 is a scope, not a licence to make the codec semantic), which the new oracle asserts
+   by importing a document the topology authority refuses at the same moment. T1 → F1 is
    completed: the S1 row is RETIRED (AM-1) and its successor asserts that duplicating a Room onto its OWN
    position now COMMITS — new Junction ids at the coincident coordinates, no shared Junction with the source,
    nothing split or adopted, the canonical gate agreeing, both groups independently editable — while a clone
@@ -103,7 +104,10 @@ NEXT:
    without the crossing is admitted. R-b's PERMANENT same-component atomic refusal and R-d's import admission
    are retained; the two P23.4 rows that pinned the pre-policy overlap refusal are re-based with their old
    verdicts recorded as history, and the reference register now ASSERTS that no row carries a pre-policy
-   verdict. S7 now awaits review.
+   verdict. Three focused review corrections are being completed separately from S8: narrow the parity
+   wording, prove full source-group preservation in both independent-edit directions, and correct the
+   Opening-set options comment. S5 and S6 re-reviews are complete by owner confirmation; GitHub does not
+   record those review entries. S8 is unblocked.
    S8 remains, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    Still owed before closeout (an S8 evidence obligation, not an S7 blocker): OR-3a's variant list

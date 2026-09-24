@@ -182,9 +182,10 @@ function finalizeCandidate(
 		// doc above): no local crossing classifier, no second tolerance.
 		//
 		// `openingSet: 'defer'` keeps the Opening-set vocabulary canonical while
-		// leaving its translation to the explicit gate below, exactly as the
-		// precision and Room-move planners do — an Opening failure must not be
-		// consumed as `topology_invalid` before it can be classified.
+		// leaving its translation to the explicit gate below. Precision candidates
+		// also defer that check; Room-move uses the validator's default options and
+		// its existing downstream Opening-set gate. An Opening failure must not be
+		// consumed as `topology_invalid` before duplicate planning can classify it.
 		//
 		// The step runs for batches that INTRODUCE Walls (the F-C1 surface). A
 		// batch that creates no Wall — an object or Opening repeat — introduces no
