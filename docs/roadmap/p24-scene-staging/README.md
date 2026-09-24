@@ -1,13 +1,20 @@
 # P24 — Scene / Staging Depth
 
 **Phase goal:** P24A Asset Supply + Canonical Ingest and P24B Rich Scene / Staging
-Authoring over the spatial coordinate model shipped by P23.
+Authoring over the unified spatial system delivered by P26, retaining P23’s canonical ownership.
 
-**Status:** proposed — R0–R9 planning complete; minimum frozen; P24.0–P24.5
-implementation-ready briefs for owner review. Execution waits for accepted P23
-minimum and approval; implementation/ship gates open.
+**Status:** proposed — R0–R9 minimum remains frozen; existing implementation
+briefs require focused reconciliation against landed P26 before approval/execution.
+P23 is closed; P23B then P26 precede P24. No implementation is authorized here.
 
-**Current slice:** none in execution (planning complete, awaiting gates).
+**Current slice:** none in execution.
+
+**P26 handoff:** [Continuous Spatial Authoring umbrella §11](../p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md#11-p24-handoff).
+Affected assumptions: separate PlanProxy/3D adapters and workspace switching,
+placement/picking, gesture cancellation, multi-selection/gizmos, overlays/Inspector,
+Camera preview restoration and shell exposure in R3/R4/R8/R9 and child briefs.
+Ingest/staging scope and entity-owned mutations remain accepted; this is a
+reconciliation marker, not a comprehensive P24 rewrite.
 
 ## Authorities
 
