@@ -3782,6 +3782,18 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// Only the pointer that opened the gesture may commit it: another
 			// contact's release must never finalize someone else's candidate.
 			const edit = interaction.architectureEdit;
+			// P23B — a release that never crossed the shared drag threshold is the
+			// plain click its input/release sample already describes, so it records
+			// no drag/edit reactive boundary of its own.
+			const moved = architectureEditMovedOnRelease(
+				architectureEditMoved,
+				architectureEditStartScreen,
+				screenPoint(event)
+			);
+			if (!moved) {
+				commitArchitectureEditGesture(event);
+				return;
+			}
 			const path = edit?.kind === 'wall-bend' || edit?.kind === 'curve-control-move'
 				? 'bend-knot-edit'
 				: 'plan-drag-edit';
