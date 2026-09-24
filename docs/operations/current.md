@@ -1,8 +1,9 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.0-durable — next sequence step 10; plan PLANNED, UNRATIFIED. Owner inputs and authorization
-       are required before committing measurement fixtures, harness changes or recorded baselines.
+CHILD: P23B.3a merge completion — implementation acceptance and routine closeout are complete on `p23b`,
+       but PR #82 cannot use the required P1 merge-commit method while the active `main` ruleset enforces
+       linear history. P23B.0-durable is next after P23B.3a merges; its plan remains PLANNED, UNRATIFIED.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -16,12 +17,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.0-durable — owner review and ratification of the bounded plan, including its fixture/gesture
+1. Resolve PR #82's merge-method conflict. The active default-branch ruleset requires linear history,
+   which rejects the P1 merge commit; no bypass actor is configured. Once an authorized merge method is
+   available, preserve the P1 merge commit and verify the `closed/p23b.3a` anchor after merge.
+2. P23B.0-durable — owner review and ratification of the bounded plan, including its fixture/gesture
    identity, reference measurement environment and harness/baseline scope. Once authorized, execute
    sequence step 10 against the post-policy gates before any optimization work.
-2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
+3. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
-3. P26 planning may continue in parallel. Read
+4. P26 planning may continue in parallel. Read
    ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md; reconcile its
    proposed architecture against landed P23B, resolve slice-specific decisions and prepare the
    implementation plan/proofs. The accepted prototype does not authorize implementation or open the
@@ -46,6 +50,9 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
+- PR #82's required merge commit is blocked by the active `required_linear_history` ruleset; the current
+  actor cannot bypass that rule. P23B.3a is accepted and closeout-complete on `p23b`, but post-merge anchor
+  verification cannot run until the merge policy permits the P1 method.
 - P23B.0-durable has no committed fixture identity or recorded baseline for the curved authoring case;
   its plan is unratified, so measurement-infrastructure implementation remains gated.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a.
@@ -68,5 +75,6 @@ CLOSED (2026-09-24):
 - P23B.3a accepted and shipped; S5/S6 owner-confirmed re-reviews have no separate GitHub entries, S7
   corrections are accepted, and corrected S8 evidence plus all integrated-tree acceptance lanes pass.
 - Policy, code/test entry points, acceptance evidence and the `closed/p23b.3a` recovery tag are routed
-  from `../roadmap/p23b-geometry-performance/README.md`. The tag is local only (not pushed). P1 recovery
-  uses a GitHub merge commit; post-merge anchor checks are recorded in the QA stub.
+  from `../roadmap/p23b-geometry-performance/README.md`. The tag is local only (not pushed). The P1
+  merge commit is blocked by the active linear-history rule; the QA stub records the attempted merge and
+  the post-merge anchor checks to run when that conflict is resolved.
