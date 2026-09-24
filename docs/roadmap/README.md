@@ -26,7 +26,7 @@ PIPELINE: P23 → P23B → P26 → P24 → P25
 |-------|--------|------|-----------|
 | P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
 | P23B | planning | geometry performance + stabilization over the P23 wall-first pipeline | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
-| P26 | planning | vertical structure + orthographic precision over one wall-first model | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
+| P26 | planning | Continuous Spatial Authoring: viewport redesign + canonical contextual editing | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | P24 | proposed | asset supply + staging authoring | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
 | P25 | proposed | destination + stop + panel + interaction | [`p25-experience/README.md`](./p25-experience/README.md) |
 

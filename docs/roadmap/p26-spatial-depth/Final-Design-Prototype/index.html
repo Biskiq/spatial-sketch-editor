@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Museum Editor · P26 Continuous Spatial Authoring — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/app.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body class="app">
+  <nav class="spine" aria-label="Domain">
+    <a class="spine-brand" href="rationale.html" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span></a>
+    <button class="station on" aria-current="true"><span class="si si-scene" aria-hidden="true"></span>Scene</button>
+    <button class="station" data-act="camera-na" title="Camera domain — unchanged by P26" disabled><span class="si si-camera" aria-hidden="true"></span>Camera</button>
+  </nav>
+
+  <header class="head">
+    <div class="brand">Museum Editor</div>
+    <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="doc-state" id="docState">All changes saved</span></div>
+    <button class="find-btn" data-act="find" title="Find anything (/)">Find anything <kbd>/</kbd></button>
+    <div class="head-hist" aria-label="Building history">
+      <button class="icon-btn" id="undoBtn" data-act="undo" aria-label="Undo">↶<span class="count" id="undoCount"></span></button>
+      <span class="undo-label" id="undoLabel">No building changes yet</span>
+      <button class="icon-btn" id="redoBtn" data-act="redo" aria-label="Redo">↷</button>
+    </div>
+    <a class="rationale-link" href="rationale.html">Design rationale</a>
+  </header>
+
+  <aside class="nav" id="nav" role="tree" aria-label="Navigator"></aside>
+
+  <main class="work">
+    <div class="viewbar" role="toolbar" aria-label="View">
+      <div class="views">
+        <button class="vtab" id="tabPlan" data-act="plan" title="Plan (1)">Plan</button>
+        <div class="tilt" id="tilt" title="One camera. Drag to tilt between Plan and 3D.">
+          <div class="tilt-track" id="tiltTrack"><span class="tilt-tick"></span><span class="tilt-bead" id="tiltBead"></span></div>
+        </div>
+        <button class="vtab" id="tab3d" data-act="3d" title="3D (2)">3D</button>
+      </div>
+      <span class="mode-k">MODE</span>
+      <div class="modepair"><button class="on">Layout</button><button disabled title="Arrange is unchanged by P26">Arrange</button></div>
+      <div class="vb-util">
+        <button data-act="home" title="Back to the overview">Overview</button>
+        <button data-act="help" title="Keys (?)">Keys</button>
+      </div>
+    </div>
+    <div class="strip" id="strip" hidden role="toolbar" aria-label="Contextual instrument"></div>
+
+    <div class="stage" id="stage">
+      <canvas id="gl" aria-label="Museum model"></canvas>
+      <svg id="ovSvg" class="ov-svg" aria-hidden="true"></svg>
+      <div id="ovHtml" class="ov-html"></div>
+
+      <div class="truth" id="truth" aria-hidden="true">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <span class="truth-k"><i></i><span id="truthK">To scale</span></span>
+        <span class="scale"><span class="scale-bar" id="scaleBar"></span><span id="scaleK">1 m</span></span>
+        <span class="scale-v"><span class="scale-vbar" id="scaleVBar"></span><span id="scaleVK">1 m</span></span>
+      </div>
+
+      <div class="tray" role="toolbar" aria-label="Tools">
+        <div class="tray-g">SELECT</div>
+        <button class="tool on" data-tool="select" title="Select (V)"><span class="ti ti-select"></span>Select</button>
+        <div class="tray-g">DRAW</div>
+        <button class="tool" data-tool="wall" title="Draw walls"><span class="ti ti-wall"></span>Wall</button>
+        <button class="tool" data-tool="opening" title="Add an opening"><span class="ti ti-door"></span>Opening</button>
+        <button class="tool" data-tool="ceiling" title="Draw a ceiling footprint"><span class="ti ti-ceil"></span>Ceiling</button>
+        <div class="tray-g">LOOK</div>
+        <button class="tool" data-tool="knife" title="Open along a line (K)"><span class="ti ti-knife"></span>Open line</button>
+      </div>
+
+      <div class="where" id="where">
+        <div class="wh-k"><span>Where you are</span><span>N ↑</span></div>
+        <svg id="whereSvg" aria-label="Plan locator"></svg>
+        <div class="wh-cap" id="whereCap"></div>
+      </div>
+
+      <div class="peek" id="peek" hidden>
+        <div class="peek-k" id="peekLabel">What this cut shows</div>
+      </div>
+
+      <div class="caption" id="caption" hidden></div>
+      <div class="summary" id="summary" hidden role="status"></div>
+      <div class="popover" id="popover" hidden></div>
+      <div class="typein" id="typein" hidden><input id="typeinInput" inputmode="decimal" aria-label="Type a value"><span class="typein-unit">m</span><span class="typein-err" id="typeinErr"></span></div>
+
+      <div class="help" id="help" hidden>
+        <div class="help-t">Keys</div>
+        <div class="help-g">
+          <span><kbd>1</kbd> Plan</span><span><kbd>2</kbd> 3D</span>
+          <span><kbd>F</kbd> face the selection</span><span><kbd>O</kbd> open it (unfold · lift · line)</span>
+          <span><kbd>U</kbd> look up</span><span><kbd>K</kbd> open along a line</span>
+          <span><kbd>Esc</kbd> back one open state</span><span><kbd>⇧Esc</kbd> put everything back</span>
+          <span><kbd>/</kbd> find anything</span><span><kbd>[</kbd> <kbd>]</kbd> view trail</span>
+          <span><kbd>S</kbd> square up to a wall</span><span>pull a curved wall’s corner · unroll it</span>
+          <span><kbd>⌘Z</kbd> undo building changes</span><span><kbd>Shift</kbd> make a move instant</span>
+          <span><kbd>M</kbd> mirror looking up</span><span><kbd>⌥ Drag</kbd> tilt out of a flat view</span>
+          <span>double-click a wall · face it</span><span>double-click a ceiling · lift it</span>
+        </div>
+        <button class="btn" data-act="help">Close</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="insp" id="insp" aria-label="Inspector"></aside>
+
+  <div class="finder" id="finder" hidden>
+    <div class="finder-box" role="dialog" aria-label="Find anything">
+      <input id="finderInput" placeholder="Find a wall, opening, ceiling or artwork" aria-label="Find anything" autocomplete="off">
+      <ul id="finderList" role="listbox"></ul>
+      <div class="finder-foot">Every result says where it is from here — and why you might not see it</div>
+    </div>
+  </div>
+
+  <footer class="status" aria-label="Status">
+    <span class="status-text" id="statusText"></span>
+    <div class="trail-wrap"><span class="trail-k">View trail</span><div class="trail" id="trail"></div></div>
+    <div class="motion" id="motion" role="radiogroup" aria-label="Motion">
+      <span class="motion-k">Motion</span>
+      <button data-motion="adaptive" title="Slow the first times, then brisk">Adaptive</button>
+      <button data-motion="teach">Teach</button>
+      <button data-motion="brisk">Brisk</button>
+      <button data-motion="instant">Instant</button>
+    </div>
+  </footer>
+
+  <section class="journeys" id="journeys" aria-label="Guided journeys (outside the product)">
+    <div class="j-head"><span class="j-outside">Presenter · not part of the product</span><button data-jact="close" aria-label="Close journeys">×</button></div>
+    <div class="j-tabs" id="jTabs"></div>
+    <div class="j-kicker" id="jKicker"></div>
+    <div class="j-title" id="jTitle"></div>
+    <div class="j-body" id="jBody"></div>
+    <div class="j-nav">
+      <button data-jact="prev" aria-label="Previous step">‹</button>
+      <div class="j-dots" id="jDots"></div>
+      <span class="j-count" id="jCount"></span>
+      <button data-jact="replay" title="Replay this step">Replay</button>
+      <button class="j-next" data-jact="next">Next ›</button>
+    </div>
+  </section>
+  <button class="j-toggle" id="jToggle">Guided journeys <kbd>J</kbd></button>
+
+  <script type="module" src="app/main.js"></script>
+</body>
+</html>

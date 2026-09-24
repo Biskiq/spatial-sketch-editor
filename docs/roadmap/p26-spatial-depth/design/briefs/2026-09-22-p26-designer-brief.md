@@ -1,5 +1,8 @@
 # P26 designer brief — Architectural Spatial Depth
 
+> **Superseded direction (2026-09-24):** the accepted Continuous Spatial Authoring prototype and [P26 umbrella](../../2026-09-24-P26-continuous-spatial-authoring-umbrella.md) now own experience direction and proposed phase scope. This document is supporting provenance, not a competing design authority. Its separate Plan / orthographic / 3D role restrictions and any REGISTER/SVG presentation assumptions are superseded; independently accepted domain decisions are retained explicitly in the umbrella. Earlier authority/status wording below describes this artifact's original research/assignment role.
+
+
 **Status:** design assignment. Ready to send to independent designers.
 **Date:** 2026-09-22
 **Audience:** designers who will not read the repository, the research harvests, or the synthesis.

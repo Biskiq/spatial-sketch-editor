@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P26 · Continuous Spatial Authoring — design rationale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/doc.css?v=2">
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <span class="brand"><i></i>P26 · Continuous spatial authoring</span>
+  <a href="#model">The model</a>
+  <a href="#journeys">Journeys</a>
+  <a href="#sources">B · D · new</a>
+  <a href="#departures">Departures</a>
+  <a href="#questions">Open questions</a>
+  <a href="REVIEW-RECONCILIATION.md">Review reconciliation</a>
+  <a href="IMPLEMENTER-REFERENCE.md">Implementer reference</a>
+  <a class="go" href="index.html">Open the prototype</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div>
+    <span class="kicker">Museum Editor · P26 design synthesis of B and D</span>
+    <h1>One museum. You stand, you open, <em>it settles.</em></h1>
+    <p class="lede">Plan, 3D, Section, Wall face and Looking up stop being places you switch between. They become <b>standpoints of one camera</b> around <b>one model you can temporarily open</b> — by a verb or by hand. Whenever the camera lines up with a wall, a cut or the sky, the picture <b>settles to scale</b>: perspective drains away and the green mat becomes drafting paper. Editing is not a mode you reach: <b>a handle exists wherever its axis reads</b>, in Plan, in 3D, on a curve at any wrap.</p>
+    <div class="btns">
+      <a class="btn primary" href="index.html?journey=A&step=0">Play the journeys <kbd>J</kbd></a>
+      <a class="btn ghost" href="index.html">Explore freely</a>
+    </div>
+  </div>
+  <div class="hero-shots">
+    <figure><img src="screens/06-unfold-mid.png" alt="The Rotunda wall peeling off its footprint, with dashed lines tying each opening back to the floor"><figcaption>mid-unfold · openings tied to their footprint</figcaption></figure>
+    <figure><img src="screens/10-part-mid.png" alt="The museum parting along a line while the plan tips up into a section"><figcaption>plan tipping up · near half parting</figcaption></figure>
+    <figure><img src="screens/19-peel-mid.png" alt="The Rotunda wall being peeled by its corner from outside, with the as-built ring dashed on the floor"><figcaption>peeled by hand · stops anywhere</figcaption></figure>
+  </div>
+</div></header>
+
+<!-- ------------------------------------------------------------ model -->
+<section class="dark" id="model"><div class="wrap">
+  <span class="kicker">The unified interaction model</span>
+  <h2>Two moves, one promise — and edit wherever you can read it.</h2>
+  <p class="intro">Every capability in P26 — wall tops, openings, curved walls, ceilings, sections, precise numbers — is reached by <b>standing</b> somewhere and <b>opening</b> what is in the way. Nothing is a separate workspace, and neither move changes the building. The picture <b>settles</b> when it is to scale. The building changes only when you edit a number, which you can do wherever its handle's axis reads.</p>
+  <div class="moves">
+    <div class="move">
+      <span class="tag">STAND</span>
+      <h3>Move the one camera</h3>
+      <p>There is one camera and it always moves continuously. Plan is that camera tipped straight down, with a horizontal cut sliding to 1.20. Facing a wall, looking through a cut, and looking up are the same camera arriving somewhere else.</p>
+      <ul><li><kbd>1</kbd>/<kbd>2</kbd> or the tilt bead between Plan and 3D</li><li><kbd>F</kbd> face the selection · double-click a wall</li></ul>
+    </div>
+    <div class="move">
+      <span class="tag">OPEN</span>
+      <h3>Displace the architecture, briefly</h3>
+      <p>What hides the subject gets out of the way physically, and always goes back. A curved wall <b>unrolls</b> — pull its corner and stop anywhere. A ceiling <b>lifts</b> by its tab. The museum <b>parts</b> along a line you draw and slide. Walls in front are <b>set aside</b>. The as-built position stays drawn, dashed, the whole time.</p>
+      <ul><li><kbd>O</kbd> opens the selection in one beat · drag its corner or tab for any amount</li><li><kbd>Esc</kbd> steps back one level · <kbd>⇧Esc</kbd> puts everything back</li></ul>
+    </div>
+    <div class="move">
+      <span class="tag">SETTLE</span>
+      <h3>The picture says when it is to scale</h3>
+      <p>Near a principal direction the camera has a detent. As it falls in, a dolly-zoom takes perspective to zero and the mat turns to paper. Settle is a promise about the <i>picture</i>, per axis: a round wall seen square is to scale in height only, so it gets a vertical scale bar and no horizontal one. It gates nothing — handles follow the legibility rule below, and the numbers are always measured on the model.</p>
+      <ul><li>Release within 14° and it settles for you · <kbd>S</kbd> squares up</li><li>Drag away and perspective returns gradually</li></ul>
+    </div>
+  </div>
+  <div class="rules">
+    <div><b>One selection, everywhere.</b>Navigator, drawing, Inspector and status all name the same entity through every move. If it leaves the view, it stays selected and says why.</div>
+    <div><b>View trail ≠ Undo.</b>Standpoints go on a trail you can walk back along with <kbd>[</kbd> — including reopening a cut you closed. Undo holds building changes only, and never moves the camera.</div>
+    <div><b>Nesting is not history.</b>Opening a different kind of view from inside one nests it; the strip shows the path (3D › Section › Facing). Esc steps back one crumb, exactly as you left it; ⇧Esc or the first crumb closes everything. The trail (<kbd>[</kbd> <kbd>]</kbd>) is time, not structure; Undo is the building.</div>
+    <div><b>Handles where the axis reads.</b>A handle is offered wherever its own axis is legible on screen and withheld where it runs along your line of sight — heights from above, widths at a curve's silhouette. The number stays typeable. No view has its own handle list.</div>
+    <div><b>View state looks like view state.</b>A displaced wall wears paper; the as-built position stays dashed; the strip says “view only”. Coming back, the editor names the building changes you made while it was open — they stay, with one button to undo them.</div>
+    <div><b>One colour, one meaning.</b>PLATE blue is selection and nothing else. Yellow tape is a number you can type. Dashed slate is displacement, coral a problem, green open on purpose.</div>
+    <div><b>One writer per number.</b>Handles, typed tapes and Inspector fields are the same value. Invalid proposals are refused with a reason, and a refused gesture writes nothing.</div>
+    <div><b>Motion that learns.</b>A move plays slowly with a caption the first two times you see it, then gets brisk. <kbd>Shift</kbd> makes any move instant. Reduced-motion is respected.</div>
+    <div><b>Curvature is a view.</b>A curved wall can be held anywhere from its round 360° to flat, from inside or outside, and edited at every stop. Unrolling never stretches the wall, so the numbers are always <i>measured</i>; only the picture foreshortens — and it says so, per axis.</div>
+  </div>
+  <div class="equiv">
+    <div><span>P26 “Section”</span><b>Open along a line</b>Draw it, preview it, the museum parts and you turn to face the cut.</div>
+    <div><span>P26 “Wall Elevation”</span><b>Face it · Unfold</b>Stand square to a wall; curved walls unfold around the opening.</div>
+    <div><span>P26 “Ceiling Focus”</span><b>Lift · Look up</b>Lift the lid to see contacts; sink below the floor to look up.</div>
+    <div><span>Plan</span><b>The camera tipped down</b>With a horizontal cut at 1.20 — the same instrument pointed down.</div>
+  </div>
+</div></section>
+
+<!-- ------------------------------------------------------------ journeys -->
+<section id="journeys"><div class="wrap">
+  <span class="kicker">Complete journeys, including the motion between states</span>
+  <h2>Every frame below is a live state of the prototype.</h2>
+  <p class="intro">Intermediate frames are captured mid-transition. Each journey is scripted in the prototype from the same functions a person triggers. Press <kbd>J</kbd> there to step through, or open a step directly.</p>
+
+  <div class="journey">
+    <div class="jhead"><h3>A · Curved wall — 3D → peel → walk round → square up → flat → edit at any curvature → put back</h3><a href="index.html?journey=A&step=0">Play →</a></div>
+    <div class="strip">
+      <figure><span class="phase rest">rest</span><img src="screens/01-3d.png" alt=""><figcaption><b>Select the Garden window in 3D</b>Blue selection, the handles that read from here, and a folded corner on the wall top.</figcaption></figure>
+      <figure><span class="phase move">by hand</span><img src="screens/19-peel-mid.png" alt=""><figcaption><b>Pull the corner</b>The wall unrolls under your hand, from outside where you stand. Paper sheet, dashed as-built ring.</figcaption></figure>
+      <figure><span class="phase rest">view</span><img src="screens/20-peeled-outside.png" alt=""><figcaption><b>Let go at 180°</b>It stays. “Unrolled · view only” in the strip; Inside | Outside beside it.</figcaption></figure>
+      <figure><span class="phase rest">settled</span><img src="screens/20b-heights-to-scale.png" alt=""><figcaption><b>Inside, squared up</b>Heights to scale: a vertical scale bar only. The numbers are measured on the wall at any wrap.</figcaption></figure>
+      <figure><span class="phase move">one beat</span><img src="screens/06-unfold-mid.png" alt=""><figcaption><b>Or press O</b>Walk, face and unroll in one motion — 2.1 s the first time, 0.8 s once learned.</figcaption></figure>
+      <figure><span class="phase rest">settled</span><img src="screens/08-flat-sheet.png" alt=""><figcaption><b>Flat: to scale both ways</b>34.56 m around, seam S at both ends, both ceilings drawn on the sheet.</figcaption></figure>
+      <figure><span class="phase edit">edit</span><img src="screens/08b-curved-3d.png" alt=""><figcaption><b>Stop at any curvature, keep editing in 3D</b>Handles whose axis you can read stay live; the rest stay typeable.</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="jhead"><h3>B · Look inside — draw a line → preview → part → face the cut → edit → close</h3><a href="index.html?journey=B&step=0">Play →</a></div>
+    <div class="strip">
+      <figure><span class="phase move">motion</span><img src="screens/02-tilt-mid.png" alt=""><figcaption><b>Tilting into Plan</b>The cut descends through the model as perspective drains.</figcaption></figure>
+      <figure><span class="phase rest">settled</span><img src="screens/03-plan.png" alt=""><figcaption><b>Plan</b>The same model from above, walls inked at 1.20.</figcaption></figure>
+      <figure><span class="phase edit">preview</span><img src="screens/09-knife-3d.png" alt=""><figcaption><b>Preview before committing</b>In 3D the building opens in place; the peek shows the finished cut. Arrow = look direction, band = depth.</figcaption></figure>
+      <figure><span class="phase edit">explore</span><img src="screens/24-knife-slide.png" alt=""><figcaption><b>Slide it to compare</b>B’s exploratory preview: drag the grip, the peek follows. Nothing has opened.</figcaption></figure>
+      <figure><span class="phase move">motion</span><img src="screens/10-part-mid.png" alt=""><figcaption><b>Parting</b>The near half slides toward you while the camera turns to face the cut.</figcaption></figure>
+      <figure><span class="phase edit">edit</span><img src="screens/11-section.png" alt=""><figcaption><b>Edit at the cut</b>Only the selection speaks at full strength; every other source carries its reference quietly.</figcaption></figure>
+      <figure><span class="phase rest">view</span><img src="screens/12-depth-locator.png" alt=""><figcaption><b>Beyond depth, still placed</b>A dashed ring where it is, the reason, and three ways back: include it, show it through, go to its wall.</figcaption></figure>
+      <figure><span class="phase move">nested</span><img src="screens/12b-nested.png" alt=""><figcaption><b>Go to its wall — and back</b>3D › Section › Facing. Esc returns to the same cut and 3.00 m depth.</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="jhead"><h3>C · Ceiling — the wall explains itself → lift → preview a fix → look up → edit → return</h3><a href="index.html?journey=C&step=0">Play →</a></div>
+    <div class="strip">
+      <figure><span class="phase rest">rest</span><img src="screens/13-wall-explains.png" alt=""><figcaption><b>The problem, in words</b>“Its top is 20 cm below the Long Gallery ceiling.”</figcaption></figure>
+      <figure><span class="phase move">motion</span><img src="screens/14-lift-mid.png" alt=""><figcaption><b>Lifting the lid</b>Tethers stretch from every wall it rests on.</figcaption></figure>
+      <figure><span class="phase edit">preview</span><img src="screens/15-lift-preview.png" alt=""><figcaption><b>Hover a fix to preview it</b>Lowering the ceiling would leave two walls standing above it.</figcaption></figure>
+      <figure><span class="phase move">motion</span><img src="screens/16-lookup-mid.png" alt=""><figcaption><b>Sinking below the floor</b>The lower building is sliced away as the camera turns up.</figcaption></figure>
+      <figure><span class="phase rest">settled</span><img src="screens/17-lookup.png" alt=""><figcaption><b>Looking up</b>Closure ceiling, suspended soffit, the light slot. Heights typed, not dragged.</figcaption></figure>
+      <figure><span class="phase edit">refusal</span><img src="screens/18-refusal.png" alt=""><figcaption><b>Invalid stays invalid</b>Past the wall top the handle turns coral with a reason; release restores it, writing nothing.</figcaption></figure>
+    </div>
+  </div>
+  <div class="journey">
+    <div class="jhead"><h3>E · Everyday edit — Plan → slide and widen → tilt → head in 3D → face → rise → back → Undo</h3><a href="index.html?journey=E&step=0">Play →</a></div>
+    <div class="strip">
+      <figure><span class="phase edit">edit</span><img src="screens/21-plan-author.png" alt=""><figcaption><b>Authoring in Plan</b>Slide and width get handles; sill and head are edge-on from above, so they are typed.</figcaption></figure>
+      <figure><span class="phase edit">edit</span><img src="screens/22-tilt-handles.png" alt=""><figcaption><b>Tilt toward 3D</b>The sill and head handles arrive as their axis becomes readable. Nothing was swapped.</figcaption></figure>
+      <figure><span class="phase rest">return</span><img src="screens/23-summary.png" alt=""><figcaption><b>Back, exactly — and what stayed</b>The tilted standpoint you left, and the two changes made while facing.</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="jhead"><h3>F · Where did it go? — find → why you can’t see it → go to it</h3><a href="index.html?journey=F&step=0">Play →</a></div>
+    <div class="strip">
+      <figure><span class="phase rest">find</span><img src="screens/25-find.png" alt=""><figcaption><b>Find anything</b>Every result says where it is from here.</figcaption></figure>
+      <figure><span class="phase rest">why</span><img src="screens/26-find-behind.png" alt=""><figcaption><b>Hidden behind the Rotunda wall</b>A beacon where it is; the Inspector offers Look at it and Face it.</figcaption></figure>
+      <figure><span class="phase rest">view</span><img src="screens/12c-reveal.png" alt=""><figcaption><b>Or show it through</b>Inside a section: the one source, at its true place, depth unchanged.</figcaption></figure>
+    </div>
+  </div>
+  <p class="small" style="margin-top:22px">Journey D (in the prototype) shows the same moves for a practised creator: one-beat openings, hopping between open states, stepping back along the trail.</p>
+</div></section>
+
+<!-- ------------------------------------------------------------ sources -->
+<section id="sources"><div class="wrap">
+  <span class="kicker">What came from where</span>
+  <h2>Not B plus D. A model neither proposal had, built from the strongest parts of both.</h2>
+  <p class="intro">B's insight was that continuity comes from the camera: if you watch yourself walk round to a view, you never lose the room. D's insight was that the architecture itself can move out of the way: unrolled, lifted, parted — by hand. Together they needed a third idea — when is a moving view exact? The answer turned out to be two answers: the <b>picture</b> is exact when it settles, per axis; an <b>edit</b> is exact wherever its handle's axis reads. A peer review exposed that the first version had merged them, and had lost several of B's and D's best moves on the way; see the <a href="REVIEW-RECONCILIATION.md">reconciliation</a>.</p>
+  <div class="cols">
+    <div class="card b"><span class="src">Retained from B</span><h3>Standpoint and continuity</h3><ul>
+      <li><b>Continuous camera movement</b> between every standpoint, never a jump cut.</li>
+      <li><b>“Plan is a blade pointing down; looking up is a blade pointing up”</b> — kept as the literal mechanism (horizontal cut at 1.20 / 1.60), not the vocabulary.</li>
+      <li><b>Live preview before commit</b>: the cut previews in place in 3D, and as a peek in Plan.</li>
+      <li><b>Explicit look direction and depth</b>, with depth framed as “how far in to include”, and a view change, not an edit.</li>
+      <li><b>Excluded ≠ gone</b>, with B's recovery: <b>include it</b> (depth to exactly the number needed), <b>go to its wall</b> and come straight back, and a ghost place on the paper.</li>
+      <li><b>Exploratory preview</b>: slide the drawn line and watch the cut re-derive before committing.</li>
+      <li><b>Exact return</b>: back restores the standpoint, depth and Reveal you left.</li>
+      <li><b>Selection travels</b>; <b>“work on its wall”</b> from an opening.</li>
+      <li><b>View history separate from Undo</b>.</li>
+      <li><b>Honesty about curved walls</b>: the picture is foreshortened, and the product says so. The rule B drew from it — no width edits face-on — is replaced below.</li>
+    </ul></div>
+    <div class="card"><span class="src">Retained from D</span><h3>The physical model and the look</h3><ul>
+      <li><b>The visual language</b>: green mat, foam model, yellow measuring tape for numbers, Bricolage / Onest / Martian Mono.</li>
+      <li><b>Direct physical opening</b>: pull a wall's corner, lift a lid by its tab.</li>
+      <li><b>Inside / Outside</b> for a wall you face — now a walk round, not a toggle.</li>
+      <li><b>Find anything</b>, and say why it can't be seen from here.</li>
+      <li><b>The session summary</b> on leaving: what you changed, and undo them together if you choose.</li>
+      <li><b>One verb, meaning set by the selection</b>: <kbd>O</kbd> unfolds a wall, lifts a ceiling, or with nothing selected draws a line.</li>
+      <li><b>Unfold around the clicked point</b>, seam S, junction letters A/B, both-side ceilings drawn on the sheet.</li>
+      <li><b>Lift with tethers</b>: meets / gap / open on purpose, and fixes previewed on hover.</li>
+      <li><b>Open along a drawn line</b>, the near half sliding toward you — the central Section metaphor.</li>
+      <li><b>Set aside, never silently removed</b>; states named in the Navigator (“laid flat”, “opened away”).</li>
+      <li><b>Every number is a tape</b>; a person figure for scale.</li>
+    </ul></div>
+    <div class="card new"><span class="src">New in this synthesis</span><h3>Invented</h3><ul>
+      <li><b>Settle</b>: a detent that dolly-zooms the picture to scale and turns the mat to paper — per axis, with a vertical-only scale bar on a curve. Flatness is derived from where the camera points, never a mode flag.</li>
+      <li><b>The legibility gate</b>: one rule decides which handles exist in every view — offered where the axis reads, withheld where it runs along the line of sight.</li>
+      <li><b>One opening kit for Plan, 3D and a face</b>: authoring an opening is the same act from every standpoint.</li>
+      <li><b>Nesting with a breadcrumb</b>: Esc steps back one open state, exactly; ⇧Esc puts everything back.</li>
+      <li><b>One resolver for “where is it?”</b> behind Find, the Inspector, the beacon and the section locator.</li>
+      <li><b>As-built ghost and label budget</b>: displacement always shows its home; only the selection speaks at full strength.</li>
+      <li><b>The tilt bead</b>: Plan and 3D shown as two ends of one camera; drag between them.</li>
+      <li><b>Registration during unfold</b>: the camera rises so the footprint is visible while the wall peels, then settles face-on.</li>
+      <li><b>Curvature as an editable view</b>: a dial from 360° round to flat, with stops at 180° and 90°. Every stop is editable, square-on or from a 3D standpoint, because the numbers are measured along the wall rather than on the screen.</li>
+      <li><b>Chained open states</b>: hop between walls without going home; different kinds nest.</li>
+      <li><b>A trail of recipes</b>: view history that can reopen a closed cut or unfolded wall.</li>
+      <li><b>Motion that learns</b>, teaching captions only while teaching, <kbd>Shift</kbd> for instant.</li>
+      <li><b>Look up by sinking</b> below the floor, with a mirror toggle rather than a hidden mirror convention.</li>
+      <li><b>A depth edge you can drag</b> on the “where you are” card.</li>
+    </ul></div>
+  </div>
+  <div class="cols">
+    <div class="card"><span class="src">Changed or rejected</span><h3>What did not survive</h3><ul>
+      <li><b>B's all-orthographic painter camera</b> → rejected. Perspective is how people read space; orthographic is a <i>destination</i> the camera settles into, not the medium.</li>
+      <li><b>B's blade as the user-facing object</b> → replaced by D's drawn line. The blade survives underneath as the plan and look-up cuts.</li>
+      <li><b>B's “no width edits on a foreshortened curve”</b> → replaced. Handles measure distance along the wall surface, which unrolling preserves exactly, so they are true at any curvature and any camera angle.</li>
+      <li><b>B's height crop and segmented-panel curves</b> → deferred; the model reserves them.</li>
+      <li><b>D's floating session bar</b> → moved into PLATE's contextual strip under Plan · 3D, as a breadcrumb.</li>
+      <li><b>D's full-bleed Paper</b> → not recovered: PLATE's Navigator and Inspector stay (the Inspector is the one writer). The locator now appears only while something is open.</li>
+      <li><b>D's fold map + B's where-you-are</b> → merged into one live locator (camera, anchor, junctions, cut, depth).</li>
+      <li><b>D's peel-by-hand corner</b> → first dropped as a duplicate of the verb, then <b>restored</b>: once curvature is a view, the peel is the only gesture that sets any curvature from where you stand.</li>
+      <li><b>D's “one undo for the whole session”</b> → reinterpreted. One gesture, one Undo step; on leaving, a summary offers to undo that session's steps together.</li>
+      <li><b>“Esc puts everything back”</b> → reversed after review. It skipped the section you came from; Esc is now one level.</li>
+      <li><b>B's hover-before-drawing</b> → reinterpreted as draw-then-slide; a free-angle line needs its direction first.</li>
+      <li><b>D's ask-every-time “follow or stay”</b> → not yet; relationships are shown instead (see open questions).</li>
+    </ul></div>
+    <div class="card"><span class="src">Against the P26 brief</span><h3>How it lands</h3><ul>
+      <li>Instruments stay <b>contextual</b>: the strip sits under Plan · 3D, never beside them, with one return action.</li>
+      <li><b>Finite depth by default</b> (6.0 m), exclusion with reasons, Reveal as a view-only exception.</li>
+      <li><b>Openings resolve through their host</b>: outlines and handles come from the host relation, never from wall faces.</li>
+      <li><b>Wall-top profiles</b> (level · slope · gable, by distance along the wall, including the curve), <b>independent arch rise</b> with head held (owner ruling R2), <b>ceiling regions</b> that close or hang (R1).</li>
+      <li>Floor datum <b>+0.15</b> is shown in the Navigator, on every drawing, and in world readouts.</li>
+      <li>Scene artwork is <b>passive context</b> in every drawing; edit it in Arrange.</li>
+    </ul></div>
+  </div>
+</div></section>
+
+<!-- ------------------------------------------------------------ departures -->
+<section id="departures"><div class="wrap">
+  <span class="kicker">Where this deliberately departs from today's Museum Editor</span>
+  <h2>Worth rebuilding the viewport for.</h2>
+  <table class="map">
+    <thead><tr><th>Today</th><th>Proposal</th><th>Why it is worth it</th></tr></thead>
+    <tbody>
+      <tr><td>Plan and 3D are two surfaces</td><td>Plan is a standpoint of the 3D camera. The Plan tab still exists, but it tilts rather than swaps.</td><td>The core of “one museum”: the creator watches the plan become the room and back. It is the largest infrastructure change (question 1 below).</td></tr>
+      <tr><td>No vertical views</td><td>Face / Open along a line / Look up, reachable from Plan <i>and</i> 3D, settling to scale</td><td>Vertical precision without entering a CAD workspace.</td></tr>
+      <tr><td>Geometry is only ever as built</td><td>Temporary <b>displacement</b> — unroll, lift, part, set aside — as editor view state</td><td>It removes the specific thing hiding the subject, and it teaches what happened.</td></tr>
+      <tr><td>Camera jumps between modes</td><td>Continuous choreographed motion, adaptive in speed</td><td>First-time comprehension without taxing daily use.</td></tr>
+      <tr><td>One Undo, no view memory</td><td>Undo for building changes + a view trail in the status rail</td><td>Looking around never pollutes history; you can always go back to where you were.</td></tr>
+      <tr><td>PLATE: selection blue</td><td><b>Kept</b> (changed after review): selection and handles in PLATE blue; D's yellow tape only for numbers you can type; mat in 3D, paper when settled</td><td>The brief requires the existing selection colour, and yellow could not mean both “selected” and “typeable” — the section showed the confusion.</td></tr>
+      <tr><td>View bar: Plan · 3D</td><td>Plan · tilt bead · 3D, plus a contextual strip under it; status rail gains the trail and a Motion control</td><td>Durable views stay the only peers; everything else is visibly temporary.</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<!-- ------------------------------------------------------------ questions -->
+<section id="questions"><div class="wrap">
+  <span class="kicker">Technical and architectural questions to investigate later</span>
+  <h2>What this depends on.</h2>
+  <div class="qs">
+    <div class="q"><b>Plan in the same renderer</b>Today's Plan is its own drafting surface. Do plan tools move into a WebGL orthographic view, or does the SVG plan crossfade in at the moment of settle? Line weight, text and hit-testing precision decide it.</div>
+    <div class="q"><b>“One nav + one motion”</b>AGENTS.md reserves camera motion to <code>camera-route</code>/<code>camera-motion</code>. The editor viewport choreography here must be confirmed as editor-only viewport animation, not a second visitor motion system — or be built on that core.</div>
+    <div class="q"><b>Caps from compiled solids</b>The prototype computes section and plan caps analytically from centrelines. Production needs caps from the one compiler's solids, with per-source identity, mitred junctions, cubic curves, sloped tops and holed slabs.</div>
+    <div class="q"><b>Membership evaluated once (I11)</b>Here, clipping planes draw the cut while <code>memberOf()</code> separately answers the Navigator. Production needs one membership stage feeding render, hit, snap and overlays.</div>
+    <div class="q"><b>Unrolling real walls</b>P23 curves are cubic, not circular arcs. Unrolling needs arc-length parameterisation, a seam policy for closed loops, and a GPU bend deformation rather than re-tessellating every frame.</div>
+    <div class="q"><b>Displacement as view state</b>Where does a “lifted” ceiling or a “parted” half live: render transforms per source outside the document, with hosted objects following? Visitor isolation must be guaranteed.</div>
+    <div class="q"><b>True orthographic vs tiny field of view</b>The prototype approximates orthographic with a sub-degree perspective. A matched OrthographicCamera swap may be more robust; handle maths must use exactly the rendered projection either way.</div>
+    <div class="q"><b>Ceiling semantics</b>Closure / suspended are shown; generated-closure fallback, partial coverage strips, overlap joints and spanning regions are not prototyped. Datum policy for ceilings under a floor change is still open.</div>
+    <div class="q"><b>Who owns a height?</b>When a wall rises past its ceiling, or a ceiling tilts, does anything follow? The prototype only shows relationships. An acyclic “fit to” rule is a product decision.</div>
+    <div class="q"><b>Trail as recipes</b>Should standpoints and cut definitions survive the session (pinned views)? They must store the instrument definition, never derived geometry.</div>
+    <div class="q"><b>Performance under P23B</b>Every open state rebuilds some geometry per frame here. Real models need GPU-side deformation and cached derivation; nothing here assumes P23B has landed.</div>
+    <div class="q"><b>Paper width inside PLATE</b>At 1440 the work column gives the museum 816 px against D's 1204. Should PLATE sanction a Navigator collapse for large drawings, without losing the rank the brief requires?</div>
+    <div class="q"><b>Legibility thresholds</b>cos 70° and 14 px/m are prototype values. They need tuning with real users and devices, and a rule for touch.</div>
+    <div class="q"><b>Accessibility of motion and handles</b>Keyboard-only handle nudging, screen-reader naming of open states, and a reduced-motion path that still explains correspondence (a crossfade with the registration lines).</div>
+  </div>
+  <p class="honest"><b>No user testing has been done.</b> The claims here are design judgements checked against scripted journeys. First things to test: whether “heights to scale” is understood without the caption, whether people find the corner to peel unprompted, and whether Esc-one-level feels right after a long chain. Not yet prototyped: drawing new walls in the one renderer, vertical crop and cut-only, a twelve-room museum.</p>
+</div></section>
+
+<!-- ------------------------------------------------------------ run -->
+<section class="run" id="run"><div class="wrap">
+  <span class="kicker">Run it</span>
+  <h2>Serve the folder; no build step.</h2>
+<pre><span class="c"># from Final-Design-Prototype/</span>
+python3 -m http.server 8826
+<span class="c"># then open</span>
+http://localhost:8826/                 <span class="c"># the prototype</span>
+http://localhost:8826/rationale.html   <span class="c"># this page</span>
+http://localhost:8826/?journey=B&step=2   <span class="c"># jump into a journey</span></pre>
+  <p class="small">The implementation-facing detail — state machines, formulas, and where each hard interaction lives in the code — is in <a href="IMPLEMENTER-REFERENCE.md">IMPLEMENTER-REFERENCE.md</a>. <code>scripts/shoot.sh</code> re-renders every screen on this page from live prototype states.</p>
+</div></section>
+
+<footer><div class="wrap">Museum Editor · P26 continuous spatial authoring · synthesis of designers B and D. A design prototype on a sample museum, not production code.</div></footer>
+
+<div class="lb" id="lb"><img alt=""><div class="cap"></div></div>
+<script>
+  const lb = document.getElementById('lb');
+  document.querySelectorAll('.strip img, .hero-shots img').forEach((img) => img.addEventListener('click', () => {
+    lb.querySelector('img').src = img.src;
+    lb.querySelector('.cap').textContent = img.closest('figure')?.querySelector('figcaption')?.innerText.replace(/\n+/g, ' — ') || '';
+    lb.classList.add('on');
+  }));
+  lb.addEventListener('click', () => lb.classList.remove('on'));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('on'); });
+</script>
+</body>
+</html>
