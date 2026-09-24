@@ -2,8 +2,11 @@
 
 PHASE: P23B
 CHILD: P23B.0-durable — sequence step 10; owner ratified plan revision `4b32034f` on 2026-09-24, approved
-       O-1–O-4 and authorized W1–W7. Stage B is not started in this update. P23B.4 remains gated until
-       P23B.0's baseline is accepted.
+       O-1–O-4 and authorized W1–W7. Stage B is in progress at implementation checkpoint
+       `checkpoints/p23b0-stage-b.md`: W1–W2 are committed at `89ec1fa2`, W3–W5 implementation is committed
+       at `e26bb623`, the live capture and v4 baseline recording are the remaining steps, and no v4
+       baseline or continuation PR exists. P23B.4 remains gated until P23B.0's
+       baseline is accepted.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -15,15 +18,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        reconciled phase-wide umbrella. P26 implementation remains unauthorized; its final plan must
        reconcile landed P23B, and the selected architecture validation window is not yet open. P23B does
        not depend on that reconciliation. The architecture cycle remains at PHASE_1 installed.
-       P23B.0-durable's Stage A plan is ratified; its measurement infrastructure is authorized but not yet
-       implemented. P23B.1 harvest and P23B.2 research artifacts retain their
+       P23B.0-durable's Stage A plan is ratified; its measurement infrastructure is implemented at
+       `e26bb623`. P23B.1 harvest and P23B.2 research artifacts retain their
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.0-durable — Stage B W1–W7 is owner-authorized but not started in this update. When work begins,
-   execute sequence step 10 on the owner-authorized continuation branch/PR; assert exact fixture bytes in
-   W2 before baseline recording and preserve slice acceptance and closeout order. P23B.4 remains gated
-   until P23B.0's baseline is accepted.
+1. Resume P23B.0-durable Stage B from `checkpoints/p23b0-stage-b.md` on `codex/p23b-continuation`; preserve
+   the single continuation branch/PR and sequential slice boundaries. Finish W1–W7, verify exact fixture
+   bytes before baseline recording, then stop implementation-review-ready. P23B.4 remains gated until
+   P23B.0's baseline is accepted.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
 3. P26 planning may continue in parallel. Read
@@ -35,6 +38,7 @@ NEXT:
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
 ROUTE:
+P23B.0-durable Stage B resume checkpoint → checkpoints/p23b0-stage-b.md
 phase status/order → ../roadmap/README.md
 P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
 P23B.3a shipped plan stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
@@ -52,10 +56,11 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.0-durable has no committed owner-case fixture, executable W2 assertions or recorded baseline. Its
-  plan is ratified and Stage B authorized but unstarted; the P23B.4 gate stays closed until the baseline is
-  accepted. Stage B must record live browser DPR/renderer details where observable and actual per-path
-  sampling settings (Stage A packet §§4–5).
+- P23B.0-durable has its owner fixture, ledger and executable W2 assertions committed at `89ec1fa2`,
+  and its W3–W5 method-v4 implementation committed at `e26bb623`; the live browser capture, recorded v4
+  baseline and continuation PR remain outstanding, so the P23B.4 gate stays closed until the baseline is
+  accepted. Resume from `checkpoints/p23b0-stage-b.md`; Stage B must record live
+  browser DPR/renderer details where observable and actual per-path sampling settings (Stage A packet §§4–5).
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
