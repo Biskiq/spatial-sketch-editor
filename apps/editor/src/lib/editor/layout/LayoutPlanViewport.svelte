@@ -3539,7 +3539,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return;
 		}
 		if (interaction.architectureEdit && interaction.architectureEdit.pointerId === event.pointerId) {
-			const isBend = interaction.architectureEdit.kind === 'wall-bend';
+			// P23B — both shipped bend gestures are bends: a `wall-bend` inserts a
+			// knot on the arc, and a `curve-control-move` drags the knot the user
+			// grabbed. They already share the `bend-knot-edit` input/release
+			// boundary, so naming only `wall-bend` here would file a knotted bend's
+			// preview work under `plan-drag-edit` and blend the two paths.
+			const editKind = interaction.architectureEdit.kind;
+			const isBend = editKind === 'wall-bend' || editKind === 'curve-control-move';
 			const enabled = import.meta.env.DEV && (globalThis as { __P2311_PERF__?: boolean }).__P2311_PERF__;
 			let start = '';
 			if (isBend && enabled) {
