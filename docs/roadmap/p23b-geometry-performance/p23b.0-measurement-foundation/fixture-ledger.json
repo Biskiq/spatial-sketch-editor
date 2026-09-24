@@ -1,0 +1,182 @@
+{
+  "ledgerVersion": 1,
+  "identityScope": "Fixture identity and measurement provenance are separate. Machine, browser session, sampling, commit, and date belong to each recorded measurement in g3-baseline.json.",
+  "fixtures": [
+    {
+      "id": "p23b-12-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "12-wall", "curvature": "straight" } },
+      "canonicalLayoutSha256": "3c91ddc928aad8b9ff3d31c0a288bde1b46228c3d9d20bcdb8a1d1a9a882e401",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 3, "walls": 12, "junctions": 12, "openings": 0, "curvedWalls": 0, "centerlineKinds": { "line": 12 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "Straight CLASS 5 control at the 12-Wall / 3-Room size."
+    },
+    {
+      "id": "p23b-12-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "12-wall", "curvature": "target-curved" } },
+      "canonicalLayoutSha256": "319fe997b5489304b177c8eb891e27ca7c17cee3a3a48f045b3e2aa3af62b44e",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 3, "walls": 12, "junctions": 12, "openings": 0, "curvedWalls": 1, "centerlineKinds": { "cubic-chain": 1, "line": 11 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "One curved target Wall with otherwise straight boundaries at the 12-Wall / 3-Room size."
+    },
+    {
+      "id": "p23b-12-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "12-wall", "curvature": "all-curved" } },
+      "canonicalLayoutSha256": "de138bcc81954d4f738610dc2ecbed7c968d64523c9daaeaec8e35884427edc6",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 3, "walls": 12, "junctions": 12, "openings": 0, "curvedWalls": 12, "centerlineKinds": { "cubic-chain": 12 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "All-curved CLASS 5 timing target at the 12-Wall / 3-Room size."
+    },
+    {
+      "id": "p23b-40-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "40-wall", "curvature": "straight" } },
+      "canonicalLayoutSha256": "814ed5370d9dc72e9d7718e3d8dba631a654763cb6abac46331011d41978d9b2",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 10, "walls": 40, "junctions": 40, "openings": 0, "curvedWalls": 0, "centerlineKinds": { "line": 40 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "Straight CLASS 5 control at the 40-Wall / 10-Room size."
+    },
+    {
+      "id": "p23b-40-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "40-wall", "curvature": "target-curved" } },
+      "canonicalLayoutSha256": "7d2f8dae33189a64ec9955e5c3bcd40b39105f02d3b5a1273e9c9ae0276314fe",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 10, "walls": 40, "junctions": 40, "openings": 0, "curvedWalls": 1, "centerlineKinds": { "cubic-chain": 1, "line": 39 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "One curved target Wall with otherwise straight boundaries at the 40-Wall / 10-Room size."
+    },
+    {
+      "id": "p23b-40-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "size": "40-wall", "curvature": "all-curved" } },
+      "canonicalLayoutSha256": "22efb326d057974476bfed7fca7d1f3d13dbad203af9bbd8054359cc9df3d461",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 10, "walls": 40, "junctions": 40, "openings": 0, "curvedWalls": 40, "centerlineKinds": { "cubic-chain": 40 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "All-curved CLASS 5 timing target at the 40-Wall / 10-Room size."
+    },
+    {
+      "id": "owner-40-curved-v1",
+      "semanticClass": 5,
+      "role": "owner-responsiveness",
+      "source": { "kind": "exact-owner-payload", "path": "docs/roadmap/p23b-geometry-performance/40-walls.json", "bytes": 61140 },
+      "canonicalLayoutSha256": "63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05",
+      "rawPayloadSha256": "63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05",
+      "documentShape": { "rooms": 10, "walls": 40, "junctions": 40, "openings": 0, "curvedWalls": 40, "centerlineKinds": { "cubic-chain": 40 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "Exact owner-supplied real-world responsiveness payload. Its independent Room components are preserved; it is not historical E2."
+    },
+    {
+      "id": "d12-exact-coincidence-v1",
+      "semanticClass": 2,
+      "role": "regression",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "exact-coincidence" } },
+      "canonicalLayoutSha256": "28234ec62593912185a6759a328b0f30fde6bc493fde1709d58d3c114c08a6d4",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 2, "walls": 8, "junctions": 8, "openings": 1, "curvedWalls": 0, "centerlineKinds": { "line": 8 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "D-12 exact coincidence: after role change, the unrelated Room id/name, object ownership, and Opening host survive."
+    },
+    {
+      "id": "d12-partial-overlap-v1",
+      "semanticClass": 2,
+      "role": "regression",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "partial-overlap" } },
+      "canonicalLayoutSha256": "565c67c6c87ac2a4fe20c8010d5473b88f1f9f164dbcba437b41b5ef57232f12",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 2, "walls": 8, "junctions": 8, "openings": 1, "curvedWalls": 0, "centerlineKinds": { "line": 8 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "D-12 partial overlap: after role change, the unrelated Room id/name, object ownership, and Opening host survive."
+    },
+    {
+      "id": "d12-full-containment-v1",
+      "semanticClass": 2,
+      "role": "regression",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "full-containment" } },
+      "canonicalLayoutSha256": "70a9395ec8c4252a6a1cd58b8a64b0c922fd9720465566a7bc9cf2c8ad6b7dfb",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 2, "walls": 8, "junctions": 8, "openings": 1, "curvedWalls": 0, "centerlineKinds": { "line": 8 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "D-12 full containment: after role change, the unrelated Room id/name, object ownership, and Opening host survive."
+    },
+    {
+      "id": "N-2",
+      "semanticClass": 3,
+      "role": "positive",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "independent-curved-crossing" } },
+      "canonicalLayoutSha256": "08cad1bc3365784eb2fa6389ab2396f8a53130812946fb2a19069bb0a2ff4c48",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 0, "walls": 2, "junctions": 4, "openings": 0, "curvedWalls": 1, "centerlineKinds": { "line": 1, "cubic-chain": 1 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "admitted", "compilerIssues": [] },
+      "behaviorPinned": "The shipped Option E validator admits a curved crossing between independent Wall/Junction components without joining them."
+    },
+    {
+      "id": "N-2i",
+      "semanticClass": 4,
+      "role": "negative",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "same-component-curved-crossing" } },
+      "canonicalLayoutSha256": "1a1eeca04b5f2a7c02fc70e50cdc43aa85d02420566abde6062002ff9d5dfbc2",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 0, "walls": 2, "junctions": 3, "openings": 0, "curvedWalls": 1, "centerlineKinds": { "line": 1, "cubic-chain": 1 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "unsupported_wall_topology", "compilerIssues": [] },
+      "behaviorPinned": "The shipped Option E validator continues to reject the same curved crossing inside one shared-Junction component."
+    },
+    {
+      "id": "class4-self-intersection-v1",
+      "semanticClass": 4,
+      "role": "negative",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "single-wall-self-intersection" } },
+      "canonicalLayoutSha256": "04bcbdd7a0b4439d660996a13631816926a1de12ce02a6bccb4b5f4f2228018b",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 0, "walls": 1, "junctions": 2, "openings": 0, "curvedWalls": 1, "centerlineKinds": { "cubic-chain": 1 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "unsupported_wall_topology", "compilerIssues": ["wall_offset_overlap"] },
+      "behaviorPinned": "A cubic Wall that crosses itself remains intrinsically invalid."
+    },
+    {
+      "id": "class4-zero-length-wall-v1",
+      "semanticClass": 4,
+      "role": "negative",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "coincident-wall-endpoints" } },
+      "canonicalLayoutSha256": "a59da5db5b8dc1a0b0576e615118e87274098daea5ad3491bc32e768ceaab3b9",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 0, "walls": 1, "junctions": 2, "openings": 0, "curvedWalls": 0, "centerlineKinds": { "line": 1 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "duplicate_junction_point", "compilerIssues": [] },
+      "behaviorPinned": "Distinct Junction ids at the same point do not make a zero-length Wall valid inside their connected component."
+    },
+    {
+      "id": "class4-open-room-boundary-v1",
+      "semanticClass": 4,
+      "role": "negative",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "three-wall-open-room-boundary" } },
+      "canonicalLayoutSha256": "8a270ac9066b2ed9a1bc2ace47bd7028c2b8e26faab3f786cae0473a3df9fbd6",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 1, "walls": 3, "junctions": 4, "openings": 0, "curvedWalls": 0, "centerlineKinds": { "line": 3 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "unsupported_wall_topology", "compilerIssues": ["disconnected_boundary"] },
+      "behaviorPinned": "A Room boundary that does not form a closed connected face is rejected by the shipped topology/compiler gates."
+    },
+    {
+      "id": "class4-component-duplicate-junction-v1",
+      "semanticClass": 4,
+      "role": "negative",
+      "source": { "kind": "deterministic-constructor", "path": "apps/editor/src/lib/bench/p23b-fixtures.ts", "spec": { "case": "same-component-coincident-junctions" } },
+      "canonicalLayoutSha256": "fb2f18c8f94fca9e7387338c61d9ac679256032ac94e327a652ece2f7fe15626",
+      "rawPayloadSha256": null,
+      "documentShape": { "rooms": 1, "walls": 5, "junctions": 5, "openings": 0, "curvedWalls": 0, "centerlineKinds": { "line": 5 } },
+      "shippedVerdict": { "codec": "accepted", "topology": "duplicate_junction_point", "compilerIssues": ["junction_partition_failed", "junction_seam_uncovered"] },
+      "behaviorPinned": "Coincident Junctions inside one connected component remain rejected under the landed topology policy."
+    }
+  ]
+}
