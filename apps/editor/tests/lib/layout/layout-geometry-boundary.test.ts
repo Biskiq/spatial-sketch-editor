@@ -151,4 +151,17 @@ describe('G1 geometry boundary', () => {
 		expect(planHitSource).toContain('$lib/layout/layout-geometry-queries');
 		expect(planHitSource).toContain('projectPointToSpans');
 	});
+
+	it('keeps duplicate topology at the canonical gate and codec ingestion structural (P23B.3a S8)', () => {
+		const duplicateSource = sourceOf(resolve(layoutDir, 'layout-duplicate.ts'));
+		expect(duplicateSource).toContain('validateWallFirstTopology(structural.document');
+		expect(duplicateSource).not.toContain('classifyWallIntersection(');
+		expect(duplicateSource).not.toContain('validateBatchWallTopology');
+
+		const codecSource = sourceOf(resolve(layoutDir, 'layout-wall-first-codec.ts'));
+		expect(importSpecifiers(codecSource)).not.toContain('./layout-wall-first-precision');
+		expect(codecSource).not.toMatch(
+			/\b(?:validateWallFirstTopology|detectWallCurveTopologyCrossings|classifyWallIntersection)\s*\(/
+		);
+	});
 });

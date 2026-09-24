@@ -9,6 +9,7 @@ import {
 	planRepeatWallOpening
 } from '$lib/layout/layout-duplicate';
 import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
+import { validateWallFirstTopology } from '$lib/layout/layout-wall-first-precision';
 import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -531,18 +532,59 @@ describe('P23.4 isolated Room duplicate', () => {
 		expect(rejected.message).toContain('opening:door:1');
 	});
 
-	it('rejects a clone that would cross or overlap existing walls', () => {
-		const rejected = rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [-2, 0] }));
-		expect(rejected.code).toBe('topology_invalid');
+	it('P23B.3a S7 RE-BASED — commits a clone that OVERLAPS independent geometry, joining nothing', () => {
+		// This row asserted `topology_invalid`: the clone was refused because this
+		// module classified it against every other Wall in the document with the
+		// chord-exact classifier. S7 (D-8) deletes that second rule — the duplicate
+		// path calls the canonical `validateWallFirstTopology`, whose subject is the
+		// connected component — so the clone's overlap with its own source is
+		// PERMITTED independent placement (F1/F5, D-9) rather than a violation. The
+		// pre-policy refusal survives in the P23B.3a reference register as history.
+		const snapshot = JSON.stringify(ISOLATED);
+		const plan = success(
+			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [-2, 0] })
+		);
+		expect(plan.createdRoomId).toBe('room-1-copy');
+		const sourceJunctions = new Set(ISOLATED.junctions.map((junction) => junction.id));
+		const sourceWalls = new Set(ISOLATED.walls.map((wall) => wall.id));
+		expect(plan.createdJunctionIds.every((id) => !sourceJunctions.has(id))).toBe(true);
+		expect(plan.createdWallIds.every((id) => !sourceWalls.has(id))).toBe(true);
+		// The clone's Walls meet only the clone's own Junctions: overlap created no
+		// shared Junction and split nothing.
+		const cloneJunctions = new Set(plan.createdJunctionIds);
+		for (const wallId of plan.createdWallIds) {
+			const wall = plan.document.walls.find((candidate) => candidate.id === wallId)!;
+			expect(cloneJunctions.has(wall.startJunctionId)).toBe(true);
+			expect(cloneJunctions.has(wall.endJunctionId)).toBe(true);
+		}
+		expect(plan.document.walls.map((wall) => wall.id)).toEqual([
+			...ISOLATED.walls.map((wall) => wall.id),
+			...plan.createdWallIds
+		]);
+		expect(plan.document.junctions.map((junction) => junction.id)).toEqual([
+			...ISOLATED.junctions.map((junction) => junction.id),
+			...plan.createdJunctionIds
+		]);
+		// Planner and gate agree about the document the planner produced.
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+		expect(JSON.stringify(ISOLATED)).toBe(snapshot);
 	});
 
-	it('rejects the old 1 m UI default delta on the 6 m fixture (explicit delta required)', () => {
-		// The 6×4 enclosure translated by only [1, 0] overlaps its own clone,
-		// so the domain correctly rejects with `topology_invalid`. The
-		// Inspector must supply an explicit creator delta (defaulting to a
-		// non-overlapping placement), never a hardcoded [1, 0].
-		const rejected = rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [1, 0] }));
-		expect(rejected.code).toBe('topology_invalid');
+	it('P23B.3a S7 RE-BASED — the old 1 m UI default delta is admitted as permitted overlap (explicit delta still required)', () => {
+		// The 6×4 enclosure translated by only [1, 0] overlaps its own source. That
+		// overlap is independent placement now, not `topology_invalid`. What this row
+		// was written to protect is unaffected and is a UI decision rather than a
+		// validity rule: the creator supplies an EXPLICIT delta, and the planner never
+		// invents, defaults or normalizes one on the caller's behalf.
+		const overlapping = success(
+			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [1, 0] })
+		);
+		expect(overlapping.createdRoomId).toBe('room-1-copy');
+		expect(overlapping.document.rooms.map((room) => room.id)).toEqual([
+			'room-1',
+			'room-1-copy'
+		]);
+		expect(validateWallFirstTopology(overlapping.document)).toBeUndefined();
 		expect(success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] })).createdRoomId).toBe('room-1-copy');
 	});
 

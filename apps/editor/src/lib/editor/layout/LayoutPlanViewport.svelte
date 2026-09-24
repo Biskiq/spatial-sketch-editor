@@ -110,7 +110,9 @@
 		updateWallFirstWallMove,
 		createWallFirstOpening,
 		type LayoutPreviewSnapshot,
-		type LayoutRoomEditResult
+		type LayoutRoomEditResult,
+		type WallAnchorDeclaration,
+		type WallSegmentConnection
 	} from './layout-preview-state.svelte';
 	import { LAYOUT_PLAN_HIT_RADIUS_PX, type LayoutOpeningKind } from './layout-opening-editing';
 	import {
@@ -133,6 +135,7 @@
 		resolvePlanSalience,
 		type PlanSalience
 	} from './plan-salience';
+	import { layoutClickAnchorDeclaration } from './layout-click-declaration';
 	import { createPlanDimensionMemory } from './plan-dimensions';
 	// P23.13 S8 — the instrument zone (§1.12), the canonical closure evidence for
 	// the Wall draw's cue (§7), and the bounded lifetime of a refused attempt (§6).
@@ -351,7 +354,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		onSceneDelete?: () => boolean;
 		onCommit: (points: LayoutVec2[]) => boolean;
 	/** P23.9 segment-first — commit one Wall/Partition segment (one history entry). Returns the canonical Junctions for continuation. */
-	onWallSegmentCommit: (start: LayoutVec2, end: LayoutVec2, endpointHostWallId?: string) => {
+	onWallSegmentCommit: (
+		start: LayoutVec2,
+		end: LayoutVec2,
+		endpointHostWallId?: string,
+		/** P23B.3a S6 — the leg's DECLARED connection, per endpoint (see `commitWallSegment`). */
+		connection?: WallSegmentConnection
+	) => {
 		success: boolean;
 		startJunctionId?: string;
 		endJunctionId?: string;
@@ -761,7 +770,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				role,
 				...(interaction.wallChainRunHeight !== null
 					? { height: interaction.wallChainRunHeight }
-					: {})
+					: {}),
+				// P23B.3a S6 — the probe plans the operation the click would perform, and
+				// that operation EXTENDS the run's own group (class 3): the live leg's
+				// start Junction and the run's start Junction are both declared, so a
+				// closure that would birth a Room still reports its face.
+				startJunctionId: interaction.wallChainStartJunctionId,
+				runStartJunctionId
 			}).faces;
 		}
 		return closureProbeFaces;
@@ -3972,7 +3987,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		const snapped = resolveLayoutSnapCandidate(rawPoint, { anchor: wallChainSnapAnchor() });
 		if (!hasWallChainRun(interaction)) {
 			preview.statusMessage = null;
-			beginWallChain(interaction, snapped.point);
+			// P23B.3a S6 — the start click declares its own anchor, so the first leg
+			// already knows which existing group it extends (or that it extends none).
+			beginWallChain(interaction, snapped.point, clickDeclaration(snapped));
 			return;
 		}
 		const start = interaction.wallChainStart!;
@@ -3985,7 +4002,17 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			snapped.resolution.kind === 'snap' && snapped.resolution.candidate.kind === 'wall-span'
 				? snapped.resolution.candidate.wallId
 				: undefined;
-		const result = onWallSegmentCommit([...start], [...snapped.point], endpointHostWallId);
+		// P23B.3a S6 — the leg declares BOTH of its anchors: the run's own canonical
+		// Junction (or the host span) at its start, and at its end whatever this click
+		// attached to — including the run's start Junction, which is what makes the
+		// closure `endJunctionId === runStartJunctionId` still hold. Declared intent is
+		// what authorizes adoption and noding.
+		const result = onWallSegmentCommit(
+			[...start],
+			[...snapped.point],
+			endpointHostWallId,
+			{ start: wallChainStartDeclaration(), end: clickDeclaration(snapped) }
+		);
 		if (!result.success) {
 			if (savedRun) restoreWallChainRun(interaction, savedRun);
 			draftedVersion = preview.previewVersion;
@@ -4806,7 +4833,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			return;
 		}
 		const savedRun = captureWallChainRun(interaction);
-		const result = onWallSegmentCommit([...start], [...endpoint]);
+		// A typed length carries no click, so its end declares nothing on its own; the
+		// start still declares the run continuation (see `commitWallSegment`).
+		const result = onWallSegmentCommit([...start], [...endpoint], undefined, {
+			start: wallChainStartDeclaration()
+		});
 		if (!result.success) {
 			// A rejection rolls its history transaction back through snapshot restore,
 			// which clears transient state; re-install the saved run so the run is still
@@ -4824,6 +4855,37 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (planPointerButtonDown) suppressNextClick = true;
 		closeNumericEntry({ focusCanvas: true });
 		finishWallChainSegment(result, endpoint);
+	}
+
+	/**
+	 * P23B.3a S6 — the live leg's DECLARED start anchor, read from the run's own
+	 * state. A run that has committed a leg declares the canonical Junction it
+	 * continues from; a run whose start click attached to a Wall span declares
+	 * that host. Both were written by the gesture that declared them, so nothing
+	 * here is inferred from geometry — and an empty result means INDEPENDENT
+	 * placement, which is a legitimate authoring outcome now.
+	 */
+	function wallChainStartDeclaration(): WallAnchorDeclaration {
+		return {
+			junctionId: interaction.wallChainStartJunctionId,
+			hostWallId: interaction.wallChainStartHostWallId
+		};
+	}
+
+	/**
+	 * P23B.3a S6 — translate a click's WINNING snap into a declared anchor (the
+	 * shared rule in `layout-click-declaration`). Used for BOTH ends of a leg, so a
+	 * closing click that lands on the run's own start Junction declares exactly
+	 * that identity, and a leg drawn into a Room declares the hosts it divides.
+	 * A click on empty canvas declares nothing: independent placement.
+	 */
+	function clickDeclaration(snapped: {
+		point: LayoutVec2;
+		resolution: SnapResolution;
+	}): WallAnchorDeclaration {
+		const layout = preview.project.layout;
+		if (!('formatVersion' in layout)) return {};
+		return layoutClickAnchorDeclaration(layout as unknown as LayoutDocumentWallFirst, snapped);
 	}
 
 	/** Resolve a canonical Junction point from the live wall-first document. */

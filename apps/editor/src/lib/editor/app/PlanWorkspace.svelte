@@ -2,7 +2,7 @@
 	import LayoutPlanViewport from '$lib/editor/layout/LayoutPlanViewport.svelte';
 	import LayoutDraftToolbar from '$lib/editor/layout/LayoutDraftToolbar.svelte';
 	import ToolTray from './ToolTray.svelte';
-	import type { LayoutPreviewState } from '$lib/editor/layout/layout-preview-state.svelte';
+	import type { LayoutPreviewState, WallSegmentConnection } from '$lib/editor/layout/layout-preview-state.svelte';
 	import {
 		captureLayoutPreviewSnapshot,
 		promoteLayoutPreviewIdentity,
@@ -169,7 +169,9 @@
 	function commitDraftWallSegment(
 		start: [number, number],
 		end: [number, number],
-		endpointHostWallId?: string
+		endpointHostWallId?: string,
+		/** P23B.3a S6 — the leg's DECLARED connection, per endpoint (see `commitWallSegment`). */
+		connection?: WallSegmentConnection
 	): {
 		success: boolean;
 		startJunctionId?: string;
@@ -190,7 +192,8 @@
 					end,
 					role,
 					layoutInteraction.wallChainRunHeight ?? undefined,
-					endpointHostWallId
+					endpointHostWallId,
+					connection
 				),
 			(result) => result.success
 		);

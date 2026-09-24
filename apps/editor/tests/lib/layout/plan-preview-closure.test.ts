@@ -93,12 +93,23 @@ describe('P23.13 S8 closure rule (per tool)', () => {
 describe('P23.13 S8 canonical closure evidence', () => {
 	it('reads the face out of the closing leg\u2019s own plan', () => {
 		// Two committed legs of a triangle; the third leg closes the run.
+		// P23B.3a S6 — the probe plans the operation the click would perform, and
+		// that operation extends the run's own group: the live leg's start Junction
+		// and the run's start Junction are DECLARED, exactly as the viewport's probe
+		// declares them. Without them the closing leg would be independent placement
+		// and could not birth the face the cue is asking about.
 		const document = committed([p(0, 0), p(4, 0), p(4, 3)], 'boundary');
+		const junctionIdAt = (x: number, z: number): string =>
+			document.junctions.find(
+				(junction) => junction.point[0] === x && junction.point[1] === z
+			)!.id;
 		const evidence = wallChainClosureEvidence({
 			baseline: document,
 			start: p(4, 3),
 			end: p(0, 0),
-			role: 'boundary'
+			role: 'boundary',
+			startJunctionId: junctionIdAt(4, 3),
+			runStartJunctionId: junctionIdAt(0, 0)
 		});
 		expect(evidence.yieldsFace).toBe(true);
 		expect(evidence.faces.length).toBeGreaterThan(0);

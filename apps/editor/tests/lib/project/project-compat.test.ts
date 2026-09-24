@@ -200,6 +200,91 @@ describe('project compatible decode (P23.0a)', () => {
 		expect(decoded.kind).toBe('legacy-compatible');
 	});
 
+	it('keeps original Room identities and object associations when an ambiguous legacy Project cannot migrate (P23B.3a S3a)', () => {
+		// The user-facing half of the S3a migration refusal. Two legacy Rooms occupying
+		// IDENTICAL extents collapse onto one candidate face, which migration refuses
+		// (`ambiguous-room-correspondence`) instead of silently retiring one Room and
+		// remapping its association. A codec-valid payload that reaches migration at
+		// all is what this asserts: an invalid legacy Layout would return
+		// `unrecognized`, not `legacy-compatible`.
+		const project = validProject();
+		const legacyRoom = (id: string, name: string) => ({
+			id,
+			name,
+			frame: { origin: [0, 0], yaw: 0 },
+			wallThickness: 0.2,
+			floorThickness: 0.1,
+			ceilingThickness: 0.1,
+			boundary: {
+				closed: true,
+				segments: [
+					{ id: `${id}-s`, kind: 'line', start: [0, 0], end: [6, 0] },
+					{ id: `${id}-e`, kind: 'line', start: [6, 0], end: [6, 4] },
+					{ id: `${id}-n`, kind: 'line', start: [6, 4], end: [0, 4] },
+					{ id: `${id}-w`, kind: 'line', start: [0, 4], end: [0, 0] }
+				]
+			},
+			openings: []
+		});
+		const legacyObject = (roomId: string) => ({
+			id: `obj-${roomId}`,
+			kind: 'box' as const,
+			position: [1, 0.5, 1] as [number, number, number],
+			rotation: [0, 0, 0] as [number, number, number],
+			dimensions: [1, 1, 1] as [number, number, number],
+			roomId
+		});
+		const ambiguous: Project = {
+			...project,
+			layout: {
+				units: 'meters',
+				floors: [
+					{
+						id: 'floor-1',
+						name: 'Floor 1',
+						elevation: 0,
+						height: 3,
+						rooms: [legacyRoom('room-1', 'Legacy one'), legacyRoom('room-2', 'Legacy two')]
+					}
+				],
+				objects: [legacyObject('room-1'), legacyObject('room-2')]
+			} as unknown as Project['layout']
+		};
+		const snapshot = JSON.stringify(ambiguous);
+		const decoded = decodeProjectCompatible(ambiguous);
+		expect(decoded.kind).toBe('legacy-compatible');
+		if (decoded.kind !== 'legacy-compatible') return;
+		expect(decoded.sceneSpace).toBe('legacy-room-local');
+		// Both Room records survive with their ids and names...
+		expect(
+			decoded.project.layout.floors.flatMap((floor) =>
+				floor.rooms.map((room) => [room.id, room.name] as const)
+			)
+		).toEqual([
+			['room-1', 'Legacy one'],
+			['room-2', 'Legacy two']
+		]);
+		// ...and so does every object association (never remapped to one survivor).
+		expect(
+			decoded.project.layout.objects.map((object) => [object.id, object.roomId] as const)
+		).toEqual([
+			['obj-room-1', 'room-1'],
+			['obj-room-2', 'room-2']
+		]);
+		// The refusal is surfaced, not swallowed, and it names both Rooms.
+		expect(decoded.report.issues).toContainEqual(
+			expect.objectContaining({
+				path: '$.layout.floors[0].rooms',
+				code: 'ambiguous-room-correspondence'
+			})
+		);
+		const named = decoded.report.issues.map((issue) => issue.message).join(' ');
+		expect(named).toContain('room-1');
+		expect(named).toContain('room-2');
+		// Read-only: the caller's payload is untouched.
+		expect(JSON.stringify(ambiguous)).toBe(snapshot);
+	});
+
 	it('rejects wall-first layout + legacy scene with the dedicated missing-frame-context diagnostic', () => {
 		const project = validProject();
 		const mixed = {

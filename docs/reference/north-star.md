@@ -1177,6 +1177,12 @@ now.
 15. **Persistent Room identity is product-owned.** Geometry/topology may derive
     candidate enclosed faces; it never independently allocates/recreates
     persistent semantic Rooms. Identity reconciliation/history is deterministic.
+    Under the owner-accepted independent-placement policy, geometric coincidence,
+    containment or shared interior alone cannot transfer Room identity or join
+    independent components. A predecessor Room is carried to a candidate face only
+    through operation lineage proved by canonical Wall/Junction identity;
+    unrelated Room identities, boundary references, associated-object ownership
+    and hosted Opening bindings remain unchanged.
 
 ## Development-stage schema compatibility
 

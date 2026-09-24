@@ -6,6 +6,7 @@ import {
 	planWallRoleChange,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
+import { hostWallAtSpan } from '../../helpers/angled-plan-fixtures';
 
 function baseDocument(): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();
@@ -22,9 +23,18 @@ function commitChain(
 	baseline: LayoutDocumentWallFirst,
 	points: readonly (readonly [number, number])[],
 	role: 'boundary' | 'partition',
-	close = false
+	close = false,
+	/** P23B.3a S6 — the DECLARED connection (array index = draft point index). */
+	connection?: { hosts?: readonly string[] }
 ): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points: [...points] as [number, number][], role, close });
+	const hostSnaps = (connection?.hosts ?? []).map((wallId, index) => ({ pointIndex: index, wallId }));
+	const plan = planWallChain({
+		baseline,
+		points: [...points] as [number, number][],
+		role,
+		close,
+		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {})
+	});
 	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
@@ -94,7 +104,13 @@ describe('P23.6 wall role change — partition to boundary', () => {
 	it('splits a Room when a partition divider flips to boundary', () => {
 		const roomed = commitChain(baseDocument(), RECT, 'boundary', true);
 		const roomId = roomed.rooms[0]!.id;
-		const divided = commitChain(roomed, [p(2, 0), p(2, 3)], 'partition');
+		// P23B.3a S6 — the divider's ends land on the Room's own bottom and top Walls,
+		// and the operation DECLARES those hosts (the wall-span snap an author's click
+		// expresses). Extending the enclosure's group is what makes the later flip a
+		// genuine 1→2 instead of flipping a freestanding Wall beside the Room.
+		const divided = commitChain(roomed, [p(2, 0), p(2, 3)], 'partition', false, {
+			hosts: [hostWallAtSpan(roomed, p(2, 0))!, hostWallAtSpan(roomed, p(2, 3))!]
+		});
 		expect(divided.rooms).toHaveLength(1);
 		const dividerId = divided.walls.find((wall) => wall.role === 'partition')!.id;
 		const plan = planWallRoleChange(divided, dividerId, 'boundary');

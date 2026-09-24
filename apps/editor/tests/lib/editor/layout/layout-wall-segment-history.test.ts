@@ -24,11 +24,13 @@ import {
 	layoutPreviewSnapshotMatchesLive,
 	restoreLayoutPreviewSnapshot
 } from '$lib/editor/layout/layout-preview-state.svelte';
+import { layoutPointAnchorDeclaration } from '$lib/editor/layout/layout-click-declaration';
 import {
 	createEmptyWallFirstLayoutDocument,
 	serializeWallFirstLayoutDocument
 } from '$lib/layout/layout-wall-first-codec';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+import type { WallSegmentConnection } from '$lib/editor/layout/layout-preview-state.svelte';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
 
 function wallFirstPreviewState(): ReturnType<typeof createEmptyLayoutPreviewState> {
@@ -81,6 +83,35 @@ function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): L
 	return [...junction.point] as LayoutVec2;
 }
 
+/**
+ * The declared connection the shipped viewport would pass for this gesture
+ * (P23B.3a S6): the END is whatever the click resolved onto existing geometry —
+ * a single coincident Junction, else a host Wall span — and the START is the
+ * live run's own declaration when the leg really starts where the run is, else
+ * the same click rule. Nothing here is inferred by the PLANNER; this test helper
+ * stands in for the snap layer.
+ */
+function segmentConnection(
+	context: ReturnType<typeof makeStore>,
+	document: LayoutDocumentWallFirst,
+	start: LayoutVec2,
+	end: LayoutVec2
+): WallSegmentConnection {
+	const runStartPoint = context.layoutInteraction.wallChainStart;
+	const runAnchor = {
+		junctionId: context.layoutInteraction.wallChainStartJunctionId,
+		hostWallId: context.layoutInteraction.wallChainStartHostWallId
+	};
+	const startsWhereTheRunIs =
+		runStartPoint !== null &&
+		Math.hypot(runStartPoint[0] - start[0], runStartPoint[1] - start[1]) < 1e-9 &&
+		(runAnchor.junctionId !== null || runAnchor.hostWallId !== null);
+	return {
+		start: startsWhereTheRunIs ? runAnchor : layoutPointAnchorDeclaration(document, start),
+		end: layoutPointAnchorDeclaration(document, end)
+	};
+}
+
 /** One segment through the shared history runner (one undo entry on success). */
 function commitSegment(
 	context: ReturnType<typeof makeStore>,
@@ -91,7 +122,13 @@ function commitSegment(
 	const { store, layoutPreview, layoutInteraction } = context;
 	const outcome = runLayoutMutation(
 		layoutMutationRunnerFor(store, layoutPreview),
-		() => commitWallSegment(layoutPreview, start, end, role),
+		() =>
+			commitWallSegment(layoutPreview, start, end, role, undefined, undefined, segmentConnection(
+				context,
+				wallFirstDocument(layoutPreview),
+				start,
+				end
+			)),
 		(result) => result.success
 	);
 	if (outcome.kind !== 'committed') throw new Error(`segment commit failed: ${JSON.stringify(outcome)}`);
@@ -185,7 +222,16 @@ describe('P23.9 segment history through Layout history (reviewer acceptance)', (
 		const savedRun = captureWallChainRun(layoutInteraction);
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => commitWallSegment(layoutPreview, [0, 0], [4, 0], 'boundary'),
+			() =>
+				commitWallSegment(
+					layoutPreview,
+					[0, 0],
+					[4, 0],
+					'boundary',
+					undefined,
+					undefined,
+					segmentConnection(context, wallFirstDocument(layoutPreview), [0, 0], [4, 0])
+				),
 			(result) => result.success
 		);
 		expect(outcome.kind).toBe('cancelled');
@@ -236,7 +282,16 @@ describe('P23.9 segment history through Layout history (reviewer acceptance)', (
 			const start = [...layoutInteraction.wallChainStart!] as LayoutVec2;
 			const outcome = runLayoutMutation(
 				layoutMutationRunnerFor(store, layoutPreview),
-				() => commitWallSegment(layoutPreview, start, leg.end, 'boundary'),
+				() =>
+					commitWallSegment(
+						layoutPreview,
+						start,
+						leg.end,
+						'boundary',
+						undefined,
+						undefined,
+						segmentConnection(context, wallFirstDocument(layoutPreview), start, leg.end)
+					),
 				(result) => result.success
 			);
 			expect(outcome.kind).toBe('committed');
@@ -274,7 +329,16 @@ describe('P23.9 segment history through Layout history (reviewer acceptance)', (
 		expect(start).toEqual([0, 3]);
 		const outcome = runLayoutMutation(
 			layoutMutationRunnerFor(store, layoutPreview),
-			() => commitWallSegment(layoutPreview, start, aPoint, 'boundary'),
+			() =>
+				commitWallSegment(
+					layoutPreview,
+					start,
+					aPoint,
+					'boundary',
+					undefined,
+					undefined,
+					segmentConnection(context, wallFirstDocument(layoutPreview), start, aPoint)
+				),
 			(result) => result.success
 		);
 		expect(outcome.kind).toBe('committed');

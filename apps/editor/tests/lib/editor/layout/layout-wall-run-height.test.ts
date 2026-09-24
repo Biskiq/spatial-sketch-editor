@@ -43,6 +43,7 @@ import {
 	resetLayoutPreview,
 	restoreLayoutPreviewSnapshot
 } from '$lib/editor/layout/layout-preview-state.svelte';
+import { layoutPointAnchorDeclaration } from '$lib/editor/layout/layout-click-declaration';
 import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -142,6 +143,12 @@ function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): L
  * Exactly the viewport's flow: pass the live transient run height in (if any),
  * then seed continuation from the committed result — including its height.
  */
+/**
+ * One segment of a run, mirroring the viewport's declared intent (P23B.3a S6):
+ * the run's own start Junction (or the host span its start click attached to)
+ * declares the START and whatever the end point resolves to on existing geometry
+ * declares the END, so a closing leg still ends on the run-start Junction.
+ */
 function commitRunSegment(
 	context: Store,
 	start: LayoutVec2,
@@ -151,14 +158,30 @@ function commitRunSegment(
 	const { store, layoutPreview, layoutInteraction } = context;
 	const outcome = runLayoutMutation(
 		layoutMutationRunnerFor(store, layoutPreview),
-		() =>
-			commitWallSegment(
+		() => {
+			const document = liveDocument(context);
+			const runStartPoint = layoutInteraction.wallChainStart;
+			const runAnchor = {
+				junctionId: layoutInteraction.wallChainStartJunctionId,
+				hostWallId: layoutInteraction.wallChainStartHostWallId
+			};
+			const startsWhereTheRunIs =
+				runStartPoint !== null &&
+				Math.hypot(runStartPoint[0] - start[0], runStartPoint[1] - start[1]) < 1e-9 &&
+				(runAnchor.junctionId !== null || runAnchor.hostWallId !== null);
+			return commitWallSegment(
 				layoutPreview,
 				start,
 				end,
 				role,
-				layoutInteraction.wallChainRunHeight ?? undefined
-			),
+				layoutInteraction.wallChainRunHeight ?? undefined,
+				undefined,
+				{
+					start: startsWhereTheRunIs ? runAnchor : layoutPointAnchorDeclaration(document, start),
+					end: layoutPointAnchorDeclaration(document, end)
+				}
+			);
+		},
 		(result) => result.success
 	);
 	if (outcome.kind !== 'committed') return outcome;

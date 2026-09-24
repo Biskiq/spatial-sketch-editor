@@ -77,6 +77,44 @@ OUT (explicit non-goals)
 - no premature repository split or new package/boundary without a measured, demonstrated need
 - no reopening P23; no Phase 0 execution; no new standing audit or cycle mechanism
 - no numerical performance target ratified by this plan
+
+ONE AUTHORIZED EXCEPTION (2026-09-22) — see the scope amendment below. P23B.3a is a narrowly bounded
+VALIDITY and AUTHORING-SEMANTICS change, owner-approved under D-1/D-9/D-11. It adds no capability, view,
+mode, document, schema or persisted format, and every other OUT line above still binds unchanged.
+```
+
+## Owner-approved scope amendment — P23B.3a (2026-09-22)
+
+**Why this section exists.** This umbrella is written as *cost, not capability*, and a topology-policy
+change is neither. Without an explicit amendment, the slice it authorizes would contradict the
+document's own stated boundary. The owner approved the amendment together with the arrangement that
+requires it.
+
+```text
+AUTHORIZED:  P23B.3a — Independent Placement & Topology Policy
+RULED BY:    the owner, 2026-09-22 (decision record §2.10, §4.2)
+  · D-1  Option E — independent spatial placement with explicit topological connection
+  · D-9  CONFIRMED — explicit Junction identity governs connectivity; coincident INDEPENDENT components
+         are permitted; accidental duplicates WITHIN one connected component stay invalid; only an
+         explicit join adopts an id; NO new representation
+  · D-10 Join/Connect stays at PLANNING level — no new UI, mode or command in this slice
+  · D-11 ARRANGEMENT 1 — the slice landed BEFORE the durable P23B.0 measurement, in this branch and PR
+  · D-12 the slice OWNS the general Wall/Junction connectivity proof and reconciliation identity
+         preservation; BOTH pass before its acceptance
+  · D-8  the misleading `layout-duplicate.ts` comment correction landed HERE, alongside the behaviour
+         change it describes
+
+WHAT THE AMENDMENT BOUNDS (so the exception cannot widen)
+  · validity and authoring SEMANTICS only — WHERE an existing invariant applies, never a new invariant
+  · NO schema, persisted format, group id, cluster relation or connectivity record (decision record
+    §2.11.2); none may be invented to make the plan look complete
+  · no vertical-stacking / floor-elevation authoring, no collision-warning producer, no automatic
+    repair, noding or geometry alteration
+  · no mesh union, occlusion fix, renderer ordering or new selection UX in this or any later slice
+
+WHAT IT DOES NOT LICENCE: any OTHER capability, view, mode, document or schema change. Every non-goal
+  in the Scope block above still binds, and P23B.10's MR-8 names this amendment as its SOLE authorized
+  exception.
 ```
 
 ## Architecture boundaries (invariants any optimization must preserve)

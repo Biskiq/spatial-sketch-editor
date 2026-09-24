@@ -665,6 +665,21 @@ export type LayoutInteractionState = {
 	wallChainStart: LayoutVec2 | null;
 	/** Canonical start Junction after the first commit; null until then. */
 	wallChainStartJunctionId: string | null;
+	/**
+	 * P23B.3a S6 — the live leg's DECLARED start anchor in HOST-WALL form: the
+	 * `wall-span` snap the run's start click resolved to, when it resolved to one.
+	 *
+	 * The declared-intent split makes coordinates non-authoritative: a segment
+	 * joins and nodes an existing group only because the operation SAYS it
+	 * extends that group (`planWallSegment`'s anchor parameters), never because
+	 * two coordinates coincide. `wallChainStartJunctionId` is the stronger form
+	 * of the same declaration (it names the identity itself, and is set once the
+	 * run has committed a leg); this one names the host span the author attached
+	 * the run's start to, so the first leg still divides the Room it is drawn
+	 * into instead of floating inside it. Transient, never persisted, cleared
+	 * with the rest of the run state.
+	 */
+	wallChainStartHostWallId: string | null;
 	/** Canonical run-start Junction set once the first Wall commits. */
 	wallChainRunStartJunctionId: string | null;
 	/**
@@ -763,6 +778,7 @@ export function createLayoutInteractionState(): LayoutInteractionState {
 		polygonPoints: [],
 		wallChainStart: null,
 		wallChainStartJunctionId: null,
+		wallChainStartHostWallId: null,
 		wallChainRunStartJunctionId: null,
 		wallChainRunHeight: null,
 		wallChainLastDirection: null,
@@ -1027,9 +1043,23 @@ export function removeLastPolygonPoint(state: LayoutInteractionState): void {
  * P23.9 segment-first — first click establishes the transient start. No
  * document change, no history entry, no Junction allocated yet.
  */
-export function beginWallChain(state: LayoutInteractionState, point: LayoutVec2): void {
+export function beginWallChain(
+	state: LayoutInteractionState,
+	point: LayoutVec2,
+	/**
+	 * P23B.3a S6 — the DECLARED anchor of the run's start click, when the snap
+	 * resolved the click onto existing geometry. It is recorded, not inferred:
+	 * `junctionId` (a node snap) makes the first leg EXTEND that Junction's group
+	 * as T13 requires, and `hostWallId` (a wall-span snap) makes it attach to that
+	 * Wall's span, so a divider drawn between two walls still divides the Room.
+	 * A start click on empty canvas declares nothing, so the leg is independent
+	 * placement.
+	 */
+	declaration?: { junctionId?: string | null; hostWallId?: string | null }
+): void {
 	state.wallChainStart = [...point];
-	state.wallChainStartJunctionId = null;
+	state.wallChainStartJunctionId = declaration?.junctionId ?? null;
+	state.wallChainStartHostWallId = declaration?.hostWallId ?? null;
 	state.wallChainRunStartJunctionId = null;
 	// P23.6I — a fresh run must not inherit the previous run's height: the
 	// first segment resolves its own birth height from canonical topology.
@@ -1078,6 +1108,10 @@ export function advanceWallChainContinuation(
 	}
 	state.wallChainStart = [...result.endPoint];
 	state.wallChainStartJunctionId = result.endJunctionId;
+	// S6 — the next leg starts at a committed canonical Junction, so its start
+	// declaration is that identity; a host-span declaration belongs to the leg
+	// that ended there, not to this one.
+	state.wallChainStartHostWallId = null;
 	if (state.wallChainRunStartJunctionId === null) {
 		state.wallChainRunStartJunctionId = result.startJunctionId;
 	}
@@ -1094,6 +1128,7 @@ export function advanceWallChainContinuation(
 export function cancelWallChainRun(state: LayoutInteractionState): void {
 	state.wallChainStart = null;
 	state.wallChainStartJunctionId = null;
+	state.wallChainStartHostWallId = null;
 	state.wallChainRunStartJunctionId = null;
 	// P23.6I — Escape / closure / tool change / document reset all land here, so
 	// clearing the run height with the rest of the run state is the one rule.
@@ -1106,6 +1141,8 @@ export function cancelWallChainRun(state: LayoutInteractionState): void {
 export type WallChainRunSnapshot = {
 	start: LayoutVec2;
 	startJunctionId: string | null;
+	/** P23B.3a S6 — the start leg's declared host-span anchor (see the state field). */
+	startHostWallId: string | null;
 	runStartJunctionId: string | null;
 	/** P23.6I — the run's continuation height (not history state). */
 	runHeight: number | null;
@@ -1126,6 +1163,7 @@ export function captureWallChainRun(state: LayoutInteractionState): WallChainRun
 	return {
 		start: [...state.wallChainStart],
 		startJunctionId: state.wallChainStartJunctionId,
+		startHostWallId: state.wallChainStartHostWallId,
 		runStartJunctionId: state.wallChainRunStartJunctionId,
 		runHeight: state.wallChainRunHeight,
 		lastDirection: state.wallChainLastDirection ? [...state.wallChainLastDirection] : null,
@@ -1138,6 +1176,7 @@ export function captureWallChainRun(state: LayoutInteractionState): WallChainRun
 export function restoreWallChainRun(state: LayoutInteractionState, snapshot: WallChainRunSnapshot): void {
 	state.wallChainStart = [...snapshot.start];
 	state.wallChainStartJunctionId = snapshot.startJunctionId;
+	state.wallChainStartHostWallId = snapshot.startHostWallId;
 	state.wallChainRunStartJunctionId = snapshot.runStartJunctionId;
 	state.wallChainRunHeight = snapshot.runHeight;
 	state.wallChainLastDirection = snapshot.lastDirection ? [...snapshot.lastDirection] : null;

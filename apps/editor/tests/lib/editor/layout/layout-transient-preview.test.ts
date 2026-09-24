@@ -805,7 +805,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 }
 
 describe('P23.11 transient pass — cheap canonical refusal during the drag', () => {
-	it('marks a Bend that would cross a neighbouring Wall known-invalid', () => {
+	it('permits a Bend that reaches an INDEPENDENT Room, and still refutes one inside its OWN group', () => {
 		const baseline = twoRoomDocument();
 		const context = makeStore(baseline);
 		const geometry = context.layoutPreview.geometry;
@@ -817,19 +817,43 @@ describe('P23.11 transient pass — cheap canonical refusal during the drag', ()
 		expect(nearMiss!.failure).toBeUndefined();
 		expect(nearMiss!.intent.invalid).toBeUndefined();
 
-		// A 2.5 m bow reaches Room 2's west Wall: the canonical crossing gate the
-		// planner runs first refuses it, and the drag says so while it follows.
+		// A 2.5 m bow reaches Room 2's west Wall. The two Rooms are graph-INDEPENDENT
+		// (they share no Junction id), so P23B.3a S4 makes the overlap permitted
+		// geometry: the canonical gate the drag runs first reports no issue, and the drag
+		// stays green while it follows. The PRE-POLICY verdict here was `known-invalid`
+		// — the document-global crossing rule S4 scoped to the connected component — and
+		// that refusal is what this test used to pin.
 		const crossing = move(context, [6.5, 1.5]);
-		expect(crossing!.status).toBe('known-invalid');
-		expect(crossing!.intent.invalid).toBe(true);
-		expect(crossing!.failure?.message).toMatch(/cross/i);
-		// Red or not, the attempt still tracks the pointer.
+		expect(crossing!.status).toBe('pending');
+		expect(crossing!.intent.invalid).toBeUndefined();
+		expect(crossing!.failure).toBeUndefined();
+		// Green or red, the attempt still tracks the pointer.
 		const moved = crossing!.walls!.find((wall) => wall.wallId === 'w2')!;
 		expect(moved.points.length).toBeGreaterThan(2);
 		expect(Math.max(...moved.points.map((point) => point[0]))).toBeCloseTo(6.5, 6);
 
-		// A refutation is still not a write: the canonical document and its
-		// compiled geometry are byte-identical to the frozen baseline.
+		// Green is still not a write: the canonical document and its compiled
+		// geometry are byte-identical to the frozen baseline.
+		expect(documentContentJson(live(context))).toBe(documentContentJson(baseline));
+		expect(context.layoutPreview.geometry).toBe(geometry);
+		expect(context.store.canUndo).toBe(false);
+	});
+
+	it('still marks a Bend that would cross a Wall of its OWN connected group known-invalid', () => {
+		// The cheap canonical refusal this pass exists for, on the case S4 KEEPS: an
+		// intra-group crossing. `w1` is the square's south Wall; bowing it up past `w3`
+		// (its own north Wall — the same connected group, shared Junctions A/B/C/D) is a
+		// genuine topology failure, so the drag says so while it follows the pointer and
+		// never writes. The chord classifier cannot see it (both chords are unchanged),
+		// so this is the sampled authority refusing — not a relaxation of it.
+		const baseline = squareDocument();
+		const context = makeStore(baseline);
+		const geometry = context.layoutPreview.geometry;
+		expect(startGesture(context, bendGesture(context, 'w1', [2, 0], 1))).toBe(true);
+		const crossing = move(context, [2, 4]);
+		expect(crossing!.status).toBe('known-invalid');
+		expect(crossing!.intent.invalid).toBe(true);
+		expect(crossing!.failure?.message).toMatch(/cross/i);
 		expect(documentContentJson(live(context))).toBe(documentContentJson(baseline));
 		expect(context.layoutPreview.geometry).toBe(geometry);
 		expect(context.store.canUndo).toBe(false);

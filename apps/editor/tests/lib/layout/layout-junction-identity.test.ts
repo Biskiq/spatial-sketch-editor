@@ -24,6 +24,15 @@
  *   its stored coordinate adopted. That covers intersections the planner
  *   computes (`lineIntersection` can never be bit-identical to a stored
  *   coordinate) and sub-ulp float noise, which cannot carry authoring intent.
+ *
+ * P23B.3a S6 — BOTH bars are WITHIN-GROUP rules now. The operation must DECLARE
+ * the group it extends (a run continuation names the run's own canonical
+ * Junction; a node snap names the Junction the click landed on); the tolerance
+ * below then decides "same node" or "different node" for that declared
+ * connection. Undeclared coincidence is INDEPENDENT placement: it mints its own
+ * record at the same coordinate instead of adopting, which is the differential
+ * at the end of this file. The tolerance itself, the predicate and the
+ * near-miss floor are unchanged.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -55,9 +64,25 @@ function baseDocument(): LayoutDocumentWallFirst {
 function commit(
 	baseline: LayoutDocumentWallFirst,
 	start: LayoutVec2,
-	end: LayoutVec2
+	end: LayoutVec2,
+	/**
+	 * P23B.3a S6 — the DECLARED start anchor. Supplying the Junction the segment
+	 * starts from is the operation stating that it is a CONTINUATION of that
+	 * Junction's group (operation class 3), which is what the editor does with the
+	 * run's own canonical Junction. Omitting it is independent placement, and the
+	 * identity bars below are asserted on the declared form (see the S6 describe at
+	 * the end of this file for the undeclared differential).
+	 */
+	startJunctionId?: string
 ): LayoutDocumentWallFirst {
-	const result = planWallSegment({ baseline, start, end, role: 'boundary' });
+	const declaredJunctions = startJunctionId ? [{ pointIndex: 0, junctionId: startJunctionId }] : [];
+	const result = planWallSegment({
+		baseline,
+		start,
+		end,
+		role: 'boundary',
+		...(declaredJunctions.length > 0 ? { endpointJunctionSnaps: declaredJunctions } : {})
+	});
 	if (result.kind !== 'success') {
 		throw new Error(`expected success, got ${JSON.stringify(result)}`);
 	}
@@ -125,15 +150,15 @@ describe('P23.9 shared Junction identity predicate', () => {
 		expect(coincidesAsJunction(p(0, 0), p(COINCIDENCE / Math.sqrt(2), COINCIDENCE / Math.sqrt(2)))).toBe(true);
 		expect(coincidesAsJunction(p(0, 0), p(1e-7, 0))).toBe(false);
 	});
-});
-
-describe('P23.9 junction identity — bar 1: authored identity is exact', () => {
+});describe('P23.9 junction identity — bar 1: a DECLARED authored identity is exact', () => {
 	it('reuses the Junction record for its exact coordinate', () => {
 		const ab = commit(baseDocument(), p(0, 0), p(4, 0));
 		const endJunction = ab.walls[0]!.endJunctionId;
 		// Continuing from B's exact coordinate: same canonical Junction, one new
-		// record for the far end — no duplicate node at B.
-		const bc = commit(ab, p(4, 0), p(4, 3));
+		// record for the far end — no duplicate node at B. P23B.3a S6 — the
+		// continuation DECLARES B's Junction; the coordinate alone no longer decides
+		// (the undeclared differential at the end of this file pins the other half).
+		const bc = commit(ab, p(4, 0), p(4, 3), endJunction);
 
 		expect(bc.junctions).toHaveLength(3);
 		expect(bc.walls[1]!.startJunctionId).toBe(endJunction);
@@ -143,7 +168,9 @@ describe('P23.9 junction identity — bar 1: authored identity is exact', () => 
 	it('mints a distinct node for a near-miss instead of fusing it', () => {
 		const ab = commit(baseDocument(), p(0, 0), p(4, 0));
 		const startJunction = ab.walls[0]!.startJunctionId;
-		const near = commit(ab, p(4, 0), [0 + NEAR_MISS, 0 - NEAR_MISS]);
+		// The continuation declares B (class 3); the FAR end is a near-miss of A and
+		// must stay a node of its own.
+		const near = commit(ab, p(4, 0), [0 + NEAR_MISS, 0 - NEAR_MISS], ab.walls[0]!.endJunctionId);
 
 		// Two records, each holding its own authored coordinate: the planner does
 		// not silently snap a near-miss onto the Junction it missed.
@@ -200,9 +227,7 @@ describe('P23.9 junction identity — bar 1: authored identity is exact', () => 
 		if (ontoLeg.kind !== 'rejected') return;
 		expect(ontoLeg.rejection.code).toBe('self_intersecting_chain');
 	});
-});
-
-describe('P23.9 junction identity — bar 2: computed coincidence adopts, never splits', () => {
+});describe('P23.9 junction identity — bar 2: a DECLARED coincidence is normalized, never split', () => {
 	it('adopts an existing Junction when a chain endpoint lands within noise of it', () => {
 		const baseline = enclosure();
 		const corner = baseline.junctions.find(
@@ -215,7 +240,11 @@ describe('P23.9 junction identity — bar 2: computed coincidence adopts, never 
 			baseline,
 			start: [1e-16, 0],
 			end: p(6, 6),
-			role: 'boundary'
+			role: 'boundary',
+			// P23B.3a S6 — the click resolved onto that corner Junction, so the
+			// operation declares it: the declared anchor is what makes the sub-ulp
+			// coordinate an ADOPTION instead of a second record.
+			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: corner.id }]
 		});
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;
@@ -239,7 +268,10 @@ describe('P23.9 junction identity — bar 2: computed coincidence adopts, never 
 
 	it('normalizes a sub-ulp endpoint onto the node instead of minting a second record', () => {
 		const baseline = enclosure();
-		const document = commit(baseline, p(1e-16, 1e-16), p(-3, -3));
+		const corner = baseline.junctions.find(
+			(junction) => junction.point[0] === 0 && junction.point[1] === 0
+		)!;
+		const document = commit(baseline, p(1e-16, 1e-16), p(-3, -3), corner.id);
 		// Same predicate on both sides of the seam, so a chain point that lands
 		// inside the tolerance IS the existing corner Junction: no duplicate
 		// record, no coincident pair, no sliver arm.
@@ -336,7 +368,24 @@ describe('P23.9 junction identity — bar 2: computed coincidence adopts, never 
 					`sliver wall ${wall.id} at ${JSON.stringify(start)}`
 				).toBeGreaterThan(COINCIDENCE);
 			}
-		}
-		expect(successes).toBeGreaterThan(10);
+		}			expect(successes).toBeGreaterThan(10);
+		});
 	});
-});
+
+	describe('P23B.3a S6 — the same coordinates WITHOUT a declaration are independent placement', () => {
+		it('mints its own Junction at a shared coordinate and joins nothing', () => {
+			const ab = commit(baseDocument(), p(0, 0), p(4, 0));
+			const endJunction = ab.walls[0]!.endJunctionId;
+			const bc = commit(ab, p(4, 0), p(4, 3));
+			// Bar 1's opposite half: the coordinate is identical, the declaration is
+			// absent, so the second segment is its own component and B is TWO records.
+			expect(bc.walls[1]!.startJunctionId).not.toBe(endJunction);
+			expect(bc.junctions).toHaveLength(4);
+			expect(junctionById(bc, bc.walls[1]!.startJunctionId).point).toEqual([4, 0]);
+			// Exactly the one coincident pair at B. That is permitted geometry under
+			// the component-scoped coincidence rule (D-9), and it is what F3 requires:
+			// the planner never fuses what the operation did not declare.
+			expect(coincidentPairs(bc)).toHaveLength(1);
+			expect(bc.walls[0]).toEqual(ab.walls[0]);
+		});
+	});

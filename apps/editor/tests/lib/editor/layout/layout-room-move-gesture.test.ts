@@ -404,7 +404,54 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		expect(live(context).rooms.map((room) => room.id)).toEqual(['room-1']);
 	});
 
+	it('commits a release onto an INDEPENDENT Junction’s coincident point (P23B.3a S5 / D-9)', () => {
+		// The pre-policy verdict for THIS destination was a rejection: [20, 0] lands
+		// j-a exactly on j-x and j-d exactly on j-y, and the coincidence rule compared
+		// every Junction pair in the document. S5 scoped that rule to the connected
+		// component, so the coincident destination is permitted geometry — and the
+		// gesture commits it like any other move, joining nothing.
+		const context = makeStore();
+		const { store } = context;
+		const before = JSON.stringify(live(context));
+
+		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
+		expect(moveRoomUnitDrag(context, [20, 0]).success).toBe(true);
+		const released = releaseRoomUnitDrag(context, [20, 0]);
+		expect(released.kind).toBe('committed');
+
+		expect(point(context, 'j-a')).toEqual([20, 0]);
+		// The unrelated coincident node is still its OWN Junction: no adopt, no split.
+		expect(point(context, 'j-x')).toEqual([20, 0]);
+		expect(live(context).junctions.map((junction) => junction.id)).toEqual([
+			'j-a',
+			'j-b',
+			'j-c',
+			'j-d',
+			'j-x',
+			'j-y'
+		]);
+		expect(live(context).walls.map((wall) => wall.id)).toEqual([
+			'wall-a1',
+			'wall-b',
+			'wall-c',
+			'wall-d',
+			'wall-rl'
+		]);
+		// One committed entry, exactly like the valid-destination case above.
+		expect(store.canUndo).toBe(true);
+		expect(store.undo()).toBe(true);
+		expect(JSON.stringify(live(context))).toBe(before);
+	});
+
 	it('an invalid final release after a valid preview commits nothing', () => {
+		// SINCE S5 the refusal cannot be a GEOMETRIC destination: a rigid move preserves
+		// its own group's geometry exactly, every relation between independent structures
+		// is permitted (the coincident destination above is the extreme case), and a
+		// structure sharing a Junction with the group makes the Room ineligible before a
+		// drag ever opens (the ineligible case below). The reachable non-`no_op` refusal
+		// while a drag is live is the planner's intent guard, so this lifecycle case —
+		// cancel, restore, keep the reason on screen, write no history — exercises it. The
+		// same-component direction of S5's scoping is pinned by the S5 oracle.
 		const context = makeStore();
 		const { store } = context;
 		const before = JSON.stringify(live(context));
@@ -412,8 +459,8 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
 		// A valid intermediate candidate…
 		expect(moveRoomUnitDrag(context, [12, 0]).success).toBe(true);
-		// …and an invalid release (j-a would land exactly on j-x).
-		const released = releaseRoomUnitDrag(context, [20, 0]);
+		// …and a release the planner refuses (a non-finite translation).
+		const released = releaseRoomUnitDrag(context, [Number.NaN, 0]);
 		expect(released.kind).toBe('cancelled');
 		expect(released.message).toBeTruthy();
 
@@ -452,10 +499,16 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 
 	it('clears the live rejection message when a pointer move resolves valid again', () => {
 		// The live-preview path sets its own message per pointer move; the release
-		// path must not depend on it, because the release restores first.
+		// path must not depend on it, because the release restores first. The refusal
+		// is the reachable one for a live drag since S5 — see the invalid-release case
+		// above — and the message it leaves behind must not survive a valid move.
 		const context = makeStore();
 		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
-		expect(moveRoomUnitDrag(context, [20, 0]).success).toBe(false);
+		const refused = moveRoomUnitDrag(context, [Number.NaN, 0]);
+		expect(refused.success).toBe(false);
+		// The viewport writes the refusal to the status line after the restore-then-
+		// resolve, so the test does the same before checking it is cleared.
+		context.layoutPreview.statusMessage = refused.message!;
 		const rejection = context.layoutPreview.statusMessage;
 		expect(rejection).toBeTruthy();
 
@@ -474,9 +527,15 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		if (noOp.success) throw new Error('expected the zero delta to reject');
 		expect(noOp.code).toBe('no_op');
 
-		const rejected = previewWallFirstRoomMove(context.layoutPreview, 'room-1', [20, 0]);
-		if (rejected.success) throw new Error('expected the collision to reject');
-		expect(rejected.code).toBe('topology_invalid');
+		// A REAL refusal, on the fixture whose Room cannot move at all: a corner
+		// Junction carries a stationary partition stub, so the rigid unit would be torn
+		// off. (The coincident destination this case used before S5 — j-a landing exactly
+		// on j-x — is permitted geometry now; D-9 scopes the coincidence rule to the
+		// component, and the destination suite asserts that successor.)
+		const blocked = makeStore(roomWithPartitionStubDocument());
+		const rejected = previewWallFirstRoomMove(blocked.layoutPreview, 'room-1', [20, 0]);
+		if (rejected.success) throw new Error('expected the attached stub to reject the move');
+		expect(rejected.code).toBe('room_not_isolated');
 	});
 
 	it('Escape cancels to the exact baseline with zero history', () => {
@@ -562,8 +621,10 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		expect(moveRoomUnitDrag(context, [12, 0]).success).toBe(true);
 		expect(drag.candidateValid).toBe(true);
 
-		// Any later update resets validity before the adapter re-resolves it.
-		expect(moveRoomUnitDrag(context, [20, 0]).success).toBe(false);
+		// Any later update resets validity before the adapter re-resolves it. (The
+		// refusal is the reachable one for a live drag since S5; see the invalid-release
+		// case above.)
+		expect(moveRoomUnitDrag(context, [Number.NaN, 0]).success).toBe(false);
 		expect(drag.candidateValid).toBe(false);
 		cancelRoomUnitDrag(context);
 		// The transient flag never leaks into the undo snapshot.

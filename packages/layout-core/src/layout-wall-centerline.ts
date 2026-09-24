@@ -23,11 +23,13 @@ import type {
 	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import {
+	projectPointToSampledSegment,
 	sampleSegment,
 	spansToCubics,
 	type CubicBezierShape,
 	type SampledSegment
 } from './layout-geometry-curve';
+import { coincidesAsJunction, JUNCTION_COINCIDENCE_EPSILON } from './layout-junction-identity';
 
 /** Deep-copy one bend point: same stable ID, an independent point array. */
 export function cloneWallCurveKnot(knot: LayoutWallCurveKnot): LayoutWallCurveKnot {
@@ -315,4 +317,37 @@ export function wallCenterlineSamples(
 	} catch {
 		return undefined;
 	}
+}
+
+/**
+ * Whether `point` sits on the Wall's canonical centerline — a strict-interior
+ * station of its span, or one of its two endpoint stations.
+ *
+ * This is the one predicate behind "this point belongs to that Wall", used by
+ * the wall-span declaration on both sides of the seam (the editor's click rule
+ * and the chain planner's declared-host validation). It reuses the canonical
+ * geometry authority rather than inventing one: the chord projection for a
+ * `line` centerline, the sampled projection for a `cubic-chain`, and
+ * `JUNCTION_COINCIDENCE_EPSILON` — the single identity tolerance — for the
+ * comparison. No additional distance threshold is introduced.
+ */
+export function wallCenterlineCarriesPoint(
+	wall: Pick<LayoutWall, 'id' | 'centerline'>,
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	point: LayoutVec2
+): boolean {
+	if (coincidesAsJunction(point, startPoint) || coincidesAsJunction(point, endPoint)) return true;
+	if (wall.centerline.kind === 'line') {
+		const dx = endPoint[0] - startPoint[0];
+		const dz = endPoint[1] - startPoint[1];
+		const squared = dx * dx + dz * dz;
+		if (!(squared > 0)) return false;
+		const t = ((point[0] - startPoint[0]) * dx + (point[1] - startPoint[1]) * dz) / squared;
+		if (!(t > 0 && t < 1)) return false;
+		return coincidesAsJunction([startPoint[0] + dx * t, startPoint[1] + dz * t], point);
+	}
+	const sampled = wallCenterlineSamples(wall, startPoint, endPoint, 'forward');
+	if (!sampled) return false;
+	return projectPointToSampledSegment(point, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON;
 }

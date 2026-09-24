@@ -72,9 +72,28 @@ function commitChain(
 	baseline: LayoutDocumentWallFirst,
 	points: [number, number][],
 	role: 'boundary' | 'partition',
-	close = false
+	close = false,
+	/**
+	 * P23B.3a S6 — the gesture's DECLARED connection to existing geometry (array
+	 * index = draft point index). A continuation names the Junction it continues
+	 * from; a segment attached to a Wall's face names that host. Without either,
+	 * the chain is independent placement and joins nothing.
+	 */
+	connection?: { junctions?: readonly string[]; hosts?: readonly string[] }
 ): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points, role, close });
+	const junctionSnaps = (connection?.junctions ?? []).map((junctionId, index) => ({
+		pointIndex: index,
+		junctionId
+	}));
+	const hostSnaps = (connection?.hosts ?? []).map((wallId, index) => ({ pointIndex: index, wallId }));
+	const plan = planWallChain({
+		baseline,
+		points,
+		role,
+		close,
+		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {}),
+		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {})
+	});
 	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
@@ -314,7 +333,11 @@ describe('P23.6 junction handles and selection', () => {
 		// P23.10 — a degree-2 Junction is ONE canonical record, so the endpoint
 		// handle is drawn once and hit once, even though both Walls name it.
 		const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)], 'boundary');
-		const document = commitChain(first, [p(4, 0), p(4, 2)], 'boundary');
+		// P23B.3a S6 — the second leg declares the Junction it continues from (the
+		// run's own canonical Junction), which is what makes degree-2 ONE record.
+		const document = commitChain(first, [p(4, 0), p(4, 2)], 'boundary', false, {
+			junctions: [first.walls[0]!.endJunctionId]
+		});
 		const shared = document.walls[0]!.endJunctionId;
 		expect(document.walls[1]!.startJunctionId).toBe(shared);
 		expect(document.junctions.filter((junction) => junction.id === shared)).toHaveLength(1);

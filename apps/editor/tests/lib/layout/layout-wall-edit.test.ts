@@ -117,7 +117,7 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	return document;
 }
 
-/** Square plus a partition far to the right, for crossing rejections. */
+/** Square plus an INDEPENDENT partition far to the right, for crossing cases. */
 function partitionCrossingDocument(): LayoutDocumentWallFirst {
 	const document = squareDocument();
 	document.junctions.push({ id: 'P', point: [10, 0] }, { id: 'Q', point: [10, 3] });
@@ -125,6 +125,27 @@ function partitionCrossingDocument(): LayoutDocumentWallFirst {
 		id: 'w5',
 		startJunctionId: 'P',
 		endJunctionId: 'Q',
+		role: 'partition',
+		thickness: 0.1,
+		height: 3,
+		centerline: { kind: 'line' } as const,
+	});
+	return document;
+}
+
+/**
+ * Square plus a partition ATTACHED to it at its own Junction `C` (w5: C → P). A
+ * crossing this partition creates is therefore INSIDE one connected group — the
+ * case P23B.3a S4 leaves refused — while `partitionCrossingDocument`'s partition
+ * is graph-independent of the square and its crossings are permitted geometry.
+ */
+function attachedPartitionCrossingDocument(): LayoutDocumentWallFirst {
+	const document = squareDocument();
+	document.junctions.push({ id: 'P', point: [10, 3] });
+	document.walls.push({
+		id: 'w5',
+		startJunctionId: 'C',
+		endJunctionId: 'P',
 		role: 'partition',
 		thickness: 0.1,
 		height: 3,
@@ -168,7 +189,7 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 		]);
 	});
 
-	it('rejects a duplicate Junction point and a crossing through a neighbour, atomically', () => {
+	it('rejects a duplicate Junction point and separates an intra-group crossing from an inter-group one, atomically', () => {
 		const baseline = squareDocument();
 		expect(planExactJunctionMove(baseline, 'A', [4, 0])).toMatchObject({
 			kind: 'rejected',
@@ -187,11 +208,44 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 			rejection: { code: 'invalid_value' }
 		});
 
-		// Moving the partition's end onto the square's `w2` span crosses it.
+		// Moving the INDEPENDENT partition's end onto the square's `w2` span crosses
+		// it. The PRE-POLICY verdict was `topology_invalid`; P23B.3a S4 scoped the
+		// gate's subject to the connected component, and this partition shares no
+		// Junction id with the square, so its crossing is permitted geometry (F4).
 		const crossing = partitionCrossingDocument();
-		const rejected = planExactJunctionMove(crossing, 'P', [4, 1.5]);
-		expect(rejected).toMatchObject({ kind: 'rejected', rejection: { code: 'topology_invalid' } });
+		const permitted = planExactJunctionMove(crossing, 'P', [4, 1.5]);
+		expect(permitted.kind).toBe('success');
+		if (permitted.kind !== 'success') return;
+		expect(permitted.changedJunctionIds).toEqual(['P']);
+		expect(permitted.document.junctions.find((junction) => junction.id === 'P')?.point).toEqual([4, 1.5]);
+		// NO IMPLICIT JOIN: both Walls keep their own id, their own Junctions and their
+		// own span — the crossing is geometry, not a split or an adoption.
+		expect(permitted.document.walls.map((wall) => wall.id)).toEqual(['w1', 'w2', 'w3', 'w4', 'w5']);
+		expect(permitted.document.junctions.map((junction) => junction.id)).toEqual([
+			'A',
+			'B',
+			'C',
+			'D',
+			'P',
+			'Q'
+		]);
+		expect(permitted.document.walls.find((wall) => wall.id === 'w2')).toEqual(
+			crossing.walls.find((wall) => wall.id === 'w2')
+		);
+		// The planner is pure: the permitted candidate never wrote to the baseline.
 		expect(crossing.junctions.find((junction) => junction.id === 'P')?.point).toEqual([10, 0]);
+
+		// The SAME relation INSIDE one connected group keeps being refused: move the
+		// ATTACHED partition's free end so it crosses one of the group's own Walls.
+		const attached = attachedPartitionCrossingDocument();
+		const attachedBefore = JSON.stringify(attached);
+		const intraGroup = planExactJunctionMove(attached, 'P', [-1, 1.5]);
+		expect(intraGroup).toMatchObject({
+			kind: 'rejected',
+			rejection: { code: 'topology_invalid' }
+		});
+		expect(attached.junctions.find((junction) => junction.id === 'P')?.point).toEqual([10, 3]);
+		expect(JSON.stringify(attached)).toBe(attachedBefore);
 
 		// A Junction that would collapse its Wall to zero effective length.
 		expect(planExactJunctionMove(degreeThreeDocument(), 'E', [4, 0])).toMatchObject({

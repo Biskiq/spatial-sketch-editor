@@ -367,12 +367,14 @@ export function planDissolveJunction(
 			baseline: document,
 			candidateDocument: candidate,
 			extraction,
-			components: buildCorrespondenceComponents(
-				extraction.faces,
-				document.rooms.map((room) => room.id),
+			components: buildCorrespondenceComponents({
+				faces: extraction.faces,
+				predecessorRoomIds: document.rooms.map((room) => room.id),
 				predecessorWitnesses,
-				predecessorPolygons
-			),
+				predecessorPolygons,
+				candidateDocument: candidate,
+				baselineRooms: document.rooms
+			}),
 			predecessorWitnesses,
 			predecessorPolygons,
 			allocator: createAuthoringRoomAllocator()

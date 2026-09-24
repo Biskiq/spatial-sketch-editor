@@ -65,6 +65,10 @@ import {
 } from './layout-wall-noding';
 import { coincidesAsJunction } from './layout-junction-identity';
 import {
+	topologyComponentKeyByJunctionId,
+	topologyComponentKeyByWallId
+} from './layout-topology-components';
+import {
 	classifyWallIntersection,
 	sampledWallSelfIntersects,
 	sampledWallsCross,
@@ -1719,6 +1723,35 @@ function assertWallGeometryRoomIdentityPreserved(
  * connectivity/role, and translation of the first canonical Opening-set
  * issue. Shared by the P23.1 precision planners (via `finalizeCandidate`) and
  * the P23.6a Room-move planner — never copied.
+ *
+ * P23B.3a S4/S5 — THE SUBJECT OF EVERY INTERSECTION CHECK IS THE CONNECTED
+ * COMPONENT, not the document (Option E, decision record §2.10; M-3a-2). The
+ * predicate, its verdict vocabulary, its messages and its diagnostic order are
+ * UNCHANGED — only WHICH PAIRS reach it changed (INV-2):
+ *
+ * ```text
+ * COMPONENT-SCOPED  the pairwise `classifyWallIntersection` loop, the sampled
+ *                   crossing authority (`detectWallCurveTopologyCrossings`) and the
+ *                   `duplicate_junction_point` coincidence rule (D-9). An
+ *                   intersection or a coincident node BETWEEN two components is
+ *                   PERMITTED geometry — an independent Room may be moved through
+ *                   another, independent curved Walls may cross, collinear overlap
+ *                   between independent groups is legal, and two independent
+ *                   structures may sit at identical coordinates.
+ * DOCUMENT-GLOBAL   zero-length Walls, Room boundary closure/role/minimum length,
+ *                   a self-intersecting centerline, and the translated Opening-set
+ *                   issue. These are INTRINSIC to one structural element, not
+ *                   relationships between two elements, so Option E does not relax
+ *                   them.
+ * ```
+ *
+ * CONNECTIVITY IS THE TRANSITIVE CLOSURE of explicit authored Junction identity,
+ * never coordinates: two Walls with no Junction id in common can still be ONE
+ * component through a third Wall, and two Walls whose endpoints merely coincide are
+ * in DIFFERENT components. Labelling is the S2 general Wall/Junction test — the
+ * SAME authority the reconciliation authorization uses, never a second connectivity
+ * recipe — so every same-component verdict this gate produced before is still
+ * produced (OR-3a/OR-3b; see `layout-p23b3a-scoped-gate.test.ts`).
  */
 export type WallFirstTopologyOptions = {
 	/**
@@ -1733,8 +1766,27 @@ export function validateWallFirstTopology(
 	document: LayoutDocumentWallFirst,
 	options: WallFirstTopologyOptions = {}
 ): LayoutGeometryIssue | undefined {
+	// P23B.3a S5 / D-9 — the coincidence rule is COMPONENT-SCOPED: a coincident node
+	// is an ACCIDENT only where the two nodes describe one graph, so equal
+	// coordinates are refused when the Junctions share a component and PERMITTED when
+	// they do not. The code, path, message and document order below are unchanged —
+	// only which pairs reach the predicate (INV-2).
+	//
+	// UNATTACHED JUNCTIONS keep the general test's deliberate rule: a Junction no Wall
+	// references carries the single `UNATTACHED_JUNCTION_COMPONENT` label, so two
+	// coincident unattached Junctions are STILL invalid, while an unattached Junction
+	// coinciding with a Wall's Junction is permitted (D-9). That label is a SYMBOL,
+	// never a string, so no authored Wall id can collide with it — not even a Wall
+	// whose id is literally `unattached-junctions` (the S5 review blocker).
+	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {
+			if (
+				keyByJunctionId.get(document.junctions[first]!.id) !==
+				keyByJunctionId.get(document.junctions[second]!.id)
+			) {
+				continue;
+			}
 			if (coincidesAsJunction(document.junctions[first]!.point, document.junctions[second]!.point)) {
 				return {
 					path: `junctions[${second}].point`,
@@ -1761,10 +1813,21 @@ export function validateWallFirstTopology(
 	}
 
 	const walls = document.walls;
+	// P23B.3a S4 — component-scoped SUBJECT (the transitive closure of explicit
+	// Junction identity, never coordinates: two Walls with no Junction id in common
+	// can still be one component through a third Wall). A pair from two different
+	// components is skipped before the UNCHANGED predicate sees it, so the
+	// `shared-explicit-junction` branch below is unreachable for a skipped pair and
+	// no same-component verdict is dropped. The labelling is derived again inside the
+	// sampled gate; that redundancy is deliberate — it keeps one public signature and
+	// no way for a caller to hand in a labelling that disagrees with the document,
+	// and sharing the derivation is the scoped-validation work's own concern.
+	const keyByWallId = topologyComponentKeyByWallId(document);
 	for (let first = 0; first < walls.length; first += 1) {
 		for (let second = first + 1; second < walls.length; second += 1) {
 			const a = walls[first]!;
 			const b = walls[second]!;
+			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 			const segmentA = wallSegments.get(a.id)!;
 			const segmentB = wallSegments.get(b.id)!;
 			const shared = sharedJunctionIds(a, b);
@@ -1960,6 +2023,19 @@ export type WallCurveTopologyCrossing =
  * straight Wall contributes just its two chord endpoints (a straight polyline
  * IS its chord), so a document with no curves pays nothing beyond one record
  * per Wall.
+ *
+ * P23B.3a S4/S5 — THE SUBJECT IS THE CONNECTED COMPONENT (M-3a-2, decision record
+ * §2.10): a pair of Walls in different components is skipped BEFORE the sampled
+ * predicate runs, so their crossing is permitted geometry rather than a verdict.
+ * The predicate, the self scan, the first-crossing-in-`document.walls`-order rule
+ * and the reported pair are unchanged (INV-2) — only which pairs are examined.
+ *
+ * Connectivity is the TRANSITIVE closure of explicit authored Junction identity,
+ * never coordinates: two Walls can share a component through a third Wall, and
+ * merely coincident endpoints never join anything. This gate is scoped ONCE, with
+ * no pre-policy escape: every caller — the canonical gate and the Wall-chain gate
+ * alike — gets the component subject (S5 removed the transitional document-subject
+ * form S4 left for the chain path).
  */
 export function detectWallCurveTopologyCrossings(
 	document: LayoutDocumentWallFirst,
@@ -1994,10 +2070,15 @@ export function detectWallCurveTopologyCrossings(
 			return { kind: 'self', wallId: wall.id };
 		}
 	}
+	// P23B.3a S4 — two Walls from different components never reach the sampled
+	// predicate. Every pair that does share a Junction id is in one component, so
+	// `shared` below can never point at a pair this skips.
+	const keyByWallId = topologyComponentKeyByWallId(document);
 	for (let first = 0; first < document.walls.length; first += 1) {
 		for (let second = first + 1; second < document.walls.length; second += 1) {
 			const a = document.walls[first]!;
 			const b = document.walls[second]!;
+			if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
 			// Two straight Walls are already fully decided by the chord gate.
 			if (a.centerline.kind === 'line' && b.centerline.kind === 'line') continue;
 			const sampledA = sampledWalls.get(a.id);
