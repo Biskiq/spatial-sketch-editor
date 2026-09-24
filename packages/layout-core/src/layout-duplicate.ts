@@ -11,7 +11,7 @@
  * → clone
  * → remap internal references
  * → apply per-copy transform/offset from the ORIGINAL source
- * → validate complete batch
+ * → validate the complete batch with the canonical gates
  * → commit once
  * ```
  *
@@ -31,7 +31,7 @@ import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-portals';
-import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
+import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
@@ -130,9 +130,32 @@ function isValidCopyCount(count: number): boolean {
 }
 
 /**
- * Shared final gates for every duplicate/repeat batch: codec → wall topology
- * (only when walls changed) → whole-document opening set → portal relations →
- * canonical compile. One batch validates once — never per copy.
+ * Shared final gates for every duplicate/repeat batch: codec → canonical wall
+ * topology (only when the batch introduces Walls) → whole-document opening set
+ * → portal relations → canonical compile. One batch validates once — never per
+ * copy.
+ *
+ * P23B.3a S7 / D-8 — the topology step IS the canonical gate
+ * (`validateWallFirstTopology`, the same function the P23.1 precision planners
+ * and the P23.6a Room-move planner run), never a second, chord-exact crossing
+ * rule owned by this module. The bar a duplicate batch holds is therefore the
+ * bar every other commit holds, by construction rather than by a docstring
+ * claiming a parity the local rule did not have (this doc used to make exactly
+ * that claim, over a gate that could not see a sampled curve crossing — the
+ * F-C1 ingress hole).
+ *
+ * What that bar is under the ratified policy (D-1/E, D-9):
+ *   · spatial overlap between INDEPENDENT components is PERMITTED, so a clone
+ *     placed across its source or across any other group COMMITS and joins
+ *     nothing — separate ids, no adopted Junction, no split Wall (F1/F5);
+ *   · a violation INSIDE one connected component stays refused, so a batch that
+ *     introduces Walls into a document already carrying a same-component
+ *     crossing is refused rather than admitted;
+ *   · ingestion is separately governed and unchanged: the codec
+ *     (`validateWallFirstLayoutDocument`) still carries NO topology rule, so a
+ *     payload stays codec-valid exactly as before and topology remains a later,
+ *     separate validation. Wiring the codec to geometry is NOT this change's
+ *     business — F-C6 is a scope, not a licence to make the codec semantic.
  */
 function finalizeCandidate(
 	candidate: LayoutDocumentWallFirst,
@@ -155,9 +178,28 @@ function finalizeCandidate(
 		);
 	}
 	if ((created.createdWallIds?.length ?? 0) > 0) {
-		const topologyIssue = validateBatchWallTopology(structural.document);
+		// P23B.3a S7 — ONE rule, called from the ONE canonical authority (see the
+		// doc above): no local crossing classifier, no second tolerance.
+		//
+		// `openingSet: 'defer'` keeps the Opening-set vocabulary canonical while
+		// leaving its translation to the explicit gate below, exactly as the
+		// precision and Room-move planners do — an Opening failure must not be
+		// consumed as `topology_invalid` before it can be classified.
+		//
+		// The step runs for batches that INTRODUCE Walls (the F-C1 surface). A
+		// batch that creates no Wall — an object or Opening repeat — introduces no
+		// Wall-pair relation at all, so its verdict cannot differ from the
+		// document's existing one and the check is skipped.
+		const topologyIssue = validateWallFirstTopology(structural.document, {
+			openingSet: 'defer'
+		});
 		if (topologyIssue) {
-			return reject('topology_invalid', topologyIssue.message, [topologyIssue.wallId]);
+			return reject(
+				'topology_invalid',
+				topologyIssue.message,
+				topologyIssue.targetId ? [topologyIssue.targetId] : undefined,
+				[topologyIssue]
+			);
 		}
 	}
 	const setIssues = validateWallFirstOpeningSet(structural.document);
@@ -189,64 +231,6 @@ function finalizeCandidate(
 		createdWallIds: created.createdWallIds ?? [],
 		...(created.createdRoomId !== undefined ? { createdRoomId: created.createdRoomId } : {})
 	};
-}
-
-/**
- * Whole-document wall-pair gate for batches that introduce walls (Room
- * duplicate): every wall pair must relate only through explicit shared
- * junctions (or be disjoint). Same bar the P23.9 chain and P23.1 precision
- * candidates hold — a cloned subgraph translated into an existing wall would
- * otherwise silently cross/overlap it.
- */
-function validateBatchWallTopology(
-	document: LayoutDocumentWallFirst
-): { wallId: string; message: string } | null {
-	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
-	const entries: Array<{ wall: LayoutWall; segment: TopologySegment }> = [];
-	for (const wall of document.walls) {
-		const start = junctionById.get(wall.startJunctionId);
-		const end = junctionById.get(wall.endJunctionId);
-		if (!start || !end) continue;
-		entries.push({ wall, segment: { id: wall.id, start: start.point, end: end.point } });
-	}
-	for (let first = 0; first < entries.length; first += 1) {
-		for (let second = first + 1; second < entries.length; second += 1) {
-			const a = entries[first]!.wall;
-			const b = entries[second]!.wall;
-			const shared =
-				a.startJunctionId === b.startJunctionId || a.startJunctionId === b.endJunctionId
-					? [a.startJunctionId]
-					: a.endJunctionId === b.startJunctionId || a.endJunctionId === b.endJunctionId
-						? [a.endJunctionId]
-						: [];
-			const classified = classifyWallIntersection(
-				entries[first]!.segment,
-				entries[second]!.segment,
-				shared
-			);
-			if (classified.kind === 'shared-explicit-junction') {
-				const geometric = classifyWallIntersection(
-					entries[first]!.segment,
-					entries[second]!.segment,
-					[]
-				);
-				if (geometric.kind === 'collinear-overlap') {
-					return {
-						wallId: b.id,
-						message: `Walls '${a.id}' and '${b.id}' overlap beyond their explicit shared junction`
-					};
-				}
-				continue;
-			}
-			if (classified.kind !== 'none') {
-				return {
-					wallId: b.id,
-					message: `Walls '${a.id}' and '${b.id}' have unsupported ${classified.kind}`
-				};
-			}
-		}
-	}
-	return null;
 }
 
 function cloneObject(object: LayoutObject): LayoutObject {
@@ -432,8 +416,12 @@ export type RoomDuplicateIntent = {
  * Rejections: shared boundary Walls or subgraph junctions shared with
  * non-cloned walls (`room_not_isolated`), any external portal relation on a
  * hosted Opening (`external_portal_relation`), any read-only/profile
- * associated object (`profile_object_read_only`), and a cloned subgraph that
- * would cross/overlap existing walls (`topology_invalid`).
+ * associated object (`profile_object_read_only`), and a candidate that
+ * violates the CANONICAL topology bar inside one connected component
+ * (`topology_invalid`). P23B.3a S7 / D-8 — a clone that merely OVERLAPS or
+ * crosses INDEPENDENT geometry is permitted placement: it commits, and it joins
+ * nothing (the earlier wording here claimed the overlap itself was refused,
+ * which was the chord-exact rule this path no longer owns).
  */
 export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,

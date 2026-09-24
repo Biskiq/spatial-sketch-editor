@@ -85,11 +85,33 @@ NEXT:
    of being bridged or silently narrowed, and an undeclared component the chain crosses stays untouched. The
    pre-policy two-Room single-divider regression is re-based to assert that rejection with its old 4-Room
    outcome recorded as history. S6 now awaits RE-review.
-   S7–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
+   S7 (DUPLICATE / IMPORT GATE PARITY, with the D-8 comment correction in the SAME commit as the behaviour it
+   describes) has landed: the duplicate path's own chord-exact Wall-pair loop is DELETED and
+   `finalizeCandidate` calls the ONE canonical authority (`validateWallFirstTopology`, the function the
+   precision, Room-move and chain gates already share) whenever a batch introduces Walls, so the duplicate
+   verdict and the canonical verdict cannot disagree by construction — the F-C1 ingress hole closed by WIRING,
+   never by a second crossing rule. Ingestion is deliberately untouched: the codec still carries no geometric
+   rule and the import path is unchanged (F-C6 is a scope, not a licence to make the codec semantic), which the
+   new oracle asserts by importing a document the topology authority refuses at the same moment. T1 → F1 is
+   completed: the S1 row is RETIRED (AM-1) and its successor asserts that duplicating a Room onto its OWN
+   position now COMMITS — new Junction ids at the coincident coordinates, no shared Junction with the source,
+   nothing split or adopted, the canonical gate agreeing, both groups independently editable — while a clone
+   that merely overlaps or crosses independent geometry is permitted placement (F1/F5) rather than
+   `topology_invalid`. Parity is PROVEN rather than claimed: a fixture that pairs an isolated Room with a
+   PRE-EXISTING same-component curve crossing (invisible to a chord scan, refused by the sampled authority)
+   makes a Wall-introducing duplicate batch refuse with `topology_invalid`, atomically, while the same batch
+   without the crossing is admitted. R-b's PERMANENT same-component atomic refusal and R-d's import admission
+   are retained; the two P23.4 rows that pinned the pre-policy overlap refusal are re-based with their old
+   verdicts recorded as history, and the reference register now ASSERTS that no row carries a pre-policy
+   verdict. S7 now awaits review.
+   S8 remains, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
+   Still owed before closeout (an S8 evidence obligation, not an S7 blocker): OR-3a's variant list
+   (near-tangent curves, reversed Walls, degenerate boxes).
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
    step 9 · the named slice workspace), and **D-7 and D-8 are RESOLVED** — the slice is P23B.3a and the
-   `layout-duplicate.ts` comment correction lands inside it. Still open alongside it: the P23B.2 evidence
+   `layout-duplicate.ts` comment correction HAS LANDED inside it, in the same commit as the validation
+   behaviour it describes. Still open alongside it: the P23B.2 evidence
    decision (ACCEPT/PART-RETURN).
    This ratification authorizes P23B.3a ALONE: no benchmark implementation, no other topology change and
    no optimization slice (P23B.0-durable, P23B.4–P23B.8) starts yet — P23B.0-durable begins only once the
