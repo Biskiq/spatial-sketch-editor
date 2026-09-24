@@ -17,6 +17,7 @@
 	import EditorCameraTimelinePanel from './EditorCameraTimelinePanel.svelte';
 	import { getCameraEdgePreviewChoices } from './editor-camera-preview-affordances';
 	import { useCameraTimeline } from '../hooks/use-camera-timeline.svelte';
+	import { p23bActivateInteraction, p23bAfterInteraction, p23bMeasureInteraction } from '../layout/p23b-interaction-measure';
 	import {
 		EDITOR_TIMELINE_COLLAPSED_HEIGHT,
 		EDITOR_TIMELINE_MAX_HEIGHT,
@@ -295,6 +296,22 @@
 
 	function stepNode(direction: -1 | 1) {
 		timelineApi.stepNodeBoundary(direction);
+	}
+
+	/**
+	 * P23B W4 — one transport button starts and stops the shipped guided
+	 * PerspectiveCamera tour, so it carries both interaction boundaries: the
+	 * press that begins playback is the input and the press that stops it is the
+	 * release. The marker is inert while the DEV perf switch is off.
+	 */
+	function p23bToggleTourPlayback() {
+		const boundary = previewPlaying ? 'release' : 'input';
+		p23bActivateInteraction('guided-3d-navigation');
+		const result = p23bMeasureInteraction('guided-3d-navigation', boundary, () =>
+			timelineApi.toggleTourPlayback()
+		);
+		p23bAfterInteraction('guided-3d-navigation');
+		return result;
 	}
 
 	function closeMoreMenu(returnFocus = false) {
@@ -599,7 +616,7 @@
 			{#if scope !== 'camera'}
 				<div class="header-transport" aria-label="Camera timeline transport">
 					<button type="button" class="header-icon" aria-label="Previous camera node" title="Previous camera node" disabled={previousNodeDisabled} onclick={() => stepNode(-1)}><span aria-hidden="true">|◀</span></button>
-					<button type="button" class="header-icon" class:active={previewPlaying} aria-label={scope === 'idle' ? 'Play camera flow' : timelineApi.playLabel} title={scope === 'idle' ? 'Play camera flow' : timelineApi.playLabel} disabled={!timelineApi.canPlay} onclick={() => timelineApi.toggleTourPlayback()}>{#if previewPlaying}<Pause size={14} aria-hidden="true" />{:else}<Play size={14} aria-hidden="true" />{/if}</button>
+					<button type="button" class="header-icon" class:active={previewPlaying} aria-label={scope === 'idle' ? 'Play camera flow' : timelineApi.playLabel} title={scope === 'idle' ? 'Play camera flow' : timelineApi.playLabel} disabled={!timelineApi.canPlay} onclick={p23bToggleTourPlayback}>{#if previewPlaying}<Pause size={14} aria-hidden="true" />{:else}<Play size={14} aria-hidden="true" />{/if}</button>
 					<button type="button" class="header-icon" aria-label="Next camera node" title="Next camera node" disabled={nextNodeDisabled} onclick={() => stepNode(1)}><span aria-hidden="true">▶│</span></button>
 					<output class="timecode" aria-label="Camera timeline time">{formatTime(timelineApi.currentSeconds)} / {formatTime(durationSeconds)}</output>
 				</div>

@@ -182,6 +182,7 @@ const CONTENT_SOURCES = [
 	'src/lib/editor/layout/LayoutPreviewScene.svelte',
 	'src/lib/editor/layout/layout-preview-state.svelte.ts',
 	'src/lib/editor/camera/EditorCameraPreviewControls.svelte',
+	'src/lib/editor/camera/EditorCameraTimelineFrame.svelte',
 	'src/lib/editor/camera/EditorCameraRig.svelte',
 	'src/lib/editor/app/EditorApp.svelte',
 	'src/routes/dev/perf/p23b/+page.svelte',
