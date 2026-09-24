@@ -1,9 +1,9 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.0-durable — next sequence step 10; plan RECONCILED against the shipped Option E policy
-       (Stage A, 2026-09-24) but still UNRATIFIED. Owner review and ratification are the immediate next
-       action before measurement-fixture, harness or baseline implementation.
+CHILD: P23B.0-durable — next sequence step 10; final Stage A reconciliation now includes the owner-supplied
+       40-Wall responsiveness case and bounded interaction workload. The plan remains UNRATIFIED; owner
+       review and ratification are the immediate next action before fixture, harness or baseline work.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -19,11 +19,11 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.0-durable — owner review and ratification of the bounded plan, including its fixture/gesture
-   identity, reference measurement environment and harness/baseline scope. Once authorized, execute
-   sequence step 10 against the post-policy gates before any optimization work. Continue on the owner-
-   authorized P23B continuation branch/PR described in the phase dependency map; preserve slice-level
-   acceptance and closeout order.
+1. P23B.0-durable — owner review and ratification of the final Stage A plan, including the separate
+   CLASS 5 owner-case identity/role, six-cell control matrix, bounded interactions, proposed reference
+   environment and harness/baseline scope. Once authorized, execute sequence step 10 against post-policy
+   gates; run W2 exact-byte assertions before baseline recording. Continue on the owner-authorized P23B
+   continuation branch/PR in the phase dependency map; preserve slice acceptance and closeout order.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
 3. P26 planning may continue in parallel. Read
@@ -52,10 +52,10 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.0-durable has no committed fixture identity or recorded baseline for the curved authoring case;
-  its plan is reconciled but unratified, so measurement-infrastructure implementation remains gated.
-  Ratification still needs the owner's BRANCH-R/C choice and the gesture/snap plus reference-machine
-  confirmation (Stage A packet §4).
+- P23B.0-durable has no committed owner-case fixture, executable W2 assertions or recorded baseline. The
+  supplied payload is identified separately from historical E2, and the plan is reconciled but unratified;
+  implementation remains gated on owner ratification. Stage B must record live browser DPR/renderer details
+  where observable and actual per-path sampling settings (Stage A packet §§4–5).
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.

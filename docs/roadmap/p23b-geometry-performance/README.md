@@ -31,10 +31,10 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 GATE and P23B.3's ratification gate are satisfied. The latter authorized P23B.3a; it does
 not authorize P23B.0-durable's planned measurement-infrastructure changes or any P23B.4â€“P23B.8
 optimization. P23B.0-durable remains PLANNED, UNRATIFIED. No numerical performance target is proposed.
-NEXT: owner review and ratification of the bounded P23B.0-durable plan, including its fixture and gesture
-identity, reference measurement environment and harness/baseline scope; the Stage A reconciliation packet
-is routed below. Once authorized, execute sequence step 10 against the post-policy gates before any
-optimization work.
+NEXT: owner review and ratification of the final Stage A P23B.0-durable plan, including the separate
+CLASS 5 identity and role for the supplied 40-Wall responsiveness case, the bounded interaction workload,
+proposed reference environment and harness/baseline scope; the Stage A packet is routed below. Once
+authorized, execute sequence step 10 against the post-policy gates before any optimization work.
 ```
 
 ```text
@@ -204,8 +204,9 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) â
 **Owner decisions still open:**
 
 ```text
-1  Ratify P23B.0-durable before committing its measurement infrastructure; supply or confirm the fixture,
-   gesture and reference-environment inputs required by that plan.
+1  Ratify the final Stage A P23B.0-durable plan before committing measurement infrastructure. Stage A has
+   supplied and identified the owner responsiveness payload, workload families and proposed reference
+   environment; the owner-case fixture, W2 assertions, harness and baseline remain unimplemented.
 2  Accept, part-return or require a review of the separate P23B.2 research evidence.
 3  Resolve the umbrella's remaining open calls when their owning slices reach those gates (device profiles,
    enforced budgets, P23 Decision 13, Rust/WASM authorization and any numeric target).
