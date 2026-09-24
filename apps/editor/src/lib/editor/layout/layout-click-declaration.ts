@@ -17,15 +17,69 @@
  *            coincidence is permitted geometry now) is AMBIGUOUS: declare
  *            nothing rather than let record order pick the group.
  * wall-span  the point lies on a straight Wall's SPAN (strict interior)
- *            → declare that host.
+ *            → declare that host, but ONLY when exactly one Wall carries the
+ *            point. Independent Walls may legally overlap, so a point can sit on
+ *            several spans at once; picking the first would be an arbitrary
+ *            statement about which group the operation extends, so AMBIGUITY
+ *            DECLARES NOTHING.
  * ```
+ *
+ * The geometry-only rules above are the FALLBACK. A click that resolved through
+ * the canonical snap layer is stronger evidence: that layer ran the deterministic
+ * winner order and named ONE candidate, so `layoutClickAnchorDeclaration` may
+ * declare the winner's host even where the point alone would be ambiguous — but
+ * still only after validating that the identified Wall really carries the point
+ * (canonical chord/sampled authority). A specific, validated winner declares; a
+ * geometric guess never does.
  *
  * A click on empty canvas declares nothing, which is INDEPENDENT placement
  * (class 2) — a legitimate authoring outcome, not a failure.
  */
-import { coincidesAsJunction, type LayoutDocumentWallFirst, type LayoutVec2, type SnapResolution } from '@portfolio/layout-core';
+import {
+	coincidesAsJunction,
+	wallCenterlineCarriesPoint,
+	type LayoutDocumentWallFirst,
+	type LayoutVec2,
+	type LayoutWall,
+	type SnapResolution
+} from '@portfolio/layout-core';
 
 import type { WallAnchorDeclaration } from './layout-preview-state.svelte';
+
+/** The resolved endpoint coordinates of `wall` in `document`, if both resolve. */
+function wallEndpoints(
+	document: LayoutDocumentWallFirst,
+	wall: LayoutWall
+): { start: LayoutVec2; end: LayoutVec2 } | undefined {
+	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
+	const start = pointById.get(wall.startJunctionId);
+	const end = pointById.get(wall.endJunctionId);
+	return start && end ? { start, end } : undefined;
+}
+
+/**
+ * Whether the point is a strict-interior station of this straight Wall's span.
+ * Landing on the span's endpoint is a Junction attachment, which declares a
+ * different thing, so endpoints are excluded here.
+ */
+function wallSpanCarriesPoint(
+	document: LayoutDocumentWallFirst,
+	wall: LayoutWall,
+	point: LayoutVec2
+): boolean {
+	if (wall.centerline.kind !== 'line') return false;
+	const endpoints = wallEndpoints(document, wall);
+	if (!endpoints) return false;
+	const dx = endpoints.end[0] - endpoints.start[0];
+	const dz = endpoints.end[1] - endpoints.start[1];
+	const squared = dx * dx + dz * dz;
+	if (!(squared > 0)) return false;
+	const t = ((point[0] - endpoints.start[0]) * dx + (point[1] - endpoints.start[1]) * dz) / squared;
+	if (!(t > 0 && t < 1)) return false;
+	// The canonical identity tolerance decides "on the span", so a wall-span
+	// declaration follows the same rule as every other coincidence in the policy.
+	return coincidesAsJunction([endpoints.start[0] + dx * t, endpoints.start[1] + dz * t], point);
+}
 
 /**
  * The Junction a point resolves to, or `null` when none or SEVERAL records
@@ -43,35 +97,42 @@ export function declaredJunctionAtPoint(
 }
 
 /**
- * The straight Wall whose span carries `point`, or `null`. Strict interior only:
- * landing on the span's endpoint is a Junction attachment, and the two declare
- * different things.
+ * The straight Wall whose span (strict interior) carries `point`, or `null`.
+ *
+ * Strict interior only, for the same reason as {@link wallSpanCarriesPoint} — and
+ * UNIQUE only: independent Walls with overlapping geometry are permitted, so a
+ * point can sit on the span of more than one Wall at once (a crossing of two
+ * independent Walls, say). Record order is not a statement about which host the
+ * author meant, so several carriers yield `null` rather than the first one. Use
+ * the snap-resolved form (`layoutClickAnchorDeclaration`) when the click named a
+ * specific Wall.
  */
 export function declaredHostWallAtSpan(
 	document: LayoutDocumentWallFirst,
 	point: LayoutVec2
 ): string | null {
-	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
-	for (const wall of document.walls) {
-		if (wall.centerline.kind !== 'line') continue;
-		const start = pointById.get(wall.startJunctionId);
-		const end = pointById.get(wall.endJunctionId);
-		if (!start || !end) continue;
-		const dx = end[0] - start[0];
-		const dz = end[1] - start[1];
-		const squared = dx * dx + dz * dz;
-		if (!(squared > 0)) continue;
-		const t = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared;
-		if (!(t > 0 && t < 1)) continue;
-		// The canonical identity tolerance decides "on the span", so a wall-span
-		// declaration follows the same rule as every other coincidence in the policy.
-		if (
-			coincidesAsJunction([start[0] + dx * t, start[1] + dz * t], point)
-		) {
-			return wall.id;
-		}
-	}
-	return null;
+	const carriers = document.walls.filter((wall) => wallSpanCarriesPoint(document, wall, point));
+	return carriers.length === 1 ? carriers[0]!.id : null;
+}
+
+/**
+ * The host a resolved `wall-span` snap names, when the point really lies on that
+ * Wall. The snap layer has already picked a deterministic, specifically
+ * identified winner, so this validates rather than re-guesses: it confirms the
+ * named Wall exists and that the snapped point sits on its centerline (chord for
+ * a straight Wall, canonical sampled projection for a curved one). Anything that
+ * fails validation declares nothing.
+ */
+export function declaredHostWallForSnap(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: LayoutVec2
+): string | null {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (!wall) return null;
+	const endpoints = wallEndpoints(document, wall);
+	if (!endpoints) return null;
+	return wallCenterlineCarriesPoint(wall, endpoints.start, endpoints.end, point) ? wall.id : null;
 }
 
 /**
@@ -79,7 +140,9 @@ export function declaredHostWallAtSpan(
  * authoritative — a `wall-span` snap declares its host even if some Junction
  * happens to sit at the same coordinate, and a `junction` snap declares the
  * single coincident record — so a preview's remembered candidate can never be
- * re-read as a different statement than the author made.
+ * re-read as a different statement than the author made. The `wall-span` host is
+ * still validated against the point (see {@link declaredHostWallForSnap}): a
+ * snap that identified a Wall the point does not lie on declares nothing.
  */
 export function layoutClickAnchorDeclaration(
 	document: LayoutDocumentWallFirst,
@@ -88,7 +151,9 @@ export function layoutClickAnchorDeclaration(
 	if (snapped.resolution.kind !== 'snap') return {};
 	const candidate = snapped.resolution.candidate;
 	if (candidate.kind === 'wall-span') {
-		return candidate.wallId ? { hostWallId: candidate.wallId } : {};
+		if (!candidate.wallId) return {};
+		const hostWallId = declaredHostWallForSnap(document, candidate.wallId, snapped.point);
+		return hostWallId ? { hostWallId } : {};
 	}
 	if (candidate.kind !== 'junction') return {};
 	const junctionId = declaredJunctionAtPoint(document, snapped.point);

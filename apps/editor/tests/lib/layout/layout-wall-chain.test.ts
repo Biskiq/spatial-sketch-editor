@@ -4,6 +4,8 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	planWallChain,
 	planWallSegment,
+	validateWallFirstTopology,
+	wallsShareTopologyComponent,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 
@@ -920,5 +922,177 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		expect(Math.hypot(bx - ax, bz - az)).toBeCloseTo(length, 12);
 		// The canonical end becomes the next continuation start.
 		expect(junctionPoint(plan.document, plan.endJunctionId)).toEqual([1 + length, 1]);
+	});
+});
+
+describe('P23B.3a S6 (review correction) — a declared host is validated and authorizes only its OWN component', () => {
+	/**
+	 * THREE components for the cascade proof:
+	 *
+	 * ```text
+	 * A   two Walls sharing the corner (4,0):   a-horizontal (0,0)-(4,0)
+	 *                                           a-vertical   (4,0)-(4,4)
+	 * B   one independent Wall crossing A:      b           (-1,2)-(6,2)
+	 * far a remote Wall no draft can meet:      remote      (20,20)-(24,20)
+	 * ```
+	 *
+	 * A and B intersect (b crosses a-vertical at (4,2)) and that overlap is committed
+	 * as PERMITTED independent geometry — the S4/S5 baseline the cascade test then
+	 * draws against. Nothing here declares anything, so A and B stay two components.
+	 */
+	function threeComponentBaseline(): LayoutDocumentWallFirst {
+		const a = expectSuccess(
+			planWallChain({
+				baseline: baseDocument(),
+				points: [p(0, 0), p(4, 0), p(4, 4)],
+				close: false,
+				role: 'partition'
+			})
+		);
+		const b = expectSuccess(
+			planWallChain({
+				baseline: a.document,
+				points: [p(-1, 2), p(6, 2)],
+				close: false,
+				role: 'partition'
+			})
+		);
+		const remote = expectSuccess(
+			planWallChain({
+				baseline: b.document,
+				points: [p(20, 20), p(24, 20)],
+				close: false,
+				role: 'partition'
+			})
+		);
+		return remote.document;
+	}
+
+	it('a declared connection to A cascades noding within A while intersecting independent B stays untouched', () => {
+		const baseline = threeComponentBaseline();
+		const aHorizontal = horizontalWallAt(baseline, 0);
+		const aVertical = verticalWallAt(baseline, 4);
+		const bWall = horizontalWallAt(baseline, 2);
+		const bBefore = baseline.walls.find((wall) => wall.id === bWall)!;
+		// Sanity: B really is an independent component that crosses A.
+		expect(wallsShareTopologyComponent(baseline, bWall, aVertical)).toBe(false);
+
+		// Draft from a station ON a-horizontal (the wall-span snap an author makes)
+		// to a point past a-vertical. The declaration names ONE host; the crossing of
+		// its sibling Wall is authorized by the COMPONENT, not by a second declaration.
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [{ pointIndex: 0, wallId: aHorizontal }]
+			})
+		);
+		const chainWallId = plan.authoredWallIds[0]!;
+
+		// CASCADE WITHIN A: both A Walls are noded, and the drafted Wall joins A.
+		expect(plan.splitWallIds).toContain(aHorizontal);
+		expect(plan.splitWallIds).toContain(aVertical);
+		expect(wallsShareTopologyComponent(plan.document, aHorizontal, chainWallId)).toBe(true);
+		expect(wallsShareTopologyComponent(plan.document, aVertical, chainWallId)).toBe(true);
+
+		// INDEPENDENT B IS UNTOUCHED: not split, byte-identical, still its own
+		// component, with NO junction minted at the crossing of the drafted Wall.
+		expect(plan.splitWallIds).not.toContain(bWall);
+		expect(plan.document.walls.find((wall) => wall.id === bWall)).toEqual(bBefore);
+		expect(wallsShareTopologyComponent(plan.document, bWall, chainWallId)).toBe(false);
+		expect(wallsShareTopologyComponent(plan.document, bWall, aHorizontal)).toBe(false);
+		const crossing: [number, number] = [14 / 3, 2]; // drafted Wall meets b at y = 2
+		expect(
+			plan.document.junctions.filter(
+				(junction) =>
+					Math.hypot(junction.point[0] - crossing[0], junction.point[1] - crossing[1]) < 1e-9
+			)
+		).toHaveLength(0);
+
+		// The planner and the shipped gate agree (R-3).
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+	});
+
+	it('rejects a declaration naming a Wall the baseline does not have', () => {
+		const baseline = threeComponentBaseline();
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [{ pointIndex: 0, wallId: 'no-such-wall' }]
+			}),
+			'invalid_candidate_document'
+		);
+	});
+
+	it('rejects a STALE declaration: a real host the operation neither touches nor meets', () => {
+		// The remote Wall exists in the baseline, so this is exactly the claim a
+		// malformed caller could try to use as blanket permission to node a distant
+		// group. The declaration must fail closed rather than be ignored.
+		const baseline = threeComponentBaseline();
+		const remote = horizontalWallAt(baseline, 20);
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [{ pointIndex: 0, wallId: remote }]
+			}),
+			'invalid_candidate_document'
+		);
+	});
+
+	it('rejects a declaration naming a draft point the chain does not have', () => {
+		const baseline = threeComponentBaseline();
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [{ pointIndex: 2, wallId: horizontalWallAt(baseline, 0) }]
+			}),
+			'invalid_candidate_document'
+		);
+	});
+
+	it('rejects two host declarations for one draft point instead of letting the last one win', () => {
+		const baseline = threeComponentBaseline();
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
+					{ pointIndex: 0, wallId: verticalWallAt(baseline, 4) }
+				]
+			}),
+			'invalid_candidate_document'
+		);
+	});
+
+	it('rejects a Junction anchor and a host from different components on one endpoint', () => {
+		// Point 0 coincides with A's corner and DECLARES it, while the host
+		// declaration names B — the two statements disagree about which group the
+		// operation extends, and honoring both would join A to B implicitly.
+		const baseline = threeComponentBaseline();
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(4, 0), p(6, 3)],
+				close: false,
+				role: 'partition',
+				endpointJunctionSnaps: [{ pointIndex: 0, junctionId: junctionIdAt(baseline, 4, 0) }],
+				endpointHostSnaps: [{ pointIndex: 0, wallId: horizontalWallAt(baseline, 2) }]
+			}),
+			'invalid_candidate_document'
+		);
 	});
 });

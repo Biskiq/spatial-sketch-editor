@@ -66,10 +66,19 @@ NEXT:
    noding, while an operation that declares nothing mints its own Junction records, splits no host Wall and
    joins nothing — with the editor half of the same step (one shared click→declaration rule, the run
    start's own declaration in the interaction state, and a per-endpoint `WallSegmentConnection` on
-   `commitWallSegment`) so continuations, dividers and the CLOSING click stay class 3 end to end. S6 awaits
-   review, and carries one recorded OPEN CONTRACT QUESTION: whether a host-Wall declaration may authorize
-   noding for a group the operation crosses rather than touches (F7/F8's snap wording), which is what keeps
-   the four ratified P23.6e/P23.11 in-group noding regressions green today.
+   `commitWallSegment`) so continuations, dividers and the CLOSING click stay class 3 end to end. Review found
+   FOUR focused findings and the S6 correction addresses all of them in one commit: `endpointHostSnaps` is now
+   VALIDATED before it grants noding authority (point index, uniqueness, baseline host existence, a Junction
+   anchor on the same point agreeing about the component, and a genuine relationship with the named Wall), so
+   missing/stale/conflicting claims reject deterministically; the geometry-only click fallback declares nothing
+   on an ambiguous overlap while a validated, specifically identified snap winner may still declare its host;
+   a three-component regression pins the ruling (a declaration to A cascades noding within A while intersecting
+   independent B stays untouched) together with the missing/stale/duplicate/contradictory cases; and the
+   outdated `layout-wallChain` comments on coordinate adoption and global crossings are corrected. This rules
+   the S6 OPEN CONTRACT QUESTION: a VALID declaration authorizes extension into the host's WHOLE connected
+   component — so a host the operation crosses (rather than touches) stays declarable — while an unrelated
+   component is never joined, which is why the four ratified P23.6e/P23.11 in-group noding regressions stay
+   green. S6 now awaits RE-review.
    S7–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as

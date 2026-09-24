@@ -11,11 +11,13 @@
  *   bounded tool commits one atomic history entry.
  *
  * Either way the planner builds the **complete candidate document** through
- * the P23.8 engine — junction reuse by coordinate, endpoint-on-interior T
- * noding, proper-crossing X noding, collinear-overlap rejection, then the
- * canonical validate → reconcile → compile gates — so one bounded tool
- * commits **one** history entry and an invalid candidate commits nothing.
- * Nothing here mutates its inputs.
+ * the P23.8 engine — DECLARED junction reuse (never coordinate coincidence),
+ * endpoint-on-interior T noding, proper-crossing X noding, collinear-overlap
+ * rejection, then the canonical validate → reconcile → compile gates — so one
+ * bounded tool commits **one** history entry and an invalid candidate commits
+ * nothing. Adoption and noding apply only inside the component(s) the operation
+ * DECLARES (P23B.3a S6), so an overlap between independent groups is permitted
+ * geometry and never a join. Nothing here mutates its inputs.
  *
  * Semantics ratified by the P23.9 plan:
  * - open chains are valid architecture and commit without producing a Room;
@@ -24,9 +26,12 @@
  *   preservation per witness correspondence); `role: 'partition'` chains
  *   never touch Rooms;
  * - snapping is a suggestion (the editor resolves coordinates before this
- *   planner runs); committed topology here is explicit;
- * - collinear overlap rejects — no auto-merge/trim;
- * - new-schema data never contains an un-noded visual crossing;
+ *   planner runs); committed topology here is explicit and DECLARED;
+ * - collinear overlap rejects — no auto-merge/trim — WITHIN one connected
+ *   component; two independent components may overlap freely;
+ * - committed data never contains an un-noded visual crossing INSIDE one
+ *   connected component. A crossing between independent components is permitted
+ *   geometry (P23B.3a S4/S5) and is deliberately left un-noded;
  * - **authoring intent is DECLARED, never inferred from geometry** (P23B.3a S6,
  *   decision record §4.0.1 / M-3a-4). An operation that deliberately connects to
  *   existing geometry declares the identity it connects to
@@ -72,7 +77,7 @@ import {
 } from './layout-topology-components';
 import { WALL_AUTHORING_DEFAULT_HEIGHT, resolveWallBirthHeight } from './layout-wall-heights';
 import { planWallCrossing, planWallSplitAtPoint, type NodingIdAllocator } from './layout-wall-noding';
-import { wallCenterlineSamples } from './layout-wall-centerline';
+import { wallCenterlineCarriesPoint, wallCenterlineSamples } from './layout-wall-centerline';
 import { resolveWallCurveSplit } from './layout-wall-curve-algebra';
 import type { LayoutDocumentIssue } from './layout-codec';
 import {
@@ -94,12 +99,16 @@ export const WALL_CHAIN_DEFAULTS = {
 } as const;
 
 /**
- * Identity supplied by the authoring snap resolver for one draft point.
+ * A DECLARED host-Wall connection for one draft point (P23B.3a S6).
  *
- * This is relationship acquisition, not geometry: a `wall-span` snap names
- * the host Wall explicitly. The noder may then normalize the sampled point to
- * the exact cubic, but it must never turn sampler flatness into a topology
- * radius for an unsnapped endpoint.
+ * Relationship acquisition, not geometry: the caller names the host Wall
+ * explicitly. `planWallChain` VALIDATES the claim before granting any authority
+ * — the point exists, the Wall is in the baseline, at most one host per point,
+ * a Junction anchor on the same point agrees about the component, and the named
+ * Wall is genuinely part of this operation — and then authorizes noding inside
+ * that host's connected component only. Normalizing a snapped endpoint onto the
+ * host's centerline stays the curve authority's job; sampler flatness must never
+ * become a topology radius by itself.
  */
 export type WallEndpointHostSnap = {
 	pointIndex: number;
@@ -255,11 +264,14 @@ export function planWallChain(options: {
 	 * the author snapped onto a Wall's face); what it MEANS is that this operation
 	 * joins the host Wall's connected group, which is why noding — host splits, X
 	 * crossings and Ts — applies inside that group and nowhere else. An endpoint
-	 * that lands on the host's span is the ordinary case; a caller may also use it
-	 * for a group whose geometry the operation crosses rather than touches, since
-	 * the statement is about the GROUP, not about the coordinate. With no
-	 * declaration (and none of `endpointJunctionSnaps`) the chain is INDEPENDENT
-	 * placement: a crossing is permitted overlap that creates no shared topology.
+	 * that lands on the host's span is the ordinary case; a caller may also declare
+	 * a group whose geometry the operation CROSSES rather than touches, because the
+	 * statement is about the GROUP. Either way it is validated first (see
+	 * `validateEndpointHostSnaps`): the named Wall must exist and be genuinely part
+	 * of this operation, so an arbitrary remote Wall id is refused rather than
+	 * becoming blanket permission to node its group. With no declaration (and none
+	 * of `endpointJunctionSnaps`) the chain is INDEPENDENT placement: a crossing is
+	 * permitted overlap that creates no shared topology.
 	 */
 	endpointHostSnaps?: readonly WallEndpointHostSnap[];
 	/**
@@ -373,6 +385,21 @@ export function planWallChain(options: {
 		legEndpoints.push({ start, end });
 	}
 
+	// P23B.3a S6 (review correction) — the DECLARED host-Wall anchors are
+	// validated BEFORE any of them grants noding authority. A declaration is a
+	// claim about a real relationship, so a malformed one fails closed instead of
+	// silently authorizing noding of an unrelated group (the same fail-closed rule
+	// the Junction anchors above already follow).
+	const hostValidation = validateEndpointHostSnaps({
+		baseline: options.baseline,
+		resolved,
+		legs: legEndpoints.map((leg) => ({ start: leg.start.point, end: leg.end.point })),
+		declaredJunctionByPointIndex: declaredAnchorByPointIndex,
+		hostSnaps: options.endpointHostSnaps ?? []
+	});
+	if ('rejection' in hostValidation) return reject(hostValidation.rejection);
+	const declaredHostByPointIndex = hostValidation.declaredHostByPointIndex;
+
 	// --- self-intersection gate (chain against itself) ----------------------
 	// Adjacent legs legitimately share the chain vertex; anything else — a
 	// crossing, a T, an overlap, or a collinear self-touch — makes the
@@ -465,10 +492,12 @@ export function planWallChain(options: {
 	const nodedJunctionIds = new Set<string>();
 	const authoredWallIds = new Set<string>(createdWallIds);
 	const operationOwnedJunctionIds = new Set<string>(createdJunctionIds);
+	// The validated declarations, re-keyed onto the Junction each declared point
+	// actually resolved to (a declared identity, or the chain's own minted node).
 	const endpointHostWallIds = new Map<string, string>();
-	for (const snap of options.endpointHostSnaps ?? []) {
-		const junctionId = resolved[snap.pointIndex]?.junctionId;
-		if (junctionId) endpointHostWallIds.set(junctionId, snap.wallId);
+	for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+		const junctionId = resolved[pointIndex]?.junctionId;
+		if (junctionId) endpointHostWallIds.set(junctionId, wallId);
 	}
 	const baselineJunctionIds = new Set(options.baseline.junctions.map((junction) => junction.id));
 	const junctionIdRedirects = new Map<string, string>();
@@ -713,6 +742,171 @@ export function planWallChain(options: {
 	};
 }
 
+/**
+ * P23B.3a S6 (review correction) — VALIDATE `endpointHostSnaps` before any
+ * declaration grants noding authority.
+ *
+ * A host-Wall declaration is the operation's statement that it extends the host
+ * Wall's connected group (operation class 3, §4.0.1 / M-3a-4). Because that
+ * statement is what authorizes noding inside the group, a malformed one must
+ * FAIL CLOSED rather than be silently dropped or silently honored — the same
+ * rule the Junction anchors already follow. The checks, in order:
+ *
+ * ```text
+ * point index        names an existing draft point
+ * uniqueness         at most one host per draft point (never last-wins)
+ * host identity      the named Wall exists in the baseline document
+ * agreement          a Junction anchor on the same point is in that host's component
+ * genuine relation   the declared point is on the host, OR the operation's own
+ *                    geometry meets it, OR the host's component is already
+ *                    reached by another declaration of this operation
+ * ```
+ *
+ * The one claim this deliberately does NOT make is "the endpoint lies on the
+ * host": a valid host declaration authorizes extension into the host's WHOLE
+ * connected component, so an operation may declare a host whose Wall its own
+ * geometry crosses away from the endpoint (the preserved P23.6e noding
+ * regressions). What it must never be is an arbitrary remote Wall id, which is
+ * exactly what the relation check rules out. Both meanings of a host declaration
+ * — an endpoint span snap and a group-scoped connection — are therefore covered
+ * by ONE predicate, and no discriminant is added to the transient input.
+ *
+ * Once the relation exists, noding anywhere inside that same component stays
+ * authorized (`nextNodingFix`); an undeclared independent component is never
+ * touched. Deterministic: the first failing declaration in list order rejects.
+ */
+function validateEndpointHostSnaps(input: {
+	baseline: LayoutDocumentWallFirst;
+	resolved: readonly { junctionId: string | null; point: LayoutVec2 }[];
+	legs: readonly { start: LayoutVec2; end: LayoutVec2 }[];
+	declaredJunctionByPointIndex: ReadonlyMap<number, string>;
+	hostSnaps: readonly WallEndpointHostSnap[];
+}): { rejection: WallChainRejection } | { declaredHostByPointIndex: Map<number, string> } {
+	const { baseline, resolved, legs, declaredJunctionByPointIndex, hostSnaps } = input;
+	const invalid = (message: string): { rejection: WallChainRejection } => ({
+		rejection: { code: 'invalid_candidate_document', message }
+	});
+	const declaredHostByPointIndex = new Map<number, string>();
+	for (const snap of hostSnaps) {
+		if (!Number.isInteger(snap.pointIndex) || snap.pointIndex < 0 || snap.pointIndex >= resolved.length) {
+			return invalid(
+				`Declared host Wall '${snap.wallId}' names draft point ${snap.pointIndex}, which this chain does not have`
+			);
+		}
+		if (declaredHostByPointIndex.has(snap.pointIndex)) {
+			return invalid(`Draft point ${snap.pointIndex} declares more than one host Wall`);
+		}
+		declaredHostByPointIndex.set(snap.pointIndex, snap.wallId);
+	}
+
+	const componentKeyByWallId = topologyComponentKeyByWallId(baseline);
+	const componentKeyByJunctionId = topologyComponentKeyByJunctionId(baseline, componentKeyByWallId);
+	for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+		const host = wallById(baseline, wallId);
+		if (!host) {
+			return invalid(`Declared host Wall '${wallId}' is not part of the baseline document`);
+		}
+		// A Junction anchor on the same point is the stronger statement of the group
+		// being extended, so host and Junction must agree about that group.
+		const declaredJunctionId = declaredJunctionByPointIndex.get(pointIndex);
+		if (declaredJunctionId !== undefined) {
+			const junctionKey = componentKeyByJunctionId.get(declaredJunctionId);
+			if (junctionKey === undefined || junctionKey !== componentKeyByWallId.get(wallId)) {
+				return invalid(
+					`Draft point ${pointIndex} declares a Junction and host Wall '${wallId}' in different connected components`
+				);
+			}
+		}
+	}
+
+	// "Already-declared connection to its component": a declaration that does not
+	// itself meet its host is still valid when another declaration of this same
+	// operation already reaches that host's component (redundant, never a join).
+	// Direct relationships are collected first, so the verdict is order-independent.
+	const reachableComponentKeys = new Set<string | symbol>();
+	for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+		if (declarationMeetsHost(baseline, legs, resolved[pointIndex]!.point, wallId)) {
+			const key = componentKeyByWallId.get(wallId);
+			if (key !== undefined) reachableComponentKeys.add(key);
+		}
+	}
+	for (const junctionId of declaredJunctionByPointIndex.values()) {
+		const key = componentKeyByJunctionId.get(junctionId);
+		if (key !== undefined) reachableComponentKeys.add(key);
+	}
+	for (const [pointIndex, wallId] of declaredHostByPointIndex) {
+		if (declarationMeetsHost(baseline, legs, resolved[pointIndex]!.point, wallId)) continue;
+		const key = componentKeyByWallId.get(wallId);
+		if (key !== undefined && reachableComponentKeys.has(key)) continue;
+		return invalid(`Declared host Wall '${wallId}' is unrelated to draft point ${pointIndex}`);
+	}
+	return { declaredHostByPointIndex };
+}
+
+/**
+ * Whether a host declaration names a Wall this operation genuinely relates to:
+ * the declared point sits on the host's centerline, or one of the operation's own
+ * legs meets it. Reuses the canonical straight classifier and the canonical
+ * sampled projection — never a bespoke distance threshold.
+ */
+function declarationMeetsHost(
+	baseline: LayoutDocumentWallFirst,
+	legs: readonly { start: LayoutVec2; end: LayoutVec2 }[],
+	point: LayoutVec2,
+	wallId: string
+): boolean {
+	const host = wallById(baseline, wallId);
+	if (!host) return false;
+	const endpoints = wallEndpointPoints(baseline, host);
+	if (!endpoints) return false;
+	if (wallCenterlineCarriesPoint(host, endpoints.start, endpoints.end, point)) return true;
+	return legs.some((leg) => legMeetsWall(host, endpoints, leg));
+}
+
+/** The canonical endpoint coordinates of `wall`, or `undefined` when unresolved. */
+function wallEndpointPoints(
+	baseline: LayoutDocumentWallFirst,
+	wall: LayoutWall
+): { start: LayoutVec2; end: LayoutVec2 } | undefined {
+	const start = baseline.junctions.find((junction) => junction.id === wall.startJunctionId);
+	const end = baseline.junctions.find((junction) => junction.id === wall.endJunctionId);
+	if (!start || !end) return undefined;
+	return { start: start.point, end: end.point };
+}
+
+/**
+ * Does a straight draft leg meet this Wall? Straight hosts go through the
+ * canonical pair classifier; a curved host is tested against its canonical
+ * sampled centerline, so crossing detection stays with the curve authority.
+ */
+function legMeetsWall(
+	host: LayoutWall,
+	endpoints: { start: LayoutVec2; end: LayoutVec2 },
+	leg: { start: LayoutVec2; end: LayoutVec2 }
+): boolean {
+	const legSegment: TopologySegment = { id: 'declared-host:leg', start: leg.start, end: leg.end };
+	if (host.centerline.kind === 'line') {
+		return relates(
+			classifyWallIntersection(legSegment, { id: host.id, start: endpoints.start, end: endpoints.end }, [])
+		);
+	}
+	const sampled = wallCenterlineSamples(host, endpoints.start, endpoints.end, 'forward');
+	if (!sampled) return false;
+	if (projectPointToSampledSegment(leg.start, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON) return true;
+	if (projectPointToSampledSegment(leg.end, sampled).distanceToPath <= JUNCTION_COINCIDENCE_EPSILON) return true;
+	for (let index = 1; index < sampled.samples.length; index += 1) {
+		const from = sampled.samples[index - 1]!.point;
+		const to = sampled.samples[index]!.point;
+		if (relates(classifyWallIntersection(legSegment, { id: host.id, start: from, end: to }, []))) return true;
+	}
+	return false;
+}
+
+/** A classified pair relates when it is anything but disjoint or numerically unstable. */
+function relates(classification: { kind: string }): boolean {
+	return classification.kind !== 'none' && classification.kind !== 'invalid';
+}
+
 type NodingFix =
 	| { kind: 'crossing'; wallIds: [string, string]; point: LayoutVec2 }
 	| {
@@ -823,9 +1017,11 @@ function teeThroughJunction(
 }
 
 /**
- * Find the next un-noded relationship between a chain wall and any other
- * wall (chain walls themselves are already self-gated). Returns `null` when
- * the graph is clean.
+ * Find the next un-noded relationship this operation is AUTHORIZED to resolve: a
+ * chain wall against a Wall it may acquire topology from — a DECLARED host, or a
+ * Wall already in the chain's own connected component (P23B.3a S6). A pair
+ * involving an independent, undeclared Wall is skipped outright, so a permitted
+ * overlap never becomes a join. Returns `null` when no such relationship remains.
  */
 function nextNodingFix(
 	document: LayoutDocumentWallFirst,
@@ -1275,9 +1471,11 @@ function nodingAllocatorAdapter(allocator: WallChainIdAllocator, document: Layou
  * isolated/new start, or mixed incident heights    → WALL_AUTHORING_DEFAULT_HEIGHT
  * ```
  *
- * The start Junction is resolved with the same exact-coordinate rule
- * `planWallChain` uses for point reuse, so the birth decision and the committed
- * topology cannot disagree. Continuation *inside one active draw run* stays an
+ * Birth height is a vertical-coherence rule, not a topology rule, so it keeps a
+ * coordinate fallback: the Junction `resolveWallBirthHeight` reads is the DECLARED
+ * start anchor when the caller names one, else the Junction coinciding with the
+ * start. Topology does NOT follow that fallback — adoption happens only through
+ * the declared anchors on this signature (P23B.3a S6). Continuation *inside one active draw run* stays an
  * explicit caller decision: the editor holds the run height as transient state
  * and passes it as `height`, which the explicit branch above honours.
  */
