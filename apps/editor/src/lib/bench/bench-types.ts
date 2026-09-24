@@ -131,6 +131,13 @@ export type BenchInteractionProtocol = Partial<
 	Record<BenchInteractionPath, { target: string; snapGrid: string }>
 >;
 
+/**
+ * Paths whose owner-deferred capture has no input/release sample, with the
+ * recorded decision text that authorizes the gap. An unavailable boundary is
+ * only admissible when its path appears here.
+ */
+export type BenchDeferredInteractionPaths = Partial<Record<BenchInteractionPath, string>>;
+
 /** Output from the in-browser P23B route; the CLI remains the only baseline writer. */
 export type P23BBrowserRunReport = {
 	methodVersion: number;
@@ -143,6 +150,8 @@ export type P23BBrowserRunReport = {
 	interactions: BenchInteractionReport;
 	interactionSampleCounts: Partial<Record<BenchInteractionPath, number>>;
 	interactionProtocol: BenchInteractionProtocol;
+	/** Owner decisions that defer a bounded path's capture; empty when none is deferred. */
+	deferredInteractionPaths?: BenchDeferredInteractionPaths;
 	/** Existing P23.11 marks observed during the same actions, kept separate from enclosing P23B marks. */
 	nestedMarks: Record<string, BenchMarkSummary>;
 	markNestingNote: string;
@@ -171,6 +180,8 @@ export type BudgetBaseline = {
 	/** DEV-captured input/reactive/render-boundary samples for the six editor paths. */
 	interactions?: BenchInteractionReport;
 	interactionSampleCounts?: Partial<Record<BenchInteractionPath, number>>;
+	/** Paths the owner explicitly deferred, so their gap stays auditable. */
+	deferredInteractionPaths?: BenchDeferredInteractionPaths;
 	/** Fixed targets and actual per-path snap/grid conditions for the owner case. */
 	interactionProtocol?: BenchInteractionProtocol;
 	nestedMarks?: Record<string, BenchMarkSummary>;

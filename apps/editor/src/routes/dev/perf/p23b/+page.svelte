@@ -11,7 +11,7 @@
 	import { measureBrowserTier, type BrowserTierOptions } from '$lib/bench/browser-bench';
 	import { DEFAULT_NODE_OPTIONS, measureNodeTier } from '$lib/bench/plan-bench';
 	import { serializeWallFirstLayoutDocument, validateWallFirstLayoutDocument, validateWallFirstTopology, compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
-	import type { BenchInteractionBoundary, BenchInteractionBoundaryResult, BenchInteractionPath, BenchInteractionProtocol, BenchInteractionReport, BenchProvenance, BenchSample, BenchWorkloadResult, P23BBrowserRunReport } from '$lib/bench/bench-types';
+	import type { BenchDeferredInteractionPaths, BenchInteractionBoundary, BenchInteractionBoundaryResult, BenchInteractionPath, BenchInteractionProtocol, BenchInteractionReport, BenchProvenance, BenchSample, BenchWorkloadResult, P23BBrowserRunReport } from '$lib/bench/bench-types';
 	import fixtureLedger from '../../../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
 	import type { PageData } from './$types';
 
@@ -40,6 +40,16 @@
 		'guided-3d-navigation': { target: 'Play the existing PerspectiveCamera edge p23b-nav-edge from p23b-nav-start to p23b-nav-end', snapGrid: 'Not applicable' }
 	};
 
+	/**
+	 * Owner decision 2026-09-24: the guided 3D navigation capture is deferred
+	 * because the reported whole-editor slowdown is currently in the Plan (2D)
+	 * paths. A deferred path keeps its boundaries explicitly unavailable instead
+	 * of being silently omitted or replaced with invented samples.
+	 */
+	const DEFERRED_INTERACTION_PATHS: BenchDeferredInteractionPaths = {
+		'guided-3d-navigation':
+			'Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline.'
+	};
 	const WARMUP = 5;
 	const SAMPLES = 20;
 	const OWNER_RAW_SHA256 = '63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05';
@@ -189,9 +199,9 @@
 				warmup: WARMUP,
 				samples: SAMPLES,
 				browser: base,
-			workloads,
-			interactionProtocol: INTERACTION_PROTOCOL,
-			nestedMarks: {},
+			workloads,				interactionProtocol: INTERACTION_PROTOCOL,
+				deferredInteractionPaths: DEFERRED_INTERACTION_PATHS,
+				nestedMarks: {},
 			markNestingNote: 'Populate from existing P23.11 measures after interaction capture.',
 			measurementLimitations: MEASUREMENT_LIMITATIONS,
 				...(interactionResults ? { interactions: interactionResults, interactionSampleCounts: sampleCounts } : {})
@@ -272,6 +282,9 @@
 	}
 
 	function unavailableBoundary(path: BenchInteractionPath, boundary: BenchInteractionBoundary): string {
+		if ((boundary === 'input' || boundary === 'release') && DEFERRED_INTERACTION_PATHS[path]) {
+			return DEFERRED_INTERACTION_PATHS[path]!;
+		}
 		if (boundary === 'adapter') {
 			return path === 'selection' || path === 'plan-pan-zoom'
 				? 'This path does not rebuild render geometry.'

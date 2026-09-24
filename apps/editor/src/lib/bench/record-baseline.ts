@@ -355,6 +355,7 @@ export function recordBaseline(options: { full?: boolean; p23bBrowserReport?: P2
 			})),
 			...(browserReport.interactions ? { interactions: browserReport.interactions } : {}),
 			...(browserReport.interactionSampleCounts ? { interactionSampleCounts: browserReport.interactionSampleCounts } : {}),
+			...(browserReport.deferredInteractionPaths ? { deferredInteractionPaths: browserReport.deferredInteractionPaths } : {}),
 			interactionProtocol: browserReport.interactionProtocol,
 			nestedMarks: browserReport.nestedMarks,
 			markNestingNote: browserReport.markNestingNote,
@@ -469,7 +470,14 @@ export function validateP23BBrowserReport(
 		if (!report.interactionProtocol[path]?.target || !report.interactionProtocol[path]?.snapGrid) {
 			throw new Error(`P23B browser report is missing the fixed target/settings for ${path}`);
 		}
-		if (!(report.interactionSampleCounts[path]! > 0)) throw new Error(`P23B browser report has no owner input samples for ${path}`);
+		// An owner-deferred path is the ONLY admissible reason for a missing
+		// input/release sample: the decision text travels with the report, so the
+		// gap is never silently indistinguishable from an omitted capture.
+		const deferral = report.deferredInteractionPaths?.[path];
+		if (deferral !== undefined && !deferral.trim()) throw new Error(`P23B deferred path lacks its owner decision: ${path}`);
+		if (!deferral && !(report.interactionSampleCounts[path]! > 0)) {
+			throw new Error(`P23B browser report has no owner input samples for ${path}`);
+		}
 		const pathReport = report.interactions[path];
 		if (!pathReport) throw new Error(`P23B browser report has no interaction results for ${path}`);
 		for (const boundary of boundaries) {
@@ -477,7 +485,9 @@ export function validateP23BBrowserReport(
 			if (!value) throw new Error(`P23B browser report must record a sample or explicit unavailable reason for ${path}/${boundary}`);
 			if ('unavailable' in value) {
 				if (!value.unavailable.trim()) throw new Error(`P23B unavailable boundary lacks a reason for ${path}/${boundary}`);
-				if (boundary === 'input' || boundary === 'release') throw new Error(`P23B owner input/release sample missing for ${path}`);
+				if ((boundary === 'input' || boundary === 'release') && !deferral) {
+					throw new Error(`P23B owner input/release sample missing for ${path}`);
+				}
 			} else if (!(value.count > 0) || !Number.isFinite(value.p50) || !Number.isFinite(value.p95)) {
 				throw new Error(`P23B interaction boundary has invalid samples for ${path}/${boundary}`);
 			}

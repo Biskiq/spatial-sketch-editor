@@ -78,7 +78,13 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 	] as const;
 	const interactionBoundaries = ['input', 'release', 'reactive', 'adapter', 'svelte-flush', 'browser-frame'] as const;
 	for (const path of interactionPaths) {
-		if (!(baseline.interactionSampleCounts?.[path]! > 0)) problems.push(`P23B baseline is missing input samples for ${path}`);
+		// A path may lack input samples only when the owner deferred it and the
+		// decision text is recorded in the baseline itself.
+		const deferral = baseline.deferredInteractionPaths?.[path];
+		if (deferral !== undefined && !deferral.trim()) problems.push(`P23B baseline has a blank owner deferral for ${path}`);
+		if (!deferral && !(baseline.interactionSampleCounts?.[path]! > 0)) {
+			problems.push(`P23B baseline is missing input samples for ${path}`);
+		}
 		if (!baseline.interactionProtocol?.[path]?.target || !baseline.interactionProtocol[path]?.snapGrid) {
 			problems.push(`P23B baseline is missing the fixed target/settings for ${path}`);
 		}
