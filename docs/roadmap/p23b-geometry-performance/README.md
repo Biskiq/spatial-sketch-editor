@@ -88,6 +88,14 @@ all three inform synthesis.
 > identity changed. Later work must PRESERVE THIS sequence and must not change it again without a further
 > owner authorization — byte equality to the PRE-AMENDMENT block is **not** the test (P23B.10 MR-10).
 
+## Owner-authorized execution routing amendment — 2026-09-24
+
+P23B.3a completed and merged in PR #82 at `c11938fe`. After owner ratification of the P23B.0-durable
+plan, continue P23B.0-durable through P23B.10 on one new continuation branch and one continuation PR;
+do not add child PRs within that workstream. Keep the ratified sequence and sequential slice review,
+acceptance and `slice-closeout` order. This amendment changes execution grouping only: it does not change
+the `SEQUENCE`, slice scope, identity or order. P23B.3a remains closed on its existing recovery anchor.
+
 ```text
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order — including the OWNER-APPROVED
