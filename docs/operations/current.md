@@ -57,7 +57,11 @@ NEXT:
    of `858d796f`: no implementation blocker, with three instructions carried into S5 and one non-blocking
    OR-3a variant-coverage note owed before closeout); and S5 (the chain gate re-scoped in BOTH halves
    with the transitional `{ subject: 'document' }` escape removed, plus the component-scoped
-   `duplicate_junction_point` coincidence rule D-9, with its own oracle) has landed and awaits review.
+   `duplicate_junction_point` coincidence rule D-9, with its own oracle) has landed; review found ONE
+   blocker — the unattached-Junction sentinel was a STRING that a valid authored Wall id could claim,
+   mis-classifying an unattached Junction as connected to that Wall — and the focused S5 correction now
+   makes the sentinel collision-proof (a symbol, no schema change) with a codec-valid regression, so S5
+   awaits RE-review.
    S6–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as

@@ -171,8 +171,23 @@ export function topologyComponentKeyByRoomId(
  * way is explicit and intended (D-9): an unattached Junction and a Junction that
  * belongs to a Wall component are never in the same component, so their coincidence
  * is permitted geometry, exactly like two coincident independent Wall groups.
+ *
+ * The label is a **symbol**, not a string: a Wall component is labelled by its
+ * first member Wall's authored id, and authored ids are arbitrary strings, so ANY
+ * fixed string label can be claimed by a legitimate Wall id — a Wall literally
+ * named `unattached-junctions` would otherwise label its own component with this
+ * sentinel and its Junctions would compare equal to unattached ones, reporting an
+ * unattached Junction as connected to that Wall. No string can equal a symbol, so
+ * the sentinel is collision-proof against every authored id. It is internal only:
+ * never persisted, serialized or exposed as a schema value.
  */
-export const UNATTACHED_JUNCTION_COMPONENT = 'unattached-junctions';
+export const UNATTACHED_JUNCTION_COMPONENT: unique symbol = Symbol('unattached-junctions');
+
+/**
+ * Component label for one authored Junction: a Wall component key (the authored
+ * id of the component's first member Wall) or the unattached-Junction sentinel.
+ */
+export type JunctionTopologyComponentKey = string | typeof UNATTACHED_JUNCTION_COMPONENT;
 
 /**
  * Component label per authored Junction id.
@@ -184,8 +199,8 @@ export const UNATTACHED_JUNCTION_COMPONENT = 'unattached-junctions';
 export function topologyComponentKeyByJunctionId(
 	document: LayoutDocumentWallFirst,
 	keyByWallId: Map<string, string> = topologyComponentKeyByWallId(document)
-): Map<string, string> {
-	const keyByJunctionId = new Map<string, string>();
+): Map<string, JunctionTopologyComponentKey> {
+	const keyByJunctionId = new Map<string, JunctionTopologyComponentKey>();
 	for (const wall of document.walls) {
 		const key = keyByWallId.get(wall.id);
 		if (key === undefined) continue;

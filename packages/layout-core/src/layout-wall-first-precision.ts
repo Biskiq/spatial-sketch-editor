@@ -1775,7 +1775,9 @@ export function validateWallFirstTopology(
 	// UNATTACHED JUNCTIONS keep the general test's deliberate rule: a Junction no Wall
 	// references carries the single `UNATTACHED_JUNCTION_COMPONENT` label, so two
 	// coincident unattached Junctions are STILL invalid, while an unattached Junction
-	// coinciding with a Wall's Junction is permitted (D-9).
+	// coinciding with a Wall's Junction is permitted (D-9). That label is a SYMBOL,
+	// never a string, so no authored Wall id can collide with it — not even a Wall
+	// whose id is literally `unattached-junctions` (the S5 review blocker).
 	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
 	for (let first = 0; first < document.junctions.length; first += 1) {
 		for (let second = first + 1; second < document.junctions.length; second += 1) {

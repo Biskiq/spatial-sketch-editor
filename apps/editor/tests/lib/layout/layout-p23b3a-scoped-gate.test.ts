@@ -23,7 +23,9 @@
  * a re-scope (OR-3a, OR-3b, OR-4a), the S5 chain-gate parity, and the D-9
  * coincidence proof (independent coincidence admitted, accidental duplicates
  * inside ONE component still refused) — rather than restating the cases the S1
- * reference register already owns (T8's flip lives there).
+ * reference register already owns (T8's flip lives there). It also pins the S5
+ * review blocker: the unattached label is collision-proof against every authored
+ * Wall id, including a Wall literally named after the old sentinel string.
  *
  * ```text
  * OR-3a  SCOPED SUBJECT ≡ the same verdict the pre-policy gate produced for pairs
@@ -56,6 +58,9 @@ import {
 	planExactJunctionMove,
 	planWallChain,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+	topologyComponentKeyByJunctionId,
+	UNATTACHED_JUNCTION_COMPONENT,
+	validateWallFirstLayoutDocument,
 	validateWallFirstTopology,
 	wallCubicChain,
 	wallsShareTopologyComponent,
@@ -706,6 +711,75 @@ describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => 
 		});
 		expect(junctionsShareTopologyComponent(danglingOnWall, 'dangling-c', 'p-a')).toBe(false);
 		expect(validateWallFirstTopology(danglingOnWall)).toBeUndefined();
+	});
+
+	it('keeps a Wall id equal to the old sentinel STRING from claiming the unattached label', () => {
+		// S5 review blocker: a Wall component is labelled by its first member Wall's
+		// authored id, and the unattached-Junction label used to be the STRING
+		// 'unattached-junctions'. A Wall legitimately named `unattached-junctions` therefore
+		// claimed that string for its own component, so its Junctions and every unattached
+		// Junction compared EQUAL: an unattached Junction coinciding with that Wall's
+		// endpoint was refused as `duplicate_junction_point` — reported as connected to a
+		// Wall it shares no identity with. The label is now a SYMBOL, which no authored
+		// string can equal. Each fixture below passes the codec, so the Wall id is
+		// legitimate authored input rather than an out-of-band value.
+		const sentinelWallId = 'unattached-junctions';
+		const coincidentDangling = documentOf({
+			junctions: [
+				['w-a', 0, 0],
+				['w-b', 6, 0],
+				// No Wall references this Junction, and it sits exactly on `w-a`.
+				['w-dangling', 0, 0]
+			],
+			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' }]
+		});
+		expect(validateWallFirstLayoutDocument(coincidentDangling).success).toBe(true);
+		const keyByJunctionId = topologyComponentKeyByJunctionId(coincidentDangling);
+		// The Wall component really is labelled with the sentinel's old string...
+		expect(keyByJunctionId.get('w-a')).toBe(sentinelWallId);
+		// ... and the unattached Junction is still NOT in it: independent, and permitted.
+		expect(keyByJunctionId.get('w-dangling')).toBe(UNATTACHED_JUNCTION_COMPONENT);
+		expect(junctionsShareTopologyComponent(coincidentDangling, 'w-dangling', 'w-a')).toBe(false);
+		expect(validateWallFirstTopology(coincidentDangling)).toBeUndefined();
+
+		// Two coincident UNATTACHED Junctions still share the single unattached label, so
+		// their coincidence stays the accidental duplicate the rule exists for.
+		const danglingPair = documentOf({
+			junctions: [
+				['w-a', 0, 0],
+				['w-b', 6, 0],
+				['w-orphan-1', 40, 40],
+				['w-orphan-2', 40, 40]
+			],
+			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' }]
+		});
+		expect(validateWallFirstLayoutDocument(danglingPair).success).toBe(true);
+		expect(junctionsShareTopologyComponent(danglingPair, 'w-orphan-1', 'w-orphan-2')).toBe(true);
+		const orphanIssue = validateWallFirstTopology(danglingPair);
+		expect(orphanIssue?.code).toBe('duplicate_junction_point');
+		expect(orphanIssue?.targetId).toBe('w-orphan-2');
+		expect(orphanIssue?.message).toContain("Junction 'w-orphan-2' duplicates the point of 'w-orphan-1'");
+
+		// And the same-component rejection the rule already had is preserved under that
+		// Wall id: a second Wall attached to `w-a` whose free end lands exactly on `w-b`
+		// is still the accidental duplicate, because both nodes are in ONE component.
+		const folded = documentOf({
+			junctions: [
+				['w-a', 0, 0],
+				['w-b', 6, 0],
+				['w-dup', 6, 0]
+			],
+			walls: [
+				{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' },
+				{ id: 'w-fold', start: 'w-a', end: 'w-dup', role: 'partition' }
+			]
+		});
+		expect(validateWallFirstLayoutDocument(folded).success).toBe(true);
+		expect(junctionsShareTopologyComponent(folded, 'w-b', 'w-dup')).toBe(true);
+		const foldedIssue = validateWallFirstTopology(folded);
+		expect(foldedIssue?.code).toBe('duplicate_junction_point');
+		expect(foldedIssue?.targetId).toBe('w-dup');
+		expect(foldedIssue?.message).toContain("Junction 'w-dup' duplicates the point of 'w-b'");
 	});
 });
 
