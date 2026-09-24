@@ -1,0 +1,287 @@
+# P26 — Continuous Spatial Authoring umbrella
+
+**Status:** planning; accepted experience target, proposed production architecture and implementation sequence. No child or technical proof is authorized for implementation by this revision.  
+**Reconciled:** 2026-09-24 against source at `c486c5f1` and the imported final prototype.  
+**Outcome:** one museum the creator can draw, move around, open, inspect and edit continuously, with exact canonical edits wherever the representation makes the operation legible.  
+**Execution dependency:** P23 is closed. P23B remains the preceding performance phase and primary execution track. This baseline must be reconciled again against its landed foundation before the final P26 implementation plan is ready.
+
+## 1. Authority, ratified direction and readiness
+
+This is the phase-wide authority for P26's proposed scope, architectural reconciliation, rebuild boundary, sequence, acceptance and unresolved decisions. It replaces the earlier “add orthographic instruments to Plan/3D” framing. **P26 includes the architectural redesign and eventual production implementation**, not merely a design study or a vertical-view extension.
+
+The owner's accepted experience is the immutable [Final Design Prototype](./Final-Design-Prototype/README.md). Its [rationale](./Final-Design-Prototype/rationale.html), [review reconciliation](./Final-Design-Prototype/REVIEW-RECONCILIATION.md), [implementation reference](./Final-Design-Prototype/IMPLEMENTER-REFERENCE.md) and [guided journeys A–F](./Final-Design-Prototype/app/journeys.js) describe that experience. Its implementation is evidence of interaction intent, not a production contract. Circular walls, analytic caps, JavaScript modules, whole-model snapshots, tiny-FOV orthographic approximation and independent clipping/membership logic are not requirements.
+
+**Accepted product direction:**
+
+- Continuous Plan↔3D navigation; intermediate standpoints are usable authoring states. Plan and 3D remain discoverable destinations, not separate spatial truths.
+- Face a Wall from either side; peel directly from the current standpoint; stop and edit at intermediate curvature; square up without changing authored curvature.
+- Draw and adjust a Section line, preview it, part the building, control finite depth, Reveal an excluded source, and recover contextually with an exact return.
+- Lift a ceiling with its as-built location visible; inspect overhead relationships; look up with an explicit mirror convention.
+- Precision follows representational legibility. Model values are measured; a picture is “to scale” only on the axes for which that statement is true. Settling is not permission to edit.
+- Selection travels. Nesting, view history and architectural/document Undo are separate. Returning the view retains building edits; one accepted gesture remains one document Undo entry.
+
+The [research synthesis](./research/synthesis/p26-architectural-spatial-depth-synthesis.md) and [designer brief](./design/briefs/2026-09-22-p26-designer-brief.md) are supporting provenance. Their fixed horizontal/vertical workspace split and “3D only coarse” assumptions are superseded. REGISTER and research that merely reproduced its SVG presentation are superseded, not alternative authorities; no REGISTER artifact was found in the current P26 tree. Independently accepted ownership, source identity, finite-depth recovery and ceiling decisions survive below. No historical proposal needs resurrection to implement this phase.
+
+[PLATE](../../reference/design-system/editor-shell-and-visual-system.md) remains the unchanged durable shell/visual-system authority. Prototype appearance does not silently override it. Proposed deltas and their decision point are in §9.
+
+**Readiness is deliberately not claimed.** The [architecture cycle](../../operations/architecture-cycle.md) remains `PHASE_1`, mechanisms installed, window plan not yet reconciled; P26 is selected, not open. This umbrella maps the installed mechanisms (§8), but is not the prepared implementation plan: P23B reconciliation, proofs and affected owner decisions remain. When that plan is prepared and reconciled, write `STATUS: ready for validation` in the cycle file. Only its authorized first implementation slice then opens `PHASE_2_VALIDATING`, recorded before work starts. This documentation revision performs neither transition. The final phase gate must carry the cycle handoff; acceptance makes P26 closable, while major-phase closure remains owner-invoked.
+
+## 2. Inspected baseline and consequential findings
+
+Evidence below is source inspection, not a claim of runtime verification or performance measurements. Prototype review measurements are its authors' evidence; they were not rerun in this planning pass. Focused planning checks passed: local Markdown targets/anchors, balanced code fences, source-path existence, whitespace, live routing and protected-file invariants. No production code, prototype, PLATE contract or architecture-cycle state changed. Source locations are repository-relative. `E` abbreviates `apps/editor/src/lib/editor/`; `L` abbreviates `packages/layout-core/src/` in this section only.
+
+| Subsystem | Current implementation evidence | Consequence for P26 / disposition |
+| --- | --- | --- |
+| Architectural document | `L/layout-wall-first-types.ts`: `LayoutDocumentWallFirst` format 5, `LayoutWall`, `LayoutJunction`, `LayoutWallOpening`, `LayoutWallFirstRoom`. Walls own endpoint Junction IDs, thickness, positive height and line/cubic-chain centerline. Rooms retain oriented boundary Wall refs. | **Preserve** wall-first identity/topology and document ownership; **Extend** vertical schema with deliberate codecs and validation. A contextual sheet is never a replacement Wall document. |
+| Scene and authored cameras | `packages/project-model/src/scene.ts`: `SceneDocument`, `resolveSceneDocument`; `scene-format.ts` dispatches canonical world-local format 1 versus legacy. `resolveSceneDocument` constructs connection endpoints from nodes around authored interior anchors. | **Preserve** separate Scene ownership of entities, materials, lights and navigation/camera data; no Room-local revival or persisted generated endpoints. View camera recipes are not authored tour cameras. |
+| Canonical operations | `L/layout-wall-chain.ts`: `planWallSegment`, `planWallChain`; `layout-wall-openings.ts`: `planCreateWallFirstOpening`, `planUpdateWallFirstOpening`; `layout-wall-first-precision.ts` owns architecture acceptance. `E/layout/layout-mutation-runner.ts`: `runLayoutMutation`, `layoutMutationRunnerFor`. | **Preserve/Extend** per-operation layout-core planning and editor transaction ownership. One semantic authoring pipeline does not require one universal command schema. New views must call these operations, not write their own model. |
+| Existing Wall drawing | `E/app/PlanWorkspace.svelte`: `commitDraftWallSegment`, `commitDraftWallChain`, `createWallOpening`; `E/layout/LayoutPlanViewport.svelte` owns pointer capture, screen/world conversion, chain continuation, keyboard/numeric entry and refusal. `commitDraftWallSegment` closes a run by resolved Junction ID and carries run height. | **Preserve** the shipped segment-first Wall, partition, rectangle/polygon and opening functionality. **Adapt** its input/projection wiring incrementally. The prototype does not draw new Walls; do not recreate drawing inside it. |
+| Live edit / commit | `E/layout/layout-transient-edit.ts`: `transientArchitectureEdit` derives a proposal from a frozen baseline and preflight; `releaseArchitectureEdit` invokes the canonical plan once on release, commits success or cancels/restores. | **Preserve** pending versus known-invalid versus accepted distinction. Prototype validation on every move is not a mandate to install/fully compile every drag frame. Inspector and handles must share final acceptance/refusal semantics. |
+| Canonical compilation | `L/layout-geometry.ts`: `compileLayoutGeometry` is the legacy entry; `compileWallFirstLayoutGeometry` adapts current wall-first input into shared `compileLayoutGeometrySource` plus physical Walls/Junction resolution. `packages/project-model/src/compat-runtime.ts` dispatches formats. | **Preserve/Extend** one compiler family; “compileLayoutGeometry pipeline” does not mean forcing format 5 through the legacy signature. New caps, profile and ceiling geometry must reuse compiled samples, openings and joins; no second topology/compiler implementation in a view. |
+| Plan representation | `apps/editor/src/lib/layout/plan-render-model.ts`: `buildPlanRenderModel`; `E/layout/PlanSvg.svelte` consumes it through `worldToPlanScreen`; `layout-plan-transform.ts`: `PlanViewportState` has 2D center/pixels-per-meter. | **Adapt** Plan grammar, salience, dimensions and snapping; **Replace** the independent affine projection as the universal viewport authority. Current SVG is useful presentation code, but cannot itself represent depth, occlusion or arbitrary 3D camera angles. |
+| Workspace composition | `E/app/EditorApp.svelte` conditionally renders Plan workspaces for `activeView === 'plan'`, otherwise `Workspace3DView`. Scene/Camera Plan cells stay mounted across domain switches within that branch, not across Plan↔3D. `Workspace3DView.svelte` owns the Threlte `Canvas`. | **Replace** the Plan/3D mount switch with a persistent spatial viewport and common projection/interaction owner. Keeping both components alive or crossfading their independent cameras would not establish continuous editing correspondence. |
+| 3D geometry and visitor | `E/layout/LayoutPreviewScene.svelte` adapts physical Wall meshes and Room floor/ceiling shapes. `apps/editor/src/lib/layout/wall-mesh-builder.ts`: `buildStandaloneWallMesh` consumes compiled `ResolvedWallEnds`, refuses missing Junction resolution/clearance failures. `apps/museum/src/lib/museum/layout/LayoutMuseumShell.svelte` also consumes compiled geometry through mesh builders; `MuseumScene.svelte` mounts that shell. | **Preserve** Threlte/Three resource adaptation, canonical joins and visitor as-built consumption; **Adapt** editor rendering for clips/deformation and source-aware picking. Do not put contextual editor helpers into `MuseumScene` or visitor imports. Current floor/ceiling Shape rendering is not proof that robust volumetric cut caps already exist. |
+| Geometry reuse | `E/layout/layout-preview-state.svelte.ts`: `derivePreviewBundle`, `resolvePreviewCompile`, `reusesAcceptedCompile`, geometry-identity wall-mesh caches. Accepted compile reuse compares canonical serialized input after decode; bundle derivation precedes atomic installation. `L/layout-snap.ts`: `wallSnapIndex` uses a geometry-keyed WeakMap. | **Preserve/Adapt** proved equivalence and atomic generations. Add contextual cache dependencies; do not invalidate canonical geometry on every camera/peel frame or reuse stale geometry across document edits. These are landed foundations, not evidence that P23B optimizations have shipped. |
+| Picking and selection | `E/layout/layout-3d-picking.ts`: `buildLayout3dTriangleIndex` validates a complete triangle→owner partition with legacy room/segment refs. `LayoutPreviewScene.svelte` renders canonical Walls as `surfaceType: 'physical-wall', wallId` and explicitly describes their direct picking as deferred. `E/app/active-editor-selection.svelte.ts`: `deriveActiveSelection` gates remembered Layout/Scene/Camera slots by domain/local mode. | **Extend** canonical Wall/Opening/ceiling pick attribution; **Adapt** selection gates to continuous representation without changing entity ownership. Existing mesh identity machinery is a starting point, not demonstrated canonical 3D authoring parity. Openings are semantic hosted voids, not nearest wall-face heuristics. |
+| Inspector / direct manipulation | `E/EditorInspector.svelte`: `updateWallFirstOpeningField`, profile/kind handlers and Wall height/curve fields use preview mutations and guarded transactions. Plan direct manipulation and 3D gizmo adapters are separate presentation paths (`E/gizmo/layout-gizmo-adapter.svelte.ts`, `layout-gizmo-target.ts`). | **Adapt/Extend** shared operation access and capability derivation. A single writer means the same mutation authority behind Inspector, tape, handle and keyboard, not forbidding inline numeric entry. Do not expose an arbitrary transform gizmo as a substitute for hosted architectural parameters. |
+| History | `E/store/history-controller.svelte.ts`: `EditorHistoryController` has one chronological tagged Scene/Layout stack, mutually exclusive transactions, `undo`/`redo` and replacement hooks. `E/layout/layout-transaction.ts` suppresses unchanged snapshots. | **Preserve/Extend** document history and replacement reconciliation; add separate transient view trail and nesting. Do not adopt the prototype's whole-museum JSON history or split Layout/Scene into competing Undo stacks. |
+| Camera/navigation/motion | `E/camera/EditorCameraRig.svelte` owns editor perspective/OrbitControls, capture/restore and director/visitor preview hooks. `packages/camera-core/src/camera-motion.ts`: `CameraPose`, `createCameraMotion`, `sampleCameraMotion`, `createEditorCardinalSnapMotion` (including up-vector handling). `camera-route.ts`: `getCameraRoute`, `getCameraConnectionRoute`, `resolveFlowRoute` remain route authority. | **Preserve** navigation/motion authorities; **Adapt** the editor rig and **Extend** the same motion core for contextual transitions/projection where needed. Existing cardinal snapping is a concrete editor-motion seam; current pose types do not prove orthographic/mirror support. No prototype tween engine or second route graph. |
+| Cubic Walls / Junctions | `L/layout-wall-centerline.ts`: `wallCenterlineCubics`, `wallCenterlineSamples`; persisted controls and ordered knots remain canonical. `layout-junction-resolution.ts` compiles per-leg joins; `layout-wall-heights.ts`: `resolveWallBirthHeight`. | **Preserve** cubic geometry, stable orientation and commit-time Junction identity. **Extend** compiled station/frame provenance for reversible display deformation. A prototype 360° circular wall is not equivalent to a production cubic chain or a Room boundary loop. |
+| Openings / vertical form | Format 5 Opening owns `offset`, `width`, `height`, `sillHeight`, profile enum. `L/layout-geometry-openings.ts`: `buildArchProfile` derives rise from `width / 2`; no independent authored rise. Wall top is presently one scalar height. | **Extend** canonical top-profile and independent arch-rise semantics, their fit tests and all consumers. Head-fixed rise editing cannot be added as a UI field alone. Width/offset remain canonical start-station measurements, not prototype center-station values. |
+| Rooms / ceilings | `compileWallFirstLayoutGeometry` derives each Room ceiling at Floor elevation + maximum boundary Wall height, refusing an unresolved boundary ceiling; `compileRoom` creates floor/ceiling polygons. Room owns ceiling thickness; there is no independent CeilingRegion in format 5. Editor `showCeilings` conditionally renders derived ceiling Shapes. | **Preserve** Rooms and Floor datum; **Extend** authored independent regions and **Adapt** generated closure rules. **Retire** max-boundary height as the sole ceiling authoring mechanism once its successor is approved. Current visibility toggle is neither ceiling lift nor an editable overhead model. |
+
+Additional object baseline: `packages/layout-core/src/layout-types.ts` defines `LayoutObject`; `layout-geometry-objects.ts:describeLayoutObject` derives bounds and Plan footprint from its canonical transform/dimensions. **Preserve/Extend** that Layout-object path for bounded architectural Column/Platform precision; the footprint/bounds descriptor alone does not establish generic solid-section support. P2 must include the actual supported primitive geometry before claiming cut parity for those objects.
+
+The recommendation is therefore a **substantial editor viewport rebuild around retained semantic foundations**, not a wholesale project rewrite. A shared compiler already exists; a shared continuously editable representation does not. Neither pure SVG removal nor an SVG/3D crossfade is established by this evidence. The proposed hybrid below must earn its projection, picking and drawing continuity through P1.
+
+## 3. Proposed unified spatial architecture
+
+This section is a production proposal, not ratification of implementation details.
+
+### 3.1 Ownership and data flow
+
+```text
+Authored Project
+  LayoutDocument (Walls/Junctions/Openings/Rooms/Floor/objects + approved vertical extensions)
+       → one canonical layout-core compile → source-attributed architectural geometry
+  SceneDocument (world-local entities/materials/lights + authored camera graph)
+       → existing project-model runtime resolution
+                            ↓
+Transient spatial session + one evaluated editor camera/projection
+                            ↓
+Contextual representation derivation (uses compiled geometry; no semantic reconstruction)
+  fragments + cut boundaries + display maps + source membership + projection evidence
+                            ↓
+Threlte/Three drawing + projected SVG/HTML annotations + hit/snap eligibility + Find/Inspector
+                            ↓
+canonical hit → semantic edit intent → owning operation → preview → acceptance → one history commit
+                            ↓
+new authored document generation → same compiler / runtime resolution
+
+Visitor: authored Project → canonical compiler/runtime → as-built visitor rendering
+         (no contextual sessions, displaced meshes, editor overlays or authoring input)
+```
+
+| State category | Proposed owner / lifetime |
+| --- | --- |
+| Authored architecture | Layout only; codecs, operation-specific core planners and canonical compile. New schema/version policy must be explicit before vertical implementation. |
+| Authored Scene and Camera | Scene only; retain world-local placement, existing scene operations and graph/motion evaluation. A Wall display transform never silently moves a persisted Scene entity or camera. |
+| View/session | Editor only: evaluated camera pose/projection, framing, cut, finite depth/crops, face side/anchor, peel amount, ceiling lift, mirror, Reveal, parent recipes, trail, pending gestures. Never in project serialization or document Undo. |
+| Derived geometry | Canonical compiled output is as-built. Contextual output references its generation and source IDs; display-only cuts/deformations do not rerun architectural topology. Three buffers/materials remain adapters. |
+| Membership and visibility | One contextual evaluation per generation/view definition produces fragment membership/reasons and allowed interactions. Camera-dependent occlusion/off-frame evidence is a later stage of the same resolver, not a second semantic exclusion policy. |
+| Annotation | Source measurements + contextual station/height anchors + rendered projection; scale assertions, legibility and declutter are presentation evidence. No screen-derived architectural values. |
+| Semantic intent | Owner-qualified source + operation and canonical parameters. Layout planners remain per-operation APIs; editor coordinates the preview/commit and selection. Scene operations stay in Scene. |
+
+Illustrative interfaces (not required filenames, classes or a universal command protocol):
+
+```ts
+type SourceRef = { domain: 'layout' | 'scene' | 'camera'; kind: string; id: string };
+type ViewRecipe = {
+  camera: EvaluatedViewPose; // target, framing, orientation/up, projection and mirror
+  context: ContextDefinition | null; // face station/side/peel, section, lift or lookup
+  parent: ViewRecipe | null;
+  reveal: SourceRef | null;
+};
+type RepresentationFragment = {
+  source: SourceRef;
+  canonicalGeneration: number;
+  membership: 'cut' | 'kept' | 'set-aside' | 'beyond' | 'cropped';
+  reason?: string;
+  displayMap: DisplayMap; // forward + inverse/parameter mapping and validity evidence
+};
+// hit resolves canonical identity and station/height through the displayed surface;
+// an Opening-width intent still calls its existing owning Layout operation.
+```
+
+A single world does not require merging documents, a new persisted “spatial document”, a second navigation graph, or a generic framework before any creator value ships.
+
+### 3.2 Viewport and projection
+
+Propose one persistent editor Threlte/Three spatial scene, one session camera/projection authority, and SVG/HTML overlays projected from that authority. SVG may remain for crisp lines, text, accessible handles and Plan-specific ink. It must cease to own an independent camera/world transform in the unified surface. Plan becomes a camera/cut destination; intermediate angles show the same geometry and identity. Contexts change representations within this surface, not workspace components.
+
+First prove matched framing and hit/overlay correspondence with a true orthographic endpoint versus continuous perspective; the prototype's tiny FOV is only a candidate. The exact matrices used to render must drive ray construction, handles, projected dimensions, mirroring and scale. Floor datum +0.15 must work without a zero-height assumption. Do not turn “continuous” into a requirement for constant expensive retessellation.
+
+Retain Plan grammar through an adapter: `PlanRenderModel` source identity, salience, focus/keyboard semantics, refusal and dimension policies remain valuable. Its world-XZ affine primitives need richer anchors for heights/deformation. A settled SVG endpoint is permissible only as a derived layer under the same projection and hit authority, with no input handoff discontinuity. If P1 disproves this hybrid, replace that presentation adapter with projected vector/WebGL drawing; do not return to two spatial workspaces.
+
+### 3.3 Cuts, membership, picking and recovery
+
+Extend the renderer-neutral compiled output/derivation seam to provide sufficient attributed surfaces for horizontal/vertical intersections, caps, opening boundaries and slab thickness. Current mesh builders triangulate compiled joins; a cap implementation must not separately solve those joins or sample authored curves. Decide the minimal compiled surface contract in P2, consuming it in editor and as-built visitor adapters where architectural output changes. Avoid introducing a parallel BRep/topology engine just for sections.
+
+Derive source fragments and cut boundaries once for Section direction, span, finite depth, vertical crop and cut-only policy. A Wall may straddle a cut: a single source-wide Boolean cannot encode cut, kept and set-aside fragments. Rendering, ray hits, snapping, overlays and membership badges consume that shared result. Occlusion is distinct from exclusion and from off-frame position; Find and Inspector may aggregate partial visibility without claiming an entire source is hidden from a single center ray. Reveal changes presentation/interaction eligibility for one excluded source and leaves depth/document history unchanged. Include reaches its actual included extent, not a sampled prototype bound. Navigating to its host preserves the exact parent recipe.
+
+Resolve Opening identity from the hosted relation and compiled intervals/profile, including the void and cut cap; never infer it from face proximity. Handle targets carry host context and canonical station as needed without minting derived IDs. Decorative Scene objects remain passive context during architectural editing; selecting one through Find does not grant Layout mutation authority. A host-specific recovery action requires a real relation; current world-local Scene placement alone does not prove Wall hosting. For unhosted content offer frame/look-at, not an invented host attachment.
+
+### 3.4 Wall facing and reversible peeling
+
+Use canonical Wall start→end arc-length stations. Propose a derived display map that relaxes tangent variation along the compiled cubic centerline while preserving its reference-station distances, with a fixed anchor and explicit side. At zero peel it reproduces the as-built reference surface; at full peel its reference line is straight. The inverse maps a drag to the same canonical station and height for existing planners.
+
+This is **unproved for production cubics**. Inflections, tight curves, offset faces and Junction ends need P3. A thick curved Wall cannot preserve every parallel surface's length simultaneously: choose and label the canonical measurement reference, preserve Opening offset semantics, and never promise that both inner and outer faces are isometric. GPU bending is a candidate optimization, not a chosen architecture or permission to use a different CPU picking shape. The displayed and pickable surface must agree.
+
+A closed Room ring often consists of multiple Walls. Peeling a selected Wall does not merge that ring or change Junction connectivity. Show its endpoint/Junction registration and as-built outline; closed-loop seam and unsupported overlapping display policies must be explicit. Scene context follows only verified host/display relationships; it is never authored into the peeled location. Returning folds the display back with all accepted edits still canonical.
+
+### 3.5 Semantic editing and precision
+
+All input forms resolve to existing or extended operation-specific intent: e.g. Opening jamb drag computes canonical offset/width with the opposite jamb held, head drag resolves sill+height, rise changes spring while holding head, Wall profile handle changes an arc-length top ordinate. Convert world height using the Floor datum. No handle writes triangles, displaced coordinates or a second model.
+
+Use one interaction capability evaluation based on source validity, active domain, contextual membership, projected axis legibility, available inverse mapping and transaction state. The same result drives handle visibility, keyboard affordances and recovery copy. A withheld drag does not withhold valid typed exact input. Profile detail gates from the prototype are design examples, not an excuse for blanket 3D imprecision. Thresholds and touch acquisition need P6; preserve existing snap identity/tolerance rules and reuse `layout-snap.ts`, extending constrained vertical queries rather than inventing a vertical snap engine.
+
+Retain frozen-baseline transient proposals and authoritative release validation. Pending proposals must not appear accepted; invalid release cancels the whole gesture rather than committing the last good sample. Inspector fields/tapes share the same operation and error. Blur, pointer loss, context navigation and domain changes resolve/cancel pending gestures deterministically before camera movement; completed selection survives. Continuous view navigation during an active edit must not ambiguously change its measurement frame.
+
+### 3.6 Vertical architecture and ceiling semantics
+
+Retain the accepted vocabulary from the research and final prototype: level/slope/gable Wall tops measured along the Wall; independent Opening arch rise with head held; independent Layout-owned CeilingRegions, closure versus suspended intent; simple flat/shed/gable overhead forms. Architectural Columns and Platforms remain Layout-owned when they define support/walking volume; decorative plinths remain P24 Scene content. Extend existing Layout-object operations/representations as required rather than introduce parallel object systems.
+
+Proposed schema direction: a single authoritative Wall top definition with level as the current scalar case, not independently editable `height` plus conflicting profile truth. Floor remains horizontal datum, never a resurrected storey height. Profile height affects opening fit and compiled bounds, not Room face topology. New independent arch rise requires coherent codec, profile sampling, validation, mesh and section consumption; current `width / 2` derivation is insufficient.
+
+CeilingRegion owns footprint, height/profile, thickness and closure/suspended meaning. A Room may seed a footprint or overlap it; it never owns the region. Proposed default: preserve current generated Room closure where no authored closure overrides coverage; suspended regions do not erase enclosure. Partial coverage should leave derived closure only on uncovered portions; reject ambiguous overlapping closure surfaces pending an explicit joint rule rather than double-render them. This is a **proposal awaiting D2/P4**, not a landed automatic trimming rule. Generated fallback remains derived and unpersisted; converting it to an authored region is an explicit command.
+
+Lift is a display transform, look-up a camera/cut policy. Gap/meet/open-on-purpose relationships are derived per Wall side and coverage interval from compiled surfaces; no 0.5 m sampling rule imported from the prototype. Suggested fixes preview consequences against an immutable baseline and commit only the chosen owning mutation. No silent wall/ceiling following. Persistent fit-to-overhead remains deferred pending D3, not a prerequisite for truthful relations or one-shot fixes.
+
+### 3.7 Context nesting, view trail, Undo and motion
+
+A recipe records the exact camera/framing/projection plus cut/depth/crops, side/station/peel, lift, mirror, Reveal and parent. Different context kinds nest; same-kind hops replace the current level. Esc returns one level, close-all returns to the root origin, and the separate trail traverses prior complete recipes. No default refit on ordinary return. Document edits rederive those contexts without changing their valid parameters.
+
+Deletion/import/Undo can invalidate a source: resolve recipes by canonical ID and document generation. On missing source, unwind to the nearest valid parent and explain why; never choose a nearby entity or resurrect a deleted one. Replacement clears stale trail/pending gestures as appropriate through the existing replacement seam. Exact return is guaranteed for still-valid references; invalidation is an explicit exception, not silent approximation.
+
+Document Undo stays the chronological Scene/Layout controller; view steps do not enter it and Undo does not navigate. A contextual exit summary names committed changes and may offer “Undo these” only for a verified contiguous, still-available suffix of that history. New edit, Undo/Redo, replacement, or history truncation invalidates the batch action. Do not store only an array length as the prototype does; do not selectively rewind past unrelated Scene edits. P5 establishes safe history markers and the chosen batch behavior.
+
+Editor choreography extends `camera-motion.ts` and consumes its evaluated samples in the rig; `camera-route.ts` remains the only navigation-route evaluator. Orbit remains direct session input; authored camera previews still take over and restore through existing hooks. A common evaluated progress can drive pure contextual display transforms, but those transforms must not evaluate a second camera path. Adaptive/instant/reduced-motion policy schedules the same transition/end state; no copied `anim.js`. Projection/up/mirror extension and interrupted-command handling require P1/P5, including Camera-domain and visitor-preview regression proofs.
+
+## 4. Scope and exclusions
+
+**In scope for the complete phase:** persistent unified viewport; migrated production Wall drawing and architectural editing; canonical 3D/intermediate picking and overlays; continuous Plan/3D; facing/side/square-up/peeling at intermediate curvature; drawn Section preview, slide/rotate, finite depth, lateral/vertical crop and cut-only; Reveal/Include/Find with reasons; ceiling authoring/lift/look-up/mirror and explicit relationship fixes; bounded vertical profiles and arch rise; contextual nesting/trail/exit summary; keyboard/touch/reduced-motion equivalents; shared history/selection integration; as-built visitor/schema compatibility for added architecture; performance validation on P23B's foundation; retirement of redundant workspace authority after parity.
+
+Crop and cut-only were brief requirements but not demonstrated by the final prototype. They remain bounded phase requirements with design decisions due before their slice, not implicit proof or silently dropped scope. Generated closure, partial/spanning regions and overlap behavior likewise require production resolution.
+
+**Excluded/deferred:** multi-storey/Levels, general BIM or volumetric cell topology, freeform roofs/mesh editing, roof assemblies/drainage, arbitrary boolean modeling, persisted derived drawings or pinned views, new asset catalogs/material/light authoring (P24), Experience/visitor journey authoring (P25), a second gizmo/nav/motion/geometry compiler, mandatory Rust/WASM/worker migration, prototype-module porting, wholesale store/package rewrite, reopening P23, and automatic fit/follow constraints until separately decided. P26 must preserve existing Scene/Camera capabilities while moving their viewport adapters; it does not use that migration to expand their product scope.
+
+## 5. Rebuild boundary and migration
+
+The rebuild is the editor's spatial composition, projection, contextual representation, projected input/overlay and camera-session integration. The retained foundation is documents/codecs, core topology/operations/compiler, committed selection identities, transaction/history ownership, Scene runtime, camera-route/motion authority, PLATE shell and visitor isolation. Canonical geometry changes for profiles/ceilings necessarily update visitor consumers; contextual displacement remains editor-only.
+
+1. Capture behavioral parity fixtures for existing Wall drawing, opening edits, snapping, identity, refusal, keyboard, selection/history and Camera preview. Reuse existing suites; successor tests must fail on the same defects, per the [test contract](../../../apps/editor/tests/README.md). Do not delete tests merely because components move.
+2. Deliver a thin persistent viewport/projection seam around current compiled geometry and editor camera authority. Lift only the drawing input dependencies necessary for the first slice out of `LayoutPlanViewport`; retain its domain algorithms and operations. Keep a temporary legacy fallback during development with one active input owner at a time, no dual writes or duplicate cameras receiving input.
+3. Make the first authoring slice work end to end: draw real Walls and an Opening in Plan, select/edit that Opening, tilt to an intermediate angle and 3D, edit a legible height, return and Undo in the same document/history. This slice includes canonical picks and shared projected handles; a camera animation demo alone does not pass.
+4. Add context derivation/cuts, vertical schema and peeling in bounded increments on the same scene. Extend common identity/measurement data when concrete consumers need it. Do not spend a phase building an abstract representation framework before the first journey.
+5. Move existing Scene and Camera overlay/input adapters onto the evaluated projection, preserving ownership gates, graph editing, timeline and preview takeover. Their view destinations use the common viewport; their authoring semantics remain distinct. Resolve any PLATE changes before changing exposed shell chrome.
+6. Retire independent Plan/3D workspace camera/input authority only after parity and integrated journeys pass. `PlanSvg` or parts of `PlanRenderModel` may survive as derived overlays. Retire duplicate listeners, stale caches, conditional viewport mounts and obsolete view guards, not useful canonical operations or legacy import compatibility. Remove the temporary fallback at the production cutover gate.
+
+No new package split is mandated. Put pure canonical semantic/geometry extensions in existing layout-core ownership; put editor recipes, presentation policy and adapters under the editor boundary. Move code only to establish these specific seams.
+
+## 6. Candidate delivery sequence and dependency gates
+
+These are proposed work packages, not approved child plans or a new numbered phase. The phase README owns their status/order. Proofs are deliberately small and tied to delivery; they are not authorized in this documentation pass.
+
+| Order | Candidate slice / creator result | Entry and exit gate |
+| --- | --- | --- |
+| 0 | Reconcile landed P23B, finalize focused proof briefs and implementation plan | Record actual compiler/cache/mesh/interaction seams and accepted budgets after P23B. Resolve D1 and first-slice blockers; map M1–M7. Prepare plan and perform cycle readiness write before authorized implementation. |
+| 1 | Continuous Plan↔3D authoring walking slice | P1 proof first within authorized work; existing Wall drawing preserved. Draw→Opening→tilt→height edit→return→Undo passes; no broad vertical schema prerequisite. This is the first product slice and formal cycle-window start. |
+| 2 | Facing plus source-aware contextual cuts | P2; shared membership, picking, caps and overlays; draw/adjust/preview/open Section, finite depth, recovery, nested exact return. Crop/cut-only design decided here. |
+| 3 | Vertical canonical architecture and direct precision | D2/D4 schema decisions and P4; Wall top forms, independent arch rise, ceiling regions and coverage. Compile/Plan/3D/visitor parity, import/export and opening fit before dependent presentation claims. Can stage Wall/Opening before overhead within this slice. |
+| 4 | Cubic peel and intermediate editing | P3; station provenance added only as needed. Direct peel from either side, square-up, partial/flat editing, as-built registration and updated vertical profiles; no mutation of authored curvature. |
+| 5 | Ceiling lift/look-up and relationship recovery | Uses slice 3 compiled regions and slice 2 contexts; P4 coverage/relations, mirror/picking, previewed one-shot fixes, return with edits. |
+| 6 | Full session/precision integration and viewport cutover | P5/P6; durable selection across contexts, safe exit summary, Find visibility, keyboard/touch/motion, existing Scene/Camera adapters, PLATE-approved changes, retirement of old independent workspaces. Basic nesting/return already works in slice 2; this is hardening, not delayed history design. |
+| 7 | Integrated product and architecture acceptance; P24 handoff | All journeys in §10, P23B performance contract and repository verification; accepted as-built visitor output, no editor imports, no fallback authority. Final gate records unresolved carried work and makes the phase closable, not closed. |
+
+A proof failure changes the affected adapter or requires an owner decision; it does not authorize bypassing canonical ownership or cutting the accepted experience without a recorded ruling.
+
+## 7. Critical technical proofs (specified, not implemented)
+
+| Proof | Smallest useful experiment | Acceptance criterion / consequence |
+| --- | --- | --- |
+| **P1 — projection and authoring continuity** | One nonzero-datum fixture with straight + cubic Walls and an Opening; production draw/commit path in a persistent scene; matched Plan→perspective and look-up projections; compare projected SVG overlay versus scene hit coordinates at intermediate angles. Exercise existing cardinal motion seam. | Same source/measurement for drawn, hit and dragged target; no jump in framing/selection at projection boundary (proposed ≤1 CSS px registration error, numerical edit tolerance taken from existing planners); no duplicated input owner, no persisted camera/session writes. Existing Wall drawing/Undo works. Select camera/overlay strategy from evidence; tiny FOV is not presumed precise enough. |
+| **P2 — attributed cut geometry** | Section/horizontal cut through one curved Wall with arched Opening, one T or multi-leg Junction and a slab with thickness/hole; sweep direction/depth across exact boundaries. | Closed, correctly attributed cut boundaries without resurrecting filled voids or overlapping Junction material; renderer/hit/snap/reasons agree on the same fragment generation. Existing geometry tolerances and fail-closed behavior retained. If compiled output is insufficient, extend that output minimally rather than derive independent topology. |
+| **P3 — cubic display mapping** | One multi-span inflected cubic, a tight but valid curve and a loop/seam case; inside/outside, zero/partial/full peel; move/jamb/height edits through displayed surface. | Canonical station/height round-trip within operation tolerance, unchanged authored controls and IDs after pure view motion, rendered/picked deformation agreement, deterministic rejection of ambiguous inverse mapping. Zero peel matches as-built joins; detached ends register honestly. Compare CPU/GPU cost under P23B budgets before selecting deformation strategy. |
+| **P4 — overhead and profile semantics** | Two Rooms sharing unequal-height Wall; +0.15 Floor datum, one slope/gable, arch under sloped top, partial closure, suspended region, overlap, hole and spanning region. | One canonical result across compiler/Plan/3D/visitor; no silent gap fill, double enclosure or Room ownership transfer; deterministic coverage/refusal and per-side relations. Schema round-trip and opening-fit validation pass. Owner decides closure/datum/overlap policy before implementation based on this bounded proof design/results. |
+| **P5 — session/history/motion safety** | Section→face→partial peel, Reveal and custom zoom; back/trail/Undo; delete source, import replacement, switch Camera domain, enter/exit preview, truncate history, interrupt/reverse transition. | Exact valid recipe restoration; document Undo leaves view untouched except explicit invalid-reference recovery; no stale source selection or history suffix action; one transaction per accepted gesture; no document bytes changed by view-only activity. Existing preview/graph evaluator and replacement-seam tests remain effective. |
+| **P6 — legibility/accessibility/performance** | Existing dense curved-room benchmark plus a twelve-room contextual fixture; repeat camera motion, cut slide, peel and one canonical drag; keyboard-only, coarse pointer and reduced motion. | Reuse P23B harness/provenance and ratified budgets, separate canonical compile from view derivation/render cost, bound cache growth, no full canonical compile for camera-only frames. Withheld drags have exact-input/recovery alternatives, labels do not obscure selected handles, reduced motion preserves understandable correspondence. Tune thresholds from evidence; prototype timings/14 px-per-metre are not acceptance budgets. |
+
+## 8. P23B dependency and installed architecture mechanisms
+
+P23B's [README SEQUENCE](../p23b-geometry-performance/README.md) owns its order and gates. Its [umbrella](../p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md) targets cost, equivalence, reuse and interaction performance without adding capability/schema. At this baseline P23B is planning; no measured P23B result or worker/GPU/WASM strategy is assumed landed.
+
+Already inspected foundations include accepted-compile reuse guarded by canonical serialization, geometry-identity mesh/snap caches, transient architecture proposals with one release acceptance, `p2311Measure` hooks, and Junction-aware fail-closed mesh consumption. Preserve these properties, not their current file size or cache layout. P26 adds new view work and vertical dependencies; P23B budgets must be extended with attribution, not bypassed because a new viewport exists. Before implementation record P23B's actual landed revision, invalidation contract, benchmark provenance and relevant changes in this umbrella/child plan. Recheck any source anchors it changes. Do not rerun unrelated P23 archaeology or reopen the closed phase.
+
+| Installed mechanism | P26 reconciliation and evidence to retain in the prepared plan |
+| --- | --- |
+| M1 Layout semantic-mutation boundary | New profile/ceiling intents planned in layout-core; projected handles only resolve parameters; preserve operation-specific results and editor transaction. Call-site evidence from drawing, Inspector and new context controls. |
+| M2 Wall/Floor vertical authority | Floor stays datum; Wall owns its physical top. Proposed profiles and authored ceilings deliberately extend the current scalar/derived-ceiling clause; reconcile the affected durable contract at approved schema implementation, not silently in this plan. |
+| M3 persisted canonical curves | Peel never changes cubic controls/knots or re-fits on read. Edit station maps return to canonical orientation. Save/load plus zero/partial/full-peel invariants. |
+| M4 Junction identity / R1 | Reuse commit-time coordinate/ID resolution; no screen-space snap or display deformation creates connectivity. Keep scoped retirement, global adoption and editor run closure by Junction ID. |
+| M5 Navigator document-replacement seam | Extend the existing app replacement guard for session/trail invalidation while preserving selection reconciliation for every document replacement seam; not just a helper unit test. |
+| M6 same-state phase close | P23B ordinary owner-close remains PHASE_1; P26 follows selected-window lifecycle. Do not open validation through a planning document or close a major phase automatically. |
+| M7 durable lifecycle reminders | Phase router retains readiness and final-gate/owner-close reminders. Child acceptance uses normal lifecycle when eventually reached; this task invokes no closeout. |
+
+This mapping is preparatory reconciliation, not evidence of successful mechanism validation. Final readiness still needs the implementation plan against landed P23B and the resolved first-slice design. The cycle file remains unchanged in this pass.
+
+## 9. Owner decision register and shell deltas
+
+Accepted experience is not reopened here. These are unresolved production choices, with recommendations and the latest point they must be decided. Technical proof outcomes are agent work once authorized; product/schema changes need the owning decision rather than an invented implementation fact.
+
+| Decision | Proposed position and rationale | Decision point |
+| --- | --- | --- |
+| **D1 implementation readiness / projection choice** | Authorize a bounded first slice only after P23B reconciliation and prepared-plan gate. Recommend persistent scene with projected vector/HTML overlays; P1 chooses exact projection transition and can replace the Plan paint adapter if needed. | Before first implementation authorization/cycle readiness; P1 resolves mechanism before broad migration. |
+| **D2 ceiling closure, coverage and datum** | Independent closure/suspended regions retained. Recommend generated fallback only for uncovered enclosure, no duplicate authored closure overlap, suspended layers independent. Decide Floor-relative versus world-fixed authored overhead under datum change; both must display measured world height clearly. | Before ceiling schema/operations; P4 is the bounded geometry proof. Unproven spanning is not permission for a Room-owned ceiling model. |
+| **D3 fit/follow and intentional openings** | Recommend explicit one-shot fixes with previews and no automatic following. Decide representation of intentional Wall/ceiling gaps alongside closure intent; persistent fit constraints deferred. | Before relation-fix slice; no need to block initial continuous authoring. |
+| **D4 schema and compatibility** | Retain current documents/ownership; choose explicit version/migration or repository-approved fresh-authority policy for top profiles, independent rise and regions. No competing height/profile writers or reinterpretation of old serialized data. | Before vertical schema implementation; update codec/visitor acceptance in same slice. |
+| **D5 crop, cut-only, seam and ambiguous views** | Keep crop/cut-only in phase; design bounded contextual controls. Decide closed-loop seam display and refusal/recovery for self-overlapping peeled surfaces or invalid source recipes. Recommend explicit reason + square-up/host recovery rather than guessing. | Before corresponding Section/peel slice, informed by P2/P3. |
+| **D6 exit summary and motion UX** | Keep separate histories and exact return. Recommend suffix-validated “Undo these”, invalidated by any history divergence; decide copy if suffix unavailable. Adaptive teaching/instant/reduced-motion must share final state; exact durations/thresholds are tunable. | Before session integration; basic return/Undo invariants exist from slice 1. |
+| **D7 PLATE changes** | Proposed Plan–tilt–3D control, contextual breadcrumb/parameter strip, status-rail trail/motion controls; mat↔paper treatment, typed tapes and displacement cues. They explain continuity and view-only changes but affect composition/material/state language. Navigator collapse may recover working width; it is optional and not assumed approved. Prototype fonts/colors/metrics are not copied wholesale. | Review a concrete composition against PLATE before shell implementation; ratify any deltas into the durable contract then. Keep that contract unchanged now. |
+
+Pinned views, automatic ceiling constraints and a broader Scene host system are deferred, not unacknowledged gaps to fill during implementation. Existing independently accepted rules—including head-fixed arch rise, independent Layout ceiling ownership, world-local Scene and single mutation/history authorities—do not need to be re-decided.
+
+## 10. Integrated acceptance and architectural invariants
+
+Acceptance uses production cubic/topological fixtures, not just the circular demo. The prototype journeys supply the experience; additional cases establish the production contract.
+
+| Journey | Required integrated result |
+| --- | --- |
+| **Early walking slice / E** | Use existing Wall tool to draw a boundary and partition, produce canonical Junctions/Rooms, create an Opening, slide/widen in Plan, tilt continuously, raise its head at a legible intermediate angle, return and Undo twice. Selection, canonical IDs and transaction count remain deterministic; view navigation adds no Undo. |
+| **A — curved Wall** | From either side select a cubic-hosted Opening, peel directly to a partial amount, change side, square up, flatten and edit rise/width, step back and edit a legible height. Canonical curvature remains unchanged; as-built registration persists; per-axis scale claims remain honest. Return retains edits. |
+| **B — Section** | Draw arbitrary-angle line in Plan and 3D, preview, slide/rotate before open, part, change depth/crops/cut-only, select cut Opening and edit an honest parameter. Excluded selection has a reason/locator; Reveal leaves depth unchanged; Include reaches it; go-to-host nests and returns to exact cut/zoom/Reveal. |
+| **C — overhead** | Inspect unequal Wall/ceiling condition, lift by tab, preview alternative fixes without commit, choose one operation, look up/mirror, type a height whose axis is edge-on, return all. Include generated/partial/suspended/spanning coverage; authored and view changes remain distinct. |
+| **D — repeated navigation** | Open/hop same-kind contexts, nest different kinds, revisit partial peel via trail, interrupt motion, use instant/reduced motion. Exact valid recipes restore without default refits or undo pollution; Camera preview restores authoring state through the existing ownership seam. |
+| **F — Find/recovery** | Find visible, partly hidden, behind, off-frame, beyond-depth and set-aside sources. Shared visibility/membership explains each; offered recovery is truthful for actual host/identity and never mutates an excluded entity by accident. |
+| **Invalidation and persistence** | Cancel invalid drag/type edit; blur/pointer loss; delete open source; Undo/Redo; replace/import project; save/load/export/publish with contexts open. No session/deformed/generated data persists. Missing references recover explicitly; scene and layout chronological history stays coherent. |
+| **Scale and access** | Dense/twelve-room fixture with real cubics/Junctions, nonzero datum and ceiling holes; keyboard-only and coarse-pointer precision; legible selected annotations; measured P23B-based performance; visitor sees only as-built accepted architecture. |
+
+Non-negotiable invariants:
+
+1. One authored project, separate Layout/Scene documents; world-local canonical Scene; no persisted generated endpoints/render state.
+2. One canonical geometry compiler and compiled geometry truth; no consumer resamples authored cubics, re-solves Junction topology or invents opening/ceiling geometry independently.
+3. Canonical Layout mutations planned by their owning core operations; editor owns preview, selection and one chronological document-history transaction. Refused/no-op/cancelled edits add no history.
+4. One navigation graph and existing camera-route/camera-motion evaluation authorities. Context recipes are session navigation, not a second authored graph.
+5. One rendered projection and shared contextual fragment/membership evidence for drawing, hit, snap and overlays; source IDs survive cuts and deformation.
+6. Visibility never deletes authored state. View return restores valid context exactly; Undo changes documents, not viewpoint. Selection invalidation follows explicit ID-based rules.
+7. Visitor chunks contain no editor helpers or contextual session code. `/`, `/editor`, `/museum/editor` remain production editor routes; `/museum` remains visitor-only.
+8. PLATE remains authoritative until an explicit delta is ratified. Prototype appearance is not a backdoor contract change.
+
+Implementation verification follows the repository [test contract](../../../apps/editor/tests/README.md), including affected call-site/replacement, architecture/isolation, dense correctness, performance and whole-product gates. Do not narrow it to changed files. This planning revision requires only focused documentation/link/authority checks; no runtime acceptance is claimed here.
+
+## 11. P24 handoff
+
+P24 inherits the unified spatial viewport, source identity, projection, contextual membership, selection, semantic input adapters and document-history integration. It still owns asset supply/canonical ingest and richer Scene/material/light staging. Architectural context does not grant permission to author Scene through Layout or create a new host relation from proximity.
+
+Before P24 execution reconcile its [R3 placement](../p24-scene-staging/reconciliation/2026-09-10-P24-R3-shared-plan-3d-placement-contract.md), [R4 interaction](../p24-scene-staging/reconciliation/2026-09-10-P24-R4-cross-view-interaction-contract.md), R8 presentation, R9 freeze and child briefs against landed P26. Specifically mark separate PlanProxy/3D input adapters, workspace switches/gesture cancellation, placement planes/picking, multi-selection/gizmo capability, Camera preview restoration, overlays/Inspector and shell exposure as affected implementation assumptions. Preserve independently accepted entity-owned mutations, staging scope and ingest decisions. Do not comprehensively redesign P24 now, and do not treat its earlier “implementation-ready” surface assumptions as clearance to restore separate spatial worlds.
+
+P26 handoff must include the actual public adapter contracts, canonical vertical format/compatibility policy, migrated behavior evidence, budgets and remaining limitations. P24 begins from that landed system after its own approval; P25 remains downstream.

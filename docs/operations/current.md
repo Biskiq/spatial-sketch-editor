@@ -7,8 +7,9 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
        proposed, no implementation approved. The post-P23 execution order is owner-ratified and
        deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
-       synthesis is the authoritative research input and the designer brief is written
-       (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Proposals are not started.
+       Continuous Spatial Authoring prototype is accepted and its phase-wide umbrella now
+       reconciles production architecture, rebuild scope and proposed delivery. No implementation
+       is authorized; the final plan still requires landed-P23B reconciliation and readiness.
        The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
        (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
        pending there. P26 is the selected validation window: selected, not yet open. The cycle
@@ -31,12 +32,11 @@ NEXT:
    ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
 2. Read-only profiling and measurement planning may precede implementation authorization; committed
    benchmark-infrastructure changes (fixtures, harness, baselines, budgets) may not.
-3. P26 product planning may continue in parallel, but it is not the primary next-work instruction.
-   The designer brief is written
-   (../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Next P26 artifact,
-   when that work is picked up, is independent design proposals and then a reconciled direction
-   and child plan. No P26 implementation starts without an approved plan. The brief does not open
-   the validation window.
+3. P26 planning may continue in parallel; P23B remains the primary next-work instruction.
+   Read ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md.
+   Next: reconcile its proposed architecture against landed P23B, resolve slice-specific decisions,
+   and prepare the implementation plan/proofs. The accepted prototype and this documentation
+   revision do not authorize implementation or open the architecture validation window.
 4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
@@ -55,7 +55,7 @@ BLOCKER:
 - P23B has no measured baseline and no approved child plan; its implementation waits on an
   owner-ratified child plan. Phase 0 adjudication and the justified Phase 1 response are already
   installed and do not block that gate
-- P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
+- P26 has an accepted experience and proposed umbrella; child implementation readiness remains gated. Planning itself is not blocked
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass

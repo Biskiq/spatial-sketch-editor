@@ -1,6 +1,9 @@
 # P26 — Architectural Spatial Depth: Design-Research Synthesis
 
-**Status:** authoritative research input for external P26 designers. Sits above three evidence records: Phase-1 deep research (`deep-research-P26-phase-1.md`), FreeCAD harvest (`P26-phase2-freecad-section-orthographic-harvest.md`), Bonsai harvest (`P26-phase2-bonsai-view-identity-rcp-harvest.md`). Those remain the evidence; this document is the conclusion.
+> **Superseded direction (2026-09-24):** the accepted Continuous Spatial Authoring prototype and [P26 umbrella](../../2026-09-24-P26-continuous-spatial-authoring-umbrella.md) now own experience direction and proposed phase scope. This document is supporting provenance, not a competing design authority. Its separate Plan / orthographic / 3D role restrictions and any REGISTER/SVG presentation assumptions are superseded; independently accepted domain decisions are retained explicitly in the umbrella. Earlier authority/status wording below describes this artifact's original research/assignment role.
+
+
+**Status:** supporting research synthesis; the umbrella above supersedes its experience framing. Originally prepared for external P26 designers. Sits above three evidence records: Phase-1 deep research (`deep-research-P26-phase-1.md`), FreeCAD harvest (`P26-phase2-freecad-section-orthographic-harvest.md`), Bonsai harvest (`P26-phase2-bonsai-view-identity-rcp-harvest.md`). Those remain the evidence; this document is the conclusion.
 
 **What this document is:** the evidence-backed product/design direction, what is provisional, and what belongs to designers. **What it is not:** an implementation plan, a schema, or UI polish.
 
