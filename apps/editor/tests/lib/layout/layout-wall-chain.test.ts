@@ -446,16 +446,19 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		return both.document;
 	}
 
-	it('one boundary chain splitting two rooms commits once with both splits', () => {
+	it('a divider declaring two INDEPENDENT rooms is refused atomically — that is the deferred Join (P23B.3a S6 review)', () => {
 		const baseline = twoRoomBaseline();
-		// East-west divider across both rooms: two 1→2 splits in a single chain
-		// command. P23B.3a S6 records the pre-policy shape here as history — the
-		// chain used to be drawn from (-1, 1.5) to (11, 1.5), overshooting into free
-		// space, and the planner inferred a connection to any Wall it crossed. The
-		// divider now TERMINATES on the two outer Walls and declares them (operation
-		// class 3, what an author's wall-span snap expresses), and the overshooting
-		// shape asserts the opposite verdict in the companion test below.
-		const plan = expectSuccess(
+		const snapshot = structuredClone(baseline);
+		// PRE-POLICY (recorded history): this divider used to be drawn from (-1, 1.5)
+		// to (11, 1.5), and the planner inferred a connection to every Wall it
+		// crossed, so ONE chain split BOTH Rooms (four Rooms) and thereby made the
+		// two independently authored Rooms one connected group. Under the ratified
+		// four-class model that is operation class 4 — a deliberate Join/Connect,
+		// which D-10 defers — so a chain that DECLARES two previously independent
+		// components is refused rather than bridged. A legitimate author draws one
+		// divider per Room until Join/Connect ships; the per-Room 1→2 divider stays
+		// covered by the boundary suites above and below.
+		expectRejected(
 			planWallChain({
 				baseline,
 				points: [p(0, 1.5), p(10, 1.5)],
@@ -465,13 +468,11 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 					{ pointIndex: 0, wallId: verticalWallAt(baseline, 0) },
 					{ pointIndex: 1, wallId: verticalWallAt(baseline, 10) }
 				]
-			})
+			}),
+			'invalid_candidate_document'
 		);
-		expect(plan.document.rooms).toHaveLength(4);
-		// One survivor per split: both predecessor IDs persist by lineage.
-		const before = new Set(baseline.rooms.map((room) => room.id));
-		const survivors = plan.document.rooms.filter((room) => before.has(room.id));
-		expect(survivors).toHaveLength(2);
+		// Atomic: nothing committed, every Room and Wall untouched.
+		expect(baseline).toEqual(snapshot);
 	});
 
 	it('the SAME divider is independent placement when nothing is declared (P23B.3a S6)', () => {
@@ -1013,6 +1014,69 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 
 		// The planner and the shipped gate agree (R-3).
 		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+	});
+
+	it('accepts SEVERAL declarations as long as they resolve to ONE component', () => {
+		// Class 3 is "extend one already connected group", and that group may be
+		// named from more than one point: both anchors land on A's own Walls.
+		const baseline = threeComponentBaseline();
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(4, 1)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
+					{ pointIndex: 1, wallId: verticalWallAt(baseline, 4) }
+				]
+			})
+		);
+		expect(plan.splitWallIds).toContain(horizontalWallAt(baseline, 0));
+		expect(plan.splitWallIds).toContain(verticalWallAt(baseline, 4));
+		expect(validateWallFirstTopology(plan.document)).toBeUndefined();
+	});
+
+	it('refuses a declaration pair spanning TWO independent components — the deferred Join', () => {
+		// Both declarations are individually valid (each point lies on its named
+		// host), and the chain does not even cross the gap. Honoring both would make
+		// the chain bridge two previously independent groups, which is operation
+		// class 4 (D-10) — refused, never silently narrowed to one of the two.
+		const baseline = threeComponentBaseline();
+		const snapshot = structuredClone(baseline);
+		expectRejected(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(3, 2)],
+				close: false,
+				role: 'partition',
+				endpointHostSnaps: [
+					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
+					{ pointIndex: 1, wallId: horizontalWallAt(baseline, 2) }
+				]
+			}),
+			'invalid_candidate_document'
+		);
+		expect(baseline).toEqual(snapshot);
+	});
+
+	it('still permits crossing an undeclared independent component (only declarations are scoped)', () => {
+		// The single-component rule reads DECLARATIONS, never the draft geometry, so
+		// the companion half of the cascade case is unchanged: cross B freely, node
+		// nothing into it, declare nothing about it.
+		const baseline = threeComponentBaseline();
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: [p(2, 0), p(6, 3)],
+				close: false,
+				role: 'partition'
+			})
+		);
+		expect(plan.splitWallIds).toHaveLength(0);
+		expect(
+			plan.document.walls.find((wall) => wall.id === horizontalWallAt(baseline, 2))
+		).toEqual(baseline.walls.find((wall) => wall.id === horizontalWallAt(baseline, 2)));
 	});
 
 	it('rejects a declaration naming a Wall the baseline does not have', () => {

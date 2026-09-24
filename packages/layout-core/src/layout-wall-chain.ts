@@ -757,6 +757,9 @@ export function planWallChain(options: {
  * uniqueness         at most one host per draft point (never last-wins)
  * host identity      the named Wall exists in the baseline document
  * agreement          a Junction anchor on the same point is in that host's component
+ * one component      ALL declarations (hosts and Junction anchors alike) resolve
+ *                    to ONE pre-existing component — class 3, not the deferred
+ *                    class-4 Join (D-10)
  * genuine relation   the declared point is on the host, OR the operation's own
  *                    geometry meets it, OR the host's component is already
  *                    reached by another declaration of this operation
@@ -817,6 +820,29 @@ function validateEndpointHostSnaps(input: {
 				);
 			}
 		}
+	}
+
+	// ONE PRE-EXISTING COMPONENT PER OPERATION (ratified four-class model). Class 3
+	// EXTENDS one already connected group; joining two previously independent groups
+	// is class 4, the deliberate Join/Connect that D-10 defers. A single chain may
+	// therefore name many Walls and Junctions — all of the SAME baseline component —
+	// and any pair of independent components is a Join by another route: it is refused
+	// deterministically, never bridged, and never silently narrowed to one of them.
+	// (An UNRELATED component the chain merely crosses stays untouched: this check
+	// reads declarations only, never the draft geometry.)
+	const declarationComponentKeys = new Set<string | symbol>();
+	for (const wallId of declaredHostByPointIndex.values()) {
+		const key = componentKeyByWallId.get(wallId);
+		if (key !== undefined) declarationComponentKeys.add(key);
+	}
+	for (const junctionId of declaredJunctionByPointIndex.values()) {
+		const key = componentKeyByJunctionId.get(junctionId);
+		if (key !== undefined) declarationComponentKeys.add(key);
+	}
+	if (declarationComponentKeys.size > 1) {
+		return invalid(
+			'Chain declarations name more than one connected component; joining independent groups is a deliberate join operation'
+		);
 	}
 
 	// "Already-declared connection to its component": a declaration that does not

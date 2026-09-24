@@ -78,7 +78,13 @@ NEXT:
    the S6 OPEN CONTRACT QUESTION: a VALID declaration authorizes extension into the host's WHOLE connected
    component — so a host the operation crosses (rather than touches) stays declarable — while an unrelated
    component is never joined, which is why the four ratified P23.6e/P23.11 in-group noding regressions stay
-   green. S6 now awaits RE-review.
+   green. It ALSO enforces the ratified four-class model directly: ALL connection declarations for one
+   `planWallChain` operation (host declarations and Junction anchors alike) must resolve to ONE pre-existing
+   baseline component — several declarations inside that group are valid (class 3), while two previously
+   independent components reject deterministically (class 4, the deliberate Join/Connect D-10 defers) instead
+   of being bridged or silently narrowed, and an undeclared component the chain crosses stays untouched. The
+   pre-policy two-Room single-divider regression is re-based to assert that rejection with its old 4-Room
+   outcome recorded as history. S6 now awaits RE-review.
    S7–S8 remain, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
    shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
    The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
