@@ -145,27 +145,46 @@ function enclosure(prefix: string, x: number, z: number, width: number, depth: n
 }
 
 /**
- * Keep ONLY the named Walls and everything that belongs to them. Safe by
- * construction: a Room or Opening that straddled the removed Walls is dropped
- * rather than left dangling, so the isolated document is a well-formed one.
+ * Isolate the complete component identified by the seed Walls, including every
+ * Room whose full boundary belongs to it. A caller cannot accidentally compare
+ * a same-component verdict against only the pair that exposed the variant.
  */
 function isolateComponent(
 	document: LayoutDocumentWallFirst,
 	wallIds: readonly string[]
 ): LayoutDocumentWallFirst {
-	const keep = new Set(wallIds);
+	const seedWallId = wallIds[0];
+	if (!seedWallId || !document.walls.some((wall) => wall.id === seedWallId)) {
+		throw new Error('isolateComponent requires at least one existing seed Wall');
+	}
+	const keep = new Set(
+		document.walls
+			.filter(
+				(wall) =>
+					wall.id === seedWallId || wallsShareTopologyComponent(document, seedWallId, wall.id)
+			)
+			.map((wall) => wall.id)
+	);
+	if (wallIds.some((wallId) => !keep.has(wallId))) {
+		throw new Error('isolateComponent seed Walls must all belong to the same component');
+	}
 	const walls = document.walls.filter((wall) => keep.has(wall.id));
 	const junctionIds = new Set(
 		walls.flatMap((wall) => [wall.startJunctionId, wall.endJunctionId])
 	);
+	const rooms = document.rooms.filter((room) =>
+		room.boundary.every((ref) => keep.has(ref.wallId))
+	);
+	const roomIds = new Set(rooms.map((room) => room.id));
 	return {
 		...document,
 		junctions: document.junctions.filter((junction) => junctionIds.has(junction.id)),
 		walls,
-		rooms: document.rooms.filter((room) =>
-			room.boundary.every((ref) => keep.has(ref.wallId))
-		),
-		openings: document.openings.filter((opening) => keep.has(opening.wallId))
+		rooms,
+		openings: document.openings.filter((opening) => keep.has(opening.wallId)),
+		objects: document.objects.filter(
+			(object) => object.roomId === undefined || roomIds.has(object.roomId)
+		)
 	};
 }
 
@@ -623,6 +642,7 @@ describe('P23B.3a S8 / OR-3a — deferred same-component variants', () => {
 		label: string;
 		document: LayoutDocumentWallFirst;
 		wallIds: readonly [string, string];
+		expectedRoomIds?: readonly string[];
 	}> = [
 		{
 			label: 'reversed endpoint order and zero-area axis-aligned boxes',
@@ -632,7 +652,8 @@ describe('P23B.3a S8 / OR-3a — deferred same-component variants', () => {
 		{
 			label: 'multiple Rooms in one connected component',
 			document: TWO_ROOMS_SHARED_COMPONENT,
-			wallIds: ['room-south-left', 'room-south-right']
+			wallIds: ['room-south-left', 'room-south-right'],
+			expectedRoomIds: ['room-left', 'room-right']
 		}
 	];
 
@@ -656,9 +677,11 @@ describe('P23B.3a S8 / OR-3a — deferred same-component variants', () => {
 	it('does not turn valid same-component relations into failures in the added variants', () => {
 		for (const variant of validVariants) {
 			const fullDocumentVerdict = validateWallFirstTopology(variant.document);
-			const isolatedComponentVerdict = validateWallFirstTopology(
-				isolateComponent(variant.document, variant.wallIds)
-			);
+			const isolatedComponent = isolateComponent(variant.document, variant.wallIds);
+			if (variant.expectedRoomIds) {
+				expect(isolatedComponent.rooms.map((room) => room.id)).toEqual(variant.expectedRoomIds);
+			}
+			const isolatedComponentVerdict = validateWallFirstTopology(isolatedComponent);
 			expect(
 				wallsShareTopologyComponent(variant.document, ...variant.wallIds),
 				variant.label

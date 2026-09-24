@@ -335,7 +335,13 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		// ONLY the unrelated group is asserted on: the operated Room's own fate is its
 		// operation's business and is deliberately not required here.
 		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
+		expect(plan.document.rooms.find((room) => room.id === 'room-k')?.boundary).toEqual(
+			EXACT_COINCIDENCE.rooms.find((room) => room.id === 'room-k')?.boundary
+		);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+		expect(plan.document.openings.find((opening) => opening.id === 'opening:k:door:1')).toEqual(
+			EXACT_COINCIDENCE.openings.find((opening) => opening.id === 'opening:k:door:1')
+		);
 	});
 
 	it('OR-D12-2 — partial overlap keeps the unrelated identity and ownership', () => {
@@ -456,13 +462,16 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		};
 	}
 
-	/** The operated Room's own boundary Wall in the containment pre-state. */
+	/** The unrelated Room keeps its complete identity and ownership across callers. */
 	function assertUnrelatedSurvives(document: LayoutDocumentWallFirst, label: string) {
+		const unrelatedRoom = document.rooms.find((room) => room.id === 'room-k');
+		const originalUnrelatedRoom = FULL_CONTAINMENT.rooms.find((room) => room.id === 'room-k');
 		expect(
 			document.rooms.map((room) => room.id),
 			`${label}: the unrelated Room must survive the operation`
 		).toContain('room-k');
-		expect(document.rooms.find((room) => room.id === 'room-k')?.name).toBe('Room k');
+		expect(unrelatedRoom?.name).toBe('Room k');
+		expect(unrelatedRoom?.boundary).toEqual(originalUnrelatedRoom?.boundary);
 		expect(ownedObjectRoomId(document, 'obj-k')).toBe('room-k');
 		expect(document.openings.map((opening) => [opening.id, opening.wallId])).toContainEqual([
 			'opening:k:door:1',

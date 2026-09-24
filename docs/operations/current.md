@@ -1,36 +1,41 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.3a — S1–S8 implementation and acceptance evidence complete; implementation review is ready,
-       awaiting owner acceptance. No slice closeout or merge has occurred.
+CHILD: P23B.3a — S1–S8 implementation complete. The focused S8 acceptance-evidence correction is
+       implemented and verified; owner re-review and final implementation acceptance are pending. No
+       slice closeout or merge has occurred.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`; P23B.3a is the authorized
        policy slice at sequence step 9. P23B.3a's Option E behavior is implemented and verified, but is
        not recorded as shipped until the owner accepts the complete slice. P23B.0-durable and later
-       optimization work remain downstream of that acceptance. P26 remains in planning: its designer
-       brief is written, proposals have not started, and the validation window is not open. The
-       architecture cycle remains at PHASE_1 installed; P23B does not depend on P26 reconciliation.
+       optimization work remain downstream of that acceptance. P26 remains in planning; `main` now
+       records the accepted Continuous Spatial Authoring prototype and reconciled P26 umbrella from
+       PR #84. Carry that newer P26 direction forward when resolving the PR #82 baton conflict while
+       preserving P23B.3a's current state. The architecture cycle remains at PHASE_1 installed; P23B
+       does not depend on P26 reconciliation.
        Required evidence artifacts for the earlier P23B.0–P23B.2 sequence steps are landed. The P23B.1
        harvest and P23B.2 report retain their own review statuses; the P23B.2 ACCEPT/PART-RETURN decision
        remains open and separate from P23B.3a.
 
 NEXT:
-1. OWNER ACTION — review and accept the P23B.3a implementation on PR #82. S1–S8 and the full
-   acceptance evidence are complete; S5 and S6 re-reviews are complete by owner confirmation (GitHub
-   has no corresponding review entries). S7's three focused corrections are committed separately at
-   `45776941`; S8 evidence and the final verification record are recorded separately. The slice is
-   implementation-review-ready, not accepted or closed. Do not merge or run slice-closeout before owner
-   acceptance.
-2. AFTER P23B.3a acceptance — follow the ratified sequence: record Option E as shipped and advance to
+1. OWNER ACTION — re-review the focused S8 acceptance-evidence correction on PR #82. The exact-coincidence
+   oracle now compares the unrelated Room's boundary references and full hosted Opening record; the
+   multiple-Room OR-3a oracle isolates the entire connected component and asserts both Rooms remain in it.
+   Full suite, architecture, check and build lanes pass. S5/S6 re-reviews remain complete by owner
+   confirmation; GitHub has no corresponding review entries. S7 corrections are in `45776941`; S8 evidence
+   is in `c72b7469` plus the focused correction commit. No implementation defect is reported, and no
+   slice closeout or merge has occurred.
+2. AFTER P23B.3a acceptance — run routine slice-closeout, record Option E as shipped, and advance to
    P23B.0-durable measurement against the post-policy gates. No benchmark implementation or later
    optimization slice is authorized before that gate.
-3. P23B.2 ACCEPT/PART-RETURN remains a separate open evidence decision. The P23B.1 harvest and P23B.2
+3. MERGE READINESS — separate from implementation acceptance. PR #82 currently conflicts with `main`;
+   its title/body still describe the older documentation-only scope, and no GitHub status checks are
+   listed. After implementation acceptance, refresh its metadata and resolve the
+   `docs/operations/current.md` conflict on this branch, preserving the current P23B.3a status and the
+   accepted P26 direction from PR #84.
+4. P23B.2 ACCEPT/PART-RETURN remains a separate open evidence decision. The P23B.1 harvest and P23B.2
    report retain their own review statuses.
-4. P26 product planning may continue in parallel, but it is not the primary next-work instruction. The
-   designer brief is written; independent proposals and a reconciled direction/child plan remain future
-   work. No P26 implementation starts without an approved plan. The brief does not open the validation
-   window.
 5. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
@@ -55,13 +60,15 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.3a has no implementation blocker. Its complete implementation and S8 evidence await owner
-  acceptance; until then, Option E is not recorded as shipped and P23B.0-durable measurement cannot
-  begin. The implementation-review handoff is PR #82 on branch `p23b`.
+- P23B.3a has no implementation-code blocker. The focused S8 evidence correction is verified and awaits
+  owner re-review and acceptance; until then, Option E is not recorded as shipped and P23B.0-durable
+  measurement cannot begin. The implementation-review handoff is PR #82 on branch `p23b`.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and is separate from P23B.3a.
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified
-- P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it
+- P26's accepted Continuous Spatial Authoring prototype and reconciled umbrella are recorded on `main`
+  through PR #84. Carry that direction into this baton when the PR #82 conflict is resolved; P26 stays
+  separate from the P23B.3a implementation review.
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
