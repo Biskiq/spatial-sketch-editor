@@ -20,8 +20,9 @@ was ratified by the owner on 2026-09-22 at `e139a18b`, including the implementat
 acceptance criteria and curved-crossing/Option E rulings. Step 8's ratification gate is satisfied.
 P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was accepted and shipped on
 2026-09-24 after S1–S8 and OR-D12-1…6 passed. S5/S6 re-reviews are complete by owner confirmation; no
-separate GitHub review entries exist for them. P23B.0-durable is next at step 10, but its plan remains
-unratified; measurement-infrastructure implementation waits on its own authorization.
+separate GitHub review entries exist for them. P23B.0-durable is next at step 10; its plan was reconciled
+against the SHIPPED post-policy gates on 2026-09-24 (Stage A) and remains unratified, so
+measurement-infrastructure implementation waits on its own authorization.
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -31,8 +32,9 @@ GATE: PHASE 0 GATE and P23B.3's ratification gate are satisfied. The latter auth
 not authorize P23B.0-durable's planned measurement-infrastructure changes or any P23B.4–P23B.8
 optimization. P23B.0-durable remains PLANNED, UNRATIFIED. No numerical performance target is proposed.
 NEXT: owner review and ratification of the bounded P23B.0-durable plan, including its fixture and gesture
-identity, reference measurement environment and harness/baseline scope. Once authorized, execute sequence
-step 10 against the post-policy gates before any optimization work.
+identity, reference measurement environment and harness/baseline scope; the Stage A reconciliation packet
+is routed below. Once authorized, execute sequence step 10 against the post-policy gates before any
+optimization work.
 ```
 
 ```text
@@ -140,8 +142,10 @@ measurement evidence (P23B.0 — archived read-only reports; NOT benchmark basel
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
   (historical local /private/tmp runner paths in Pass A are not committed; reported source hashes
   cannot be independently verified from repository fixture bytes)
-durable measurement (P23B.0) → fixtures, harness, reproducible recorded baseline and budgets
-          outstanding → the P23B.0-durable plan above and the P23B.1 harvest record §11.1
+durable measurement (P23B.0) → plan reconciled against the SHIPPED Option E policy (Stage A,
+          2026-09-24); fixtures, harness, reproducible recorded baseline and budgets outstanding →
+          p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md (Stage A owner packet) ·
+          the P23B.0-durable plan above · the P23B.1 harvest record §11.1
 phase status/order → ../README.md
 P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md

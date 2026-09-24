@@ -1,8 +1,9 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.0-durable — next sequence step 10; plan PLANNED, UNRATIFIED. Owner review and ratification
-       are the immediate next action before measurement-fixture, harness or baseline implementation.
+CHILD: P23B.0-durable — next sequence step 10; plan RECONCILED against the shipped Option E policy
+       (Stage A, 2026-09-24) but still UNRATIFIED. Owner review and ratification are the immediate next
+       action before measurement-fixture, harness or baseline implementation.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -39,6 +40,7 @@ P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/READM
 P23B.3a shipped plan stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
 P23B.3a QA/acceptance stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/qa/2026-09-24-P23B.3a-qa-gate-record.md
 P23B.0-durable plan → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md
+P23B.0-durable Stage A ratification handoff → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
 P23B.2 research report → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
 P26 planning and accepted direction → ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md
@@ -51,7 +53,9 @@ post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
 - P23B.0-durable has no committed fixture identity or recorded baseline for the curved authoring case;
-  its plan is unratified, so measurement-infrastructure implementation remains gated.
+  its plan is reconciled but unratified, so measurement-infrastructure implementation remains gated.
+  Ratification still needs the owner's BRANCH-R/C choice and the gesture/snap plus reference-machine
+  confirmation (Stage A packet §4).
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
