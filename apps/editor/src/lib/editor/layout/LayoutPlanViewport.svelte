@@ -3371,6 +3371,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
 		const edit = interaction.architectureEdit;
 		if (edit?.pointerId === event.pointerId) {
+			// P23B — the app's own release gate decides whether this gesture was
+			// ever a drag: below the shared threshold the press is still a plain
+			// click, so it is reported as the selection it actually performed and
+			// never as an accepted edit boundary.
+			if (!architectureEditMovedOnRelease(architectureEditMoved, architectureEditStartScreen, screenPoint(event))) {
+				return null;
+			}
 			return edit.kind === 'wall-bend' || edit.kind === 'curve-control-move'
 				? 'bend-knot-edit'
 				: 'plan-drag-edit';
