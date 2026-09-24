@@ -256,6 +256,132 @@ const ROOM_FAILURE_BEHIND_A_CLEAN_COMPONENT = documentOf({
 	]
 });
 
+/** A shallow sampled crossing beside an unrelated clean group (near-tangent variant). */
+const NEAR_TANGENT_CURVE_FAILURE = documentOf({
+	junctions: [
+		['clean-a', 20, 0],
+		['clean-b', 24, 0],
+		['near-a', 0, 0],
+		['near-m', 6, 0],
+		['near-b', 6, 4]
+	],
+	walls: [
+		{ id: 'clean-near', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'near-straight', start: 'near-a', end: 'near-m', role: 'partition' },
+		{
+			id: 'near-bowed',
+			start: 'near-m',
+			end: 'near-b',
+			role: 'partition',
+			centerline: curved([6, 0], [6, 4], [[3, -0.001]], 'near-bowed')
+		}
+	]
+});
+
+/** Reverses both overlapping Wall endpoint orders while retaining their explicit shared Junction. */
+const REVERSED_WALL_OVERLAP = documentOf({
+	junctions: [
+		['clean-a', 20, 10],
+		['clean-b', 24, 10],
+		['reverse-a', 0, 10],
+		['reverse-j', 6, 10],
+		['reverse-c', 3, 10]
+	],
+	walls: [
+		{ id: 'clean-reverse', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'reverse-long', start: 'reverse-j', end: 'reverse-a', role: 'partition' },
+		{ id: 'reverse-short', start: 'reverse-j', end: 'reverse-c', role: 'partition' }
+	]
+});
+
+/** A sampled crossing where one Wall has a zero-width X bounding box before expansion. */
+const DEGENERATE_BOX_CURVE_FAILURE = documentOf({
+	junctions: [
+		['clean-a', 20, 0],
+		['clean-b', 24, 0],
+		['box-v-a', 4, 0],
+		['box-v-b', 4, 8],
+		['box-c', 10, 0]
+	],
+	walls: [
+		{ id: 'clean-box', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'box-vertical', start: 'box-v-a', end: 'box-v-b', role: 'partition' },
+		{
+			id: 'box-bowed',
+			start: 'box-v-a',
+			end: 'box-c',
+			role: 'partition',
+			centerline: curved([4, 0], [10, 0], [[4, 6]], 'box-bowed')
+		}
+	]
+});
+
+/** Reversed, axis-aligned Walls give valid shared-endpoint relations and zero-area boxes. */
+const REVERSED_DEGENERATE_VALID_COMPONENT = documentOf({
+	junctions: [
+		['clean-a', 20, 10],
+		['clean-b', 24, 10],
+		['valid-left', 0, 0],
+		['valid-j', 4, 0],
+		['valid-up', 4, 4]
+	],
+	walls: [
+		{ id: 'clean-valid', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'valid-reversed-horizontal', start: 'valid-j', end: 'valid-left', role: 'partition' },
+		{ id: 'valid-vertical', start: 'valid-j', end: 'valid-up', role: 'partition' }
+	]
+});
+
+/** Two valid Room faces in one transitive Wall/Junction component. */
+const TWO_ROOMS_SHARED_COMPONENT = documentOf({
+	junctions: [
+		['room-a', 0, 0],
+		['room-m', 3, 0],
+		['room-b', 6, 0],
+		['room-c', 6, 4],
+		['room-n', 3, 4],
+		['room-d', 0, 4],
+		['clean-a', 20, 0],
+		['clean-b', 24, 0]
+	],
+	walls: [
+		{ id: 'clean-room', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'room-south-left', start: 'room-a', end: 'room-m' },
+		{ id: 'room-south-right', start: 'room-m', end: 'room-b' },
+		{ id: 'room-east', start: 'room-b', end: 'room-c' },
+		{ id: 'room-north-right', start: 'room-c', end: 'room-n' },
+		{ id: 'room-north-left', start: 'room-n', end: 'room-d' },
+		{ id: 'room-west', start: 'room-d', end: 'room-a' },
+		{ id: 'room-shared', start: 'room-m', end: 'room-n' }
+	],
+	rooms: [
+		{
+			id: 'room-left',
+			name: 'Left',
+			boundary: [
+				{ wallId: 'room-south-left', direction: 'forward' },
+				{ wallId: 'room-shared', direction: 'forward' },
+				{ wallId: 'room-north-left', direction: 'forward' },
+				{ wallId: 'room-west', direction: 'forward' }
+			],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		},
+		{
+			id: 'room-right',
+			name: 'Right',
+			boundary: [
+				{ wallId: 'room-south-right', direction: 'forward' },
+				{ wallId: 'room-east', direction: 'forward' },
+				{ wallId: 'room-north-right', direction: 'forward' },
+				{ wallId: 'room-shared', direction: 'reverse' }
+			],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	]
+});
+
 // ---------------------------------------------------------------------------
 // OR-3b fixtures — every overlap kind, as an INDEPENDENT pair
 // ---------------------------------------------------------------------------
@@ -467,6 +593,88 @@ describe('P23B.3a S4 / OR-3a — for a same-component pair the scoped verdict IS
 			if (!pair) continue;
 			expect(wallsShareTopologyComponent(document, pair[1]!, pair[2]!)).toBe(true);
 		}
+	});
+});
+
+describe('P23B.3a S8 / OR-3a — deferred same-component variants', () => {
+	const invalidVariants: ReadonlyArray<{
+		label: string;
+		document: LayoutDocumentWallFirst;
+		wallIds: readonly [string, string];
+	}> = [
+		{
+			label: 'near-tangent sampled curves',
+			document: NEAR_TANGENT_CURVE_FAILURE,
+			wallIds: ['near-straight', 'near-bowed']
+		},
+		{
+			label: 'reversed collinear Walls',
+			document: REVERSED_WALL_OVERLAP,
+			wallIds: ['reverse-long', 'reverse-short']
+		},
+		{
+			label: 'sampled crossing with a zero-width Wall box',
+			document: DEGENERATE_BOX_CURVE_FAILURE,
+			wallIds: ['box-vertical', 'box-bowed']
+		}
+	];
+
+	const validVariants: ReadonlyArray<{
+		label: string;
+		document: LayoutDocumentWallFirst;
+		wallIds: readonly [string, string];
+	}> = [
+		{
+			label: 'reversed endpoint order and zero-area axis-aligned boxes',
+			document: REVERSED_DEGENERATE_VALID_COMPONENT,
+			wallIds: ['valid-reversed-horizontal', 'valid-vertical']
+		},
+		{
+			label: 'multiple Rooms in one connected component',
+			document: TWO_ROOMS_SHARED_COMPONENT,
+			wallIds: ['room-south-left', 'room-south-right']
+		}
+	];
+
+	it('does not drop an invalid same-component relation in the added variants', () => {
+		for (const variant of invalidVariants) {
+			const fullDocumentVerdict = validateWallFirstTopology(variant.document);
+			const isolatedComponentVerdict = validateWallFirstTopology(
+				isolateComponent(variant.document, variant.wallIds)
+			);
+			expect(
+				wallsShareTopologyComponent(variant.document, ...variant.wallIds),
+				variant.label
+			).toBe(true);
+			expect(fullDocumentVerdict, variant.label).toEqual(isolatedComponentVerdict);
+			expect(fullDocumentVerdict, variant.label).toMatchObject({
+				code: 'unsupported_wall_topology'
+			});
+		}
+	});
+
+	it('does not turn valid same-component relations into failures in the added variants', () => {
+		for (const variant of validVariants) {
+			const fullDocumentVerdict = validateWallFirstTopology(variant.document);
+			const isolatedComponentVerdict = validateWallFirstTopology(
+				isolateComponent(variant.document, variant.wallIds)
+			);
+			expect(
+				wallsShareTopologyComponent(variant.document, ...variant.wallIds),
+				variant.label
+			).toBe(true);
+			expect(fullDocumentVerdict, variant.label).toBeUndefined();
+			expect(fullDocumentVerdict, variant.label).toEqual(isolatedComponentVerdict);
+		}
+	});
+
+	it('continues to permit overlap across independent components', () => {
+		for (const entry of [INDEPENDENT_CURVE_CROSSING, INDEPENDENT_COLLINEAR_OVERLAP, INDEPENDENT_TEE]) {
+			expect(validateWallFirstTopology(entry)).toBeUndefined();
+		}
+		expect(wallsShareTopologyComponent(INDEPENDENT_CURVE_CROSSING, 'wall-up', 'wall-down')).toBe(
+			false
+		);
 	});
 });
 

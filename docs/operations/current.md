@@ -1,140 +1,37 @@
 # Current
 
 PHASE: P23B
-CHILD: none in execution — P23B is in planning; the umbrella is landed, P23B.3 is authored and the child
-       plans exist, but NOTHING is approved and no implementation has started
+CHILD: P23B.3a — S1–S8 implementation and acceptance evidence complete; implementation review is ready,
+       awaiting owner acceptance. No slice closeout or merge has occurred.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
-       Performance & Stabilization) is wired between P23 and P26: umbrella landed, child slices
-       proposed, no implementation approved. The post-P23 execution order is owner-ratified and
-       deliberately sequential for evidence quality, not elapsed time. P26 remains in planning — its
-       synthesis is the authoritative research input and the designer brief is written
-       (p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Proposals are not started.
-       The architecture cycle sits at PHASE_1 installed — Phase 0 adjudication is recorded
-       (phase-0/adjudication.md) and the justified capture is installed, so no owner action is
-       pending there. P26 is the selected validation window: selected, not yet open. The cycle
-       reports ready for validation only once P26's prepared implementation plan is reconciled
-       against the installed mechanisms, and Phase 2 opens on P26's first implementation slice.
-       P23B implementation does not depend on that reconciliation — it waits only on its own gate.
-       P23B.3 (synthesis + optimization direction + the operational dependency map + the curved-crossing
-       owner decision record) is AUTHORED and awaits owner ratification at SEQUENCE step 8; its child
-       plans for P23B.0-durable and P23B.4–P23B.10 are written and unratified. The owner-directed
-       direction for INDEPENDENT SPATIAL PLACEMENT with explicit topological connection is folded in as
-       decision-record OPTION E, together with the source-traced topology ownership model and its
-       per-slice consequences. The owner RULED on 2026-09-22: **D-1 Option E**, **D-9 confirmed as
-       written** (explicit Junction identity governs connectivity; coincident INDEPENDENT components are
-       permitted; accidental duplicates WITHIN one connected component stay invalid; only an explicit join
-       adopts an id — NO new representation is introduced), **D-10** Join/Connect at planning level,
-       **D-11 ARRANGEMENT 1** (a dedicated, narrowly scoped topology-policy slice placed BEFORE
-       `P23B.0-durable`, inside this branch and PR, so the recorded baseline is POST-POLICY by
-       construction), and **D-12 owned by that slice** (the reconciliation identity proof, discharged
-       before the slice's acceptance). The implementation plan and the performance acceptance criteria
-       are now **RATIFIED by the owner (2026-09-22, review of `e139a18b`)** with THREE BINDING P23B.3a
-       EXECUTION AMENDMENTS recorded in that slice's plan STATUS block: **AM-1** S4 must not require a
-       case's pre- and post-policy verdicts green at once; **AM-2** D-12 requires an explicit
-       IMPLEMENTATION-and-proof step (S3a), not an oracle alone; **AM-3** F8 is scoped to the
-       NO-IMPLICIT-JOIN guarantee while Join/Connect stays deferred (D-10) — plus the ruling that S3's
-       known-red reproduction stays outside every mandatory green lane until S3a fixes it. The slice is
-       STAGED as **P23B.3a — Independent Placement & Topology Policy**, inserted into the
-       authoritative `SEQUENCE` as step 9 ahead of the durable measurement, with the umbrella scope
-       amendment and its own plan workspace; the staging commit `839772cb` is NOT rewritten. All
-       required evidence is
-       landed: the two historical P23B.0 read-only pass reports (archived verbatim, NOT benchmark
-       baselines), the P23B.1 plan + harvest record, and the P23B.2 external research report — so
-       SEQUENCE step 6 is satisfied as to artifact. Both the harvest record and the research report are
-       still marked awaiting review by their own status blocks.
+       Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
+       synthesis and implementation criteria were ratified at `e139a18b`; P23B.3a is the authorized
+       policy slice at sequence step 9. P23B.3a's Option E behavior is implemented and verified, but is
+       not recorded as shipped until the owner accepts the complete slice. P23B.0-durable and later
+       optimization work remain downstream of that acceptance. P26 remains in planning: its designer
+       brief is written, proposals have not started, and the validation window is not open. The
+       architecture cycle remains at PHASE_1 installed; P23B does not depend on P26 reconciliation.
+       Required evidence artifacts for the earlier P23B.0–P23B.2 sequence steps are landed. The P23B.1
+       harvest and P23B.2 report retain their own review statuses; the P23B.2 ACCEPT/PART-RETURN decision
+       remains open and separate from P23B.3a.
 
 NEXT:
-1. IMMEDIATE — EXECUTE **P23B.3a** (the P23B RATIFICATION GATE, SEQUENCE step 8, is SATISFIED: the owner
-   ratified the synthesis, the implementation plan and the performance acceptance criteria on 2026-09-22
-   at `e139a18b`, with the three binding execution amendments AM-1…AM-3). Run the slice's ratified S1–S8
-   workflow — reference-first freeze, the general connectivity test, the D-12 implementation-and-proof
-   step, the component-scoped gates, the authoring intent split, ingress parity, acceptance — and STOP
-   at that slice's implementation review with OR-D12-1…6 evidence.
-   IN EXECUTION, not awaiting authorization: S1 (reference freeze), S2 (general connectivity test), S3
-   (the D-12 hazard, quarantined) and S3a (the D-12 implementation-and-proof, **ACCEPTED by the owner**
-   at `ba54e9cf`) have landed; S4 (the component-scoped subject for `validateWallFirstTopology` and the
-   sampled crossing authority, with its own oracle) has landed and is **ACCEPTED by the owner** (review
-   of `858d796f`: no implementation blocker, with three instructions carried into S5 and one non-blocking
-   OR-3a variant-coverage note owed before closeout); and S5 (the chain gate re-scoped in BOTH halves
-   with the transitional `{ subject: 'document' }` escape removed, plus the component-scoped
-   `duplicate_junction_point` coincidence rule D-9, with its own oracle) has landed; review found ONE
-   blocker — the unattached-Junction sentinel was a STRING that a valid authored Wall id could claim,
-   mis-classifying an unattached Junction as connected to that Wall — and the focused S5 correction now
-   makes the sentinel collision-proof (a symbol, no schema change) with a codec-valid regression; its
-   re-review is COMPLETE by owner confirmation. S6 (the AUTHORING INTENT SPLIT in `planWallChain`, completing T3 → F3) has
-   landed with its own oracle: an operation that DECLARES the group it extends keeps adoption and in-group
-   noding, while an operation that declares nothing mints its own Junction records, splits no host Wall and
-   joins nothing — with the editor half of the same step (one shared click→declaration rule, the run
-   start's own declaration in the interaction state, and a per-endpoint `WallSegmentConnection` on
-   `commitWallSegment`) so continuations, dividers and the CLOSING click stay class 3 end to end. Review found
-   FOUR focused findings and the S6 correction addresses all of them in one commit: `endpointHostSnaps` is now
-   VALIDATED before it grants noding authority (point index, uniqueness, baseline host existence, a Junction
-   anchor on the same point agreeing about the component, and a genuine relationship with the named Wall), so
-   missing/stale/conflicting claims reject deterministically; the geometry-only click fallback declares nothing
-   on an ambiguous overlap while a validated, specifically identified snap winner may still declare its host;
-   a three-component regression pins the ruling (a declaration to A cascades noding within A while intersecting
-   independent B stays untouched) together with the missing/stale/duplicate/contradictory cases; and the
-   outdated `layout-wallChain` comments on coordinate adoption and global crossings are corrected. This rules
-   the S6 OPEN CONTRACT QUESTION: a VALID declaration authorizes extension into the host's WHOLE connected
-   component — so a host the operation crosses (rather than touches) stays declarable — while an unrelated
-   component is never joined, which is why the four ratified P23.6e/P23.11 in-group noding regressions stay
-   green. It ALSO enforces the ratified four-class model directly: ALL connection declarations for one
-   `planWallChain` operation (host declarations and Junction anchors alike) must resolve to ONE pre-existing
-   baseline component — several declarations inside that group are valid (class 3), while two previously
-   independent components reject deterministically (class 4, the deliberate Join/Connect D-10 defers) instead
-   of being bridged or silently narrowed, and an undeclared component the chain crosses stays untouched. The
-   pre-policy two-Room single-divider regression is re-based to assert that rejection with its old 4-Room
-   outcome recorded as history. Its re-review is COMPLETE by owner confirmation.
-   S7 (DUPLICATE / IMPORT GATE PARITY, with the D-8 comment correction in the SAME commit as the behaviour it
-   describes) was ACCEPTED at `5e310694`: no implementation blocker was found. The duplicate path's own
-   chord-exact Wall-pair loop is DELETED and `finalizeCandidate` calls the canonical
-   `validateWallFirstTopology` whenever a batch introduces Walls. Duplicate, precision and Room-move invoke
-   that canonical topology validator. Chain retains its separate final gate: it uses the shared sampled
-   crossing detector and component policy, while keeping its own chord-pair loop. Import remains codec-valid
-   ingestion, separate from topology validation: the codec still carries no geometric rule and the import
-   path is unchanged (F-C6 is a scope, not a licence to make the codec semantic), which the new oracle asserts
-   by importing a document the topology authority refuses at the same moment. T1 → F1 is
-   completed: the S1 row is RETIRED (AM-1) and its successor asserts that duplicating a Room onto its OWN
-   position now COMMITS — new Junction ids at the coincident coordinates, no shared Junction with the source,
-   nothing split or adopted, the canonical gate agreeing, both groups independently editable — while a clone
-   that merely overlaps or crosses independent geometry is permitted placement (F1/F5) rather than
-   `topology_invalid`. Parity is PROVEN rather than claimed: a fixture that pairs an isolated Room with a
-   PRE-EXISTING same-component curve crossing (invisible to a chord scan, refused by the sampled authority)
-   makes a Wall-introducing duplicate batch refuse with `topology_invalid`, atomically, while the same batch
-   without the crossing is admitted. R-b's PERMANENT same-component atomic refusal and R-d's import admission
-   are retained; the two P23.4 rows that pinned the pre-policy overlap refusal are re-based with their old
-   verdicts recorded as history, and the reference register now ASSERTS that no row carries a pre-policy
-   verdict. Three focused review corrections are being completed separately from S8: narrow the parity
-   wording, prove full source-group preservation in both independent-edit directions, and correct the
-   Opening-set options comment. S5 and S6 re-reviews are complete by owner confirmation; GitHub does not
-   record those review entries. S8 is unblocked.
-   S8 remains, and the policy is still NOT DELIVERED: no fixture or document may cite Option E as
-   shipped until the slice is accepted. Follow the slice plan's PROGRESS record for the step-by-step state.
-   Still owed before closeout (an S8 evidence obligation, not an S7 blocker): OR-3a's variant list
-   (near-tangent curves, reversed Walls, degenerate boxes).
-   The Arrangement-1 STAGING is DONE (umbrella scope amendment · `SEQUENCE` insertion of P23B.3a as
-   step 9 · the named slice workspace), and **D-7 and D-8 are RESOLVED** — the slice is P23B.3a and the
-   `layout-duplicate.ts` comment correction HAS LANDED inside it, in the same commit as the validation
-   behaviour it describes. Still open alongside it: the P23B.2 evidence
-   decision (ACCEPT/PART-RETURN).
-   This ratification authorizes P23B.3a ALONE: no benchmark implementation, no other topology change and
-   no optimization slice (P23B.0-durable, P23B.4–P23B.8) starts yet — P23B.0-durable begins only once the
-   policy implementation and OR-D12-1…6 are ACCEPTED. Order in brief: Phase 0
-   evidence → owner adjudication → Phase 1 installation → P23B.0 read-only measurement → P23B.1 harvest
-   → P23B.2 external research → P23B.3 synthesis → owner ratification of the implementation plan and
-   performance acceptance criteria → **P23B.3a topology policy** → durable P23B.0 measurement against
-   the post-policy gates → optimization slices, verify, review, close out.
-   AUTHORITATIVE SEQUENCE (order and gate placement, recorded once) →
-   ../roadmap/p23b-geometry-performance/README.md §SEQUENCE
-2. Read-only profiling and measurement planning may precede implementation authorization; committed
-   benchmark-infrastructure changes (fixtures, harness, baselines, budgets) may not.
-3. P26 product planning may continue in parallel, but it is not the primary next-work instruction.
-   The designer brief is written
-   (../roadmap/p26-spatial-depth/design/briefs/2026-09-22-p26-designer-brief.md). Next P26 artifact,
-   when that work is picked up, is independent design proposals and then a reconciled direction
-   and child plan. No P26 implementation starts without an approved plan. The brief does not open
-   the validation window.
-4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
+1. OWNER ACTION — review and accept the P23B.3a implementation on PR #82. S1–S8 and the full
+   acceptance evidence are complete; S5 and S6 re-reviews are complete by owner confirmation (GitHub
+   has no corresponding review entries). S7's three focused corrections are committed separately at
+   `45776941`; S8 evidence and the final verification record are recorded separately. The slice is
+   implementation-review-ready, not accepted or closed. Do not merge or run slice-closeout before owner
+   acceptance.
+2. AFTER P23B.3a acceptance — follow the ratified sequence: record Option E as shipped and advance to
+   P23B.0-durable measurement against the post-policy gates. No benchmark implementation or later
+   optimization slice is authorized before that gate.
+3. P23B.2 ACCEPT/PART-RETURN remains a separate open evidence decision. The P23B.1 harvest and P23B.2
+   report retain their own review statuses.
+4. P26 product planning may continue in parallel, but it is not the primary next-work instruction. The
+   designer brief is written; independent proposals and a reconciled direction/child plan remain future
+   work. No P26 implementation starts without an approved plan. The brief does not open the validation
+   window.
+5. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
    named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
 
 ROUTE:
@@ -142,7 +39,7 @@ phase status/order → ../roadmap/README.md
 P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
 P23B umbrella (rationale/boundaries only; includes the owner-approved P23B.3a scope amendment) → ../roadmap/p23b-geometry-performance/2026-09-22-P23B-geometry-performance-stabilization-umbrella.md
 P23B.3a topology policy (owner-selected slice; SEQUENCE step 9; holds the D-12 acceptance contract) → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
-P23B.3 synthesis + direction (authored, awaiting ratification) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
+P23B.3 synthesis + direction (ratified at `e139a18b`) → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-synthesis.md
 P23B.3 operational dependency map / child plan index → ../roadmap/p23b-geometry-performance/p23b.3-synthesis-optimization-direction/2026-09-22-P23B.3-implementation-and-dependency-map.md
 P23B.2 external research (landed verbatim, awaiting review) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
 P23B.2 readable navigation for that report (additive; the report is never edited) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-research-navigation.md
@@ -158,25 +55,10 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B has no measured baseline yet; its durable measurement waits on P23B.3a landing AND being
-  accepted (the policy is not delivered by a ruling, and P23B.0-durable's baseline is post-policy by
-  construction). The P23B.3 ratification itself is DONE (2026-09-22 at `e139a18b`), so P23B.3a execution
-  is unblocked. Phase 0 adjudication and the justified Phase 1 response are installed and do not block
-  that work
-- P23B.3 is RATIFIED (2026-09-22 at `e139a18b`), so the scoped-validation direction (verdict reuse and
-  the negative fixture's polarity) is now plannable against the designated post-policy behaviour — but
-  the POLICY ITSELF is not yet DELIVERED: its verdicts become the shipped ones only when P23B.3a lands,
-  and no fixture may claim a verdict the shipped gates do not produce. Owner decisions recorded in the
-  P23B.3 synthesis §9.1/§9.2
-- Option E is RULED (D-1) with D-9 CONFIRMED as written — connectivity is explicit graph identity,
-  never coordinates alone; coincidence is permitted across independent components while duplicate-node
-  validity is retained within one; and NO new representation is needed (the obstacle was a document-wide
-  validation invariant plus planWallChain's adoption reflex, not a schema gap). D-11 selects
-  ARRANGEMENT 1 and D-12 is owned by that policy slice. D-7 and D-8 are RESOLVED, and the slice is
-  STAGED as P23B.3a (SEQUENCE step 9, umbrella amendment landed) and now RATIFIED for implementation
-  with AM-1…AM-3 binding. What is STILL OPEN is the P23B.2 evidence decision, and the policy's own
-  DELIVERY: until P23B.3a lands and its OR-D12-1…6 are accepted, no downstream slice, fixture or
-  document may cite Option E as shipped
+- P23B.3a has no implementation blocker. Its complete implementation and S8 evidence await owner
+  acceptance; until then, Option E is not recorded as shipped and P23B.0-durable measurement cannot
+  begin. The implementation-review handoff is PR #82 on branch `p23b`.
+- The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and is separate from P23B.3a.
 - P23B.0 has no committed fixture identity and no recorded baseline for the curved authoring case, so no
   optimization may yet be measured honestly; its durable completion is planned and unratified
 - P26 has a designer brief and no child plan yet; proposals are not started. Planning is the current work, not a blocker to it

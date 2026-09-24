@@ -740,7 +740,9 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		const plan = success(
 			planDuplicateIsolatedRoom(sourceDocument, { roomId: 'room-1', delta: [0, 0] })
 		);
-		expect(plan.createdRoomId).toBe('room-1-copy');
+		const cloneRoomId = plan.createdRoomId;
+		expect(cloneRoomId).toBe('room-1-copy');
+		if (cloneRoomId === undefined) throw new Error('duplicate did not allocate a clone Room id');
 		expect(plan.createdJunctionIds).toEqual(['j-a-copy', 'j-b-copy', 'j-c-copy', 'j-d-copy']);
 		expect(plan.createdWallIds).toEqual([
 			'wall-a1-copy',
@@ -786,7 +788,7 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		const cloneGroupIds = {
 			junctions: new Set(plan.createdJunctionIds),
 			walls: new Set(plan.createdWallIds),
-			rooms: new Set([plan.createdRoomId]),
+			rooms: new Set([cloneRoomId]),
 			openings: new Set(plan.createdOpeningIds),
 			objects: new Set(plan.createdObjectIds)
 		};

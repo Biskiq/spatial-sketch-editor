@@ -352,6 +352,25 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 		if (plan.kind !== 'success') return;
 		expect(roomsOf(plan.document)).toContainEqual(['room-k', 'Room k']);
 		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toContainEqual([
+			'opening:k:door:1',
+			'k-a1'
+		]);
+	});
+
+	it('OR-D12-4 — only the OPERATED Room follows its role-change lineage contract', () => {
+		const plan = operateOnOperatedRoom(FULL_CONTAINMENT);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		// The operation's own boundary Wall becomes a partition, so its Room may
+		// retire under its existing contract. Spatial containment does not transfer
+		// that identity or its associated state to the unrelated Room.
+		expect(plan.retiredRoomIds).toEqual(['room-c']);
+		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);
+		expect(ownedObjectRoomId(plan.document, 'obj-k')).toBe('room-k');
+		expect(plan.document.openings.map((opening) => [opening.id, opening.wallId])).toEqual([
+			['opening:k:door:1', 'k-a1']
+		]);
 	});
 
 	it('OR-D12-5 — the authority is the GENERAL Wall/Junction test, never connectedRoomIds', () => {
@@ -445,6 +464,10 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		).toContain('room-k');
 		expect(document.rooms.find((room) => room.id === 'room-k')?.name).toBe('Room k');
 		expect(ownedObjectRoomId(document, 'obj-k')).toBe('room-k');
+		expect(document.openings.map((opening) => [opening.id, opening.wallId])).toContainEqual([
+			'opening:k:door:1',
+			'k-a1'
+		]);
 	}
 
 	it('OR-D12-6 wall delete — deleting the OPERATED Room\'s Wall leaves the unrelated Room intact', () => {
@@ -452,6 +475,14 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'wall delete');
+	});
+
+	it('OR-D12-6 role change — changing the OPERATED Room\'s Wall keeps unrelated ownership intact', () => {
+		const plan = operateOnOperatedRoom(FULL_CONTAINMENT);
+		expect(plan.kind).toBe('success');
+		if (plan.kind !== 'success') return;
+		assertUnrelatedSurvives(plan.document, 'role change');
+		expect(plan.retiredRoomIds).toEqual(['room-c']);
 	});
 
 	it('OR-D12-6 dissolve — dissolving the OPERATED Room\'s Junction leaves the unrelated Room intact', () => {
