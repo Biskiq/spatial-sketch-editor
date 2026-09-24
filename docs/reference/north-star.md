@@ -9,9 +9,7 @@ placement, persistence presentation) lives in
 Current behavior remains canonical in the architecture/component/design
 contracts; this document states the destination, not a claim that every
 capability already exists.
-**Ratified 2026-09-09 — unified Spatial authoring:** Plan and 3D are complementary authoring lenses over the same canonical project entities and operations. Both may expose an operation where their representation supports it truthfully; the target entity’s owning document determines the mutation domain. Neither view owns duplicate spatial truth. Committed selection survives view changes; unfinished placement/transform gestures cancel without a history result. This is target direction, not a claim of shipped feature parity. The [P23/P24 addendum](../roadmap/p23-layout-depth/2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md) retains entity-owned mutation and placement direction; its separate-surface implementation assumptions require reconciliation with P26.
-
-**Accepted 2026-09-24 — Continuous Spatial Authoring:** P26 delivers one continuous Plan↔3D authoring experience, including editable intermediate standpoints, Wall facing/peeling, drawn-line Section with depth/Reveal/recovery, ceiling lift/look-up, precision according to representational legibility, and exact contextual return with view history separate from document Undo. One spatial world preserves separate Layout and Scene ownership. The [P26 umbrella](../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md) owns the proposed architecture, viewport rebuild, implementation sequence and gates; P24 inherits the landed unified system. This is accepted product direction, not shipped behavior or implementation authorization. P23B remains the preceding execution track; the durable PLATE shell contract remains unchanged.
+**Spatial product direction:** one canonical project supports continuous Plan↔3D authoring and contextual spatial representations. Semantic edits belong to the target’s owning document; Layout and Scene remain separate authorities. The Spatial and Build sections below express the accepted destination, including first-class circular Rooms enclosed by one Wall. The [P26 umbrella](../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md) owns proposed architecture, technical proofs, scope and readiness; this direction does not authorize implementation or change PLATE. The [P23/P24 addendum](../roadmap/p23-layout-depth/2026-09-09-P23-P24-unified-plan-3d-authoring-addendum.md) retains entity-owned mutation and placement principles; separate-surface implementation assumptions require reconciliation with P26.
 
 **Ratified 2026-08-31:** the project shell has two primary creative modes —
 **Spatial** (the current editor) and **Experience** (long-term direction) —
@@ -182,42 +180,72 @@ near-term roadmap work and are not over-designed ahead of schedule.
 
 ## Core authoring model — Spatial mode
 
-Inside **Spatial mode**, the editor remains organized around the canonical
-internal workspace model `Scene | Camera` over `Plan | 3D`:
+Inside **Spatial mode**, `Scene | Camera` remain recognizable authoring domains
+and `Plan | 3D` recognizable destinations. The accepted target connects those
+destinations continuously within one spatial viewport, including usable
+intermediate standpoints; they do not own separate geometry or editing truth:
 
 ```text
 Spatial
 ├─ Scene
 │  ├─ Plan
 │  │  ├─ Layout   → build and refine spatial structure
-│  │  └─ Arrange  → arrange movable authored content in 2D
-│  └─ 3D          → author scene content, materials, lighting, placement
+│  │  └─ Arrange  → stage supported content from above
+│  └─ 3D          → continue architectural and Scene editing where legible
 └─ Camera
    ├─ Plan        → author spatial camera graph/topology and paths
    └─ 3D          → author movement, framing, view intent, and experience
 ```
 
-These are views of one project inside one persistent shell, not separate apps.
-The shell may grow new contextual capabilities, but the domain/view model stays
-coherent and does not become a collection of unrelated workspaces. This model
-is **not** replaced or flattened by the project-level shell: `Scene | Camera`
-and `Plan | 3D` remain the canonical axes inside Spatial mode, and existing
-spatial domains are not renamed because a project shell now exists.
+These are views of one project inside one persistent shell. Face a Wall, peel
+it, open a drawn Section or lift/look up at a ceiling as temporary contextual
+representations of that same world. They are neither peer workspaces nor new
+persisted architectural documents. Measured values come from canonical state;
+handles are available where their axes and displayed surfaces support a
+truthful edit, including intermediate angles. A settled picture makes only the
+scale claims it can support.
+
+Committed selection survives navigation. Cancel unfinished authoring before
+accepting a view transition; returning through nested contexts restores the
+valid prior standpoint exactly while retaining accepted edits. View history
+and document Undo are separate. Scene/Camera ownership, canonical camera route
+and motion evaluation, and visitor/editor isolation remain intact.
+
+This is the **P26 target**, not a claim that the current separate Plan SVG and
+3D workspaces already implement continuity. P26 proposes their viewport
+rebuild; PLATE remains the durable shell authority until explicit deltas are
+ratified. The project shell does not rename or flatten Scene/Camera domains
+or remove Plan/3D as discoverable destinations.
 
 ## Build (Spatial) — architectural authoring
 
-Scene Plan grows from rough drafting into a practical architectural authoring
-surface for constructing spaces that are good enough to experience directly.
-P23 (Layout Depth) is explicitly staged. Its ratified minimum is **wall-first**:
-first-class Junctions/Walls, Wall-hosted Openings, `boundary | partition` Wall
-roles, and persistent semantic Rooms reconciled over derived boundary-Wall
-faces. Layout objects remain document-level/project-world-local. Exact
-Wall/Junction dimensions, deterministic snapping/alignment, continuous
-Wall/Partition sketching, duplicate/repeat, useful presets, direct
-Wall/Junction manipulation, a bounded canonical curved-Wall workflow with
-render-safe validation, stable architectural display identity, and truthful
-Plan/3D presentation build on that foundation before P23 closeout. Broader
-depth (stairs, railings, richer parametric components, arbitrary/general
+Build creates and refines canonical architecture through continuous spatial
+authoring, using Plan for construction and any legible standpoint for precision.
+The shipped, closed P23 foundation is **wall-first**: first-class
+Junctions/Walls, Wall-hosted Openings, boundary/partition roles and persistent
+Rooms reconciled over derived boundary-Wall faces. It includes ordinary
+Wall/Partition drawing, exact dimensions, snapping/alignment, direct
+manipulation and bounded cubic curves. Layout objects remain world-local.
+
+**P26 includes a first-class Circular Room tool:** place its center, size it
+by radius/diameter and create one persistent Room enclosed by **one continuous,
+self-connected Wall** in an atomic architectural operation. Subsequent size
+edits retain those identities; Openings belong to the same Wall, including at
+its station seam. The creator can move continuously into 3D, edit an Opening,
+then partially or fully unfold that Wall as view state. A ring assembled from
+independently authored Wall segments does not fulfill this capability. The
+canonical mathematical representation and numerical precision remain subject
+to P26 technical design/proof; this is not a mandate to copy the prototype’s
+circle model or introduce general CAD arc/NURBS tooling.
+
+P26 also delivers contextual Section/depth/Reveal and recovery, Wall facing
+and peeling, bounded vertical profiles and independent arch rise, and
+Layout-owned CeilingRegion creation/lift/look-up. Generated/contextual
+representations never replace authored architectural truth. Existing ordinary
+Wall drawing remains authoritative; circular creation extends the same
+semantic authoring system. P23B performance work precedes this implementation.
+
+Broader depth (stairs, railings, richer parametric components, arbitrary/general
 curve intersection and noding, tangent-constraint networks, NURBS,
 offset/trim/fillet-style CAD curve operations, profile/extrude, sweep, revolve,
 roof helpers, general constraint sophistication) stays demand/evidence-gated
@@ -277,7 +305,7 @@ implicit authored topology or ownership by itself.
 
 Every addition extends `LayoutDocument` and the single geometry compiler; they do not create a second mesh-authoring
 system. Every addition flows `LayoutDocument` → `compileLayoutGeometry()` →
-Plan + 3D, and stays `LayoutDocument`-owned — never promoted into Scene
+continuous Plan/3D and contextual representations, and stays `LayoutDocument`-owned — never promoted into Scene
 merely because something renders in 3D.
 
 Build capabilities should be expressible as deterministic domain operations
@@ -285,8 +313,7 @@ independent of their toolbar/button presentation wherever practical (see
 Shared authoring operations). The strategic reason: semantic architecture is
 reusable project structure that a human or an agent can request directly —
 doors, stairs, alignment, duplication — instead of reconstructing arbitrary
-geometry or code each time. P23 (Layout Depth) expands this Build vocabulary;
-it does not add editor features for their own sake.
+geometry or code each time. P23 established the wall-first foundation; P26 expands this Build vocabulary through Continuous Spatial Authoring.
 
 The product is **not** a general-purpose DCC replacement. Deep mesh topology
 editing, sculpting, UV authoring, rigging, character animation, and bespoke
@@ -294,11 +321,12 @@ organic modeling remain better served by external tools and imported assets.
 
 ## Stage (Spatial) — scene composition and shared assets
 
-Scene 3D owns scene-object composition: imported models, primitives,
-materials, lights, placement, transforms, visibility, and authored object
-properties. Scene Plan Arrange remains the 2D spatial counterpart for supported
-existing objects without merging `LayoutDocument` and `SceneDocument`
-ownership.
+Scene owns scene-object composition: imported models, primitives, materials,
+lights, placement, transforms, visibility and authored object properties.
+Plan Arrange and 3D expose supported operations through the same continuous
+spatial system, according to representation and capability. A destination
+does not change the owning document or imply universal handle parity;
+`LayoutDocument` and `SceneDocument` remain separate.
 
 P23 changes physical coordinate ownership without merging those documents. The
 target — now the current authoring foundation after F0 shipped — is
@@ -381,9 +409,11 @@ lighting, and one useful reusable lighting/environment setup. Later depth
 (advanced grouping, richer placement tools, a larger environment catalogue,
 richer lighting rigs, advanced material workflows) follows evidence; it does
 not block the first Experience proof. P24 expands this Stage vocabulary; it
-does not add editor features for their own sake. P24 consumes the spatial
-coordinate/ownership model actually shipped by P23; current Room-local code is
-baseline evidence, not a permanent future invariant.
+does not add editor features for their own sake. P24 inherits P26’s landed unified spatial system on the P23/P23B foundation.
+Its earlier PlanProxy/3D placement and view-switch assumptions require focused
+reconciliation before execution; accepted ingest/staging scope and document
+ownership remain. Legacy Room-local code is compatibility evidence, not the
+future placement model.
 
 **Assets belong to the project, not a mode.** Long-term, assets are a
 project-level shared resource system consumed by both modes through one
@@ -543,12 +573,12 @@ Interaction model:          Reach Camera Piano → Show Piano Info
 Navigation defines where the visitor can go. Content defines what can be
 presented. Interaction defines when or why an action occurs.
 
-Experience (P25) begins once P23/P24 have produced a minimum useful authored
-environment — before their optional depth tails — not after broad Build +
-Stage completion:
+Experience (P25) follows the accepted P23 → P23B → P26 → P24 sequence,
+using the minimum useful authored environment before optional later depth
+in Build and Stage:
 
 ```text
-P23 minimum useful Build set
+P23 wall-first Build + P23B performance + P26 continuous spatial system
         +
 P24 minimum useful Stage set
         ↓
@@ -559,8 +589,8 @@ bounded agent + reuse proof
 evidence-led deeper P23/P24/P25 capabilities
 ```
 
-P23 and P24 remain separate ownership domains; the change is
-sequencing/depth, not ownership. The first Experience proof is deliberately
+Layout and Scene remain separate ownership domains across these phases;
+sequencing does not merge their authored state. The first Experience proof is deliberately
 narrow (destination + visitor navigation + contextual content + a small
 semantic trigger/action set with visitor-safe motion/accessibility
 behavior).
@@ -960,7 +990,7 @@ asset ingest, provenance, optimization, and placement pipeline rather than
 introducing a parallel asset or scene format. AI must not bypass the canonical
 geometry, selection, camera-motion, or persistence pipelines.
 
-After P22 plus the minimum P23/P24 slices plus a narrow P25 visitor journey,
+After persistence, the P23/P23B/P26 spatial foundation, minimum P24 staging and a narrow P25 visitor journey,
 the roadmap calls for a bounded agent/reuse proof — testing whether a
 strong agent can inspect a project and make semantic edits, stage, author
 camera/experience changes, validate, preview, publish, and perform a
@@ -1040,8 +1070,9 @@ Portable package
   └─ referenced media/metadata
 ```
 
-`LayoutDocument` and `SceneDocument` remain separate sources of truth. Unified
-3D composes both. P23 stores Scene/Camera physical placement in
+`LayoutDocument` and `SceneDocument` remain separate authored authorities in
+one canonical spatial project. The continuous spatial system composes both
+without persisting its contextual views, cuts, peeling or camera-session recipes. P23 stores Scene/Camera physical placement in
 project/world-local coordinates; Room association becomes derived or optional
 semantic context where useful, not mandatory transform ownership. Layout
 objects remain document-level/project-world-local. This is now the current
@@ -1079,8 +1110,9 @@ now.
    and parametric construction extends the authored layout model and the single
    geometry pipeline; no parallel general-purpose mesh-modeling subsystem.
 2. **One Spatial editor shell.** Inside Spatial mode, `Scene | Camera` over
-   `Plan | 3D`, with Scene Plan local `Layout | Arrange`; one active authority
-   for each interaction and no duplicate workspace-specific project truth. The
+   `Plan | 3D` destinations connected continuously, with Scene Plan local
+   `Layout | Arrange`; contextual representations share one spatial truth and
+   each interaction has one semantic owner. The
    project-level shell adds Experience / Assets / Publish surfaces without
    renaming or flattening these canonical axes.
 3. **Separate document ownership; world-local physical-placement target.**
@@ -1090,7 +1122,7 @@ now.
    derived/semantic where useful.
    Legacy Room-local storage remains the compatibility read path for recognized
    legacy Projects; the Foundation migration has landed.
-4. **One geometry compiler.** Plan and 3D derive authored layout geometry from
+4. **One geometry compiler.** Plan, 3D and contextual representations derive architectural geometry from
    `compileLayoutGeometry()` (or its evolved canonical successor), never from
    competing consumer-specific reconstructions.
 5. **One camera graph/motion system.** Camera direction, assisted authoring,
@@ -1214,7 +1246,10 @@ Current production choices remain deliberate rather than ideological:
 
 - SvelteKit + Svelte 5 + TypeScript remain the product/UI foundation while
   they fit measured requirements.
-- SVG remains the Plan renderer and Three/Threlte the production 3D renderer.
+- SVG is the current Plan renderer and Three/Threlte the current production 3D
+  renderer. P26 may rebuild the viewport around one evaluated projection;
+  retaining SVG for projected precision overlays is a proposed mechanism,
+  not a requirement for a separate Plan geometric/input authority.
 - Backend, persistence, asset storage/delivery, auth, realtime, hosting, and
   external integrations are platform boundaries; vendor choice may change
   without changing project truth.
@@ -1323,7 +1358,8 @@ today:
 3. Layout operations mutate `LayoutDocument`; Scene operations mutate
    `SceneDocument`; cross-document operations require an explicitly designed
    atomic contract rather than accidental side effects.
-4. Plan-level transforms preserve state owned exclusively by 3D authoring.
+4. Each semantic transform preserves components outside its operation; a
+   change of viewpoint never changes authored state or document ownership.
 5. New Scene/Camera physical placement is project/world-local;
    Junction/Wall/Room relationships are explicit/semantic and never inferred
    merely from coordinates. Legacy Room-local data is resolved only through

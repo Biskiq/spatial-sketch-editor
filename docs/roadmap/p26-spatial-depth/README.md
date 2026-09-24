@@ -1,7 +1,8 @@
 # P26 — Continuous Spatial Authoring
 
 **Phase goal:** deliver one continuous, contextually editable spatial world: Plan↔3D,
-Wall facing and peeling, drawn-line Section/depth/Reveal, ceiling lift/look-up,
+first-class circular Room creation with one self-connected Wall, Wall facing
+and peeling, drawn-line Section/depth/Reveal, ceiling lift/look-up,
 and exact return with view navigation separate from document Undo. P26 includes
 the architectural redesign and production implementation needed for that experience.
 
@@ -34,12 +35,18 @@ No child plans or proofs are authorized. Details and dependency gates are in umb
 
 1. Landed-P23B reconciliation and prepared implementation plan.
 2. Early continuous Plan↔3D authoring slice, retaining production Wall drawing.
-3. Facing and attributed contextual cuts/recovery.
-4. Canonical vertical profiles, arch rise and independent ceilings.
-5. Cubic peeling and intermediate precision.
-6. Ceiling lift/look-up and relationship recovery.
-7. Session/accessibility/Scene-Camera integration and viewport cutover.
-8. Integrated acceptance and P24 handoff.
+3. Circular Room creation and canonical single-Wall enclosure (P7), including periodic Openings and generated floor/ceiling.
+4. Facing and attributed contextual cuts/recovery, using the closed-Wall fixture.
+5. Canonical vertical profiles, arch rise and independent ceilings, including circular coverage.
+6. Cubic and closed-circle peeling/intermediate precision (P3 consumes P7).
+7. Ceiling lift/look-up and relationship recovery.
+8. Session/accessibility/Scene-Camera integration and viewport cutover.
+9. Integrated acceptance and P24 handoff.
+
+D8 inclusion is accepted; representation remains technical-design/proof-gated.
+The first continuous walking slice stays bounded to existing ordinary Wall and
+Opening semantics. The next slice delivers circular creation and editing before
+Section/coverage/peel acceptance; no multi-Wall substitute fulfills D8.
 
 ## Supporting provenance — not competing design authority
 
