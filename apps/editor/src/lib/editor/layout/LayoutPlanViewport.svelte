@@ -199,17 +199,19 @@
 	import type { LayoutRoom, LayoutVec2 } from '$lib/layout/layout-types';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
-	import type { BenchInteractionPath } from '$lib/bench/bench-types';
+	import type { BenchInteractionOutcome, BenchInteractionPath } from '$lib/bench/bench-types';
 	import {
-		p23bActivateInteraction,
-		p23bAfterInteraction,
-		p23bClosePress,
-		p23bDeferPress,
-		p23bMeasureActiveAdapter,
+		p23bClassifyGestureOutcome,
+		p23bGestureAwaitingRelease,
+		p23bGestureForPointer,
+		p23bMeasureActivePlanApply,
+		p23bMeasureGesture,
 		p23bMeasureInteraction,
-		p23bOpenPress,
-		p23bResolveAwaitingPress,
-		p23bResolvePress
+		p23bOpenGesture,
+		p23bPublishPlanView,
+		p23bResolveGesture,
+		p23bScheduleGestureBoundaries,
+		type P23BGesture
 	} from './p23b-interaction-measure';
 // P23.12 D5 — the Plan's selection feedback asks the shared display-identity
 // layer how an entity reads; it never queries the ledger itself.
@@ -900,7 +902,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		const input = updateLayoutArchitectureEdit(interaction, target);
 		if (!input) return { success: false, message: 'Architecture edit gesture was lost' };
 		restoreArchitectureEditBaseline();
-		const result = p23bMeasureActiveAdapter(() => p2311Measure('adapter-plan-apply', () =>
+		// P23B W4 — the canonical planner/apply call is measured under its own
+		// `plan-apply` boundary. It is NOT adapter work: `adapter` is reserved for the
+		// Three geometry adapter that rebuilds render geometry, so planner cost and
+		// adapter CPU cost can never be read as one number.
+		const result = p23bMeasureActivePlanApply(() =>
 			gesture.kind === 'junction-move'
 				? updateWallFirstJunction(preview, gesture.junctionId, input)
 				: gesture.kind === 'wall-move'
@@ -913,7 +919,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 								distance: gesture.bendDistance,
 								point: input
 							})
-						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input)));
+						: updateWallFirstWallCurveKnot(preview, gesture.wallId, gesture.anchorId, input));
 		if (result.success) {
 			markLayoutArchitectureEditValidity(interaction, true);
 			return { success: true };
@@ -1150,6 +1156,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			cancel: () => onLayoutTransactionCancel(),
 			restoreBaseline: restoreArchitectureEditBaseline
 		});
+		// P23B W4 — classify the drag/bend release from the verdict the shipped release
+		// path just produced, so an accepted-release distribution can no longer carry
+		// refusals, and a refusal is visible as its own population.
+		if (outcome.kind !== 'idle') {
+			p23bClassifyGestureOutcome(outcome.kind === 'committed' ? 'accepted' : 'rejected');
+		}
 		if (outcome.statusMessage) preview.statusMessage = outcome.statusMessage;
 		if (outcome.kind === 'rejected') {
 			armPlanRefusal({
@@ -2864,6 +2876,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		onLayoutTransactionCancel();
 	}
 
+	/**
+	 * P23B W4 — the wall-tool press whose outcome is decided by the click event
+	 * that follows it. Held here (not in the measurement module) because the
+	 * component is what knows a click belongs to the press it followed.
+	 */
+	let p23bAuthoringGesture: P23BGesture | null = null;
+
 	/** The path a press starts from, before the handler has run. */
 	function p23bPointerPressIntentPath(event: PointerEvent): BenchInteractionPath | null {
 		return event.button === 1 && interaction.planViewMode === 'layout'
@@ -2891,11 +2910,21 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (!intent) {
 			return onPointerDown(event);
 		}
-		const press = p23bOpenPress(intent, event.pointerId);
-		const result = onPointerDown(event);
-		p23bClosePress(press);
-		if (p23bPointerPressPath(event)) p23bDeferPress(press);
-		else p23bResolvePress(press, intent);
+		const gesture = p23bOpenGesture(intent, { pointerId: event.pointerId, deferPath: true });
+		if (!gesture) return onPointerDown(event);
+		const result = p23bMeasureGesture(gesture, intent, 'input', () => onPointerDown(event));
+		if (p23bPointerPressPath(event)) {
+			// An armed direct edit reports its own path — and its verdict — at release.
+		} else if (intent === 'wall-authoring') {
+			// The chain commit is a click event (`p23bClick`): hold this press open until
+			// that click says whether it started a run, committed a Wall or was refused,
+			// so one authoring action is classified exactly once.
+			p23bAuthoringGesture = gesture;
+		} else {
+			// A press that armed nothing completed the interaction it named.
+			p23bResolveGesture(gesture, intent, 'accepted');
+		}
+		p23bScheduleGestureBoundaries(gesture);
 		return result;
 	}
 
@@ -3443,9 +3472,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	function p23bPointerMove(event: PointerEvent) {
 		const path = p23bPointerInteractionPath(event);
 		if (!path) return onPointerMove(event);
-		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'input', () => onPointerMove(event));
-		p23bAfterInteraction(path);
+		// A move during a pressed gesture joins that gesture, so one drag/bend action
+		// carries one outcome across its press, every move and its release. A move with
+		// no press behind it (a hover or cursor preview) is its own completed action.
+		const gesture = p23bGestureForPointer(event.pointerId) ?? p23bOpenGesture(path);
+		if (!gesture) return onPointerMove(event);
+		const result = p23bMeasureGesture(gesture, path, 'input', () => onPointerMove(event));
+		if (!p23bGestureAwaitingRelease(gesture)) p23bResolveGesture(gesture, path, 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
 		return result;
 	}
 
@@ -3722,17 +3756,22 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			(event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
 				? 'selection'
 				: null);
-		// The release is the press's outcome: this is where a press that armed a
-		// direct edit learns whether it performed a selection or a drag.
-		if (path) p23bResolveAwaitingPress(event.pointerId, path);
 		// Wall-chain acceptance is a click event; its `release` mark wraps the
 		// canonical commit below, so the preceding pointerup housekeeping is not
 		// counted as a second authoring release sample.
-		if (path === 'wall-authoring') return onPointerUp(event);
-		if (!path) return onPointerUp(event);
-		p23bActivateInteraction(path);
-		const result = p23bMeasureInteraction(path, 'release', () => onPointerUp(event));
-		p23bAfterInteraction(path);
+		if (path === 'wall-authoring' || !path) return onPointerUp(event);
+		const gesture = p23bGestureForPointer(event.pointerId);
+		if (!gesture) return onPointerUp(event);
+		// The release is the press's outcome: a press that armed a direct edit learns
+		// here whether it performed a selection or a drag, and the shipped commit
+		// classifies an edit as accepted or refused (`p23bClassifyGestureOutcome`).
+		const result = p23bMeasureGesture(gesture, path, 'release', () => onPointerUp(event));
+		p23bResolveGesture(
+			gesture,
+			path,
+			gesture.outcome ?? (path === 'selection' || path === 'plan-pan-zoom' ? 'accepted' : 'unclassified')
+		);
+		p23bScheduleGestureBoundaries(gesture);
 		return result;
 	}
 
@@ -4091,33 +4130,40 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 
 	function p23bClick(event: MouseEvent) {
 		if (wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout') {
-			p23bActivateInteraction('wall-authoring');
-			const result = p23bMeasureInteraction('wall-authoring', 'release', () => onClick(event));
-			p23bAfterInteraction('wall-authoring');
-			return result;
+			// One authoring action is the press plus the click that resolves it; the click
+			// reports what the action actually did, so `release` samples are classified by
+			// outcome instead of counting setup and refused clicks as commits.
+			const gesture = p23bAuthoringGesture ?? p23bOpenGesture('wall-authoring');
+			p23bAuthoringGesture = null;
+			if (!gesture) return onClick(event);
+			const outcome = p23bMeasureGesture(gesture, 'wall-authoring', 'release', () => onClick(event));
+			p23bResolveGesture(gesture, 'wall-authoring', outcome);
+			p23bScheduleGestureBoundaries(gesture);
+			return;
 		}
 		return onClick(event);
 	}
 
-	function onClick(event: MouseEvent) {
+	function onClick(event: MouseEvent): BenchInteractionOutcome {
 		if (suppressNextClick) {
 			suppressNextClick = false;
-			return;
+			return 'suppressed';
 		}
 		// P23.13 S7 — a field owns the gesture: a click while one is open never
 		// commits a pointer-positioned segment behind the typed value.
-		if (numericEntry) return;
+		if (numericEntry) return 'suppressed';
 		// P23.13 S8 / D1 — the pointer alternative to A5's second reach is **retired**:
 		// nothing on the drawing opens an editor, so no click is ever consumed here.
 		// The keyboard door stands — Enter on the selection's own primary measure
 		// (`beginNumericEntryFromFocus`), Enter on a focused control, and typing
 		// during a gesture — and exact values are otherwise the Inspector's.
-		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return;
+		if (interaction.tool !== 'polygon' && wallChainRoleForTool(interaction.tool) === null) return 'suppressed';
 		const point = worldPoint(event);
-		if (!point) return;
+		// A click that cannot resolve a world point reached no commit decision: it is
+		// recorded as an unclassified gap, never assumed to be an accepted commit.
+		if (!point) return 'unclassified';
 		if (wallChainRoleForTool(interaction.tool) !== null) {
-			commitWallChainClick(point);
-			return;
+			return commitWallChainClick(point);
 		}
 		const anchor = interaction.polygonPoints.at(-1) ?? null;
 		let nextPoint = point;
@@ -4127,9 +4173,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		const closeDistance = 14 / interaction.planView.pixelsPerMeter;
 		if (first && interaction.polygonPoints.length >= 3 && distance(first, nextPoint) <= closeDistance) {
 			if (onCommit([...interaction.polygonPoints])) clearLayoutDraft(interaction);
-			return;
+			return 'accepted';
 		}
 		addPolygonPoint(interaction, nextPoint);
+		return 'accepted';
 	}
 
 	/**
@@ -4139,7 +4186,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * explicit Junction identity (`endJunctionId === runStartJunctionId`),
 	 * never coordinate proximity and never "a Room appeared".
 	 */
-	function commitWallChainClick(rawPoint: LayoutVec2) {
+	function commitWallChainClick(rawPoint: LayoutVec2): BenchInteractionOutcome {
 		// Release truth (S8): the click re-resolves against the live anchor rather
 		// than trusting the hover's remembered candidate, so what the guide showed
 		// is exactly what commits — and a click with no run yet has no anchor, so
@@ -4151,7 +4198,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// P23B.3a S6 — the start click declares its own anchor, so the first leg
 			// already knows which existing group it extends (or that it extends none).
 			beginWallChain(interaction, snapped.point, clickDeclaration(snapped));
-			return;
+			// This click only started a transient run: it committed no geometry, so it is
+			// reported as setup and stays outside the accepted-release distribution.
+			return 'setup';
 		}
 		const start = interaction.wallChainStart!;
 		// A rejection rolls its history transaction back through snapshot
@@ -4177,9 +4226,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (!result.success) {
 			if (savedRun) restoreWallChainRun(interaction, savedRun);
 			draftedVersion = preview.previewVersion;
-			return;
+			return 'rejected';
 		}
 		finishWallChainSegment(result, snapped.point);
+		return 'accepted';
 	}
 
 	/**
@@ -5380,10 +5430,27 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (onCommit([...interaction.polygonPoints])) clearLayoutDraft(interaction);
 	}
 
+	/**
+	 * P23B W5 — DEV-only capture evidence: publish the Plan viewport the actions run
+	 * in, so a capture can show that every hosted fixture was measured in the same
+	 * view (px/m and center) instead of only asserting that it was.
+	 */
+	$effect(() => {
+		if (!import.meta.env.DEV) return;
+		p23bPublishPlanView({
+			pixelsPerMeter: interaction.planView.pixelsPerMeter,
+			center: [interaction.planView.center[0], interaction.planView.center[1]],
+			width: interaction.planView.width,
+			height: interaction.planView.height
+		});
+	});
+
 	function p23bWheel(event: WheelEvent) {
-		p23bActivateInteraction('plan-pan-zoom');
-		const result = p23bMeasureInteraction('plan-pan-zoom', 'input', () => onWheel(event));
-		p23bAfterInteraction('plan-pan-zoom');
+		const gesture = p23bOpenGesture('plan-pan-zoom');
+		if (!gesture) return onWheel(event);
+		const result = p23bMeasureGesture(gesture, 'plan-pan-zoom', 'input', () => onWheel(event));
+		p23bResolveGesture(gesture, 'plan-pan-zoom', 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
 		return result;
 	}
 

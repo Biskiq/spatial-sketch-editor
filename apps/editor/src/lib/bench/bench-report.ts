@@ -76,20 +76,37 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 	const interactionPaths = [
 		'selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'
 	] as const;
-	const interactionBoundaries = ['input', 'release', 'reactive', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	const interactionBoundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	const interactionFixtures = baseline.interactionFixtures ?? [];
+	if (interactionFixtures.length !== 3) {
+		problems.push('P23B baseline must carry the three hosted interaction fixtures (owner + size-40 straight/all-curved)');
+	}
 	for (const path of interactionPaths) {
-		// A path may lack input samples only when the owner deferred it and the
-		// decision text is recorded in the baseline itself.
+		// A path may lack input samples only when the owner deferred it, or when the
+		// hosted fixture's own reason says the path cannot exist on its geometry;
+		// both texts travel in the baseline itself.
 		const deferral = baseline.deferredInteractionPaths?.[path];
 		if (deferral !== undefined && !deferral.trim()) problems.push(`P23B baseline has a blank owner deferral for ${path}`);
-		if (!deferral && !(baseline.interactionSampleCounts?.[path]! > 0)) {
-			problems.push(`P23B baseline is missing input samples for ${path}`);
-		}
-		if (!baseline.interactionProtocol?.[path]?.target || !baseline.interactionProtocol[path]?.snapGrid) {
-			problems.push(`P23B baseline is missing the fixed target/settings for ${path}`);
-		}
-		for (const boundary of interactionBoundaries) {
-			if (!baseline.interactions?.[path]?.[boundary]) problems.push(`P23B baseline is missing ${path}/${boundary}`);
+		for (const capture of interactionFixtures) {
+			const notApplicable = capture.notApplicableInteractionPaths?.[path];
+			if (notApplicable !== undefined && !notApplicable.trim()) {
+				problems.push(`P23B baseline has a blank not-applicable reason for ${capture.fixtureId}/${path}`);
+			}
+			if (!capture.protocol?.[path]?.target || !capture.protocol[path]?.snapGrid) {
+				problems.push(`P23B baseline is missing the fixed target/settings for ${capture.fixtureId}/${path}`);
+			}
+			if (capture.capture?.warmup !== 5) {
+				problems.push(`P23B baseline must enforce a five-action interaction warm-up for ${capture.fixtureId}`);
+			}
+			const observed = capture.interactionSampleCounts?.[path] ?? 0;
+			if (deferral || notApplicable) {
+				if (observed > 0) problems.push(`P23B baseline records samples for the unavailable ${capture.fixtureId}/${path}`);
+			} else if (!(observed > 0)) {
+				problems.push(`P23B baseline is missing observed input samples for ${capture.fixtureId}/${path}`);
+			}
+			for (const boundary of interactionBoundaries) {
+				if (!capture.interactions?.[path]?.[boundary]) problems.push(`P23B baseline is missing ${capture.fixtureId}/${path}/${boundary}`);
+			}
 		}
 	}
 	for (const metric of [...ENFORCED_BUDGET_METRICS, ...ADVISORY_BUDGET_METRICS]) {

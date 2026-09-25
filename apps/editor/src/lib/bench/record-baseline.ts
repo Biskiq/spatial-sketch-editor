@@ -36,10 +36,10 @@ import {
 } from './bench-types';
 
 /**
- * Executable version-4 baseline recorder. Invoked via the `bench:record` npm
+ * Executable version-5 baseline recorder. Invoked via the `bench:record` npm
  * script (never a default-suite test, so `npm test` cannot rewrite the checked-in
  * baseline). Measures the Node + browser tiers for Chopin and the generated
- * scale fixtures, stamps version 4 provenance (HEAD SHA + `treeDirty` flag +
+ * scale fixtures, stamps version-5 provenance (HEAD SHA + `treeDirty` flag +
  * deterministic `contentHash` of the relevant sources), and writes
  * `g3-baseline.json`.
  */
@@ -353,15 +353,135 @@ export function recordBaseline(options: { full?: boolean; p23bBrowserReport?: P2
 				...workload,
 				provenance: { ...workload.provenance, contentHash: p23bContentHash }
 			})),
-			...(browserReport.interactions ? { interactions: browserReport.interactions } : {}),
-			...(browserReport.interactionSampleCounts ? { interactionSampleCounts: browserReport.interactionSampleCounts } : {}),
+			interactionFixtures: browserReport.interactionFixtures,
 			...(browserReport.deferredInteractionPaths ? { deferredInteractionPaths: browserReport.deferredInteractionPaths } : {}),
-			interactionProtocol: browserReport.interactionProtocol,
-			nestedMarks: browserReport.nestedMarks,
 			markNestingNote: browserReport.markNestingNote,
 			measurementLimitations: browserReport.measurementLimitations
 		} : {})
 	};
+}
+
+/**
+ * Interaction evidence gates (method v5). These are the checks that make the
+ * earlier interaction baseline inadmissible, so they fail closed:
+ *
+ * - the capture must cover the owner workload AND the two size-40 matrix cells,
+ *   each in its own isolated session, in one browser session;
+ * - the warm-up exclusion is enforced (a path need not be accepted at all only
+ *   when its own reason says it is deferred or not applicable);
+ * - setup/rejected/suppressed actions are recorded as counts and can never sit
+ *   inside an accepted distribution;
+ * - `plan-apply` and `adapter` are separate boundaries, so planner cost is never
+ *   reported as adapter CPU work;
+ * - a capture that dropped a boundary or failed to settle is rejected outright.
+ */
+function validateP23BInteractionCapture(report: P23BBrowserRunReport): void {
+	const paths = ['selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'] as const;
+	const boundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	const outcomes = ['accepted', 'setup', 'rejected', 'suppressed', 'unclassified'] as const;
+	const required = [P23B_OWNER_FIXTURE_ID, 'p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'];
+	if (report.interactionFixtures.length !== required.length) {
+		throw new Error(`P23B interaction capture must cover exactly ${required.length} hosted fixtures`);
+	}
+	const seenFixtures = new Set<string>();
+	const seenSessions = new Set<string>();
+	for (const capture of report.interactionFixtures) {
+		if (!required.includes(capture.fixtureId)) throw new Error(`Unexpected P23B interaction fixture ${capture.fixtureId}`);
+		if (seenFixtures.has(capture.fixtureId)) throw new Error(`Duplicate P23B interaction fixture ${capture.fixtureId}`);
+		seenFixtures.add(capture.fixtureId);
+		const entry = fixtureLedger.fixtures.find((fixture) => fixture.id === capture.fixtureId);
+		if (!entry) throw new Error(`P23B interaction fixture is not in the ledger: ${capture.fixtureId}`);
+		if (capture.semanticClass !== 5 || capture.role !== entry.role || capture.canonicalLayoutSha256 !== entry.canonicalLayoutSha256) {
+			throw new Error(`P23B interaction fixture identity changed: ${capture.fixtureId}`);
+		}
+		if ((capture.rawPayloadSha256 ?? null) !== (entry.rawPayloadSha256 ?? null)) throw new Error(`P23B interaction fixture raw identity changed: ${capture.fixtureId}`);
+		// One isolated session per hosted fixture: a deferred boundary scheduled in one
+		// fixture's capture can never be written into another's.
+		if (!capture.sessionId || capture.sessionId === report.browser.sessionId || seenSessions.has(capture.sessionId)) {
+			throw new Error(`P23B interaction captures must use distinct isolated sessions: ${capture.fixtureId}`);
+		}
+		seenSessions.add(capture.sessionId);
+		if (capture.capture.warmup !== 5) throw new Error(`P23B interaction warm-up exclusion must be five actions per path: ${capture.fixtureId}`);
+		if (!capture.capture.settled) throw new Error(`P23B interaction capture did not settle before it was summarized: ${capture.fixtureId}`);
+		if (capture.capture.droppedBoundaries !== 0) throw new Error(`P23B interaction capture dropped deferred boundaries: ${capture.fixtureId}`);
+		if (!capture.planView || !(capture.planView.actions > 0)) throw new Error(`P23B interaction capture is missing the Plan viewport it ran in: ${capture.fixtureId}`);
+		if (!capture.planView.stable) throw new Error(`P23B interaction capture changed viewport mid-capture: ${capture.fixtureId}`);
+		// Every hosted fixture must be measured in the same view, within 2%, or a size
+		// or curvature comparison would silently also be a zoom comparison.
+		const reference = report.interactionFixtures[0]!.planView!;
+		if (Math.abs(capture.planView.pixelsPerMeter - reference.pixelsPerMeter) / reference.pixelsPerMeter > 0.02) {
+			throw new Error(`P23B hosted fixtures must be measured at the same px/m (within 2%): ${capture.fixtureId}`);
+		}
+		const acceptedAuthoring = capture.capture.outcomes['wall-authoring']?.accepted ?? 0;
+		if (capture.capture.fixtureResets < acceptedAuthoring) {
+			throw new Error(`P23B interaction capture does not record a fixture reset for every accepted authoring action: ${capture.fixtureId}`);
+		}
+		for (const path of paths) {
+			if (!capture.protocol[path]?.target || !capture.protocol[path]?.snapGrid) {
+				throw new Error(`P23B interaction fixture is missing the fixed target/settings for ${path}: ${capture.fixtureId}`);
+			}
+			const deferral = report.deferredInteractionPaths?.[path];
+			if (deferral !== undefined && !deferral.trim()) throw new Error(`P23B deferred path lacks its owner decision: ${path}`);
+			const notApplicable = capture.notApplicableInteractionPaths[path];
+			if (notApplicable !== undefined && !notApplicable.trim()) throw new Error(`P23B not-applicable path lacks its reason: ${capture.fixtureId}/${path}`);
+			if (deferral && notApplicable) throw new Error(`P23B path is both owner-deferred and fixture-not-applicable: ${capture.fixtureId}/${path}`);
+			const unavailable = Boolean(deferral) || Boolean(notApplicable);
+			const inputCount = capture.interactionSampleCounts[path] ?? 0;
+			if (!unavailable && !(inputCount > 0)) {
+				throw new Error(`P23B interaction capture has no observed input samples for ${path}: ${capture.fixtureId}`);
+			}
+			if (unavailable && inputCount > 0) {
+				throw new Error(`P23B deferred or not-applicable path must carry no samples for ${path}: ${capture.fixtureId}`);
+			}
+			if (!unavailable) {
+				if ((capture.capture.completedActions[path] ?? 0) < capture.capture.warmup + 1) {
+					throw new Error(`P23B interaction capture has too few completed ${path} actions to exclude warm-up: ${capture.fixtureId}`);
+				}
+				if (!((capture.capture.warmupExcluded[path] ?? 0) >= capture.capture.warmup)) {
+					throw new Error(`P23B interaction warm-up exclusion was not applied to ${path}: ${capture.fixtureId}`);
+				}
+			}
+			const pathReport = capture.interactions[path];
+			if (!pathReport) throw new Error(`P23B interaction capture has no results for ${path}: ${capture.fixtureId}`);
+			for (const boundary of boundaries) {
+				const value = pathReport[boundary];
+				if (!value) throw new Error(`P23B interaction capture must record a sample or explicit unavailable reason for ${capture.fixtureId}/${path}/${boundary}`);
+				if ('unavailable' in value) {
+					if (!value.unavailable.trim()) throw new Error(`P23B unavailable boundary lacks a reason for ${capture.fixtureId}/${path}/${boundary}`);
+					continue;
+				}
+				if (!(value.observedCount > 0) || !Number.isFinite(value.warmupExcludedActions)) {
+					throw new Error(`P23B interaction boundary has invalid samples for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+				for (const [outcome, count] of Object.entries(value.outcomes)) {
+					if (!outcomes.includes(outcome as (typeof outcomes)[number]) || !(count! > 0)) {
+						throw new Error(`P23B interaction boundary has an invalid outcome tally for ${capture.fixtureId}/${path}/${boundary}`);
+					}
+				}
+				if (value.accepted && (!(value.accepted.count > 0) || !Number.isFinite(value.accepted.p50) || !Number.isFinite(value.accepted.p95))) {
+					throw new Error(`P23B accepted distribution is invalid for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+				// The latency boundaries must show accepted evidence for an applicable path:
+				// an accepted input or release can never be absent. Internal pipeline
+				// boundaries may legitimately be entirely unclassified (a hover derives
+				// geometry without committing anything), which stays visible as counts.
+				if ((boundary === 'input' || boundary === 'release') && !value.accepted && !unavailable) {
+					throw new Error(`P23B interaction boundary has observed samples but no accepted sample for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+			}
+			// The accepted-release distribution is the correction this gate exists for: an
+			// applicable path must show accepted releases, and a warm-up-excluded one.
+			const release = pathReport.release;
+			if (release && 'observedCount' in release && !unavailable) {
+				if (!release.accepted || !(release.accepted.count > 0)) {
+					throw new Error(`P23B accepted release distribution is missing for ${path}: ${capture.fixtureId}`);
+				}
+				if (release.warmupExcludedActions !== capture.capture.warmup) {
+					throw new Error(`P23B accepted release distribution was not warm-up excluded for ${path}: ${capture.fixtureId}`);
+				}
+			}
+		}
+	}
 }
 
 function sha256(value: string | Buffer): string {
@@ -464,35 +584,7 @@ export function validateP23BBrowserReport(
 	}
 	if (report.warmup !== 5 || report.samples !== 20) throw new Error('P23B baseline must use 5 warm-up and 20 measured samples');
 	if (!report.measurementLimitations.length) throw new Error('P23B browser report must record measurement limits');
-	const paths = ['selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'] as const;
-	const boundaries = ['input', 'release', 'reactive', 'adapter', 'svelte-flush', 'browser-frame'] as const;
-	for (const path of paths) {
-		if (!report.interactionProtocol[path]?.target || !report.interactionProtocol[path]?.snapGrid) {
-			throw new Error(`P23B browser report is missing the fixed target/settings for ${path}`);
-		}
-		// An owner-deferred path is the ONLY admissible reason for a missing
-		// input/release sample: the decision text travels with the report, so the
-		// gap is never silently indistinguishable from an omitted capture.
-		const deferral = report.deferredInteractionPaths?.[path];
-		if (deferral !== undefined && !deferral.trim()) throw new Error(`P23B deferred path lacks its owner decision: ${path}`);
-		if (!deferral && !(report.interactionSampleCounts[path]! > 0)) {
-			throw new Error(`P23B browser report has no owner input samples for ${path}`);
-		}
-		const pathReport = report.interactions[path];
-		if (!pathReport) throw new Error(`P23B browser report has no interaction results for ${path}`);
-		for (const boundary of boundaries) {
-			const value = pathReport[boundary];
-			if (!value) throw new Error(`P23B browser report must record a sample or explicit unavailable reason for ${path}/${boundary}`);
-			if ('unavailable' in value) {
-				if (!value.unavailable.trim()) throw new Error(`P23B unavailable boundary lacks a reason for ${path}/${boundary}`);
-				if ((boundary === 'input' || boundary === 'release') && !deferral) {
-					throw new Error(`P23B owner input/release sample missing for ${path}`);
-				}
-			} else if (!(value.count > 0) || !Number.isFinite(value.p50) || !Number.isFinite(value.p95)) {
-				throw new Error(`P23B interaction boundary has invalid samples for ${path}/${boundary}`);
-			}
-		}
-	}
+	validateP23BInteractionCapture(report);
 	const expected = new Map<string, { role: string; hash: string; raw: string | null }>();
 	for (const spec of P23B_MATRIX_SPECS) {
 		const ledger = fixtureLedger.fixtures.find((item) => item.id === spec.id);

@@ -1,98 +1,467 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-	p23bActivateInteraction,
-	p23bAfterInteraction,
-	p23bClosePress,
-	p23bDeferPress,
-	p23bMeasureActiveAdapter,
-	p23bMeasureActiveReactive,
-	p23bMeasureInteraction,
-	p23bOpenPress,
-	p23bResolveAwaitingPress,
-	p23bResolvePress
-} from '$lib/editor/layout/p23b-interaction-measure';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { BenchInteractionBoundary, BenchInteractionPath, P23BCaptureLedger } from '$lib/bench/bench-types';
 
-type P23BGlobals = typeof globalThis & {
-	__P2311_PERF__?: boolean;
-	__P23B_ACTIVE_INTERACTION__?: unknown;
-};
+/**
+ * P23B interaction instrumentation — method v5 contract tests.
+ *
+ * These are the tests the returned review asked for. Time is fully controlled:
+ * `performance.now` is driven by a numeric clock, Svelte's `tick` is a promise the
+ * test releases, and `requestAnimationFrame` collects callbacks the test runs. So
+ * every boundary duration below is an exact, asserted number rather than a
+ * tolerance — the v4 defect this suite exists to pin produced 120/130 ms where the
+ * corrected instrumentation must produce 20/30 ms for the same input.
+ *
+ * CALL-SITE COVERAGE. The Plan viewport's wrappers (`p23bPointerDown/Up/Move`,
+ * `p23bClick`, `p23bWheel`) call exactly the sequences reproduced below — open,
+ * measure, classify, resolve, schedule — with one action per interaction (a
+ * wall-tool press and the click that resolves it are the SAME action). The shipped
+ * handlers they wrap now *return* the outcome (`onClick` and `commitWallChainClick`
+ * are declared `BenchInteractionOutcome`), so a classification branch cannot be
+ * dropped without a type error. This environment is `node`, so the component
+ * itself is not mounted here; the empirical proof that those call sites classify
+ * correctly is the recaptured baseline (accepted releases per authored Wall, not
+ * clicks).
+ */
 
-const globals = globalThis as P23BGlobals;
-
-// Node has no `requestAnimationFrame`; the press boundaries only need the
-// callback to run, so a timeout stands in for the frame.
-globalThis.requestAnimationFrame ??= ((callback: FrameRequestCallback) =>
-	setTimeout(() => callback(performance.now()), 0) as unknown as number);
-
-afterEach(() => {
-	delete globals.__P2311_PERF__;
-	delete globals.__P23B_ACTIVE_INTERACTION__;
-	for (const entry of performance.getEntriesByType('measure')) {
-		if (entry.name.startsWith('p2311:p23b:')) performance.clearMeasures(entry.name);
-	}
-	for (const entry of performance.getEntriesByType('mark')) {
-		if (entry.name.startsWith('p2311:p23b:')) performance.clearMarks(entry.name);
-	}
+const svelte = vi.hoisted(() => {
+	const state = { resolvers: [] as Array<() => void> };
+	return {
+		state,
+		tick: () =>
+			new Promise<void>((resolve) => {
+				state.resolvers.push(resolve);
+			}),
+		flushTicks: () => {
+			const pending = state.resolvers;
+			state.resolvers = [];
+			for (const resolve of pending) resolve();
+		}
+	};
 });
 
-describe('P23B interaction measurements', () => {
-	it('leaves interaction results and control flow unchanged while disabled', () => {
+const clock = vi.hoisted(() => ({ now: 0 }));
+
+vi.mock('svelte', () => ({ tick: svelte.tick }));
+
+import {
+	p23bBeginInteractionCapture,
+	p23bClassifyGestureOutcome,
+	p23bEndInteractionCapture,
+	p23bGestureForPointer,
+	p23bInteractionCaptureLedger,
+	p23bMeasureActiveAdapter,
+	p23bMeasureActivePlanApply,
+	p23bMeasureGesture,
+	p23bOpenGesture,
+	p23bPublishPlanView,
+	p23bRecordFixtureReset,
+	p23bResolveGesture,
+	p23bScheduleGestureBoundaries,
+	p23bSettleInteractionCapture,
+	summarizeInteractionCapture,
+	type P23BGesture
+} from '$lib/editor/layout/p23b-interaction-measure';
+
+type P23BGlobals = typeof globalThis & { __P2311_PERF__?: boolean };
+
+const globals = globalThis as P23BGlobals;
+const ALL_PATHS: readonly BenchInteractionPath[] = [
+	'selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'
+];
+const ALL_BOUNDARIES: readonly BenchInteractionBoundary[] = [
+	'input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'
+];
+
+let frames: Array<() => void> = [];
+
+beforeEach(() => {
+	clock.now = 0;
+	vi.spyOn(performance, 'now').mockImplementation(() => clock.now);
+	frames = [];
+	vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+		frames.push(() => callback(clock.now));
+		return frames.length;
+	});
+	globals.__P2311_PERF__ = true;
+	p23bBeginInteractionCapture();
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
+	delete globals.__P2311_PERF__;
+});
+
+function drain(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** Advance the clock while running one synchronous handler. */
+function handle<T>(
+	gesture: P23BGesture | null,
+	path: BenchInteractionPath,
+	boundary: BenchInteractionBoundary,
+	ms: number,
+	work?: () => T
+): T | undefined {
+	return p23bMeasureGesture(gesture, path, boundary, () => {
+		clock.now += ms;
+		return work?.();
+	});
+}
+
+/**
+ * Release every scheduled flush from where the inputs ended, then run every
+ * scheduled frame from there: 20 ms flush and 10 ms frame by default, so the
+ * expected durations are exact.
+ */
+async function runDeferred(flushMs = 20, frameMs = 10): Promise<void> {
+	clock.now += flushMs;
+	svelte.flushTicks();
+	await drain();
+	clock.now += frameMs;
+	const pending = frames;
+	frames = [];
+	for (const run of pending) run();
+	await drain();
+}
+
+function summarize(ledger: P23BCaptureLedger, warmup = 5, paths = ALL_PATHS, boundaries = ALL_BOUNDARIES) {
+	return summarizeInteractionCapture(ledger, {
+		warmup,
+		paths,
+		boundaries,
+		unavailable: (path, boundary) => `no ${boundary} sample for ${path}`
+	});
+}
+
+/** The exact call-site sequence of an armed direct-edit gesture (drag or bend). */
+function dragOrBendRelease(pointerId: number, verdict: 'committed' | 'rejected', path: BenchInteractionPath = 'plan-drag-edit') {
+	const press = p23bOpenGesture('selection', { pointerId, deferPath: true })!;
+	handle(press, 'selection', 'input', 100);
+	p23bScheduleGestureBoundaries(press);
+	// The release rejoins the press, so one gesture carries one outcome.
+	const release = p23bGestureForPointer(pointerId)!;
+	handle(release, path, 'release', 40, () =>
+		p23bClassifyGestureOutcome(verdict === 'committed' ? 'accepted' : 'rejected')
+	);
+	p23bResolveGesture(release, path, release.outcome ?? 'unclassified');
+	p23bScheduleGestureBoundaries(release);
+	return release;
+}
+
+/**
+ * The exact call-site sequence of one wall-tool authoring action: the press and
+ * the click that resolves it are one action with one outcome.
+ */
+function wallAction(pointerId: number, outcome: 'setup' | 'accepted' | 'rejected' | 'suppressed', ms = 90) {
+	const gesture = p23bOpenGesture('wall-authoring', { pointerId, deferPath: true, deferOutcome: true })!;
+	handle(gesture, 'wall-authoring', 'input', 1);
+	p23bScheduleGestureBoundaries(gesture);
+	handle(gesture, 'wall-authoring', 'release', ms);
+	p23bResolveGesture(gesture, 'wall-authoring', outcome);
+	p23bScheduleGestureBoundaries(gesture);
+	return gesture;
+}
+
+describe('P23B deferred boundary origins', () => {
+	it('measures press and move flush/frame from the same origin: the end of the synchronous input', async () => {
+		const press = p23bOpenGesture('selection', { pointerId: 1, deferPath: true })!;
+		handle(press, 'selection', 'input', 100);
+		p23bResolveGesture(press, 'selection', 'accepted');
+		p23bScheduleGestureBoundaries(press);
+		await runDeferred(20, 10);
+
+		const move = p23bOpenGesture('plan-drag-edit')!;
+		handle(move, 'plan-drag-edit', 'input', 100);
+		p23bResolveGesture(move, 'plan-drag-edit', 'accepted');
+		p23bScheduleGestureBoundaries(move);
+		await runDeferred(20, 10);
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		// Identical 100 ms handler + 20 ms flush + 10 ms frame must give the same
+		// numbers for a press-derived and a move-derived action. v4 produced 120/130
+		// for the press and 20/30 for the move under this same controlled clock.
+		expect(summary.interactions.selection!['input']).toMatchObject({ accepted: { count: 1, p50: 100, p95: 100 } });
+		for (const path of ['selection', 'plan-drag-edit'] as const) {
+			expect(summary.interactions[path]!['svelte-flush']).toMatchObject({ accepted: { count: 1, p50: 20, p95: 20 } });
+			expect(summary.interactions[path]!['browser-frame']).toMatchObject({ accepted: { count: 1, p50: 30, p95: 30 } });
+		}
+	});
+
+	it('keeps the frame boundary enclosing the flush of the same input rather than adding them', async () => {
+		const gesture = p23bOpenGesture('plan-drag-edit')!;
+		handle(gesture, 'plan-drag-edit', 'input', 5);
+		p23bResolveGesture(gesture, 'plan-drag-edit', 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
+		await runDeferred(200, 50);
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		const flush = summary.interactions['plan-drag-edit']!['svelte-flush'] as { accepted: { p50: number } };
+		const frame = summary.interactions['plan-drag-edit']!['browser-frame'] as { accepted: { p50: number } };
+		expect(flush.accepted.p50).toBe(200);
+		expect(frame.accepted.p50).toBe(250);
+		expect(frame.accepted.p50).toBeGreaterThanOrEqual(flush.accepted.p50);
+	});
+
+	it('nests reactive, plan-apply and adapter inside the input that scheduled them', async () => {
+		const gesture = p23bOpenGesture('plan-drag-edit')!;
+		p23bMeasureGesture(gesture, 'plan-drag-edit', 'release', () => {
+			clock.now += 40;
+			p23bMeasureActivePlanApply(() => { clock.now += 12; });
+			p23bMeasureActiveAdapter(() => { clock.now += 3; });
+		});
+		p23bResolveGesture(gesture, 'plan-drag-edit', 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		const release = summary.interactions['plan-drag-edit']!['release'] as { accepted: { p50: number } };
+		const planApply = summary.interactions['plan-drag-edit']!['plan-apply'] as { accepted: { p50: number } };
+		const adapter = summary.interactions['plan-drag-edit']!['adapter'] as { accepted: { p50: number } };
+		expect(release.accepted.p50).toBe(55);
+		expect(planApply.accepted.p50).toBe(12);
+		expect(adapter.accepted.p50).toBe(3);
+		// The nested boundaries are contained by the input, never added to it.
+		expect(planApply.accepted.p50 + adapter.accepted.p50).toBeLessThan(release.accepted.p50);
+	});
+
+	it('attributes the canonical planner call to plan-apply and Three adapter work to adapter, never to one bucket', async () => {
+		const gesture = p23bOpenGesture('bend-knot-edit')!;
+		handle(gesture, 'bend-knot-edit', 'release', 10);
+		p23bMeasureActivePlanApply(() => { clock.now += 7; });
+		p23bResolveGesture(gesture, 'bend-knot-edit', 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		const planApply = summary.interactions['bend-knot-edit']!['plan-apply'] as { accepted: { p50: number } };
+		expect(planApply.accepted.p50).toBe(7);
+		// No Three adapter work ran for this action, so adapter coverage stays
+		// explicitly unavailable instead of silently reusing the planner's number.
+		expect(summary.interactions['bend-knot-edit']!['adapter']).toEqual({ unavailable: 'no adapter sample for bend-knot-edit' });
+	});
+});
+
+describe('P23B accepted-release classification', () => {
+	it('keeps setup, rejected and suppressed authoring clicks out of the accepted release distribution', async () => {
+		wallAction(1, 'setup');
+		wallAction(2, 'accepted', 90);
+		wallAction(3, 'rejected', 500);
+		wallAction(4, 'suppressed', 1);
+		await runDeferred();
+
+		const ledger = p23bEndInteractionCapture()!;
+		const summary = summarize(ledger, 0);
+		const release = summary.interactions['wall-authoring']!['release'] as {
+			accepted: { count: number; p50: number };
+			outcomes: Record<string, number>;
+			observedCount: number;
+		};
+		// Four authoring actions were observed; exactly one of them committed a Wall.
+		expect(release.observedCount).toBe(4);
+		expect(release.accepted).toMatchObject({ count: 1, p50: 90 });
+		expect(release.outcomes).toEqual({ setup: 1, accepted: 1, rejected: 1, suppressed: 1 });
+		expect(ledger.actions.map((action) => action.outcome)).toEqual(['setup', 'accepted', 'rejected', 'suppressed']);
+		expect(summary.capture.outcomes['wall-authoring']).toEqual({ setup: 1, accepted: 1, rejected: 1, suppressed: 1 });
+		expect(summary.capture.completedActions['wall-authoring']).toBe(4);
+	});
+
+	it('splits a drag population into accepted and refused releases from the shipped verdict', async () => {
+		dragOrBendRelease(11, 'committed');
+		dragOrBendRelease(12, 'rejected');
+		dragOrBendRelease(13, 'committed');
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		const release = summary.interactions['plan-drag-edit']!['release'] as {
+			accepted: { count: number };
+			outcomes: Record<string, number>;
+			observedCount: number;
+		};
+		expect(release.observedCount).toBe(3);
+		expect(release.accepted!.count).toBe(2);
+		expect(release.outcomes).toEqual({ accepted: 2, rejected: 1 });
+		// The refused attempt was repeated, so the accepted release that followed it is
+		// recorded as a retry of the same path.
+		expect(summary.capture.retries['plan-drag-edit']).toBe(1);
+	});
+
+	it('carries an accepted gesture input into the accepted population and a refused one out of it', async () => {
+		dragOrBendRelease(21, 'committed');
+		dragOrBendRelease(22, 'rejected');
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		const input = summary.interactions['plan-drag-edit']!['input'] as {
+			accepted: { count: number; p50: number };
+			outcomes: Record<string, number>;
+			observedCount: number;
+		};
+		expect(input.observedCount).toBe(2);
+		expect(input.accepted).toMatchObject({ count: 1, p50: 100 });
+		expect(input.outcomes).toEqual({ accepted: 1, rejected: 1 });
+	});
+
+	it('records an action that reports no outcome as a visible unclassified gap', async () => {
+		const gesture = p23bOpenGesture('selection', { pointerId: 31, deferPath: true })!;
+		handle(gesture, 'selection', 'input', 15);
+		p23bResolveGesture(gesture, 'selection', null);
+		p23bScheduleGestureBoundaries(gesture);
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		expect((summary.interactions.selection!['input'] as { outcomes: Record<string, number> }).outcomes).toEqual({ unclassified: 1 });
+		expect(summary.capture.unclassifiedActions.selection).toBe(1);
+	});
+});
+
+describe('P23B interaction warm-up exclusion', () => {
+	it('excludes the leading five completed actions per path before the accepted distribution', async () => {
+		for (let index = 0; index < 7; index += 1) {
+			const gesture = p23bOpenGesture('selection', { pointerId: 100 + index, deferPath: true })!;
+			handle(gesture, 'selection', 'input', index + 1);
+			p23bResolveGesture(gesture, 'selection', 'accepted');
+			p23bScheduleGestureBoundaries(gesture);
+			await runDeferred();
+		}
+
+		const summary = summarize(p23bEndInteractionCapture()!);
+		const input = summary.interactions.selection!['input'] as {
+			accepted: { count: number; p50: number; p95: number };
+			observedCount: number;
+			warmupExcludedActions: number;
+		};
+		expect(input.observedCount).toBe(7);
+		expect(input.warmupExcludedActions).toBe(5);
+		expect(input.accepted).toEqual({ count: 2, p50: 6, p95: 7 });
+		expect(summary.capture.completedActions.selection).toBe(7);
+		expect(summary.capture.warmupExcluded.selection).toBe(5);
+		expect(summary.capture.warmup).toBe(5);
+		expect(summary.capture.settled).toBe(true);
+	});
+
+	it('reports no accepted distribution at all when a path only ran warm-up actions', async () => {
+		for (let index = 0; index < 5; index += 1) {
+			const gesture = p23bOpenGesture('selection', { pointerId: 200 + index, deferPath: true })!;
+			handle(gesture, 'selection', 'input', 10);
+			p23bResolveGesture(gesture, 'selection', 'accepted');
+			p23bScheduleGestureBoundaries(gesture);
+			await runDeferred();
+		}
+
+		const summary = summarize(p23bEndInteractionCapture()!);
+		const input = summary.interactions.selection!['input'] as { accepted: unknown; observedCount: number };
+		expect(input.observedCount).toBe(5);
+		expect(input.accepted).toBeNull();
+	});
+
+	it('records fixture resets on the capture, not in prose', async () => {
+		p23bRecordFixtureReset();
+		wallAction(41, 'setup');
+		wallAction(42, 'accepted');
+		p23bRecordFixtureReset();
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!);
+		expect(summary.capture.fixtureResets).toBe(2);
+		expect(summary.capture.outcomes['wall-authoring']).toEqual({ setup: 1, accepted: 1 });
+	});
+});
+
+describe('P23B capture session lifecycle', () => {
+	it('never writes a deferred boundary into a later capture session', async () => {
+		const firstSession = p23bInteractionCaptureLedger()!.sessionId;
+		const gesture = p23bOpenGesture('selection', { pointerId: 51, deferPath: true })!;
+		handle(gesture, 'selection', 'input', 100);
+		p23bResolveGesture(gesture, 'selection', 'accepted');
+		p23bScheduleGestureBoundaries(gesture); // tick + frame still pending
+
+		const closed = p23bEndInteractionCapture()!;
+		expect(closed.actions[0]!.status).toBe('incomplete');
+		expect(closed.settled).toBe(false);
+
+		const secondSession = p23bBeginInteractionCapture();
+		const own = p23bOpenGesture('selection', { pointerId: 52, deferPath: true })!;
+		handle(own, 'selection', 'input', 5);
+		p23bResolveGesture(own, 'selection', 'accepted');
+		p23bScheduleGestureBoundaries(own);
+		await runDeferred();
+
+		const second = p23bInteractionCaptureLedger(secondSession)!;
+		expect(second.actions).toHaveLength(1);
+		expect(second.actions[0]!.samples.map((sample) => sample.boundary)).toEqual(['input', 'svelte-flush', 'browser-frame']);
+		expect(second.droppedBoundaries).toBe(0);
+
+		// The stale boundaries were discarded on the session that scheduled them.
+		const first = p23bInteractionCaptureLedger(firstSession)!;
+		expect(first.droppedBoundaries).toBe(2);
+		expect(first.actions[0]!.samples.map((sample) => sample.boundary)).toEqual(['input']);
+	});
+
+	it('settles in-flight boundaries before the caller summarizes', async () => {
+		const gesture = p23bOpenGesture('plan-drag-edit', { pointerId: 61 })!;
+		handle(gesture, 'plan-drag-edit', 'input', 10);
+		p23bResolveGesture(gesture, 'plan-drag-edit', 'accepted');
+		p23bScheduleGestureBoundaries(gesture);
+
+		let finished = false;
+		const settling = p23bSettleInteractionCapture(50).then((value) => {
+			finished = true;
+			return value;
+		});
+		await drain();
+		expect(finished).toBe(false);
+
+		clock.now += 20;
+		svelte.flushTicks();
+		await drain();
+		clock.now += 10;
+		const pending = frames;
+		frames = [];
+		for (const run of pending) run();
+
+		await expect(settling).resolves.toBe(true);
+		const ledger = p23bInteractionCaptureLedger()!;
+		expect(ledger.settled).toBe(true);
+		expect(ledger.actions[0]!.samples.map((sample) => sample.boundary)).toEqual(['input', 'svelte-flush', 'browser-frame']);
+	});
+
+	it('rejects an action that never resolved instead of averaging it in', async () => {
+		const abandoned = p23bOpenGesture('selection', { pointerId: 71, deferPath: true })!;
+		handle(abandoned, 'selection', 'input', 100);
+		p23bScheduleGestureBoundaries(abandoned);
+		await runDeferred();
+
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		expect(summary.capture.incompleteActions.selection).toBe(1);
+		expect(summary.capture.completedActions.selection ?? 0).toBe(0);
+		expect(summary.interactions.selection!['input']).toEqual({ unavailable: 'no input sample for selection' });
+	});
+
+	it('records the Plan viewport an action ran in and whether it stayed stable', async () => {
+		p23bPublishPlanView({ pixelsPerMeter: 17.19, center: [-1.5, -1.5], width: 772, height: 806 });
+		for (let index = 0; index < 2; index += 1) {
+			const gesture = p23bOpenGesture('selection', { pointerId: 300 + index, deferPath: true })!;
+			handle(gesture, 'selection', 'input', 10);
+			p23bResolveGesture(gesture, 'selection', 'accepted');
+			p23bScheduleGestureBoundaries(gesture);
+			await runDeferred();
+		}
+		const summary = summarize(p23bEndInteractionCapture()!, 0);
+		expect(summary.planView).toMatchObject({ pixelsPerMeter: 17.19, actions: 2, stable: true });
+	});
+
+	it('leaves results and control flow unchanged while disabled', () => {
 		globals.__P2311_PERF__ = false;
 		let calls = 0;
-		const measured = p23bMeasureInteraction('selection', 'input', () => ++calls);
-		const adapted = p23bMeasureActiveAdapter(() => ++calls);
-		const reactive = p23bMeasureActiveReactive(() => ++calls);
-		p23bActivateInteraction('selection');
-		p23bAfterInteraction('selection');
+		const gesture = p23bOpenGesture('selection', { pointerId: 81, deferPath: true });
+		const measured = p23bMeasureGesture(gesture, 'selection', 'input', () => ++calls);
+		p23bMeasureActivePlanApply(() => ++calls);
+		p23bMeasureActiveAdapter(() => ++calls);
 
-		expect([measured, adapted, reactive, calls]).toEqual([1, 2, 3, 3]);
-		expect(globals.__P23B_ACTIVE_INTERACTION__).toBeUndefined();
-		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
-	});
-
-	it('records the synchronous boundary in the existing P23.11 mark namespace when enabled', () => {
-		globals.__P2311_PERF__ = true;
-		const value = p23bMeasureInteraction('bend-knot-edit', 'reactive', () => 42);
-		expect(value).toBe(42);
-		expect(performance.getEntriesByName('p2311:p23b:bend-knot-edit:reactive', 'measure')).toHaveLength(1);
-	});
-
-	it('names a press that opened no gesture under the path it started as', () => {
-		globals.__P2311_PERF__ = true;
-		const press = p23bOpenPress('selection', 7);
-		p23bClosePress(press);
-		p23bResolvePress(press, 'selection');
-
-		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toHaveLength(1);
-		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:plan-drag-edit:'))).toEqual([]);
-		expect(performance.getEntriesByType('mark').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
-	});
-
-	it('writes nothing for a press that armed a gesture until its release resolves it', () => {
-		globals.__P2311_PERF__ = true;
-		const press = p23bOpenPress('selection', 11);
-		p23bClosePress(press);
-		p23bDeferPress(press);
-
-		// A Wall press selects and arms a move, so it stays unnamed until the
-		// release says which interaction it became.
-		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
-
-		p23bResolveAwaitingPress(12, 'plan-drag-edit');
-		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
-
-		p23bResolveAwaitingPress(11, 'plan-drag-edit');
-		expect(performance.getEntriesByName('p2311:p23b:plan-drag-edit:input', 'measure')).toHaveLength(1);
-		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toEqual([]);
-	});
-
-	it('leaves the press boundaries unmeasured while disabled', () => {
-		globals.__P2311_PERF__ = false;
-		const press = p23bOpenPress('selection', 3);
-		p23bClosePress(press);
-		p23bResolvePress(press, 'selection');
-
-		expect(press).toBeNull();
-		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
+		expect(gesture).toBeNull();
+		expect([measured, calls]).toEqual([1, 3]);
+		expect(p23bInteractionCaptureLedger()!.actions).toEqual([]);
 	});
 });
