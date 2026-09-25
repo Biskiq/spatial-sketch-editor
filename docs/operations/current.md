@@ -26,8 +26,13 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        p50 161.7/160.7/190.7/135.4 → 1.4/1.2/1.3 (advisory — the COUNT is the durable result).
        S6 record/artifact → docs/roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md
        · 2026-09-25-s6-commit-path-identity-capture.json (LIVE, SHA-256 `95790b00…`).
-       NEXT IN SLICE: S3 (affected-extent derivation) → S4 (gesture-invariant verdict set + the
-       four-cell sample/verdict differential) → S5 only if the measurement names it → S7, then the PR. The plan carries the owner's two
+       S3 is EXECUTED: `wallFirstArchitectureAffectedExtent` derives one intent's affected extent from
+       the same patch the proposal and preflight splice (moved Junctions · Walls whose inputs can
+       change · the conservative same-component candidate pairs in gate order), scoped PER MOVE and
+       refused rather than guessed when the intent is underivable; unit-tested on hand-built
+       two-component documents incl. the per-move growth row (a later move enters new extents).
+       NEXT IN SLICE: S4 (gesture-invariant verdict set + the four-cell sample/verdict differential) →
+       S5 only if the measurement names it → S7, then the PR. The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
        guaranteed zero after initialization), and sample/verdict reuse is tested as a four-cell

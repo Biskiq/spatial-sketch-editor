@@ -413,8 +413,16 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         Record → ./p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md ·
         LIVE artifact (SHA-256 `95790b0081d5c42b6193d7eed8f94786461f774672d1319668ace4f3e0009112`) →
         ./p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json.
-        NEXT IN SLICE: S3 (affected-extent derivation) → S4 (gesture-invariant verdict set + the
-        four-cell differential) → S5 only if the measurement names it → S7.
+        S3 EXECUTED — `wallFirstArchitectureAffectedExtent` derives one direct-edit intent's affected
+        extent from the SAME patch the proposal and the preflight splice: the moved Junctions, every
+        Wall whose inputs can change (centreline overrides plus Walls incident to a moved Junction), and
+        the conservative same-component candidate-pair sets in the canonical gate's own order. Scoped
+        per move, not per gesture (a later move can enter Walls an earlier one did not), bounded by that
+        move's own candidate set, refused (not guessed) for an underivable intent. Unit-tested in
+        `apps/editor/tests/lib/layout/p23b7-affected-extent.test.ts` (junction move, wall move, bend
+        insert, knot move, component scoping, gate order, the per-move growth row, underivable rows).
+        NEXT IN SLICE: S4 (gesture-invariant verdict set + the four-cell differential) → S5 only if the
+        measurement names it → S7.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified

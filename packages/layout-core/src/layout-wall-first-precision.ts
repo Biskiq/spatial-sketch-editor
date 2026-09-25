@@ -1055,6 +1055,10 @@ function architectureCandidatePatch(
  * canonical gates below (and the render sampler), which read the document and
  * never write it. The deep clone the planner builds exists because planners
  * hand the candidate on to further mutation — a preflight does not.
+ *
+ * This is why the affected extent below is sound: a Wall outside the extent keeps
+ * the baseline's OWN Junction records and centreline object, so no predicate that
+ * reads only those records can change its verdict.
  */
 function spliceWallFirstArchitectureCandidate(
 	document: LayoutDocumentWallFirst,
@@ -1071,6 +1075,107 @@ function spliceWallFirstArchitectureCandidate(
 			return centerline ? { ...wall, centerline } : wall;
 		})
 	};
+}
+
+/** One candidate relationship the extent rule admits: a same-component pair. */
+export type WallFirstArchitectureCandidatePair = readonly [string, string];
+
+/**
+ * P23B.7 S3 — the AFFECTED EXTENT of one direct-edit intent.
+ *
+ * Derived from the SAME patch the proposal and the preflight splice
+ * (`architectureCandidatePatch`), so nothing here can invent geometry those two do
+ * not have. The extent is CONSERVATIVE (INV-2), never tight:
+ *
+ * - `junctionIds` — the Junctions whose point the patch overrides, document order;
+ * - `wallIds` — every Wall whose derived inputs can change: the Walls whose centreline
+ *   the patch overrides, plus every Wall incident to a moved Junction. These are also
+ *   the zero-length and self-intersection candidates;
+ * - `wallPairs` — the same-component Wall pairs with at least one affected member, in
+ *   the canonical gate's own order;
+ * - `junctionPairs` — the same-component Junction pairs with at least one moved member,
+ *   in the canonical gate's own order.
+ *
+ * WHAT IS NOT HERE, and why that is sound (INV-2/INV-3): a pair with neither member
+ * affected has both endpoints on Junctions the patch does not touch and both centreline
+ * OBJECTS shared by the splice, so its predicate inputs are the same records — its
+ * verdict cannot change, and a gesture may reuse the verdict the frozen baseline
+ * produced. Room boundary structure is identity-only and the Opening set is deferred, so
+ * both are invariant under a patch for the same reason.
+ *
+ * The affected sets may GROW WITH THE DOCUMENT — one moved Wall has candidate
+ * relationships with every same-component Wall — so this bounds the per-move work for
+ * THAT move's patch and is never a fixed count. `undefined` means the intent is not a
+ * derivable direct edit at all (unknown Wall/Junction/knot, non-finite point,
+ * out-of-range bend distance): the caller's own "underivable" state, not a verdict.
+ */
+export type WallFirstArchitectureAffectedExtent = {
+	junctionIds: readonly string[];
+	wallIds: readonly string[];
+	wallPairs: readonly WallFirstArchitectureCandidatePair[];
+	junctionPairs: readonly WallFirstArchitectureCandidatePair[];
+};
+
+export function wallFirstArchitectureAffectedExtent(
+	document: LayoutDocumentWallFirst,
+	intent: WallFirstArchitectureProposalIntent
+): WallFirstArchitectureAffectedExtent | undefined {
+	const patch = architectureCandidatePatch(document, intent);
+	if (!patch) return undefined;
+	// Conservative on both counts: every centreline override counts as affected even if a
+	// future intent forgets to list the Wall, and every Wall incident to a moved Junction
+	// follows its endpoint even when the patch rewrote no centreline of its own.
+	const affectedWallIds = new Set(patch.affectedWallIds);
+	for (const wallId of patch.wallCenterlines.keys()) affectedWallIds.add(wallId);
+	const wallIds = document.walls.filter((wall) => affectedWallIds.has(wall.id)).map((wall) => wall.id);
+	const junctionIds = document.junctions
+		.filter((junction) => patch.junctionPoints.has(junction.id))
+		.map((junction) => junction.id);
+	return {
+		junctionIds,
+		wallIds,
+		wallPairs: candidatePairsInGateOrder(
+			document.walls.map((wall) => wall.id),
+			topologyComponentKeyByWallId(document),
+			new Set(wallIds)
+		),
+		junctionPairs: candidatePairsInGateOrder(
+			document.junctions.map((junction) => junction.id),
+			topologyComponentKeyByJunctionId(document),
+			new Set(junctionIds)
+		)
+	};
+}
+
+/**
+ * Every same-component pair with at least one affected member, in the canonical gate's
+ * own order: document order on the first id, then on the second.
+ *
+ * Enumerated FROM the affected side rather than by scanning every pair, so the walk is
+ * bounded by the affected set times the document instead of the document squared, and
+ * the output needs no sort: `first` ascends, and for one `first` the second ids are
+ * themselves in document order.
+ */
+function candidatePairsInGateOrder<Key>(
+	ids: readonly string[],
+	keyById: ReadonlyMap<string, Key>,
+	affected: ReadonlySet<string>
+): WallFirstArchitectureCandidatePair[] {
+	const indexById = new Map(ids.map((id, index) => [id, index] as const));
+	const affectedInGateOrder = ids.filter((id) => affected.has(id));
+	const pairs: WallFirstArchitectureCandidatePair[] = [];
+	for (let first = 0; first < ids.length; first += 1) {
+		const firstId = ids[first]!;
+		const key = keyById.get(firstId);
+		const seconds = affected.has(firstId) ? ids : affectedInGateOrder;
+		for (const secondId of seconds) {
+			const second = indexById.get(secondId)!;
+			if (second <= first) continue;
+			if (keyById.get(secondId) !== key) continue;
+			pairs.push([firstId, secondId]);
+		}
+	}
+	return pairs;
 }
 
 /** One cheap, canonical refutation of a live direct-edit attempt. */
