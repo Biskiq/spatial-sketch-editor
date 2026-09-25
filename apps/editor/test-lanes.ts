@@ -110,6 +110,12 @@ export const PERF_FILES: string[] = [
 	'tests/lib/bench/bench-report.test.ts',
 	'tests/lib/bench/browser-bench.test.ts',
 	'tests/lib/bench/p23b-baseline-contract.test.ts',
+	// P23B.5 (owner-approved extra scope, plan §0.6): the deterministic reuse
+	// counter gate. It is a BUDGET gate, not a timing gate — absolute structural
+	// invariants plus a committed ratchet of request/miss/hit counts — and it
+	// belongs beside the P23B.0 baseline contract rather than in `test:fast`,
+	// which already runs the S2–S5 behavioral proofs of the same feature.
+	'tests/lib/bench/p23b5-reuse-budget.test.ts',
 	'tests/lib/layout/p23b-fixture-contract.test.ts',
 	'tests/lib/editor/layout/p23b-interaction-measure.test.ts',
 	'tests/lib/bench/three-stats.test.ts',
