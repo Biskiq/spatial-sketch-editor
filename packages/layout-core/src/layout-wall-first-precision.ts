@@ -48,7 +48,8 @@ import {
 	nextWallCurveKnotId,
 	translateWallCenterline,
 	wallCenterlineSamples,
-	wallCubicChain
+	wallCubicChain,
+	type WallSamplingDerivation
 } from './layout-wall-centerline';
 import { deriveChainSpans } from './layout-geometry-curve';
 import {
@@ -1520,6 +1521,11 @@ function finalizeWallGeometryCandidate(options: {
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
 
+	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
+	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers
+	// without a derivation keep today's per-call sampling.
+	const sampling = createWallSamplingDerivation();
+
 	const preStructural = p2311Measure('structural-pre', () => validateWallFirstLayoutDocument(candidate));
 	if (!preStructural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${preStructural.issues[0]?.message ?? 'unknown issue'}`, undefined, preStructural.issues);
@@ -1528,7 +1534,7 @@ function finalizeWallGeometryCandidate(options: {
 	// topology helper still validates the same canonical rules, but must defer
 	// translating Opening-set issues or every non-height Opening failure would
 	// be consumed as `topology_invalid` before the explicit gate can classify it.
-	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer' }));
+	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling }));
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1539,10 +1545,6 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const document = preStructural.document;
-	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
-	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers
-	// without a derivation keep today's per-call sampling.
-	const sampling = createWallSamplingDerivation();
 	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document, sampling));
 	const candidateRoomById = new Map(document.rooms.map((room) => [room.id, room]));
 	const components: ComponentLineage[] = [];
@@ -1585,7 +1587,7 @@ function finalizeWallGeometryCandidate(options: {
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer' }));
+	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling }));
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1765,6 +1767,11 @@ export type WallFirstTopologyOptions = {
 	 * preserves the historical topology-gate contract.
 	 */
 	openingSet?: 'translate' | 'defer';
+	/**
+	 * P23B.4 M-1: chain-scoped shared derivation. Omitted keeps today's
+	 * per-call sampling.
+	 */
+	sampling?: WallSamplingDerivation;
 };
 
 export function validateWallFirstTopology(
@@ -1855,7 +1862,7 @@ export function validateWallFirstTopology(
 
 	// P23.11 — canonical curve-level crossing gate (one implementation, shared
 	// with the Wall-chain authoring path).
-	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments);
+	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments, options.sampling);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
 			return topologyFailure(
@@ -1902,7 +1909,7 @@ export function validateWallFirstTopology(
 		// P23.3 opening create/edit/drag/resize paths (`layout-opening-set.ts`).
 		// Do not duplicate fit/overlap/vertical checks here — this gate only
 		// translates the first canonical issue.
-		const openingIssue = validateWallFirstOpeningSet(document)[0];
+		const openingIssue = validateWallFirstOpeningSet(document, options.sampling)[0];
 		if (openingIssue) {
 			// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
 			// Wall-height edit can report it as `wall_height_below_opening` instead of
@@ -2044,7 +2051,8 @@ export type WallCurveTopologyCrossing =
  */
 export function detectWallCurveTopologyCrossings(
 	document: LayoutDocumentWallFirst,
-	wallSegments: ReadonlyMap<string, TopologySegment>
+	wallSegments: ReadonlyMap<string, TopologySegment>,
+	sampling?: WallSamplingDerivation
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -2056,7 +2064,9 @@ export function detectWallCurveTopologyCrossings(
 		} else {
 			const endpoints = wallEndpoints(document, wall);
 			const sampled = endpoints
-				? wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
+				? sampling
+					? sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
+					: wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
 				: undefined;
 			if (!sampled) continue;
 			samples = sampled.samples;

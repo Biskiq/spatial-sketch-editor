@@ -28,7 +28,7 @@ import {
 	buildArchProfile,
 	LAYOUT_GEOMETRY_EPSILON
 } from './layout-geometry-openings';
-import { wallCenterlineSamples } from './layout-wall-centerline';
+import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWall,
@@ -72,7 +72,8 @@ export type OpeningSetIssue = {
  */
 export function wallFirstWallSpan(
 	document: LayoutDocumentWallFirst,
-	wall: LayoutWall
+	wall: LayoutWall,
+	sampling?: WallSamplingDerivation
 ): { start: LayoutVec2; end: LayoutVec2; length: number } | undefined {
 	const start = document.junctions.find(
 		(junction) => junction.id === wall.startJunctionId
@@ -81,7 +82,9 @@ export function wallFirstWallSpan(
 		(junction) => junction.id === wall.endJunctionId
 	)?.point;
 	if (!start || !end) return undefined;
-	const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+	const sampled = sampling
+		? sampling.samples(wall, start, end, 'forward')
+		: wallCenterlineSamples(wall, start, end, 'forward');
 	if (!sampled) return undefined;
 	return { start, end, length: sampled.length };
 }
@@ -102,7 +105,8 @@ export function wallFirstWallLength(
  * per-opening fit, then Wall groups in first-appearance order for overlap).
  */
 export function validateWallFirstOpeningSet(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
 ): OpeningSetIssue[] {
 	const issues: OpeningSetIssue[] = [];
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -111,7 +115,7 @@ export function validateWallFirstOpeningSet(
 	document.openings.forEach((opening, index) => {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
-		const span = wall ? wallFirstWallSpan(document, wall) : undefined;
+		const span = wall ? wallFirstWallSpan(document, wall, sampling) : undefined;
 		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {
 			issues.push({
 				openingId: opening.id,

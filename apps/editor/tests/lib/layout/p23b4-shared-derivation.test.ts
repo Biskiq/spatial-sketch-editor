@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	createWallSamplingDerivation,
 	extractBoundaryCandidateFaces,
+	validateWallFirstTopology,
 	wallCenterlineSamples,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
@@ -70,8 +71,7 @@ describe('P23B.4 S2 — shared derivation through face extraction', () => {
 		}
 	});
 
-	it('OR-2: traversal stays in the key — reverse is independently derived', () => {
-		const document = buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-12-wall-all-curved-v1')!);
+	it('OR-2: traversal stays in the key — reverse is independently derived', () => {		const document = buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-12-wall-all-curved-v1')!);
 		const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 		const sampling = createWallSamplingDerivation();
 		for (const wall of document.walls) {
@@ -89,5 +89,56 @@ describe('P23B.4 S2 — shared derivation through face extraction', () => {
 			expect(reverse, `${wall.id} reverse is a distinct object`).not.toBe(forward);
 		}
 		expect(sampling.stats.derivations).toBe(document.walls.filter((wall) => wall.centerline.kind !== 'line').length * 2);
+	});
+});
+
+describe('P23B.4 S3 — shared derivation through topology pre/post', () => {
+	it('EQ-1: one context is correct for two documents sharing wall IDs (N-2 admitted, N-2i rejected)', () => {
+		const admitted = buildP23BCorrectnessFixture(
+			P23B_CORRECTNESS_SPECS.find((spec) => spec.id === 'N-2')!
+		);
+		const rejected = buildP23BCorrectnessFixture(
+			P23B_CORRECTNESS_SPECS.find((spec) => spec.id === 'N-2i')!
+		);
+		// Same wall IDs, different centerline objects and geometry: a wall-id-keyed
+		// cache would serve one document's samples to the other and flip a verdict.
+		expect(admitted.walls.map((wall) => wall.id).sort()).toEqual(
+			rejected.walls.map((wall) => wall.id).sort()
+		);
+		const sampling = createWallSamplingDerivation();
+		const sharedAdmitted = validateWallFirstTopology(admitted, { sampling });
+		const sharedRejected = validateWallFirstTopology(rejected, { sampling });
+		expect(sharedAdmitted, 'N-2 stays admitted under sharing').toBeUndefined();
+		expect(sharedRejected?.code, 'N-2i stays rejected under sharing').toBe('unsupported_wall_topology');
+		// Each equals its own fresh path (OR-1 for this consumer, both inputs).
+		expect(sharedAdmitted, 'N-2 shared equals fresh').toEqual(validateWallFirstTopology(admitted));
+		expect(sharedRejected, 'N-2i shared equals fresh').toEqual(validateWallFirstTopology(rejected));
+		// Both documents derived independently (no cross-document key collision).
+		expect(sampling.stats.derivations).toBeGreaterThanOrEqual(2);
+	});
+
+	it('OR-1: shared topology verdicts equal fresh verdicts on every S1 fixture', () => {
+		for (const { id, document } of s2Fixtures()) {
+			const sampling = createWallSamplingDerivation();
+			expect(validateWallFirstTopology(document, { sampling }), `${id} defer`).toEqual(
+				validateWallFirstTopology(document, { openingSet: 'defer' })
+			);
+			// Translate path (Opening spans through the derivation) on all fixtures.
+			const samplingTranslate = createWallSamplingDerivation();
+			expect(validateWallFirstTopology(document, { sampling: samplingTranslate }), `${id} translate`).toEqual(
+				validateWallFirstTopology(document)
+			);
+		}
+	});
+
+	it('opening-bearing fixtures exercise spans through the derivation', () => {
+		for (const spec of P2311_FIXTURES.filter((candidate) => candidate.openings > 0)) {
+			const document = p2311Fixture(spec);
+			const sampling = createWallSamplingDerivation();
+			expect(validateWallFirstTopology(document, { sampling }), spec.id).toEqual(
+				validateWallFirstTopology(document)
+			);
+			expect(sampling.stats.derivations, `${spec.id} spans derived`).toBeGreaterThan(0);
+		}
 	});
 });
