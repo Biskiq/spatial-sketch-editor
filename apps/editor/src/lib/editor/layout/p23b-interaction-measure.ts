@@ -571,12 +571,14 @@ function planViewEvidence(actions: readonly P23BActionLedger[]): P23BCapturePlan
 	const views = actions.map((action) => action.planView).filter((view): view is P23BCapturePlanViewEvidence => view !== null);
 	if (views.length === 0) return null;
 	const first = views[0]!;
-	const stable = views.every(
-		(view) =>
-			view.pixelsPerMeter === first.pixelsPerMeter &&
-			view.center[0] === first.center[0] &&
-			view.center[1] === first.center[1]
-	);
+	const last = views[views.length - 1]!;
+	// `stable` means the capture both started and ended in the same viewport: the
+	// pan/zoom path deliberately moves the view mid-capture and restores it, so
+	// requiring every action to share one snapshot would be false for that path.
+	const stable =
+		last.pixelsPerMeter === first.pixelsPerMeter &&
+		last.center[0] === first.center[0] &&
+		last.center[1] === first.center[1];
 	return {
 		pixelsPerMeter: first.pixelsPerMeter,
 		center: first.center,
@@ -662,6 +664,16 @@ function completeIfSettled(gesture: P23BGesture): void {
 	if (gesture.pending > 0 || gesture.path === null) return;
 	gesture.outcome ??= 'unclassified';
 	gesture.status = 'completed';
+	// DEV capture evidence: the last completed action, so an operator (or a capture
+	// driver) can see what one action actually did and repeat a refused one, which is
+	// then recorded as a retry instead of being silently averaged in.
+	if (import.meta.env.DEV && openSession) {
+		(globalThis as typeof globalThis & { __P23B_LAST_ACTION__?: unknown }).__P23B_LAST_ACTION__ = {
+			index: gesture.id,
+			path: gesture.path,
+			outcome: gesture.outcome
+		};
+	}
 	if (activeGesture === gesture) activeGesture = null;
 }
 
