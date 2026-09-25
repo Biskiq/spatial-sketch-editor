@@ -996,13 +996,16 @@ describe('P23B measurement step — the restore path and the mesh-cache key', ()
 		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
 		const second = stageCount('mesh-prebuild') - before - first;
 
-		// MEASURED, and it refutes the first hypothesis this measurement pass made:
-		// restoring a snapshot taken from live state does NOT re-derive the wall-mesh
-		// cache. The first restore already hits, because the capture holds
-		// `state.geometry` by reference and the compile that built the meshes cached
-		// them under that same object. So the browser record's 85-97 ms
-		// `restore-mesh-install` is NOT explained by "the commit's restore misses the
-		// cache", and the rank that followed from that reading is withdrawn.
+		// MEASURED, and it is what the plain harness does — NOT what the shipped
+		// editor does. Restoring a snapshot taken from this plain state does not
+		// re-derive the wall-mesh cache: the capture holds `state.geometry` by
+		// reference, this state is not reactive, so the restore hands back the very
+		// object the compile cached the meshes under. The browser capture measures
+		// the opposite inside a commit (a full 40-Wall rebuild, `mesh-prebuild`
+		// 133.8 ms p50 on the curved owner fixture, 25/25 accepted drags), which is
+		// how we know the object the app hands the restore is a DIFFERENT identity
+		// from the one the install cached. Read this test as pinning the cache's
+		// identity semantics, never as evidence about the app's restore cost.
 		expect({ first, second }).toEqual({ first: 0, second: 0 });
 	});
 
@@ -1030,9 +1033,11 @@ describe('P23B measurement step — the restore path and the mesh-cache key', ()
 		context.store.commitLayoutTransaction(snapshot);
 		const rebuilt = stageCount('mesh-prebuild') - before;
 
-		// If this were non-zero, the commit's own restore — the one that re-installs
-		// the state it just captured — would be re-deriving the whole wall-mesh
-		// cache, which is what the browser containment shape suggested.
+		// A non-zero value here would mean this harness re-derives the whole cache on
+		// every commit, which it does not — and the browser capture shows the app
+		// does exactly that. That contrast is the finding: the cache is keyed by
+		// geometry object identity, and the identity the app's restore passes is not
+		// the identity its install cached.
 		expect(rebuilt).toBe(0);
 	});
 });

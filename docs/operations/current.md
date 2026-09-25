@@ -70,20 +70,25 @@ NEXT:
    release-path marks were added (`selection-hit`, `gesture-commit`, `authoring-release`) plus the
    commit split (`commit-capture` / `commit-matches` / `commit-replace`).
    Record → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-record.md
-   HEADLINE (CORRECTED): the revision-1 ranking is WITHDRAWN. Its leading claim — that the
-   history commit's restore re-installs live state and misses the wall-mesh cache (85–97 ms
-   `restore-mesh-install`) — is REFUTED: `captureLayoutPreviewSnapshot` holds `state.geometry` by
-   reference, so a restore of a live snapshot re-derives nothing, and the production commit step
-   re-derives nothing either (three deterministic tests). No slice is named first, P23B.6 is
-   neither named first nor excluded, P23B.7's gesture-topology gate is named but not first, and
-   P23B.8 has no measured demand. Revision 1's numbers are NOT reused: that capture ran on a dirty
-   tree at `d9a56a2b` and no artifact of it is committed. Surviving facts: the whole-document
-   preflight gate is single-digit ms per move (1.5 straight / 3.6–3.9 curved, matching the owner's
-   1.7/7.8/9.9) and UN-1 re-derives by symbol (planner + `deriveInstallBundle` + preview install
-   all INSIDE `plan-apply`; P23B.1's line anchors are stale). Re-rank needs a clean-commit capture,
-   the raw intervals of the restore pair, and `gesture-commit` exclusive time from the split
-   marks. Coverage limit: the all-curved-40 capture aborted on the driver's own 6000 ms action
-   guard (not raised — it is part of the protocol).
+   HEADLINE (revision 2, clean tree at `d48809ab`; artifact committed, SHA-256 `c004abbd…`):
+   review finding 2 is CONFIRMED — the commit's restore MISSES the wall-mesh cache. On EVERY
+   accepted edit the full 40-Wall mesh set is built twice: once inside `plan-apply`
+   (p50 23–27 ms, keyed on the compile's own geometry object) and again inside
+   `commit-replace` → `baseline-restore` (p50 160.2 curved bend / 162.3 curved drag / 164.4
+   curved authoring / 134.3 straight), where the identical build is 5–6× slower per Wall; the
+   SAME restore between actions hits (`restore-mesh-install` p50 0.0 over 75 curved / 50
+   straight restores). An earlier pass of this correction wrongly withdrew that finding on the
+   strength of a test whose preview state is a plain object; that is withdrawn in the record's
+   §4. The commit path is 266.6 ms of a 341.6 ms curved drag release (78%):
+   `commit-capture` 125.5–149.5 (the snapshot clone) + `commit-replace` 137.8–164.8. RANKING: the
+   duplicated mesh build is named FIRST (a per-gesture commit-path fix — P23B.7 S6's family or a
+   bounded history-path fix; taking it before P23B.6 needs the sequence amended), `commit-capture`
+   second, the between-action restore pool (37.8 ms p50 × 75, reactive write) third; P23B.7's
+   topology gate is named but not first (11.1–11.6 ms p50); P23B.8 has no measured demand; P23B.6
+   is neither first nor excluded. Revision 1's numbers are NOT reused (dirty tree at `d9a56a2b`,
+   no artifact). Coverage limit: the all-curved-40 capture aborted on the driver's own 6000 ms
+   action guard (not raised — part of the protocol); a concurrent second harness tab invalidated
+   one earlier attempt, which was discarded and never cited.
    The step STOPS here for the owner's ruling; P23B.6–P23B.8 optimization work stays
    unauthorized and nothing is merged.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
