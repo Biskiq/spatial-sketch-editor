@@ -320,6 +320,71 @@ export function wallCenterlineSamples(
 }
 
 /**
+ * P23B.4 M-1 — one explicitly-threaded sampled-centerline derivation per acceptance chain.
+ *
+ * The acceptance chain (`finalizeWallGeometryCandidate`) derives the SAME Wall's canonical
+ * centerline once per DISTINCT key and hands THE SAME array object to every consumer that
+ * presents that key. The key grammar (owned here, generalized by P23B.5):
+ *
+ * - TRACED INPUTS ONLY: the centerline OBJECT identity (never geometry equality —
+ *   coincident coordinates across independent components must not share identity, D-9),
+ *   the traversal, and the resolved endpoints at full precision.
+ * - Pre/post may legitimately hold DIFFERENT derivations: they run on different documents
+ *   (different centerline objects), so sharing is per key, never across keys (EQ-1).
+ * - The key INCLUDES traversal (conservative form): `reverse` is derived independently,
+ *   never served by reversing the `forward` array, until OR-2 proves otherwise.
+ *
+ * Lifetime is the caller's (a per-release/per-acceptance chain value): chain-scoped, never
+ * editor state, never a module global — RL-1 (document retention) is impossible, not merely
+ * unlikely. Consumers that run outside a chain simply omit the derivation and keep today's
+ * per-call sampling: the parameter is always optional with today's behaviour as default.
+ *
+ * NON-MUTATION CONTRACT: the returned array (and its samples) must never be mutated by a
+ * consumer — one consumer's write would corrupt every other consumer of the key. All
+ * current consumers read, slice-copy or store read-only; the S2–S5 parity tests fail loudly
+ * on any cross-consumer contamination.
+ */
+export type WallSamplingDerivation = {
+	/**
+	 * The shared derivation for one key, or `undefined` exactly when the fresh
+	 * `wallCenterlineSamples` path yields `undefined` for the same inputs.
+	 */
+	samples(
+		wall: Pick<LayoutWall, 'id' | 'centerline'>,
+		startPoint: LayoutVec2,
+		endPoint: LayoutVec2,
+		traversal: WallCenterlineTraversal
+	): SampledSegment | undefined;
+	/** Live counters: `derivations` counts fresh derivations, `hits` counts shared returns. */
+	readonly stats: { derivations: number; hits: number };
+};
+
+/** Construct one chain-scoped derivation. Every chain constructs its own. */
+export function createWallSamplingDerivation(): WallSamplingDerivation {
+	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
+	const stats = { derivations: 0, hits: 0 };
+	return {
+		samples(wall, startPoint, endPoint, traversal) {
+			let byKey = cache.get(wall.centerline);
+			if (!byKey) {
+				byKey = new Map<string, SampledSegment | undefined>();
+				cache.set(wall.centerline, byKey);
+			}
+			const key = `${traversal}|${String(startPoint[0])}|${String(startPoint[1])}|${String(endPoint[0])}|${String(endPoint[1])}`;
+			if (byKey.has(key)) {
+				stats.hits += 1;
+				return byKey.get(key);
+			}
+			stats.derivations += 1;
+			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal);
+			byKey.set(key, derived);
+			return derived;
+		},
+		stats
+	};
+}
+
+/**
  * Whether `point` sits on the Wall's canonical centerline — a strict-interior
  * station of its span, or one of its two endpoint stations.
  *

@@ -44,6 +44,7 @@ import type {
 } from './layout-wall-first-types';
 import {
 	cloneWallCenterline,
+	createWallSamplingDerivation,
 	nextWallCurveKnotId,
 	translateWallCenterline,
 	wallCenterlineSamples,
@@ -1538,7 +1539,11 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const document = preStructural.document;
-	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document));
+	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
+	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers
+	// without a derivation keep today's per-call sampling.
+	const sampling = createWallSamplingDerivation();
+	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document, sampling));
 	const candidateRoomById = new Map(document.rooms.map((room) => [room.id, room]));
 	const components: ComponentLineage[] = [];
 	for (const room of baseline.rooms) {

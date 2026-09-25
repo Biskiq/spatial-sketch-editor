@@ -29,7 +29,7 @@ import { geometryId } from './layout-geometry-types';
 import type { LayoutVec2 } from './layout-types';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import { orientXZ } from './layout-robust-orientation';
-import { wallCenterlineSamples } from './layout-wall-centerline';
+import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 
 export type TopologyDiagnostic = {
 	code:
@@ -72,7 +72,8 @@ type HalfEdge = {
 };
 
 export function extractBoundaryCandidateFaces(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
 ): FaceExtractionResult {
 	const diagnostics: TopologyDiagnostic[] = [];
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
@@ -178,12 +179,10 @@ export function extractBoundaryCandidateFaces(
 			const start = junctionById.get(wall.startJunctionId)?.point;
 			const end = junctionById.get(wall.endJunctionId)?.point;
 			if (!start || !end) continue;
-			const sampled = wallCenterlineSamples(
-				wall,
-				start,
-				end,
-				half.direction === 'reverse' ? 'reverse' : 'forward'
-			);
+			const traversal = half.direction === 'reverse' ? 'reverse' : 'forward';
+			const sampled = sampling
+				? sampling.samples(wall, start, end, traversal)
+				: wallCenterlineSamples(wall, start, end, traversal);
 			if (!sampled) continue;
 			// Sampled points strictly between the two endpoints (drop both ends:
 			// fromId is this edge's start, toId is the next edge's start).
