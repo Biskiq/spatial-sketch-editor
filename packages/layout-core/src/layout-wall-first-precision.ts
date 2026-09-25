@@ -1775,7 +1775,40 @@ export type WallFirstTopologyOptions = {
 	 * per-call sampling.
 	 */
 	sampling?: WallSamplingDerivation;
+	/**
+	 * P23B.4 correction (F2) — test-only bypass of the M-2a extent prune.
+	 * When true, `detectWallCurveTopologyCrossings` evaluates every candidate pair
+	 * through the shipped narrow-phase predicate (the genuine exhaustive behavior
+	 * with only the new extent gate absent). Absent/false is production behavior.
+	 * Never set in production code.
+	 */
+	disableExtentPruneForTest?: boolean;
 };
+
+/**
+ * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
+ * topology gate feeds its crossing predicate (post-seam, as consumed).
+ *
+ * While set, each gate run reports every sampled Wall exactly as the predicate sees
+ * it. Catches consumer-side post-seam divergence (e.g. a 1e-9 perturbation applied
+ * after the seam) that a seam-call observer cannot see. Unset is zero behavior
+ * change. Never retains; never set in production.
+ */
+export type TopologyGateObservation = {
+	wallId: string;
+	sampleCount: number;
+};
+let topologyGateObserverForTest:
+	| ((walls: readonly TopologyGateObservation[], samplesByWallId: ReadonlyMap<string, readonly CurveSample[]>) => void)
+	| undefined;
+export function setTopologyGateObserverForTest(
+	observer: ((walls: readonly TopologyGateObservation[], samplesByWallId: ReadonlyMap<string, readonly CurveSample[]>) => void) | undefined
+): void {
+	topologyGateObserverForTest = observer;
+}
+export function clearTopologyGateObserverForTest(): void {
+	topologyGateObserverForTest = undefined;
+}
 
 export function validateWallFirstTopology(
 	document: LayoutDocumentWallFirst,
@@ -1865,7 +1898,7 @@ export function validateWallFirstTopology(
 
 	// P23.11 — canonical curve-level crossing gate (one implementation, shared
 	// with the Wall-chain authoring path).
-	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments, options.sampling);
+	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments, options.sampling, options.disableExtentPruneForTest);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
 			return topologyFailure(
@@ -2055,7 +2088,8 @@ export type WallCurveTopologyCrossing =
 export function detectWallCurveTopologyCrossings(
 	document: LayoutDocumentWallFirst,
 	wallSegments: ReadonlyMap<string, TopologySegment>,
-	sampling?: WallSamplingDerivation
+	sampling?: WallSamplingDerivation,
+	disableExtentPruneForTest?: boolean
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -2081,6 +2115,21 @@ export function detectWallCurveTopologyCrossings(
 			samples
 		});
 	}
+	const gateObserver = topologyGateObserverForTest;
+	if (gateObserver) {
+		try {
+			const summary: TopologyGateObservation[] = [...sampledWalls.values()].map((entry) => ({
+				wallId: entry.id,
+				sampleCount: entry.samples.length
+			}));
+			const byId = new Map<string, readonly CurveSample[]>(
+				[...sampledWalls.values()].map((entry) => [entry.id, entry.samples] as const)
+			);
+			gateObserver(summary, byId);
+		} catch {
+			// A test observer must never break the topology gate.
+		}
+	}
 	for (const wall of document.walls) {
 		if (wall.centerline.kind === 'line') continue;
 		const sampled = sampledWalls.get(wall.id);
@@ -2105,7 +2154,9 @@ export function detectWallCurveTopologyCrossings(
 			// P23B.4 M-2a: conservative extent prune — a pair whose swept extents
 			// cannot overlap cannot newly cross. Same predicate, same reporting,
 			// same first-wins order; only rejected-anyway pairs are skipped (OR-9).
-			if (!sampledWallExtentsOverlap(sampledA, sampledB)) continue;
+			// Test-only bypass (F2): `disableExtentPruneForTest` recovers the genuine
+			// exhaustive behavior with only this gate absent. Never set in production.
+			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
 			const shared = sharedJunctionIds(a, b)[0];
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 			return shared

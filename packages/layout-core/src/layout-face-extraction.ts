@@ -30,6 +30,33 @@ import type { LayoutVec2 } from './layout-types';
 import type { LayoutDocumentWallFirst, LayoutJunction, LayoutWall } from './layout-wall-first-types';
 import { orientXZ } from './layout-robust-orientation';
 import { wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
+import type { SampledSegment } from './layout-geometry-curve';
+
+/**
+ * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
+ * face consumer feeds its polygon builder (post-seam, as consumed).
+ *
+ * While set, each curved half-edge reports the exact array it consumes. This catches
+ * consumer-side post-seam divergence that a seam-call observer cannot see (the seam
+ * output is unchanged when the consumer mutates afterwards). Unset is zero behavior
+ * change. Never retains; never set in production.
+ */
+export type FaceSamplingObservation = {
+	wallId: string;
+	direction: 'forward' | 'reverse';
+	ok: boolean;
+};
+let faceSamplingObserverForTest:
+	| ((observation: FaceSamplingObservation, samples: SampledSegment['samples'] | undefined) => void)
+	| undefined;
+export function setFaceSamplingObserverForTest(
+	observer: ((observation: FaceSamplingObservation, samples: SampledSegment['samples'] | undefined) => void) | undefined
+): void {
+	faceSamplingObserverForTest = observer;
+}
+export function clearFaceSamplingObserverForTest(): void {
+	faceSamplingObserverForTest = undefined;
+}
 
 export type TopologyDiagnostic = {
 	code:
@@ -183,6 +210,14 @@ export function extractBoundaryCandidateFaces(
 			const sampled = sampling
 				? sampling.samples(wall, start, end, traversal)
 				: wallCenterlineSamples(wall, start, end, traversal);
+			const faceObserver = faceSamplingObserverForTest;
+			if (faceObserver) {
+				try {
+					faceObserver({ wallId: wall.id, direction: half.direction, ok: sampled !== undefined }, sampled?.samples);
+				} catch {
+					// A test observer must never break face extraction.
+				}
+			}
 			if (!sampled) continue;
 			// Sampled points strictly between the two endpoints (drop both ends:
 			// fromId is this edge's start, toId is the next edge's start).

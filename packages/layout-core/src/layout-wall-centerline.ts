@@ -312,11 +312,60 @@ export function wallCenterlineSamples(
 	endPoint: LayoutVec2,
 	traversal: WallCenterlineTraversal
 ): SampledSegment | undefined {
+	let result: SampledSegment | undefined;
 	try {
-		return sampleSegment(wallCenterlineSegment(wall, startPoint, endPoint, traversal));
+		result = sampleSegment(wallCenterlineSegment(wall, startPoint, endPoint, traversal));
 	} catch {
-		return undefined;
+		result = undefined;
 	}
+	const observer = wallSamplingObserverForTest;
+	if (observer) {
+		try {
+			observer(
+				{
+					wallId: wall.id,
+					traversal,
+					start: [startPoint[0], startPoint[1]] as LayoutVec2,
+					end: [endPoint[0], endPoint[1]] as LayoutVec2,
+					ok: result !== undefined
+				},
+				result
+			);
+		} catch {
+			// A test observer must never break production sampling.
+		}
+	}
+	return result;
+}
+
+/**
+ * P23B.4 correction (F1) — test-only observation of actual consumer sampling calls.
+ *
+ * While set, every `wallCenterlineSamples` invocation reports its inputs and result.
+ * Unset (the production default) is zero behavior change beyond one undefined check.
+ * The hook never retains: the observer runs synchronously and production stores
+ * nothing, so no document lifetime is extended (RL-1). The observer must not mutate
+ * its arguments and must copy synchronously if it needs the data. Never set in
+ * production code; tests set/clear around a single real-consumer invocation to key
+ * observations by consumer/site/traversal/resolved endpoints.
+ */
+export type WallSamplingCallObservation = {
+	wallId: string;
+	traversal: WallCenterlineTraversal;
+	start: LayoutVec2;
+	end: LayoutVec2;
+	ok: boolean;
+};
+let wallSamplingObserverForTest:
+	| ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void)
+	| undefined;
+export function setWallSamplingObserverForTest(
+	observer: ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void) | undefined
+): void {
+	wallSamplingObserverForTest = observer;
+}
+export function clearWallSamplingObserverForTest(): void {
+	wallSamplingObserverForTest = undefined;
 }
 
 /**
