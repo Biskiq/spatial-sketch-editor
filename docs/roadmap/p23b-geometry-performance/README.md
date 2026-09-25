@@ -32,8 +32,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.6–P23B.8 **optimization** work remains unauthorized — the owner authorized ONE measurement-only step to run first (the P23B.5-closeout routing amendment below), and it has now run and closed: it started no optimization and ended at a ranking. Its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 runs P23B.7 before P23B.6 (order only). No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6 and the next work item is P23B.7's own plan/review. Do NOT start an optimization inside either slice. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.6–P23B.8 **optimization** work remains unauthorized EXCEPT P23B.7, which the owner RATIFIED and AUTHORIZED on 2026-09-25 (the P23B.7-step routing amendment below, on the dedicated `P23B.7` branch): the P23B.5-closeout-authorized measurement-only step ran first and closed, starting no optimization and ending at a ranking, and its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 runs P23B.7 before P23B.6 (order only). No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.7's reconciled plan is RATIFIED and its implementation AUTHORIZED (2026-09-25 P23B.7-step routing amendment above; the two clarification rulings are folded into plan §0.8 and §7), and it executes on the dedicated `P23B.7` branch in the order S2 → S6 + regression → S6 measurement → S3 → S4 → S5 only if named → S7, ending at a PR for owner review. Do NOT start P23B.6 or P23B.8 work here, do not open a second cache, and do not rewrite the baseline or the ratchet record. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -137,6 +137,40 @@ and any broader ownership redesign remain unauthorized. One extra scope item was
 also inside that single PR: the committed reuse-counter gate (plan §0.6), which adds no repository
 budget metric and re-records no baseline. The ratified `SEQUENCE`, sequential slice
 review/acceptance/`slice-closeout` order, and slice scope/identity/order are unchanged.
+
+## Owner-authorized execution routing amendment — 2026-09-25 (P23B.7 step)
+
+```text
+OWNER RULING 2026-09-25: the P23B.7 plan is RATIFIED and its implementation AUTHORIZED on the
+  dedicated `P23B.7` branch (do not reuse a `codex/`-prefixed branch or the P23B.4/P23B.5 branches);
+  one PR for the slice, opened for review, never merged and never marked accepted here.
+
+TWO RATIFICATION CLARIFICATIONS (folded into the plan's owning sections — plan §0.8):
+  · the gesture-invariant part is computed once; AFFECTED candidate sets and verdicts are RECOMPUTED
+    AS NEEDED PER MOVE, may change size across moves and may grow with the document, and per-move
+    work is bounded by THAT move's conservative candidate set. Only INVARIANT predicate evaluations
+    are claimed zero after initialization (§7 DETERMINISTIC i-iii).
+  · sample reuse and verdict reuse are tested as a FOUR-CELL MATRIX, one axis at a time (sample
+    ON/OFF with verdict mode fixed, separately for verdict OFF and ON; verdict OFF/ON with sampling
+    fixed, separately for sampling ON and OFF), requests suppressed by verdict reuse are accounted
+    explicitly, P23B.5's absolute sample-store invariants are PRESERVED VERBATIM (no weakened
+    invariant, no fabricated hit, no double count) and RETAINING the sample requests is the APPROVED
+    fallback — which is what ships, so the recorded ratchet needs no re-record.
+
+WHAT THE STEP AUTHORIZES: plan §6's full slice in its amended order — S2 (reference freeze, tests
+  only), S6 (the commit-path duplicate-build fix + its `$state`-backed regression proof), S6's own
+  independently attributable browser capture BEFORE any topology change, S3 (affected-extent
+  derivation), S4 (gesture-scoped verdict set + the four-cell differential), S5 ONLY if the
+  measurement names hit-test/snap, and S7 (slice-wide re-measure). Commits and pushing are authorized
+  on the branch, as separate coherent green commits; the PR carries scope, validation, evidence and
+  limitations for owner review.
+
+GUARDRAILS (unchanged): `g3-baseline.json` is NOT rewritten (`bench:record` stays its only writer) ·
+  no budget metric and no production behaviour change beyond the authorized mechanisms · the
+  committed `reuse-counter-ratchet.json` is NOT hand-edited (only `reuse:record` writes it) · the full
+  test contract in `apps/editor/tests/README.md` runs before review · no P23B.6 or P23B.8 work ·
+  the slice is NOT merged, accepted or closed here.
+```
 
 ## Owner-authorized execution routing amendment — 2026-09-25 (P23B.5 closeout + measurement-only step)
 
@@ -348,7 +382,18 @@ MEASUREMENT-ONLY STEP — EXECUTED, owner-reviewed, ACCEPTED and CLOSED 2026-09-
          (SHA-256 `c004abbd…`). Limits: advisory, one machine/session; all-curved-40 aborts on the
          driver's 6000 ms guard; revision-2 magnitudes are 40–85% above revision 1 and the baseline.
 P23B.6  rendering optimization — PLANNED, unratified
-P23B.7  interaction optimization — PLANNED, unratified; RUNS BEFORE P23B.6 (owner order ruling 2026-09-25)
+P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026-09-25 on the dedicated
+        `P23B.7` branch; RUNS BEFORE P23B.6 (owner order ruling 2026-09-25). Plan RECONCILED 2026-09-25
+        against the shipped dependencies and the measurement-only step, the owner's four
+        pre-ratification gaps RESOLVED in place (plan §0.7: the S6 `$state` regression oracle, S4's
+        sample-request continuity with P23B.5's ratchet, S6-before-S3/S4 execution order, and the
+        corrected deterministic scaling clause), and the owner's two ratification clarifications folded
+        into their owning sections (plan §0.8: recomputed per-move affected candidate sets with only
+        invariant evaluations guaranteed zero after initialization; the four-cell sample/verdict
+        differential with suppressed requests accounted explicitly, invariants preserved verbatim and the
+        retained-requests fallback approved). Execution order: S2 → S6 + regression → S6's independent
+        measurement → S3 → S4 → S5 only if measurement names it → S7. Slice review, acceptance and
+        `slice-closeout` remain owner actions after the PR.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified

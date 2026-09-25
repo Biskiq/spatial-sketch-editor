@@ -10,10 +10,19 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        `reuse-counter-ratchet.json`), whose only writer is `npm run reuse:record --reason "…"`
        (requires the reason, refuses a dirty tree, refuses an incoherent measurement, no test
        writes it) — no budget metric added, no baseline re-recorded.
-       NEXT STEP: P23B.7's plan/review work — the measurement-only step ran on `p23b-measurement`
-       (phase README, P23B.5-closeout routing amendment + the owner's 2026-09-25 extension), is
-       CLOSED (PR #91; anchor `1d0fb220`, tag `closed/p23b-measurement`) and ruled STATE-SIDE, so
-       the SEQUENCE runs P23B.7 before P23B.6.
+       NEXT STEP: P23B.7 — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026-09-25 on the dedicated
+       `P23B.7` branch (phase README's P23B.7-step routing amendment), executing the amended order
+       S2 → S6 + its `$state` regression proof → S6's own independent capture → S3 → S4 → S5 only if
+       the measurement names it → S7, then a PR for owner review. The plan carries the owner's two
+       ratification clarifications folded into their owning sections (plan §0.8/§7): affected
+       candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
+       guaranteed zero after initialization), and sample/verdict reuse is tested as a four-cell
+       matrix with suppressed requests accounted explicitly, P23B.5's absolute invariants preserved
+       verbatim and retained sample requests approved as the fallback. The measurement-only step ran
+       on `p23b-measurement` (phase README, P23B.5-closeout routing amendment + the owner's 2026-09-25
+       extension), is CLOSED (PR #91; anchor `1d0fb220`, tag `closed/p23b-measurement`) and ruled
+       STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.6/P23B.8 optimization stays
+       unauthorized.
        Prior child P23B.4-compilation-invalidation SHIPPED
        2026-09-25 on `P23B4` (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`;
        stubs + anchor `4cbcc370`, tag `closed/p23b.4`). U-1 declined, Rust/WASM
@@ -96,11 +105,12 @@ NEXT:
    `installWallMeshes` is a Svelte `$state` PROXY of the compile's geometry — not the object the
    install cached (`derivedWallMeshes`) — so the miss is STATE-SIDE (curved: install id 52
    proxy=NO vs commit id 53 proxy=YES; straight: 153 vs 154; `stateProxy` tested by
-   `structuredClone` throwing a `DataCloneError`). ORDER RULING (applied, STATE-SIDE): the
+   `structuredClone` throwing a `DataCloneError`).   ORDER RULING (applied, STATE-SIDE): the
    SEQUENCE's step 11 runs P23B.7 BEFORE P23B.6 (P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8) —
-   order only, no slice renamed, rescoped or renumbered. NEXT WORK ITEM: P23B.7's own plan and
-   review. P23B.6 and P23B.7 implementation stay UNAUTHORIZED until their slices are ratified;
-   nothing is opened here and no fix landed.
+   order only, no slice renamed, rescoped or renumbered. P23B.7's reconciled plan is RATIFIED and its
+   implementation AUTHORIZED 2026-09-25 on the dedicated `P23B.7` branch (phase README's P23B.7-step
+   routing amendment; plan §0.8/§7 carry the two clarification rulings). P23B.6 and P23B.8 remain
+   UNAUTHORIZED until their own slices are ratified; no P23B.6/P23B.8 work may start inside P23B.7.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
@@ -143,11 +153,14 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.5 shipped and closed (PR #90; stub + anchor `75fbd8a0`, tag `closed/p23b.5`). No
-  release-scope reuse claim and no sample-store re-ownership: the sample scope stays the
-  gesture-scoped preflight owner only. The measurement-only step closed 2026-09-25 (PR #91) and
-  its identity pin ruled STATE-SIDE, so P23B.7 runs before P23B.6. P23B.6–P23B.8 OPTIMIZATION
-  work remains unauthorized; the next work item is P23B.7's own plan and review. U-1 declined.
+- P23B.7 is RATIFIED and its implementation is AUTHORIZED on the dedicated `P23B.7` branch
+  (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). P23B.5 shipped and closed
+  (PR #90; stub + anchor `75fbd8a0`, tag `closed/p23b.5`). No release-scope reuse claim and no
+  sample-store re-ownership: the sample scope stays the gesture-scoped preflight owner only, its
+  absolute invariants are preserved verbatim and its recorded ratchet is not hand-edited. The
+  measurement-only step closed 2026-09-25 (PR #91) and its identity pin ruled STATE-SIDE, so P23B.7
+  runs before P23B.6. P23B.6–P23B.8 OPTIMIZATION work remains unauthorized apart from P23B.7. U-1
+  declined.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a/P23B.0.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
