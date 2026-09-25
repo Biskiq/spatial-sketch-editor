@@ -86,13 +86,24 @@ all three inform synthesis.
     P23B.4's baseline gate is satisfied; its reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first).
 11  P23B.4–P23B.8 execute, verify and review; then the P23B.9 correctness +
     performance-regression gate and the P23B.10 closeout gate
+    [ORDER AMENDED 2026-09-25] Within that run, P23B.7 executes BEFORE P23B.6:
+    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8. Owner-ruled from the measurement
+    step's geometry-identity pin (STATE-SIDE: the object the commit hands
+    `installWallMeshes` is a Svelte `$state` proxy, and the duplicate 40-Wall
+    rebuild it causes is per-gesture commit/history work, which P23B.7 owns —
+    not per-frame rendering). ORDER ONLY: slice IDs, names, scope and identity
+    are UNCHANGED and there is NO renumbering. Evidence →
+    ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8.
 ```
 
-> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** The single
-> amendment is the owner-authorized insertion of **P23B.3a** as step 9 (approved 2026-09-22 under
-> D-11 = ARRANGEMENT 1), which also re-numbers the closing step; no existing slice's meaning, scope or
-> identity changed. Later work must PRESERVE THIS sequence and must not change it again without a further
-> owner authorization — byte equality to the PRE-AMENDMENT block is **not** the test (P23B.10 MR-10).
+> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are two
+> owner-authorized amendments. The first is the insertion of **P23B.3a** as step 9 (approved 2026-09-22
+> under D-11 = ARRANGEMENT 1), which also re-numbered the closing step. The second is the 2026-09-25
+> **order amendment inside step 11**: P23B.7 runs before P23B.6, ruled from the measurement-only step's
+> identity pin (STATE-SIDE), with no slice renumbered and no scope or identity changed. No existing
+> slice's meaning, scope or identity changed in either. Later work must PRESERVE THIS sequence and must
+> not change it again without a further owner authorization — byte equality to the PRE-AMENDMENT block is
+> **not** the test (P23B.10 MR-10).
 
 ## Owner-authorized execution routing amendment — 2026-09-24
 
@@ -134,6 +145,17 @@ branch and its single PR (#90) was squash-merged — no new scope entered that P
 the owner's ruling for what runs next.
 
 ```text
+OWNER EXTENSION 2026-09-25: the measurement step also pins which geometry identity
+  `installWallMeshes` receives at commit time (DEV-only diagnostic, no product change),
+  and the P23B.6/P23B.7 order is ruled from that result per the order ruling below.
+
+ORDER RULING 2026-09-25 (STATE-SIDE, applied): the pin proved that the object the commit
+  hands `installWallMeshes` is a `$state` proxy and not the object the install cached, so the
+  leading measured cost is per-gesture commit/history work. The SEQUENCE's step 11 therefore
+  runs P23B.7 BEFORE P23B.6 — the authoritative block above carries the amendment, and it is
+  order only (no renumbering, no scope or identity change). Evidence →
+  ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8.
+
 ORDER (amends SEQUENCE step 11's execution order only)
   Before ANY optimization step in P23B.6 or P23B.7, run ONE measurement-only step: P23B.7 S1
   (per-move proposal, per-move preflight, the derive/install seam, reactive re-render and the

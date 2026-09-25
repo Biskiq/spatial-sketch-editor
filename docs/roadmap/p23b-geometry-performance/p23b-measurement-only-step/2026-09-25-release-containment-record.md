@@ -6,6 +6,10 @@ STATUS:  CORRECTION PASS 1, revision 2 (2026-09-25). A clean-tree capture now
          measured evidence. Review finding 2 is CONFIRMED, not refuted: the
          commit's restore DOES re-derive the whole wall-mesh cache. The earlier
          "refutation" in this file was itself wrong and is withdrawn in §4.
+         §7 adds the owner-extension identity pin: the object the commit hands
+         the restore is a Svelte `$state` proxy of the compile's geometry, not
+         the object the install cached — STATE-SIDE, so the SEQUENCE now runs
+         P23B.7 before P23B.6 (order only; §6).
 ROLE:    DEV-only, advisory measurement of where an accepted action's time goes,
          run before any P23B.6/P23B.7 optimization per the phase README's
          owner-authorized routing amendment (2026-09-25).
@@ -206,22 +210,18 @@ never seen, and pays a full rebuild in the release where a hit would cost ~0. Th
 commit-time rebuild is also 5–6x slower per Wall than the identical install-time
 build.
 
-WHAT IS STILL OPEN, AND HONESTLY SO. Which identity differs is narrowed, not
-pinned. The install caches the meshes under the compile's own object
-(`derivePreviewBundle` → `resolveWallMeshes(result.geometry)`), while the restore
-installs `snapshot.geometry`, whatever `captureLayoutPreviewSnapshot` read out of
-the live preview. The app holds that preview inside `$state(...)`
-(`EditorApp.svelte:248`), so two candidates remain: (a) a reactive read hands back
-a proxy or a different object than the compile produced, or (b) the geometry that
-was installed and the geometry that was captured are two different objects. An
-in-process probe of (a) did NOT reproduce a differing identity under Svelte 5.56
-(a runes helper collapsed to a non-reactive value and the plain-object harness
-reads the raw object back), so this record claims only the MISS — measured,
-systematic, 100 of 100 accepted commit-path actions on two fixtures — and leaves
-the identity source to the slice that removes it. That slice's first step is to
-assert which object `installWallMeshes` receives at commit time; the 5–6x per-Wall
-gap is evidence about the second build's inputs, and it is named as a hypothesis,
-not a conclusion.
+WHICH IDENTITY DIFFERS — SETTLED IN §7. This section claims only the MISS, which
+is measured on 100 of 100 accepted commit-path actions across two fixtures. The
+identity behind it is pinned by the owner-extension probe in the RUNNING app: the
+install caches the meshes under the compile's own object (`derivePreviewBundle` →
+`resolveWallMeshes(result.geometry)`), while the commit's restore passes
+`snapshot.geometry` — Svelte's `$state` proxy of that same compile, read out of
+the live preview (`EditorApp.svelte:248` holds it in `$state(...)`). Two earlier
+attempts to settle this IN PROCESS are kept as history because both failed for the
+same reason: a plain-object harness reads the raw object back, and a runes helper
+collapsed Svelte 5.56's `$state` to a non-reactive value, so neither could see the
+proxy the app really passes. The 5–6x per-Wall gap follows from the same proxy
+(every property read is trapped).
 
 ## 5. What still holds from the measurement
 
@@ -284,14 +284,99 @@ not a conclusion.
    case still has to be made, and this capture does not make it.
 ```
 
-THE ROUTING QUESTION FOR THE OWNER, stated the way the amendment asks: the
-leading measured cost is per-gesture commit/history work, not per-frame rendering.
-If the owner wants it fixed next, the choice is between (a) amending the sequence
-so a bounded commit-path fix runs before P23B.6, or (b) keeping the sequence and
-letting P23B.6 run first. This record does not decide it, raises no target, and
-starts no optimization: the step STOPS here.
+ORDER RULING (owner, 2026-09-25 — applied). The identity pin in §7 is
+STATE-SIDE, so the owner's pre-authorized branch amends the SEQUENCE's step 11 so
+that **P23B.7 runs before P23B.6** (P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8).
+The amendment is order only: no slice is renamed, rescoped or renumbered, and the
+phase README's SEQUENCE block carries the one authoritative copy. The next step is
+P23B.7's own plan/review work; P23B.7 and P23B.6 implementation remain
+unauthorized until those slices are ratified. This record raises no target and
+starts no optimization.
 
-## 7. Reproduction
+## 7. The identity pin (owner extension) — DEV-only
+
+COMMIT: `a2692454` (`feat(p23b): add the DEV geometry-identity probe for the
+commit mesh rebuild`). The capture below ran on a CLEAN tree at that commit
+(`git status --porcelain` empty; the harness's own provenance confirms it), in one
+harness tab, on the committed protocol: revision 3, owner-40-curved-v1 CAPTURED
+(session `6c1c0396-c16e-4181-bb13-3e3e8435c493`, settled, no incomplete actions)
+and p23b-40-wall-straight-v1 CAPTURED (session
+`7f39158c-dce2-4a4a-8c3c-893372446089`, settled). p23b-40-wall-all-curved-v1
+aborted again on the driver's own guard ("action 106 did not complete within
+6000 ms") during wall-authoring, so the coverage limit in §1 stands and 2,332
+probe rows were recorded. The probe itself costs one bounded row per observation
+and no clone beyond the memoized `structuredClone` per unique geometry.
+
+WHAT THE PROBE IS. `apps/editor/src/lib/editor/layout/p23b-mesh-identity.ts`,
+behind the same DEV + `__P2311_PERF__` gate as every `p2311:` mark, inert
+otherwise, changing no value and read by no product code. One row per
+observation: phase (`install` · `install-bundle` · `capture` · `commit-replace` ·
+`restore` · `prebuild-hit` · `prebuild-miss`), the geometry's identity id (a
+`WeakMap` id per object), `stateProxy`, `walls`, `liveId`, `sameAsLive`,
+`lastInstallId`, `sameAsInstall`. Full log →
+`globalThis.__P2311_MESH_IDENTITY__`; the harness panel shows its tail and the
+measurement record carries the phase counts plus the first rows.
+
+HOW `stateProxy` IS TESTED, exactly: `structuredClone(object)` throws
+`DataCloneError` for a Proxy exotic object and succeeds for the plain object
+behind it, so "throws" is recorded as `stateProxy: true`. The check is memoized
+per object identity and its clone is discarded. (A `$state.snapshot` comparison
+was NOT used: Svelte 5.56's `snapshot` deep-clones in dev, so it never returns the
+input identity and cannot answer the question.)
+
+RESULT — one accepted rigid edit per fixture, first one after warm-up, times in ms
+after the action's start:
+
+```text
+owner-40-curved-v1 · plan-drag-edit · action 50 · span 929 · commit-replace [601..688]
+  t=501  install-bundle  id=52  proxy=NO   walls=40   (the compile's own object)
+  t=510  prebuild-miss   id=52  proxy=NO   walls=40   (the install's build, keyed raw)
+  t=524  capture         id=53  proxy=YES  walls=40   sameAsInstall=NO (lastInstall=52)
+  t=601  commit-replace  marker (no geometry)
+  t=604  restore         id=53  proxy=YES  walls=40   sameAsInstall=NO
+  t=604  prebuild-miss   id=53  proxy=YES  walls=40   (the COMMIT's rebuild)
+
+p23b-40-wall-straight-v1 · plan-drag-edit · action 25 · span 702 · commit-replace [527..630]
+  t=240  install-bundle  id=153 proxy=NO   walls=40
+  t=250  prebuild-miss   id=153 proxy=NO   walls=40
+  t=266  capture         id=154 proxy=YES  walls=40   sameAsInstall=NO (lastInstall=153)
+  t=527  commit-replace  marker (no geometry)
+  t=528  restore         id=154 proxy=YES  walls=40   sameAsInstall=NO
+  t=528  prebuild-miss   id=154 proxy=YES  walls=40   (the COMMIT's rebuild)
+```
+
+THE THREE ANSWERS:
+
+1. **Is the geometry inside `commit-replace` the same object the install cached?**
+   NO. Distinct identity ids on both fixtures (53 vs 52; 154 vs 153), and
+   `sameAsInstall: false` is measured against the install that ran 23–26 ms
+   earlier in the SAME action.
+2. **Is either object a Svelte `$state` proxy?** The commit-time one is
+   (`stateProxy: true`, by the `structuredClone` test above); the installed and
+   cached one is not.
+3. **Where does the second object come from?** Named by symbol:
+   `captureLayoutPreviewSnapshot` (`apps/editor/src/lib/editor/layout/layout-preview-state.svelte.ts`)
+   reads `state.geometry` off the live preview, and `EditorApp.svelte:248` holds
+   that preview in `$state(...)` — so the read returns Svelte's deep proxy of the
+   compile's object. `snapshot.geometry` is that proxy, and the commit's
+   `restoreLayoutPreviewSnapshot` hands it to `installWallMeshes`, whose
+   `derivedWallMeshes` entry is keyed on the compile's raw object. The proxy is
+   also why the commit's rebuild of the same 40 Walls is 5–6x slower per Wall
+   (0.5–2.2 ms vs 0.0–0.2 ms): every property read goes through the proxy trap.
+
+→ The ruling is therefore **STATE-SIDE**: the top measured cost is per-gesture
+commit/history work, and the phase README's SEQUENCE now runs **P23B.7 before
+P23B.6** (order only — no renumbering, no scope or identity change).
+
+PERTURBATION NOTE (revision-2 magnitudes). Revision 2's release p50s run ~40–85%
+above revision 1's and the P23B.0 baseline (curved wall-authoring release 1,289.4
+vs 700.3 ms; straight wall-authoring 371.9 vs the baseline's 262.6 ms), with the
+DEV measurement switch on and the harness panel open. The DURABLE finding of this
+section is the per-edit build COUNT and the identity it fails on — measured
+identically on four fixtures/actions — not the millisecond magnitudes, which are
+single-session and advisory.
+
+## 8. Reproduction
 
 ```bash
 npm run dev:editor            # DEV server on the working tree
