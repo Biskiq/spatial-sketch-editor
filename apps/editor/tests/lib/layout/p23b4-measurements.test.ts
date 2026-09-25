@@ -121,6 +121,12 @@ describe('P23B.4 F3 — mechanism-level measurement (repeatable, advisory wall-c
 				}
 			}
 			console.log(`${id} pairs total=${total} sameComponent=${sameComponent} topologyMs pruned p50=${pruned.p50.toFixed(3)} p95=${pruned.p95.toFixed(3)} exhaustive p50=${exhaustive.p50.toFixed(3)} p95=${exhaustive.p95.toFixed(3)}`);
+			// Straight-only documents never reach the sampled-pair predicate (chord
+			// short-circuit), so their pruned/exhaustive delta is run-to-run noise and
+			// MUST NOT be read as extent-scan overhead — the gate never executes there.
+			if (id === 'p23b-40-wall-straight-v1' || id === 'bend-3-room-openings') {
+				console.log(`${id} note: straight-only pairs bypass the extent gate; delta is noise, not overhead`);
+			}
 			if (id === 'p23b-40-wall-all-curved-v1' || id === 'owner-40-curved-v1') {
 				expect(total, `${id} all pairs`).toBe(780);
 				expect(sameComponent, `${id} same-component (P23B.3a policy)`).toBe(60);

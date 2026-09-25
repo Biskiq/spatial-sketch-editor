@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	classifyWallIntersection,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
 	detectWallCurveTopologyCrossings,
@@ -141,21 +142,28 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 		);
 		fixtures.push({ id: 'edge-multi-crossing', document: doc });
 	}
-	// Near-tangent same-component curves (evaluated, admitted).
+	// Genuine near-tangent same-component pair: parallel curved Walls 2e-4 apart
+	// (above the 1e-4 predicate tolerance) joined by a link Wall. Boxes overlap so
+	// the pair IS evaluated, and the narrow phase admits it. A 5e-5 sibling (below
+	// tolerance) is rejected through the same evaluated path.
 	{
-		const doc = createEmptyWallFirstLayoutDocument() as LayoutDocumentWallFirst;
-		doc.junctions.push(
-			{ id: 'j-a', point: [0, 0] },
-			{ id: 'j-m', point: [8, 0] },
-			{ id: 'j-b', point: [8, 4] },
-			{ id: 'j-c', point: [0, 4] }
-		);
-		doc.walls.push(
-			{ id: 'wall-low', startJunctionId: 'j-a', endJunctionId: 'j-m', role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, 0.00005], 'wall-low:knot:1') },
-			{ id: 'wall-high', startJunctionId: 'j-m', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'wall-top', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'partition', thickness: 0.2, height: 3, centerline: curve([8, 4], [0, 4], [4, 4.00005], 'wall-top:knot:1') }
-		);
-		fixtures.push({ id: 'edge-near-tangent', document: doc });
+		const near = (gap: number, suffix: string) => {
+			const doc = createEmptyWallFirstLayoutDocument() as LayoutDocumentWallFirst;
+			doc.junctions.push(
+				{ id: `${suffix}-j-0`, point: [0, 0] },
+				{ id: `${suffix}-j-1`, point: [8, 0] },
+				{ id: `${suffix}-j-2`, point: [0, 0.7 + gap] },
+				{ id: `${suffix}-j-3`, point: [8, 0.7 + gap] }
+			);
+			doc.walls.push(
+				{ id: `${suffix}-w-low`, startJunctionId: `${suffix}-j-0`, endJunctionId: `${suffix}-j-1`, role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, 0.35], `${suffix}-w-low:knot:1`) },
+				{ id: `${suffix}-w-link`, startJunctionId: `${suffix}-j-1`, endJunctionId: `${suffix}-j-3`, role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: `${suffix}-w-high`, startJunctionId: `${suffix}-j-2`, endJunctionId: `${suffix}-j-3`, role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0.7 + gap], [8, 0.7 + gap], [4, 0.35 + gap], `${suffix}-w-high:knot:1`) }
+			);
+			return doc;
+		};
+		fixtures.push({ id: 'edge-near-tangent-miss', document: near(0.0002, 'miss') });
+		fixtures.push({ id: 'edge-near-tangent-touch', document: near(0.00005, 'touch') });
 	}
 	// Degenerate tiny wall in one component (degenerate box handling).
 	{
@@ -198,6 +206,55 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 		);
 		fixtures.push({ id: 'edge-touch-chain', document: doc });
 	}
+	// Connected two-Room crossing: room-1's east Wall bows into room-2 and crosses
+	// room-2's south Wall. Same component via the shared a2 junction; chords are
+	// legally joined there, so any rejection MUST come from the sampled branch.
+	// Three construction paths: gentle admitted control, knot-move edit of that
+	// control, and the crossed state built directly as an already-invalid baseline.
+	{
+		const crossRoom = (eastKnot: LayoutVec2 | null) => {
+			const doc = createEmptyWallFirstLayoutDocument() as LayoutDocumentWallFirst;
+			doc.junctions.push(
+				{ id: 'a0', point: [0, 0] },
+				{ id: 'a1', point: [8, 0] },
+				{ id: 'a2', point: [8, 8] },
+				{ id: 'a3', point: [0, 8] },
+				{ id: 'b1', point: [16, 8] },
+				{ id: 'b2', point: [16, 16] },
+				{ id: 'b3', point: [8, 16] }
+			);
+			doc.walls.push(
+				{ id: 'r1-south', startJunctionId: 'a0', endJunctionId: 'a1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r1-east', startJunctionId: 'a1', endJunctionId: 'a2', role: 'boundary', thickness: 0.2, height: 3, centerline: eastKnot ? curve([8, 0], [8, 8], eastKnot, 'r1-east:knot:1') : { kind: 'line' } },
+				{ id: 'r1-north', startJunctionId: 'a2', endJunctionId: 'a3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r1-west', startJunctionId: 'a3', endJunctionId: 'a0', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-south', startJunctionId: 'a2', endJunctionId: 'b1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-east', startJunctionId: 'b1', endJunctionId: 'b2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-north', startJunctionId: 'b2', endJunctionId: 'b3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-west', startJunctionId: 'b3', endJunctionId: 'a2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			);
+			doc.rooms.push(
+				{ id: 'room-1', name: 'SW', floorThickness: 0.1, ceilingThickness: 0.1, boundary: [
+					{ wallId: 'r1-south', direction: 'forward' }, { wallId: 'r1-east', direction: 'forward' },
+					{ wallId: 'r1-north', direction: 'forward' }, { wallId: 'r1-west', direction: 'forward' } ] },
+				{ id: 'room-2', name: 'NE', floorThickness: 0.1, ceilingThickness: 0.1, boundary: [
+					{ wallId: 'r2-south', direction: 'forward' }, { wallId: 'r2-east', direction: 'forward' },
+					{ wallId: 'r2-north', direction: 'forward' }, { wallId: 'r2-west', direction: 'forward' } ] }
+			);
+			return doc;
+		};
+		const gentle = crossRoom([12, 4]);
+		fixtures.push({ id: 'edge-crossroom-admitted', document: gentle });
+		// Edited form: the SAME admitted document with the knot moved into the crossing.
+		const edited = JSON.parse(JSON.stringify(gentle)) as LayoutDocumentWallFirst;
+		const editedWall = edited.walls.find((wall) => wall.id === 'r1-east')!;
+		if (editedWall.centerline.kind === 'cubic-chain') {
+			editedWall.centerline.knots[0]!.point = [12, 9];
+		}
+		fixtures.push({ id: 'edge-crossroom-edited', document: edited });
+		// Already-invalid form: the crossed state built directly as a baseline.
+		fixtures.push({ id: 'edge-crossroom-invalid', document: crossRoom([12, 9]) });
+	}
 	return fixtures;
 }
 
@@ -229,6 +286,31 @@ function exhaustiveRejectingPairs(document: LayoutDocumentWallFirst): Array<{ a:
 	return rejecting;
 }
 
+/** The OR-9 containment oracle: throws naming the first rejecting pair the candidate gate drops. */
+function assertRejectingPairsSurvive(
+	document: LayoutDocumentWallFirst,
+	isKept: (aId: string, bId: string, a: SampledTopologyWall, b: SampledTopologyWall) => boolean,
+	label: string
+): void {
+	const sampled = sampledWallsOf(document);
+	for (const rejecting of exhaustiveRejectingPairs(document)) {
+		if ('self' in rejecting) continue; // self-check has no prune gate by design
+		const a = sampled.get(rejecting.a)!;
+		const b = sampled.get(rejecting.b)!;
+		if (!isKept(rejecting.a, rejecting.b, a, b)) {
+			throw new Error(`${label}: candidate gate dropped rejecting pair ${rejecting.a}x${rejecting.b}`);
+		}
+	}
+}
+
+function minPolylineDistance(a: SampledTopologyWall['samples'], b: SampledTopologyWall['samples']): number {
+	let min = Infinity;
+	for (const pa of a) for (const pb of b) {
+		min = Math.min(min, Math.hypot(pa.point[0] - pb.point[0], pa.point[1] - pb.point[1]));
+	}
+	return min;
+}
+
 function crossingKey(crossing: WallCurveTopologyCrossing | undefined): string {
 	if (!crossing) return 'none';
 	if (crossing.kind === 'self') return `self:${crossing.wallId}`;
@@ -257,8 +339,7 @@ describe('P23B.4 F2 — full-validator pruning differential', () => {
 		}
 	});
 
-	it('OR-3: first-wins order holds with multiple crossings', () => {
-		const multi = edgeFixtures().find((fixture) => fixture.id === 'edge-multi-crossing')!;
+	it('OR-3: first-wins order holds with multiple crossings', () => {		const multi = edgeFixtures().find((fixture) => fixture.id === 'edge-multi-crossing')!;
 		const pruned = detectWallCurveTopologyCrossings(multi.document, segmentsOf(multi.document));
 		const exhaustive = detectWallCurveTopologyCrossings(multi.document, segmentsOf(multi.document), undefined, true);
 		// Both crossings are real rejections; document order picks the first pair.
@@ -271,18 +352,79 @@ describe('P23B.4 F2 — full-validator pruning differential', () => {
 
 	it('OR-9: every exhaustively rejecting pair survives pruning (candidate superset)', () => {
 		for (const { id, document } of [...baseFixtures(), ...edgeFixtures()]) {
-			const sampled = sampledWallsOf(document);
-			const keyByWallId = topologyComponentKeyByWallId(document);
-			for (const rejecting of exhaustiveRejectingPairs(document)) {
-				if ('self' in rejecting) continue; // self-check has no prune gate by design
-				const a = sampled.get(rejecting.a)!;
-				const b = sampled.get(rejecting.b)!;
-				expect(keyByWallId.get(rejecting.a), `${id} rejecting pair same-component`).toBe(
-					keyByWallId.get(rejecting.b)
-				);
-				expect(sampledWallExtentsOverlap(a, b), `${id} rejecting pair ${rejecting.a}x${rejecting.b} survives`).toBe(true);
+			assertRejectingPairsSurvive(document, (_aId, _bId, a, b) => sampledWallExtentsOverlap(a, b), id);
+		}
+	});
+
+	it('OR-9: near-tangent pairs are evaluated through the tolerance-sensitive branch', () => {
+		const edges = edgeFixtures();
+		const miss = edges.find((fixture) => fixture.id === 'edge-near-tangent-miss')!;
+		const touch = edges.find((fixture) => fixture.id === 'edge-near-tangent-touch')!;
+		for (const [fixture, expected] of [
+			[miss, 'admitted'],
+			[touch, 'unsupported_wall_topology']
+		] as const) {
+			const sampled = sampledWallsOf(fixture.document);
+			const lowId = `${fixture.id === 'edge-near-tangent-miss' ? 'miss' : 'touch'}-w-low`;
+			const highId = `${fixture.id === 'edge-near-tangent-miss' ? 'miss' : 'touch'}-w-high`;
+			const low = sampled.get(lowId)!;
+			const high = sampled.get(highId)!;
+			const distance = minPolylineDistance(low.samples, high.samples);
+			// Precondition: the pair runs inside the tolerance band (miss) or inside it
+			// (touch) — genuinely tolerance-sensitive, not far apart.
+			expect(distance, `${fixture.id} polyline gap`).toBeGreaterThan(0.00001);
+			expect(distance, `${fixture.id} polyline gap`).toBeLessThan(0.002);
+			// The pair is evaluated, never pruned: boxes overlap.
+			expect(sampledWallExtentsOverlap(low, high), `${fixture.id} evaluated`).toBe(true);
+			// Exhaustive result asserted on both validators.
+			const pruned = validateWallFirstTopology(fixture.document);
+			const exhaustive = validateWallFirstTopology(fixture.document, { disableExtentPruneForTest: true } as never);
+			expect((pruned?.code ?? 'admitted') as string, `${fixture.id} pruned verdict`).toBe(expected);
+			expect(exhaustive, `${fixture.id} full issue`).toEqual(pruned);
+			if (expected === 'unsupported_wall_topology') {
+				const crossing = detectWallCurveTopologyCrossings(fixture.document, segmentsOf(fixture.document));
+				expect(crossing?.kind, `${fixture.id} sampled pair branch`).toBe('pair');
 			}
 		}
+	});
+
+	it('OR-3(c/d): connected two-Room crossing in edited and already-invalid forms', () => {
+		const edges = edgeFixtures();
+		const admitted = edges.find((fixture) => fixture.id === 'edge-crossroom-admitted')!;
+		const edited = edges.find((fixture) => fixture.id === 'edge-crossroom-edited')!;
+		const invalid = edges.find((fixture) => fixture.id === 'edge-crossroom-invalid')!;
+		// Preconditions: different-Room ownership, one connected component.
+		const roomOf = (document: LayoutDocumentWallFirst, wallId: string): string | undefined =>
+			document.rooms.find((room) => room.boundary.some((ref) => ref.wallId === wallId))?.id;
+		expect(roomOf(edited.document, 'r1-east'), 'edited r1-east room').toBe('room-1');
+		expect(roomOf(edited.document, 'r2-south'), 'edited r2-south room').toBe('room-2');
+		const keyByWallId = topologyComponentKeyByWallId(edited.document);
+		expect(keyByWallId.get('r1-east'), 'edited one component').toBe(keyByWallId.get('r2-south'));
+		// Chord level is legally joined at a2, so the rejection MUST come from the
+		// sampled branch (not the chord gate).
+		const segments = segmentsOf(edited.document);
+		const chordVerdict = classifyWallIntersection(segments.get('r1-east')!, segments.get('r2-south')!, ['a2']);
+		expect(chordVerdict.kind, 'chords legally joined at a2').toBe('shared-explicit-junction');
+		// Edited and already-invalid forms report the identical sampled pair…
+		for (const [id, document] of [['edited', edited.document], ['invalid', invalid.document]] as const) {
+			const crossing = detectWallCurveTopologyCrossings(document, segmentsOf(document));
+			expect(crossing, `${id} sampled pair branch`).toEqual({
+				kind: 'pair',
+				wallIds: ['r1-east', 'r2-south'],
+				sharedJunctionId: 'a2'
+			});
+			const pruned = validateWallFirstTopology(document);
+			const exhaustive = validateWallFirstTopology(document, { disableExtentPruneForTest: true } as never);
+			expect(pruned?.code, `${id} rejected`).toBe('unsupported_wall_topology');
+			expect(exhaustive, `${id} full issue`).toEqual(pruned);
+		}
+		// …while the gentle control stays admitted on both validators (Option E's
+		// independent-overlap control N-2 is covered in the main differential).
+		expect(validateWallFirstTopology(admitted.document)?.code ?? 'admitted', 'gentle admitted').toBe('admitted');
+		expect(
+			validateWallFirstTopology(admitted.document, { disableExtentPruneForTest: true } as never),
+			'gentle exhaustive'
+		).toEqual(validateWallFirstTopology(admitted.document));
 	});
 
 	it('OR-9 negative control: a deliberately dropped rejecting pair fails the oracle', () => {
@@ -291,15 +433,18 @@ describe('P23B.4 F2 — full-validator pruning differential', () => {
 		expect(rejecting.length, 'multi has rejecting pairs to drop').toBeGreaterThanOrEqual(2);
 		const dropped = rejecting[0] as { a: string; b: string };
 		const sampled = sampledWallsOf(multi.document);
-		// Simulate a faulty prune that drops a genuinely rejecting pair: the containment
-		// oracle MUST report non-containment (i.e. the overlap gate says kept, so dropping
-		// it is an error the oracle catches).
 		expect(sampledWallExtentsOverlap(sampled.get(dropped.a)!, sampled.get(dropped.b)!), 'dropped pair was kept by the true gate').toBe(true);
-		const faultyKept = new Set(
-			rejecting
-				.filter((entry) => !(('a' in entry) && entry.a === dropped.a && entry.b === dropped.b))
-				.map((entry) => ('a' in entry ? `${entry.a}x${entry.b}` : ''))
-		);
-		expect(faultyKept.has(`${dropped.a}x${dropped.b}`), 'faulty set drops the rejecting pair').toBe(false);
+		// The SAME containment oracle, with a faulty gate that omits one genuinely
+		// rejecting pair, must throw naming that pair.
+		expect(() =>
+			assertRejectingPairsSurvive(
+				multi.document,
+				(aId, bId, a, b) => {
+					if ([aId, bId].sort().join('x') === [dropped.a, dropped.b].sort().join('x')) return false;
+					return sampledWallExtentsOverlap(a, b);
+				},
+				'faulty-gate'
+			)
+		).toThrow(`dropped rejecting pair ${dropped.a}x${dropped.b}`);
 	});
 });
