@@ -51,8 +51,9 @@ NEXT:
    its independent review. The plan (`f26e2319`) is RATIFIED and S0 is EXECUTED
    (PREFLIGHT-ONLY); the owner granted that narrower scope so M-3 = SHIPPED
    (preflight-only). Measured on curved-40: 120 preflight requests → 44
-   derivations / 76 hits (63%), 0 failed derives, 0 cached undefined, straight
-   control 0 requests; advisory per-drag preflight p50 28.6 → 9.4 ms. Release-scope
+   derivations (40 cold misses + 4 changed-input refusals) / 76 hits (63%),
+   0 failed derives, 0 cached undefined, straight control 0 requests; advisory
+   per-drag preflight p50 26.7 → 8.9 ms. Release-scope
    reuse remains unreachable and unimplemented (each release re-parses its
    candidate). Do NOT claim release reuse, close or merge the slice, rewrite the
    baseline or restart P23B.4.
@@ -79,6 +80,7 @@ P23B.4 closed plan + evidence stubs (SHIPPED 2026-09-25, anchor `4cbcc370`, tag 
 P23B.5 plan with RATIFICATION + S0 disposition + preflight-only owner ruling and the S1–S6 records (2026-09-25) → ../roadmap/p23b-geometry-performance/p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md §0 + §5
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
+P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
 Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
