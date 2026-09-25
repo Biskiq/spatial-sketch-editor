@@ -47,6 +47,9 @@ Conflict: **`docs/` reference files + router win** over this file for product de
     commands and lane semantics stay owned by `apps/editor/tests/README.md` and are
     deliberately not duplicated here.
 
+12. **No agent footer in commits** — when asked to commit, the message is the message: never append a
+    `Generated with …` line or a `Co-Authored-By: <agent>` trailer for any tool, guide or harness.
+
 ## Boot contract
 
 ```text
