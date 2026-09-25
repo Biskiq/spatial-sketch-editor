@@ -31,6 +31,10 @@
 		type P23BContainmentRecord
 	} from '$lib/bench/p23b-containment';
 	import {
+		p2311MeshIdentityRecords,
+		type P23BMeshIdentityRecord
+	} from '$lib/editor/layout/p23b-mesh-identity';
+	import {
 		p23bBeginInteractionCapture,
 		p23bEndInteractionCapture,
 		p23bInteractionCaptureLedger,
@@ -680,6 +684,17 @@
 					outcomes: ['accepted']
 				})
 			})),
+			meshIdentity: {
+				note: 'DEV-only identity probe for the commit-time wall-mesh cache miss. `stateProxy` is tested by `structuredClone` throwing a DataCloneError; `sameAsInstall` compares this object against the geometry the last install cached. The full log lives on `globalThis.__P2311_MESH_IDENTITY__`; this record carries the counts and the first 60 rows.',
+				total: p2311MeshIdentityRecords().length,
+				byPhase: p2311MeshIdentityRecords().reduce<Record<string, number>>((counts, record) => {
+					counts[record.phase] = (counts[record.phase] ?? 0) + 1;
+					return counts;
+				}, {}),
+				records: p2311MeshIdentityRecords()
+					.slice(0, 60)
+					.map((record) => ({ ...record, at: Math.round(record.at * 10) / 10 }))
+			},
 			postRelease: captures.map((capture) => ({
 				fixtureId: capture.fixtureId,
 				boundaries: Object.fromEntries(
@@ -818,6 +833,15 @@
 				byPath: summarizeContainmentByPath(entry.record)
 			})), null, 2)}</pre>
 			<button class="download" onclick={downloadMeasurementRecord}>Download measurement record JSON</button>
+		{/if}
+		{#if p2311MeshIdentityRecords().length > 0}
+			<h2>Mesh identity probe (DEV)</h2>
+			<p class="capture-hint">
+				Which geometry identity each phase hands in, and whether it is a <code>$state</code> proxy
+				(tested by <code>structuredClone</code> throwing). <code>sameAsInstall</code> compares the record
+				against the identity the last install cached in <code>derivedWallMeshes</code>.
+			</p>
+			<pre>{JSON.stringify(p2311MeshIdentityRecords().slice(-25).map((record) => ({ at: Math.round(record.at), phase: record.phase, id: record.geometryId, proxy: record.stateProxy, walls: record.walls, sameAsInstall: record.sameAsInstall, liveId: record.liveId, sameAsLive: record.sameAsLive })), null, 2)}</pre>
 		{/if}
 		{#if captures.length > 0}
 			<h2>Captured fixtures</h2>
