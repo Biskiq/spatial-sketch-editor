@@ -422,18 +422,34 @@ export type WallSamplingDerivation = {
 	 * Live counters, split so a measurement can tell the reuse outcomes apart.
 	 *
 	 * `requests === derivations + hits`. A *hit* is a real cross-call reuse; a
-	 * *derivation* is a miss (absent entry) — including a REFUSAL, which on this
-	 * grammar is exactly a key change (different Wall, centerline object,
-	 * traversal or resolved endpoints). A derivation that yields `undefined` is a
-	 * *failed derive*, and a hit whose cached artefact is `undefined` is not useful
-	 * geometry reuse; both are counted separately rather than folded into `hits`.
-	 * `entries` is the live store size, observable for lifetime/cycling proofs.
+	 * *derivation* is an absent key, and it is separately attributable:
+	 *
+	 * - `coldMisses`: this scope had never served this Wall before (a first
+	 *   request, or a request whose Wall was never asked).
+	 * - `refusals`: this Wall WAS served before and a traced input changed — the
+	 *   centerline OBJECT, the traversal, or the resolved endpoints. The entry is
+	 *   absent because the input changed, never because the request is new.
+	 *
+	 * `derivations === coldMisses + refusals` by construction: a request whose
+	 * (centerline, key) pair repeats cannot be a derivation, because the store
+	 * never evicts — it is a hit. A changed centerline OBJECT therefore counts as a
+	 * refusal even when its values are equal, which is the honest reason P23B.5 S0
+	 * recorded: identity, not input divergence, is what refuses those hits.
+	 *
+	 * A derivation that yields `undefined` is a *failed derive*, and a hit whose
+	 * cached artefact is `undefined` is not useful geometry reuse; both are counted
+	 * separately rather than folded into `hits`. `entries` is the live store size,
+	 * observable for lifetime/cycling proofs.
 	 */
 	readonly stats: {
 		/** Requests served fresh (key absent). */
 		derivations: number;
 		/** Requests served from an existing entry (key present). */
 		hits: number;
+		/** Derivations for a Wall this scope had not served before. */
+		coldMisses: number;
+		/** Derivations for a Wall whose traced input changed since it was served. */
+		refusals: number;
 		/** Fresh derivations whose result was `undefined`. */
 		failedDerivations: number;
 		/** Hits whose cached artefact is `undefined` (not useful reuse). */
@@ -452,13 +468,38 @@ export type WallSamplingDerivation = {
 	reset(): void;
 };
 
+/** The last request this scope served for one Wall, for refusal attribution. */
+type WallSamplingLastRequest = {
+	traversal: WallCenterlineTraversal;
+	/** The value key (traversal is stored beside it, not inside it). */
+	key: string;
+	/** The centerline OBJECT the last request keyed on (the identity dimension). */
+	centerline: LayoutWallCenterline;
+};
+
 /**
  * Construct one derivation. Every chain constructs its own; a bounded
  * gesture/operation owner constructs exactly one and `reset()`s it at scope end.
  */
 export function createWallSamplingDerivation(): WallSamplingDerivation {
 	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
-	const stats = { derivations: 0, hits: 0, failedDerivations: 0, cachedUndefined: 0, entries: 0 };
+	/**
+	 * One small record per Wall this scope has served, used only to attribute a
+	 * derivation to a cold miss or a refusal. It holds no new retention: the
+	 * `centerline` it references is already a key of `cache` (RL-1), and the rest
+	 * is a string and an enum. Without it the store could report that a
+	 * derivation happened but not whether the input changed.
+	 */
+	const lastRequestByWall = new Map<string, WallSamplingLastRequest>();
+	const stats = {
+		derivations: 0,
+		hits: 0,
+		coldMisses: 0,
+		refusals: 0,
+		failedDerivations: 0,
+		cachedUndefined: 0,
+		entries: 0
+	};
 	return {
 		samples(wall, startPoint, endPoint, traversal) {
 			let byKey = cache.get(wall.centerline);
@@ -469,6 +510,8 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 			// Wall id leads the key: the returned `segmentId` is derived from it, so
 			// it is a traced input of the artefact, not an incidental label.
 			const key = `${wall.id}|${traversal}|${String(startPoint[0])}|${String(startPoint[1])}|${String(endPoint[0])}|${String(endPoint[1])}`;
+			const previous = lastRequestByWall.get(wall.id);
+			lastRequestByWall.set(wall.id, { traversal, key, centerline: wall.centerline });
 			if (byKey.has(key)) {
 				const cached = byKey.get(key);
 				stats.hits += 1;
@@ -476,6 +519,20 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 				return cached;
 			}
 			stats.derivations += 1;
+			// The absent key is a refusal only when this Wall was served before and
+			// one of its traced inputs moved; otherwise nothing changed except that
+			// this scope had not seen the Wall yet. A repeated (centerline, key) pair
+			// cannot reach here — it would have been the hit above.
+			if (
+				previous &&
+				(previous.traversal !== traversal ||
+					previous.key !== key ||
+					previous.centerline !== wall.centerline)
+			) {
+				stats.refusals += 1;
+			} else {
+				stats.coldMisses += 1;
+			}
 			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal);
 			if (derived === undefined) stats.failedDerivations += 1;
 			byKey.set(key, derived);
@@ -485,8 +542,11 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 		stats,
 		reset() {
 			cache.clear();
+			lastRequestByWall.clear();
 			stats.derivations = 0;
 			stats.hits = 0;
+			stats.coldMisses = 0;
+			stats.refusals = 0;
 			stats.failedDerivations = 0;
 			stats.cachedUndefined = 0;
 			stats.entries = 0;

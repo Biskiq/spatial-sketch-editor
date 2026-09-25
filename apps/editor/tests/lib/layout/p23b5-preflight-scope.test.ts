@@ -99,7 +99,24 @@ type RecordedCall = {
 	end: LayoutVec2;
 	ok: boolean;
 	digest: string;
+	/**
+	 * A stable id for the centerline OBJECT the call keyed on, so a test can tell
+	 * "the same input was repeated" from "an equal-valued copy replaced it". The
+	 * WeakMap keeps the observation from retaining the borrowed reference.
+	 */
+	bucket: number;
 };
+
+const samplingBucketIds = new WeakMap<object, number>();
+let nextSamplingBucketId = 1;
+function samplingBucket(centerline: object): number {
+	const existing = samplingBucketIds.get(centerline);
+	if (existing !== undefined) return existing;
+	const assigned = nextSamplingBucketId;
+	nextSamplingBucketId += 1;
+	samplingBucketIds.set(centerline, assigned);
+	return assigned;
+}
 
 /** Observe the real `wallCenterlineSamples` calls one stage makes. */
 function record(work: () => void): RecordedCall[] {
@@ -111,7 +128,8 @@ function record(work: () => void): RecordedCall[] {
 			start: [observation.start[0], observation.start[1]] as LayoutVec2,
 			end: [observation.end[0], observation.end[1]] as LayoutVec2,
 			ok: observation.ok,
-			digest: digest(result)
+			digest: digest(result),
+			bucket: samplingBucket(observation.centerline)
 		});
 	});
 	try {
@@ -291,6 +309,8 @@ describe('P23B.5 S3 — bounded lifetime, reset and immutability', () => {
 		expect(scope.stats).toEqual({
 			derivations: 0,
 			hits: 0,
+			coldMisses: 0,
+			refusals: 0,
 			failedDerivations: 0,
 			cachedUndefined: 0,
 			entries: 0
@@ -432,7 +452,7 @@ describe('P23B.5 S4 — the scope on the real transient preflight path', () => {
 });
 
 describe('P23B.5 S5 — direct measurement', () => {
-	it('records per-stage requests, derivations/refusals, hits and failed derives without double counting', () => {
+	it('attributes every derivation to a cold miss or a changed-input refusal, then reconciles the requests', () => {
 		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
 		const moves = [0.05, 0.1, 0.15];
 		const firstIntent = junctionMoveIntent(doc, moves[0]!);
@@ -456,13 +476,44 @@ describe('P23B.5 S5 — direct measurement', () => {
 		).length;
 		const totalCalls = unscopedPerMove * moves.length;
 
+		// Attribution from the OBSERVED inputs alone — a second opinion on the
+		// scope's own split, so a wrong counter cannot agree with itself. A Wall's
+		// first observed request is a cold miss; a later one whose traced inputs
+		// (centerline object, traversal or resolved endpoints) differ is a refusal.
+		const lastObserved = new Map<string, string>();
+		const attribution = { coldMisses: 0, refusals: 0 };
+		for (const calls of preflight) {
+			for (const call of calls) {
+				const traced = `${call.traversal}|${call.bucket}|${call.digest}`;
+				const previous = lastObserved.get(call.wallId);
+				if (previous === undefined) attribution.coldMisses += 1;
+				else if (previous !== traced) attribution.refusals += 1;
+				lastObserved.set(call.wallId, traced);
+			}
+		}
+
 		expect(scope.stats.derivations, 'observed misses are the derivations').toBe(observedMisses);
+		expect(scope.stats.coldMisses, 'cold misses match the observed first requests').toBe(
+			attribution.coldMisses
+		);
+		expect(scope.stats.refusals, 'refusals match the observed changed inputs').toBe(
+			attribution.refusals
+		);
+		expect(
+			scope.stats.coldMisses + scope.stats.refusals,
+			'derivations are exactly cold misses plus refusals'
+		).toBe(scope.stats.derivations);
 		expect(scope.stats.derivations + scope.stats.hits, 'requests reconcile').toBe(totalCalls);
 		expect(scope.stats.entries, 'entries are distinct keys, not requests').toBe(scope.stats.derivations);
 		expect(scope.stats.failedDerivations, 'no failed derive on a valid fixture').toBe(0);
 		expect(scope.stats.cachedUndefined, 'no cached undefined served').toBe(0);
+		// The scale of the committed fixture, stated so a change in either the
+		// fixture or the gate is visible rather than absorbed.
+		expect(attribution.coldMisses, 'every sampled Wall is derived once on move 1').toBe(40);
+		expect(attribution.refusals, 'the moved Junction re-derives its two incident Walls per move')
+			.toBe(4);
 		console.log(
-			`S5 curved-40 drag: proposalRequests=${proposalRequests} preflightCalls=${totalCalls} derivations(misses/refusals)=${scope.stats.derivations} hits=${scope.stats.hits} entries=${scope.stats.entries} failedDerives=${scope.stats.failedDerivations} cachedUndefined=${scope.stats.cachedUndefined}`
+			`S5 curved-40 drag: proposalRequests=${proposalRequests} preflightCalls=${totalCalls} derivations=${scope.stats.derivations} (coldMisses=${scope.stats.coldMisses} + refusals=${scope.stats.refusals}) hits=${scope.stats.hits} entries=${scope.stats.entries} failedDerives=${scope.stats.failedDerivations} cachedUndefined=${scope.stats.cachedUndefined}`
 		);
 	});
 
