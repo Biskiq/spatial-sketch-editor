@@ -44,10 +44,12 @@ import type {
 } from './layout-wall-first-types';
 import {
 	cloneWallCenterline,
+	createWallSamplingDerivation,
 	nextWallCurveKnotId,
 	translateWallCenterline,
 	wallCenterlineSamples,
-	wallCubicChain
+	wallCubicChain,
+	type WallSamplingDerivation
 } from './layout-wall-centerline';
 import { deriveChainSpans } from './layout-geometry-curve';
 import {
@@ -70,6 +72,7 @@ import {
 } from './layout-topology-components';
 import {
 	classifyWallIntersection,
+	sampledWallExtentsOverlap,
 	sampledWallSelfIntersects,
 	sampledWallsCross,
 	type SampledTopologyWall,
@@ -1106,8 +1109,10 @@ export function preflightWallFirstArchitectureCandidate(
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
+	// P23B.4 M-1 (S6 remaining chain coverage): the transient preflight is its own
+	// chain scope — one fresh derivation per call, never retained across moves.
 	const failure = p2311Measure('preflight-topology', () =>
-		validateWallFirstTopology(candidate, { openingSet: 'defer' })
+		validateWallFirstTopology(candidate, { openingSet: 'defer', sampling: createWallSamplingDerivation() })
 	);
 	if (!failure) return undefined;
 	return { code: failure.code, message: failure.message };
@@ -1519,6 +1524,11 @@ function finalizeWallGeometryCandidate(options: {
 }): PrecisionPlan {
 	const { baseline, candidate, operation, changedJunctionIds, changedWallIds } = options;
 
+	// P23B.4 M-1: one chain-scoped derivation serves every consumer below that
+	// receives it (S2: face extraction; S3–S5 extend the threading). Consumers
+	// without a derivation keep today's per-call sampling.
+	const sampling = createWallSamplingDerivation();
+
 	const preStructural = p2311Measure('structural-pre', () => validateWallFirstLayoutDocument(candidate));
 	if (!preStructural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${preStructural.issues[0]?.message ?? 'unknown issue'}`, undefined, preStructural.issues);
@@ -1527,7 +1537,7 @@ function finalizeWallGeometryCandidate(options: {
 	// topology helper still validates the same canonical rules, but must defer
 	// translating Opening-set issues or every non-height Opening failure would
 	// be consumed as `topology_invalid` before the explicit gate can classify it.
-	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer' }));
+	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling }));
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1538,7 +1548,7 @@ function finalizeWallGeometryCandidate(options: {
 	}
 
 	const document = preStructural.document;
-	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document));
+	const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(document, sampling));
 	const candidateRoomById = new Map(document.rooms.map((room) => [room.id, room]));
 	const components: ComponentLineage[] = [];
 	for (const room of baseline.rooms) {
@@ -1580,7 +1590,7 @@ function finalizeWallGeometryCandidate(options: {
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer' }));
+	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling }));
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -1589,7 +1599,7 @@ function finalizeWallGeometryCandidate(options: {
 			[topologyIssue]
 		);
 	}
-	const setIssues = p2311Measure('opening-set', () => validateWallFirstOpeningSet(structural.document));
+	const setIssues = p2311Measure('opening-set', () => validateWallFirstOpeningSet(structural.document, sampling));
 	if (setIssues.length > 0) {
 		const first = setIssues[0]!;
 		return reject(
@@ -1604,7 +1614,7 @@ function finalizeWallGeometryCandidate(options: {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document));
+	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document, sampling));
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}
@@ -1760,7 +1770,45 @@ export type WallFirstTopologyOptions = {
 	 * preserves the historical topology-gate contract.
 	 */
 	openingSet?: 'translate' | 'defer';
+	/**
+	 * P23B.4 M-1: chain-scoped shared derivation. Omitted keeps today's
+	 * per-call sampling.
+	 */
+	sampling?: WallSamplingDerivation;
+	/**
+	 * P23B.4 correction (F2) — test-only bypass of the M-2a extent prune.
+	 * When true, `detectWallCurveTopologyCrossings` evaluates every candidate pair
+	 * through the shipped narrow-phase predicate (the genuine exhaustive behavior
+	 * with only the new extent gate absent). Absent/false is production behavior.
+	 * Never set in production code.
+	 */
+	disableExtentPruneForTest?: boolean;
 };
+
+/**
+ * P23B.4 correction (F1) — test-only observation of the actual sample arrays the
+ * topology gate feeds its crossing predicate (post-seam, as consumed).
+ *
+ * While set, each gate run reports every sampled Wall exactly as the predicate sees
+ * it. Catches consumer-side post-seam divergence (e.g. a 1e-9 perturbation applied
+ * after the seam) that a seam-call observer cannot see. Unset is zero behavior
+ * change. Never retains; never set in production.
+ */
+export type TopologyGateObservation = {
+	wallId: string;
+	sampleCount: number;
+};
+let topologyGateObserverForTest:
+	| ((walls: readonly TopologyGateObservation[], samplesByWallId: ReadonlyMap<string, readonly CurveSample[]>) => void)
+	| undefined;
+export function setTopologyGateObserverForTest(
+	observer: ((walls: readonly TopologyGateObservation[], samplesByWallId: ReadonlyMap<string, readonly CurveSample[]>) => void) | undefined
+): void {
+	topologyGateObserverForTest = observer;
+}
+export function clearTopologyGateObserverForTest(): void {
+	topologyGateObserverForTest = undefined;
+}
 
 export function validateWallFirstTopology(
 	document: LayoutDocumentWallFirst,
@@ -1850,7 +1898,7 @@ export function validateWallFirstTopology(
 
 	// P23.11 — canonical curve-level crossing gate (one implementation, shared
 	// with the Wall-chain authoring path).
-	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments);
+	const curveCrossing = detectWallCurveTopologyCrossings(document, wallSegments, options.sampling, options.disableExtentPruneForTest);
 	if (curveCrossing) {
 		if (curveCrossing.kind === 'self') {
 			return topologyFailure(
@@ -1897,7 +1945,7 @@ export function validateWallFirstTopology(
 		// P23.3 opening create/edit/drag/resize paths (`layout-opening-set.ts`).
 		// Do not duplicate fit/overlap/vertical checks here — this gate only
 		// translates the first canonical issue.
-		const openingIssue = validateWallFirstOpeningSet(document)[0];
+		const openingIssue = validateWallFirstOpeningSet(document, options.sampling)[0];
 		if (openingIssue) {
 			// P23.6H — the host-Wall vertical-fit issue gets a dedicated code so a
 			// Wall-height edit can report it as `wall_height_below_opening` instead of
@@ -2039,7 +2087,9 @@ export type WallCurveTopologyCrossing =
  */
 export function detectWallCurveTopologyCrossings(
 	document: LayoutDocumentWallFirst,
-	wallSegments: ReadonlyMap<string, TopologySegment>
+	wallSegments: ReadonlyMap<string, TopologySegment>,
+	sampling?: WallSamplingDerivation,
+	disableExtentPruneForTest?: boolean
 ): WallCurveTopologyCrossing | undefined {
 	const sampledWalls = new Map<string, SampledTopologyWall>();
 	for (const wall of document.walls) {
@@ -2051,7 +2101,9 @@ export function detectWallCurveTopologyCrossings(
 		} else {
 			const endpoints = wallEndpoints(document, wall);
 			const sampled = endpoints
-				? wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
+				? sampling
+					? sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
+					: wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward')
 				: undefined;
 			if (!sampled) continue;
 			samples = sampled.samples;
@@ -2062,6 +2114,21 @@ export function detectWallCurveTopologyCrossings(
 			endJunctionId: wall.endJunctionId,
 			samples
 		});
+	}
+	const gateObserver = topologyGateObserverForTest;
+	if (gateObserver) {
+		try {
+			const summary: TopologyGateObservation[] = [...sampledWalls.values()].map((entry) => ({
+				wallId: entry.id,
+				sampleCount: entry.samples.length
+			}));
+			const byId = new Map<string, readonly CurveSample[]>(
+				[...sampledWalls.values()].map((entry) => [entry.id, entry.samples] as const)
+			);
+			gateObserver(summary, byId);
+		} catch {
+			// A test observer must never break the topology gate.
+		}
 	}
 	for (const wall of document.walls) {
 		if (wall.centerline.kind === 'line') continue;
@@ -2084,6 +2151,12 @@ export function detectWallCurveTopologyCrossings(
 			const sampledA = sampledWalls.get(a.id);
 			const sampledB = sampledWalls.get(b.id);
 			if (!sampledA || !sampledB) continue;
+			// P23B.4 M-2a: conservative extent prune — a pair whose swept extents
+			// cannot overlap cannot newly cross. Same predicate, same reporting,
+			// same first-wins order; only rejected-anyway pairs are skipped (OR-9).
+			// Test-only bypass (F2): `disableExtentPruneForTest` recovers the genuine
+			// exhaustive behavior with only this gate absent. Never set in production.
+			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
 			const shared = sharedJunctionIds(a, b)[0];
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 			return shared
