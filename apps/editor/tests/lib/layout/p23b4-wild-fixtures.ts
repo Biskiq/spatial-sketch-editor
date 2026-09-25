@@ -22,6 +22,17 @@ function curve(start: LayoutVec2, end: LayoutVec2, knot: LayoutVec2, knotId: str
 	return wallCubicChain([{ id: knotId, point: knot }], deriveChainSpans([start, knot, end]));
 }
 
+/** Multi-knot boundary Wall (OR-8 family with Rooms/Openings, not partitions). */
+function multiKnot(start: LayoutVec2, mid1: LayoutVec2, mid2: LayoutVec2, end: LayoutVec2, prefix: string): LayoutWallCenterline {
+	return wallCubicChain(
+		[
+			{ id: `${prefix}:knot:1`, point: mid1 },
+			{ id: `${prefix}:knot:2`, point: mid2 }
+		],
+		deriveChainSpans([start, mid1, mid2, end])
+	);
+}
+
 export function buildWildRoomFixture(): LayoutDocumentWallFirst {
 	return {
 		...createEmptyWallFirstLayoutDocument(),
@@ -33,7 +44,7 @@ export function buildWildRoomFixture(): LayoutDocumentWallFirst {
 		],
 		walls: [
 			{ id: 'w-south', startJunctionId: 'j-0', endJunctionId: 'j-1', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([0, 0], [12, 0], [6, -0.35], 'w-south:knot:1') },
-			{ id: 'w-east', startJunctionId: 'j-1', endJunctionId: 'j-2', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([12, 0], [12, 10], [12.35, 5], 'w-east:knot:1') },
+			{ id: 'w-east', startJunctionId: 'j-1', endJunctionId: 'j-2', role: 'boundary', thickness: 0.2, height: 3, centerline: multiKnot([12, 0], [12.35, 3], [11.65, 7], [12, 10], 'w-east') },
 			{ id: 'w-north', startJunctionId: 'j-2', endJunctionId: 'j-3', role: 'boundary', thickness: 0.2, height: 3, centerline: curve([12, 10], [0, 10], [6, 11.5], 'w-north:knot:1') },
 			{ id: 'w-west', startJunctionId: 'j-3', endJunctionId: 'j-0', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 		],
