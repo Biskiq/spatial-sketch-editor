@@ -201,6 +201,11 @@
 	import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
 	import type { BenchInteractionOutcome, BenchInteractionPath } from '$lib/bench/bench-types';
 	import {
+		p23bCloseGestureSampling,
+		p23bOpenGestureSampling,
+		p23bRecordGestureSampling
+	} from './p23b-gesture-sampling-report';
+	import {
 		p23bClassifyGestureOutcome,
 		p23bGestureAwaitingRelease,
 		p23bGestureForPointer,
@@ -996,6 +1001,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23B.5 M-3 — start every gesture from an empty store: cross-GESTURE reuse
 		// is not the approved scope, and this makes it unreachable by construction.
 		architectureEditSampling.reset();
+		// P23B.5 M-3 DEV readout: watch this gesture's reuse from its first move.
+		p23bOpenGestureSampling();
 		architectureEditStartScreen = screen;
 		architectureEditMoved = false;
 		// P23.13 S2 — hold the acquisition/control vocabulary for this gesture.
@@ -1101,6 +1108,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			moved: true,
 			sampling: architectureEditSampling
 		});
+		// P23B.5 M-3 DEV readout: the counters after this move's preflight, so a live
+		// view shows reuse and refusals while the drag is still happening.
+		p23bRecordGestureSampling(architectureEditSampling.stats);
 		// P23.13 S8 / §1.12 — the dragged control is the instrument: its own locus
 		// (the attempt's, read through the same helper the refusal mark uses, so a
 		// whole-Wall drag zones its own Wall rather than needing a point it has not
@@ -1127,6 +1137,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// store becomes empty, so nothing it derived can be reached, and the next
 		// gesture starts from the same guarantee as a first one.
 		architectureEditSampling.reset();
+		p23bCloseGestureSampling();
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
 		architectureEditTransient = null;
@@ -2150,6 +2161,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23B.5 M-3 — this path bypasses `finishArchitectureEditGesture`, so the
 		// gesture scope is released here too.
 		architectureEditSampling.reset();
+		p23bCloseGestureSampling();
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
 		// P23.13 S2 — clearing the snapshot here bypasses the tool-change effect

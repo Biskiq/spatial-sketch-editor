@@ -299,6 +299,21 @@ export function p23bOpenGesture(
 	return gesture;
 }
 
+/**
+ * The interaction the ambient DEV records currently belong to, or `null`. The
+ * live gesture-sampling readout reads it to attribute reuse to a path without
+ * product code having to carry a second label (see
+ * `p23b-gesture-sampling-report.ts`).
+ */
+export function p23bActiveInteraction(): {
+	path: BenchInteractionPath;
+	actionId: number | null;
+} | null {
+	const active = (globalThis as P23BPerfGlobals).__P23B_ACTIVE_INTERACTION__;
+	if (!active) return null;
+	return { path: active.path, actionId: active.actionId ?? null };
+}
+
 /** The open press action for one pointer, so its moves join the same gesture. */
 export function p23bGestureForPointer(pointerId: number): P23BGesture | null {
 	const gesture = openSession?.byPointer.get(pointerId) ?? null;

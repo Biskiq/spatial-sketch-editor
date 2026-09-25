@@ -34,6 +34,14 @@
 		percentile,
 		summarizeInteractionCapture
 	} from '$lib/editor/layout/p23b-interaction-measure';
+	import {
+		p23bGestureSamplingEnabled,
+		p23bGestureSamplingState,
+		p23bResetGestureSampling,
+		p23bStopGestureSampling,
+		p23bSubscribeGestureSampling,
+		type P23BGestureSamplingState
+	} from '$lib/editor/layout/p23b-gesture-sampling-report';
 	import { createP23BCaptureDriver, DRIVE_ACTIONS_PER_PATH, type P23BDriveFixture, type P23BDriveProgress } from './drive';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import fixtureLedger from '../../../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
@@ -421,6 +429,39 @@
 	}
 
 	/**
+	 * P23B.5 M-3 — the live drag-reuse readout.
+	 *
+	 * The bounded gesture-scoped sample store reports its own counters; this is
+	 * the read path. It needs the same DEV measurement switch the capture uses
+	 * (there is no second switch and no production path), and it is deliberately
+	 * independent of the capture session: reuse can be watched during ordinary
+	 * dragging, with or without a capture open. Nothing here is recorded into the
+	 * capture ledger or the baseline.
+	 */
+	let samplingState = $state<P23BGestureSamplingState>({ live: null, history: [] });
+	let samplingSwitch = $state(false);
+
+	$effect(() => {
+		samplingSwitch = p23bGestureSamplingEnabled();
+		samplingState = p23bGestureSamplingState();
+		return p23bSubscribeGestureSampling((next) => {
+			samplingState = next;
+			samplingSwitch = p23bGestureSamplingEnabled();
+		});
+	});
+
+	function setSamplingSwitch(enabled: boolean) {
+		if (!enabled) p23bStopGestureSampling();
+		(globalThis as typeof globalThis & { __P2311_PERF__?: boolean }).__P2311_PERF__ = enabled;
+		samplingSwitch = enabled;
+		samplingState = p23bGestureSamplingState();
+	}
+
+	function percent(value: number): string {
+		return `${(value * 100).toFixed(0)}%`;
+	}
+
+	/**
 	 * Start one isolated capture session for the hosted fixture. Each hosted
 	 * fixture gets its own session, so a boundary scheduled in one fixture's
 	 * capture can never be written into another's.
@@ -431,6 +472,7 @@
 		performance.clearMeasures();
 		performance.clearMarks();
 		(globalThis as typeof globalThis & { __P2311_PERF__?: boolean }).__P2311_PERF__ = true;
+		samplingSwitch = true;
 		captureSessionId = p23bBeginInteractionCapture();
 		captureStartedAt = new Date().toISOString();
 		lastCaptureNote = '';
@@ -446,9 +488,10 @@
 		if (!sessionId) return;
 		const settled = await p23bSettleInteractionCapture(1500);
 		p23bEndInteractionCapture();
-		await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-		(globalThis as typeof globalThis & { __P2311_PERF__?: boolean }).__P2311_PERF__ = false;
-		const ledger = p23bInteractionCaptureLedger(sessionId);
+		await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));			(globalThis as typeof globalThis & { __P2311_PERF__?: boolean }).__P2311_PERF__ = false;
+			samplingSwitch = false;
+			p23bStopGestureSampling();
+			const ledger = p23bInteractionCaptureLedger(sessionId);
 		if (!ledger) {
 			issue = 'The capture session could not be read back.';
 			captureSessionId = null;
@@ -617,6 +660,45 @@
 		{#if driveFailure}<p class="error">Driver failed: {driveFailure}</p>{/if}
 		{#if driveLog.length > 0}<pre class="drive-log">{driveLog.join('\n')}</pre>{/if}
 		<button disabled={!capturing} onclick={() => p23bRecordFixtureReset()}>Record fixture reset</button>
+
+		<h2>Live drag sampling reuse</h2>
+		<p class="capture-hint">
+			Per direct-edit gesture on the Plan canvas, the bounded gesture-scoped sampler's own counters:
+			requests split into cold misses (this store had not served the Wall yet), changed-input refusals
+			(an endpoint, traversal or centreline object moved) and hits. Needs the DEV measurement switch
+			the capture also uses, and is separate from it: nothing here enters the capture ledger or the
+			baseline.
+		</p>
+		{#if samplingSwitch}
+			<button onclick={() => setSamplingSwitch(false)}>Stop watching drag reuse</button>
+		{:else}
+			<button disabled={capturing} onclick={() => setSamplingSwitch(true)}>Watch drag reuse live</button>
+		{/if}
+		{#if samplingState.live}
+			{@const live = samplingState.live}
+			<p class="status">
+				gesture {live.gesture}{live.path ? ` · ${live.path}` : ''} · {live.reports} report{live.reports === 1 ? '' : 's'}
+				· {live.requests} requests · {live.hits} hits ({percent(live.reuseRatio)}) · {live.coldMisses} cold misses
+				· {live.refusals} refusals · {live.entries} retained keys{#if live.failedDerivations > 0} · {live.failedDerivations} failed{/if}{#if live.cachedUndefined > 0} · {live.cachedUndefined} cached-undefined{/if}
+			</p>
+		{:else}
+			<p class="status">No live gesture. With the switch on, drag a Wall, its bend point or a Junction in the Plan canvas.</p>
+		{/if}
+		{#if samplingState.history.length > 0}
+			<button onclick={() => p23bResetGestureSampling()}>Clear readout</button>
+			<pre>{JSON.stringify(samplingState.history.slice(-8).map((entry) => ({
+				gesture: entry.gesture,
+				path: entry.path,
+				reports: entry.reports,
+				requests: entry.requests,
+				hits: entry.hits,
+				coldMisses: entry.coldMisses,
+				refusals: entry.refusals,
+				entries: entry.entries,
+				reuse: percent(entry.reuseRatio),
+				release: entry.release
+			})), null, 2)}</pre>
+		{/if}
 		<details><summary>Fixed owner actions</summary><pre>{JSON.stringify(hosted.protocol, null, 2)}</pre></details>
 		{#if capturing}<p class="status">Capturing {hosted.id} from {captureStartedAt}</p>{/if}
 		{#if issue}<p class="error">{issue}</p>{/if}
