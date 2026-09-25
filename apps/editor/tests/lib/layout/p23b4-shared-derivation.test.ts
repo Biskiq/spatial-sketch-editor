@@ -4,8 +4,10 @@ import {
 	compileWallFirstLayoutGeometry,
 	createWallSamplingDerivation,
 	extractBoundaryCandidateFaces,
+	validateWallFirstOpeningSet,
 	validateWallFirstTopology,
 	wallCenterlineSamples,
+	wallFirstWallSpan,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import {
@@ -164,6 +166,34 @@ describe('P23B.4 S4 — shared derivation through the compile sites', () => {
 			const second = compileWallFirstLayoutGeometry(document, sampling);
 			expect(second.geometry, `${id} second compile`).toEqual(first.geometry);
 			expect(sampling.stats.derivations, `${id} no new derivations on repeat`).toBe(derivationsAfterFirst);
+		}
+	});
+});
+
+describe('P23B.4 S5 — shared derivation through the Opening set', () => {
+	it('OR-1: shared spans and opening validation equal fresh, on opening-bearing fixtures', () => {
+		for (const spec of P2311_FIXTURES.filter((candidate) => candidate.openings > 0)) {
+			const document = p2311Fixture(spec);
+			const sampling = createWallSamplingDerivation();
+			const sharedIssues = validateWallFirstOpeningSet(document, sampling);
+			expect(sharedIssues, `${spec.id} shared issues`).toEqual(validateWallFirstOpeningSet(document));
+			for (const wall of document.walls) {
+				expect(wallFirstWallSpan(document, wall, sampling), `${spec.id} ${wall.id} span`).toEqual(
+					wallFirstWallSpan(document, wall)
+				);
+			}
+			// The all-curved matrix cells carry 0 Openings and cannot cover this
+			// consumer; these fixtures carry 10 each, so the derivation must fire.
+			expect(sampling.stats.derivations, `${spec.id} derivations`).toBeGreaterThan(0);
+		}
+	});
+
+	it('OR-1: span parity holds on every S1 fixture', () => {
+		for (const { id, document } of s2Fixtures()) {
+			const sampling = createWallSamplingDerivation();
+			expect(validateWallFirstOpeningSet(document, sampling), `${id} issues`).toEqual(
+				validateWallFirstOpeningSet(document)
+			);
 		}
 	});
 });

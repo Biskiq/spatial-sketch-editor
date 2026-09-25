@@ -1596,7 +1596,7 @@ function finalizeWallGeometryCandidate(options: {
 			[topologyIssue]
 		);
 	}
-	const setIssues = p2311Measure('opening-set', () => validateWallFirstOpeningSet(structural.document));
+	const setIssues = p2311Measure('opening-set', () => validateWallFirstOpeningSet(structural.document, sampling));
 	if (setIssues.length > 0) {
 		const first = setIssues[0]!;
 		return reject(
