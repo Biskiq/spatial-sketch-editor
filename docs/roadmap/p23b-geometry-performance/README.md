@@ -122,7 +122,9 @@ full implementation review. S4 stays authorized-within-scope only: it needs an S
 and owner, and S0 recorded PREFLIGHT-ONLY, whose narrower scope needed a separate owner scope ruling
 before implementation. **RESOLVED 2026-09-25:** the owner granted that narrower scope (plan §0.4), and
 S1–S6 were implemented under it on the same `P23B.5` branch and the same single PR — release-scope reuse
-and any broader ownership redesign remain unauthorized. The ratified `SEQUENCE`, sequential slice
+and any broader ownership redesign remain unauthorized. One extra scope item was approved afterwards,
+also inside that single PR: the committed reuse-counter gate (plan §0.6), which adds no repository
+budget metric and re-records no baseline. The ratified `SEQUENCE`, sequential slice
 review/acceptance/`slice-closeout` order, and slice scope/identity/order are unchanged.
 
 ```text
@@ -247,9 +249,14 @@ P23B.5  caching and reuse optimization — IMPLEMENTED 2026-09-25 on `P23B.5`, A
          control 0 requests; advisory per-drag preflight p50 26.7 → 8.9 ms. These counters are also
          watchable live: the DEV harness page `/dev/perf/p23b` shows per-gesture requests, hits, cold
          misses and refusals while a drag is in progress (DEV-only readout, absent from production builds
-         and from the capture ledger/baseline). No release/validation/history behaviour changed and
-         landed M-1 is preserved. Implementation status is NOT acceptance; no closeout or merge is
-         implied.
+         and from the capture ledger/baseline). A second owner ruling (plan §0.6) approved ONE extra
+         scope item after implementation: those counters are now a perf-lane GATE with a committed ratchet
+         (`reuse-counter-ratchet.json`), so reuse drift is a reviewable diff instead of a silent change —
+         absolute invariants (including that the scope owns exactly the preflight requests, never the
+         unscoped proposal stage) plus recorded counts that move only with a recorded reason. It adds no
+         repository budget metric, asserts no timing threshold and neither reads nor re-records
+         `g3-baseline.json`. No release/validation/history behaviour changed and landed M-1 is preserved.
+         Implementation status is NOT acceptance; no closeout or merge is implied.
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —

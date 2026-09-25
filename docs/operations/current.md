@@ -5,7 +5,10 @@ CHILD: P23B.5-caching-reuse — IMPLEMENTED 2026-09-25 on `P23B.5`, AWAITING IND
        REVIEW (plan revision `f26e2319`; S0 disposition PREFLIGHT-ONLY in plan §0.2;
        the owner granted that narrower scope 2026-09-25, §0.4, and S1–S6 landed:
        M-3 = SHIPPED (preflight-only) — one bounded gesture-scoped sample owner for
-       the transient preflight only; release-scope M-3 stays unreachable).
+       the transient preflight only; release-scope M-3 stays unreachable). One
+       extra scope item was owner-approved afterwards (plan §0.6): the committed
+       reuse-counter gate (perf lane + `reuse-counter-ratchet.json`) — no budget
+       metric added, no baseline re-recorded.
        Prior child P23B.4-compilation-invalidation SHIPPED
        2026-09-25 on `P23B4` (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`;
        stubs + anchor `4cbcc370`, tag `closed/p23b.4`). U-1 declined, Rust/WASM
@@ -53,7 +56,10 @@ NEXT:
    (preflight-only). Measured on curved-40: 120 preflight requests → 44
    derivations (40 cold misses + 4 changed-input refusals) / 76 hits (63%),
    0 failed derives, 0 cached undefined, straight control 0 requests; advisory
-   per-drag preflight p50 26.7 → 8.9 ms. Release-scope
+   per-drag preflight p50 26.7 → 8.9 ms. Those counters are also watchable live
+   (DEV harness `/dev/perf/p23b`) and are now GATED: an owner-approved extra
+   scope (plan §0.6) commits them as a perf-lane ratchet with absolute
+   invariants, so reuse drift is a reviewable diff. Release-scope
    reuse remains unreachable and unimplemented (each release re-parses its
    candidate). Do NOT claim release reuse, close or merge the slice, rewrite the
    baseline or restart P23B.4.
