@@ -1,7 +1,7 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.4-compilation-invalidation — plan reconciliation underway on `codex/p23b4-reconciliation`
+CHILD: P23B.4-compilation-invalidation — plan reconciliation underway on `P23B4`
        from updated `main` (owner direction 2026-09-25: new `codex/` branch for this step, superseding
        the continuation-branch arrangement; `codex/p23b-continuation` is retired, not deleted).
        The reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first);
@@ -28,7 +28,7 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        HEADLINE FINDING: the straight control is sluggish (accepted authoring 262.6 ms, rigid edit
        208.4 ms); curvature is not necessary and amplifies several observed costs. Plan update work is
        a justified investigation target, not a proved explanation for every editing delay.
-       Routine slice closeout completed on `codex/p23b4-reconciliation` (P2: squash-merge compaction;
+       Routine slice closeout completed on `P23B4` (P2: squash-merge compaction;
        stubs + anchor `d7b9de4e`, tag `closed/p23b.0`; checkpoint retired, not archived).
        Closeout gates on the closeout tree: `test:perf` 7 files / 56 pass (1 skipped); `test:arch`
        23 files / 254 pass; `npm test` 324 files / 4,755 pass (1 skipped); `check` (editor + museum)
@@ -40,7 +40,7 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
 
 NEXT:
 1. P23B.4 implementation is AUTHORIZED: begin S1 (freeze the per-consumer sampling reference,
-   tests-only, no production change) on `codex/p23b4-reconciliation` (unmerged). U-5 (flush
+   tests-only, no production change) on `P23B4` (unmerged). U-5 (flush
    attribution via nested P23.11 marks) is the recommended first investigation inside the slice.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.

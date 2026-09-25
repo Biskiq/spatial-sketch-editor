@@ -105,7 +105,7 @@ the `SEQUENCE`, slice scope, identity or order. P23B.3a remains closed on its ex
 
 P23B.0-durable shipped via PR #87 (squash `d7b9de4e`, closed above). For the next step this
 supersedes the continuation-branch arrangement above: reconcile P23B.4's plan and architecture-review
-gate on a NEW `codex/` branch from updated `main` (`codex/p23b4-reconciliation`); do not reuse
+gate on a NEW `codex/` branch from updated `main` (`P23B4`); do not reuse
 `codex/p23b-continuation` for P23B.4 work. The ratified `SEQUENCE`, sequential slice review/acceptance/
 `slice-closeout` order, and slice scope/identity/order are unchanged. P23B.4 implementation awaits
 owner approval of the reconciled plan.
@@ -210,7 +210,7 @@ P23B.3a independent placement + topology policy (Option E) — SHIPPED 2026-09-2
         GitHub has no separate review entries.
 P23B.4  compilation + invalidation optimization — RATIFIED + AUTHORIZED 2026-09-25. Baseline gate satisfied by the
         accepted P23B.0 baseline (disposition A, with its stated coverage limit). Plan reconciliation against
-        landed Option E, the accepted baseline and current source is underway on `codex/p23b4-reconciliation`;
+        landed Option E, the accepted baseline and current source is underway on `P23B4`;
         implementation may proceed, S1 first. U-1 (native-Chrome comparison) declined by the owner; Rust/WASM stays undecided until P23B.8.
 P23B.5  caching and reuse optimization — PLANNED, unratified
 P23B.6  rendering optimization — PLANNED, unratified
