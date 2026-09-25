@@ -26,7 +26,13 @@
  *   P2 release identity refresh + rejection       P7 restore/undo/redo (N/A)
  *   P3 preflight cross-call reference equality    P8 straight control
  *   P4 prospective gesture-scoped owner (sim)     P9 replacement (re-decode)
- *   P5 segmentId metadata hazard
+ *   P5 metadata identity (hazard → closed by S1)
+ *
+ * P5 originally recorded the segmentId HAZARD this S0 measured. P23B.5 S1 then
+ * completed the contract by making the Wall id a key dimension, so P5 now pins
+ * the CLOSED behaviour (two Walls sharing a centreline object and endpoints get
+ * their own entries and their own metadata). The S0 record of the hazard as it
+ * stood at that time is the plan §0.1 row, not this assertion.
  *
  * The disposition these probes support is recorded in the P23B.5 plan §0.
  */
@@ -318,21 +324,28 @@ describe('P23B.5 S0 — identity at each boundary', () => {
 });
 
 describe('P23B.5 S0 — equality, mutation and metadata hazards', () => {
-	it('P5 the key omits the Wall id: two Walls sharing a centerline object receive the first segmentId', () => {
+	it('P5 the key includes the Wall id: an aliased Wall gets its OWN entry and its OWN segmentId', () => {
 		const doc = curvedForty();
 		const [firstWall, secondWall] = doc.walls;
 		expect(firstWall).toBeDefined();
 		expect(secondWall).toBeDefined();
 		if (!firstWall || !secondWall) return;
+		// The API hazard's exact shape: a different Wall that shares one centreline
+		// OBJECT and the same endpoints/traversal.
 		const aliased = { ...secondWall, centerline: firstWall.centerline } satisfies LayoutWall;
 		const [start, end] = endpointsOf(doc, firstWall);
 		const derivation = createWallSamplingDerivation();
 		const first = derivation.samples(firstWall, start, end, 'forward');
 		const second = derivation.samples(aliased, start, end, 'forward');
 		expect(first, 'first wall derives').toBeDefined();
-		expect(second, 'aliased wall is served the cached result').toBe(first);
-		expect(second!.segmentId, 'hazard: wrong Wall identity in the metadata').toBe(firstWall.id);
-		expect(second!.segmentId, 'the aliased Wall id never appears').not.toBe(secondWall.id);
+		expect(second, 'aliased wall is derived, never served the other Wall entry').toBeDefined();
+		expect(second, 'the aliased Wall is not handed another Wall artefact').not.toBe(first);
+		expect(first!.segmentId, 'first Wall metadata').toBe(firstWall.id);
+		expect(second!.segmentId, 'aliased Wall metadata').toBe(secondWall.id);
+		// Same geometry, distinct identity: the shared shape is not shared state.
+		expect(second!.samples, 'same geometry under its own identity').toEqual(first!.samples);
+		expect(derivation.stats.entries, 'two traced keys retained').toBe(2);
+		expect(derivation.stats.hits, 'an identity difference is a miss, not a hit').toBe(0);
 		// Landed documents never construct that alias: one centerline object per Wall.
 		const distinct = new Set(doc.walls.map((wall) => wall.centerline));
 		expect(distinct.size, 'committed fixture has no shared centerline objects').toBe(doc.walls.length);

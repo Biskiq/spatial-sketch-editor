@@ -386,11 +386,16 @@ export function clearWallSamplingObserverForTest(): void {
  *
  * - TRACED INPUTS ONLY: the centerline OBJECT identity (never geometry equality —
  *   coincident coordinates across independent components must not share identity, D-9),
- *   the traversal, and the resolved endpoints at full precision.
+ *   the traversal, the Wall id, and the resolved endpoints at full precision.
  * - Pre/post may legitimately hold DIFFERENT derivations: they run on different documents
  *   (different centerline objects), so sharing is per key, never across keys (EQ-1).
  * - The key INCLUDES traversal (conservative form): `reverse` is derived independently,
  *   never served by reversing the `forward` array, until OR-2 proves otherwise.
+ * - The key INCLUDES the Wall id (P23B.5 S1, completing this contract): the returned
+ *   artefact carries `segmentId = wall.id`, so two Walls that share a centerline OBJECT
+ *   and endpoints/traversal must still get their OWN entry. Sharing one entry would hand
+ *   the second Wall the first Wall's metadata — a real API hazard, even though landed
+ *   documents give every Wall its own centerline object.
  *
  * Lifetime is the caller's (a per-release/per-acceptance chain value): chain-scoped, never
  * editor state, never a module global — RL-1 (document retention) is impossible, not merely
@@ -413,14 +418,47 @@ export type WallSamplingDerivation = {
 		endPoint: LayoutVec2,
 		traversal: WallCenterlineTraversal
 	): SampledSegment | undefined;
-	/** Live counters: `derivations` counts fresh derivations, `hits` counts shared returns. */
-	readonly stats: { derivations: number; hits: number };
+	/**
+	 * Live counters, split so a measurement can tell the reuse outcomes apart.
+	 *
+	 * `requests === derivations + hits`. A *hit* is a real cross-call reuse; a
+	 * *derivation* is a miss (absent entry) — including a REFUSAL, which on this
+	 * grammar is exactly a key change (different Wall, centerline object,
+	 * traversal or resolved endpoints). A derivation that yields `undefined` is a
+	 * *failed derive*, and a hit whose cached artefact is `undefined` is not useful
+	 * geometry reuse; both are counted separately rather than folded into `hits`.
+	 * `entries` is the live store size, observable for lifetime/cycling proofs.
+	 */
+	readonly stats: {
+		/** Requests served fresh (key absent). */
+		derivations: number;
+		/** Requests served from an existing entry (key present). */
+		hits: number;
+		/** Fresh derivations whose result was `undefined`. */
+		failedDerivations: number;
+		/** Hits whose cached artefact is `undefined` (not useful reuse). */
+		cachedUndefined: number;
+		/** Distinct keys currently retained. */
+		entries: number;
+	};
+	/**
+	 * Release every retained entry and zero the counters.
+	 *
+	 * The bounded-owner primitive: a caller whose scope ends (gesture release,
+	 * cancel, restore, replacement) calls this so no input object stays reachable
+	 * through a key, value or bucket after the scope, instead of relying on the
+	 * enclosing reference happening to be dropped.
+	 */
+	reset(): void;
 };
 
-/** Construct one chain-scoped derivation. Every chain constructs its own. */
+/**
+ * Construct one derivation. Every chain constructs its own; a bounded
+ * gesture/operation owner constructs exactly one and `reset()`s it at scope end.
+ */
 export function createWallSamplingDerivation(): WallSamplingDerivation {
 	const cache = new Map<LayoutWallCenterline, Map<string, SampledSegment | undefined>>();
-	const stats = { derivations: 0, hits: 0 };
+	const stats = { derivations: 0, hits: 0, failedDerivations: 0, cachedUndefined: 0, entries: 0 };
 	return {
 		samples(wall, startPoint, endPoint, traversal) {
 			let byKey = cache.get(wall.centerline);
@@ -428,17 +466,31 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
 				byKey = new Map<string, SampledSegment | undefined>();
 				cache.set(wall.centerline, byKey);
 			}
-			const key = `${traversal}|${String(startPoint[0])}|${String(startPoint[1])}|${String(endPoint[0])}|${String(endPoint[1])}`;
+			// Wall id leads the key: the returned `segmentId` is derived from it, so
+			// it is a traced input of the artefact, not an incidental label.
+			const key = `${wall.id}|${traversal}|${String(startPoint[0])}|${String(startPoint[1])}|${String(endPoint[0])}|${String(endPoint[1])}`;
 			if (byKey.has(key)) {
+				const cached = byKey.get(key);
 				stats.hits += 1;
-				return byKey.get(key);
+				if (cached === undefined) stats.cachedUndefined += 1;
+				return cached;
 			}
 			stats.derivations += 1;
 			const derived = wallCenterlineSamples(wall, startPoint, endPoint, traversal);
+			if (derived === undefined) stats.failedDerivations += 1;
 			byKey.set(key, derived);
+			stats.entries += 1;
 			return derived;
 		},
-		stats
+		stats,
+		reset() {
+			cache.clear();
+			stats.derivations = 0;
+			stats.hits = 0;
+			stats.failedDerivations = 0;
+			stats.cachedUndefined = 0;
+			stats.entries = 0;
+		}
 	};
 }
 
