@@ -81,6 +81,7 @@ P23B.5 plan with RATIFICATION + S0 disposition + preflight-only owner ruling and
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
 P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
+P23B.5 S5 live DEV readout of gesture reuse (per-drag counters + harness panel) → apps/editor/src/lib/editor/layout/p23b-gesture-sampling-report.ts · panel in apps/editor/src/routes/dev/perf/p23b/+page.svelte · tests/lib/editor/layout/p23b-gesture-sampling-report.test.ts
 Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md

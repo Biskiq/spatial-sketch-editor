@@ -244,9 +244,12 @@ P23B.5  caching and reuse optimization — IMPLEMENTED 2026-09-25 on `P23B.5`, A
          sample owner threaded into the transient preflight only, reset at pointer-down/finish/cancel/
          replacement. Measured on curved-40: 120 preflight requests → 44 derivations = 40 cold misses
          + 4 changed-input refusals, and 76 hits (63%), 0 failed derives, 0 cached undefined; straight
-         control 0 requests; advisory per-drag preflight p50 26.7 → 8.9 ms. No release/validation/history
-         behaviour changed and landed M-1 is preserved. Implementation status is NOT acceptance; no
-         closeout or merge is implied.
+         control 0 requests; advisory per-drag preflight p50 26.7 → 8.9 ms. These counters are also
+         watchable live: the DEV harness page `/dev/perf/p23b` shows per-gesture requests, hits, cold
+         misses and refusals while a drag is in progress (DEV-only readout, absent from production builds
+         and from the capture ledger/baseline). No release/validation/history behaviour changed and
+         landed M-1 is preserved. Implementation status is NOT acceptance; no closeout or merge is
+         implied.
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
