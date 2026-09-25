@@ -26,6 +26,11 @@
 		P23BBrowserRunReport
 	} from '$lib/bench/bench-types';
 	import {
+		buildP23BContainment,
+		summarizeContainmentByPath,
+		type P23BContainmentRecord
+	} from '$lib/bench/p23b-containment';
+	import {
 		p23bBeginInteractionCapture,
 		p23bEndInteractionCapture,
 		p23bInteractionCaptureLedger,
@@ -196,6 +201,13 @@
 	let captureStartedAt = $state<string | null>(null);
 	let captures = $state<BenchInteractionFixtureCapture[]>([]);
 	let lastCaptureNote = $state('');
+	/**
+	 * Measurement-only step — one containment record per hosted fixture. Kept out
+	 * of the baseline report on purpose: this is a separate record (no budget, no
+	 * `g3-baseline.json` write), and it is what turns the pooled `nestedMarks` into
+	 * an action-attributed tree.
+	 */
+	let containmentFixtures = $state<{ fixtureId: string; sessionId: string; record: P23BContainmentRecord }[]>([]);
 	const capturing = $derived(captureSessionId !== null);
 
 	const MEASUREMENT_LIMITATIONS = [
@@ -521,6 +533,13 @@
 			nestedMarks: nestedMarks()
 		};
 		captures = [...captures, record];
+		// Measurement-only step: bind the marks this fixture's actions produced to
+		// the action and outcome that enclose them, before the next fixture clears
+		// the marks. The pooled `nestedMarks` above stays for contract compatibility.
+		containmentFixtures = [
+			...containmentFixtures,
+			{ fixtureId: hosted.id, sessionId, record: buildP23BContainment(ledger, readMarks()) }
+		];
 		captureSessionId = null;
 		lastCaptureNote = settled
 			? `Settled. ${Object.entries(record.capture.completedActions).map(([path, count]) => `${path} ${count}`).join(' · ')}`
@@ -532,6 +551,21 @@
 		const current = report;
 		if (current) report = { ...current, interactionFixtures: captures };
 		(globalThis as typeof globalThis & { __P23B_REPORT__?: P23BBrowserRunReport }).__P23B_REPORT__ = report ?? undefined;
+		(globalThis as typeof globalThis & { __P23B_CONTAINMENT__?: unknown }).__P23B_CONTAINMENT__ = containmentFixtures;
+		// The summary the measurement record reports: the interaction report's own
+		// population rule (warm-up excluded, accepted only) applied to containment, so
+		// a containment number and the boundary number beside it describe the same
+		// actions. Full trees stay on `__P23B_CONTAINMENT__`.
+		(globalThis as typeof globalThis & { __P23B_CONTAINMENT_SUMMARY__?: unknown }).__P23B_CONTAINMENT_SUMMARY__ =
+			containmentFixtures.map((fixture) => ({
+				fixtureId: fixture.fixtureId,
+				marks: fixture.record.marks,
+				unattributed: fixture.record.unattributed,
+				byPath: summarizeContainmentByPath(fixture.record, {
+					warmup: INTERACTION_WARMUP,
+					outcomes: ['accepted']
+				})
+			}));
 		(globalThis as typeof globalThis & { __P23B_CAPTURE__?: unknown }).__P23B_CAPTURE__ = {
 			capturing,
 			hostedFixtureId,
@@ -604,6 +638,73 @@
 		} finally {
 			driveRunning = false;
 		}
+	}
+
+	/** The `p2311:` marks observed since the capture cleared them. */
+	function readMarks() {
+		return performance.getEntriesByType('measure').map((entry) => ({
+			name: entry.name,
+			startTime: entry.startTime,
+			duration: entry.duration
+		}));
+	}
+
+	/**
+	 * The measurement-only step's record: containment per fixture plus the
+	 * post-release flush/frame distributions the capture already holds. Separate
+	 * from the baseline report — nothing here is written to `g3-baseline.json` or
+	 * asserted as a budget.
+	 */
+	function measurementRecord() {
+		return {
+			note: 'DEV-only measurement record for the P23B measurement-only step. ADVISORY: one machine, one session. NOT the baseline: no budget is asserted, no metric is enforced and g3-baseline.json is neither read nor written here. Every containment number is a per-action distribution or one action tree; nothing in this record may be summed.',
+			methodVersion: 5,
+			createdAt: new Date().toISOString(),
+			provenance: {
+				commitSha: data.commitSha,
+				treeDirty: data.treeDirty,
+				machine: data.machine,
+				operatingSystem: data.operatingSystem,
+				browser: navigator.userAgent,
+				devicePixelRatio: window.devicePixelRatio,
+				sessionId: report?.browser.sessionId ?? null
+			},
+			population: 'warm-up excluded per path; accepted outcomes only — the interaction report\'s own rule',
+			fixtures: containmentFixtures.map((fixture) => ({
+				fixtureId: fixture.fixtureId,
+				sessionId: fixture.sessionId,
+				marks: fixture.record.marks,
+				unattributed: fixture.record.unattributed,
+				byPath: summarizeContainmentByPath(fixture.record, {
+					warmup: INTERACTION_WARMUP,
+					outcomes: ['accepted']
+				})
+			})),
+			postRelease: captures.map((capture) => ({
+				fixtureId: capture.fixtureId,
+				boundaries: Object.fromEntries(
+					(['svelte-flush', 'browser-frame'] as const).map((boundary) => [
+						boundary,
+						Object.fromEntries(
+							Object.entries(capture.interactions).map(([path, report]) => {
+								const entry = report?.[boundary];
+								return [path, entry && 'accepted' in entry ? entry.accepted ?? null : null];
+							})
+						)
+					])
+				)
+			}))
+		};
+	}
+
+	function downloadMeasurementRecord() {
+		const blob = new Blob([JSON.stringify(measurementRecord(), null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = 'p23b-measurement-record.json';
+		anchor.click();
+		URL.revokeObjectURL(url);
 	}
 
 	function downloadReport() {
@@ -703,6 +804,21 @@
 		{#if capturing}<p class="status">Capturing {hosted.id} from {captureStartedAt}</p>{/if}
 		{#if issue}<p class="error">{issue}</p>{/if}
 		{#if lastCaptureNote}<p class="status">{lastCaptureNote}</p>{/if}
+		{#if containmentFixtures.length > 0}
+			<h2>Action containment (measurement-only step)</h2>
+			<p class="capture-hint">
+				Every <code>p2311:</code> mark bound to the action and outcome whose boundary interval encloses it.
+				Exclusive time is reported only where the enclosed marks are disjoint and fully contained; anything
+				outside an action is pooled as unattributed and never guessed into one. Nothing here may be summed.
+			</p>
+			<pre>{JSON.stringify(containmentFixtures.map((entry) => ({
+				fixtureId: entry.fixtureId,
+				marks: entry.record.marks,
+				unattributed: entry.record.unattributed,
+				byPath: summarizeContainmentByPath(entry.record)
+			})), null, 2)}</pre>
+			<button class="download" onclick={downloadMeasurementRecord}>Download measurement record JSON</button>
+		{/if}
 		{#if captures.length > 0}
 			<h2>Captured fixtures</h2>
 			<pre>{JSON.stringify(captures.map((entry) => ({

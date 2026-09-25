@@ -71,7 +71,8 @@ export type P23BGesture = {
 	/** The path the action actually took; `null` while a deferred press is unresolved. */
 	path: BenchInteractionPath | null;
 	outcome: BenchInteractionOutcome | null;
-	samples: { boundary: BenchInteractionBoundary; duration: number }[];
+	/** Boundary intervals are kept with their clock bounds so the containment record can bind nested marks to them. */
+	samples: { boundary: BenchInteractionBoundary; duration: number; start: number; end: number }[];
 	planView: P23BCapturePlanViewEvidence | null;
 	pending: number;
 	/** Awaiting an explicit path/outcome from a later event (a release or a click). */
@@ -674,7 +675,12 @@ function publishActive(gesture: P23BGesture): void {
 }
 
 function record(gesture: P23BGesture, entry: SampleEntry): void {
-	gesture.samples.push({ boundary: entry.boundary, duration: Math.max(0, entry.end - entry.start) });
+	gesture.samples.push({
+		boundary: entry.boundary,
+		duration: Math.max(0, entry.end - entry.start),
+		start: entry.start,
+		end: entry.end
+	});
 	if (entry.boundary === 'input' || entry.boundary === 'release') gesture.syncCount += 1;
 	if (gesture.path === null) {
 		gesture.measures.push(entry);

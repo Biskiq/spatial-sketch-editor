@@ -1185,7 +1185,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				);
 				return planArchitectureEditTarget(gesture, target);
 			},
-			commit: () => onLayoutTransactionCommit(),
+			// Measurement-only step: the commit + history write is a named node, so the
+			// release tree shows what the release spent outside the planner.
+			commit: () => p2311Measure('gesture-commit', () => onLayoutTransactionCommit()),
 			cancel: () => onLayoutTransactionCancel(),
 			restoreBaseline: restoreArchitectureEditBaseline
 		});
@@ -3212,14 +3214,17 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		}
 
 		if (interaction.tool !== 'select') return;
-		const target = resolvePlanHit(
+		// Measurement-only step: the selection path performs no canonical planner
+		// call, so its pressed work is named here and lands as a node inside the
+		// action's `input` boundary (DEV + `__P2311_PERF__` gated, like every mark).
+		const target = p2311Measure('selection-hit', () => resolvePlanHit(
 			model.queries,
 			point,
 			// S4 — the acquisition radius when a control has claimed the pointer,
 			// otherwise the unchanged entity radius.
 			planHitTolerance(point),
 			planHitOptions(point)
-		);
+		));
 		if (!target) {
 			// a Plan empty-click deselects whichever domain is active (a
 			// scene/camera pick may have survived into Plan); default keeps the
@@ -4173,7 +4178,11 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			const gesture = p23bAuthoringGesture ?? p23bOpenGesture('wall-authoring');
 			p23bAuthoringGesture = null;
 			if (!gesture) return onClick(event);
-			const outcome = p23bMeasureGesture(gesture, 'wall-authoring', 'release', () => onClick(event));
+			// Measurement-only step: wall authoring has no `plan-apply` boundary, so the
+			// whole release is named as one node and its internals nest inside it.
+			const outcome = p23bMeasureGesture(gesture, 'wall-authoring', 'release', () =>
+				p2311Measure('authoring-release', () => onClick(event))
+			);
 			p23bResolveGesture(gesture, 'wall-authoring', outcome);
 			p23bScheduleGestureBoundaries(gesture);
 			return;
