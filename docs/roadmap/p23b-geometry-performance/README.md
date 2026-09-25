@@ -32,8 +32,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.6–P23B.8 **optimization** work remains unauthorized — the owner authorized ONE measurement-only step to run first (the P23B.5-closeout routing amendment below), which starts no optimization and ends at a ranking. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The next authorized step is the measurement-only step (routing amendment below): run it on a new branch from updated `main` and stop after its ranking for the owner's ruling on which slice follows. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.6–P23B.8 **optimization** work remains unauthorized — the owner authorized ONE measurement-only step to run first (the P23B.5-closeout routing amendment below), and it has now run and closed: it started no optimization and ended at a ranking. Its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 runs P23B.7 before P23B.6 (order only). No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6 and the next work item is P23B.7's own plan/review. Do NOT start an optimization inside either slice. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -86,13 +86,24 @@ all three inform synthesis.
     P23B.4's baseline gate is satisfied; its reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first).
 11  P23B.4–P23B.8 execute, verify and review; then the P23B.9 correctness +
     performance-regression gate and the P23B.10 closeout gate
+    [ORDER AMENDED 2026-09-25] Within that run, P23B.7 executes BEFORE P23B.6:
+    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8. Owner-ruled from the measurement
+    step's geometry-identity pin (STATE-SIDE: the object the commit hands
+    `installWallMeshes` is a Svelte `$state` proxy, and the duplicate 40-Wall
+    rebuild it causes is per-gesture commit/history work, which P23B.7 owns —
+    not per-frame rendering). ORDER ONLY: slice IDs, names, scope and identity
+    are UNCHANGED and there is NO renumbering. Evidence →
+    ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8.
 ```
 
-> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** The single
-> amendment is the owner-authorized insertion of **P23B.3a** as step 9 (approved 2026-09-22 under
-> D-11 = ARRANGEMENT 1), which also re-numbers the closing step; no existing slice's meaning, scope or
-> identity changed. Later work must PRESERVE THIS sequence and must not change it again without a further
-> owner authorization — byte equality to the PRE-AMENDMENT block is **not** the test (P23B.10 MR-10).
+> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are two
+> owner-authorized amendments. The first is the insertion of **P23B.3a** as step 9 (approved 2026-09-22
+> under D-11 = ARRANGEMENT 1), which also re-numbered the closing step. The second is the 2026-09-25
+> **order amendment inside step 11**: P23B.7 runs before P23B.6, ruled from the measurement-only step's
+> identity pin (STATE-SIDE), with no slice renumbered and no scope or identity changed. No existing
+> slice's meaning, scope or identity changed in either. Later work must PRESERVE THIS sequence and must
+> not change it again without a further owner authorization — byte equality to the PRE-AMENDMENT block is
+> **not** the test (P23B.10 MR-10).
 
 ## Owner-authorized execution routing amendment — 2026-09-24
 
@@ -134,6 +145,17 @@ branch and its single PR (#90) was squash-merged — no new scope entered that P
 the owner's ruling for what runs next.
 
 ```text
+OWNER EXTENSION 2026-09-25: the measurement step also pins which geometry identity
+  `installWallMeshes` receives at commit time (DEV-only diagnostic, no product change),
+  and the P23B.6/P23B.7 order is ruled from that result per the order ruling below.
+
+ORDER RULING 2026-09-25 (STATE-SIDE, applied): the pin proved that the object the commit
+  hands `installWallMeshes` is a `$state` proxy and not the object the install cached, so the
+  leading measured cost is per-gesture commit/history work. The SEQUENCE's step 11 therefore
+  runs P23B.7 BEFORE P23B.6 — the authoritative block above carries the amendment, and it is
+  order only (no renumbering, no scope or identity change). Evidence →
+  ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8.
+
 ORDER (amends SEQUENCE step 11's execution order only)
   Before ANY optimization step in P23B.6 or P23B.7, run ONE measurement-only step: P23B.7 S1
   (per-move proposal, per-move preflight, the derive/install seam, reactive re-render and the
@@ -307,10 +329,26 @@ P23B.5  caching and reuse optimization — SHIPPED 2026-09-25 (PR #90 squash-mer
          refuses a measurement that breaks an invariant (mirroring `bench:record` as the P23B.0 baseline's
          only writer; no test writes the record). It adds no repository budget metric, asserts no timing
          threshold and neither reads nor re-records `g3-baseline.json`. No release/validation/history behaviour changed and landed M-1 is preserved.
-         The ratchet JSON stays LIVE (not closed work). Next: the owner-authorized measurement-only step
-         (routing amendment above) — P23B.6–P23B.8 optimization remains unauthorized.
+         The ratchet JSON stays LIVE (not closed work). Next: P23B.7's own plan/review work (see the
+         measurement-only step below and the order ruling in step 11 of the SEQUENCE) — then P23B.6.
+         Both remain unauthorized until their slices are ratified.
+MEASUREMENT-ONLY STEP — EXECUTED, owner-reviewed, ACCEPTED and CLOSED 2026-09-25 (PR #91
+         squash-merged; the record is a path-preserving closed stub at its own path + anchor `1d0fb220`,
+         tag `closed/p23b-measurement`). It ran the authorized P23B.7-S1-extended-to-authoring + P23B.6
+         S1 containment work, PLUS the owner's 2026-09-25 extension (the DEV geometry-identity pin),
+         started no optimization and wrote no baseline. FINDING: every accepted edit on a commit path
+         builds the full 40-Wall mesh set TWICE, the second time inside `commit-replace`'s restore
+         where the identity-keyed cache MISSES (`restore-mesh-install` p50 160.2 curved bend /
+         162.3 curved drag / 190.7 curved authoring / 135.4 straight) while the same restore between
+         actions hits at 0.0 — because the commit hands `installWallMeshes` a `$state` PROXY of the
+         compile's geometry, not the object the install cached (STATE-SIDE). The commit path is 266.6
+         ms of a 341.6 ms curved drag release (78%): `commit-capture` 125.5 + `commit-replace` 137.8.
+         RULING: SEQUENCE step 11 now runs P23B.7 before P23B.6 (order only). Evidence artifact stays
+         LIVE at its path: .../p23b-measurement-only-step/2026-09-25-release-containment-capture.json
+         (SHA-256 `c004abbd…`). Limits: advisory, one machine/session; all-curved-40 aborts on the
+         driver's 6000 ms guard; revision-2 magnitudes are 40–85% above revision 1 and the baseline.
 P23B.6  rendering optimization — PLANNED, unratified
-P23B.7  interaction optimization — PLANNED, unratified
+P23B.7  interaction optimization — PLANNED, unratified; RUNS BEFORE P23B.6 (owner order ruling 2026-09-25)
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified

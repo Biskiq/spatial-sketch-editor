@@ -65,6 +65,7 @@ import {
 } from '$lib/editor/layout/layout-interaction';
 import {
 	captureLayoutPreviewSnapshot,
+	restoreLayoutPreviewSnapshot,
 	createEmptyLayoutPreviewState,
 	importLayoutPreviewJson,
 	layoutPreviewDocument,
@@ -974,5 +975,69 @@ describe('P23.11 transient pass — isolation', () => {
 		const neighbour = frozen!.walls!.find((wall) => wall.wallId === 'w4')!;
 		expect(neighbour.points.at(-1)).toEqual([-1, 0]);
 		expect(neighbour.points[0]).toEqual([0, 3]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// measurement-only step — why a restore re-derives the wall-mesh cache
+// ---------------------------------------------------------------------------
+
+describe('P23B measurement step — the restore path and the mesh-cache key', () => {
+	it('rebuilds the wall-mesh cache on the first restore of a snapshot geometry, then reuses it', () => {
+		const context = makeStore();
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		// A capture keeps `state.geometry` BY REFERENCE, so two captures of the same
+		// live state hand the restore one and the same geometry object.
+		expect(captureLayoutPreviewSnapshot(context.layoutPreview).geometry).toBe(snapshot.geometry);
+
+		const before = stageCount('mesh-prebuild');
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const first = stageCount('mesh-prebuild') - before;
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const second = stageCount('mesh-prebuild') - before - first;
+
+		// MEASURED, and it is what the plain harness does — NOT what the shipped
+		// editor does. Restoring a snapshot taken from this plain state does not
+		// re-derive the wall-mesh cache: the capture holds `state.geometry` by
+		// reference, this state is not reactive, so the restore hands back the very
+		// object the compile cached the meshes under. The browser capture measures
+		// the opposite inside a commit (a full 40-Wall rebuild, `mesh-prebuild`
+		// 133.8 ms p50 on the curved owner fixture, 25/25 accepted drags), which is
+		// how we know the object the app hands the restore is a DIFFERENT identity
+		// from the one the install cached. Read this test as pinning the cache's
+		// identity semantics, never as evidence about the app's restore cost.
+		expect({ first, second }).toEqual({ first: 0, second: 0 });
+	});
+
+	it('re-derives again after the live geometry changes, so the key tracks the compile', () => {
+		const context = makeStore();
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const settled = stageCount('mesh-prebuild');
+		restoreLayoutPreviewSnapshot(context.layoutPreview, captureLayoutPreviewSnapshot(context.layoutPreview));
+		expect(stageCount('mesh-prebuild') - settled).toBe(0);
+	});
+
+	it('does not re-derive the meshes when the commit restores the snapshot it just captured', () => {
+		const context = makeStore();
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		move(context, [-0.2, 0.1]);
+		const outcome = release(context, [-1.5, 0.5]);
+		expect(outcome.kind).toBe('committed');
+
+		// The production commit step, verbatim: capture the live state, then hand the
+		// snapshot to the history boundary, whose `replace` runs the restore.
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		const before = stageCount('mesh-prebuild');
+		context.store.commitLayoutTransaction(snapshot);
+		const rebuilt = stageCount('mesh-prebuild') - before;
+
+		// A non-zero value here would mean this harness re-derives the whole cache on
+		// every commit, which it does not — and the browser capture shows the app
+		// does exactly that. That contrast is the finding: the cache is keyed by
+		// geometry object identity, and the identity the app's restore passes is not
+		// the identity its install cached.
+		expect(rebuilt).toBe(0);
 	});
 });

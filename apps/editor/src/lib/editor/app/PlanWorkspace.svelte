@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LayoutPlanViewport from '$lib/editor/layout/LayoutPlanViewport.svelte';
 	import LayoutDraftToolbar from '$lib/editor/layout/LayoutDraftToolbar.svelte';
+	import { p2311Measure } from '@portfolio/layout-core';
 	import ToolTray from './ToolTray.svelte';
 	import type { LayoutPreviewState, WallSegmentConnection } from '$lib/editor/layout/layout-preview-state.svelte';
 	import {
@@ -429,7 +430,12 @@
 		// P23.12 — promote the layout's provisional references before the history
 		// boundary is captured (identity-only write; nothing is recompiled).
 		promoteLayoutPreviewIdentity(layoutPreview);
-		return store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
+		// Measurement-only step: the snapshot capture (project/model/issues clones) is
+		// its own disjoint mark, so a commit arrives as capture + compare + re-install
+		// instead of one opaque block.
+		return store.commitLayoutTransaction(
+			p2311Measure('commit-capture', () => captureLayoutPreviewSnapshot(layoutPreview))
+		);
 	}
 
 	function cancelLayoutTransaction(): boolean {

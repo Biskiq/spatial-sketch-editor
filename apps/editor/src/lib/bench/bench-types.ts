@@ -224,7 +224,19 @@ export type P23BActionLedger = {
 	path: BenchInteractionPath | null;
 	outcome: BenchInteractionOutcome | null;
 	status: 'completed' | 'incomplete';
-	samples: { boundary: BenchInteractionBoundary; duration: number }[];
+	/**
+	 * `start`/`end` are the boundary's own clock interval, so a nested `p2311:`
+	 * mark can be attributed to the boundary that actually encloses it
+	 * (`$lib/bench/p23b-containment`). They are optional because a ledger
+	 * recorded before the measurement-only step — and every committed baseline
+	 * sample — carries the duration alone.
+	 */
+	samples: {
+		boundary: BenchInteractionBoundary;
+		duration: number;
+		start?: number;
+		end?: number;
+	}[];
 	/** Plan viewport observed when this action ran; `null` when none was published. */
 	planView: P23BCapturePlanViewEvidence | null;
 };

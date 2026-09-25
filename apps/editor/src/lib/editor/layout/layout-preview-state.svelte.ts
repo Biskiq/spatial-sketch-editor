@@ -27,6 +27,7 @@ import type {
 } from '$lib/layout/layout-types';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 import { p23bMeasureActiveReactive } from './p23b-interaction-measure';
+import { p2311ObserveMeshIdentity } from './p23b-mesh-identity';
 import {
 	layoutAuthoredCanonicalJson,
 	layoutIdentityCursor,
@@ -655,7 +656,12 @@ function resolveWallMeshes(geometry: CompiledLayoutGeometry): {
 	issues: readonly LayoutGeometryIssue[];
 } {
 	const cached = derivedWallMeshes.get(geometry);
-	if (cached) return cached;
+	if (cached) {
+		// P23B measurement-only step: which identity hit the cache.
+		p2311ObserveMeshIdentity('prebuild-hit', geometry);
+		return cached;
+	}
+	p2311ObserveMeshIdentity('prebuild-miss', geometry);
 	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(geometry));
 	derivedWallMeshes.set(geometry, built);
 	return built;
@@ -674,6 +680,9 @@ function installWallMeshes(state: LayoutPreviewState, geometry: CompiledLayoutGe
  * cache, merging any mesh issues into `state.issues`.
  */
 function applyCompiledLayout(state: LayoutPreviewState, result: LayoutPreviewModelResult): void {
+	// P23B measurement-only step: this is the install the commit path is compared
+	// against — the geometry it caches in `derivedWallMeshes` (DEV-only).
+	p2311ObserveMeshIdentity('install', result.geometry);
 	installWallMeshes(state, result.geometry);
 	const meshIssues = resolveWallMeshes(result.geometry).issues;
 	const issues = meshIssues.length > 0 ? [...result.issues, ...meshIssues] : result.issues;
@@ -778,6 +787,9 @@ export function derivePreviewBundle(
 		resolvedLayout === project.layout
 			? project
 			: { ...project, layout: resolvedLayout as unknown as Project['layout'] };
+	// P23B measurement-only step: the boot/install derivation's own geometry
+	// identity, so a restore can be attributed to it (DEV-only).
+	p2311ObserveMeshIdentity('install-bundle', result.geometry);
 	const meshes = resolveWallMeshes(result.geometry);
 	return {
 		project: installedProject,
@@ -2731,6 +2743,9 @@ export type LayoutPreviewSnapshot = {
 };
 
 export function captureLayoutPreviewSnapshot(state: LayoutPreviewState): LayoutPreviewSnapshot {
+	// P23B measurement-only step: record which identity the live read hands the
+	// snapshot (DEV-only, inert unless the perf gate is on).
+	p2311ObserveMeshIdentity('capture', state.geometry, state.geometry);
 	return {
 		source: state.source,
 		project: cloneJson(state.project),
@@ -2776,6 +2791,9 @@ function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snaps
 	// The wall-mesh + pick-index caches are derived and never part of the undo
 	// snapshot: undo restores the document and the caches are re-derived from
 	// geometry — reusing the ones already derived for this exact geometry object.
+	// P23B measurement-only step: record which identity the restore hands the
+	// install, and whether it is the one the live state holds (DEV-only).
+	p2311ObserveMeshIdentity('restore', snapshot.geometry, state.geometry);
 	p2311Measure('restore-mesh-install', () => installWallMeshes(state, snapshot.geometry));
 	p2311Measure('restore-bookkeeping', () => {
 		state.bounds = snapshot.bounds
