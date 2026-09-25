@@ -40,9 +40,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.4 implementation is AUTHORIZED: begin S1 (freeze the per-consumer sampling reference,
-   tests-only, no production change) on `P23B4` (unmerged), then S1b (bounded U-5 flush
-   attribution via nested P23.11 marks, finding only, does not gate M-1/M-2a).
+1. P23B.4 CORRECTION BATCH (independent integrated review 2026-09-25: RETURN FOR
+   CORRECTION on three P2 blockers F1–F3; no P0/P1, no regression, no boundary
+   violation) is implemented on `P23B4` (unmerged) for re-review: F1 observed
+   consumer reference (pre-opt generated) + non-mutation + real-planner + OR-8 wild
+   Rooms/Openings; F2 full-validator differential via test-only prune bypass +
+   superset oracle + edge families; F3 repeatable p50/p95 measurement, narrowed X-3
+   scope, corrected 60→40 attribution. Mechanisms (M-1/M-2a) preserved; M-2b stays
+   DROPPED. Do NOT restart the slice, request S-step reviews, begin P23B.5, rewrite
+   the baseline, or close/merge — re-review only.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
