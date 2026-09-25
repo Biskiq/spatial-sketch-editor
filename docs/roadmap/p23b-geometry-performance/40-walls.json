@@ -1,0 +1,2317 @@
+{
+  "units": "meters",
+  "formatVersion": 5,
+  "floor": {
+    "id": "floor",
+    "name": "Floor",
+    "elevation": 0
+  },
+  "junctions": [
+    {
+      "id": "junction-chain-1",
+      "point": [
+        -6.706432056409177,
+        -3.5774355397189637
+      ]
+    },
+    {
+      "id": "junction-chain-2",
+      "point": [
+        -1.2064320564091773,
+        -3.493528059404003
+      ]
+    },
+    {
+      "id": "junction-chain-1.2",
+      "point": [
+        -1.4564320564091773,
+        0.006471940595996983
+      ]
+    },
+    {
+      "id": "junction-chain-1.3",
+      "point": [
+        -6.706432056409177,
+        -0.07743553971896366
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy",
+      "point": [
+        4.657179672694362,
+        -3.699743447212567
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy",
+      "point": [
+        10.157179672694362,
+        -3.6158359668976066
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy",
+      "point": [
+        9.907179672694362,
+        -0.11583596689760656
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy",
+      "point": [
+        4.657179672694362,
+        -0.1997434472125672
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy",
+      "point": [
+        -5.77731491866593,
+        4.992296208346982
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy",
+      "point": [
+        -0.2773149186659296,
+        5.076203688661943
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy",
+      "point": [
+        -0.5273149186659296,
+        8.576203688661943
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy",
+      "point": [
+        -5.77731491866593,
+        8.492296208346982
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy",
+      "point": [
+        4.547064808989495,
+        4.809066657055203
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy",
+      "point": [
+        10.047064808989495,
+        4.892974137370164
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy",
+      "point": [
+        9.797064808989495,
+        8.392974137370164
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy",
+      "point": [
+        4.547064808989495,
+        8.309066657055203
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy",
+      "point": [
+        12.647878405103045,
+        -7.9000137360792735
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy",
+      "point": [
+        18.147878405103047,
+        -7.816106255764312
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy",
+      "point": [
+        17.897878405103047,
+        -4.316106255764312
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy",
+      "point": [
+        12.647878405103045,
+        -4.4000137360792735
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy-copy",
+      "point": [
+        -0.9590613167985893,
+        -10.671669105232917
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy-copy",
+      "point": [
+        4.540938683201414,
+        -10.587761624917956
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy-copy",
+      "point": [
+        4.290938683201414,
+        -7.087761624917956
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy-copy",
+      "point": [
+        -0.9590613167985893,
+        -7.171669105232917
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -17.668730545836414,
+        -10.311820707392615
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -12.16873054583641,
+        -10.227913227077654
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -12.41873054583641,
+        -6.727913227077654
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -17.668730545836414,
+        -6.811820707392615
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -16.496545312893158,
+        -1.6418846803515574
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -10.996545312893154,
+        -1.5579772000365963
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -11.246545312893154,
+        1.9420227999634037
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -16.496545312893158,
+        1.8581153196484426
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -8.729390245052137,
+        -14.65012325518445
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -1,
+        -15.5
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -3.4793902450521346,
+        -11.06621577486949
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        -8.729390245052137,
+        -11.15012325518445
+      ]
+    },
+    {
+      "id": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        7.694470130023237,
+        -14.42953336104545
+      ]
+    },
+    {
+      "id": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        13.194470130023241,
+        -14.34562588073049
+      ]
+    },
+    {
+      "id": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        12.944470130023241,
+        -10.84562588073049
+      ]
+    },
+    {
+      "id": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "point": [
+        7.694470130023237,
+        -10.92953336104545
+      ]
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-chain-1",
+      "startJunctionId": "junction-chain-1",
+      "endJunctionId": "junction-chain-2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              -4.456432056409177,
+              -5.993528059404003
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -5.900611877948466,
+              -3.5651420232168562
+            ],
+            "handleIn": [
+              -5.311472089521422,
+              -5.922704899630566
+            ]
+          },
+          {
+            "handleOut": [
+              -3.5035528097697286,
+              -6.072455263413268
+            ],
+            "handleIn": [
+              -2.2339452112817995,
+              -3.5092037030068823
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2",
+      "startJunctionId": "junction-chain-2",
+      "endJunctionId": "junction-chain-1.2",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              0.7935679435908227,
+              -1.743528059404003
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -1.2474399922101018,
+              -2.9194169581910585
+            ],
+            "handleIn": [
+              0.8101419808241606,
+              -2.316995217604647
+            ]
+          },
+          {
+            "handleOut": [
+              0.776402914754607,
+              -1.1496123966989125
+            ],
+            "handleIn": [
+              -1.4141066588767686,
+              -0.5860836248577251
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3",
+      "startJunctionId": "junction-chain-1.2",
+      "endJunctionId": "junction-chain-1.3",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              -4.456432056409177,
+              1.506471940595997
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -2.436388967465497,
+              -0.009190100399044498
+            ],
+            "handleIn": [
+              -3.546658683693087,
+              1.5747098326506928
+            ]
+          },
+          {
+            "handleOut": [
+              -5.280450956250519,
+              1.444666094849454
+            ],
+            "handleIn": [
+              -5.936388967465497,
+              -0.06512842060901826
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4",
+      "startJunctionId": "junction-chain-1.3",
+      "endJunctionId": "junction-chain-1",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -8.206432056409177,
+              -1.993528059404003
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -6.706432056409177,
+              -0.6565293407135815
+            ],
+            "handleIn": [
+              -8.23451577825602,
+              -1.3964747143385778
+            ]
+          },
+          {
+            "handleOut": [
+              -8.179841839096072,
+              -2.558829848083816
+            ],
+            "handleIn": [
+              -6.706432056409177,
+              -2.9898626740469147
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy",
+      "startJunctionId": "junction-chain-1-copy",
+      "endJunctionId": "junction-chain-2-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              6.907179672694362,
+              -6.115835966897606
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              5.462999851155073,
+              -3.68744993071046
+            ],
+            "handleIn": [
+              6.052139639582117,
+              -6.04501280712417
+            ]
+          },
+          {
+            "handleOut": [
+              7.86005891933381,
+              -6.194763170906871
+            ],
+            "handleIn": [
+              9.12966651782174,
+              -3.631511610500486
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy",
+      "startJunctionId": "junction-chain-2-copy",
+      "endJunctionId": "junction-chain-1.2-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              12.157179672694362,
+              -1.8658359668976066
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              10.116171736893438,
+              -3.041724865684662
+            ],
+            "handleIn": [
+              12.173753709927698,
+              -2.4393031250982506
+            ]
+          },
+          {
+            "handleOut": [
+              12.140014643858146,
+              -1.271920304192516
+            ],
+            "handleIn": [
+              9.94950507022677,
+              -0.7083915323513287
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy",
+      "startJunctionId": "junction-chain-1.2-copy",
+      "endJunctionId": "junction-chain-1.3-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              6.907179672694362,
+              1.3841640331023934
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              8.927222761638042,
+              -0.13149800789264804
+            ],
+            "handleIn": [
+              7.816953045410452,
+              1.4524019251570892
+            ]
+          },
+          {
+            "handleOut": [
+              6.08316077285302,
+              1.3223581873558505
+            ],
+            "handleIn": [
+              5.427222761638042,
+              -0.18743632810262179
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy",
+      "startJunctionId": "junction-chain-1.3-copy",
+      "endJunctionId": "junction-chain-1-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              3.1571796726943617,
+              -2.1158359668976066
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              4.657179672694362,
+              -0.778837248207185
+            ],
+            "handleIn": [
+              3.1290959508475193,
+              -1.5187826218321814
+            ]
+          },
+          {
+            "handleOut": [
+              3.1837698900074667,
+              -2.6811377555774194
+            ],
+            "handleIn": [
+              4.657179672694362,
+              -3.1121705815405183
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              -3.5273149186659296,
+              2.576203688661943
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -4.97149474020522,
+              5.004589724849089
+            ],
+            "handleIn": [
+              -4.382354951778174,
+              2.647026848435379
+            ]
+          },
+          {
+            "handleOut": [
+              -2.574435672026482,
+              2.4972764846526783
+            ],
+            "handleIn": [
+              -1.3048280735385518,
+              5.060528045059064
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              1.7226850813340704,
+              6.826203688661943
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -0.31832285446685304,
+              5.650314789874887
+            ],
+            "handleIn": [
+              1.7392591185674071,
+              6.2527365304612985
+            ]
+          },
+          {
+            "handleOut": [
+              1.705520052497853,
+              7.420119351367033
+            ],
+            "handleIn": [
+              -0.4849895211335209,
+              7.98364812320822
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              -3.5273149186659296,
+              10.076203688661943
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -1.5072718297222494,
+              8.5605416476669
+            ],
+            "handleIn": [
+              -2.6175415459498392,
+              10.144441580716638
+            ]
+          },
+          {
+            "handleOut": [
+              -4.351333818507271,
+              10.0143978429154
+            ],
+            "handleIn": [
+              -5.007271829722249,
+              8.504603327456927
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -7.27731491866593,
+              6.576203688661943
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -5.77731491866593,
+              7.913202407352364
+            ],
+            "handleIn": [
+              -7.305398640512772,
+              7.173257033727368
+            ]
+          },
+          {
+            "handleOut": [
+              -7.250724701352825,
+              6.01090189998213
+            ],
+            "handleIn": [
+              -5.77731491866593,
+              5.579869074019031
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              6.797064808989495,
+              2.392974137370164
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              5.352884987450205,
+              4.82136017355731
+            ],
+            "handleIn": [
+              5.94202477587725,
+              2.4637972971436
+            ]
+          },
+          {
+            "handleOut": [
+              7.7499440556289425,
+              2.314046933360899
+            ],
+            "handleIn": [
+              9.019551654116873,
+              4.8772984937672845
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              12.047064808989495,
+              6.642974137370164
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              10.006056873188571,
+              5.467085238583108
+            ],
+            "handleIn": [
+              12.063638846222831,
+              6.069506979169519
+            ]
+          },
+          {
+            "handleOut": [
+              12.029899780153277,
+              7.236889800075254
+            ],
+            "handleIn": [
+              9.839390206521903,
+              7.800418571916441
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              6.797064808989495,
+              9.892974137370164
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              8.817107897933175,
+              8.377312096375121
+            ],
+            "handleIn": [
+              7.706838181705585,
+              9.961212029424859
+            ]
+          },
+          {
+            "handleOut": [
+              5.973045909148153,
+              9.831168291623621
+            ],
+            "handleIn": [
+              5.317107897933175,
+              8.321373776165148
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              3.0470648089894947,
+              6.392974137370164
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              4.547064808989495,
+              7.729972856060585
+            ],
+            "handleIn": [
+              3.0189810871426523,
+              6.990027482435589
+            ]
+          },
+          {
+            "handleOut": [
+              3.0736550263025997,
+              5.827672348690351
+            ],
+            "handleIn": [
+              4.547064808989495,
+              5.396639522727252
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              14.897878405103045,
+              -10.316106255764312
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              13.453698583563755,
+              -7.887720219577166
+            ],
+            "handleIn": [
+              14.0428383719908,
+              -10.245283095990876
+            ]
+          },
+          {
+            "handleOut": [
+              15.850757651742493,
+              -10.395033459773577
+            ],
+            "handleIn": [
+              17.12036525023042,
+              -7.831781899367192
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              20.147878405103047,
+              -6.066106255764312
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              18.10687046930212,
+              -7.241995154551368
+            ],
+            "handleIn": [
+              20.16445244233638,
+              -6.639573413964957
+            ]
+          },
+          {
+            "handleOut": [
+              20.13071337626683,
+              -5.4721905930592225
+            ],
+            "handleIn": [
+              17.940203802635455,
+              -4.908661821218035
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              14.897878405103045,
+              -2.8161062557643124
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              16.917921494046723,
+              -4.331768296759355
+            ],
+            "handleIn": [
+              15.807651777819135,
+              -2.7478683637096175
+            ]
+          },
+          {
+            "handleOut": [
+              14.073859505261703,
+              -2.877912101510855
+            ],
+            "handleIn": [
+              13.417921494046725,
+              -4.387706616969329
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              11.147878405103045,
+              -6.316106255764312
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              12.647878405103045,
+              -4.979107537073891
+            ],
+            "handleIn": [
+              11.119794683256202,
+              -5.719052910698887
+            ]
+          },
+          {
+            "handleOut": [
+              11.17446862241615,
+              -6.881408044444125
+            ],
+            "handleIn": [
+              12.647878405103045,
+              -7.312440870407224
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              1.2909386832014107,
+              -13.087761624917956
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -0.15324113833787933,
+              -10.65937558873081
+            ],
+            "handleIn": [
+              0.43589865008916817,
+              -13.01693846514452
+            ]
+          },
+          {
+            "handleOut": [
+              2.2438179298408585,
+              -13.16668882892722
+            ],
+            "handleIn": [
+              3.513425528328785,
+              -10.603437268520835
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              6.540938683201414,
+              -8.837761624917956
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              4.499930747400487,
+              -10.013650523705012
+            ],
+            "handleIn": [
+              6.557512720434747,
+              -9.4112287831186
+            ]
+          },
+          {
+            "handleOut": [
+              6.523773654365197,
+              -8.243845962212866
+            ],
+            "handleIn": [
+              4.333264080733823,
+              -7.680317190371679
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              1.2909386832014107,
+              -5.587761624917956
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              3.3109817721450874,
+              -7.103423665912999
+            ],
+            "handleIn": [
+              2.200712055917503,
+              -5.519523732863261
+            ]
+          },
+          {
+            "handleOut": [
+              0.4669197833600691,
+              -5.649567470664499
+            ],
+            "handleIn": [
+              -0.18901822785490907,
+              -7.159361986122972
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -2.4590613167985893,
+              -9.087761624917956
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -0.9590613167985893,
+              -7.750762906227535
+            ],
+            "handleIn": [
+              -2.4871450386454335,
+              -8.49070827985253
+            ]
+          },
+          {
+            "handleOut": [
+              -2.432471099485486,
+              -9.653063413597769
+            ],
+            "handleIn": [
+              -0.9590613167985893,
+              -10.084096239560868
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              -15.418730545836414,
+              -12.727913227077654
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -16.862910367375704,
+              -10.299527190890508
+            ],
+            "handleIn": [
+              -16.273770578948657,
+              -12.657090067304217
+            ]
+          },
+          {
+            "handleOut": [
+              -14.465851299196967,
+              -12.806840431086918
+            ],
+            "handleIn": [
+              -13.19624370070904,
+              -10.243588870680533
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              -10.16873054583641,
+              -8.477913227077654
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -12.209738481637338,
+              -9.65380212586471
+            ],
+            "handleIn": [
+              -10.152156508603078,
+              -9.051380385278298
+            ]
+          },
+          {
+            "handleOut": [
+              -10.185895574672628,
+              -7.883997564372564
+            ],
+            "handleIn": [
+              -12.376405148304002,
+              -7.3204687925313765
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              -15.418730545836414,
+              -5.227913227077654
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -13.398687456892738,
+              -6.743575268072696
+            ],
+            "handleIn": [
+              -14.508957173120322,
+              -5.159675335022959
+            ]
+          },
+          {
+            "handleOut": [
+              -16.242749445677756,
+              -5.289719072824196
+            ],
+            "handleIn": [
+              -16.898687456892734,
+              -6.79951358828267
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -19.168730545836414,
+              -8.727913227077654
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -17.668730545836414,
+              -7.390914508387232
+            ],
+            "handleIn": [
+              -19.19681426768326,
+              -8.130859882012228
+            ]
+          },
+          {
+            "handleOut": [
+              -19.14214032852331,
+              -9.293215015757466
+            ],
+            "handleIn": [
+              -17.668730545836414,
+              -9.724247841720565
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              -14.246545312893158,
+              -4.057977200036596
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -15.690725134432448,
+              -1.629591163849451
+            ],
+            "handleIn": [
+              -15.1015853460054,
+              -3.9871540402631602
+            ]
+          },
+          {
+            "handleOut": [
+              -13.29366606625371,
+              -4.136904404045861
+            ],
+            "handleIn": [
+              -12.024058467765784,
+              -1.5736528436394757
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              -8.996545312893154,
+              0.19202279996340366
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -11.037553248694081,
+              -0.9838660988236523
+            ],
+            "handleIn": [
+              -8.979971275659821,
+              -0.3814443582372409
+            ]
+          },
+          {
+            "handleOut": [
+              -9.013710341729372,
+              0.7859384626684935
+            ],
+            "handleIn": [
+              -11.204219915360746,
+              1.3494672345096808
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              -14.246545312893158,
+              3.4420227999634037
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -12.226502223949481,
+              1.926360758968361
+            ],
+            "handleIn": [
+              -13.336771940177066,
+              3.5102606920180985
+            ]
+          },
+          {
+            "handleOut": [
+              -15.0705642127345,
+              3.380216954216861
+            ],
+            "handleIn": [
+              -15.726502223949478,
+              1.8704224387583874
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -17.996545312893158,
+              -0.057977200036596344
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -16.496545312893158,
+              1.279021518653825
+            ],
+            "handleIn": [
+              -18.024629034740002,
+              0.5390761450288295
+            ]
+          },
+          {
+            "handleOut": [
+              -17.969955095580055,
+              -0.6232789887164092
+            ],
+            "handleIn": [
+              -16.496545312893158,
+              -1.054311814679508
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              -6.479390245052138,
+              -17.066215774869487
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -7.923570066591428,
+              -14.637829738682344
+            ],
+            "handleIn": [
+              -7.334430278164381,
+              -16.995392615096055
+            ]
+          },
+          {
+            "handleOut": [
+              -5.52651099841269,
+              -17.145142978878756
+            ],
+            "handleIn": [
+              -4.256903399924764,
+              -14.581891418472368
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              -1.2293902450521346,
+              -12.81621577486949
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -3.2703981808530616,
+              -13.992104673656545
+            ],
+            "handleIn": [
+              -1.2128162078188014,
+              -13.389682933070134
+            ]
+          },
+          {
+            "handleOut": [
+              -1.2465552738883519,
+              -12.2223001121644
+            ],
+            "handleIn": [
+              -3.437064847519726,
+              -11.658771340323213
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              -6.479390245052138,
+              -9.56621577486949
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -4.459347156108461,
+              -11.081877815864532
+            ],
+            "handleIn": [
+              -5.569616872336046,
+              -9.497977882814794
+            ]
+          },
+          {
+            "handleOut": [
+              -7.30340914489348,
+              -9.628021620616032
+            ],
+            "handleIn": [
+              -7.959347156108458,
+              -11.137816136074505
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              -10.229390245052137,
+              -13.06621577486949
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              -8.729390245052137,
+              -11.729217056179067
+            ],
+            "handleIn": [
+              -10.257473966898981,
+              -12.469162429804063
+            ]
+          },
+          {
+            "handleOut": [
+              -10.202800027739034,
+              -13.631517563549302
+            ],
+            "handleIn": [
+              -8.729390245052137,
+              -14.0625503895124
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1:knot:1",
+            "point": [
+              9.944470130023237,
+              -16.845625880730488
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              8.500290308483947,
+              -14.417239844543344
+            ],
+            "handleIn": [
+              9.089430096910995,
+              -16.774802720957055
+            ]
+          },
+          {
+            "handleOut": [
+              10.897349376662685,
+              -16.924553084739756
+            ],
+            "handleIn": [
+              12.166956975150612,
+              -14.361301524333369
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.2:knot:1",
+            "point": [
+              15.194470130023241,
+              -12.59562588073049
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              13.153462194222314,
+              -13.771514779517545
+            ],
+            "handleIn": [
+              15.211044167256574,
+              -13.169093038931134
+            ]
+          },
+          {
+            "handleOut": [
+              15.177305101187024,
+              -12.0017102180254
+            ],
+            "handleIn": [
+              12.98679552755565,
+              -11.438181446184213
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.3:knot:1",
+            "point": [
+              9.944470130023237,
+              -9.34562588073049
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              11.964513218966914,
+              -10.861287921725532
+            ],
+            "handleIn": [
+              10.85424350273933,
+              -9.277387988675795
+            ]
+          },
+          {
+            "handleOut": [
+              9.120451230181896,
+              -9.407431726477032
+            ],
+            "handleIn": [
+              8.464513218966918,
+              -10.917226241935506
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "startJunctionId": "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "endJunctionId": "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "role": "boundary",
+      "thickness": 0.2,
+      "height": 3,
+      "centerline": {
+        "kind": "cubic-chain",
+        "knots": [
+          {
+            "id": "wall-chain-1.4:knot:1",
+            "point": [
+              6.194470130023237,
+              -12.84562588073049
+            ]
+          }
+        ],
+        "spans": [
+          {
+            "handleOut": [
+              7.694470130023237,
+              -11.508627162040067
+            ],
+            "handleIn": [
+              6.166386408176393,
+              -12.248572535665064
+            ]
+          },
+          {
+            "handleOut": [
+              6.221060347336341,
+              -13.410927669410302
+            ],
+            "handleIn": [
+              7.694470130023237,
+              -13.841960495373401
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F",
+      "name": "Draft Room 1",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy",
+      "name": "Draft Room 1 copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy",
+      "name": "Draft Room 1 copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    },
+    {
+      "id": "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+      "name": "Draft Room 1 copy copy copy copy copy copy copy copy copy",
+      "boundary": [
+        {
+          "wallId": "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        },
+        {
+          "wallId": "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy-copy",
+          "direction": "forward"
+        }
+      ],
+      "floorThickness": 0.1,
+      "ceilingThickness": 0.1
+    }
+  ],
+  "openings": [],
+  "objects": [],
+  "identity": {
+    "cursor": 90,
+    "rooms": {
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F": "R-MPXW",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy": "R-SU58",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy": "R-HXDP",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy": "R-A2P5",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy": "R-25XK",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy": "R-S982",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy": "R-HCGG",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy": "R-9FRX",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy-copy": "R-ZK2D",
+      "room.5:4:face16:wall-chain-1.2-F16:wall-chain-1.3-F16:wall-chain-1.4-F14:wall-chain-1-F-copy-copy-copy-copy-copy-copy-copy-copy-copy": "R-RPAU"
+    },
+    "junctions": {
+      "junction-chain-1": "J-2QUS",
+      "junction-chain-2": "J-5AEX",
+      "junction-chain-1.2": "J-AEM9",
+      "junction-chain-1.3": "J-FJSK",
+      "junction-chain-1-copy": "J-VDQD",
+      "junction-chain-2-copy": "J-XYAJ",
+      "junction-chain-1.2-copy": "J-2HVQ",
+      "junction-chain-1.3-copy": "J-54FV",
+      "junction-chain-1-copy-copy": "J-MGYU",
+      "junction-chain-2-copy-copy": "J-Q3JZ",
+      "junction-chain-1.2-copy-copy": "J-SN66",
+      "junction-chain-1.3-copy-copy": "J-V7RB",
+      "junction-chain-1-copy-copy-copy": "J-CM9A",
+      "junction-chain-2-copy-copy-copy": "J-F6UF",
+      "junction-chain-1.2-copy-copy-copy": "J-HREM",
+      "junction-chain-1.3-copy-copy-copy": "J-MAZS",
+      "junction-chain-1-copy-copy-copy-copy": "J-4QHR",
+      "junction-chain-2-copy-copy-copy-copy": "J-7A4W",
+      "junction-chain-1.2-copy-copy-copy-copy": "J-9UQ3",
+      "junction-chain-1.3-copy-copy-copy-copy": "J-CEA8",
+      "junction-chain-1-copy-copy-copy-copy-copy": "J-UTT7",
+      "junction-chain-2-copy-copy-copy-copy-copy": "J-XDDC",
+      "junction-chain-1.2-copy-copy-copy-copy-copy": "J-ZXYH",
+      "junction-chain-1.3-copy-copy-copy-copy-copy": "J-4HJP",
+      "junction-chain-1-copy-copy-copy-copy-copy-copy": "J-KX3N",
+      "junction-chain-2-copy-copy-copy-copy-copy-copy": "J-PGNT",
+      "junction-chain-1.2-copy-copy-copy-copy-copy-copy": "J-S38Y",
+      "junction-chain-1.3-copy-copy-copy-copy-copy-copy": "J-UMU5",
+      "junction-chain-1-copy-copy-copy-copy-copy-copy-copy": "J-C2C4",
+      "junction-chain-2-copy-copy-copy-copy-copy-copy-copy": "J-EKX9",
+      "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy": "J-H6HE",
+      "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy": "J-KR4K",
+      "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy": "J-45MJ",
+      "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy": "J-6Q7Q",
+      "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy": "J-99SV",
+      "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy": "J-BUD2",
+      "junction-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy": "J-U8VZ",
+      "junction-chain-2-copy-copy-copy-copy-copy-copy-copy-copy-copy": "J-WTG6",
+      "junction-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy": "J-ZD3B",
+      "junction-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy": "J-3XNG"
+    },
+    "walls": {
+      "wall-chain-1": "W-7V24",
+      "wall-chain-1.2": "W-CZ7E",
+      "wall-chain-1.3": "W-J5CR",
+      "wall-chain-1.4": "W-Q9J3",
+      "wall-chain-1-copy": "W-7P32",
+      "wall-chain-1.2-copy": "W-A8N7",
+      "wall-chain-1.3-copy": "W-CT8C",
+      "wall-chain-1.4-copy": "W-FCTH",
+      "wall-chain-1-copy-copy": "W-XSBG",
+      "wall-chain-1.2-copy-copy": "W-2BWN",
+      "wall-chain-1.3-copy-copy": "W-4WGT",
+      "wall-chain-1.4-copy-copy": "W-7G3Y",
+      "wall-chain-1-copy-copy-copy": "W-PVKX",
+      "wall-chain-1.2-copy-copy-copy": "W-SF74",
+      "wall-chain-1.3-copy-copy-copy": "W-UZS9",
+      "wall-chain-1.4-copy-copy-copy": "W-XKCE",
+      "wall-chain-1-copy-copy-copy-copy": "W-EYVD",
+      "wall-chain-1.2-copy-copy-copy-copy": "W-HJFJ",
+      "wall-chain-1.3-copy-copy-copy-copy": "W-M52Q",
+      "wall-chain-1.4-copy-copy-copy-copy": "W-PPMV",
+      "wall-chain-1-copy-copy-copy-copy-copy": "W-745U",
+      "wall-chain-1.2-copy-copy-copy-copy-copy": "W-9NQZ",
+      "wall-chain-1.3-copy-copy-copy-copy-copy": "W-C8B6",
+      "wall-chain-1.4-copy-copy-copy-copy-copy": "W-ESWB",
+      "wall-chain-1-copy-copy-copy-copy-copy-copy": "W-X7EA",
+      "wall-chain-1.2-copy-copy-copy-copy-copy-copy": "W-ZRZF",
+      "wall-chain-1.3-copy-copy-copy-copy-copy-copy": "W-4BKM",
+      "wall-chain-1.4-copy-copy-copy-copy-copy-copy": "W-6W6S",
+      "wall-chain-1-copy-copy-copy-copy-copy-copy-copy": "W-PAPR",
+      "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy": "W-RV9W",
+      "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy": "W-UEV3",
+      "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy": "W-WZF8",
+      "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy": "W-EDY7",
+      "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy": "W-GYJC",
+      "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy": "W-KJ5H",
+      "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy": "W-P4QP",
+      "wall-chain-1-copy-copy-copy-copy-copy-copy-copy-copy-copy": "W-6H8N",
+      "wall-chain-1.2-copy-copy-copy-copy-copy-copy-copy-copy-copy": "W-93TT",
+      "wall-chain-1.3-copy-copy-copy-copy-copy-copy-copy-copy-copy": "W-BNDY",
+      "wall-chain-1.4-copy-copy-copy-copy-copy-copy-copy-copy-copy": "W-E7Z5"
+    },
+    "openings": {}
+  }
+}

@@ -3,11 +3,27 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 import { chopinProject } from '$lib/content/chopin-project';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from '../../../tests/lib/layout/__fixtures__/layout-scale-fixtures';
+import fixtureLedger from '../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
+import {
+	buildP23BCorrectnessFixture,
+	buildP23BMatrixFixture,
+	P23B_CORRECTNESS_SPECS,
+	P23B_MATRIX_SPECS,
+	P23B_OWNER_FIXTURE_ID,
+	P23B_OWNER_LAYOUT
+} from './p23b-fixtures';
 import { measureNodeTier, makeNodeProvenance, DEFAULT_NODE_OPTIONS, type NodeTierOptions } from './plan-bench';
 import { chopinWallMeshRenderPolicyFactory, measureBrowserTier, type BrowserTierOptions } from './browser-bench';
+import {
+	compileWallFirstLayoutGeometry,
+	serializeWallFirstLayoutDocument,
+	validateWallFirstLayoutDocument,
+	validateWallFirstTopology
+} from '$lib/layout/layout-geometry';
 import {
 	BENCH_METHOD_VERSION,
 	type BenchMetricName,
@@ -15,19 +31,21 @@ import {
 	type BenchTier,
 	type BenchTierResult,
 	type Budget,
-	type BudgetBaseline
+	type BudgetBaseline,
+	type P23BBrowserRunReport
 } from './bench-types';
 
 /**
- * Executable version-3 baseline recorder. Invoked via the `bench:record` npm
+ * Executable version-5 baseline recorder. Invoked via the `bench:record` npm
  * script (never a default-suite test, so `npm test` cannot rewrite the checked-in
  * baseline). Measures the Node + browser tiers for Chopin and the generated
- * scale fixtures, stamps version 3 provenance (HEAD SHA + `treeDirty` flag +
+ * scale fixtures, stamps version-5 provenance (HEAD SHA + `treeDirty` flag +
  * deterministic `contentHash` of the relevant sources), and writes
  * `g3-baseline.json`.
  */
 
 const APPS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const REPO_ROOT = resolve(APPS_ROOT, '../..');
 /** Output path for the recorded baseline (used by the `bench:record` CLI runner). */
 export const BASELINE_PATH = resolve(APPS_ROOT, 'src/lib/bench/baselines/g3-baseline.json');
 
@@ -149,12 +167,26 @@ function gitTreeDirty(): boolean {
  * order-independent.
  */
 const CONTENT_SOURCES = [
+	'../../packages/layout-core/src/index.ts',
+	'../../packages/project-model/src/index.ts',
+	'../../packages/camera-core/src/index.ts',
 	'src/lib/bench/bench-harness.ts',
 	'src/lib/bench/bench-report.ts',
 	'src/lib/bench/bench-types.ts',
 	'src/lib/bench/browser-bench.ts',
 	'src/lib/bench/plan-bench.ts',
+	'src/lib/bench/p23b-fixtures.ts',
 	'src/lib/bench/record-baseline.ts',
+	'src/lib/editor/layout/p23b-interaction-measure.ts',
+	'src/lib/editor/layout/LayoutPlanViewport.svelte',
+	'src/lib/editor/layout/LayoutPreviewScene.svelte',
+	'src/lib/editor/layout/layout-preview-state.svelte.ts',
+	'src/lib/editor/camera/EditorCameraPreviewControls.svelte',
+	'src/lib/editor/camera/EditorCameraTimelineFrame.svelte',
+	'src/lib/editor/camera/EditorCameraRig.svelte',
+	'src/lib/editor/app/EditorApp.svelte',
+	'src/routes/dev/perf/p23b/+page.svelte',
+	'src/routes/dev/perf/p23b/+page.server.ts',
 	'src/lib/bench/three-stats.ts',
 	'src/lib/content/chopin-project.json',
 	'src/lib/content/chopin-project.ts',
@@ -305,12 +337,288 @@ function recordTier(tier: BenchTier): BenchTierResult {
  * Record the Node + browser tiers. `full` (default false) includes the slow
  * 1,000-room `large` tier; the checked-in baseline is recorded with `--full`.
  */
-export function recordBaseline(options: { full?: boolean } = {}): BudgetBaseline {
+export function recordBaseline(options: { full?: boolean; p23bBrowserReport?: P23BBrowserRunReport; requireCleanHead?: boolean } = {}): BudgetBaseline {
 	const full = options.full ?? false;
 	const tiers = full ? [...TIER_ORDER] : TIER_ORDER.filter((tier) => tier !== 'large');
+	const browserReport = options.p23bBrowserReport;
+	if (browserReport) validateP23BBrowserReport(browserReport, { requireCleanHead: options.requireCleanHead });
+	const p23bContentHash = browserReport ? contentHash() : undefined;
 	return {
 		methodVersion: BENCH_METHOD_VERSION,
+		...(browserReport ? { methodVersionReason: browserReport.methodVersionReason } : {}),
 		budgets: BUDGETS,
-		tiers: tiers.map(recordTier)
+		tiers: tiers.map(recordTier),
+		...(browserReport ? {
+			workloads: browserReport.workloads.map((workload) => ({
+				...workload,
+				provenance: { ...workload.provenance, contentHash: p23bContentHash }
+			})),
+			interactionFixtures: browserReport.interactionFixtures,
+			...(browserReport.deferredInteractionPaths ? { deferredInteractionPaths: browserReport.deferredInteractionPaths } : {}),
+			markNestingNote: browserReport.markNestingNote,
+			measurementLimitations: browserReport.measurementLimitations
+		} : {})
 	};
+}
+
+/**
+ * Interaction evidence gates (method v5). These are the checks that make the
+ * earlier interaction baseline inadmissible, so they fail closed:
+ *
+ * - the capture must cover the owner workload AND the two size-40 matrix cells,
+ *   each in its own isolated session, in one browser session;
+ * - the warm-up exclusion is enforced (a path need not be accepted at all only
+ *   when its own reason says it is deferred or not applicable);
+ * - setup/rejected/suppressed actions are recorded as counts and can never sit
+ *   inside an accepted distribution;
+ * - `plan-apply` and `adapter` are separate boundaries, so planner cost is never
+ *   reported as adapter CPU work;
+ * - a capture that dropped a boundary or failed to settle is rejected outright.
+ */
+function validateP23BInteractionCapture(report: P23BBrowserRunReport): void {
+	const paths = ['selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'] as const;
+	const boundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	const outcomes = ['accepted', 'setup', 'rejected', 'suppressed', 'unclassified'] as const;
+	const required = [P23B_OWNER_FIXTURE_ID, 'p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'];
+	if (report.interactionFixtures.length !== required.length) {
+		throw new Error(`P23B interaction capture must cover exactly ${required.length} hosted fixtures`);
+	}
+	const seenFixtures = new Set<string>();
+	const seenSessions = new Set<string>();
+	for (const capture of report.interactionFixtures) {
+		if (!required.includes(capture.fixtureId)) throw new Error(`Unexpected P23B interaction fixture ${capture.fixtureId}`);
+		if (seenFixtures.has(capture.fixtureId)) throw new Error(`Duplicate P23B interaction fixture ${capture.fixtureId}`);
+		seenFixtures.add(capture.fixtureId);
+		const entry = fixtureLedger.fixtures.find((fixture) => fixture.id === capture.fixtureId);
+		if (!entry) throw new Error(`P23B interaction fixture is not in the ledger: ${capture.fixtureId}`);
+		if (capture.semanticClass !== 5 || capture.role !== entry.role || capture.canonicalLayoutSha256 !== entry.canonicalLayoutSha256) {
+			throw new Error(`P23B interaction fixture identity changed: ${capture.fixtureId}`);
+		}
+		if ((capture.rawPayloadSha256 ?? null) !== (entry.rawPayloadSha256 ?? null)) throw new Error(`P23B interaction fixture raw identity changed: ${capture.fixtureId}`);
+		// One isolated session per hosted fixture: a deferred boundary scheduled in one
+		// fixture's capture can never be written into another's.
+		if (!capture.sessionId || capture.sessionId === report.browser.sessionId || seenSessions.has(capture.sessionId)) {
+			throw new Error(`P23B interaction captures must use distinct isolated sessions: ${capture.fixtureId}`);
+		}
+		seenSessions.add(capture.sessionId);
+		if (capture.capture.warmup !== 5) throw new Error(`P23B interaction warm-up exclusion must be five actions per path: ${capture.fixtureId}`);
+		if (!capture.capture.settled) throw new Error(`P23B interaction capture did not settle before it was summarized: ${capture.fixtureId}`);
+		if (capture.capture.droppedBoundaries !== 0) throw new Error(`P23B interaction capture dropped deferred boundaries: ${capture.fixtureId}`);
+		if (!capture.planView || !(capture.planView.actions > 0)) throw new Error(`P23B interaction capture is missing the Plan viewport it ran in: ${capture.fixtureId}`);
+		if (!capture.planView.stable) throw new Error(`P23B interaction capture changed viewport mid-capture: ${capture.fixtureId}`);
+		// Every hosted fixture must be measured in the same view, within 2%, or a size
+		// or curvature comparison would silently also be a zoom comparison.
+		const reference = report.interactionFixtures[0]!.planView!;
+		if (Math.abs(capture.planView.pixelsPerMeter - reference.pixelsPerMeter) / reference.pixelsPerMeter > 0.02) {
+			throw new Error(`P23B hosted fixtures must be measured at the same px/m (within 2%): ${capture.fixtureId}`);
+		}
+		const acceptedAuthoring = capture.capture.outcomes['wall-authoring']?.accepted ?? 0;
+		if (capture.capture.fixtureResets < acceptedAuthoring) {
+			throw new Error(`P23B interaction capture does not record a fixture reset for every accepted authoring action: ${capture.fixtureId}`);
+		}
+		for (const path of paths) {
+			if (!capture.protocol[path]?.target || !capture.protocol[path]?.snapGrid) {
+				throw new Error(`P23B interaction fixture is missing the fixed target/settings for ${path}: ${capture.fixtureId}`);
+			}
+			const deferral = report.deferredInteractionPaths?.[path];
+			if (deferral !== undefined && !deferral.trim()) throw new Error(`P23B deferred path lacks its owner decision: ${path}`);
+			const notApplicable = capture.notApplicableInteractionPaths[path];
+			if (notApplicable !== undefined && !notApplicable.trim()) throw new Error(`P23B not-applicable path lacks its reason: ${capture.fixtureId}/${path}`);
+			if (deferral && notApplicable) throw new Error(`P23B path is both owner-deferred and fixture-not-applicable: ${capture.fixtureId}/${path}`);
+			const unavailable = Boolean(deferral) || Boolean(notApplicable);
+			const inputCount = capture.interactionSampleCounts[path] ?? 0;
+			if (!unavailable && !(inputCount > 0)) {
+				throw new Error(`P23B interaction capture has no observed input samples for ${path}: ${capture.fixtureId}`);
+			}
+			if (unavailable && inputCount > 0) {
+				throw new Error(`P23B deferred or not-applicable path must carry no samples for ${path}: ${capture.fixtureId}`);
+			}
+			if (!unavailable) {
+				if ((capture.capture.completedActions[path] ?? 0) < capture.capture.warmup + 1) {
+					throw new Error(`P23B interaction capture has too few completed ${path} actions to exclude warm-up: ${capture.fixtureId}`);
+				}
+				if (!((capture.capture.warmupExcluded[path] ?? 0) >= capture.capture.warmup)) {
+					throw new Error(`P23B interaction warm-up exclusion was not applied to ${path}: ${capture.fixtureId}`);
+				}
+			}
+			const pathReport = capture.interactions[path];
+			if (!pathReport) throw new Error(`P23B interaction capture has no results for ${path}: ${capture.fixtureId}`);
+			for (const boundary of boundaries) {
+				const value = pathReport[boundary];
+				if (!value) throw new Error(`P23B interaction capture must record a sample or explicit unavailable reason for ${capture.fixtureId}/${path}/${boundary}`);
+				if ('unavailable' in value) {
+					if (!value.unavailable.trim()) throw new Error(`P23B unavailable boundary lacks a reason for ${capture.fixtureId}/${path}/${boundary}`);
+					continue;
+				}
+				if (!(value.observedCount > 0) || !Number.isFinite(value.warmupExcludedActions)) {
+					throw new Error(`P23B interaction boundary has invalid samples for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+				for (const [outcome, count] of Object.entries(value.outcomes)) {
+					if (!outcomes.includes(outcome as (typeof outcomes)[number]) || !(count! > 0)) {
+						throw new Error(`P23B interaction boundary has an invalid outcome tally for ${capture.fixtureId}/${path}/${boundary}`);
+					}
+				}
+				if (value.accepted && (!(value.accepted.count > 0) || !Number.isFinite(value.accepted.p50) || !Number.isFinite(value.accepted.p95))) {
+					throw new Error(`P23B accepted distribution is invalid for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+				// The latency boundaries must show accepted evidence for an applicable path:
+				// an accepted input or release can never be absent. Internal pipeline
+				// boundaries may legitimately be entirely unclassified (a hover derives
+				// geometry without committing anything), which stays visible as counts.
+				if ((boundary === 'input' || boundary === 'release') && !value.accepted && !unavailable) {
+					throw new Error(`P23B interaction boundary has observed samples but no accepted sample for ${capture.fixtureId}/${path}/${boundary}`);
+				}
+			}
+			// The accepted-release distribution is the correction this gate exists for: an
+			// applicable path must show accepted releases, and a warm-up-excluded one.
+			const release = pathReport.release;
+			if (release && 'observedCount' in release && !unavailable) {
+				if (!release.accepted || !(release.accepted.count > 0)) {
+					throw new Error(`P23B accepted release distribution is missing for ${path}: ${capture.fixtureId}`);
+				}
+				if (release.warmupExcludedActions !== capture.capture.warmup) {
+					throw new Error(`P23B accepted release distribution was not warm-up excluded for ${path}: ${capture.fixtureId}`);
+				}
+			}
+		}
+	}
+}
+
+function sha256(value: string | Buffer): string {
+	const hash = createHash('sha256');
+	if (typeof value === 'string') hash.update(value, 'utf8');
+	else hash.update(value.toString('latin1'), 'latin1');
+	return hash.digest('hex');
+}
+
+function p23bDocumentShape(document: typeof P23B_OWNER_LAYOUT) {
+	const centerlineKinds = document.walls.reduce<Record<string, number>>((counts, wall) => {
+		counts[wall.centerline.kind] = (counts[wall.centerline.kind] ?? 0) + 1;
+		return counts;
+	}, {});
+	return {
+		rooms: document.rooms.length,
+		walls: document.walls.length,
+		junctions: document.junctions.length,
+		openings: document.openings.length,
+		curvedWalls: document.walls.filter((wall) => wall.centerline.kind === 'cubic-chain').length,
+		centerlineKinds
+	};
+}
+
+/** Re-run the exact W2 identity, shape and shipped-gate checks before baseline writes. */
+function assertP23BFixtureContracts(): void {
+	const expectedIds = new Set<string>();
+	const verify = (
+		id: string,
+		document: typeof P23B_OWNER_LAYOUT,
+		semanticClass: number,
+		role: string
+	): void => {
+		const entry = fixtureLedger.fixtures.find((fixture) => fixture.id === id);
+		if (!entry) throw new Error(`P23B fixture ledger is missing ${id}`);
+		expectedIds.add(id);
+		const canonical = serializeWallFirstLayoutDocument(document);
+		const layoutValidation = validateWallFirstLayoutDocument(document);
+		const topology = validateWallFirstTopology(document);
+		const compiled = compileWallFirstLayoutGeometry(document);
+		const actualVerdict = {
+			codec: layoutValidation.success ? 'accepted' : 'rejected',
+			topology: topology?.code ?? 'admitted',
+			compilerIssues: compiled.issues.map((issue) => issue.code)
+		};
+		if (entry.semanticClass !== semanticClass || entry.role !== role) {
+			throw new Error(`P23B class/role identity changed for ${id}`);
+		}
+		if (sha256(canonical) !== entry.canonicalLayoutSha256) throw new Error(`P23B canonical identity changed for ${id}`);
+		if (!isDeepStrictEqual(p23bDocumentShape(document), entry.documentShape)) throw new Error(`P23B geometry shape changed for ${id}`);
+		if (!isDeepStrictEqual(actualVerdict, entry.shippedVerdict)) throw new Error(`P23B shipped-validator verdict changed for ${id}`);
+	};
+
+	for (const spec of P23B_MATRIX_SPECS) verify(spec.id, buildP23BMatrixFixture(spec), 5, spec.role);
+	verify(P23B_OWNER_FIXTURE_ID, P23B_OWNER_LAYOUT, 5, 'owner-responsiveness');
+	for (const spec of P23B_CORRECTNESS_SPECS) verify(spec.id, buildP23BCorrectnessFixture(spec), spec.semanticClass, spec.role);
+	if (expectedIds.size !== fixtureLedger.fixtures.length) throw new Error('P23B fixture ledger has missing or unexpected entries');
+
+	const owner = fixtureLedger.fixtures.find((fixture) => fixture.id === P23B_OWNER_FIXTURE_ID);
+	if (!owner || owner.source.kind !== 'exact-owner-payload') throw new Error('P23B owner fixture source contract is invalid');
+	const rawOwner = readFileSync(resolve(REPO_ROOT, owner.source.path));
+	const canonicalOwner = Buffer.from(serializeWallFirstLayoutDocument(P23B_OWNER_LAYOUT), 'utf8');
+	if (
+		rawOwner.byteLength !== owner.source.bytes ||
+		sha256(rawOwner) !== owner.rawPayloadSha256 ||
+		rawOwner.toString('hex') !== canonicalOwner.toString('hex')
+	) {
+		throw new Error('P23B owner payload does not match its exact-byte ledger identity');
+	}
+}
+
+/** Validate imported browser measurements against the immutable fixture ledger. */
+export function validateP23BBrowserReport(
+	report: P23BBrowserRunReport,
+	options: { requireCleanHead?: boolean } = {}
+): void {
+	if (report.methodVersion !== BENCH_METHOD_VERSION) throw new Error(`P23B browser report method ${report.methodVersion} != ${BENCH_METHOD_VERSION}`);
+	if (!report.methodVersionReason.trim()) throw new Error('P23B browser report is missing the method-version reason');
+	if (!report.markNestingNote.trim()) throw new Error('P23B browser report is missing the mark-nesting note');
+	assertP23BFixtureContracts();
+	if (
+		!report.browser.sessionId ||
+		!report.browser.browser?.name ||
+		!report.browser.browser.version ||
+		!report.browser.browser.userAgent ||
+		!Number.isFinite(report.browser.devicePixelRatio) ||
+		!report.browser.machine ||
+		!report.browser.operatingSystem ||
+		!report.browser.nodeVersion
+	) {
+		throw new Error('P23B browser report is missing browser/session/DPR/machine/OS/Node provenance');
+	}
+	if (report.browser.treeDirty !== false) throw new Error('P23B baseline requires a clean recorded source tree');
+	if (report.browser.policyCommitSha !== 'c11938fe0d5c721a896bb92dcb722f2273480feb') {
+		throw new Error('P23B baseline does not name the shipped P23B.3a policy commit');
+	}
+	if (!report.browser.graphics?.source || !report.browser.graphics.api) throw new Error('P23B browser report is missing graphics provenance');
+	if (options.requireCleanHead && (report.browser.commitSha !== gitHeadSha() || gitTreeDirty())) {
+		throw new Error('P23B baseline report must match the current clean HEAD');
+	}
+	if (report.warmup !== 5 || report.samples !== 20) throw new Error('P23B baseline must use 5 warm-up and 20 measured samples');
+	if (!report.measurementLimitations.length) throw new Error('P23B browser report must record measurement limits');
+	validateP23BInteractionCapture(report);
+	const expected = new Map<string, { role: string; hash: string; raw: string | null }>();
+	for (const spec of P23B_MATRIX_SPECS) {
+		const ledger = fixtureLedger.fixtures.find((item) => item.id === spec.id);
+		if (!ledger) throw new Error(`Missing ledger entry for ${spec.id}`);
+		expected.set(spec.id, { role: spec.role, hash: ledger.canonicalLayoutSha256, raw: null });
+	}
+	const owner = fixtureLedger.fixtures.find((item) => item.id === P23B_OWNER_FIXTURE_ID);
+	if (!owner) throw new Error(`Missing ledger entry for ${P23B_OWNER_FIXTURE_ID}`);
+	expected.set(P23B_OWNER_FIXTURE_ID, { role: 'owner-responsiveness', hash: owner.canonicalLayoutSha256, raw: owner.rawPayloadSha256 });
+	if (report.workloads.length !== expected.size) throw new Error(`P23B baseline requires exactly ${expected.size} workloads`);
+	const seen = new Set<string>();
+	for (const workload of report.workloads) {
+		const identity = expected.get(workload.fixtureId);
+		if (!identity || seen.has(workload.fixtureId)) throw new Error(`Unexpected or duplicate P23B workload ${workload.fixtureId}`);
+		seen.add(workload.fixtureId);
+		if (workload.semanticClass !== 5 || workload.role !== identity.role || workload.canonicalLayoutSha256 !== identity.hash || (workload.rawPayloadSha256 ?? null) !== identity.raw) {
+			throw new Error(`P23B workload identity does not match the ledger: ${workload.fixtureId}`);
+		}
+		if (workload.provenance.sessionId !== report.browser.sessionId || workload.provenance.methodVersion !== BENCH_METHOD_VERSION) {
+			throw new Error(`P23B workload provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		if (workload.provenance.warmup !== report.warmup || workload.provenance.samples !== report.samples) {
+			throw new Error(`P23B sampling provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		const { date: _baseDate, ...baseProvenance } = report.browser;
+		const { date: _workloadDate, ...workloadProvenance } = workload.provenance;
+		if (!isDeepStrictEqual(workloadProvenance, baseProvenance)) {
+			throw new Error(`P23B workload environment provenance is inconsistent: ${workload.fixtureId}`);
+		}
+		if (workload.samples.length === 0) throw new Error(`P23B workload has no samples: ${workload.fixtureId}`);
+		for (const sample of workload.samples) {
+			if (sample.unit === 'ms' && (!Number.isFinite(sample.p50) || !Number.isFinite(sample.p95))) {
+				throw new Error(`P23B timing sample lacks p50/p95: ${workload.fixtureId}/${sample.metric}`);
+			}
+		}
+	}
 }

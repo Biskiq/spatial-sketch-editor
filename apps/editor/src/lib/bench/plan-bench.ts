@@ -1,5 +1,6 @@
 import type { LayoutDocument, LayoutVec2 } from '$lib/layout/layout-types';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
+import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
+import { compileLayoutGeometry, compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
 import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { legJoinsByWall, type CompiledLayoutGeometry, type CompiledQueryPoint } from '$lib/layout/layout-geometry-types';
@@ -18,6 +19,8 @@ export type NodeTierOptions = {
 	/** World-space hit/snap tolerance in meters. */
 	tolerance: number;
 };
+
+export type BenchLayoutDocument = LayoutDocument | LayoutDocumentWallFirst;
 
 export const DEFAULT_NODE_OPTIONS: NodeTierOptions = {
 	warmup: 2,
@@ -48,13 +51,13 @@ export function makeNodeProvenance(partial: Partial<BenchProvenance> = {}): Benc
  * checked-in `chopin` project.
  */
 export function measureNodeTier(
-	fixture: LayoutDocument,
+	fixture: BenchLayoutDocument,
 	tier: BenchTier,
 	provenance: BenchProvenance,
 	options: NodeTierOptions = DEFAULT_NODE_OPTIONS,
 	seed?: number
 ): BenchTierResult {
-	const compiled = compileLayoutGeometry(fixture).geometry;
+	const compiled = compileBenchLayout(fixture).geometry;
 	const samples: BenchSample[] = [];
 	const roomCount = countRooms(fixture);
 	const probeSeed = tierSeed(tier);
@@ -62,7 +65,7 @@ export function measureNodeTier(
 	const effectiveProvenance: BenchProvenance = { ...provenance, warmup: options.warmup, samples: options.samples };
 
 	// 1. Whole-document compile (the G1 `compileLayoutGeometry` path).
-	const compileTime = timeOp(() => compileLayoutGeometry(fixture), options);
+	const compileTime = timeOp(() => compileBenchLayout(fixture), options);
 	samples.push(timeSample('layout-compile', compileTime));
 
 	// 2. Plan render-model build (the G2 `buildPlanRenderModel` path).
@@ -118,6 +121,12 @@ export function measureNodeTier(
 	};
 }
 
+function compileBenchLayout(fixture: BenchLayoutDocument) {
+	return 'formatVersion' in fixture
+		? compileWallFirstLayoutGeometry(fixture)
+		: compileLayoutGeometry(fixture);
+}
+
 function timeSample(metric: BenchSample['metric'], timing: { value: number; p50: number; p95: number }): BenchSample {
 	return { metric, unit: 'ms', value: timing.value, p50: timing.p50, p95: timing.p95 };
 }
@@ -126,8 +135,10 @@ function perPoint(timing: { value: number; p50: number; p95: number }, count: nu
 	return { value: timing.value / count, p50: timing.p50 / count, p95: timing.p95 / count };
 }
 
-function countRooms(document: LayoutDocument): number {
-	return document.floors.reduce((sum, floor) => sum + floor.rooms.length, 0);
+function countRooms(document: BenchLayoutDocument): number {
+	return 'formatVersion' in document
+		? document.rooms.length
+		: document.floors.reduce((sum, floor) => sum + floor.rooms.length, 0);
 }
 
 /**
@@ -139,6 +150,9 @@ function countRooms(document: LayoutDocument): number {
 function buildAllWallMeshes(compiled: CompiledLayoutGeometry): number {
 	let indexCount = 0;
 	for (const room of compiled.rooms) {
+		// Canonical wall-first rooms contain boundary references rather than
+		// legacy room-owned wall records; their physical Walls are built below.
+		if (room.walls.length === 0) continue;
 		const result = buildRoomWallMesh(room);
 		if (!result.mesh) {
 			const details = result.issues.map((issue) => `${issue.code}: ${issue.message}`).join('; ');

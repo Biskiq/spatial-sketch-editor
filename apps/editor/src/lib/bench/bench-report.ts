@@ -69,6 +69,46 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 	if (baseline.methodVersion !== BENCH_METHOD_VERSION) {
 		problems.push(`methodVersion ${baseline.methodVersion} != ${BENCH_METHOD_VERSION}`);
 	}
+	if (!baseline.methodVersionReason?.trim()) problems.push('missing method-version reason');
+	if (baseline.workloads?.length !== 7) problems.push('P23B baseline must contain exactly seven timing workloads');
+	if (!baseline.measurementLimitations?.length) problems.push('P23B baseline is missing measurement limitations');
+	if (!baseline.markNestingNote?.trim()) problems.push('P23B baseline is missing the mark-nesting note');
+	const interactionPaths = [
+		'selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'
+	] as const;
+	const interactionBoundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
+	const interactionFixtures = baseline.interactionFixtures ?? [];
+	if (interactionFixtures.length !== 3) {
+		problems.push('P23B baseline must carry the three hosted interaction fixtures (owner + size-40 straight/all-curved)');
+	}
+	for (const path of interactionPaths) {
+		// A path may lack input samples only when the owner deferred it, or when the
+		// hosted fixture's own reason says the path cannot exist on its geometry;
+		// both texts travel in the baseline itself.
+		const deferral = baseline.deferredInteractionPaths?.[path];
+		if (deferral !== undefined && !deferral.trim()) problems.push(`P23B baseline has a blank owner deferral for ${path}`);
+		for (const capture of interactionFixtures) {
+			const notApplicable = capture.notApplicableInteractionPaths?.[path];
+			if (notApplicable !== undefined && !notApplicable.trim()) {
+				problems.push(`P23B baseline has a blank not-applicable reason for ${capture.fixtureId}/${path}`);
+			}
+			if (!capture.protocol?.[path]?.target || !capture.protocol[path]?.snapGrid) {
+				problems.push(`P23B baseline is missing the fixed target/settings for ${capture.fixtureId}/${path}`);
+			}
+			if (capture.capture?.warmup !== 5) {
+				problems.push(`P23B baseline must enforce a five-action interaction warm-up for ${capture.fixtureId}`);
+			}
+			const observed = capture.interactionSampleCounts?.[path] ?? 0;
+			if (deferral || notApplicable) {
+				if (observed > 0) problems.push(`P23B baseline records samples for the unavailable ${capture.fixtureId}/${path}`);
+			} else if (!(observed > 0)) {
+				problems.push(`P23B baseline is missing observed input samples for ${capture.fixtureId}/${path}`);
+			}
+			for (const boundary of interactionBoundaries) {
+				if (!capture.interactions?.[path]?.[boundary]) problems.push(`P23B baseline is missing ${capture.fixtureId}/${path}/${boundary}`);
+			}
+		}
+	}
 	for (const metric of [...ENFORCED_BUDGET_METRICS, ...ADVISORY_BUDGET_METRICS]) {
 		const budget = baseline.budgets[metric];
 		if (!budget) problems.push(`missing budget for ${metric}`);

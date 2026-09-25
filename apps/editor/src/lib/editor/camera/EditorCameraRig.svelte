@@ -62,6 +62,7 @@
 		EditorCameraPreviewMode,
 		EditorStore
 	} from '../editor-store.svelte';
+	import { p23bMeasureInteraction } from '../layout/p23b-interaction-measure';
 	import type { LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
 	import type { LayoutBounds3 } from '$lib/layout/layout-geometry-types';
 
@@ -681,15 +682,22 @@
 					}
 					store.setCameraPreviewPlayhead(progress, preview.runId);
 				}
-				director.sampleMotion(preview, progress, activeMotion);
+				p23bMeasureInteraction('guided-3d-navigation', 'reactive', () =>
+					director.sampleMotion(preview, progress, activeMotion)
+				);
 			}
 			applyPausedFramingOverride(preview);
 			const showPreviewFrustum = showDirectorPreviewFrustum(preview);
 			if (virtualCameraFrustum) virtualCameraFrustum.visible = showPreviewFrustum;
 			if (virtualCameraBody) virtualCameraBody.visible = showPreviewFrustum;
 			applyVirtualPose();
-			if (preview.mode === 'visitor') applyPreviewPose(currentCamera);
-			else syncDirectorObserver(currentCamera, controls);
+			if (preview.mode === 'visitor') {
+				if (preview.kind !== 'camera') {
+					p23bMeasureInteraction('guided-3d-navigation', 'adapter', () => applyPreviewPose(currentCamera));
+				} else applyPreviewPose(currentCamera);
+			} else if (preview.kind !== 'camera') {
+				p23bMeasureInteraction('guided-3d-navigation', 'adapter', () => syncDirectorObserver(currentCamera, controls));
+			} else syncDirectorObserver(currentCamera, controls);
 			if (
 				preview.kind !== 'camera' &&
 				preview.transport === 'playing' &&

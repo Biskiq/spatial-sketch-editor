@@ -109,6 +109,9 @@ export const PERF_FILES: string[] = [
 	'tests/lib/bench/bend-perf.test.ts',
 	'tests/lib/bench/bench-report.test.ts',
 	'tests/lib/bench/browser-bench.test.ts',
+	'tests/lib/bench/p23b-baseline-contract.test.ts',
+	'tests/lib/layout/p23b-fixture-contract.test.ts',
+	'tests/lib/editor/layout/p23b-interaction-measure.test.ts',
 	'tests/lib/bench/three-stats.test.ts',
 	'tests/lib/bench/plan-bench.test.ts'
 ];

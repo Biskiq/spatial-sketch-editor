@@ -72,7 +72,8 @@ not needed to contribute a normal test.
    runs whole before a PR and is **never path-gated**.
 10. `test:heavy` owns dense correctness/property/stress work.
 11. `test:perf` owns timing/budget gates and never substitutes for functional
-    correctness coverage.
+    correctness coverage. P23B fixture identity, browser-report and
+    instrumentation-disabled contracts live in this lane.
 12. **Split, do not cut.** Moving expensive work to `heavy` keeps cheap
     representative behavior in `fast`.
 13. **Draw the boundary around the expensive `it`s**, not automatically around a
@@ -149,6 +150,17 @@ npm run test:heavy   # expensive correctness/property/stress work
 npm run test:perf    # timing/budget gates
 npm run test:full    # the same effective suite as `npm test`
 ```
+
+The P23B.0 browser baseline is exported from `/dev/perf/p23b` and written only
+through `bench:record`:
+
+```bash
+npm run bench:record -w @portfolio/editor -- --p23b-browser-report /absolute/path/p23b-browser-baseline.json
+```
+
+The recorder requires the clean-tree, method-v4 browser report and validates
+all seven fixture identities before writing `g3-baseline.json`. Tests never
+write the checked-in baseline.
 
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
