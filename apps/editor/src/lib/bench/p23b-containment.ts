@@ -71,16 +71,35 @@ export type P23BContainmentAction = {
 	roots: P23BContainmentNode[];
 	/** Marks inside this action's span that no boundary of it encloses, in time order. */
 	unbound: P23BMarkEntry[];
+	/**
+	 * Attachments whose two intervals are IDENTICAL, so which one encloses which is
+	 * not decidable from timestamps. Reported instead of being silently decided:
+	 * a nesting that cannot be established cannot be used to price anything.
+	 */
+	ambiguous: { mark: string; node: string }[];
 };
 
 export type P23BContainmentSummary = { count: number; p50: number; p95: number };
 export type P23BContainmentNodeSummary = {
-	/** Distribution of node totals over this group's actions. */
+	/**
+	 * Distribution of this node's totals over every OCCURRENCE in the group. A mark
+	 * that fires twice inside one action contributes two values here, so this count
+	 * is occurrences, not actions.
+	 */
 	total: P23BContainmentSummary;
-	/** Distribution of `self`, over the actions where containment held. */
+	/** Group actions in which this label occurred at least once. */
+	actionsPresent: number;
+	/** Most occurrences of this label inside any one action — `> 1` means `total` mixes repeats. */
+	maxPerAction: number;
+	/**
+	 * Distribution of exclusive time, reported ONLY where every occurrence in the
+	 * group could be exclusive-priced — so `self` always describes the same
+	 * population as `total`. Where any occurrence could not, this is `null` and
+	 * `selfWithheld` says how many, rather than reporting a p50 taken over a
+	 * different (smaller) set of occurrences than the `total` beside it.
+	 */
 	self: P23BContainmentSummary | null;
-	/** Actions in the group where this node existed at all. */
-	present: number;
+	selfWithheld: string | null;
 };
 
 export type P23BContainmentRecord = {
@@ -103,7 +122,7 @@ export type P23BContainmentByPath = Partial<
 			warmupExcluded: number;
 			/** Actions dropped because their outcome was not in the requested set. */
 			excludedByOutcome: number;
-			/** Per nested-mark distribution over the group's actions. */
+			/** Per nested-mark distribution over the group's occurrences. */
 			nodes: Record<string, P23BContainmentNodeSummary>;
 			/** Per boundary distribution (the group's own measured boundaries, same population). */
 			boundaries: Record<string, P23BContainmentNodeSummary>;
@@ -157,11 +176,18 @@ export function buildP23BContainment(
 		);
 		const roots = buildBoundaryForest(boundaries);
 		const unbound: P23BMarkEntry[] = [];
+		const ambiguous: { mark: string; node: string }[] = [];
 		for (const entry of inside) {
 			const home = innermostNode(roots, entry);
 			if (!home) {
 				unbound.push(entry);
 				continue;
+			}
+			// Identical bounds mean the two measures are indistinguishable in time:
+			// the parent/child choice below is then an artifact of read order, so it is
+			// reported rather than relied on.
+			if (home.start === entry.startTime && home.end === entry.startTime + entry.duration) {
+				ambiguous.push({ mark: entry.name, node: home.label });
 			}
 			home.children.push({
 				kind: 'mark',
@@ -185,7 +211,8 @@ export function buildP23BContainment(
 			start,
 			end,
 			roots,
-			unbound
+			unbound,
+			ambiguous
 		});
 	}
 
@@ -218,6 +245,9 @@ export function summarizeContainmentByPath(
 	const boundaryTotals = new Map<string, Map<string, number[]>>();
 	const boundarySelves = new Map<string, Map<string, number[]>>();
 	const unboundTotals = new Map<string, Map<string, number[]>>();
+	/** Occurrences per label inside one action, so repeats are visible and never silently pooled. */
+	const occurrencesPerAction = new Map<string, Map<string, number[]>>();
+	const selfWithheldCounts = new Map<string, Map<string, number>>();
 	const counts = new Map<BenchInteractionPath, { used: number; warmup: number; outcome: number }>();
 	const seen = new Map<BenchInteractionPath, number>();
 	const warmup = Math.max(0, population.warmup ?? 0);
@@ -238,11 +268,17 @@ export function summarizeContainmentByPath(
 		}
 		countsForPath.used += 1;
 		counts.set(action.path, countsForPath);
+		const labelsThisAction = new Map<string, number>();
 		for (const node of walk(action.roots)) {
 			const target = node.kind === 'mark' ? totals : boundaryTotals;
 			const selfTarget = node.kind === 'mark' ? selves : boundarySelves;
 			push(target, action.path, node.label, node.total);
+			labelsThisAction.set(node.label, (labelsThisAction.get(node.label) ?? 0) + 1);
 			if (node.self !== null) push(selfTarget, action.path, node.label, node.self);
+			else increment(selfWithheldCounts, action.path, node.label);
+		}
+		for (const [label, occurrences] of labelsThisAction) {
+			push(occurrencesPerAction, action.path, label, occurrences);
 		}
 		for (const entry of action.unbound) push(unboundTotals, action.path, entry.name, entry.duration);
 	}
@@ -251,19 +287,33 @@ export function summarizeContainmentByPath(
 		const nodes: Record<string, P23BContainmentNodeSummary> = {};
 		for (const [label, values] of totals.get(path) ?? []) {
 			const selfValues = selves.get(path)?.get(label) ?? [];
+			const withheld = selfWithheldCounts.get(path)?.get(label) ?? 0;
+			const perAction = occurrencesPerAction.get(path)?.get(label) ?? [];
 			nodes[label] = {
 				total: summarize(values),
-				self: selfValues.length > 0 ? summarize(selfValues) : null,
-				present: values.length
+				actionsPresent: perAction.length,
+				maxPerAction: perAction.length > 0 ? Math.max(...perAction) : 0,
+				self: withheld === 0 && selfValues.length === values.length ? summarize(selfValues) : null,
+				selfWithheld:
+					withheld === 0
+						? null
+						: `${withheld} of ${values.length} occurrences could not be exclusive-priced (overlapping contained marks)`
 			};
 		}
 		const boundaries: Record<string, P23BContainmentNodeSummary> = {};
 		for (const [label, values] of boundaryTotals.get(path) ?? []) {
 			const selfValues = boundarySelves.get(path)?.get(label) ?? [];
+			const withheld = selfWithheldCounts.get(path)?.get(label) ?? 0;
+			const perAction = occurrencesPerAction.get(path)?.get(label) ?? [];
 			boundaries[label] = {
 				total: summarize(values),
-				self: selfValues.length > 0 ? summarize(selfValues) : null,
-				present: values.length
+				actionsPresent: perAction.length,
+				maxPerAction: perAction.length > 0 ? Math.max(...perAction) : 0,
+				self: withheld === 0 && selfValues.length === values.length ? summarize(selfValues) : null,
+				selfWithheld:
+					withheld === 0
+						? null
+						: `${withheld} of ${values.length} occurrences could not be exclusive-priced (overlapping contained marks)`
 			};
 		}
 		const unbound: Record<string, P23BContainmentSummary> = {};
@@ -403,6 +453,12 @@ function push(
 	const values = byLabel.get(label) ?? [];
 	values.push(value);
 	byLabel.set(label, values);
+	target.set(path, byLabel);
+}
+
+function increment(target: Map<string, Map<string, number>>, path: string, label: string): void {
+	const byLabel = target.get(path) ?? new Map<string, number>();
+	byLabel.set(label, (byLabel.get(label) ?? 0) + 1);
 	target.set(path, byLabel);
 }
 

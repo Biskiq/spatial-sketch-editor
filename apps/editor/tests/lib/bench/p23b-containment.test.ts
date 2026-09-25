@@ -146,6 +146,45 @@ describe('P23B action containment', () => {
 		expect(legacy.unattributed.map((entry) => entry.name)).toEqual(['p2311:mesh-prebuild']);
 	});
 
+	it('reports occurrences separately from actions, so a repeat cannot hide', () => {
+		const record = buildP23BContainment(ledgerWith(DRAG_SAMPLES), [
+			{ name: 'p2311:mesh-prebuild', startTime: 47, duration: 2 },
+			{ name: 'p2311:mesh-prebuild', startTime: 50, duration: 2 }
+		]);
+		const node = summarizeContainmentByPath(record)['plan-drag-edit']!.nodes['p2311:mesh-prebuild']!;
+		// Two occurrences inside ONE action: the old aggregation reported this as a
+		// single p50 of 2 and nothing said the mark had fired twice.
+		expect(node.total.count).toBe(2);
+		expect(node.actionsPresent).toBe(1);
+		expect(node.maxPerAction).toBe(2);
+	});
+
+	it('reports an identical-interval attachment as ambiguous instead of deciding it', () => {
+		// A mark that starts and ends with `plan-apply` exactly: which one encloses
+		// which is not decidable from timestamps, and the browser capture carried a
+		// pair like this (restore-mesh-install against mesh-prebuild), which is how an
+		// inverted nesting became possible.
+		const record = buildP23BContainment(ledgerWith(DRAG_SAMPLES), [
+			{ name: 'p2311:identically-timed', startTime: 46, duration: 12 }
+		]);
+		expect(record.actions[0]!.ambiguous).toEqual([
+			{ mark: 'p2311:identically-timed', node: 'plan-apply' }
+		]);
+	});
+
+	it('withholds exclusive time when any occurrence could not be priced, instead of mixing populations', () => {
+		const record = buildP23BContainment(ledgerWith(DRAG_SAMPLES), [
+			{ name: 'p2311:first', startTime: 47, duration: 5 },
+			{ name: 'p2311:second', startTime: 49, duration: 5 }
+		]);
+		const planApply = summarizeContainmentByPath(record)['plan-drag-edit']!.boundaries['plan-apply']!;
+		expect(planApply.total.count).toBe(1);
+		expect(planApply.self).toBeNull();
+		expect(planApply.selfWithheld).toBe(
+			'1 of 1 occurrences could not be exclusive-priced (overlapping contained marks)'
+		);
+	});
+
 	it('applies the interaction report\'s population rule to the marks it aggregates', () => {
 		const action = (index: number, outcome: BenchInteractionOutcome) => ({
 			index,
@@ -159,13 +198,12 @@ describe('P23B action containment', () => {
 		const record: P23BContainmentRecord = {
 			note: '',
 			marks: { observed: 0, attributed: 0, unbound: 0, unattributed: 0 },
-			unattributed: [],
-			actions: [
-				{ index: 0, path: 'plan-drag-edit', outcome: 'accepted', start: 0, end: 10, roots: [], unbound: [] },
-				{ index: 1, path: 'plan-drag-edit', outcome: 'rejected', start: 100, end: 110, roots: [], unbound: [] },
-				{ index: 2, path: 'plan-drag-edit', outcome: 'accepted', start: 200, end: 210, roots: [], unbound: [] },
-				{ index: 3, path: 'plan-drag-edit', outcome: 'setup', start: 300, end: 310, roots: [], unbound: [] }
-			]
+			unattributed: [],			actions: [
+				{ index: 0, path: 'plan-drag-edit', outcome: 'accepted', start: 0, end: 10, roots: [], unbound: [], ambiguous: [] },
+				{ index: 1, path: 'plan-drag-edit', outcome: 'rejected', start: 100, end: 110, roots: [], unbound: [], ambiguous: [] },
+				{ index: 2, path: 'plan-drag-edit', outcome: 'accepted', start: 200, end: 210, roots: [], unbound: [], ambiguous: [] },
+				{ index: 3, path: 'plan-drag-edit', outcome: 'setup', start: 300, end: 310, roots: [], unbound: [], ambiguous: [] }
+				]
 		};
 		// Ledger order is what warm-up excludes, exactly as the report does: the first
 		// action is warm-up even though it is the only one that was accepted there.
@@ -199,8 +237,10 @@ describe('P23B action containment', () => {
 		expect(byPath['plan-drag-edit']?.actions).toBe(1);
 		expect(byPath['plan-drag-edit']?.nodes['p2311:mesh-prebuild']).toEqual({
 			total: { count: 1, p50: 4, p95: 4 },
+			actionsPresent: 1,
+			maxPerAction: 1,
 			self: { count: 1, p50: 4, p95: 4 },
-			present: 1
+			selfWithheld: null
 		});
 		expect(byPath['bend-knot-edit']?.nodes['p2311:mesh-prebuild']?.total.p50).toBe(3);
 		// Two groups, two distributions, two independent `present` counts. The record

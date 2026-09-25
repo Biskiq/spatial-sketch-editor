@@ -29,6 +29,7 @@
 
 import { untrack } from 'svelte';
 
+import { p2311Measure } from '@portfolio/layout-core';
 import { resolveSceneDocument, type SceneDocument } from '$lib/content/scene';
 
 import {
@@ -175,11 +176,16 @@ export class EditorHistoryController {
 		if (before === null || !host) return { changed: false, type: null, domain: 'layout', error: null };
 		const matches = host.matches ?? ((a, b) => JSON.stringify(a) === JSON.stringify(b));
 		this.#layoutBefore = null;
-		if (matches(before, next)) return { changed: false, type: null, domain: 'layout', error: null };
+		// Measurement-only step: the compare and the re-install are two disjoint
+		// marks, so `gesture-commit`'s own exclusive time becomes computable and the
+		// re-install can be priced apart from the canonical-JSON comparison.
+		if (p2311Measure('commit-matches', () => matches(before, next))) {
+			return { changed: false, type: null, domain: 'layout', error: null };
+		}
 		this.#past.push({ domain: 'layout', before });
 		if (this.#past.length > HISTORY_LIMIT) this.#past.shift();
 		this.#future = [];
-		host.replace(next);
+		p2311Measure('commit-replace', () => host.replace(next));
 		this.#bumpVersion();
 		return { changed: true, type: 'layout', domain: 'layout', error: null };
 	}

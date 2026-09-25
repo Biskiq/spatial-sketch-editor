@@ -65,6 +65,7 @@ import {
 } from '$lib/editor/layout/layout-interaction';
 import {
 	captureLayoutPreviewSnapshot,
+	restoreLayoutPreviewSnapshot,
 	createEmptyLayoutPreviewState,
 	importLayoutPreviewJson,
 	layoutPreviewDocument,
@@ -974,5 +975,64 @@ describe('P23.11 transient pass — isolation', () => {
 		const neighbour = frozen!.walls!.find((wall) => wall.wallId === 'w4')!;
 		expect(neighbour.points.at(-1)).toEqual([-1, 0]);
 		expect(neighbour.points[0]).toEqual([0, 3]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// measurement-only step — why a restore re-derives the wall-mesh cache
+// ---------------------------------------------------------------------------
+
+describe('P23B measurement step — the restore path and the mesh-cache key', () => {
+	it('rebuilds the wall-mesh cache on the first restore of a snapshot geometry, then reuses it', () => {
+		const context = makeStore();
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		// A capture keeps `state.geometry` BY REFERENCE, so two captures of the same
+		// live state hand the restore one and the same geometry object.
+		expect(captureLayoutPreviewSnapshot(context.layoutPreview).geometry).toBe(snapshot.geometry);
+
+		const before = stageCount('mesh-prebuild');
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const first = stageCount('mesh-prebuild') - before;
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const second = stageCount('mesh-prebuild') - before - first;
+
+		// MEASURED, and it refutes the first hypothesis this measurement pass made:
+		// restoring a snapshot taken from live state does NOT re-derive the wall-mesh
+		// cache. The first restore already hits, because the capture holds
+		// `state.geometry` by reference and the compile that built the meshes cached
+		// them under that same object. So the browser record's 85-97 ms
+		// `restore-mesh-install` is NOT explained by "the commit's restore misses the
+		// cache", and the rank that followed from that reading is withdrawn.
+		expect({ first, second }).toEqual({ first: 0, second: 0 });
+	});
+
+	it('re-derives again after the live geometry changes, so the key tracks the compile', () => {
+		const context = makeStore();
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		restoreLayoutPreviewSnapshot(context.layoutPreview, snapshot);
+		const settled = stageCount('mesh-prebuild');
+		restoreLayoutPreviewSnapshot(context.layoutPreview, captureLayoutPreviewSnapshot(context.layoutPreview));
+		expect(stageCount('mesh-prebuild') - settled).toBe(0);
+	});
+
+	it('does not re-derive the meshes when the commit restores the snapshot it just captured', () => {
+		const context = makeStore();
+		expect(startGesture(context, junctionGesture(context, 'A'))).toBe(true);
+		move(context, [-0.2, 0.1]);
+		const outcome = release(context, [-1.5, 0.5]);
+		expect(outcome.kind).toBe('committed');
+
+		// The production commit step, verbatim: capture the live state, then hand the
+		// snapshot to the history boundary, whose `replace` runs the restore.
+		const snapshot = captureLayoutPreviewSnapshot(context.layoutPreview);
+		const before = stageCount('mesh-prebuild');
+		context.store.commitLayoutTransaction(snapshot);
+		const rebuilt = stageCount('mesh-prebuild') - before;
+
+		// If this were non-zero, the commit's own restore — the one that re-installs
+		// the state it just captured — would be re-deriving the whole wall-mesh
+		// cache, which is what the browser containment shape suggested.
+		expect(rebuilt).toBe(0);
 	});
 });
