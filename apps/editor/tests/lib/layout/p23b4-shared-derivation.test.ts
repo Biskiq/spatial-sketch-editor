@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
+	createEmptyWallFirstLayoutDocument,
 	createWallSamplingDerivation,
+	deriveChainSpans,
 	extractBoundaryCandidateFaces,
 	validateWallFirstOpeningSet,
 	validateWallFirstTopology,
 	wallCenterlineSamples,
 	wallFirstWallSpan,
-	type LayoutDocumentWallFirst
+	type LayoutDocumentWallFirst,
+	type LayoutVec2,
+	wallCubicChain
 } from '@portfolio/layout-core';
 import {
 	buildP23BCorrectnessFixture,
@@ -232,6 +236,66 @@ describe('P23B.4 S6 — chain-wide coverage (one context per release)', () => {
 			compileWallFirstLayoutGeometry(postDoc, sampling);
 			expect(sampling.stats.derivations, `${id} distinct-key derivations`).toBe(derivations);
 			expect(sampling.stats.hits, `${id} shared returns`).toBeGreaterThan(0);
+		}
+	});
+});
+
+describe('P23B.4 OR-8 — differential case families for the shared derivation', () => {
+	it('shared derivation matches fresh sampling on every curve family, both traversals', () => {
+		// The product kernel knows line + cubic-chain only (no quadratic form exists
+		// to cover); families below span straight, single/multi-knot cubic, reversed,
+		// highly curved, near-degenerate and multi-segment walls. Validity is NOT
+		// asserted — parity is, on whatever each family derives.
+		const junctions: Array<{ id: string; point: LayoutVec2 }> = [
+			{ id: 'j-a', point: [0, 0] },
+			{ id: 'j-b', point: [12, 0] },
+			{ id: 'j-c', point: [0, 4] },
+			{ id: 'j-d', point: [12, 4] },
+			{ id: 'j-e', point: [0, 8] },
+			{ id: 'j-f', point: [12, 8] },
+			{ id: 'j-g', point: [0, 12] },
+			{ id: 'j-h', point: [0.000001, 12] }
+		];
+		const chain = (knots: Array<{ id: string; point: LayoutVec2 }>, spans: ReturnType<typeof deriveChainSpans>) =>
+			wallCubicChain(knots, spans);
+		const single: LayoutVec2[] = [[0, 0], [6, -0.35], [12, 0]];
+		const multi: LayoutVec2[] = [[0, 4], [3, 6], [6, 2], [9, 6], [12, 4]];
+		const deep: LayoutVec2[] = [[0, 8], [6, 0.5], [12, 8]];
+		const document: LayoutDocumentWallFirst = {
+			...createEmptyWallFirstLayoutDocument(),
+			junctions,
+			walls: [
+				{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'wall-single', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: chain([{ id: 'k1', point: single[1]! }], deriveChainSpans(single)) },
+				{ id: 'wall-multi', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'partition', thickness: 0.2, height: 3, centerline: chain(multi.slice(1, -1).map((point, index) => ({ id: `km${index}`, point })), deriveChainSpans(multi)) },
+				{ id: 'wall-deep', startJunctionId: 'j-e', endJunctionId: 'j-f', role: 'partition', thickness: 0.2, height: 3, centerline: chain([{ id: 'kdeep', point: deep[1]! }], deriveChainSpans(deep)) },
+				{ id: 'wall-tiny', startJunctionId: 'j-g', endJunctionId: 'j-h', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			]
+		};
+		const lookup = new Map(junctions.map((junction) => [junction.id, junction.point]));
+		const sampling = createWallSamplingDerivation();
+		for (const wall of document.walls) {
+			const start = lookup.get(wall.startJunctionId)!;
+			const end = lookup.get(wall.endJunctionId)!;
+			for (const traversal of ['forward', 'reverse'] as const) {
+				expect(sampling.samples(wall, start, end, traversal), `${wall.id} ${traversal}`).toEqual(
+					wallCenterlineSamples(wall, start, end, traversal)
+				);
+			}
+		}
+		// Consumer-level parity on the wild document (verdicts, spans, compile —
+		// equal whatever they are, proving the mechanism is family-agnostic).
+		expect(validateWallFirstTopology(document, { sampling }), 'wild topology').toEqual(
+			validateWallFirstTopology(document)
+		);
+		const compiled = compileWallFirstLayoutGeometry(document, sampling);
+		const freshCompiled = compileWallFirstLayoutGeometry(document);
+		expect(compiled.geometry, 'wild geometry').toEqual(freshCompiled.geometry);
+		expect(compiled.issues, 'wild issues').toEqual(freshCompiled.issues);
+		for (const wall of document.walls) {
+			expect(wallFirstWallSpan(document, wall, sampling), `wild span ${wall.id}`).toEqual(
+				wallFirstWallSpan(document, wall)
+			);
 		}
 	});
 });

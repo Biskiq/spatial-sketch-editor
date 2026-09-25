@@ -87,21 +87,6 @@ export function sampledWallSelfIntersects(wall: SampledTopologyWall): boolean {
 }
 
 /**
- * P23.11 — do two Walls' sampled centerlines cross?
- *
- * `classifyWallIntersection` is exact for straight Walls but blind to curvature:
- * two Walls whose endpoint chords miss each other can still cross where they
- * bow, and one curved Wall can cross a straight host its chord never reaches.
- * This is the curve-level companion, reusing the curve kernel's own polyline
- * predicate rather than a second intersection recipe.
- *
- * When the Walls share an explicit Junction, contact **there** is legal graph
- * connectivity: both polylines necessarily touch at that point. The shared
- * traversal is oriented so the shared Junction is `a`'s end and `b`'s start —
- * the one configuration the kernel's `ignoreSharedEndpoint` seam recognises —
- * and every other crossing along either curve still rejects.
- */
-/**
  * P23B.4 M-2a — conservative broad phase over Wall-pair swept extents.
  *
  * True means the pair MIGHT interact and must reach the narrow-phase predicate;
@@ -151,6 +136,21 @@ export function sampledWallExtentsOverlap(
 	);
 }
 
+/**
+ * P23.11 — do two Walls' sampled centerlines cross?
+ *
+ * `classifyWallIntersection` is exact for straight Walls but blind to curvature:
+ * two Walls whose endpoint chords miss each other can still cross where they
+ * bow, and one curved Wall can cross a straight host its chord never reaches.
+ * This is the curve-level companion, reusing the curve kernel's own polyline
+ * predicate rather than a second intersection recipe.
+ *
+ * When the Walls share an explicit Junction, contact **there** is legal graph
+ * connectivity: both polylines necessarily touch at that point. The shared
+ * traversal is oriented so the shared Junction is `a`'s end and `b`'s start —
+ * the one configuration the kernel's `ignoreSharedEndpoint` seam recognises —
+ * and every other crossing along either curve still rejects.
+ */
 export function sampledWallsCross(
 	a: SampledTopologyWall,
 	b: SampledTopologyWall,
