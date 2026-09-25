@@ -206,7 +206,12 @@ export type P23BCapturePlanViewEvidence = {
 	height: number;
 	/** Measured actions that published a view snapshot. */
 	actions: number;
-	/** True when every snapshot agreed, so the actions ran in one unchanged viewport. */
+	/**
+	 * True when the first and last published snapshots agree, so the capture both
+	 * started and ended in one viewport. The pan/zoom path deliberately moves the
+	 * view while it is measured and restores it, so requiring every action to share
+	 * one snapshot would be false for that path by construction.
+	 */
 	stable: boolean;
 };
 

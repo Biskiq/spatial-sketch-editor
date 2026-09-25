@@ -34,6 +34,7 @@
 		percentile,
 		summarizeInteractionCapture
 	} from '$lib/editor/layout/p23b-interaction-measure';
+	import { createP23BCaptureDriver, DRIVE_ACTIONS_PER_PATH, type P23BDriveFixture, type P23BDriveProgress } from './drive';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import fixtureLedger from '../../../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
 	import type { PageData } from './$types';
@@ -501,6 +502,67 @@
 		};
 	}
 
+	/**
+	 * The scripted capture: the fixed protocol as code. It hosts every fixture in
+	 * turn, puts the Plan viewport on the one shared px/m ladder, performs the
+	 * fixed actions and verifies each action's own path/outcome against the live
+	 * ledger before the capture is summarized. Anything it cannot verify is
+	 * repeated (and recorded as a retry) or fails loudly here.
+	 */
+	const driveFixtures: readonly P23BDriveFixture[] = HOSTED_FIXTURES.map((fixture) => ({
+		id: fixture.id,
+		label: fixture.label,
+		document: fixture.document,
+		targets: fixture.targets,
+		notApplicable: fixture.notApplicable
+	}));
+
+	let driveRunning = $state(false);
+	let driveLog = $state<string[]>([]);
+	let driveStep = $state('');
+	let drivePathProgress = $state<P23BDriveProgress['paths']>({});
+	let driveFailure = $state('');
+
+	function driveNote(line: string) {
+		driveLog = [...driveLog, `${new Date().toISOString().slice(11, 19)} ${line}`];
+	}
+
+	async function runScriptedCapture() {
+		if (driveRunning || capturing || running) return;
+		driveRunning = true;
+		driveFailure = '';
+		driveLog = [];
+		driveStep = 'starting';
+		drivePathProgress = {};
+		const driver = createP23BCaptureDriver({
+			fixtures: () => driveFixtures,
+			host: (fixtureId) => hostFixture(fixtureId),
+			startCapture: () => {
+				startCapture();
+				if (!captureSessionId) throw new Error('The capture session did not open');
+				return captureSessionId;
+			},
+			stopCapture: () => stopCapture(),
+			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
+			captureCount: () => captures.length,
+			recordFixtureReset: () => p23bRecordFixtureReset(),
+			log: driveNote,
+			progress: (next) => {
+				driveStep = next.step;
+				drivePathProgress = next.paths;
+			}
+		});
+		try {
+			await driver.run();
+			driveNote(`scripted capture complete: ${captures.length} interaction fixture(s) recorded`);
+		} catch (error) {
+			driveFailure = error instanceof Error ? error.message : String(error);
+			driveNote(`FAILED: ${driveFailure}`);
+		} finally {
+			driveRunning = false;
+		}
+	}
+
 	function downloadReport() {
 		if (!report) return;
 		const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
@@ -540,6 +602,20 @@
 			<button disabled={!capturing} onclick={stopCapture}>Stop and summarize</button>
 		</div>
 		<p class="capture-hint">Start capture, repeat each fixed action, then stop. Leave Snap 0.25 m and Grid on. After each authoring action, press “Record fixture reset”.</p>
+
+		<h2>Scripted capture (all hosted fixtures)</h2>
+		<p class="capture-hint">
+			Runs the fixed protocol on {driveFixtures.length} hosted fixtures in one session: the same target per fixture, the same
+			shared px/m ladder, {DRIVE_ACTIONS_PER_PATH} accepted actions per path, each verified against the live ledger, with every
+			mutation put back through the editor's own undo before the next action.
+		</p>
+		<button disabled={capturing || driveRunning || running} onclick={runScriptedCapture}>Run scripted capture</button>
+		{#if driveStep}<p class="status">Driver: {driveStep}</p>{/if}
+		{#each Object.entries(drivePathProgress) as [path, progress] (path)}
+			<p class="status">{path}: {progress.accepted} accepted of {progress.attempted} attempts</p>
+		{/each}
+		{#if driveFailure}<p class="error">Driver failed: {driveFailure}</p>{/if}
+		{#if driveLog.length > 0}<pre class="drive-log">{driveLog.join('\n')}</pre>{/if}
 		<button disabled={!capturing} onclick={() => p23bRecordFixtureReset()}>Record fixture reset</button>
 		<details><summary>Fixed owner actions</summary><pre>{JSON.stringify(hosted.protocol, null, 2)}</pre></details>
 		{#if capturing}<p class="status">Capturing {hosted.id} from {captureStartedAt}</p>{/if}
@@ -577,6 +653,7 @@
 	details { margin-top: .5rem; }
 	summary { cursor: pointer; color: #e1d4ad; }
 	.status { font-size: .72rem; overflow-wrap: anywhere; }
+	.drive-log { max-height: 12rem; overflow: auto; font-size: .68rem; white-space: pre-wrap; }
 	.error { color: #ff9c82; }
 	pre { max-height: 12rem; overflow: auto; padding: .5rem; background: #090a0d; font-size: .65rem; }
 </style>

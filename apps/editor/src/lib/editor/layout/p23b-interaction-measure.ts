@@ -575,10 +575,14 @@ function planViewEvidence(actions: readonly P23BActionLedger[]): P23BCapturePlan
 	// `stable` means the capture both started and ended in the same viewport: the
 	// pan/zoom path deliberately moves the view mid-capture and restores it, so
 	// requiring every action to share one snapshot would be false for that path.
+	// The comparison is relative, because a restored view comes back through the
+	// same float operations that moved it (a zoom pair multiplies by 1.12 and then
+	// by 1/1.12), and last-bit noise is not a viewport change.
+	const same = (a: number, b: number): boolean => Math.abs(a - b) <= Math.max(1, Math.abs(a)) * 1e-9;
 	const stable =
-		last.pixelsPerMeter === first.pixelsPerMeter &&
-		last.center[0] === first.center[0] &&
-		last.center[1] === first.center[1];
+		same(last.pixelsPerMeter, first.pixelsPerMeter) &&
+		same(last.center[0], first.center[0]) &&
+		same(last.center[1], first.center[1]);
 	return {
 		pixelsPerMeter: first.pixelsPerMeter,
 		center: first.center,
