@@ -197,3 +197,41 @@ describe('P23B.4 S5 — shared derivation through the Opening set', () => {
 		}
 	});
 });
+
+describe('P23B.4 S6 — chain-wide coverage (one context per release)', () => {
+	it('serves the whole chain from distinct keys only: 280 kernel evals become 120 derivations', () => {
+		// Expected derivations per release (pre doc + post doc carry different
+		// centerline objects, so pre/post never alias — by key-grammar design):
+		// all-curved-40/owner-40: 40 pre-fwd + 40 face-rev + 40 post-fwd = 120.
+		// straight-40: topology/faces short-circuit lines; compile derives 40.
+		// bend-3-room-openings: 10 wall spans + compile physical/validation share.
+		const cases: Array<{ id: string; document: LayoutDocumentWallFirst; derivations: number }> = [
+			{
+				id: 'p23b-40-wall-all-curved-v1',
+				document: buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-40-wall-all-curved-v1')!),
+				derivations: 120
+			},
+			{
+				id: 'owner-40-curved-v1',
+				document: P23B_OWNER_LAYOUT,
+				derivations: 120
+			},
+			{
+				id: 'p23b-40-wall-straight-v1',
+				document: buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-40-wall-straight-v1')!),
+				derivations: 40
+			}
+		];
+		for (const { id, document, derivations } of cases) {
+			const postDoc = JSON.parse(JSON.stringify(document)) as LayoutDocumentWallFirst;
+			const sampling = createWallSamplingDerivation();
+			validateWallFirstTopology(document, { openingSet: 'defer', sampling });
+			extractBoundaryCandidateFaces(document, sampling);
+			validateWallFirstTopology(postDoc, { openingSet: 'defer', sampling });
+			validateWallFirstOpeningSet(postDoc, sampling);
+			compileWallFirstLayoutGeometry(postDoc, sampling);
+			expect(sampling.stats.derivations, `${id} distinct-key derivations`).toBe(derivations);
+			expect(sampling.stats.hits, `${id} shared returns`).toBeGreaterThan(0);
+		}
+	});
+});

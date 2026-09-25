@@ -1108,8 +1108,10 @@ export function preflightWallFirstArchitectureCandidate(
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
+	// P23B.4 M-1 (S6 remaining chain coverage): the transient preflight is its own
+	// chain scope — one fresh derivation per call, never retained across moves.
 	const failure = p2311Measure('preflight-topology', () =>
-		validateWallFirstTopology(candidate, { openingSet: 'defer' })
+		validateWallFirstTopology(candidate, { openingSet: 'defer', sampling: createWallSamplingDerivation() })
 	);
 	if (!failure) return undefined;
 	return { code: failure.code, message: failure.message };
