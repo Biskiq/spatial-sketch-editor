@@ -2,13 +2,23 @@
 
 PHASE: P23B
 CHILD: P23B.0-durable — sequence step 10; owner ratified plan revision `4b32034f` on 2026-09-24, approved
-       O-1–O-4 and authorized W1–W7. Stage B is implementation-review-ready at checkpoint
-       `checkpoints/p23b0-stage-b.md`: W1–W2 are committed at `89ec1fa2`, W3–W5 implementation at
-       `e26bb623`, the recording corrections at `805fed25`…`b9a492da`, and the post-policy,
-       pre-optimization method-v4 baseline is recorded in `apps/editor/src/lib/bench/baselines/
-       g3-baseline.json` with the W6 measurement report and W7 budget-policy record in the P23B.0
-       workspace. The single continuation PR is the review surface; the slice is not accepted and its PR
-       is not merged. P23B.4 remains gated until P23B.0's baseline is accepted.
+       O-1–O-4 and authorized W1–W7, then amended the measurement scope on 2026-09-25 (§10 S-1…S-7).
+       Stage B is implementation-review-ready at checkpoint `checkpoints/p23b0-stage-b.md`: W1–W2 are
+       committed at `89ec1fa2`, W3–W5 implementation at `e26bb623`, the recording corrections at
+       `805fed25`…`b9a492da`, the review correction round at `d4b4763f`/`2021e10e`/`be525f7c`, and the
+       post-policy, pre-optimization method-v5 baseline is recorded in `apps/editor/src/lib/bench/
+       baselines/g3-baseline.json` (SHA-256 `5534926e…`) with the W6 measurement report and W7
+       budget-policy record in the P23B.0 workspace. The interaction capture covers the owner workload
+       plus the size-40 straight and all-curved matrix cells at one shared 19.292586 px/m viewport in one
+       browser session.
+       HEADLINE FINDING: every fixture is slow, including the 40-straight-wall control (accepted Wall
+       authoring 262.6 ms, accepted rigid edit 208.4 ms); curvature amplifies the Plan reactive
+       render/flush path (15–16× on flush boundaries) rather than being the root cause, and Plan
+       pan/zoom — which plans nothing — is the most curvature-sensitive boundary in the record. The
+       owner's own three-fixture manual capture is recorded as owner-supplied evidence (W6 §7) and is not
+       in the baseline.
+       The single continuation PR is the review surface; the slice is not accepted and its PR is not
+       merged. P23B.4 remains gated until P23B.0's baseline is accepted.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -25,10 +35,11 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. Review P23B.0-durable Stage B on the single continuation branch/PR: the recorded method-v4 baseline,
-   the W6 measurement report and the W7 budget-policy record, read together with
-   `checkpoints/p23b0-stage-b.md`. Accept, return, or request the optional native-Chrome comparison; do not
-   merge by default and do not begin P23B.4 until the baseline is accepted.
+1. Give the next direction. Review P23B.0-durable Stage B on the single continuation branch/PR: the
+   recorded method-v5 baseline, the W6 measurement report and the W7 budget-policy record, read together
+   with `checkpoints/p23b0-stage-b.md`. The finding to read first is W6 §0. Accept, return, or request the
+   optional native-Chrome comparison; do not merge by default and do not begin P23B.4 until the baseline
+   is accepted. Owner direction 2026-09-25 stands: report, then move on to the fix once accepted.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
 3. P26 planning may continue in parallel. Read
@@ -49,7 +60,8 @@ P23B.0-durable plan → ../roadmap/p23b-geometry-performance/p23b.0-measurement-
 P23B.0-durable Stage A ratification handoff → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
 P23B.0-durable W6 measurement report → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
 P23B.0-durable W7 budget policy → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
-Recorded v4 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
+Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
+Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
 P23B.2 research report → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
 P26 planning and accepted direction → ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md
