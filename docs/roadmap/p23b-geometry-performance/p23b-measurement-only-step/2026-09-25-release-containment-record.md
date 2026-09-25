@@ -1,220 +1,213 @@
-# P23B measurement-only step — action containment, post-release re-capture and ranking (2026-09-25)
+# P23B measurement-only step — action containment and post-release re-capture
 
 ```text
-STATUS:  MEASUREMENT RECORD — DEV-only, advisory, separate from the baseline.
-         Owner-authorized routing amendment (phase README, 2026-09-25): P23B.7 S1
-         extended to the wall-authoring release + P23B.6 S1, run BEFORE any
-         P23B.6/P23B.7 optimization. This record ends at the ranking and stops
-         for the owner's ruling.
-ADVISORY: one machine, one session. No budget, no enforced metric, no wall-clock
-         threshold. `g3-baseline.json` is neither read nor written by this step
-         (`bench:record` remains its only writer); `BUDGETS` and
-         `ENFORCED_BUDGET_METRICS` are unchanged.
+STATUS:  CORRECTION PASS 1 (2026-09-25). The slice ranking in revision 1 is
+         WITHDRAWN — it rested on attributing the 85–97 ms `restore-mesh-install`
+         to the history commit's restore, and that attribution is refuted below
+         by a deterministic test. No optimization slice is named by this record
+         until a re-capture on a clean commit is made.
+ROLE:    DEV-only, advisory measurement of where an accepted action's time goes,
+         run before any P23B.6/P23B.7 optimization per the phase README's
+         owner-authorized routing amendment (2026-09-25).
+NOT:     a budget, a target, a regression gate, or a baseline. `g3-baseline.json`
+         is neither read nor written here (`bench:record` remains its only
+         writer); `BUDGETS` / `ENFORCED_BUDGET_METRICS` are unchanged.
 ```
 
-## 1. What changed, and why
+## 0. What correction pass 1 changed
 
-The `p2311:` component marks were collected with
-`performance.getEntriesByType('measure')` and reported **pooled per fixture
-session** (`nestedMarks`), so a figure such as "mesh-prebuild 89.6 ms p50" had no
-action attached to it: it spanned rigid edits, bends, authoring clicks and
-warm-up alike, and `markNestingNote` forbids summing pooled distributions.
-
-This step binds each mark to the **action and outcome whose boundary interval
-encloses it** and reports a containment tree per action:
-
-| Piece | Where |
-|---|---|
-| Containment model (pure) | `apps/editor/src/lib/bench/p23b-containment.ts` |
-| Boundary intervals in the ledger | `p23b-interaction-measure.ts` (`samples[].start/end`) |
-| New release-path marks | `LayoutPlanViewport.svelte`: `selection-hit`, `gesture-commit`, `authoring-release` |
-| Harness build + mirror + export | `/dev/perf/p23b` (`__P23B_CONTAINMENT__`, `__P23B_CONTAINMENT_SUMMARY__`, "Download measurement record JSON") |
-| Proofs | `tests/lib/bench/p23b-containment.test.ts` (8), `tests/lib/layout/p23b-measurement-marks-wiring.test.ts` (5) |
-
-Rules the record obeys, each because it is what makes the tree honest:
-
-1. **Containment, not proximity** — a mark belongs to an action only when its own
-   interval is inside one of that action's recorded boundary intervals.
-2. **Never summed** — every figure below is one action's tree or a distribution
-   over a group (count / p50 / p95). No parent is reported as the sum of its
-   children; no group is a total.
-3. **Two visible remainders** — a mark inside an action's span but outside all of
-   its boundaries is reported as `unbound` on that action; a mark outside every
-   action is pooled under `unattributed`, named and counted, never guessed.
-4. **Exclusive time only where containment holds** — `self` is
-   `total - sum(children)` only when the children are pairwise disjoint and each
-   is fully inside; otherwise `self` is `null` with the reason stated (see
-   `gesture-commit` below, which reports `null` for exactly this reason).
-
-## 2. Provenance
+Review found that revision 1's headline ranking did not survive contact with the
+code. Each finding and its disposition:
 
 ```text
-commit         d9a56a2b (tree dirty: the measurement code below is committed with
-               this record; the capture ran on that working tree)
-policy commit  c11938fe
-machine        arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM
-OS             15.7.2 (build 24G325) · node v26.7.0
-browser        Chrome 130 (Freebuff), DPR 1, viewport 1920x1200
-protocol       the committed `drive.ts` scripted capture, unchanged: shared px/m
-               ladder (19.29 px/m), 25 accepted actions per path, 5 per path
-               excluded as warm-up, every action verified against the live ledger
-population     warm-up excluded per path, ACCEPTED outcomes only — the
-               interaction report's own rule, applied to containment so a
-               containment figure and the boundary figure beside it describe the
-               same actions
-units          milliseconds; `n` is the number of contributing actions
+F1  the commit re-installs live state; that is the leading cost, not rendering
+    → the cause is confirmed in source (`HistoryController.commitLayout` →
+      `host.replace` → `restoreLayoutPreviewSnapshot`), the record no longer
+      routes it to P23B.6, and the cost is now split into three disjoint marks
+      (§3). The COST is not yet re-priced: see §5.
+F2  the 85 ms mesh install should have been nearly free; hit, miss or two
+    pooled occurrences?
+    → ANSWERED, and it refutes revision 1's reading: it is not a cache miss on
+      the commit path (§4). The record no longer claims one.
+F3  the `self` columns compared different populations
+    → fixed: `self` is reported only when every occurrence could be priced, and
+      its occurrence count is printed beside `total`'s (§2).
+F4  `n` was occurrences, not actions, so a repeat was pooled silently
+    → fixed: `total.count` is documented as occurrences, `actionsPresent` and
+      `maxPerAction` are reported separately (§2), and a repeat is now visible.
+F5  rule 2 was broken by the "~490 ms unnamed" subtraction
+    → removed. The claim it supported (the curved wall-authoring release is
+      largely unnamed) survives as a qualitative statement, without a number.
+F6  no durable source for the numbers
+    → accepted, and NOT yet satisfied: the capture ran on a dirty tree and the
+      code has since changed, so revision 1's JSON cannot be re-derived from any
+      commit. Nothing in this revision should be re-derived from that capture.
+F7  smaller items — the "same work one tick later" claim is dropped (nothing
+    showed it); the P23B.8 line is reworded to the actual argument (main-thread,
+    reactive, Three-bound work, no cross-thread split today); the all-curved-40
+    abort keeps its coverage limit and gains the perturbation note in §1.
 ```
 
-## 3. Coverage — and one abort (honest limit)
+## 1. Provenance and coverage
 
 ```text
-owner-40-curved-v1 (owner-responsiveness)     CAPTURED — selection 20, bend 20,
-                                              plan-drag 20, wall-authoring 23,
-                                              plan-pan-zoom 52 actions
-p23b-40-wall-straight-v1 (control)            CAPTURED — selection 20, plan-drag 20,
-                                              wall-authoring 23, plan-pan-zoom 52
-                                              (bend is not applicable: no knots)
-p23b-40-wall-all-curved-v1                    ABORTED at action 94 — the driver's own
-                                              guard: "action 94 did not complete within
-                                              6000 ms" (wall-authoring). No containment
-                                              record exists for it; the 6000 ms
-                                              `ACTION_TIMEOUT_MS` was NOT changed, because
-                                              changing it would change the protocol and
-                                              break comparability with P23B.0.
+capture      revision 1, 2026-09-25, on a DIRTY working tree at d9a56a2b
+             (the measurement code was uncommitted; it landed as 9a0e3e35 and
+             was then corrected as 570179ff). No artifact of that capture is
+             committed, so its numbers are not reproducible and are NOT used
+             for any claim in this revision.
+machine      arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM · OS 15.7.2
+browser      Chrome 130 (Freebuff), DPR 1, viewport 1920x1200
+population   warm-up excluded per path, accepted outcomes only — the interaction
+             report's own rule, applied to containment
+protocol     the committed `drive.ts` scripted capture, unchanged
+
+owner-40-curved-v1        CAPTURED      selection 20, bend 20, plan-drag 20,
+                                        wall-authoring 23, pan-zoom 52 actions
+p23b-40-wall-straight-v1  CAPTURED      selection 20, plan-drag 20,
+                                        wall-authoring 23, pan-zoom 52
+p23b-40-wall-all-curved-v1 ABORTED      the driver's own guard: "action 94 did
+                                        not complete within 6000 ms". The guard
+                                        was NOT raised: it is part of the
+                                        protocol, and comparability with P23B.0
+                                        depends on it.
 ```
 
-A completed-pair result: the two captured fixtures are the **curved owner-40** and
-the **all-straight control**, so the curvature contrast the ranking needs is
-present; the size-40 all-curved matrix cell is the missing third.
+PERTURBATION NOTE (F7): the aborted action is a wall-authoring click on the
+all-curved fixture, where the P23B.0 baseline records a 1,984.8 ms p50 for that
+path before the abort. The capture ran with the harness panel open and the DEV
+measurement switch on, which is the protocol's own configuration, but a single
+6 s action is not evidence about the path's distribution and is recorded only as
+a coverage limit.
 
-## 4. Acceptance boundaries — the inside of one release (p50 over accepted actions)
+## 2. What the containment model measures (corrected)
+
+`apps/editor/src/lib/bench/p23b-containment.ts` binds each `p2311:` component
+mark to the action **and outcome** whose own boundary interval encloses it, and
+reports a tree per action. Rules, as corrected:
+
+1. **Containment by interval, not proximity.**
+2. **Never summed.** Every figure is one action's tree or a distribution over a
+   group. `total.count` counts OCCURRENCES; `actionsPresent` and `maxPerAction`
+   are reported beside it, so a mark that fires twice inside one action is
+   visible rather than pooled into a single p50 (F4).
+3. **Exclusive time only where every occurrence could be priced.** `self` is
+   `null` unless all of a label's occurrences in the group had disjoint, fully
+   contained children; otherwise `selfWithheld` states how many could not be
+   priced. `self` and `total` therefore always describe the same population (F3).
+4. **Three visible remainders.** `unbound` = inside the action, outside all of
+   its boundaries. `unattributed` = outside every action, pooled by name.
+   `ambiguous` = an attachment whose two intervals are IDENTICAL, where which
+   encloses which is not decidable from timestamps. The third was added by this
+   pass (F2): revision 1 silently decided such a pair, and that is how a nesting
+   could be reported that the code's own call order cannot produce.
+
+## 3. The commit cost, now split (mechanism; numbers pending)
+
+Source, confirmed: `PlanWorkspace.commitLayoutTransaction` captures the snapshot
+and hands it to the history boundary; `HistoryController.commitLayout` compares
+it (`matches`) and then calls `host.replace(next)`, which runs
+`restoreLayoutPreviewSnapshot`. So one accepted release contains three
+separable costs, and they are now three disjoint marks:
 
 ```text
-path            fixture   input    release            svelte-flush        browser-frame
-                                  total / self        total / self        total / self
-plan-drag-edit  owner     42.7     216.5 / 214.2      88.2 / 80.5         90.0 / 1.8
-plan-drag-edit  straight  34.7     214.7 / 211.5      18.2 / 14.1         20.1 / 2.1
-bend-knot-edit  owner     44.0     221.3 / 211.9      91.4 / 83.8         93.0 / 1.7
-wall-authoring  owner      0.2     700.3 / null       0.2 / 0.1          14.3 / 2.1
-wall-authoring  straight   0.2     271.7 / null       0.2 / 0.2           7.5 / 2.4
-selection       owner    193.3     25.5 / 4.1         90.4 / 226.6*       90.5 / 1.9
+commit-capture   captureLayoutPreviewSnapshot(layoutPreview)   (PlanWorkspace)
+commit-matches   host.matches(before, next)                    (history controller)
+commit-replace   host.replace(next) → restoreLayoutPreviewSnapshot
 ```
 
-`*` the selection flush `self` exceeds its own `total` by rounding of p50s taken
-on different actions; it is reported as measured, not reconciled.
+`gesture-commit` now has disjoint children, so its own exclusive time becomes
+computable — item 5 of revision 1's own ranking, and F1's precondition.
 
-The post-release pair is the deferred re-capture asked for in this step (the
-S-8-corrected harness, which starts both boundaries where the synchronous input
-ended): on the owner's rigid edit the flush is **88.2 ms p50 (self 80.5)** and the
-next frame adds **1.8 ms** on top of it; on the straight control the same pair is
-18.2 / 2.1. That reverses P23B.0's disposition A **for this record only**, and it
-mainly serves P23B.6.
+## 4. The review's question, answered: the restore does NOT miss the mesh cache
 
-## 5. Nested marks, attributed (p50 over accepted actions)
+Two deterministic tests (no browser, no timing) settle F2, and they refute
+revision 1:
 
 ```text
-mark                        owner: rigid / bend / authoring      straight: rigid / authoring
-p2311:gesture-commit        167.5 / 169.7 / — (self null)       179.6 / — (self null)
-p2311:restore-mesh-install   85.4 /  85.3 / 88.5                96.4 / 97.0
-p2311:baseline-restore       85.6 /  85.6 / 89.1                96.5 / 97.2
-p2311:mesh-prebuild          17.6 /  17.9 / 85.2                21.6 / 22.2
-p2311:acceptance-compile     14.7 /  15.1 / —                   11.5 / —
-p2311:preview-compile         —   /   —   / 21.9                —   / 12.6
-p2311:preflight-topology      7.0 /   7.0 / — (self 3.9 / 3.6)   1.6 (self 1.5) / —
-p2311:plan-apply             41.8 /  42.5 / — (self 1.5 / 1.6)  30.5 (self 0.7) / —
-p2311:topology-pre/post       3.3 /  3.2 · 3.1 / 3.2 (self ~1) 0.2 / 0.2
-p2311:face-extraction         2.9 /   2.9 / —                   0.1 / —
-p2311:room-geometry-compile   6.7 /   6.7 / 9.2                 6.7 / 6.8
-p2311:architecture-snap-res   4.4 /   4.8 / —                   2.5 / —
-p2311:selection-hit          12.8 /   —   / —                  15.4 / —
-p2311:authoring-release        —   /   —   / 700.3               —   / 271.7
-p2311:pointermove-rigid/bend   ~0 (80 marks)                    ~0 (80)
+`layout-transient-preview.test.ts` — measured:
+  a capture holds `state.geometry` BY REFERENCE, so consecutive captures hand the
+    restore one and the same geometry object;
+  an isolated `restoreLayoutPreviewSnapshot(live snapshot)` re-derives NOTHING —
+    the first restore already hits the wall-mesh cache;
+  the production commit step, verbatim (capture the live state, hand it to
+    `store.commitLayoutTransaction`), re-derives NOTHING either;
+  a restore after a fresh capture of the same live geometry also re-derives
+    nothing.
 ```
 
-Measured remainders (the rule-3 machinery doing its job):
+So "the commit's restore rebuilds all 40 wall meshes" is false in process, and
+the 85–97 ms `restore-mesh-install` of revision 1 is unexplained by it. The
+browser record's shape for that pair (a `mesh-prebuild` of 85–89 ms carrying 80
+`standalone-wall-build` marks, with `restore-mesh-install` nested *inside* it) is
+also internally inconsistent with the call order, which is exactly the ambiguity
+rule 4 now reports instead of deciding. **What is still open:** which restore the
+browser's full rebuild actually belongs to, and why it happens in the app while
+the same step reuses the cache in process. The honest next step is to read the
+RAW intervals of that pair (start/end, not nested labels) in a re-capture, with
+§1's provenance satisfied.
+
+## 5. What still holds from the measurement
 
 ```text
-unbound (inside the action, outside its boundaries), owner bend-knot-edit:
-  p2311:next-frame-latency p50 17.5 (80) · p2311:svg-flush-latency 0.2 (42) ·
-  p2311:pointer-cadence 16.5 (60)
-
-unattributed (outside every action), pooled per fixture and never attributed:
-  owner-40:    baseline-restore 22.4 (75) · restore-reactive-write 22.4 (75) ·
-               plan-render-model 3.2 (248) · restore-project-clone 0.2 (75) ·
-               svg-attributes 0.1 (19,603) · and the four ~0 restore sub-marks
-  straight-40: the same family (restore/clone/mesh-install/plan-render-model)
+· containment by interval, with `unbound` and `unattributed` buckets that made
+  the between-action undo/re-seed restores visible as fixture cost rather than
+  action cost (they are the restore family in `unattributed`);
+· `self: null` with a stated reason wherever contained marks overlap, instead of
+  a subtracted guess;
+· UN-1 re-derived by symbol: the planner, `deriveInstallBundle` and the
+  preview-install commit all sit INSIDE `plan-apply`; P23B.1's line anchors are
+  stale and were not used;
+· the preflight ceiling corroborated against the owner's own numbers: the
+  whole-document gate measures 1.6 ms (straight control) and 7.0 ms (owner-40
+  curved) total per accepted move, self 1.5 and 3.6–3.9 ms — consistent with the
+  recorded 1.7 / 7.8 / 9.9 ms per move, now attached to an action and an outcome
+  instead of pooled per session;
+· no production telemetry (the marks ride the shipped DEV + `__P2311_PERF__`
+  gate) and no baseline write.
 ```
 
-The restore family in `unattributed` is the between-action undo/re-seed the
-protocol performs — it is a fixture-reset cost, not an action cost, and the
-record says so instead of folding it into the nearest edit.
+Every other figure in revision 1's boundary and node tables came from the
+superseded capture with superseded aggregation semantics. They are deliberately
+NOT reproduced here (F5, F6): a number that cannot be re-derived from a commit,
+and that was computed by a summary that mixed populations, does not belong in a
+record that other people rank work from.
 
-## 6. Ranking — which slice each measured cost belongs to
+## 6. Ranking — WITHDRAWN
 
 ```text
-1  P23B.6 (rendering / mesh + GPU cone) — THE LEADING NAMED COSTS
-   restore-mesh-install 85.4-97.0 ms p50 inside every accepted release, on the
-   CURVED OWNER AND THE STRAIGHT CONTROL ALIKE; mesh-prebuild 17.6-85.2 ms p50;
-   preview-compile 12.6-21.9 ms p50; room-geometry-compile ~6.7-9.2 ms p50. The
-   named interior of a release is dominated by build-and-install of render
-   geometry, and the post-release flush (self 80.5 ms on the owner) is the same
-   work arriving one tick later.
+Revision 1 ranked P23B.6 first on "render-geometry build/install dominates".
+That conclusion depended on the restore cost, which F1 relocated to the commit
+path and F2 then failed to attribute at all. So:
 
-2  P23B.7 (interaction) — REAL BUT SMALL, AND NOT FIRST
-   preflight-topology self is 1.5 ms per accepted move on the straight control and
-   3.6-3.9 ms on the curved owner; the whole-document gate cannot be worth more
-   than single-digit ms per move against a ~215 ms release. architecture-snap-
-   resolution is 2.5-4.8 ms, selection-hit 0.1-15.4 ms, preview-install p50 0.
-   Running the gesture-scoped topology gate first would optimize ~2% of the
-   release. This record names the gate; it does not name it first.
-
-3  P23B.8 (Worker + Rust/WASM decision) — NO MEASURED DEMAND
-   Nothing in this capture puts a single named cost into the tens of milliseconds
-   where a Worker/WASM boundary would pay for itself; the synchronous release is
-   dominated by mesh/restore work that has no cross-thread split today.
-
-4  NEW NAMED FINDING — the wall-authoring release is the one unnamed majority
-   owner curved 700.3 ms p50 vs straight 271.7 ms p50, with only mesh-prebuild
-   (85.2), baseline-restore (89.1), preview-compile (21.9) and room-geometry-
-   compile (9.2) named inside it: roughly 490 ms of the curved authoring release
-   is not named by any mark yet. Wall authoring also has no `plan-apply` boundary
-   by construction, which is why `authoring-release` was added here.
-   A follow-up that prices that remainder is justified; an optimization that
-   guesses at it is not.
-
-5  OPEN — gesture-commit cannot be exclusive-priced yet
-   gesture-commit is 167.5 / 179.6 ms p50 and reports `self: null` because its
-   enclosed marks overlap, which is the honest answer rather than a subtracted
-   guess. Splitting it into disjoint child marks (history write vs install) is
-   the prerequisite for pricing the commit+history path the owner called out.
+  · no slice is named first by this record;
+  · the routing question for the owner is unchanged in form, not answered:
+    if the commit/history path is the leading cost, P23B.7 S6 (per-gesture
+    preview-install/reactive work) or a bounded history-path fix owns it, and
+    taking it before P23B.6 needs the sequence amended;
+  · P23B.7's gesture-scoped topology gate remains NAMED and NOT FIRST on the one
+    figure that survived review: single-digit ms per move against a release two
+    orders larger;
+  · P23B.8 has no measured demand, argued from the shape of the work
+    (main-thread, reactive, Three-bound, no cross-thread split today) rather than
+    from a threshold — and NOT from "no cost is large", which the pre-correction
+    numbers contradicted;
+  · P23B.6 is neither named first nor excluded. Its case has to be made on a
+    re-captured record whose commit path is priced.
 ```
 
-Corroboration of the owner's own finding: `preflight-topology` measures
-1.6 ms (straight) and 7.0 ms (owner-40 curved) per accepted move, consistent with
-the 1.7 / 7.8 / 9.9 ms per move recorded in the P23B.0 baseline — the same cost,
-now attached to an action and an outcome instead of pooled.
+A re-rank needs, in order: a clean-commit capture (§1, F6), the raw intervals
+read for the restore pair (§4), and `gesture-commit` exclusive time from the
+split marks (§3).
 
-## 7. What this record does NOT claim
-
-- Not a budget, not a target, not a regression gate. Nothing here is enforced.
-- No end-to-end interaction gain: the timings are DEV-harness measurements on one
-  machine in one session, with the harness panel open.
-- No GPU claim: mesh/restore timings are CPU marks; GPU upload and painted
-  presentation are not implied.
-- No all-curved-40 cell: that capture aborted on the driver's 6000 ms action
-  guard (§3). The curved family is represented by the owner-40 fixture.
-- No production telemetry: the marks ride the shipped DEV + `__P2311_PERF__` gate
-  (`packages/layout-core/src/p2311-perf.ts`), and nothing was added to a `/museum`
-  chunk.
-
-## 8. Reproduction
+## 7. Reproduction
 
 ```bash
 npm run dev:editor            # DEV server on the working tree
 open http://localhost:5173/dev/perf/p23b
 # window >= ~1250 px wide (the shared view must fit the fixture's target box)
-# "Run scripted capture" → the driver hosts each fixture, performs the fixed
-# protocol and summarizes per fixture; then "Download measurement record JSON"
+# "Run scripted capture" → then "Download measurement record JSON"
 npm test -w @portfolio/editor -- tests/lib/bench/p23b-containment.test.ts \
-  tests/lib/layout/p23b-measurement-marks-wiring.test.ts
+  tests/lib/layout/p23b-measurement-marks-wiring.test.ts \
+  tests/lib/editor/layout/layout-transient-preview.test.ts
 ```
