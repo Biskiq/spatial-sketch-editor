@@ -4,7 +4,8 @@ PHASE: P23B
 CHILD: P23B.4-compilation-invalidation — plan reconciliation underway on `codex/p23b4-reconciliation`
        from updated `main` (owner direction 2026-09-25: new `codex/` branch for this step, superseding
        the continuation-branch arrangement; `codex/p23b-continuation` is retired, not deleted).
-       The reconciled plan is UNRATIFIED; implementation awaits owner approval.
+       The reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first);
+       U-1 declined, Rust/WASM undecided until P23B.8.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -32,16 +33,15 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        Closeout gates on the closeout tree: `test:perf` 7 files / 56 pass (1 skipped); `test:arch`
        23 files / 254 pass; `npm test` 324 files / 4,755 pass (1 skipped); `check` (editor + museum)
        0 errors, 0 warnings; both apps build; baseline hash unchanged.
-       P23B.4's architecture-review gate PASSES conditional on owner ratification (recorded in the
-       reconciled plan §11); entry anchors re-verified against current source there.
+       P23B.4's architecture-review gate PASSES (recorded in the reconciled plan §11); entry anchors
+       re-verified against current source there.
        P23B.1 harvest and P23B.2 research artifacts retain their
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. Owner reviews the reconciled P23B.4 plan + §11 gate on `codex/p23b4-reconciliation` (unmerged):
-   ratify plan/acceptance criteria and authorize implementation, or return it. Do not implement
-   optimizations before that approval. U-5 (flush attribution via nested P23.11 marks) is the
-   recommended first investigation once authorized.
+1. P23B.4 implementation is AUTHORIZED: begin S1 (freeze the per-consumer sampling reference,
+   tests-only, no production change) on `codex/p23b4-reconciliation` (unmerged). U-5 (flush
+   attribution via nested P23.11 marks) is the recommended first investigation inside the slice.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
@@ -75,8 +75,8 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.4 implementation awaits owner approval of the reconciled plan (§11 gate + OR-1…OR-11/X-1…X-8).
-  The baseline gate is satisfied; no further capture is required or authorized.
+- P23B.4 implementation is authorized (reconciled plan §11 + OR-1…OR-11/X-1…X-8); M-2b stays disabled
+  until the X-6 exit gate. No further capture is required or authorized; U-1 declined.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a/P23B.0.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
