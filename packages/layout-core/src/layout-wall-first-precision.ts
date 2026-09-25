@@ -72,6 +72,7 @@ import {
 } from './layout-topology-components';
 import {
 	classifyWallIntersection,
+	sampledWallExtentsOverlap,
 	sampledWallSelfIntersects,
 	sampledWallsCross,
 	type SampledTopologyWall,
@@ -2101,6 +2102,10 @@ export function detectWallCurveTopologyCrossings(
 			const sampledA = sampledWalls.get(a.id);
 			const sampledB = sampledWalls.get(b.id);
 			if (!sampledA || !sampledB) continue;
+			// P23B.4 M-2a: conservative extent prune — a pair whose swept extents
+			// cannot overlap cannot newly cross. Same predicate, same reporting,
+			// same first-wins order; only rejected-anyway pairs are skipped (OR-9).
+			if (!sampledWallExtentsOverlap(sampledA, sampledB)) continue;
 			const shared = sharedJunctionIds(a, b)[0];
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 			return shared

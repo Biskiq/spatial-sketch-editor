@@ -101,6 +101,56 @@ export function sampledWallSelfIntersects(wall: SampledTopologyWall): boolean {
  * the one configuration the kernel's `ignoreSharedEndpoint` seam recognises —
  * and every other crossing along either curve still rejects.
  */
+/**
+ * P23B.4 M-2a — conservative broad phase over Wall-pair swept extents.
+ *
+ * True means the pair MIGHT interact and must reach the narrow-phase predicate;
+ * false means the tolerance-expanded sample boxes are disjoint, in which case no
+ * segment pair the sweep could visit overlaps either (segment boxes nest inside
+ * the Wall box expanded by the same tolerance), so the predicate would reject.
+ * Pruning therefore only removes pairs that would have been rejected anyway:
+ * the candidate set stays a SUPERSET of every pair the narrow phase rejects
+ * (OR-9), and the predicate, verdict, reporting and first-wins order are
+ * untouched. Degenerate (point) boxes are handled by the same overlap test —
+ * never by a special case that could widen the prune.
+ */
+export function sampledWallExtentsOverlap(
+	a: Pick<SampledTopologyWall, 'samples'>,
+	b: Pick<SampledTopologyWall, 'samples'>,
+	tolerance: number = CURVE_SELF_INTERSECTION_TOLERANCE
+): boolean {
+	let aMinX = Infinity;
+	let aMinZ = Infinity;
+	let aMaxX = -Infinity;
+	let aMaxZ = -Infinity;
+	for (const sample of a.samples) {
+		const x = sample.point[0];
+		const z = sample.point[1];
+		if (x < aMinX) aMinX = x;
+		if (z < aMinZ) aMinZ = z;
+		if (x > aMaxX) aMaxX = x;
+		if (z > aMaxZ) aMaxZ = z;
+	}
+	let bMinX = Infinity;
+	let bMinZ = Infinity;
+	let bMaxX = -Infinity;
+	let bMaxZ = -Infinity;
+	for (const sample of b.samples) {
+		const x = sample.point[0];
+		const z = sample.point[1];
+		if (x < bMinX) bMinX = x;
+		if (z < bMinZ) bMinZ = z;
+		if (x > bMaxX) bMaxX = x;
+		if (z > bMaxZ) bMaxZ = z;
+	}
+	return (
+		aMinX - tolerance <= bMaxX + tolerance &&
+		bMinX - tolerance <= aMaxX + tolerance &&
+		aMinZ - tolerance <= bMaxZ + tolerance &&
+		bMinZ - tolerance <= aMaxZ + tolerance
+	);
+}
+
 export function sampledWallsCross(
 	a: SampledTopologyWall,
 	b: SampledTopologyWall,
