@@ -105,7 +105,8 @@ the `SEQUENCE`, slice scope, identity or order. P23B.3a remains closed on its ex
 
 P23B.0-durable shipped via PR #87 (squash `d7b9de4e`, closed above). For the next step this
 supersedes the continuation-branch arrangement above: reconcile P23B.4's plan and architecture-review
-gate on a NEW `codex/` branch from updated `main` (`P23B4`); do not reuse
+gate on `P23B4` from updated `main` (new branch for this step; the recorded owner instruction said
+a `codex/` prefix and the actual head is `P23B4`, which is the branch of record); do not reuse
 `codex/p23b-continuation` for P23B.4 work. The ratified `SEQUENCE`, sequential slice review/acceptance/
 `slice-closeout` order, and slice scope/identity/order are unchanged. P23B.4 implementation awaits
 owner approval of the reconciled plan.

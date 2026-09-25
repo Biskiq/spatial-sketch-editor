@@ -2,8 +2,9 @@
 
 PHASE: P23B
 CHILD: P23B.4-compilation-invalidation — plan reconciliation underway on `P23B4`
-       from updated `main` (owner direction 2026-09-25: new `codex/` branch for this step, superseding
-       the continuation-branch arrangement; `codex/p23b-continuation` is retired, not deleted).
+       from updated `main` (new branch for this step, superseding the continuation-branch
+       arrangement; the recorded owner instruction said a `codex/` prefix and the actual
+       head `P23B4` is the branch of record; `codex/p23b-continuation` is retired, not deleted).
        The reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first);
        U-1 declined, Rust/WASM undecided until P23B.8.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
@@ -40,8 +41,8 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
 
 NEXT:
 1. P23B.4 implementation is AUTHORIZED: begin S1 (freeze the per-consumer sampling reference,
-   tests-only, no production change) on `P23B4` (unmerged). U-5 (flush
-   attribution via nested P23.11 marks) is the recommended first investigation inside the slice.
+   tests-only, no production change) on `P23B4` (unmerged), then S1b (bounded U-5 flush
+   attribution via nested P23.11 marks, finding only, does not gate M-1/M-2a).
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
@@ -61,7 +62,7 @@ P23B.0-durable closed plan stub → ../roadmap/p23b-geometry-performance/p23b.0-
 P23B.0-durable Stage A closed handoff stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
 P23B.0-durable closed W6 record (finding + coverage limit + preservation report) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
 P23B.0-durable closed W7 policy stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
-P23B.4 reconciled plan (UNRATIFIED; §11 holds the architecture-review gate) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
+P23B.4 reconciled plan (RATIFIED + AUTHORIZED 2026-09-25, S1 first; §11 holds the architecture-review gate) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
 Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
@@ -111,5 +112,6 @@ CLOSED (2026-09-25):
   `main` (squash); recovery runs against the squash anchor/tag. Closeout gates: `test:perf` 56 pass,
   `test:arch` 254 pass, `npm test` 4,755 pass (each +1 skipped file/test); `check` 0/0 both apps; both
   apps build; baseline SHA-256 unchanged.
-- Owner-carried forward: U-1…U-7, the deferred post-release flush/frame coverage, P23B.4–P23B.8 work,
+- Owner-carried forward: U-2…U-7, the deferred post-release flush/frame coverage, P23B.4–P23B.8 work,
   P23B.1 review and the P23B.2 evidence decision — named in the closed stubs, not silently dropped.
+  U-1 was open when P23B.0 closed and was subsequently DECLINED by the owner on 2026-09-25.
