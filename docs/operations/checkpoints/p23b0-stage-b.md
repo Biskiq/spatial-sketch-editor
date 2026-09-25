@@ -1,7 +1,7 @@
 # P23B.0-durable Stage B — checkpoint
 
 TYPE: implementation
-STATUS: implementation-review-ready (correction round recorded; awaiting the owner's next direction — not accepted, not merged)
+STATUS: implementation-review-ready (second correction round recorded; awaiting the owner's baseline disposition — not accepted, not merged)
 GOAL: Complete owner-authorized P23B.0-durable W1–W7 on the single continuation branch/PR, correct the
       five review findings, record a fresh bounded baseline, and return for focused review. Do not
       accept/close the slice, merge its PR, alter the phase sequence, or begin P23B.4.
@@ -45,6 +45,10 @@ ESTABLISHED:
     driver (`src/routes/dev/perf/p23b/drive.ts`) that hosts each fixture, sets one shared px/m ladder,
     performs the fixed actions, verifies each action's path/outcome against the live ledger, restores
     every mutating action through the editor's own undo, and records fixture resets.
+  - `68025090 perf(p23b): record the method-v5 baseline and the finding that every fixture is slow` — the
+    recorded baseline and the rewritten W6/W7/plan/router records.
+  - second correction round (this revision) — the post-release boundary scheduling defect and its fix, the
+    three focused regressions, and the claim reconciliation in W6 §10.1–§10.3.
 - Owner direction 2026-09-25 (recorded in the plan's §10 and in W6 §1.1): curvature is a suspected
   amplifier and not an established root cause (a 10-room straight-wall layout also feels sluggish); the
   interaction scope was extended to the 40-straight and 40-all-curved matrix cells alongside the owner
@@ -77,23 +81,47 @@ EVIDENCE:
 - Focused tests: `apps/editor/tests/lib/editor/layout/p23b-interaction-measure.test.ts`,
   `apps/editor/tests/lib/bench/p23b-baseline-contract.test.ts`,
   `apps/editor/tests/lib/layout/p23b-fixture-contract.test.ts`.
-- Gate output at `be525f7c` with the v5 baseline recorded: `npm run test:perf` 7 files / 53 tests pass
+- Gate output: at `be525f7c` with the v5 baseline recorded — `npm run test:perf` 7 files / 53 tests pass
   (1 skipped); `npm run test:arch` 23 files / 254 tests pass; `npm test` 324 files / 4,752 tests pass
   (1 skipped); `npm run check -w @portfolio/editor` 0 errors, 0 warnings; `npm run build` succeeds for both
-  apps. Baseline write isolation: the baseline SHA-256 is identical before and after the full `npm test`
-  run.
+  apps. After the second correction round (corrected HEAD `0bef0a48`, baseline capture unchanged) —
+  `npm run test:perf` 7 files / 56 tests pass (1 skipped), i.e. the three post-release scheduling
+  regressions added on top; `npm run test:arch` 23 files / 254 tests pass; `npm test` 324 files /
+  4,755 tests pass (1 skipped); `npm run check` 0 errors, 0 warnings; `npm run build` succeeds for both
+  apps. `ENFORCED_BUDGET_METRICS` is unchanged at both revisions, and the two revisions' gate counts are
+  reported separately in W6 §11. Baseline write isolation: the baseline
+  SHA-256 is unchanged (`5534926e…`) before and after every suite run, including the run that added the
+  regressions.
 
 CURRENT:
-- HEAD is `be525f7c` plus this correction-round documentation; the worktree is clean apart from those
-  documentation edits and the re-recorded baseline. `bench:record` was the only writer of the baseline,
-  run with the downloaded harness report as validated input (`--full --p23b-browser-report <report>`).
-- THE FINDING (W6 §0): every fixture is slow, including the 40-straight-wall control — accepted Wall
-  authoring 262.6 ms, accepted rigid edit 208.4 ms, selection click 121.7 ms at zero curvature. Curvature
-  amplifies the same boundaries (Svelte flush 15.5–16.3× on selection and drag/edit, 15.3× on Plan
-  pan/zoom) while the canonical planner call rises only 3.0×. Plan pan/zoom plans nothing at all, yet its
-  flush is the most curvature-sensitive boundary in the record — so the cost is in the Plan reactive
-  render/flush path, not in the planner and not in 3D adapter work (`adapter` is unavailable on every 2D
-  path).
+- HEAD is the second correction round on top of `68025090`; the recorded baseline was captured at
+  `be525f7c` and is preserved byte-identical, so the capture revision and the corrected implementation
+  revision are named separately wherever a number is cited (W6 §2). `bench:record` was the only writer of
+  the baseline, run with the downloaded harness report as validated input
+  (`--full --p23b-browser-report <report>`).
+- SECOND DEFECT, FOUND BY REVIEW AND FIXED HERE. Every release and authoring-click call site resolves the
+  outcome and schedules that boundary's deferred pair in that order, and a press whose pair had already
+  settled leaves `pending` at zero — so `completeIfSettled` completed the action on the resolution, the
+  schedule call that followed was refused, and the flush/frame measured from the end of the release or
+  click handler was never recorded. It was invisible to `droppedBoundaries`, which only sees a callback
+  that was scheduled and then outlived its session. The fix requires an action to have scheduled its own
+  last `input`/`release` pair before it can complete (ambient boundaries are not counted, because they
+  arrive after their enclosing input schedules). Product behaviour and the accepted/setup/rejected
+  classification are unchanged.
+- COVERAGE GAP IN THE PRESERVED BASELINE (W6 §0.2): the drag/edit, bend and authoring flush/frame figures
+  are press-phase and move-phase pairs; the post-release pair is missing. Every synchronous boundary
+  (`input`, `release`, `reactive`, `plan-apply`) remains useful; observed selection/pan press/move/wheel pairs remain phase evidence, but their
+  post-release coverage is also incomplete. The gap
+  is stated in the record rather than papered over, and W6 §10.3 presents the owner with the two honest
+  dispositions: accept the partial baseline, or authorize only the targeted replacement capture.
+- THE FINDING (W6 §0): straight layouts are already sluggish; curvature amplifies several measured
+  boundaries but is not necessary for the problem. Plan update work is a justified investigation target;
+  no single root cause or complete post-release settlement time is established.
+- REVIEW RECOMMENDATION: accept the explicitly partial baseline with its coverage deferral (W6 §10.3 A).
+  Do not run another broad capture campaign. After owner acceptance, close out the slice on the same
+  branch, then reconcile P23B.4's plan and architecture-review gate before implementation.
+- Local documentation reconciliation is uncommitted; PR HEAD remains `0bef0a48`. The working tree is
+  therefore not clean, although the baseline is byte-identical to the recorded capture.
 - The v4 report's "the cost is outside the canonical planner" conclusion is withdrawn: v5 separates
   `plan-apply` from `adapter`, and the v4 adapter bucket's owner-case values (p50 49.5/56.6 ms) reappear as
   the v5 `plan-apply` boundary (49.8/53.5 ms).
@@ -111,10 +139,14 @@ CURRENT:
   enforced budgets.
 
 NEXT:
-1. Owner's next direction on the single continuation PR (#87). Accept, return, or request the optional
-   native-Chrome comparison; the owner's standing direction is then to move on to the fix.
-2. On acceptance: run the same-branch slice-closeout/self-check, then reconcile P23B.4's plan and complete
-   its architecture-review/owner gate. Do not merge, accept, or start P23B.4 from this checkpoint.
+1. Owner's disposition on the single continuation PR (#87): **A** accept the partial baseline (explicitly
+   deferring the missing post-release flush/frame coverage described in W6 §0.2), or **B** authorize only
+   the targeted replacement capture that closes that gap through the corrected harness and the existing
+   recorder. No browser capture is performed automatically; the optional native-Chrome comparison stays
+   optional.
+2. On acceptance: run the same-branch slice-closeout/self-check, then reconcile P23B.4's plan with the
+   accepted findings and complete its architecture-review/owner gate. Do not merge, accept, or start
+   P23B.4 from this checkpoint.
 3. P26 planning may continue independently.
 
 OPEN:

@@ -27,6 +27,13 @@ import type {
  *    flush (a frame is at or after the flush of the same input), and no
  *    synchronous boundary is ever added to a deferred one.
  *
+ *    SCHEDULING. An action also completes only once its own last `input`/`release`
+ *    boundary has had that pair scheduled. Resolving a release (or an authoring
+ *    click) and scheduling its boundaries are separate call-site steps in that
+ *    order, so a press whose pair already settled used to complete the action at
+ *    the resolve and have the schedule refused — silently losing every
+ *    post-release flush and frame while still reporting zero dropped boundaries.
+ *
  * 2. ATTRIBUTION. `plan-apply` is the canonical planner/apply call the Plan
  *    viewport makes for an edit; `adapter` is the Three geometry adapter work
  *    that rebuilds render geometry. v4 filed the planner call under `adapter`,
@@ -72,6 +79,20 @@ export type P23BGesture = {
 	scheduled: boolean;
 	status: 'active' | 'completed' | 'incomplete';
 	syncEnd: number;
+	/**
+	 * Synchronous `input`/`release` boundaries recorded so far. Ambient boundaries
+	 * (`reactive`, `plan-apply`, `adapter`) are nested inside one of those and are
+	 * deliberately not counted: they arrive *after* their enclosing input scheduled
+	 * its pair, so counting them would make an action impossible to complete.
+	 */
+	syncCount: number;
+	/**
+	 * The `syncCount` whose deferred flush/frame pair has been scheduled. An action
+	 * cannot complete while this trails `syncCount`: the release is resolved before
+	 * its boundaries are scheduled, so completing on the resolution would refuse the
+	 * schedule that follows and silently drop the post-release flush and frame.
+	 */
+	scheduledThrough: number;
 	/** Measures buffered until the path is resolved, so none is ever misnamed. */
 	measures: SampleEntry[];
 };
@@ -266,6 +287,8 @@ export function p23bOpenGesture(
 		scheduled: false,
 		status: 'active',
 		syncEnd: performance.now(),
+		syncCount: 0,
+		scheduledThrough: 0,
 		measures: []
 	};
 	session.actions.push(gesture);
@@ -311,19 +334,27 @@ export function p23bMeasureGesture<T>(
 /**
  * Schedule an action's deferred boundaries. Both start where the synchronous
  * input ended (`gesture.syncEnd`), which is the origin rule this method version
- * exists to enforce.
+ * exists to enforce, and both are now required: scheduling records that the
+ * action's latest synchronous boundary is covered, so its outcome can be resolved
+ * first and the pair can no longer be dropped by an early completion.
  */
 export function p23bScheduleGestureBoundaries(gesture: P23BGesture | null): void {
 	if (!gesture || !writable(gesture)) return;
 	const origin = gesture.syncEnd;
 	gesture.scheduled = true;
+	gesture.scheduledThrough = gesture.syncCount;
 	gesture.pending += 2;
 	void tick().then(() => settleDeferred(gesture, 'svelte-flush', origin));
 	scheduleFrame(() => settleDeferred(gesture, 'browser-frame', origin));
 	completeIfSettled(gesture);
 }
 
-/** Name an action's path and outcome, and let it complete once it has settled. */
+/**
+ * Name an action's path and outcome. Completion still waits for the boundaries
+ * the action's own last synchronous boundary requires, so a caller that resolves
+ * before scheduling (every release and authoring-click call site does) keeps its
+ * post-release flush and frame.
+ */
 export function p23bResolveGesture(
 	gesture: P23BGesture | null,
 	path: BenchInteractionPath,
@@ -629,6 +660,7 @@ function publishActive(gesture: P23BGesture): void {
 
 function record(gesture: P23BGesture, entry: SampleEntry): void {
 	gesture.samples.push({ boundary: entry.boundary, duration: Math.max(0, entry.end - entry.start) });
+	if (entry.boundary === 'input' || entry.boundary === 'release') gesture.syncCount += 1;
 	if (gesture.path === null) {
 		gesture.measures.push(entry);
 		return;
@@ -665,6 +697,12 @@ function settleDeferred(gesture: P23BGesture, boundary: BenchInteractionBoundary
 
 function completeIfSettled(gesture: P23BGesture): void {
 	if (gesture.status !== 'active' || gesture.awaiting || !gesture.scheduled) return;
+	// The action's own last input/release must have its deferred pair scheduled
+	// first. Without this, a press whose pair already settled (so `pending` is 0)
+	// would complete the moment its release resolved the outcome, and the schedule
+	// call right after it would be refused as not-writable — the post-release flush
+	// and frame would never be recorded, and nothing would be counted as dropped.
+	if (gesture.scheduledThrough < gesture.syncCount) return;
 	if (gesture.pending > 0 || gesture.path === null) return;
 	gesture.outcome ??= 'unclassified';
 	gesture.status = 'completed';

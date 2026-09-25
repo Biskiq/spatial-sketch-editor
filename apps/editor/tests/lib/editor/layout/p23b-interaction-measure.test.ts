@@ -465,3 +465,119 @@ describe('P23B capture session lifecycle', () => {
 		expect(p23bInteractionCaptureLedger()!.actions).toEqual([]);
 	});
 });
+
+/**
+ * POST-RELEASE SCHEDULING. Every release and authoring-click call site resolves
+ * the outcome *before* it schedules that boundary's deferred pair, and a press
+ * whose pair already settled leaves `pending` at zero. Completing on the resolve
+ * therefore refused the schedule and lost the post-release flush and frame while
+ * still reporting zero dropped boundaries — so the press's pair is fully drained
+ * before the release in every test below, which is the case the earlier suite
+ * never hit.
+ */
+describe('P23B post-release boundary scheduling', () => {
+	it('records a release flush and frame exactly once, from the end of the release handler', async () => {
+		const press = p23bOpenGesture('selection', { pointerId: 91, deferPath: true })!;
+		handle(press, 'selection', 'input', 100);
+		p23bScheduleGestureBoundaries(press);
+		await runDeferred(20, 10); // the press pair is fully settled before the release
+
+		const release = p23bGestureForPointer(91)!;
+		handle(release, 'plan-drag-edit', 'release', 40);
+		p23bResolveGesture(release, 'plan-drag-edit', 'accepted');
+		// Resolving must not complete the action: its own release pair is not scheduled yet.
+		expect(release.status).toBe('active');
+		p23bScheduleGestureBoundaries(release);
+		expect(release.status).toBe('active');
+		await runDeferred(50, 25);
+
+		const ledger = p23bEndInteractionCapture()!;
+		const action = ledger.actions[0]!;
+		expect(action.status).toBe('completed');
+		expect(action.samples.map((sample) => sample.boundary)).toEqual([
+			'input', 'svelte-flush', 'browser-frame', 'release', 'svelte-flush', 'browser-frame'
+		]);
+		// One pair per synchronous boundary, and the second pair is measured from the
+		// release handler's completion (140) rather than reusing the press's origin.
+		expect(action.samples.filter((sample) => sample.boundary === 'svelte-flush').map((sample) => sample.duration)).toEqual([20, 50]);
+		expect(action.samples.filter((sample) => sample.boundary === 'browser-frame').map((sample) => sample.duration)).toEqual([30, 75]);
+		expect(ledger.droppedBoundaries).toBe(0);
+
+		const summary = summarize(ledger, 0);
+		const flush = summary.interactions['plan-drag-edit']!['svelte-flush'] as { accepted: { count: number } };
+		const frame = summary.interactions['plan-drag-edit']!['browser-frame'] as { accepted: { count: number } };
+		expect(flush.accepted.count).toBe(2);
+		expect(frame.accepted.count).toBe(2);
+	});
+
+	it('keeps an authoring commit\'s post-click pair and its classification', async () => {
+		const setup = p23bOpenGesture('wall-authoring', { pointerId: 92, deferPath: true, deferOutcome: true })!;
+		handle(setup, 'wall-authoring', 'input', 1);
+		p23bScheduleGestureBoundaries(setup);
+		await runDeferred(20, 10);
+		handle(setup, 'wall-authoring', 'release', 90);
+		p23bResolveGesture(setup, 'wall-authoring', 'setup');
+		expect(setup.status).toBe('active');
+		p23bScheduleGestureBoundaries(setup);
+		await runDeferred(30, 8);
+
+		const commit = p23bOpenGesture('wall-authoring', { pointerId: 93, deferPath: true, deferOutcome: true })!;
+		handle(commit, 'wall-authoring', 'input', 1);
+		p23bScheduleGestureBoundaries(commit);
+		await runDeferred(20, 10);
+		handle(commit, 'wall-authoring', 'release', 90);
+		p23bResolveGesture(commit, 'wall-authoring', 'accepted');
+		expect(commit.status).toBe('active');
+		p23bScheduleGestureBoundaries(commit);
+		await runDeferred(30, 8);
+
+		const ledger = p23bEndInteractionCapture()!;
+		expect(ledger.actions.map((action) => action.status)).toEqual(['completed', 'completed']);
+		for (const action of ledger.actions) {
+			expect(action.samples.filter((sample) => sample.boundary === 'svelte-flush').map((sample) => sample.duration)).toEqual([20, 30]);
+			expect(action.samples.filter((sample) => sample.boundary === 'browser-frame').map((sample) => sample.duration)).toEqual([30, 38]);
+		}
+
+		const summary = summarize(ledger, 0);
+		const release = summary.interactions['wall-authoring']!['release'] as {
+			accepted: { count: number; p50: number };
+			outcomes: Record<string, number>;
+		};
+		// The click that started the chain is still not an accepted Wall commit.
+		expect(release.outcomes).toEqual({ setup: 1, accepted: 1 });
+		expect(release.accepted).toMatchObject({ count: 1, p50: 90 });
+	});
+
+	it('never lets a pending release pair cross into the next capture session', async () => {
+		const firstSession = p23bInteractionCaptureLedger()!.sessionId;
+		const press = p23bOpenGesture('selection', { pointerId: 94, deferPath: true })!;
+		handle(press, 'selection', 'input', 100);
+		p23bScheduleGestureBoundaries(press);
+		await runDeferred(20, 10);
+
+		const release = p23bGestureForPointer(94)!;
+		handle(release, 'plan-drag-edit', 'release', 40);
+		p23bResolveGesture(release, 'plan-drag-edit', 'accepted');
+		p23bScheduleGestureBoundaries(release); // the release pair is still in flight
+
+		const closed = p23bEndInteractionCapture()!;
+		expect(closed.actions[0]!.status).toBe('incomplete');
+		expect(closed.settled).toBe(false);
+
+		const secondSession = p23bBeginInteractionCapture();
+		await runDeferred(5, 5);
+
+		const second = p23bInteractionCaptureLedger(secondSession)!;
+		expect(second.actions).toEqual([]);
+		expect(second.droppedBoundaries).toBe(0);
+		// Discarded on the session that scheduled them, where they are visible as drops.
+		const first = p23bInteractionCaptureLedger(firstSession)!;
+		expect(first.droppedBoundaries).toBe(2);
+		// The press pair settled inside its own session and stays there; only the
+		// release pair was discarded, on the session that scheduled it.
+		expect(first.actions[0]!.samples.map((sample) => sample.boundary)).toEqual([
+			'input', 'svelte-flush', 'browser-frame', 'release'
+		]);
+		expect(first.actions[0]!.samples.filter((sample) => sample.boundary === 'release')).toHaveLength(1);
+	});
+});

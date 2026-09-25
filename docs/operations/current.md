@@ -5,18 +5,22 @@ CHILD: P23B.0-durable — sequence step 10; owner ratified plan revision `4b3203
        O-1–O-4 and authorized W1–W7, then amended the measurement scope on 2026-09-25 (§10 S-1…S-7).
        Stage B is implementation-review-ready at checkpoint `checkpoints/p23b0-stage-b.md`: W1–W2 are
        committed at `89ec1fa2`, W3–W5 implementation at `e26bb623`, the recording corrections at
-       `805fed25`…`b9a492da`, the review correction round at `d4b4763f`/`2021e10e`/`be525f7c`, and the
+       `805fed25`…`b9a492da`, the review correction round at `d4b4763f`/`2021e10e`/`be525f7c`, the second
+       correction round at `0bef0a48` (post-release boundary scheduling), and the
        post-policy, pre-optimization method-v5 baseline is recorded in `apps/editor/src/lib/bench/
        baselines/g3-baseline.json` (SHA-256 `5534926e…`) with the W6 measurement report and W7
        budget-policy record in the P23B.0 workspace. The interaction capture covers the owner workload
        plus the size-40 straight and all-curved matrix cells at one shared 19.292586 px/m viewport in one
        browser session.
-       HEADLINE FINDING: every fixture is slow, including the 40-straight-wall control (accepted Wall
-       authoring 262.6 ms, accepted rigid edit 208.4 ms); curvature amplifies the Plan reactive
-       render/flush path (15–16× on flush boundaries) rather than being the root cause, and Plan
-       pan/zoom — which plans nothing — is the most curvature-sensitive boundary in the record. The
-       owner's own three-fixture manual capture is recorded as owner-supplied evidence (W6 §7) and is not
-       in the baseline.
+       HEADLINE FINDING: the straight control is sluggish (accepted authoring 262.6 ms, rigid edit
+       208.4 ms); curvature is not necessary and amplifies several observed costs. Plan update work is
+       a justified investigation target, not a proved explanation for every editing delay.
+       COVERAGE: the preserved capture predates corrected post-release scheduling. Synchronous and
+       observed press/move/wheel measurements remain useful; missing post-release pairs include
+       selection/pan releases as well as edits. No complete action-settlement claim is supported.
+       REVIEW RECOMMENDATION: accept the explicitly partial baseline (W6 §10.3 disposition A), then
+       close out the slice and reconcile P23B.4's plan and architecture gate. No additional capture
+       campaign is recommended. Owner acceptance remains pending.
        The single continuation PR is the review surface; the slice is not accepted and its PR is not
        merged. P23B.4 remains gated until P23B.0's baseline is accepted.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
@@ -35,11 +39,12 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. Give the next direction. Review P23B.0-durable Stage B on the single continuation branch/PR: the
+1. Recommended: owner accepts the explicitly partial P23B.0 baseline (W6 §10.3 A). Review Stage B on the single continuation branch/PR: the
    recorded method-v5 baseline, the W6 measurement report and the W7 budget-policy record, read together
-   with `checkpoints/p23b0-stage-b.md`. The finding to read first is W6 §0. Accept, return, or request the
-   optional native-Chrome comparison; do not merge by default and do not begin P23B.4 until the baseline
-   is accepted. Owner direction 2026-09-25 stands: report, then move on to the fix once accepted.
+   with `checkpoints/p23b0-stage-b.md`. Read W6 §0 first, then §0.2 (the post-release coverage gap) and
+   §10.3 (the two dispositions: accept the partial baseline, or authorize only the targeted replacement
+   capture through the corrected harness). Do not merge by default and do not begin P23B.4 until a
+   baseline is accepted. Owner direction 2026-09-25 stands: report, then move on to the fix once accepted.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
 3. P26 planning may continue in parallel. Read
@@ -83,13 +88,11 @@ BLOCKER:
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
 
-READY FOR REVIEW (2026-09-24):
-- P23B.0-durable Stage B recorded its post-policy, pre-optimization method-v4 baseline (naming P23B.3a's
-  policy commit `c11938fe`) in one clean-tree browser session, with W6 per-path results and W7 budget
-  policy recorded in the P23B.0 workspace. All gates pass on the recorded HEAD (PERF, architecture, the
-  full suite, `check`, production build) and the baseline is byte-identical before and after the test
-  run. The owner approved the preview browser as the measurement browser and deferred the 3D guided
-  capture; both decisions travel in the record. Nothing is accepted, merged, or reopened by this.
+READY FOR REVIEW:
+- Corrected implementation is at `0bef0a48`; the preserved method-v5 capture is at `be525f7c`.
+  W6 distinguishes the verified implementation from its partial capture coverage. Local documentation
+  reconciliation remains uncommitted; do not describe the current worktree as clean or these edits as
+  already present in PR #87. Baseline bytes and enforced budgets are unchanged.
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
