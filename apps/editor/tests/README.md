@@ -162,6 +162,18 @@ The recorder requires the clean-tree, method-v4 browser report and validates
 all seven fixture identities before writing `g3-baseline.json`. Tests never
 write the checked-in baseline.
 
+The P23B.5 reuse ratchet (`…/p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json`)
+follows the same rule, and the perf-lane gate fails when its counts drift:
+
+```bash
+npm run reuse:record -w @portfolio/editor -- --reason "why the counts moved"
+```
+
+The reason is required, the source tree must be clean (so `recordedCommit` names
+the state that produced the counts — commit the change first, re-record, then
+commit the record), and the recorder refuses to write when the shared invariant
+checker reports a violation. No test writes the record.
+
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
 visitor boundary through shared code. Membership is executable fact in

@@ -2,9 +2,11 @@
   "identityScope": "These are deterministic request/miss/hit COUNTS produced by fixed drag points on committed fixtures through the shipped transient path — not a timing baseline, not a budget target, and not a claim about any machine. They are identical on any machine and in any run order.",
   "changePolicy": "This file is a RATCHET, not a target: it exists so a reuse change is a reviewable diff instead of an unnoticed drift. Moving a number is allowed, but only through `npm run reuse:record -w @portfolio/editor -- --reason \"…\"`, which re-measures the cases, requires that reason, refuses a dirty source tree (so recordedCommit names the state that produced the counts) and refuses any measurement that breaks an absolute invariant. The initial entry was hand-authored before that CLI existed; from here the recorder is the only writer and no test ever writes this file. A failure in the gate is not automatically a bug — it is a question whose answer belongs in recordedReason. The invariants asserted beside it are NOT re-recordable: they are structural properties of the store, and a violation there is always a bug.",
   "outOfScope": "This record does not add a repository budget metric: `BUDGETS` and `ENFORCED_BUDGET_METRICS` are unchanged, no sample-store budget is enforced, and the checked-in P23B.0 baseline `g3-baseline.json` is neither read nor re-recorded by this gate.",
-  "recordedReason": "Initial record (owner-approved extra scope, plan 2026-09-22-P23B.5-caching-reuse-optimization.md §0.6): pins the gesture-scoped preflight reuse the slice shipped, so the live readout's numbers cannot drift unnoticed.",
+  "recordedBy": "npm run reuse:record",
+  "recordedReason": "initial entry re-measured on the shipped transient path; the counts are unchanged and npm run reuse:record owns them from here",
   "recordedAt": "2026-09-25",
-  "recordedCommit": "a3c888b6",
+  "recordedCommit": "e080b35b",
+  "recordedTree": "clean",
   "method": {
     "path": "transientArchitectureEdit({ gesture, baseline, moved: true }) — the shipped Plan-viewport direct-architecture gesture",
     "shape": "junction-move on the first Junction, three pointermoves of +0.05 / +0.10 / +0.15 m",
@@ -15,8 +17,16 @@
       "id": "curved-40-junction-drag",
       "fixture": "p23b-40-wall-all-curved-v1",
       "moves": 3,
-      "proposalRequestsPerMove": [2, 2, 2],
-      "preflightMissesPerMove": [40, 2, 2],
+      "proposalRequestsPerMove": [
+        2,
+        2,
+        2
+      ],
+      "preflightMissesPerMove": [
+        40,
+        2,
+        2
+      ],
       "unscopedPreflightRequests": 120,
       "counters": {
         "requests": 120,
@@ -33,8 +43,16 @@
       "id": "straight-40-junction-drag",
       "fixture": "p23b-40-wall-straight-v1",
       "moves": 3,
-      "proposalRequestsPerMove": [2, 2, 2],
-      "preflightMissesPerMove": [0, 0, 0],
+      "proposalRequestsPerMove": [
+        2,
+        2,
+        2
+      ],
+      "preflightMissesPerMove": [
+        0,
+        0,
+        0
+      ],
       "unscopedPreflightRequests": 0,
       "counters": {
         "requests": 0,

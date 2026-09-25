@@ -253,9 +253,11 @@ P23B.5  caching and reuse optimization — IMPLEMENTED 2026-09-25 on `P23B.5`, A
          scope item after implementation: those counters are now a perf-lane GATE with a committed ratchet
          (`reuse-counter-ratchet.json`), so reuse drift is a reviewable diff instead of a silent change —
          absolute invariants (including that the scope owns exactly the preflight requests, never the
-         unscoped proposal stage) plus recorded counts that move only with a recorded reason. It adds no
-         repository budget metric, asserts no timing threshold and neither reads nor re-records
-         `g3-baseline.json`. No release/validation/history behaviour changed and landed M-1 is preserved.
+         unscoped proposal stage) plus recorded counts that move only through
+         `npm run reuse:record --reason "…"`, which requires that reason, refuses a dirty source tree and
+         refuses a measurement that breaks an invariant (mirroring `bench:record` as the P23B.0 baseline's
+         only writer; no test writes the record). It adds no repository budget metric, asserts no timing
+         threshold and neither reads nor re-records `g3-baseline.json`. No release/validation/history behaviour changed and landed M-1 is preserved.
          Implementation status is NOT acceptance; no closeout or merge is implied.
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
