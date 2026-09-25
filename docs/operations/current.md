@@ -61,14 +61,21 @@ NEXT:
    `npm run reuse:record --reason "…"`). Release-scope reuse remains unreachable and
    unimplemented (each release re-parses its candidate). Do NOT claim release reuse, re-own the
    sample store, rewrite the baseline or restart P23B.4.
-   CURRENT STEP: the owner-authorized MEASUREMENT-ONLY step (phase README routing amendment,
-   2026-09-25) — P23B.7 S1 extended to the wall-authoring release plus P23B.6 S1, on a new
-   branch from updated `main`: tie the pooled p2311 marks to their enclosing action, add
-   DEV-only marks on the release path outside `plan-apply` (baseline restore, commit/history,
-   selection, the whole wall-authoring release), output a containment tree per action with an
-   explicit unattributed remainder and advisory numbers, plus one post-release flush/frame
-   re-capture as a separate record. It ends at a RANKING and STOPS for the owner's ruling;
-   P23B.6–P23B.8 optimization work stays unauthorized.
+   CURRENT STEP: the owner-authorized MEASUREMENT-ONLY step is EXECUTED on `p23b-measurement`
+   (two commits, unpushed), per the phase README routing amendment of 2026-09-25 — P23B.7 S1
+   extended to the wall-authoring release plus P23B.6 S1. Every `p2311:` component mark is now
+   bound to the action and outcome whose boundary interval encloses it, with exclusive time only
+   where containment holds, an explicit unbound remainder per action and an unattributed pool;
+   three release-path marks were added (`selection-hit`, `gesture-commit`, `authoring-release`).
+   Record + ranking → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-record.md
+   HEADLINE: render-geometry build/install dominates every accepted release on the curved owner
+   AND the straight control (restore-mesh-install 85–97 ms p50, mesh-prebuild 18–85 ms p50), the
+   whole-document preflight gate is single-digit ms per move (1.5 straight / 3.6–3.9 curved —
+   matching the owner's 1.7/7.8/9.9), and the curved wall-authoring release leaves ~490 ms of its
+   700 ms p50 unnamed. P23B.6 is named first; P23B.7's gate is named but not first; P23B.8 has no
+   measured demand. The step STOPS here for the owner's ruling; P23B.6–P23B.8 optimization work
+   stays unauthorized and nothing is merged. Coverage limit: the all-curved-40 capture aborted on
+   the driver's own 6000 ms action guard (not changed).
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
