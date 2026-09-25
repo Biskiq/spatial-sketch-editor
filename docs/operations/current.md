@@ -1,10 +1,13 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.4-compilation-invalidation — SHIPPED 2026-09-25 on `P23B4`
-       (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`; F1–F3 corrections
-       ACCEPTED with no remaining blockers; stubs + anchor `4cbcc370`, tag
-       `closed/p23b.4`). U-1 declined, Rust/WASM undecided until P23B.8.
+CHILD: P23B.5-caching-reuse — PLAN RATIFIED + S0 EXECUTED 2026-09-25 on `P23B.5`
+       (plan revision `f26e2319`; S0 disposition PREFLIGHT-ONLY recorded in plan §0;
+       M-3 implementation unauthorized and S4 not taken pending a separate owner
+       scope ruling). Prior child P23B.4-compilation-invalidation SHIPPED
+       2026-09-25 on `P23B4` (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`;
+       stubs + anchor `4cbcc370`, tag `closed/p23b.4`). U-1 declined, Rust/WASM
+       undecided until P23B.8.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -38,14 +41,18 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.4 SHIPPED 2026-09-25 (PR #88; F1–F3 corrections ACCEPTED, no remaining
-   blockers; M-1 threaded, M-2a extent scan shipped, M-2b DROPPED at X-6; plan +
-   evidence compacted to closed stubs, anchor `4cbcc370`, tag `closed/p23b.4`).
-   Performance acceptance covers reduced computation and advisory Node timings;
-   browser/settlement improvements remain unproven. Next in sequence: P23B.5
-   (caching/reuse, PLANNED unratified) — reconcile its plan against the shipped
-   key grammar and seek owner ratification before implementation. Do NOT begin
-   P23B.5 implementation, rewrite the baseline, or restart P23B.4.
+1. P23B.4 SHIPPED 2026-09-25 (PR #88; M-1 threaded, M-2a extent scan shipped,
+   M-2b DROPPED at X-6; plan + evidence compacted to closed stubs, anchor
+   `4cbcc370`, tag `closed/p23b.4`). Performance acceptance covers reduced
+   computation and advisory Node timings; browser/settlement improvements remain
+   unproven. Current step: P23B.5 — the reconciled plan (`f26e2319`) is RATIFIED
+   and S0–S3 authorized; S0 is EXECUTED and recorded PREFLIGHT-ONLY. Release-scope
+   M-3 reuse is NOT reachable (each release re-parses its candidate; the only
+   reachable cross-chain identity is preflight→preflight on a frozen baseline,
+   already routed to P23B.7 by the dependency map). ONE open owner decision:
+   authorize a bounded gesture-scoped sample owner, or drop M-3 contract-only.
+   Do NOT begin M-3/S4 implementation before that ruling, rewrite the baseline,
+   or restart P23B.4.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
@@ -66,6 +73,8 @@ P23B.0-durable Stage A closed handoff stub → ../roadmap/p23b-geometry-performa
 P23B.0-durable closed W6 record (finding + coverage limit + preservation report) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
 P23B.0-durable closed W7 policy stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
 P23B.4 closed plan + evidence stubs (SHIPPED 2026-09-25, anchor `4cbcc370`, tag `closed/p23b.4`) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md + ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
+P23B.5 plan with RATIFICATION + S0 disposition record (2026-09-25) → ../roadmap/p23b-geometry-performance/p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md §0
+P23B.5 S0 evidence suite (bounded test-only probes P1–P8) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
@@ -79,8 +88,10 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.4 shipped (M-1 threaded, M-2a extent scan, M-2b DROPPED at X-6); P23B.5–P23B.8
-  remain unauthorized. No further capture is required or authorized; U-1 declined.
+- P23B.4 shipped (M-1 threaded, M-2a extent scan, M-2b DROPPED at X-6). P23B.5's plan is
+  RATIFIED and S0 is executed (PREFLIGHT-ONLY); M-3 implementation and S4 remain unauthorized
+  pending the owner's separate preflight-only scope ruling. P23B.6–P23B.8 remain unauthorized.
+  No further capture is required or authorized; U-1 declined.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a/P23B.0.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.

@@ -23,6 +23,7 @@ P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was acce
 2026-09-24 after S1–S8 and OR-D12-1…6 passed. S5/S6 re-reviews are complete by owner confirmation; no
 separate GitHub review entries exist for them. Step 10 (P23B.0-durable) was ratified in Stage A on 2026-09-24 (revision `4b32034f`, O-1–O-4, W1–W7; scope amended 2026-09-25 §10 S-1…S-7), ran Stage B, was returned for correction on five findings plus the S-8 scheduling defect, and recorded the method-v5 baseline (`be525f7c`, SHA-256 `5534926e…`). The owner accepted the explicitly partial baseline (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and PR #87 merged 2026-09-25 (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`). P23B.0-durable is SHIPPED and closed (recovery anchor `d7b9de4e`, tag `closed/p23b.0`); its plan, W6, W7 and Stage A handoff are path-preserving closed stubs.
 The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan was RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first), the F1–F3 correction batch was ACCEPTED with no remaining blockers, and P23B.4 is SHIPPED (PR #88, anchor `4cbcc370`, tag `closed/p23b.4`; stubs at their own paths).
+P23B.5's reconciled plan (`f26e2319`) was ACCEPTED and RATIFIED by the owner on 2026-09-25, authorizing S0–S3; S0 then executed and recorded the disposition PREFLIGHT-ONLY: no baseline→candidate (release) reuse is reachable (each release re-parses its candidate into fresh centerline objects, so the object-identity key cannot hit across stages or releases), restore/undo/redo issue no sampling at all, and the only reachable cross-chain identity is preflight→preflight inside a frozen-baseline gesture (measured 120 requests → 44 derivations / 76 hits over three pointermoves, with full-result equality). That narrower scope is NOT assumed authorized and needs a separate owner scope ruling (it is already routed to P23B.7 by the dependency map); M-3 implementation is not authorized and S4 is not taken.
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -31,8 +32,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25); P23B.5–P23B.8 remain unauthorized. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. Next: P23B.5 (caching/reuse, PLANNED unratified — needs reconciliation against the shipped key grammar and owner ratification before implementation). The Stage A packet, the accepted plan and its scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5's plan is RATIFIED and its S0–S3 work is authorized; S0 is executed and recorded PREFLIGHT-ONLY, so M-3 implementation stays unauthorized pending the owner's separate scope ruling. P23B.6–P23B.8 remain unauthorized. No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is RATIFIED with S0 executed: its plan §0 records the PREFLIGHT-ONLY disposition and the one open owner decision (authorize a bounded gesture-scoped sample owner, or drop M-3 contract-only and leave the preflight scope with P23B.7). Do NOT begin M-3/S4 implementation before that ruling. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -111,6 +112,17 @@ a `codex/` prefix and the actual head is `P23B4`, which is the branch of record)
 `slice-closeout` order, and slice scope/identity/order are unchanged. P23B.4 implementation awaits
 owner approval of the reconciled plan.
 
+## Owner-authorized execution routing amendment — 2026-09-25 (P23B.5 step)
+
+P23B.4 shipped via PR #88 (squash `4cbcc370`, closed above). For the P23B.5 step the owner ratified the
+reconciled plan (`f26e2319`) and authorized S0–S3 execution on the existing `P23B.5` branch, with
+**one PR for all of P23B.5** — no separate S0 PR, and no slice close, merge or S4 start from S0. S0
+evidence and the ratification/status updates are committed and pushed to that branch for the eventual
+full implementation review. S4 stays authorized-within-scope only: it needs an S0-approved operation
+and owner, and S0 recorded PREFLIGHT-ONLY, whose narrower scope needs a separate owner scope ruling
+before implementation. The ratified `SEQUENCE`, sequential slice review/acceptance/`slice-closeout`
+order, and slice scope/identity/order are unchanged.
+
 ```text
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order — including the OWNER-APPROVED
@@ -148,6 +160,7 @@ child plans and execution status →
    p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
      (SHIPPED; closed evidence stub carrying the preservation report)
   p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md
+    (RATIFIED + S0 executed 2026-09-25; §0 records the ratification and the PREFLIGHT-ONLY disposition)
   p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
   p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
   p23b.8-rust-wasm-evaluation/2026-09-22-P23B.8-rust-wasm-evaluation.md
@@ -220,7 +233,11 @@ P23B.4  compilation + invalidation optimization — SHIPPED 2026-09-25. Plan RAT
          tag `closed/p23b.4`). Performance acceptance covers reduced computation and
          advisory Node timings; browser/settlement improvements remain unproven.
          U-1 declined; Rust/WASM undecided until P23B.8.
-P23B.5  caching and reuse optimization — PLANNED, unratified
+P23B.5  caching and reuse optimization — PLAN RATIFIED 2026-09-25 (S0–S3 authorized); S0 EXECUTED and
+         recorded PREFLIGHT-ONLY. Release-scope M-3 reuse is NOT reachable; the only reachable cross-chain
+         identity (preflight→preflight on a frozen baseline) needs a separate owner scope ruling and is
+         routed to P23B.7 by the dependency map. M-3 implementation unauthorized; S4 not taken; no
+         production code changed and landed M-1 preserved.
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
