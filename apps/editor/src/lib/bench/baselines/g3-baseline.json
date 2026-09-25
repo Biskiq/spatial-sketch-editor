@@ -1,5 +1,6 @@
 {
-  "methodVersion": 3,
+  "methodVersion": 4,
+  "methodVersionReason": "v4 records the bounded editor paths with separate input, release, reactive, adapter, Svelte-flush, and browser-frame boundaries; added interaction timings remain advisory.",
   "budgets": {
     "layout-compile": {
       "target": 30,
@@ -67,55 +68,55 @@
       "tier": "chopin",
       "roomCount": 7,
       "provenance": {
-        "commitSha": "c27400cd4644e463fd8b72f1c22dbe9e76e8899c",
-        "date": "2026-08-14T20:44:47.560Z",
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "date": "2026-09-25T00:33:36.344Z",
         "deviceProfile": "node",
         "warmup": 2,
         "samples": 5,
-        "methodVersion": 3,
-        "treeDirty": true,
-        "contentHash": "840833e926f05542"
+        "methodVersion": 4,
+        "treeDirty": false,
+        "contentHash": "9a59d9178e577ebb"
       },
       "samples": [
         {
           "metric": "layout-compile",
           "unit": "ms",
-          "value": 17.56754100000012,
-          "p50": 17.56754100000012,
-          "p95": 21.18883299999993
+          "value": 3.9199579999999514,
+          "p50": 3.9199579999999514,
+          "p95": 6.332792000000154
         },
         {
           "metric": "plan-render-build",
           "unit": "ms",
-          "value": 0.2067500000000564,
-          "p50": 0.2067500000000564,
-          "p95": 0.30750000000011823
+          "value": 0.09345799999982773,
+          "p50": 0.09345799999982773,
+          "p95": 0.13766599999985374
         },
         {
           "metric": "wall-mesh-build",
           "unit": "ms",
-          "value": 34.54424999999992,
-          "p50": 34.54424999999992,
-          "p95": 42.317666000000145
+          "value": 13.473124999999982,
+          "p50": 13.473124999999982,
+          "p95": 13.723875000000135
         },
         {
           "metric": "hit-test",
           "unit": "ms",
-          "value": 0.2528083349999997,
-          "p50": 0.2528083349999997,
-          "p95": 0.26849458000000026
+          "value": 0.11388624999999934,
+          "p50": 0.11388624999999934,
+          "p95": 0.1146266700000001
         },
         {
           "metric": "snap-query",
           "unit": "ms",
-          "value": 0.001545414999999366,
-          "p50": 0.001545414999999366,
-          "p95": 0.001729374999999891
+          "value": 0.0005897900000002209,
+          "p50": 0.0005897900000002209,
+          "p95": 0.0006329149999999117
         },
         {
           "metric": "compiled-memory",
           "unit": "bytes",
-          "value": 2201474
+          "value": 2280624
         },
         {
           "metric": "cache-key-code-units",
@@ -125,9 +126,9 @@
         {
           "metric": "plan-render-initial",
           "unit": "ms",
-          "value": 0.5219580000000406,
-          "p50": 0.5219580000000406,
-          "p95": 1.0174160000001393
+          "value": 0.16141700000002857,
+          "p50": 0.16141700000002857,
+          "p95": 0.24175000000013824
         },
         {
           "metric": "svg-node-count",
@@ -137,16 +138,16 @@
         {
           "metric": "plan-render-work-pan-zoom",
           "unit": "ms",
-          "value": 0.9576660000000174,
-          "p50": 0.9576660000000174,
-          "p95": 1.2345000000000255
+          "value": 0.20775000000003274,
+          "p50": 0.20775000000003274,
+          "p95": 1.0608750000001237
         },
         {
           "metric": "plan-render-work-edit",
           "unit": "ms",
-          "value": 0.6770419999998012,
-          "p50": 0.6770419999998012,
-          "p95": 0.9005829999998696
+          "value": 0.23783300000013696,
+          "p50": 0.23783300000013696,
+          "p95": 0.2598329999998441
         },
         {
           "metric": "three-object-estimate",
@@ -175,67 +176,67 @@
       "seed": 101,
       "roomCount": 10,
       "provenance": {
-        "commitSha": "c27400cd4644e463fd8b72f1c22dbe9e76e8899c",
-        "date": "2026-08-14T20:44:48.490Z",
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "date": "2026-09-25T00:33:36.758Z",
         "deviceProfile": "node",
         "warmup": 2,
         "samples": 5,
-        "methodVersion": 3,
-        "treeDirty": true,
-        "contentHash": "840833e926f05542"
+        "methodVersion": 4,
+        "treeDirty": false,
+        "contentHash": "9a59d9178e577ebb"
       },
       "samples": [
         {
           "metric": "layout-compile",
           "unit": "ms",
-          "value": 39.89945799999987,
-          "p50": 39.89945799999987,
-          "p95": 45.47462499999983
+          "value": 15.089874999999893,
+          "p50": 15.089874999999893,
+          "p95": 16.066583000000037
         },
         {
           "metric": "plan-render-build",
           "unit": "ms",
-          "value": 0.16716700000006313,
-          "p50": 0.16716700000006313,
-          "p95": 0.1705419999998412
+          "value": 0.10804200000006858,
+          "p50": 0.10804200000006858,
+          "p95": 0.11845800000014606
         },
         {
           "metric": "wall-mesh-build",
           "unit": "ms",
-          "value": 63.14250000000038,
-          "p50": 63.14250000000038,
-          "p95": 71.29012499999999
+          "value": 192.76962500000013,
+          "p50": 192.76962500000013,
+          "p95": 307.6125420000003
         },
         {
           "metric": "hit-test",
           "unit": "ms",
-          "value": 0.27299125,
-          "p50": 0.27299125,
-          "p95": 0.29017020500000174
+          "value": 0.15517728999999916,
+          "p50": 0.15517728999999916,
+          "p95": 0.4750170800000001
         },
         {
           "metric": "snap-query",
           "unit": "ms",
-          "value": 0.0008043750000001637,
-          "p50": 0.0008043750000001637,
-          "p95": 0.003059375000000273
+          "value": 0.0005585400000018126,
+          "p50": 0.0005585400000018126,
+          "p95": 0.0006554200000005039
         },
         {
           "metric": "compiled-memory",
           "unit": "bytes",
-          "value": 2903689
+          "value": 2983214
         },
         {
           "metric": "cache-key-code-units",
           "unit": "count",
-          "value": 795557
+          "value": 795609
         },
         {
           "metric": "plan-render-initial",
           "unit": "ms",
-          "value": 0.8871250000001965,
-          "p50": 0.8871250000001965,
-          "p95": 1.273834000000079
+          "value": 0.30454199999985576,
+          "p50": 0.30454199999985576,
+          "p95": 0.327125000000251
         },
         {
           "metric": "svg-node-count",
@@ -245,16 +246,16 @@
         {
           "metric": "plan-render-work-pan-zoom",
           "unit": "ms",
-          "value": 1.1057089999999334,
-          "p50": 1.1057089999999334,
-          "p95": 1.2518330000002607
+          "value": 0.35579199999983757,
+          "p50": 0.35579199999983757,
+          "p95": 0.37137499999971624
         },
         {
           "metric": "plan-render-work-edit",
           "unit": "ms",
-          "value": 1.526375000000371,
-          "p50": 1.526375000000371,
-          "p95": 4.055417000000034
+          "value": 0.3685409999998228,
+          "p50": 0.3685409999998228,
+          "p95": 1.2166250000000218
         },
         {
           "metric": "three-object-estimate",
@@ -283,67 +284,67 @@
       "seed": 202,
       "roomCount": 100,
       "provenance": {
-        "commitSha": "c27400cd4644e463fd8b72f1c22dbe9e76e8899c",
-        "date": "2026-08-14T20:44:49.931Z",
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "date": "2026-09-25T00:33:38.848Z",
         "deviceProfile": "node",
         "warmup": 2,
         "samples": 5,
-        "methodVersion": 3,
-        "treeDirty": true,
-        "contentHash": "840833e926f05542"
+        "methodVersion": 4,
+        "treeDirty": false,
+        "contentHash": "9a59d9178e577ebb"
       },
       "samples": [
         {
           "metric": "layout-compile",
           "unit": "ms",
-          "value": 416.82154100000025,
-          "p50": 416.82154100000025,
-          "p95": 418.5237500000003
+          "value": 134.84495799999968,
+          "p50": 134.84495799999968,
+          "p95": 158.35866700000042
         },
         {
           "metric": "plan-render-build",
           "unit": "ms",
-          "value": 2.0426669999997102,
-          "p50": 2.0426669999997102,
-          "p95": 11.225875000000087
+          "value": 1.2782079999997222,
+          "p50": 1.2782079999997222,
+          "p95": 10.138166000000638
         },
         {
           "metric": "wall-mesh-build",
           "unit": "ms",
-          "value": 604.7554170000003,
-          "p50": 604.7554170000003,
-          "p95": 634.1684170000008
+          "value": 267.60220799999934,
+          "p50": 267.60220799999934,
+          "p95": 279.98733300000004
         },
         {
           "metric": "hit-test",
           "unit": "ms",
-          "value": 3.5505997899999966,
-          "p50": 3.5505997899999966,
-          "p95": 4.420941039999998
+          "value": 1.8382641650000004,
+          "p50": 1.8382641650000004,
+          "p95": 1.9319843750000019
         },
         {
           "metric": "snap-query",
           "unit": "ms",
-          "value": 0.009569170000004306,
-          "p50": 0.009569170000004306,
-          "p95": 0.011415419999993901
+          "value": 0.006579790000005232,
+          "p50": 0.006579790000005232,
+          "p95": 0.00777353999999832
         },
         {
           "metric": "compiled-memory",
           "unit": "bytes",
-          "value": 29464213
+          "value": 30295456
         },
         {
           "metric": "cache-key-code-units",
           "unit": "count",
-          "value": 8156637
+          "value": 8156640
         },
         {
           "metric": "plan-render-initial",
           "unit": "ms",
-          "value": 10.21154100000058,
-          "p50": 10.21154100000058,
-          "p95": 17.86712500000067
+          "value": 3.3263330000008864,
+          "p50": 3.3263330000008864,
+          "p95": 5.168834000000061
         },
         {
           "metric": "svg-node-count",
@@ -353,16 +354,16 @@
         {
           "metric": "plan-render-work-pan-zoom",
           "unit": "ms",
-          "value": 10.791709000000992,
-          "p50": 10.791709000000992,
-          "p95": 14.39470799999981
+          "value": 3.0393330000006245,
+          "p50": 3.0393330000006245,
+          "p95": 3.77612500000032
         },
         {
           "metric": "plan-render-work-edit",
           "unit": "ms",
-          "value": 11.732959000000847,
-          "p50": 11.732959000000847,
-          "p95": 12.449124999999185
+          "value": 4.589292000000569,
+          "p50": 4.589292000000569,
+          "p95": 4.825917000000118
         },
         {
           "metric": "three-object-estimate",
@@ -391,67 +392,67 @@
       "seed": 303,
       "roomCount": 1000,
       "provenance": {
-        "commitSha": "c27400cd4644e463fd8b72f1c22dbe9e76e8899c",
-        "date": "2026-08-14T20:45:04.409Z",
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "date": "2026-09-25T00:33:46.298Z",
         "deviceProfile": "node",
         "warmup": 1,
         "samples": 3,
-        "methodVersion": 3,
-        "treeDirty": true,
-        "contentHash": "840833e926f05542"
+        "methodVersion": 4,
+        "treeDirty": false,
+        "contentHash": "9a59d9178e577ebb"
       },
       "samples": [
         {
           "metric": "layout-compile",
           "unit": "ms",
-          "value": 3677.7860000000037,
-          "p50": 3677.7860000000037,
-          "p95": 3840.7313329999997
+          "value": 1532.2904169999983,
+          "p50": 1532.2904169999983,
+          "p95": 1601.2146670000002
         },
         {
           "metric": "plan-render-build",
           "unit": "ms",
-          "value": 20.25933300000179,
-          "p50": 20.25933300000179,
-          "p95": 24.75325000000157
+          "value": 37.86304100000052,
+          "p50": 37.86304100000052,
+          "p95": 293.3814170000005
         },
         {
           "metric": "wall-mesh-build",
           "unit": "ms",
-          "value": 5939.988333000001,
-          "p50": 5939.988333000001,
-          "p95": 6073.247457999998
+          "value": 2722.303667,
+          "p50": 2722.303667,
+          "p95": 2948.0859580000033
         },
         {
           "metric": "hit-test",
           "unit": "ms",
-          "value": 68.09426667500011,
-          "p50": 68.09426667500011,
-          "p95": 69.98405625000014
+          "value": 49.0947593750001,
+          "p50": 49.0947593750001,
+          "p95": 49.24409792499991
         },
         {
           "metric": "snap-query",
           "unit": "ms",
-          "value": 0.10313960000021324,
-          "p50": 0.10313960000021324,
-          "p95": 0.1078947750000225
+          "value": 0.0724093749999156,
+          "p50": 0.0724093749999156,
+          "p95": 0.07892499999998108
         },
         {
           "metric": "compiled-memory",
           "unit": "bytes",
-          "value": 301050350
+          "value": 309746053
         },
         {
           "metric": "cache-key-code-units",
           "unit": "count",
-          "value": 83949962
+          "value": 83949936
         },
         {
           "metric": "plan-render-initial",
           "unit": "ms",
-          "value": 104.4320000000007,
-          "p50": 104.4320000000007,
-          "p95": 260.4844160000066
+          "value": 38.34758300000249,
+          "p50": 38.34758300000249,
+          "p95": 39.07787500000268
         },
         {
           "metric": "svg-node-count",
@@ -461,16 +462,16 @@
         {
           "metric": "plan-render-work-pan-zoom",
           "unit": "ms",
-          "value": 140.06995800000732,
-          "p50": 140.06995800000732,
-          "p95": 173.76574999999139
+          "value": 37.479792000005546,
+          "p50": 37.479792000005546,
+          "p95": 39.14495800000441
         },
         {
           "metric": "plan-render-work-edit",
           "unit": "ms",
-          "value": 243.03566599999613,
-          "p50": 243.03566599999613,
-          "p95": 248.7760419999977
+          "value": 64.50162499999715,
+          "p50": 64.50162499999715,
+          "p95": 64.52412499999627
         },
         {
           "metric": "three-object-estimate",
@@ -494,5 +495,1463 @@
         }
       ]
     }
+  ],
+  "workloads": [
+    {
+      "fixtureId": "p23b-12-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "3c91ddc928aad8b9ff3d31c0a288bde1b46228c3d9d20bcdb8a1d1a9a882e401",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:19.836Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 4,
+          "p50": 4,
+          "p95": 7.100000023841858,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 3.800000011920929,
+          "p50": 3.800000011920929,
+          "p95": 4.100000023841858,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.05050000011920929,
+          "p50": 0.05050000011920929,
+          "p95": 0.052000000178813933,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0004999998211860656,
+          "p50": 0.0004999998211860656,
+          "p95": 0.0009999999403953552,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 634711,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 140952,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 4224,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 138196204,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-12-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "319fe997b5489304b177c8eb891e27ca7c17cee3a3a48f045b3e2aa3af62b44e",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:20.329Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 4.200000047683716,
+          "p50": 4.200000047683716,
+          "p95": 5.100000023841858,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 3.900000035762787,
+          "p50": 3.900000035762787,
+          "p95": 4.300000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.051500000059604645,
+          "p50": 0.051500000059604645,
+          "p95": 0.0525,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0004999998211860656,
+          "p50": 0.0004999998211860656,
+          "p95": 0.0005000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 691871,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 154569,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.10000002384185791,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 4352,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 185372802,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-12-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "canonicalLayoutSha256": "de138bcc81954d4f738610dc2ecbed7c968d64523c9daaeaec8e35884427edc6",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:20.821Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 9.5,
+          "p50": 9.5,
+          "p95": 11.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 5.399999976158142,
+          "p50": 5.399999976158142,
+          "p95": 5.699999988079071,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.07199999988079071,
+          "p50": 0.07199999988079071,
+          "p95": 0.0725,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0004999998211860656,
+          "p50": 0.0004999998211860656,
+          "p95": 0.0005000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 1374575,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 319026,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.30000001192092896,
+          "p50": 0.30000001192092896,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.2999999523162842,
+          "p50": 0.2999999523162842,
+          "p95": 0.40000003576278687,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.30000001192092896,
+          "p50": 0.30000001192092896,
+          "p95": 0.40000003576278687,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 6144,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 277868249,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "814ed5370d9dc72e9d7718e3d8dba631a654763cb6abac46331011d41978d9b2",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:21.614Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 11.200000047683716,
+          "p50": 11.200000047683716,
+          "p95": 17.299999952316284,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 12,
+          "p50": 12,
+          "p95": 12.399999976158142,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.16700000017881395,
+          "p50": 0.16700000017881395,
+          "p95": 0.1819999998807907,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 2133538,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 478384,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.2999999523162842,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 14080,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 231552094,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "7d2f8dae33189a64ec9955e5c3bcd40b39105f02d3b5a1273e9c9ae0276314fe",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:23.138Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 11.699999988079071,
+          "p50": 11.699999988079071,
+          "p95": 17.600000023841858,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 12.299999952316284,
+          "p50": 12.299999952316284,
+          "p95": 13.400000035762787,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.17149999976158142,
+          "p50": 0.17149999976158142,
+          "p95": 0.17849999994039537,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 2190698,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 492001,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.2999999523162842,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.3999999761581421,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 14208,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 168413246,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "canonicalLayoutSha256": "22efb326d057974476bfed7fca7d1f3d13dbad203af9bbd8054359cc9df3d461",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:24.688Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 30.400000035762787,
+          "p50": 30.400000035762787,
+          "p95": 36.30000001192093,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 18.599999964237213,
+          "p50": 18.599999964237213,
+          "p95": 20.69999998807907,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.2405000001192093,
+          "p50": 0.2405000001192093,
+          "p95": 0.24900000005960465,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 4583237,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 1068005,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.699999988079071,
+          "p50": 0.699999988079071,
+          "p95": 0.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.699999988079071,
+          "p50": 0.699999988079071,
+          "p95": 0.8999999761581421,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.9000000357627869,
+          "p50": 0.9000000357627869,
+          "p95": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 20480,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 236348714,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "semanticClass": 5,
+      "role": "owner-responsiveness",
+      "canonicalLayoutSha256": "63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05",
+      "rawPayloadSha256": "63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "b9a492dafb5726c8bb453cc0aa824b75d31cb247",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-09-25T00:29:27.340Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "130.0.6723.191",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.144 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 1",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 1,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 4,
+        "sessionId": "6d8dd369-0b81-4c83-8069-fd5368a076be",
+        "contentHash": "9a59d9178e577ebb"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 18.599999964237213,
+          "p50": 18.599999964237213,
+          "p95": 25.899999976158142,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.10000002384185791,
+          "p50": 0.10000002384185791,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 10.5,
+          "p50": 10.5,
+          "p95": 10.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.14,
+          "p50": 0.14,
+          "p95": 0.14349999994039536,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 3609794,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 934102,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.40000003576278687,
+          "p50": 0.40000003576278687,
+          "p95": 0.6000000238418579,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.5999999642372131,
+          "p50": 0.5999999642372131,
+          "p95": 0.699999988079071,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.5,
+          "p50": 0.5,
+          "p95": 0.699999988079071,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 11468,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 219428487,
+          "runtime": "browser"
+        }
+      ]
+    }
+  ],
+  "interactions": {
+    "selection": {
+      "input": {
+        "count": 20,
+        "p50": 205.30000001192093,
+        "p95": 231
+      },
+      "release": {
+        "count": 20,
+        "p50": 26.899999976158142,
+        "p95": 35.30000001192093
+      },
+      "reactive": {
+        "unavailable": "This path does not derive Layout geometry."
+      },
+      "adapter": {
+        "unavailable": "This path does not rebuild render geometry."
+      },
+      "svelte-flush": {
+        "count": 40,
+        "p50": 281.60000002384186,
+        "p95": 301.10000002384186
+      },
+      "browser-frame": {
+        "count": 40,
+        "p50": 283,
+        "p95": 302.5
+      }
+    },
+    "plan-drag-edit": {
+      "input": {
+        "count": 40,
+        "p50": 134.80000001192093,
+        "p95": 252.19999998807907
+      },
+      "release": {
+        "count": 20,
+        "p50": 227.69999998807907,
+        "p95": 250.39999997615814
+      },
+      "reactive": {
+        "count": 140,
+        "p50": 0,
+        "p95": 230.5
+      },
+      "adapter": {
+        "count": 20,
+        "p50": 49.5,
+        "p95": 54.80000001192093
+      },
+      "svelte-flush": {
+        "count": 60,
+        "p50": 242.70000004768372,
+        "p95": 337.30000001192093
+      },
+      "browser-frame": {
+        "count": 60,
+        "p50": 317.5999999642372,
+        "p95": 1001.3000000119209
+      }
+    },
+    "bend-knot-edit": {
+      "input": {
+        "count": 40,
+        "p50": 137.5,
+        "p95": 256.5
+      },
+      "release": {
+        "count": 20,
+        "p50": 247.5,
+        "p95": 263.60000002384186
+      },
+      "reactive": {
+        "count": 140,
+        "p50": 0,
+        "p95": 249.9000000357628
+      },
+      "adapter": {
+        "count": 20,
+        "p50": 56.59999996423721,
+        "p95": 63
+      },
+      "svelte-flush": {
+        "count": 60,
+        "p50": 253.10000002384186,
+        "p95": 345.60000002384186
+      },
+      "browser-frame": {
+        "count": 60,
+        "p50": 330.10000002384186,
+        "p95": 1025.300000011921
+      }
+    },
+    "wall-authoring": {
+      "input": {
+        "count": 40,
+        "p50": 0.20000004768371582,
+        "p95": 0.8999999761581421
+      },
+      "release": {
+        "count": 40,
+        "p50": 94.89999997615814,
+        "p95": 774
+      },
+      "reactive": {
+        "count": 20,
+        "p50": 26,
+        "p95": 31.80000001192093
+      },
+      "adapter": {
+        "unavailable": "No editor adapter CPU mark was observed during the captured action; GPU work is not inferred."
+      },
+      "svelte-flush": {
+        "count": 80,
+        "p50": 4.800000011920929,
+        "p95": 321.5
+      },
+      "browser-frame": {
+        "count": 80,
+        "p50": 302.5,
+        "p95": 1382.6000000238419
+      }
+    },
+    "plan-pan-zoom": {
+      "input": {
+        "count": 165,
+        "p50": 0.20000004768371582,
+        "p95": 2.5
+      },
+      "release": {
+        "count": 24,
+        "p50": 0,
+        "p95": 0.10000002384185791
+      },
+      "reactive": {
+        "unavailable": "This path does not derive Layout geometry."
+      },
+      "adapter": {
+        "unavailable": "This path does not rebuild render geometry."
+      },
+      "svelte-flush": {
+        "count": 189,
+        "p50": 115.89999997615814,
+        "p95": 148.10000002384186
+      },
+      "browser-frame": {
+        "count": 189,
+        "p50": 651.5999999642372,
+        "p95": 1109.6000000238419
+      }
+    },
+    "guided-3d-navigation": {
+      "input": {
+        "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+      },
+      "release": {
+        "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+      },
+      "reactive": {
+        "unavailable": "No reactive derivation mark was observed during the captured action."
+      },
+      "adapter": {
+        "unavailable": "No editor adapter CPU mark was observed during the captured action; GPU work is not inferred."
+      },
+      "svelte-flush": {
+        "unavailable": "No sample was captured for this applicable boundary; repeat the fixed owner action."
+      },
+      "browser-frame": {
+        "unavailable": "No sample was captured for this applicable boundary; repeat the fixed owner action."
+      }
+    }
+  },
+  "interactionSampleCounts": {
+    "selection": 20,
+    "plan-drag-edit": 40,
+    "bend-knot-edit": 40,
+    "wall-authoring": 40,
+    "plan-pan-zoom": 165,
+    "guided-3d-navigation": 0
+  },
+  "deferredInteractionPaths": {
+    "guided-3d-navigation": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+  },
+  "interactionProtocol": {
+    "selection": {
+      "target": "Select boundary Wall wall-chain-1 in the Plan viewport",
+      "snapGrid": "Not applicable"
+    },
+    "plan-drag-edit": {
+      "target": "Move boundary Wall wall-chain-1.2 by one grid increment, then release",
+      "snapGrid": "Snap 0.25 m on; grid on"
+    },
+    "bend-knot-edit": {
+      "target": "Bend Wall wall-chain-1 at knot wall-chain-1:knot:1 by one grid increment, then release",
+      "snapGrid": "Snap 0.25 m on; grid on"
+    },
+    "wall-authoring": {
+      "target": "Create a partition Wall between [24, 24] and [28, 24] in the clear owner-layout region",
+      "snapGrid": "Snap 0.25 m on; grid on"
+    },
+    "plan-pan-zoom": {
+      "target": "Middle-button pan and wheel zoom in the Plan viewport",
+      "snapGrid": "Not applicable"
+    },
+    "guided-3d-navigation": {
+      "target": "Play the existing PerspectiveCamera edge p23b-nav-edge from p23b-nav-start to p23b-nav-end",
+      "snapGrid": "Not applicable"
+    }
+  },
+  "nestedMarks": {
+    "p2311:plan-render-model": {
+      "count": 744,
+      "p50": 3.199999988079071,
+      "p95": 142.39999997615814
+    },
+    "p2311:svg-attributes": {
+      "count": 47803,
+      "p50": 0.09999996423721313,
+      "p95": 0.19999998807907104
+    },
+    "p2311:restore-project-clone": {
+      "count": 100,
+      "p50": 0.19999998807907104,
+      "p95": 0.30000001192092896
+    },
+    "p2311:restore-reactive-write": {
+      "count": 100,
+      "p50": 0.3999999761581421,
+      "p95": 33.89999997615814
+    },
+    "p2311:baseline-restore": {
+      "count": 100,
+      "p50": 86.80000001192093,
+      "p95": 103.5
+    },
+    "p2311:restore-model-project": {
+      "count": 100,
+      "p50": 0,
+      "p95": 0.19999998807907104
+    },
+    "p2311:restore-issues-clone": {
+      "count": 100,
+      "p50": 0,
+      "p95": 0
+    },
+    "p2311:restore-mesh-install": {
+      "count": 100,
+      "p50": 86.39999997615814,
+      "p95": 103.20000004768372
+    },
+    "p2311:mesh-prebuild": {
+      "count": 121,
+      "p50": 83.5,
+      "p95": 102.69999998807907
+    },
+    "p2311:standalone-wall-build": {
+      "count": 4880,
+      "p50": 0.30000001192092896,
+      "p95": 0.800000011920929
+    },
+    "p2311:restore-bookkeeping": {
+      "count": 100,
+      "p50": 0,
+      "p95": 0.10000002384185791
+    },
+    "p2311:pointermove-rigid": {
+      "count": 80,
+      "p50": 0,
+      "p95": 126.5
+    },
+    "p2311:architecture-snap-resolution": {
+      "count": 80,
+      "p50": 6.199999988079071,
+      "p95": 128.10000002384186
+    },
+    "p2311:snap-wall-index": {
+      "count": 41,
+      "p50": 73.60000002384186,
+      "p95": 77.5
+    },
+    "p2311:proposal-derive": {
+      "count": 40,
+      "p50": 0.30000001192092896,
+      "p95": 0.5999999642372131
+    },
+    "p2311:curve-sampling": {
+      "count": 20920,
+      "p50": 0,
+      "p95": 0.10000002384185791
+    },
+    "p2311:preflight": {
+      "count": 40,
+      "p50": 5.900000035762787,
+      "p95": 7
+    },
+    "p2311:preflight-topology": {
+      "count": 40,
+      "p50": 5.899999976158142,
+      "p95": 6.800000011920929
+    },
+    "p2311:adapter-plan-apply": {
+      "count": 40,
+      "p50": 53.39999997615814,
+      "p95": 61.799999952316284
+    },
+    "p2311:structural-pre": {
+      "count": 40,
+      "p50": 0.5,
+      "p95": 0.6000000238418579
+    },
+    "p2311:topology-pre": {
+      "count": 40,
+      "p50": 3.799999952316284,
+      "p95": 4.799999952316284
+    },
+    "p2311:face-extraction": {
+      "count": 40,
+      "p50": 5.100000023841858,
+      "p95": 6.5
+    },
+    "p2311:room-reconciliation": {
+      "count": 40,
+      "p50": 0.09999996423721313,
+      "p95": 0.10000002384185791
+    },
+    "p2311:structural-post": {
+      "count": 40,
+      "p50": 0.40000003576278687,
+      "p95": 0.6000000238418579
+    },
+    "p2311:topology-post": {
+      "count": 40,
+      "p50": 3.399999976158142,
+      "p95": 4.099999964237213
+    },
+    "p2311:opening-set": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0.09999996423721313
+    },
+    "p2311:portal-relations": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0
+    },
+    "p2311:acceptance-compile": {
+      "count": 40,
+      "p50": 22.5,
+      "p95": 25.80000001192093
+    },
+    "p2311:room-geometry-compile": {
+      "count": 80,
+      "p50": 10.399999976158142,
+      "p95": 12.699999988079071
+    },
+    "p2311:finite-thickness": {
+      "count": 3200,
+      "p50": 0,
+      "p95": 0.10000002384185791
+    },
+    "p2311:junction-resolution": {
+      "count": 80,
+      "p50": 0.30000001192092896,
+      "p95": 1.0999999642372131
+    },
+    "p2311:preview-compile-reused": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0
+    },
+    "p2311:preview-install": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0.10000002384185791
+    },
+    "p2311:pointer-cadence": {
+      "count": 60,
+      "p50": 151.80000001192093,
+      "p95": 260.2999999523163
+    },
+    "p2311:pointermove-bend": {
+      "count": 80,
+      "p50": 0,
+      "p95": 133.70000004768372
+    },
+    "p2311:svg-flush-latency": {
+      "count": 80,
+      "p50": 0.10000002384185791,
+      "p95": 234.69999998807907
+    },
+    "p2311:next-frame-latency": {
+      "count": 80,
+      "p50": 687.1000000238419,
+      "p95": 892.0999999642372
+    },
+    "p2311:snap-resolution": {
+      "count": 40,
+      "p50": 6.5,
+      "p95": 18
+    },
+    "p2311:preview-compile": {
+      "count": 20,
+      "p50": 26,
+      "p95": 31.80000001192093
+    }
+  },
+  "markNestingNote": "Existing P23.11 component measures may be nested inside P23B path/boundary measures. Their distributions are listed separately and must not be summed.",
+  "measurementLimitations": [
+    "Svelte tick records flush completion; it does not establish GPU upload or painted presentation.",
+    "requestAnimationFrame records a browser-frame boundary; presented-frame latency is unavailable.",
+    "WebGL and BufferGeometry marks cover observable CPU work only; GPU upload and driver execution are unavailable."
   ]
 }

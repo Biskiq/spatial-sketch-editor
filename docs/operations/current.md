@@ -2,11 +2,13 @@
 
 PHASE: P23B
 CHILD: P23B.0-durable — sequence step 10; owner ratified plan revision `4b32034f` on 2026-09-24, approved
-       O-1–O-4 and authorized W1–W7. Stage B is in progress at implementation checkpoint
-       `checkpoints/p23b0-stage-b.md`: W1–W2 are committed at `89ec1fa2`, W3–W5 implementation is committed
-       at `e26bb623`, the live capture and v4 baseline recording are the remaining steps, and no v4
-       baseline or continuation PR exists. P23B.4 remains gated until P23B.0's
-       baseline is accepted.
+       O-1–O-4 and authorized W1–W7. Stage B is implementation-review-ready at checkpoint
+       `checkpoints/p23b0-stage-b.md`: W1–W2 are committed at `89ec1fa2`, W3–W5 implementation at
+       `e26bb623`, the recording corrections at `805fed25`…`b9a492da`, and the post-policy,
+       pre-optimization method-v4 baseline is recorded in `apps/editor/src/lib/bench/baselines/
+       g3-baseline.json` with the W6 measurement report and W7 budget-policy record in the P23B.0
+       workspace. The single continuation PR is the review surface; the slice is not accepted and its PR
+       is not merged. P23B.4 remains gated until P23B.0's baseline is accepted.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -23,10 +25,10 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. Resume P23B.0-durable Stage B from `checkpoints/p23b0-stage-b.md` on `codex/p23b-continuation`; preserve
-   the single continuation branch/PR and sequential slice boundaries. Finish W1–W7, verify exact fixture
-   bytes before baseline recording, then stop implementation-review-ready. P23B.4 remains gated until
-   P23B.0's baseline is accepted.
+1. Review P23B.0-durable Stage B on the single continuation branch/PR: the recorded method-v4 baseline,
+   the W6 measurement report and the W7 budget-policy record, read together with
+   `checkpoints/p23b0-stage-b.md`. Accept, return, or request the optional native-Chrome comparison; do not
+   merge by default and do not begin P23B.4 until the baseline is accepted.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a.
 3. P26 planning may continue in parallel. Read
@@ -45,6 +47,9 @@ P23B.3a shipped plan stub → ../roadmap/p23b-geometry-performance/p23b.3a-indep
 P23B.3a QA/acceptance stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/qa/2026-09-24-P23B.3a-qa-gate-record.md
 P23B.0-durable plan → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md
 P23B.0-durable Stage A ratification handoff → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
+P23B.0-durable W6 measurement report → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
+P23B.0-durable W7 budget policy → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
+Recorded v4 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
 P23B.2 research report → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
 P26 planning and accepted direction → ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md
@@ -56,14 +61,23 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.0-durable has its owner fixture, ledger and executable W2 assertions committed at `89ec1fa2`,
-  and its W3–W5 method-v4 implementation committed at `e26bb623`; the live browser capture, recorded v4
-  baseline and continuation PR remain outstanding, so the P23B.4 gate stays closed until the baseline is
-  accepted. Resume from `checkpoints/p23b0-stage-b.md`; Stage B must record live
-  browser DPR/renderer details where observable and actual per-path sampling settings (Stage A packet §§4–5).
+- P23B.0-durable's W1–W7 are implemented and recorded, so the remaining blocker is the owner review
+  itself: the baseline (and the W6 UNKNOWNs U-1…U-6, including the native-Chrome comparison and the
+  owner-deferred 3D path) needs an accept/return decision before P23B.4 opens. Live browser
+  DPR/renderer details and actual per-path sampling settings are recorded in the baseline and the W6
+  report; the recording corrections that were required first are identifiable perf commits on the same
+  continuation branch.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
+
+READY FOR REVIEW (2026-09-24):
+- P23B.0-durable Stage B recorded its post-policy, pre-optimization method-v4 baseline (naming P23B.3a's
+  policy commit `c11938fe`) in one clean-tree browser session, with W6 per-path results and W7 budget
+  policy recorded in the P23B.0 workspace. All gates pass on the recorded HEAD (PERF, architecture, the
+  full suite, `check`, production build) and the baseline is byte-identical before and after the test
+  run. The owner approved the preview browser as the measurement browser and deferred the 3D guided
+  capture; both decisions travel in the record. Nothing is accepted, merged, or reopened by this.
 
 CLOSED (2026-09-22):
 - P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
