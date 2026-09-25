@@ -23,6 +23,7 @@ P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was acce
 2026-09-24 after S1–S8 and OR-D12-1…6 passed. S5/S6 re-reviews are complete by owner confirmation; no
 separate GitHub review entries exist for them. Step 10 (P23B.0-durable) was ratified in Stage A on 2026-09-24 (revision `4b32034f`, O-1–O-4, W1–W7; scope amended 2026-09-25 §10 S-1…S-7), ran Stage B, was returned for correction on five findings plus the S-8 scheduling defect, and recorded the method-v5 baseline (`be525f7c`, SHA-256 `5534926e…`). The owner accepted the explicitly partial baseline (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and PR #87 merged 2026-09-25 (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`). P23B.0-durable is SHIPPED and closed (recovery anchor `d7b9de4e`, tag `closed/p23b.0`); its plan, W6, W7 and Stage A handoff are path-preserving closed stubs.
 The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan was RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first), the F1–F3 correction batch was ACCEPTED with no remaining blockers, and P23B.4 is SHIPPED (PR #88, anchor `4cbcc370`, tag `closed/p23b.4`; stubs at their own paths).
+P23B.5's reconciled plan (`f26e2319`) was ACCEPTED and RATIFIED by the owner on 2026-09-25, authorizing S0–S3; S0 then executed and recorded the disposition PREFLIGHT-ONLY: no baseline→candidate (release) reuse is reachable (each release re-parses its candidate into fresh centerline objects, so the object-identity key cannot hit across stages or releases), restore/undo/redo issue no sampling at all, and the only reachable cross-chain identity is preflight→preflight inside a frozen-baseline gesture (measured 120 requests → 44 derivations / 76 hits over three pointermoves, with full-result equality). That narrower scope was NOT assumed authorized and needed a separate owner scope ruling (the dependency map routes the wider gesture work to P23B.7); the owner then GRANTED it on 2026-09-25, so S1–S6 were implemented and S4 was taken at that preflight-only scope. A second owner ruling (stub §0.6) then committed those counters as a perf-lane ratchet. The slice was REVIEWED AND ACCEPTED with no remaining blocker, routine `slice-closeout` ran on the same branch, and the single PR (#90) was squash-merged; P23B.5 is SHIPPED, its plan is a path-preserving closed stub (anchor `75fbd8a0`, tag `closed/p23b.5`) and its ratchet record stays live. Release-scope M-3 remains unreachable and unimplemented.
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -31,8 +32,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25); P23B.5–P23B.8 remain unauthorized. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. Next: P23B.5 (caching/reuse, PLANNED unratified — needs reconciliation against the shipped key grammar and owner ratification before implementation). The Stage A packet, the accepted plan and its scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.6–P23B.8 **optimization** work remains unauthorized — the owner authorized ONE measurement-only step to run first (the P23B.5-closeout routing amendment below), which starts no optimization and ends at a ranking. No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The next authorized step is the measurement-only step (routing amendment below): run it on a new branch from updated `main` and stop after its ranking for the owner's ruling on which slice follows. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -111,6 +112,67 @@ a `codex/` prefix and the actual head is `P23B4`, which is the branch of record)
 `slice-closeout` order, and slice scope/identity/order are unchanged. P23B.4 implementation awaits
 owner approval of the reconciled plan.
 
+## Owner-authorized execution routing amendment — 2026-09-25 (P23B.5 step)
+
+P23B.4 shipped via PR #88 (squash `4cbcc370`, closed above). For the P23B.5 step the owner ratified the
+reconciled plan (`f26e2319`) and authorized S0–S3 execution on the existing `P23B.5` branch, with
+**one PR for all of P23B.5** — no separate S0 PR, and no slice close, merge or S4 start from S0. S0
+evidence and the ratification/status updates are committed and pushed to that branch for the eventual
+full implementation review. S4 stays authorized-within-scope only: it needs an S0-approved operation
+and owner, and S0 recorded PREFLIGHT-ONLY, whose narrower scope needed a separate owner scope ruling
+before implementation. **RESOLVED 2026-09-25:** the owner granted that narrower scope (plan §0.4), and
+S1–S6 were implemented under it on the same `P23B.5` branch and the same single PR — release-scope reuse
+and any broader ownership redesign remain unauthorized. One extra scope item was approved afterwards,
+also inside that single PR: the committed reuse-counter gate (plan §0.6), which adds no repository
+budget metric and re-records no baseline. The ratified `SEQUENCE`, sequential slice
+review/acceptance/`slice-closeout` order, and slice scope/identity/order are unchanged.
+
+## Owner-authorized execution routing amendment — 2026-09-25 (P23B.5 closeout + measurement-only step)
+
+P23B.5 was reviewed and ACCEPTED with no remaining blocker; routine `slice-closeout` ran on the `P23B.5`
+branch and its single PR (#90) was squash-merged — no new scope entered that PR. This amendment records
+the owner's ruling for what runs next.
+
+```text
+ORDER (amends SEQUENCE step 11's execution order only)
+  Before ANY optimization step in P23B.6 or P23B.7, run ONE measurement-only step: P23B.7 S1
+  (per-move proposal, per-move preflight, the derive/install seam, reactive re-render and the
+  release chain — each separately, mark nesting stated) EXTENDED to the wall-authoring release,
+  PLUS P23B.6 S1 (the four presentation cost classes, flush included). The SEQUENCE, slice scope
+  and slice identity are UNCHANGED; P23B.6–P23B.8 optimization work stays unauthorized. The work
+  runs on a new branch from updated `main`.
+
+WHAT THE STEP COVERS
+  · tie the existing p2311 nested marks to the action and outcome that encloses them — today they
+    are pooled per fixture session and cannot be attributed;
+  · add DEV-only marks to the release path OUTSIDE `plan-apply`: baseline restore, gesture
+    commit/history, selection, and the whole wall-authoring release (it has no `plan-apply` boundary);
+  · fixtures: the committed straight-40, owner-40 and all-curved-40; actions: rigid edit, bend,
+    wall-authoring click;
+  · UN-1 is STALE — the planner, `deriveInstallBundle` and the preview-install commit already sit
+    INSIDE `plan-apply`, since W4; the seam must be re-derived by symbol, never from P23B.1's line
+    anchors (on the straight control's rigid edit, plan-apply is 31.7 ms p50 of a 208.4 ms release,
+    so the old seam accounts for at most ~32 ms and ~176 ms sits outside it);
+  · output: a containment tree per action, exclusive time only where marks are strictly nested, an
+    explicit "unattributed" remainder, never a sum of pooled distributions (see `markNestingNote`),
+    every number advisory (one machine, one session, provenance block);
+  · end with a RANKING: which of P23B.6, P23B.7 (topology gate · snap/hit-test · preview-install) or
+    P23B.8 each measured cost belongs to, plus the preflight gate's own ceiling — the whole-document
+    preflight is currently 1.7 / 7.8 / 9.9 ms per move on straight / owner-40 / all-curved;
+  · ONE post-release flush/frame re-capture with the S-8-corrected harness is INCLUDED and stored as
+    a SEPARATE record (it reverses disposition A for that record only, and mainly serves P23B.6);
+    the release breakdown and the post-release pairs are priced and authorized separately.
+
+GUARDRAILS
+  DEV harness only (`/dev/perf/p23b`); no production telemetry and nothing in `/museum` chunks ·
+  `g3-baseline.json` is NOT rewritten (`bench:record` stays its only writer; results go into a
+  separate slice record) · no budget and no production behaviour change · the full test contract in
+  `apps/editor/tests/README.md` runs before review · STOP after the ranking and wait for the owner's
+  ruling on the next slice — P23B.7's gesture-scoped topology gate does not start unless the
+  measurement names it · no commits beyond this work, and no merge of the measurement branch without
+  the owner's approval.
+```
+
 ```text
 ROUTE:
 umbrella (WHAT/WHY/BOUNDARIES/DEPENDENCIES/GATES; not the order — including the OWNER-APPROVED
@@ -148,6 +210,11 @@ child plans and execution status →
    p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
      (SHIPPED; closed evidence stub carrying the preservation report)
   p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md
+    (SHIPPED 2026-09-25; path-preserving closed stub carrying the §0.2/§0.4/§0.6 rulings, the §5 S0–S6
+    records, the evidence and the preservation report; anchor `75fbd8a0`, tag `closed/p23b.5`) ·
+   p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json
+    (LIVE, not closed work — a test imports it by path; the perf-lane gate owns it) ·
+   P23B.5 S2–S5 proofs → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
   p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
   p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
   p23b.8-rust-wasm-evaluation/2026-09-22-P23B.8-rust-wasm-evaluation.md
@@ -220,7 +287,28 @@ P23B.4  compilation + invalidation optimization — SHIPPED 2026-09-25. Plan RAT
          tag `closed/p23b.4`). Performance acceptance covers reduced computation and
          advisory Node timings; browser/settlement improvements remain unproven.
          U-1 declined; Rust/WASM undecided until P23B.8.
-P23B.5  caching and reuse optimization — PLANNED, unratified
+P23B.5  caching and reuse optimization — SHIPPED 2026-09-25 (PR #90 squash-merged; closed stub + anchor
+         `75fbd8a0`, tag `closed/p23b.5`). REVIEWED AND ACCEPTED with no remaining blocker; routine
+         slice-closeout ran on the same branch. PLAN RATIFIED (S0–S3 authorized); S0 EXECUTED and recorded PREFLIGHT-ONLY. Release-scope M-3 reuse
+         is NOT reachable (each release re-parses its candidate), so the owner granted the narrower
+         preflight-only scope (plan §0.4) and M-3 = SHIPPED (preflight-only): one bounded gesture-scoped
+         sample owner threaded into the transient preflight only, reset at pointer-down/finish/cancel/
+         replacement. Measured on curved-40: 120 preflight requests → 44 derivations = 40 cold misses
+         + 4 changed-input refusals, and 76 hits (63%), 0 failed derives, 0 cached undefined; straight
+         control 0 requests; advisory per-drag preflight p50 26.7 → 8.9 ms. These counters are also
+         watchable live: the DEV harness page `/dev/perf/p23b` shows per-gesture requests, hits, cold
+         misses and refusals while a drag is in progress (DEV-only readout, absent from production builds
+         and from the capture ledger/baseline). A second owner ruling (plan §0.6) approved ONE extra
+         scope item after implementation: those counters are now a perf-lane GATE with a committed ratchet
+         (`reuse-counter-ratchet.json`), so reuse drift is a reviewable diff instead of a silent change —
+         absolute invariants (including that the scope owns exactly the preflight requests, never the
+         unscoped proposal stage) plus recorded counts that move only through
+         `npm run reuse:record --reason "…"`, which requires that reason, refuses a dirty source tree and
+         refuses a measurement that breaks an invariant (mirroring `bench:record` as the P23B.0 baseline's
+         only writer; no test writes the record). It adds no repository budget metric, asserts no timing
+         threshold and neither reads nor re-records `g3-baseline.json`. No release/validation/history behaviour changed and landed M-1 is preserved.
+         The ratchet JSON stays LIVE (not closed work). Next: the owner-authorized measurement-only step
+         (routing amendment above) — P23B.6–P23B.8 optimization remains unauthorized.
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —

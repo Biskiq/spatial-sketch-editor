@@ -1104,15 +1104,29 @@ export type WallFirstArchitecturePreflightFailure = {
  */
 export function preflightWallFirstArchitectureCandidate(
 	document: LayoutDocumentWallFirst,
-	intent: WallFirstArchitectureProposalIntent
+	intent: WallFirstArchitectureProposalIntent,
+	/**
+	 * P23B.5 M-3 — an optional bounded, caller-owned sample scope.
+	 *
+	 * Omitted (the default) keeps P23B.4's chain scope exactly: one fresh
+	 * derivation per call, never retained across moves. A transient gesture may
+	 * instead pass its own gesture-scoped derivation, so the frozen baseline's
+	 * untouched Walls — shared by reference through the shallow splice — are not
+	 * re-derived on every pointermove. The caller owns termination: `reset()` at
+	 * gesture release, cancel, restore or replacement. The scope changes only how
+	 * many times an identical artefact is derived, never which artefact the gate
+	 * sees, so a `known-invalid` verdict and a `pending` verdict are unchanged.
+	 */
+	sampling?: WallSamplingDerivation
 ): WallFirstArchitecturePreflightFailure | undefined {
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
-	// P23B.4 M-1 (S6 remaining chain coverage): the transient preflight is its own
-	// chain scope — one fresh derivation per call, never retained across moves.
 	const failure = p2311Measure('preflight-topology', () =>
-		validateWallFirstTopology(candidate, { openingSet: 'defer', sampling: createWallSamplingDerivation() })
+		validateWallFirstTopology(candidate, {
+			openingSet: 'defer',
+			sampling: sampling ?? createWallSamplingDerivation()
+		})
 	);
 	if (!failure) return undefined;
 	return { code: failure.code, message: failure.message };

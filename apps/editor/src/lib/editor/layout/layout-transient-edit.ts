@@ -32,7 +32,8 @@ import {
 	type LayoutDocumentWallFirst,
 	type WallFirstArchitecturePreflightFailure,
 	type WallFirstArchitectureProposalIntent,
-	type WallFirstArchitectureProposalWall
+	type WallFirstArchitectureProposalWall,
+	type WallSamplingDerivation
 } from '@portfolio/layout-core';
 
 import { p2311Measure } from '$lib/layout/layout-wall-first-precision';
@@ -132,6 +133,16 @@ export function transientArchitectureEdit(input: {
 	/** The frozen pointer-down baseline document — never the live preview. */
 	baseline: LayoutDocumentWallFirst | null;
 	moved: boolean;
+	/**
+	 * P23B.5 M-3 — the bounded gesture-scoped sample store, or `null`/omitted for
+	 * today's per-call path. It is supplied by the gesture owner and threaded only
+	 * into the PREFLIGHT: the proposal stage derives one freshly-built centerline
+	 * per intent, so its inputs do not repeat and it is deliberately not scoped.
+	 * The same scope is passed on every pointermove of one gesture and reset by
+	 * the owner when that gesture ends, so it can never outlive the frozen
+	 * baseline it keyed on.
+	 */
+	sampling?: WallSamplingDerivation | null;
 }): LayoutTransientArchitectureEdit | null {
 	const { gesture, baseline, moved } = input;
 	if (!gesture || !baseline || !moved) return null;
@@ -145,7 +156,7 @@ export function transientArchitectureEdit(input: {
 	const failure = walls === undefined
 		? undefined
 		: p2311Measure('preflight', () =>
-				preflightWallFirstArchitectureCandidate(baseline, coreIntent)
+				preflightWallFirstArchitectureCandidate(baseline, coreIntent, input.sampling ?? undefined)
 			);
 	const status: TransientAttemptStatus =
 		walls === undefined || failure ? 'known-invalid' : 'pending';
