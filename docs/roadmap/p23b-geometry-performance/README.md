@@ -22,7 +22,7 @@ acceptance criteria and curved-crossing/Option E rulings. Step 8's ratification 
 P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was accepted and shipped on
 2026-09-24 after S1–S8 and OR-D12-1…6 passed. S5/S6 re-reviews are complete by owner confirmation; no
 separate GitHub review entries exist for them. Step 10 (P23B.0-durable) was ratified in Stage A on 2026-09-24 (revision `4b32034f`, O-1–O-4, W1–W7; scope amended 2026-09-25 §10 S-1…S-7), ran Stage B, was returned for correction on five findings plus the S-8 scheduling defect, and recorded the method-v5 baseline (`be525f7c`, SHA-256 `5534926e…`). The owner accepted the explicitly partial baseline (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and PR #87 merged 2026-09-25 (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`). P23B.0-durable is SHIPPED and closed (recovery anchor `d7b9de4e`, tag `closed/p23b.0`); its plan, W6, W7 and Stage A handoff are path-preserving closed stubs.
-The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first).
+The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan was RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first), the F1–F3 correction batch was ACCEPTED with no remaining blockers, and P23B.4 is SHIPPED (PR #88, anchor `4cbcc370`, tag `closed/p23b.4`; stubs at their own paths).
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -32,7 +32,7 @@ GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate auth
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
 P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25); P23B.5–P23B.8 remain unauthorized. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit, the reconciled P23B.4 plan is ratified and implementation is AUTHORIZED (S1 first); the owner's standing direction (2026-09-25) to move on to the fix applies. The Stage A packet, the accepted plan and its scope amendment are routed below as closed stubs.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. Next: P23B.5 (caching/reuse, PLANNED unratified — needs reconciliation against the shipped key grammar and owner ratification before implementation). The Stage A packet, the accepted plan and its scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -144,6 +144,9 @@ child plans and execution status →
     P1 merge method is a merge commit)
   p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md   (closed stub; anchor d7b9de4e, tag closed/p23b.0)
   p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
+     (SHIPPED; closed plan stub; anchor `4cbcc370`, tag `closed/p23b.4`) ·
+   p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
+     (SHIPPED; closed evidence stub carrying the preservation report)
   p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md
   p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
   p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
@@ -209,10 +212,14 @@ P23B.3a independent placement + topology policy (Option E) — SHIPPED 2026-09-2
         identity guarantee (S3a). Its plan and QA record are path-preserving stubs; implementation,
         acceptance and recovery anchors are linked there. S5/S6 re-reviews are owner-confirmed complete;
         GitHub has no separate review entries.
-P23B.4  compilation + invalidation optimization — RATIFIED + AUTHORIZED 2026-09-25. Baseline gate satisfied by the
-        accepted P23B.0 baseline (disposition A, with its stated coverage limit). Plan reconciliation against
-        landed Option E, the accepted baseline and current source is underway on `P23B4`;
-        implementation may proceed, S1 first. U-1 (native-Chrome comparison) declined by the owner; Rust/WASM stays undecided until P23B.8.
+P23B.4  compilation + invalidation optimization — SHIPPED 2026-09-25. Plan RATIFIED +
+         AUTHORIZED 2026-09-25, implemented S1–S10, returned for correction on F1–F3,
+         corrections ACCEPTED with no remaining blockers (HEAD `4cbcc370` vs base
+         `d7b9de4e`). M-1 threaded, M-2a extent scan shipped, M-2b DROPPED at X-6.
+         Plan + evidence record are path-preserving closed stubs (anchor `4cbcc370`,
+         tag `closed/p23b.4`). Performance acceptance covers reduced computation and
+         advisory Node timings; browser/settlement improvements remain unproven.
+         U-1 declined; Rust/WASM undecided until P23B.8.
 P23B.5  caching and reuse optimization — PLANNED, unratified
 P23B.6  rendering optimization — PLANNED, unratified
 P23B.7  interaction optimization — PLANNED, unratified
@@ -233,9 +240,9 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) �
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the phase
 gate and the ROUTE block are read. P23B.3a is shipped. P23B.0 is shipped and closed (accepted partial
 baseline, stubs + anchor `d7b9de4e`, tag `closed/p23b.0`); the P23B.1 harvest
-and P23B.2 research report retain their own review statuses. P23B.4's baseline gate is satisfied and its
-plan is ratified and implementation is AUTHORIZED (S1 first). Later optimization slices remain
-downstream of the reconciled P23B.4 plan and its owner gate.
+and P23B.2 research report retain their own review statuses. P23B.4 is shipped and closed (stubs + anchor
+`4cbcc370`, tag `closed/p23b.4`). Later optimization slices remain
+downstream of the shipped P23B.4 key grammar and its owner gate.
 
 ## Non-goals
 

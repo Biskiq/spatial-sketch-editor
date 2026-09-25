@@ -1,12 +1,10 @@
 # Current
 
 PHASE: P23B
-CHILD: P23B.4-compilation-invalidation — plan reconciliation underway on `P23B4`
-       from updated `main` (new branch for this step, superseding the continuation-branch
-       arrangement; the recorded owner instruction said a `codex/` prefix and the actual
-       head `P23B4` is the branch of record; `codex/p23b-continuation` is retired, not deleted).
-       The reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first);
-       U-1 declined, Rust/WASM undecided until P23B.8.
+CHILD: P23B.4-compilation-invalidation — SHIPPED 2026-09-25 on `P23B4`
+       (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`; F1–F3 corrections
+       ACCEPTED with no remaining blockers; stubs + anchor `4cbcc370`, tag
+       `closed/p23b.4`). U-1 declined, Rust/WASM undecided until P23B.8.
 STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
        Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
        synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
@@ -40,15 +38,14 @@ STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted).
        own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
 
 NEXT:
-1. P23B.4 CORRECTION BATCH (independent integrated review 2026-09-25: RETURN FOR
-   CORRECTION on three P2 blockers F1–F3; no P0/P1, no regression, no boundary
-   violation) is implemented on `P23B4` (unmerged) for re-review: F1 observed
-   consumer reference (pre-opt generated) + non-mutation + real-planner + OR-8 wild
-   Rooms/Openings; F2 full-validator differential via test-only prune bypass +
-   superset oracle + edge families; F3 repeatable p50/p95 measurement, narrowed X-3
-   scope, corrected 60→40 attribution. Mechanisms (M-1/M-2a) preserved; M-2b stays
-   DROPPED. Do NOT restart the slice, request S-step reviews, begin P23B.5, rewrite
-   the baseline, or close/merge — re-review only.
+1. P23B.4 SHIPPED 2026-09-25 (PR #88; F1–F3 corrections ACCEPTED, no remaining
+   blockers; M-1 threaded, M-2a extent scan shipped, M-2b DROPPED at X-6; plan +
+   evidence compacted to closed stubs, anchor `4cbcc370`, tag `closed/p23b.4`).
+   Performance acceptance covers reduced computation and advisory Node timings;
+   browser/settlement improvements remain unproven. Next in sequence: P23B.5
+   (caching/reuse, PLANNED unratified) — reconcile its plan against the shipped
+   key grammar and seek owner ratification before implementation. Do NOT begin
+   P23B.5 implementation, rewrite the baseline, or restart P23B.4.
 2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
    their status does not reopen P23B.3a or P23B.0.
 3. P26 planning may continue in parallel. Read
@@ -68,7 +65,7 @@ P23B.0-durable closed plan stub → ../roadmap/p23b-geometry-performance/p23b.0-
 P23B.0-durable Stage A closed handoff stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
 P23B.0-durable closed W6 record (finding + coverage limit + preservation report) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
 P23B.0-durable closed W7 policy stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
-P23B.4 reconciled plan (RATIFIED + AUTHORIZED 2026-09-25, S1 first; §11 holds the architecture-review gate) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md
+P23B.4 closed plan + evidence stubs (SHIPPED 2026-09-25, anchor `4cbcc370`, tag `closed/p23b.4`) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md + ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
 Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
 Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
 P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
@@ -82,8 +79,8 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
-- P23B.4 implementation is authorized (reconciled plan §11 + OR-1…OR-11/X-1…X-8); M-2b stays disabled
-  until the X-6 exit gate. No further capture is required or authorized; U-1 declined.
+- P23B.4 shipped (M-1 threaded, M-2a extent scan, M-2b DROPPED at X-6); P23B.5–P23B.8
+  remain unauthorized. No further capture is required or authorized; U-1 declined.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a/P23B.0.
 - P26 implementation readiness remains gated; planning may continue, but the validation window is not
   open.
@@ -121,3 +118,13 @@ CLOSED (2026-09-25):
 - Owner-carried forward: U-2…U-7, the deferred post-release flush/frame coverage, P23B.4–P23B.8 work,
   P23B.1 review and the P23B.2 evidence decision — named in the closed stubs, not silently dropped.
   U-1 was open when P23B.0 closed and was subsequently DECLINED by the owner on 2026-09-25.
+- P23B.4 accepted and shipped; PR #88 squash-merged (accepted HEAD `4cbcc370` vs base
+  `d7b9de4e`; F1–F3 corrections ACCEPTED, no remaining blockers). Routine closeout compacted the plan and the
+  evidence record to path-preserving stubs at their own paths; recovery anchors `cb9b83ab` (plan)
+  and `4cbcc370` (evidence) via `git fetch origin refs/pull/88/head` (squash degradation recorded
+  in the stubs), tag `closed/p23b.4` local only (verified post-merge in-session: both bodies
+  recoverable via the PR head ref). 0 renderable-evidence copies (none existed). 0 reference promotions (key grammar
+  owned in code; S9/S10 findings inherited by roadmap slices via anchor). No active checkpoint to
+  retire. Owner-verified gates at acceptance: full lane 4,786 passed, `test:arch` / `test:perf`
+  green, `check` 0/0 both apps, both apps build, visitor bundle verified, baseline SHA-256 unchanged;
+  closeout re-run skipped per explicit owner instruction.
