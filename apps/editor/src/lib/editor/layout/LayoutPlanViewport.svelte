@@ -203,10 +203,13 @@
 	import {
 		p23bActivateInteraction,
 		p23bAfterInteraction,
-		p23bInteractionEnd,
-		p23bInteractionStart,
+		p23bClosePress,
+		p23bDeferPress,
 		p23bMeasureActiveAdapter,
-		p23bMeasureInteraction
+		p23bMeasureInteraction,
+		p23bOpenPress,
+		p23bResolveAwaitingPress,
+		p23bResolvePress
 	} from './p23b-interaction-measure';
 // P23.12 D5 — the Plan's selection feedback asks the shared display-identity
 // layer how an entity reads; it never queries the ledger itself.
@@ -2877,23 +2880,22 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * this adapter only brackets it with the path/boundary marks, so no product
 	 * behaviour and no handler text moves into the instrumentation.
 	 *
-	 * A press does not know its own path until it has run: the same select-tool
-	 * press either selects and stops or opens a direct edit, depending on what it
-	 * hits. The boundary is therefore timed first and named from the state the
-	 * handler left behind, so a drag or bend press is counted as that gesture and
-	 * never also as a selection sample.
+	 * A press does not know its own path until it is over: the same select-tool
+	 * press onto a Wall selects it and arms a move, so whether this interaction is
+	 * a selection or a drag is only settled at the release. The press boundaries
+	 * are therefore timed first and named by that outcome, so one interaction is
+	 * counted as exactly one path.
 	 */
 	function p23bPointerDown(event: PointerEvent) {
 		const intent = p23bPointerPressIntentPath(event);
 		if (!intent) {
 			return onPointerDown(event);
 		}
-		const started = p23bInteractionStart();
+		const press = p23bOpenPress(intent, event.pointerId);
 		const result = onPointerDown(event);
-		const path = p23bPointerPressPath(event) ?? intent;
-		p23bInteractionEnd('input', path, started);
-		p23bActivateInteraction(path);
-		p23bAfterInteraction(path);
+		p23bClosePress(press);
+		if (p23bPointerPressPath(event)) p23bDeferPress(press);
+		else p23bResolvePress(press, intent);
 		return result;
 	}
 
@@ -3720,6 +3722,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			(event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
 				? 'selection'
 				: null);
+		// The release is the press's outcome: this is where a press that armed a
+		// direct edit learns whether it performed a selection or a drag.
+		if (path) p23bResolveAwaitingPress(event.pointerId, path);
 		// Wall-chain acceptance is a click event; its `release` mark wraps the
 		// canonical commit below, so the preceding pointerup housekeeping is not
 		// counted as a second authoring release sample.

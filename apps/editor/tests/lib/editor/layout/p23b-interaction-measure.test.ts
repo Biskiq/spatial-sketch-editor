@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
 	p23bActivateInteraction,
 	p23bAfterInteraction,
-	p23bInteractionEnd,
-	p23bInteractionStart,
+	p23bClosePress,
+	p23bDeferPress,
 	p23bMeasureActiveAdapter,
 	p23bMeasureActiveReactive,
-	p23bMeasureInteraction
+	p23bMeasureInteraction,
+	p23bOpenPress,
+	p23bResolveAwaitingPress,
+	p23bResolvePress
 } from '$lib/editor/layout/p23b-interaction-measure';
 
 type P23BGlobals = typeof globalThis & {
@@ -15,6 +18,11 @@ type P23BGlobals = typeof globalThis & {
 };
 
 const globals = globalThis as P23BGlobals;
+
+// Node has no `requestAnimationFrame`; the press boundaries only need the
+// callback to run, so a timeout stands in for the frame.
+globalThis.requestAnimationFrame ??= ((callback: FrameRequestCallback) =>
+	setTimeout(() => callback(performance.now()), 0) as unknown as number);
 
 afterEach(() => {
 	delete globals.__P2311_PERF__;
@@ -49,22 +57,42 @@ describe('P23B interaction measurements', () => {
 		expect(performance.getEntriesByName('p2311:p23b:bend-knot-edit:reactive', 'measure')).toHaveLength(1);
 	});
 
-	it('names a deferred press boundary from the gesture it opened', () => {
+	it('names a press that opened no gesture under the path it started as', () => {
 		globals.__P2311_PERF__ = true;
-		const started = p23bInteractionStart();
-		p23bInteractionEnd('input', 'plan-drag-edit', started);
+		const press = p23bOpenPress('selection', 7);
+		p23bClosePress(press);
+		p23bResolvePress(press, 'selection');
 
-		expect(performance.getEntriesByName('p2311:p23b:plan-drag-edit:input', 'measure')).toHaveLength(1);
-		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toEqual([]);
+		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toHaveLength(1);
+		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:plan-drag-edit:'))).toEqual([]);
 		expect(performance.getEntriesByType('mark').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
 	});
 
-	it('leaves a deferred press boundary unmeasured while disabled', () => {
-		globals.__P2311_PERF__ = false;
-		const started = p23bInteractionStart();
-		p23bInteractionEnd('input', 'plan-drag-edit', started);
+	it('writes nothing for a press that armed a gesture until its release resolves it', () => {
+		globals.__P2311_PERF__ = true;
+		const press = p23bOpenPress('selection', 11);
+		p23bClosePress(press);
+		p23bDeferPress(press);
 
-		expect(started).toBeUndefined();
+		// A Wall press selects and arms a move, so it stays unnamed until the
+		// release says which interaction it became.
+		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
+
+		p23bResolveAwaitingPress(12, 'plan-drag-edit');
+		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
+
+		p23bResolveAwaitingPress(11, 'plan-drag-edit');
+		expect(performance.getEntriesByName('p2311:p23b:plan-drag-edit:input', 'measure')).toHaveLength(1);
+		expect(performance.getEntriesByName('p2311:p23b:selection:input', 'measure')).toEqual([]);
+	});
+
+	it('leaves the press boundaries unmeasured while disabled', () => {
+		globals.__P2311_PERF__ = false;
+		const press = p23bOpenPress('selection', 3);
+		p23bClosePress(press);
+		p23bResolvePress(press, 'selection');
+
+		expect(press).toBeNull();
 		expect(performance.getEntriesByType('measure').filter((entry) => entry.name.startsWith('p2311:p23b:'))).toEqual([]);
 	});
 });

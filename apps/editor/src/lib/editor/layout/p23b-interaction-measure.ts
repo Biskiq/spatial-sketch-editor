@@ -32,30 +32,118 @@ export function p23bActivateInteraction(path: BenchInteractionPath): void {
 }
 
 /**
- * Open a synchronous boundary whose path is only known once the shipped handler
- * has run. A Plan press resolves as a plain selection or as the first half of a
- * direct edit depending on what it hits, so that boundary is timed first and
- * named second (see {@link p23bInteractionEnd}). Returns `undefined` while the
- * marks are disabled, which keeps the disabled path as cheap as the plain
- * handler call.
+ * One press whose path is not yet known. A select-tool press on a Wall both
+ * selects it and arms a possible move, so the press cannot say whether it is a
+ * selection or the first half of a drag: its three boundaries are timed here and
+ * named once {@link p23bResolvePress} is told what the interaction became. One
+ * interaction therefore stays one path — the press of a drag is never also
+ * counted as the selection it started from, and the press of a selection click
+ * is never counted as a drag.
  */
-export function p23bInteractionStart(): number | undefined {
-	return p23bInteractionPerfEnabled() ? performance.now() : undefined;
+export type P23BPress = {
+	intent: BenchInteractionPath;
+	path: BenchInteractionPath | null;
+	pointerId: number;
+	startTime: number;
+	endTime: number | null;
+	flushTime: number | null;
+	frameTime: number | null;
+	run: number;
+	written: Set<BenchInteractionBoundary>;
+};
+
+/** The one press still waiting for its release to say which interaction it was. */
+let awaitingPress: P23BPress | null = null;
+
+/**
+ * Open the press boundary of one interaction. Returns `null` while the marks are
+ * disabled, which keeps the disabled path as cheap as the plain handler call.
+ */
+export function p23bOpenPress(intent: BenchInteractionPath, pointerId: number): P23BPress | null {
+	if (!p23bInteractionPerfEnabled()) return null;
+	const run = ++sequence;
+	(globalThis as P23BPerfGlobals).__P23B_ACTIVE_INTERACTION__ = { path: intent, run };
+	return {
+		intent,
+		path: null,
+		pointerId,
+		startTime: performance.now(),
+		endTime: null,
+		flushTime: null,
+		frameTime: null,
+		run,
+		written: new Set()
+	};
 }
 
 /**
- * Close a boundary opened with {@link p23bInteractionStart} under the path the
- * handler actually produced. One interaction stays one path: the press that
- * opened a drag or a bend is never also recorded as the selection it started
- * from.
+ * Close the synchronous half of a press and schedule its deferred boundaries.
+ * They are recorded under whatever path the press is resolved to, so the flush
+ * and frame of a click follow the selection and the flush and frame of a drag
+ * follow its gesture.
  */
-export function p23bInteractionEnd(
-	boundary: BenchInteractionBoundary,
+export function p23bClosePress(press: P23BPress | null): void {
+	if (!press) return;
+	press.endTime = performance.now();
+	writePressBoundaries(press);
+	void tick().then(() => {
+		press.flushTime = performance.now();
+		writePressBoundaries(press);
+	});
+	requestAnimationFrame(() => {
+		press.frameTime = performance.now();
+		writePressBoundaries(press);
+		if ((globalThis as P23BPerfGlobals).__P23B_ACTIVE_INTERACTION__?.run === press.run) {
+			delete (globalThis as P23BPerfGlobals).__P23B_ACTIVE_INTERACTION__;
+		}
+	});
+}
+
+/** Hold a press open until its release reports the path it actually became. */
+export function p23bDeferPress(press: P23BPress | null): void {
+	if (press) awaitingPress = press;
+}
+
+/** Name a press whose outcome is known, and write the boundaries that are ready. */
+export function p23bResolvePress(press: P23BPress | null, path: BenchInteractionPath): void {
+	if (!press) return;
+	if (awaitingPress === press) awaitingPress = null;
+	if (press.path === null) press.path = path;
+	writePressBoundaries(press);
+}
+
+/**
+ * Resolve the press still awaiting its outcome. Only the pointer that opened it
+ * may resolve it, so a second contact can never name someone else's press.
+ */
+export function p23bResolveAwaitingPress(pointerId: number, path: BenchInteractionPath): void {
+	const press = awaitingPress;
+	if (!press || press.pointerId !== pointerId) return;
+	p23bResolvePress(press, path);
+}
+
+/**
+ * Write whichever of a press's three boundaries are ready, each exactly once.
+ * Nothing can be written before the path is known, so no boundary is ever
+ * recorded under a path the interaction did not turn out to be.
+ */
+function writePressBoundaries(press: P23BPress): void {
+	const path = press.path;
+	if (path === null) return;
+	writePressBoundary(press, path, 'input', press.endTime);
+	writePressBoundary(press, path, 'svelte-flush', press.flushTime);
+	writePressBoundary(press, path, 'browser-frame', press.frameTime);
+}
+
+function writePressBoundary(
+	press: P23BPress,
 	path: BenchInteractionPath,
-	startTime: number | undefined
+	boundary: BenchInteractionBoundary,
+	endTime: number | null
 ): void {
-	if (startTime === undefined) return;
-	recordBoundary(path, boundary, startTime, ++sequence);
+	if (endTime === null || press.written.has(boundary)) return;
+	press.written.add(boundary);
+	recordBoundary(path, boundary, press.startTime, ++sequence, endTime);
 }
 
 /**
@@ -104,12 +192,13 @@ function recordBoundary(
 	path: BenchInteractionPath,
 	boundary: BenchInteractionBoundary,
 	startTime: number,
-	run: number
+	run: number,
+	endTime = performance.now()
 ): void {
 	const start = `p2311:p23b:${run}:${boundary}:start`;
 	const end = `p2311:p23b:${run}:${boundary}:end`;
 	performance.mark(start, { startTime });
-	performance.mark(end);
+	performance.mark(end, { startTime: endTime });
 	performance.measure(`p2311:p23b:${path}:${boundary}`, start, end);
 	performance.clearMarks(start);
 	performance.clearMarks(end);
