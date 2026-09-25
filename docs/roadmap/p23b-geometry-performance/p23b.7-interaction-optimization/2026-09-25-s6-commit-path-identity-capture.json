@@ -1,0 +1,167 @@
+{
+  "note": "P23B.7 S6, its own capture — the commit-path wall-mesh identity AFTER the fix, measured in the browser with the EXISTING containment model (p23b-containment.ts) and the DEV identity probe (p23b-mesh-identity.ts). Distilled evidence: the per-accepted-edit build counts by containment ancestry, the identity install/restore windows, the commit-interval and between-action-restore distributions, and two raw traces. Times are ms. Every figure is one occurrence or one action's own tree; NOTHING HERE MAY BE SUMMED. DEV-only, advisory, one machine, one session — not a budget, not a baseline, not S7.",
+  "capture": {
+    "date": "2026-09-25",
+    "commit": "d6f6542658f28a70be278a9c2ad307e38fc4fe3d",
+    "shortCommit": "d6f65426",
+    "branch": "P23B.7",
+    "workingTree": "clean at capture time — the harness's own provenance reads `git status --porcelain` on load and reported `treeDirty: false`; the same tree is clean at HEAD d6f65426 before and after the run",
+    "protocol": {
+      "driver": "apps/editor/src/routes/dev/perf/p23b/drive.ts, unchanged (method v5 scripted capture)",
+      "trigger": "the harness's own 'Run scripted capture' control; the driver is unchanged and drives the SHIPPED handlers with synthetic input events",
+      "actionsPerPath": 25,
+      "interactionWarmup": 5,
+      "sharedLadder": 19.292586,
+      "viewport": "1920x1200",
+      "devicePixelRatio": 1,
+      "fixtures": ["owner-40-curved-v1", "p23b-40-wall-straight-v1", "p23b-40-wall-all-curved-v1"],
+      "runWindowLocal": "2026-09-25 22:14:44 → 22:40:51"
+    },
+    "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+    "operatingSystem": "15.7.2 (build 24G325)",
+    "browser": "Freebuff 0.0.147 / Chrome 130.0.6723.191 / Electron 33.4.11",
+    "population": "warm-up excluded per path; accepted outcomes only — the interaction report's own rule, applied to containment",
+    "sessions": {
+      "owner-40-curved-v1": "fb0e0d0d-dba7-428a-81c2-8eb63968c473",
+      "p23b-40-wall-straight-v1": "c9288abd-3d04-4b88-9d9b-7461aeea2656",
+      "p23b-40-wall-all-curved-v1": "7009d84f-37ca-4c56-9c06-09666aa96b55"
+    },
+    "coverage": {
+      "owner-40-curved-v1": "CAPTURED — 182 actions · selection 25, bend-knot-edit 25, plan-drag-edit 25, wall-authoring 25, plan-pan-zoom 57; settled, no incomplete actions, 0 dropped boundaries",
+      "p23b-40-wall-straight-v1": "CAPTURED — 157 actions · selection 25, plan-drag-edit 25, wall-authoring 25, plan-pan-zoom 57 (bend-knot-edit not applicable: no bend knot in the fixture); settled, no incomplete actions, 0 dropped boundaries",
+      "p23b-40-wall-all-curved-v1": "CAPTURED — 182 actions · selection 25, bend-knot-edit 25, plan-drag-edit 25, wall-authoring 25, plan-pan-zoom 41; settled, no incomplete actions, 0 dropped boundaries. The carried all-curved-40 coverage limit (the driver's 6000 ms action guard, unraised) did NOT fire this run."
+    },
+    "containmentMarksTotals": {
+      "owner-40-curved-v1": { "observed": 84430, "attributed": 63637, "unbound": 232, "unattributed": 20561 },
+      "p23b-40-wall-straight-v1": { "observed": 52508, "attributed": 39347, "unbound": 0, "unattributed": 13161 },
+      "p23b-40-wall-all-curved-v1": { "observed": 94464, "attributed": 78313, "unbound": 376, "unattributed": 15775 }
+    },
+    "harnessRecord": {
+      "bytes": 186080,
+      "sha256": "987f335017fe231d870b4b9385158a8cbbed569cf81cff6bc4729a62474d85e2",
+      "committed": false,
+      "note": "The harness's own measurement record (containment per path + identity counts + the first 60 identity rows + the post-release distributions). 186 KB: not committed — this artifact is the distilled evidence, following the measurement-only step's own convention. The record is reproducible from the same harness control but never byte-identical (identity ids and session ids are per-run)."
+    }
+  },
+  "theFinding": {
+    "claim": "After S6's fix an accepted edit builds the full Wall-mesh set ONCE, on the install side, and the history commit's restore builds NOTHING. Over the whole run: 204 install rows produced 204 mesh builds (one each), and all 475 restores — including the 200 whose commit-replace the accepted edits close — were served from the cache, each followed immediately by a `prebuild-hit` on the identity it handed over.",
+    "mechanism": "`installWallGeometry` records, for the object the state reads back (the Svelte `$state` proxy), the compile's own geometry object as its cache key; `resolveWallMeshes` resolves every incoming geometry through that mapping before it looks in `derivedWallMeshes`. The capture hands the restore the same proxy the install's live read produced, so the restore's lookup lands on the compile object the install cached — a HIT, even though the object it passes is still NOT that object.",
+    "unchangedByTheFix": "The identity disagreement the pin found is still there and must stay there: in 201 of 201 install windows that contain a restore, the restore is handed a `$state` proxy whose identity is NOT the identity the install cached (`restoreSameAsInstall=false`, `restoreProxy=true`). The fix makes the cache agree with the identity, never the identity with the cache.",
+    "crossCheck": {
+      "installRows": 204,
+      "prebuildMissRows": 204,
+      "prebuildHitRows": 475,
+      "restoreRows": 475,
+      "commitReplaceRows": 200,
+      "reading": "204 installs ↔ 204 misses ↔ 204 builds: 200 are the accepted commit-path actions' own installs (1 per action, verified by containment ancestry) and 4 are the fixture remounts. 475 restores ↔ 475 hits ↔ 0 builds: 200 follow a `commit-replace` (the accepted edits' commit restores, 0 builds each, hit next in 200/200) and 275 follow a `capture` between a commit and the next action (0 builds each, hit next in 275/275)."
+    }
+  },
+  "wallMeshBuildsPerAcceptedEdit": {
+    "acceptedCommitPathActions": 200,
+    "perFixtureAccepted": {
+      "owner-40-curved-v1": { "bend-knot-edit": 25, "plan-drag-edit": 25, "wall-authoring": 25 },
+      "p23b-40-wall-straight-v1": { "plan-drag-edit": 25, "wall-authoring": 25 },
+      "p23b-40-wall-all-curved-v1": { "bend-knot-edit": 25, "plan-drag-edit": 25, "wall-authoring": 25 }
+    },
+    "buildsPerAcceptedAction": { "1": 200 },
+    "byContainmentAncestry": [
+      { "ancestry": "plan-apply", "builds": 54, "paths": ["bend-knot-edit", "plan-drag-edit"], "fixtures": ["owner-40-curved-v1", "p23b-40-wall-straight-v1", "p23b-40-wall-all-curved-v1"] },
+      { "ancestry": "reactive > plan-apply", "builds": 71, "paths": ["bend-knot-edit", "plan-drag-edit"], "fixtures": ["owner-40-curved-v1", "p23b-40-wall-straight-v1", "p23b-40-wall-all-curved-v1"] },
+      { "ancestry": "(action root, no enclosing mark — the authoring install)", "builds": 62, "paths": ["wall-authoring"], "fixtures": ["owner-40-curved-v1", "p23b-40-wall-straight-v1", "p23b-40-wall-all-curved-v1"] },
+      { "ancestry": "p2311:authoring-release", "builds": 13, "paths": ["wall-authoring"], "fixtures": ["owner-40-curved-v1", "p23b-40-wall-straight-v1", "p23b-40-wall-all-curved-v1"] }
+    ],
+    "insideCommitReplaceInterval": 0,
+    "buildMsAdvisory": {
+      "owner-40-curved-v1": { "n": 75, "p50": 11.9, "p95": 21.52, "totalMs": 1004.2 },
+      "p23b-40-wall-straight-v1": { "n": 50, "p50": 13.4, "p95": 16.6, "totalMs": 684.5 },
+      "p23b-40-wall-all-curved-v1": { "n": 75, "p50": 23.7, "p95": 27.68, "totalMs": 1829.0 }
+    },
+    "buildMsNote": "The install's own build, measured inside the accepted action (the install side). 200 builds; the 4 remount installs are outside the accepted population. ms advisory: the COUNT is the durable result."
+  },
+  "commitIntervalMs": {
+    "what": "the `p2311:commit-replace` span — the mark `p2311Measure('commit-replace', () => host.replace(next))` wraps, so it encloses the commit's own restore",
+    "pooledByPath": {
+      "bend-knot-edit": { "n": 50, "p50": 1.4, "p95": 3.25, "totalMs": 89.0 },
+      "plan-drag-edit": { "n": 75, "p50": 1.2, "p95": 2.93, "totalMs": 96.0 },
+      "wall-authoring": { "n": 75, "p50": 1.3, "p95": 3.46, "totalMs": 108.1 }
+    },
+    "perFixture": {
+      "owner-40-curved-v1": { "n": 75, "p50": 1.3, "p95": 2.23, "totalMs": 103.4 },
+      "p23b-40-wall-straight-v1": { "n": 50, "p50": 0.6, "p95": 0.7, "totalMs": 31.8 },
+      "p23b-40-wall-all-curved-v1": { "n": 75, "p50": 1.5, "p95": 3.9, "totalMs": 157.9 }
+    },
+    "insideOneCommitInterval": {
+      "traceAction": "owner-40-curved-v1 · bend-knot-edit · accepted action index 25 (action span 917.7 ms)",
+      "rows": [
+        { "label": "p2311:commit-replace", "totalMs": 1.3 },
+        { "label": "p2311:restore-project-clone", "totalMs": 0.2, "afterCommitMarker": true },
+        { "label": "p2311:restore-reactive-write", "totalMs": 0.3, "afterCommitMarker": true },
+        { "label": "p2311:baseline-restore", "totalMs": 0.3, "afterCommitMarker": true },
+        { "label": "p2311:restore-model-project", "totalMs": 0.1, "afterCommitMarker": true },
+        { "label": "p2311:restore-issues-clone", "totalMs": 0, "afterCommitMarker": true },
+        { "label": "p2311:restore-mesh-install", "totalMs": 0, "afterCommitMarker": true },
+        { "label": "p2311:restore-bookkeeping", "totalMs": 0, "afterCommitMarker": true }
+      ],
+      "note": "One action, not a distribution. `restore-mesh-install` is where the pre-fix revision's second 40-Wall build sat; here it is a cache hit worth 0.0-0.1 ms."
+    }
+  },
+  "betweenActionRestoreMs": {
+    "what": "unattributed marks (outside every action boundary) — the restores the driver performs between actions to put the document back on the ratified fixture",
+    "fixture": "owner-40-curved-v1",
+    "baseline-restore": { "n": 75, "p50": 17.2, "p95": 36.5, "totalMs": 1434.1 },
+    "restore-reactive-write": { "n": 75, "p50": 17.2, "p95": 36.5, "totalMs": 1430.8 },
+    "restore-mesh-install": { "n": 75, "p50": 0.0, "p95": 0.1, "totalMs": 0.5 },
+    "restore-project-clone": { "n": 75, "p50": 0.2, "p95": 1.2, "totalMs": 19.9 },
+    "note": "UNCHANGED by the fix and unchanged from the pre-fix revision: this restore already hit the cache (restore-mesh-install p50 0.0 both before and after). Its 17.2 ms p50 is restore-reactive-write, not meshes."
+  },
+  "identityProbe": {
+    "rows": 2433,
+    "phases": { "capture": 875, "commit-replace": 200, "install-bundle": 204, "prebuild-hit": 475, "prebuild-miss": 204, "restore": 475 },
+    "installWindows": 204,
+    "editSideBuilds": { "1": 204 },
+    "commitRestoreBuilds": { "0": 201, "null": 3 },
+    "restoreHitNext": { "true": 201, "null": 3 },
+    "restoreProxy": { "true": 201, "null": 3 },
+    "restoreSameAsInstall": { "false": 201, "null": 3 },
+    "restoreSameAsLive": { "true": 201, "null": 3 },
+    "restoresAfterCommitReplace": { "n": 200, "builds": { "0": 200 }, "hitNext": { "true": 200 } },
+    "restoresAfterCapture": { "n": 275, "builds": { "0": 275 }, "hitNext": { "true": 275 } },
+    "wallCounts": { "0": 2, "40": 127, "41": 75 },
+    "perFixtureWindows": {
+      "owner-40-curved-v1": { "windows": 75, "editSideBuilds": { "1": 75 }, "commitRestoreBuilds": { "0": 75 }, "restoreHitNext": { "true": 75 }, "restoreProxy": { "true": 75 }, "restoreSameAsInstall": { "false": 75 }, "walls": { "40": 50, "41": 25 } },
+      "p23b-40-wall-straight-v1": { "windows": 50, "editSideBuilds": { "1": 50 }, "commitRestoreBuilds": { "0": 50 }, "restoreHitNext": { "true": 50 }, "restoreProxy": { "true": 50 }, "restoreSameAsInstall": { "false": 50 }, "walls": { "40": 25, "41": 25 } },
+      "p23b-40-wall-all-curved-v1": { "windows": 75, "editSideBuilds": { "1": 75 }, "commitRestoreBuilds": { "0": 75 }, "restoreHitNext": { "true": 75 }, "restoreProxy": { "true": 75 }, "restoreSameAsInstall": { "false": 75 }, "walls": { "40": 50, "41": 25 } }
+    },
+    "nullsExplained": "3 install windows close at the next fixture's first install (the run's fixture boundaries) and therefore contain no commit and no restore; their edit-side build count is 1 like every other window. The 2 windows with `walls: 0` are the fixture initialization installs (outside every count).",
+    "windowsWallsNote": "`walls: 41` is the authored Wall present: 25 authoring actions per fixture add one Wall to the 40-Wall fixture.",
+    "trace": [
+      { "seq": 109, "phase": "capture", "geometryId": 5, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": true },
+      { "seq": 110, "phase": "install-bundle", "geometryId": 6, "stateProxy": false, "walls": 40, "sameAsInstall": true, "sameAsLive": null },
+      { "seq": 111, "phase": "prebuild-miss", "geometryId": 6, "stateProxy": false, "walls": 40, "sameAsInstall": true, "sameAsLive": null },
+      { "seq": 112, "phase": "capture", "geometryId": 7, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": true },
+      { "seq": 113, "phase": "commit-replace", "geometryId": null, "stateProxy": null, "walls": null, "sameAsInstall": null, "sameAsLive": null },
+      { "seq": 114, "phase": "restore", "geometryId": 7, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": true },
+      { "seq": 115, "phase": "prebuild-hit", "geometryId": 7, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": null },
+      { "seq": 116, "phase": "capture", "geometryId": 7, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": true },
+      { "seq": 117, "phase": "restore", "geometryId": 5, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": true },
+      { "seq": 118, "phase": "prebuild-hit", "geometryId": 5, "stateProxy": true, "walls": 40, "sameAsInstall": false, "sameAsLive": null }
+    ],
+    "traceNote": "One accepted edit's commit window plus the next action's opening restore, rows in probe order. Compare the pre-fix pin: after `commit-replace` the restore of id=53 was followed by `prebuild-miss id=53`; here the identical shape (restore hands a PROXY, sameAsInstall=false) is followed by `prebuild-hit`, and the only `prebuild-miss` in the window is the install's own (seq 111)."
+  },
+  "preFixCounterpart": {
+    "source": "docs/roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-capture.json (revision 2, clean tree at d48809ab, SHA-256 c004abbd92d5bf90892f3f90b6c3bf898f546a0529b46de6bfd52beecfe3d76d)",
+    "claim": "Every accepted edit on a commit path built the full 40-Wall mesh set TWICE: once inside `plan-apply` (the install) and again inside `commit-replace`'s restore, which was a cache MISS.",
+    "commitIntervalBeforeFix": { "plan-apply": "p50 27.2 (curved bend) · 26.3 (curved drag) · 22.8 (straight drag)", "commit-replace": "p50 161.7 (curved bend) · 160.7 (curved drag) · 190.7 (curved authoring) · 135.4 (straight drag)" },
+    "identityPinBeforeFix": "install-bundle id=52 proxy=NO → prebuild-miss id=52 · capture id=53 proxy=YES sameAsInstall=NO · commit-replace marker · restore id=53 proxy=YES → prebuild-miss id=53",
+    "inProcessOracleBeforeFix": "apps/editor/tests/lib/editor/layout/p23b7-mesh-identity-regression.test.ts run against the unfixed source: \"an accepted edit builds the wall-mesh set ONCE: expected 2 to be 1\" (the pre-fix capture of that run is quoted in S6's own record)",
+    "afterFix": "This artifact. Same instrument, same protocol, same ladder: the commit interval carries no build (0 inside `commit-replace` for 200/200 accepted commit-path actions) and every restore hits."
+  },
+  "carriedLimits": [
+    "ms are advisory and single-machine / single-session; the DURABLE result is the per-edit build COUNT and the geometry identity. The commit-interval ms gap (p50 ~160-190 ms before → p50 0.6-1.5 ms after) is an order of magnitude beyond the 40-85% revision-to-revision drift the measurement-only step carried, so the attribution is the removed build — but no ms figure here is a budget or a target.",
+    "The between-action restore is UNCHANGED by the fix (it already hit: `restore-mesh-install` p50 0.0 before and after). Its ms belongs to fixture cost, not to S6.",
+    "The all-curved-40 coverage limit (the driver's own 6000 ms action guard) did not fire on this run: coverage is 3/3 fixtures settled, no incomplete actions, 0 dropped boundaries. The limit stays carried and unraised; this run is not evidence that it cannot fire.",
+    "`g3-baseline.json` was neither read nor written by this slice (`bench:record` remains its only writer) and no budget metric was added.",
+    "This is S6's own capture, independent of S7 by construction: no topology change (S3/S4) preceded it, and S7 re-measures slice-wide.",
+    "The harness's own 186 KB measurement record is not committed; the distilled artifact above is. Identity ids and session ids are per-run, so the record is reproducible in shape, never byte-identical."
+  ]
+}

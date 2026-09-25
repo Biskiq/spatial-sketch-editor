@@ -394,6 +394,27 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         retained-requests fallback approved). Execution order: S2 → S6 + regression → S6's independent
         measurement → S3 → S4 → S5 only if measurement names it → S7. Slice review, acceptance and
         `slice-closeout` remain owner actions after the PR.
+        PROGRESS 2026-09-25 (branch `P23B.7`): S2 EXECUTED — the preflight reference is frozen as a test
+        (OR-3 (a)-(d), OR-8 and the issue-order row, with status, code and the verbatim message).
+        S6 EXECUTED AND MEASURED — the commit-path duplicate build is FIXED in
+        `layout-preview-state.svelte.ts` (the identity the state reads back is recorded against the
+        compile's own geometry, so every writer installs under a key a later restore asks for and the
+        commit's restore HITS the cache the install filled); the mandated `$state`-backed regression
+        oracle failed 2-vs-1 before the fix and is green after it (1 build on the pinned interval,
+        0 on the separately counted between-action restore, undo/redo content byte-identical); and
+        S6's own independent browser capture ran on a CLEAN tree at `d6f65426` BEFORE any topology
+        change — 3/3 fixtures captured, settled, 0 dropped (the carried all-curved-40 6000 ms guard
+        did NOT fire), 200 accepted commit-path actions → exactly ONE wall-mesh build each, all on the
+        install side, 0 inside `commit-replace` (204 installs → 204 builds; 475 restores → 475 hits,
+        0 builds; 200/200 commit restores hit immediately). The identity disagreement is UNCHANGED
+        (the restore is still handed a `$state` proxy that is not the install's object) and the cache
+        now agrees with it; `commit-replace` p50 161.7/160.7/190.7/135.4 ms → 1.4/1.2/1.3 (advisory;
+        the COUNT is the durable result; `g3-baseline.json` untouched).
+        Record → ./p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md ·
+        LIVE artifact (SHA-256 `95790b0081d5c42b6193d7eed8f94786461f774672d1319668ace4f3e0009112`) →
+        ./p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json.
+        NEXT IN SLICE: S3 (affected-extent derivation) → S4 (gesture-invariant verdict set + the
+        four-cell differential) → S5 only if the measurement names it → S7.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified
