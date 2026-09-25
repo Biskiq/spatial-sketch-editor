@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	compileWallFirstLayoutGeometry,
 	createWallSamplingDerivation,
 	extractBoundaryCandidateFaces,
 	validateWallFirstTopology,
@@ -139,6 +140,30 @@ describe('P23B.4 S3 — shared derivation through topology pre/post', () => {
 				validateWallFirstTopology(document)
 			);
 			expect(sampling.stats.derivations, `${spec.id} spans derived`).toBeGreaterThan(0);
+		}
+	});
+});
+
+describe('P23B.4 S4 — shared derivation through the compile sites', () => {
+	it("OR-1: shared compile output is array-equal to fresh output (arc, physical, validation sites)", () => {
+		for (const { id, document } of s2Fixtures()) {
+			const sampling = createWallSamplingDerivation();
+			const shared = compileWallFirstLayoutGeometry(document, sampling);
+			const fresh = compileWallFirstLayoutGeometry(document);
+			expect(shared.geometry, `${id} shared geometry`).toEqual(fresh.geometry);
+			expect(shared.issues, `${id} shared issues`).toEqual(fresh.issues);
+			expect(sampling.stats.derivations, `${id} derivations serve all three sites`).toBeGreaterThan(0);
+		}
+	});
+
+	it('shares across rooms and sites: one context serves repeated compiles', () => {
+		for (const { id, document } of s2Fixtures()) {
+			const sampling = createWallSamplingDerivation();
+			const first = compileWallFirstLayoutGeometry(document, sampling);
+			const derivationsAfterFirst = sampling.stats.derivations;
+			const second = compileWallFirstLayoutGeometry(document, sampling);
+			expect(second.geometry, `${id} second compile`).toEqual(first.geometry);
+			expect(sampling.stats.derivations, `${id} no new derivations on repeat`).toBe(derivationsAfterFirst);
 		}
 	});
 });

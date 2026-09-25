@@ -37,11 +37,16 @@ export type PreparedLayoutRoomGeometry = {
 
 export function prepareLayoutRoomSegments(
 	room: { id: string; boundary: CompilerBoundarySource },
-	path = `rooms.${room.id}`
+	path = `rooms.${room.id}`,
+	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>
 ): PreparedLayoutRoomGeometry {
 	const issues: LayoutGeometryIssue[] = [];
 	const segments = room.boundary.segments.map((segment, index) => {
 		if (!isFiniteSegment(segment)) return null;
+		// P23B.4 M-1: a mapped segment is served from the chain derivation instead
+		// of re-sampling. Unmapped segments keep the historical kernel path exactly.
+		const pre = preSampled?.get(segment);
+		if (pre) return pre;
 		try {
 			return sampleSegment(segment);
 		} catch (error) {

@@ -1611,7 +1611,7 @@ function finalizeWallGeometryCandidate(options: {
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document));
+	const compiled = p2311Measure('acceptance-compile', () => compileWallFirstLayoutGeometry(structural.document, sampling));
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject('geometry_invalid', compiled.issues[0]?.message ?? 'Candidate geometry does not compile', undefined, compiled.issues);
 	}

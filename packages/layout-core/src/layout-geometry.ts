@@ -47,7 +47,7 @@ import {
 	type SampleableSegment,
 	type SampledSegment
 } from './layout-geometry-curve';
-import { wallCenterlineSegment, wallCenterlineSamples } from './layout-wall-centerline';
+import { wallCenterlineSegment, wallCenterlineSamples, type WallSamplingDerivation } from './layout-wall-centerline';
 import {
 	WALL_OFFSET_FOLD_CODE,
 	WALL_OFFSET_FOLD_MESSAGE,
@@ -112,6 +112,14 @@ export type CompilerRoomSource = {
 	 * compile path, no second compiler.
 	 */
 	ceilingElevation?: number;
+	/**
+	 * P23B.4 M-1 — pre-sampled room-boundary segments keyed by segment object
+	 * identity, derived through the chain-scoped sampling derivation at the
+	 * adapter (where Wall + traversal authority are known). The shared core
+	 * serves a mapped segment instead of re-sampling it; absent keeps the
+	 * historical per-segment sampling and byte-identical legacy behavior.
+	 */
+	preSampled?: ReadonlyMap<SampleableSegment, SampledSegment>;
 };
 
 /**
@@ -185,7 +193,8 @@ export function compileLayoutGeometry(document: LayoutDocument): CompiledLayoutG
  * the `wallId`; Room-derived semantic records retain `roomId`.
  */
 export function compileWallFirstLayoutGeometry(
-	document: LayoutDocumentWallFirst
+	document: LayoutDocumentWallFirst,
+	sampling?: WallSamplingDerivation
 ): CompiledLayoutGeometryResult {
 	const pointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]));
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
@@ -226,6 +235,10 @@ export function compileWallFirstLayoutGeometry(
 		ceilingElevationByRoomId.set(room.id, document.floor.elevation + Math.max(...heights));
 	}
 
+	// P23B.4 M-1: segment-identity map serving the shared-core room validation
+	// from the chain derivation. One map for all rooms is sound: segment objects
+	// are created fresh per room above, so identity lookup can never alias rooms.
+	const preSampled = new Map<SampleableSegment, SampledSegment>();
 	const rooms: CompilerRoomSource[] = document.rooms.map((room) => {
 		const segments: SampleableSegment[] = [];
 		const roomOpenings: CompilerOpening[] = [];
@@ -251,13 +264,24 @@ export function compileWallFirstLayoutGeometry(
 			// Canonical endpoints + traversal flag: the adapter alone decides the
 			// walk direction, so a reversed ref cannot pair the chain with the
 			// wrong knot order (P23.11 slice 2).
-			segments.push(
-				wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward')
-			);
+			const segment = wallCenterlineSegment(wall, start, end, reversed ? 'reverse' : 'forward');
+			segments.push(segment);
+			if (sampling) {
+				// P23B.4 M-1: serve the room-validation sampling below from the
+				// shared derivation (same key the face/topology gates use). Omitted
+				// from the map when the seam yields undefined so the core keeps its
+				// sampling-failed issue path exactly.
+				const pre = sampling.samples(wall, start, end, reversed ? 'reverse' : 'forward');
+				if (pre) preSampled.set(segment, pre);
+			}
 			if (!arcLengthByWallId.has(wall.id)) {
 				// Mirroring always measures along the CANONICAL traversal: an
 				// Opening offset is authored from the Wall's own start Junction.
-				const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+				// P23B.4 M-1: `:260` keeps 'forward' — a change here is a behaviour
+				// change, so the shared derivation is keyed forward like the seam.
+				const sampled = sampling
+					? sampling.samples(wall, start, end, 'forward')
+					: wallCenterlineSamples(wall, start, end, 'forward');
 				if (sampled) arcLengthByWallId.set(wall.id, sampled.length);
 			}
 		}
@@ -286,6 +310,7 @@ export function compileWallFirstLayoutGeometry(
 			},
 			boundary: { closed: true, segments },
 			openings: roomOpenings,
+			...(sampling ? { preSampled } : {}),
 			wallThicknessBySegmentId,
 			openingHeightLimitBySegmentId,
 			...(derivedCeiling !== undefined ? { ceilingElevation: derivedCeiling } : {})
@@ -299,7 +324,7 @@ export function compileWallFirstLayoutGeometry(
 		floors: [{ floor: document.floor, rooms }],
 		objects: document.objects,
 		wallIdScope: 'document'
-	});
+	}, sampling);
 }
 
 /**
@@ -319,7 +344,8 @@ export function compileWallFirstLayoutGeometry(
  */
 function compileWallFirstWithPhysicalWalls(
 	document: LayoutDocumentWallFirst,
-	source: CompilerSource
+	source: CompilerSource,
+	sampling?: WallSamplingDerivation
 ): CompiledLayoutGeometryResult {
 	const result = p2311Measure('room-geometry-compile', () => compileLayoutGeometrySource(source));
 	const geometry = result.geometry;
@@ -363,10 +389,18 @@ function compileWallFirstWithPhysicalWalls(
 		// auto-bezier) onto the existing curve kernel; no second sampling path.
 		const segment = wallCenterlineSegment(wall, start, end, 'forward');
 		let sampled: SampledSegment;
-		try {
-			sampled = sampleSegment(segment);
-		} catch {
-			continue;
+		// P23B.4 M-1: the physical loop serves the same forward key the arc-length
+		// site uses. `undefined` keeps the historical skip exactly.
+		if (sampling) {
+			const shared = sampling.samples(wall, start, end, 'forward');
+			if (!shared) continue;
+			sampled = shared;
+		} else {
+			try {
+				sampled = sampleSegment(segment);
+			} catch {
+				continue;
+			}
 		}
 		const wallOpenings: CompilerOpening[] = document.openings
 			.filter((opening) => opening.wallId === wall.id)
@@ -926,7 +960,8 @@ export function compileLayoutGeometrySource(source: CompilerSource): CompiledLay
 			}
 			const prepared = prepareLayoutRoomSegments(
 				{ id: roomSource.room.id, boundary: roomSource.boundary },
-				path
+				path,
+				roomSource.preSampled
 			);
 			const roomIssues = [
 				...prepared.issues,
