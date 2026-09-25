@@ -327,7 +327,8 @@ export function wallCenterlineSamples(
 					traversal,
 					start: [startPoint[0], startPoint[1]] as LayoutVec2,
 					end: [endPoint[0], endPoint[1]] as LayoutVec2,
-					ok: result !== undefined
+					ok: result !== undefined,
+					centerline: wall.centerline
 				},
 				result
 			);
@@ -355,6 +356,14 @@ export type WallSamplingCallObservation = {
 	start: LayoutVec2;
 	end: LayoutVec2;
 	ok: boolean;
+	/**
+	 * The centerline OBJECT the call keyed on — the sampler's actual identity
+	 * input, exposed so a test can assert cross-call reference equality (a
+	 * value-only observation cannot distinguish "shared object" from
+	 * "deep-cloned equal object"). It is a borrowing reference: the observer runs
+	 * synchronously and must NOT retain it (RL-1) — compare in place or clear.
+	 */
+	centerline: LayoutWallCenterline;
 };
 let wallSamplingObserverForTest:
 	| ((observation: WallSamplingCallObservation, result: SampledSegment | undefined) => void)
