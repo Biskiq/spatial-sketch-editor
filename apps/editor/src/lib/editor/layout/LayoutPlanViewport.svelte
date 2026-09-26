@@ -3844,19 +3844,26 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if ((path === 'wall-authoring' && !rectangleCommit) || !path) return onPointerUp(event);
 		const gesture = p23bGestureForPointer(event.pointerId);
 		if (!gesture) return onPointerUp(event);
+		const roomMoveBefore = interaction.roomUnitDrag && path === 'plan-drag-edit'
+			? JSON.stringify(wallFirstLayoutDocument())
+			: null;
 		const roomsBefore = rectangleCommit ? wallFirstLayoutDocument()?.rooms.length ?? null : null;
 		// The release is the press's outcome: a press that armed a direct edit learns
 		// here whether it performed a selection or a drag, and the shipped commit
 		// classifies an edit as accepted or refused (`p23bClassifyGestureOutcome`).
 		const result = p23bMeasureGesture(gesture, path, 'release', () => onPointerUp(event));
 		const roomsAfter = rectangleCommit ? wallFirstLayoutDocument()?.rooms.length ?? null : null;
+		const roomMoveAfter = roomMoveBefore !== null ? JSON.stringify(wallFirstLayoutDocument()) : null;
+		const roomMoveOutcome = roomMoveBefore !== null && roomMoveAfter !== null
+			? roomMoveBefore === roomMoveAfter ? 'rejected' : 'accepted'
+			: null;
 		const rectangleOutcome = roomsBefore !== null && roomsAfter !== null
 			? roomsAfter === roomsBefore + 1 ? 'accepted' : 'rejected'
 			: null;
 		p23bResolveGesture(
 			gesture,
 			path,
-			rectangleOutcome ?? gesture.outcome ?? (path === 'selection' || path === 'plan-pan-zoom' ? 'accepted' : 'unclassified')
+			rectangleOutcome ?? roomMoveOutcome ?? gesture.outcome ?? (path === 'selection' || path === 'plan-pan-zoom' ? 'accepted' : 'unclassified')
 		);
 		p23bScheduleGestureBoundaries(gesture);
 		return result;
