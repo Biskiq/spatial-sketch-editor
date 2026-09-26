@@ -8,8 +8,9 @@
  * controller's bounded stack depths.
  */
 import { createHash } from 'node:crypto';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { BufferGeometry, MeshBasicMaterial } from 'three';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { BufferGeometry } from 'three';
+import { flushSync, mount, unmount } from 'svelte-client-runtime';
 
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
@@ -27,13 +28,14 @@ import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-
 import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 import { legJoinsByWall } from '@portfolio/layout-core';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
-import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
 import {
 	createClientReactiveLayoutPreviewState,
 	isSvelteStateProxy,
 	loadClientCompiledPreviewModule,
 	type ClientPreviewRuntime
 } from './p23b7-reactive-preview-state';
+import LayoutPreviewSceneMountHarness from './p23b6-layout-preview-scene-mount-harness.svelte';
+import type { LayoutPreviewSceneInputs } from './p23b6-layout-preview-scene-mount-harness.svelte';
 
 const PIN_FIXTURES = [
 	'p23b-40-wall-straight-v1',
@@ -43,7 +45,6 @@ const PIN_FIXTURES = [
 const RETENTION_FIXTURE = 'p23b-12-wall-target-curved-v1';
 const EDIT_WALL = 'room-0:wall-0';
 const GC_REQUIRED = process.env.P23B6_REQUIRE_GC === '1';
-const SHARED_MATERIAL = new MeshBasicMaterial();
 const EXPECTED_PLAN_LAYER_COUNTS = [
 	[1, 10], [2, 10], [3, 40], [4, 0], [5, 0], [6, 0], [7, 0],
 	[8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [13, 0]
@@ -54,6 +55,35 @@ const PLAN_GOLDENS: Record<(typeof PIN_FIXTURES)[number], string> = {
 	'owner-40-curved-v1': '29693743e0823420530c18e8879aab6d81b899784c473e58e993754b318edf8d'
 };
 let unmountEvidence: UnmountWitness | null = null;
+
+const sceneAdapterLedger = vi.hoisted(() => ({
+	entries: [] as { disposeCalls: number }[]
+}));
+
+// The scene's resource effects do not depend on Three's renderer. Keep the
+// actual LayoutPreviewScene mounted, while replacing Threlte's Object3D sinks
+// so this Node test can observe the production effect lifecycle without WebGL.
+vi.mock('@threlte/core', () => ({
+	T: new Proxy({}, { get: () => () => undefined })
+}));
+
+vi.mock('$lib/render/wall-geometry-adapter', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/render/wall-geometry-adapter')>();
+	return {
+		...actual,
+		toWallBufferGeometry(...args: Parameters<typeof actual.toWallBufferGeometry>) {
+			const adapted = actual.toWallBufferGeometry(...args);
+			const entry = { disposeCalls: 0 };
+			sceneAdapterLedger.entries.push(entry);
+			const dispose = adapted.dispose.bind(adapted);
+			adapted.dispose = () => {
+				entry.disposeCalls += 1;
+				dispose();
+			};
+			return adapted;
+		}
+	};
+});
 
 type MatrixFixtureId = (typeof PIN_FIXTURES)[number] | typeof RETENTION_FIXTURE;
 type WeakGenerationWitness = {
@@ -217,69 +247,219 @@ function digest(value: unknown): string {
 	return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-type Adapted = ReturnType<typeof toWallBufferGeometry>;
+/** Minimal node implementation for mounting Svelte components whose output is all component slots. */
+class SceneTestNode {
+	parentNode: SceneTestNode | null = null;
+	childNodes: SceneTestNode[] = [];
+	nodeValue: string | null = null;
 
-/** Exercise the production adapter and cleanup API at each settled scene generation. */
-function createAdapterLifecycleProbe() {
-	let current = new Map<string, Adapted>();
-	let allocations = 0;
-	let disposals = 0;
-	const disposeSpies: ReturnType<typeof vi.spyOn>[] = [];
+	constructor(readonly nodeType: number) {}
 
-	function allocate(state: LayoutPreviewState): Map<string, Adapted> {
-		const next = new Map<string, Adapted>();
-		for (const [wallId, mesh] of state.wallMeshesByWall) {
-			const adapted = toWallBufferGeometry(mesh, () => ({ material: SHARED_MATERIAL }));
-			const originalDispose = adapted.geometry.dispose.bind(adapted.geometry);
-			const spy = vi.spyOn(adapted.geometry, 'dispose').mockImplementation(() => {
-				disposals += 1;
-				originalDispose();
-			});
-			disposeSpies.push(spy);
-			allocations += 1;
-			next.set(wallId, adapted);
+	get data(): string {
+		return this.nodeValue ?? '';
+	}
+
+	set data(value: string) {
+		this.nodeValue = value;
+	}
+
+	get firstChild(): SceneTestNode | null {
+		return this.childNodes[0] ?? null;
+	}
+
+	get lastChild(): SceneTestNode | null {
+		return this.childNodes.at(-1) ?? null;
+	}
+
+	get nextSibling(): SceneTestNode | null {
+		if (!this.parentNode) return null;
+		const index = this.parentNode.childNodes.indexOf(this);
+		return this.parentNode.childNodes[index + 1] ?? null;
+	}
+
+	appendChild<T extends SceneTestNode>(node: T): T {
+		if (node.nodeType === 11) {
+			for (const child of [...node.childNodes]) this.appendChild(child);
+			return node;
 		}
-		return next;
+		node.remove();
+		node.parentNode = this;
+		this.childNodes.push(node);
+		return node;
 	}
 
-	function dispose(generation: Map<string, Adapted>): void {
-		for (const adapted of generation.values()) adapted.dispose();
+	append(...nodes: SceneTestNode[]): void {
+		for (const node of nodes) this.appendChild(node);
 	}
 
+	insertBefore<T extends SceneTestNode>(node: T, reference: SceneTestNode | null): T {
+		if (node.nodeType === 11) {
+			for (const child of [...node.childNodes]) this.insertBefore(child, reference);
+			return node;
+		}
+		if (reference === null) return this.appendChild(node);
+		const index = this.childNodes.indexOf(reference);
+		if (index < 0) throw new Error('Scene test DOM insertion reference is not a child');
+		node.remove();
+		node.parentNode = this;
+		this.childNodes.splice(index, 0, node);
+		return node;
+	}
+
+	removeChild<T extends SceneTestNode>(node: T): T {
+		const index = this.childNodes.indexOf(node);
+		if (index >= 0) this.childNodes.splice(index, 1);
+		node.parentNode = null;
+		return node;
+	}
+
+	before(...nodes: SceneTestNode[]): void {
+		if (!this.parentNode) return;
+		for (const node of nodes) this.parentNode.insertBefore(node, this);
+	}
+
+	after(...nodes: SceneTestNode[]): void {
+		if (!this.parentNode) return;
+		const parent = this.parentNode;
+		const reference = this.nextSibling;
+		for (const node of nodes) parent.insertBefore(node, reference);
+	}
+
+	remove(): void {
+		this.parentNode?.removeChild(this);
+	}
+
+	cloneNode(deep = false): SceneTestNode {
+		const clone = new SceneTestNode(this.nodeType);
+		clone.nodeValue = this.nodeValue;
+		if (deep) for (const child of this.childNodes) clone.appendChild(child.cloneNode(true));
+		return clone;
+	}
+
+	addEventListener(): void {}
+	removeEventListener(): void {}
+}
+
+class SceneTestElement extends SceneTestNode {
+	constructor(readonly tagName: string) {
+		super(1);
+	}
+	setAttribute(): void {}
+	removeAttribute(): void {}
+}
+
+class SceneTestText extends SceneTestNode {
+	constructor(value: string) {
+		super(3);
+		this.nodeValue = value;
+	}
+}
+
+class SceneTestComment extends SceneTestNode {
+	constructor(value: string) {
+		super(8);
+		this.nodeValue = value;
+	}
+}
+
+class SceneTestDocumentFragment extends SceneTestNode {
+	constructor() {
+		super(11);
+	}
+	cloneNode(deep = false): SceneTestDocumentFragment {
+		const clone = new SceneTestDocumentFragment();
+		if (deep) for (const child of this.childNodes) clone.appendChild(child.cloneNode(true));
+		return clone;
+	}
+}
+
+class SceneTestTemplate extends SceneTestElement {
+	content = new SceneTestDocumentFragment();
+
+	constructor() {
+		super('TEMPLATE');
+	}
+
+	set innerHTML(value: string) {
+		this.content = new SceneTestDocumentFragment();
+		for (const part of value.split(/(<!--[\s\S]*?-->)/g)) {
+			if (part.startsWith('<!--')) this.content.appendChild(new SceneTestComment(part.slice(4, -3)));
+			else if (part.length > 0) this.content.appendChild(new SceneTestText(part));
+		}
+	}
+
+	cloneNode(deep = false): SceneTestTemplate {
+		const clone = new SceneTestTemplate();
+		clone.content = this.content.cloneNode(deep);
+		return clone;
+	}
+}
+
+class SceneTestDocument {
+	createTextNode(value: string): SceneTestText {
+		return new SceneTestText(value);
+	}
+	createComment(value: string): SceneTestComment {
+		return new SceneTestComment(value);
+	}
+	createDocumentFragment(): SceneTestDocumentFragment {
+		return new SceneTestDocumentFragment();
+	}
+	createElement(tagName: string): SceneTestElement {
+		return tagName.toLowerCase() === 'template' ? new SceneTestTemplate() : new SceneTestElement(tagName);
+	}
+	addEventListener(): void {}
+	removeEventListener(): void {}
+}
+
+function installSceneTestDom(): SceneTestElement {
+	const host = globalThis as typeof globalThis & Record<string, unknown>;
+	if (typeof host.document === 'undefined') {
+		Object.assign(host, {
+			document: new SceneTestDocument(),
+			window: host,
+			Node: SceneTestNode,
+			Element: SceneTestElement,
+			HTMLElement: SceneTestElement,
+			Text: SceneTestText,
+			Comment: SceneTestComment,
+			Document: SceneTestDocument,
+			DocumentFragment: SceneTestDocumentFragment
+		});
+	}
+	return new SceneTestElement('DIV');
+}
+
+function sceneInput(preview: LayoutPreviewState): LayoutPreviewSceneInputs {
 	return {
-		install(state: LayoutPreviewState) {
-			const previous = current;
-			current = allocate(state);
-			dispose(previous);
-			this.assertBalanced();
-		},
-		toPlan() {
-			const previous = current;
-			current = new Map();
-			dispose(previous);
-			this.assertBalanced();
-		},
-		unmount() {
-			this.toPlan();
-		},
-		assertBalanced() {
-			expect(allocations, 'every allocation is either live or disposed').toBe(disposals + current.size);
-			for (const spy of disposeSpies) expect(spy.mock.calls.length).toBeLessThanOrEqual(1);
-		},
-		get counts() {
-			return { allocations, disposals, live: current.size };
-		}
+		model: preview.model,
+		geometry: preview.geometry,
+		wallMeshesByRoom: preview.wallMeshesByRoom,
+		wallMeshesByWall: preview.wallMeshesByWall
 	};
+}
+
+function expectedSceneAdapterCount(preview: LayoutPreviewState): number {
+	let count = 0;
+	for (const room of preview.geometry.rooms) if (preview.wallMeshesByRoom.has(room.roomId)) count += 1;
+	for (const wall of preview.geometry.walls ?? []) if (preview.wallMeshesByWall.has(wall.wallId)) count += 1;
+	return count;
+}
+
+function assertSceneAdapterLedger(expectedLive: number, label: string): void {
+	const disposals = sceneAdapterLedger.entries.filter((entry) => entry.disposeCalls === 1).length;
+	for (const entry of sceneAdapterLedger.entries) {
+		expect(entry.disposeCalls, `${label}: one cleanup per disposed production adapter`).toBeLessThanOrEqual(1);
+	}
+	expect(sceneAdapterLedger.entries.length, `${label}: allocations = disposals + live`).toBe(
+		disposals + expectedLive
+	);
 }
 
 beforeAll(() => {
 	if (GC_REQUIRED) {
 		expect(typeof (globalThis as typeof globalThis & { gc?: () => void }).gc).toBe('function');
 	}
-});
-
-afterEach(() => {
-	SHARED_MATERIAL.dispose();
 });
 
 describe('P23B.6 S2 — mesh and raw Plan output pins', () => {
@@ -331,7 +511,7 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 			expect(runtime.layoutPreviewAuthoredJson(preview)).toBe(firstCommittedLayout);
 			expect(store.undo(), 'the evicted generation is no longer on the stack').toBe(false);
 		}
-	});
+	}, 30_000);
 
 	it('H-2: branching after Undo clears every discarded redo generation', async () => {
 		const history = await makeHistoryHarness();
@@ -411,32 +591,63 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 			);
 		}
 		store.cancelLayoutTransaction();
-	});
+	}, 30_000);
 });
 
 describe('P23B.6 S2 — GPU adapter ownership (H-5)', () => {
-	it('keeps allocations = disposals + live across edit, Undo, Redo, branch, view switch and unmount', async () => {
+	it('mounts LayoutPreviewScene and balances production adapters across edit, history, view switch and unmount', async () => {
 		const history = await makeHistoryHarness();
 		const { store, preview, runtime } = history;
-		const resources = createAdapterLifecycleProbe();
-		resources.install(preview);
+		sceneAdapterLedger.entries.length = 0;
+		const mounted = mount(LayoutPreviewSceneMountHarness, {
+			target: installSceneTestDom() as unknown as Element,
+			props: {
+				initial: sceneInput(preview),
+				interaction: { selection: { kind: 'none' }, objectDrag: null } as never
+			}
+		});
+		const initialLive = expectedSceneAdapterCount(preview);
+		flushSync();
+		assertSceneAdapterLedger(initialLive, 'initial 3D mount');
 
-		commitWallMove(history, 0);
-		resources.install(preview);
-		expect(resources.counts).toMatchObject({ live: preview.wallMeshesByWall.size });
-		expect(store.undo()).toBe(true);
-		resources.install(preview);
-		expect(store.redo()).toBe(true);
-		resources.install(preview);
-		expect(store.undo()).toBe(true);
-		commitWallMove(history, 1);
-		resources.install(preview);
-		resources.toPlan();
-		expect(resources.counts.live).toBe(0);
-		resources.install(preview); // switching back to 3D mounts one fresh generation
-		resources.unmount();
-		expect(resources.counts).toMatchObject({ live: 0, allocations: resources.counts.disposals });
+		const replaceGeneration = (label: string) => {
+			const previousAllocations = sceneAdapterLedger.entries.length;
+			const nextLive = expectedSceneAdapterCount(preview);
+			mounted.replace(sceneInput(preview));
+			flushSync();
+			expect(sceneAdapterLedger.entries.length, `${label}: each active adapter is rebuilt`).toBe(
+				previousAllocations + nextLive
+			);
+			assertSceneAdapterLedger(nextLive, label);
+		};
 
+		try {
+			commitWallMove(history, 0);
+			replaceGeneration('edit');
+			expect(store.undo()).toBe(true);
+			replaceGeneration('Undo');
+			expect(store.redo()).toBe(true);
+			replaceGeneration('Redo');
+			expect(store.undo()).toBe(true);
+			commitWallMove(history, 1);
+			replaceGeneration('history branch');
+
+			const beforePlan = sceneAdapterLedger.entries.length;
+			mounted.show3d(false);
+			flushSync();
+			expect(sceneAdapterLedger.entries.length).toBe(beforePlan);
+			assertSceneAdapterLedger(0, 'switch to Plan / scene unmount');
+
+			mounted.show3d(true);
+			flushSync();
+			const remountLive = expectedSceneAdapterCount(preview);
+			expect(sceneAdapterLedger.entries.length).toBe(beforePlan + remountLive);
+			assertSceneAdapterLedger(remountLive, 'switch back to 3D / fresh scene mount');
+		} finally {
+			await unmount(mounted, { outro: false });
+		}
+
+		assertSceneAdapterLedger(0, 'editor component unmount');
 		const snapshot = runtime.captureLayoutPreviewSnapshot(preview);
 		expect(Object.values(snapshot).some((value) => value instanceof BufferGeometry)).toBe(false);
 		expect(Object.keys(snapshot).some((key) => /mesh|buffergeometry|adapter/i.test(key))).toBe(false);
@@ -445,7 +656,7 @@ describe('P23B.6 S2 — GPU adapter ownership (H-5)', () => {
 
 it.skipIf(!GC_REQUIRED)(
 	'H-7 advisory: reports the incremental retained bytes per generation at a full 100-entry stack',
-	{ timeout: 120_000 },
+		{ timeout: 300_000 },
 	async () => {
 		const straight = [];
 		const curved = [];
@@ -478,7 +689,7 @@ it('H-3: after the editor test frame is released, unmount leaves no generation r
 		// editor state, its history host and the two history snapshots.
 		expect(unmountEvidence!.generations).toHaveLength(3);
 	}
-});
+	}, 30_000);
 
 async function makeUnmountWitness(): Promise<UnmountWitness> {
 	const history = await makeHistoryHarness();

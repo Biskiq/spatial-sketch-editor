@@ -12,6 +12,15 @@ import {
 	type PreparedWallMeshSet
 } from '$lib/editor/layout/prepared-wall-meshes';
 
+const GC_REQUIRED = process.env.P23B6_REQUIRE_GC === '1';
+const GC_AVAILABLE = typeof (globalThis as typeof globalThis & { gc?: () => void }).gc === 'function';
+
+if (GC_REQUIRED && !GC_AVAILABLE) {
+	throw new Error('P23B.6 H-6 forced-GC lane requires Node --expose-gc (globalThis.gc is unavailable)');
+}
+
+const gcIt = GC_REQUIRED ? it : it.skipIf(!GC_AVAILABLE);
+
 type H6Witness = {
 	referenceGeneration: WeakRef<object>;
 	newerGeneration: WeakRef<object>;
@@ -69,7 +78,7 @@ function assertReleased(reference: WeakRef<object>): void {
 }
 
 describe('P23B.6 S3 H-6 — shared immutable meshes follow generation ownership', () => {
-	it.skipIf(typeof (globalThis as typeof globalThis & { gc?: () => void }).gc !== 'function')(
+	gcIt(
 		'releases the reference generation first, then the shared mesh with its last generation',
 		async () => {
 			const { witness } = preparedSharedGeneration();
@@ -84,7 +93,7 @@ describe('P23B.6 S3 H-6 — shared immutable meshes follow generation ownership'
 		}
 	);
 
-	it.skipIf(typeof (globalThis as typeof globalThis & { gc?: () => void }).gc !== 'function')(
+	gcIt(
 		'H-6 negative control: a strong generation Map fails the release oracle',
 		async () => {
 			const { witness, strongOwner } = preparedSharedGeneration(true);

@@ -99,7 +99,9 @@ export const HEAVY_FILES: string[] = [
 	// Corner, arch and opening watertight matrices over profile families (~1.3s).
 	'tests/lib/layout/wall-mesh-watertight-matrices.test.ts',
 	// P23B.6 S2 retention exercise: 101 accepted edits, history branch and GC.
-	'tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts'
+	'tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts',
+	// P23B.6 S3 shared-mesh retention: both release oracle and strong-owner negative control require GC.
+	'tests/lib/editor/layout/p23b6-s3-h6-retention.test.ts'
 ];
 
 /**
