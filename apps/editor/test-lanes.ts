@@ -97,7 +97,9 @@ export const HEAVY_FILES: string[] = [
 	// Compiling the small/medium tiers and the 1,000-room tier (~2.9s).
 	'tests/lib/layout/layout-scale-compile.test.ts',
 	// Corner, arch and opening watertight matrices over profile families (~1.3s).
-	'tests/lib/layout/wall-mesh-watertight-matrices.test.ts'
+	'tests/lib/layout/wall-mesh-watertight-matrices.test.ts',
+	// P23B.6 S2 retention exercise: 101 accepted edits, history branch and GC.
+	'tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts'
 ];
 
 /**
