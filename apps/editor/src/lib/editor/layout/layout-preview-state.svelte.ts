@@ -16,7 +16,7 @@ import {
 	type LayoutPreviewModel,
 	type LayoutPreviewModelResult
 } from './layout-mesh-factory';
-import { legJoinsByWall, type LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
+import { type LayoutBounds3 as LayoutPreviewBounds } from '$lib/layout/layout-geometry-types';
 import type {
 	DraftSegment,
 	LayoutDocument,
@@ -133,8 +133,9 @@ import {
 } from './layout-object-editing';
 import type { Vec3 } from '$lib/types/scene';
 import type { CompiledLayoutGeometry } from '$lib/layout/layout-geometry-types';
-import { buildRoomWallMesh, buildStandaloneWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
-import { buildLayout3dTriangleIndex, type Layout3dPickIndex } from './layout-3d-picking';
+import { type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
+import { type Layout3dPickIndex } from './layout-3d-picking';
+import { getPreparedWallMeshes, prepareWallMeshes } from './prepared-wall-meshes';
 import { transformLayoutRoomUnit, type LayoutRoomUnitTransform } from './layout-room-transform';
 import { deriveLayoutRoomFrame } from '$lib/layout/layout-room-frame';
 // type-only (erased at runtime; the candidate module imports
@@ -561,104 +562,14 @@ export function layoutPreviewSnapshotMatchesLive(
 }
 
 /**
- * Preflight the procedural wall meshes for every compiled room plus every
- * canonical physical Wall. Rooms with empty wall detail are wall-first
- * canonical rooms (their Walls render via `wallMeshesByWall`); they build
- * no room mesh and yield no issue — a compiled legacy room always carries
- * walls, so legacy `room_no_walls` behavior is preserved. Failed builds
- * yield structured issues (no mesh) that the editor surfaces in
- * `layoutPreview.issues`; the scene renders only meshes that built.
- */
-function buildWallMeshesByRoom(geometry: CompiledLayoutGeometry): {
-	wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
-	wallMeshesByWall: ReadonlyMap<string, IndexedWallMesh>;
-	layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
-	issues: LayoutGeometryIssue[];
-} {
-	const wallMeshesByRoom = new Map<string, IndexedWallMesh>();
-	const wallMeshesByWall = new Map<string, IndexedWallMesh>();
-	const layout3dPickIndexByRoom = new Map<string, Layout3dPickIndex>();
-	const issues: LayoutGeometryIssue[] = [];
-	const canonicalMode = geometry.walls.length > 0;
-	for (const room of geometry.rooms) {
-		if (room.walls.length === 0) {
-			if (!canonicalMode) {
-				const result = buildRoomWallMesh(room);
-				issues.push(...result.issues);
-			}
-			continue;
-		}
-		const result = buildRoomWallMesh(room);
-		if (result.mesh) {
-			wallMeshesByRoom.set(room.roomId, result.mesh);
-			// Built once per mesh generation (). A partition violation throws
-			// here — fail-closed, mirroring the builder's own reject-with-issues.
-			layout3dPickIndexByRoom.set(room.roomId, buildLayout3dTriangleIndex(result.mesh));
-		}
-		issues.push(...result.issues);
-	}
-	// P23.6H — the canonical Wall's own authoritative height supplies the mesh
-	// vertical extent; no Floor-derived ceiling is passed (or derivable) here.
-	// P23.15 — the Wall consumes its already-resolved Junction ends. The 3D path
-	// never solves a Junction; a connected end without a resolution fails closed
-	// inside the builder rather than falling back to a square cap.
-	const floorElevationById = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
-	const endsByWall = legJoinsByWall(geometry.junctions);
-	for (const wall of geometry.walls) {
-		const floorElevation = floorElevationById.get(wall.floorId) ?? 0;
-		const result = buildStandaloneWallMesh(wall, floorElevation, endsByWall.get(wall.wallId) ?? null);
-		if (result.mesh) wallMeshesByWall.set(wall.wallId, result.mesh);
-		issues.push(...result.issues);
-	}
-	return { wallMeshesByRoom, wallMeshesByWall, layout3dPickIndexByRoom, issues };
-}
-
-/**
- * Derived cache: one prebuilt `IndexedWallMesh` per compiled room plus one per
- * canonical physical Wall, and the 3D pick index built beside them.
+ * P23B.7 S6 — compatibility mapping for a live state that proxies geometry.
  *
- * Every field is a **pure function of one compiled geometry** — no document, no
- * history, no selection. A direct-edit gesture installs the *same* frozen
- * baseline geometry on every pointermove (restore) while it derives one fresh
- * candidate geometry per accepted move, so without this the baseline's meshes
- * were rebuilt from scratch dozens of times for a document that never changed.
- *
- * Keyed by geometry **object identity**: a compile always produces a new
- * geometry, so an entry can never be read for a different document, and the
- * entry is released with the geometry that owns it (never a stale cache across
- * document replacement — a replaced document is a different object). Nothing
- * here is ever a semantic authority: the document and its validation stay the
- * only source of truth, and undo/history never see it.
- */
-const derivedWallMeshes = new WeakMap<
-	CompiledLayoutGeometry,
-	{
-		wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
-		wallMeshesByWall: ReadonlyMap<string, IndexedWallMesh>;
-		layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
-		issues: readonly LayoutGeometryIssue[];
-	}
->();
-
-/**
- * P23B.7 S6 — the identity a LIVE state hands back for an installed compile.
- *
- * A compile always produces a new geometry, so keying the mesh cache on geometry
- * **object identity** is what makes an entry impossible to read for a different
- * document. The live preview state, however, is a Svelte `$state` graph
- * (`EditorApp.svelte`), so the object a capture reads out of
- * `state.geometry` — and hands to `restoreLayoutPreviewSnapshot` — is the PROXY
- * Svelte created for that compile's geometry, never the compile's own object.
- * The install cached the meshes under the compile object and the restore asked
- * for them under the proxy, which missed: on every accepted edit the full
- * Wall-mesh set was built TWICE, the second time inside `commit-replace`'s
- * restore (measured p50 160-190 ms on the committed 40-Wall fixtures).
- *
- * This records the identity a live state reads back as, so both names resolve to
- * the ONE cache entry the compile owns. It is an equivalence of WORK, never of
- * content: a proxy reads that same geometry, so the entry a translated key
- * reaches is the entry its own compile built — nothing is rebuilt, nothing is
- * looked up across documents, and the cache stays keyed by the compile.
+ * Before S-R, the outer `$state` graph deep-proxied `state.geometry`. A capture
+ * then handed restore a different identity from the one the install cached,
+ * causing a second mesh build on every accepted edit. S-R keeps this mapping as
+ * a fallback for proxying state adapters, while production preview state exposes
+ * geometry through a `$state.raw` field signal and normally needs no mapping.
+ * Cache entries remain keyed to the compile's geometry object in either case.
  */
 const wallMeshIdentities = new WeakMap<object, object>();
 
@@ -668,12 +579,9 @@ function wallMeshCacheKey(geometry: CompiledLayoutGeometry): CompiledLayoutGeome
 }
 
 /**
- * Write a compiled geometry onto the state and record the identity the state
- * reads back as (the same proxy every later read, capture and restore sees).
- *
- * Every writer of `state.geometry` goes through this, so no installed compile can
- * be cached under a name a later restore does not ask for. On a plain state the
- * read is the object itself and there is nothing to record.
+ * Write a compiled geometry onto the state and retain the S6 compatibility
+ * mapping if an adapter reads it back through a proxy. The S-R production
+ * accessors preserve the exact raw identity, so this mapping is dormant there.
  */
 function installWallGeometry(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
 	state.geometry = geometry;
@@ -690,30 +598,31 @@ function installWallGeometry(state: LayoutPreviewState, geometry: CompiledLayout
  * consumers exactly as a rebuild did — the meshes (the expensive part) are
  * reused, the container never is.
  */
-function resolveWallMeshes(geometry: CompiledLayoutGeometry): {
-	wallMeshesByRoom: ReadonlyMap<string, IndexedWallMesh>;
-	wallMeshesByWall: ReadonlyMap<string, IndexedWallMesh>;
-	layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
-	issues: readonly LayoutGeometryIssue[];
-} {
+function resolveWallMeshes(
+	geometry: CompiledLayoutGeometry,
+	referenceGeometry?: CompiledLayoutGeometry
+): ReturnType<typeof prepareWallMeshes> {
 	const key = wallMeshCacheKey(geometry);
-	const cached = derivedWallMeshes.get(key);
+	const referenceKey = referenceGeometry ? wallMeshCacheKey(referenceGeometry) : undefined;
+	const cached = getPreparedWallMeshes(key);
 	if (cached) {
 		// P23B measurement-only step: which identity hit the cache.
 		p2311ObserveMeshIdentity('prebuild-hit', geometry);
 		return cached;
 	}
 	p2311ObserveMeshIdentity('prebuild-miss', geometry);
-	// The key's own object, so a proxied read never pays proxy traversal for a
-	// build that reads the identical values.
-	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(key));
-	derivedWallMeshes.set(key, built);
-	return built;
+	// One `mesh-prebuild` measurement counts one full-generation preparation.
+	// Per-Wall value comparisons/reuse happen inside that single call.
+	return p2311Measure('mesh-prebuild', () => prepareWallMeshes(key, referenceKey));
 }
 
 /** Install the derived wall-mesh caches for one geometry onto the live state. */
-function installWallMeshes(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
-	const meshes = resolveWallMeshes(geometry);
+function installWallMeshes(
+	state: LayoutPreviewState,
+	geometry: CompiledLayoutGeometry,
+	referenceGeometry?: CompiledLayoutGeometry
+): void {
+	const meshes = resolveWallMeshes(geometry, referenceGeometry);
 	state.wallMeshesByRoom = new Map(meshes.wallMeshesByRoom);
 	state.wallMeshesByWall = new Map(meshes.wallMeshesByWall);
 	state.layout3dPickIndexByRoom = new Map(meshes.layout3dPickIndexByRoom);
@@ -725,11 +634,12 @@ function installWallMeshes(state: LayoutPreviewState, geometry: CompiledLayoutGe
  */
 function applyCompiledLayout(state: LayoutPreviewState, result: LayoutPreviewModelResult): void {
 	// P23B measurement-only step: this is the install the commit path is compared
-	// against — the geometry it caches in `derivedWallMeshes` (DEV-only).
+	// against — the generation set prepared by `prepared-wall-meshes.ts` (DEV-only).
 	p2311ObserveMeshIdentity('install', result.geometry);
+	const referenceGeometry = state.geometry;
 	installWallGeometry(state, result.geometry);
-	installWallMeshes(state, result.geometry);
-	const meshIssues = resolveWallMeshes(result.geometry).issues;
+	installWallMeshes(state, result.geometry, referenceGeometry);
+	const meshIssues = resolveWallMeshes(result.geometry, referenceGeometry).issues;
 	const issues = meshIssues.length > 0 ? [...result.issues, ...meshIssues] : result.issues;
 	state.model = result.model;
 	state.issues = issues;
@@ -803,7 +713,9 @@ export function derivePreviewBundle(
 	 * and a caller that installs always passes it (see
 	 * `deriveInstallBundle`).
 	 */
-	identityBase?: number
+	identityBase?: number,
+	/** Only the currently installed generation may be consulted for Wall reuse. */
+	referenceGeometry?: CompiledLayoutGeometry
 ): {
 	project: Project;
 	model: LayoutPreviewModel;
@@ -834,7 +746,7 @@ export function derivePreviewBundle(
 	// P23B measurement-only step: the boot/install derivation's own geometry
 	// identity, so a restore can be attributed to it (DEV-only).
 	p2311ObserveMeshIdentity('install-bundle', result.geometry);
-	const meshes = resolveWallMeshes(result.geometry);
+	const meshes = resolveWallMeshes(result.geometry, referenceGeometry);
 	return {
 		project: installedProject,
 		model: result.model,
@@ -876,7 +788,8 @@ function deriveInstallBundle(
 		layout,
 		state.project.scene,
 		reuse,
-		identityBase
+		identityBase,
+	state.geometry
 	);
 }
 
@@ -2641,11 +2554,15 @@ function createState(
 	);
 	const baselineLayoutJson = authoredLayoutJson(bundle.project.layout);
 	const baselineKind: LayoutBaselineKind = source === 'empty' ? 'blank' : 'imported';
-	return {
+	// P23B.6 S-R: these are derived, wholesale-replaced generations. Keep
+	// reactivity at the field, while the compiled objects themselves stay raw.
+	// The accessors below are not deep-proxied by the outer `$state` preview
+	// object; their reads/writes go through these `$state.raw` cells instead.
+	let model = $state.raw(bundle.model);
+	let geometry = $state.raw(bundle.geometry);
+	const state: Omit<LayoutPreviewState, 'model' | 'geometry'> = {
 		source,
 		project: bundle.project,
-		model: bundle.model,
-		geometry: bundle.geometry,
 		wallMeshesByRoom: bundle.wallMeshesByRoom,
 		wallMeshesByWall: bundle.wallMeshesByWall,
 		layout3dPickIndexByRoom: bundle.layout3dPickIndexByRoom,
@@ -2663,6 +2580,21 @@ function createState(
 			bundle.project.layout as unknown as LayoutDocumentWallFirst
 		)
 	};
+	Object.defineProperties(state, {
+		model: {
+			enumerable: true,
+			configurable: true,
+			get: () => model,
+			set: (next: LayoutPreviewModel) => { model = next; }
+		},
+		geometry: {
+			enumerable: true,
+			configurable: true,
+			get: () => geometry,
+			set: (next: CompiledLayoutGeometry) => { geometry = next; }
+		}
+	});
+	return state as LayoutPreviewState;
 }
 
 function cloneLayout(layout: Project['layout']): Project['layout'] {
@@ -2771,9 +2703,8 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
  * The history/undo payload: the committed document, the compiled geometry it
  * renders from, the issues that belong to that geometry, and the status scalars
  * a restore has to put back. Everything except `geometry` is deep-cloned by
- * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the state's own
- * object by reference, and the wall-mesh caches are derived, so they are never
- * captured.
+ * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the raw, field-reactive
+ * reference by S-R, and the wall-mesh caches are derived, so they are never captured.
  *
  * The derived preview model is deliberately NOT a member. It is a pure
  * projection of `geometry` (see `projectLayoutPreviewModel`) and `restore`
@@ -2821,13 +2752,9 @@ export function restoreLayoutPreviewSnapshot(state: LayoutPreviewState, snapshot
 }
 
 function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snapshot: LayoutPreviewSnapshot): void {
-	// The remaining cost of a restore is the **reactive write path itself**: on a
-	// `$state` preview graph this block measures ~7 ms p50 at 50 Walls (1.3 ms at
-	// 3 Rooms / 12 Walls), while the identical restore against a plain graph
-	// costs 0.07 ms. `state.geometry` is the whole of it — re-assigning a geometry
-	// the reactive graph has already read is what the proxy pays for, and it is
-	// reactive bookkeeping, not Bend work. Nothing here changes it: the writes are
-	// the restore's contract (see the `baseline-restore` investigation).
+	const referenceGeometry = state.geometry;
+	// Assign complete derived generations through their field signals. This
+	// invalidates consumers without recursively proxying compiled geometry/model.
 	p2311Measure('restore-reactive-write', () => {
 		state.source = snapshot.source;
 		state.project = p2311Measure('restore-project-clone', () => cloneJson(snapshot.project));
@@ -2847,7 +2774,9 @@ function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snaps
 	// P23B measurement-only step: record which identity the restore hands the
 	// install, and whether it is the one the live state holds (DEV-only).
 	p2311ObserveMeshIdentity('restore', snapshot.geometry, state.geometry);
-	p2311Measure('restore-mesh-install', () => installWallMeshes(state, snapshot.geometry));
+	p2311Measure('restore-mesh-install', () =>
+		installWallMeshes(state, snapshot.geometry, referenceGeometry)
+	);
 	p2311Measure('restore-bookkeeping', () => {
 		state.bounds = snapshot.bounds
 			? {

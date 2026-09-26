@@ -318,7 +318,8 @@ export function deriveLayoutCandidate(
 			structural.document,
 			scene,
 			undefined,
-			identityBase
+			identityBase,
+			geometry
 		);
 		return {
 			bundle: {

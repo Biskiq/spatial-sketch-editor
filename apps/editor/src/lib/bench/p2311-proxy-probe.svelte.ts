@@ -3,13 +3,11 @@
  * investigation.
  *
  * `EditorApp.svelte` and `MuseumEditorApp.svelte` hold the preview state as
- * `$state(createEmptyWallFirstLayoutPreviewState())`, so every read of
- * `preview.geometry` / `preview.project.layout` in the running editor goes
- * through a Svelte proxy. `createEmptyLayoutPreviewState()` itself returns a
- * **plain** object, so every plain unit-test fixture runs the identical code on
- * a raw graph. That divergence is invisible from the editor, and it is the one
- * variable that decides whether the slow baseline mesh rebuild is paying for
- * mesh building or for proxy traversal.
+ * `$state(createEmptyWallFirstLayoutPreviewState())`. The root and authored
+ * `project.layout` remain deeply reactive; P23B.6 S-R keeps the wholesale-
+ * replaced `geometry` and projected `model` raw behind field-level state
+ * signals. This probe compares the real wrapped root with a plain graph when
+ * measuring authored traversal and derived mesh work.
  *
  * Dev/test-only: nothing in the editor imports this module; the P23.11
  * diagnosis suite is its only consumer.
@@ -19,7 +17,7 @@
  * `$state(...)` is only legal as a declaration initializer, so the wrapper is a
  * one-field class: the field's generated setter runs `$.set(source, value, true)`
  * (verified against Svelte 5.56.4's `compileModule` output and `state()`'s
- * `should_proxy` handling), which proxies the assigned object exactly the way the
+ * `should_proxy` handling), which wraps the assigned plain-object root like the
  * editor's `$state(createEmptyWallFirstLayoutPreviewState())` does.
  */
 class P2311StateBox<T extends object> {

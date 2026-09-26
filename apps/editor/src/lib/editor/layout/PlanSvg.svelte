@@ -189,6 +189,15 @@
 		primitive: PlanPolylinePrimitive,
 		decisions: PlanPresentationDecisions
 	): OpeningSymbol | null {
+		return p2311Measure('plan-svg-opening-symbol', () =>
+			openingSymbolUnmeasured(primitive, decisions)
+		);
+	}
+
+	function openingSymbolUnmeasured(
+		primitive: PlanPolylinePrimitive,
+		decisions: PlanPresentationDecisions
+	): OpeningSymbol | null {
 		const architecture = primitive.architecture;
 		if (!architecture || architecture.kind === 'wall' || primitive.points.length < 2) return null;
 		const normal = architecture.inwardNormal;
@@ -237,12 +246,14 @@
 	 * fade with the context it sits on.
 	 */
 	function contextInkStyle(primitive: PlanPolygonPrimitive): string | undefined {
-		if (primitive.style !== 'scene-footprint') return undefined;
-		// P23.13 S8 / §1.12 — the instrument zone may dim one footprint without
-		// touching the rest of the passive Scene, so a source that has a zone
-		// answers per primitive; without one the regime value stands, which is
-		// every frame outside a live instrument.
-		return `opacity: ${presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk}`;
+		return p2311Measure('plan-svg-context-ink', () => {
+			if (primitive.style !== 'scene-footprint') return undefined;
+			// P23.13 S8 / §1.12 — the instrument zone may dim one footprint without
+			// touching the rest of the passive Scene, so a source that has a zone
+			// answers per primitive; without one the regime value stands, which is
+			// every frame outside a live instrument.
+			return `opacity: ${presentation.sceneInkFor?.(primitive) ?? presentation.sceneInk}`;
+		});
 	}
 
 	/** Screen-space points are already projected: no transform, no measure bucket. */

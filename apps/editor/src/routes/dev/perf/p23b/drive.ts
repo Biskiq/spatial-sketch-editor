@@ -65,7 +65,7 @@ export type P23BDriveHooks = {
 	fixtures(): readonly P23BDriveFixture[];
 	/** Host one fixture; the editor remounts with the ratified document. */
 	host(fixtureId: string): void;
-	startCapture(): string;
+	startCapture(actionClass?: string): string;
 	stopCapture(): Promise<void>;
 	ledger(sessionId: string): P23BCaptureLedger | null;
 	captureCount(): number;
@@ -100,6 +100,9 @@ type DriverTargets = {
 	dragTo: Point;
 	authoringFrom: Point;
 	authoringTo: Point;
+	roomCenter: Point;
+	roomCreationFrom: Point;
+	roomCreationTo: Point;
 };
 
 type P23BDriveGlobals = typeof globalThis & { __P23B_PLAN_VIEW__?: PlanView };
@@ -348,6 +351,32 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		return lerp(start, end, 0.5);
 	}
 
+	function firstRoomMoveTarget(document_: LayoutDocumentWallFirst): Point {
+		const room = document_.rooms[0];
+		if (!room) throw new Error(`${document_.formatVersion}: fixture has no Room to move`);
+		const wallIds = new Set(room.boundary.map((edge) => edge.wallId));
+		const junctionIds = new Set<string>();
+		for (const wall of document_.walls) {
+			if (!wallIds.has(wall.id)) continue;
+			junctionIds.add(wall.startJunctionId);
+			junctionIds.add(wall.endJunctionId);
+		}
+		const points = document_.junctions.filter((junction) => junctionIds.has(junction.id)).map((junction) => junction.point);
+		if (points.length < 3) throw new Error(`Room ${room.id} has fewer than three boundary Junctions`);
+		const minX = Math.min(...points.map((point) => point[0]));
+		const maxX = Math.max(...points.map((point) => point[0]));
+		const minZ = Math.min(...points.map((point) => point[1]));
+		const maxZ = Math.max(...points.map((point) => point[1]));
+		// The arithmetic centroid sits under the room-label overlay in the matrix
+		// fixture, so its pointer resolves to selection instead of the filled Room.
+		// Use a stable off-centre interior target shared by the rectangular matrix
+		// cells and owner fixture.
+		return [
+			minX + (maxX - minX) / 3,
+			minZ + ((maxZ - minZ) * 2) / 3
+		];
+	}
+
 	/** The fixture's bend target, or `null` when its geometry has no knot to bend. */
 	function bendPoint(fixture: P23BDriveFixture): Point | null {
 		const wall = fixture.document.walls.find((candidate) => candidate.id === fixture.targets.bendWallId);
@@ -368,12 +397,24 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			dragFrom: grab,
 			dragTo: oneGridStepAlong(snapToGrid(grab), chordNormal(chordStart, chordEnd)),
 			authoringFrom: [...targets.authoringFrom],
-			authoringTo: [...targets.authoringTo]
+			authoringTo: [...targets.authoringTo],
+			roomCenter: firstRoomMoveTarget(fixture.document),
+			roomCreationFrom: [...targets.authoringFrom],
+			roomCreationTo: [targets.authoringFrom[0] + 4, targets.authoringFrom[1] + 2]
 		};
 	}
 
 	function targetBox(targets: DriverTargets): { min: Point; max: Point } {
-		const points = [targets.selection, targets.dragFrom, targets.dragTo, targets.authoringFrom, targets.authoringTo];
+		const points = [
+			targets.selection,
+			targets.dragFrom,
+			targets.dragTo,
+			targets.authoringFrom,
+			targets.authoringTo,
+			targets.roomCenter,
+			targets.roomCreationFrom,
+			targets.roomCreationTo
+		];
 		if (targets.bend) points.push(targets.bend);
 		const xs = points.map((point) => point[0]);
 		const zs = points.map((point) => point[1]);
@@ -434,8 +475,8 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		return view;
 	}
 
-	function ensureTool(label: 'Wall' | 'Select'): void {
-		const group = label === 'Wall' ? 'Draw tools' : 'Selection tool';
+	function ensureTool(label: 'Wall' | 'Select' | 'Rect Room'): void {
+		const group = label === 'Select' ? 'Selection tool' : 'Draw tools';
 		const button = toolbarButton(group, label);
 		if (!button) throw new Error(`The ${label} tool button is not rendered`);
 		if (button.getAttribute('aria-pressed') !== 'true') button.click();
@@ -630,6 +671,187 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		if (!(ledger?.settled ?? false)) throw new Error(`${fixture.id}: the capture did not settle`);
 	}
 
+	/** P23B.6 S1b: isolated classes let Plan containment retain action identity without changing the baseline schema. */
+	async function captureS1Class(
+		fixture: P23BDriveFixture,
+		actionClass: string,
+		work: (sessionId: string) => Promise<void>
+	): Promise<void> {
+		report(`${fixture.id}: ${actionClass}`);
+		const sessionId = hooks.startCapture(`p23b6:${actionClass}`);
+		try {
+			await work(sessionId);
+		} finally {
+			await hooks.stopCapture();
+		}
+		const ledger = hooks.ledger(sessionId);
+		if (!(ledger?.settled ?? false)) throw new Error(`${fixture.id}/${actionClass}: capture did not settle`);
+		if ((ledger?.droppedBoundaries ?? 0) !== 0) {
+			throw new Error(`${fixture.id}/${actionClass}: dropped ${ledger?.droppedBoundaries} deferred boundaries`);
+		}
+		note(`${fixture.id}/${actionClass}: ${ledger?.actions.length ?? 0} recorded interaction(s); settled`);
+	}
+
+	async function runS1Fixture(fixture: P23BDriveFixture): Promise<void> {
+		const previousCanvas = planCanvas();
+		const previousView = publishedPlanView();
+		report(`hosting S1 fixture ${fixture.id}`);
+		hooks.host(fixture.id);
+		const remountDeadline = performance.now() + 20000;
+		for (;;) {
+			const canvas = planCanvas();
+			const view = publishedPlanView();
+			if (canvas && canvas !== previousCanvas && view && view !== previousView) break;
+			if (performance.now() >= remountDeadline) throw new Error(`${fixture.id}: the editor did not remount`);
+			await sleep(50);
+		}
+		await settleFrames(3);
+		ensureViewOption('Snap');
+		ensureViewOption('Grid');
+		ensureTool('Select');
+		const targets = targetsFor(fixture);
+		await setSharedView(targets);
+		const selection = clientPoint(targets.selection);
+
+		report(`${fixture.id}: rigid-wall-drag`);
+		await captureS1Class(fixture, 'rigid-wall-drag', async (sessionId) => {
+			await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
+				const action = await pointerGesture(sessionId, clientPoint(targets.dragFrom), clientPoint(targets.dragTo));
+				const accepted = action.path === 'plan-drag-edit' && action.outcome === 'accepted';
+				if (accepted) await restore();
+				return { action, accepted };
+			});
+		});
+
+		if (!fixture.notApplicable['bend-knot-edit'] && targets.bend) {
+			report(`${fixture.id}: bend`);
+			await captureS1Class(fixture, 'bend', async (sessionId) => {
+				await pointerTap(sessionId, selection);
+				const bend = targets.bend!;
+				await repeatPath(sessionId, 'bend-knot-edit', DRIVE_ACTIONS_PER_PATH, async () => {
+					const action = await pointerGesture(
+						sessionId,
+						clientPoint(bend),
+						clientPoint(oneGridStepAlong(snapToGrid(bend), [0, 1]))
+					);
+					const accepted = action.path === 'bend-knot-edit' && action.outcome === 'accepted';
+					if (accepted) await restore();
+					else await pointerTap(sessionId, selection);
+					return { action, accepted };
+				});
+			});
+		}
+
+		report(`${fixture.id}: whole-room-move-bridge`);
+		await captureS1Class(fixture, 'whole-room-move-bridge', async (sessionId) => {
+			const roomCenter = targets.roomCenter;
+			const moved = oneGridStepAlong(snapToGrid(roomCenter), [1, 0]);
+			await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
+				const action = await pointerGesture(sessionId, clientPoint(roomCenter), clientPoint(moved));
+				const accepted = action.path === 'plan-drag-edit' && action.outcome === 'accepted';
+				if (accepted) await restore();
+				return { action, accepted };
+			});
+		});
+
+		report(`${fixture.id}: wall-authoring`);
+		ensureTool('Wall');
+		await captureS1Class(fixture, 'wall-authoring', async (sessionId) => {
+			await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
+				await cancelPendingRun();
+				let setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+				if (setup.outcome === 'suppressed') setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+				const commit = await pointerTap(sessionId, clientPoint(targets.authoringTo));
+				const accepted = commit.path === 'wall-authoring' && commit.outcome === 'accepted';
+				await restore();
+				return { action: commit, accepted };
+			});
+		});
+
+		report(`${fixture.id}: room-creation-commit`);
+		ensureTool('Rect Room');
+		await captureS1Class(fixture, 'room-creation-commit', async (sessionId) => {
+			await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
+				const action = await pointerGesture(
+					sessionId,
+					clientPoint(targets.roomCreationFrom),
+					clientPoint(targets.roomCreationTo),
+					{ click: false }
+				);
+				const accepted = action.path === 'wall-authoring' && action.outcome === 'accepted';
+				if (accepted) await restore();
+				return { action, accepted };
+			});
+		});
+
+		ensureTool('Select');
+		report(`${fixture.id}: persistent-pan-zoom`);
+		await captureS1Class(fixture, 'persistent-pan-zoom', async (sessionId) => {
+			await repeatPath(sessionId, 'plan-pan-zoom', PAN_ROUND_TRIPS * 2 + WHEEL_PAIRS * 2 + 1, async (index) => {
+				const panRounds = PAN_ROUND_TRIPS * 2;
+				const wheelRounds = panRounds + WHEEL_PAIRS * 2;
+				if (index < panRounds) {
+					const direction = index % 2 === 0 ? 1 : -1;
+					const from = canvasCenter();
+					const to: Point = [from[0] + direction * PAN_STEP_PX, from[1]];
+					const action = await pointerGesture(sessionId, from, to, { button: 1, click: false });
+					return { action, accepted: action.path === 'plan-pan-zoom' && action.outcome === 'accepted' };
+				}
+				if (index < wheelRounds) {
+					const wheelIndex = index - panRounds;
+					const before = actionCount(sessionId);
+					const anchor = canvasCenter();
+					dispatchWheel(anchor, wheelIndex % 2 === 0 ? -WHEEL_DELTA : WHEEL_DELTA);
+					await waitForAction(sessionId, before);
+					const second = actionCount(sessionId);
+					dispatchWheel(anchor, wheelIndex % 2 === 0 ? WHEEL_DELTA : -WHEEL_DELTA);
+					const action = await waitForAction(sessionId, second);
+					return { action, accepted: action.path === 'plan-pan-zoom' && action.outcome === 'accepted' };
+				}
+				const point = canvasCenter();
+				const action = await pointerGesture(sessionId, point, point, { button: 1, moves: 1, click: false });
+				return { action, accepted: action.path === 'plan-pan-zoom' && action.outcome === 'accepted' };
+			});
+		});
+
+		report(`${fixture.id}: idle-frames`);
+		const idleSamples: number[] = [];
+		await captureS1Class(fixture, 'idle-frames', async () => {
+			let previous = performance.now();
+			for (let index = 0; index < 120; index += 1) {
+				await nextFrame();
+				const now = performance.now();
+				idleSamples.push(now - previous);
+				previous = now;
+			}
+		});
+		const idleReport = globalThis as typeof globalThis & {
+			__P23B6_S1_IDLE_FRAMES__?: Array<{ fixtureId: string; samples: number[] }>;
+		};
+		idleReport.__P23B6_S1_IDLE_FRAMES__ ??= [];
+		idleReport.__P23B6_S1_IDLE_FRAMES__.push({ fixtureId: fixture.id, samples: idleSamples });
+	}
+
+	async function runP23B6S1(): Promise<void> {
+		installPointerCaptureNoop();
+		progress = { running: true, fixtureId: null, step: 'P23B.6 S1 starting', paths: {} };
+		hooks.progress({ ...progress });
+		try {
+			const order = ['p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1', 'owner-40-curved-v1'];
+			for (const id of order) {
+				const fixture = hooks.fixtures().find((candidate) => candidate.id === id);
+				if (!fixture) throw new Error(`S1 fixture is missing: ${id}`);
+				progress = { ...progress, fixtureId: fixture.id, paths: {} };
+				hooks.progress({ ...progress });
+				await runS1Fixture(fixture);
+			}
+			report('P23B.6 S1 complete');
+		} finally {
+			progress = { ...progress, running: false };
+			hooks.progress({ ...progress });
+		}
+	}
+
 	async function run(): Promise<void> {
 		installPointerCaptureNoop();
 		progress = { running: true, fixtureId: null, step: 'starting', paths: {} };
@@ -647,5 +869,5 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		}
 	}
 
-	return { run, targetsFor, ladderPixelsPerMeter };
+	return { run, runP23B6S1, targetsFor, ladderPixelsPerMeter };
 }

@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:fast": "vitest run --config vitest.fast.config.ts",
     "test:arch": "vitest run --config vitest.arch.config.ts",
-    "test:heavy": "vitest run --config vitest.heavy.config.ts",
+    "test:heavy": "NODE_OPTIONS=--expose-gc P23B6_REQUIRE_GC=1 vitest run --config vitest.heavy.config.ts",
     "test:perf": "vitest run --config vitest.perf.config.ts",
     "test:full": "vitest run --config vitest.config.ts",
     "bench:record": "vite-node --config vitest.config.ts src/lib/bench/record-baseline.cli.ts --full",

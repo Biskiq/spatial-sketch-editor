@@ -24,7 +24,7 @@ P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was acce
 separate GitHub review entries exist for them. Step 10 (P23B.0-durable) was ratified in Stage A on 2026-09-24 (revision `4b32034f`, O-1–O-4, W1–W7; scope amended 2026-09-25 §10 S-1…S-7), ran Stage B, was returned for correction on five findings plus the S-8 scheduling defect, and recorded the method-v5 baseline (`be525f7c`, SHA-256 `5534926e…`). The owner accepted the explicitly partial baseline (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and PR #87 merged 2026-09-25 (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`). P23B.0-durable is SHIPPED and closed (recovery anchor `d7b9de4e`, tag `closed/p23b.0`); its plan, W6, W7 and Stage A handoff are path-preserving closed stubs.
 The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan was RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first), the F1–F3 correction batch was ACCEPTED with no remaining blockers, and P23B.4 is SHIPPED (PR #88, anchor `4cbcc370`, tag `closed/p23b.4`; stubs at their own paths).
 P23B.5's reconciled plan (`f26e2319`) was ACCEPTED and RATIFIED by the owner on 2026-09-25, authorizing S0–S3; S0 then executed and recorded the disposition PREFLIGHT-ONLY: no baseline→candidate (release) reuse is reachable (each release re-parses its candidate into fresh centerline objects, so the object-identity key cannot hit across stages or releases), restore/undo/redo issue no sampling at all, and the only reachable cross-chain identity is preflight→preflight inside a frozen-baseline gesture (measured 120 requests → 44 derivations / 76 hits over three pointermoves, with full-result equality). That narrower scope was NOT assumed authorized and needed a separate owner scope ruling (the dependency map routes the wider gesture work to P23B.7); the owner then GRANTED it on 2026-09-25, so S1–S6 were implemented and S4 was taken at that preflight-only scope. A second owner ruling (stub §0.6) then committed those counters as a perf-lane ratchet. The slice was REVIEWED AND ACCEPTED with no remaining blocker, routine `slice-closeout` ran on the same branch, and the single PR (#90) was squash-merged; P23B.5 is SHIPPED, its plan is a path-preserving closed stub (anchor `75fbd8a0`, tag `closed/p23b.5`) and its ratchet record stays live. Release-scope M-3 remains unreachable and unimplemented.
-P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; tag `closed/p23b.7`, local only). NEXT: P23B.6 remains PLANNED and unratified.
+P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; tag `closed/p23b.7`, local only). NEXT: P23B.6 — SHIPPED and closed 2026-09-26 (owner accepted with no remaining blocker on PR #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only).
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -33,8 +33,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; closed plan + record stubs at their own paths; tag `closed/p23b.7`, local only) after the owner accepted its correction round with no remaining blocker. The P23B.5-closeout-authorized measurement-only step ran first and closed, starting no optimization and ending at a ranking, and its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 ran P23B.7 before P23B.6 (order only). P23B.6–P23B.8 **optimization** work remains unauthorized: P23B.6 and P23B.8 are unratified and need their own reconciliation, ratification and implementation authorization. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92 — the closeout commit stays inside it; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; accepted head `ee0dbecd`; tag `closed/p23b.7`, local only). Its reconciled plan was RATIFIED and its implementation AUTHORIZED (2026-09-25 P23B.7-step routing amendment above; the two clarification rulings are folded into plan §0.8 and §7), and it executed on the dedicated `P23B.7` branch in the order S2 → S6 + regression → S6 measurement → S3 → S4 → S5 only if named → S7, then was reviewed, corrected (two P2 findings) and accepted. NEXT: P23B.6 is PLANNED and unratified — reconcile and ratify its plan before any implementation. Do NOT start P23B.6 or P23B.8 work from this close, do not open a second cache, and do not rewrite the baseline or the ratchet record. The Stage A packet and the accepted P23B.0 plan/scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; closed plan + record stubs at their own paths; tag `closed/p23b.7`, local only) after the owner accepted its correction round with no remaining blocker. The P23B.5-closeout-authorized measurement-only step ran first and closed, starting no optimization and ending at a ranking, and its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 ran P23B.7 before P23B.6 (order only). P23B.6 is SHIPPED and closed 2026-09-26 after the owner REVIEWED AND ACCEPTED it with no remaining blocker (one PR for the slice: #93 — the closeout commit stays inside it; merge method squash, owner merges; accepted head `354f9b6f`; plan and per-record closed stubs at their own paths; the nine JSON measurement records stay LIVE; tag `closed/p23b.6`, local only). S-R and S3 M-3m landed; overall interaction improvement is NOT established and the unresolved curved release increases are owner-routed to P23B.11. P23B.11 is the next separately routed follow-up; only its minimal umbrella stub exists, and it does not authorize implementation. P23B.8 remains unratified and unauthorized, and P26 implementation/validation remain gated. No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92 — the closeout commit stays inside it; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; accepted head `ee0dbecd`; tag `closed/p23b.7`, local only). Its reconciled plan was RATIFIED and its implementation AUTHORIZED (2026-09-25 P23B.7-step routing amendment above; the two clarification rulings are folded into plan §0.8 and §7), and it executed on the dedicated `P23B.7` branch in the order S2 → S6 + regression → S6 measurement → S3 → S4 → S5 only if named → S7, then was reviewed, corrected (two P2 findings) and accepted. P23B.6 is SHIPPED and closed 2026-09-26 (one PR: #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only). NEXT: P23B.11 — the owner-routed wall-chain release-delay follow-up: only its minimal umbrella stub exists, so prepare its plan and return for owner ratification and implementation authorization; do NOT start P23B.8. Do not open a second cache or rewrite the baseline or ratchet. P23B.8 and P26 implementation/validation retain their existing gates. The Stage A packet and accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -85,26 +85,38 @@ all three inform synthesis.
     preserved). Plan, W6, W7 and Stage A handoff are path-preserving closed stubs; anchor `d7b9de4e`, tag
     `closed/p23b.0`. The finding is that every fixture is slow, including the 40-straight-wall control.
     P23B.4's baseline gate is satisfied; its reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first).
-11  P23B.4–P23B.8 execute, verify and review; then the P23B.9 correctness +
-    performance-regression gate and the P23B.10 closeout gate
-    [ORDER AMENDED 2026-09-25] Within that run, P23B.7 executes BEFORE P23B.6:
-    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8. Owner-ruled from the measurement
-    step's geometry-identity pin (STATE-SIDE: the object the commit hands
+11  P23B.4–P23B.8 execute, verify and review, with owner-routed P23B.11
+    wall-chain release-delay follow-up immediately after P23B.6 review/acceptance
+    and before P23B.8; then the P23B.9 correctness + performance-regression
+    gate and the P23B.10 closeout gate
+    [ORDER AMENDED 2026-09-25; P23B.11 ROUTED 2026-09-26] Within that run,
+    P23B.7 executes BEFORE P23B.6:
+    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.11 → P23B.8. P23B.11 is the
+    2026-09-26 owner-routed wall-chain release-delay follow-up; only a minimal
+    umbrella stub exists, and its detailed plan/implementation remain gated.
+    P23B.8 remains unratified and unauthorized under its existing entry gate.
+    The P23B.7-before-P23B.6 order was owner-ruled from the measurement step's
+    geometry-identity pin (STATE-SIDE: the object the commit hands
     `installWallMeshes` is a Svelte `$state` proxy, and the duplicate 40-Wall
     rebuild it causes is per-gesture commit/history work, which P23B.7 owns —
-    not per-frame rendering). ORDER ONLY: slice IDs, names, scope and identity
-    are UNCHANGED and there is NO renumbering. Evidence →
-    ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8.
+    not per-frame rendering). The P23B.11 insertion is an additional
+    owner-authorized sequencing amendment; existing slice identities/scopes
+    and the P23B.8/P26 gates are unchanged. Evidence →
+    ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8;
+    P23B.11 route → ./p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md.
 ```
 
-> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are two
+> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are three
 > owner-authorized amendments. The first is the insertion of **P23B.3a** as step 9 (approved 2026-09-22
 > under D-11 = ARRANGEMENT 1), which also re-numbered the closing step. The second is the 2026-09-25
 > **order amendment inside step 11**: P23B.7 runs before P23B.6, ruled from the measurement-only step's
 > identity pin (STATE-SIDE), with no slice renumbered and no scope or identity changed. No existing
-> slice's meaning, scope or identity changed in either. Later work must PRESERVE THIS sequence and must
-> not change it again without a further owner authorization — byte equality to the PRE-AMENDMENT block is
-> **not** the test (P23B.10 MR-10).
+> slice's meaning, scope or identity changed in either. The third, owner-authorized 2026-09-26 amendment
+> routes the separately scoped wall-chain release-delay follow-up as P23B.11 immediately after P23B.6
+> review/acceptance and before P23B.8; it creates only a minimal umbrella stub, not implementation
+> authorization. P23B.8's entry gate and P26's implementation/validation gates remain unchanged. Later
+> work must PRESERVE THIS sequence and must not change it again without a further owner authorization —
+> byte equality to the PRE-AMENDMENT block is **not** the test (P23B.10 MR-10).
 
 ## Owner-authorized execution routing amendment — 2026-09-24
 
@@ -240,8 +252,28 @@ stubs at their own paths, the S6 capture JSON stays LIVE as cited machine-readab
 preservation report is recorded in the closed plan stub. Accepted implementation head `ee0dbecd`;
 recovery tag `closed/p23b.7` (local only — not pushed); merge method squash (repo policy — branch
 commits are not ancestors of `main` post-merge; recovery runs via `refs/pull/92/head`, recorded in
-each stub). NEXT: P23B.6 — PLANNED, unratified; P23B.8 stays unauthorized. The routine closeout
-re-ran no gate: it reuses the recorded acceptance evidence (owner instruction).
+each stub). NEXT: P23B.6 — since SHIPPED and closed (see the closeout section below); P23B.8 stays
+unauthorized. The routine closeout re-ran no gate: it reuses the recorded acceptance evidence (owner
+instruction).
+
+## P23B.6 closeout — 2026-09-26 (owner accepted; routine `slice-closeout`)
+
+P23B.6 was REVIEWED AND ACCEPTED by the owner with no remaining blocker (the 2026-09-26 review
+corrections — the mounted-scene H-5 lifecycle and the required forced-GC H-6 heavy lane — are part
+of the accepted state); routine `slice-closeout` ran on the `P23B.6` branch, and the closeout commit
+stays inside the slice's single PR (#93) — no new PR, no new scope. The slice is CLOSED: the plan and
+the S1 attribution · S1a post-S-R re-gate · S3 strict-comparator abandonment (historical) · S3
+comparator reconciliation · S3 integrated probe (historical) · S3 guard recheck · S6 final evidence ·
+release-delay diagnosis records are path-preserving closed stubs at their own paths; the nine JSON
+measurement records stay LIVE as cited machine-readable evidence; and the preservation report is
+recorded in the closed S6 final-evidence stub. Accepted head `354f9b6f` (production code head
+`e11f804b`, corrected test head `d9ea6dfa`); recovery tag `closed/p23b.6` (local only — not pushed);
+merge method squash (repo policy — the owner merges the slice's single PR; branch commits are not
+ancestors of `main` post-merge, so recovery runs via `refs/pull/93/head`, recorded in the stubs). The
+superseded S6 evidence checkpoint was retired. NEXT: P23B.11 (owner-routed; only its minimal umbrella
+stub exists, so its plan, ratification and implementation authorization remain pending); P23B.8 stays
+unauthorized. The routine closeout re-ran no gate: it reuses the recorded acceptance evidence. Every
+recorded anchor is a verified ancestor of the tag target.
 
 ```text
 ROUTE:
@@ -286,6 +318,14 @@ child plans and execution status →
     (LIVE, not closed work — a test imports it by path; the perf-lane gate owns it) ·
    P23B.5 S2–S5 proofs → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
   p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
+    (SHIPPED 2026-09-26; path-preserving closed stub carrying the delivered mechanisms, the final
+    contract, the rulings, the entry points, the residual ledger and the recovery lines; accepted
+    head `354f9b6f`, tag `closed/p23b.6` local only) · per-record closed stubs sit in the same
+    directory — S1 attribution · S1a post-S-R re-gate · S3 strict-comparator (historical) · S3
+    comparator reconciliation · S3 integrated probe (historical) · S3 guard recheck · S6 final
+    evidence (acceptance record · reused gates · preservation report) · release-delay diagnosis
+    (candidate evidence for the owner-routed P23B.11); the directory's nine JSON measurement records
+    stay LIVE (S1 attribution · S1a DEV/PROD · S1b final-head + coverage · S3 data)
   p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
     (SHIPPED 2026-09-25; path-preserving closed stub carrying the §0.9/§0.10 rulings, the stage
     summary, the acceptance evidence, the residual ledger and the preservation report; per-record
@@ -296,6 +336,7 @@ child plans and execution status →
   p23b.8-rust-wasm-evaluation/2026-09-22-P23B.8-rust-wasm-evaluation.md
   p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md
   p23b.10-phase-closeout/2026-09-22-P23B.10-phase-closeout.md
+  p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md
 measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
@@ -401,7 +442,17 @@ MEASUREMENT-ONLY STEP — EXECUTED, owner-reviewed, ACCEPTED and CLOSED 2026-09-
          LIVE at its path: .../p23b-measurement-only-step/2026-09-25-release-containment-capture.json
          (SHA-256 `c004abbd…`). Limits: advisory, one machine/session; all-curved-40 aborts on the
          driver's 6000 ms guard; revision-2 magnitudes are 40–85% above revision 1 and the baseline.
-P23B.6  rendering optimization — PLANNED, unratified
+P23B.6  rendering optimization — SHIPPED and closed 2026-09-26 (one PR for the slice: #93; the
+        closeout commit stays inside it; accepted head `354f9b6f`; tag `closed/p23b.6`, local only;
+        merge method squash, owner merges). RATIFIED and implementation AUTHORIZED
+        2026-09-25; S3 M-3m additionally authorized in PR #93 on 2026-09-26. Delivered S-R (raw
+        wholesale-replaced compiled generation/model; A-2 met) and S3 M-3m (state-free prepared-
+        mesh reuse inside the existing weak generation cache; net positive on all four accepted
+        fixtures after the owner-directed guard recheck), with the H-1…H-6 retention proof and the
+        H-7 contract P26 inherits. Plan and records are path-preserving closed stubs at their own
+        paths; the nine JSON measurement records stay LIVE. Overall interaction improvement is NOT
+        established: the final all-curved Whole-Room and Wall-authoring release increases remain
+        unresolved and are routed to P23B.11.
 P23B.7  interaction optimization — SHIPPED and closed 2026-09-25 (one PR for the slice: #92; owner
         REVIEWED AND ACCEPTED with no remaining blocker after the correction round; routine
         `slice-closeout` ran on the same branch). RATIFIED AND IMPLEMENTATION AUTHORIZED 2026-09-25;
@@ -504,13 +555,16 @@ P23B.7  interaction optimization — SHIPPED and closed 2026-09-25 (one PR for t
         S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own
         paths (accepted head `ee0dbecd`; tag `closed/p23b.7`, local only); the S6 capture JSON stays
         LIVE (SHA-256 `95790b00…`). Merge method: squash (repo policy — branch commits are not ancestors
-        of `main` post-merge; recovery runs via `refs/pull/92/head`, recorded in each stub). NEXT:
-        P23B.6 — PLANNED, unratified; it needs its own reconciliation, ratification and implementation
-        authorization before any work starts. P23B.8 stays unauthorized.
+        of        `main` post-merge; recovery runs via `refs/pull/92/head`, recorded in each stub).
+        NEXT: P23B.6 — SHIPPED and closed 2026-09-26 (PR #93; accepted head `354f9b6f`).
+        P23B.8 stays unauthorized.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified
 P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) — PLANNED, unratified
+P23B.11 wall-chain release-delay follow-up — OWNER-ROUTED 2026-09-26; NEXT after the P23B.6 closeout;
+        minimal umbrella stub only. Detailed plan, ratification and implementation authorization
+        pending. Sequenced before P23B.8; P23B.8 and P26 gates are unchanged.
 ```
 
 **Other owner decisions still open:**
@@ -522,10 +576,11 @@ P23B.10 phase closeout gate (makes P23B CLOSABLE; closure stays owner-invoked) �
 ```
 
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the phase
-gate and the ROUTE block are read. P23B.3a, P23B.0, P23B.4, P23B.5 and P23B.7 are shipped and closed
-(each with its own closed stubs, anchor and tag); the P23B.1 harvest
-and P23B.2 research report retain their own review statuses. The next slice is P23B.6 — PLANNED,
-unratified; P23B.8 stays unauthorized. Later optimization slices remain
+gate and the ROUTE block are read. P23B.3a, P23B.0, P23B.4, P23B.5, P23B.6 and P23B.7 are shipped and
+closed (each with its own closed stubs, anchor and tag); the P23B.1 harvest and P23B.2 research report
+retain their own review statuses. P23B.11 is the next separately routed follow-up, with only its
+umbrella stub written and its implementation gate still pending. P23B.8 remains unratified and
+unauthorized; P26 implementation and validation remain gated. Later optimization slices remain
 downstream of the shipped P23B.4 key grammar and its owner gate.
 
 ## Non-goals
