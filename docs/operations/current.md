@@ -15,15 +15,18 @@ STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE
        (order + amendments → phase README §SEQUENCE). Shipped and closed, each with closed stubs,
        recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable · P23B.4 ·
        P23B.5 · the measurement-only step · P23B.7 · P23B.6. P23B.1 and P23B.2 retain their own
-       review statuses. P23B.11 is owner-routed and next; P26 planning continues in parallel, P26
-       implementation is unauthorized and its validation window is selected but not open.
+       review statuses. P23B.11 is owner-routed, its plan is RATIFIED AND IMPLEMENTATION-READY
+       2026-09-26, and it is next; P26 planning continues in parallel, P26 implementation is
+       unauthorized and its validation window is selected but not open.
        Architecture cycle: PHASE_1 installed, no owner action required.
 
 NEXT:
-1. P23B.11 (wall-chain release-delay follow-up) is the next slice: only its minimal umbrella stub
-   exists. Prepare its plan — a first browser profile separates the diagnosed pre-change
-   correspondence bottleneck from the still-unresolved final-capture increases — and return for
-   owner ratification and implementation authorization. Do NOT start P23B.8.
+1. P23B.11 (wall-chain release-delay follow-up) is the next slice: its plan is RATIFIED AND
+   IMPLEMENTATION-READY 2026-09-26 (owner-approved) at
+   ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay.md;
+   no implementation has started. When execution is invoked, S1 runs first — DEV marks on the
+   wall-chain path plus ONE browser profile, a STOP-AND-REPORT gate before any saving is promised.
+   Do NOT start P23B.8.
 2. Standing constraints:
    - the v5 baseline is test-enforced and `bench:record` is its only writer — never rewrite it; the
      accepted partial baseline (W6 §10.3 disposition A) stands: no further capture, no settlement
@@ -51,7 +54,7 @@ P23B.6 closed acceptance/evidence stub (acceptance record · reused gates · X-2
 P23B.6 closed S3 records (comparator reconciliation · guard recheck · historical abandonment and integrated probe) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S3-guard-recheck.md (siblings in the same directory)
 P23B.6 closed release-delay diagnosis stub (candidate evidence for P23B.11) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-release-delay-diagnosis.md
 P23B.6 LIVE measurement JSON records (S1 attribution · S1a DEV/PROD · S1b final-head + coverage · S3 data) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/
-P23B.11 wall-chain release-delay umbrella stub (routed next; implementation gated) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md
+P23B.11 wall-chain release-delay umbrella + RATIFIED implementation-ready plan (S1 first; implementation not started) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md · ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
@@ -67,8 +70,8 @@ post-P23 debt → tech-debt/README.md
 BLOCKER:
 - P26 implementation readiness remains gated: planning may continue; the validation window is not open.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
-- P23B.11's plan, ratification and implementation authorization remain pending; its umbrella stub
-  authorizes no code.
+- P23B.11's plan is ratified and implementation-ready 2026-09-26; no implementation has started
+  (S1 is the first, measurement-only step when execution is invoked).
 - P23B.6's final-capture all-curved Whole-Room and Wall-authoring release increases remain unresolved
   (owned by P23B.11; see its closed acceptance stub).
 - The P23B.7 snapshot-guard limits and the bounded heap-retention follow-up remain carried and
