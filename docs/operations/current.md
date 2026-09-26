@@ -6,10 +6,15 @@ CHILD: P23B.6-rendering — RATIFIED by the owner 2026-09-25 and implementation 
        on 2026-09-26. The corrected integrated production preparation is net positive on all four
        accepted single-Wall fixtures; S3 M-3m is landed. The first guard-in-hot-loop loss is historical
        and superseded by the owner-directed guard recheck. Final S1b capture, coverage, X-2, routing,
-       H-6/H-7 and the full repository contract are recorded in the final S6 evidence. This branch is
-       ready for owner review; it is not slice acceptance. The implementer does not merge, accept or run
-       `slice-closeout`. P23B.8 stays unratified and UNAUTHORIZED; P23B.9/P23B.10 are downstream gates.
-       No numeric performance target is proposed.
+       H-6/H-7 and the full repository contract are recorded in the final S6 evidence. The 2026-09-26
+       review corrections now exercise the mounted production `LayoutPreviewScene` lifecycle and
+       require forced GC in the heavy lane; the complete verification contract passes in the working
+       tree based on `761b3a22`. Production code and S1b capture remain at `e11f804b`. Overall
+       interaction improvement is not established; the final all-curved Whole-Room and Wall-authoring
+       release increases remain unresolved. This branch is ready for owner review; it is not slice
+       acceptance. The implementer does not merge, accept or run `slice-closeout`. P23B.8 stays
+       unratified and UNAUTHORIZED; P23B.9/P23B.10 are downstream gates. No numeric performance target
+       is proposed.
 STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
        (order · 2026-09-25 amendment → phase README §SEQUENCE). Shipped and closed, each with closed
        stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
@@ -19,7 +24,7 @@ STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE
        action required.
 
 NEXT:
-1. Await owner review and acceptance decision for P23B.6. Do NOT merge, accept, run `slice-closeout`, or start P23B.8 work.
+1. Await owner review and acceptance decision for P23B.6. Do NOT merge, accept, run `slice-closeout`, or start P23B.8 work. After P23B.6 acceptance, P23B.11 is the next separately routed follow-up; only its minimal umbrella stub exists, and its detailed plan/implementation gates remain pending.
 2. Standing constraints:
    - the v5 baseline is test-enforced and `bench:record` is its only writer — never rewrite it; the
      accepted partial baseline (W6 §10.3 disposition A) stands: no further capture, no settlement
@@ -48,6 +53,7 @@ P23B.6 final S1b capture, X-2, coverage, H-6/H-7, routing and verification → .
 P23B.6 first integrated guard-in-hot-loop probe (historical, superseded) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S3-integrated-probe-record.md
 P23B.6 early strict-comparator A-1 attempt (historical, superseded) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S3-abandonment-record.md
 P23B.6 merged curved Wall-authoring / Room-creation diagnosis and routing → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-release-delay-diagnosis.md
+P23B.11 wall-chain release-delay umbrella stub (routed after P23B.6 acceptance, implementation gated) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md
 historical P23B.6 S6 checkpoint; superseded by final evidence → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S6-evidence-checkpoint.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
