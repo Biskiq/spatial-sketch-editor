@@ -54,7 +54,17 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        oracle, outside S4's mechanism. S5 is NOT taken (the measurement names the capture clone, not
        hit-test/snap). Record →
        ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md.
-       NEXT: the PR for owner review; slice review, acceptance and `slice-closeout` stay owner actions.
+       PR GATE (2026-09-25, at the branch head): the full-suite re-run found the S7 probe's OWN
+       advisory proxy loop exceeding vitest's default 5000 ms test timeout beside 346 files — no
+       deterministic assertion failed and the S7 findings are unchanged. The loop is now
+       caller-bounded (1+3 reps for the proxy comparison) and both advisory tests carry
+       `{ timeout: 120000 }`; the printed contrast reproduces in the same regime (p50 14.55 ms plain
+       vs 122.34 ms proxy). Re-run GREEN: check:layout-core · check 0/0 · full suite 346 passed |
+       1 skipped / 4,908 passed | 1 skipped · test:arch 23 files / 254 tests · test:perf 8 passed |
+       1 skipped / 62 passed | 1 skipped (ratchet reproduced, no re-record) · root build PASS.
+       S7 record §5.1 carries the fix and the gate list.
+       NEXT: the PR for owner review (opened from `P23B.7`; NOT merged, NOT marked accepted); slice
+       review, acceptance and `slice-closeout` stay owner actions.
        The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are

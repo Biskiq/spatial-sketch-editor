@@ -101,8 +101,42 @@ CARRIED LIMITS (unchanged): every ms above is single-machine / single-session an
 ```text
 npm run check:layout-core · npm run check (editor + museum)    PASS, 0 errors / 0 warnings
 the S7 probe (6 tests)                                          PASS
-full suite at the S4 commit (this probe added after)            PASS — see the branch routing for
-                                                                the PR-gate re-run
+full suite at the S4 commit (this probe added after)            PASS — see §5.1 for the PR-gate
+                                                                re-run with this probe in place
+```
+
+### 5.1 PR-gate re-run and the test-budget fix (2026-09-25)
+
+```text
+FOUND AT THE PR GATE, by the re-run rather than by a claim: with this probe in place the FULL suite
+failed exactly one test — this file's own advisory proxy comparison — on vitest's DEFAULT 5000 ms
+test timeout. The mechanism is the one this record measures: `advisoryP50` cloned the 40-Wall model
+12 times, and through the proxy that is >1.5 s idle and several times that beside 346 files on 8
+logical CPUs. Nothing deterministic failed; the measurement was simply allowed to cost more than
+the runner budgets for one test.
+
+FIX (test budget only — no assertion, no payload, no fixture, no mechanism changed):
+  · `advisoryP50(run, { warmups = 3, samples = 9 })` — the repetition count is now a caller knob;
+    the proxy comparison asks for 1 + 3, the per-stream printer keeps its defaults.
+  · both advisory tests carry `{ timeout: 120000 }` (the repo's convention for its recording
+    tests), so a loaded machine cannot fail a printed-never-asserted number.
+  This does not weaken §2's findings: the contrast reproduces in the same regime — this session's
+  re-run prints p50 14.55 ms plain vs 122.34 ms through the proxy, per-stream project 0.1 / model
+  11.3 / issues 0 ms, capture 14.41 ms end-to-end — and the numbers stay advisory and
+  single-session exactly as §2 states. The probe file's identity (six tests, same describe
+  structure) and the S6/S1 browser numbers it cites are untouched.
+
+GATES AT THE PR GATE (S7 probe in place, after the fix):
+  npm run check:layout-core                                    PASS
+  npm run check (editor + museum)                              PASS — 0 errors / 0 warnings
+  npm test (full suite)                                        PASS — 346 files passed | 1 skipped,
+                                                               4,908 tests passed | 1 skipped
+  npm run test:arch                                            PASS — 23 files / 254 tests
+  npm run test:perf                                            PASS — 8 files passed | 1 skipped,
+                                                               62 passed | 1 skipped (the reuse
+                                                               ratchet reproduces the committed
+                                                               counts through the scoped path)
+  npm run build (root; editor + museum, adapter-vercel)         PASS
 ```
 
 ## 6. Limits

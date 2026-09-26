@@ -90,11 +90,23 @@ function p50(samples: readonly number[]): number {
 	return sorted[Math.floor(sorted.length / 2)]!;
 }
 
-/** Advisory only: this session's node wall-clock for one measured call. */
-function advisoryP50(run: () => void): number {
-	for (let index = 0; index < 3; index += 1) run();
+/**
+ * Advisory only: this session's node wall-clock for one measured call.
+ *
+ * The repetition count is a BUDGETING knob, never part of a claim: these
+ * numbers are printed and never asserted, and this file also runs inside the
+ * full suite on a loaded machine. One clone of the 40-Wall model through a
+ * state proxy is ~130 ms idle, so 12 of them is already >1.5 s before load,
+ * and the expensive callers ask for fewer reps rather than risk the runner's
+ * default test timeout. The few-sample p50 stays advisory and single-session
+ * either way.
+ */
+function advisoryP50(run: () => void, reps: { warmups?: number; samples?: number } = {}): number {
+	const warmups = reps.warmups ?? 3;
+	const sampleCount = reps.samples ?? 9;
+	for (let index = 0; index < warmups; index += 1) run();
 	const samples: number[] = [];
-	for (let index = 0; index < 9; index += 1) {
+	for (let index = 0; index < sampleCount; index += 1) {
 		const started = performance.now();
 		run();
 		samples.push(performance.now() - started);
@@ -207,7 +219,7 @@ describe('P23B.7 S7 — the commit-capture residual: what is cloned', () => {
 });
 
 describe('P23B.7 S7 — the commit-capture residual: advisory node timing (not a gate)', () => {
-	it('attributes the browser gap: the same payload cloned through the editor state proxy', () => {
+	it('attributes the browser gap: the same payload cloned through the editor state proxy', { timeout: 120000 }, () => {
 		const plain = installedState('p23b-40-wall-all-curved-v1');
 		const reactive = createReactiveLayoutPreviewState();
 		expect(
@@ -223,14 +235,18 @@ describe('P23B.7 S7 — the commit-capture residual: advisory node timing (not a
 		// not what the capture writes, it is the graph it reads through. (Advisory ms
 		// below is printed, never asserted.)
 		expect(reactiveModelBytes).toBe(plainModelBytes);
-		const plainMs = advisoryP50(() => captureLayoutPreviewSnapshot(plain));
-		const reactiveMs = advisoryP50(() => captureLayoutPreviewSnapshot(reactive));
+		// BOUNDED reps: this is the one caller whose single call is six figures of
+		// microseconds, and the timeout above is a ceiling, not a licence to burn
+		// the runner's budget inside the full suite.
+		const proxyReps = { warmups: 1, samples: 3 } as const;
+		const plainMs = advisoryP50(() => captureLayoutPreviewSnapshot(plain), proxyReps);
+		const reactiveMs = advisoryP50(() => captureLayoutPreviewSnapshot(reactive), proxyReps);
 		console.log(
 			`P23B.7 S7 capture attribution (node, single session, ADVISORY): the same ${plainModelBytes}-byte model clone costs p50 ${plainMs} ms on a plain state and p50 ${reactiveMs} ms through the editor-style $state proxy`
 		);
 	});
 
-	it('prints the per-stream advisory p50 so the record can cite it', () => {
+	it('prints the per-stream advisory p50 so the record can cite it', { timeout: 120000 }, () => {
 		const state = installedState('p23b-40-wall-all-curved-v1');
 		const snapshot = captureLayoutPreviewSnapshot(state);
 		const rows = accountingOf(snapshot).map((entry) => ({
