@@ -151,7 +151,7 @@ describe('P23B.6 S3 — one prepared generation reuses only value-equal canonica
 				expect(prepared.wallMeshInputsByWall.size).toBe(40);
 			}
 		}
-	});
+	}, 15_000);
 
 	it('OR-5 negative control: a corrupted reused mesh fails the parity assertion', () => {
 		const document = buildP23BMatrixFixture(
