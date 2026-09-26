@@ -9,17 +9,7 @@ import {
 	type WallMeshBuildResult
 } from '$lib/layout/wall-mesh-builder';
 
-/**
- * The complete input record for one canonical Wall mesh. The builder closure
- * was audited in both byte-identical mirrors: mesh data comes from the whole
- * compiled Wall, its Floor elevation, resolved Junction ends, and the default
- * builder constants/options identified by the signature. The only ambient
- * access in the builder is the opt-in P23.11 timer, which adds marks but does
- * not affect the returned mesh. This module itself reads no ambient state.
- *
- * Keep this record conservative: comparing the whole Wall means a new compiled
- * field automatically participates, and changed values refuse reuse.
- */
+/** The complete value record consumed by `buildStandaloneWallMesh`. */
 export type PreparedWallMeshInput = {
 	wall: CompiledPhysicalWall;
 	floorElevation: number;
@@ -29,8 +19,9 @@ export type PreparedWallMeshInput = {
 
 export type PreparedWallMeshReference = {
 	input: PreparedWallMeshInput;
-	/** Failed builds have no mesh and therefore cannot be reused. */
+	/** Failed or issue-producing builds cannot be reused. */
 	mesh?: IndexedWallMesh;
+	issues?: readonly LayoutGeometryIssue[];
 };
 
 export type WallMeshReuseRefusalReason =
@@ -39,7 +30,8 @@ export type WallMeshReuseRefusalReason =
 	| 'floor-elevation-changed'
 	| 'compiled-wall-changed'
 	| 'resolved-ends-changed'
-	| 'reference-build-failed';
+	| 'reference-build-failed'
+	| 'non-plain-data-input';
 
 export type PreparedWallMeshResult = {
 	mesh?: IndexedWallMesh;
@@ -48,7 +40,7 @@ export type PreparedWallMeshResult = {
 	refusalReason: WallMeshReuseRefusalReason | null;
 };
 
-/** Build the canonical per-Wall key from the exact arguments used by the caller. */
+/** Build the canonical per-Wall key from the exact arguments used by the builder. */
 export function preparedWallMeshInput(
 	wall: CompiledPhysicalWall,
 	floorElevation: number,
@@ -63,6 +55,72 @@ export function preparedWallMeshInput(
 }
 
 /**
+ * D-5's structural guard admits only finite JSON-like records with ordinary
+ * prototypes, enumerable string keys, data properties, dense arrays and no
+ * cycles. It makes S1's cheaper Object.keys comparator safe for this input set.
+ */
+export function isPlainJsonLike(value: unknown, ancestors = new Set<object>()): boolean {
+	if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+	if (typeof value === 'number') return Number.isFinite(value);
+	if (typeof value !== 'object' || ancestors.has(value)) return false;
+	try {
+		const isArray = Array.isArray(value);
+		if (Object.getPrototypeOf(value) !== (isArray ? Array.prototype : Object.prototype)) return false;
+		ancestors.add(value);
+		const keys = Reflect.ownKeys(value);
+		if (isArray) {
+			const array = value as unknown[];
+			if (keys.length !== array.length + 1) return false;
+			for (let index = 0; index < array.length; index += 1) {
+				if (!Object.prototype.hasOwnProperty.call(array, index)) return false;
+			}
+		}
+		for (const key of keys) {
+			if (typeof key !== 'string') return false;
+			if (isArray && key === 'length') continue;
+			const descriptor = Object.getOwnPropertyDescriptor(value, key);
+			if (
+				!descriptor ||
+				!descriptor.enumerable ||
+				!Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+				!isPlainJsonLike(descriptor.value, ancestors)
+			) {
+				return false;
+			}
+		}
+		ancestors.delete(value);
+		return true;
+	} catch {
+		ancestors.delete(value);
+		return false;
+	}
+}
+
+/** S1's recursive Object.keys comparator; inputs are structurally guarded first. */
+export function s1ObjectKeysDeepEqual(left: unknown, right: unknown): boolean {
+	if (Object.is(left, right)) return true;
+	if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
+		return false;
+	}
+	if (Array.isArray(left) !== Array.isArray(right)) return false;
+	const leftKeys = Object.keys(left);
+	const rightKeys = Object.keys(right);
+	if (leftKeys.length !== rightKeys.length) return false;
+	for (const key of leftKeys) {
+		if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+		if (
+			!s1ObjectKeysDeepEqual(
+				(left as Record<string, unknown>)[key],
+				(right as Record<string, unknown>)[key]
+			)
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
  * Decide whether a reference mesh is safe to share. This is a pure, state-free
  * per-Wall decision; it neither retains a reference nor owns a generation cache.
  */
@@ -71,32 +129,43 @@ export function wallMeshReuseRefusalReason(
 	reference: PreparedWallMeshReference | null
 ): WallMeshReuseRefusalReason | null {
 	if (!reference) return 'no-reference';
+	if (
+		typeof candidate.floorElevation !== 'number' ||
+		!Number.isFinite(candidate.floorElevation) ||
+		typeof reference.input.floorElevation !== 'number' ||
+		!Number.isFinite(reference.input.floorElevation) ||
+		!isPlainJsonLike(candidate.wall) ||
+		!isPlainJsonLike(reference.input.wall) ||
+		!isPlainJsonLike(candidate.ends) ||
+		!isPlainJsonLike(reference.input.ends) ||
+		!isPlainJsonLike(candidate.builderSignature) ||
+		!isPlainJsonLike(reference.input.builderSignature)
+	) {
+		return 'non-plain-data-input';
+	}
 	if (candidate.builderSignature !== reference.input.builderSignature) {
 		return 'builder-signature-changed';
 	}
 	if (!Object.is(candidate.floorElevation, reference.input.floorElevation)) {
 		return 'floor-elevation-changed';
 	}
-	if (!deepEqualOwnData(candidate.wall, reference.input.wall)) {
+	if (!s1ObjectKeysDeepEqual(candidate.wall, reference.input.wall)) {
 		return 'compiled-wall-changed';
 	}
-	if (!deepEqualOwnData(candidate.ends, reference.input.ends)) {
+	if (!s1ObjectKeysDeepEqual(candidate.ends, reference.input.ends)) {
 		return 'resolved-ends-changed';
 	}
 	return null;
 }
 
-/**
- * Reuse a successful reference mesh when every input matches. A mismatch or a
- * failed reference reruns the supplied builder so its current issues are fresh.
- */
+/** Reuse a successful reference mesh; rerun failed builds so issues are fresh. */
 export function prepareWallMesh(
 	candidate: PreparedWallMeshInput,
 	reference: PreparedWallMeshReference | null,
 	build: () => WallMeshBuildResult
 ): PreparedWallMeshResult {
 	const mismatch = wallMeshReuseRefusalReason(candidate, reference);
-	if (mismatch === null && reference?.mesh) {
+	if (mismatch === null && reference?.mesh && (reference.issues?.length ?? 0) === 0) {
 		return { mesh: reference.mesh, issues: [], reused: true, refusalReason: null };
 	}
 	const refusalReason = mismatch ?? 'reference-build-failed';
@@ -107,72 +176,4 @@ export function prepareWallMesh(
 		reused: false,
 		refusalReason
 	};
-}
-
-function deepEqualOwnData(
-	left: unknown,
-	right: unknown,
-	seen = new WeakMap<object, WeakSet<object>>()
-): boolean {
-	if (Object.is(left, right)) return true;
-	if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
-		return false;
-	}
-	if (Object.getPrototypeOf(left) !== Object.getPrototypeOf(right)) return false;
-	if (ArrayBuffer.isView(left) || ArrayBuffer.isView(right)) {
-		if (
-			!ArrayBuffer.isView(left) ||
-			!ArrayBuffer.isView(right) ||
-			left.constructor !== right.constructor
-		) {
-			return false;
-		}
-		if (left.byteLength !== right.byteLength) return false;
-		const leftBytes = new Uint8Array(left.buffer, left.byteOffset, left.byteLength);
-		const rightBytes = new Uint8Array(right.buffer, right.byteOffset, right.byteLength);
-		return leftBytes.every((value, index) => value === rightBytes[index]);
-	}
-	if (left instanceof ArrayBuffer || right instanceof ArrayBuffer) {
-		if (
-			!(left instanceof ArrayBuffer) ||
-			!(right instanceof ArrayBuffer) ||
-			left.byteLength !== right.byteLength
-		) {
-			return false;
-		}
-		const leftBytes = new Uint8Array(left);
-		const rightBytes = new Uint8Array(right);
-		return leftBytes.every((value, index) => value === rightBytes[index]);
-	}
-	if (Array.isArray(left) !== Array.isArray(right)) return false;
-
-	let paired = seen.get(left);
-	if (paired?.has(right)) return true;
-	if (!paired) {
-		paired = new WeakSet<object>();
-		seen.set(left, paired);
-	}
-	paired.add(right);
-
-	const leftKeys = Reflect.ownKeys(left);
-	const rightKeys = Reflect.ownKeys(right);
-	if (leftKeys.length !== rightKeys.length) return false;
-	for (const key of leftKeys) {
-		if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
-		const leftDescriptor = Object.getOwnPropertyDescriptor(left, key);
-		const rightDescriptor = Object.getOwnPropertyDescriptor(right, key);
-		if (!leftDescriptor || !rightDescriptor) return false;
-		const leftIsData = Object.prototype.hasOwnProperty.call(leftDescriptor, 'value');
-		const rightIsData = Object.prototype.hasOwnProperty.call(rightDescriptor, 'value');
-		if (leftIsData !== rightIsData) return false;
-		if (leftIsData && rightIsData) {
-			if (!deepEqualOwnData(leftDescriptor.value, rightDescriptor.value, seen)) return false;
-		} else if (
-			leftDescriptor.get !== rightDescriptor.get ||
-			leftDescriptor.set !== rightDescriptor.set
-		) {
-			return false;
-		}
-	}
-	return true;
 }

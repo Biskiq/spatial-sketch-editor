@@ -12,8 +12,10 @@ import {
 	type IndexedWallMesh
 } from '$lib/layout/wall-mesh-builder';
 import {
+	isPlainJsonLike,
 	prepareWallMesh,
 	preparedWallMeshInput,
+	s1ObjectKeysDeepEqual,
 	wallMeshReuseRefusalReason,
 	type PreparedWallMeshInput,
 	type PreparedWallMeshReference
@@ -77,12 +79,10 @@ function changedWall(
 }
 
 type ComparatorStrategy =
-	| { name: 'deepEqualOwnData'; equal: null }
-	| { name: 'S1 Object.keys deepEqual'; equal: typeof s1DeepEqual }
+	{ name: 'S1 Object.keys deepEqual'; equal: typeof s1DeepEqual }
 	| { name: 'D-5 JSON stringify'; equal: typeof jsonStringDeepEqual };
 
 const comparatorStrategies: ComparatorStrategy[] = [
-	{ name: 'deepEqualOwnData', equal: null },
 	{ name: 'S1 Object.keys deepEqual', equal: s1DeepEqual },
 	{ name: 'D-5 JSON stringify', equal: jsonStringDeepEqual }
 ];
@@ -92,41 +92,15 @@ function refusalReasonForComparator(
 	candidate: PreparedWallMeshInput,
 	reference: PreparedWallMeshReference | null
 ) {
-	if (strategy.name === 'deepEqualOwnData') return wallMeshReuseRefusalReason(candidate, reference);
 	if (!reference) return 'no-reference';
+	if (strategy.name === 'S1 Object.keys deepEqual') {
+		return wallMeshReuseRefusalReason(candidate, reference);
+	}
 	if (candidate.builderSignature !== reference.input.builderSignature) return 'builder-signature-changed';
 	if (!Object.is(candidate.floorElevation, reference.input.floorElevation)) return 'floor-elevation-changed';
 	if (!strategy.equal(candidate.wall, reference.input.wall)) return 'compiled-wall-changed';
 	if (!strategy.equal(candidate.ends, reference.input.ends)) return 'resolved-ends-changed';
 	return reference.mesh ? null : 'reference-build-failed';
-}
-
-function isPlainJsonLike(value: unknown, ancestors = new Set<object>()): boolean {
-	if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
-	if (typeof value === 'number') return Number.isFinite(value);
-	if (typeof value !== 'object' || ancestors.has(value)) return false;
-	const isArray = Array.isArray(value);
-	if (Object.getPrototypeOf(value) !== (isArray ? Array.prototype : Object.prototype)) return false;
-	ancestors.add(value);
-	const keys = Reflect.ownKeys(value);
-	if (isArray) {
-		const array = value as unknown[];
-		if (keys.length !== array.length + 1) return false;
-		for (let index = 0; index < array.length; index += 1) {
-			if (!Object.prototype.hasOwnProperty.call(array, index)) return false;
-		}
-	}
-	for (const key of keys) {
-		if (typeof key !== 'string') return false;
-		if (isArray && key === 'length') continue;
-		const descriptor = Object.getOwnPropertyDescriptor(value, key);
-		if (!descriptor || !descriptor.enumerable || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-			return false;
-		}
-		if (!isPlainJsonLike(descriptor.value, ancestors)) return false;
-	}
-	ancestors.delete(value);
-	return true;
 }
 
 describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () => {
@@ -252,7 +226,7 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 		for (const [row, candidate, reason] of refusalMatrix) {
 			it(`${strategy.name}: ${row} refuses reuse`, () => {
 				expect(refusalReasonForComparator(strategy, candidate, reference), `${row} refusal`).toBe(reason);
-				if (strategy.name !== 'deepEqualOwnData') return;
+				if (strategy.name !== 'S1 Object.keys deepEqual') return;
 				let buildCalls = 0;
 				const result = prepareWallMesh(candidate, reference, () => {
 					buildCalls += 1;
@@ -291,7 +265,7 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 			expect(nextGenerationInput.wall).not.toBe(base.wall);
 			expect(nextGenerationInput.ends).not.toBe(base.ends);
 			expect(refusalReasonForComparator(strategy, nextGenerationInput, reference)).toBeNull();
-			if (strategy.name !== 'deepEqualOwnData') return;
+			if (strategy.name !== 'S1 Object.keys deepEqual') return;
 			let buildCalls = 0;
 			const result = prepareWallMesh(nextGenerationInput, reference, () => {
 				buildCalls += 1;
@@ -307,6 +281,20 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 			expect(buildCalls).toBe(0);
 		});
 	}
+
+	it('the structural guard catches non-enumerable fields the Object.keys walk cannot see', () => {
+		const referenceWall = clone(base.wall) as CompiledPhysicalWall & { hiddenFutureField?: number };
+		const candidateWall = clone(base.wall) as CompiledPhysicalWall & { hiddenFutureField?: number };
+		Object.defineProperty(referenceWall, 'hiddenFutureField', { value: 1, enumerable: false });
+		Object.defineProperty(candidateWall, 'hiddenFutureField', { value: 2, enumerable: false });
+		const referenceInput = { ...base, wall: referenceWall };
+		const candidate = { ...base, wall: candidateWall };
+		const hiddenReference = { input: referenceInput, mesh: baseMesh };
+		// This is the negative control: dropping the guard makes the S1 comparator admit stale data.
+		expect(s1ObjectKeysDeepEqual(candidate.wall, hiddenReference.input.wall)).toBe(true);
+		expect(isPlainJsonLike(candidate.wall)).toBe(false);
+		expect(wallMeshReuseRefusalReason(candidate, hiddenReference)).toBe('non-plain-data-input');
+	});
 
 	it('compiled Wall and resolved-end inputs are plain JSON-like data across S3 fixtures', () => {
 		const fixtureIds = [

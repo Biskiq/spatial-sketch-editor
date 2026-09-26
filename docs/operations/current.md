@@ -2,13 +2,14 @@
 
 PHASE: P23B — geometry performance & stabilization (P-level status → ../roadmap/README.md)
 CHILD: P23B.6-rendering — RATIFIED by the owner 2026-09-25 and implementation AUTHORIZED on branch
-       `P23B.6` (plan §14; starting instruction §15). Implementation is UNDERWAY through S6; the
-       final-head evidence checkpoint is recorded in
-       `../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S6-evidence-checkpoint.md`.
-       CURRENT STEP: one PR from `P23B.6` is ready for owner review. This checkpoint is not final
-       slice acceptance; the implementer does not merge, accept or run `slice-closeout`. P23B.8
-       stays unratified and UNAUTHORIZED; P23B.9/P23B.10 are downstream gates. No numeric performance
-       target is proposed.
+       `P23B.6` (plan §14; starting instruction §15). The owner explicitly authorized S3 M-3m in PR #93
+       on 2026-09-26. Its integrated preparation probe then measured a net loss on every accepted
+       single-Wall release fixture, firing plan §11 A-1; S3 is abandoned. Work STOPPED at that condition
+       under the task instruction. See the S3 attempt record and probe data routed below. The earlier
+       S6 checkpoint is historical and is not a final-head capture. S6 final recapture, final routing,
+       the full repository contract, push and PR update remain unfinished. This is not slice acceptance;
+       the implementer does not merge, accept or run `slice-closeout`. P23B.8 stays unratified and
+       UNAUTHORIZED; P23B.9/P23B.10 are downstream gates. No numeric performance target is proposed.
 STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
        (order · 2026-09-25 amendment → phase README §SEQUENCE). Shipped and closed, each with closed
        stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
@@ -18,7 +19,7 @@ STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE
        action required.
 
 NEXT:
-1. P23B.6 implementation (above). Do NOT start P23B.8 work.
+1. Await owner direction after P23B.6 §11 A-1. The remaining S6 evidence is not complete. Do NOT start P23B.8 work.
 2. Standing constraints while P23B.6 runs:
    - the v5 baseline is test-enforced and `bench:record` is its only writer — never rewrite it; the
      accepted partial baseline (W6 §10.3 disposition A) stands: no further capture, no settlement
@@ -41,6 +42,8 @@ ROUTE:
 phase pipeline · P-level status → ../roadmap/README.md
 P23B phase status · child order · SEQUENCE + order amendment · closed stubs/anchors/tags → ../roadmap/p23b-geometry-performance/README.md
 active P23B.6 plan (scope · §8 order + admission rules · §9 acceptance · §14/§15) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
+P23B.6 S3 owner authorization, integrated net-benefit result and §11 A-1 stop → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S3-integrated-probe-record.md
+historical P23B.6 S6 checkpoint; not final-head evidence → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S6-evidence-checkpoint.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
@@ -56,5 +59,7 @@ post-P23 debt → tech-debt/README.md
 BLOCKER:
 - P26 implementation readiness remains gated: planning may continue; the validation window is not open.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
-- None on P23B.6: it is RATIFIED, AUTHORIZED and underway. The P23B.7 snapshot-guard limits and the
-  bounded heap-retention follow-up are carried, unstarted, in the closed stubs — not active blockers.
+- P23B.6 §11 A-1 fired: the integrated S3 preparation path had net losses on all four accepted-edit
+  fixtures. Work stopped before S6 final recapture, full verification, push and PR update. Owner
+  direction is needed to resume the remaining evidence work with S3 abandoned.
+- The P23B.7 snapshot-guard limits and bounded heap-retention follow-up remain carried and unstarted.
