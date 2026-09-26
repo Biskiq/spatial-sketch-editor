@@ -124,8 +124,11 @@ export function isPlainJsonLike(value: unknown, ancestors = new Set<object>()): 
 }
 
 /**
- * Validate a prepared input map once per compiled generation. The verdict is
- * stored in that generation's existing weakly keyed derived-mesh entry.
+ * Validate a prepared input map once per compiled generation in DEV. Production
+ * compiled geometry is compiler-owned plain data; OR-9 keeps this invariant
+ * executable in tests and DEV without putting a reflective walk on the release
+ * preparation path. The verdict is stored with that generation's existing
+ * weakly keyed derived-mesh entry.
  */
 export function validatePreparedWallMeshInputs(
 	inputs: ReadonlyMap<string, PreparedWallMeshInput>
@@ -334,7 +337,9 @@ export function prepareWallMeshes(
 	if (cached) return cached;
 
 	const wallMeshInputsByWall = collectPreparedWallMeshInputs(generation);
-	const reuseInputsStructureValid = validatePreparedWallMeshInputs(wallMeshInputsByWall);
+	const reuseInputsStructureValid = import.meta.env.DEV
+		? validatePreparedWallMeshInputs(wallMeshInputsByWall)
+		: true;
 	const reference = referenceGeneration ? derivedWallMeshes.get(referenceGeneration) : undefined;
 	const prepared = buildWallMeshesByRoom(
 		generation,

@@ -169,7 +169,9 @@ const report = {
 		cpu: cpus()[0]?.model ?? 'unknown',
 		cpuCount: cpus().length,
 		totalMemoryBytes: totalmem(),
-		nodeEnv: process.env.NODE_ENV ?? 'unset'
+		nodeEnv: process.env.NODE_ENV ?? 'unset',
+		viteMode: import.meta.env.MODE,
+		viteDev: import.meta.env.DEV
 	},
 	configuration: {
 		warmup: WARMUP,
