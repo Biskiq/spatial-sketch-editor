@@ -43,10 +43,19 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        ratchet BYTE-FOR-BYTE through the scoped path (no re-record) with ZERO suppressed requests
        (the crossing gate samples per Wall before its pair loop). Record →
        ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md.
-       NEXT IN SLICE (owner ruling during S4, 2026-09-25 — plan §0.8.3): MINIMUM REPS — one targeted
-       measurement of the residual `commit-capture` snapshot clone (107–149 ms) instead of another full
-       wall-authoring sweep; S5 only if that measurement (or the owner's repro) names hit-test/snap;
-       S7 records what was measured, then the PR. The plan carries the owner's two
+       S7 is EXECUTED (targeted, per the owner ruling during S4, 2026-09-25 — plan §0.8.3): the
+       `commit-capture` residual is ATTRIBUTED — `captureLayoutPreviewSnapshot` deep-clones project +
+       model + issues via JSON.parse(JSON.stringify(...)) with geometry by reference, and on the
+       40-Wall fixture the DERIVED model is 3,412,257 of 3,434,187 payload bytes (99.4 %) with NO
+       production reader installing it (restore re-projects the model from the shared geometry; the
+       transient guard reads only project.layout). The same clone costs p50 ~20 ms plain vs ~133 ms
+       through the editor-style $state proxy (node, advisory) — the multiplier behind the browser's
+       107–149 ms. UNADDRESSED by ruling: dropping the model clone needs the snapshot contract's own
+       oracle, outside S4's mechanism. S5 is NOT taken (the measurement names the capture clone, not
+       hit-test/snap). Record →
+       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md.
+       NEXT: the PR for owner review; slice review, acceptance and `slice-closeout` stay owner actions.
+       The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
        guaranteed zero after initialization), and sample/verdict reuse is tested as a four-cell
@@ -173,6 +182,8 @@ P23B.7 S6 record (fix + its own independent capture) → ../roadmap/p23b-geometr
 P23B.7 S6 LIVE capture artifact (SHA-256 `95790b00…`) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json
 P23B.7 S4 record (verdict scope + OR-3 differential + four-cell matrix + deterministic clauses) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md
 P23B.7 S4 proofs (OR-3/OR-8/deterministic · viewport wiring source contract · sample/verdict matrix) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts · apps/editor/tests/lib/layout/p23b7-verdict-scope-wiring.test.ts · apps/editor/tests/lib/bench/p23b7-sample-verdict-matrix.test.ts
+P23B.7 S7 record (targeted commit-capture attribution) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md
+P23B.7 S7 probe (capture structure · payload accounting · cadence · proxy factor) → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
 P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts

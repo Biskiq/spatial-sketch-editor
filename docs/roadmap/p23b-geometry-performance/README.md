@@ -440,10 +440,21 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         `p23b7-sample-verdict-matrix`; the S2 test now shares its frozen table via
         `p23b7-preflight-reference-cases` (values unmoved).
         Record → ./p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md.
-        NEXT IN SLICE (owner ruling during S4, 2026-09-25 — plan §0.8.3): MINIMUM REPS — one targeted
-        measurement of the residual `commit-capture` snapshot clone (107–149 ms), NOT another full
-        wall-authoring sweep; S5 runs only if that measurement (or the owner's own repro) names
-        hit-test/snap; S7 records what was measured, then the PR for owner review.
+        S7 EXECUTED (targeted, per the owner ruling during S4, 2026-09-25 — plan §0.8.3): the
+        `commit-capture` residual is ATTRIBUTED. `captureLayoutPreviewSnapshot` deep-clones `project`
+        + `model` + `issues` through `JSON.parse(JSON.stringify(...))` with `geometry` by reference,
+        and on the 40-Wall fixture the DERIVED `model` is 3,412,257 of 3,434,187 payload bytes
+        (99.4 %; project 0.6 %) with NO production reader installing it (the restore re-projects the
+        model from the shared geometry; the transient guard reads only `project.layout`). The same
+        clone costs p50 ~20 ms on a plain state vs ~133 ms through the editor-style `$state` proxy
+        (node, advisory) — the multiplier behind the browser's 107–149 ms. UNADDRESSED by ruling:
+        the bounded next action (stop cloning `model` in the capture) needs the snapshot contract's
+        own oracle and is outside S4's topology mechanism. S5 is NOT taken — the measurement names
+        the capture clone, not hit-test/snap.
+        Record → ./p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md.
+        Probe → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts.
+        NEXT: the PR for owner review. Slice review, acceptance and `slice-closeout` remain owner
+        actions after it.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified
