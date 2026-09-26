@@ -2,12 +2,13 @@
 
 PHASE: P23B — geometry performance & stabilization (P-level status → ../roadmap/README.md)
 CHILD: P23B.6-rendering — RATIFIED by the owner 2026-09-25 and implementation AUTHORIZED on branch
-       `P23B.6` (plan §14; starting instruction §15). Implementation is UNDERWAY: S1 attribution
-       (node probe + DEV-only instrumentation) is in flight; Git/PR holds the exact progress.
-       CURRENT STEP: finish S1 — the attribution record with the mechanical admission table — then
-       the plan's §8 order (S2 → [S-R] → [S3b → S3] → S6). One PR; the implementer does not merge,
-       accept or run `slice-closeout`. P23B.8 stays unratified and UNAUTHORIZED; P23B.9/P23B.10 are
-       downstream gates. No numeric performance target is proposed.
+       `P23B.6` (plan §14; starting instruction §15). Implementation is UNDERWAY through S6; the
+       final-head evidence checkpoint is recorded in
+       `../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S6-evidence-checkpoint.md`.
+       CURRENT STEP: one PR from `P23B.6` is ready for owner review. This checkpoint is not final
+       slice acceptance; the implementer does not merge, accept or run `slice-closeout`. P23B.8
+       stays unratified and UNAUTHORIZED; P23B.9/P23B.10 are downstream gates. No numeric performance
+       target is proposed.
 STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
        (order · 2026-09-25 amendment → phase README §SEQUENCE). Shipped and closed, each with closed
        stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
