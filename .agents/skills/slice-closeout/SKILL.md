@@ -19,7 +19,7 @@ branch → closeout self-check → merge commit → post-merge anchor verificati
 
 Implementation acceptance authorizes routine closeout. Routine closeout requires no second review;
 exceptional triggers below reopen review. This skill owns mechanical documentation and preservation
-verification.
+verification — it REUSES the implementer's and reviewer's recorded gate numbers and re-runs nothing.
 
 ```text
 implementation accepted   code, architecture and required acceptance evidence passed review
@@ -45,7 +45,7 @@ no automatic phase-closeout
 
 ## Procedure
 
-1. Verify acceptance: run the rows the plan requires plus `npm test`, `npm run check`, `npm run build`; record gate numbers. Reuse unchanged evidence; re-run only when a change invalidates it. Missing acceptance evidence → STOP, report it.
+1. Verify acceptance is RECORDED, not re-produced: the implementation/review evidence must already carry the plan's required rows plus `npm test`, `npm run check`, `npm run build` gate numbers. A routine closeout is documentation-only and NEVER re-runs a suite or gate for its own sake — reuse the recorded evidence and name it in the closeout artifact. Re-run a lane only when a closeout change itself invalidates recorded evidence; a docs-only close never does. Missing recorded acceptance evidence → STOP, report it.
 2. Retire any active checkpoint: promote durable findings first (deferred bug → `operations/tech-debt/`; research → owning artifact; landed behaviour → `reference/*`; verification → closeout; status → phase README), then delete the checkpoint and any `current.md` RESUME pointer. NEVER archive a raw checkpoint.
 3. Update `docs/reference/...` only where the slice changed durable knowledge a future agent would rediscover; reconcile the stale claims it invalidates. Only landed behaviour moves: roadmap proposals and rejected or speculative research NEVER become reference truth. Promote a closing artifact's durable conclusion to its owner; never promote review chronology. Plan hygiene → `docs/README.md`.
 4. Write or update closeout evidence: acceptance record, rulings, residuals.

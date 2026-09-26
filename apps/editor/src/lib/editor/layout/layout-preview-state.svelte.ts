@@ -641,6 +641,47 @@ const derivedWallMeshes = new WeakMap<
 >();
 
 /**
+ * P23B.7 S6 — the identity a LIVE state hands back for an installed compile.
+ *
+ * A compile always produces a new geometry, so keying the mesh cache on geometry
+ * **object identity** is what makes an entry impossible to read for a different
+ * document. The live preview state, however, is a Svelte `$state` graph
+ * (`EditorApp.svelte`), so the object a capture reads out of
+ * `state.geometry` — and hands to `restoreLayoutPreviewSnapshot` — is the PROXY
+ * Svelte created for that compile's geometry, never the compile's own object.
+ * The install cached the meshes under the compile object and the restore asked
+ * for them under the proxy, which missed: on every accepted edit the full
+ * Wall-mesh set was built TWICE, the second time inside `commit-replace`'s
+ * restore (measured p50 160-190 ms on the committed 40-Wall fixtures).
+ *
+ * This records the identity a live state reads back as, so both names resolve to
+ * the ONE cache entry the compile owns. It is an equivalence of WORK, never of
+ * content: a proxy reads that same geometry, so the entry a translated key
+ * reaches is the entry its own compile built — nothing is rebuilt, nothing is
+ * looked up across documents, and the cache stays keyed by the compile.
+ */
+const wallMeshIdentities = new WeakMap<object, object>();
+
+/** The cache key one geometry resolves to: always the compile's own object. */
+function wallMeshCacheKey(geometry: CompiledLayoutGeometry): CompiledLayoutGeometry {
+	return (wallMeshIdentities.get(geometry) as CompiledLayoutGeometry | undefined) ?? geometry;
+}
+
+/**
+ * Write a compiled geometry onto the state and record the identity the state
+ * reads back as (the same proxy every later read, capture and restore sees).
+ *
+ * Every writer of `state.geometry` goes through this, so no installed compile can
+ * be cached under a name a later restore does not ask for. On a plain state the
+ * read is the object itself and there is nothing to record.
+ */
+function installWallGeometry(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
+	state.geometry = geometry;
+	const live = state.geometry as unknown;
+	if (live !== geometry) wallMeshIdentities.set(live as object, wallMeshCacheKey(geometry));
+}
+
+/**
  * Build the wall-mesh / pick-index caches for a compiled geometry, or reuse the
  * one already derived for that exact geometry object.
  *
@@ -655,15 +696,18 @@ function resolveWallMeshes(geometry: CompiledLayoutGeometry): {
 	layout3dPickIndexByRoom: ReadonlyMap<string, Layout3dPickIndex>;
 	issues: readonly LayoutGeometryIssue[];
 } {
-	const cached = derivedWallMeshes.get(geometry);
+	const key = wallMeshCacheKey(geometry);
+	const cached = derivedWallMeshes.get(key);
 	if (cached) {
 		// P23B measurement-only step: which identity hit the cache.
 		p2311ObserveMeshIdentity('prebuild-hit', geometry);
 		return cached;
 	}
 	p2311ObserveMeshIdentity('prebuild-miss', geometry);
-	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(geometry));
-	derivedWallMeshes.set(geometry, built);
+	// The key's own object, so a proxied read never pays proxy traversal for a
+	// build that reads the identical values.
+	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(key));
+	derivedWallMeshes.set(key, built);
 	return built;
 }
 
@@ -683,11 +727,11 @@ function applyCompiledLayout(state: LayoutPreviewState, result: LayoutPreviewMod
 	// P23B measurement-only step: this is the install the commit path is compared
 	// against — the geometry it caches in `derivedWallMeshes` (DEV-only).
 	p2311ObserveMeshIdentity('install', result.geometry);
+	installWallGeometry(state, result.geometry);
 	installWallMeshes(state, result.geometry);
 	const meshIssues = resolveWallMeshes(result.geometry).issues;
 	const issues = meshIssues.length > 0 ? [...result.issues, ...meshIssues] : result.issues;
 	state.model = result.model;
-	state.geometry = result.geometry;
 	state.issues = issues;
 	state.bounds = result.bounds;
 }
@@ -840,7 +884,7 @@ function deriveInstallBundle(
 function commitPreviewBundle(state: LayoutPreviewState, bundle: ReturnType<typeof derivePreviewBundle>): void {
 	state.project = bundle.project;
 	state.model = bundle.model;
-	state.geometry = bundle.geometry;
+	installWallGeometry(state, bundle.geometry);
 	state.wallMeshesByRoom = bundle.wallMeshesByRoom;
 	state.wallMeshesByWall = bundle.wallMeshesByWall;
 	state.layout3dPickIndexByRoom = bundle.layout3dPickIndexByRoom;
@@ -898,7 +942,7 @@ export function commitLayoutCandidate(
 ): void {
 	state.project = bundle.project;
 	state.model = bundle.model;
-	state.geometry = bundle.geometry;
+	installWallGeometry(state, bundle.geometry);
 	state.wallMeshesByRoom = bundle.wallMeshesByRoom;
 	state.wallMeshesByWall = bundle.wallMeshesByWall ?? new Map();
 	state.layout3dPickIndexByRoom = bundle.layout3dPickIndexByRoom;
@@ -2705,7 +2749,7 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
 	target.source = next.source;
 	target.project = next.project;
 	target.model = next.model;
-	target.geometry = next.geometry;
+	installWallGeometry(target, next.geometry);
 	target.wallMeshesByRoom = next.wallMeshesByRoom;
 	target.wallMeshesByWall = next.wallMeshesByWall;
 	target.layout3dPickIndexByRoom = next.layout3dPickIndexByRoom;
@@ -2723,17 +2767,26 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
 	target.identityHighWater = next.identityHighWater;
 }
 
+/**
+ * The history/undo payload: the committed document, the compiled geometry it
+ * renders from, the issues that belong to that geometry, and the status scalars
+ * a restore has to put back. Everything except `geometry` is deep-cloned by
+ * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the state's own
+ * object by reference, and the wall-mesh caches are derived, so they are never
+ * captured.
+ *
+ * The derived preview model is deliberately NOT a member. It is a pure
+ * projection of `geometry` (see `projectLayoutPreviewModel`) and `restore`
+ * re-projects it from `geometry`, so a captured copy carries no information the
+ * snapshot does not already hold — while costing 3,412,257 of a 3,434,187-byte
+ * payload (99.4 %, 39,106 of 39,746 objects) on the accepted-edit path. P23B.7
+ * S7 attributed `commit-capture`'s 107–149 ms to exactly that clone; the payload
+ * is now document-sized, and a re-introduction is refused by
+ * `tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts`.
+ */
 export type LayoutPreviewSnapshot = {
 	source: LayoutPreviewState['source'];
 	project: LayoutPreviewState['project'];
-	/**
-	 * The captured preview model — the frozen record of what was on screen. It is
-	 * **not** what a restore installs: the model is a pure projection of
-	 * `geometry` (see `projectLayoutPreviewModel`), so `restore` re-projects it
-	 * from `geometry` instead of deep-cloning this copy. Both describe the same
-	 * state, which is what the capture/restore round-trip tests pin.
-	 */
-	model: LayoutPreviewState['model'];
 	geometry: LayoutPreviewState['geometry'];
 	issues: LayoutPreviewState['issues'];
 	bounds: LayoutPreviewState['bounds'];
@@ -2749,7 +2802,6 @@ export function captureLayoutPreviewSnapshot(state: LayoutPreviewState): LayoutP
 	return {
 		source: state.source,
 		project: cloneJson(state.project),
-		model: cloneJson(state.model),
 		geometry: state.geometry,
 		issues: cloneJson(state.issues),
 		lastMutationMessage: state.lastMutationMessage,
@@ -2781,9 +2833,10 @@ function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snaps
 		state.project = p2311Measure('restore-project-clone', () => cloneJson(snapshot.project));
 		// The preview model is a pure projection of the compiled geometry (the same
 		// one a fresh install performs), so restoring re-projects it instead of
-		// deep-cloning the captured copy — identical content, none of the JSON cost.
+		// restoring a captured copy — identical content, none of the JSON cost, and
+		// the snapshot itself carries no model at all (see `LayoutPreviewSnapshot`).
 		state.model = p2311Measure('restore-model-project', () => projectLayoutPreviewModel(snapshot.geometry));
-		state.geometry = snapshot.geometry;
+		installWallGeometry(state, snapshot.geometry);
 		// The snapshot's `issues` already includes mesh issues from capture time,
 		// and undo restores the same geometry, so re-deriving would duplicate them.
 		state.issues = p2311Measure('restore-issues-clone', () => cloneJson(snapshot.issues));

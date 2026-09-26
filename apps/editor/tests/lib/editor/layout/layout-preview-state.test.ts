@@ -31,6 +31,7 @@ import {
 	updateLayoutObjectFields,
 	updateLayoutRoomFields
 } from '$lib/editor/layout/layout-preview-state.svelte';
+import { projectLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
 
 describe('layout preview state', () => {
 	it('starts with a validated seven-room Chopin project', () => {
@@ -201,7 +202,10 @@ describe('layout preview state', () => {
 		expect(() => captureLayoutPreviewSnapshot(state)).not.toThrow();
 		const snapshot = captureLayoutPreviewSnapshot(state);
 		expect(snapshot.project.layout.floors[0]!.rooms.length).toBe(state.project.layout.floors[0]!.rooms.length);
-		expect(snapshot.model.rooms.length).toBe(state.model.rooms.length);
+		// The snapshot deliberately carries no `model` of its own (P23B.7 S7's fix):
+		// the derived model is a pure projection of the `geometry` the snapshot does
+		// carry, so a fresh projection still describes exactly the frozen state.
+		expect(projectLayoutPreviewModel(snapshot.geometry)).toEqual(state.model);
 	});
 
 	it('commits auto-bezier rooms with empty interiors', () => {

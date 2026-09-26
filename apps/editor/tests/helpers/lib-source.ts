@@ -46,12 +46,15 @@ export function readCameraCoreSource(relativePath: string): string {
 }
 
 /**
- * Recursively read every `.ts`/`.svelte` source under a `$lib` sub-directory,
- * for unique-ownership and forbidden-import sweeps.
+ * Recursively read every `.ts`/`.svelte` source under an ABSOLUTE root.
+ *
+ * Unlike `readAllSourceFiles` this keeps each file's full path, which suites that
+ * need a PER-FILE scope (binding recognisers, readable failure messages) depend
+ * on — a basename is ambiguous across the `tests/lib/**` mirror and the source
+ * tree it mirrors.
  */
-export function readAllSourceFiles(relativeDir: string): { name: string; source: string }[] {
-	const root = path.join(LIB_DIR, relativeDir);
-	const sources: { name: string; source: string }[] = [];
+export function readSourceTree(root: string): { path: string; source: string }[] {
+	const sources: { path: string; source: string }[] = [];
 	const stack = [root];
 	while (stack.length > 0) {
 		const entry = stack.pop()!;
@@ -62,8 +65,19 @@ export function readAllSourceFiles(relativeDir: string): { name: string; source:
 				stack.push(path.join(entry, child));
 			}
 		} else if (entry.endsWith('.ts') || entry.endsWith('.svelte')) {
-			sources.push({ name: path.basename(entry), source: fs.readFileSync(entry, 'utf8') });
+			sources.push({ path: entry, source: fs.readFileSync(entry, 'utf8') });
 		}
 	}
 	return sources;
+}
+
+/**
+ * Recursively read every `.ts`/`.svelte` source under a `$lib` sub-directory,
+ * for unique-ownership and forbidden-import sweeps.
+ */
+export function readAllSourceFiles(relativeDir: string): { name: string; source: string }[] {
+	return readSourceTree(path.join(LIB_DIR, relativeDir)).map((file) => ({
+		name: path.basename(file.path),
+		source: file.source
+	}));
 }

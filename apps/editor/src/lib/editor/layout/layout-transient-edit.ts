@@ -33,6 +33,7 @@ import {
 	type WallFirstArchitecturePreflightFailure,
 	type WallFirstArchitectureProposalIntent,
 	type WallFirstArchitectureProposalWall,
+	type WallFirstArchitectureVerdictScope,
 	type WallSamplingDerivation
 } from '@portfolio/layout-core';
 
@@ -143,6 +144,13 @@ export function transientArchitectureEdit(input: {
 	 * baseline it keyed on.
 	 */
 	sampling?: WallSamplingDerivation | null;
+	/**
+	 * P23B.7 S4 — the gesture-scoped VERDICT set, or `null`/omitted for the
+	 * whole-document-per-move mode. Supplied by the gesture owner, passed to the
+	 * PREFLIGHT only, and dropped with the frozen baseline: the scope answers for
+	 * one baseline and one target identity, never for a later gesture (OR-8).
+	 */
+	verdictScope?: WallFirstArchitectureVerdictScope | null;
 }): LayoutTransientArchitectureEdit | null {
 	const { gesture, baseline, moved } = input;
 	if (!gesture || !baseline || !moved) return null;
@@ -156,7 +164,12 @@ export function transientArchitectureEdit(input: {
 	const failure = walls === undefined
 		? undefined
 		: p2311Measure('preflight', () =>
-				preflightWallFirstArchitectureCandidate(baseline, coreIntent, input.sampling ?? undefined)
+				preflightWallFirstArchitectureCandidate(
+					baseline,
+					coreIntent,
+					input.sampling ?? undefined,
+					input.verdictScope ?? undefined
+				)
 			);
 	const status: TransientAttemptStatus =
 		walls === undefined || failure ? 'known-invalid' : 'pending';
