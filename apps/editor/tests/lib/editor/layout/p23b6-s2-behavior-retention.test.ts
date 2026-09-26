@@ -17,9 +17,7 @@ import {
 	captureLayoutPreviewSnapshot,
 	importLayoutPreviewJson,
 	createEmptyWallFirstLayoutPreviewState,
-	layoutPreviewAuthoredJson,
 	restoreLayoutPreviewSnapshot,
-	updateWallFirstWallMove,
 	type LayoutPreviewState
 } from '$lib/editor/layout/layout-preview-state.svelte';
 import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
@@ -30,7 +28,12 @@ import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 import { legJoinsByWall } from '@portfolio/layout-core';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
-import { createReactiveLayoutPreviewState } from './p23b7-reactive-preview-state';
+import {
+	createClientReactiveLayoutPreviewState,
+	isSvelteStateProxy,
+	loadClientCompiledPreviewModule,
+	type ClientPreviewRuntime
+} from './p23b7-reactive-preview-state';
 
 const PIN_FIXTURES = [
 	'p23b-40-wall-straight-v1',
@@ -75,43 +78,54 @@ function fixtureJson(id: MatrixFixtureId): string {
 	return serializeWallFirstLayoutDocument(fixtureDocument(id));
 }
 
-function makePreview(id: MatrixFixtureId, reactive = false): LayoutPreviewState {
-	const preview = reactive ? createReactiveLayoutPreviewState() : createEmptyWallFirstLayoutPreviewState();
+function makePreview(id: MatrixFixtureId): LayoutPreviewState {
+	const preview = createEmptyWallFirstLayoutPreviewState();
 	if (!importLayoutPreviewJson(preview, fixtureJson(id))) {
 		throw new Error(`${id} import failed: ${preview.importError ?? 'unknown error'}`);
 	}
 	return preview;
 }
 
-function makeHistoryHarness(id: MatrixFixtureId = RETENTION_FIXTURE) {
+type HistoryHarness = {
+	store: ReturnType<typeof createEditorStore>;
+	preview: LayoutPreviewState;
+	runtime: ClientPreviewRuntime;
+};
+
+async function makeHistoryHarness(id: MatrixFixtureId = RETENTION_FIXTURE): Promise<HistoryHarness> {
+	const runtime = await loadClientCompiledPreviewModule();
 	const store = createEditorStore({
 		document: createEmptySceneDocument(),
 		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
 	});
-	const preview = makePreview(id, true);
+	const preview = await createClientReactiveLayoutPreviewState();
+	if (!runtime.importLayoutPreviewJson(preview, fixtureJson(id))) {
+		throw new Error(`${id} import failed: ${preview.importError ?? 'unknown error'}`);
+	}
+	if (isSvelteStateProxy(preview.geometry) || isSvelteStateProxy(preview.model)) {
+		throw new Error('client raw-field generations must not be deep-proxied');
+	}
 	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(preview),
-		replace: (snapshot) => restoreLayoutPreviewSnapshot(preview, snapshot as never),
+		capture: () => runtime.captureLayoutPreviewSnapshot(preview),
+		replace: (snapshot) => runtime.restoreLayoutPreviewSnapshot(preview, snapshot as never),
 		matches: (a, b) =>
 			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
 			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
 	});
 	store.setLayoutFormatPolicySource(() => preview);
-	return { store, preview };
+	return { store, preview, runtime };
 }
 
-function commitWallMove(
-	store: ReturnType<typeof createEditorStore>,
-	preview: LayoutPreviewState,
-	index: number
-): string {
+
+function commitWallMove(harness: HistoryHarness, index: number): string {
+	const { store, preview, runtime } = harness;
 	expect(store.beginLayoutTransaction(), 'the layout transaction begins').toBe(true);
 	const delta = index % 2 === 0 ? 0.01 : -0.01;
-	const result = updateWallFirstWallMove(preview, EDIT_WALL, [delta, 0]);
+	const result = runtime.updateWallFirstWallMove(preview, EDIT_WALL, [delta, 0]);
 	expect(result.success, `the Wall move is accepted: ${result.success ? '' : result.message}`).toBe(true);
-	const snapshot = captureLayoutPreviewSnapshot(preview);
+	const snapshot = runtime.captureLayoutPreviewSnapshot(preview);
 	expect(store.commitLayoutTransaction(snapshot), 'the changed snapshot commits').toBe(true);
-	return layoutPreviewAuthoredJson(preview);
+	return runtime.layoutPreviewAuthoredJson(preview);
 }
 
 function historyDepths(store: ReturnType<typeof createEditorStore>): { past: number; future: number } {
@@ -156,6 +170,28 @@ async function forceCollection(): Promise<void> {
 		gc();
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 	}
+}
+
+function median(values: readonly number[]): number {
+	const sorted = [...values].sort((a, b) => a - b);
+	return sorted[Math.floor(sorted.length / 2)] ?? 0;
+}
+
+async function measureFullStackIncrementalBytes(id: (typeof PIN_FIXTURES)[number]): Promise<{
+	heapBytes: number;
+	externalBytes: number;
+}> {
+	const history = await makeHistoryHarness(id);
+	await forceCollection();
+	const before = process.memoryUsage();
+	for (let index = 0; index < 100; index += 1) commitWallMove(history, index);
+	await forceCollection();
+	const after = process.memoryUsage();
+	expect(historyDepths(history.store)).toEqual({ past: 100, future: 0 });
+	return {
+		heapBytes: (after.heapUsed - before.heapUsed) / 100,
+		externalBytes: (after.external - before.external) / 100
+	};
 }
 
 function deepMeshSet(state: LayoutPreviewState): Map<string, unknown> {
@@ -269,13 +305,14 @@ describe('P23B.6 S2 — mesh and raw Plan output pins', () => {
 });
 
 describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => {
-	it('H-1: the 101st commit evicts the oldest compile, mesh entry and proxy', async () => {
-		const { store, preview } = makeHistoryHarness();
+	it('H-1: the 101st commit evicts the oldest compile and mesh entry', async () => {
+		const history = await makeHistoryHarness();
+		const { store, preview, runtime } = history;
 		const evicted = witness(preview);
 		let firstCommittedLayout = '';
 		let retained = witness(preview);
 		for (let index = 0; index < 101; index += 1) {
-			const committed = commitWallMove(store, preview, index);
+			const committed = commitWallMove(history, index);
 			if (index === 0) {
 				firstCommittedLayout = committed;
 				retained = witness(preview);
@@ -291,22 +328,23 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 			// Counted-reference fallback: after the cap, only the 100 surviving
 			// snapshots and the live generation can be traversed by Undo.
 			for (let index = 0; index < 100; index += 1) expect(store.undo()).toBe(true);
-			expect(layoutPreviewAuthoredJson(preview)).toBe(firstCommittedLayout);
+			expect(runtime.layoutPreviewAuthoredJson(preview)).toBe(firstCommittedLayout);
 			expect(store.undo(), 'the evicted generation is no longer on the stack').toBe(false);
 		}
 	});
 
 	it('H-2: branching after Undo clears every discarded redo generation', async () => {
-		const { store, preview } = makeHistoryHarness();
+		const history = await makeHistoryHarness();
+		const { store, preview } = history;
 		const generations = [witness(preview)];
 		for (let index = 0; index < 3; index += 1) {
-			commitWallMove(store, preview, index);
+			commitWallMove(history, index);
 			generations.push(witness(preview));
 		}
 		expect(store.undo()).toBe(true);
 		expect(store.undo()).toBe(true);
 		const discardedRedo = [generations[2]!, generations[3]!];
-		commitWallMove(store, preview, 7);
+		commitWallMove(history, 7);
 		expect(historyDepths(store).future).toBe(0);
 		expect(store.redo(), 'the branch removed the redo entries').toBe(false);
 		if (typeof (globalThis as typeof globalThis & { gc?: () => void }).gc === 'function') {
@@ -319,9 +357,10 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 	});
 
 	it('H-3: import clears history and releases history-only generations', async () => {
-		const { store, preview } = makeHistoryHarness();
+		const history = await makeHistoryHarness();
+		const { store, preview } = history;
 		const historical = witness(preview);
-		commitWallMove(store, preview, 0);
+		commitWallMove(history, 0);
 		expect(store.importDocument(createEmptySceneDocument()), 'document import succeeds').toBe(true);
 		expect(historyDepths(store)).toEqual({ past: 0, future: 0 });
 		if (typeof (globalThis as typeof globalThis & { gc?: () => void }).gc === 'function') {
@@ -331,22 +370,23 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 	});
 
 	it('H-3: an unmounted editor releases live and historical generations', async () => {
-		unmountEvidence = makeUnmountWitness();
+		unmountEvidence = await makeUnmountWitness();
 		expect(unmountEvidence.generations).toHaveLength(3);
 	});
 
 	it('H-4: repeated edit/Undo/Redo/branch cycles stay within past + future + live (+ gesture)', async () => {
-		const { store, preview } = makeHistoryHarness();
+		const history = await makeHistoryHarness();
+		const { store, preview } = history;
 		const generations: WeakGenerationWitness[] = [witness(preview)];
 		let moveIndex = 0;
 		for (let cycle = 0; cycle < 4; cycle += 1) {
 			for (let step = 0; step < 8; step += 1) {
-				commitWallMove(store, preview, moveIndex++);
+				commitWallMove(history, moveIndex++);
 				generations.push(witness(preview));
 			}
 			for (let step = 0; step < 4; step += 1) expect(store.undo()).toBe(true);
 			for (let step = 0; step < 2; step += 1) expect(store.redo()).toBe(true);
-			commitWallMove(store, preview, moveIndex++);
+			commitWallMove(history, moveIndex++);
 			generations.push(witness(preview));
 			const depths = historyDepths(store);
 			expect(depths.past).toBeLessThanOrEqual(100);
@@ -375,12 +415,13 @@ describe('P23B.6 S2 — history roots and bounded retention (H-1…H-4)', () => 
 });
 
 describe('P23B.6 S2 — GPU adapter ownership (H-5)', () => {
-	it('keeps allocations = disposals + live across edit, Undo, Redo, branch, view switch and unmount', () => {
-		const { store, preview } = makeHistoryHarness();
+	it('keeps allocations = disposals + live across edit, Undo, Redo, branch, view switch and unmount', async () => {
+		const history = await makeHistoryHarness();
+		const { store, preview, runtime } = history;
 		const resources = createAdapterLifecycleProbe();
 		resources.install(preview);
 
-		commitWallMove(store, preview, 0);
+		commitWallMove(history, 0);
 		resources.install(preview);
 		expect(resources.counts).toMatchObject({ live: preview.wallMeshesByWall.size });
 		expect(store.undo()).toBe(true);
@@ -388,7 +429,7 @@ describe('P23B.6 S2 — GPU adapter ownership (H-5)', () => {
 		expect(store.redo()).toBe(true);
 		resources.install(preview);
 		expect(store.undo()).toBe(true);
-		commitWallMove(store, preview, 1);
+		commitWallMove(history, 1);
 		resources.install(preview);
 		resources.toPlan();
 		expect(resources.counts.live).toBe(0);
@@ -396,11 +437,32 @@ describe('P23B.6 S2 — GPU adapter ownership (H-5)', () => {
 		resources.unmount();
 		expect(resources.counts).toMatchObject({ live: 0, allocations: resources.counts.disposals });
 
-		const snapshot = captureLayoutPreviewSnapshot(preview);
+		const snapshot = runtime.captureLayoutPreviewSnapshot(preview);
 		expect(Object.values(snapshot).some((value) => value instanceof BufferGeometry)).toBe(false);
 		expect(Object.keys(snapshot).some((key) => /mesh|buffergeometry|adapter/i.test(key))).toBe(false);
 	});
 });
+
+it.skipIf(!GC_REQUIRED)(
+	'H-7 advisory: reports the incremental retained bytes per generation at a full 100-entry stack',
+	{ timeout: 120_000 },
+	async () => {
+		const straight = [];
+		const curved = [];
+		for (let sample = 0; sample < 3; sample += 1) {
+			straight.push(await measureFullStackIncrementalBytes('p23b-40-wall-straight-v1'));
+			curved.push(await measureFullStackIncrementalBytes('p23b-40-wall-all-curved-v1'));
+		}
+		const format = (samples: readonly { heapBytes: number; externalBytes: number }[]) => ({
+			heap: Math.round(median(samples.map((sample) => sample.heapBytes))),
+			external: Math.round(median(samples.map((sample) => sample.externalBytes))),
+			total: Math.round(median(samples.map((sample) => sample.heapBytes + sample.externalBytes)))
+		});
+		console.info(
+			`P23B.6 S6 H-7 advisory — retained incremental bytes per generation at 100-entry history (3 runs, median, Node ${process.version}, --expose-gc): straight-40 ${JSON.stringify(format(straight))}; all-curved-40 ${JSON.stringify(format(curved))}`
+		);
+	}
+);
 
 it('H-3: after the editor test frame is released, unmount leaves no generation roots', async () => {
 	expect(unmountEvidence, 'the unmount scenario ran').not.toBeNull();
@@ -418,12 +480,13 @@ it('H-3: after the editor test frame is released, unmount leaves no generation r
 	}
 });
 
-function makeUnmountWitness(): UnmountWitness {
-	const { store, preview } = makeHistoryHarness();
+async function makeUnmountWitness(): Promise<UnmountWitness> {
+	const history = await makeHistoryHarness();
+	const { store, preview } = history;
 	const generations = [witness(preview)];
-	commitWallMove(store, preview, 0);
-	generations.push(witness(preview));
-	commitWallMove(store, preview, 1);
+	commitWallMove(history, 0);
+	 generations.push(witness(preview));
+	commitWallMove(history, 1);
 	generations.push(witness(preview));
 	return {
 		generations,
