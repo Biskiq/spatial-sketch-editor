@@ -1,0 +1,741 @@
+{
+  "protocol": "P23B.6 S1a one-off; advisory node timing; no timing threshold; no baseline or ratchet access",
+  "provenance": {
+    "commitSha": "22201d8435a36bb14a1f56c5232e22d9eb55e45c",
+    "workingTreeDirty": false,
+    "workingTreeChangesIncluded": false,
+    "date": "2026-09-26T14:19:17.697Z",
+    "node": "v26.7.0",
+    "platform": "darwin 24.6.0 arm64",
+    "cpu": "Apple M2",
+    "cpuCount": 8,
+    "totalMemoryBytes": 17179869184,
+    "nodeEnv": "development",
+    "svelteRuntime": "development"
+  },
+  "configuration": {
+    "warmup": 5,
+    "samples": 15,
+    "comparatorBuilderSignature": "buildStandaloneWallMesh(v1:whole-wall,floor-elevation,resolved-ends)"
+  },
+  "fixtures": [
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "rooms": 10,
+      "walls": 40,
+      "compiledGeometryNodes": 31547,
+      "planPrimitiveCount": 60,
+      "compileMs": {
+        "value": 12.131000000000085,
+        "p50": 12.131000000000085,
+        "p95": 21.921916999999894
+      },
+      "meshBuildMs": {
+        "value": 12.354666999999836,
+        "p50": 12.354666999999836,
+        "p95": 16.672000000000025
+      },
+      "adapter40Ms": {
+        "value": 0.16383299999984047,
+        "p50": 0.16383299999984047,
+        "p95": 0.23766700000010132
+      },
+      "planModelMs": {
+        "rawGeometry": {
+          "value": 0.09737499999982901,
+          "p50": 0.09737499999982901,
+          "p95": 0.11916699999983393
+        },
+        "stateProxyCold": {
+          "value": 8.340166999999838,
+          "p50": 8.340166999999838,
+          "p95": 14.175458000000162
+        },
+        "stateProxyWarm": {
+          "value": 4.41012499999988,
+          "p50": 4.41012499999988,
+          "p95": 9.568166999999903
+        },
+        "proxyColdMultiplier": 85.65,
+        "proxyWarmMultiplier": 45.29,
+        "proxyOutputMatchesRaw": true
+      },
+      "planSalienceMs": {
+        "rawDerivedModelAndView": {
+          "value": 0.550499999999829,
+          "p50": 0.550499999999829,
+          "p95": 0.9983330000000024
+        },
+        "proxyDiagnosticModelAndView": {
+          "value": 1.8241250000000946,
+          "p50": 1.8241250000000946,
+          "p95": 2.674666999999772
+        }
+      },
+      "planPresentationMs": {
+        "note": "Wrapper construction plus one representative sceneInkFor footprint lookup; salience is pre-resolved and excluded.",
+        "rawDerivedInputs": {
+          "value": 0.0008339999999407155,
+          "p50": 0.0008339999999407155,
+          "p95": 0.014666999999917607
+        },
+        "proxyDiagnosticInputs": {
+          "value": 0.004125000000385626,
+          "p50": 0.004125000000385626,
+          "p95": 0.00937500000009095
+        }
+      },
+      "actionReachability": [
+        {
+          "actionClass": "single-wall-resize-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 2.5832500000001346,
+            "p50": 2.5832500000001346,
+            "p95": 5.695499999999811
+          },
+          "buildMsForSkippedWalls": {
+            "value": 11.653458000000228,
+            "p50": 11.653458000000228,
+            "p95": 13.01666699999987
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 12.64108299999998,
+            "p50": 12.64108299999998,
+            "p95": 24.903709000000163
+          },
+          "comparatorPercentOfSkippedBuild": 22.2
+        },
+        {
+          "actionClass": "single-wall-move-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.343499999999949,
+            "p50": 2.343499999999949,
+            "p95": 3.724499999999807
+          },
+          "buildMsForSkippedWalls": {
+            "value": 10.619459000000006,
+            "p50": 10.619459000000006,
+            "p95": 11.50345900000002
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 12.967208000000028,
+            "p50": 12.967208000000028,
+            "p95": 38.39141699999982
+          },
+          "comparatorPercentOfSkippedBuild": 22.1
+        },
+        {
+          "actionClass": "bend-release",
+          "accepted": false,
+          "note": "not applicable: fixture has no authored curve knot"
+        },
+        {
+          "actionClass": "room-creation-commit",
+          "accepted": true,
+          "candidateWalls": 44,
+          "valueEqualWalls": 40,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.516584000000421,
+            "p50": 2.516584000000421,
+            "p95": 3.970582999999806
+          },
+          "buildMsForSkippedWalls": {
+            "value": 14.489332999999988,
+            "p50": 14.489332999999988,
+            "p95": 24.496791999999914
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 13.359459000000243,
+            "p50": 13.359459000000243,
+            "p95": 15.726791000000048
+          },
+          "comparatorPercentOfSkippedBuild": 17.4
+        },
+        {
+          "actionClass": "whole-room-move-bridge",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.3426250000002256,
+            "p50": 2.3426250000002256,
+            "p95": 3.759334000000308
+          },
+          "buildMsForSkippedWalls": {
+            "value": 11.357208999999784,
+            "p50": 11.357208999999784,
+            "p95": 12.640875000000051
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 12.382792000000336,
+            "p50": 12.382792000000336,
+            "p95": 13.581874999999854
+          },
+          "comparatorPercentOfSkippedBuild": 20.6
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "rooms": 10,
+      "walls": 40,
+      "compiledGeometryNodes": 31929,
+      "planPrimitiveCount": 60,
+      "compileMs": {
+        "value": 12.53887500000019,
+        "p50": 12.53887500000019,
+        "p95": 21.806624999999258
+      },
+      "meshBuildMs": {
+        "value": 12.324083999999857,
+        "p50": 12.324083999999857,
+        "p95": 13.204750000000786
+      },
+      "adapter40Ms": {
+        "value": 0.11229199999979755,
+        "p50": 0.11229199999979755,
+        "p95": 0.18408300000010058
+      },
+      "planModelMs": {
+        "rawGeometry": {
+          "value": 0.10725000000002183,
+          "p50": 0.10725000000002183,
+          "p95": 0.1226249999999709
+        },
+        "stateProxyCold": {
+          "value": 8.377542000000176,
+          "p50": 8.377542000000176,
+          "p95": 15.503917000000001
+        },
+        "stateProxyWarm": {
+          "value": 4.035125000000335,
+          "p50": 4.035125000000335,
+          "p95": 8.277000000000044
+        },
+        "proxyColdMultiplier": 78.11,
+        "proxyWarmMultiplier": 37.62,
+        "proxyOutputMatchesRaw": true
+      },
+      "planSalienceMs": {
+        "rawDerivedModelAndView": {
+          "value": 0.6626660000001721,
+          "p50": 0.6626660000001721,
+          "p95": 2.0219999999999345
+        },
+        "proxyDiagnosticModelAndView": {
+          "value": 1.608499999999367,
+          "p50": 1.608499999999367,
+          "p95": 1.729207999999744
+        }
+      },
+      "planPresentationMs": {
+        "note": "Wrapper construction plus one representative sceneInkFor footprint lookup; salience is pre-resolved and excluded.",
+        "rawDerivedInputs": {
+          "value": 0.0005830000000059954,
+          "p50": 0.0005830000000059954,
+          "p95": 0.0005840000003445311
+        },
+        "proxyDiagnosticInputs": {
+          "value": 0.003499999999803549,
+          "p50": 0.003499999999803549,
+          "p95": 0.003666999999950349
+        }
+      },
+      "actionReachability": [
+        {
+          "actionClass": "single-wall-resize-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 2.3475420000004306,
+            "p50": 2.3475420000004306,
+            "p95": 3.7254579999998896
+          },
+          "buildMsForSkippedWalls": {
+            "value": 11.007792000000336,
+            "p50": 11.007792000000336,
+            "p95": 11.375750000000153
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 11.687833999999384,
+            "p50": 11.687833999999384,
+            "p95": 11.96875
+          },
+          "comparatorPercentOfSkippedBuild": 21.3
+        },
+        {
+          "actionClass": "single-wall-move-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.1394170000003214,
+            "p50": 2.1394170000003214,
+            "p95": 3.3142079999997804
+          },
+          "buildMsForSkippedWalls": {
+            "value": 10.760000000000218,
+            "p50": 10.760000000000218,
+            "p95": 11.365083000000595
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 11.866541999999754,
+            "p50": 11.866541999999754,
+            "p95": 20.5269159999998
+          },
+          "comparatorPercentOfSkippedBuild": 19.9
+        },
+        {
+          "actionClass": "bend-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 38,
+          "addedOrChangedWalls": 2,
+          "comparatorMs": {
+            "value": 2.464583999999377,
+            "p50": 2.464583999999377,
+            "p95": 3.6228339999997843
+          },
+          "buildMsForSkippedWalls": {
+            "value": 11.654750000000604,
+            "p50": 11.654750000000604,
+            "p95": 17.547749999999724
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 11.9227920000003,
+            "p50": 11.9227920000003,
+            "p95": 12.163582999999562
+          },
+          "comparatorPercentOfSkippedBuild": 21.1
+        },
+        {
+          "actionClass": "room-creation-commit",
+          "accepted": true,
+          "candidateWalls": 44,
+          "valueEqualWalls": 40,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.4220419999992373,
+            "p50": 2.4220419999992373,
+            "p95": 3.4427080000004935
+          },
+          "buildMsForSkippedWalls": {
+            "value": 12.461874999999964,
+            "p50": 12.461874999999964,
+            "p95": 14.21716699999979
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 14.557416999999987,
+            "p50": 14.557416999999987,
+            "p95": 31.953750000000582
+          },
+          "comparatorPercentOfSkippedBuild": 19.4
+        },
+        {
+          "actionClass": "whole-room-move-bridge",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 3.7617499999996653,
+            "p50": 3.7617499999996653,
+            "p95": 6.435833999999886
+          },
+          "buildMsForSkippedWalls": {
+            "value": 12.234082999999373,
+            "p50": 12.234082999999373,
+            "p95": 14.263166999999157
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 13.375667000000249,
+            "p50": 13.375667000000249,
+            "p95": 14.73766699999942
+          },
+          "comparatorPercentOfSkippedBuild": 30.7
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "rooms": 10,
+      "walls": 40,
+      "compiledGeometryNodes": 49387,
+      "planPrimitiveCount": 60,
+      "compileMs": {
+        "value": 29.307875000000422,
+        "p50": 29.307875000000422,
+        "p95": 43.13079199999993
+      },
+      "meshBuildMs": {
+        "value": 17.115375000001222,
+        "p50": 17.115375000001222,
+        "p95": 17.714749999999185
+      },
+      "adapter40Ms": {
+        "value": 0.1366249999991851,
+        "p50": 0.1366249999991851,
+        "p95": 0.36166600000069593
+      },
+      "planModelMs": {
+        "rawGeometry": {
+          "value": 0.19291599999996834,
+          "p50": 0.19291599999996834,
+          "p95": 2.5425410000007105
+        },
+        "stateProxyCold": {
+          "value": 24.09504200000083,
+          "p50": 24.09504200000083,
+          "p95": 32.67499999999927
+        },
+        "stateProxyWarm": {
+          "value": 10.980499999999665,
+          "p50": 10.980499999999665,
+          "p95": 12.654833000000508
+        },
+        "proxyColdMultiplier": 124.9,
+        "proxyWarmMultiplier": 56.92,
+        "proxyOutputMatchesRaw": true
+      },
+      "planSalienceMs": {
+        "rawDerivedModelAndView": {
+          "value": 0.48395800000071176,
+          "p50": 0.48395800000071176,
+          "p95": 0.7270419999986188
+        },
+        "proxyDiagnosticModelAndView": {
+          "value": 1.539333999999144,
+          "p50": 1.539333999999144,
+          "p95": 1.7643749999988358
+        }
+      },
+      "planPresentationMs": {
+        "note": "Wrapper construction plus one representative sceneInkFor footprint lookup; salience is pre-resolved and excluded.",
+        "rawDerivedInputs": {
+          "value": 0.0005419999997684499,
+          "p50": 0.0005419999997684499,
+          "p95": 0.0005830000009154901
+        },
+        "proxyDiagnosticInputs": {
+          "value": 0.003500000000713044,
+          "p50": 0.003500000000713044,
+          "p95": 0.005415999999968335
+        }
+      },
+      "actionReachability": [
+        {
+          "actionClass": "single-wall-resize-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 3.139166999999361,
+            "p50": 3.139166999999361,
+            "p95": 3.7557080000005953
+          },
+          "buildMsForSkippedWalls": {
+            "value": 16.085166999999274,
+            "p50": 16.085166999999274,
+            "p95": 17.382708000001003
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 16.912583000001177,
+            "p50": 16.912583000001177,
+            "p95": 17.668875000001208
+          },
+          "comparatorPercentOfSkippedBuild": 19.5
+        },
+        {
+          "actionClass": "single-wall-move-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 3.0556670000005397,
+            "p50": 3.0556670000005397,
+            "p95": 3.397917000000234
+          },
+          "buildMsForSkippedWalls": {
+            "value": 15.803207999999358,
+            "p50": 15.803207999999358,
+            "p95": 17.57904100000087
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 17.127333999998882,
+            "p50": 17.127333999998882,
+            "p95": 18.681666999998924
+          },
+          "comparatorPercentOfSkippedBuild": 19.3
+        },
+        {
+          "actionClass": "bend-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 38,
+          "addedOrChangedWalls": 2,
+          "comparatorMs": {
+            "value": 3.22479199999907,
+            "p50": 3.22479199999907,
+            "p95": 4.131749999998647
+          },
+          "buildMsForSkippedWalls": {
+            "value": 16.20283399999971,
+            "p50": 16.20283399999971,
+            "p95": 17.72008299999834
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 17.15166700000009,
+            "p50": 17.15166700000009,
+            "p95": 19.28404099999898
+          },
+          "comparatorPercentOfSkippedBuild": 19.9
+        },
+        {
+          "actionClass": "room-creation-commit",
+          "accepted": true,
+          "candidateWalls": 44,
+          "valueEqualWalls": 40,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 3.5708749999994325,
+            "p50": 3.5708749999994325,
+            "p95": 4.6038750000006985
+          },
+          "buildMsForSkippedWalls": {
+            "value": 17.824749999999767,
+            "p50": 17.824749999999767,
+            "p95": 18.51129199999923
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 17.488999999999578,
+            "p50": 17.488999999999578,
+            "p95": 26.233957999998893
+          },
+          "comparatorPercentOfSkippedBuild": 20
+        },
+        {
+          "actionClass": "whole-room-move-bridge",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 3.227333999999246,
+            "p50": 3.227333999999246,
+            "p95": 4.365916999999172
+          },
+          "buildMsForSkippedWalls": {
+            "value": 16.733291999998983,
+            "p50": 16.733291999998983,
+            "p95": 22.429416999999376
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 20.447124999998778,
+            "p50": 20.447124999998778,
+            "p95": 25.82549999999901
+          },
+          "comparatorPercentOfSkippedBuild": 19.3
+        }
+      ]
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "rooms": 10,
+      "walls": 40,
+      "compiledGeometryNodes": 29085,
+      "planPrimitiveCount": 60,
+      "compileMs": {
+        "value": 17.717083000001367,
+        "p50": 17.717083000001367,
+        "p95": 27.119666999999026
+      },
+      "meshBuildMs": {
+        "value": 10.779459000001225,
+        "p50": 10.779459000001225,
+        "p95": 71.43233400000099
+      },
+      "adapter40Ms": {
+        "value": 0.16062500000043656,
+        "p50": 0.16062500000043656,
+        "p95": 1.5829579999990528
+      },
+      "planModelMs": {
+        "rawGeometry": {
+          "value": 0.2494169999990845,
+          "p50": 0.2494169999990845,
+          "p95": 0.5835409999999683
+        },
+        "stateProxyCold": {
+          "value": 12.823500000002241,
+          "p50": 12.823500000002241,
+          "p95": 20.329208999999537
+        },
+        "stateProxyWarm": {
+          "value": 6.319374999999127,
+          "p50": 6.319374999999127,
+          "p95": 14.327209000002767
+        },
+        "proxyColdMultiplier": 51.41,
+        "proxyWarmMultiplier": 25.34,
+        "proxyOutputMatchesRaw": true
+      },
+      "planSalienceMs": {
+        "rawDerivedModelAndView": {
+          "value": 0.9194170000009763,
+          "p50": 0.9194170000009763,
+          "p95": 1.1279170000016165
+        },
+        "proxyDiagnosticModelAndView": {
+          "value": 2.7122920000001614,
+          "p50": 2.7122920000001614,
+          "p95": 3.1958340000019234
+        }
+      },
+      "planPresentationMs": {
+        "note": "Wrapper construction plus one representative sceneInkFor footprint lookup; salience is pre-resolved and excluded.",
+        "rawDerivedInputs": {
+          "value": 0.0006250000005820766,
+          "p50": 0.0006250000005820766,
+          "p95": 0.0007500000028812792
+        },
+        "proxyDiagnosticInputs": {
+          "value": 0.0035830000015266705,
+          "p50": 0.0035830000015266705,
+          "p95": 0.01337499999863212
+        }
+      },
+      "actionReachability": [
+        {
+          "actionClass": "single-wall-resize-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 2.1045840000006137,
+            "p50": 2.1045840000006137,
+            "p95": 3.8285830000022543
+          },
+          "buildMsForSkippedWalls": {
+            "value": 10.736249999998108,
+            "p50": 10.736249999998108,
+            "p95": 15.717749999999796
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 11.026082999997016,
+            "p50": 11.026082999997016,
+            "p95": 14.992750000001251
+          },
+          "comparatorPercentOfSkippedBuild": 19.6
+        },
+        {
+          "actionClass": "single-wall-move-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 37,
+          "addedOrChangedWalls": 3,
+          "comparatorMs": {
+            "value": 1.8317080000015267,
+            "p50": 1.8317080000015267,
+            "p95": 2.427083999999013
+          },
+          "buildMsForSkippedWalls": {
+            "value": 9.404042000001937,
+            "p50": 9.404042000001937,
+            "p95": 9.928458999998838
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 10.14283400000204,
+            "p50": 10.14283400000204,
+            "p95": 11.228792000001704
+          },
+          "comparatorPercentOfSkippedBuild": 19.5
+        },
+        {
+          "actionClass": "bend-release",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 38,
+          "addedOrChangedWalls": 2,
+          "comparatorMs": {
+            "value": 1.8874589999977616,
+            "p50": 1.8874589999977616,
+            "p95": 2.7654159999983676
+          },
+          "buildMsForSkippedWalls": {
+            "value": 9.353290999999444,
+            "p50": 9.353290999999444,
+            "p95": 11.790041000000201
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 10.171666999998706,
+            "p50": 10.171666999998706,
+            "p95": 11.409999999999854
+          },
+          "comparatorPercentOfSkippedBuild": 20.2
+        },
+        {
+          "actionClass": "room-creation-commit",
+          "accepted": true,
+          "candidateWalls": 44,
+          "valueEqualWalls": 40,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 2.0155830000003334,
+            "p50": 2.0155830000003334,
+            "p95": 3.5878330000014103
+          },
+          "buildMsForSkippedWalls": {
+            "value": 10.553917000001093,
+            "p50": 10.553917000001093,
+            "p95": 21.480875000001106
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 10.666957999997976,
+            "p50": 10.666957999997976,
+            "p95": 12.259666999998444
+          },
+          "comparatorPercentOfSkippedBuild": 19.1
+        },
+        {
+          "actionClass": "whole-room-move-bridge",
+          "accepted": true,
+          "candidateWalls": 40,
+          "valueEqualWalls": 36,
+          "addedOrChangedWalls": 4,
+          "comparatorMs": {
+            "value": 1.9327499999999418,
+            "p50": 1.9327499999999418,
+            "p95": 3.3487090000016906
+          },
+          "buildMsForSkippedWalls": {
+            "value": 9.172624999999243,
+            "p50": 9.172624999999243,
+            "p95": 10.594874999998865
+          },
+          "fullCandidateMeshBuildMs": {
+            "value": 10.191834000001109,
+            "p50": 10.191834000001109,
+            "p95": 11.696124999998574
+          },
+          "comparatorPercentOfSkippedBuild": 21.1
+        }
+      ]
+    }
+  ]
+}

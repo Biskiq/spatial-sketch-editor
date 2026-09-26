@@ -1,4 +1,6 @@
 node_modules
+# Transient client-compiled S-R test module (node_modules is watcher-ignored).
+apps/editor/node_modules/.cache/p23b-client/.p23b7-client-preview-*.ts
 .DS_Store
 Thumbs.db
 .output

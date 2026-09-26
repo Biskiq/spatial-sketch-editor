@@ -217,6 +217,15 @@ const UV_GRID = 1e-4;
 const WINDING_DEGENERATE_AREA = 1e-12;
 
 /**
+ * S3b/D-5 signature for the canonical caller (whole compiled Wall, elevation,
+ * resolved ends; default options). Increment when that caller's parameters or
+ * the builder's derived-input set changes. Keep this export byte-identical in
+ * the editor and standalone museum copies.
+ */
+export const STANDALONE_WALL_MESH_BUILDER_SIGNATURE =
+	'buildStandaloneWallMesh(v1:whole-wall,floor-elevation,resolved-ends)';
+
+/**
  * Build one watertight, surface-major `IndexedWallMesh` for a room. Unsafe
  * inputs (offset overlap, invalid thickness, degenerate walls) produce
  * structured issues and no mesh — the consumer fails closed.

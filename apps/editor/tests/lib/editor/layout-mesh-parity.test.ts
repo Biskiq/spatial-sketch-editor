@@ -179,8 +179,11 @@ describe('P23.6H mesh parity — live surface contracts', () => {
 			expect(text).toMatch(/buildStandaloneWallMesh\(wall, [a-zA-Z.]+, endsByWall\.get\(wall\.wallId\) \?\? null/);
 		}
 		const preview = source('apps/editor/src/lib/editor/layout/layout-preview-state.svelte.ts');
-		expect(preview).toContain('legJoinsByWall(geometry.junctions)');
-		expect(preview).toMatch(/buildStandaloneWallMesh\(wall, floorElevation, endsByWall\.get\(wall\.wallId\) \?\? null\)/);
+		const preparation = source('apps/editor/src/lib/editor/layout/prepared-wall-meshes.ts');
+		expect(preview).toContain('prepareWallMeshes');
+		expect(preview).not.toContain('buildStandaloneWallMesh');
+		expect(preparation).toContain('legJoinsByWall(geometry.junctions ?? [])');
+		expect(preparation).toContain('buildStandaloneWallMesh(input.wall, input.floorElevation, input.ends)');
 	});
 
 	it('never passes a floor-derived ceiling to the standalone builder anywhere', () => {

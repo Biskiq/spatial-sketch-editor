@@ -1,14 +1,12 @@
 /**
- * P23B.7 S6 — the `$state` regression oracle for the commit-path mesh identity.
+ * P23B.7 S6 / P23B.6 S-R — the reactive commit-path mesh identity oracle.
  *
- * THE DEFECT. Every accepted edit built the full Wall-mesh set TWICE: once inside
- * `plan-apply` (keyed on the compile's own geometry object) and again inside
- * `commit-replace`'s restore, which is a cache MISS (measured p50 160-190 ms on
- * the committed 40-Wall fixtures). The cause is an IDENTITY disagreement: the
- * live preview is a Svelte `$state` graph, so the object a capture reads out of
- * `editorApp.preview.geometry` — and hands to `restoreLayoutPreviewSnapshot` — is
- * the proxy Svelte created for the compile's geometry, never the object the
- * install cached.
+ * THE DEFECT. Before S-R, every accepted edit built the full Wall-mesh set TWICE:
+ * once inside `plan-apply`, then again inside `commit-replace`'s restore. The
+ * outer Svelte `$state` graph deep-proxied compiled geometry, so capture handed
+ * restore an identity different from the one the install cached. S-R keeps
+ * geometry raw behind a reactive field signal, so install and capture naturally
+ * share the cache key.
  *
  * THE ORACLE. This test drives the PRODUCTION seams on a `$state`-backed preview
  * state (`p23b7-reactive-preview-state.ts`) and counts mesh builds on the interval
@@ -18,12 +16,12 @@
  * fixture initialization          WARM-UP, outside the count
  * beginLayoutTransaction()        the pointer-down bracket
  * the accepted edit's install     install → one build of the new compile
- * capture + history commit        restore → TWO builds before the fix, ONE after
+ * capture + history commit        restore → cache hit, still ONE total build
  * the between-action restore      counted SEPARATELY, must be ZERO (it already hit)
  * ```
  *
- * The between-action restore is deliberately NOT folded into the same interval:
- * it already hits today, so folding it in would hide the regression being fixed.
+ * The between-action restore is deliberately NOT folded into the same interval;
+ * it has its own zero-build assertion.
  *
  * WHY THE EXISTING PLAIN-STATE TEST IS NOT THIS GATE. `layout-transient-preview`
  * pins the cache's identity semantics on a plain object and observes the restore
@@ -33,6 +31,7 @@
  * destroys the identity the cache is keyed on.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { proxy } from 'svelte/internal/client';
 
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
@@ -45,15 +44,17 @@ import {
 	p2311ResetMeshIdentity,
 	type P23BMeshIdentityRecord
 } from '$lib/editor/layout/p23b-mesh-identity';
+import { getPreparedWallMeshes } from '$lib/editor/layout/prepared-wall-meshes';
 import {
-	captureLayoutPreviewSnapshot,
-	importLayoutPreviewJson,
-	layoutPreviewAuthoredJson,
-	restoreLayoutPreviewSnapshot,
-	updateWallFirstWallMove,
 	type LayoutPreviewState
 } from '$lib/editor/layout/layout-preview-state.svelte';
-import { createReactiveLayoutPreviewState, isSvelteStateProxy } from './p23b7-reactive-preview-state';
+import {
+	createClientReactiveLayoutPreviewState,
+	createProxyBackedLayoutPreviewState,
+	loadClientCompiledPreviewModule,
+	isSvelteStateProxy,
+	type ClientPreviewRuntime
+} from './p23b7-reactive-preview-state';
 
 const FIXTURE_ID = 'p23b-12-wall-target-curved-v1';
 const PREFIX = 'p2311:';
@@ -72,29 +73,33 @@ const EDIT_DELTA = [0, 1] as const;
 type Harness = {
 	store: ReturnType<typeof createEditorStore>;
 	preview: LayoutPreviewState;
+	runtime: ClientPreviewRuntime;
 	/** The authored canonical JSON before the edit, for the undo/redo content claim. */
 	before: string;
 	/** The authored canonical JSON the accepted edit installs. */
 	after: string;
 };
 
-function harness(): Harness {
+async function harness(proxyBacked = false): Promise<Harness> {
+	const runtime = await loadClientCompiledPreviewModule();
 	const store = createEditorStore({
 		document: createEmptySceneDocument(),
 		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
 	});
-	const preview = createReactiveLayoutPreviewState();
-	if (!importLayoutPreviewJson(preview, fixtureJson())) throw new Error('fixture import failed');
+	const preview = proxyBacked
+		? createProxyBackedLayoutPreviewState()
+		: await createClientReactiveLayoutPreviewState();
+	if (!runtime.importLayoutPreviewJson(preview, fixtureJson())) throw new Error('fixture import failed');
 	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(preview),
-		replace: (snapshot) => restoreLayoutPreviewSnapshot(preview, snapshot as never),
+		capture: () => runtime.captureLayoutPreviewSnapshot(preview),
+		replace: (snapshot) => runtime.restoreLayoutPreviewSnapshot(preview, snapshot as never),
 		matches: (a, b) =>
 			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
 			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
 	});
 	store.setLayoutFormatPolicySource(() => preview);
-	const before = layoutPreviewAuthoredJson(preview);
-	return { store, preview, before, after: before };
+	const before = runtime.layoutPreviewAuthoredJson(preview);
+	return { store, preview, runtime, before, after: before };
 }
 
 /**
@@ -104,16 +109,20 @@ function harness(): Harness {
  */
 function acceptedEdit(input: Harness): Harness {
 	expect(input.store.beginLayoutTransaction(), 'the pointer-down bracket opens').toBe(true);
-	const applied = updateWallFirstWallMove(input.preview, EDIT_WALL, [EDIT_DELTA[0], EDIT_DELTA[1]]);
+	const applied = input.runtime.updateWallFirstWallMove(
+		input.preview,
+		EDIT_WALL,
+		[EDIT_DELTA[0], EDIT_DELTA[1]]
+	);
 	expect(applied.success, `the accepted edit installs: ${applied.success ? '' : applied.message}`).toBe(
 		true
 	);
-	const snapshot = captureLayoutPreviewSnapshot(input.preview);
+	const snapshot = input.runtime.captureLayoutPreviewSnapshot(input.preview);
 	expect(input.store.commitLayoutTransaction(snapshot), 'the history commit installs').toBe(true);
-	return { ...input, after: layoutPreviewAuthoredJson(input.preview) };
+	return { ...input, after: input.runtime.layoutPreviewAuthoredJson(input.preview) };
 }
 
-/** Fresh `mesh-prebuild` measures — the wall-mesh set builds, one per build call. */
+/** Fresh `mesh-prebuild` measures — one whole-generation preparation per miss. */
 function buildMeasures(): number {
 	return performance.getEntriesByType('measure').filter((entry) => entry.name === `${PREFIX}mesh-prebuild`).length;
 }
@@ -142,36 +151,70 @@ beforeEach(() => {
 	p2311ResetMeshIdentity();
 });
 
-describe('P23B.7 S6 — the preview state is a Svelte state graph, not a plain object', () => {
-	it('hands the capture a proxied identity, exactly as the editor does', () => {
-		const { preview } = harness();
-		// The harness precondition, asserted rather than assumed: an SSR-compiled
-		// `$state(...)` would NOT be a proxy, and this oracle would be vacuous.
+describe('P23B.7 S6 — compiled values stay raw inside the reactive preview state', () => {
+	it('keeps the preview reactive while capture preserves the raw geometry identity', async () => {
+		const { preview } = await harness();
+		// The preview root is a client proxy, but the client-compiled raw-field
+		// accessors keep the compiled model and geometry as their original values.
 		expect(isSvelteStateProxy(preview), 'the preview state is a $state proxy').toBe(true);
-		expect(isSvelteStateProxy(preview.geometry), 'the geometry read back is a proxy').toBe(true);
-		expect(captureLayoutPreviewSnapshot(preview).geometry, 'a capture keeps that identity').toBe(
-			preview.geometry
-		);
+		expect(isSvelteStateProxy(preview.geometry), 'compiled geometry stays raw').toBe(false);
+		expect(isSvelteStateProxy(preview.model), 'the projected model stays raw').toBe(false);
+		const runtime = await loadClientCompiledPreviewModule();
+		expect(
+			runtime.captureLayoutPreviewSnapshot(preview).geometry,
+			'a capture keeps that identity'
+		).toBe(preview.geometry);
 	});
 
-	it('records the identity divergence between the install and the capture (the pin, in-process)', () => {
-		const input = acceptedEdit(harness());
-		const records = p2311MeshIdentityRecords();
-		const install = records.find((record) => record.phase === 'install-bundle' || record.phase === 'install');
-		const capture = records.find((record) => record.phase === 'capture');
+	it('records the same installed and captured identity (the pin, in-process)', async () => {
+		const input = await harness();
+		const mark = p2311MeshIdentityRecords().length;
+		acceptedEdit(input);
+		const records = p2311MeshIdentityRecords().slice(mark);
+		const install = [...records]
+			.reverse()
+			.find((record) => record.phase === 'install-bundle' || record.phase === 'install');
+		const capture = [...records].reverse().find((record) => record.phase === 'capture');
 		expect(install?.geometryId, 'the install records the identity it cached').not.toBeNull();
 		expect(capture?.geometryId, 'the capture records the identity it hands the restore').not.toBeNull();
-		// The pin's own fact: the commit hands the restore an identity the install
-		// never cached. The FIX is what makes the cache agree with it — it must never
-		// make these two ids equal, which would be a different (and wrong) change.
-		expect(capture!.geometryId).not.toBe(install!.geometryId);
-		void input;
+		expect(capture!.geometryId, 'capture hands restore the installed raw geometry').toBe(
+			install!.geometryId
+		);
+		expect(capture!.sameAsInstall).toBe(true);
+	});
+
+	it('rebuilds if a caller supplies an unrelated proxied geometry identity', async () => {
+		const { preview, runtime } = await harness();
+		const snapshot = runtime.captureLayoutPreviewSnapshot(preview);
+		const forcedProxy = proxy(snapshot.geometry);
+		const before = buildMeasures();
+		runtime.restoreLayoutPreviewSnapshot(preview, { ...snapshot, geometry: forcedProxy });
+		expect(buildMeasures() - before, 'a proxy identity cannot reuse the raw-keyed meshes').toBe(1);
+	});
+
+	it('maps proxy-backed installs through capture and commit to the original compile cache key', async () => {
+		const input = await harness(true);
+		expect(
+			isSvelteStateProxy(input.preview.geometry),
+			'the legacy geometry field is proxied'
+		).toBe(true);
+		const warmUp = buildMeasures();
+		const probeMark = p2311MeshIdentityRecords().length;
+
+		acceptedEdit(input);
+
+		const builds = buildMeasures() - warmUp;
+		const interval = p2311MeshIdentityRecords().slice(probeMark);
+		const { misses, hits } = meshIdentity(interval);
+		expect(builds, 'the proxy-backed commit restores the installed cache entry').toBe(1);
+		expect(misses, 'the accepted install is the only build miss').toHaveLength(1);
+		expect(hits, 'capture/commit resolves the proxy back to the installed compile').toHaveLength(1);
 	});
 });
 
 describe('P23B.7 S6 — one mesh build per accepted edit, zero on the between-action restore', () => {
-	it('moves the compiled geometry through the production seams in one pass', () => {
-		const input = harness();
+	it('moves the compiled geometry through the production seams in one pass', async () => {
+		const input = await harness();
 		const warmUp = buildMeasures();
 		expect(warmUp, 'fixture initialization is outside the count').toBeGreaterThan(0);
 
@@ -187,6 +230,12 @@ describe('P23B.7 S6 — one mesh build per accepted edit, zero on the between-ac
 		const capture = [...interval].reverse().find((record) => record.phase === 'capture')!;
 		const restore = interval.find((record) => record.phase === 'restore')!;
 		expect(builds, 'an accepted edit builds the wall-mesh set ONCE').toBe(1);
+		const prepared = getPreparedWallMeshes(measured.preview.geometry);
+		expect(prepared, 'the one measured call prepared the installed generation').toBeDefined();
+		expect(
+			prepared!.stats.reused,
+			'per-Wall mesh reuse happens inside the one full-generation preparation'
+		).toBeGreaterThan(0);
 		expect(misses.length, 'exactly one cache miss in the interval, and it is the install').toBe(1);
 		expect(misses[0]?.sameAsInstall, 'the miss is the install caching its own compile').toBe(true);
 		expect(hits.length, 'the commit restore HITS the meshes the install cached').toBe(1);
@@ -194,26 +243,35 @@ describe('P23B.7 S6 — one mesh build per accepted edit, zero on the between-ac
 		expect(hits[0]?.geometryId, 'the hit is the identity the restore handed over').toBe(
 			restore.geometryId
 		);
-		// The identity disagreement the pin found is UNCHANGED by the fix: the fix
-		// makes the cache agree with the identity, never the identity with the cache.
-		expect(capture.sameAsInstall, 'the capture still reads a different identity').toBe(false);
+		// S-R keeps geometry raw at the reactive field boundary, so capture and
+		// install now naturally hand the same identity to the cache.
+		expect(capture.sameAsInstall, 'capture reads the installed geometry identity').toBe(true);
 
 		// SEPARATELY COUNTED: the between-action restore, which already hits today.
 		const settled = buildMeasures();
-		restoreLayoutPreviewSnapshot(measured.preview, captureLayoutPreviewSnapshot(measured.preview));
+		measured.runtime.restoreLayoutPreviewSnapshot(
+			measured.preview,
+			measured.runtime.captureLayoutPreviewSnapshot(measured.preview)
+		);
 		expect(buildMeasures() - settled, 'a between-action restore builds nothing').toBe(0);
 	});
 
-	it('keeps undo and redo content identical across the fixed commit path', () => {
-		const input = acceptedEdit(harness());
+	it('keeps undo and redo content identical across the fixed commit path', async () => {
+		const input = acceptedEdit(await harness());
 		expect(input.after, 'the accepted edit changed the document').not.toBe(input.before);
 
 		input.store.undo();
-		expect(layoutPreviewAuthoredJson(input.preview), 'undo restores the pre-edit document').toBe(
+		expect(
+			input.runtime.layoutPreviewAuthoredJson(input.preview),
+			'undo restores the pre-edit document'
+		).toBe(
 			input.before
 		);
 		input.store.redo();
-		expect(layoutPreviewAuthoredJson(input.preview), 'redo reinstates the committed document').toBe(
+		expect(
+			input.runtime.layoutPreviewAuthoredJson(input.preview),
+			'redo reinstates the committed document'
+		).toBe(
 			input.after
 		);
 	});

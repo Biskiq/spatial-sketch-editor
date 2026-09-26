@@ -49,7 +49,7 @@ import {
 } from '$lib/editor/layout/layout-preview-state.svelte';
 import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import {
-	createReactiveLayoutPreviewState,
+	createProxyBackedLayoutPreviewState,
 	isSvelteStateProxy
 } from '../editor/layout/p23b7-reactive-preview-state';
 
@@ -249,13 +249,13 @@ describe('P23B.7 S7 — the commit-capture residual: what is cloned', () => {
 
 describe('P23B.7 S7 — the commit-capture residual: advisory node timing (not a gate)', () => {
 	it('prints the paired A/B: the removed stream through the state proxy vs the shipped capture', { timeout: 120000 }, () => {
-		const reactive = createReactiveLayoutPreviewState();
+		const reactive = createProxyBackedLayoutPreviewState();
 		expect(
 			importLayoutPreviewJson(reactive, serializeWallFirstLayoutDocument(matrixFixture('p23b-40-wall-all-curved-v1')))
 		).toBe(true);
-		// The harness precondition: the live model really is reactive — the S6 pin's own
-		// distinction, and the reason the removed clone cost more than its bytes suggest.
-		expect(isSvelteStateProxy(reactive.model), 'the live model is a state proxy').toBe(true);
+		// This is the historical deep-proxy timing fixture only; client field-signal
+		// reactivity is covered separately by the client-compiled consumer test.
+		expect(isSvelteStateProxy(reactive.model), 'the compatibility model is proxied').toBe(true);
 		const removed = streamOf(reactive.model);
 		const shipped = clonedStreams(reactive, captureLayoutPreviewSnapshot(reactive));
 		// BOUNDED reps: this is the one caller whose single call is six figures of

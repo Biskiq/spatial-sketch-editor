@@ -51,11 +51,22 @@ no automatic phase-closeout
 4. Write or update closeout evidence: acceptance record, rulings, residuals.
 5. Mark the slice shipped in the phase README, which owns child status/order and routes the child's plan/QA artifact. Do not create a slice README or status index.
 6. Update `docs/roadmap/README.md` only if P-level execution, planning or order changed. A slice close never changes the phase's P-level status.
-7. Update `docs/operations/current.md` to the next work item. Final-gate override: the next item is the phase-close decision. Then finish steps 8–11 and STOP.
+7. Rewrite `docs/operations/current.md` as the current-state snapshot (invariant below). Reconcile every existing entry against the repository and the phase README: replace what changed, delete superseded status/NEXT statements, drop completed execution narrative and closeout reports, and route completed evidence to its owning documents. Never append the new state onto the old. Final-gate override: the next item is the phase-close decision. Then finish steps 8–11 and STOP.
 8. Compact closed work ("Closed work") and write the preservation report. Final-gate exception: keep the gate artifact live while it is phase-close evidence; compact the child's other work. If FINAL PHASE GATE is later reassigned, process the former gate artifact as ordinary closed work.
 9. Prune transient artifacts (empty states, superseded husks, `__qa-*` plates).
 10. Repair links for every path this close moved in the live tree — Markdown, HTML/image and prototype paths, case-sensitively. NEVER rewrite links inside an archive copy; the live stub is the target.
 11. Confirm no live router (`docs/README.md`, `docs/roadmap/README.md`, phase READMEs, `docs/operations/current.md`) treats closed material as authority, and that this close added no new live → archived-prose link. No docs/link checker exists: search every moved or stubbed path by hand, evidence included. Invalid preservation link or missing evidence → report it, NEVER accept it silently.
+
+## current.md invariant
+
+`docs/operations/current.md` is a replaceable current-state snapshot, never an append-only historical
+ledger. It carries only: phase · active child with its authorization and immediate next step · real
+blockers and unresolved dependencies · minimal routes to authoritative documents · brief
+carry-forwards. Owners: phase README → status/order; closed stubs → completed work and evidence;
+QA/acceptance records → gate numbers; `operations/tech-debt/` → deferred bugs; Git → history.
+
+Closeout rewrites the file in place — reconcile existing entries, remove superseded status and NEXT
+text, and leave it no larger than the current state it describes.
 
 ## Self-check — required before reporting merge-ready
 
@@ -65,6 +76,10 @@ acceptance    every claim matches recorded evidence; manual-owed rows stay expli
 promotion     durable conclusions sit with their correct reference owners
 preservation  stubs, Git anchors, tags and archive/evidence links all valid
 routing       routers, child status and next-work baton agree
+baton         current.md is the reconciled snapshot: one statement per status · superseded
+              status/NEXT text deleted · no completed slice's execution narrative · no closed work
+              listed as a blocker without a real unresolved dependency · no fact already owned by a
+              closed stub or phase documentation · no unnecessary growth of the operational index
 stable        documentation is merge-stable: no pending-merge statement, no pinned branch-head SHA
               that this PR's own merge invalidates
 report        preservation report complete

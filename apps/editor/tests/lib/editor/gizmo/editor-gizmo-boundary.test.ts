@@ -80,10 +80,17 @@ describe('layout 3D pick metadata', () => {
 		// draw-call delta). The other addGroup mentions are doc comments.
 		expect(adapter.match(/geometry\.addGroup\(/g)?.length).toBe(1);
 	});
-	it('keeps the preview-state pick index cache beside the wall-mesh cache', () => {
+	it('keeps the one derived-mesh cache in the pure preparation module', () => {
 		const state = readLibSource('editor/layout/layout-preview-state.svelte.ts');
+		const preparation = readLibSource('editor/layout/prepared-wall-meshes.ts');
+		const ownerCount = (sources: readonly string[]) =>
+			sources.filter((source) => /const derivedWallMeshes\s*=\s*new WeakMap/.test(source)).length;
+		expect(preparation).toContain('buildLayout3dTriangleIndex');
+		expect(state).toContain('prepareWallMeshes(key, referenceKey)');
 		expect(state).toContain('layout3dPickIndexByRoom');
-		expect(state).toContain('buildLayout3dTriangleIndex');
+		expect(ownerCount([preparation, state]), 'D-4 has one weak cache owner').toBe(1);
+		// Negative control: restoring the cache declaration in preview state must fail this boundary.
+		expect(ownerCount([preparation, `${state}\nconst derivedWallMeshes = new WeakMap();`])).not.toBe(1);
 	});
 });
 

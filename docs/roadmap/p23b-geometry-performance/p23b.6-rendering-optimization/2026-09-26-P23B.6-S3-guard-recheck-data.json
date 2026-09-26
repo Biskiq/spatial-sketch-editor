@@ -1,0 +1,303 @@
+{
+  "protocol": "P23B.6 S3 integrated generation-preparation probe; advisory Node timing; no baseline or ratchet access",
+  "provenance": {
+    "commitSha": "e11f804ba631ac0c983fa3e1da0d0d4aeb4ce11f",
+    "workingTreeDirty": false,
+    "workingTreeChangesIncluded": false,
+    "date": "2026-09-26T16:18:16.840Z",
+    "node": "v26.7.0",
+    "platform": "darwin 24.6.0 arm64",
+    "cpu": "Apple M2",
+    "cpuCount": 8,
+    "totalMemoryBytes": 17179869184,
+    "nodeEnv": "production",
+    "viteMode": "production",
+    "viteDev": false
+  },
+  "configuration": {
+    "warmup": 5,
+    "samples": 15,
+    "freshCompiledGenerationsPerPathAndAction": 20,
+    "preparationCountingUnit": "one full generation preparation; per-Wall reuse is inside this call",
+    "referencePreparation": "one prepared currently-installed generation per fixture",
+    "paths": [
+      "full-preparation-no-reference",
+      "integrated-preparation-with-reference"
+    ]
+  },
+  "fixtures": [
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "actionClass": "accepted-single-wall-move-release",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 4
+      },
+      "fullPreparationMs": {
+        "p50": 12.224,
+        "p95": 13.264
+      },
+      "integratedPreparationMs": {
+        "p50": 3.403,
+        "p95": 4.012
+      },
+      "netBenefitMs": 8.821,
+      "structuralGuardOnlyMs": {
+        "p50": 6.263,
+        "p95": 7.188
+      },
+      "comparisonOnlyMs": {
+        "p50": 2.026,
+        "p95": 2.386
+      },
+      "buildsSkippedMs": {
+        "p50": 10.205,
+        "p95": 10.665
+      },
+      "comparisonReusedWallCount": 36
+    },
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "actionClass": "whole-room-move-bridge",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 4
+      },
+      "fullPreparationMs": {
+        "p50": 11.547,
+        "p95": 11.77
+      },
+      "integratedPreparationMs": {
+        "p50": 3.222,
+        "p95": 3.367
+      },
+      "netBenefitMs": 8.325,
+      "structuralGuardOnlyMs": {
+        "p50": 6.244,
+        "p95": 6.897
+      },
+      "comparisonOnlyMs": {
+        "p50": 2.086,
+        "p95": 2.821
+      },
+      "buildsSkippedMs": {
+        "p50": 10.445,
+        "p95": 10.976
+      },
+      "comparisonReusedWallCount": 36
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "actionClass": "accepted-single-wall-move-release",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 3,
+        "resolved-ends-changed": 1
+      },
+      "fullPreparationMs": {
+        "p50": 11.65,
+        "p95": 16.27
+      },
+      "integratedPreparationMs": {
+        "p50": 3.296,
+        "p95": 3.755
+      },
+      "netBenefitMs": 8.354,
+      "structuralGuardOnlyMs": {
+        "p50": 6.101,
+        "p95": 6.583
+      },
+      "comparisonOnlyMs": {
+        "p50": 2.108,
+        "p95": 2.325
+      },
+      "buildsSkippedMs": {
+        "p50": 10.16,
+        "p95": 10.646
+      },
+      "comparisonReusedWallCount": 36
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 4
+      },
+      "fullPreparationMs": {
+        "p50": 11.775,
+        "p95": 13.371
+      },
+      "integratedPreparationMs": {
+        "p50": 3.472,
+        "p95": 5.136
+      },
+      "netBenefitMs": 8.303,
+      "structuralGuardOnlyMs": {
+        "p50": 6.285,
+        "p95": 7.001
+      },
+      "comparisonOnlyMs": {
+        "p50": 1.96,
+        "p95": 2.328
+      },
+      "buildsSkippedMs": {
+        "p50": 10.718,
+        "p95": 11.341
+      },
+      "comparisonReusedWallCount": 36
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "actionClass": "accepted-single-wall-move-release",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 37,
+      "builtWallMeshes": 3,
+      "refusedByReason": {
+        "compiled-wall-changed": 3
+      },
+      "fullPreparationMs": {
+        "p50": 17.139,
+        "p95": 17.56
+      },
+      "integratedPreparationMs": {
+        "p50": 4.142,
+        "p95": 4.666
+      },
+      "netBenefitMs": 12.997,
+      "structuralGuardOnlyMs": {
+        "p50": 8.791,
+        "p95": 9.299
+      },
+      "comparisonOnlyMs": {
+        "p50": 2.819,
+        "p95": 3.347
+      },
+      "buildsSkippedMs": {
+        "p50": 15.325,
+        "p95": 16.565
+      },
+      "comparisonReusedWallCount": 37
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 4
+      },
+      "fullPreparationMs": {
+        "p50": 16.881,
+        "p95": 17.744
+      },
+      "integratedPreparationMs": {
+        "p50": 4.48,
+        "p95": 5.376
+      },
+      "netBenefitMs": 12.401,
+      "structuralGuardOnlyMs": {
+        "p50": 8.306,
+        "p95": 8.73
+      },
+      "comparisonOnlyMs": {
+        "p50": 2.723,
+        "p95": 3.127
+      },
+      "buildsSkippedMs": {
+        "p50": 15.098,
+        "p95": 15.935
+      },
+      "comparisonReusedWallCount": 36
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "actionClass": "accepted-single-wall-move-release",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 37,
+      "builtWallMeshes": 3,
+      "refusedByReason": {
+        "compiled-wall-changed": 3
+      },
+      "fullPreparationMs": {
+        "p50": 9.842,
+        "p95": 11.097
+      },
+      "integratedPreparationMs": {
+        "p50": 2.48,
+        "p95": 2.915
+      },
+      "netBenefitMs": 7.362,
+      "structuralGuardOnlyMs": {
+        "p50": 5.228,
+        "p95": 5.8
+      },
+      "comparisonOnlyMs": {
+        "p50": 1.793,
+        "p95": 2.047
+      },
+      "buildsSkippedMs": {
+        "p50": 8.946,
+        "p95": 9.108
+      },
+      "comparisonReusedWallCount": 37
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "accepted": true,
+      "walls": 40,
+      "freshCompiledGenerationsPerPath": 20,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "refusedByReason": {
+        "compiled-wall-changed": 4
+      },
+      "fullPreparationMs": {
+        "p50": 9.646,
+        "p95": 10.546
+      },
+      "integratedPreparationMs": {
+        "p50": 2.61,
+        "p95": 3.169
+      },
+      "netBenefitMs": 7.036,
+      "structuralGuardOnlyMs": {
+        "p50": 5.084,
+        "p95": 6.196
+      },
+      "comparisonOnlyMs": {
+        "p50": 1.702,
+        "p95": 2.003
+      },
+      "buildsSkippedMs": {
+        "p50": 8.66,
+        "p95": 10.773
+      },
+      "comparisonReusedWallCount": 36
+    }
+  ]
+}

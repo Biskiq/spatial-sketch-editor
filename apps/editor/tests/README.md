@@ -151,6 +151,11 @@ npm run test:perf    # timing/budget gates
 npm run test:full    # the same effective suite as `npm test`
 ```
 
+The heavy lane sets `--expose-gc` and `P23B6_REQUIRE_GC=1`; P23B.6 H-6 lives
+in this lane and fails collection if the required `globalThis.gc` hook is absent.
+The regular full suite may skip the forced-GC H-6 cases when run without that
+environment.
+
 The P23B.0 browser baseline is exported from `/dev/perf/p23b` and written only
 through `bench:record`:
 

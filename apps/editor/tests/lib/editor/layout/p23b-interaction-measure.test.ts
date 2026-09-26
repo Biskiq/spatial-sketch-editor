@@ -165,6 +165,18 @@ function wallAction(pointerId: number, outcome: 'setup' | 'accepted' | 'rejected
 }
 
 describe('P23B deferred boundary origins', () => {
+	it('reactivates the measured release gesture before in-handler outcome classification', () => {
+		const release = p23bOpenGesture('plan-drag-edit', { pointerId: 601 })!;
+		const intervening = p23bOpenGesture('plan-pan-zoom')!;
+
+		p23bMeasureGesture(release, 'plan-drag-edit', 'release', () => {
+			p23bClassifyGestureOutcome('accepted');
+		});
+
+		expect(release.outcome).toBe('accepted');
+		expect(intervening.outcome).toBeNull();
+	});
+
 	it('measures press and move flush/frame from the same origin: the end of the synchronous input', async () => {
 		const press = p23bOpenGesture('selection', { pointerId: 1, deferPath: true })!;
 		handle(press, 'selection', 'input', 100);

@@ -1,0 +1,513 @@
+{
+  "source": "Derived from the final S1b capture at e11f804ba631ac0c983fa3e1da0d0d4aeb4ce11f; expanded action trees remain in local temporary evidence and are not committed.",
+  "protocol": "final S1b capture; accepted actions on expected path after five warmups; actions without a release boundary excluded from boundary coverage but counted",
+  "coverageMethod": "For each measured release interval, collect contained marks. For each mark with a valid exclusive-self value, subtract its recorded child intervals to form exclusive intervals; union intervals across marks so nested or overlapping marks are not double counted. Exclude marks spanning at least 95% of the release duration (boundary-sized; retain any eligible descendants). Summarize per-action coverage and uncovered duration by nearest-rank p50/p95.",
+  "rows": [
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:rigid-wall-drag",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 32.10000002384186,
+        "p95": 44
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 21.800000071525574,
+        "p95": 28.100000023841858
+      },
+      "coveragePct": {
+        "p50": 67.84660771733301,
+        "p95": 70.40498444565732
+      },
+      "uncoveredMs": {
+        "p50": 10.200000166893005,
+        "p95": 15.899999976158142
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:whole-room-move-bridge",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 84.20000004768372,
+        "p95": 93.19999992847443
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 70.700000166893,
+        "p95": 72.60000002384186
+      },
+      "coveragePct": {
+        "p50": 83.0713420663397,
+        "p95": 84.36754201327278
+      },
+      "uncoveredMs": {
+        "p50": 14.299999952316284,
+        "p95": 17.399999976158142
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:wall-authoring",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 42,
+        "p95": 43.300000071525574
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 24.99999988079071,
+        "p95": 25.90000009536743
+      },
+      "coveragePct": {
+        "p50": 59.808612052660905,
+        "p95": 61.20092341112332
+      },
+      "uncoveredMs": {
+        "p50": 16.800000190734863,
+        "p95": 17.600000500679016
+      },
+      "excludedBoundarySizedMarks": [
+        "p2311:authoring-release"
+      ]
+    },
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:room-creation-commit",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 41.60000002384186,
+        "p95": 45.300000071525574
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 25.200000047683716,
+        "p95": 28.300000190734863
+      },
+      "coveragePct": {
+        "p50": 60.61224523855715,
+        "p95": 61.6091958407698
+      },
+      "uncoveredMs": {
+        "p50": 16.399999976158142,
+        "p95": 17.899999976158142
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:persistent-pan-zoom",
+      "path": "plan-pan-zoom",
+      "measuredActionCount": 52,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 32,
+      "releaseMs": {
+        "p50": 0,
+        "p95": 0.10000002384185791
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 0,
+        "p95": 0
+      },
+      "coveragePct": {
+        "p50": 0,
+        "p95": 0
+      },
+      "uncoveredMs": {
+        "p50": 0,
+        "p95": 0.10000002384185791
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-straight-v1",
+      "action": "p23b6:idle-frames",
+      "path": null,
+      "measuredActionCount": 0,
+      "releaseBoundaryCount": 0,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": null,
+        "p95": null
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "coveragePct": {
+        "p50": null,
+        "p95": null
+      },
+      "uncoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:rigid-wall-drag",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 73.89999997615814,
+        "p95": 81.29999995231628
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 55.299999952316284,
+        "p95": 62.299999952316284
+      },
+      "coveragePct": {
+        "p50": 74.39678325652665,
+        "p95": 78.33827888871451
+      },
+      "uncoveredMs": {
+        "p50": 18.09999978542328,
+        "p95": 22.09999978542328
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:bend",
+      "path": "bend-knot-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 91.10000002384186,
+        "p95": 108.69999992847443
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 66.80000007152557,
+        "p95": 83.200000166893
+      },
+      "coveragePct": {
+        "p50": 76.33027538247065,
+        "p95": 78.22410146020076
+      },
+      "uncoveredMs": {
+        "p50": 20.600000023841858,
+        "p95": 27.199999928474426
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:whole-room-move-bridge",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 493.39999997615814,
+        "p95": 607
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 396.400000333786,
+        "p95": 509.7000004053116
+      },
+      "coveragePct": {
+        "p50": 81.02254983494778,
+        "p95": 82.63157912594104
+      },
+      "uncoveredMs": {
+        "p50": 96.99999964237213,
+        "p95": 117.7000002861023
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:wall-authoring",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 3601.1999999284744,
+        "p95": 5126.800000071526
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 99.79999947547913,
+        "p95": 129.49999928474426
+      },
+      "coveragePct": {
+        "p50": 2.8168611302145727,
+        "p95": 3.0038230544487665
+      },
+      "uncoveredMs": {
+        "p50": 3493.2000004053116,
+        "p95": 4972.799999713898
+      },
+      "excludedBoundarySizedMarks": [
+        "p2311:authoring-release"
+      ]
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:room-creation-commit",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 2634.3000000715256,
+        "p95": 3277.4000000953674
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 76.19999992847443,
+        "p95": 97.80000007152557
+      },
+      "coveragePct": {
+        "p50": 2.824614483998301,
+        "p95": 2.9696184956516256
+      },
+      "uncoveredMs": {
+        "p50": 2559.1000003814697,
+        "p95": 3191.1000002622604
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:persistent-pan-zoom",
+      "path": "plan-pan-zoom",
+      "measuredActionCount": 52,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 32,
+      "releaseMs": {
+        "p50": 0,
+        "p95": 0.10000002384185791
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 0,
+        "p95": 0
+      },
+      "coveragePct": {
+        "p50": 0,
+        "p95": 0
+      },
+      "uncoveredMs": {
+        "p50": 0,
+        "p95": 0.10000002384185791
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "p23b-40-wall-all-curved-v1",
+      "action": "p23b6:idle-frames",
+      "path": null,
+      "measuredActionCount": 0,
+      "releaseBoundaryCount": 0,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": null,
+        "p95": null
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "coveragePct": {
+        "p50": null,
+        "p95": null
+      },
+      "uncoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:rigid-wall-drag",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 45.299999952316284,
+        "p95": 46.60000002384186
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 33.10000014305115,
+        "p95": 35.5
+      },
+      "coveragePct": {
+        "p50": 74.70997659086352,
+        "p95": 76.65952898280827
+      },
+      "uncoveredMs": {
+        "p50": 11.100000023841858,
+        "p95": 13.50000011920929
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:bend",
+      "path": "bend-knot-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 46.10000002384186,
+        "p95": 48
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 33.800000071525574,
+        "p95": 36.299999952316284
+      },
+      "coveragePct": {
+        "p50": 73.79912687055838,
+        "p95": 76.58227841893444
+      },
+      "uncoveredMs": {
+        "p50": 11.799999833106995,
+        "p95": 13.300000071525574
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:whole-room-move-bridge",
+      "path": "plan-drag-edit",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 108.89999997615814,
+        "p95": 132.19999992847443
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 87.79999995231628,
+        "p95": 106.10000002384186
+      },
+      "coveragePct": {
+        "p50": 81.03004310264096,
+        "p95": 82.00956908139315
+      },
+      "uncoveredMs": {
+        "p50": 20.59999978542328,
+        "p95": 28.50000023841858
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:wall-authoring",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 847.5,
+        "p95": 868.7000000476837
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 46.59999978542328,
+        "p95": 51.800000071525574
+      },
+      "coveragePct": {
+        "p50": 5.524458474126774,
+        "p95": 6.071129254444272
+      },
+      "uncoveredMs": {
+        "p50": 802.4000002145767,
+        "p95": 816.8999999761581
+      },
+      "excludedBoundarySizedMarks": [
+        "p2311:authoring-release"
+      ]
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:room-creation-commit",
+      "path": "wall-authoring",
+      "measuredActionCount": 20,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": 857.6000000238419,
+        "p95": 885.7999999523163
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 46.69999969005585,
+        "p95": 51.800000071525574
+      },
+      "coveragePct": {
+        "p50": 5.494764052808051,
+        "p95": 5.831363286536776
+      },
+      "uncoveredMs": {
+        "p50": 811.3999999761581,
+        "p95": 834.4000002145767
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:persistent-pan-zoom",
+      "path": "plan-pan-zoom",
+      "measuredActionCount": 52,
+      "releaseBoundaryCount": 20,
+      "actionsWithoutRelease": 32,
+      "releaseMs": {
+        "p50": 0,
+        "p95": 0.09999990463256836
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": 0,
+        "p95": 0
+      },
+      "coveragePct": {
+        "p50": 0,
+        "p95": 0
+      },
+      "uncoveredMs": {
+        "p50": 0,
+        "p95": 0.09999990463256836
+      },
+      "excludedBoundarySizedMarks": []
+    },
+    {
+      "fixture": "owner-40-curved-v1",
+      "action": "p23b6:idle-frames",
+      "path": null,
+      "measuredActionCount": 0,
+      "releaseBoundaryCount": 0,
+      "actionsWithoutRelease": 0,
+      "releaseMs": {
+        "p50": null,
+        "p95": null
+      },
+      "childMarkExclusiveSelfCoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "coveragePct": {
+        "p50": null,
+        "p95": null
+      },
+      "uncoveredMs": {
+        "p50": null,
+        "p95": null
+      },
+      "excludedBoundarySizedMarks": []
+    }
+  ]
+}

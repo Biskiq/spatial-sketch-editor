@@ -28,6 +28,7 @@
 	import {
 		buildP23BContainment,
 		summarizeContainmentByPath,
+		type P23BContainmentNode,
 		type P23BContainmentRecord
 	} from '$lib/bench/p23b-containment';
 	import {
@@ -205,13 +206,14 @@
 	let captureStartedAt = $state<string | null>(null);
 	let captures = $state<BenchInteractionFixtureCapture[]>([]);
 	let lastCaptureNote = $state('');
+	let currentCaptureActionClass = $state<string | null>(null);
 	/**
 	 * Measurement-only step — one containment record per hosted fixture. Kept out
 	 * of the baseline report on purpose: this is a separate record (no budget, no
 	 * `g3-baseline.json` write), and it is what turns the pooled `nestedMarks` into
 	 * an action-attributed tree.
 	 */
-	let containmentFixtures = $state<{ fixtureId: string; sessionId: string; record: P23BContainmentRecord }[]>([]);
+	let containmentFixtures = $state<{ fixtureId: string; sessionId: string; actionClass: string | null; record: P23BContainmentRecord }[]>([]);
 	const capturing = $derived(captureSessionId !== null);
 
 	const MEASUREMENT_LIMITATIONS = [
@@ -482,7 +484,7 @@
 	 * fixture gets its own session, so a boundary scheduled in one fixture's
 	 * capture can never be written into another's.
 	 */
-	function startCapture() {
+	function startCapture(actionClass: string | null = null) {
 		if (capturing) return;
 		issue = '';
 		performance.clearMeasures();
@@ -491,6 +493,7 @@
 		samplingSwitch = true;
 		captureSessionId = p23bBeginInteractionCapture();
 		captureStartedAt = new Date().toISOString();
+		currentCaptureActionClass = actionClass;
 		lastCaptureNote = '';
 	}
 
@@ -511,6 +514,7 @@
 		if (!ledger) {
 			issue = 'The capture session could not be read back.';
 			captureSessionId = null;
+			currentCaptureActionClass = null;
 			return;
 		}
 		const summary = summarizeInteractionCapture(ledger, {
@@ -536,17 +540,23 @@
 			capture: summary.capture,
 			nestedMarks: nestedMarks()
 		};
-		captures = [...captures, record];
+		if (currentCaptureActionClass === null) captures = [...captures, record];
 		// Measurement-only step: bind the marks this fixture's actions produced to
 		// the action and outcome that enclose them, before the next fixture clears
 		// the marks. The pooled `nestedMarks` above stays for contract compatibility.
 		containmentFixtures = [
 			...containmentFixtures,
-			{ fixtureId: hosted.id, sessionId, record: buildP23BContainment(ledger, readMarks()) }
+			{
+				fixtureId: hosted.id,
+				sessionId,
+				actionClass: currentCaptureActionClass,
+				record: buildP23BContainment(ledger, readMarks())
+			}
 		];
 		captureSessionId = null;
+		currentCaptureActionClass = null;
 		lastCaptureNote = settled
-			? `Settled. ${Object.entries(record.capture.completedActions).map(([path, count]) => `${path} ${count}`).join(' · ')}`
+			? `Settled. ${Object.entries(record.capture.completedActions).map(([path, count]) => `${path} ${count}`).join(' · ') || `${ledger.actions.length} action(s) recorded`}`
 			: 'Settlement budget expired: in-flight boundaries were dropped and counted, not averaged in.';
 		publishReport();
 	}
@@ -618,8 +628,8 @@
 		const driver = createP23BCaptureDriver({
 			fixtures: () => driveFixtures,
 			host: (fixtureId) => hostFixture(fixtureId),
-			startCapture: () => {
-				startCapture();
+			startCapture: (actionClass) => {
+				startCapture(actionClass ?? null);
 				if (!captureSessionId) throw new Error('The capture session did not open');
 				return captureSessionId;
 			},
@@ -644,6 +654,44 @@
 		}
 	}
 
+	async function runP23B6S1Capture() {
+		if (driveRunning || capturing || running) return;
+		driveRunning = true;
+		driveFailure = '';
+		driveLog = [];
+		driveStep = 'P23B.6 S1 starting';
+		drivePathProgress = {};
+		(globalThis as typeof globalThis & { __P23B6_S1_IDLE_FRAMES__?: Array<{ fixtureId: string; samples: number[] }> }).__P23B6_S1_IDLE_FRAMES__ = [];
+		const driver = createP23BCaptureDriver({
+			fixtures: () => driveFixtures,
+			host: (fixtureId) => hostFixture(fixtureId),
+			startCapture: (actionClass) => {
+				startCapture(actionClass ?? null);
+				if (!captureSessionId) throw new Error('The S1 capture session did not open');
+				return captureSessionId;
+			},
+			stopCapture: () => stopCapture(),
+			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
+			captureCount: () => captures.length,
+			recordFixtureReset: () => p23bRecordFixtureReset(),
+			log: driveNote,
+			progress: (next) => {
+				driveStep = next.step;
+				drivePathProgress = next.paths;
+			}
+		});
+		try {
+			await driver.runP23B6S1();
+			(globalThis as typeof globalThis & { __P23B6_S1_RECORD__?: unknown }).__P23B6_S1_RECORD__ = measurementRecord();
+			driveNote('P23B.6 S1 targeted Plan attribution capture complete');
+		} catch (error) {
+			driveFailure = error instanceof Error ? error.message : String(error);
+			driveNote(`FAILED: ${driveFailure}`);
+		} finally {
+			driveRunning = false;
+		}
+	}
+
 	/** The `p2311:` marks observed since the capture cleared them. */
 	function readMarks() {
 		return performance.getEntriesByType('measure').map((entry) => ({
@@ -651,6 +699,110 @@
 			startTime: entry.startTime,
 			duration: entry.duration
 		}));
+	}
+
+	function s1Percentile(values: readonly number[], percentile: number): number | null {
+		if (values.length === 0) return null;
+		const sorted = [...values].sort((a, b) => a - b);
+		return sorted[Math.min(sorted.length - 1, Math.ceil((percentile / 100) * sorted.length) - 1)] ?? null;
+	}
+
+	function s1Distribution(values: readonly number[]) {
+		return { n: values.length, p50Ms: s1Percentile(values, 50), p95Ms: s1Percentile(values, 95) };
+	}
+
+	function s1ContainmentByClass(
+		fixture: (typeof containmentFixtures)[number],
+		path: BenchInteractionPath | null
+	) {
+		const candidateActions = path === null
+			? []
+			: fixture.record.actions.filter((action) => action.path === path && action.outcome === 'accepted');
+		const measuredActions = candidateActions.slice(INTERACTION_WARMUP);
+		const marks = new Map<string, { totals: number[]; self: number[]; selfWithheld: number }>();
+		const boundaries = new Map<string, { totals: number[]; self: number[]; selfWithheld: number }>();
+		const unbound = new Map<string, number[]>();
+		const visit = (nodes: readonly P23BContainmentNode[], onAction: (node: P23BContainmentNode) => void): void => {
+			for (const node of nodes) {
+				onAction(node);
+				visit(node.children, onAction);
+			}
+		};
+		for (const action of measuredActions) {
+			visit(action.roots, (node) => {
+				const groups = node.kind === 'mark' ? marks : boundaries;
+				const entry = groups.get(node.label) ?? { totals: [], self: [], selfWithheld: 0 };
+				entry.totals.push(node.total);
+				if (node.self === null) entry.selfWithheld += 1;
+				else entry.self.push(node.self);
+				groups.set(node.label, entry);
+			});
+			for (const entry of action.unbound) {
+				const values = unbound.get(entry.name) ?? [];
+				values.push(entry.duration);
+				unbound.set(entry.name, values);
+			}
+		}
+		const rows = (source: typeof marks) => Object.fromEntries([...source].map(([label, entry]) => [label, {
+			...s1Distribution(entry.totals),
+			exclusiveSelf: entry.selfWithheld === 0 && entry.self.length === entry.totals.length
+				? s1Distribution(entry.self)
+				: null,
+			exclusiveSelfWithheld: entry.selfWithheld
+		}]));
+		return {
+			path,
+			acceptedActionsIncludingWarmup: candidateActions.length,
+			warmupExcluded: Math.min(INTERACTION_WARMUP, candidateActions.length),
+			measuredAcceptedActions: measuredActions.length,
+			boundaries: rows(boundaries),
+			marks: rows(marks),
+			unbound: Object.fromEntries([...unbound].map(([name, values]) => [name, s1Distribution(values)]))
+		};
+	}
+
+	function s1MarkLayer(name: string): 'authoredDocuments' | 'compiledGeometry' | 'preparedMeshes' | 'adapterResources' | 'reactivePresentation' | 'unattributed' {
+		const label = name.replace(/^p2311:/, '');
+		if (/^(authoring-release|gesture-commit|preview-install|baseline-restore|restore-project-clone|restore-reactive-write)$/.test(label)) return 'authoredDocuments';
+		if (/^preview-compile/.test(label)) return 'compiledGeometry';
+		if (/mesh/.test(label)) return 'preparedMeshes';
+		if (/adapter|^3d-/.test(label)) return 'adapterResources';
+		if (/^(plan-render-model|plan-salience|plan-presentation|plan-svg-|svg-attributes)/.test(label)) return 'reactivePresentation';
+		return 'unattributed';
+	}
+
+	function s1ActionClassRecord(fixture: (typeof containmentFixtures)[number]) {
+		if (!fixture.actionClass) return null;
+		const actionPathByClass: Record<string, BenchInteractionPath | null> = {
+			'p23b6:rigid-wall-drag': 'plan-drag-edit',
+			'p23b6:bend': 'bend-knot-edit',
+			'p23b6:whole-room-move-bridge': 'plan-drag-edit',
+			'p23b6:wall-authoring': 'wall-authoring',
+			'p23b6:room-creation-commit': 'wall-authoring',
+			'p23b6:persistent-pan-zoom': 'plan-pan-zoom',
+			'p23b6:idle-frames': null
+		};
+		const attribution = s1ContainmentByClass(fixture, actionPathByClass[fixture.actionClass] ?? null);
+		const names = Object.keys(attribution.marks);
+		const layerNames = ['authoredDocuments', 'compiledGeometry', 'preparedMeshes', 'adapterResources', 'reactivePresentation', 'unattributed'] as const;
+		const markLayer = Object.fromEntries(layerNames.map((layer) => [layer, names.filter((name) => s1MarkLayer(name) === layer)]));
+		return {
+			fixtureId: fixture.fixtureId,
+			sessionId: fixture.sessionId,
+			actionClass: fixture.actionClass,
+			populationRule: 'first five accepted actions excluded within this class; rejected, setup, suppressed, incomplete and unresolved actions excluded from distributions',
+			attribution,
+			fiveLayerSplit: {
+				layerMarkNames: markLayer,
+				unattributedRemainder: {
+					markNames: markLayer.unattributed,
+					unbound: attribution.unbound,
+					actionsOutsideBoundaries: fixture.record.marks.unbound,
+					marksOutsideActions: fixture.record.unattributed
+				}
+			},
+			containmentRecord: fixture.record
+		};
 	}
 
 	/**
@@ -673,10 +825,11 @@
 				devicePixelRatio: window.devicePixelRatio,
 				sessionId: report?.browser.sessionId ?? null
 			},
-			population: 'warm-up excluded per path; accepted outcomes only — the interaction report\'s own rule',
+			population: 'Baseline sessions use the interaction report rule. P23B.6 classes exclude the first five accepted actions within each class; accepted outcomes only.',
 			fixtures: containmentFixtures.map((fixture) => ({
 				fixtureId: fixture.fixtureId,
 				sessionId: fixture.sessionId,
+				actionClass: fixture.actionClass,
 				marks: fixture.record.marks,
 				unattributed: fixture.record.unattributed,
 				byPath: summarizeContainmentByPath(fixture.record, {
@@ -684,6 +837,15 @@
 					outcomes: ['accepted']
 				})
 			})),
+			p23b6S1Attribution: {
+				note: 'Separate DEV-only S1 capture sessions by fixture and action class; the actionClass key is measurement metadata and does not alter the P23B baseline ledger/schema. Layer buckets route individual mark names only; nested distributions are never summed. Adapter resources are present as measured terms only if the Plan-only session reaches them.',
+				actionClasses: containmentFixtures.map(s1ActionClassRecord).filter((entry) => entry !== null),
+				idleFrames: ((globalThis as typeof globalThis & { __P23B6_S1_IDLE_FRAMES__?: Array<{ fixtureId: string; samples: number[] }> }).__P23B6_S1_IDLE_FRAMES__ ?? []).map((entry) => ({
+					fixtureId: entry.fixtureId,
+					note: 'requestAnimationFrame callback interval only; not presented-frame latency or GPU work',
+					...s1Distribution(entry.samples)
+				}))
+			},
 			meshIdentity: {
 				note: 'DEV-only identity probe for the commit-time wall-mesh cache miss. `stateProxy` is tested by `structuredClone` throwing a DataCloneError; `sameAsInstall` compares this object against the geometry the last install cached. The full log lives on `globalThis.__P2311_MESH_IDENTITY__`; this record carries the counts and the first 60 rows.',
 				total: p2311MeshIdentityRecords().length,
@@ -757,7 +919,7 @@
 
 		<h2>Interaction capture</h2>
 		<div class="capture-controls">
-			<button disabled={capturing} onclick={startCapture}>Start capture</button>
+			<button disabled={capturing} onclick={() => startCapture()}>Start capture</button>
 			<button disabled={!capturing} onclick={stopCapture}>Stop and summarize</button>
 		</div>
 		<p class="capture-hint">Start capture, repeat each fixed action, then stop. Leave Snap 0.25 m and Grid on. After each authoring action, press “Record fixture reset”.</p>
@@ -769,6 +931,13 @@
 			mutation put back through the editor's own undo before the next action.
 		</p>
 		<button disabled={capturing || driveRunning || running} onclick={runScriptedCapture}>Run scripted capture</button>
+		<h2>P23B.6 S1 targeted attribution</h2>
+		<p class="capture-hint">
+			One DEV-only Plan capture on the straight, all-curved and owner fixtures. Rigid Wall drag, bend,
+			whole-Room move, Wall authoring, Rect Room commit, persistent pan/zoom and idle-frame intervals
+			are stored in separate measurement sessions. Each editing action is restored with editor Undo.
+		</p>
+		<button disabled={capturing || driveRunning || running} onclick={runP23B6S1Capture}>Run P23B.6 S1 attribution capture</button>
 		{#if driveStep}<p class="status">Driver: {driveStep}</p>{/if}
 		{#each Object.entries(drivePathProgress) as [path, progress] (path)}
 			<p class="status">{path}: {progress.accepted} accepted of {progress.attempted} attempts</p>

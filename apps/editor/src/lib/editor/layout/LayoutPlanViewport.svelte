@@ -1893,8 +1893,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	const planDimensionMemory = createPlanDimensionMemory();
 	const planSalience = $derived(
-		salienceFreeze ??
-			resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
+		p2311Measure('plan-salience', () =>
+			salienceFreeze ??
+				resolvePlanSalience({ model: planModel, view: interaction.planView }, salienceMemory)
+		)
 	);
 	/**
 	 * P23.13 S8 / §1.12 — the resolved presentation the paint layer reads. The
@@ -1903,7 +1905,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * source for every footprint outside the zone.
 	 */
 	const planPresentation = $derived(
-		withPlanAttentionSceneInk(planSalience, interaction.planView, activeAttentionZone)
+		p2311Measure('plan-presentation', () =>
+			withPlanAttentionSceneInk(planSalience, interaction.planView, activeAttentionZone)
+		)
 	);
 	const selectedOpeningSelection = $derived(
 		interaction.selection.kind === 'opening' ? interaction.selection : null
@@ -2954,7 +2958,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	function p23bPointerPressIntentPath(event: PointerEvent): BenchInteractionPath | null {
 		return event.button === 1 && interaction.planViewMode === 'layout'
 			? 'plan-pan-zoom'
-			: wallChainRoleForTool(interaction.tool) !== null && interaction.planViewMode === 'layout'
+			: (wallChainRoleForTool(interaction.tool) !== null || interaction.tool === 'rectangle') && interaction.planViewMode === 'layout'
 				? 'wall-authoring'
 				: event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
 					? 'selection'
@@ -3510,6 +3514,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	function p23bPointerPressPath(event: PointerEvent): BenchInteractionPath | null {
 		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
+		if (pointerId === event.pointerId && interaction.tool === 'rectangle' && interaction.rectangleStart) return 'wall-authoring';
 		const edit = interaction.architectureEdit;
 		if (edit?.pointerId === event.pointerId) return p23bArchitectureEditPath(edit);
 		if (interiorAnchorPointerId === event.pointerId) return 'bend-knot-edit';
@@ -3520,6 +3525,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 
 	function p23bPointerInteractionPath(event: PointerEvent): BenchInteractionPath | null {
 		if (panPointerId === event.pointerId) return 'plan-pan-zoom';
+		if (pointerId === event.pointerId && interaction.tool === 'rectangle' && interaction.rectangleStart) return 'wall-authoring';
 		const edit = interaction.architectureEdit;
 		if (edit?.pointerId === event.pointerId) {
 			// P23B — the app's own release gate decides whether this gesture was
@@ -3826,20 +3832,31 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			(event.button === 0 && interaction.tool === 'select' && interaction.planViewMode === 'layout'
 				? 'selection'
 				: null);
+		const rectangleCommit =
+			interaction.tool === 'rectangle' &&
+			interaction.planViewMode === 'layout' &&
+			pointerId === event.pointerId &&
+			interaction.rectangleStart !== null;
 		// Wall-chain acceptance is a click event; its `release` mark wraps the
-		// canonical commit below, so the preceding pointerup housekeeping is not
-		// counted as a second authoring release sample.
-		if (path === 'wall-authoring' || !path) return onPointerUp(event);
+		// canonical commit below. Rect Room is different: its canonical commit is
+		// the pointer release, so retain one release sample and classify it from the
+		// wall-first Room count around the shipped commit.
+		if ((path === 'wall-authoring' && !rectangleCommit) || !path) return onPointerUp(event);
 		const gesture = p23bGestureForPointer(event.pointerId);
 		if (!gesture) return onPointerUp(event);
+		const roomsBefore = rectangleCommit ? wallFirstLayoutDocument()?.rooms.length ?? null : null;
 		// The release is the press's outcome: a press that armed a direct edit learns
 		// here whether it performed a selection or a drag, and the shipped commit
 		// classifies an edit as accepted or refused (`p23bClassifyGestureOutcome`).
 		const result = p23bMeasureGesture(gesture, path, 'release', () => onPointerUp(event));
+		const roomsAfter = rectangleCommit ? wallFirstLayoutDocument()?.rooms.length ?? null : null;
+		const rectangleOutcome = roomsBefore !== null && roomsAfter !== null
+			? roomsAfter === roomsBefore + 1 ? 'accepted' : 'rejected'
+			: null;
 		p23bResolveGesture(
 			gesture,
 			path,
-			gesture.outcome ?? (path === 'selection' || path === 'plan-pan-zoom' ? 'accepted' : 'unclassified')
+			rectangleOutcome ?? gesture.outcome ?? (path === 'selection' || path === 'plan-pan-zoom' ? 'accepted' : 'unclassified')
 		);
 		p23bScheduleGestureBoundaries(gesture);
 		return result;
@@ -4037,12 +4054,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				}
 				if (valid) {
 					const changed = onLayoutTransactionCommit();
+					p23bClassifyGestureOutcome(valid && changed ? 'accepted' : 'rejected');
 					if (changed) {
 						const movedCount = movedRoomIds?.length ?? 1;
 						preview.statusMessage =
 							movedCount > 1 ? `Moved ${movedCount} rooms` : 'Moved room';
 					}
 				} else {
+					p23bClassifyGestureOutcome('rejected');
 					onLayoutTransactionCancel();
 					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
 					if (rejectionMessage) preview.statusMessage = rejectionMessage;
