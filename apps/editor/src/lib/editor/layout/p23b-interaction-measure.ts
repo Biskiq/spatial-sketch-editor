@@ -335,6 +335,8 @@ export function p23bMeasureGesture<T>(
 ): T {
 	if (!gesture || !writable(gesture)) return work();
 	const start = performance.now();
+	activeGesture = gesture;
+	publishActive(gesture);
 	try {
 		return work();
 	} finally {
