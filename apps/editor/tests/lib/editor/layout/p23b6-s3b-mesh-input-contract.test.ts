@@ -16,6 +16,7 @@ import {
 	prepareWallMesh,
 	preparedWallMeshInput,
 	s1ObjectKeysDeepEqual,
+	validatePreparedWallMeshInputs,
 	wallMeshReuseRefusalReason,
 	type PreparedWallMeshInput,
 	type PreparedWallMeshReference
@@ -94,7 +95,7 @@ function refusalReasonForComparator(
 ) {
 	if (!reference) return 'no-reference';
 	if (strategy.name === 'S1 Object.keys deepEqual') {
-		return wallMeshReuseRefusalReason(candidate, reference);
+		return wallMeshReuseRefusalReason(candidate, reference, true);
 	}
 	if (candidate.builderSignature !== reference.input.builderSignature) return 'builder-signature-changed';
 	if (!Object.is(candidate.floorElevation, reference.input.floorElevation)) return 'floor-elevation-changed';
@@ -106,7 +107,7 @@ function refusalReasonForComparator(
 describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () => {
 	const base = inputFor(fixtureDocument([{ id: 'door-1', offset: 1.5, width: 0.9 }]));
 	const baseMesh = meshFor(base);
-	const reference: PreparedWallMeshReference = { input: base, mesh: baseMesh };
+	const reference: PreparedWallMeshReference = { input: base, mesh: baseMesh, structureValid: true };
 
 	it('uses the builder-signature contract from the byte-identical editor and museum mirrors', () => {
 		expect(STANDALONE_WALL_MESH_BUILDER_SIGNATURE).toBe(
@@ -228,7 +229,7 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 				expect(refusalReasonForComparator(strategy, candidate, reference), `${row} refusal`).toBe(reason);
 				if (strategy.name !== 'S1 Object.keys deepEqual') return;
 				let buildCalls = 0;
-				const result = prepareWallMesh(candidate, reference, () => {
+				const result = prepareWallMesh(candidate, reference, true, () => {
 					buildCalls += 1;
 					return buildStandaloneWallMesh(candidate.wall, candidate.floorElevation, candidate.ends);
 				});
@@ -250,7 +251,11 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 				wall: { ...base.wall, p26FutureField: { profile: [0, 1, 3] } } as CompiledPhysicalWall
 			};
 			expect(
-				refusalReasonForComparator(strategy, candidate, { input: referenceInput, mesh: baseMesh })
+				refusalReasonForComparator(strategy, candidate, {
+					input: referenceInput,
+					mesh: baseMesh,
+					structureValid: true
+				})
 			).toBe('compiled-wall-changed');
 		});
 	}
@@ -267,7 +272,7 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 			expect(refusalReasonForComparator(strategy, nextGenerationInput, reference)).toBeNull();
 			if (strategy.name !== 'S1 Object.keys deepEqual') return;
 			let buildCalls = 0;
-			const result = prepareWallMesh(nextGenerationInput, reference, () => {
+			const result = prepareWallMesh(nextGenerationInput, reference, true, () => {
 				buildCalls += 1;
 				return buildStandaloneWallMesh(
 					nextGenerationInput.wall,
@@ -283,17 +288,18 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 	}
 
 	it('the structural guard catches non-enumerable fields the Object.keys walk cannot see', () => {
-		const referenceWall = clone(base.wall) as CompiledPhysicalWall & { hiddenFutureField?: number };
+		const referenceWall = clone(base.wall);
 		const candidateWall = clone(base.wall) as CompiledPhysicalWall & { hiddenFutureField?: number };
-		Object.defineProperty(referenceWall, 'hiddenFutureField', { value: 1, enumerable: false });
 		Object.defineProperty(candidateWall, 'hiddenFutureField', { value: 2, enumerable: false });
 		const referenceInput = { ...base, wall: referenceWall };
 		const candidate = { ...base, wall: candidateWall };
-		const hiddenReference = { input: referenceInput, mesh: baseMesh };
+		const hiddenReference = { input: referenceInput, mesh: baseMesh, structureValid: true };
 		// This is the negative control: dropping the guard makes the S1 comparator admit stale data.
 		expect(s1ObjectKeysDeepEqual(candidate.wall, hiddenReference.input.wall)).toBe(true);
 		expect(isPlainJsonLike(candidate.wall)).toBe(false);
-		expect(wallMeshReuseRefusalReason(candidate, hiddenReference)).toBe('non-plain-data-input');
+		const candidateInput = new Map([[candidate.wall.wallId, candidate]]);
+		expect(validatePreparedWallMeshInputs(candidateInput)).toBe(false);
+		expect(wallMeshReuseRefusalReason(candidate, hiddenReference, false)).toBe('non-plain-data-input');
 	});
 
 	it('compiled Wall and resolved-end inputs are plain JSON-like data across S3 fixtures', () => {

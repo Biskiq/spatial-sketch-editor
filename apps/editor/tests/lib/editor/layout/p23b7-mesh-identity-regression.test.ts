@@ -44,6 +44,7 @@ import {
 	p2311ResetMeshIdentity,
 	type P23BMeshIdentityRecord
 } from '$lib/editor/layout/p23b-mesh-identity';
+import { getPreparedWallMeshes } from '$lib/editor/layout/prepared-wall-meshes';
 import {
 	type LayoutPreviewState
 } from '$lib/editor/layout/layout-preview-state.svelte';
@@ -121,7 +122,7 @@ function acceptedEdit(input: Harness): Harness {
 	return { ...input, after: input.runtime.layoutPreviewAuthoredJson(input.preview) };
 }
 
-/** Fresh `mesh-prebuild` measures — the wall-mesh set builds, one per build call. */
+/** Fresh `mesh-prebuild` measures — one whole-generation preparation per miss. */
 function buildMeasures(): number {
 	return performance.getEntriesByType('measure').filter((entry) => entry.name === `${PREFIX}mesh-prebuild`).length;
 }
@@ -229,6 +230,12 @@ describe('P23B.7 S6 — one mesh build per accepted edit, zero on the between-ac
 		const capture = [...interval].reverse().find((record) => record.phase === 'capture')!;
 		const restore = interval.find((record) => record.phase === 'restore')!;
 		expect(builds, 'an accepted edit builds the wall-mesh set ONCE').toBe(1);
+		const prepared = getPreparedWallMeshes(measured.preview.geometry);
+		expect(prepared, 'the one measured call prepared the installed generation').toBeDefined();
+		expect(
+			prepared!.stats.reused,
+			'per-Wall mesh reuse happens inside the one full-generation preparation'
+		).toBeGreaterThan(0);
 		expect(misses.length, 'exactly one cache miss in the interval, and it is the install').toBe(1);
 		expect(misses[0]?.sameAsInstall, 'the miss is the install caching its own compile').toBe(true);
 		expect(hits.length, 'the commit restore HITS the meshes the install cached').toBe(1);
