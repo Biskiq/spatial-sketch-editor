@@ -9,9 +9,13 @@ CHILD: P23B.7-interaction — SHIPPED and closed 2026-09-25 (one PR for the slic
        S6 capture JSON stays LIVE (SHA-256 `95790b00…`). Merge method: squash (repo policy; branch
        commits are not ancestors of `main` post-merge; recovery runs via `refs/pull/92/head`, recorded
        in each stub).
-       NEXT STEP: P23B.6-rendering — PLANNED and unratified: it needs its own reconciliation, owner
-       ratification and implementation authorization before any work starts. P23B.8 stays unauthorized
-       (unratified). Do NOT start P23B.6/P23B.8 work from this close.
+       NEXT STEP: P23B.6-rendering — PLANNED and RECONCILED 2026-09-25 on branch `P23B.6` against
+       `main` 6ad23856 and the current P26 authorities (plan:
+       ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/
+       2026-09-22-P23B.6-rendering-optimization.md). It awaits ONE owner ratification (plan §14:
+       D1 S-R admission, D2 the S1b capture, D3 dropping adapter/GPU/Plan-SVG work that P26
+       replaces) and implementation authorization before any work starts. P23B.8 stays
+       unauthorized (unratified). Do NOT start P23B.6/P23B.8 work from this close.
        Prior child P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-merged) after
        the owner REVIEWED AND ACCEPTED it with no remaining blocker; routine slice-closeout ran on
        the `P23B.5` branch. M-3 = SHIPPED (preflight-only) — one bounded gesture-scoped sample
@@ -98,7 +102,8 @@ CHILD: P23B.7-interaction — SHIPPED and closed 2026-09-25 (one PR for the slic
        branch and its commit stays inside PR #92 — no new PR, no new scope. The plan and the
        S4 · S6 · S7 · S7-follow-up · correction records are now path-preserving closed stubs at
        their own paths (preservation report in the closed plan stub); the S6 capture JSON stays LIVE
-       (SHA-256 `95790b00…`). NEXT: P23B.6 — PLANNED, unratified (see the CHILD header).
+       (SHA-256 `95790b00…`). NEXT: P23B.6 — PLANNED, reconciled, awaiting ratification (see the
+       CHILD header).
        The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
