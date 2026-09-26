@@ -164,3 +164,15 @@ npm run test:arch                             PASS — 23 files / 254 tests
   if that measurement (or the owner's own reproduction) names hit-test/snap, and S7 records what was
   measured.
 ```
+
+## 7. Correction note — `affected` counts are CANDIDATE counts (PR #92 review, 2026-09-25)
+
+```text
+The scope stat this record prints as `affected` is renamed `candidates`: it is summed from each move's
+affected EXTENT before the pass runs, so it bounds what a scoped pass may evaluate and never showed
+what the predicates actually did. Everything else in this record stands as written — the frozen numbers
+above ARE those candidate counts, and §4's DETERMINISTIC claims are now asserted against predicate-site
+OBSERVATIONS (`WallFirstTopologyEvaluation`) that FAIL when the pass discards its subject. Both
+corrections — the injective target identity and that observation — are recorded with their regression
+case and both mutation runs in `./2026-09-25-pr92-correction-record.md`. §6's limits are unchanged.
+```

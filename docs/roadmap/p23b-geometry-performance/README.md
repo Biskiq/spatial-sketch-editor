@@ -464,8 +464,21 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         ./p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md.
         Probe → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts.
         Guard → apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts.
-        NEXT: the PR for owner review (OPEN — PR #92). Slice review, acceptance and `slice-closeout`
-        remain owner actions after it.
+        PR #92 REVIEW (2026-09-25): RETURNED FOR CORRECTION with two P2 findings, BOTH FIXED in one
+        revertible commit. (1) The gesture TARGET IDENTITY was a `:`-joined string while Layout IDs
+        may contain `:` (both codecs' ID_PATTERN admits it), so `(wall "A:B", knot "C")` and
+        `(wall "A", knot "B:C")` shared one key: a target change could reuse the previous
+        initialization and report `pending` where the canonical gate refuses. It is now an injective
+        field TUPLE, and the reviewer's collision case is a regression that FAILS under the old
+        encoding. (2) The DETERMINISTIC clause was asserted against candidate counts summed BEFORE the
+        pass ran — the reviewer's whole-document mutation passed — so evaluations are now OBSERVED AT
+        THE PREDICATE SITES, with scoped moves required to stay inside their own extent by kind and to
+        evaluate strictly fewer subjects than the initialization; that mutation now FAILS. The counts
+        are separately named `candidates`. Non-blocking dispositions accepted as stated (the snapshot
+        guard keeps its limits; heap retention is a named bounded follow-up, no redesign).
+        Record → ./p23b.7-interaction-optimization/2026-09-25-pr92-correction-record.md.
+        NEXT: the PR for owner review / RE-REVIEW (OPEN — PR #92). Slice review, acceptance and
+        `slice-closeout` remain owner actions after it.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified

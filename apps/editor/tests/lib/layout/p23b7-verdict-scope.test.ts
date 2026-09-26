@@ -24,15 +24,23 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	clearTopologyGateObserverForTest,
+	clearWallFirstTopologyEvaluationObserverForTest,
+	createEmptyWallFirstLayoutDocument,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
+	deriveChainSpans,
 	preflightWallFirstArchitectureCandidate,
 	setTopologyGateObserverForTest,
+	setWallFirstTopologyEvaluationObserverForTest,
+	wallCubicChain,
 	wallFirstArchitectureAffectedExtent,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
+	type LayoutWallCenterline,
+	type WallFirstArchitectureAffectedExtent,
 	type WallFirstArchitecturePreflightFailure,
-	type WallFirstArchitectureProposalIntent
+	type WallFirstArchitectureProposalIntent,
+	type WallFirstTopologyEvaluation
 } from '@portfolio/layout-core';
 import {
 	p23b7PreflightReferenceCases,
@@ -117,6 +125,126 @@ function junctionMove(
 		junctionId,
 		point: [junction.point[0] + delta[0], junction.point[1] + delta[1]]
 	};
+}
+
+const LINE_CENTERLINE = { kind: 'line' } as const;
+
+function curveThrough(
+	start: LayoutVec2,
+	end: LayoutVec2,
+	knot: LayoutVec2,
+	knotId: string
+): LayoutWallCenterline {
+	return wallCubicChain([{ id: knotId, point: knot }], deriveChainSpans([start, knot, end]));
+}
+
+/** Pair key in gate order — the order both the extent and the predicates use. */
+function pairKey(pair: readonly string[]): string {
+	return JSON.stringify([pair[0], pair[1]]);
+}
+
+/**
+ * PR #92 review, P2 — the regression fixture for TARGET-KEY COLLISIONS.
+ *
+ * Two curve targets whose IDs collide under a `:` join: `(wall "A:B", knot "C")` and
+ * `(wall "A", knot "B:C")` both encode as `curve-control-move:A:B:C`. Every ID here is schema-legal
+ * (`ID_PATTERN` admits `:`), and the two Walls sit in DIFFERENT COMPONENTS with the crossing in the
+ * FIRST one, so a reuse of the first target's initialization cannot even look at it.
+ *
+ * Room 1 carries the crossing exactly as OR-3(c)'s already-crossed baseline does: Wall `A:B` bulges
+ * through the Room, so moving its knot `C` back onto the chord REPAIRS it. Room 2 is far away and
+ * holds Wall `A` with knot `B:C` — the colliding target.
+ */
+function collidingTargetDocument(): LayoutDocumentWallFirst {
+	const document = createEmptyWallFirstLayoutDocument() as LayoutDocumentWallFirst;
+	document.junctions.push(
+		{ id: 'a0', point: [0, 0] },
+		{ id: 'a1', point: [8, 0] },
+		{ id: 'a2', point: [8, 8] },
+		{ id: 'a3', point: [0, 8] },
+		{ id: 'b0', point: [20, 0] },
+		{ id: 'b1', point: [28, 0] },
+		{ id: 'b2', point: [28, 8] },
+		{ id: 'b3', point: [20, 8] }
+	);
+	document.walls.push(
+		{
+			id: 'A:B',
+			startJunctionId: 'a0',
+			endJunctionId: 'a1',
+			role: 'boundary',
+			thickness: 0.2,
+			height: 3,
+			centerline: curveThrough([0, 0], [8, 0], [4, 12], 'C')
+		},
+		{ id: 'r1-east', startJunctionId: 'a1', endJunctionId: 'a2', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE },
+		{ id: 'r1-north', startJunctionId: 'a2', endJunctionId: 'a3', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE },
+		{ id: 'r1-west', startJunctionId: 'a3', endJunctionId: 'a0', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE },
+		{
+			id: 'A',
+			startJunctionId: 'b0',
+			endJunctionId: 'b1',
+			role: 'boundary',
+			thickness: 0.2,
+			height: 3,
+			centerline: curveThrough([20, 0], [28, 0], [24, 0], 'B:C')
+		},
+		{ id: 'r2-east', startJunctionId: 'b1', endJunctionId: 'b2', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE },
+		{ id: 'r2-north', startJunctionId: 'b2', endJunctionId: 'b3', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE },
+		{ id: 'r2-west', startJunctionId: 'b3', endJunctionId: 'b0', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE_CENTERLINE }
+	);
+	document.rooms.push(
+		{
+			id: 'room-1',
+			name: 'Room',
+			floorThickness: 0.1,
+			ceilingThickness: 0.1,
+			boundary: [
+				{ wallId: 'A:B', direction: 'forward' },
+				{ wallId: 'r1-east', direction: 'forward' },
+				{ wallId: 'r1-north', direction: 'forward' },
+				{ wallId: 'r1-west', direction: 'forward' }
+			]
+		},
+		{
+			id: 'room-2',
+			name: 'Room 2',
+			floorThickness: 0.1,
+			ceilingThickness: 0.1,
+			boundary: [
+				{ wallId: 'A', direction: 'forward' },
+				{ wallId: 'r2-east', direction: 'forward' },
+				{ wallId: 'r2-north', direction: 'forward' },
+				{ wallId: 'r2-west', direction: 'forward' }
+			]
+		}
+	);
+	return document;
+}
+
+/**
+ * THE P2 CORRECTION'S ASSERTION: every subject a scoped move's INVARIANT PREDICATES were actually
+ * evaluated on belongs to that move's OWN affected extent, by kind.
+ */
+function assertEvaluationsStayInsideExtent(
+	evaluations: readonly WallFirstTopologyEvaluation[],
+	extent: WallFirstArchitectureAffectedExtent
+): void {
+	const walls = new Set(extent.wallIds);
+	const wallPairs = new Set(extent.wallPairs.map(pairKey));
+	const junctionPairs = new Set(extent.junctionPairs.map(pairKey));
+	for (const evaluation of evaluations) {
+		const label = `${evaluation.stage} ${evaluation.ids.join('|')}`;
+		if (evaluation.stage === 'zero-length-wall' || evaluation.stage === 'wall-self-crossing') {
+			expect(walls.has(evaluation.ids[0]!), label).toBe(true);
+			continue;
+		}
+		if (evaluation.stage === 'junction-coincidence') {
+			expect(junctionPairs.has(pairKey(evaluation.ids)), label).toBe(true);
+			continue;
+		}
+		expect(wallPairs.has(pairKey(evaluation.ids)), label).toBe(true);
+	}
 }
 
 function referenceCase(id: string): P23B7PreflightReferenceCase {
@@ -369,34 +497,59 @@ describe('P23B.7 S4 — DETERMINISTIC: initialization once, affected-only after'
 		}
 	});
 
-	it('(ii) moves 2..k evaluate exactly that move\'s affected extent, and no invariant predicate repeats', () => {
+	it('(ii) moves 2..k EVALUATE only that move\'s affected extent, and no invariant predicate repeats', () => {
 		const row = referenceCase('a-matrix-40-target-curved');
 		const document = row.document;
 		const scope = createWallFirstArchitectureVerdictScope(document);
 		const sampling = createWallSamplingDerivation();
 		const moves = gestureMoves(document, row.intent);
-		for (const [index, intent] of moves.entries()) {
-			const prior = { ...scope.stats, affected: { ...scope.stats.affected } };
-			scope.verdict(document, intent, sampling);
-			if (index === 0) {
-				// The initialization is the whole-document pass: it counts no affected
-				// subjects, and it must never repeat.
-				expect(scope.stats).toMatchObject({ initializations: 1, canonical: 1, scoped: 0 });
-				continue;
+		// EVALUATIONS ARE OBSERVED AT THE PREDICATE SITES (P2 correction). Candidate counts alone could
+		// not carry this claim: they are summed from the extent BEFORE the pass runs, so a pass that
+		// discarded its subject and evaluated the whole document left them untouched. `evaluated` is
+		// what the invariant predicates were ACTUALLY asked.
+		const evaluated: WallFirstTopologyEvaluation[] = [];
+		setWallFirstTopologyEvaluationObserverForTest((entry) => evaluated.push(entry));
+		let initializationEvaluations = 0;
+		try {
+			for (const [index, intent] of moves.entries()) {
+				const priorCandidates = { ...scope.stats.candidates };
+				evaluated.length = 0;
+				scope.verdict(document, intent, sampling);
+				const extent = wallFirstArchitectureAffectedExtent(document, intent);
+				expect(extent, 'the move is derivable').toBeDefined();
+				if (index === 0) {
+					// The initialization IS the whole-document pass: one canonical pass, no scoped
+					// move, and its own evaluations may scale with the document (§0.8.1).
+					expect(scope.stats).toMatchObject({ initializations: 1, canonical: 1, scoped: 0 });
+					initializationEvaluations = evaluated.length;
+					expect(initializationEvaluations, 'the initialization evaluates something').toBeGreaterThan(0);
+					continue;
+				}
+				expect(scope.stats.initializations, 'no second initialization').toBe(1);
+				expect(scope.stats.canonical, 'no whole-document pass after the initialization').toBe(1);
+				// CANDIDATE COUNTS — a BOUND, kept separately named: exactly this move's extent was
+				// brought, not a remembered superset and never the whole document.
+				expect(scope.stats.candidates.walls - priorCandidates.walls).toBe(extent!.wallIds.length);
+				expect(scope.stats.candidates.wallPairs - priorCandidates.wallPairs).toBe(extent!.wallPairs.length);
+				expect(scope.stats.candidates.junctionPairs - priorCandidates.junctionPairs).toBe(
+					extent!.junctionPairs.length
+				);
+				// OBSERVED EVALUATIONS — every one belongs to THIS move's extent, by kind...
+				expect(evaluated.length, 'a scoped move evaluates something').toBeGreaterThan(0);
+				assertEvaluationsStayInsideExtent(evaluated, extent!);
+				// ...and the whole-document work is GONE: a scoped move evaluates strictly fewer
+				// subjects than the initialization did, so discarding the subject cannot pass here.
+				expect(
+					evaluated.length,
+					'a scoped move evaluates strictly less than the initialization'
+				).toBeLessThan(initializationEvaluations);
 			}
-			const extent = wallFirstArchitectureAffectedExtent(document, intent)!;
-			expect(scope.stats.initializations, 'no second initialization').toBe(prior.initializations);
-			expect(scope.stats.canonical, 'no whole-document pass after the initialization').toBe(prior.canonical);
-			expect(scope.stats.scoped).toBe(prior.scoped + 1);
-			// What the pass evaluated IS this move's own extent — not a remembered
-			// superset, and never the whole document.
-			expect(scope.stats.affected.walls - prior.affected.walls).toBe(extent.wallIds.length);
-			expect(scope.stats.affected.wallPairs - prior.affected.wallPairs).toBe(extent.wallPairs.length);
-			expect(scope.stats.affected.junctionPairs - prior.affected.junctionPairs).toBe(
-				extent.junctionPairs.length
-			);
+		} finally {
+			clearWallFirstTopologyEvaluationObserverForTest();
 		}
-		expect(scope.stats.affected.walls, 'the moved Walls are a subset of the document').toBeLessThan(
+		// Non-vacuity: the fixture HAS unaffected Walls, so 'no evaluation outside the extent' is a
+		// claim about real subjects rather than about a document that is all affected.
+		expect(scope.stats.candidates.walls, 'the moved Walls are a subset of the document').toBeLessThan(
 			document.walls.length
 		);
 	});
@@ -416,11 +569,46 @@ describe('P23B.7 S4 — DETERMINISTIC: initialization once, affected-only after'
 		// ITS OWN patch: both were computed, neither was reused from the other.
 		expect(scope.stats).toMatchObject({ initializations: 2, canonical: 2, scoped: 0 });
 		const later = junctionMove(document, 'a3', [0.04, 0]);
-		const prior = { ...scope.stats.affected };
+		const prior = { ...scope.stats.candidates };
 		scope.verdict(document, later, sampling);
 		const laterExtent = wallFirstArchitectureAffectedExtent(document, later)!;
-		expect(scope.stats.affected.walls - prior.walls).toBe(laterExtent.wallIds.length);
-		expect(scope.stats.affected.wallPairs - prior.wallPairs).toBe(laterExtent.wallPairs.length);
-		expect(scope.stats.affected.junctionPairs - prior.junctionPairs).toBe(laterExtent.junctionPairs.length);
+		expect(scope.stats.candidates.walls - prior.walls).toBe(laterExtent.wallIds.length);
+		expect(scope.stats.candidates.wallPairs - prior.wallPairs).toBe(laterExtent.wallPairs.length);
+		expect(scope.stats.candidates.junctionPairs - prior.junctionPairs).toBe(laterExtent.junctionPairs.length);
+	});
+});
+
+describe('P23B.7 S4 correction (PR #92 review, P2) — the target identity is injective', () => {
+	it('re-initializes when the target changes to one that collides under a delimiter join', () => {
+		const document = collidingTargetDocument();
+		const repair: WallFirstArchitectureProposalIntent = {
+			kind: 'curve-control-move',
+			wallId: 'A:B',
+			knotId: 'C',
+			point: [4, 0]
+		};
+		const colliding: WallFirstArchitectureProposalIntent = {
+			kind: 'curve-control-move',
+			wallId: 'A',
+			knotId: 'B:C',
+			point: [24, 0.25]
+		};
+		// Non-vacuity: both targets are derivable, and the two Walls live in DIFFERENT components —
+		// under a delimiter join their identities are one and the same string, which is the defect.
+		expect(wallFirstArchitectureAffectedExtent(document, repair)).toBeDefined();
+		expect(wallFirstArchitectureAffectedExtent(document, colliding)).toBeDefined();
+		const sampling = createWallSamplingDerivation();
+		const scope = createWallFirstArchitectureVerdictScope(document);
+		// Move 1 REPAIRS the baseline crossing on its own candidate, so the initialization is clean.
+		expect(verdictOf(scope.verdict(document, repair, sampling))).toEqual({ status: 'pending' });
+		expect(scope.stats).toMatchObject({ initializations: 1, canonical: 1, scoped: 0 });
+		// Move 2 is a DIFFERENT target. The baseline still carries the crossing, so the canonical gate
+		// refuses; the scope must RE-INITIALIZE — reusing move 1's verdict would report `pending` for a
+		// candidate the canonical pass rejects (INV-1).
+		const canonical = verdictOf(preflightWallFirstArchitectureCandidate(document, colliding));
+		expect(canonical.status, 'the baseline crossing is genuinely present').toBe('known-invalid');
+		expect(canonical.code).toBe('unsupported_wall_topology');
+		expect(verdictOf(scope.verdict(document, colliding, sampling))).toEqual(canonical);
+		expect(scope.stats).toMatchObject({ initializations: 1, canonical: 2, scoped: 0 });
 	});
 });

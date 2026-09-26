@@ -1224,7 +1224,8 @@ function validateWallFirstArchitectureAffectedCandidate(
 
 /**
  * P23B.7 S4 — what one gesture's verdict scope did. Every number is a count of moves or of
- * predicate evaluations, never a duration.
+ * candidate subjects, never a duration and never a count of the predicate evaluations themselves
+ * (those are observed at the predicate sites — see `WallFirstTopologyEvaluation`).
  */
 export type WallFirstArchitectureVerdictScopeStats = {
 	/** Clean initialization passes taken: one per target identity, at most one per lifetime. */
@@ -1237,8 +1238,14 @@ export type WallFirstArchitectureVerdictScopeStats = {
 	 * initialize on.
 	 */
 	canonical: number;
-	/** Predicate evaluations the scoped passes actually performed, by kind. */
-	affected: { walls: number; wallPairs: number; junctionPairs: number };
+	/**
+	 * The candidate subjects the scoped moves brought, by kind — a BOUND on what a scoped pass may
+	 * evaluate, never a count of what it did: these are summed from each move's affected extent
+	 * BEFORE the pass runs (PR #92 review, P2, found the earlier name claimed otherwise). What the
+	 * INVARIANT PREDICATES were actually evaluated on is observed at the predicate sites instead —
+	 * `WallFirstTopologyEvaluation` — and that is what the DETERMINISTIC clause is asserted against.
+	 */
+	candidates: { walls: number; wallPairs: number; junctionPairs: number };
 };
 
 /**
@@ -1286,12 +1293,26 @@ export type WallFirstArchitectureVerdictScope = {
 	readonly stats: WallFirstArchitectureVerdictScopeStats;
 };
 
-/** The identity a gesture's target keeps across moves; a change re-initializes the scope. */
+/**
+ * The identity a gesture's target keeps across moves; a change re-initializes the scope.
+ *
+ * THE FIELDS ARE A TUPLE, NEVER A DELIMITER JOIN (PR #92 review, P2). Layout IDs are free-form —
+ * `/^[A-Za-z0-9][A-Za-z0-9._:-]*$/` admits `:` — so joining them with a delimiter is ambiguous:
+ * `(wall "A:B", knot "C")` and `(wall "A", knot "B:C")` both encoded as
+ * `curve-control-move:A:B:C`. Two different targets sharing one identity means a target CHANGE can
+ * reuse the previous target's initialization, and then a candidate the canonical gate refuses is
+ * reported `pending` — an INV-1 violation. `JSON.stringify` of the field tuple keeps the components
+ * separable whatever they contain and stays a plain string, so the comparison is unchanged. */
 function architectureIntentTargetIdentity(intent: WallFirstArchitectureProposalIntent): string {
-	if (intent.kind === 'junction-move') return `junction-move:${intent.junctionId}`;
-	if (intent.kind === 'wall-move') return `wall-move:${intent.wallId}`;
-	if (intent.kind === 'wall-bend') return `wall-bend:${intent.wallId}:${intent.distance}`;
-	return `curve-control-move:${intent.wallId}:${intent.knotId}`;
+	if (intent.kind === 'junction-move') return targetIdentity(['junction-move', intent.junctionId]);
+	if (intent.kind === 'wall-move') return targetIdentity(['wall-move', intent.wallId]);
+	if (intent.kind === 'wall-bend') return targetIdentity(['wall-bend', intent.wallId, String(intent.distance)]);
+	return targetIdentity(['curve-control-move', intent.wallId, intent.knotId]);
+}
+
+/** An INJECTIVE encoding of one target's fields: `JSON.stringify` escapes the components apart. */
+function targetIdentity(fields: readonly string[]): string {
+	return JSON.stringify(fields);
 }
 
 export function createWallFirstArchitectureVerdictScope(
@@ -1304,7 +1325,7 @@ export function createWallFirstArchitectureVerdictScope(
 		initializations: 0,
 		scoped: 0,
 		canonical: 0,
-		affected: { walls: 0, wallPairs: 0, junctionPairs: 0 }
+		candidates: { walls: 0, wallPairs: 0, junctionPairs: 0 }
 	};
 	return {
 		verdict(document, intent, sampling) {
@@ -1333,9 +1354,9 @@ export function createWallFirstArchitectureVerdictScope(
 				return undefined;
 			}
 			stats.scoped += 1;
-			stats.affected.walls += prepared.extent.wallIds.length;
-			stats.affected.wallPairs += prepared.extent.wallPairs.length;
-			stats.affected.junctionPairs += prepared.extent.junctionPairs.length;
+			stats.candidates.walls += prepared.extent.wallIds.length;
+			stats.candidates.wallPairs += prepared.extent.wallPairs.length;
+			stats.candidates.junctionPairs += prepared.extent.junctionPairs.length;
 			const failure = validateWallFirstArchitectureAffectedCandidate(
 				candidate,
 				prepared.extent,
@@ -2132,6 +2153,50 @@ type TopologyPassSubject = {
 	evaluateRooms: boolean;
 };
 
+/**
+ * P23B.7 S4 correction (PR #92 review, P2) — THE INVARIANT PREDICATES a pass actually EVALUATED.
+ *
+ * The verdict scope's `candidates` counts are summed from a move's affected extent BEFORE the pass
+ * runs, so they cannot show that the pass stayed inside it: the review's mutation — discarding the
+ * pass's `subject` and evaluating the whole document — left every assertion green, because nothing
+ * counted what the predicates were actually asked. This observer is called AT each predicate site,
+ * immediately where a pass substitutes a subject into a predicate, so a test can assert the
+ * evaluated set directly. Unset is zero behavior change; never set in production.
+ */
+export type WallFirstTopologyEvaluation = {
+	stage:
+		| 'junction-coincidence'
+		| 'zero-length-wall'
+		| 'wall-chord'
+		| 'wall-self-crossing'
+		| 'wall-pair-crossing';
+	/** The subjects that predicate was evaluated on: one id, or a pair in gate order. */
+	ids: readonly string[];
+};
+let topologyEvaluationObserverForTest: ((evaluation: WallFirstTopologyEvaluation) => void) | undefined;
+export function setWallFirstTopologyEvaluationObserverForTest(
+	observer: ((evaluation: WallFirstTopologyEvaluation) => void) | undefined
+): void {
+	topologyEvaluationObserverForTest = observer;
+}
+export function clearWallFirstTopologyEvaluationObserverForTest(): void {
+	topologyEvaluationObserverForTest = undefined;
+}
+
+/** Report one predicate substitution; never allowed to change the gate's own behaviour. */
+function observeTopologyEvaluation(
+	stage: WallFirstTopologyEvaluation['stage'],
+	ids: readonly string[]
+): void {
+	const observer = topologyEvaluationObserverForTest;
+	if (!observer) return;
+	try {
+		observer({ stage, ids });
+	} catch {
+		// A test observer must never break the topology gate.
+	}
+}
+
 export function validateWallFirstTopology(
 	document: LayoutDocumentWallFirst,
 	options: WallFirstTopologyOptions = {}
@@ -2175,6 +2240,7 @@ function validateWallFirstTopologyPass(
 	};
 	if (subject) {
 		for (const [firstId, secondId] of subject.junctionPairs) {
+			observeTopologyEvaluation('junction-coincidence', [firstId, secondId]);
 			const failure = coincidenceFailure(firstId, secondId);
 			if (failure) return failure;
 		}
@@ -2187,6 +2253,10 @@ function validateWallFirstTopologyPass(
 				) {
 					continue;
 				}
+				observeTopologyEvaluation('junction-coincidence', [
+					document.junctions[first]!.id,
+					document.junctions[second]!.id
+				]);
 				const failure = coincidenceFailure(document.junctions[first]!.id, document.junctions[second]!.id);
 				if (failure) return failure;
 			}
@@ -2205,6 +2275,7 @@ function validateWallFirstTopologyPass(
 		? document.walls.filter((wall) => subject.wallIds.includes(wall.id))
 		: document.walls;
 	for (const wall of lengthCandidates) {
+		observeTopologyEvaluation('zero-length-wall', [wall.id]);
 		if (wallSegments.has(wall.id)) continue;
 		return {
 			path: `walls.${wall.id}`,
@@ -2252,6 +2323,7 @@ function validateWallFirstTopologyPass(
 	};
 	if (subject) {
 		for (const [firstId, secondId] of subject.wallPairs) {
+			observeTopologyEvaluation('wall-chord', [firstId, secondId]);
 			const failure = chordFailure(firstId, secondId);
 			if (failure) return failure;
 		}
@@ -2261,6 +2333,7 @@ function validateWallFirstTopologyPass(
 				const a = walls[first]!;
 				const b = walls[second]!;
 				if (keyByWallId.get(a.id) !== keyByWallId.get(b.id)) continue;
+				observeTopologyEvaluation('wall-chord', [a.id, b.id]);
 				const failure = chordFailure(a.id, b.id);
 				if (failure) return failure;
 			}
@@ -2528,6 +2601,7 @@ export function detectWallCurveTopologyCrossings(
 		: document.walls;
 	for (const wall of selfCandidates) {
 		if (wall.centerline.kind === 'line') continue;
+		observeTopologyEvaluation('wall-self-crossing', [wall.id]);
 		const sampled = sampledWalls.get(wall.id);
 		if (sampled && sampledWallSelfIntersects(sampled)) {
 			return { kind: 'self', wallId: wall.id };
@@ -2552,6 +2626,7 @@ export function detectWallCurveTopologyCrossings(
 			if (!sampledA || !sampledB) continue;
 			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
 			const shared = sharedJunctionIds(a, b)[0];
+			observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 			return shared
 				? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }
@@ -2576,6 +2651,7 @@ export function detectWallCurveTopologyCrossings(
 			// exhaustive behavior with only this gate absent. Never set in production.
 			if (!disableExtentPruneForTest && !sampledWallExtentsOverlap(sampledA, sampledB)) continue;
 			const shared = sharedJunctionIds(a, b)[0];
+			observeTopologyEvaluation('wall-pair-crossing', [a.id, b.id]);
 			if (!sampledWallsCross(sampledA, sampledB, shared)) continue;
 			return shared
 				? { kind: 'pair', wallIds: [a.id, b.id], sharedJunctionId: shared }

@@ -72,9 +72,20 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        1 skipped / 4,908 passed | 1 skipped · test:arch 23 files / 254 tests · test:perf 8 passed |
        1 skipped / 62 passed | 1 skipped (ratchet reproduced, no re-record) · root build PASS.
        S7 record §5.1 carries the fix and the gate list.
-       NEXT: the PR for owner review — OPEN as PR #92 from `P23B.7` (the S7 follow-up fix is inside it
-       as its own revertible commit); NOT merged, NOT marked accepted. Slice review, acceptance and
-       `slice-closeout` stay owner actions.
+       PR #92 REVIEW (2026-09-25): RETURNED FOR CORRECTION with two P2 findings, BOTH FIXED in one
+       revertible commit. (1) The gesture TARGET IDENTITY was a `:`-joined string while Layout IDs may
+       contain `:` — two different targets could share one identity, so a target change could reuse the
+       previous initialization and report `pending` where the canonical gate refuses (`A:B`/`C` vs
+       `A`/`B:C`). It is now an injective field TUPLE; the reviewer's collision case is a regression
+       that FAILS under the old encoding. (2) The DETERMINISTIC clause was asserted against candidate
+       counts summed BEFORE the pass ran, so the reviewer's whole-document mutation passed — evaluations
+       are now OBSERVED AT THE PREDICATE SITES (`WallFirstTopologyEvaluation`), scoped moves must stay
+       inside their own extent by kind and evaluate strictly fewer subjects than the initialization,
+       and that mutation now FAILS. Counts are separately named `candidates`.
+       Record → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-pr92-correction-record.md.
+       NEXT: RE-REVIEW of PR #92 from `P23B.7` (OPEN; the S7 follow-up fix AND the correction are inside
+       it as their own revertible commits); NOT merged, NOT marked accepted. Slice review, acceptance
+       and `slice-closeout` stay owner actions.
        The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
@@ -206,6 +217,8 @@ P23B.7 S7 record (targeted commit-capture attribution) → ../roadmap/p23b-geome
 P23B.7 S7 probe (capture structure · payload accounting · cadence · the removed stream re-measured) → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts
 P23B.7 S7 follow-up record (the model-free capture: finding · safety reasoning · implementation · oracle · guard · limits) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md
 P23B.7 S7 follow-up guard (relative payload bound · source contract · self-tested no-reader scan) → apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts
+P23B.7 PR #92 correction record (injective target identity · predicate-site evaluation evidence · both mutation runs) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-pr92-correction-record.md
+P23B.7 PR #92 correction regressions (collision identity · evaluations inside the extent) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
 P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
@@ -223,6 +236,11 @@ P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product
 post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
+- P23B.7 was RETURNED FOR CORRECTION by the owner's PR #92 review (2026-09-25) with two P2 findings;
+  BOTH are FIXED on the branch in one revertible commit (injective target identity + predicate-site
+  evaluation evidence), each verified by mutation. Re-review, acceptance and merge stay owner actions.
+  The documented dispositions for the snapshot guard's limits and a bounded heap-retention follow-up
+  are unchanged and unstarted.
 - P23B.7 is RATIFIED and its implementation is AUTHORIZED on the dedicated `P23B.7` branch
   (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). S2, S3, S4, S6 and the targeted
   S7 are EXECUTED on that branch, and S7's bounded fix (the model-free capture) LANDED there as its own
