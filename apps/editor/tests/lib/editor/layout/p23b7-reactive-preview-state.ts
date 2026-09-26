@@ -8,11 +8,12 @@
  * strips and then compiles the actual production module with Svelte's client
  * compiler before loading it through Vite's module graph.
  *
- * This stays test-only: the generated module is temporary, the client runtime
+ * This stays test-only: the generated module is temporary and lives under the
+ * editor package's ignored `node_modules/.cache` directory, the client runtime
  * import remains outside `src/`, and no app code uses Svelte's private API.
  */
 import { randomUUID } from 'node:crypto';
-import { readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileModule } from 'svelte/compiler';
@@ -82,13 +83,19 @@ async function compileAndLoadClientPreviewModule(): Promise<ClientPreviewRuntime
 	const sourcePath = fileURLToPath(
 		new URL('../../../../src/lib/editor/layout/layout-preview-state.svelte.ts', import.meta.url)
 	);
-	// Keep the transient module beside the production source so its relative
-	// imports resolve exactly as they do in the client build.
+	const generatedDirectory = path.resolve(
+		path.dirname(fileURLToPath(import.meta.url)),
+		'../../../../node_modules/.cache/p23b-client'
+	);
 	const generatedPath = path.join(
-		path.dirname(sourcePath),
-		`.p23b7-client-preview-${randomUUID()}.ts`
+		generatedDirectory,
+		`.p23b7-client-preview-${process.pid}-${randomUUID()}.ts`
 	);
 	try {
+		await mkdir(generatedDirectory, { recursive: true });
+		await removeStaleGeneratedModules(generatedDirectory);
+		// Clean remnants from runs before the generator moved out of src/.
+		await removeStaleGeneratedModules(path.dirname(sourcePath));
 		const source = await readFile(sourcePath, 'utf8');
 		const javascript = ts.transpileModule(source, {
 			compilerOptions: {
@@ -96,7 +103,13 @@ async function compileAndLoadClientPreviewModule(): Promise<ClientPreviewRuntime
 				module: ts.ModuleKind.ESNext,
 				verbatimModuleSyntax: false
 			}
-		}).outputText;
+		}).outputText.replace(
+			/from (['"])\.\/([^'"]+)\1/g,
+			(_match, quote: string, specifier: string) => {
+				const absoluteImport = path.resolve(path.dirname(sourcePath), specifier);
+				return `from ${quote}${absoluteImport}${quote}`;
+			}
+		);
 		const clientCode = compileModule(javascript, {
 			filename: sourcePath,
 			generate: 'client'
@@ -108,5 +121,31 @@ async function compileAndLoadClientPreviewModule(): Promise<ClientPreviewRuntime
 		throw error;
 	} finally {
 		await unlink(generatedPath).catch(() => undefined);
+	}
+}
+
+async function removeStaleGeneratedModules(directory: string): Promise<void> {
+	const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+	await Promise.all(
+		entries
+			.filter(
+				(entry) =>
+					entry.isFile() &&
+					entry.name.startsWith('.p23b7-client-preview-') &&
+					entry.name.endsWith('.ts') &&
+					!generatedModuleProcessIsAlive(entry.name)
+			)
+			.map((entry) => unlink(path.join(directory, entry.name)).catch(() => undefined))
+	);
+}
+
+function generatedModuleProcessIsAlive(filename: string): boolean {
+	const processId = /^\.p23b7-client-preview-(\d+)-/.exec(filename)?.[1];
+	if (!processId) return false;
+	try {
+		process.kill(Number(processId), 0);
+		return true;
+	} catch (error) {
+		return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM';
 	}
 }
