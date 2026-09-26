@@ -1,14 +1,12 @@
 /**
- * P23B.7 S6 — the `$state` regression oracle for the commit-path mesh identity.
+ * P23B.7 S6 / P23B.6 S-R — the reactive commit-path mesh identity oracle.
  *
- * THE DEFECT. Every accepted edit built the full Wall-mesh set TWICE: once inside
- * `plan-apply` (keyed on the compile's own geometry object) and again inside
- * `commit-replace`'s restore, which is a cache MISS (measured p50 160-190 ms on
- * the committed 40-Wall fixtures). The cause is an IDENTITY disagreement: the
- * live preview is a Svelte `$state` graph, so the object a capture reads out of
- * `editorApp.preview.geometry` — and hands to `restoreLayoutPreviewSnapshot` — is
- * the proxy Svelte created for the compile's geometry, never the object the
- * install cached.
+ * THE DEFECT. Before S-R, every accepted edit built the full Wall-mesh set TWICE:
+ * once inside `plan-apply`, then again inside `commit-replace`'s restore. The
+ * outer Svelte `$state` graph deep-proxied compiled geometry, so capture handed
+ * restore an identity different from the one the install cached. S-R keeps
+ * geometry raw behind a reactive field signal, so install and capture naturally
+ * share the cache key.
  *
  * THE ORACLE. This test drives the PRODUCTION seams on a `$state`-backed preview
  * state (`p23b7-reactive-preview-state.ts`) and counts mesh builds on the interval
@@ -18,12 +16,12 @@
  * fixture initialization          WARM-UP, outside the count
  * beginLayoutTransaction()        the pointer-down bracket
  * the accepted edit's install     install → one build of the new compile
- * capture + history commit        restore → TWO builds before the fix, ONE after
+ * capture + history commit        restore → cache hit, still ONE total build
  * the between-action restore      counted SEPARATELY, must be ZERO (it already hit)
  * ```
  *
- * The between-action restore is deliberately NOT folded into the same interval:
- * it already hits today, so folding it in would hide the regression being fixed.
+ * The between-action restore is deliberately NOT folded into the same interval;
+ * it has its own zero-build assertion.
  *
  * WHY THE EXISTING PLAIN-STATE TEST IS NOT THIS GATE. `layout-transient-preview`
  * pins the cache's identity semantics on a plain object and observes the restore
@@ -33,6 +31,7 @@
  * destroys the identity the cache is keyed on.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { proxy } from 'svelte/internal/client';
 
 import { createEmptySceneDocument } from '$lib/content/scene';
 import { createEditorStore } from '$lib/editor/editor-store.svelte';
@@ -142,30 +141,41 @@ beforeEach(() => {
 	p2311ResetMeshIdentity();
 });
 
-describe('P23B.7 S6 — the preview state is a Svelte state graph, not a plain object', () => {
-	it('hands the capture a proxied identity, exactly as the editor does', () => {
+describe('P23B.7 S6 — compiled values stay raw inside the reactive preview state', () => {
+	it('keeps the preview reactive while capture preserves the raw geometry identity', () => {
 		const { preview } = harness();
 		// The harness precondition, asserted rather than assumed: an SSR-compiled
 		// `$state(...)` would NOT be a proxy, and this oracle would be vacuous.
 		expect(isSvelteStateProxy(preview), 'the preview state is a $state proxy').toBe(true);
-		expect(isSvelteStateProxy(preview.geometry), 'the geometry read back is a proxy').toBe(true);
+		expect(isSvelteStateProxy(preview.geometry), 'compiled geometry stays raw').toBe(false);
+		expect(isSvelteStateProxy(preview.model), 'the projected model stays raw').toBe(false);
 		expect(captureLayoutPreviewSnapshot(preview).geometry, 'a capture keeps that identity').toBe(
 			preview.geometry
 		);
 	});
 
-	it('records the identity divergence between the install and the capture (the pin, in-process)', () => {
-		const input = acceptedEdit(harness());
-		const records = p2311MeshIdentityRecords();
-		const install = records.find((record) => record.phase === 'install-bundle' || record.phase === 'install');
-		const capture = records.find((record) => record.phase === 'capture');
+	it('records the same installed and captured identity (the pin, in-process)', () => {
+		const input = harness();
+		const mark = p2311MeshIdentityRecords().length;
+		acceptedEdit(input);
+		const records = p2311MeshIdentityRecords().slice(mark);
+		const install = [...records].reverse().find((record) => record.phase === 'install-bundle' || record.phase === 'install');
+		const capture = [...records].reverse().find((record) => record.phase === 'capture');
 		expect(install?.geometryId, 'the install records the identity it cached').not.toBeNull();
 		expect(capture?.geometryId, 'the capture records the identity it hands the restore').not.toBeNull();
-		// The pin's own fact: the commit hands the restore an identity the install
-		// never cached. The FIX is what makes the cache agree with it — it must never
-		// make these two ids equal, which would be a different (and wrong) change.
-		expect(capture!.geometryId).not.toBe(install!.geometryId);
-		void input;
+		expect(capture!.geometryId, 'capture hands restore the installed raw geometry').toBe(
+			install!.geometryId
+		);
+		expect(capture!.sameAsInstall).toBe(true);
+	});
+
+	it('rebuilds if a caller supplies a proxied geometry identity', () => {
+		const { preview } = harness();
+		const snapshot = captureLayoutPreviewSnapshot(preview);
+		const forcedProxy = proxy(snapshot.geometry);
+		const before = buildMeasures();
+		restoreLayoutPreviewSnapshot(preview, { ...snapshot, geometry: forcedProxy });
+		expect(buildMeasures() - before, 'a proxy identity cannot reuse the raw-keyed meshes').toBe(1);
 	});
 });
 
@@ -194,9 +204,9 @@ describe('P23B.7 S6 — one mesh build per accepted edit, zero on the between-ac
 		expect(hits[0]?.geometryId, 'the hit is the identity the restore handed over').toBe(
 			restore.geometryId
 		);
-		// The identity disagreement the pin found is UNCHANGED by the fix: the fix
-		// makes the cache agree with the identity, never the identity with the cache.
-		expect(capture.sameAsInstall, 'the capture still reads a different identity').toBe(false);
+		// S-R keeps geometry raw at the reactive field boundary, so capture and
+		// install now naturally hand the same identity to the cache.
+		expect(capture.sameAsInstall, 'capture reads the installed geometry identity').toBe(true);
 
 		// SEPARATELY COUNTED: the between-action restore, which already hits today.
 		const settled = buildMeasures();

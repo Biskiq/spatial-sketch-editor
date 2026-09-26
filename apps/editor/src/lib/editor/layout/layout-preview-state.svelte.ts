@@ -641,24 +641,14 @@ const derivedWallMeshes = new WeakMap<
 >();
 
 /**
- * P23B.7 S6 — the identity a LIVE state hands back for an installed compile.
+ * P23B.7 S6 — compatibility mapping for a live state that proxies geometry.
  *
- * A compile always produces a new geometry, so keying the mesh cache on geometry
- * **object identity** is what makes an entry impossible to read for a different
- * document. The live preview state, however, is a Svelte `$state` graph
- * (`EditorApp.svelte`), so the object a capture reads out of
- * `state.geometry` — and hands to `restoreLayoutPreviewSnapshot` — is the PROXY
- * Svelte created for that compile's geometry, never the compile's own object.
- * The install cached the meshes under the compile object and the restore asked
- * for them under the proxy, which missed: on every accepted edit the full
- * Wall-mesh set was built TWICE, the second time inside `commit-replace`'s
- * restore (measured p50 160-190 ms on the committed 40-Wall fixtures).
- *
- * This records the identity a live state reads back as, so both names resolve to
- * the ONE cache entry the compile owns. It is an equivalence of WORK, never of
- * content: a proxy reads that same geometry, so the entry a translated key
- * reaches is the entry its own compile built — nothing is rebuilt, nothing is
- * looked up across documents, and the cache stays keyed by the compile.
+ * Before S-R, the outer `$state` graph deep-proxied `state.geometry`. A capture
+ * then handed restore a different identity from the one the install cached,
+ * causing a second mesh build on every accepted edit. S-R keeps this mapping as
+ * a fallback for proxying state adapters, while production preview state exposes
+ * geometry through a `$state.raw` field signal and normally needs no mapping.
+ * Cache entries remain keyed to the compile's geometry object in either case.
  */
 const wallMeshIdentities = new WeakMap<object, object>();
 
@@ -668,12 +658,9 @@ function wallMeshCacheKey(geometry: CompiledLayoutGeometry): CompiledLayoutGeome
 }
 
 /**
- * Write a compiled geometry onto the state and record the identity the state
- * reads back as (the same proxy every later read, capture and restore sees).
- *
- * Every writer of `state.geometry` goes through this, so no installed compile can
- * be cached under a name a later restore does not ask for. On a plain state the
- * read is the object itself and there is nothing to record.
+ * Write a compiled geometry onto the state and retain the S6 compatibility
+ * mapping if an adapter reads it back through a proxy. The S-R production
+ * accessors preserve the exact raw identity, so this mapping is dormant there.
  */
 function installWallGeometry(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
 	state.geometry = geometry;
@@ -704,8 +691,8 @@ function resolveWallMeshes(geometry: CompiledLayoutGeometry): {
 		return cached;
 	}
 	p2311ObserveMeshIdentity('prebuild-miss', geometry);
-	// The key's own object, so a proxied read never pays proxy traversal for a
-	// build that reads the identical values.
+	// Build from the cache key itself, so the values match the object whose
+	// identity owns this entry even when a compatibility adapter supplied a proxy.
 	const built = p2311Measure('mesh-prebuild', () => buildWallMeshesByRoom(key));
 	derivedWallMeshes.set(key, built);
 	return built;
@@ -2641,11 +2628,15 @@ function createState(
 	);
 	const baselineLayoutJson = authoredLayoutJson(bundle.project.layout);
 	const baselineKind: LayoutBaselineKind = source === 'empty' ? 'blank' : 'imported';
-	return {
+	// P23B.6 S-R: these are derived, wholesale-replaced generations. Keep
+	// reactivity at the field, while the compiled objects themselves stay raw.
+	// The accessors below are not deep-proxied by the outer `$state` preview
+	// object; their reads/writes go through these `$state.raw` cells instead.
+	let model = $state.raw(bundle.model);
+	let geometry = $state.raw(bundle.geometry);
+	const state: Omit<LayoutPreviewState, 'model' | 'geometry'> = {
 		source,
 		project: bundle.project,
-		model: bundle.model,
-		geometry: bundle.geometry,
 		wallMeshesByRoom: bundle.wallMeshesByRoom,
 		wallMeshesByWall: bundle.wallMeshesByWall,
 		layout3dPickIndexByRoom: bundle.layout3dPickIndexByRoom,
@@ -2663,6 +2654,21 @@ function createState(
 			bundle.project.layout as unknown as LayoutDocumentWallFirst
 		)
 	};
+	Object.defineProperties(state, {
+		model: {
+			enumerable: true,
+			configurable: true,
+			get: () => model,
+			set: (next: LayoutPreviewModel) => { model = next; }
+		},
+		geometry: {
+			enumerable: true,
+			configurable: true,
+			get: () => geometry,
+			set: (next: CompiledLayoutGeometry) => { geometry = next; }
+		}
+	});
+	return state as LayoutPreviewState;
 }
 
 function cloneLayout(layout: Project['layout']): Project['layout'] {
@@ -2771,9 +2777,8 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
  * The history/undo payload: the committed document, the compiled geometry it
  * renders from, the issues that belong to that geometry, and the status scalars
  * a restore has to put back. Everything except `geometry` is deep-cloned by
- * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the state's own
- * object by reference, and the wall-mesh caches are derived, so they are never
- * captured.
+ * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the raw, field-reactive
+ * reference by S-R, and the wall-mesh caches are derived, so they are never captured.
  *
  * The derived preview model is deliberately NOT a member. It is a pure
  * projection of `geometry` (see `projectLayoutPreviewModel`) and `restore`
@@ -2821,13 +2826,8 @@ export function restoreLayoutPreviewSnapshot(state: LayoutPreviewState, snapshot
 }
 
 function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snapshot: LayoutPreviewSnapshot): void {
-	// The remaining cost of a restore is the **reactive write path itself**: on a
-	// `$state` preview graph this block measures ~7 ms p50 at 50 Walls (1.3 ms at
-	// 3 Rooms / 12 Walls), while the identical restore against a plain graph
-	// costs 0.07 ms. `state.geometry` is the whole of it — re-assigning a geometry
-	// the reactive graph has already read is what the proxy pays for, and it is
-	// reactive bookkeeping, not Bend work. Nothing here changes it: the writes are
-	// the restore's contract (see the `baseline-restore` investigation).
+	// Assign complete derived generations through their field signals. This
+	// invalidates consumers without recursively proxying compiled geometry/model.
 	p2311Measure('restore-reactive-write', () => {
 		state.source = snapshot.source;
 		state.project = p2311Measure('restore-project-clone', () => cloneJson(snapshot.project));

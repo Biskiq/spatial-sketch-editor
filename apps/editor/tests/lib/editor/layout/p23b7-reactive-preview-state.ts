@@ -1,28 +1,24 @@
 /**
- * P23B.7 S6 — a test harness that gives a test the SAME preview state the editor
- * runs on: a Svelte `$state` graph.
+ * P23B.7 S6 / P23B.6 S-R — a test harness that gives a test the same outer
+ * preview `$state` graph the editor runs on, including S-R's raw geometry/model
+ * field accessors.
  *
  * WHY THIS EXISTS. `EditorApp.svelte` holds the preview as
- * `$state(createEmptyWallFirstLayoutPreviewState())`, so every read of
- * `preview.geometry` in the running editor returns the proxy Svelte's client
- * runtime created for the compiled geometry — a DIFFERENT object identity from
- * the compile's own. `createEmptyLayoutPreviewState()` itself returns a plain
- * object, so an ordinary unit fixture runs the identical code on a raw graph and
- * takes the other branch of the mesh cache. That divergence is exactly what the
- * P23B measurement-only step pinned in the browser (install id 52 `proxy=NO`,
- * capture/restore id 53 `proxy=YES`), and a plain-object harness cannot
- * reproduce it — it has no proxy to disagree about.
+ * `$state(createEmptyWallFirstLayoutPreviewState())`. Ordinary Node tests use
+ * SSR transforms, where `$state(...)` collapses to the raw object and cannot
+ * exercise the client proxy boundary. Wrapping the preview root with the client
+ * runtime recreates that boundary: the root is a proxy, while S-R's accessor
+ * fields keep compiled geometry and its projected model raw. This proves that
+ * consumers retain reactivity without changing cache keys.
  *
  * WHY IT CALLS THE CLIENT RUNTIME DIRECTLY. Vitest runs this suite with
  * `environment: 'node'`, whose transform mode is SSR, so `vite-plugin-svelte`
  * compiles `.svelte.ts` modules with `generate: 'server'` and `$state(x)`
  * collapses to the raw value — a `$state(...)` harness built the editor's way
- * silently degrades to a plain state here and cannot fail on a proxy-only defect
- * (the measurement step hit exactly this and recorded it as `notProvedHere`).
- * `$.proxy(x)` is the function a CLIENT compile emits for `$state(x)` in both
- * components and `.svelte.ts` modules (verified against Svelte 5.56.4's
- * `compileModule`/`compile` output), so wrapping the state with it is the
- * identical construction, not an approximation of it.
+ * silently degrades to a plain state here. `$.proxy(x)` is the function a CLIENT
+ * compile emits for a plain-object `$state(x)` root (verified against Svelte
+ * 5.56.4's `compileModule`/`compile` output), so this recreates that root
+ * construction, not an approximation of it.
  *
  * `svelte/internal/client` is private API, which is why this file is a plain
  * `.ts` test helper (the Svelte compiler rejects the import inside any module it
