@@ -8,6 +8,9 @@
  * counts. It is deliberately not a test and writes no baseline or ratchet.
  */
 import { arch, cpus, platform, release, totalmem } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DEV as SVELTE_DEV } from 'esm-env';
 import { proxy } from 'svelte/internal/client';
 import { MeshBasicMaterial } from 'three';
@@ -25,6 +28,7 @@ import {
 } from '@portfolio/layout-core';
 import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
 import { timeOp } from '$lib/bench/bench-harness';
+import { s1DeepEqual } from './p23b6-comparator-strategies';
 import { withPlanAttentionSceneInk } from '$lib/editor/layout/plan-attention';
 import { createPlanSalienceMemory, resolvePlanSalience } from '$lib/editor/layout/plan-salience';
 import {
@@ -37,6 +41,13 @@ import type { PlanPolygonPrimitive } from '$lib/layout/plan-render-model';
 
 const WARMUP = 5;
 const SAMPLES = 15;
+const editorRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const repositoryRoot = path.resolve(editorRoot, '../..');
+const codeHead =
+	process.env.GIT_SHA ??
+	execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot, encoding: 'utf8' }).trim();
+const workingTreeDirty =
+	execFileSync('git', ['status', '--porcelain'], { cwd: repositoryRoot, encoding: 'utf8' }).trim().length > 0;
 const BUILDER_SIGNATURE = STANDALONE_WALL_MESH_BUILDER_SIGNATURE;
 const VIEW = {
 	center: [40, 24] as [number, number],
@@ -66,20 +77,6 @@ function countNodes(value: unknown, seen = new Set<object>()): number {
 	return 1 + Object.values(value).reduce((sum, child) => sum + countNodes(child, seen), 0);
 }
 
-function deepEqual(left: unknown, right: unknown): boolean {
-	if (Object.is(left, right)) return true;
-	if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false;
-	if (Array.isArray(left) !== Array.isArray(right)) return false;
-	const leftKeys = Object.keys(left);
-	const rightKeys = Object.keys(right);
-	if (leftKeys.length !== rightKeys.length) return false;
-	for (const key of leftKeys) {
-		if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
-		if (!deepEqual((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key])) return false;
-	}
-	return true;
-}
-
 function wallInputMap(geometry: CompiledLayoutGeometry) {
 	const endsByWall = legJoinsByWall(geometry.junctions);
 	const elevations = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation] as const));
@@ -97,7 +94,7 @@ function compareGeneration(reference: CompiledLayoutGeometry, candidate: Compile
 	const equalIds: string[] = [];
 	for (const [wallId, candidateInput] of candidateInputs) {
 		const referenceInput = referenceInputs.get(wallId);
-		if (referenceInput && deepEqual(referenceInput, candidateInput)) equalIds.push(wallId);
+		if (referenceInput && s1DeepEqual(referenceInput, candidateInput)) equalIds.push(wallId);
 	}
 	return { equalIds, candidateWallCount: candidate.walls.length };
 }
@@ -199,7 +196,9 @@ function fixtureDocs(): Array<{ id: string; document: LayoutDocumentWallFirst }>
 const report = {
 	protocol: 'P23B.6 S1a one-off; advisory node timing; no timing threshold; no baseline or ratchet access',
 	provenance: {
-		commitSha: process.env.GIT_SHA ?? '36dad82197d83c5f092ee184c451128304315aa0',
+		commitSha: codeHead,
+		workingTreeDirty,
+		workingTreeChangesIncluded: workingTreeDirty,
 		date: new Date().toISOString(),
 		node: process.version,
 		platform: `${platform()} ${release()} ${arch()}`,
