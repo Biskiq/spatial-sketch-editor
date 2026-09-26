@@ -27,14 +27,17 @@ import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$l
 import { timeOp } from '$lib/bench/bench-harness';
 import { withPlanAttentionSceneInk } from '$lib/editor/layout/plan-attention';
 import { createPlanSalienceMemory, resolvePlanSalience } from '$lib/editor/layout/plan-salience';
-import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
+import {
+	buildStandaloneWallMesh,
+	STANDALONE_WALL_MESH_BUILDER_SIGNATURE
+} from '$lib/layout/wall-mesh-builder';
 import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
 import type { PlanPolygonPrimitive } from '$lib/layout/plan-render-model';
 
 const WARMUP = 5;
 const SAMPLES = 15;
-const BUILDER_SIGNATURE = 'buildStandaloneWallMesh(v1:whole-wall,floor-elevation,resolved-ends)';
+const BUILDER_SIGNATURE = STANDALONE_WALL_MESH_BUILDER_SIGNATURE;
 const VIEW = {
 	center: [40, 24] as [number, number],
 	width: 1280,
