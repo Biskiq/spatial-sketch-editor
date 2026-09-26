@@ -70,11 +70,18 @@ The dominant share of the residual clones a DERIVED PROJECTION that no productio
 restore re-projects it and the transient guard never looks at it. The bounded next action is to
 stop cloning `model` in the capture (keep `project`, `geometry` by reference, the scalars and
 `issues`), which removes ~99.4 % of the payload and the proxy-multiplied JSON round-trip with it.
-WHY IT IS NOT DONE IN P23B.7: the capture is the history/undo snapshot's payload, its contract is
-pinned by the round-trip suites (and one test reads `snapshot.model`), and the owner's §0.8.3 ruling
-authorizes a MEASUREMENT at this residual, not a commit-path change. It belongs to a follow-up with
+WHY IT IS NOT DONE IN P23B.7 (as written at S7): the capture is the history/undo snapshot's payload, its
+contract is pinned by the round-trip suites (and one test reads `snapshot.model`), and the owner's §0.8.3
+ruling authorizes a MEASUREMENT at this residual, not a commit-path change. It belongs to a follow-up with
 its own oracle (the commit-capture identity/round-trip contract), most naturally beside
 P23B.5-family cache work rather than inside S4's topology mechanism.
+
+REVIEW-TIME EXTENSION (owner-directed, 2026-09-25, while the PR is under review — plan §0.9): the bounded
+next action above WAS EXECUTED on this branch, as its own revertible commit, with its own oracle and a
+permanent guard. §1–§2 of this record stay the PRE-fix measurement they are and are not amended; the
+follow-up's finding, reasoning, implementation, guard and limits are carried by its own record →
+`2026-09-25-s7-followup-model-free-capture-record.md`. The probe named in §2 now pins the POST-fix shape
+and re-measures the removed stream by construction; its pre-fix accounting stays frozen in §2 above.
 ```
 
 ## 4. Moved and unmoved costs (slice-wide, honest)

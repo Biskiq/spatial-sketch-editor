@@ -50,10 +50,19 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        production reader installing it (restore re-projects the model from the shared geometry; the
        transient guard reads only project.layout). The same clone costs p50 ~20 ms plain vs ~133 ms
        through the editor-style $state proxy (node, advisory) — the multiplier behind the browser's
-       107–149 ms. UNADDRESSED by ruling: dropping the model clone needs the snapshot contract's own
-       oracle, outside S4's mechanism. S5 is NOT taken (the measurement names the capture clone, not
-       hit-test/snap). Record →
-       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md.
+       107–149 ms. THE FIX LANDED (owner-directed at review time, 2026-09-25 — plan §0.9) as its OWN
+       revertible commit: the capture no longer clones the derived `model` AT ALL (`LayoutPreviewSnapshot`
+       no longer declares it; the restore already re-projected it from the shared geometry). Same-session
+       node A/B: the removed clone measures p50 114.23 ms through the editor-style proxy against p50
+       1.41 ms for the shipped capture; the payload is 22,022 B / 643 objects against the removed
+       3,412,257 B / 39,106. Its oracle (the capture/restore content contract) and a permanent guard
+       (apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts: relative payload bound +
+       source contract + self-tested no-reader scan) landed with it. Nothing else moved: no budget metric,
+       `g3-baseline.json` unread/unwritten, the ratchet untouched, P23B.6/P23B.8 still unauthorized — and
+       the POST-fix BROWSER number is NOT measured (107–149 ms stays S1's/S6's pre-fix evidence).
+       S5 is NOT taken (the measurement names the capture clone, not hit-test/snap). Records →
+       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md ·
+       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md.
        PR GATE (2026-09-25, at the branch head): the full-suite re-run found the S7 probe's OWN
        advisory proxy loop exceeding vitest's default 5000 ms test timeout beside 346 files — no
        deterministic assertion failed and the S7 findings are unchanged. The loop is now
@@ -63,8 +72,9 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        1 skipped / 4,908 passed | 1 skipped · test:arch 23 files / 254 tests · test:perf 8 passed |
        1 skipped / 62 passed | 1 skipped (ratchet reproduced, no re-record) · root build PASS.
        S7 record §5.1 carries the fix and the gate list.
-       NEXT: the PR for owner review (opened from `P23B.7`; NOT merged, NOT marked accepted); slice
-       review, acceptance and `slice-closeout` stay owner actions.
+       NEXT: the PR for owner review — OPEN as PR #92 from `P23B.7` (the S7 follow-up fix is inside it
+       as its own revertible commit); NOT merged, NOT marked accepted. Slice review, acceptance and
+       `slice-closeout` stay owner actions.
        The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
@@ -193,7 +203,9 @@ P23B.7 S6 LIVE capture artifact (SHA-256 `95790b00…`) → ../roadmap/p23b-geom
 P23B.7 S4 record (verdict scope + OR-3 differential + four-cell matrix + deterministic clauses) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md
 P23B.7 S4 proofs (OR-3/OR-8/deterministic · viewport wiring source contract · sample/verdict matrix) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts · apps/editor/tests/lib/layout/p23b7-verdict-scope-wiring.test.ts · apps/editor/tests/lib/bench/p23b7-sample-verdict-matrix.test.ts
 P23B.7 S7 record (targeted commit-capture attribution) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md
-P23B.7 S7 probe (capture structure · payload accounting · cadence · proxy factor) → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts
+P23B.7 S7 probe (capture structure · payload accounting · cadence · the removed stream re-measured) → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts
+P23B.7 S7 follow-up record (the model-free capture: finding · safety reasoning · implementation · oracle · guard · limits) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md
+P23B.7 S7 follow-up guard (relative payload bound · source contract · self-tested no-reader scan) → apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
 P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
@@ -212,8 +224,10 @@ post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
 - P23B.7 is RATIFIED and its implementation is AUTHORIZED on the dedicated `P23B.7` branch
-  (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). S2, S3, S4 and S6 are EXECUTED on
-  that branch and S6 is MEASURED (S6's own capture ran BEFORE any topology change, on a clean tree at
+  (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). S2, S3, S4, S6 and the targeted
+  S7 are EXECUTED on that branch, and S7's bounded fix (the model-free capture) LANDED there as its own
+  revertible commit under the owner's review-time direction (plan §0.9). S6 is MEASURED (S6's own
+  capture ran BEFORE any topology change, on a clean tree at
   `d6f65426`); S3/S4 must not retroactively become a prerequisite of that capture. P23B.5 shipped and closed
   (PR #90; stub + anchor `75fbd8a0`, tag `closed/p23b.5`). No release-scope reuse claim and no
   sample-store re-ownership: the sample scope stays the gesture-scoped preflight owner only, its

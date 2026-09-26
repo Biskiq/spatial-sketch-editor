@@ -447,14 +447,25 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         (99.4 %; project 0.6 %) with NO production reader installing it (the restore re-projects the
         model from the shared geometry; the transient guard reads only `project.layout`). The same
         clone costs p50 ~20 ms on a plain state vs ~133 ms through the editor-style `$state` proxy
-        (node, advisory) — the multiplier behind the browser's 107–149 ms. UNADDRESSED by ruling:
-        the bounded next action (stop cloning `model` in the capture) needs the snapshot contract's
-        own oracle and is outside S4's topology mechanism. S5 is NOT taken — the measurement names
-        the capture clone, not hit-test/snap.
-        Record → ./p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md.
+        (node, advisory) — the multiplier behind the browser's 107–149 ms.
+        REVIEW-TIME FIX LANDED (owner-directed, 2026-09-25 — plan §0.9): the bounded next action the
+        attribution named was EXECUTED on this branch as its OWN revertible commit — the capture no
+        longer clones the derived `model` at all (`LayoutPreviewSnapshot` no longer declares it; the
+        restore already re-projected it from the shared `geometry`). Same-session node A/B: the removed
+        clone measures p50 114.23 ms through the editor-style proxy against p50 1.41 ms for the shipped
+        capture, and the payload is 22,022 B / 643 objects against the removed 3,412,257 B / 39,106.
+        Its own oracle (the capture/restore content contract) and a PERMANENT guard
+        (`p23b7-snapshot-payload-guard`: a RELATIVE payload bound, the source contract, and a
+        self-tested no-reader scan) landed with it. NOTHING ELSE MOVED: no budget metric,
+        `g3-baseline.json` unread/unwritten, the ratchet untouched, P23B.6/P23B.8 still unauthorized,
+        and the POST-fix browser number is NOT measured — 107–149 ms stays S1's/S6's pre-fix evidence.
+        S5 is NOT taken — the measurement names the capture clone, not hit-test/snap.
+        Records → ./p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md ·
+        ./p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md.
         Probe → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts.
-        NEXT: the PR for owner review. Slice review, acceptance and `slice-closeout` remain owner
-        actions after it.
+        Guard → apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts.
+        NEXT: the PR for owner review (OPEN — PR #92). Slice review, acceptance and `slice-closeout`
+        remain owner actions after it.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified

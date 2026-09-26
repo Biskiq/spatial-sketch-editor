@@ -2767,17 +2767,26 @@ function replaceState(target: LayoutPreviewState, next: LayoutPreviewState): voi
 	target.identityHighWater = next.identityHighWater;
 }
 
+/**
+ * The history/undo payload: the committed document, the compiled geometry it
+ * renders from, the issues that belong to that geometry, and the status scalars
+ * a restore has to put back. Everything except `geometry` is deep-cloned by
+ * `cloneJson` (the `$state`-proxy-safe clone); `geometry` is the state's own
+ * object by reference, and the wall-mesh caches are derived, so they are never
+ * captured.
+ *
+ * The derived preview model is deliberately NOT a member. It is a pure
+ * projection of `geometry` (see `projectLayoutPreviewModel`) and `restore`
+ * re-projects it from `geometry`, so a captured copy carries no information the
+ * snapshot does not already hold — while costing 3,412,257 of a 3,434,187-byte
+ * payload (99.4 %, 39,106 of 39,746 objects) on the accepted-edit path. P23B.7
+ * S7 attributed `commit-capture`'s 107–149 ms to exactly that clone; the payload
+ * is now document-sized, and a re-introduction is refused by
+ * `tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts`.
+ */
 export type LayoutPreviewSnapshot = {
 	source: LayoutPreviewState['source'];
 	project: LayoutPreviewState['project'];
-	/**
-	 * The captured preview model — the frozen record of what was on screen. It is
-	 * **not** what a restore installs: the model is a pure projection of
-	 * `geometry` (see `projectLayoutPreviewModel`), so `restore` re-projects it
-	 * from `geometry` instead of deep-cloning this copy. Both describe the same
-	 * state, which is what the capture/restore round-trip tests pin.
-	 */
-	model: LayoutPreviewState['model'];
 	geometry: LayoutPreviewState['geometry'];
 	issues: LayoutPreviewState['issues'];
 	bounds: LayoutPreviewState['bounds'];
@@ -2793,7 +2802,6 @@ export function captureLayoutPreviewSnapshot(state: LayoutPreviewState): LayoutP
 	return {
 		source: state.source,
 		project: cloneJson(state.project),
-		model: cloneJson(state.model),
 		geometry: state.geometry,
 		issues: cloneJson(state.issues),
 		lastMutationMessage: state.lastMutationMessage,
@@ -2825,7 +2833,8 @@ function restoreLayoutPreviewSnapshotUnmeasured(state: LayoutPreviewState, snaps
 		state.project = p2311Measure('restore-project-clone', () => cloneJson(snapshot.project));
 		// The preview model is a pure projection of the compiled geometry (the same
 		// one a fresh install performs), so restoring re-projects it instead of
-		// deep-cloning the captured copy — identical content, none of the JSON cost.
+		// restoring a captured copy — identical content, none of the JSON cost, and
+		// the snapshot itself carries no model at all (see `LayoutPreviewSnapshot`).
 		state.model = p2311Measure('restore-model-project', () => projectLayoutPreviewModel(snapshot.geometry));
 		installWallGeometry(state, snapshot.geometry);
 		// The snapshot's `issues` already includes mesh issues from capture time,
