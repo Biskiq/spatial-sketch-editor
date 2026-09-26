@@ -351,7 +351,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		return lerp(start, end, 0.5);
 	}
 
-	function firstRoomCenter(document_: LayoutDocumentWallFirst): Point {
+	function firstRoomMoveTarget(document_: LayoutDocumentWallFirst): Point {
 		const room = document_.rooms[0];
 		if (!room) throw new Error(`${document_.formatVersion}: fixture has no Room to move`);
 		const wallIds = new Set(room.boundary.map((edge) => edge.wallId));
@@ -363,9 +363,17 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		}
 		const points = document_.junctions.filter((junction) => junctionIds.has(junction.id)).map((junction) => junction.point);
 		if (points.length < 3) throw new Error(`Room ${room.id} has fewer than three boundary Junctions`);
+		const minX = Math.min(...points.map((point) => point[0]));
+		const maxX = Math.max(...points.map((point) => point[0]));
+		const minZ = Math.min(...points.map((point) => point[1]));
+		const maxZ = Math.max(...points.map((point) => point[1]));
+		// The arithmetic centroid sits under the room-label overlay in the matrix
+		// fixture, so its pointer resolves to selection instead of the filled Room.
+		// Use a stable off-centre interior target shared by the rectangular matrix
+		// cells and owner fixture.
 		return [
-			points.reduce((sum, point) => sum + point[0], 0) / points.length,
-			points.reduce((sum, point) => sum + point[1], 0) / points.length
+			minX + (maxX - minX) / 3,
+			minZ + ((maxZ - minZ) * 2) / 3
 		];
 	}
 
@@ -390,7 +398,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			dragTo: oneGridStepAlong(snapToGrid(grab), chordNormal(chordStart, chordEnd)),
 			authoringFrom: [...targets.authoringFrom],
 			authoringTo: [...targets.authoringTo],
-			roomCenter: firstRoomCenter(fixture.document),
+			roomCenter: firstRoomMoveTarget(fixture.document),
 			roomCreationFrom: [...targets.authoringFrom],
 			roomCreationTo: [targets.authoringFrom[0] + 4, targets.authoringFrom[1] + 2]
 		};
