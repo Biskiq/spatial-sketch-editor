@@ -1,0 +1,262 @@
+{
+  "protocol": "P23B.6 S3 net-benefit probe; advisory Node timings; no baseline or ratchet writes",
+  "provenance": {
+    "commitSha": "1b5a48b0",
+    "worktreeChangesIncluded": true,
+    "date": "2026-09-26T04:55:14.387Z",
+    "node": "v26.7.0",
+    "platform": "darwin 24.6.0 arm64",
+    "cpu": "Apple M2",
+    "cpuCount": 8,
+    "totalMemoryBytes": 17179869184,
+    "nodeEnv": "production",
+    "svelteRuntime": "production"
+  },
+  "configuration": {
+    "warmup": 5,
+    "samples": 15
+  },
+  "fixtures": [
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "actionClass": "single-wall-move-release",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 11.42395799999997,
+        "p50": 11.42395799999997,
+        "p95": 11.95470899999998
+      },
+      "buildMsForSkippedWalls": {
+        "value": 10.774875000000065,
+        "p50": 10.774875000000065,
+        "p95": 11.675666999999976
+      },
+      "comparatorPercentOfSkippedBuild": 106,
+      "fullPreparationMs": {
+        "value": 12.045249999999669,
+        "p50": 12.045249999999669,
+        "p95": 12.828750000000127
+      },
+      "preparationWithReuseMs": {
+        "value": 13.395375000000058,
+        "p50": 13.395375000000058,
+        "p95": 17.494916999999987
+      },
+      "netSavingsMs": -1.35,
+      "netSavingsPercent": -11.2
+    },
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "actionClass": "whole-room-move-bridge",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 10.747333000000253,
+        "p50": 10.747333000000253,
+        "p95": 11.637250000000222
+      },
+      "buildMsForSkippedWalls": {
+        "value": 10.415917000000263,
+        "p50": 10.415917000000263,
+        "p95": 10.650208999999904
+      },
+      "comparatorPercentOfSkippedBuild": 103.2,
+      "fullPreparationMs": {
+        "value": 12.237417000000278,
+        "p50": 12.237417000000278,
+        "p95": 14.177374999999756
+      },
+      "preparationWithReuseMs": {
+        "value": 12.181500000000142,
+        "p50": 12.181500000000142,
+        "p95": 15.4877919999999
+      },
+      "netSavingsMs": 0.056,
+      "netSavingsPercent": 0.5
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "actionClass": "single-wall-move-release",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 10.629916999999296,
+        "p50": 10.629916999999296,
+        "p95": 10.90466699999979
+      },
+      "buildMsForSkippedWalls": {
+        "value": 10.512291999999434,
+        "p50": 10.512291999999434,
+        "p95": 11.480540999999903
+      },
+      "comparatorPercentOfSkippedBuild": 101.1,
+      "fullPreparationMs": {
+        "value": 12.244834000000083,
+        "p50": 12.244834000000083,
+        "p95": 12.724957999999788
+      },
+      "preparationWithReuseMs": {
+        "value": 12.360999999999876,
+        "p50": 12.360999999999876,
+        "p95": 13.206124999999702
+      },
+      "netSavingsMs": -0.116,
+      "netSavingsPercent": -0.9
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 10.619416999999885,
+        "p50": 10.619416999999885,
+        "p95": 11.161583000000064
+      },
+      "buildMsForSkippedWalls": {
+        "value": 10.44170800000029,
+        "p50": 10.44170800000029,
+        "p95": 10.897292000000562
+      },
+      "comparatorPercentOfSkippedBuild": 101.7,
+      "fullPreparationMs": {
+        "value": 12.273791999999958,
+        "p50": 12.273791999999958,
+        "p95": 12.778083000000152
+      },
+      "preparationWithReuseMs": {
+        "value": 12.106541999999536,
+        "p50": 12.106541999999536,
+        "p95": 12.684124999999767
+      },
+      "netSavingsMs": 0.167,
+      "netSavingsPercent": 1.4
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "actionClass": "single-wall-move-release",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 37,
+      "builtWallMeshes": 3,
+      "comparatorMs": {
+        "value": 14.788666999999805,
+        "p50": 14.788666999999805,
+        "p95": 15.131416999999601
+      },
+      "buildMsForSkippedWalls": {
+        "value": 16.262249999999767,
+        "p50": 16.262249999999767,
+        "p95": 16.692833000000064
+      },
+      "comparatorPercentOfSkippedBuild": 90.9,
+      "fullPreparationMs": {
+        "value": 17.54283299999952,
+        "p50": 17.54283299999952,
+        "p95": 18.173875000000407
+      },
+      "preparationWithReuseMs": {
+        "value": 17.634667000000263,
+        "p50": 17.634667000000263,
+        "p95": 20.116500000000087
+      },
+      "netSavingsMs": -0.092,
+      "netSavingsPercent": -0.5
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 14.72137500000099,
+        "p50": 14.72137500000099,
+        "p95": 15.116249999999127
+      },
+      "buildMsForSkippedWalls": {
+        "value": 15.759792000000743,
+        "p50": 15.759792000000743,
+        "p95": 16.428250000000844
+      },
+      "comparatorPercentOfSkippedBuild": 93.4,
+      "fullPreparationMs": {
+        "value": 17.788500000000568,
+        "p50": 17.788500000000568,
+        "p95": 18.437417000001005
+      },
+      "preparationWithReuseMs": {
+        "value": 16.74712499999987,
+        "p50": 16.74712499999987,
+        "p95": 18.2706249999992
+      },
+      "netSavingsMs": 1.041,
+      "netSavingsPercent": 5.9
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "actionClass": "single-wall-move-release",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 37,
+      "builtWallMeshes": 3,
+      "comparatorMs": {
+        "value": 8.892749999999069,
+        "p50": 8.892749999999069,
+        "p95": 9.373333000001367
+      },
+      "buildMsForSkippedWalls": {
+        "value": 9.897082999999839,
+        "p50": 9.897082999999839,
+        "p95": 11.217916000001424
+      },
+      "comparatorPercentOfSkippedBuild": 89.9,
+      "fullPreparationMs": {
+        "value": 11.00195900000108,
+        "p50": 11.00195900000108,
+        "p95": 11.452417000000423
+      },
+      "preparationWithReuseMs": {
+        "value": 10.439833000000363,
+        "p50": 10.439833000000363,
+        "p95": 11.034083000000464
+      },
+      "netSavingsMs": 0.562,
+      "netSavingsPercent": 5.1
+    },
+    {
+      "fixtureId": "owner-40-curved-v1",
+      "actionClass": "whole-room-move-bridge",
+      "candidateWalls": 40,
+      "reusedWallMeshes": 36,
+      "builtWallMeshes": 4,
+      "comparatorMs": {
+        "value": 9.001125000000684,
+        "p50": 9.001125000000684,
+        "p95": 9.456125000000611
+      },
+      "buildMsForSkippedWalls": {
+        "value": 9.689750000001368,
+        "p50": 9.689750000001368,
+        "p95": 10.381999999999607
+      },
+      "comparatorPercentOfSkippedBuild": 92.9,
+      "fullPreparationMs": {
+        "value": 10.176708999999391,
+        "p50": 10.176708999999391,
+        "p95": 10.594583000000057
+      },
+      "preparationWithReuseMs": {
+        "value": 10.44970900000044,
+        "p50": 10.44970900000044,
+        "p95": 11.159750000000713
+      },
+      "netSavingsMs": -0.273,
+      "netSavingsPercent": -2.7
+    }
+  ],
+  "baselinePreparedWallMeshes": "reference generation prepared once before each fixture action"
+}
