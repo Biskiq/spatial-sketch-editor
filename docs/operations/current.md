@@ -1,349 +1,59 @@
 # Current
 
-PHASE: P23B
-CHILD: P23B.7-interaction — SHIPPED and closed 2026-09-25 (one PR for the slice: #92; owner REVIEWED
-       AND ACCEPTED the implementation with no remaining blocker after both P2 findings were fixed at
-       `ee0dbecd`; routine slice-closeout ran on the same branch and its commit stays inside PR #92 —
-       no new PR). The plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving
-       closed stubs at their own paths (accepted head `ee0dbecd`; tag `closed/p23b.7`, local only); the
-       S6 capture JSON stays LIVE (SHA-256 `95790b00…`). Merge method: squash (repo policy; branch
-       commits are not ancestors of `main` post-merge; recovery runs via `refs/pull/92/head`, recorded
-       in each stub).
-       NEXT STEP: P23B.6-rendering — PLANNED and RECONCILED 2026-09-25 on branch `P23B.6` against
-       `main` 6ad23856 and the current P26 authorities (plan:
-       ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/
-       2026-09-22-P23B.6-rendering-optimization.md). RATIFIED by the owner; implementation
-       AUTHORIZED on branch `P23B.6` — start at plan §15. P23B.8 stays unauthorized (unratified). Do NOT start P23B.6/P23B.8 work from this close.
-       Prior child P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-merged) after
-       the owner REVIEWED AND ACCEPTED it with no remaining blocker; routine slice-closeout ran on
-       the `P23B.5` branch. M-3 = SHIPPED (preflight-only) — one bounded gesture-scoped sample
-       owner for the transient preflight only; release-scope M-3 stays unreachable and
-       unimplemented. The plan is a path-preserving closed stub (anchor `75fbd8a0`, tag
-       `closed/p23b.5`). The committed reuse-counter gate stays LIVE (perf lane +
-       `reuse-counter-ratchet.json`), whose only writer is `npm run reuse:record --reason "…"`
-       (requires the reason, refuses a dirty tree, refuses an incoherent measurement, no test
-       writes it) — no budget metric added, no baseline re-recorded.
-       P23B.7 execution (RATIFIED AND IMPLEMENTATION AUTHORIZED 2026-09-25 on the dedicated `P23B.7`
-       branch — phase README's P23B.7-step routing amendment; the amended order):
-       S2 is EXECUTED (the frozen
-       preflight reference: OR-3 (a)-(d), OR-8 and the issue-order row). S6 is EXECUTED AND MEASURED:
-       the commit-path duplicate wall-mesh build is FIXED (the identity the state reads back is mapped
-       to the compile's own geometry, so the commit's restore HITS the cache the install filled), the
-       `$state`-backed regression oracle failed 2-vs-1 before the fix and is green after it, and S6's
-       own independent browser capture ran on a CLEAN tree at `d6f65426` BEFORE any topology change —
-       3/3 fixtures captured, settled, 0 dropped; 200 accepted commit-path actions → ONE build each,
-       all install-side, 0 inside `commit-replace` (204 installs → 204 builds; 475 restores → 475
-       hits / 0 builds). The identity disagreement is UNCHANGED (the restore still hands a `$state`
-       proxy that is not the install's object); the cache now agrees with it; `commit-replace`
-       p50 161.7/160.7/190.7/135.4 → 1.4/1.2/1.3 (advisory — the COUNT is the durable result).
-       S6 record/artifact → docs/roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md
-       · 2026-09-25-s6-commit-path-identity-capture.json (LIVE, SHA-256 `95790b00…`).
-       S3 is EXECUTED: `wallFirstArchitectureAffectedExtent` derives one intent's affected extent from
-       the same patch the proposal and preflight splice (moved Junctions · Walls whose inputs can
-       change · the conservative same-component candidate pairs in gate order), scoped PER MOVE and
-       refused rather than guessed when the intent is underivable; unit-tested on hand-built
-       two-component documents incl. the per-move growth row (a later move enters new extents).
-       S4 is EXECUTED: `createWallFirstArchitectureVerdictScope` initializes once per gesture with the
-       canonical whole-document pass and then evaluates ONLY each move's re-derived affected extent
-       through the same predicates; a non-clean baseline or a target change re-initializes / stays
-       canonical (no request suppressed, no failure approximated). The viewport builds the scope at
-       pointer-down from the frozen baseline and drops it on finish + the cancel bypass;
-       `transientArchitectureEdit` threads it into the preflight only. OR-3's frozen table (all four
-       cases, OR-8, issue order) is driven as three-move gestures: every scoped verdict equals the live
-       whole-document one, and the F-C3 crossing is refused BY the scoped pass. The four-cell
-       sample/verdict matrix holds P23B.5's absolute invariants per cell and reproduces the committed
-       ratchet BYTE-FOR-BYTE through the scoped path (no re-record) with ZERO suppressed requests
-       (the crossing gate samples per Wall before its pair loop). Record →
-       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md.
-       S7 is EXECUTED (targeted, per the owner ruling during S4, 2026-09-25 — plan §0.8.3): the
-       `commit-capture` residual is ATTRIBUTED — `captureLayoutPreviewSnapshot` deep-clones project +
-       model + issues via JSON.parse(JSON.stringify(...)) with geometry by reference, and on the
-       40-Wall fixture the DERIVED model is 3,412,257 of 3,434,187 payload bytes (99.4 %) with NO
-       production reader installing it (restore re-projects the model from the shared geometry; the
-       transient guard reads only project.layout). The same clone costs p50 ~20 ms plain vs ~133 ms
-       through the editor-style $state proxy (node, advisory) — the multiplier behind the browser's
-       107–149 ms. THE FIX LANDED (owner-directed at review time, 2026-09-25 — plan §0.9) as its OWN
-       revertible commit: the capture no longer clones the derived `model` AT ALL (`LayoutPreviewSnapshot`
-       no longer declares it; the restore already re-projected it from the shared geometry). Same-session
-       node A/B: the removed clone measures p50 114.23 ms through the editor-style proxy against p50
-       1.41 ms for the shipped capture; the payload is 22,022 B / 643 objects against the removed
-       3,412,257 B / 39,106. Its oracle (the capture/restore content contract) and a permanent guard
-       (apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts: relative payload bound +
-       source contract + self-tested no-reader scan) landed with it. Nothing else moved: no budget metric,
-       `g3-baseline.json` unread/unwritten, the ratchet untouched, P23B.6/P23B.8 still unauthorized — and
-       the POST-fix BROWSER number is NOT measured (107–149 ms stays S1's/S6's pre-fix evidence).
-       S5 is NOT taken (the measurement names the capture clone, not hit-test/snap). Records →
-       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md ·
-       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md.
-       PR GATE (2026-09-25, at the branch head): the full-suite re-run found the S7 probe's OWN
-       advisory proxy loop exceeding vitest's default 5000 ms test timeout beside 346 files — no
-       deterministic assertion failed and the S7 findings are unchanged. The loop is now
-       caller-bounded (1+3 reps for the proxy comparison) and both advisory tests carry
-       `{ timeout: 120000 }`; the printed contrast reproduces in the same regime (p50 14.55 ms plain
-       vs 122.34 ms proxy). Re-run GREEN: check:layout-core · check 0/0 · full suite 346 passed |
-       1 skipped / 4,908 passed | 1 skipped · test:arch 23 files / 254 tests · test:perf 8 passed |
-       1 skipped / 62 passed | 1 skipped (ratchet reproduced, no re-record) · root build PASS.
-       S7 record §5.1 carries the fix and the gate list.
-       PR #92 REVIEW (2026-09-25): RETURNED FOR CORRECTION with two P2 findings, BOTH FIXED in one
-       revertible commit. (1) The gesture TARGET IDENTITY was a `:`-joined string while Layout IDs may
-       contain `:` — two different targets could share one identity, so a target change could reuse the
-       previous initialization and report `pending` where the canonical gate refuses (`A:B`/`C` vs
-       `A`/`B:C`). It is now an injective field TUPLE; the reviewer's collision case is a regression
-       that FAILS under the old encoding. (2) The DETERMINISTIC clause was asserted against candidate
-       counts summed BEFORE the pass ran, so the reviewer's whole-document mutation passed — evaluations
-       are now OBSERVED AT THE PREDICATE SITES (`WallFirstTopologyEvaluation`), scoped moves must stay
-       inside their own extent by kind and evaluate strictly fewer subjects than the initialization,
-       and that mutation now FAILS. Counts are separately named `candidates`.
-       Record → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-pr92-correction-record.md.
-       ACCEPTED 2026-09-25 with no remaining blocker (the S7 follow-up fix AND the correction are
-       inside PR #92 as their own revertible commits); routine `slice-closeout` ran on the same
-       branch and its commit stays inside PR #92 — no new PR, no new scope. The plan and the
-       S4 · S6 · S7 · S7-follow-up · correction records are now path-preserving closed stubs at
-       their own paths (preservation report in the closed plan stub); the S6 capture JSON stays LIVE
-       (SHA-256 `95790b00…`). NEXT: P23B.6 — RATIFIED and AUTHORIZED (see the CHILD header).
-       The plan carries the owner's two
-       ratification clarifications folded into their owning sections (plan §0.8/§7): affected
-       candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
-       guaranteed zero after initialization), and sample/verdict reuse is tested as a four-cell
-       matrix with suppressed requests accounted explicitly, P23B.5's absolute invariants preserved
-       verbatim and retained sample requests approved as the fallback. The measurement-only step ran
-       on `p23b-measurement` (phase README, P23B.5-closeout routing amendment + the owner's 2026-09-25
-       extension), is CLOSED (PR #91; anchor `1d0fb220`, tag `closed/p23b-measurement`) and ruled
-       STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.6/P23B.8 optimization stays
-       unauthorized.
-       Prior child P23B.4-compilation-invalidation SHIPPED
-       2026-09-25 on `P23B4` (PR #88; accepted HEAD `4cbcc370` vs base `d7b9de4e`;
-       stubs + anchor `4cbcc370`, tag `closed/p23b.4`). U-1 declined, Rust/WASM
-       undecided until P23B.8.
-STAGE: P23 closed 2026-09-22 (owner ruling, PR #73; final gate P23.16 accepted). P23B (Geometry
-       Performance & Stabilization) follows the owner-ratified sequence between P23 and P26. P23B.3
-       synthesis and implementation criteria were ratified at `e139a18b`. P23B.3a's Option E policy was
-       accepted, shipped and merged through PR #82 at `c11938fe` on 2026-09-24 after S1–S8 and OR-D12-1…6
-       passed. S5/S6 re-reviews are complete by owner confirmation; GitHub has no corresponding review
-       entries. P1 post-merge anchor recovery passed; the original `main` ruleset was restored after the
-       owner-authorized, temporary linear-history exception. The integration of current `main`
-       preserves both P23B.3a's status and P26's accepted Continuous Spatial Authoring prototype and
-       reconciled phase-wide umbrella. P26 implementation remains unauthorized; its final plan must
-       reconcile landed P23B, and the selected architecture validation window is not yet open. P23B does
-       not depend on that reconciliation. The architecture cycle remains at PHASE_1 installed.
-       P23B.0-durable SHIPPED 2026-09-25: the owner accepted the explicitly partial method-v5 baseline
-       (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and
-       PR #87 merged (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`).
-       PRESERVED: baseline `apps/editor/src/lib/bench/baselines/g3-baseline.json` SHA-256
-       `5534926e3a2dbceed9e0383da5914f95ff2824d0d90a760ca48f859b56ec5a8d` (107,521 bytes,
-       captured at `be525f7c`, naming policy commit `c11938fe`); advisory-only timing policy
-       (`ENFORCED_BUDGET_METRICS` unchanged, `bench:record` the only writer); explicit coverage limit
-       (synchronous + press/move-phase pairs sound, post-release pairs missing, no settlement claim).
-       HEADLINE FINDING: the straight control is sluggish (accepted authoring 262.6 ms, rigid edit
-       208.4 ms); curvature is not necessary and amplifies several observed costs. Plan update work is
-       a justified investigation target, not a proved explanation for every editing delay.
-       Routine slice closeout completed on `P23B4` (P2: squash-merge compaction;
-       stubs + anchor `d7b9de4e`, tag `closed/p23b.0`; checkpoint retired, not archived).
-       Closeout gates on the closeout tree: `test:perf` 7 files / 56 pass (1 skipped); `test:arch`
-       23 files / 254 pass; `npm test` 324 files / 4,755 pass (1 skipped); `check` (editor + museum)
-       0 errors, 0 warnings; both apps build; baseline hash unchanged.
-       P23B.4's architecture-review gate PASSES (recorded in the reconciled plan §11); entry anchors
-       re-verified against current source there.
-       P23B.1 harvest and P23B.2 research artifacts retain their
-       own review states; the separate P23B.2 ACCEPT/PART-RETURN decision is unrelated to P23B.3a.
+PHASE: P23B — geometry performance & stabilization (P-level status → ../roadmap/README.md)
+CHILD: P23B.6-rendering — RATIFIED by the owner 2026-09-25 and implementation AUTHORIZED on branch
+       `P23B.6` (plan §14; starting instruction §15). Implementation is UNDERWAY: S1 attribution
+       (node probe + DEV-only instrumentation) is in flight; Git/PR holds the exact progress.
+       CURRENT STEP: finish S1 — the attribution record with the mechanical admission table — then
+       the plan's §8 order (S2 → [S-R] → [S3b → S3] → S6). One PR; the implementer does not merge,
+       accept or run `slice-closeout`. P23B.8 stays unratified and UNAUTHORIZED; P23B.9/P23B.10 are
+       downstream gates. No numeric performance target is proposed.
+STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
+       (order · 2026-09-25 amendment → phase README §SEQUENCE). Shipped and closed, each with closed
+       stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
+       P23B.4 · P23B.5 · the measurement-only step · P23B.7. P23B.1 and P23B.2 retain their own
+       review statuses. P26 planning continues in parallel; P26 implementation is unauthorized and its
+       validation window is selected but not open. Architecture cycle: PHASE_1 installed, no owner
+       action required.
 
 NEXT:
-1. P23B.5 SHIPPED and closed 2026-09-25 (PR #90 squash-merged) after owner acceptance with no
-   remaining blocker. M-3 = SHIPPED (preflight-only): one bounded gesture-scoped sample owner
-   threaded into the transient preflight only, reset at pointer-down / finish / cancel / the
-   snapshot-clearing bypass. Measured on curved-40: 120 preflight requests → 44 derivations
-   (40 cold misses + 4 changed-input refusals) / 76 hits (63%), 0 failed derives, 0 cached
-   undefined, straight control 0 requests; advisory per-drag preflight p50 26.7 → 8.9 ms.
-   Those counters are watchable live (DEV harness `/dev/perf/p23b`) and GATED (perf-lane
-   ratchet with absolute invariants, movable only through
-   `npm run reuse:record --reason "…"`). Release-scope reuse remains unreachable and
-   unimplemented (each release re-parses its candidate). Do NOT claim release reuse, re-own the
-   sample store, rewrite the baseline or restart P23B.4.
-   CURRENT STEP: the owner-authorized MEASUREMENT-ONLY step is EXECUTED, owner-reviewed,
-   ACCEPTED and CLOSED 2026-09-25 (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag
-   `closed/p23b-measurement`), per the phase README routing amendment of 2026-09-25 — P23B.7 S1
-   extended to the wall-authoring release plus P23B.6 S1, plus the owner's extension (the DEV
-   geometry-identity pin). It started no optimization and wrote no baseline.
-   Every `p2311:` component mark is bound to the action and outcome whose boundary interval
-   encloses it, with exclusive time only where containment holds, an explicit unbound remainder
-   per action, an unattributed pool and an `ambiguous` (identical-interval) report; four
-   release-path marks were added (`selection-hit`, `gesture-commit`, `authoring-release`) plus the
-   commit split (`commit-capture` / `commit-matches` / `commit-replace`).
-   Record → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-record.md
-   HEADLINE (revision 2, clean tree at `d48809ab`; artifact committed, SHA-256 `c004abbd…`):
-   review finding 2 is CONFIRMED — the commit's restore MISSES the wall-mesh cache. On EVERY
-   accepted edit the full 40-Wall mesh set is built twice: once inside `plan-apply`
-   (p50 23–27 ms, keyed on the compile's own geometry object) and again inside
-   `commit-replace` → `baseline-restore` (p50 160.2 curved bend / 162.3 curved drag / 164.4
-   curved authoring / 134.3 straight), where the identical build is 5–6× slower per Wall; the
-   SAME restore between actions hits (`restore-mesh-install` p50 0.0 over 75 curved / 50
-   straight restores). An earlier pass of this correction wrongly withdrew that finding on the
-   strength of a test whose preview state is a plain object; that is withdrawn in the record's
-   §4. The commit path is 266.6 ms of a 341.6 ms curved drag release (78%):
-   `commit-capture` 125.5–149.5 (the snapshot clone) + `commit-replace` 137.8–164.8. RANKING: the
-   duplicated mesh build is named FIRST (a per-gesture commit-path fix — P23B.7 S6's family or a
-   bounded history-path fix; taking it before P23B.6 needs the sequence amended), `commit-capture`
-   second, the between-action restore pool (37.8 ms p50 × 75, reactive write) third; P23B.7's
-   topology gate is named but not first (11.1–11.6 ms p50); P23B.8 has no measured demand; P23B.6
-   is neither first nor excluded. Revision 1's numbers are NOT reused (dirty tree at `d9a56a2b`,
-   no artifact). Coverage limit: the all-curved-40 capture aborted on the driver's own 6000 ms
-   action guard (not raised — part of the protocol); a concurrent second harness tab invalidated
-   one earlier attempt, which was discarded and never cited.
-   IDENTITY PIN (probe commit `a2692454`, revision 3): the object the commit hands
-   `installWallMeshes` is a Svelte `$state` PROXY of the compile's geometry — not the object the
-   install cached (`derivedWallMeshes`) — so the miss is STATE-SIDE (curved: install id 52
-   proxy=NO vs commit id 53 proxy=YES; straight: 153 vs 154; `stateProxy` tested by
-   `structuredClone` throwing a `DataCloneError`).   ORDER RULING (applied, STATE-SIDE): the
-   SEQUENCE's step 11 runs P23B.7 BEFORE P23B.6 (P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.8) —
-   order only, no slice renamed, rescoped or renumbered. P23B.7 executed on the dedicated `P23B.7`
-   branch (phase README's P23B.7-step routing amendment; plan §0.8/§7 carry the two clarification
-   rulings), was reviewed, corrected and ACCEPTED 2026-09-25, and is now SHIPPED and closed by
-   routine `slice-closeout` on the same branch (inside PR #92; closed plan + record stubs; tag
-   `closed/p23b.7` local only). P23B.6 and P23B.8 remain UNAUTHORIZED until their own slices are
-   ratified; the next work item is P23B.6's own reconciliation and ratification (see the CHILD header).
-2. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain separate open matters;
-   their status does not reopen P23B.3a or P23B.0.
-3. P26 planning may continue in parallel. Read
-   ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md; reconcile its
-   proposed architecture against landed P23B, resolve slice-specific decisions and prepare the
-   implementation plan/proofs. The accepted prototype does not authorize implementation or open the
-   validation window.
-4. P23 carries 13 owner-carried verification rows into later work and 5 deferred debt items; they are
-   named in the closed gate stub, not silently dropped, and P23B neither claims nor closes them.
+1. P23B.6 implementation (above). Do NOT start P23B.8 work.
+2. Standing constraints while P23B.6 runs:
+   - the v5 baseline is test-enforced and `bench:record` is its only writer — never rewrite it; the
+     accepted partial baseline (W6 §10.3 disposition A) stands: no further capture, no settlement
+     claim beyond its synchronous press/move-phase coverage limit;
+   - the P23B.5 reuse ratchet is LIVE and only `npm run reuse:record --reason "…"` may move it — no
+     hand-edits, no new budget metric; do not open a second cache, re-own the sample store or claim
+     release-scope reuse (release M-3 stays unreachable/unimplemented); do not restart P23B.4;
+   - P23B.7's unstarted follow-ups stay named, not silently dropped: the snapshot guard's documented
+     limits and the bounded heap-retention follow-up (no redesign proposed).
+3. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain open and separate;
+   they do not reopen any shipped slice.
+4. P26 planning may continue in parallel: reconcile its proposed architecture against landed P23B,
+   resolve slice-specific decisions and prepare the implementation plan/proofs. The accepted
+   prototype authorizes neither implementation nor the validation window.
+5. P23 carries 13 owner-carried verification rows and 5 deferred debt items, named in its closed gate
+   stub; P23B neither claims nor closes them. U-1 was DECLINED; Rust/WASM stays undecided until
+   P23B.8.
 
 ROUTE:
-phase status/order → ../roadmap/README.md
-P23B planning + ratified sequence → ../roadmap/p23b-geometry-performance/README.md (§SEQUENCE)
-P23B.3a shipped plan stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/2026-09-22-P23B.3a-independent-placement-topology-policy.md
-P23B.3a QA/acceptance stub → ../roadmap/p23b-geometry-performance/p23b.3a-independent-placement-topology-policy/qa/2026-09-24-P23B.3a-qa-gate-record.md
-P23B.0-durable closed plan stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-22-P23B.0-durable-measurement-completion.md
-P23B.0-durable Stage A closed handoff stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-ratification-handoff.md
-P23B.0-durable closed W6 record (finding + coverage limit + preservation report) → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-durable-measurement-report.md
-P23B.0-durable closed W7 policy stub → ../roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/2026-09-24-P23B.0-budget-policy-record.md
-P23B.4 closed plan + evidence stubs (SHIPPED 2026-09-25, anchor `4cbcc370`, tag `closed/p23b.4`) → ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-22-P23B.4-compilation-invalidation-optimization.md + ../roadmap/p23b-geometry-performance/p23b.4-compilation-invalidation-optimization/2026-09-25-P23B.4-evidence-findings.md
-P23B.5 SHIPPED (2026-09-25) closed plan stub — §0.2/§0.4/§0.6 rulings, §5 S0–S6 records, evidence, preservation report (anchor `75fbd8a0`, tag `closed/p23b.5`) → ../roadmap/p23b-geometry-performance/p23b.5-caching-reuse-optimization/2026-09-22-P23B.5-caching-reuse-optimization.md
-LIVE P23B.5 reuse record (perf-lane gate; a test imports it by path) → ../roadmap/p23b-geometry-performance/p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json
-P23B measurement-only step CLOSED (2026-09-25, PR #91; anchor `1d0fb220`, tag `closed/p23b-measurement`) → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-record.md
-P23B measurement-only step committed evidence (LIVE; SHA-256 `c004abbd…`) → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-capture.json
-Next work item: P23B.6 (PLANNED, unratified — reconcile + ratify before implementation; P23B.8 stays unauthorized) → ../roadmap/p23b-geometry-performance/README.md §Child slices — status
-P23B.7 closed plan stub (delivered · §0.8/§0.9/§0.10 rulings · acceptance evidence · residual ledger · preservation report; accepted head `ee0dbecd`, tag `closed/p23b.7` local only) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-22-P23B.7-interaction-optimization.md
-P23B.7 S6 record (closed stub — fix + its own independent capture) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md
-P23B.7 S6 LIVE capture artifact (SHA-256 `95790b00…`) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json
-P23B.7 S4 record (closed stub — verdict scope + OR-3 differential + four-cell matrix + deterministic clauses) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md
-P23B.7 S4 proofs (OR-3/OR-8/deterministic · viewport wiring source contract · sample/verdict matrix) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts · apps/editor/tests/lib/layout/p23b7-verdict-scope-wiring.test.ts · apps/editor/tests/lib/bench/p23b7-sample-verdict-matrix.test.ts
-P23B.7 S7 record (closed stub — targeted commit-capture attribution) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-capture-attribution-record.md
-P23B.7 S7 probe (capture structure · payload accounting · cadence · the removed stream re-measured) → apps/editor/tests/lib/bench/p23b7-capture-attribution.test.ts
-P23B.7 S7 follow-up record (closed stub — the model-free capture: finding · safety reasoning · implementation · oracle · guard · limits) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s7-followup-model-free-capture-record.md
-P23B.7 S7 follow-up guard (relative payload bound · source contract · self-tested no-reader scan) → apps/editor/tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts
-P23B.7 PR #92 correction record (closed stub — injective target identity · predicate-site evaluation evidence · both mutation runs) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-pr92-correction-record.md
-P23B.7 PR #92 correction regressions (collision identity · evaluations inside the extent) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts
-P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
-P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
-P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
-P23B.5 S5 live DEV readout of gesture reuse (per-drag counters + harness panel) → apps/editor/src/lib/editor/layout/p23b-gesture-sampling-report.ts · panel in apps/editor/src/routes/dev/perf/p23b/+page.svelte · tests/lib/editor/layout/p23b-gesture-sampling-report.test.ts
-Recorded v5 baseline → apps/editor/src/lib/bench/baselines/g3-baseline.json
-Scripted capture protocol (DEV harness driver) → apps/editor/src/routes/dev/perf/p23b/drive.ts
-P23B.1 internal harvest → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
-P23B.2 research report → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
-P26 planning and accepted direction → ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md
-P26 accepted prototype → ../roadmap/p26-spatial-depth/Final-Design-Prototype/README.md
-P23 (closed, evidence only) → ../roadmap/p23-layout-depth/README.md
-P23 close record → ../roadmap/p23-layout-depth/README.md §PHASE CLOSE
-P23 final-gate evidence → ../roadmap/p23-layout-depth/2026-09-08-P23.16-final-whole-product-integration-closeout.md (stub)
-P23.16 verification results → ../roadmap/p23-layout-depth/p23.16-whole-product-integration-closeout/qa/2026-09-22-P23.16-qa-gate-record.md (stub)
-post-P23 debt → ../operations/tech-debt/README.md
+phase pipeline · P-level status → ../roadmap/README.md
+P23B phase status · child order · SEQUENCE + order amendment · closed stubs/anchors/tags → ../roadmap/p23b-geometry-performance/README.md
+active P23B.6 plan (scope · §8 order + admission rules · §9 acceptance · §14/§15) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
+docs startup boundary · update rules · skills → ../README.md
+test contract + concrete commands → ../../apps/editor/tests/README.md
+recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
+LIVE P23B.5 reuse ratchet (only writer `npm run reuse:record --reason "…"`) → ../roadmap/p23b-geometry-performance/p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json
+LIVE measurement-step capture (cited evidence) → ../roadmap/p23b-geometry-performance/p23b-measurement-only-step/2026-09-25-release-containment-capture.json
+LIVE P23B.7 S6 capture (cited evidence) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json
+P23B.1 harvest (own review status) → ../roadmap/p23b-geometry-performance/p23b.1-internal-geometry-pipeline-harvest/2026-09-22-P23B.1-harvest-record.md
+P23B.2 research report (own evidence decision) → ../roadmap/p23b-geometry-performance/p23b.2-external-geometry-performance-research/2026-09-22-P23B.2-external-geometry-performance-research.md
+P26 planning + accepted direction (routes the prototype) → ../roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md
+P23 (closed, evidence only incl. close record) → ../roadmap/p23-layout-depth/README.md
+post-P23 debt → tech-debt/README.md
 
 BLOCKER:
-- P23B.7 was REVIEWED, RETURNED FOR CORRECTION once (two P2 findings, both fixed in one revertible
-  commit with mutation evidence), then ACCEPTED 2026-09-25 with no remaining blocker; routine
-  `slice-closeout` ran on the same branch and its commit stays inside PR #92 (merge method: squash per
-  repo policy). The documented dispositions for the snapshot guard's limits and a bounded heap-retention
-  follow-up remain open follow-ups (unstarted, no redesign proposed).
-- P23B.7 closed 2026-09-25: SHIPPED after owner acceptance, its plan/records are closed stubs (accepted
-  head `ee0dbecd`, tag `closed/p23b.7` local only) and the S6 capture JSON stays LIVE. Its execution
-  order and guardrails held (S2 · S6 + regression + its own capture · S3 · S4 · S7; S5 NOT taken; the
-  sample scope stayed the gesture-scoped preflight owner, invariants preserved verbatim, ratchet not
-  hand-edited; `g3-baseline.json` unread/unwritten; no budget metric added). NEXT: P23B.6 is PLANNED
-  and unratified — no P23B.6/P23B.8 work may start before its own reconciliation, ratification and
-  authorization. U-1 declined.
-- The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from P23B.3a/P23B.0.
-- P26 implementation readiness remains gated; planning may continue, but the validation window is not
-  open.
-
-CLOSED (2026-09-22):
-- P23 closed by owner ratification (PR #73, HEAD 645f43e). Final gate P23.16 accepted: A1–A14 all pass
-  (complete suite 316+1 skipped files / 4619+1 skipped tests; visitor bundle gate 3 server / 9 client
-  entries; API suites 39 tests on real local Postgres), and TD-3 / issue #35 was delivered inside the
-  gate as the approved amendment (be4e23b).
-- Closed work compacted to path-preserving stubs with recovery anchors: P23.16 plan and QA/gate record
-  (645f43e) and the gate artifact (650f7c15); tags closed/p23.16, closed/p23 and closed/p23.15 cover
-  every recorded anchor, verified by ancestry. 0 renderable-evidence copies (none existed).
-- Owner-carried rows stay explicit: the published-visitor leg of M1, the P23.15 J-row visual halves
-  (M2–M10), the screen-reader row (M15) and the device rows (M16); the legacy relic smoke is waived by
-  owner decision and those relics may drift.
-
-CLOSED (2026-09-24):
-- P23B.3a accepted and shipped; S5/S6 owner-confirmed re-reviews have no separate GitHub entries, S7
-  corrections are accepted, and corrected S8 evidence plus all integrated-tree acceptance lanes pass.
-- Policy, code/test entry points, acceptance evidence and the `closed/p23b.3a` recovery tag are routed
-  from `../roadmap/p23b-geometry-performance/README.md`. PR #82 merged at `c11938fe`; the post-merge P1
-  ancestry/recovery checks passed and the original ruleset was restored. The tag is local only (not pushed).
-
-CLOSED (2026-09-25):
-- P23B.0-durable accepted (partial baseline, disposition A) and shipped; PR #87 squash-merged at
-  `d7b9de4e` (tree identical to continuation HEAD `935c5ada`). Routine closeout compacted the plan, W6,
-  W7 and Stage A handoff to path-preserving stubs at their own paths; recovery anchor `d7b9de4e`, tag
-  `closed/p23b.0` (verified: ancestor of `main`, all four bodies recoverable). 0 renderable-evidence
-  copies (none existed; the baseline JSON stays live as the test-enforced baseline). 0 reference
-  promotions (measurement-only slice). The Stage B checkpoint was retired after promoting its durable
-  content into the stubs; no raw checkpoint archived. Continuation-branch commits are not ancestors of
-  `main` (squash); recovery runs against the squash anchor/tag. Closeout gates: `test:perf` 56 pass,
-  `test:arch` 254 pass, `npm test` 4,755 pass (each +1 skipped file/test); `check` 0/0 both apps; both
-  apps build; baseline SHA-256 unchanged.
-- Owner-carried forward: U-2…U-7, the deferred post-release flush/frame coverage, P23B.4–P23B.8 work,
-  P23B.1 review and the P23B.2 evidence decision — named in the closed stubs, not silently dropped.
-  U-1 was open when P23B.0 closed and was subsequently DECLINED by the owner on 2026-09-25.
-- P23B.4 accepted and shipped; PR #88 squash-merged (accepted HEAD `4cbcc370` vs base
-  `d7b9de4e`; F1–F3 corrections ACCEPTED, no remaining blockers). Routine closeout compacted the plan and the
-  evidence record to path-preserving stubs at their own paths; recovery anchors `cb9b83ab` (plan)
-  and `4cbcc370` (evidence) via `git fetch origin refs/pull/88/head` (squash degradation recorded
-  in the stubs), tag `closed/p23b.4` local only (verified post-merge in-session: both bodies
-  recoverable via the PR head ref). 0 renderable-evidence copies (none existed). 0 reference promotions (key grammar
-  owned in code; S9/S10 findings inherited by roadmap slices via anchor). No active checkpoint to
-  retire. Owner-verified gates at acceptance: full lane 4,786 passed, `test:arch` / `test:perf`
-  green, `check` 0/0 both apps, both apps build, visitor bundle verified, baseline SHA-256 unchanged;
-  closeout re-run skipped per explicit owner instruction.
-- P23B measurement-only step EXECUTED, owner-reviewed, ACCEPTED and CLOSED; PR #91 squash-merged
-  (owner extension: the DEV geometry-identity pin + the order ruling). The record compacts to a
-  path-preserving closed stub at its own path (anchor `1d0fb220`, tag `closed/p23b-measurement`,
-  local); the capture JSON (SHA-256 `c004abbd…`) stays LIVE at its path as the cited evidence.
-  0 reference promotions (the miss mechanism is owned in code and pinned by tests; the order lives
-  in the phase README's SEQUENCE). 0 renderable-evidence copies (none existed; the JSON is machine-
-  readable and stays live). No checkpoint to retire. Acceptance gates: `npm test` 339 files / 4,860
-  pass (+1 skipped file/test), `test:arch` 23/254, `test:perf` 62 pass (+1 skipped), `check` 0/0
-  both apps, both apps build, visitor bundle 3 server / 9 client, baseline SHA-256 `5534926e…`
-  unchanged. Ruling: STATE-SIDE → the SEQUENCE runs P23B.7 before P23B.6 (order only).
-- P23B.5 reviewed and ACCEPTED with no remaining blocker; PR #90 squash-merged (reviewed
-  implementation head `75fbd8a0`, docs-only after the recorded implementation commit `e080b35b`,
-  which the verification record and the ratchet's `recordedCommit` both name). Routine
-  slice-closeout ran on the same branch; the plan was compacted to a path-preserving closed stub
-  (rulings §0.2/§0.4/§0.6, stage records S0–S6, evidence, residual ledger, preservation report) and
-  `reuse-counter-ratchet.json` stays LIVE (a test imports it by path). 0 renderable-evidence copies
-  (none existed). 0 reference promotions (key grammar + lifetime owned in code; the gate is owned by
-  `apps/editor/tests/README.md` and its committed record). No active checkpoint to retire. Closeout
-  gates on the closeout tree: `check` 0/0 both apps, `test:arch` 254 pass, `test:perf` 62 pass
-  (+1 skipped file/test); the implementation's full-lane numbers are reused because closeout changed
-  no implementation code. Baseline SHA-256 `5534926e…` unchanged; no budget metric added.
-  NEXT: the owner-authorized measurement-only step (P23B.7 S1 extended to the wall-authoring release
-  + P23B.6 S1) on a new branch from updated `main`, ending at a ranking and a stop for the owner's
-  ruling — EXECUTED, ACCEPTED and CLOSED 2026-09-25 (PR #91; anchor `1d0fb220`, tag
-  `closed/p23b-measurement`; see CURRENT STEP and the 2026-09-25 CLOSED entry below).
-- P23B.7 accepted and shipped; one PR for the slice (#92 — the closeout commit stays inside it; no new
-  PR). Routine `slice-closeout` compacted the plan and the S4 · S6 · S7 · S7-follow-up · correction
-  records to path-preserving stubs at their own paths (preservation report in the closed plan stub;
-  accepted head `ee0dbecd`; per-record anchors `2fec2e6f` and `73a5167c`; tag `closed/p23b.7`, local
-  only). 0 renderable-evidence copies (none existed; the S6 capture JSON is machine-readable cited
-  evidence and stays LIVE, per the measurement-step convention). 0 reference promotions (contracts owned
-  in code + tests). No active checkpoint to retire. Closeout re-ran no gate: the acceptance evidence
-  recorded at `ee0dbecd` is reused (owner instruction); merge method squash (repo policy). NEXT: P23B.6 —
-  PLANNED, unratified; reconcile and ratify before any implementation. P23B.8 stays unauthorized.
+- P26 implementation readiness remains gated: planning may continue; the validation window is not open.
+- The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
+- None on P23B.6: it is RATIFIED, AUTHORIZED and underway. The P23B.7 snapshot-guard limits and the
+  bounded heap-retention follow-up are carried, unstarted, in the closed stubs — not active blockers.
