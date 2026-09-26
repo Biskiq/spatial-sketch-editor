@@ -31,8 +31,22 @@ CHILD: P23B.5-caching-reuse — SHIPPED and closed 2026-09-25 (PR #90 squash-mer
        change · the conservative same-component candidate pairs in gate order), scoped PER MOVE and
        refused rather than guessed when the intent is underivable; unit-tested on hand-built
        two-component documents incl. the per-move growth row (a later move enters new extents).
-       NEXT IN SLICE: S4 (gesture-invariant verdict set + the four-cell sample/verdict differential) →
-       S5 only if the measurement names it → S7, then the PR. The plan carries the owner's two
+       S4 is EXECUTED: `createWallFirstArchitectureVerdictScope` initializes once per gesture with the
+       canonical whole-document pass and then evaluates ONLY each move's re-derived affected extent
+       through the same predicates; a non-clean baseline or a target change re-initializes / stays
+       canonical (no request suppressed, no failure approximated). The viewport builds the scope at
+       pointer-down from the frozen baseline and drops it on finish + the cancel bypass;
+       `transientArchitectureEdit` threads it into the preflight only. OR-3's frozen table (all four
+       cases, OR-8, issue order) is driven as three-move gestures: every scoped verdict equals the live
+       whole-document one, and the F-C3 crossing is refused BY the scoped pass. The four-cell
+       sample/verdict matrix holds P23B.5's absolute invariants per cell and reproduces the committed
+       ratchet BYTE-FOR-BYTE through the scoped path (no re-record) with ZERO suppressed requests
+       (the crossing gate samples per Wall before its pair loop). Record →
+       ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md.
+       NEXT IN SLICE (owner ruling during S4, 2026-09-25 — plan §0.8.3): MINIMUM REPS — one targeted
+       measurement of the residual `commit-capture` snapshot clone (107–149 ms) instead of another full
+       wall-authoring sweep; S5 only if that measurement (or the owner's repro) names hit-test/snap;
+       S7 records what was measured, then the PR. The plan carries the owner's two
        ratification clarifications folded into their owning sections (plan §0.8/§7): affected
        candidate sets and verdicts are recomputed per move (only invariant predicate evaluations are
        guaranteed zero after initialization), and sample/verdict reuse is tested as a four-cell
@@ -157,6 +171,8 @@ P23B measurement-only step committed evidence (LIVE; SHA-256 `c004abbd…`) → 
 Next authorized step (order ruling: P23B.7 before P23B.6) → ../roadmap/p23b-geometry-performance/README.md §SEQUENCE (step 11) + §Owner-authorized execution routing amendment — 2026-09-25
 P23B.7 S6 record (fix + its own independent capture) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-record.md
 P23B.7 S6 LIVE capture artifact (SHA-256 `95790b00…`) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s6-commit-path-identity-capture.json
+P23B.7 S4 record (verdict scope + OR-3 differential + four-cell matrix + deterministic clauses) → ../roadmap/p23b-geometry-performance/p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md
+P23B.7 S4 proofs (OR-3/OR-8/deterministic · viewport wiring source contract · sample/verdict matrix) → apps/editor/tests/lib/layout/p23b7-verdict-scope.test.ts · apps/editor/tests/lib/layout/p23b7-verdict-scope-wiring.test.ts · apps/editor/tests/lib/bench/p23b7-sample-verdict-matrix.test.ts
 P23B.5 S0 evidence suite (bounded test-only probes P1–P9) → apps/editor/tests/lib/layout/p23b5-s0-reachability.test.ts
 P23B.5 S2–S5 proofs (equivalence, refusal, lifetime, direct measurement) → apps/editor/tests/lib/layout/p23b5-preflight-scope.test.ts
 P23B.5 S4 call-site wiring proof (gesture start / finish / bypass / preflight threading) → apps/editor/tests/lib/layout/p23b5-gesture-scope-wiring.test.ts
@@ -175,8 +191,8 @@ post-P23 debt → ../operations/tech-debt/README.md
 
 BLOCKER:
 - P23B.7 is RATIFIED and its implementation is AUTHORIZED on the dedicated `P23B.7` branch
-  (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). S2 and S6 are EXECUTED and S6
-  is MEASURED on that branch (S6's own capture ran BEFORE any topology change, on a clean tree at
+  (2026-09-25 routing amendment; plan §0.8/§7 clarifications folded). S2, S3, S4 and S6 are EXECUTED on
+  that branch and S6 is MEASURED (S6's own capture ran BEFORE any topology change, on a clean tree at
   `d6f65426`); S3/S4 must not retroactively become a prerequisite of that capture. P23B.5 shipped and closed
   (PR #90; stub + anchor `75fbd8a0`, tag `closed/p23b.5`). No release-scope reuse claim and no
   sample-store re-ownership: the sample scope stays the gesture-scoped preflight owner only, its

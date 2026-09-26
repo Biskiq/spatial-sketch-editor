@@ -35,11 +35,13 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	clearWallSamplingObserverForTest,
+	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
 	proposeWallFirstArchitectureGeometry,
 	setWallSamplingObserverForTest,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
+	type WallFirstArchitectureVerdictScopeStats,
 	type WallSamplingDerivation
 } from '@portfolio/layout-core';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
@@ -112,6 +114,13 @@ export type ReuseRatchetRecord = {
 export type ReuseRatchetMeasurement = ReuseRatchetCase & {
 	observedPerMove: number[];
 	proposalRequestsPerMove: number[];
+	/**
+	 * P23B.7 S4 — what the scoped drag's gesture VERDICT set did: the clean
+	 * initialization count and the affected-only passes after it. Evidence that
+	 * verdict reuse actually ran (a matrix cell is vacuous otherwise); never
+	 * recorded, so the committed ratchet stays exactly P23B.5's shape.
+	 */
+	verdictStats: WallFirstArchitectureVerdictScopeStats | null;
 	attempts: { scoped: (LayoutTransientArchitectureEdit | null)[]; unscoped: (LayoutTransientArchitectureEdit | null)[] };
 };
 
@@ -162,14 +171,34 @@ type DragRun = {
 	observedPerMove: number[];
 	proposalPerMove: number[];
 	attempts: (LayoutTransientArchitectureEdit | null)[];
+	verdictStats: WallFirstArchitectureVerdictScopeStats | null;
 };
 
 /**
- * Drive one real gesture. With `sampling`, that is the shipped scoped path; with
- * no scope, it is the per-call reference the scope is measured against.
+ * P23B.7 S4 — which VERDICT mode a drag runs. `scoped` is the shipped gesture
+ * (one clean initialization, then the affected-only pass); `whole-document`
+ * retains the pre-S4 pass on every move and exists only so the sample/verdict
+ * matrix can hold one axis fixed while the other varies.
  */
-function drag(doc: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): DragRun {
+export type ReuseRatchetVerdictMode = 'scoped' | 'whole-document';
+
+type DragOptions = {
+	/** The bounded sample scope; omitted = the per-call (sampling-disabled) reference. */
+	sampling?: WallSamplingDerivation;
+	/** The verdict mode; omitted = the shipped scoped one. */
+	verdict?: ReuseRatchetVerdictMode;
+};
+
+/**
+ * Drive one real gesture. With a sample scope, that is the shipped reusing path;
+ * without one, it is the per-call reference the scope is measured against. Each
+ * drag builds its OWN verdict scope — the viewport's one-gesture lifetime — so a
+ * gesture can never inherit another gesture's verdicts (OR-8).
+ */
+function drag(doc: LayoutDocumentWallFirst, options: DragOptions = {}): DragRun {
 	const gesture = junctionGesture(doc);
+	const verdictScope =
+		options.verdict === 'whole-document' ? null : createWallFirstArchitectureVerdictScope(doc);
 	const start = [...gesture.baselinePoint] as LayoutVec2;
 	const observedPerMove: number[] = [];
 	const proposalPerMove: number[] = [];
@@ -183,12 +212,18 @@ function drag(doc: LayoutDocumentWallFirst, sampling?: WallSamplingDerivation): 
 		let attempt: LayoutTransientArchitectureEdit | null = null;
 		observedPerMove.push(
 			freshCalls(() => {
-				attempt = transientArchitectureEdit({ gesture, baseline: doc, moved: true, sampling });
+				attempt = transientArchitectureEdit({
+					gesture,
+					baseline: doc,
+					moved: true,
+					sampling: options.sampling,
+					verdictScope
+				});
 			})
 		);
 		attempts.push(attempt);
 	}
-	return { observedPerMove, proposalPerMove, attempts };
+	return { observedPerMove, proposalPerMove, attempts, verdictStats: verdictScope?.stats ?? null };
 }
 
 /** The scope's counters, flattened to the recorded shape. */
@@ -214,16 +249,20 @@ function sum(values: readonly number[]): number {
  * Measure one recorded case on the shipped transient path. `options.sampling` is
  * for callers that need to drive the SAME scope across two measurements (the
  * gate's reset check); the recorder and the gate otherwise let the case own its
- * scope, which is the shipped one-gesture lifetime.
+ * scope, which is the shipped one-gesture lifetime. `options.verdict` holds the
+ * VERDICT mode fixed across BOTH drags (S4's sample/verdict matrix varies one
+ * axis at a time; the default is the shipped scoped mode, so the recorded
+ * ratchet is re-derived through the production path and never a retained
+ * pre-S4 one).
  */
 export function measureReuseRatchetCase(
 	recorded: Pick<ReuseRatchetCase, 'id' | 'fixture'>,
-	options: { sampling?: WallSamplingDerivation } = {}
+	options: { sampling?: WallSamplingDerivation; verdict?: ReuseRatchetVerdictMode } = {}
 ): ReuseRatchetMeasurement {
 	const doc = matrixFixture(recorded.fixture);
 	const scope = options.sampling ?? createWallSamplingDerivation();
-	const scoped = drag(doc, scope);
-	const unscoped = drag(doc);
+	const scoped = drag(doc, { sampling: scope, verdict: options.verdict });
+	const unscoped = drag(doc, { verdict: options.verdict });
 	return {
 		id: recorded.id,
 		fixture: recorded.fixture,
@@ -237,6 +276,7 @@ export function measureReuseRatchetCase(
 			unscoped.observedPerMove.map((count, index) => count - unscoped.proposalPerMove[index]!)
 		),
 		counters: countersOf(scope),
+		verdictStats: scoped.verdictStats,
 		attempts: { scoped: scoped.attempts, unscoped: unscoped.attempts }
 	};
 }

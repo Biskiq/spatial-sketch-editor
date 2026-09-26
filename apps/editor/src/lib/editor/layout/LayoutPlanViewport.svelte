@@ -286,6 +286,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		yawFeedbackText
 	} from './plan-overlays';
 	import {
+		createWallFirstArchitectureVerdictScope,
 		createWallSamplingDerivation,
 		LAYOUT_PLAN_GRID_STEP,
 		LAYOUT_PLAN_SNAP_RADIUS_CSS_PX,
@@ -298,7 +299,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		type OpeningDragAnchor,
 		type SnapFeatureKind,
 		type SnapInputContext,
-		type SnapResolution
+		type SnapResolution,
+		type WallFirstArchitectureVerdictScope
 	} from '@portfolio/layout-core';
 	import {
 		releaseArchitectureEdit,
@@ -633,6 +635,18 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * derives freshly-built centre lines per intent and is deliberately unscoped.
 	 */
 	const architectureEditSampling = createWallSamplingDerivation();
+	/**
+	 * P23B.7 S4 — the gesture-scoped VERDICT set for the preflight.
+	 *
+	 * Also deliberately NOT `$state`, and owned for exactly ONE gesture: built at
+	 * pointer-down from the same frozen baseline document the proposal and the
+	 * preflight read, and dropped at every site that releases that snapshot, so a
+	 * verdict keyed on one frozen baseline can never answer for another gesture
+	 * (OR-8). Threaded into the PREFLIGHT only; the proposal stage and the release
+	 * planner keep their canonical paths, and an absent scope is today's
+	 * whole-document-per-move mode.
+	 */
+	let architectureEditVerdictScope: WallFirstArchitectureVerdictScope | null = null;
 	/**
 	 * P23.13 S2 — the resolved salience vocabulary held for the gesture. Freezing
 	 * the snapshot (not the scale) keeps the control set, lane and gate decisions
@@ -1001,6 +1015,14 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23B.5 M-3 — start every gesture from an empty store: cross-GESTURE reuse
 		// is not the approved scope, and this makes it unreachable by construction.
 		architectureEditSampling.reset();
+		// P23B.7 S4 — build the verdict set for THIS gesture from the same frozen
+		// baseline the proposal and the preflight read. A fresh object per gesture
+		// is what makes "no verdict survives into the next gesture" structural
+		// rather than a cleanup path that could be missed.
+		const verdictBaseline = architectureEditBaselineDocument();
+		architectureEditVerdictScope = verdictBaseline
+			? createWallFirstArchitectureVerdictScope(verdictBaseline)
+			: null;
 		// P23B.5 M-3 DEV readout: watch this gesture's reuse from its first move.
 		p23bOpenGestureSampling();
 		architectureEditStartScreen = screen;
@@ -1106,7 +1128,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			gesture: interaction.architectureEdit,
 			baseline: architectureEditBaselineDocument(),
 			moved: true,
-			sampling: architectureEditSampling
+			sampling: architectureEditSampling,
+			verdictScope: architectureEditVerdictScope
 		});
 		// P23B.5 M-3 DEV readout: the counters after this move's preflight, so a live
 		// view shows reuse and refusals while the drag is still happening.
@@ -1137,6 +1160,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// store becomes empty, so nothing it derived can be reached, and the next
 		// gesture starts from the same guarantee as a first one.
 		architectureEditSampling.reset();
+		// P23B.7 S4 — the verdict set goes with the same frozen baseline: the next
+		// gesture builds its own, so no verdict can answer for a later document.
+		architectureEditVerdictScope = null;
 		p23bCloseGestureSampling();
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;
@@ -2163,6 +2189,8 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		// P23B.5 M-3 — this path bypasses `finishArchitectureEditGesture`, so the
 		// gesture scope is released here too.
 		architectureEditSampling.reset();
+		// P23B.7 S4 — the verdict set is released with the same baseline here too.
+		architectureEditVerdictScope = null;
 		p23bCloseGestureSampling();
 		architectureEditStartScreen = null;
 		architectureEditMoved = false;

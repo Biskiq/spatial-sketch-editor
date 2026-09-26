@@ -421,8 +421,29 @@ P23B.7  interaction optimization — RATIFIED AND IMPLEMENTATION AUTHORIZED 2026
         move's own candidate set, refused (not guessed) for an underivable intent. Unit-tested in
         `apps/editor/tests/lib/layout/p23b7-affected-extent.test.ts` (junction move, wall move, bend
         insert, knot move, component scoping, gate order, the per-move growth row, underivable rows).
-        NEXT IN SLICE: S4 (gesture-invariant verdict set + the four-cell differential) → S5 only if the
-        measurement names it → S7.
+        S4 EXECUTED — the gesture-scoped verdict set (`createWallFirstArchitectureVerdictScope`,
+        `layout-wall-first-precision.ts`): the first move of a target runs today's whole-document pass
+        VERBATIM; a CLEAN result initializes the gesture, and every later move re-derives ITS OWN
+        affected extent and evaluates only that through the same predicates (same path, code, message
+        and first-failure order). A target change or a non-clean baseline re-initializes / stays on
+        the canonical pass, so no request is suppressed and no failure approximated (the §0.8.2
+        fallback). The viewport builds one non-reactive scope at pointer-down from the frozen baseline
+        and drops it on both exit paths; `transientArchitectureEdit` threads it into the PREFLIGHT
+        only. Differential: the S2 frozen table (OR-3 (a)–(d), OR-8 and the issue-order row) is driven
+        as three-move same-target gestures and every move's scoped verdict equals the live
+        whole-document one (clean rows scoped, failing baselines canonical); the F-C3 crossing is
+        refused BY the scoped pass; the four-cell sample/verdict matrix reproduces the committed
+        ratchet BYTE-FOR-BYTE through the scoped path (no re-record) with the per-move request series
+        equal in both verdict modes — verdict reuse removes NO sample request (the crossing gate
+        samples per Wall before its pair loop) — and P23B.5's absolute invariants hold per cell on
+        their own. Tests: `p23b7-verdict-scope`, `p23b7-verdict-scope-wiring`,
+        `p23b7-sample-verdict-matrix`; the S2 test now shares its frozen table via
+        `p23b7-preflight-reference-cases` (values unmoved).
+        Record → ./p23b.7-interaction-optimization/2026-09-25-s4-verdict-scope-record.md.
+        NEXT IN SLICE (owner ruling during S4, 2026-09-25 — plan §0.8.3): MINIMUM REPS — one targeted
+        measurement of the residual `commit-capture` snapshot clone (107–149 ms), NOT another full
+        wall-authoring sweep; S5 runs only if that measurement (or the owner's own repro) names
+        hit-test/snap; S7 records what was measured, then the PR for owner review.
 P23B.8  conditional Worker + Rust/WASM evaluation (decision only; "not justified" is a valid close) —
         PLANNED, unratified
 P23B.9  correctness + performance-regression gate — PLANNED, unratified
