@@ -395,7 +395,7 @@ child plans and execution status →
     queued items with the before-P23B.8 condition) →
   ./2026-09-27-pre-P23B.8-follow-up-decisions.md
   pre-P23B.8 follow-up plan (PLANNED, UNRATIFIED — the M1 protocol on both runtimes, the R1 ranking
-    method, and the one DEV-only instrumentation item; implementation NOT authorized) →
+    method, and the two separable DEV-only instrumentation items; implementation NOT authorized) →
   ./pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
 measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md

@@ -49,8 +49,8 @@ NEXT:
    comparison (no redesign) · D9 dormant S6-mapping cleanup · D10 cache/interning ruling only · D13
    baseline coverage limit (noted beside M1). Withdrawn: P3, D11, D12 (the blocked M-2 case stays
    recorded). Decisions → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md.
-   Plan (PLANNED, UNRATIFIED — M1 both-runtime protocol · R1 ranking method · the one DEV-only
-   instrumentation item; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md.
+   Plan (PLANNED, UNRATIFIED — M1 both-runtime protocol · R1 ranking method · two separable DEV-only
+   instrumentation items; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md.
    BEFORE-P23B.8 CONDITION: every queued item must be ratified, or explicitly routed to P23B.8 / P26,
    before P23B.8 entry — nothing reaches P23B.8 undecided.
 2. Standing constraints:
@@ -88,7 +88,7 @@ P23B.11 closed acceptance stub (acceptance record · reused gates · the S7 meas
 P23B.11 closed step records (S1 profile · S3 short-circuits · S4 gate · S5 identity early-out · S6 M-4 · review fix) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 P23B.11 LIVE measurement JSON records (S1 profile + classes · S7 profile) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 pre-P23B.8 follow-up decision doc (owner decisions 2026-09-27; M1 + R1 ratified scope; queued items + condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
-pre-P23B.8 follow-up plan (PLANNED, UNRATIFIED — M1 protocol on both runtimes · R1 ranking method · the DEV-only instrumentation item; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
+pre-P23B.8 follow-up plan (PLANNED, UNRATIFIED — M1 protocol on both runtimes · R1 ranking method · the two separable DEV-only instrumentation items; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
