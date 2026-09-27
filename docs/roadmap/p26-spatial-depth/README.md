@@ -42,9 +42,12 @@ STATUS: planning — experience target accepted; architecture/sequence are pre-r
         evidence to be re-derived as T1 against F (see authority banner)
 CURRENT: 2026-09-24-P26-continuous-spatial-authoring-umbrella.md (pre-redesign evidence
          until re-derived)
-NEXT: F contract writing first (roadmap/README); then re-derive scope/slices from F and
-      the ratified direction before any implementation plan
-EXECUTION: P23B remains the operational baton (P23B.11 next) by owner decision.
+NEXT: re-derive scope/slices/T1 plan against the owner-ratified F target contract
+      (F.1–F.5 → roadmap/README) and the ratified direction before any implementation
+      plan; exact F interfaces land as F amendments in shared code
+EXECUTION: P23B remains the operational baton by owner decision — P23B.11 shipped and
+           closed 2026-09-27; the owner-routed pre-P23B.8 follow-up (M1 + R1) is next,
+           starting only on the owner's go.
 GATE: no implementation approved; no child is implementation-ready. F and re-derivation
       precede any P26 implementation authorization; the architecture cycle's validation
       window remains closed.
