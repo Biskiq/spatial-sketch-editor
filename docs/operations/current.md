@@ -11,8 +11,30 @@ CHILD: P23B.11-wall-chain — SHIPPED and closed 2026-09-27 (owner REVIEWED AND 
        accepted compile into the commit install. The wall-chain release the S1 profile attributed
        has moved (all-curved Wall-authoring 944.5 → 88.6 ms p50, correspondence 828.7 → 0.2).
        Overall interaction improvement is still NOT established: the browser/node gap and P23B.6's
-       unresolved final-capture increases are owner-routed to the pre-P23B.8 follow-up's M1
-       measurement. No numeric target proposed.
+       unresolved final-capture increases were owner-routed to the pre-P23B.8 follow-up's M1
+       measurement, which has now run (see the next line). No numeric target proposed.
+CHILD (closed, between P23B.11 and P23B.8): pre-P23B.8 follow-up — EXECUTED and CLOSED 2026-09-27
+       (measurement + ranking only; the owner's explicit go was given and the plan's scope is what ran).
+       M1: ONE protocol, ONE session, TWO runtimes (headless Chrome 152.0.7977.54 and Electron 35.0.2
+       / Chromium 134) under the same fixtures, classes, 25-accepted-action rule, three-frame settle,
+       1500×1000 DPR 1 viewport and 19.292586186549904 px/m ladder; both captures settled with ZERO
+       dropped boundaries and both taken at executed head `b6f2203b` on a clean tree. It reports BOTH
+       D1 rows as a comparison only (all-curved Wall-authoring 141.9 ms p50 Chrome / 165.2 Electron;
+       all-curved Whole-Room 300.0 / 353.8 — P23B.6 S1b's 3,601.2 / 493.4 are NOT reproduced: a
+       finding, not a fix, and the increases stay UNRESOLVED), the drag-attached gesture-frame series,
+       release → next presented frame at full coverage (214–292 ms p50 on all-curved Chrome, 229–350
+       Electron, against 31–66 ms on the straight control — where the previously reported
+       `browser-frame` PROXY read 5–40 ms on the same releases), long-frame incidence, D7's post-fix
+       `commit-capture` (0.8–3.1 ms p50 from the classes that carry the mark; ABSENT, with a reason,
+       in the two authoring classes on both runtimes) and D13's coverage limit noted beside the
+       session. R1: ONE ordered ranking from the closed S7 keyed capture — canonical compile, then
+       room-geometry-compile, then mesh-prebuild (self-time only where priceable) — with NO mechanism
+       chosen. Two DEV-only instruments landed and NO product module was touched (test-enforced); no
+       threshold, target, budget metric, baseline or ratchet read or written; the connected case
+       stayed advisory (excluded from D1/D7 by construction, with a test). Records, the two LIVE
+       captures and the acceptance record → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/
+       (plan STATUS amended in place, executed head `b6f2203b`, evidence anchor `58a139f2`, tag
+       `closed/pre-p23b.8-follow-up` local only). NEXT: P23B.8's entry gate.
 RATIFIED DIRECTION (2026-09-27): the Biskiq northstar decision record is ratified and
        routed at ../reference/decisions/northstar-ratification-2026-09-27.md; the authority
        rules and the live contracts were reconciled in the same change set (AGENTS.md rule 10,
@@ -29,28 +51,33 @@ RATIFIED DIRECTION (2026-09-27): the Biskiq northstar decision record is ratifie
 STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
        (order + four amendments → phase README §SEQUENCE). Shipped and closed, each with closed
        stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
-       P23B.4 · P23B.5 · the measurement-only step · P23B.7 · P23B.6 · P23B.11. P23B.1 and P23B.2
-       retain their own review statuses. NEXT: the pre-P23B.8 follow-up (M1 + R1), routed but NOT
-       started — the owner's explicit go is required; its plan is written and awaits ratification
-       (PLANNED, UNRATIFIED) and authorizes no implementation. P26 planning is re-derived as T1 against F
+       P23B.4 · P23B.5 · the measurement-only step · P23B.7 · P23B.6 · P23B.11 · the pre-P23B.8
+       follow-up (M1 + R1). P23B.1 and P23B.2 retain their own review statuses. NEXT: P23B.8's entry
+       gate — the pre-P23B.8 follow-up that came before it RAN and closed without entering anything
+       into it (see CHILD above), and the queued items' before-P23B.8 condition still applies.
+       P26 planning is re-derived as T1 against F
        (see RATIFIED DIRECTION); P26 implementation is unauthorized and its validation window is
        selected but not open.
        Architecture cycle: PHASE_1 installed, no owner action required.
 
 NEXT:
-1. THE PRE-P23B.8 FOLLOW-UP — owner-routed 2026-09-27, executes between P23B.11 and P23B.8, starts
-   only on the owner's explicit go. RATIFIED SCOPE: ONE measurement session (M1 — gesture frames plus
+1. P23B.8'S ENTRY GATE — the next step on the SEQUENCE. The step that preceded it, THE PRE-P23B.8
+   FOLLOW-UP (owner-routed 2026-09-27, executed between P23B.11 and P23B.8), is EXECUTED and CLOSED:
+   its RATIFIED SCOPE was ONE measurement session (M1 — gesture frames plus
    release-to-next-presented-frame on the heavy curved layout, headless Chrome AND Electron under one
    protocol) and ONE release-cost ranking (R1 — canonical compile, then the install's
-   room-geometry-compile, then mesh-prebuild; held until M1). QUEUED BY NAME: P1 randomized M-3
+   room-geometry-compile, then mesh-prebuild; produced after M1, as ruled). It entered nothing into
+   P23B.8's decision and set no threshold; its records, two LIVE captures and acceptance record →
+   ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/. QUEUED BY NAME: P1 randomized M-3
    differential + test/DEV-side invariant · D4 whole-Room move measurement (mechanism stays with P26
    §3.5) · D5 topology/snap/hit-test measurement (mechanism stays with the P23B.7 family) · D6
    adapter/GPU + Plan-template measurement (mechanism stays with P26 P6/P1) · D8 heap-retention
    comparison (no redesign) · D9 dormant S6-mapping cleanup · D10 cache/interning ruling only · D13
    baseline coverage limit (noted beside M1). Withdrawn: P3, D11, D12 (the blocked M-2 case stays
    recorded). Decisions → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md.
-   Plan (PLANNED, UNRATIFIED — M1 both-runtime protocol · R1 ranking method · two separable DEV-only
-   instrumentation items; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md.
+   Plan (RATIFIED, EXECUTED and CLOSED — M1 both-runtime protocol · R1 ranking method · two separable
+   DEV-only instrumentation items; executed head `b6f2203b`; measurement and ranking only) →
+   ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md.
    BEFORE-P23B.8 CONDITION: every queued item must be ratified, or explicitly routed to P23B.8 / P26,
    before P23B.8 entry — nothing reaches P23B.8 undecided.
 2. Standing constraints:
@@ -71,8 +98,8 @@ NEXT:
    remain the experience/QA authority. The accepted prototype authorizes neither implementation
    nor the validation window; the F target contract is owner-ratified (F.1–F.5, with
    amendments) and the next planning step is re-deriving T1/T2/T3 against it, independent of the
-   P23B continuation (NEXT 1: P23B.11 shipped, the pre-P23B.8 follow-up is next). No implementation
-   is authorized.
+   P23B continuation (NEXT 1: the pre-P23B.8 follow-up has closed, so P23B.8's entry gate is next).
+   No implementation is authorized.
 5. P23 carries 13 owner-carried verification rows and 5 deferred debt items, named in its closed gate
    stub; P23B neither claims nor closes them. U-1 was DECLINED; Rust/WASM stays undecided until
    P23B.8.
@@ -88,7 +115,8 @@ P23B.11 closed acceptance stub (acceptance record · reused gates · the S7 meas
 P23B.11 closed step records (S1 profile · S3 short-circuits · S4 gate · S5 identity early-out · S6 M-4 · review fix) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 P23B.11 LIVE measurement JSON records (S1 profile + classes · S7 profile) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 pre-P23B.8 follow-up decision doc (owner decisions 2026-09-27; M1 + R1 ratified scope; queued items + condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
-pre-P23B.8 follow-up plan (PLANNED, UNRATIFIED — M1 protocol on both runtimes · R1 ranking method · the two separable DEV-only instrumentation items; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
+pre-P23B.8 follow-up records + plan (RATIFIED, EXECUTED and CLOSED 2026-09-27 — M1 session record · S2 Chrome leg · S3 Electron leg + pair tables · R1 ranking · acceptance + preservation record; executed head `b6f2203b`, evidence anchor `58a139f2`) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/
+pre-P23B.8 follow-up LIVE captures (M1 Chrome leg · M1 Electron leg — cited machine-readable evidence) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-electron-leg.json
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
@@ -109,10 +137,12 @@ BLOCKER:
 - P26 implementation readiness remains gated: planning is re-derived as T1 against F; the
   validation window is not open.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
-- The pre-P23B.8 follow-up is routed but NOT started (the owner's explicit go is required); P23B.8
-  entry is additionally gated by the before-P23B.8 condition — every queued item must be ratified, or
-  explicitly routed to P23B.8 / P26, before P23B.8 entry.
-- P23B.6's final-capture all-curved Whole-Room and Wall-authoring release increases and the
-  browser/node gap remain unresolved (now the follow-up's M1 measurement; see the decision doc).
+- The pre-P23B.8 follow-up has EXECUTED and CLOSED (measurement + ranking only), so P23B.8 entry is
+  now gated by the before-P23B.8 condition alone — every queued item must be ratified, or explicitly
+  routed to P23B.8 / P26, before P23B.8 entry.
+- P23B.6's final-capture all-curved Whole-Room and Wall-authoring release increases remain UNRESOLVED:
+  M1 re-read both rows on both runtimes and did NOT reproduce them (a finding, not a fix, and no
+  cause is claimed), and the browser/node gap still has no established cause. M1's own results are
+  advisory — one machine, one DEV session — and create no budget or threshold.
 - The P23B.7 snapshot-guard limits and the bounded heap-retention follow-up remain carried and
   unstarted.
