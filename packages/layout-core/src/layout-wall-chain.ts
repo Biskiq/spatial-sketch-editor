@@ -53,6 +53,7 @@ import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
+import type { WallFirstAcceptanceCompile } from './layout-wall-first-precision';
 import {
 	projectPointToSampledSegment
 } from './layout-geometry-curve';
@@ -198,6 +199,15 @@ export type WallChainPlan =
 				kind: 'created';
 			}>;
 			retiredRoomIds: readonly string[];
+			/**
+			 * P23B.11 M-4 — the compile the final canonical gate already produced for
+			 * exactly `document` (canonical JSON, geometry and issues). It is the same
+			 * payload type the precision path carries, and it is a *result*, never an
+			 * authority: an installing caller must re-prove that the document it is about
+			 * to install is this one (the editor's canonical-JSON guard) before consuming
+			 * a byte of it.
+			 */
+			acceptance: WallFirstAcceptanceCompile;
 	  }
 	| {
 			kind: 'rejected';
@@ -773,7 +783,15 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 		startJunctionId,
 		endJunctionId,
 		lineage,
-		retiredRoomIds
+		retiredRoomIds,
+		// P23B.11 M-4 — the final canonical gate above is the ONLY compile
+		// authority; this carries its result so an installing caller does not pay
+		// for a second compile of the same accepted document.
+		acceptance: {
+			documentJson: validated.canonicalJson,
+			geometry: compiled.geometry,
+			issues: compiled.issues
+		}
 	};
 }
 
