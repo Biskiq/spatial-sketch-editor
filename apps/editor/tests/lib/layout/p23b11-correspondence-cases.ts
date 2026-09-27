@@ -563,6 +563,15 @@ export type P23B11PassAnalysis = {
 	faces: Array<{ key: string; polygon: readonly LayoutVec2[] }>;
 	pairs: Array<{ faceKey: string; roomId: string; class: P23B11PairClass }>;
 	reconciliation: P23B11PassOutcome | { kind: 'not-run'; reason: string };
+	/**
+	 * The exact documents the pass consumed — exposed so the S4 gate's oracles read
+	 * THIS pass rather than rebuilding one (the pass-inputs analogue of the ONE
+	 * analysis rule). `null` when no pass ran: a refusal or an operation-only row.
+	 */
+	passInputs: {
+		baseline: LayoutDocumentWallFirst;
+		candidate: LayoutDocumentWallFirst;
+	} | null;
 };
 
 /** Canonical JSON of the fields the pass owns (never the whole document envelope). */
@@ -639,7 +648,8 @@ export function analyzeCorrespondenceCase(entry: P23B11CorrespondenceCase): P23B
 				components: [],
 				faces: [],
 				pairs: [],
-				reconciliation: { kind: 'not-run', reason: 'operation refused before the pass' }
+				reconciliation: { kind: 'not-run', reason: 'operation refused before the pass' },
+				passInputs: null
 			};
 		}
 	}
@@ -659,7 +669,8 @@ export function analyzeCorrespondenceCase(entry: P23B11CorrespondenceCase): P23B
 			reconciliation: {
 				kind: 'not-run',
 				reason: 'operation-only row: this planner declares identity lineage and runs no geometric correspondence'
-			}
+			},
+			passInputs: null
 		};
 	}
 	const candidate: LayoutDocumentWallFirst =
@@ -735,7 +746,8 @@ export function analyzeCorrespondenceCase(entry: P23B11CorrespondenceCase): P23B
 		})),
 		faces: extraction.faces.map((face) => ({ key: face.key, polygon: face.polygon })),
 		pairs,
-		reconciliation
+		reconciliation,
+		passInputs: { baseline, candidate }
 	};
 }
 
