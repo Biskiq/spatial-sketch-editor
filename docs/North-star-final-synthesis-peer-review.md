@@ -1,5 +1,7 @@
 # Peer review: final northstar synthesis
 
+**Folded into the final synthesis** → [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md); kept as the review as written — its findings are history, not current claims.
+
 **Reviews:** [North-star-final-decision-synthesis.md](./North-star-final-decision-synthesis.md) (2026-09-27), checked against repository `96aca756`.
 
 **Premise (owner):**
