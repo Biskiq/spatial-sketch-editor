@@ -38,11 +38,11 @@ import type { LayoutObject, LayoutVec2 } from './layout-types';
  * boundary Wall heights.
  *
  * **`5` is the only recognized version, and there is no `4` decoder.** P23.6I is a
- * pre-Compatibility-Baseline slice, so the wall-first `4` generation that reached
+ * pre-baseline slice, so the wall-first `4` generation that reached
  * `main` before this branch is deliberately *not* migrated: having existed on
  * `main` does not by itself create a backward-compatibility obligation before the
- * Compatibility Baseline (`docs/reference/north-star.md` → *Development-stage schema
- * compatibility*). A payload declaring `4` therefore fails as
+ * Release or Source Baseline (`docs/reference/north-star.md` → *Development-stage
+ * schema compatibility (pre-baseline)*). A payload declaring `4` therefore fails as
  * `unsupported_format_version` instead of being silently reinterpreted as `5`.
  * There is no `4`→`5` cutover, no historical document type, no `6`/`7`.
  */

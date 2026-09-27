@@ -55,15 +55,25 @@ question by doc order.
 ## Where truth lives
 
 ```text
+reference/decisions = ratified destination direction (normative for new design)
 reference = current intended system (authoritative but falsifiable — see below)
-roadmap = future work
+roadmap = future work (pre-redesign plans are evidence, re-derived against F)
 operations = live work
 archive = history
 ```
 
+**Authority precedence:** the ratified decision record
+([`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md))
+is normative for all new design and outranks conflicting pre-ratification
+`reference/` and `roadmap/` text. Landed contracts keep describing current
+behavior until their explicit cutover; the destination is never presented as
+shipped.
+
 | Need | Read | Code |
 |------|------|------|
+| Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md) — normative destination; promoted concerns live in the routed contracts below | — |
 | What's next? | [`roadmap/README.md`](./roadmap/README.md), then stop (no source survey) | — |
+| Foundation contracts (F) — ratified target contract; F.1–F.5 written, implementation status inside | [`reference/composition-execution.md`](./reference/composition-execution.md) (phase registration/status → [`roadmap/f-foundation-contracts/README.md`](./roadmap/f-foundation-contracts/README.md)) | — |
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |
 | Product direction | [`reference/north-star.md`](./reference/north-star.md) | — |
 | Product routes | [`reference/architecture.md`](./reference/architecture.md) §Product routes | — |
@@ -186,7 +196,11 @@ under a slice-independent name, fold the implementation-era owner ratifications 
 the contract itself, leave a supersession pointer at the old slice path, and keep the
 slice as its history. One live copy, discoverable from this router — the shell contract
 ([`reference/design-system/editor-shell-and-visual-system.md`](./reference/design-system/editor-shell-and-visual-system.md),
-established by P23.14, slice closed 2026-09-21) is the first instance.
+established by P23.14, slice closed 2026-09-21) is the first instance. The 2026-09-27
+northstar ratification is the second: the decision record stays at
+[`reference/decisions/`](./reference/decisions/) as provenance, while each concern is
+promoted into its routed live contract (`north-star.md`, `architecture.md`, the component
+contracts, the roadmap) — one live normative statement per concern.
 
 Stale high-authority docs are more dangerous than missing docs — challenge and
 reconcile them rather than silently following either side.

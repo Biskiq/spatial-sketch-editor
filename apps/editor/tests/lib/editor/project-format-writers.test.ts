@@ -482,7 +482,7 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 		// other version fails closed rather than being persisted as if it were
 		// current. P23.6I recognizes exactly one wall-first version, so `4` is an
 		// unsupported version (`docs/reference/north-star.md` → Development-stage schema
-		// compatibility) and no read-side normalization could make it writable.
+		// compatibility (pre-baseline)) and no read-side normalization could make it writable.
 		const payload = {
 			...wallFirstProjectPayload(),
 			layout: { ...wallFirstProjectPayload().layout, formatVersion: 4 }

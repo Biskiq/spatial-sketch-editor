@@ -1,10 +1,35 @@
 # Assets
 
 **Read when:** Paris GLBs, licences, catalogue, import/replace models, project texture registry.  
-**Last reviewed:** 2026-09-08 (P22 shipped — release delivery below)
+**Last reviewed:** 2026-09-27 (ratified direction reconciled; current behavior
+remains authoritative until cutover)
 **Full checklist:** [`../archive/ASSET_WORKFLOW.md`](../../archive/ASSET_WORKFLOW.md)
 
 ---
+
+## Ratified destination (not shipped)
+
+Resources are a shared **typed** system with **project and library scopes**,
+independent revisions and dependency locks — not one project-scoped registry and
+not per-mode stores. A definition, state, performance, clip or Camera resource
+has logical identity plus an exact revision or content identity; delivery copies
+of one immutable revision are not competing mutable definitions. A library
+update is an offered revision requiring acceptance and impact review, and
+existing projects and releases keep their locked revisions; detaching for
+independent editing creates a new authored identity. Source bytes and conversion
+provenance are retained where later reprocessing requires them.
+
+**Truthful ingest.** Ingest declares which structure, clips, material slots,
+pivots and metadata survived and which operations are supported. A render-ready
+derivative is never advertised as a preserved semantic assembly; a flat model
+remains useful at object level, and names/indices locate data in one source
+revision but never prove continuity across re-export.
+
+**First creator loop.** Truthful single-model creator import (retained source,
+provenance and explicit supported capabilities) moves into the first
+creator/audience loop under the re-derived P24/T2 track — it is not contingent
+on a complete asset pipeline, and static-only catalogue supply is no longer the
+scope ceiling.
 
 ## Current asset system (P20 shipped 2026-09-04 — S0–S4)
 
@@ -52,10 +77,14 @@ release-scoped `TextureLoadScope` through the real material consumers
 projects/releases never share cache entries. P22 does not broaden P20 ingest
 (image textures only, no uploaded models).
 
-The catalogue rows below describe the built-in asset model; the project
+The catalogue rows below describe the built-in asset model; the current project
 registry is separate and is served through the authenticated API (see
 [`editor/project-persistence.ts`](../../../apps/editor/src/lib/editor/project-persistence.ts)
-and `EditorAssetLibrary.svelte`).
+and `EditorAssetLibrary.svelte`). It is a project-scoped implementation, not the
+destination resource system: its storage unit and revision/lock model are governed
+by F.2/F.1 under the contract's interface-ownership rule (see
+[`../composition-execution.md`](../composition-execution.md); decision context
+[`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)).
 
 ---
 
@@ -68,7 +97,9 @@ and `EditorAssetLibrary.svelte`).
 | Placements | `scene.json` via editor |
 
 `AssetModel.svelte` owns load/clone/fallback. Do not add room-local GLTF loaders.  
-GLB import pipeline = **deferred** (not scheduled; re-registers after the P12/P3B hard gate).
+The broad GLB import pipeline remains **deferred**; the first truthful
+single-model creator import is re-derived into the first creator/audience loop
+(see destination above), not scheduled by this reconciliation.
 
 ## Plan footprint metadata (P2.1)
 

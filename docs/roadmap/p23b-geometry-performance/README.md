@@ -348,14 +348,14 @@ durable measurement (P23B.0 — SHIPPED 2026-09-25; closed stubs) → plan recon
            the P23B.0-durable plan above (closed stub) · the P23B.1 harvest record §11.1
            (recovery anchor `d7b9de4e`, tag `closed/p23b.0`; baseline SHA-256 `5534926e…` preserved)
 phase status/order → ../README.md
-P26 planning (parallel; not the primary next action) → ../p26-spatial-depth/README.md
+P26 — re-derived as T1 after F (not the primary next action) → ../p26-spatial-depth/README.md
 P23 (closed, evidence only) → ../p23-layout-depth/README.md
 ```
 
 ```text
 DEPENDS ON: P23 closed 2026-09-22 (wall-first Plan editor minimum, one canonical geometry compiler)
 EXECUTION ORDER: pinned by phase README depends-on, not by P-number order
-PIPELINE POSITION: P23 → P23B → P26 → P24 → P25
+PIPELINE POSITION: P23 → P23B → F → T1–T4 tracks (ratified 2026-09-27; see ../README.md)
 ```
 
 ## Authorities

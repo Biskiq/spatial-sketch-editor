@@ -11,12 +11,24 @@ CHILD: P23B.6-rendering — SHIPPED and closed 2026-09-26 (owner REVIEWED AND AC
        all-curved Whole-Room release (73.4 → 493.4 ms p50) and Wall-authoring release (2,147.0 →
        3,601.2 ms p50) increases remain unresolved and are owner-routed to P23B.11. No numeric
        performance target is proposed.
+RATIFIED DIRECTION (2026-09-27): the Biskiq northstar decision record is ratified and
+       routed at ../reference/decisions/northstar-ratification-2026-09-27.md; the authority
+       rules and the live contracts were reconciled in the same change set (AGENTS.md rule 10,
+       docs/README.md, north-star, architecture, component contracts, roadmap). This
+       reconciliation authorizes NO implementation and closes no phase. F — foundation
+       contracts — is owner-ratified (2026-09-27, with amendments: Camera splits in the
+       same cutover as the Experience order migration; exact interfaces land via F
+       amendments in shared code; extensions declare required/optional): the target
+       contract F.1–F.5 lives at ../reference/composition-execution.md and authorizes no
+       implementation. Capability re-planning re-derives against it; P24/P25/P26 existing
+       plans remain pre-redesign evidence re-derived as T2/T3/T1.
 STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE between P23 and P26
        (order + amendments → phase README §SEQUENCE). Shipped and closed, each with closed stubs,
        recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable · P23B.4 ·
        P23B.5 · the measurement-only step · P23B.7 · P23B.6. P23B.1 and P23B.2 retain their own
-       review statuses. P23B.11 is owner-routed and next; P26 planning continues in parallel, P26
-       implementation is unauthorized and its validation window is selected but not open.
+       review statuses. P23B.11 is owner-routed and next; P26 planning is re-derived as T1 against F
+       (see RATIFIED DIRECTION); P26 implementation is unauthorized and its validation window is
+       selected but not open.
        Architecture cycle: PHASE_1 installed, no owner action required.
 
 NEXT:
@@ -36,14 +48,20 @@ NEXT:
      limits and the bounded heap-retention follow-up (no redesign proposed).
 3. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain open and separate;
    they do not reopen any shipped slice.
-4. P26 planning may continue in parallel: reconcile its proposed architecture against landed P23B,
-   resolve slice-specific decisions and prepare the implementation plan/proofs. The accepted
-   prototype authorizes neither implementation nor the validation window.
+4. P26 planning is now re-derived as track T1 against F (see RATIFIED DIRECTION above): its
+   current umbrella/candidate order is pre-redesign evidence, and its prototype journeys A–F
+   remain the experience/QA authority. The accepted prototype authorizes neither implementation
+   nor the validation window; the F target contract is owner-ratified (F.1–F.5, with
+   amendments) and the next planning step is re-deriving T1/T2/T3 against it,
+   independent of the P23B.11 operational continuation. No implementation is authorized.
 5. P23 carries 13 owner-carried verification rows and 5 deferred debt items, named in its closed gate
    stub; P23B neither claims nor closes them. U-1 was DECLINED; Rust/WASM stays undecided until
    P23B.8.
 
 ROUTE:
+ratified direction · decision provenance (normative destination) → ../reference/decisions/northstar-ratification-2026-09-27.md
+F composition/execution target contract (owner-ratified 2026-09-27 with amendments; no implementation authorized) → ../reference/composition-execution.md
+F foundation-contract phase registration + status → ../roadmap/f-foundation-contracts/README.md
 phase pipeline · P-level status → ../roadmap/README.md
 P23B phase status · child order · SEQUENCE + amendments · closed stubs/anchors/tags → ../roadmap/p23b-geometry-performance/README.md
 P23B.6 closed plan stub (delivered mechanisms · final contract · rulings · entry points · residuals · recovery) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-22-P23B.6-rendering-optimization.md
@@ -65,7 +83,11 @@ P23 (closed, evidence only incl. close record) → ../roadmap/p23-layout-depth/R
 post-P23 debt → tech-debt/README.md
 
 BLOCKER:
-- P26 implementation readiness remains gated: planning may continue; the validation window is not open.
+- The 2026-09-27 reconciliation authorizes no implementation. The F target contract is
+  owner-ratified (F.1–F.5, with amendments); capability re-planning re-derives against
+  it, and no implementation is authorized.
+- P26 implementation readiness remains gated: planning is re-derived as T1 against F; the
+  validation window is not open.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
 - P23B.11's plan, ratification and implementation authorization remain pending; its umbrella stub
   authorizes no code.

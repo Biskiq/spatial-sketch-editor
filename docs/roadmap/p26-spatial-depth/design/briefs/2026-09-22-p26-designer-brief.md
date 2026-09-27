@@ -9,7 +9,8 @@
 **Authority:** this document is an assignment, not a product contract and not an implementation plan. It restates the landed P26 research synthesis and the shipped P23 system so a design response can be judged against them. It does not ratify a screen, a gesture, or a schema.
 
 ```text
-PIPELINE: P23 (shipped) → P23B (planning, ongoing) → P26 (this assignment) → P24 → P25
+PIPELINE (historical, pre-redesign): P23 (shipped) → P23B → P26 (this assignment) → P24 → P25
+RATIFIED 2026-09-27: P26 is re-derived as track T1 after F; see ../../../README.md
 RESEARCH: closed. The synthesis is the research conclusion. Do not restart precedent hunting.
 DESIGN: open. The problems in §6 are the work. Research bounds them and does not answer them.
 IMPLEMENTATION: not approved. This brief does not open it.
@@ -96,7 +97,7 @@ What a designer needs to know about PLATE:
 - The product is one world. **Scene** and **Camera** are domains of attention, not separate applications. **Plan** and **3D** are the durable views. Scene Plan has a local mode pair, **Layout** and **Arrange**. Camera owns the timeline. Architecture authoring belongs to Scene, not to Camera.
 - Information has a rank, and the rank must stay visible: **Project → Domain (Scene / Camera) → View (Plan / 3D) → Contextual instrument → Local mode → Tool → Selection / gesture / status**. Scene/Camera is the vertical axis. Plan/3D is the horizontal axis. Those two axes stay legible while an instrument is open.
 - The screen is a cool chassis around a warm working surface. Chassis regions are the domain spine, project head, navigator (left), inspector (right), view bar, and status rail. The working surface is **Paper**: the plan or the 3D view. Controls that act on the work are **Instrument** (the tool tray, numeric fields, mode controls). Paper holds the drawing, selection, guides, and handles. Paper does not accumulate application controls. Do not invent a fourth material.
-- The reference desktop frame is **1440 × 900**. Navigator, inspector, and the central work column already have jobs. A section view occupies the work column. It does not become a new application frame. Frame, colors, type, and one composition specimen are in Appendix A. Use that appendix for shell metrics.
+- The reference desktop frame is **1440 × 900**. Navigator, inspector, and the central work column already have jobs. A section view occupies the work column. It does not become a new application frame. Frame, colors, type, and one composition reference are in Appendix A. Use that appendix for shell metrics.
 - One selection identity. The navigator, the view, the inspector, search, and status readouts name the same object. A retained selection survives a view change. The inspector header and the inspector body describe the same target.
 - One writer for each fact. A control lives in one host. A second surface may display the same fact and may not edit it a second time.
 - Names may duplicate. A compact reference plus the canonical identity is how two walls with the same name stay distinct. The inspector is where a name is edited.
@@ -887,7 +888,7 @@ You do not need to open these. They are the evidence behind §4. Dates and revis
 
 Shipped product facts in §2 and §3 come from the current architecture and layout contracts: wall-first layout (`formatVersion` 5), one compiler, PLATE, world-local scene placement, and the P23 close (2026-09-22). P23B’s scope comes from its planning umbrella: cost, not capability, and still in planning.
 
-Appendix A is taken from the ratified shell contract `docs/reference/design-system/editor-shell-and-visual-system.md` (PLATE, owner-ratified, P23.14 closed 2026-09-21): §5 reference geometry, §6.1 PLATE Light colors, §7 type ladder and control roles, §8–§11 for what each region holds. The specimen is a Scene / Plan composition drawn from those sections. It is not a historical proposal and not a product screenshot.
+Appendix A is taken from the ratified shell contract `docs/reference/design-system/editor-shell-and-visual-system.md` (PLATE, owner-ratified, P23.14 closed 2026-09-21): §5 reference geometry, §6.1 PLATE Light colors, §7 type ladder and control roles, §8–§11 for what each region holds. The reference composition is Scene / Plan, drawn from those sections.
 
 ---
 
@@ -899,9 +900,7 @@ This is the shell you reproduce. Numbers below are the ratified contract at scal
 
 Desktop reference: **1440 × 900 CSS px**. These values are the reference composition. Smaller viewports keep the same hierarchy and ownership before they keep the same pixels.
 
-![PLATE Scene Plan reference frame, 1440 by 900](./plate-scene-plan-1440x900.png)
-
-The specimen is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column. The tables in this appendix are the metric authority. If a painted label in the specimen disagrees with a table, follow the table.
+The reference composition is **Scene / Plan**: brass edge-light on Scene, Plan as the pressed view, Plan paper, tool tray on the paper’s left edge, no Camera drawer. A P26 instrument replaces the paper in the central work column. It does not add a column. The tables in this appendix are the metric authority.
 
 ### A.2 Layout dimensions
 

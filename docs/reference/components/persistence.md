@@ -1,9 +1,55 @@
 # Persistence and schema
 
 **Read when:** scene/layout/project codecs, undo/history, import/export, dirty, fidelity.  
-**Last reviewed:** 2026-09-22 (P23 vertical, curve and Junction-identity clauses installed below)
+**Last reviewed:** 2026-09-27 (ratified direction reconciled; current behavior
+remains authoritative until cutover)
 
 ---
+
+## Current vs destination (ratified 2026-09-27)
+
+**Current (everything below, until its explicit cutover).** The Layout/Scene
+codecs, the `ProjectDocument` envelope, chronological tagged history, cloud
+Save/Load and the P22 release path are the landed implementation.
+
+**Destination.**
+
+- **Storage units:** one explicit codec-bounded, versioned unit per semantic
+  domain (Layout, Scene, Camera, Experience, typed resources) inside a project
+  envelope holding the accepted project revision and dependency lock (F.2). The
+  Experience unit supports a collection; Camera is settled as its own
+  codec-bounded unit, split in the same cutover as the Experience order
+  cutover. Codec boundaries prescribe neither database tables nor physical
+  files nor one blob per resource.
+- **Identity and references:** domain-qualified semantic identity, stable
+  instance-ID paths and revision context; names, indices and mutable hierarchy
+  paths never establish identity; generation-qualified fragments carry source
+  correspondence (F.1).
+- **Compound acceptance:** one expected project revision; typed, serializable
+  authoring intents; validation across affected domains and resource locks; one
+  atomic accepted result and one undo result (F.4). Naive stale writers are
+  rejected by the expected-revision precondition, and "add Stop here" can
+  create both a Camera view and a Stop at the Experience cutover. Event
+  sourcing, CRDTs, branch merge and selective actor undo remain separate
+  decisions.
+- **Release formats stay separate from source formats:** the release reader
+  consumes prepared visitor data and never depends on the authoring validator or
+  historical compilers (F.5). A native editable project export remains a
+  separate artifact.
+- **Audience records:** comments, approvals, saved visitor configurations and
+  shared-session snapshots live outside authored source, anchored by public
+  semantic address and release context, with their own retention/privacy rules
+  (see [`../architecture.md`](../architecture.md) §Semantic authorities).
+- **Source-trial migrations:** before the Source Baseline, accepted trial
+  projects receive bounded, scripted migrations as named pre-baseline
+  exceptions; merging a development schema does not create permanent
+  compatibility.
+
+**Open:** history implementation (snapshot/op-log/CRDT), and exact
+codec/envelope interfaces are drafted by their first consumer then ratified as
+F amendments. Camera is settled as its own codec-bounded unit, split in the
+same cutover as the Experience order cutover
+([`../composition-execution.md`](../composition-execution.md)).
 
 **Scene:** `textures` · `materials` · `entities` · `clusters?` · `navigationNodes` · `connections`. CURRENT canonical shape is world-local (`formatVersion: 1`): project/world coordinates, no `roomId` (codec-enforced). LEGACY compatibility shape is versionless and room-local (room-frame coordinates + `roomId`), converted on import/migration, never authored. Primitives: `box|plane|cylinder|sphere` only. Connection view tracks retain `forward` / `reverse` key arrays and may add a directional `framingEnvelope`; each present direction has exactly four finite ordered unit-interval bounds (`enterStart ≤ enterEnd ≤ exitStart ≤ exitEnd`). Canonical output deep-clones and emits the envelope only when authored; absence stays absent and preserves legacy bytes. CURRENT world-local: the standalone scene codec forbids `roomId`; LEGACY room-local compatibility decoding validates `roomId` syntactically; both validate envelope shape/order; project codec owns cross-document room-reference + world-space camera-pose validation and repeats envelope range/order checks at export. The canonical scene/project model and codecs live in `@portfolio/project-model`; the old `$lib/content/scene*` paths are compatibility/configuration facades. P20 S0 keeps `SceneTextureAsset = { id, name, uri }`; static safe URIs remain public resources, `/local/...` and package rewrites are session/package-only, and `/project-assets/{assetId}` is a logical authenticated registry reference resolved by the editor app.
 
@@ -21,11 +67,11 @@
 
 **Project:** `{ id, name, layout, scene }`. Visitor-safe shared codec validates nested layout + scene in one shape, prefixes nested issues, rejects scene room references absent from same layout. `chopin-project.json` = sole production layout/scene source; `chopin-project.ts` validates once, exposes project, one room registry, resolved scene, navigation graph, runtime. No assets, binary payloads, UI, or history in envelope. Portable package IDs, manifest/filename rules, and `sha256Bytes` also live in `@portfolio/project-model`; ZIP/Blob orchestration stays in editor import/export.
 
-**Cloud persistence (P19 shipped 2026-09-03):** authenticated owned Save/Load wraps the same canonical `ProjectDocument` — `projects` row + `project_versions` versioned JSONB. Save validates the full document, locks the project row, appends a version, and bumps `latest_version`; Load reads the latest version and revalidates; the Hub lists owned projects with versions. Save takes no expected-base-version precondition today — row locking serializes writes but a stale full document can still save as a newer version; a stale-write/revision precondition is a future trigger before simultaneous human/agent writers, not current behavior.
+**Cloud persistence (P19 shipped 2026-09-03):** authenticated owned Save/Load wraps the same canonical `ProjectDocument` — `projects` row + `project_versions` versioned JSONB. Save validates the full document, locks the project row, appends a version, and bumps `latest_version`; Load reads the latest version and revalidates; the Hub lists owned projects with versions. Save takes no expected-base-version precondition today — row locking serializes writes but a stale full document can still save as a newer version; a stale-write/revision precondition is a ratified destination obligation (F.4) before simultaneous human/agent writers, not current behavior.
 
 **Project asset durability (P20 shipped 2026-09-04):** registry metadata in Postgres, heavy texture bytes in private R2 through `apps/api` only. Session/package texture URIs cannot reach semantic JSONB Save (durability gate); package export resolves bytes and embeds them. Assets are not normalized into `ProjectDocument` — the registry/storage boundary stays separate.
 
-**Publish + releases (P22 shipped 2026-09-08):** one `publications` row per project (unique project ID, unique random public ID allocated only by first Publish, nullable active version, monotonic publication revision, timestamps) plus immutable `releases` keyed by `(project_id, version)` carrying the validated delivery manifest (saved `ProjectDocument` snapshot + pinned P20 asset key/SHA-256/MIME/size + shipped-static compatibility projection). Publish/Update/Unpublish run a short SQL transaction (row lock, ownership + expected-revision + saved-version recheck, release insert/reuse, active-pointer switch, revision bump); R2 verification (bounded streaming hash/size/MIME check) happens before the transaction, never inside it. First publish alone allocates the stable public ID; status GET never creates one. ABA (`N → unpublished → N`) still bumps revision, so stale writers get 409. Anonymous reads resolve the active release once per bootstrap (document + manifest share one version); unpublish disables all document/byte delivery for that public ID. `Cache-Control: no-store` on public metadata/bytes. Owner API: `GET/PUT/DELETE /projects/:id/publication`, anonymous: `GET /publications/:id` + version-qualified asset content.
+**Publish + releases (P22 shipped 2026-09-08):** one `publications` row per project (unique project ID, unique random public ID allocated only by first Publish, nullable active version, monotonic publication revision, timestamps) plus immutable `releases` keyed by `(project_id, version)` carrying the validated delivery manifest (saved `ProjectDocument` snapshot + pinned P20 asset key/SHA-256/MIME/size + shipped-static compatibility projection). Publish/Update/Unpublish run a short SQL transaction (row lock, ownership + expected-revision + saved-version recheck, release insert/reuse, active-pointer switch, revision bump); R2 verification (bounded streaming hash/size/MIME check) happens before the transaction, never inside it. First publish alone allocates the stable public ID; status GET never creates one. ABA (`N → unpublished → N`) still bumps revision, so stale writers get 409. Anonymous reads resolve the active release once per bootstrap (document + manifest share one version); unpublish disables all document/byte delivery for that public ID. `Cache-Control: no-store` on public metadata/bytes. Owner API: `GET/PUT/DELETE /projects/:id/publication`, anonymous: `GET /publications/:id` + version-qualified asset content. This is the current path to cut over to the versioned prepared-payload reader; publication pointers belong to published Experiences in the destination, not exclusively to the project.
 
 **Asset policy:** portable packages may embed user texture bytes through their manifest; scene model entities still reference shipped catalogue `assetId`s only. Project-local GLB import remains deferred. P20 cloud Save uses a separate durability gate: session/package texture URIs cannot reach semantic JSONB Save, while package export resolves bytes and embeds them.
 

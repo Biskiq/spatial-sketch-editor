@@ -21,6 +21,29 @@ in **`@portfolio/project-model`**; camera-core consumes only structural camera
 graph inputs. Visitor-only `CameraDirector.svelte` and
 `NavigationNode.svelte` remain app components.
 
+## Current vs destination (ratified 2026-09-27)
+
+**Current (everything below, until its explicit cutover).** The node/connection
+graph, order links, holds, timeline scopes and evaluator described here are the
+landed implementation. `camera-route.ts` / `camera-motion.ts`, the curve/guard
+mechanism and the app components are the current mechanism, not the destination
+guarantee.
+
+**Destination.** Camera keeps connectivity, routes, framing, projection and
+evaluation as one authority; every profile controller (guided travel, free look,
+reduced motion, film, future XR) realizes viewing intent through it and no second
+navigation, motion or pose/FOV interpolation authority exists. Editorial
+occurrences, order, holds, interaction locks and detours move to **Experience**
+at cutover; Camera keeps possible spatial traversal and evaluation, and
+Experience's declared invocation time mapping is evaluated through Camera.
+Selecting a cut never invents a spatial edge, and selecting travel must resolve a
+supported route or report a gap. **Cue ownership follows the source:** Camera
+emits its own progress markers, performances own their cues, Experience owns the
+interaction bindings that listen to them. Node links and Experience order must
+never remain coequal writable authorities. See
+[`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)
+and [`../north-star.md`](../north-star.md) §Direct.
+
 Directional view tracks may carry one optional `framingEnvelope` per travel
 direction: `0 ≤ enterStart ≤ enterEnd ≤ exitStart ≤ exitEnd ≤ 1`. Route
 construction selects and deep-copies only the oriented direction's envelope;
@@ -163,5 +186,7 @@ Plan ↔ 3D; a persisted view-keyframe selection gets only a passive
 Visitor: plays the open-chain order (loop derived); free nodes via BFS; transitioning = no nav; Paris = fixed eye + free-look. No ribbons on `/museum`.
 
 Limits: no collision/navmesh; synthesized look; timeline drag-connect ≤1 new edge; guarded deletes.  
-Future Experience / Interaction consumers reference this canonical camera
-graph/route/motion evaluation; they do not implement another one.
+Experience consumers reference this canonical camera graph/route/motion
+evaluation; they do not implement another one, and at the ratified cutover they
+take over editorial order/occurrences, holds, interaction locks and detours
+(see the current-vs-destination section above).
