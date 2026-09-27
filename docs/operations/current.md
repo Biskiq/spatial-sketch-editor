@@ -31,7 +31,8 @@ STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE
        stubs, recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable ·
        P23B.4 · P23B.5 · the measurement-only step · P23B.7 · P23B.6 · P23B.11. P23B.1 and P23B.2
        retain their own review statuses. NEXT: the pre-P23B.8 follow-up (M1 + R1), routed but NOT
-       started — the owner's explicit go is required. P26 planning is re-derived as T1 against F
+       started — the owner's explicit go is required; its plan is written and awaits ratification
+       (PLANNED, UNRATIFIED) and authorizes no implementation. P26 planning is re-derived as T1 against F
        (see RATIFIED DIRECTION); P26 implementation is unauthorized and its validation window is
        selected but not open.
        Architecture cycle: PHASE_1 installed, no owner action required.
@@ -48,6 +49,8 @@ NEXT:
    comparison (no redesign) · D9 dormant S6-mapping cleanup · D10 cache/interning ruling only · D13
    baseline coverage limit (noted beside M1). Withdrawn: P3, D11, D12 (the blocked M-2 case stays
    recorded). Decisions → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md.
+   Plan (PLANNED, UNRATIFIED — M1 both-runtime protocol · R1 ranking method · the one DEV-only
+   instrumentation item; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md.
    BEFORE-P23B.8 CONDITION: every queued item must be ratified, or explicitly routed to P23B.8 / P26,
    before P23B.8 entry — nothing reaches P23B.8 undecided.
 2. Standing constraints:
@@ -85,6 +88,7 @@ P23B.11 closed acceptance stub (acceptance record · reused gates · the S7 meas
 P23B.11 closed step records (S1 profile · S3 short-circuits · S4 gate · S5 identity early-out · S6 M-4 · review fix) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 P23B.11 LIVE measurement JSON records (S1 profile + classes · S7 profile) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 pre-P23B.8 follow-up decision doc (owner decisions 2026-09-27; M1 + R1 ratified scope; queued items + condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
+pre-P23B.8 follow-up plan (PLANNED, UNRATIFIED — M1 protocol on both runtimes · R1 ranking method · the DEV-only instrumentation item; no implementation authorized) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
