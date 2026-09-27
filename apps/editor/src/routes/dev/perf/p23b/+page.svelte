@@ -55,10 +55,25 @@
 	import {
 		createP23BCaptureDriver,
 		DRIVE_ACTIONS_PER_PATH,
+		DRIVE_ACTION_TIMEOUT_MS,
 		P23B11_S1_FIXTURE_ORDER,
+		P23B_M1_ACTION_CLASSES,
+		P23B_M1_FIXTURE_ORDER,
+		P23B_M1_PREFIX,
 		type P23BDriveFixture,
 		type P23BDriveProgress
 	} from './drive';
+	import {
+		p23bM1FrameTiming,
+		p23bM1GestureFramesFor,
+		p23bM1LongFramesFor
+	} from '$lib/bench/p23b-m1-frame-timing';
+	import {
+		buildP23BM1Record,
+		summarizeM1Class,
+		type P23BM1ClassRow,
+		type P23BM1Record
+	} from '$lib/bench/p23b-m1-record';
 	import {
 		buildP23B11ConnectedCase,
 		P23B11_CONNECTED_CASE_ID,
@@ -664,10 +679,17 @@
 	 * sessions are action-class (containment-only) by construction.
 	 */
 	const driveFixtures: readonly P23BDriveFixture[] = HOSTED_FIXTURES.map(driveFixtureOf);
-	const p23b11DriveFixtures: readonly P23BDriveFixture[] = [
+	const withConnectedDriveFixtures: readonly P23BDriveFixture[] = [
 		...driveFixtures,
 		driveFixtureOf(CONNECTED_CASE_HOSTED)
 	];
+	/**
+	 * Pre-P23B.8 follow-up M1 — the same list: the three committed fixtures in
+	 * harness order, then the connected case LAST as advisory evidence. The connected
+	 * case is never recorded (its classes are containment-only action-class
+	 * sessions), so nothing about it can reach a baseline.
+	 */
+	const m1DriveFixtures: readonly P23BDriveFixture[] = withConnectedDriveFixtures;
 
 	let driveRunning = $state(false);
 	let driveLog = $state<string[]>([]);
@@ -676,6 +698,16 @@
 	let driveFailure = $state('');
 	/** Shared px/m ladder the P23B.11 S1 run left every hosted fixture on. */
 	let p23b11LadderPixelsPerMeter = $state<number | null>(null);
+	/**
+	 * Pre-P23B.8 follow-up M1 — the session's own state. The recorded ladder is
+	 * M1's (the protocol puts every fixture on the same px/m ladder; the number is
+	 * reported, not assumed), and the failure is kept separate from the driver
+	 * log's other runs so an M1 failure is never read as a P23B.11 one.
+	 */
+	let m1Running = $state(false);
+	let m1Failure = $state('');
+	let m1Record = $state<P23BM1Record | null>(null);
+	let m1LadderPixelsPerMeter = $state<number | null>(null);
 
 	function driveNote(line: string) {
 		driveLog = [...driveLog, `${new Date().toISOString().slice(11, 19)} ${line}`];
@@ -768,13 +800,13 @@
 		driveStep = 'P23B.11 S1 starting';
 		drivePathProgress = {};
 		const driver = createP23BCaptureDriver({
-			fixtures: () => p23b11DriveFixtures,
-			host: (fixtureId) => hostFixture(fixtureId),
-			startCapture: (actionClass) => {
-				startCapture(actionClass ?? null);
-				if (!captureSessionId) throw new Error('The S1 capture session did not open');
-				return captureSessionId;
-			},
+		fixtures: () => withConnectedDriveFixtures,
+		host: (fixtureId) => hostFixture(fixtureId),
+		startCapture: (actionClass) => {
+			startCapture(actionClass ?? null);
+			if (!captureSessionId) throw new Error('The S1 capture session did not open');
+			return captureSessionId;
+		},
 			stopCapture: () => stopCapture(),
 			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
 			captureCount: () => captures.length,
@@ -802,7 +834,7 @@
 	}
 
 	function p23b11S1FixturesLabel(): string {
-		return p23b11DriveFixtures.map((fixture) => fixture.id).join(', ');
+		return withConnectedDriveFixtures.map((fixture) => fixture.id).join(', ');
 	}
 
 	/** The `p2311:` marks observed since the capture cleared them. */
@@ -965,6 +997,175 @@
 		};
 	}
 
+	/**
+	 * Pre-P23B.8 follow-up M1 — the session's class rows.
+	 *
+	 * One row per `p23b-m1:` class, taken over the SAME population the interaction
+	 * report uses (completed, resolved path, warm-up excluded per path, accepted
+	 * only). The gesture series and the long-frame window are looked up from the M1
+	 * registry by fixture+class, so a series can never be reported under a class it
+	 * was not measured in.
+	 */
+	function p23bM1ClassRows(): P23BM1ClassRow[] {
+		const timing = p23bM1FrameTiming();
+		const rows: P23BM1ClassRow[] = [];
+		for (const entry of containmentFixtures) {
+			const actionClass = entry.actionClass ?? '';
+			if (!actionClass.startsWith(P23B_M1_PREFIX)) continue;
+			const spec = P23B_M1_ACTION_CLASSES.find(
+				(candidate) => candidate.actionClass === actionClass.slice(P23B_M1_PREFIX.length)
+			);
+			if (!spec) continue;
+			rows.push(
+				summarizeM1Class({
+					fixtureId: entry.fixtureId,
+					sessionId: entry.sessionId,
+					actionClass,
+					actionPath: spec.path,
+					ledger: p23bInteractionCaptureLedger(entry.sessionId),
+					containment: entry.record,
+					warmup: INTERACTION_WARMUP,
+					gestureFrames: p23bM1GestureFramesFor(timing, entry.fixtureId, actionClass),
+					longFrameWindow: p23bM1LongFramesFor(timing, entry.fixtureId, actionClass)
+				})
+			);
+		}
+		return rows;
+	}
+
+	/**
+	 * The M1 record for THIS runtime. The presented-frame section is left as the
+	 * labelled `browser-frame` PROXY here; the CDP runner is the only thing that may
+	 * replace it with a presentation-grade row, and it says so in the file it writes.
+	 */
+	function p23bM1Record(): P23BM1Record {
+		return buildP23BM1Record({
+			protocol:
+				'pre-P23B.8 follow-up M1 — one protocol, one runtime: the three committed fixtures in harness order plus the connected case LAST (advisory, never recorded), five action classes each in its own isolated settled session under the `p23b-m1:` prefix, 25 accepted actions per class with the leading five excluded as warm-up, every mutating action restored with the editor\'s own undo, DEV build, Plan only, one harness document.',
+			provenance: {
+				capturedAt: new Date().toISOString(),
+				mode: 'DEV',
+				runtime: browserName(navigator.userAgent).name,
+				userAgent: navigator.userAgent,
+				viewport: { width: window.innerWidth, height: window.innerHeight },
+				devicePixelRatio: window.devicePixelRatio,
+				commitSha: data.commitSha,
+				treeDirty: data.treeDirty,
+				machine: data.machine,
+				operatingSystem: data.operatingSystem,
+				nodeVersion: data.nodeVersion,
+				protocolId: 'pre-P23B.8-follow-up-M1',
+				protocolRevision: 1,
+				warmupExcluded: INTERACTION_WARMUP,
+				actionsPerClass: DRIVE_ACTIONS_PER_PATH,
+				actionGuardMs: DRIVE_ACTION_TIMEOUT_MS,
+				fixtureOrder: P23B_M1_FIXTURE_ORDER,
+				planViewLadderPixelsPerMeter: m1LadderPixelsPerMeter,
+				instrumentation: {
+					gestureFrames: '§4.2 (a) — rAF callback intervals bracketed around the drag workloads',
+					longFrames: '§4.3 (b2) — long-animation-frame observer, per class window',
+					presentedFrame:
+						'§4.3 (b1) — added by the CDP runner (presentation-grade) or reported as the browser-frame PROXY'
+				}
+			},
+			classes: p23bM1ClassRows(),
+			fixtureOrder: P23B_M1_FIXTURE_ORDER,
+			limitations: MEASUREMENT_LIMITATIONS
+		});
+	}
+
+	function downloadM1Record() {
+		const record = m1Record ?? p23bM1Record();
+		const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = 'p23b-m1-record.json';
+		anchor.click();
+		URL.revokeObjectURL(url);
+	}
+
+	/**
+	 * Pre-P23B.8 follow-up M1 — the run.
+	 *
+	 * One driver, one protocol, this runtime. Nothing is written to a baseline: the
+	 * five classes it opens are `p23b-m1:`-prefixed action-class sessions, which the
+	 * harness keeps as containment records only, and the connected case is advisory.
+	 */
+	async function runM1Capture(): Promise<P23BM1Record | null> {
+		if (driveRunning || m1Running || capturing || running) return null;
+		m1Running = true;
+		m1Failure = '';
+		m1Record = null;
+		driveLog = [];
+		driveStep = 'M1 starting';
+		drivePathProgress = {};
+		const driver = createP23BCaptureDriver({
+			fixtures: () => m1DriveFixtures,
+			host: (fixtureId) => hostFixture(fixtureId),
+			startCapture: (actionClass) => {
+				startCapture(actionClass ?? null);
+				if (!captureSessionId) throw new Error('The M1 capture session did not open');
+				return captureSessionId;
+			},
+			stopCapture: () => stopCapture(),
+			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
+			captureCount: () => captures.length,
+			recordFixtureReset: () => p23bRecordFixtureReset(),
+			log: driveNote,
+			progress: (next) => {
+				driveStep = next.step;
+				drivePathProgress = next.paths;
+				(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+					running: true,
+					step: next.step,
+					fixtureId: next.fixtureId
+				};
+			}
+		});
+		try {
+			await driver.runM1();
+			m1LadderPixelsPerMeter = driver.ladderPixelsPerMeter();
+			const record = p23bM1Record();
+			m1Record = record;
+			(globalThis as typeof globalThis & { __P23B_M1_RECORD__?: unknown }).__P23B_M1_RECORD__ = record;
+			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+				running: false,
+				step: 'M1 complete',
+				classes: record.fixtures.reduce((sum, fixture) => sum + fixture.classes.length, 0)
+			};
+			driveNote(`M1 capture complete: ${record.fixtures.length} fixture(s)`);
+			return record;
+		} catch (error) {
+			m1Failure = error instanceof Error ? error.message : String(error);
+			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+				running: false,
+				step: 'M1 failed',
+				failure: m1Failure
+			};
+			driveNote(`M1 FAILED: ${m1Failure}`);
+			return null;
+		} finally {
+			m1Running = false;
+		}
+	}
+
+	/**
+	 * The CDP runner's entry point for this runtime (DEV only). One call runs the
+	 * whole M1 protocol on the page; the runner supplies the presentation-grade
+	 * clock and the viewport and merges them into the JSON it writes.
+	 */
+	$effect(() => {
+		if (!dev) return;
+		const globals = globalThis as typeof globalThis & {
+			__P23B_M1_RUN__?: () => Promise<P23BM1Record | null>;
+		};
+		globals.__P23B_M1_RUN__ = () => runM1Capture();
+		return () => {
+			delete globals.__P23B_M1_RUN__;
+		};
+	});
+
 	function downloadP23B11S1Record() {
 		const record = (globalThis as typeof globalThis & { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__ ?? p23b11S1Record();
 		const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
@@ -1119,6 +1320,23 @@
 		<button disabled={capturing || driveRunning || running} onclick={runP23B11S1Capture}>Run P23B.11 S1 wall-chain capture</button>
 		{#if (globalThis as { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__}
 			<button class="download" onclick={downloadP23B11S1Record}>Download P23B.11 S1 record JSON</button>
+		{/if}
+		<h2>Pre-P23B.8 M1 (one protocol, this runtime)</h2>
+		<p class="capture-hint">
+			The follow-up's M1 session: the three committed fixtures in harness order plus the connected case
+			last (advisory, never recorded), five action classes each in its own settled session under the
+			<code>p23b-m1:</code> prefix — rigid Wall drag, bend, whole-Room move, Wall authoring and Rect Room
+			commit. {DRIVE_ACTIONS_PER_PATH} accepted actions per class, leading five excluded as warm-up, every
+			mutation restored with editor Undo. The drags carry the gesture-frame series; the long-frame observer
+			listens per class. Run it once per runtime; the CDP runner adds the presentation-grade release row.
+			No baseline and no ratchet is read or written.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={runM1Capture}>
+			{m1Running ? 'Running M1…' : 'Run M1 protocol'}
+		</button>
+		{#if m1Failure}<p class="error">M1 failed: {m1Failure}</p>{/if}
+		{#if m1Record}
+			<button class="download" onclick={downloadM1Record}>Download M1 record JSON</button>
 		{/if}
 		{#if driveStep}<p class="status">Driver: {driveStep}</p>{/if}
 		{#each Object.entries(drivePathProgress) as [path, progress] (path)}
