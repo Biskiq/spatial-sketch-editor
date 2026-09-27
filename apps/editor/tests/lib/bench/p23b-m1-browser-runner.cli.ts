@@ -198,6 +198,16 @@ async function main(): Promise<void> {
 		deviceScaleFactor: 1,
 		mobile: false
 	});
+	/**
+	 * BLANK FIRST, THEN THE HARNESS. A runtime that already hosts the harness page
+	 * (Electron's leg does: the host loads this same URL at start-up) can be told to
+	 * navigate to the exact URL it is already on, and the browser then keeps the
+	 * document it has — so the protocol would run against a tree and a commit from
+	 * whenever that document was first built, while the capture claims to be the one
+	 * being run now. Going through `about:blank` forces a real document load on both
+	 * runtimes, and `documentAgeMs` below reports how old the document actually is.
+	 */
+	await call('Page.navigate', { url: 'about:blank' });
 	await call('Page.navigate', { url: args.url });
 
 	const evaluate = async <T = unknown>(expression: string, awaitPromise = false): Promise<T> => {
@@ -222,8 +232,16 @@ async function main(): Promise<void> {
 	if (!ready) throw new Error('the harness page never published __P23B_M1_RUN__');
 
 	const observed = await evaluate<string>(
-		`JSON.stringify({ ua: navigator.userAgent, dpr: devicePixelRatio, width: innerWidth, height: innerHeight, childFrames: window.length, longAnimationFrame: PerformanceObserver.supportedEntryTypes.includes('long-animation-frame') })`
+		`JSON.stringify({ ua: navigator.userAgent, dpr: devicePixelRatio, width: innerWidth, height: innerHeight, childFrames: window.length, longAnimationFrame: PerformanceObserver.supportedEntryTypes.includes('long-animation-frame'), documentAgeMs: Math.round(performance.now()), navigationType: performance.getEntriesByType('navigation')[0]?.type ?? null })`
 	);
+	// A document that has been open for a while is a document built from an older
+	// tree: the leg is stopped rather than recorded as the current one.
+	{
+		const observedAge = (JSON.parse(observed) as { documentAgeMs?: number }).documentAgeMs ?? 0;
+		if (observedAge > 120000) {
+			throw new Error(`the harness document is ${Math.round(observedAge / 1000)} s old; the run was not started`);
+		}
+	}
 
 	// ---- tracing: only the category that carries the presentation marker ----
 	/** Every presentation marker seen while tracing, with the process that emitted it. */
