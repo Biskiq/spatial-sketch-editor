@@ -209,6 +209,40 @@ function oneGridStepAlong(origin: Point, normal: Point): Point {
 		: [origin[0], origin[1] + Math.sign(normal[1] || 1) * GRID_STEP_M];
 }
 
+/**
+ * The bend gesture's release point: one grid increment along +Z, measured from
+ * the PRESS point rather than from the snapped knot.
+ *
+ * A knot move commits the SNAPPED release point, so one grid step past any
+ * point snaps to one grid step past that point's snapped position: the committed
+ * bend is identical whichever end the step is measured from. The POINTER travel
+ * is not. Measuring from the snapped knot shortens the gesture by exactly the
+ * knot's own off-grid deviation, and a fixture whose knot is off-grid on both
+ * axes (the generated connected case) loses the gesture entirely: 3.5 px of
+ * travel is under `EDITOR_DRAG_THRESHOLD_PX`, so the release is committed as the
+ * click it also is — no bend action, no accepted action, and the class retries
+ * forever. Measuring from the press keeps every fixture's drag at exactly one
+ * grid increment (0.25 m, ≈4.8 px on the shared px/m ladder) and leaves the
+ * committed geometry unchanged.
+ *
+ * Exported because it IS the gesture: the M1 target test asserts that the
+ * gesture this rule produces crosses the app's own drag threshold on every
+ * protocol fixture, which is the property the sub-threshold case violated.
+ */
+export function p23bBendReleasePoint(press: Point): Point {
+	return [press[0], press[1] + GRID_STEP_M];
+}
+
+/**
+ * The whole-Room move gesture's release point: one grid increment along +X from
+ * the SNAPPED Room-interior grab, so the committed move is one grid increment
+ * whatever the grab point's own off-grid offset is. Exported for the same reason
+ * as `p23bBendReleasePoint`: the gesture's own travel is asserted, not assumed.
+ */
+export function p23bRoomMoveReleasePoint(center: Point): Point {
+	return oneGridStepAlong(snapToGrid(center), [1, 0]);
+}
+
 function chordNormal(a: Point, b: Point): Point {
 	const dx = b[0] - a[0];
 	const dz = b[1] - a[1];
@@ -889,6 +923,18 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	/**
 	 * The bend class: the Wall is selected first, then one knot drag per accepted
 	 * action. The selection tap is part of the S1 sequence and is kept as-is.
+	 *
+	 * THE DRAG IS ONE FULL GRID INCREMENT OF POINTER TRAVEL, measured from the
+	 * PRESS point, not from the snapped knot. The committed bend is the same
+	 * either way — a knot-move lands on the snapped release point, and one grid
+	 * step past any point snaps to one grid step past that point's snapped
+	 * position — but the pointer travel is not. Deriving the destination from the
+	 * SNAPPED knot shortens the gesture by exactly the knot's own off-grid
+	 * deviation, and on the generated connected case (whose knots are off-grid on
+	 * BOTH axes) that dropped the gesture to 3.5 px — under the app's shared
+	 * `EDITOR_DRAG_THRESHOLD_PX` of 4 — so every release committed as a click
+	 * instead of a bend and the class could never reach an accepted action. A
+	 * gesture measured as a drag must actually cross the drag threshold.
 	 */
 	async function runBendClass(
 		fixture: P23BDriveFixture,
@@ -910,7 +956,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 						pointerGesture(
 							sessionId,
 							clientPoint(bend),
-							clientPoint(oneGridStepAlong(snapToGrid(bend), [0, 1]))
+							clientPoint(p23bBendReleasePoint(bend))
 						)
 					);
 					const accepted = action.path === 'bend-knot-edit' && action.outcome === 'accepted';
@@ -940,7 +986,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			'whole-room-move-bridge',
 			async (sessionId) => {
 				const roomCenter = targets.roomCenter;
-				const moved = oneGridStepAlong(snapToGrid(roomCenter), [1, 0]);
+				const moved = p23bRoomMoveReleasePoint(roomCenter);
 				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
 					const action = await bracketGestureFrames(timing, 'plan-drag-edit', () =>
 						pointerGesture(sessionId, clientPoint(roomCenter), clientPoint(moved))
