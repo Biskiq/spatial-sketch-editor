@@ -117,6 +117,22 @@ export const P23B_M1_ACTION_CLASSES = [
 ] as const satisfies readonly { actionClass: string; path: BenchInteractionPath; drag: boolean }[];
 /** The M1 action-class session prefix, so no M1 class can be mistaken for another slice's. */
 export const P23B_M1_PREFIX = 'p23b-m1:';
+
+/**
+ * THE NAME AN M1 CLASS IS MEASURED UNDER, and therefore the key its gesture-frame
+ * series and its long-frame window are stored under.
+ *
+ * One string names a class end to end: the session it opens is
+ * `${P23B_M1_PREFIX}${actionClass}`, the record reports it as
+ * `p23b-m1:…`, and both M1 registries are read back by that same recorded name.
+ * A class measured under its bare name (`rigid-wall-drag`) therefore stores a
+ * row nobody can read: the record finds no window and no series and reports both
+ * as not measured, WITHOUT failing — the capture still looks complete. That is why
+ * the key is built here rather than written out twice.
+ */
+export function p23bM1MeasuredClass(actionClass: string): string {
+	return `${P23B_M1_PREFIX}${actionClass}`;
+}
 /** Wheel steps climbed after the zoom floor: 2 * 1.12^20 ≈ 19.29 px/m. */
 const ZOOM_STEPS_IN = 20;
 const ZOOM_OUT_STEPS = 40;
@@ -1155,7 +1171,9 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		for (const entry of P23B_M1_ACTION_CLASSES) {
 			const timing: M1ClassTiming = {
 				fixtureId: fixture.id,
-				actionClass: entry.actionClass,
+				// The RECORDED class name, so the series and the window this class
+				// measures are found again by the row that reports them.
+				actionClass: p23bM1MeasuredClass(entry.actionClass),
 				drag: entry.drag
 			};
 			switch (entry.actionClass) {

@@ -14,7 +14,17 @@ import {
 	P23B_M1_D13_NOTE,
 	P23B_M1_WARMUP_RULE
 } from '$lib/bench/p23b-m1-record';
-import { P23B_M1_GESTURE_FRAME_DEFINITION } from '$lib/bench/p23b-m1-frame-timing';
+import {
+	buildGestureFrameSeries,
+	p23bM1FrameTiming,
+	p23bM1GestureFramesFor,
+	p23bM1LongFramesFor,
+	p23bM1RecordGestureFrames,
+	p23bM1RecordLongFrames,
+	p23bM1ResetFrameTiming,
+	P23B_M1_GESTURE_FRAME_DEFINITION
+} from '$lib/bench/p23b-m1-frame-timing';
+import { p23bM1MeasuredClass } from '../../../src/routes/dev/perf/p23b/drive';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const editorRoot = path.resolve(here, '../../..');
@@ -387,6 +397,34 @@ describe('M1 wiring', () => {
 		// The class rows are built from the ledger the harness read back when the
 		// class closed, not from a live lookup alone (see `m1ClassLedger`).
 		expect(page).toContain('m1ClassLedger(entry, p23bInteractionCaptureLedger)');
+	});
+
+	it('measures each class under the name the record reads it back by', () => {
+		// One string names a class end to end: the session it opens, the prefix it is
+		// reported under, and the key both M1 registries are read by. A class measured
+		// under its bare name stores rows nobody can find — the record then reports the
+		// gesture series and the long-frame window as not measured while the capture
+		// still looks complete, which is exactly how this went unnoticed once.
+		const measured = p23bM1MeasuredClass('rigid-wall-drag');
+		expect(measured).toBe('p23b-m1:rigid-wall-drag');
+		const series = buildGestureFrameSeries({
+			label: 'plan-drag-edit',
+			startedAt: 0,
+			endedAt: 100,
+			samples: [{ end: 16, interval: 16 }],
+			pointermoveMarks: []
+		});
+		p23bM1ResetFrameTiming();
+		p23bM1RecordGestureFrames('fixture-a', measured, 'plan-drag-edit', series);
+		p23bM1RecordLongFrames('fixture-a', measured, [], true);
+		const registry = p23bM1FrameTiming();
+		expect(p23bM1GestureFramesFor(registry, 'fixture-a', measured)).not.toBeNull();
+		expect(p23bM1LongFramesFor(registry, 'fixture-a', measured)).not.toBeNull();
+		expect(p23bM1GestureFramesFor(registry, 'fixture-a', 'rigid-wall-drag')).toBeNull();
+		expect(p23bM1LongFramesFor(registry, 'fixture-a', 'rigid-wall-drag')).toBeNull();
+		p23bM1ResetFrameTiming();
+		// And the run keys every class that way.
+		expect(drive).toContain('actionClass: p23bM1MeasuredClass(entry.actionClass)');
 	});
 
 	it('adds no M1 instrumentation to a product module', () => {

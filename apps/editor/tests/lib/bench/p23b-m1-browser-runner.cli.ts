@@ -313,6 +313,22 @@ async function main(): Promise<void> {
 		});
 	}
 
+	/**
+	 * WHY THE RUN PRODUCED NO RECORD. The page's M1 entry point catches its own
+	 * failure and resolves to `null` (so a failed run cannot look like a completed
+	 * one), which means the rejection carries no message: the reason lives in the
+	 * page's status. Read it here, or a failed leg reports a bare `null`.
+	 */
+	type M1RunStatus = { running?: boolean; step?: string; failure?: string };
+	let runStatus: M1RunStatus | null = null;
+	if (!record && !args.dryRun) {
+		runStatus = await evaluate<M1RunStatus | null>(
+			'JSON.parse(JSON.stringify(globalThis.__P23B_M1_STATUS__ ?? null))'
+		).catch(() => null);
+		runFailure ??= runStatus?.failure ?? null;
+		if (runStatus?.failure) console.error(`M1 page failure: ${runStatus.failure}`);
+	}
+
 	// A calibration pair whose trace marker never arrived is `null`: the
 	// presentation row is then NOT MEASURED rather than correlated on a guess.
 	type Calibration = Marker & { pageNow: number };
@@ -353,6 +369,7 @@ async function main(): Promise<void> {
 			runtime: args.runtime,
 			url: args.url,
 			runFailure,
+			runStatus,
 			observed,
 			calibration: { offsetMs, calibrationResidualMs, rendererPid },
 			presentedFrames: presented.length,
