@@ -7,6 +7,7 @@ import { buildP23BContainment } from '$lib/bench/p23b-containment';
 import type { P23BCaptureLedger } from '$lib/bench/bench-types';
 import {
 	buildP23BM1Record,
+	m1ClassLedger,
 	m1Population,
 	summarizeM1Class,
 	P23B6_S1B_D1_COMPARISON,
@@ -326,6 +327,26 @@ describe('M1 record — the whole record', () => {
 	});
 });
 
+describe('M1 record — the ledger a class row is built from', () => {
+	// One M1 run opens nineteen class sessions, and the live registry keeps only
+	// its most recent few readable. Reading a class row by a live lookup alone
+	// therefore loses the population of every class but the last handful, while
+	// the class's marks still look complete.
+	it('prefers the close-time snapshot over a lookup that can no longer see the session', () => {
+		const snapshot = ledger([action(0, { release: { start: 10, end: 20 } })]);
+		expect(m1ClassLedger({ sessionId: 'evicted', ledger: snapshot }, () => null)).toBe(snapshot);
+	});
+
+	it('falls back to the live lookup only when no snapshot was kept', () => {
+		const live = ledger([action(0, { release: { start: 10, end: 20 } })], { sessionId: 'live' });
+		expect(m1ClassLedger({ sessionId: 'live', ledger: null }, () => live)).toBe(live);
+	});
+
+	it('reports missing rather than guessing when neither is available', () => {
+		expect(m1ClassLedger({ sessionId: 'evicted', ledger: null }, () => null)).toBeNull();
+	});
+});
+
 describe('M1 wiring', () => {
 	const drive = fs.readFileSync(
 		path.resolve(editorRoot, 'src/routes/dev/perf/p23b/drive.ts'),
@@ -363,6 +384,9 @@ describe('M1 wiring', () => {
 		expect(page).toContain('onclick={runM1Capture}');
 		// The M1 record takes its ladder from the M1 run, not from the P23B.11 one.
 		expect(page).toContain('planViewLadderPixelsPerMeter: m1LadderPixelsPerMeter');
+		// The class rows are built from the ledger the harness read back when the
+		// class closed, not from a live lookup alone (see `m1ClassLedger`).
+		expect(page).toContain('m1ClassLedger(entry, p23bInteractionCaptureLedger)');
 	});
 
 	it('adds no M1 instrumentation to a product module', () => {

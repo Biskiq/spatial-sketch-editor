@@ -233,6 +233,26 @@ function releaseSpansOf(actions: readonly P23BActionLedger[], path: BenchInterac
 }
 
 /** One fixture+class capture → one reported class row. */
+/**
+ * WHICH LEDGER A CLASS ROW IS BUILT FROM. The live interaction registry keeps
+ * only its most recent few sessions readable (`p23b-interaction-measure.ts`'s
+ * `SESSION_HISTORY`), and M1 opens nineteen class sessions in one run. A record
+ * built after the run therefore CANNOT look a closed session up again: the
+ * lookup returns `null` and every population, D1 and D7 column of that class
+ * silently reads as missing while the class's marks still look complete.
+ *
+ * The harness closes that gap by keeping the ledger it read back at the moment
+ * the class closed, and that close-time snapshot is what this rule prefers. The
+ * live lookup stays as the fallback so a row can still be built from a session
+ * that is somehow still readable.
+ */
+export function m1ClassLedger(
+	entry: { sessionId: string; ledger: P23BCaptureLedger | null },
+	lookup: (sessionId: string) => P23BCaptureLedger | null
+): P23BCaptureLedger | null {
+	return entry.ledger ?? lookup(entry.sessionId);
+}
+
 export function summarizeM1Class(input: {
 	fixtureId: string;
 	sessionId: string;

@@ -23,7 +23,8 @@
 		BenchProvenance,
 		BenchSample,
 		BenchWorkloadResult,
-		P23BBrowserRunReport
+		P23BBrowserRunReport,
+		P23BCaptureLedger
 	} from '$lib/bench/bench-types';
 	import {
 		buildP23BContainment,
@@ -70,6 +71,7 @@
 	} from '$lib/bench/p23b-m1-frame-timing';
 	import {
 		buildP23BM1Record,
+		m1ClassLedger,
 		summarizeM1Class,
 		type P23BM1ClassRow,
 		type P23BM1Record
@@ -276,7 +278,24 @@
 	 * `g3-baseline.json` write), and it is what turns the pooled `nestedMarks` into
 	 * an action-attributed tree.
 	 */
-	let containmentFixtures = $state<{ fixtureId: string; sessionId: string; actionClass: string | null; record: P23BContainmentRecord }[]>([]);
+	type ContainmentFixtureEntry = {
+		fixtureId: string;
+		sessionId: string;
+		actionClass: string | null;
+		record: P23BContainmentRecord;
+		/**
+		 * The session's ledger, SNAPSHOTTED at the moment the class closes.
+		 *
+		 * The live registry keeps only the most recent few sessions readable
+		 * (`p23b-interaction-measure.ts`'s `SESSION_HISTORY`), so a record built after
+		 * a run of many class sessions cannot look a closed session up again — the
+		 * lookup returns null and every population column in that record reads as
+		 * missing. The snapshot is taken while the session is still readable, which is
+		 * the only moment the data is guaranteed to be there.
+		 */
+		ledger: P23BCaptureLedger | null;
+	};
+	let containmentFixtures = $state<ContainmentFixtureEntry[]>([]);
 	const capturing = $derived(captureSessionId !== null);
 
 	const MEASUREMENT_LIMITATIONS = [
@@ -613,7 +632,10 @@
 				fixtureId: hosted.id,
 				sessionId,
 				actionClass: currentCaptureActionClass,
-				record: buildP23BContainment(ledger, readMarks())
+				record: buildP23BContainment(ledger, readMarks()),
+				// Kept from the read-back above, taken while the session was still in the
+				// registry: a long run evicts old sessions, so a later lookup reads null.
+				ledger
 			}
 		];
 		captureSessionId = null;
@@ -1022,7 +1044,9 @@
 					sessionId: entry.sessionId,
 					actionClass,
 					actionPath: spec.path,
-					ledger: p23bInteractionCaptureLedger(entry.sessionId),
+					// The close-time snapshot first, the live lookup only as a fallback:
+					// see `m1ClassLedger` and `ContainmentFixtureEntry.ledger`.
+					ledger: m1ClassLedger(entry, p23bInteractionCaptureLedger),
 					containment: entry.record,
 					warmup: INTERACTION_WARMUP,
 					gestureFrames: p23bM1GestureFramesFor(timing, entry.fixtureId, actionClass),
