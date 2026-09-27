@@ -1,5 +1,5 @@
 /**
- * P23B.11 S1/S7 advisory node probe (measurement-only; writes nothing).
+ * P23B.11 S1/S3/S7 advisory node probe (measurement-only; writes nothing).
  *
  * Execute from apps/editor with:
  *
@@ -16,9 +16,14 @@
  *
  * Every number is advisory (one machine, DEV); no baseline and no ratchet is
  * read or written, no threshold is asserted, and the P23B.6 diagnosis probe
- * stays live and untouched beside it.
+ * stays live and untouched beside it. S3 adds the pass counts: each chain
+ * operation is re-driven with the test-only `buildCorrespondenceComponents`
+ * observer attached, so the recorded JSON carries the pair subjects, the
+ * predicate calls the SHIPPED short-circuit path actually makes, and the frozen
+ * baseline each is read against. That record is what the owner's S4 ruling reads.
  */
 import {
+	clearCorrespondenceObserverForTest,
 	compileWallFirstLayoutGeometry,
 	correspondenceAuthorization,
 	createEmptyWallFirstLayoutDocument,
@@ -26,8 +31,10 @@ import {
 	planExactJunctionMove,
 	planWallChain,
 	planWallSegment,
+	setCorrespondenceObserverForTest,
 	validateWallFirstLayoutDocument,
 	wallCenterlineSamples,
+	type CorrespondenceObservation,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -149,6 +156,32 @@ function timeWithChainMarks(work: () => void): { totalMs: number; marks: Record<
 	return { totalMs, marks };
 }
 
+/**
+ * ONE node-side chain plan with the pass observer attached (S3): the SHIPPED
+ * short-circuit path runs, exactly as production does, and its single
+ * `buildCorrespondenceComponents` pass is reported. The observer is cleared in
+ * the `finally`, so nothing else in this probe is observed.
+ */
+function observePlan<T>(work: () => T): { result: T; observations: CorrespondenceObservation[] } {
+	const observations: CorrespondenceObservation[] = [];
+	setCorrespondenceObserverForTest((observation) => observations.push(observation));
+	try {
+		return { result: work(), observations };
+	} finally {
+		clearCorrespondenceObserverForTest();
+	}
+}
+
+/** The observation plus the frozen baseline evaluation count it is read against. */
+function passSummary(
+	observations: readonly CorrespondenceObservation[]
+): Array<CorrespondenceObservation & { baselineEvaluations: number }> {
+	return observations.map((observation) => ({
+		...observation,
+		baselineEvaluations: 2 * observation.pairs
+	}));
+}
+
 /** A point on a Wall's sampled centerline — the span a host declaration snaps to. */
 function centerlineSamplePoint(
 	document: LayoutDocumentWallFirst,
@@ -193,6 +226,20 @@ function fixtureReports() {
 		const compiled = compileWallFirstLayoutGeometry(validation.document);
 		const segment = clearGapSegment(document);
 		const rect = clearGapRect(document);
+		// S3: the pass each operation runs, observed — SHIPPED path, no timing.
+		const segmentPass = observePlan(() => {
+			const plan = planWallSegment({
+				baseline: document,
+				start: segment[0],
+				end: segment[1],
+				role: 'boundary'
+			});
+			if (plan.kind !== 'success') throw new Error(`clear-gap segment rejected: ${plan.rejection.code}`);
+		});
+		const rectPass = observePlan(() => {
+			const plan = planWallChain({ baseline: document, points: rect, close: true, role: 'boundary' });
+			if (plan.kind !== 'success') throw new Error(`rect chain rejected: ${plan.rejection.code}`);
+		});
 		return {
 			fixtureId: id,
 			walls: document.walls.length,
@@ -200,6 +247,8 @@ function fixtureReports() {
 			rooms: document.rooms.length,
 			compileIssues: compiled.issues.length,
 			selfPairClasses: pairClasses(document, document),
+			clearGapSegmentPass: passSummary(segmentPass.observations),
+			rectChainPass: passSummary(rectPass.observations),
 			clearGapSegmentPlanP50Ms: timeRuns(() => {
 				const plan = planWallSegment({
 					baseline: document,
@@ -224,36 +273,51 @@ function fixtureReports() {
 /** The connected case's own operations, exactly as the slice names them. */
 function connectedCaseOperations(document: LayoutDocumentWallFirst) {
 	const segment = clearGapSegment(document);
-	const clearGap = planWallSegment({
-		baseline: document,
-		start: segment[0],
-		end: segment[1],
-		role: 'boundary'
-	});
+	const clearGap = observePlan(() =>
+		planWallSegment({
+			baseline: document,
+			start: segment[0],
+			end: segment[1],
+			role: 'boundary'
+		})
+	);
 	// A Room division inside the grid: endpoints land on the spans of that cell's
 	// own curved side Walls and declare both hosts, so the operation extends the
 	// grid's single group (class 3) and divides the Room it was drawn into.
-	const division = planWallSegment({
-		baseline: document,
-		start: centerlineSamplePoint(document, 'grid:v-0-0', 0.5),
-		end: centerlineSamplePoint(document, 'grid:v-1-0', 0.5),
-		role: 'boundary',
-		endpointHostSnaps: [
-			{ pointIndex: 0, wallId: 'grid:v-0-0' },
-			{ pointIndex: 1, wallId: 'grid:v-1-0' }
-		]
-	});
+	const division = observePlan(() =>
+		planWallSegment({
+			baseline: document,
+			start: centerlineSamplePoint(document, 'grid:v-0-0', 0.5),
+			end: centerlineSamplePoint(document, 'grid:v-1-0', 0.5),
+			role: 'boundary',
+			endpointHostSnaps: [
+				{ pointIndex: 0, wallId: 'grid:v-0-0' },
+				{ pointIndex: 1, wallId: 'grid:v-1-0' }
+			]
+		})
+	);
 	// A move along the SHARED run: the middle Junction on the bottom row line is
-	// shared by two cells, so the candidate keeps four Rooms on one group.
-	const sharedRunMove = planExactJunctionMove(document, 'grid:j-1-0', [12.5, 0.5]);
-	const candidates: Array<{ id: string; plan: ReturnType<typeof planWallSegment> | ReturnType<typeof planExactJunctionMove> }> = [
-		{ id: 'connected-clear-gap-segment', plan: clearGap },
-		{ id: 'connected-room-division', plan: division },
-		{ id: 'connected-shared-run-junction-move', plan: sharedRunMove }
+	// shared by two cells, so the candidate keeps four Rooms on one group. This
+	// planner is the PRECISION path — it declares its own identity lineage and runs
+	// NO geometric correspondence, so its observation list is EMPTY by construction
+	// and recorded as such rather than assumed.
+	const sharedRunMove = observePlan(() => planExactJunctionMove(document, 'grid:j-1-0', [12.5, 0.5]));
+	const candidates = [
+		{ id: 'connected-clear-gap-segment', entry: clearGap },
+		{ id: 'connected-room-division', entry: division },
+		{ id: 'connected-shared-run-junction-move', entry: sharedRunMove }
 	];
-	return candidates.map(({ id, plan }) => {
+	return candidates.map(({ id, entry }) => {
+		const plan = entry.result;
+		const correspondencePasses = passSummary(entry.observations);
 		if (plan.kind !== 'success') {
-			return { id, accepted: false, rejection: plan.rejection.code, message: plan.rejection.message };
+			return {
+				id,
+				accepted: false,
+				rejection: plan.rejection.code,
+				message: plan.rejection.message,
+				correspondencePasses
+			};
 		}
 		const validation = validateWallFirstLayoutDocument(plan.document);
 		return {
@@ -261,7 +325,8 @@ function connectedCaseOperations(document: LayoutDocumentWallFirst) {
 			accepted: true,
 			candidateValid: validation.success,
 			rooms: plan.document.rooms.length,
-			candidatePairClasses: pairClasses(document, plan.document)
+			candidatePairClasses: pairClasses(document, plan.document),
+			correspondencePasses
 		};
 	});
 }
@@ -290,7 +355,7 @@ console.log(
 	JSON.stringify(
 		{
 			protocol:
-				'P23B.11 S1/S7 advisory node probe; p50 over 9 measured runs after 2 warm-up runs; no baseline, no ratchet, no threshold',
+				'P23B.11 S1/S3/S7 advisory node probe; p50 over 9 measured runs after 2 warm-up runs; deterministic pass counts from the test-only observer; no baseline, no ratchet, no threshold',
 			provenance: {
 				date: new Date().toISOString(),
 				node: process.version,
