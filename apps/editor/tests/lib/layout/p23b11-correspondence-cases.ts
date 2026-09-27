@@ -50,7 +50,14 @@
  *       2→1 merge (one component, two predecessors, `merge-survivor` + retirement),
  *       and a role change on an OUTER wall retires a Room whose enclosure is gone
  *       (the D-12 one-sided denial), exactly as `planRemoveRoom` does on the
- *       coincident pair;
+ *       coincident pair. THE THIRD LIVE CALLER, `planDissolveJunction` (junction
+ *       dissolve / Wall join), carries its own row at the end of this table: the
+ *       shared `buildCorrespondenceComponents` is live for every caller and
+ *       dissolve was the one live caller with no row (added by the 2026-09-27
+ *       owner review). The join preserves every Room; the affected Room's
+ *       boundary cycle changes, so its pairs fall to the geometric proof, while
+ *       the other Rooms' surviving keys exercise the identity condition's union
+ *       and refusal branches;
  *   (e) a baseline with coincident/nested Rooms — the recorded D-12 fixtures with
  *       a chain landing across them, plus the refusal row the collinear landing
  *       still produces;
@@ -74,6 +81,7 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	extractBoundaryCandidateFaces,
 	interiorWitness,
+	planDissolveJunction,
 	planExactJunctionMove,
 	planRemoveRoom,
 	planWallChain,
@@ -109,6 +117,7 @@ export type P23B11Plan =
 	| ReturnType<typeof planWallSegment>
 	| ReturnType<typeof planWallRoleChange>
 	| ReturnType<typeof planRemoveRoom>
+	| ReturnType<typeof planDissolveJunction>
 	| ReturnType<typeof planExactJunctionMove>;
 
 export type P23B11CaseKind = 'planned' | 'direct' | 'operation-only';
@@ -510,6 +519,16 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		baseline: () => buildP23B11ConnectedCase(),
 		plan: (baseline) => planExactJunctionMove(baseline, 'grid:j-1-0', [12.5, 0.5]),
 		note: 'The move along the shared run. This planner is the PRECISION path: it declares one identity component per Room from `canonicalBoundaryCycleKey` and never runs the geometric correspondence, so the row freezes its ACCEPTANCE and its document only — recorded rather than silently given a pass that production does not execute.'
+	},
+
+	// --- the THIRD live caller: the junction dissolve / Wall join -------------
+	{
+		id: 'h-connected-corner-dissolve',
+		covers: 'OR-1(h)',
+		kind: 'planned',
+		baseline: () => buildP23B11ConnectedCase(),
+		plan: (baseline) => planDissolveJunction(baseline, 'grid:j-2-0'),
+		note: 'The third live caller of the shared `buildCorrespondenceComponents` — added by the 2026-09-27 owner review fix, because dissolve was the one live caller with no OR-1 row. Dissolving the grid corner joins `grid:h-1-0` and `grid:v-2-0` into one chain through the SAME points: every Room is preserved, the affected Room (1-0) loses its boundary cycle so its pairs fall to the geometric proof, and the other three Rooms keep their keys: nine of the sixteen pairs (three unions, six refusals) are settled by identity with no geometry, and the rest fall to the exact short-circuits. Two of the four grid corners are refused by the planner’s own compile gate (a narrow neck after the join), which is why this row uses the accepted one. Checked against the exhaustive bypass like every other row.'
 	}
 ];
 

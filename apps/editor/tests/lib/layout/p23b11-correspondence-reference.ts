@@ -27,6 +27,13 @@
  * NO VALUE IN THIS MODULE MAY CHANGE. A change here silently moves what both the
  * freeze test and the differential treat as the reference. If a row has to move,
  * it is a finding about the LIVE behaviour and is recorded as one.
+ *
+ * ONE ROW WAS ADDED (2026-09-27, owner-review fix). The case table gained the
+ * dissolve row `h-connected-corner-dissolve` — the third live caller of the
+ * shared `buildCorrespondenceComponents` — and its frozen row was generated from
+ * the EXHAUSTIVE (test-only bypass) path, today's loop verbatim, then pasted here
+ * unchanged; the S3 differential asserts the shipped path and the bypass both
+ * reproduce it. Every pre-existing row in this module is untouched.
  */
 import type { P23B11FrozenCase } from './p23b11-correspondence-cases';
 
@@ -2620,6 +2627,110 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		reconciliation: {
 			kind: 'not-run',
 			reason: 'operation-only row: this planner declares identity lineage and runs no geometric correspondence'
+		}
+	},
+	{
+		id: 'h-connected-corner-dissolve',
+		covers: 'OR-1(h)',
+		operation: {
+			verdict: 'success',
+			documentSha256: '0f8e699bd4799d71267b5063709d4290e980047a363739239d2a0b3ba7610a79'
+		},
+		fidelity: true,
+		counts: {
+			faces: 4,
+			predecessors: 4,
+			pairs: 16,
+			sameGroupPairs: 16,
+			crossGroupPairs: 0,
+			undefinedPairs: 0,
+			insideEvaluations: 16,
+			overlapEvaluations: 16
+		},
+		components: [
+			{
+				candidateFaceKeys: [
+					'4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R'
+				],
+				predecessorRoomIds: [
+					'grid:room-1-0'
+				]
+			},
+			{
+				candidateFaceKeys: [
+					'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R'
+				],
+				predecessorRoomIds: [
+					'grid:room-0-0'
+				]
+			},
+			{
+				candidateFaceKeys: [
+					'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R'
+				],
+				predecessorRoomIds: [
+					'grid:room-0-1'
+				]
+			},
+			{
+				candidateFaceKeys: [
+					'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R'
+				],
+				predecessorRoomIds: [
+					'grid:room-1-1'
+				]
+			}
+		],
+		faceKeys: [
+			'4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R',
+			'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R',
+			'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
+			'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R'
+		],
+		reconciliation: {
+			kind: 'ok',
+			lineage: [
+				{
+					faceKey: '4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R',
+					roomId: 'grid:room-1-0',
+					kind: 'preserved'
+				},
+				{
+					faceKey: '5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R',
+					roomId: 'grid:room-0-0',
+					kind: 'preserved'
+				},
+				{
+					faceKey: '5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
+					roomId: 'grid:room-0-1',
+					kind: 'preserved'
+				},
+				{
+					faceKey: '5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R',
+					roomId: 'grid:room-1-1',
+					kind: 'preserved'
+				}
+			],
+			retiredRoomIds: [],
+			rooms: [
+				{
+					id: 'grid:room-1-0',
+					name: 'Grid Room 1-0'
+				},
+				{
+					id: 'grid:room-0-0',
+					name: 'Grid Room 0-0'
+				},
+				{
+					id: 'grid:room-0-1',
+					name: 'Grid Room 0-1'
+				},
+				{
+					id: 'grid:room-1-1',
+					name: 'Grid Room 1-1'
+				}
+			],
+			documentSha256: '0f8e699bd4799d71267b5063709d4290e980047a363739239d2a0b3ba7610a79'
 		}
 	}
 ];

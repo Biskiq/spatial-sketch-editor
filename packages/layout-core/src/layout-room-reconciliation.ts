@@ -576,6 +576,19 @@ function recordOverlapCall(
  * alone can never union two graph-independent structures. Faces with no
  * predecessor form independent 0→1 birth components. Groups are sorted
  * deterministically by their smallest face key.
+ *
+ * SOUNDNESS PRECONDITION OF THE M-3 IDENTITY CONDITION (below): the condition
+ * compares `canonicalBoundaryCycleKey`, which is built from Wall ids and
+ * directions ALONE — a surviving key proves the same boundary WALLS, never the
+ * same geometry. "Key survives ⇒ the geometry is unchanged" is sound only
+ * because no caller can move an existing Junction or reshape existing curve
+ * geometry while keeping a boundary cycle: `planWallChain` only adds and nodes
+ * Walls; the topology ops only add, remove or re-role Walls (no surviving
+ * Junction moves); `planDissolveJunction` re-describes two Walls as one chain
+ * through the SAME points, so the joined Wall's point set is unchanged. A caller
+ * that CAN change existing geometry while keeping boundary keys must NOT reach
+ * the identity condition — it would need a geometry check the condition
+ * deliberately never makes.
  */
 export function buildCorrespondenceComponents(options: {
 	faces: readonly DerivedCandidateFace[];
@@ -639,6 +652,10 @@ export function buildCorrespondenceComponents(options: {
 	// cycles became the same one) is NEVER settled: the condition cannot be established, so
 	// the pass refuses it and the geometric proof decides, exactly as today. The exhaustive
 	// path is today's loop verbatim and reads none of this.
+	// SOUNDNESS PRECONDITION (function doc): a surviving key is Wall ids and directions,
+	// never coordinates, so "key survives ⇒ geometry unchanged" holds only while no caller
+	// moves an existing Junction or reshapes existing curve geometry. A caller that can do
+	// either while keeping boundary keys must NOT reach this condition.
 	const claimFaceKeyByRoomId = new Map<string, string>();
 	if (!exhaustive) {
 		const faceKeySet = new Set(faces.map((face) => face.key));

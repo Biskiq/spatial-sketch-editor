@@ -214,14 +214,15 @@ describe('P23B.11 S3 — OR-1: the shipped short-circuits reproduce the frozen r
 		for (const row of shipped.rows) {
 			expect(row, row.id).toEqual(frozenById.get(row.id));
 		}
-		// OR-1(h) is MANDATORY at S3, and the exclusion is deliberate: the four
+		// OR-1(h) is MANDATORY at S3, and the exclusion is deliberate: the five
 		// CONNECTED rows with a pass (authoring inside, division, shared-wall merge,
-		// outer-wall retire) are compared above like every other row.
+		// outer-wall retire, corner dissolve) are compared above like every other row.
 		const connected = passRows(shipped).filter((entry) => entry.row.covers.includes('OR-1(h)'));
 		expect(connected.map((entry) => entry.row.id).sort()).toEqual([
 			'd-connected-outer-wall-retire',
 			'd-connected-shared-wall-merge',
 			'h-connected-authoring-inside',
+			'h-connected-corner-dissolve',
 			'h-connected-room-division'
 		]);
 	});
@@ -844,12 +845,13 @@ describe('P23B.11 S3 — OR-6: the count oracle', () => {
 		}
 	});
 
-	it('the CONNECTED rows save exactly where M-1(b)/(c) proves a skip — never by identity', () => {
+	it('the CONNECTED rows keep zero cross-group work, zero undefined pairs and a full accounting', () => {
 		// The S4 gate reads this row family: on one Wall group the group check has
 		// nothing to skip, so whatever the optimized path saves there comes from the
-		// box prune and the containment skip — both proven neutral above.
+		// box prune, the containment skip or the identity condition — all proven
+		// neutral above. Five rows since the review fix added the dissolve caller's.
 		const connected = passRows(shipped).filter((entry) => entry.row.covers.includes('OR-1(h)'));
-		expect(connected).toHaveLength(4);
+		expect(connected).toHaveLength(5);
 		for (const { row, observations } of connected) {
 			expect(row.counts.crossGroupPairs, row.id).toBe(0);
 			expect(row.counts.undefinedPairs, row.id).toBe(0);
