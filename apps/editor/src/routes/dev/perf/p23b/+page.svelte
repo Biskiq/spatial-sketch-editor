@@ -52,7 +52,18 @@
 		p23bSubscribeGestureSampling,
 		type P23BGestureSamplingState
 	} from '$lib/editor/layout/p23b-gesture-sampling-report';
-	import { createP23BCaptureDriver, DRIVE_ACTIONS_PER_PATH, type P23BDriveFixture, type P23BDriveProgress } from './drive';
+	import {
+		createP23BCaptureDriver,
+		DRIVE_ACTIONS_PER_PATH,
+		P23B11_S1_FIXTURE_ORDER,
+		type P23BDriveFixture,
+		type P23BDriveProgress
+	} from './drive';
+	import {
+		buildP23B11ConnectedCase,
+		P23B11_CONNECTED_CASE_ID,
+		P23B11_CONNECTED_CASE_LABEL
+	} from '$lib/bench/p23b11-connected-case';
 	import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 	import fixtureLedger from '../../../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
 	import type { PageData } from './$types';
@@ -111,6 +122,21 @@
 		bendKnotId: string;
 		authoringFrom: [number, number];
 		authoringTo: [number, number];
+	};
+	/**
+	 * The connected grid's targets: the authoring segment runs inside grid cell
+	 * (0,0) — the confined interior that still pays the whole-document proof — and
+	 * the Rect Room is drawn in the clear region beside the grid, so it lands as a
+	 * new independent island while the grid stays one connected group.
+	 */
+	const CONNECTED_TARGETS: HostedTargets = {
+		selectionWallId: 'grid:h-0-0',
+		dragWallId: 'grid:v-0-0',
+		dragGrabFraction: 0.5,
+		bendWallId: 'grid:h-0-0',
+		bendKnotId: 'grid:h-0-0:knot:1',
+		authoringFrom: [3, 5],
+		authoringTo: [7, 5]
 	};
 	const OWNER_TARGETS: HostedTargets = {
 		selectionWallId: 'wall-chain-1',
@@ -195,9 +221,31 @@
 		hostedFixture('p23b-40-wall-all-curved-v1', MATRIX_TARGETS, 'in the clear gap between room-0 and room-1')
 	];
 
+	/**
+	 * P23B.11 S1 — the CONNECTED case's hosted fixture.
+	 *
+	 * Generated, never recorded: it is not a `P23BMatrixSpec` and it is absent
+	 * from `fixture-ledger.json`, so it carries an explicit `unrecorded:` marker
+	 * where a ledger hash would go. That is sound because its captures are
+	 * action-class sessions, which the harness keeps as containment records only
+	 * — nothing about this fixture can reach `g3-baseline.json`, and the scripted
+	 * baseline capture still runs the three committed fixtures alone.
+	 */
+	const CONNECTED_CASE_HOSTED: HostedFixture = {
+		id: P23B11_CONNECTED_CASE_ID,
+		label: P23B11_CONNECTED_CASE_LABEL,
+		role: 'timing-target',
+		document: buildP23B11ConnectedCase(),
+		canonicalLayoutSha256: `unrecorded:${P23B11_CONNECTED_CASE_ID}`,
+		targets: CONNECTED_TARGETS,
+		protocol: protocolFor(CONNECTED_TARGETS, 'inside grid cell 0,0 and beside the grid'),
+		notApplicable: {}
+	};
+	const ALL_HOSTED_FIXTURES: readonly HostedFixture[] = [...HOSTED_FIXTURES, CONNECTED_CASE_HOSTED];
+
 	let hostedFixtureId = $state<string>(P23B_OWNER_FIXTURE_ID);
 	let hostedRevision = $state(0);
-	const hosted = $derived(HOSTED_FIXTURES.find((fixture) => fixture.id === hostedFixtureId) ?? HOSTED_FIXTURES[0]!);
+	const hosted = $derived(ALL_HOSTED_FIXTURES.find((fixture) => fixture.id === hostedFixtureId) ?? ALL_HOSTED_FIXTURES[0]!);
 
 	let running = $state(false);
 	let issue = $state('');
@@ -442,7 +490,7 @@
 			return;
 		}
 		issue = '';
-		hostedFixtureId = id;
+		hostedFixtureId = ALL_HOSTED_FIXTURES.some((fixture) => fixture.id === id) ? id : P23B_OWNER_FIXTURE_ID;
 		hostedRevision += 1;
 	}
 
@@ -600,19 +648,34 @@
 	 * ledger before the capture is summarized. Anything it cannot verify is
 	 * repeated (and recorded as a retry) or fails loudly here.
 	 */
-	const driveFixtures: readonly P23BDriveFixture[] = HOSTED_FIXTURES.map((fixture) => ({
-		id: fixture.id,
-		label: fixture.label,
-		document: fixture.document,
-		targets: fixture.targets,
-		notApplicable: fixture.notApplicable
-	}));
+	function driveFixtureOf(fixture: HostedFixture): P23BDriveFixture {
+		return {
+			id: fixture.id,
+			label: fixture.label,
+			document: fixture.document,
+			targets: fixture.targets,
+			notApplicable: fixture.notApplicable
+		};
+	}
+
+	/**
+	 * The scripted baseline capture stays on the three committed fixtures; the
+	 * connected case is appended only for the P23B.11 S1/S7 run, whose capture
+	 * sessions are action-class (containment-only) by construction.
+	 */
+	const driveFixtures: readonly P23BDriveFixture[] = HOSTED_FIXTURES.map(driveFixtureOf);
+	const p23b11DriveFixtures: readonly P23BDriveFixture[] = [
+		...driveFixtures,
+		driveFixtureOf(CONNECTED_CASE_HOSTED)
+	];
 
 	let driveRunning = $state(false);
 	let driveLog = $state<string[]>([]);
 	let driveStep = $state('');
 	let drivePathProgress = $state<P23BDriveProgress['paths']>({});
 	let driveFailure = $state('');
+	/** Shared px/m ladder the P23B.11 S1 run left every hosted fixture on. */
+	let p23b11LadderPixelsPerMeter = $state<number | null>(null);
 
 	function driveNote(line: string) {
 		driveLog = [...driveLog, `${new Date().toISOString().slice(11, 19)} ${line}`];
@@ -690,6 +753,56 @@
 		} finally {
 			driveRunning = false;
 		}
+	}
+
+	/**
+	 * P23B.11 S1/S7 — the focused wall-chain run: the three committed fixtures
+	 * plus the generated connected case, two action classes each, on the same S6
+	 * protocol as the P23B.6 attribution run.
+	 */
+	async function runP23B11S1Capture() {
+		if (driveRunning || capturing || running) return;
+		driveRunning = true;
+		driveFailure = '';
+		driveLog = [];
+		driveStep = 'P23B.11 S1 starting';
+		drivePathProgress = {};
+		const driver = createP23BCaptureDriver({
+			fixtures: () => p23b11DriveFixtures,
+			host: (fixtureId) => hostFixture(fixtureId),
+			startCapture: (actionClass) => {
+				startCapture(actionClass ?? null);
+				if (!captureSessionId) throw new Error('The S1 capture session did not open');
+				return captureSessionId;
+			},
+			stopCapture: () => stopCapture(),
+			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
+			captureCount: () => captures.length,
+			recordFixtureReset: () => p23bRecordFixtureReset(),
+			log: driveNote,
+			progress: (next) => {
+				driveStep = next.step;
+				drivePathProgress = next.paths;
+			}
+		});
+		try {
+			await driver.runP23B11S1();
+			p23b11LadderPixelsPerMeter = driver.ladderPixelsPerMeter();
+			(globalThis as typeof globalThis & { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__ =
+				p23b11S1Record();
+			driveNote(
+				`P23B.11 S1 wall-chain capture complete: ${p23b11S1FixturesLabel()} · expected fixture order ${P23B11_S1_FIXTURE_ORDER.join(', ')}`
+			);
+		} catch (error) {
+			driveFailure = error instanceof Error ? error.message : String(error);
+			driveNote(`FAILED: ${driveFailure}`);
+		} finally {
+			driveRunning = false;
+		}
+	}
+
+	function p23b11S1FixturesLabel(): string {
+		return p23b11DriveFixtures.map((fixture) => fixture.id).join(', ');
 	}
 
 	/** The `p2311:` marks observed since the capture cleared them. */
@@ -803,6 +916,64 @@
 			},
 			containmentRecord: fixture.record
 		};
+	}
+
+	/**
+	 * P23B.11 S1/S7 — the wall-chain release-delay profile record.
+	 *
+	 * Measurement-only and separate from every baseline: the classes this run
+	 * opens are `p23b11:wall-authoring` and `p23b11:room-creation-commit`, and an
+	 * action-class session is kept as a containment record (never as a
+	 * `captures` entry). Per fixture and class it reports the p50/p95 TOTALS of
+	 * every `p2311:` mark inside the accepted actions — the six wall-chain marks
+	 * name the split — with exclusive self withheld wherever the enclosed marks
+	 * are not provably disjoint (`buildP23BContainment`'s rule), plus the explicit
+	 * unattributed remainder. Nothing is summed across nested nodes.
+	 */
+	function p23b11S1Record() {
+		const classes = containmentFixtures
+			.filter((entry) => entry.actionClass?.startsWith('p23b11:'))
+			.map((entry) => {
+				const ledger = p23bInteractionCaptureLedger(entry.sessionId);
+				return {
+					fixtureId: entry.fixtureId,
+					sessionId: entry.sessionId,
+					actionClass: entry.actionClass,
+					actionPath: 'wall-authoring' as BenchInteractionPath,
+					recordedActions: ledger?.actions.length ?? null,
+					fixtureResets: ledger?.fixtureResets ?? null,
+					droppedBoundaries: ledger?.droppedBoundaries ?? null,
+					settled: ledger?.settled ?? null,
+					attribution: s1ContainmentByClass(entry, 'wall-authoring'),
+					containment: entry.record
+				};
+			});
+		return {
+			protocol:
+				'P23B.11 S1/S7 wall-chain browser profile; action-class sessions on the S6 protocol (settled, zero dropped boundaries), paths wall-authoring and room-creation-commit, fixtures straight-40 · all-curved-40 · owner-40-curved · connected-curved-grid-v1 (advisory); no baseline and no ratchet is read or written',
+			provenance: {
+				capturedAt: new Date().toISOString(),
+				location: globalThis.location?.href ?? null,
+				userAgent: globalThis.navigator?.userAgent ?? null,
+				devicePixelRatio: globalThis.devicePixelRatio ?? null,
+				markNames: [...new Set(classes.flatMap((entry) => Object.keys(entry.attribution.marks)))].sort(),
+				warmupExcludedPerClass: INTERACTION_WARMUP,
+				actionsPerClass: DRIVE_ACTIONS_PER_PATH,
+				planViewLadderPixelsPerMeter: p23b11LadderPixelsPerMeter
+			},
+			classes
+		};
+	}
+
+	function downloadP23B11S1Record() {
+		const record = (globalThis as typeof globalThis & { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__ ?? p23b11S1Record();
+		const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = 'p23b11-s1-browser-profile.json';
+		anchor.click();
+		URL.revokeObjectURL(url);
 	}
 
 	/**
@@ -938,6 +1109,17 @@
 			are stored in separate measurement sessions. Each editing action is restored with editor Undo.
 		</p>
 		<button disabled={capturing || driveRunning || running} onclick={runP23B6S1Capture}>Run P23B.6 S1 attribution capture</button>
+		<h2>P23B.11 S1 wall-chain profile</h2>
+		<p class="capture-hint">
+			The focused wall-chain release profile: the three committed fixtures plus the generated connected
+			curved grid (advisory), on the same S6 protocol, measuring only wall authoring and Rect Room
+			commit. Its action-class sessions are containment-only and never enter the baseline report.
+			Fixtures: {p23b11S1FixturesLabel()}.
+		</p>
+		<button disabled={capturing || driveRunning || running} onclick={runP23B11S1Capture}>Run P23B.11 S1 wall-chain capture</button>
+		{#if (globalThis as { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__}
+			<button class="download" onclick={downloadP23B11S1Record}>Download P23B.11 S1 record JSON</button>
+		{/if}
 		{#if driveStep}<p class="status">Driver: {driveStep}</p>{/if}
 		{#each Object.entries(drivePathProgress) as [path, progress] (path)}
 			<p class="status">{path}: {progress.accepted} accepted of {progress.attempted} attempts</p>

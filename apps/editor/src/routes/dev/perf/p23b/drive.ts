@@ -77,6 +77,16 @@ export type P23BDriveHooks = {
 
 /** Accepted actions per path; the ledger excludes the leading five as warm-up. */
 export const DRIVE_ACTIONS_PER_PATH = 25;
+/**
+ * P23B.11 S1/S7 fixture order: the three committed fixtures P23B.6 measured,
+ * plus the generated connected case last (advisory evidence; never recorded).
+ */
+export const P23B11_S1_FIXTURE_ORDER = [
+	'p23b-40-wall-straight-v1',
+	'p23b-40-wall-all-curved-v1',
+	'owner-40-curved-v1',
+	'connected-curved-grid-v1'
+] as const;
 /** Wheel steps climbed after the zoom floor: 2 * 1.12^20 ≈ 19.29 px/m. */
 const ZOOM_STEPS_IN = 20;
 const ZOOM_OUT_STEPS = 40;
@@ -671,14 +681,20 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		if (!(ledger?.settled ?? false)) throw new Error(`${fixture.id}: the capture did not settle`);
 	}
 
-	/** P23B.6 S1b: isolated classes let Plan containment retain action identity without changing the baseline schema. */
+	/**
+	 * P23B.6 S1b: isolated classes let Plan containment retain action identity
+	 * without changing the baseline schema. P23B.11 S1 reuses the same machinery
+	 * with its own `p23b11:` prefix, so the two slices' containment records can
+	 * never be mistaken for each other.
+	 */
 	async function captureS1Class(
 		fixture: P23BDriveFixture,
 		actionClass: string,
-		work: (sessionId: string) => Promise<void>
+		work: (sessionId: string) => Promise<void>,
+		prefix = 'p23b6:'
 	): Promise<void> {
 		report(`${fixture.id}: ${actionClass}`);
-		const sessionId = hooks.startCapture(`p23b6:${actionClass}`);
+		const sessionId = hooks.startCapture(`${prefix}${actionClass}`);
 		try {
 			await work(sessionId);
 		} finally {
@@ -692,7 +708,15 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		note(`${fixture.id}/${actionClass}: ${ledger?.actions.length ?? 0} recorded interaction(s); settled`);
 	}
 
-	async function runS1Fixture(fixture: P23BDriveFixture): Promise<void> {
+	/**
+	 * P23B.11 S1 — host one fixture and put it on the shared S1 view. Split out of
+	 * `runS1Fixture` so the focused P23B.11 run can drive the same protocol (same
+	 * px/m ladder, same settled capture, same undo restore) without re-listing the
+	 * classes that slice does not measure.
+	 */
+	async function hostS1Fixture(
+		fixture: P23BDriveFixture
+	): Promise<{ targets: DriverTargets; selection: Point }> {
 		const previousCanvas = planCanvas();
 		const previousView = publishedPlanView();
 		report(`hosting S1 fixture ${fixture.id}`);
@@ -711,8 +735,71 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		ensureTool('Select');
 		const targets = targetsFor(fixture);
 		await setSharedView(targets);
-		const selection = clientPoint(targets.selection);
+		return { targets, selection: clientPoint(targets.selection) };
+	}
 
+	/**
+	 * The Wall-authoring class, shared by the P23B.6 attribution run and the
+	 * P23B.11 wall-chain run: one tap starts (or re-starts) the run and one tap
+	 * completes the 4 m segment; every accepted action is put back with the
+	 * editor's own undo, so all actions act on the ratified fixture.
+	 */
+	async function runWallAuthoringClass(
+		fixture: P23BDriveFixture,
+		targets: DriverTargets,
+		prefix = 'p23b6:'
+	): Promise<void> {
+		report(`${fixture.id}: wall-authoring`);
+		ensureTool('Wall');
+		await captureS1Class(
+			fixture,
+			'wall-authoring',
+			async (sessionId) => {
+				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
+					await cancelPendingRun();
+					let setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+					if (setup.outcome === 'suppressed') setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+					const commit = await pointerTap(sessionId, clientPoint(targets.authoringTo));
+					const accepted = commit.path === 'wall-authoring' && commit.outcome === 'accepted';
+					await restore();
+					return { action: commit, accepted };
+				});
+			},
+			prefix
+		);
+	}
+
+	/** The Rect Room creation class (one 4×2 m drag commit per accepted action). */
+	async function runRoomCreationClass(
+		fixture: P23BDriveFixture,
+		targets: DriverTargets,
+		prefix = 'p23b6:'
+	): Promise<void> {
+		report(`${fixture.id}: room-creation-commit`);
+		ensureTool('Rect Room');
+		await captureS1Class(
+			fixture,
+			'room-creation-commit',
+			async (sessionId) => {
+				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
+					const action = await pointerGesture(
+						sessionId,
+						clientPoint(targets.roomCreationFrom),
+						clientPoint(targets.roomCreationTo),
+						{ click: false }
+					);
+					const accepted = action.path === 'wall-authoring' && action.outcome === 'accepted';
+					if (accepted) await restore();
+					return { action, accepted };
+				});
+			},
+			prefix
+		);
+	}
+
+	/** Host the fixture, then run the remaining classes of the P23B.6 attribution series. */
+	async function runS1Fixture(fixture: P23BDriveFixture): Promise<void> {
+		const { targets, selection } = await hostS1Fixture(fixture);
 		report(`${fixture.id}: rigid-wall-drag`);
 		await captureS1Class(fixture, 'rigid-wall-drag', async (sessionId) => {
 			await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
@@ -754,35 +841,8 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			});
 		});
 
-		report(`${fixture.id}: wall-authoring`);
-		ensureTool('Wall');
-		await captureS1Class(fixture, 'wall-authoring', async (sessionId) => {
-			await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
-				await cancelPendingRun();
-				let setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
-				if (setup.outcome === 'suppressed') setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
-				const commit = await pointerTap(sessionId, clientPoint(targets.authoringTo));
-				const accepted = commit.path === 'wall-authoring' && commit.outcome === 'accepted';
-				await restore();
-				return { action: commit, accepted };
-			});
-		});
-
-		report(`${fixture.id}: room-creation-commit`);
-		ensureTool('Rect Room');
-		await captureS1Class(fixture, 'room-creation-commit', async (sessionId) => {
-			await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
-				const action = await pointerGesture(
-					sessionId,
-					clientPoint(targets.roomCreationFrom),
-					clientPoint(targets.roomCreationTo),
-					{ click: false }
-				);
-				const accepted = action.path === 'wall-authoring' && action.outcome === 'accepted';
-				if (accepted) await restore();
-				return { action, accepted };
-			});
-		});
+		await runWallAuthoringClass(fixture, targets);
+		await runRoomCreationClass(fixture, targets);
 
 		ensureTool('Select');
 		report(`${fixture.id}: persistent-pan-zoom`);
@@ -852,6 +912,38 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		}
 	}
 
+	/**
+	 * P23B.11 S1/S7 — the focused wall-chain release-delay capture.
+	 *
+	 * Same S6 protocol as `runP23B6S1` (settled capture, zero dropped boundaries,
+	 * undo-restored actions, one shared px/m ladder), but only the two paths this
+	 * slice measures — `wall-authoring` and `room-creation-commit` — on the three
+	 * committed fixtures and on the generated CONNECTED case. Each class is its own
+	 * measurement session (`p23b11:` prefix), so the containment record binds the
+	 * chain's marks to the action that produced them, and nothing enters the
+	 * baseline report (action-class captures are containment-only).
+	 */
+	async function runP23B11S1(): Promise<void> {
+		installPointerCaptureNoop();
+		progress = { running: true, fixtureId: null, step: 'P23B.11 S1 starting', paths: {} };
+		hooks.progress({ ...progress });
+		try {
+			for (const id of P23B11_S1_FIXTURE_ORDER) {
+				const fixture = hooks.fixtures().find((candidate) => candidate.id === id);
+				if (!fixture) throw new Error(`P23B.11 S1 fixture is missing: ${id}`);
+				progress = { ...progress, fixtureId: fixture.id, paths: {} };
+				hooks.progress({ ...progress });
+				const { targets } = await hostS1Fixture(fixture);
+				await runWallAuthoringClass(fixture, targets, 'p23b11:');
+				await runRoomCreationClass(fixture, targets, 'p23b11:');
+			}
+			report('P23B.11 S1 complete');
+		} finally {
+			progress = { ...progress, running: false };
+			hooks.progress({ ...progress });
+		}
+	}
+
 	async function run(): Promise<void> {
 		installPointerCaptureNoop();
 		progress = { running: true, fixtureId: null, step: 'starting', paths: {} };
@@ -869,5 +961,5 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		}
 	}
 
-	return { run, runP23B6S1, targetsFor, ladderPixelsPerMeter };
+	return { run, runP23B6S1, runP23B11S1, targetsFor, ladderPixelsPerMeter };
 }

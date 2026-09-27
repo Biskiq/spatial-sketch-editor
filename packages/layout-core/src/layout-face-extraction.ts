@@ -670,6 +670,16 @@ export function polygonIntersectionArea(
 }
 
 /**
+ * The adjacency predicates' own slack, in metres. `polygonsShareInteriorArea`
+ * treats a point as "on the ring" within this distance (its `withinRing` and
+ * `pointNearSegment` probes), so a room and a face whose boundary probes come no
+ * closer than this can never share interior area. Exported (P23B.11 S3) so a
+ * coarse phase can prune only pairs PROVEN farther apart than the predicate's own
+ * slack, instead of duplicating the number: one tolerance, one owner.
+ */
+export const ON_RING_TOLERANCE = 1e-9;
+
+/**
  * Do two simple polygons share interior area?
  *
  * Adjacency-aware and tolerance-robust: polygons that merely touch along an
@@ -694,7 +704,6 @@ export function polygonsShareInteriorArea(
 	// (measured ~1e-16 on a reproduced plan), which is exactly how the sampled
 	// `polygonIntersectionArea` came to count them as interior to both Rooms.
 	// Tolerance, not exact equality, is what makes "on the ring" decidable.
-	const ON_RING_TOLERANCE = 1e-9;
 	const withinRing = (polygon: readonly LayoutVec2[], point: LayoutVec2): boolean => {
 		for (let index = 0; index < polygon.length; index += 1) {
 			const start = polygon[index]!;
