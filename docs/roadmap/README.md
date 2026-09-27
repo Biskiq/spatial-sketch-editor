@@ -21,7 +21,7 @@ there are grandfathered legacy).
 ```text
 PIPELINE (ratified 2026-09-27):
 P23B (continues)
-  → F foundation contracts
+  → F foundation contracts (F.1–F.5 owner-ratified 2026-09-27; exact interfaces land as amendments)
   → parallel tracks   T1 Spatial / P26
                       T2 Composition data / P24
                       T3 Experience data / P25

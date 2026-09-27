@@ -5,6 +5,8 @@
 **Outcome:** one museum the creator can draw, move around, open, inspect and edit continuously, with exact canonical edits wherever the representation makes the operation legible.  
 **Execution dependency:** P23 is closed. P23B remains the preceding performance phase and primary execution track. This baseline must be reconciled again against its landed foundation before the final P26 implementation plan is ready.
 
+**Superseded sequencing (2026-09-27).** The order quoted here is pre-redesign: the owner-ratified direction routes **P23B → F foundation contracts → T1–T4 tracks**, with P26 re-derived as track **T1** against F. Everything below stays pre-redesign evidence until that re-derivation ([router](./README.md), [decision record](../../reference/decisions/northstar-ratification-2026-09-27.md)).
+
 ## 1. Authority, ratified direction and readiness
 
 This is the phase-wide authority for P26's proposed scope, architectural reconciliation, rebuild boundary, sequence, acceptance and unresolved decisions. It replaces the earlier “add orthographic instruments to Plan/3D” framing. **P26 includes the architectural redesign and eventual production implementation**, not merely a design study or a vertical-view extension.

@@ -25,9 +25,11 @@ STATUS             mechanisms installed — window plan not yet reconciled (the 
                    was recorded 2026-09-22
 TRIGGER            adjudication justified capture (AC-1, AC-2, AC-3, AC-5) plus one bounded test
                    correction; the owner authorized the bounded Phase 1 installation
-PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviewed; next pipeline
-                   phase is P23B (geometry performance, planning; umbrella landed, children
-                   proposed); P26 follows and is the selected validation window, still planning
+PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviewed. P23B is the phase
+                   in progress (P23B.11 shipped and closed 2026-09-27; the owner-routed pre-P23B.8
+                   follow-up is next — baton → ./current.md). After it the ratified pipeline runs
+                   F foundation contracts → T1–T4 tracks, with P26 re-derived as T1 and remaining
+                   the selected validation window (product status → ../roadmap/README.md)
 OWNER ACTION       not required — installation is agent work; the next owner action is the Phase 3
                    verdict per mechanism
 NEXT               reconcile the selected window phase's prepared implementation plan against the
