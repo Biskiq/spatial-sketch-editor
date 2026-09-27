@@ -38,7 +38,15 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces, type ComponentLineage, type LayoutDocumentWallFirst, type LayoutVec2 } from '@portfolio/layout-core';
+import {
+	clearCorrespondenceObserverForTest,
+	extractBoundaryCandidateFaces,
+	setCorrespondenceObserverForTest,
+	type ComponentLineage,
+	type CorrespondenceObservation,
+	type LayoutDocumentWallFirst,
+	type LayoutVec2
+} from '@portfolio/layout-core';
 
 import {
 	analyzeCorrespondenceCase,
@@ -161,6 +169,31 @@ describe('P23B.11 S4 — OR-4: the identity condition against the pair proof', (
 			}
 		});
 	}
+
+	it('the SHIPPED pass settles exactly the identity condition’s partition (mechanism and oracle agree)', () => {
+		// The M-3 implementation check: the pass's own identity counters must equal the test-side
+		// condition's partition on every gate row, so the differential's row equality is a
+		// statement about the mechanism rather than about the oracle's arithmetic.
+		for (const id of P23B11_CONDITIONAL_GATE_CASE_IDS) {
+			const entry = gateCase(id);
+			const observations: CorrespondenceObservation[] = [];
+			setCorrespondenceObserverForTest((observation) => observations.push(observation));
+			let analysis: P23B11PassAnalysis;
+			try {
+				analysis = analyzeCorrespondenceCase(entry);
+			} finally {
+				clearCorrespondenceObserverForTest();
+			}
+			const inputs = analysis!.passInputs;
+			expect(inputs, id).not.toBeNull();
+			const gate = identityGate({ baseline: inputs!.baseline, faces: analysis!.faces });
+			const last = observations[observations.length - 1]!;
+			expect(last.mode, id).toBe('short-circuit');
+			expect(last.identitySettled, id).toBe(gate.settledPairKeys.length);
+			expect(last.identityUnions, id).toBe(gate.claimPairs.length);
+			expect(last.identityRefusals, id).toBe(gate.refusalPairs.length);
+		}
+	});
 
 	it('the refused (e) row and the operation-only (h) row run no pass, so no condition is claimed for them', () => {
 		for (const id of ['e-exact-coincidence-collinear-chain', 'h-connected-shared-run-junction-move']) {

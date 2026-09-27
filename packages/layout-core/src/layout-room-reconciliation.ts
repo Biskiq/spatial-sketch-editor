@@ -43,6 +43,7 @@ import type { LayoutVec2 } from './layout-types';
 import { wallCenterlineSamples } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import {
+	canonicalBoundaryCycleKey,
 	type DerivedCandidateFace,
 	type FaceExtractionResult,
 	faceArea,
@@ -384,11 +385,13 @@ export type CorrespondencePairClass = 'same-group' | 'cross-group' | 'undefined'
  * ACCOUNTING, per mode:
  *
  * ```text
- * short-circuit  pairs = authorizationSkips + absentEvidenceSkips + boundsSkips
- *                       + insideCalls + insideSkipsByBounds
- *                (every pair is accounted exactly once: denied by identity, skipped
- *                 for absent evidence, pruned by the inflated boxes, skipped only
- *                 for the containment CALL, or VISITED by the containment step);
+ * short-circuit  pairs = identitySettled + authorizationSkips + absentEvidenceSkips
+ *                       + boundsSkips + insideCalls + insideSkipsByBounds
+ *                identitySettled = identityUnions + identityRefusals
+ *                (every pair is accounted exactly once: settled by the identity
+ *                 condition, denied by the D-12 labels, skipped for absent evidence,
+ *                 pruned by the inflated boxes, skipped only for the containment CALL,
+ *                 or VISITED by the containment step);
  *                insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
  *                (each pair that reached containment either decided the merge — and
  *                 never paid the overlap predicate — or fell through to it, as did
@@ -419,6 +422,18 @@ export type CorrespondenceObservation = {
 	sameGroupPairs: number;
 	crossGroupPairs: number;
 	undefinedPairs: number;
+	/**
+	 * M-3 — pairs IDENTITY settled without any geometry: a predecessor Room whose own
+	 * boundary cycle still exists as an unambiguous candidate face, against a face whose
+	 * single owner is unambiguous. `identityUnions` are the claims (the Room keeps its own
+	 * face); `identityRefusals` are the contrapositive (the face belongs to another Room),
+	 * which is what removes a connected plan's neighbour pairs. An ambiguous face — two
+	 * Rooms naming one face, the merge shape — is NEVER settled, so these counters cannot
+	 * hide a merge; those pairs keep the geometric proof.
+	 */
+	identitySettled: number;
+	identityUnions: number;
+	identityRefusals: number;
 	/** (a) pairs denied by `unionAuthorized` before any geometry. */
 	authorizationSkips: number;
 	/**
@@ -490,6 +505,9 @@ function emptyCorrespondenceObservation(
 		sameGroupPairs: 0,
 		crossGroupPairs: 0,
 		undefinedPairs: 0,
+		identitySettled: 0,
+		identityUnions: 0,
+		identityRefusals: 0,
 		authorizationSkips: 0,
 		absentEvidenceSkips: 0,
 		boundsSkips: 0,
@@ -610,6 +628,36 @@ export function buildCorrespondenceComponents(options: {
 				const polygon = predecessorPolygons.get(roomId);
 				return polygon === undefined ? null : correspondenceBounds(polygon);
 			});
+	// M-3 — THE IDENTITY CONDITION, computed ONCE per pass from authored identity alone. A
+	// predecessor Room whose own boundary cycle still exists as a candidate face OWNS that
+	// face: `canonicalBoundaryCycleKey` is the ONE derivation face extraction and Room
+	// lineage share, so a key match is authored identity, never a coincidence of
+	// coordinates. The contrapositive is what removes a connected plan's neighbour pairs:
+	// a face owned by exactly one Room can match NO OTHER, so a Room with a known face
+	// against another Room's known face is settled as a NON-union with no geometry.
+	// An AMBIGUOUS face (two Rooms naming it — the merge shape, where both predecessors'
+	// cycles became the same one) is NEVER settled: the condition cannot be established, so
+	// the pass refuses it and the geometric proof decides, exactly as today. The exhaustive
+	// path is today's loop verbatim and reads none of this.
+	const claimFaceKeyByRoomId = new Map<string, string>();
+	if (!exhaustive) {
+		const faceKeySet = new Set(faces.map((face) => face.key));
+		const claimantRoomIdsByFaceKey = new Map<string, string[]>();
+		for (const room of options.baselineRooms) {
+			const key = canonicalBoundaryCycleKey(room.boundary);
+			if (!faceKeySet.has(key)) continue;
+			claimFaceKeyByRoomId.set(room.id, key);
+			const claimants = claimantRoomIdsByFaceKey.get(key) ?? [];
+			claimants.push(room.id);
+			claimantRoomIdsByFaceKey.set(key, claimants);
+		}
+		for (const claimants of claimantRoomIdsByFaceKey.values()) {
+			if (claimants.length <= 1) continue;
+			for (const roomId of claimants) claimFaceKeyByRoomId.delete(roomId);
+		}
+	}
+	/** Keys left after the ambiguity refusal: exactly the faces owned by ONE Room. */
+	const unambiguousFaceKeys = new Set(claimFaceKeyByRoomId.values());
 	faces.forEach((face, faceIndex) => {
 		const faceBox = faceBoxes[faceIndex] ?? null;
 		predecessorRoomIds.forEach((roomId, predIndex) => {
@@ -644,6 +692,20 @@ export function buildCorrespondenceComponents(options: {
 				// reassign an unrelated Room's identity or its owned objects.
 				if (!unionAuthorized(authorization, roomId, face.key)) return;
 				union(predIndex, predecessorCount + faceIndex);
+				return;
+			}
+			// M-3 IDENTITY FIRST — the cheapest exact decision there is: when BOTH sides of
+			// the pair are unambiguous, authored identity already has the verdict. The Room
+			// owning this face unions; a Room whose own face is a DIFFERENT one refuses.
+			const claimedFaceKey = claimFaceKeyByRoomId.get(roomId);
+			if (claimedFaceKey !== undefined && unambiguousFaceKeys.has(face.key)) {
+				observation.identitySettled += 1;
+				if (claimedFaceKey === face.key) {
+					observation.identityUnions += 1;
+					union(predIndex, predecessorCount + faceIndex);
+				} else {
+					observation.identityRefusals += 1;
+				}
 				return;
 			}
 			// M-1(a) GROUP CHECK FIRST. `unionAuthorized` is a pure component-label

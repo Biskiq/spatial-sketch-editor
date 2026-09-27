@@ -169,20 +169,25 @@ function expectAccounting(observation: CorrespondenceObservation): void {
 		observation.sameGroupPairs + observation.crossGroupPairs + observation.undefinedPairs
 	).toBe(observation.pairs);
 	expect(
-		observation.authorizationSkips +
+		observation.identitySettled +
+			observation.authorizationSkips +
 			observation.absentEvidenceSkips +
 			observation.boundsSkips +
 			observation.insideSkipsByBounds +
 			observation.insideCalls
 	).toBe(observation.pairs);
 	if (observation.mode === 'short-circuit') {
+		expect(observation.identityUnions + observation.identityRefusals).toBe(
+			observation.identitySettled
+		);
 		expect(observation.insideCalls + observation.insideSkipsByBounds).toBe(
 			observation.insideDecisions + observation.overlapCalls
 		);
 		expect(observation.insideDecisions).toBeLessThanOrEqual(observation.insideCalls);
 		expect(2 * observation.pairs - (observation.insideCalls + observation.overlapCalls)).toBe(
 			2 *
-				(observation.authorizationSkips +
+				(observation.identitySettled +
+					observation.authorizationSkips +
 					observation.absentEvidenceSkips +
 					observation.boundsSkips) +
 				observation.insideSkipsByBounds +
@@ -776,9 +781,12 @@ describe('P23B.11 S3 — OR-6: the count oracle', () => {
 				expect(observation.overlapCallsCrossGroup, row.id).toBe(0);
 				expect(observation.crossGroupPairs, row.id).toBe(row.counts.crossGroupPairs);
 				if (row.counts.pairs > 0) {
+					// A cross-group pair is settled either by the identity condition (both sides
+					// owned and different) or by the D-12 labels; EITHER way it costs no geometry,
+					// and the two counters together must cover every cross-group pair.
 					expect(
-						observation.authorizationSkips,
-						`${row.id}: every cross-group pair is denied by identity`
+						observation.identityRefusals + observation.authorizationSkips,
+						`${row.id}: every cross-group pair is settled or denied without geometry`
 					).toBeGreaterThanOrEqual(row.counts.crossGroupPairs);
 				}
 			}
