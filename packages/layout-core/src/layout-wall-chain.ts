@@ -49,9 +49,11 @@ import type {
 	LayoutWallRole
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
+import { p2311Measure } from './p2311-perf';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { compileWallFirstLayoutGeometry } from './layout-geometry';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
+import type { WallFirstAcceptanceCompile } from './layout-wall-first-precision';
 import {
 	projectPointToSampledSegment
 } from './layout-geometry-curve';
@@ -197,6 +199,15 @@ export type WallChainPlan =
 				kind: 'created';
 			}>;
 			retiredRoomIds: readonly string[];
+			/**
+			 * P23B.11 M-4 — the compile the final canonical gate already produced for
+			 * exactly `document` (canonical JSON, geometry and issues). It is the same
+			 * payload type the precision path carries, and it is a *result*, never an
+			 * authority: an installing caller must re-prove that the document it is about
+			 * to install is this one (the editor's canonical-JSON guard) before consuming
+			 * a byte of it.
+			 */
+			acceptance: WallFirstAcceptanceCompile;
 	  }
 	| {
 			kind: 'rejected';
@@ -248,7 +259,19 @@ function cloneWallFirstDocument(document: LayoutDocumentWallFirst): LayoutDocume
  * dropped, so clicking the start point to finish is the same operation as
  * pressing Close).
  */
-export function planWallChain(options: {
+/**
+ * P23B.11 S1 — the wall-chain plan's own DEV-only mark boundaries.
+ *
+ * The P23B.6 S6 capture left this block in an UNATTRIBUTED interval because no
+ * `p2311Measure` mark existed anywhere in the wall-chain / correspondence /
+ * face-extraction path. This slice adds exactly the six boundaries its S1 step
+ * names, so the wall-chain release splits into plan, topology gate, face
+ * extraction, correspondence, room reconciliation and the final canonical
+ * gates — in node and in the browser, through the shipped containment harness.
+ * The marks ride the existing opt-in gate (`DEV` + `globalThis.__P2311_PERF__`),
+ * so they are inert in production and add no telemetry.
+ */
+export type WallChainPlanOptions = {
 	/** Pre-operation document; never mutated. */
 	baseline: LayoutDocumentWallFirst;
 	points: readonly LayoutVec2[];
@@ -283,7 +306,18 @@ export function planWallChain(options: {
 	 * fragmentation of any pre-existing Wall).
 	 */
 	endpointJunctionSnaps?: readonly WallEndpointJunctionSnap[];
-}): WallChainPlan {
+};
+
+/**
+ * Plan a sketched Wall/Partition chain over `baseline` (P23B.11 S1 mark boundary:
+ * `p2311:wall-chain-plan` encloses the whole planner run, including every early
+ * rejection).
+ */
+export function planWallChain(options: WallChainPlanOptions): WallChainPlan {
+	return p2311Measure('wall-chain-plan', () => planWallChainInternal(options));
+}
+
+function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	const allocator = options.allocator ?? defaultChainAllocator();
 	const thickness = options.thickness ?? WALL_CHAIN_DEFAULTS.thickness;
 	const reject = (rejection: WallChainRejection): WallChainPlan => ({ kind: 'rejected', rejection });
@@ -604,14 +638,14 @@ export function planWallChain(options: {
 	}
 
 	// --- topology gate: no un-noded crossing may survive ---------------------
-	const topologyIssue = validateChainTopology(candidate);
+	const topologyIssue = p2311Measure('chain-topology-gate', () => validateChainTopology(candidate));
 	if (topologyIssue) return reject(topologyIssue);
 
 	// --- room reconciliation (boundary chains only) --------------------------
 	let lineage: Array<{ faceKey: string; roomId: string; kind: 'created' }> = [];
 	let retiredRoomIds: string[] = [];
 	if (options.role === 'boundary') {
-		const extraction = extractBoundaryCandidateFaces(candidate);
+		const extraction = p2311Measure('face-extraction', () => extractBoundaryCandidateFaces(candidate));
 		if (extraction.faces.length > 0 || options.baseline.rooms.length > 0) {
 			const predecessorPolygons = new Map<string, readonly LayoutVec2[]>();
 			const predecessorWitnesses = new Map<string, LayoutVec2>();
@@ -635,23 +669,27 @@ export function planWallChain(options: {
 			// landing over an INDEPENDENT group can never claim its Rooms.
 			// Faces with no predecessor form independent 0→1 birth
 			// components. Never one-component-per-face.
-			const components = buildCorrespondenceComponents({
-				faces: extraction.faces,
-				predecessorRoomIds: options.baseline.rooms.map((room) => room.id),
-				predecessorWitnesses,
-				predecessorPolygons,
-				candidateDocument: candidate,
-				baselineRooms: options.baseline.rooms
-			});
-			const result = reconcileRooms({
-				baseline: options.baseline,
-				candidateDocument: candidate,
-				extraction,
-				components,
-				predecessorWitnesses,
-				predecessorPolygons,
-				allocator: createAuthoringRoomAllocator()
-			});
+			const components = p2311Measure('correspondence', () =>
+				buildCorrespondenceComponents({
+					faces: extraction.faces,
+					predecessorRoomIds: options.baseline.rooms.map((room) => room.id),
+					predecessorWitnesses,
+					predecessorPolygons,
+					candidateDocument: candidate,
+					baselineRooms: options.baseline.rooms
+				})
+			);
+			const result = p2311Measure('room-reconciliation', () =>
+				reconcileRooms({
+					baseline: options.baseline,
+					candidateDocument: candidate,
+					extraction,
+					components,
+					predecessorWitnesses,
+					predecessorPolygons,
+					allocator: createAuthoringRoomAllocator()
+				})
+			);
 			if ('rejection' in result) {
 				return reject({
 					code: 'room_reconciliation_rejected',
@@ -673,7 +711,14 @@ export function planWallChain(options: {
 	}
 
 	// --- final canonical gates ----------------------------------------------
-	const validated = validateWallFirstLayoutDocument(candidate);
+	const canonical = p2311Measure('chain-canonical-gates', () => {
+		const validated = validateWallFirstLayoutDocument(candidate);
+		return {
+			validated,
+			compiled: validated.success ? compileWallFirstLayoutGeometry(validated.document) : null
+		};
+	});
+	const validated = canonical.validated;
 	if (!validated.success) {
 		return reject({
 			code: 'invalid_candidate_document',
@@ -681,7 +726,7 @@ export function planWallChain(options: {
 			issues: validated.issues
 		});
 	}
-	const compiled = compileWallFirstLayoutGeometry(validated.document);
+	const compiled = canonical.compiled!;
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject({
 			code: 'candidate_does_not_compile',
@@ -738,7 +783,15 @@ export function planWallChain(options: {
 		startJunctionId,
 		endJunctionId,
 		lineage,
-		retiredRoomIds
+		retiredRoomIds,
+		// P23B.11 M-4 — the final canonical gate above is the ONLY compile
+		// authority; this carries its result so an installing caller does not pay
+		// for a second compile of the same accepted document.
+		acceptance: {
+			documentJson: validated.canonicalJson,
+			geometry: compiled.geometry,
+			issues: compiled.issues
+		}
 	};
 }
 

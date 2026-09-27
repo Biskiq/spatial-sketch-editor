@@ -1,0 +1,3619 @@
+{
+ "schema": {
+  "note": "P23B.11 S7 projection of the page harness record: rows are KEYED by mark name (self-describing), not positional. Boundary/mark rows are [count, p50, p95, exclusiveSelf|null, exclusiveSelfWithheld]; exclusiveSelf is reported only where every occurrence in the class could be exclusive-priced.",
+  "unattributedOutsideActions": "marks observed outside every action span with class totals above 1 ms; the remainder is pooled in unattributedOmittedMs. Never attributed to an action.",
+  "nestingPairs": "parent > child label pairs observed inside the measured accepted actions.",
+  "comparability": "This S7 file is keyed; the S1 profile file is positional against its own markNames list. The comparable values are the per-label distributions."
+ },
+ "protocol": "P23B.11 S1/S7 wall-chain browser profile; action-class sessions on the S6 protocol (settled, zero dropped boundaries), paths wall-authoring and room-creation-commit, fixtures straight-40 · all-curved-40 · owner-40-curved · connected-curved-grid-v1 (advisory); no baseline and no ratchet is read or written",
+ "provenance": {
+  "capturedAt": "2026-09-27T13:26:23.996Z",
+  "location": "http://127.0.0.1:5173/dev/perf/p23b",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Freebuff/0.0.150 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36",
+  "devicePixelRatio": 1,
+  "markNames": [
+   "p2311:authoring-release",
+   "p2311:baseline-restore",
+   "p2311:chain-canonical-gates",
+   "p2311:chain-topology-gate",
+   "p2311:commit-matches",
+   "p2311:commit-replace",
+   "p2311:correspondence",
+   "p2311:curve-sampling",
+   "p2311:face-extraction",
+   "p2311:finite-thickness",
+   "p2311:junction-partition",
+   "p2311:junction-resolution",
+   "p2311:mesh-prebuild",
+   "p2311:plan-presentation",
+   "p2311:plan-render-model",
+   "p2311:plan-salience",
+   "p2311:plan-svg-context-ink",
+   "p2311:preview-compile-reused",
+   "p2311:restore-bookkeeping",
+   "p2311:restore-issues-clone",
+   "p2311:restore-mesh-install",
+   "p2311:restore-model-project",
+   "p2311:restore-project-clone",
+   "p2311:restore-reactive-write",
+   "p2311:room-geometry-compile",
+   "p2311:room-reconciliation",
+   "p2311:snap-resolution",
+   "p2311:standalone-wall-build",
+   "p2311:svg-attributes",
+   "p2311:wall-chain-commit-install",
+   "p2311:wall-chain-plan"
+  ],
+  "warmupExcludedPerClass": 5,
+  "actionsPerClass": 25,
+  "planViewLadderPixelsPerMeter": 19.292586186549904
+ },
+ "nestingPairs": [
+  "browser-frame > svelte-flush",
+  "input > p2311:snap-resolution",
+  "input > svelte-flush",
+  "p2311:authoring-release > p2311:commit-matches",
+  "p2311:authoring-release > p2311:commit-replace",
+  "p2311:authoring-release > p2311:snap-resolution",
+  "p2311:authoring-release > p2311:wall-chain-commit-install",
+  "p2311:authoring-release > p2311:wall-chain-plan",
+  "p2311:baseline-restore > p2311:restore-bookkeeping",
+  "p2311:baseline-restore > p2311:restore-mesh-install",
+  "p2311:baseline-restore > p2311:restore-project-clone",
+  "p2311:baseline-restore > p2311:restore-reactive-write",
+  "p2311:chain-canonical-gates > p2311:curve-sampling",
+  "p2311:chain-canonical-gates > p2311:finite-thickness",
+  "p2311:chain-canonical-gates > p2311:junction-partition",
+  "p2311:chain-canonical-gates > p2311:junction-resolution",
+  "p2311:chain-canonical-gates > p2311:room-geometry-compile",
+  "p2311:chain-topology-gate > p2311:curve-sampling",
+  "p2311:chain-topology-gate > p2311:face-extraction",
+  "p2311:commit-replace > p2311:baseline-restore",
+  "p2311:commit-replace > p2311:restore-bookkeeping",
+  "p2311:commit-replace > p2311:restore-mesh-install",
+  "p2311:commit-replace > p2311:restore-model-project",
+  "p2311:commit-replace > p2311:restore-project-clone",
+  "p2311:commit-replace > p2311:restore-reactive-write",
+  "p2311:correspondence > p2311:room-reconciliation",
+  "p2311:curve-sampling > p2311:correspondence",
+  "p2311:curve-sampling > p2311:curve-sampling",
+  "p2311:curve-sampling > p2311:finite-thickness",
+  "p2311:curve-sampling > p2311:junction-partition",
+  "p2311:face-extraction > p2311:curve-sampling",
+  "p2311:finite-thickness > p2311:curve-sampling",
+  "p2311:finite-thickness > p2311:finite-thickness",
+  "p2311:junction-partition > p2311:junction-partition",
+  "p2311:junction-partition > p2311:junction-resolution",
+  "p2311:junction-resolution > p2311:junction-partition",
+  "p2311:mesh-prebuild > p2311:standalone-wall-build",
+  "p2311:plan-presentation > p2311:svg-attributes",
+  "p2311:plan-render-model > p2311:plan-svg-context-ink",
+  "p2311:plan-render-model > p2311:svg-attributes",
+  "p2311:plan-salience > p2311:plan-presentation",
+  "p2311:plan-svg-context-ink > p2311:plan-svg-context-ink",
+  "p2311:plan-svg-context-ink > p2311:svg-attributes",
+  "p2311:restore-bookkeeping > p2311:baseline-restore",
+  "p2311:restore-issues-clone > p2311:restore-bookkeeping",
+  "p2311:restore-issues-clone > p2311:restore-mesh-install",
+  "p2311:restore-mesh-install > p2311:baseline-restore",
+  "p2311:restore-mesh-install > p2311:restore-bookkeeping",
+  "p2311:restore-model-project > p2311:baseline-restore",
+  "p2311:restore-model-project > p2311:restore-bookkeeping",
+  "p2311:restore-model-project > p2311:restore-issues-clone",
+  "p2311:restore-model-project > p2311:restore-mesh-install",
+  "p2311:restore-model-project > p2311:restore-reactive-write",
+  "p2311:restore-project-clone > p2311:baseline-restore",
+  "p2311:restore-project-clone > p2311:restore-bookkeeping",
+  "p2311:restore-project-clone > p2311:restore-issues-clone",
+  "p2311:restore-project-clone > p2311:restore-mesh-install",
+  "p2311:restore-project-clone > p2311:restore-model-project",
+  "p2311:restore-project-clone > p2311:restore-reactive-write",
+  "p2311:restore-reactive-write > p2311:baseline-restore",
+  "p2311:restore-reactive-write > p2311:restore-issues-clone",
+  "p2311:restore-reactive-write > p2311:restore-mesh-install",
+  "p2311:restore-reactive-write > p2311:restore-model-project",
+  "p2311:restore-reactive-write > p2311:restore-project-clone",
+  "p2311:room-geometry-compile > p2311:curve-sampling",
+  "p2311:standalone-wall-build > p2311:standalone-wall-build",
+  "p2311:svg-attributes > p2311:plan-svg-context-ink",
+  "p2311:svg-attributes > p2311:svg-attributes",
+  "p2311:wall-chain-commit-install > p2311:mesh-prebuild",
+  "p2311:wall-chain-plan > p2311:chain-canonical-gates",
+  "p2311:wall-chain-plan > p2311:chain-topology-gate",
+  "p2311:wall-chain-plan > p2311:correspondence",
+  "p2311:wall-chain-plan > p2311:curve-sampling",
+  "p2311:wall-chain-plan > p2311:face-extraction",
+  "p2311:wall-chain-plan > p2311:room-reconciliation",
+  "reactive > p2311:preview-compile-reused",
+  "release > p2311:authoring-release",
+  "release > p2311:commit-matches",
+  "release > p2311:commit-replace",
+  "release > p2311:snap-resolution",
+  "release > p2311:wall-chain-commit-install",
+  "release > p2311:wall-chain-plan",
+  "release > reactive",
+  "svelte-flush > browser-frame",
+  "svelte-flush > p2311:plan-presentation",
+  "svelte-flush > p2311:plan-render-model",
+  "svelte-flush > p2311:plan-salience",
+  "svelte-flush > p2311:plan-svg-context-ink",
+  "svelte-flush > p2311:svg-attributes"
+ ],
+ "classes": [
+  {
+   "fixtureId": "p23b-40-wall-straight-v1",
+   "sessionId": "44a87495-a06d-4e33-b2bb-d334075983bf",
+   "actionClass": "p23b11:wall-authoring",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": null,
+    "fixtureResets": null,
+    "droppedBoundaries": null,
+    "settled": null
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "setup": 25,
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 18670,
+    "attributed": 12101,
+    "unbound": 0,
+    "unattributed": 6569
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 40,
+     "p50": 16.2,
+     "p95": 43.7,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 2.5,
+      "p95": 15.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 40.3,
+     "p95": 46.1,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 41.6,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 23.8
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:authoring-release": {
+     "count": 20,
+     "p50": 40.3,
+     "p95": 46.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 40.3,
+      "p95": 46.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 14,
+     "p95": 15.5,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 8
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 0.6,
+     "p95": 0.7,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 4
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 2420,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 2420,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.7,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 8.9,
+     "p95": 11.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 8.9,
+      "p95": 11.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 40,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 8.2,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 8.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 40,
+     "p50": 1,
+     "p95": 1.6,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 1,
+      "p95": 1.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 1200,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 1200,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 9
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 1
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 7.4,
+     "p95": 8.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 7,
+      "p95": 8.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 3760,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 3760,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 20.1,
+     "p95": 26.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 11.2,
+      "p95": 14.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 15.8,
+     "p95": 17.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.2,
+      "p95": 1.3
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 52,
+     "p50": 1,
+     "p95": 1.3000000715255737,
+     "totalMs": 53.3
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 52,
+     "p50": 0.19999992847442627,
+     "p95": 6.800000071525574,
+     "totalMs": 161.2
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.19999992847442627,
+     "p95": 0.20000004768371582,
+     "totalMs": 3.7
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 2.7
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4698,
+     "p50": 0,
+     "p95": 0.10000002384185791,
+     "totalMs": 156
+    },
+    {
+     "name": "p2311:plan-svg-context-ink",
+     "count": 1540,
+     "p50": 0,
+     "p95": 0,
+     "totalMs": 1.9
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0,
+     "p95": 0.10000002384185791,
+     "totalMs": 1.3
+    }
+   ],
+   "unattributedOmittedMs": 1
+  },
+  {
+   "fixtureId": "p23b-40-wall-straight-v1",
+   "sessionId": "4dd6885c-5ef1-486d-a233-7d0d00e02442",
+   "actionClass": "p23b11:room-creation-commit",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": null,
+    "fixtureResets": null,
+    "droppedBoundaries": null,
+    "settled": null
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 28808,
+    "attributed": 22383,
+    "unbound": 0,
+    "unattributed": 6425
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 120,
+     "p50": 16.4,
+     "p95": 33.9,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 9.3,
+      "p95": 10.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 100,
+     "p50": 0.3,
+     "p95": 0.6,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.1,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 38.4,
+     "p95": 44.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 120,
+     "p50": 7,
+     "p95": 29.6,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 3.9,
+      "p95": 18
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 12.2,
+     "p95": 13.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 4
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 0.6,
+     "p95": 0.8,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 5
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 2640,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 2640,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 9.9,
+     "p95": 11,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 9.8,
+      "p95": 10.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 140,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 140,
+     "p50": 0.1,
+     "p95": 2,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0.1,
+      "p95": 2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 140,
+     "p50": 1,
+     "p95": 1.4,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 1,
+      "p95": 1.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 3320,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 3320,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 1
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 9
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 1
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 7,
+     "p95": 8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 6.8,
+      "p95": 7.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 100,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.2,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 80,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 80,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 10880,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 10880,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 20.5,
+     "p95": 24.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 10.9,
+      "p95": 13.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 13.8,
+     "p95": 16.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.1,
+      "p95": 1.6
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 75,
+     "p50": 1,
+     "p95": 1.1999999284744263,
+     "totalMs": 76.1
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.20000004768371582,
+     "p95": 0.30000007152557373,
+     "totalMs": 5.6
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.20000004768371582,
+     "p95": 0.30000007152557373,
+     "totalMs": 5.9
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 2
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 75,
+     "p50": 0.10000002384185791,
+     "p95": 2.200000047683716,
+     "totalMs": 55.2
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4525,
+     "p50": 0,
+     "p95": 0.10000002384185791,
+     "totalMs": 156.3
+    }
+   ],
+   "unattributedOmittedMs": 1.4
+  },
+  {
+   "fixtureId": "p23b-40-wall-all-curved-v1",
+   "sessionId": "1c255120-943c-4a1d-ad9e-a25f49c863cb",
+   "actionClass": "p23b11:wall-authoring",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": null,
+    "fixtureResets": null,
+    "droppedBoundaries": null,
+    "settled": null
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "setup": 25,
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 23668,
+    "attributed": 17185,
+    "unbound": 0,
+    "unattributed": 6483
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 40,
+     "p50": 14.8,
+     "p95": 147.7,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 2.7,
+      "p95": 6.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 88.6,
+     "p95": 101.8,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 145,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 65.2
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:authoring-release": {
+     "count": 20,
+     "p50": 88.6,
+     "p95": 101.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 87.2,
+      "p95": 100
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 32.9,
+     "p95": 38.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 16
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 5.6,
+     "p95": 6.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.3,
+      "p95": 1.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 1.1,
+     "p95": 1.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 4
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 5620,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 5620,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 8.8,
+     "p95": 9.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.9,
+      "p95": 1.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 800,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 800,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 11.7,
+     "p95": 14.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 11.7,
+      "p95": 14.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 40,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 52.6,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 52.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 40,
+     "p50": 1,
+     "p95": 1.3,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 1,
+      "p95": 1.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 1200,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 1200,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 13
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 2
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 14.5,
+     "p95": 15.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 10.5,
+      "p95": 11
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 20,
+     "p50": 0.5,
+     "p95": 0.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.5,
+      "p95": 0.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 3760,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 3760,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 28,
+     "p95": 34.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 15.6,
+      "p95": 20.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 53.7,
+     "p95": 60.1,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 20
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 51,
+     "p50": 1,
+     "p95": 1.100000023841858,
+     "totalMs": 49.9
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 51,
+     "p50": 0.30000007152557373,
+     "p95": 50.60000002384186,
+     "totalMs": 1192.5
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.20000004768371582,
+     "p95": 0.30000007152557373,
+     "totalMs": 5.2
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.19999992847442627,
+     "p95": 0.2999999523162842,
+     "totalMs": 4.5
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4635,
+     "p50": 0.10000002384185791,
+     "p95": 0.30000007152557373,
+     "totalMs": 581.3
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 3.2
+    },
+    {
+     "name": "p2311:plan-svg-context-ink",
+     "count": 1520,
+     "p50": 0,
+     "p95": 0,
+     "totalMs": 1.3
+    }
+   ],
+   "unattributedOmittedMs": 1.1
+  },
+  {
+   "fixtureId": "p23b-40-wall-all-curved-v1",
+   "sessionId": "7871b74a-4ce8-4060-8eb8-1065b3202fa1",
+   "actionClass": "p23b11:room-creation-commit",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": null,
+    "fixtureResets": null,
+    "droppedBoundaries": null,
+    "settled": null
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 33808,
+    "attributed": 27383,
+    "unbound": 0,
+    "unattributed": 6425
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 120,
+     "p50": 63.1,
+     "p95": 178.3,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 2.1,
+      "p95": 6.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 100,
+     "p50": 0.6,
+     "p95": 1.1,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.1,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 113,
+     "p95": 256.9,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 120,
+     "p50": 61.3,
+     "p95": 168.2,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 51,
+      "p95": 88.6
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 39.3,
+     "p95": 61.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 2
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 5.7,
+     "p95": 9.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.3,
+      "p95": 2.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 1.3,
+     "p95": 1.5,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 12
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 5840,
+     "p50": 0.1,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 5840,
+      "p50": 0.1,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 9.6,
+     "p95": 18.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.4,
+      "p95": 1.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 800,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 800,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.6,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 18.8,
+     "p95": 36.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 18.6,
+      "p95": 36.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 140,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 140,
+     "p50": 0.2,
+     "p95": 54.5,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0.2,
+      "p95": 54.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 140,
+     "p50": 1.1,
+     "p95": 1.9,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 1.1,
+      "p95": 1.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 3320,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 3320,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 7
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 4
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 16.9,
+     "p95": 22.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 11.1,
+      "p95": 14.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 100,
+     "p50": 0.5,
+     "p95": 0.8,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.5,
+      "p95": 0.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 80,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 80,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 10880,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 10880,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 38.9,
+     "p95": 69.6,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 21.3,
+      "p95": 50.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 62.5,
+     "p95": 93.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 16
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 75,
+     "p50": 1,
+     "p95": 1.5,
+     "totalMs": 78.2
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.30000007152557373,
+     "p95": 1.3000000715255737,
+     "totalMs": 13.5
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 1.3000000715255737,
+     "totalMs": 12.5
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 75,
+     "p50": 0.2999999523162842,
+     "p95": 66.10000002384186,
+     "totalMs": 1357.3
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.19999992847442627,
+     "p95": 0.3999999761581421,
+     "totalMs": 4.3
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4525,
+     "p50": 0.10000002384185791,
+     "p95": 0.3999999761581421,
+     "totalMs": 643.8
+    },
+    {
+     "name": "p2311:plan-svg-context-ink",
+     "count": 1500,
+     "p50": 0,
+     "p95": 0,
+     "totalMs": 1.8
+    }
+   ],
+   "unattributedOmittedMs": 1.6
+  },
+  {
+   "fixtureId": "owner-40-curved-v1",
+   "sessionId": "6ec108c3-f342-487c-8745-f1da65efd857",
+   "actionClass": "p23b11:wall-authoring",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": 50,
+    "fixtureResets": 25,
+    "droppedBoundaries": 0,
+    "settled": true
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "setup": 25,
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 23670,
+    "attributed": 17101,
+    "unbound": 0,
+    "unattributed": 6569
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 40,
+     "p50": 9.7,
+     "p95": 72,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 2.5,
+      "p95": 9.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 69.4,
+     "p95": 112,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 69.6,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 31.8
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:authoring-release": {
+     "count": 20,
+     "p50": 69.3,
+     "p95": 111.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 64.6,
+      "p95": 73.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.5,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 1
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 23.7,
+     "p95": 38.6,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 18
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 3.6,
+     "p95": 5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.8,
+      "p95": 1.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 1.4,
+     "p95": 2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 10
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 5620,
+     "p50": 0,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 5620,
+      "p50": 0,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 5.2,
+     "p95": 6.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.8,
+      "p95": 1.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 800,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 800,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 8.3,
+     "p95": 10.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 8.3,
+      "p95": 10.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 40,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 40,
+     "p50": 0.6,
+     "p95": 14.3,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.6,
+      "p95": 14.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 40,
+     "p50": 2.1,
+     "p95": 3.1,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 2.1,
+      "p95": 3.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 1200,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 1200,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 7
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 3
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 10.6,
+     "p95": 14.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 8.3,
+      "p95": 10.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 20,
+     "p50": 0.4,
+     "p95": 0.6,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.4,
+      "p95": 0.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 3760,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 3760,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 21.5,
+     "p95": 28.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 12.4,
+      "p95": 19.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 39.4,
+     "p95": 54,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 16
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 52,
+     "p50": 2.100000023841858,
+     "p95": 3.3000000715255737,
+     "totalMs": 117.9
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 52,
+     "p50": 0.2999999523162842,
+     "p95": 14.399999976158142,
+     "totalMs": 297.8
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 0.40000009536743164,
+     "totalMs": 6.5
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 0.5,
+     "totalMs": 7.8
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 0.5,
+     "totalMs": 8.7
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4698,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 402.2
+    },
+    {
+     "name": "p2311:plan-svg-context-ink",
+     "count": 1540,
+     "p50": 0,
+     "p95": 0,
+     "totalMs": 1.4
+    }
+   ],
+   "unattributedOmittedMs": 0.8
+  },
+  {
+   "fixtureId": "owner-40-curved-v1",
+   "sessionId": "a238948e-4ba8-4a92-88c7-8a62f7b503d5",
+   "actionClass": "p23b11:room-creation-commit",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": 25,
+    "fixtureResets": 25,
+    "droppedBoundaries": 0,
+    "settled": true
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 33808,
+    "attributed": 27383,
+    "unbound": 0,
+    "unattributed": 6425
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 120,
+     "p50": 20.3,
+     "p95": 69.4,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 1.6,
+      "p95": 5.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 100,
+     "p50": 0.5,
+     "p95": 0.8,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 66.5,
+     "p95": 85.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 120,
+     "p50": 18.7,
+     "p95": 61.9,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 11.1,
+      "p95": 30.9
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.4,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 2
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 23.4,
+     "p95": 31.8,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 18
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 3.5,
+     "p95": 4.7,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 1.7,
+      "p95": 2.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 1.9,
+     "p95": 2.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 8
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 5840,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 5840,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 4.9,
+     "p95": 6.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.8,
+      "p95": 1.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 800,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 800,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.4
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 8.8,
+     "p95": 10.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 8.8,
+      "p95": 10.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 140,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 140,
+     "p50": 0.2,
+     "p95": 11.5,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0.2,
+      "p95": 11.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 140,
+     "p50": 2.1,
+     "p95": 3,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 2.1,
+      "p95": 3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 3320,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 3320,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 9
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 10.3,
+     "p95": 13.6,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 8.2,
+      "p95": 11.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 100,
+     "p50": 0.3,
+     "p95": 0.6,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.3,
+      "p95": 0.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 80,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 80,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 10880,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 10880,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 20.5,
+     "p95": 25.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 12,
+      "p95": 16
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 37,
+     "p95": 47,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 19
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 75,
+     "p50": 2.100000023841858,
+     "p95": 3,
+     "totalMs": 169.4
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 0.3999999761581421,
+     "totalMs": 7
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.2999999523162842,
+     "p95": 0.40000009536743164,
+     "totalMs": 7.8
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 75,
+     "p50": 0.20000004768371582,
+     "p95": 11.600000023841858,
+     "totalMs": 274.2
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.19999992847442627,
+     "p95": 0.20000004768371582,
+     "totalMs": 4.5
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 4525,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 377.9
+    },
+    {
+     "name": "p2311:plan-svg-context-ink",
+     "count": 1500,
+     "p50": 0,
+     "p95": 0,
+     "totalMs": 1.2
+    }
+   ],
+   "unattributedOmittedMs": 0.8
+  },
+  {
+   "fixtureId": "connected-curved-grid-v1",
+   "sessionId": "7f1c1a5c-6da6-4b1f-b6c3-dc34f79e4190",
+   "actionClass": "p23b11:wall-authoring",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": 50,
+    "fixtureResets": 25,
+    "droppedBoundaries": 0,
+    "settled": true
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "setup": 25,
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 9291,
+    "attributed": 6726,
+    "unbound": 0,
+    "unattributed": 2565
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 40,
+     "p50": 8.7,
+     "p95": 56,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 2.4,
+      "p95": 8.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 30.3,
+     "p95": 31.8,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 53.3,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.1,
+      "p95": 24.1
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:authoring-release": {
+     "count": 20,
+     "p50": 30.3,
+     "p95": 31.8,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 30.2,
+      "p95": 31.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 11.9,
+     "p95": 12.9,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 20
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 2,
+     "p95": 2.5,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.6,
+      "p95": 0.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 0.4,
+     "p95": 0.5,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 4
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 1940,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 1940,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 2.8,
+     "p95": 2.9,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.3,
+      "p95": 0.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 240,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 240,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-partition": {
+     "count": 100,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.3,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 4.2,
+     "p95": 4.7,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 4.1,
+      "p95": 4.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 40,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 40,
+     "p50": 0.2,
+     "p95": 19.2,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.2,
+      "p95": 19.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 40,
+     "p50": 0.4,
+     "p95": 0.5,
+     "exclusiveSelf": {
+      "count": 40,
+      "p50": 0.4,
+      "p95": 0.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 480,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 480,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 8
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 5.7,
+     "p95": 6.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 4.1,
+      "p95": 4.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 1360,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 1360,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 8.5,
+     "p95": 9.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 4.4,
+      "p95": 4.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 18.6,
+     "p95": 20.1,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 20
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 52,
+     "p50": 0.3999999761581421,
+     "p95": 0.7000000476837158,
+     "totalMs": 20.9
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 52,
+     "p50": 0.2999999523162842,
+     "p95": 20.399999976158142,
+     "totalMs": 450.7
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 1618,
+     "p50": 0.10000002384185791,
+     "p95": 0.30000007152557373,
+     "totalMs": 227.2
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 1.7
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 2.7
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 3.2
+    }
+   ],
+   "unattributedOmittedMs": 1.3
+  },
+  {
+   "fixtureId": "connected-curved-grid-v1",
+   "sessionId": "50dbbc56-d0eb-4bf0-9618-039d1329e6d6",
+   "actionClass": "p23b11:room-creation-commit",
+   "actionPath": "wall-authoring",
+   "ledger": {
+    "recordedActions": 25,
+    "fixtureResets": 25,
+    "droppedBoundaries": 0,
+    "settled": true
+   },
+   "acceptedActionsIncludingWarmup": 25,
+   "measuredAccepted": 20,
+   "outcomes": {
+    "accepted": 25
+   },
+   "markCounts": {
+    "observed": 14281,
+    "attributed": 11756,
+    "unbound": 0,
+    "unattributed": 2525
+   },
+   "boundaries": {
+    "browser-frame": {
+     "count": 120,
+     "p50": 22.6,
+     "p95": 58.4,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 1.3,
+      "p95": 3.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "input": {
+     "count": 100,
+     "p50": 0.2,
+     "p95": 0.4,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "reactive": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "release": {
+     "count": 20,
+     "p50": 31.2,
+     "p95": 36,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 0
+    },
+    "svelte-flush": {
+     "count": 120,
+     "p50": 21.1,
+     "p95": 54.2,
+     "exclusiveSelf": {
+      "count": 120,
+      "p50": 17.8,
+      "p95": 26.9
+     },
+     "exclusiveSelfWithheld": 0
+    }
+   },
+   "marks": {
+    "p2311:baseline-restore": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:chain-canonical-gates": {
+     "count": 20,
+     "p50": 11.8,
+     "p95": 15,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 17
+    },
+    "p2311:chain-topology-gate": {
+     "count": 20,
+     "p50": 1.5,
+     "p95": 1.7,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.6,
+      "p95": 0.8
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-matches": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:commit-replace": {
+     "count": 20,
+     "p50": 0.5,
+     "p95": 1.3,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 1
+    },
+    "p2311:correspondence": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:curve-sampling": {
+     "count": 2160,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 2160,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:face-extraction": {
+     "count": 20,
+     "p50": 2.6,
+     "p95": 3.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.4,
+      "p95": 0.9
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:finite-thickness": {
+     "count": 240,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 240,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-partition": {
+     "count": 100,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:junction-resolution": {
+     "count": 20,
+     "p50": 0.2,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0.2,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:mesh-prebuild": {
+     "count": 20,
+     "p50": 4.5,
+     "p95": 5.6,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 4.4,
+      "p95": 5.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-presentation": {
+     "count": 140,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-render-model": {
+     "count": 140,
+     "p50": 0.1,
+     "p95": 17.3,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0.1,
+      "p95": 17.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-salience": {
+     "count": 140,
+     "p50": 0.4,
+     "p95": 0.6,
+     "exclusiveSelf": {
+      "count": 140,
+      "p50": 0.4,
+      "p95": 0.6
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:plan-svg-context-ink": {
+     "count": 1400,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 1400,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:preview-compile-reused": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-bookkeeping": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-issues-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-mesh-install": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-model-project": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:restore-project-clone": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 8
+    },
+    "p2311:restore-reactive-write": {
+     "count": 20,
+     "p50": 0.1,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-geometry-compile": {
+     "count": 20,
+     "p50": 5.7,
+     "p95": 7.4,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 4.2,
+      "p95": 4.7
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:room-reconciliation": {
+     "count": 20,
+     "p50": 0,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 0,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:snap-resolution": {
+     "count": 100,
+     "p50": 0.1,
+     "p95": 0.2,
+     "exclusiveSelf": {
+      "count": 100,
+      "p50": 0.1,
+      "p95": 0.2
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:standalone-wall-build": {
+     "count": 80,
+     "p50": 0,
+     "p95": 0.1,
+     "exclusiveSelf": {
+      "count": 80,
+      "p50": 0,
+      "p95": 0.1
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:svg-attributes": {
+     "count": 4480,
+     "p50": 0.1,
+     "p95": 0.3,
+     "exclusiveSelf": {
+      "count": 4480,
+      "p50": 0.1,
+      "p95": 0.3
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-commit-install": {
+     "count": 20,
+     "p50": 9.8,
+     "p95": 12.2,
+     "exclusiveSelf": {
+      "count": 20,
+      "p50": 5.7,
+      "p95": 6.5
+     },
+     "exclusiveSelfWithheld": 0
+    },
+    "p2311:wall-chain-plan": {
+     "count": 20,
+     "p50": 18.3,
+     "p95": 21.5,
+     "exclusiveSelf": null,
+     "exclusiveSelfWithheld": 20
+    }
+   },
+   "unboundInsideActions": {},
+   "unattributedOutsideActions": [
+    {
+     "name": "p2311:plan-salience",
+     "count": 75,
+     "p50": 0.3999999761581421,
+     "p95": 0.5,
+     "totalMs": 26.7
+    },
+    {
+     "name": "p2311:baseline-restore",
+     "count": 25,
+     "p50": 0.19999992847442627,
+     "p95": 0.20000004768371582,
+     "totalMs": 8.8
+    },
+    {
+     "name": "p2311:restore-project-clone",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.19999992847442627,
+     "totalMs": 6.6
+    },
+    {
+     "name": "p2311:restore-reactive-write",
+     "count": 25,
+     "p50": 0.10000002384185791,
+     "p95": 0.20000004768371582,
+     "totalMs": 8.2
+    },
+    {
+     "name": "p2311:plan-render-model",
+     "count": 75,
+     "p50": 0.10000002384185791,
+     "p95": 19,
+     "totalMs": 628.7
+    },
+    {
+     "name": "p2311:svg-attributes",
+     "count": 1525,
+     "p50": 0.10000002384185791,
+     "p95": 0.30000007152557373,
+     "totalMs": 221.4
+    }
+   ],
+   "unattributedOmittedMs": 0.8
+  }
+ ]
+}

@@ -43,9 +43,11 @@ import type { LayoutVec2 } from './layout-types';
 import { wallCenterlineSamples } from './layout-wall-centerline';
 import { topologyComponentKeyByWallId } from './layout-topology-components';
 import {
+	canonicalBoundaryCycleKey,
 	type DerivedCandidateFace,
 	type FaceExtractionResult,
 	faceArea,
+	ON_RING_TOLERANCE,
 	polygonIntersectionArea,
 	polygonsShareInteriorArea,
 	pointStrictlyInsidePolygon
@@ -289,6 +291,283 @@ function unionAuthorized(
 }
 
 /**
+ * P23B.11 S3 (M-1b) — the coarse phase's own slack.
+ *
+ * M-1b prunes a pair only when BOTH merge conditions are PROVEN impossible, and
+ * each impossibility is proved by the exact predicate it removes:
+ *
+ * ```text
+ * inside impossible   `pointStrictlyInsidePolygon` is a plain even-odd cast, so a
+ *                     point outside the face's INFLATED box can never be counted
+ *                     inside it (every crossing it counts needs an edge to the
+ *                     point's right and to the point's vertical side);
+ * overlap impossible  `polygonsShareInteriorArea` returns true only through a
+ *                     probe, an ear-triangle interior point, or a proper edge
+ *                     crossing — and every one of those is a point inside BOTH
+ *                     polygons' closed boxes (the probes are points OF one
+ *                     polygon). Two boxes farther apart than the slack therefore
+ *                     admit no shared point at all.
+ * ```
+ *
+ * `ON_RING_TOLERANCE` is the predicates' own slack (one owner, imported — never a
+ * second copy), and the relative term covers a few thousand ulps of the pair's
+ * own size so the crossing arithmetic's rounding can never reach past the box.
+ * A pair whose boxes are undefined (non-finite or empty geometry) is NEVER pruned,
+ * and a pair whose gap is inside the slack is never pruned either: the pruning can
+ * only remove pairs the exact predicates refuse, which is the property OR-2
+ * tests with touching, collinear, zero-area, tolerance-boundary and non-finite
+ * rows.
+ */
+const CORRESPONDENCE_BOUNDS_RELATIVE_SLACK = 1e-12;
+
+type CorrespondenceBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+/** `null` when any coordinate is non-finite or the polygon is empty: never pruned. */
+function correspondenceBounds(polygon: readonly LayoutVec2[]): CorrespondenceBounds | null {
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minZ = Infinity;
+	let maxZ = -Infinity;
+	for (const point of polygon) {
+		if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return null;
+		if (point[0] < minX) minX = point[0];
+		if (point[0] > maxX) maxX = point[0];
+		if (point[1] < minZ) minZ = point[1];
+		if (point[1] > maxZ) maxZ = point[1];
+	}
+	if (!(maxX >= minX && maxZ >= minZ)) return null;
+	return { minX, maxX, minZ, maxZ };
+}
+
+function correspondenceBoundsSlack(bounds: CorrespondenceBounds): number {
+	const extent = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ);
+	return ON_RING_TOLERANCE + extent * CORRESPONDENCE_BOUNDS_RELATIVE_SLACK;
+}
+
+/** True only when NO point the inflated box contains can be strictly inside the face. */
+function pointProvablyOutsideBounds(bounds: CorrespondenceBounds, point: LayoutVec2): boolean {
+	if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return false;
+	const slack = correspondenceBoundsSlack(bounds);
+	return (
+		point[0] < bounds.minX - slack ||
+		point[0] > bounds.maxX + slack ||
+		point[1] < bounds.minZ - slack ||
+		point[1] > bounds.maxZ + slack
+	);
+}
+
+/** True only when the two inflated boxes are disjoint, so no shared point exists. */
+function boundsProvablyDisjoint(a: CorrespondenceBounds, b: CorrespondenceBounds): boolean {
+	const slack = correspondenceBoundsSlack(a) + correspondenceBoundsSlack(b);
+	return (
+		a.maxX + slack < b.minX ||
+		b.maxX + slack < a.minX ||
+		a.maxZ + slack < b.minZ ||
+		b.maxZ + slack < a.minZ
+	);
+}
+
+/**
+ * P23B.11 S3 (OR-6) — the pair classes the observer counts.
+ *
+ * `undefined` covers both D-12 branches in which a label is missing: the
+ * one-sided denial AND the defensive neither-resolves branch that hands the
+ * decision to geometry. The class a pair is in never changes the verdict — it is
+ * `unionAuthorized`'s own label comparison, read for counting only.
+ */
+export type CorrespondencePairClass = 'same-group' | 'cross-group' | 'undefined';
+
+/**
+ * P23B.11 S3 — one `buildCorrespondenceComponents` pass, as the test-only observer
+ * sees it (P23B.4 observer precedent: opt-in, never retains, unset changes
+ * nothing at all).
+ *
+ * ACCOUNTING, per mode:
+ *
+ * ```text
+ * short-circuit  pairs = identitySettled + authorizationSkips + absentEvidenceSkips
+ *                       + boundsSkips + insideCalls + insideSkipsByBounds
+ *                identitySettled = identityUnions + identityRefusals
+ *                (every pair is accounted exactly once: settled by the identity
+ *                 condition, denied by the D-12 labels, skipped for absent evidence,
+ *                 pruned by the inflated boxes, skipped only for the containment CALL,
+ *                 or VISITED by the containment step);
+ *                insideCalls + insideSkipsByBounds = insideDecisions + overlapCalls
+ *                (each pair that reached containment either decided the merge — and
+ *                 never paid the overlap predicate — or fell through to it, as did
+ *                 every pair whose containment CALL was bounds-skipped);
+ *                insideDecisions <= insideCalls,
+ * exhaustive     insideCalls = overlapCalls = pairs, both predicate STEPS run for
+ *                 every pair exactly as the pre-M-1 loop did, and every skip
+ *                 counter is zero — this is OR-2's comparison side, not a shipped
+ *                 path. `insideDecisions`/`overlapDecisions` record the predicates'
+ *                 own ADMISSIONS here (a pair inside-or-overlapping BEYOND the
+ *                 authorization test this order runs afterwards), which is what
+ *                 makes a D-12 denial checkable: geometry admits, identity denies.
+ * ```
+ *
+ * "CALL" IS A PAIR VISIT TO THE STEP: the step's own guard (`witness !== undefined` /
+ * `polygon !== undefined`) may have no evidence to hand the predicate, and today's
+ * loop visits such a pair too — the visit is what the frozen `insideEvaluations`
+ * counts, so both sides count the same thing.
+ *
+ * A cross-group pair therefore contributes NO geometry call in short-circuit mode,
+ * which is OR-6's deterministic assertion: the group check is unconditional, so
+ * the number is zero for EVERY operation, not only for the clear-gap case.
+ */
+export type CorrespondenceObservation = {
+	/** The evaluation order this pass used. */
+	mode: 'short-circuit' | 'exhaustive';
+	pairs: number;
+	sameGroupPairs: number;
+	crossGroupPairs: number;
+	undefinedPairs: number;
+	/**
+	 * M-3 — pairs IDENTITY settled without any geometry: a predecessor Room whose own
+	 * boundary cycle still exists as an unambiguous candidate face, against a face whose
+	 * single owner is unambiguous. `identityUnions` are the claims (the Room keeps its own
+	 * face); `identityRefusals` are the contrapositive (the face belongs to another Room),
+	 * which is what removes a connected plan's neighbour pairs. An ambiguous face — two
+	 * Rooms naming one face, the merge shape — is NEVER settled, so these counters cannot
+	 * hide a merge; those pairs keep the geometric proof.
+	 */
+	identitySettled: number;
+	identityUnions: number;
+	identityRefusals: number;
+	/** (a) pairs denied by `unionAuthorized` before any geometry. */
+	authorizationSkips: number;
+	/**
+	 * (b0) pairs with NEITHER piece of evidence (no witness and no polygon): both
+	 * conditions are false by definition, so today's exhaustive loop walks them and
+	 * discards them — the skip saves the walk, never a verdict.
+	 */
+	absentEvidenceSkips: number;
+	/** (b) pairs pruned by the inflated boxes: BOTH conditions proven impossible. */
+	boundsSkips: number;
+	/**
+	 * Pairs that passed (b) with `inside` PROVEN false from the witness's own box, so
+	 * the strict-containment predicate was not called and they went straight to the
+	 * overlap predicate. A call saving, never a verdict change.
+	 */
+	insideSkipsByBounds: number;
+	insideCalls: number;
+	insideCallsSameGroup: number;
+	insideCallsCrossGroup: number;
+	insideCallsUndefined: number;
+	/**
+	 * Pairs the containment predicate ADMITTED: in short-circuit mode that IS the
+	 * union (c), with the overlap predicate skipped; in exhaustive mode it is the
+	 * predicate's own result, recorded before the authorization test that today's
+	 * order runs next.
+	 */
+	insideDecisions: number;
+	overlapCalls: number;
+	overlapCallsSameGroup: number;
+	overlapCallsCrossGroup: number;
+	overlapCallsUndefined: number;
+	/**
+	 * Pairs the overlap predicate ADMITTED — the union in short-circuit mode, the
+	 * admission alone in exhaustive mode (see `insideDecisions`).
+	 */
+	overlapDecisions: number;
+};
+
+let correspondenceObserverForTest: ((observation: CorrespondenceObservation) => void) | undefined;
+let correspondenceShortCircuitsDisabledForTest = false;
+
+/** Report every correspondence pass to `observer` until cleared. Unset is zero change. */
+export function setCorrespondenceObserverForTest(
+	observer: ((observation: CorrespondenceObservation) => void) | undefined
+): void {
+	correspondenceObserverForTest = observer;
+}
+
+export function clearCorrespondenceObserverForTest(): void {
+	correspondenceObserverForTest = undefined;
+}
+
+/**
+ * OR-2's exhaustive side: while disabled, `buildCorrespondenceComponents` runs the
+ * PRE-M-1 loop verbatim — both predicates for every pair, geometry before
+ * authorization, no pruning — so the differential always has today's evaluation
+ * order to compare against. Test-only; never set in production.
+ */
+export function disableCorrespondenceShortCircuitsForTest(disabled: boolean): void {
+	correspondenceShortCircuitsDisabledForTest = disabled;
+}
+
+function emptyCorrespondenceObservation(
+	mode: CorrespondenceObservation['mode']
+): CorrespondenceObservation {
+	return {
+		mode,
+		pairs: 0,
+		sameGroupPairs: 0,
+		crossGroupPairs: 0,
+		undefinedPairs: 0,
+		identitySettled: 0,
+		identityUnions: 0,
+		identityRefusals: 0,
+		authorizationSkips: 0,
+		absentEvidenceSkips: 0,
+		boundsSkips: 0,
+		insideSkipsByBounds: 0,
+		insideCalls: 0,
+		insideCallsSameGroup: 0,
+		insideCallsCrossGroup: 0,
+		insideCallsUndefined: 0,
+		insideDecisions: 0,
+		overlapCalls: 0,
+		overlapCallsSameGroup: 0,
+		overlapCallsCrossGroup: 0,
+		overlapCallsUndefined: 0,
+		overlapDecisions: 0
+	};
+}
+
+/** The pair's D-12 class as `unionAuthorized` reads it; counting only. */
+function correspondencePairClassOf(
+	authorization: CorrespondenceAuthorization,
+	predecessorRoomId: string,
+	faceKey: string
+): CorrespondencePairClass {
+	const predecessorKey = authorization.predecessorComponentKeyByRoomId.get(predecessorRoomId);
+	const faceKeyValue = authorization.faceComponentKeyByKey.get(faceKey);
+	if (predecessorKey === undefined || faceKeyValue === undefined) return 'undefined';
+	return predecessorKey === faceKeyValue ? 'same-group' : 'cross-group';
+}
+
+function recordObservationPairClass(
+	observation: CorrespondenceObservation,
+	pairClass: CorrespondencePairClass
+): void {
+	observation.pairs += 1;
+	if (pairClass === 'same-group') observation.sameGroupPairs += 1;
+	else if (pairClass === 'cross-group') observation.crossGroupPairs += 1;
+	else observation.undefinedPairs += 1;
+}
+
+function recordInsideCall(
+	observation: CorrespondenceObservation,
+	pairClass: CorrespondencePairClass
+): void {
+	observation.insideCalls += 1;
+	if (pairClass === 'same-group') observation.insideCallsSameGroup += 1;
+	else if (pairClass === 'cross-group') observation.insideCallsCrossGroup += 1;
+	else observation.insideCallsUndefined += 1;
+}
+
+function recordOverlapCall(
+	observation: CorrespondenceObservation,
+	pairClass: CorrespondencePairClass
+): void {
+	observation.overlapCalls += 1;
+	if (pairClass === 'same-group') observation.overlapCallsSameGroup += 1;
+	else if (pairClass === 'cross-group') observation.overlapCallsCrossGroup += 1;
+	else observation.overlapCallsUndefined += 1;
+}
+
+/**
  * True P23.8 correspondence components: connected components of the
  * bipartite predecessor-Room ↔ candidate-face graph. An edge exists when the
  * predecessor witness lies strictly inside the face or the predecessor
@@ -297,6 +576,19 @@ function unionAuthorized(
  * alone can never union two graph-independent structures. Faces with no
  * predecessor form independent 0→1 birth components. Groups are sorted
  * deterministically by their smallest face key.
+ *
+ * SOUNDNESS PRECONDITION OF THE M-3 IDENTITY CONDITION (below): the condition
+ * compares `canonicalBoundaryCycleKey`, which is built from Wall ids and
+ * directions ALONE — a surviving key proves the same boundary WALLS, never the
+ * same geometry. "Key survives ⇒ the geometry is unchanged" is sound only
+ * because no caller can move an existing Junction or reshape existing curve
+ * geometry while keeping a boundary cycle: `planWallChain` only adds and nodes
+ * Walls; the topology ops only add, remove or re-role Walls (no surviving
+ * Junction moves); `planDissolveJunction` re-describes two Walls as one chain
+ * through the SAME points, so the joined Wall's point set is unchanged. A caller
+ * that CAN change existing geometry while keeping boundary keys must NOT reach
+ * the identity condition — it would need a geometry check the condition
+ * deliberately never makes.
  */
 export function buildCorrespondenceComponents(options: {
 	faces: readonly DerivedCandidateFace[];
@@ -337,27 +629,160 @@ export function buildCorrespondenceComponents(options: {
 		const rootB = find(b);
 		if (rootA !== rootB) parent[rootB] = rootA;
 	};
+	const exhaustive = correspondenceShortCircuitsDisabledForTest;
+	const observation = emptyCorrespondenceObservation(exhaustive ? 'exhaustive' : 'short-circuit');
+	// M-1(b): the coarse phase's boxes, computed ONCE per pass — never per pair — and
+	// only while the short-circuits are live: the exhaustive path is today's loop
+	// verbatim and neither pays for nor reads them.
+	const faceBoxes = exhaustive ? [] : faces.map((face) => correspondenceBounds(face.polygon));
+	const predecessorBoxes = exhaustive
+		? []
+		: predecessorRoomIds.map((roomId) => {
+				const polygon = predecessorPolygons.get(roomId);
+				return polygon === undefined ? null : correspondenceBounds(polygon);
+			});
+	// M-3 — THE IDENTITY CONDITION, computed ONCE per pass from authored identity alone. A
+	// predecessor Room whose own boundary cycle still exists as a candidate face OWNS that
+	// face: `canonicalBoundaryCycleKey` is the ONE derivation face extraction and Room
+	// lineage share, so a key match is authored identity, never a coincidence of
+	// coordinates. The contrapositive is what removes a connected plan's neighbour pairs:
+	// a face owned by exactly one Room can match NO OTHER, so a Room with a known face
+	// against another Room's known face is settled as a NON-union with no geometry.
+	// An AMBIGUOUS face (two Rooms naming it — the merge shape, where both predecessors'
+	// cycles became the same one) is NEVER settled: the condition cannot be established, so
+	// the pass refuses it and the geometric proof decides, exactly as today. The exhaustive
+	// path is today's loop verbatim and reads none of this.
+	// SOUNDNESS PRECONDITION (function doc): a surviving key is Wall ids and directions,
+	// never coordinates, so "key survives ⇒ geometry unchanged" holds only while no caller
+	// moves an existing Junction or reshapes existing curve geometry. A caller that can do
+	// either while keeping boundary keys must NOT reach this condition.
+	const claimFaceKeyByRoomId = new Map<string, string>();
+	if (!exhaustive) {
+		const faceKeySet = new Set(faces.map((face) => face.key));
+		const claimantRoomIdsByFaceKey = new Map<string, string[]>();
+		for (const room of options.baselineRooms) {
+			const key = canonicalBoundaryCycleKey(room.boundary);
+			if (!faceKeySet.has(key)) continue;
+			claimFaceKeyByRoomId.set(room.id, key);
+			const claimants = claimantRoomIdsByFaceKey.get(key) ?? [];
+			claimants.push(room.id);
+			claimantRoomIdsByFaceKey.set(key, claimants);
+		}
+		for (const claimants of claimantRoomIdsByFaceKey.values()) {
+			if (claimants.length <= 1) continue;
+			for (const roomId of claimants) claimFaceKeyByRoomId.delete(roomId);
+		}
+	}
+	/** Keys left after the ambiguity refusal: exactly the faces owned by ONE Room. */
+	const unambiguousFaceKeys = new Set(claimFaceKeyByRoomId.values());
 	faces.forEach((face, faceIndex) => {
+		const faceBox = faceBoxes[faceIndex] ?? null;
 		predecessorRoomIds.forEach((roomId, predIndex) => {
 			const witness = predecessorWitnesses.get(roomId);
 			const polygon = predecessorPolygons.get(roomId);
-			const inside = witness !== undefined && pointStrictlyInsidePolygon(face.polygon, witness);
-			// Exact adjacency-aware overlap: Rooms that merely share a Wall (any
-			// angle) are neighbours, never one component. The sampled
-			// `polygonIntersectionArea` (still used below for survivor ranking)
-			// reported a phantom sliver for oblique shared edges.
+			// Read-only classification: exactly the label comparison `unionAuthorized`
+			// makes, counted so OR-6 can assert what each class costs in geometry.
+			const pairClass = correspondencePairClassOf(authorization, roomId, face.key);
+			recordObservationPairClass(observation, pairClass);
+			if (exhaustive) {
+				// THE PRE-M-1 LOOP, VERBATIM (OR-2's comparison side): both predicate
+				// steps for EVERY pair, geometry before authorization, no skip at all.
+				recordInsideCall(observation, pairClass);
+				const inside = witness !== undefined && pointStrictlyInsidePolygon(face.polygon, witness);
+				// Exact adjacency-aware overlap: Rooms that merely share a Wall (any
+				// angle) are neighbours, never one component. The sampled
+				// `polygonIntersectionArea` (still used below for survivor ranking)
+				// reported a phantom sliver for oblique shared edges.
+				recordOverlapCall(observation, pairClass);
+				const overlap = polygon !== undefined && polygonsShareInteriorArea(polygon, face.polygon);
+				// The predicates' own ADMISSION, recorded in this mode too so the two
+				// sides of OR-2 compare like with like: today's loop unions only after
+				// the authorization test below, so an admission here is not yet a union.
+				if (inside) observation.insideDecisions += 1;
+				else if (overlap) observation.overlapDecisions += 1;
+				if (!inside && !overlap) return;
+				// P23B.3a D-12 — AUTHORIZATION. Geometry is evidence, not permission: a
+				// predecessor Room and a candidate face may join only when authored
+				// identity puts them in the SAME connected component of the candidate Wall
+				// graph. Two coincident or contained graph-INDEPENDENT Rooms therefore stay
+				// two correspondence components, so overlap alone can never merge, retire or
+				// reassign an unrelated Room's identity or its owned objects.
+				if (!unionAuthorized(authorization, roomId, face.key)) return;
+				union(predIndex, predecessorCount + faceIndex);
+				return;
+			}
+			// M-3 IDENTITY FIRST — the cheapest exact decision there is: when BOTH sides of
+			// the pair are unambiguous, authored identity already has the verdict. The Room
+			// owning this face unions; a Room whose own face is a DIFFERENT one refuses.
+			const claimedFaceKey = claimFaceKeyByRoomId.get(roomId);
+			if (claimedFaceKey !== undefined && unambiguousFaceKeys.has(face.key)) {
+				observation.identitySettled += 1;
+				if (claimedFaceKey === face.key) {
+					observation.identityUnions += 1;
+					union(predIndex, predecessorCount + faceIndex);
+				} else {
+					observation.identityRefusals += 1;
+				}
+				return;
+			}
+			// M-1(a) GROUP CHECK FIRST. `unionAuthorized` is a pure component-label
+			// comparison — the same decision the exhaustive loop reaches only after
+			// paying for the geometry — so a pair it refuses is skipped before any
+			// geometric work. Unconditional: this is why OR-6's cross-group count is
+			// zero for EVERY operation, not only for the clear-gap case.
+			if (!unionAuthorized(authorization, roomId, face.key)) {
+				observation.authorizationSkips += 1;
+				return;
+			}
+			// M-1(b) THE COARSE PHASE. Skip only a pair whose merge gate is PROVEN
+			// closed: neither piece of evidence exists (both conditions are false by
+			// definition), or the inflated boxes cannot hold the one point either
+			// condition needs. Each skip is proved by the predicate it removes: an
+			// even-odd cast cannot count a point outside the face's box, and every
+			// overlap witness is a shared point, so it lies in both boxes.
+			const insideImpossible =
+				witness === undefined || (faceBox !== null && pointProvablyOutsideBounds(faceBox, witness));
+			const polygonBox = predecessorBoxes[predIndex] ?? null;
+			const overlapImpossible =
+				polygon === undefined ||
+				(faceBox !== null && polygonBox !== null && boundsProvablyDisjoint(polygonBox, faceBox));
+			if (insideImpossible && overlapImpossible) {
+				if (witness === undefined && polygon === undefined) observation.absentEvidenceSkips += 1;
+				else observation.boundsSkips += 1;
+				return;
+			}
+			// M-1(c) INSIDE, THEN OVERLAP ONLY IF NEEDED. The merge gate is
+			// `inside || overlap`, so an `inside` that decides the pair ends it, and the
+			// containment CALL is itself skipped when the witness's own box proves it
+			// cannot be strictly inside the face. Same gate, same verdict, less work.
+			let inside = false;
+			if (
+				witness !== undefined &&
+				faceBox !== null &&
+				pointProvablyOutsideBounds(faceBox, witness)
+			) {
+				observation.insideSkipsByBounds += 1;
+			} else {
+				recordInsideCall(observation, pairClass);
+				inside = witness !== undefined && pointStrictlyInsidePolygon(face.polygon, witness);
+			}
+			if (inside) {
+				observation.insideDecisions += 1;
+				union(predIndex, predecessorCount + faceIndex);
+				return;
+			}
+			recordOverlapCall(observation, pairClass);
+			// M-1(d): the overlap predicate itself is UNCHANGED.
 			const overlap = polygon !== undefined && polygonsShareInteriorArea(polygon, face.polygon);
-			if (!inside && !overlap) return;
-			// P23B.3a D-12 — AUTHORIZATION. Geometry is evidence, not permission: a
-			// predecessor Room and a candidate face may join only when authored
-			// identity puts them in the SAME connected component of the candidate Wall
-			// graph. Two coincident or contained graph-INDEPENDENT Rooms therefore stay
-			// two correspondence components, so overlap alone can never merge, retire or
-			// reassign an unrelated Room's identity or its owned objects.
-			if (!unionAuthorized(authorization, roomId, face.key)) return;
+			if (!overlap) return;
+			// Authorization was granted at (a): geometry is the evidence, identity the
+			// permission. The exhaustive branch above still asks `unionAuthorized` here.
+			observation.overlapDecisions += 1;
 			union(predIndex, predecessorCount + faceIndex);
 		});
 	});
+	// OR-6: the pass is over — report it ONCE, to a test-only observer if one is set.
+	correspondenceObserverForTest?.(observation);
 	const groups = new Map<number, { faces: string[]; predecessors: string[] }>();
 	faces.forEach((face, faceIndex) => {
 		const root = find(predecessorCount + faceIndex);

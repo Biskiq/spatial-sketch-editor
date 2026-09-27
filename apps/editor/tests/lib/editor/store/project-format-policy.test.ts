@@ -170,7 +170,13 @@ const DIRECT_WRITE_EXCEPTIONS: Record<string, string> = {
 	// contract, the browser harness and the recorder read; no live editor
 	// document is ever reached.
 	'bench/p23b-fixtures.ts':
-		'P23B.0 durable fixture factory — builds throwaway wall-first documents for the committed fixture ledger; never mutates a live document'
+		'P23B.0 durable fixture factory — builds throwaway wall-first documents for the committed fixture ledger; never mutates a live document',
+	// P23B.11 S1 connected case — the §0.8(d) grid fixture builds its own
+	// throwaway wall-first document for the probe and the mandatory OR-1 (h)
+	// row; it never writes a live editor document and never reaches a
+	// transaction.
+	'bench/p23b11-connected-case.ts':
+		'P23B.11 connected-case fixture factory — builds a throwaway wall-first grid document; never mutates a live document'
 };
 
 describe('P23.0 F0 stage 1 — central format-dispatch policy tables', () => {
