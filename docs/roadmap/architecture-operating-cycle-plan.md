@@ -6,7 +6,9 @@ AUTHORITY: canonical strategic model
 ```
 
 **Scope:** project-development process, parallel to the P-number product roadmap.
-**Current product pipeline:** P23 → P23B → P26 → P24 → P25.
+**Current product pipeline:** see [`README.md`](./README.md) — ratified progression
+(2026-09-27): P23B → F foundation contracts → T1–T4 tracks → creator/audience
+trials → Source Baseline → P27–P30 (provisional).
 
 ---
 

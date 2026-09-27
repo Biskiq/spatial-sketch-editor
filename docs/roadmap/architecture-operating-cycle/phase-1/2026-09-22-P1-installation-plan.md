@@ -50,6 +50,13 @@ product state       P23 shipped; P23B planning (no approved child plan); P26 pla
                     brief); pipeline P23 → P23B → P26 → P24 → P25
 ```
 
+> **Superseded sequencing (2026-09-27).** The pipeline quoted above and in §6 is pre-redesign. The
+> owner-ratified direction runs `P23B → F foundation contracts → T1–T4 tracks → creator/audience
+> trials → Source Baseline` ([roadmap/README.md](../../README.md)), with P26 re-derived as track
+> **T1**, and P23B has since shipped further slices (P23B.11 closed 2026-09-27). The installed cycle
+> machinery, its stages and §6's lifecycle rules are unchanged — only the phase names in the example
+> move.
+
 Current-behaviour facts this plan relies on (checked at HEAD, not taken from the reviews):
 
 | Fact | Anchor at HEAD |

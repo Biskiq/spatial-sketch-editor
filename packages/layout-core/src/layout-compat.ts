@@ -15,12 +15,12 @@
  * any other version      → unrecognized (rejected — a real decoder must exist first)
  * ```
  *
- * **There is no `4` branch.** P23.6I is a pre-Compatibility-Baseline slice, so the
+ * **There is no `4` branch.** P23.6I is a pre-baseline slice, so the
  * wall-first `4` generation that reached `main` before this branch is not
  * migrated: a `4` payload is simply an unrecognized version (see
- * `docs/reference/north-star.md` → *Development-stage schema compatibility*). Every
- * `kind: 'wall-first'` result is therefore canonical current-format state and no
- * caller branches on the version.
+ * `docs/reference/north-star.md` → *Development-stage schema compatibility
+ * (pre-baseline)*). Every `kind: 'wall-first'` result is therefore canonical
+ * current-format state and no caller branches on the version.
  *
  *
  * P23.0a scaffolding note: the legacy branch revalidates the current

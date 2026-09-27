@@ -1,5 +1,36 @@
 # P26 — Continuous Spatial Authoring
 
+> **Authority banner (ratified 2026-09-27).** Everything in this phase's existing
+> plans, umbrella, candidate order, research and prototype architecture is
+> **pre-redesign evidence**, not authority. P26 is re-derived as track **T1**
+> against F and the ratified direction, and its plan is rewritten after F; no
+> scope exclusion, sequence or architecture shortcut here binds the re-derived
+> plan. Landed behavior remains current truth until its explicit cutover.
+> Authority: [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
+> and [`../../reference/north-star.md`](../../reference/north-star.md).
+
+**Ratified re-derivation requirements:**
+
+- Representation code must be **runtime-safe Layout evaluation that visitors can
+  also run** — not editor-only. Editor recipes/trails decompose into Camera
+  viewing intent plus typed state contributions, captured explicitly.
+- View settings become **typed, addressable values** (F.3 channel addresses),
+  not session-only view state.
+- The vertical model is **level-ready**: a level ID and level-qualified
+  references are established in F.1 and precede vertical architecture work, even
+  if the first UI exposes one level.
+- IDs use the **F.1 reference format**; level/structure-qualified identity is
+  present before vertical architecture expands.
+- **Prototype journeys A–F** remain the **experience/QA authority** for this
+  direction: A Curved wall (3D → peel → walk round → square up → flat → edit at
+  any curvature → put back), B Look inside (draw a line → preview → part → face
+  the cut → edit → close), C Ceiling (lift → preview a fix → look up → edit →
+  return), D the practised-creator variant, E Everyday edit (Plan → slide and
+  widen → tilt → face → rise → back → Undo), F Where did it go? (find → why you
+  can't see it → go to it). They are scripted in
+  [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md); prototype
+  implementation shortcuts are not production contracts.
+
 **Phase goal:** deliver one continuous, contextually editable spatial world: Plan↔3D,
 first-class circular Room creation with one self-connected Wall, Wall facing
 and peeling, drawn-line Section/depth/Reveal, ceiling lift/look-up,
@@ -7,25 +38,26 @@ and exact return with view navigation separate from document Undo. P26 includes
 the architectural redesign and production implementation needed for that experience.
 
 ```text
-STATUS: planning — experience target accepted; production architecture/sequence proposed
-CURRENT: 2026-09-24-P26-continuous-spatial-authoring-umbrella.md
-NEXT: reconcile against landed P23B; prepare bounded proofs and implementation plan
-EXECUTION: P23B remains preceding performance phase and primary execution track;
-           P26 planning may continue in parallel. P23 remains closed.
-GATE: no implementation approved by this revision; no child is implementation-ready.
-      P26 is the architecture cycle's selected validation window, not open.
-      The umbrella maps installed mechanisms but is not the prepared implementation plan.
-      Final plan reconciliation against landed P23B and installed mechanisms must write
-      STATUS: ready for validation in ../../operations/architecture-cycle.md.
-      STOP while installed-not-reconciled. Only the authorized first implementation
-      slice then records PHASE_2_VALIDATING before implementation starts.
+STATUS: planning — experience target accepted; architecture/sequence are pre-redesign
+        evidence to be re-derived as T1 against F (see authority banner)
+CURRENT: 2026-09-24-P26-continuous-spatial-authoring-umbrella.md (pre-redesign evidence
+         until re-derived)
+NEXT: re-derive scope/slices/T1 plan against the owner-ratified F target contract
+      (F.1–F.5 → roadmap/README) and the ratified direction before any implementation
+      plan; exact F interfaces land as F amendments in shared code
+EXECUTION: P23B remains the operational baton by owner decision — P23B.11 shipped and
+           closed 2026-09-27; the owner-routed pre-P23B.8 follow-up (M1 + R1) is next,
+           starting only on the owner's go.
+GATE: no implementation approved; no child is implementation-ready. F and re-derivation
+      precede any P26 implementation authorization; the architecture cycle's validation
+      window remains closed.
 ```
 
-## Authorities and routes
+## Routes and evidence (pre-redesign)
 
-- **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. All substantive reconciliation lives here.
-- **Accepted experience:** [Final Design Prototype](./Final-Design-Prototype/README.md) — runnable import unchanged; rationale, reconciliation, implementer reference and journeys are linked there. Its implementation shortcuts are not production contracts.
-- **Shell authority unchanged:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). Proposed deltas await the umbrella's decision gate.
+- **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
+- **Accepted experience:** [Final Design Prototype](./Final-Design-Prototype/README.md) — runnable import unchanged; rationale, reconciliation, implementer reference and journeys are linked there. Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
+- **Shell design authority unchanged:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). Proposed deltas await the re-derived T1 plan's decision gate.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
 - **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.
 

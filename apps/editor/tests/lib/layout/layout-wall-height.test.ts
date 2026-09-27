@@ -19,7 +19,7 @@
  * 2. **pre-baseline policy** — the wall-first `4` generation that reached `main`
  *    before this branch is **not** migrated: it fails as an unsupported version
  *    rather than being reinterpreted as `5` (P23.6I, `docs/reference/north-star.md` →
- *    Development-stage schema compatibility);
+ *    Development-stage schema compatibility (pre-baseline));
  * 3. **one compiler path** — compiled Wall vertical bounds/sections follow
  *    `wall.height`, and a Room's ceiling is the derived flat plane at
  *    `floor.elevation + max(boundary Wall heights)`;
@@ -269,11 +269,11 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 
 describe('P23.6I pre-baseline policy — the wall-first `4` generation is not migrated', () => {
 	it('rejects a format-4 payload as an unsupported version instead of reinterpreting it', () => {
-		// P23.6I is pre-Compatibility-Baseline: the wall-first `4` generation that
+		// P23.6I is pre-baseline: the wall-first `4` generation that
 		// reached `main` before this branch is deliberately **not** migrated, because
 		// having existed on `main` does not by itself create a compatibility
 		// obligation before the baseline (`docs/reference/north-star.md` → Development-stage
-		// schema compatibility).
+		// schema compatibility (pre-baseline)).
 		//
 		// Migration was rejected on meaning, not effort: a format-5 H document meant
 		// `Room ceiling = floor.height` while Wall-derived semantics mean

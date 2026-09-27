@@ -1,9 +1,25 @@
 # Scene codec layout
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or its app facade.
-**Last reviewed:** 2026-09-18 (world-local canonical reconciliation)
+**Last reviewed:** 2026-09-27 (ratified direction reconciled; current behavior
+remains authoritative until cutover)
 
 ---
+
+## Boundary status (ratified 2026-09-27)
+
+This file documents the **current** Scene codec internals. Under the ratified
+destination (F.2), Scene remains one codec-bounded unit inside the project
+envelope, while Camera moves to its own codec-bounded unit and the Experience
+unit is added — all governed by
+[`../composition-execution.md`](../composition-execution.md). The release reader
+never consumes these authoring codecs (release formats are separate from source
+formats, F.5), so this boundary can evolve without creating visitor
+compatibility obligations. Do not grow compound-acceptance or release logic
+here: compound cross-domain acceptance belongs to F.4 (one expected revision,
+typed intents, one atomic accepted result and undo) and release lowering to
+F.5. See [`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)
+and [`persistence.md`](./persistence.md).
 
 Five files, one public surface. CURRENT canonical Scene is world-local (`formatVersion: 1`): project/world coordinates, no `roomId`. LEGACY compatibility shape is versionless room-local (`roomId` + room-frame coordinates), accepted only through the explicit legacy identification/conversion path.
 

@@ -1,9 +1,34 @@
 # Placement and transforms
 
 **Read when:** ghosts, gizmos, snap, scale modes, placeable surfaces, selection outlines.  
-**Last reviewed:** 2026-08-23 (P2 close)
+**Last reviewed:** 2026-09-27 (ratified direction reconciled; current behavior
+remains authoritative until cutover)
 
 ---
+
+## Current vs destination (ratified 2026-09-27)
+
+**Current (everything below, until its explicit cutover).** The ghost/gizmo/Plan
+transform behavior and the room-local Arrange conversion are the landed
+implementation.
+
+**Destination.** Placement operates on session-only proxies over world-local
+roots and declared internal component frames; **Attachment** is a typed
+relationship with a host and parameters, and proximity or grouping never implies
+ownership or connectivity. Overrides follow the composition/invocation split
+(instance baseline vs invocation parameters — see
+[`scene-content.md`](./scene-content.md)); placement never mutates a baseline
+that an invocation owns. Moving or replacing a placed instance is a deterministic
+domain operation over a typed, serializable intent with an expected project
+revision, and cross-domain acceptance (F.4) is atomic with one undo result.
+Resource revisions and dependency locks travel with definitions/instances:
+placement does not silently rewrite a locked reference, and an incompatible
+replacement is reported for repair, never auto-matched by name or position.
+
+**Open:** level/structure-qualified placement addressing and the frame semantics
+for attached components — implementation decisions within F.1/F.3
+([`../composition-execution.md`](../composition-execution.md)), subject to its
+interface-ownership rule.
 
 ```text
 Arm library item → PlacementGhost (OBB) → click floor → commit (1 history)
