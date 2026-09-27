@@ -38,6 +38,7 @@ import type {
 	P23BActionLedger,
 	P23BCaptureLedger
 } from '$lib/bench/bench-types';
+import { P23B11_CONNECTED_CASE_ID } from '$lib/bench/p23b11-connected-case';
 import {
 	P23B_M1_LONG_FRAME_DEFINITION,
 	P23B_M1_PRESENTED_FRAME_DEFINITION,
@@ -125,9 +126,22 @@ export type P23BM1D1Row = {
 	comparison: { capture: string; before: number; after: number; note: string };
 };
 
+/**
+ * The fixtures that are measured ONLY to prove the protocol runs them (§3.2's
+ * connected case last): their rows are evidence of the run, never recorded
+ * evidence, so they are marked here and held out of D1's and D7's tables.
+ */
+export const P23B_M1_ADVISORY_FIXTURES: readonly string[] = [P23B11_CONNECTED_CASE_ID];
+
+function isAdvisoryFixture(fixtureId: string): boolean {
+	return P23B_M1_ADVISORY_FIXTURES.includes(fixtureId);
+}
+
 export type P23BM1FixtureSummary = {
 	fixtureId: string;
 	classes: P23BM1ClassRow[];
+	/** A fixture measured under the protocol but never a recorded row (see the array above). */
+	advisory: boolean;
 	settled: boolean;
 	droppedBoundaries: number;
 };
@@ -135,6 +149,7 @@ export type P23BM1FixtureSummary = {
 export type P23BM1Record = {
 	schema: {
 		note: string;
+		advisoryFixtures: string;
 		keyed: string;
 		population: string;
 		releaseSide: string;
@@ -372,6 +387,7 @@ export function buildP23BM1Record(input: {
 		return {
 			fixtureId,
 			classes,
+			advisory: isAdvisoryFixture(fixtureId),
 			settled: classes.every((row) => row.ledger.settled === true),
 			droppedBoundaries: classes.reduce((sum, row) => sum + (row.ledger.droppedBoundaries ?? 0), 0)
 		};
@@ -379,6 +395,9 @@ export function buildP23BM1Record(input: {
 	const d1Rows: P23BM1D1Row[] = [];
 	for (const row of ['wall-authoring', 'whole-room-move-bridge'] as const) {
 		for (const fixture of fixtures) {
+			// The advisory fixture is evidence that the protocol runs it, never a
+			// recorded row: a connected case inside D1's table is a fixture leak.
+			if (fixture.advisory) continue;
 			// Matched on the CLASS, not the path: D1's second row is a drag that rides the
 			// shared `plan-drag-edit` path, so the path alone would pick the wrong class.
 			const entry = fixture.classes.find((candidate) => candidate.actionClass.endsWith(`:${row}`));
@@ -396,8 +415,9 @@ export function buildP23BM1Record(input: {
 			});
 		}
 	}
-	return {
-		schema: {
+	return {			schema: {
+			advisoryFixtures:
+				'The connected case runs LAST under the same protocol as evidence that it runs at all — never a recorded row. Its classes stay inside its own `fixtures` entry, marked `advisory: true`, and it is excluded from D1\'s and D7\'s rows so a connected case can never be read as measured evidence.',
 			note: 'Pre-P23B.8 follow-up M1 — one runtime, one protocol, both D1 rows, the gesture-frame series, the release-side row with its signal label and coverage, long-frame incidence, D7 and the D13 note. ADVISORY: one machine, one DEV session. Not a baseline, not a budget, no threshold, no ratchet and no baseline file is read or written.',
 			keyed:
 				'Mark/boundary rows are keyed by label: { count, p50, p95, exclusiveSelf|null, exclusiveSelfWithheld, maxPerAction, actionsPresent }. exclusiveSelf is reported only where every occurrence in the class could be exclusive-priced (the containment rule). Nothing here may be summed across labels, across classes or across release windows.',
@@ -414,9 +434,9 @@ export function buildP23BM1Record(input: {
 			rows: d1Rows
 		},
 		d7: {
-			note: 'D7 — the post-fix `commit-capture` number (the product mark in the commit path). Pre-fix browser evidence was 107–149 ms; ABSENT here with a reason means the class never reached a commit.',
+			note: 'D7 — the post-fix `commit-capture` number (the product mark in the commit path). Pre-fix browser evidence was 107–149 ms; ABSENT here with a reason means the class never reached a commit. Advisory fixtures are excluded, like D1\'s rows.',
 			rows: input.classes
-				.filter((row) => row.commitCapture !== null)
+				.filter((row) => row.commitCapture !== null && !isAdvisoryFixture(row.fixtureId))
 				.map((row) => ({ fixtureId: row.fixtureId, actionClass: row.actionClass, mark: row.commitCapture }))
 		},
 		d13: {

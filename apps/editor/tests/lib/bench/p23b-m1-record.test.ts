@@ -313,6 +313,34 @@ describe('M1 record — the whole record', () => {
 		expect(record.provenance.fixtureOrder).toEqual(['fixture-a', 'fixture-b']);
 	});
 
+	it('marks the advisory fixture and keeps it out of D1 and D7', () => {
+		// §3.2 runs the connected case LAST as evidence that the protocol runs it,
+		// and a connected case inside a recorded table is a fixture leak. Its rows
+		// stay inside its own marked entry.
+		const advisory = buildP23BM1Record({
+			protocol: 'test protocol',
+			provenance: {},
+			fixtureOrder: ['fixture-a', 'connected-curved-grid-v1'],
+			limitations: [],
+			classes: [
+				classFor('fixture-a', 'p23b-m1:wall-authoring', 'wall-authoring'),
+				classFor('connected-curved-grid-v1', 'p23b-m1:wall-authoring', 'wall-authoring'),
+				classFor('connected-curved-grid-v1', 'p23b-m1:whole-room-move-bridge', 'plan-drag-edit')
+			]
+		});
+		expect(advisory.fixtures.map((fixture) => [fixture.fixtureId, fixture.advisory])).toEqual([
+			['fixture-a', false],
+			['connected-curved-grid-v1', true]
+		]);
+		// It is still evidence that the protocol ran the case...
+		expect(advisory.fixtures[1]?.classes).toHaveLength(2);
+		// ...and no recorded row may cite it, even though both its classes carry the
+		// marks D1 and D7 read.
+		expect(advisory.d1.rows.map((row) => row.fixtureId)).toEqual(['fixture-a']);
+		expect(advisory.d7.rows.map((row) => row.fixtureId)).toEqual(['fixture-a']);
+		expect(advisory.schema.advisoryFixtures).toContain('never a recorded row');
+	});
+
 	it('is conservative about settlement: one unsettled class unsettles its fixture only', () => {
 		expect(record.fixtures[0]?.settled).toBe(true);
 		const unsettled = buildP23BM1Record({
