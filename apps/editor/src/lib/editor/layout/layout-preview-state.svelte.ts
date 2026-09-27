@@ -1310,9 +1310,14 @@ export function commitWallChain(
 		return { success: false, message: plan.rejection.message };
 	}
 	try {
-		const bundle = deriveInstallBundle(state, plan.document);
-		state.source = 'draft';
-		commitPreviewBundle(state, bundle);
+		// P23B.11 S1 — the chain commit's own boundary (the authoring release has
+		// no `plan-apply` node): derived bundle + state install, with the planner's
+		// marks nested inside it by the caller's `authoring-release` / gesture marks.
+		p2311Measure('wall-chain-commit-install', () => {
+			const bundle = deriveInstallBundle(state, plan.document);
+			state.source = 'draft';
+			commitPreviewBundle(state, bundle);
+		});
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
@@ -1420,9 +1425,13 @@ export function commitWallSegment(
 		return { success: false, message: plan.rejection.message };
 	}
 	try {
-		const bundle = deriveInstallBundle(state, plan.document);
-		state.source = 'draft';
-		commitPreviewBundle(state, bundle);
+		// P23B.11 S1 — the segment commit's own boundary, the wall-chain analogue of
+		// `applyWallFirstDocumentPlan`'s `preview-install` mark.
+		p2311Measure('wall-chain-commit-install', () => {
+			const bundle = deriveInstallBundle(state, plan.document);
+			state.source = 'draft';
+			commitPreviewBundle(state, bundle);
+		});
 		state.previewVersion += 1;
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
