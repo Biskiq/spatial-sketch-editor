@@ -86,28 +86,38 @@ all three inform synthesis.
     `closed/p23b.0`. The finding is that every fixture is slow, including the 40-straight-wall control.
     P23B.4's baseline gate is satisfied; its reconciled plan is RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first).
 11  P23B.4–P23B.8 execute, verify and review, with owner-routed P23B.11
-    wall-chain release-delay follow-up immediately after P23B.6 review/acceptance
-    and before P23B.8; then the P23B.9 correctness + performance-regression
-    gate and the P23B.10 closeout gate
-    [ORDER AMENDED 2026-09-25; P23B.11 ROUTED 2026-09-26] Within that run,
-    P23B.7 executes BEFORE P23B.6:
-    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.11 → P23B.8. P23B.11 is the
-    2026-09-26 owner-routed wall-chain release-delay follow-up; its detailed
-    plan is RATIFIED AND IMPLEMENTATION-READY 2026-09-26 (implementation NOT
-    started; the order is unchanged).
+    wall-chain release-delay follow-up and the pre-P23B.8 follow-up immediately
+    after P23B.6 / P23B.11 review/acceptance and before P23B.8; then the P23B.9
+    correctness + performance-regression gate and the P23B.10 closeout gate
+    [ORDER AMENDED 2026-09-25; P23B.11 ROUTED 2026-09-26; PRE-P23B.8 FOLLOW-UP
+    ROUTED 2026-09-27] Within that run, P23B.7 executes BEFORE P23B.6, and the
+    pre-P23B.8 follow-up executes between P23B.11 and P23B.8:
+    P23B.4 → P23B.5 → P23B.7 → P23B.6 → P23B.11 → pre-P23B.8 follow-up → P23B.8.
+    P23B.11 is the 2026-09-26 owner-routed wall-chain release-delay follow-up;
+    its detailed plan is RATIFIED AND IMPLEMENTATION-READY 2026-09-26
+    (implementation NOT started; the order is unchanged).
+    The pre-P23B.8 follow-up is the 2026-09-27 owner-routed decisions slice
+    (decision doc → ./2026-09-27-pre-P23B.8-follow-up-decisions.md): its
+    RATIFIED scope is ONE measurement session (M1 — gesture frames plus
+    release-to-next-presented-frame on the heavy curved layout, headless Chrome
+    AND Electron under one protocol) and ONE release-cost ranking (R1 —
+    canonical compile, then the install's room-geometry-compile, then
+    mesh-prebuild). Queued items carry the before-P23B.8 condition: each must
+    be ratified, or explicitly routed to P23B.8 / P26, before P23B.8 entry —
+    nothing reaches P23B.8 undecided.
     P23B.8 remains unratified and unauthorized under its existing entry gate.
     The P23B.7-before-P23B.6 order was owner-ruled from the measurement step's
     geometry-identity pin (STATE-SIDE: the object the commit hands
     `installWallMeshes` is a Svelte `$state` proxy, and the duplicate 40-Wall
     rebuild it causes is per-gesture commit/history work, which P23B.7 owns —
-    not per-frame rendering). The P23B.11 insertion is an additional
-    owner-authorized sequencing amendment; existing slice identities/scopes
-    and the P23B.8/P26 gates are unchanged. Evidence →
+    not per-frame rendering). The P23B.11 insertion and the 2026-09-27 pre-P23B.8
+    follow-up insertion are additional owner-authorized sequencing amendments;
+    existing slice identities/scopes and the P23B.8/P26 gates are unchanged. Evidence →
     ./p23b-measurement-only-step/2026-09-25-release-containment-record.md §8;
     P23B.11 route → ./p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md.
 ```
 
-> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are three
+> **SEQUENCE is owner-approved, and the block above is its authoritative AMENDED state.** There are four
 > owner-authorized amendments. The first is the insertion of **P23B.3a** as step 9 (approved 2026-09-22
 > under D-11 = ARRANGEMENT 1), which also re-numbered the closing step. The second is the 2026-09-25
 > **order amendment inside step 11**: P23B.7 runs before P23B.6, ruled from the measurement-only step's
@@ -115,7 +125,11 @@ all three inform synthesis.
 > slice's meaning, scope or identity changed in either. The third, owner-authorized 2026-09-26 amendment
 > routes the separately scoped wall-chain release-delay follow-up as P23B.11 immediately after P23B.6
 > review/acceptance and before P23B.8; it creates only a minimal umbrella stub, not implementation
-> authorization. P23B.8's entry gate and P26's implementation/validation gates remain unchanged. Later
+> authorization. The fourth, owner-authorized 2026-09-27 amendment routes the pre-P23B.8 follow-up
+> (decision doc `./2026-09-27-pre-P23B.8-follow-up-decisions.md`) between P23B.11 and P23B.8; its
+> ratified scope is the measurement session (M1) and the release-cost ranking (R1), its queued items
+> must be ratified or explicitly routed to P23B.8 / P26 before P23B.8 entry, and it authorizes no
+> implementation. P23B.8's entry gate and P26's implementation/validation gates remain unchanged. Later
 > work must PRESERVE THIS sequence and must not change it again without a further owner authorization —
 > byte equality to the PRE-AMENDMENT block is **not** the test (P23B.10 MR-10).
 
@@ -242,6 +256,19 @@ GUARDRAILS
   measurement names it · no commits beyond this work, and no merge of the measurement branch without
   the owner's approval.
 ```
+
+## Owner-authorized execution routing amendment — 2026-09-27 (pre-P23B.8 follow-up)
+
+The owner reviewed the pre-P23B.8 decision doc (the four revised proposals plus every remaining
+deferred P23B.4/5/6/7 and P23B.11 item) inside P23B.11's PR #95 and filled in its OWNER DECISION
+lines on 2026-09-27. The follow-up is routed between P23B.11 and P23B.8. Its RATIFIED scope is ONE
+measurement session (M1 — gesture frames plus release-to-next-presented-frame on the heavy curved
+layout, headless Chrome and Electron under one protocol) and ONE release-cost ranking (R1 — canonical
+compile, then the install's room-geometry-compile, then mesh-prebuild, held until M1). The FOLDed
+items beyond M1/R1 are queued by name, and each must be ratified, or explicitly routed to P23B.8 /
+P26, before P23B.8 entry — nothing reaches P23B.8 undecided. The decisions, sources and triggered
+edits are in ./2026-09-27-pre-P23B.8-follow-up-decisions.md. This amendment changes order only,
+starts no slice, and leaves every existing slice identity and the P23B.8/P26 gates unchanged.
 
 ## P23B.7 closeout — 2026-09-25 (owner accepted; routine `slice-closeout`)
 

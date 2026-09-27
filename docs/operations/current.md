@@ -15,19 +15,30 @@ STAGE: P23 closed 2026-09-22 (PR #73). P23B executes the owner-ratified SEQUENCE
        (order + amendments → phase README §SEQUENCE). Shipped and closed, each with closed stubs,
        recovery anchor and tag routed from the phase README: P23B.3a · P23B.0-durable · P23B.4 ·
        P23B.5 · the measurement-only step · P23B.7 · P23B.6. P23B.1 and P23B.2 retain their own
-       review statuses. P23B.11 is owner-routed, its plan is RATIFIED AND IMPLEMENTATION-READY
-       2026-09-26, and it is next; P26 planning continues in parallel, P26 implementation is
+       review statuses. P23B.11 is owner-routed; its plan is RATIFIED and its implementation is
+       COMPLETE on PR #95 (routine `slice-closeout` pending the owner's go), and the pre-P23B.8
+       follow-up (M1 + R1) is routed next; P26 planning continues in parallel, P26 implementation is
        unauthorized and its validation window is selected but not open.
        Architecture cycle: PHASE_1 installed, no owner action required.
 
 NEXT:
-1. P23B.11 (wall-chain release-delay follow-up) is the next slice: its plan is RATIFIED AND
-   IMPLEMENTATION-READY 2026-09-26 (owner-approved) at
-   ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay.md;
-   no implementation has started. When execution is invoked, S1 runs first — DEV marks on the
-   wall-chain path plus ONE browser profile, a STOP-AND-REPORT gate before any saving is promised.
-   Do NOT start P23B.8.
-2. Standing constraints:
+1. P23B.11 (wall-chain release-delay) — implementation complete on PR #95 (S1–S7 plus the 2026-09-27
+   review fix `2a5efeb1`, owner-approved). Routine `slice-closeout` runs on the owner's go; the
+   slice is then complete. Do NOT start P23B.8.
+2. THE PRE-P23B.8 FOLLOW-UP — owner-routed 2026-09-27, executed between P23B.11 and P23B.8, starts
+   only on the owner's explicit go. RATIFIED SCOPE: ONE measurement session (M1 — gesture frames plus
+   release-to-next-presented-frame on the heavy curved layout, headless Chrome AND Electron under one
+   protocol) and ONE release-cost ranking (R1 — canonical compile, then the install's
+   room-geometry-compile, then mesh-prebuild; held until M1). QUEUED BY NAME: P1 randomized M-3
+   differential + test/DEV-side invariant · D4 whole-Room move measurement (mechanism stays with P26
+   §3.5) · D5 topology/snap/hit-test measurement (mechanism stays with the P23B.7 family) · D6
+   adapter/GPU + Plan-template measurement (mechanism stays with P26 P6/P1) · D8 heap-retention
+   comparison (no redesign) · D9 dormant S6-mapping cleanup · D10 cache/interning ruling only · D13
+   baseline coverage limit (noted beside M1). Withdrawn: P3, D11, D12 (the blocked M-2 case stays
+   recorded). Decisions → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md.
+   BEFORE-P23B.8 CONDITION: every queued item must be ratified, or explicitly routed to P23B.8 / P26,
+   before P23B.8 entry — nothing reaches P23B.8 undecided.
+3. Standing constraints:
    - the v5 baseline is test-enforced and `bench:record` is its only writer — never rewrite it; the
      accepted partial baseline (W6 §10.3 disposition A) stands: no further capture, no settlement
      claim beyond its synchronous press/move-phase coverage limit;
@@ -37,12 +48,12 @@ NEXT:
      (still unreachable/unimplemented). Do not restart P23B.4 or reopen P23B.6;
    - P23B.7's unstarted follow-ups stay named, not silently dropped: the snapshot guard's documented
      limits and the bounded heap-retention follow-up (no redesign proposed).
-3. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain open and separate;
+4. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain open and separate;
    they do not reopen any shipped slice.
-4. P26 planning may continue in parallel: reconcile its proposed architecture against landed P23B,
+5. P26 planning may continue in parallel: reconcile its proposed architecture against landed P23B,
    resolve slice-specific decisions and prepare the implementation plan/proofs. The accepted
    prototype authorizes neither implementation nor the validation window.
-5. P23 carries 13 owner-carried verification rows and 5 deferred debt items, named in its closed gate
+6. P23 carries 13 owner-carried verification rows and 5 deferred debt items, named in its closed gate
    stub; P23B neither claims nor closes them. U-1 was DECLINED; Rust/WASM stays undecided until
    P23B.8.
 
@@ -54,7 +65,8 @@ P23B.6 closed acceptance/evidence stub (acceptance record · reused gates · X-2
 P23B.6 closed S3 records (comparator reconciliation · guard recheck · historical abandonment and integrated probe) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-S3-guard-recheck.md (siblings in the same directory)
 P23B.6 closed release-delay diagnosis stub (candidate evidence for P23B.11) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/2026-09-26-P23B.6-release-delay-diagnosis.md
 P23B.6 LIVE measurement JSON records (S1 attribution · S1a DEV/PROD · S1b final-head + coverage · S3 data) → ../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/
-P23B.11 wall-chain release-delay umbrella + RATIFIED implementation-ready plan (S1 first; implementation not started) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md · ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay.md
+P23B.11 wall-chain release-delay umbrella + plan (implementation complete on PR #95; routine closeout pending the owner's go) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay-umbrella.md · ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/2026-09-26-P23B.11-wall-chain-release-delay.md
+pre-P23B.8 follow-up decision doc (owner decisions recorded 2026-09-27; ratified scope M1 + R1; queued items with the before-P23B.8 condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
 recorded v5 baseline (test-enforced; `bench:record` is its only writer) → ../../apps/editor/src/lib/bench/baselines/g3-baseline.json
@@ -70,9 +82,12 @@ post-P23 debt → tech-debt/README.md
 BLOCKER:
 - P26 implementation readiness remains gated: planning may continue; the validation window is not open.
 - The P23B.2 ACCEPT/PART-RETURN evidence decision remains open and separate from every shipped slice.
-- P23B.11's plan is ratified and implementation-ready 2026-09-26; no implementation has started
-  (S1 is the first, measurement-only step when execution is invoked).
+- P23B.11 implementation is complete on PR #95 (review fix `2a5efeb1` owner-approved); routine
+  `slice-closeout` is pending the owner's go.
+- The pre-P23B.8 follow-up is routed but NOT started (owner's go required); P23B.8 entry is
+  additionally gated by the before-P23B.8 condition — every queued follow-up item must be ratified,
+  or explicitly routed to P23B.8 / P26, before P23B.8 entry.
 - P23B.6's final-capture all-curved Whole-Room and Wall-authoring release increases remain unresolved
-  (owned by P23B.11; see its closed acceptance stub).
+  (now the follow-up's M1 measurement; see the decision doc).
 - The P23B.7 snapshot-guard limits and the bounded heap-retention follow-up remain carried and
   unstarted.
