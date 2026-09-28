@@ -15,12 +15,17 @@ import {
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	p23bM1ActionLabelArmRecords,
 	p23bM1ActionLabelArmRecordsFor,
+	p23bM1GridBuildKey,
+	p23bM1GridBuildKeys,
 	p23bM1RecordActionLabelArm,
+	p23bM1RoomLabelAttemptKeys,
+	p23bM1RoomLabelAttemptSequence,
 	p23bM1ResetActionLabelArms,
 	p23bM1RoomLabelArm,
 	p23bM1RoomLabelArmEnabled,
 	p23bM1RoomLabelGridBuilds,
 	setP23bM1RoomLabelArm,
+	type P23BM1GridBuildInputs,
 	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import { createPlanViewportState, type PlanViewportState } from '$lib/editor/layout/layout-plan-transform';
@@ -162,6 +167,155 @@ describe('M1 room-label arm — the per-action registry', () => {
 		p23bM1ResetActionLabelArms();
 		expect(p23bM1ActionLabelArmRecords()).toHaveLength(0);
 		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:rigid-wall-drag')).toHaveLength(0);
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * The build key: could this grid have been reused instead of rebuilt?
+ * ------------------------------------------------------------------ */
+
+/**
+ * One grid's inputs, with a coordinate that can be moved and a mask that can be edited:
+ * everything the grid is a function of, and nothing about the Room's identity.
+ */
+function buildInputs(
+	shift = 0,
+	clearancePx = 8
+): P23BM1GridBuildInputs {
+	return {
+		polygonScreen: [
+			[100 + shift, 100],
+			[200 + shift, 100],
+			[200 + shift, 200],
+			[100 + shift, 200]
+		],
+		mask: {
+			protectedEdges: [{ points: [[110 + shift, 100], [110 + shift, 200]], clearancePx }],
+			obstacles: [{ polygon: [[150, 150], [160, 150], [160, 160]], clearancePx: 4 }],
+			acquisition: [{ center: [120, 180], radiusPx: 12, clearancePx: 2 }],
+			activeText: [{ rect: { minX: 130, minY: 130, maxX: 150, maxY: 140 }, clearancePx: 24 }]
+		},
+		centerScreen: [150 + shift, 150]
+	};
+}
+
+describe('M1 room-label arm — the grid-build key', () => {
+	beforeEach(() => {
+		globals.__P2311_PERF__ = true;
+		p23bM1ResetActionLabelArms();
+	});
+	afterEach(() => {
+	p23bM1ResetActionLabelArms();
+	delete globals.__P2311_PERF__;
+	delete globals.__P23B_M1_ROOM_LABEL_ARM__;
+});
+
+	it('keeps the attempt’s builds in ARRIVAL ORDER, so a cache policy can be simulated from the capture', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const first = buildInputs();
+		const second = buildInputs(1);
+		const build = (inputs: P23BM1GridBuildInputs) =>
+			p23bM1RoomLabelArm(inputs.polygonScreen, inputs.mask, inputs.centerScreen);
+		build(first);
+		build(second);
+		build(first);
+		build(second);
+		build(first);
+		// `1 2 1 2 1` — interleaved, not adjacent. The counts alone (5 builds, 2 distinct)
+		// cannot tell this apart from `1 1 2 2 1`, and the two want different caches: one
+		// entry misses every repeat here, two entries miss none.
+		expect(p23bM1RoomLabelAttemptSequence()).toEqual([1, 2, 1, 2, 1]);
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 3, 'seeded-grid');
+		const record = p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend')[0];
+		expect(record?.sequence).toEqual([1, 2, 1, 2, 1]);
+		// The read is a copy: a reader holding it cannot edit the attempt's own order.
+		const held = p23bM1RoomLabelAttemptSequence() as number[];
+		held.push(99);
+		expect(p23bM1RoomLabelAttemptSequence()).toEqual([1, 2, 1, 2, 1]);
+		// The next attempt starts its own order, exactly as it starts its own count.
+		setP23bM1RoomLabelArm('pruned-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		expect(p23bM1RoomLabelAttemptSequence()).toEqual([]);
+	});
+
+	it('keys a grid by its INPUTS, to the last bit, and not by the objects they arrived in', () => {
+		// Two separately-built input sets with equal values: the same grid, so one key.
+		expect(p23bM1GridBuildKey(buildInputs())).toBe(p23bM1GridBuildKey(buildInputs()));
+		// One coordinate apart by one ulp is a different grid, and must be a different key:
+		// a rounded key would merge the two and OVERSTATE the repeat rate.
+		const near = buildInputs();
+		near.polygonScreen = [[100, 100], [200, 100], [200, 200], [100, 200 + Number.EPSILON * 256]];
+		expect(p23bM1GridBuildKey(near)).not.toBe(p23bM1GridBuildKey(buildInputs()));
+		// A mask clearance is part of the grid too, and so is the centre.
+		expect(p23bM1GridBuildKey(buildInputs(0, 9))).not.toBe(p23bM1GridBuildKey(buildInputs()));
+		const moved = buildInputs(1);
+		expect(p23bM1GridBuildKey(moved)).not.toBe(p23bM1GridBuildKey(buildInputs()));
+	});
+
+	it('counts the attempt’s own distinct builds, and records them on the action', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		p23bM1RoomLabelArm(buildInputs().polygonScreen, buildInputs().mask, buildInputs().centerScreen);
+		p23bM1RoomLabelArm(buildInputs().polygonScreen, buildInputs().mask, buildInputs().centerScreen);
+		const changed = buildInputs(1);
+		p23bM1RoomLabelArm(changed.polygonScreen, changed.mask, changed.centerScreen);
+		expect(p23bM1RoomLabelGridBuilds()).toBe(3);
+		expect(p23bM1RoomLabelAttemptKeys()).toBe(2);
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 7, 'seeded-grid');
+		const record = p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend')[0];
+		expect(record?.builds).toBe(3);
+		expect(record?.distinctBuilds).toBe(2);
+		// The next attempt starts its own key set: the arm is set once per attempt, and
+		// setting it is what closes the previous one.
+		setP23bM1RoomLabelArm('pruned-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		expect(p23bM1RoomLabelAttemptKeys()).toBe(0);
+	});
+
+	it('reports the class’s keys ACROSS its attempts, with the worst repeat named', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		// Attempt 1: the same grid built twice.
+		for (let i = 0; i < 2; i += 1) {
+			const same = buildInputs();
+			p23bM1RoomLabelArm(same.polygonScreen, same.mask, same.centerScreen);
+		}
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 0, 'seeded-grid');
+		// Attempt 2: the same grid as attempt 1, then a changed one, then the change back.
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const repeated = buildInputs();
+		const changed = buildInputs(1);
+		p23bM1RoomLabelArm(repeated.polygonScreen, repeated.mask, repeated.centerScreen);
+		p23bM1RoomLabelArm(changed.polygonScreen, changed.mask, changed.centerScreen);
+		p23bM1RoomLabelArm(repeated.polygonScreen, repeated.mask, repeated.centerScreen);
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 1, 'seeded-grid');
+		expect(p23bM1GridBuildKeys('f1', 'p23b-m1:bend')).toEqual({
+			builds: 5,
+			distinctKeys: 2,
+			repeatedBuilds: 3,
+			maxRepeatOfOneKey: 4
+		});
+		// A class that built nothing reads as null, never as zero repeats.
+		expect(p23bM1GridBuildKeys('f2', 'p23b-m1:bend')).toBeNull();
+	});
+
+	it('records no key at all when the instrument is off, while still counting the builds', () => {
+		delete globals.__P2311_PERF__;
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const inputs = buildInputs();
+		p23bM1RoomLabelArm(inputs.polygonScreen, inputs.mask, inputs.centerScreen);
+		p23bM1RoomLabelArm(inputs.polygonScreen, inputs.mask, inputs.centerScreen);
+		// The count is taken BEFORE the gate — a build is a build whether or not the
+		// instrument is on — while the key needs the gate, so there is no key to report.
+		expect(p23bM1RoomLabelGridBuilds()).toBe(2);
+		expect(p23bM1RoomLabelAttemptKeys()).toBe(0);
+		expect(p23bM1GridBuildKeys('f1', 'p23b-m1:bend')).toBeNull();
+	});
+
+	it('drops the keys on reset, so a run cannot inherit another run’s repeat rate', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const inputs = buildInputs();
+		p23bM1RoomLabelArm(inputs.polygonScreen, inputs.mask, inputs.centerScreen);
+		p23bM1ResetActionLabelArms();
+		expect(p23bM1GridBuildKeys('f1', 'p23b-m1:bend')).toBeNull();
+		expect(p23bM1RoomLabelAttemptKeys()).toBe(0);
+		expect(p23bM1RoomLabelAttemptSequence()).toEqual([]);
 	});
 });
 

@@ -768,13 +768,19 @@ type FreeCandidate = { point: LayoutVec2; clearance: number };
  * placement decision: all three visit the same cells, keep the same eligible set, pick
  * the same representative point per component and rank the same candidates — the
  * placement suite requires identical labels from all three.
+ *
+ * THE SAME CALL CARRIES THE GRID'S INPUTS, because this is the only place that has them
+ * and the only call this module is allowed to make into the instrument. They are passed
+ * by reference (nothing is copied, allocated or hashed unless the gate is on), and the
+ * instrument uses them to key one build — its own concern, in its own module. Reading them
+ * is not a decision: the arm is chosen here exactly as it was before they were passed.
  */
 function freeSpaceCandidates(
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask,
 	centerScreen: LayoutVec2
 ): FreeCandidate[] {
-	const arm = p23bM1RoomLabelArm();
+	const arm = p23bM1RoomLabelArm(polygonScreen, mask, centerScreen);
 	if (arm === 'per-cell-grid') return perCellGridCandidates(polygonScreen, mask, centerScreen);
 	return gridCandidates(polygonScreen, mask, centerScreen, arm === 'pruned-grid' ? 'pruned' : 'seeded');
 }

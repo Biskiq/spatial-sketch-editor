@@ -101,16 +101,25 @@ let gridBuilds = 0;
  * an explicit DEV switch; an unrecognised value falls back to the shipped path
  * rather than to an arm nobody asked for.
  *
- * IT ALSO COUNTS ITS OWN CALLS. The placer calls this exactly once per eligibility
- * grid it builds, so the count is the grid's build count — which is what settles
- * whether a grid could be reused across a render instead of rebuilt. The counter
- * lives here rather than in the placer for the same reason the arm does: the
- * product module keeps its single read, and the instrument that wants to know
- * something about the grid does the counting.
+ * IT ALSO COUNTS ITS OWN CALLS, AND KEYS THEIR INPUTS. The placer calls this exactly
+ * once per eligibility grid it builds and hands it the three arguments that grid was
+ * built from, so one call settles two questions: how many grids an action paid for,
+ * and whether those grids were built from inputs that had already been built — which is
+ * what decides whether a memo could pay. The counting and the keying live here rather
+ * than in the placer for the same reason the arm does: the product module keeps its
+ * single read, and the instrument that wants to know something about the grid does the
+ * work. Passing three references costs the shipped path nothing (no object is built and
+ * nothing is hashed unless the gate is on), and the DEV run pays a hash per build, which
+ * is reported as the instrument's own cost rather than hidden inside the product's.
  */
-export function p23bM1RoomLabelArm(): P23BM1RoomLabelArm {
+export function p23bM1RoomLabelArm(
+	polygonScreen?: P23BM1GridBuildInputs['polygonScreen'],
+	mask?: P23BM1GridBuildInputs['mask'],
+	centerScreen?: P23BM1GridBuildInputs['centerScreen']
+): P23BM1RoomLabelArm {
 	gridBuilds += 1;
 	if (!p23bM1RoomLabelArmEnabled()) return P23B_M1_ROOM_LABEL_ARM_AFTER;
+	if (polygonScreen && mask && centerScreen) recordGridBuild({ polygonScreen, mask, centerScreen });
 	const arm = (globalThis as ArmGlobals).__P23B_M1_ROOM_LABEL_ARM__;
 	return arm === 'per-cell-grid' || arm === 'pruned-grid' ? arm : P23B_M1_ROOM_LABEL_ARM_AFTER;
 }
@@ -125,12 +134,220 @@ export function p23bM1RoomLabelGridBuilds(): number {
 	return gridBuilds;
 }
 
+/* ------------------------------------------------------------------ *
+ * WHETHER THE GRID GETS BUILT AGAIN FROM THE SAME INPUTS
+ * ------------------------------------------------------------------ */
+
 /**
- * Set (or with `null`, clear) the arm, and start the next attempt's build count.
- * Nothing here is persisted.
+ * One eligibility grid's inputs, structurally. It is written here rather than imported
+ * from the placer — the placer imports this module, so the dependency runs one way — and
+ * it is exactly what `freeSpaceCandidates` is handed, which is what determines the grid
+ * completely: the cell budget comes from the projected polygon's own bounding box, the
+ * inside test from the polygon's rows, and the eligibility from the polygon, the mask
+ * and the centre. Two builds with equal inputs therefore have equal grids, which is the
+ * property that makes "did these inputs repeat?" the same question as "could a memo
+ * have skipped this build?".
  */
-export function setP23bM1RoomLabelArm(arm: P23BM1RoomLabelArm | null): void {
+export type P23BM1GridBuildInputs = {
+	polygonScreen: readonly (readonly [number, number])[];
+	mask: {
+		protectedEdges: readonly { points: readonly (readonly [number, number])[]; clearancePx: number }[];
+		obstacles: readonly { polygon: readonly (readonly [number, number])[]; clearancePx: number }[];
+		acquisition: readonly {
+			center: readonly [number, number];
+			radiusPx: number;
+			clearancePx: number;
+		}[];
+		activeText: readonly {
+			rect: { minX: number; minY: number; maxX: number; maxY: number };
+			clearancePx: number;
+		}[];
+	};
+	centerScreen: readonly [number, number];
+};
+
+/**
+ * THE KEY HASES EVERY COORDINATE'S EXACT BITS, not a rounded copy of it. Rounding would
+ * turn two different grids into one key and overstate the repeat rate, which is the one
+ * direction this measurement must not drift in; hashing the bits cannot merge builds that
+ * differ at all. Two independent 32-bit FNV-1a accumulators are carried over the same
+ * words, so a key is 64 bits wide in `keyLow-keyHigh` form — collisions over the few
+ * thousand builds of one run are not a practical concern, and the accumulator is module
+ * state so the walk allocates nothing.
+ */
+const HASH_WORDS = new Float64Array(1);
+const HASH_VIEW = new Uint32Array(HASH_WORDS.buffer);
+const HASH_ACCUMULATOR = new Uint32Array(2);
+
+function hashKeyWord(word: number): void {
+	HASH_ACCUMULATOR[0] = Math.imul(HASH_ACCUMULATOR[0]! ^ word, 16777619) >>> 0;
+	HASH_ACCUMULATOR[1] = Math.imul(HASH_ACCUMULATOR[1]! ^ word, 2246822519) >>> 0;
+}
+
+function hashKeyNumber(value: number): void {
+	HASH_WORDS[0] = value;
+	hashKeyWord(HASH_VIEW[0]!);
+	hashKeyWord(HASH_VIEW[1]!);
+}
+
+function hashKeyPoints(points: readonly (readonly [number, number])[]): void {
+	hashKeyWord(points.length);
+	for (const point of points) {
+		hashKeyNumber(point[0]);
+		hashKeyNumber(point[1]);
+	}
+}
+
+/**
+ * The key of one build: every input, in order, including the counts that separate one
+ * shape of mask from another. It is a STRING key rather than a number so it can be used
+ * as a `Map` key and printed in a capture without re-deriving anything.
+ */
+export function p23bM1GridBuildKey(inputs: P23BM1GridBuildInputs): string {
+	HASH_ACCUMULATOR[0] = 2166136261;
+	HASH_ACCUMULATOR[1] = 32452843;
+	hashKeyPoints(inputs.polygonScreen);
+	hashKeyNumber(inputs.centerScreen[0]);
+	hashKeyNumber(inputs.centerScreen[1]);
+	const { protectedEdges, obstacles, acquisition, activeText } = inputs.mask;
+	hashKeyWord(protectedEdges.length);
+	for (const edge of protectedEdges) {
+		hashKeyPoints(edge.points);
+		hashKeyNumber(edge.clearancePx);
+	}
+	hashKeyWord(obstacles.length);
+	for (const obstacle of obstacles) {
+		hashKeyPoints(obstacle.polygon);
+		hashKeyNumber(obstacle.clearancePx);
+	}
+	hashKeyWord(acquisition.length);
+	for (const zone of acquisition) {
+		hashKeyNumber(zone.center[0]);
+		hashKeyNumber(zone.center[1]);
+		hashKeyNumber(zone.radiusPx);
+		hashKeyNumber(zone.clearancePx);
+	}
+	hashKeyWord(activeText.length);
+	for (const text of activeText) {
+		hashKeyNumber(text.rect.minX);
+		hashKeyNumber(text.rect.minY);
+		hashKeyNumber(text.rect.maxX);
+		hashKeyNumber(text.rect.maxY);
+		hashKeyNumber(text.clearancePx);
+	}
+	return `${HASH_ACCUMULATOR[0]!.toString(36)}-${HASH_ACCUMULATOR[1]!.toString(36)}`;
+}
+
+/**
+ * One class's grid builds, keyed by their inputs. `builds - distinctKeys` is the work a
+ * memo keyed on those inputs could have skipped FOR THIS CLASS; `maxRepeatOfOneKey` says
+ * how much of that saving is one single input set coming back.
+ */
+export type P23BM1GridBuildKeySummary = {
+	builds: number;
+	distinctKeys: number;
+	repeatedBuilds: number;
+	maxRepeatOfOneKey: number;
+};
+
+/** The class's key histogram while a run is in flight, and the attempt's own key set. */
+let classKeys = new Map<string, { builds: number; keys: Map<string, number> }>();
+let attemptKeys = new Map<string, number>();
+/**
+ * THIS ATTEMPT'S BUILDS IN ARRIVAL ORDER, each as the ORDINAL of its key in first-seen
+ * order (`1 1 2 3 2` = the first build's inputs, then those same inputs again, then two
+ * new sets, then the second one again). The counts say HOW MUCH repeated; the order says
+ * whether a cache would have been there when the repeat arrived, which is the question a
+ * memo's design turns on — an adjacent pair is caught by a single-entry cache, an
+ * interleaved return needs a map. Recording the order rather than a hit count for one
+ * guessed policy is deliberate: any policy (one entry, N entries, the whole attempt) can
+ * be simulated offline from the same capture, so the policy is chosen from the data
+ * instead of being baked into the instrument.
+ */
+let attemptKeyOrdinals: number[] = [];
+/** Bound on the recorded order: an attempt longer than this is summarized by its first
+ * `MAX_KEY_SEQUENCE` builds, and the truncation is visible as a length exactly equal to
+ * the cap rather than silently dropped. */
+const MAX_KEY_SEQUENCE = 2048;
+let attemptContext: { fixtureId: string; actionClass: string } | null = null;
+
+function classKeyOf(fixtureId: string, actionClass: string): string {
+	return `${fixtureId}\u0000${actionClass}`;
+}
+
+/**
+ * Key one build, in both scopes: the ATTEMPT's own set (one accepted action) and the
+ * CLASS's histogram (every attempt in it). Both are needed because they answer different
+ * questions — an attempt-scoped memo is the placer's own business, while a class-scoped
+ * one would outlive the attempt that filled it.
+ */
+function recordGridBuild(inputs: P23BM1GridBuildInputs): void {
+	const key = p23bM1GridBuildKey(inputs);
+	let ordinal = attemptKeys.get(key);
+	if (ordinal === undefined) {
+		ordinal = attemptKeys.size + 1;
+		attemptKeys.set(key, ordinal);
+	}
+	if (attemptKeyOrdinals.length < MAX_KEY_SEQUENCE) attemptKeyOrdinals.push(ordinal);
+	if (attemptContext === null) return;
+	const classKey = classKeyOf(attemptContext.fixtureId, attemptContext.actionClass);
+	let totals = classKeys.get(classKey);
+	if (!totals) {
+		totals = { builds: 0, keys: new Map() };
+		classKeys.set(classKey, totals);
+	}
+	totals.builds += 1;
+	totals.keys.set(key, (totals.keys.get(key) ?? 0) + 1);
+}
+
+/** How many distinct input sets this attempt's own builds used. */
+export function p23bM1RoomLabelAttemptKeys(): number {
+	return attemptKeys.size;
+}
+
+/**
+ * This attempt's builds in arrival order, as key ordinals in first-seen order. Read when
+ * the attempt resolves, so the record carries the reuse pattern beside the counts.
+ */
+export function p23bM1RoomLabelAttemptSequence(): readonly number[] {
+	return [...attemptKeyOrdinals];
+}
+
+/**
+ * The class's grid-build keys, or `null` for a class that built no grid (every run without
+ * the arm). Read by the page when it builds the class row, so the repeat rate lands beside
+ * the build count it belongs to.
+ */
+export function p23bM1GridBuildKeys(
+	fixtureId: string,
+	actionClass: string
+): P23BM1GridBuildKeySummary | null {
+	const totals = classKeys.get(classKeyOf(fixtureId, actionClass));
+	if (!totals || totals.builds === 0) return null;
+	let maxRepeatOfOneKey = 0;
+	for (const count of totals.keys.values()) if (count > maxRepeatOfOneKey) maxRepeatOfOneKey = count;
+	return {
+		builds: totals.builds,
+		distinctKeys: totals.keys.size,
+		repeatedBuilds: totals.builds - totals.keys.size,
+		maxRepeatOfOneKey
+	};
+}
+
+/**
+ * Set (or with `null`, clear) the arm, start the next attempt's build count, and — when
+ * the caller knows them — the fixture and class the attempt belongs to, so a class can be
+ * asked afterwards whether its grids were built from repeating inputs. Nothing here is
+ * persisted.
+ */
+export function setP23bM1RoomLabelArm(
+	arm: P23BM1RoomLabelArm | null,
+	context?: { fixtureId: string; actionClass: string }
+): void {
 	gridBuilds = 0;
+	attemptKeys = new Map();
+	attemptKeyOrdinals = [];
+	attemptContext = context ?? null;
 	const globals = globalThis as ArmGlobals;
 	if (arm === null) delete globals.__P23B_M1_ROOM_LABEL_ARM__;
 	else globals.__P23B_M1_ROOM_LABEL_ARM__ = arm;
@@ -148,6 +365,18 @@ export type P23BM1ActionLabelArmRecord = {
 	 * builds, since the arm is set once per attempt and setting it resets the count.
 	 */
 	builds: number;
+	/**
+	 * How many of those builds used a set of inputs the attempt had not already built.
+	 * `builds - distinctBuilds` is what a memo scoped to ONE attempt could have skipped;
+	 * see `p23bM1GridBuildKeys` for the same question over the whole class.
+	 */
+	distinctBuilds: number;
+	/**
+	 * The attempt's builds in ARRIVAL ORDER, as key ordinals in first-seen order, so the
+	 * reuse pattern is recorded rather than a hit count for one guessed policy. Empty when
+	 * the attempt built no grid, or in a run recorded before the sequence existed.
+	 */
+	sequence: readonly number[];
 };
 
 let records: P23BM1ActionLabelArmRecord[] = [];
@@ -160,6 +389,10 @@ let records: P23BM1ActionLabelArmRecord[] = [];
 export function p23bM1ResetActionLabelArms(): void {
 	records = [];
 	gridBuilds = 0;
+	attemptKeys = new Map();
+	attemptKeyOrdinals = [];
+	attemptContext = null;
+	classKeys = new Map();
 }
 
 /**
@@ -173,7 +406,18 @@ export function p23bM1RecordActionLabelArm(
 	actionIndex: number,
 	arm: P23BM1RoomLabelArm
 ): void {
-	records = [...records, { fixtureId, actionClass, actionIndex, arm, builds: gridBuilds }];
+	records = [
+		...records,
+		{
+			fixtureId,
+			actionClass,
+			actionIndex,
+			arm,
+			builds: gridBuilds,
+			distinctBuilds: attemptKeys.size,
+			sequence: [...attemptKeyOrdinals]
+		}
+	];
 }
 
 /** A fixed copy, so a reader can never mutate the registry. */

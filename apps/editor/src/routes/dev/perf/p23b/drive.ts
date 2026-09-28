@@ -988,7 +988,13 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	): Promise<P23BActionLedger> {
 		const arms = timing?.labelArms ?? null;
 		const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;
-		if (arm) setP23bM1RoomLabelArm(arm);
+		// The arm is set with the class it belongs to, so the instrument can report the
+		// class's grid-build keys beside the build count the same attempt already carries.
+		if (arm && timing)
+			setP23bM1RoomLabelArm(arm, {
+				fixtureId: timing.fixtureId,
+				actionClass: timing.actionClass
+			});
 		const action = await work();
 		if (arm && timing) p23bM1RecordActionLabelArm(timing.fixtureId, timing.actionClass, action.index, arm);
 		return action;

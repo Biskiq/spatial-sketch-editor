@@ -66,7 +66,10 @@
 	} from './drive';
 	import { p23bM1FrameTiming, p23bM1LongFramesFor } from '$lib/bench/p23b-m1-frame-timing';
 	import { p23bM1ActionArms } from '$lib/editor/layout/p23b-m1-room-drag-arm';
-import { p23bM1ActionLabelArmRecordsFor } from '$lib/editor/layout/p23b-m1-room-label-arm';
+import {
+	p23bM1ActionLabelArmRecordsFor,
+	p23bM1GridBuildKeys
+} from '$lib/editor/layout/p23b-m1-room-label-arm';
 	import {
 		buildP23BM1Record,
 		m1ClassLedger,
@@ -1072,6 +1075,10 @@ import { p23bM1ActionLabelArmRecordsFor } from '$lib/editor/layout/p23b-m1-room-
 					// class, not one), handed to the record beside the room-drag one so the
 					// runner can split its windows by either.
 					actionLabelArms: p23bM1ActionLabelArmRecordsFor(entry.fixtureId, actionClass),
+					// …and the class's grid-build KEYS, which is what turns the build count
+					// into a repeat rate: how many of those builds used inputs the class had
+					// already built.
+					actionLabelArmKeys: p23bM1GridBuildKeys(entry.fixtureId, actionClass),
 					longFrameWindow: p23bM1LongFramesFor(timing, entry.fixtureId, actionClass)
 				})
 			);

@@ -15,6 +15,7 @@ import {
 	summarizeM1LabelArms,
 	P23B6_S1B_D1_COMPARISON,
 	P23B_M1_D13_NOTE,
+	P23B_M1_GRID_BUILD_KEY_NOTE,
 	P23B_M1_WARMUP_RULE,
 	P23B_M1_POST_RELEASE_FAMILY,
 	pairM1PostReleaseWithPresented,
@@ -45,7 +46,8 @@ import {
 	P23B_M1_ROOM_LABEL_ARM_AFTER,
 	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
-	type P23BM1ActionLabelArmRecord
+	type P23BM1ActionLabelArmRecord,
+	type P23BM1GridBuildKeySummary
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import { p23bM1MeasuredClass } from '../../../src/routes/dev/perf/p23b/drive';
 
@@ -605,7 +607,9 @@ describe('M1 wiring', () => {
 		expect(drive).toContain(
 			'const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;'
 		);
-		expect(drive).toContain('setP23bM1RoomLabelArm(arm);');
+		// The arm is set WITH the class it belongs to, which is what lets the instrument
+		// report the class's grid-build keys beside the build count.
+		expect(drive).toContain('setP23bM1RoomLabelArm(arm, {\n\t\t\t\tfixtureId: timing.fixtureId,');
 		expect(drive).toContain(
 			'p23bM1RecordActionLabelArm(timing.fixtureId, timing.actionClass, action.index, arm)'
 		);
@@ -630,11 +634,16 @@ describe('M1 wiring', () => {
 			'utf8'
 		);
 		expect(occurrences(placer, "from './p23b-m1-room-label-arm'")).toBe(1);
-		expect(occurrences(placer, 'p23bM1RoomLabelArm()')).toBe(1);
+		// One read, and it carries the grid's own inputs: that single call is what keys a
+		// build without the placer knowing anything about the key.
+		expect(occurrences(placer, 'p23bM1RoomLabelArm(polygonScreen, mask, centerScreen)')).toBe(1);
 		for (const forbidden of [
 			'p23bM1RecordActionLabelArm',
 			'p23bM1ResetActionLabelArms',
 			'p23bM1ActionLabelArmRecordsFor',
+			// The grid's key is derived in the instrument, from the arguments the placer
+			// hands it: the product module never learns what a key is.
+			'p23bM1GridBuildKey',
 			'__P23B_M1_ROOM_LABEL_ARM__'
 		]) {
 			expect(placer, `the placer must not contain ${forbidden}`).not.toContain(forbidden);
@@ -1033,10 +1042,18 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 	// attempt's grid-build count, taken at the same instant so the two cannot be paired
 	// across attempts.
 	const assignment: P23BM1ActionLabelArmRecord[] = [
-		{ fixtureId, actionClass, actionIndex: 0, arm: 'seeded-grid', builds: 5 },
-		{ fixtureId, actionClass, actionIndex: 1, arm: 'pruned-grid', builds: 5 },
-		{ fixtureId, actionClass, actionIndex: 2, arm: 'per-cell-grid', builds: 4 }
+		{ fixtureId, actionClass, actionIndex: 0, arm: 'seeded-grid', builds: 5, distinctBuilds: 2, sequence: [1, 2, 1, 2, 1] },
+		{ fixtureId, actionClass, actionIndex: 1, arm: 'pruned-grid', builds: 5, distinctBuilds: 3, sequence: [1, 2, 3, 1, 2] },
+		{ fixtureId, actionClass, actionIndex: 2, arm: 'per-cell-grid', builds: 4, distinctBuilds: 4, sequence: [1, 2, 3, 4] }
 	];
+	// The class's own keys: 14 builds over the three attempts, 7 of them from inputs the
+	// class had already built — one of which came back 5 times.
+	const classKeys: P23BM1GridBuildKeySummary = {
+		builds: 14,
+		distinctKeys: 7,
+		repeatedBuilds: 7,
+		maxRepeatOfOneKey: 5
+	};
 
 	it('records the assignment per resolved action, sorted, with the rule it was made under', () => {
 		const row = summarizeM1Class({
@@ -1049,29 +1066,70 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			warmup: 0,
 			gestureRegistry: noGestures(),
 			longFrameWindow: null,
-			actionLabelArms: assignment
+			actionLabelArms: assignment,
+			actionLabelArmKeys: classKeys
 		});
 		expect(row.labelArms?.rule).toBe(P23B_M1_ROOM_LABEL_ARM_RULE);
 		expect(row.labelArms?.arms).toEqual(P23B_M1_ROOM_LABEL_ARMS);
 		// The assignment keeps the arm module's own index/arm/builds and drops nothing
 		// else the record needs: the fixture and class are the row's own keys.
-		expect(row.labelArms?.byAction).toEqual(assignment.map(({ actionIndex, arm, builds }) => ({
-			actionIndex,
-			arm,
-			builds
-		})));
+		expect(row.labelArms?.byAction).toEqual(
+			assignment.map(({ actionIndex, arm, builds, distinctBuilds, sequence }) => ({
+				actionIndex,
+				arm,
+				builds,
+				distinctBuilds,
+				keySequence: [...sequence]
+			}))
+		);
 		// The grid-build budget travels with the same assignment: it is the reuse
 		// budget, and a class that paid for one grid per action has nothing to reuse.
-		expect(row.labelArms?.buildsPerAction).toEqual({ actions: 3, total: 14, p50: 5, max: 5 });
+		expect(row.labelArms?.buildsPerAction).toEqual({
+			actions: 3,
+			total: 14,
+			p50: 5,
+			max: 5,
+			distinct: 9
+		});
+		// Both scopes are reported, and the note says which justifies what: 5 of the 14
+		// builds repeat an input already built in the SAME attempt, 7 of them repeat one
+		// built anywhere in the class.
+		expect(row.labelArms?.gridBuildKeys).toEqual(classKeys);
+		expect(row.labelArms?.note).toBe(P23B_M1_GRID_BUILD_KEY_NOTE);
+	});
+
+	it('reports a null repeat rate rather than a zero one when no key was recorded', () => {
+		// The key is DEV-only, so a run that took no key must read as NOT MEASURED: a
+		// distinct of 0 would say every build repeated, which is the opposite claim.
+		const block = summarizeM1LabelArms(
+			assignment.map((record) => ({ ...record, distinctBuilds: 0 })),
+			null
+		);
+		expect(block?.buildsPerAction.distinct).toBeNull();
+		expect(block?.gridBuildKeys).toBeNull();
 	});
 
 	it('keeps the last record for one action index, so a retried action cannot appear twice in the split', () => {
 		const block = summarizeM1LabelArms([
 			...assignment,
-			{ fixtureId, actionClass, actionIndex: 1, arm: 'seeded-grid', builds: 2 }
+			{
+				fixtureId,
+				actionClass,
+				actionIndex: 1,
+				arm: 'seeded-grid',
+				builds: 2,
+				distinctBuilds: 1,
+				sequence: [1, 1]
+			}
 		]);
 		expect(block?.byAction.map((entry) => entry.actionIndex)).toEqual([0, 1, 2]);
-		expect(block?.byAction[1]).toEqual({ actionIndex: 1, arm: 'seeded-grid', builds: 2 });
+		expect(block?.byAction[1]).toEqual({
+			actionIndex: 1,
+			arm: 'seeded-grid',
+			builds: 2,
+			distinctBuilds: 1,
+			keySequence: [1, 1]
+		});
 	});
 
 	it('reports NO label block for a run that took no arm, so the runner cannot invent a split', () => {

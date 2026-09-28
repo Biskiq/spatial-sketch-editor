@@ -59,6 +59,7 @@ import {
 	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	type P23BM1ActionLabelArmRecord,
+	type P23BM1GridBuildKeySummary,
 	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import {
@@ -278,11 +279,34 @@ export const P23B_M1_ARM_COMPARISON_NOTE =
  * the assignment here and the rows there is the same division the window-phase
  * block already uses.
  */
+/**
+ * What the class's grid-build keys say, and what they deliberately do NOT say. The two
+ * scopes are reported apart because they justify different things: a repeat WITHIN one
+ * attempt is the placer's own business (a memo that lives as long as the placement that
+ * filled it), while a repeat across the class's attempts would need a memo that outlives
+ * the attempt and therefore an owner for its invalidation — a different decision.
+ */
+export const P23B_M1_GRID_BUILD_KEY_NOTE =
+	'Grid builds are keyed by the inputs that determine the grid (the Room’s projected polygon, the projected mask with its clearances, and the semantic centre), hashed over every coordinate’s exact bits, so two builds with one key would have produced one identical grid. `buildsPerAction.distinct` counts the attempt’s own distinct keys, summed over the class’s actions: `total − distinct` is what a memo scoped to ONE attempt could have skipped. `gridBuildKeys` reports the same question over the class’s actions taken together, so `repeatedBuilds` there is the ceiling for a memo that outlives the attempt — which would also need an owner for its invalidation, and is NOT what this row recommends. A key is derived from the inputs, never from the Room’s identity, so two Rooms with identical screen inputs share a key by construction; and the hashing itself is DEV-only, so its own cost appears in an instrumented capture’s profile and not in the shipped path. `byAction[].keySequence` is the attempt’s builds IN ARRIVAL ORDER, each as the ordinal of its key in first-seen order: the counts say how much repeated, and the order says whether a cache would have been there when the repeat arrived, so a cache policy can be simulated offline from this capture rather than assumed.';
+
 export type P23BM1LabelArmsBlock = {
 	rule: string;
 	arms: readonly P23BM1RoomLabelArm[];
 	/** Sorted by action index; the runner's split key. */
-	byAction: { actionIndex: number; arm: P23BM1RoomLabelArm; builds: number }[];
+	byAction: {
+		actionIndex: number;
+		arm: P23BM1RoomLabelArm;
+		builds: number;
+		/** Of `builds`, how many used inputs this attempt had not already built. */
+		distinctBuilds: number;
+		/**
+		 * The attempt's builds in arrival order, as key ordinals in first-seen order. The
+		 * counts above say how much repeated; this says whether a cache would have been
+		 * there when the repeat arrived, so a policy can be simulated from the capture.
+		 * Empty for an attempt that built no grid.
+		 */
+		keySequence: number[];
+	}[];
 	/**
 	 * Eligibility grids one accepted action paid for, over the actions above. The count
 	 * is arm-INDEPENDENT by construction (every arm rebuilds the grid on every Plan
@@ -295,7 +319,15 @@ export type P23BM1LabelArmsBlock = {
 		total: number;
 		p50: number | null;
 		max: number;
+		/**
+		 * The attempts' own distinct keys, summed. `total − distinct` is what an
+		 * attempt-scoped memo could have skipped; `null` when this run recorded no keys.
+		 */
+		distinct: number | null;
 	};
+	/** The class's keys over all its attempts; `null` when no key was recorded. */
+	gridBuildKeys: P23BM1GridBuildKeySummary | null;
+	note: string;
 };
 
 /**
@@ -308,7 +340,9 @@ export type P23BM1LabelArmsBlock = {
  * own grid builds and never a neighbour's.
  */
 export function summarizeM1LabelArms(
-	records: readonly P23BM1ActionLabelArmRecord[] | null
+	records: readonly P23BM1ActionLabelArmRecord[] | null,
+	/** The class's grid-build keys, or `null` when the run/keyed mode recorded none. */
+	gridBuildKeys: P23BM1GridBuildKeySummary | null = null
 ): P23BM1LabelArmsBlock | null {
 	if (!records || records.length === 0) return null;
 	// Later records win for one action index, so an action retried in the same
@@ -316,9 +350,18 @@ export function summarizeM1LabelArms(
 	const byIndex = new Map<number, P23BM1ActionLabelArmRecord>();
 	for (const record of records) byIndex.set(record.actionIndex, record);
 	const byAction = [...byIndex.values()]
-		.map(({ actionIndex, arm, builds }) => ({ actionIndex, arm, builds }))
+		.map(({ actionIndex, arm, builds, distinctBuilds, sequence }) => ({
+			actionIndex,
+			arm,
+			builds,
+			distinctBuilds,
+			keySequence: [...sequence]
+		}))
 		.sort((left, right) => left.actionIndex - right.actionIndex);
 	const builds = byAction.map((entry) => entry.builds);
+	// A run that recorded no key has no distinct count either; reporting 0 there would
+	// read as "every build repeated", which is the opposite of "not measured".
+	const keyed = byAction.some((entry) => entry.distinctBuilds > 0);
 	return {
 		rule: P23B_M1_ROOM_LABEL_ARM_RULE,
 		arms: P23B_M1_ROOM_LABEL_ARMS,
@@ -327,8 +370,11 @@ export function summarizeM1LabelArms(
 			actions: builds.length,
 			total: builds.reduce((sum, value) => sum + value, 0),
 			p50: builds.length === 0 ? null : percentile(builds, 50),
-			max: builds.length === 0 ? 0 : Math.max(...builds)
-		}
+			max: builds.length === 0 ? 0 : Math.max(...builds),
+			distinct: keyed ? byAction.reduce((sum, entry) => sum + entry.distinctBuilds, 0) : null
+		},
+		gridBuildKeys,
+		note: P23B_M1_GRID_BUILD_KEY_NOTE
 	};
 }
 
@@ -1043,9 +1089,12 @@ export function summarizeM1Class(input: {
 	 * grid-build count, or `null`/empty. A separate dimension from `actionArms`: it is
 	 * recorded over EVERY class (the placer runs on every Plan render), and its rows
 	 * are the runner's windows, so the page hands over the arm module's records and
-	 * nothing else.
+	 * nothing else. `actionLabelArmKeys` is the class's grid-build key histogram, which
+	 * is what turns the build count into a repeat rate.
 	 */
 	actionLabelArms?: readonly P23BM1ActionLabelArmRecord[] | null;
+	/** The class's grid-build keys, or `null` when the run recorded none. */
+	actionLabelArmKeys?: P23BM1GridBuildKeySummary | null;
 }): P23BM1ClassRow {
 	const population = m1Population(input.ledger, input.actionPath, input.warmup);
 	const {
@@ -1189,7 +1238,7 @@ export function summarizeM1Class(input: {
 			longFrameWindow: input.longFrameWindow,
 			actionArms: input.actionArms ?? null
 		}),
-		labelArms: summarizeM1LabelArms(input.actionLabelArms ?? null)
+		labelArms: summarizeM1LabelArms(input.actionLabelArms ?? null, input.actionLabelArmKeys ?? null)
 	};
 }
 
