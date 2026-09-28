@@ -390,7 +390,12 @@ export class Stage {
         hole.moveTo(o.s0, o.sill); hole.lineTo(o.s1, o.sill); hole.lineTo(o.s1, o.head); hole.lineTo(o.s0, o.head); hole.lineTo(o.s0, o.sill);
         s.holes.push(hole);
       }
-      const geo = new THREE.ExtrudeGeometry(s, { depth: w.t, bevelEnabled: false });
+      // The vendored three r175 build omits the extrusion lid faces (caps) whenever
+      // beveling is off, which leaves every wall a hollow outline: nothing renders as a
+      // surface and a ray passes straight through, so the pointer can never hang
+      // anything on a wall. A zero-size bevel with one segment is the same geometry
+      // with its caps back. (Verified: verts 48 → 192, cap normals 0 → ±24.)
+      const geo = new THREE.ExtrudeGeometry(s, { depth: w.t, bevelEnabled: true, bevelThickness: 0, bevelSize: 0, bevelSegments: 1 });
       geo.translate(0, 0, -w.t / 2);
       const m = new THREE.Mesh(geo, M(COLORS.wall, { roughness: 0.92 }));
       m.castShadow = true;

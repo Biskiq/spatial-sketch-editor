@@ -16,7 +16,7 @@ Then open [the demo](http://127.0.0.1:8832/). (There's also a `c2-objects-and-as
 
 ## Pages
 
-- `index.html` — the prototype. The dark **presenter** (<kbd>J</kbd>, outside the product) walks the six scenario steps. “Set up step N” resets and completes the earlier steps; “Do it” performs a task through the same actions a creator would use.
+- `index.html` — the prototype. The dark **presenter** (<kbd>J</kbd>, outside the product) walks the six scenario steps. “Set up step N” resets and completes the earlier steps; “Do it” performs a task through the same actions a creator would use. Drag the presenter by its header to move it out of the way; double-click the header to dock it back.
 - `rationale.html` — proposition, annotated journey/state map (`#journey`), terminology and scope rules, lifetime cues, contextual-vs-bench comparison, rejected alternatives, proposed PLATE/P26 departures, accessibility, usability hypotheses.
 - `specimens.html` — reusable patterns (capability disclosure, value rows, reach, relationships, repair), state specimens for unavailable resources and cancelled updates, live states, and the narrower density specimen.
 

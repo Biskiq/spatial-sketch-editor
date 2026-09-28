@@ -10,7 +10,8 @@ conducted; preference and comprehension claims remain hypotheses.
 Run the [README command](README.md#run), then open [the demo](index.html).
 The dark presenter walks six resettable steps. **Set up step N** prepares all
 earlier steps; **Do it** demonstrates a task using the product's actions.
-Press **J** to hide the presenter when working in 3D. Reloading discards all work:
+Press **J** to hide the presenter when working in 3D — or drag it by its header
+out of the way (double-click the header to dock it back). Reloading discards all work:
 both projects and the library live only in memory.
 
 | Review question | Direct specimen |

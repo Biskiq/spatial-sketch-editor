@@ -171,11 +171,69 @@ export function setupStep(n) {
 
 let cur = 1;
 let noticeOpen = false;
+
+// The presenter is a review tool floating over the product, so it must not sit in
+// the way: drag it by its header (double-click the header to dock it back bottom-left).
+// The position is session state — it survives re-renders and toggling, never reloads.
+let scPos = null;
+let scDrag = null;
+
+function clampPos(el, x, y) {
+  return {
+    x: Math.max(0, Math.min(x, window.innerWidth - el.offsetWidth)),
+    y: Math.max(0, Math.min(y, window.innerHeight - el.offsetHeight)),
+  };
+}
+
+function applyScenarioPos(el) {
+  if (!scPos) { el.style.left = ''; el.style.top = ''; el.style.bottom = ''; return; }
+  const c = clampPos(el, scPos.x, scPos.y);
+  el.style.left = c.x + 'px';
+  el.style.top = c.y + 'px';
+  el.style.bottom = 'auto';
+}
+
+function setupScenarioDrag(el) {
+  if (el.dataset.dragBound) return;
+  el.dataset.dragBound = '1';
+  el.addEventListener('pointerdown', (e) => {
+    const head = e.target.closest('.sc-head');
+    if (!head || e.target.closest('button, a')) return;
+    e.preventDefault();
+    const r = el.getBoundingClientRect();
+    scDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    el.classList.add('dragging');
+    try { el.setPointerCapture(e.pointerId); } catch { /* synthetic or stale pointer */ }
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!scDrag) return;
+    const c = clampPos(el, e.clientX - scDrag.dx, e.clientY - scDrag.dy);
+    scPos = c;
+    el.style.left = c.x + 'px';
+    el.style.top = c.y + 'px';
+    el.style.bottom = 'auto';
+  });
+  const end = (e) => {
+    if (!scDrag) return;
+    scDrag = null;
+    el.classList.remove('dragging');
+    try { el.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.sc-head') && !e.target.closest('button, a')) { scPos = null; applyScenarioPos(el); }
+  });
+  window.addEventListener('resize', () => { if (!el.hidden && scPos) applyScenarioPos(el); });
+}
+
 export function renderScenario() {
   const el = $('scenario');
+  setupScenarioDrag(el);
+  applyScenarioPos(el);
   const s = STEPS[cur - 1];
   el.innerHTML = `
-    <div class="sc-head"><span class="sc-outside">Presenter · not part of the product</span><button class="sc-x" data-sc="close" aria-label="Close presenter">×</button></div>
+    <div class="sc-head"><span class="sc-outside">Presenter · not part of the product <i class="sc-drag">drag to move</i></span><button class="sc-x" data-sc="close" aria-label="Close presenter">×</button></div>
     <div class="sc-tabs" role="tablist">${STEPS.map((x) => `<button role="tab" aria-selected="${x.n === cur}" class="${x.n === cur ? 'on' : ''}" data-sc="tab" data-n="${x.n}">${x.n}</button>`).join('')}</div>
     <div class="sc-kicker">${esc(s.kicker)}</div>
     <div class="sc-title">${s.n}. ${esc(s.title)}</div>
