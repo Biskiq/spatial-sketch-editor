@@ -334,7 +334,10 @@ written on one working tree and has LANDED as a commit series on this branch —
 the work, plus the follow-up commit that recorded them and carries this text: **`3ef60e68`** the M1
 measurement stack and the records it produced · **`2ccded81`** the whole-Room drag on the transient
 contract, rotation wired · **`58a0c5ef`** the Room-label placer's grid with the one-session arm that
-measures it. A block labelled "UNCOMMITTED" describes the state when it was written and is kept as
+measures it. Added to the same series the same day, for the block immediately after the arm section:
+**`bca3da02`** the seeded, ranked, index-gated grid walk, with the build budget that its attempt records
+now carry · **`2e292ade`** the runner signing the new pair from the arm module's own constants ·
+**`c88b511a`** the two legs and the record that reads them. A block labelled "UNCOMMITTED" describes the state when it was written and is kept as
 provenance, not as status. The two 2026-09-27 M1 leg captures stay deliberately uncommitted (gitignored
 at two exact paths for their ~40k-line size); every other capture cited below is committed.
 
@@ -675,6 +678,49 @@ not another inner-loop constant — and this arm has no Electron leg.
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-arm-before-after-record.md · capture
 → ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json.
 
+## pre-P23B.8 follow-up — the grid's walk seeded and its terms ranked, and the price of the grid's existence — 2026-09-28 (committed 2026-09-28; product change + two legs)
+
+The arm closed with the placer still the largest single consumer inside the post-release windows, so the
+grid's own walk was next — and the same arm measured it the same day. Each term's distance walk is now
+**seeded with the slack already found**: `seededPolylineDistance` returns the exact distance, or `null`
+when the term cannot come in below the seed, so a term that cannot bind is never measured and a cell the
+cheap terms already reject never walks a curved boundary at all. Whole GROUPS of segments are pruned in
+bulk against a per-polyline bounding box, and the terms are visited **cheapest-segments-first** — a
+two-part change, because the falsifier caught the first part alone. The first revision ran the mask first
+and the Room's own boundary LAST, which is right when that boundary is a flattened 256-vertex curve and
+wrong when it is a four-segment rectangle: measured at the scale the leg itself reports, that order is
+**0.61–0.95×** on the straight shapes (0.70× at 50×50 cells) against **1.47–2.35×** for the ranked order,
+with the curved shapes at 3.5–7.6×. A per-group index is likewise built only for a polyline with at
+least 8 segments — the grid is built 8–72 times per accepted action and pays whatever that costs on
+every one. Parity is asserted, not argued: every variant matched the previous engine cell by cell over
+five shapes and three grid scalings (**0 eligible-value, 0 sign mismatches**), and the arm's parity suite
+requires identical labels from all THREE grids now interleaved (the shipped `seeded-grid`, the previous
+`pruned-grid`, the pre-change `per-cell-grid`) over 8 fixtures incl. the sticky-memory second pass.
+
+**Two legs, Chrome 152 headless, three arms interleaved per attempt in every class, signed pair
+`seeded-grid` − `pruned-grid`.** All-curved 40-wall post-release window p50 **113.1 → 94.9** (`bend`),
+**107.8 → 94.9** (`rigid-wall-drag`), **104.5 → 92.5** (`room-creation-commit`), **111.1 → 81.7**
+(`wall-authoring`), **102.9 → 91.3 ms** (`whole-room-move-bridge`) — **0.73–0.89 on all five classes**,
+the CPU slice agreeing (the placer's own self time per accepted action **13.30 → 9.24 ms** across all 19
+rows; the pre-change grid reads 33.34). Owner-curved 0.89–0.99 and connected 0.71–0.90. **The falsifier
+reads 0.92–1.03** on the straight fixture — and the REJECTED first revision is committed as its own leg
+at **1.00–1.10** rather than quietly rewritten, because that reading is what shows the falsifier is
+discriminating and that what it caught was the term order, not the seeding. Calibration residual
+0.062 ms, 4,418 presented frames, `unassignedWindows` 0 in all 19 rows.
+
+**The next lever is priced, not spent.** A counter that travels with each attempt's arm record shows the
+grid is built **8–72 times per accepted action** (40 on all-curved `bend`, 30 on the straight rigid drag,
+72 on `room-creation-commit`) against **5–6 `p2311:plan-render-model` renders per accepted action**, at
+≈0.6 ms per build on the all-curved fixture — so the whole grid budget there is ≈**24 ms per accepted
+action**, and the grid's *existence* is where the remaining money is. What is NOT measured is the
+**redundant share**: the counter counts builds, not repeated inputs, and a memo over inputs that never
+repeat would remove nothing while adding a correctness surface. No memo, no cache and no key were added;
+counting the key-hit rate is the next pass's first step. Still open: the placer remains the largest single
+consumer inside those windows, and this arm still has no Electron leg.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-and-reuse-budget-record.md · the
+shipped leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · the rejected
+revision's leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json.
+
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
 P23B.11 was REVIEWED AND ACCEPTED by the owner with no remaining blocker: the review fix `2a5efeb1`
@@ -778,12 +824,19 @@ child plans and execution status →
   ./pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json (the arms run: per-arm frame series and the
     within-session before/after) · ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json (the
     Room-label arm leg: per-class `labelArms` assignment, per-arm window rows and the per-arm CPU slice)
+  · ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json (the shipped seeded,
+    ranked, index-gated grid: the three-arm `labelArms` rows with the signed pair `seeded-grid` −
+    `pruned-grid`, its per-arm CPU slice, and each class's `buildsPerAction` grid-build budget) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json (the REJECTED first
+    revision's leg, kept because its straight-fixture reading is what made the falsifier discriminating)
   · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
   ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
   pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
   THE WORKING TREE and deliberately NOT COMMITTED (two exact repository-root `.gitignore` paths, reason
   stated there): ~40k pretty-printed runner lines each, i.e. 59,335 of what was then a 63,588-line
-  branch diff (with this work committed the branch is 15,294 added lines over 66 files). Every row they are cited for is in the records above, and the S2/S3 records carry the runner
+  branch diff. With this series AND the 2026-09-28 grid pass committed, the branch measures **66 files /
+  13,150 added lines / 458 removed against `a736f0f9`** — the commit this series starts from — nearly all
+  of that reduction being the two captures above leaving the PR. Every row they are cited for is in the records above, and the S2/S3 records carry the runner
   commands that regenerate them.
 measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
