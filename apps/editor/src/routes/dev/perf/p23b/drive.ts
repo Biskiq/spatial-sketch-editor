@@ -39,6 +39,20 @@ import {
 	p23bM1RecordLongFrames,
 	p23bM1ResetFrameTiming
 } from '$lib/bench/p23b-m1-frame-timing';
+import {
+	P23B_M1_ROOM_DRAG_ARMS,
+	p23bM1RecordActionArm,
+	p23bM1ResetActionArms,
+	setP23bM1RoomDragArm,
+	type P23BM1RoomDragArm
+} from '$lib/editor/layout/p23b-m1-room-drag-arm';
+import {
+	P23B_M1_ROOM_LABEL_ARMS,
+	p23bM1RecordActionLabelArm,
+	p23bM1ResetActionLabelArms,
+	setP23bM1RoomLabelArm,
+	type P23BM1RoomLabelArm
+} from '$lib/editor/layout/p23b-m1-room-label-arm';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 
 export type P23BDriveTargets = {
@@ -848,11 +862,16 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			fixture,
 			'wall-authoring',
 			async (sessionId) => {
-				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
-					await cancelPendingRun();
-					let setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
-					if (setup.outcome === 'suppressed') setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
-					const commit = await pointerTap(sessionId, clientPoint(targets.authoringTo));
+				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async (index) => {
+					// The whole attempt runs under one label arm, not just the commit tap: the
+					// setup tap renders the Plan too, and the attempt is the unit the arm
+					// alternates over.
+					const commit = await withLabelArm(timing, index, async () => {
+						await cancelPendingRun();
+						let setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+						if (setup.outcome === 'suppressed') setup = await pointerTap(sessionId, clientPoint(targets.authoringFrom));
+						return pointerTap(sessionId, clientPoint(targets.authoringTo));
+					});
 					const accepted = commit.path === 'wall-authoring' && commit.outcome === 'accepted';
 					await restore();
 					return { action: commit, accepted };
@@ -868,7 +887,26 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * for, bracketed around the drags themselves. Neither changes an action: the
 	 * series is sampled beside the gesture and the observer only listens.
 	 */
-	type M1ClassTiming = { fixtureId: string; actionClass: string; drag: boolean };
+	type M1ClassTiming = {
+		fixtureId: string;
+		actionClass: string;
+		drag: boolean;
+		/**
+		 * The BEFORE/AFTER arm list this class interleaves per attempt, or `null`
+		 * for a class that runs one path only. Only the whole-Room class takes arms;
+		 * every other class leaves the arm switch alone.
+		 */
+		arms?: readonly P23BM1RoomDragArm[] | null;
+		/**
+		 * The Room-label arm list this class interleaves per attempt, or `null`.
+		 *
+		 * UNLIKE `arms` THIS ONE IS NOT CONFINED TO A CLASS. The placer runs on every
+		 * Plan render, and the render a release produces is what the post-release
+		 * window measures, so every class that changes the Plan's geometry while it is
+		 * drawn takes this arm — which is all five of them.
+		 */
+		labelArms?: readonly P23BM1RoomLabelArm[] | null;
+	};
 
 	let gestureSampler: ReturnType<typeof createP23BGestureFrameSampler> | null = null;
 	let longFrameObserver: ReturnType<typeof createP23BLongFrameObserver> | null = null;
@@ -889,21 +927,71 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * resolved, so the frames it reports are the frames the drag itself produced.
 	 * No drag workload is ever measured without it; a non-drag class gets the work
 	 * function untouched.
+	 *
+	 * THE BRACKET CARRIES ITS ACTION'S IDENTITY. The series is recorded with the
+	 * ledger index and outcome of the action it resolved to, because a bracket is
+	 * per ATTEMPT and the reported row is per MEASURED ACTION: `repeatPath` retries,
+	 * and the leading warm-up drags are measured but not reported. Without the
+	 * identity the merge could only pool every bracket, quietly averaging warm-up
+	 * and retry frames into a row that claims to be the measured class. An attempt
+	 * that throws or never resolves records `null` and can therefore never be
+	 * merged into a measured action.
 	 */
-	async function bracketGestureFrames<T>(
+	async function bracketGestureFrames(
 		timing: M1ClassTiming | null,
 		label: string,
-		work: () => Promise<T>
-	): Promise<T> {
+		work: () => Promise<P23BActionLedger>
+	): Promise<P23BActionLedger> {
 		if (!timing?.drag) return work();
 		const sampler = gestureSamplerOf();
 		sampler.start(label);
+		let resolved: P23BActionLedger | null = null;
 		try {
-			return await work();
+			resolved = await work();
+			return resolved;
 		} finally {
 			const series = sampler.stop();
-			if (series) p23bM1RecordGestureFrames(timing.fixtureId, timing.actionClass, label, series);
+			if (series) {
+				p23bM1RecordGestureFrames(
+					timing.fixtureId,
+					timing.actionClass,
+					label,
+					series,
+					resolved ? { index: resolved.index, outcome: resolved.outcome ?? null } : null
+				);
+			}
 		}
+	}
+
+	/**
+	 * Pre-P23B.8 follow-up — the Room-label arm's per-ATTEMPT bracket, the same shape
+	 * as `bracketGestureFrames` above and for the same reason.
+	 *
+	 * WHY THE ARM IS SET HERE AND NOT SOMEWHERE CHEAPER. The placer runs on the Plan
+	 * RENDER, which happens after the release (pointerup) and lands in the window the
+	 * runner measures, so the arm has to be selected before the gesture begins and
+	 * stay selected until that action's render has happened — clearing it in a
+	 * `finally` would race the very render the comparison is about. It is therefore
+	 * set per attempt and released once per fixture by its caller, exactly as the
+	 * room-drag arm is released once per class.
+	 *
+	 * It is chosen by ATTEMPT index and recorded against the action the attempt
+	 * RESOLVED to, while the reported population is per MEASURED action: `repeatPath`
+	 * retries and the leading warm-ups are measured but not reported, so recording the
+	 * resolved index is what lets the runner split a class by arm without ever
+	 * attributing an action to an arm it did not run under.
+	 */
+	async function withLabelArm(
+		timing: M1ClassTiming | null,
+		index: number,
+		work: () => Promise<P23BActionLedger>
+	): Promise<P23BActionLedger> {
+		const arms = timing?.labelArms ?? null;
+		const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;
+		if (arm) setP23bM1RoomLabelArm(arm);
+		const action = await work();
+		if (arm && timing) p23bM1RecordActionLabelArm(timing.fixtureId, timing.actionClass, action.index, arm);
+		return action;
 	}
 
 	/**
@@ -922,9 +1010,11 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			fixture,
 			'rigid-wall-drag',
 			async (sessionId) => {
-				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
-					const action = await bracketGestureFrames(timing, 'plan-drag-edit', () =>
-						pointerGesture(sessionId, clientPoint(targets.dragFrom), clientPoint(targets.dragTo))
+				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async (index) => {
+					const action = await withLabelArm(timing, index, () =>
+						bracketGestureFrames(timing, 'plan-drag-edit', () =>
+							pointerGesture(sessionId, clientPoint(targets.dragFrom), clientPoint(targets.dragTo))
+						)
 					);
 					const accepted = action.path === 'plan-drag-edit' && action.outcome === 'accepted';
 					if (accepted) await restore();
@@ -967,12 +1057,14 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			async (sessionId) => {
 				await pointerTap(sessionId, selection);
 				const bend = targets.bend!;
-				await repeatPath(sessionId, 'bend-knot-edit', DRIVE_ACTIONS_PER_PATH, async () => {
-					const action = await bracketGestureFrames(timing, 'bend-knot-edit', () =>
-						pointerGesture(
-							sessionId,
-							clientPoint(bend),
-							clientPoint(p23bBendReleasePoint(bend))
+				await repeatPath(sessionId, 'bend-knot-edit', DRIVE_ACTIONS_PER_PATH, async (index) => {
+					const action = await withLabelArm(timing, index, () =>
+						bracketGestureFrames(timing, 'bend-knot-edit', () =>
+							pointerGesture(
+								sessionId,
+								clientPoint(bend),
+								clientPoint(p23bBendReleasePoint(bend))
+							)
 						)
 					);
 					const accepted = action.path === 'bend-knot-edit' && action.outcome === 'accepted';
@@ -1003,14 +1095,26 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			async (sessionId) => {
 				const roomCenter = targets.roomCenter;
 				const moved = p23bRoomMoveReleasePoint(roomCenter);
-				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async () => {
-					const action = await bracketGestureFrames(timing, 'plan-drag-edit', () =>
-						pointerGesture(sessionId, clientPoint(roomCenter), clientPoint(moved))
+				const arms = timing?.arms ?? null;
+				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async (index) => {
+					// The BEFORE/AFTER arm is chosen per ATTEMPT and recorded against the
+					// action the attempt resolved to, so the record can split the class's
+					// measured population by the arm that actually produced it.
+					const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;
+					if (arm) setP23bM1RoomDragArm(arm);
+					const action = await withLabelArm(timing, index, () =>
+						bracketGestureFrames(timing, 'plan-drag-edit', () =>
+							pointerGesture(sessionId, clientPoint(roomCenter), clientPoint(moved))
+						)
 					);
+					if (arm && timing) p23bM1RecordActionArm(timing.fixtureId, timing.actionClass, action.index, arm);
 					const accepted = action.path === 'plan-drag-edit' && action.outcome === 'accepted';
 					if (accepted) await restore();
 					return { action, accepted };
 				});
+				// Hand the next class back the shipped path: the arm is per class, and a
+				// leaked `per-move` would silently measure the before arm everywhere.
+				if (arms) setP23bM1RoomDragArm(null);
 			},
 			prefix,
 			timing
@@ -1030,12 +1134,14 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			fixture,
 			'room-creation-commit',
 			async (sessionId) => {
-				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async () => {
-					const action = await pointerGesture(
-						sessionId,
-						clientPoint(targets.roomCreationFrom),
-						clientPoint(targets.roomCreationTo),
-						{ click: false }
+				await repeatPath(sessionId, 'wall-authoring', DRIVE_ACTIONS_PER_PATH, async (index) => {
+					const action = await withLabelArm(timing, index, () =>
+						pointerGesture(
+							sessionId,
+							clientPoint(targets.roomCreationFrom),
+							clientPoint(targets.roomCreationTo),
+							{ click: false }
+						)
 					);
 					const accepted = action.path === 'wall-authoring' && action.outcome === 'accepted';
 					if (accepted) await restore();
@@ -1166,7 +1272,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * settled session under the M1 prefix; the connected case is hosted last and
 	 * its classes are containment-only, so nothing about it can be recorded.
 	 */
-	async function runM1Fixture(fixture: P23BDriveFixture): Promise<void> {
+	async function runM1Fixture(fixture: P23BDriveFixture, arms = false, labelArms = false): Promise<void> {
 		const { targets, selection } = await hostS1Fixture(fixture);
 		for (const entry of P23B_M1_ACTION_CLASSES) {
 			const timing: M1ClassTiming = {
@@ -1174,7 +1280,14 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 				// The RECORDED class name, so the series and the window this class
 				// measures are found again by the row that reports them.
 				actionClass: p23bM1MeasuredClass(entry.actionClass),
-				drag: entry.drag
+				drag: entry.drag,
+				// BEFORE/AFTER mode interleaves the arms on the whole-Room class and
+				// nowhere else: it is the one class this change touched.
+				arms: arms && entry.actionClass === 'whole-room-move-bridge' ? P23B_M1_ROOM_DRAG_ARMS : null,
+				// The Room-label arm is NOT confined to a class: the placer runs on every
+				// Plan render, so every class that changes the Plan while it is drawn
+				// takes it — which is all five.
+				labelArms: labelArms ? P23B_M1_ROOM_LABEL_ARMS : null
 			};
 			switch (entry.actionClass) {
 				case 'rigid-wall-drag':
@@ -1193,6 +1306,10 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 					await runRoomCreationClass(fixture, targets, P23B_M1_PREFIX, timing);
 			}
 		}
+		// The label arm is per fixture, not per class: it was set inside each attempt's
+		// gesture and must be released before the next fixture is hosted, or a render
+		// during hosting would run the pre-change grid.
+		setP23bM1RoomLabelArm(null);
 		ensureTool('Select');
 	}
 
@@ -1201,11 +1318,25 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * every class of `P23B_M1_ACTION_CLASSES`, the gesture-frame and long-frame
 	 * instruments bracketed around the drags they belong to. This run writes no
 	 * baseline and reads none; every class it opens is `p23b-m1:`-prefixed.
+	 *
+	 * `arms` interleaves the room-drag arms (one class), `labelArms` the Room-label
+	 * arms (every class). They are separate switches on purpose: the two changes are
+	 * orthogonal, and a run that flipped both at once would thin every cell to a
+	 * quarter and confound them on the one class they share.
 	 */
-	async function runM1(): Promise<void> {
+	async function runM1(arms = false, labelArms = false): Promise<void> {
 		installPointerCaptureNoop();
 		p23bM1ResetFrameTiming();
-		progress = { running: true, fixtureId: null, step: 'M1 starting', paths: {} };
+		p23bM1ResetActionArms();
+		p23bM1ResetActionLabelArms();
+		setP23bM1RoomDragArm(null);
+		setP23bM1RoomLabelArm(null);
+		progress = {
+			running: true,
+			fixtureId: null,
+			step: arms ? 'M1 arms starting' : labelArms ? 'M1 label arms starting' : 'M1 starting',
+			paths: {}
+		};
 		hooks.progress({ ...progress });
 		try {
 			for (const id of P23B_M1_FIXTURE_ORDER) {
@@ -1213,10 +1344,14 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 				if (!fixture) throw new Error(`M1 fixture is missing: ${id}`);
 				progress = { ...progress, fixtureId: fixture.id, paths: {} };
 				hooks.progress({ ...progress });
-				await runM1Fixture(fixture);
+				await runM1Fixture(fixture, arms, labelArms);
 			}
-			report('M1 complete');
+			report(arms ? 'M1 arms complete' : labelArms ? 'M1 label arms complete' : 'M1 complete');
 		} finally {
+			// Both switches are released here as well as at their own boundaries, so an
+			// aborted run can never leave a before path selected for a later session.
+			setP23bM1RoomDragArm(null);
+			setP23bM1RoomLabelArm(null);
 			progress = { ...progress, running: false };
 			hooks.progress({ ...progress });
 		}

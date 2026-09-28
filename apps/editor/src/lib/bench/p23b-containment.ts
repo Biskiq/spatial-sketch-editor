@@ -416,7 +416,8 @@ function finalizeSelf(node: P23BContainmentNode): void {
 	node.selfUnavailable = null;
 }
 
-function* walk(nodes: readonly P23BContainmentNode[]): Generator<P23BContainmentNode> {
+/** Every node of a forest, depth first. Exported so a reader of the same tree (the M1 record's post-release window) walks it with ONE implementation. */
+export function* walk(nodes: readonly P23BContainmentNode[]): Generator<P23BContainmentNode> {
 	for (const node of nodes) {
 		yield node;
 		yield* walk(node.children);

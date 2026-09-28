@@ -5,6 +5,15 @@ AUTHORITY: NONE — measurement evidence for M1, and the S3 step record of the r
 "ONE capture under the same protocol in the same session ... Evidence: the Electron capture JSON +
 the side-by-side pair table (per row, per fixture)"). The live captures beside this file are the
 machine-readable source. No threshold, no baseline, no ratchet, no budget metric.
+
+           CORRECTED 2026-09-27 (this leg was RE-RUN on the same machine, protocol and runtime): the
+           gesture rows in the first capture pooled warm-up drags and retried attempts, and the
+           `wall-authoring` classes' population (23 measured accepted, not 20) needed reconciling. The
+           capture beside this file is the RE-RUN (head `33d532f5` + this pass's diff, uncommitted at
+           capture time, `treeDirty: true`); the conditions and per-class tables BELOW are the FIRST session's (head
+           `b6f2203b`, clean tree) and must not be quoted as the re-run's. The corrected session's
+           per-class tables are in ./2026-09-27-M1-R1-corrections-and-attribution-record.md §2-§3, and
+           that record separates the FIX from the SESSION with the release control (§2.4-§2.5).
 ```
 
 ## What was run
@@ -79,6 +88,17 @@ connected case is not in any of them (§3.2, §9.4). Nothing may be summed acros
 
 ### Gesture frames — rAF callback interval during a real drag, p50 / p95 ms and frame count (§4.2 item (a))
 
+```text
+CORRECTED 2026-09-27 — and this table is the FIRST session's, not the re-run's. The first pair's gesture
+rows pooled every bracketed drag — warm-up drags and retried attempts included — so a class reported 25
+(and 26/29 with retries) where only 20 measured accepted actions remain (26/157 frames for this leg's
+all-curved `rigid-wall-drag`, 98.4 ms p50). The capture beside this file is now the RE-RUN (head
+`33d532f5` + this pass's diff, uncommitted at capture time, `treeDirty: true`); its rows are merged over the class's own
+measured population and state both counts (`drags` / `registeredDrags` / `excludedDrags`), reading
+17.8 ms p50 with 20 of 25 brackets merged. Corrected per-class tables →
+./2026-09-27-M1-R1-corrections-and-attribution-record.md §2.
+```
+
 | class | fixture | Chrome p50 / p95 | Chrome frames | Electron p50 / p95 | Electron frames |
 | --- | --- | --- | --- | --- | --- |
 | `rigid-wall-drag` | `p23b-40-wall-straight-v1` | 16.7 / 98.2 | 150 | 16.7 / 78.4 | 150 |
@@ -152,6 +172,8 @@ DOES NOT · establish a cause for the browser/node gap (this slice does not seek
 LIVE  ./2026-09-27-M1-electron-leg.json   (provenance, class rows, D1, D7, presented rows, gesture
                                            series, long frames — same schema as the Chrome leg)
       ./2026-09-27-M1-chrome-leg.json     (the Chrome side of every table above)
+      Both legs are NOT COMMITTED — retained in the working tree, gitignored (~40k pretty-printed lines
+      each); the two RE-READ commands below regenerate them.
 RE-READ — start an Electron host on the harness route with `--remote-debugging-port=9225`, one
   window, viewport 1500×1000 DPR 1 (throttling disabled), then:
   cd apps/editor && npm exec -- vite-node --config vitest.config.ts \

@@ -6,6 +6,20 @@ with its signal label and coverage, on both runtimes; D7's post-fix `commit-capt
 coverage limit noted beside M1's session row". Both captures beside this file are LIVE and are the
 machine-readable source (§7); S2 and S3 record the two legs and their conditions. Nothing here is a
 threshold, a budget, a baseline, a ratchet or a claim about a mechanism.
+
+           CORRECTED 2026-09-27, POST-CLOSE (owner review, finding 2) — READ THIS BEFORE QUOTING ANY
+           TABLE BELOW. Every table in this record was written from the FIRST capture pair (head
+           `b6f2203b`, clean tree). Found and fixed: the gesture rows in that pair were merged over
+           EVERY bracketed drag, warm-up drags and retried attempts included, so they described a
+           population the class does not report (25 and 26/29 brackets where 20 measured accepted
+           actions remain); §3 carried the false sentence "retries are recorded, never averaged in".
+           Both captures beside this file are now the RE-RUN (head `33d532f5` + this pass's diff,
+           uncommitted at capture time, `treeDirty: true`) after the merge was restricted to the class's own measured
+           population. The corrected session's per-class tables, the fix-vs-session decomposition and
+           the D4/D5/D6 attribution are in
+           ./2026-09-27-M1-R1-corrections-and-attribution-record.md §2–§3. Session 1 and session 2 also
+           differ by a machine factor of ×0.38–×1.03 on every row the correction cannot touch, so a
+           figure quoted from THIS record is a SESSION-1 figure and must be labelled one.
 ```
 
 ## 1. The rows, by signal — what may be called what
@@ -71,6 +85,19 @@ never presented as latency.
 
 ## 3. The gesture-frame series (item (a)) — attached to real drags
 
+> **CORRECTED 2026-09-27 (review finding 2) — THIS SECTION'S TABLE IS THE FIRST SESSION'S POOLED
+> READING AND IS SUPERSEDED.** The table below was produced by merging EVERY registered bracket,
+> warm-up drags and retried attempts included, into a row that claimed to describe the class's
+> measured actions. The merge now keeps only the class's measured population and counts what it left
+> out (`coverage.registeredDrags` / `excludedDrags`); the corrected session's table, the coverage, and
+> the same-session reading that separates the FIX from SESSION variance are in
+> `2026-09-27-M1-R1-corrections-and-attribution-record.md` §2. Read the numbers below as the
+> pre-correction reading of session 1 only, and the sentence about retries at the end of this section
+> as WRONG (it is corrected there). The conclusion this section was written to support — that a real
+> drag's frames, not the release, are where the owner-noticed cost sits on the curved fixture — is NOT
+> weakened by the correction: it is what the corrected rows still show, with the drag/bend classes'
+> p50 moving to the frame budget and the whole-Room class staying far above it.
+
 rAF callback interval during a real drag, p50 / p95 ms, per drag class per fixture. All three drag
 classes run as real pointer gestures (down · moves · up); the two authoring classes are taps and are
 NOT the workload for this row (§4.2).
@@ -105,7 +132,11 @@ with no such mark inside them. The whole-Room class carries ZERO pointermove mar
 (the product marks the rigid and bend previews; a whole-Room move rides the same `plan-drag-edit`
 path but emits neither), so its series is reported with that coverage and no share is implied.
 A frame count over 150 is not a longer drag: the class retried an action that did not land on its
-intended path, and retries are recorded, never averaged in.
+intended path. **CORRECTED: this sentence used to end "and retries are recorded, never averaged
+in" — that was FALSE for this row.** Retries (and warm-up drags) WERE averaged in, which is exactly
+why the frame counts above exceed the measured population. The corrected row reports the measured
+population and counts the excluded brackets instead (`registeredDrags` 25 → `drags` 20, i.e. 5 warm-up
+drags excluded; 29 → 20 with 9 excluded on connected Chrome, where retries also occur).
 ```
 
 ## 4. Long-frame incidence (item (b2)) — never the latency row
@@ -188,6 +219,8 @@ MAY NOT · explain, attribute or refute P23B.6's final-capture increases (a sess
 ./2026-09-27-M1-chrome-leg.json      the Chrome leg (provenance, 19 class rows, D1, D7, presented
                                      rows + proxy, gesture series, long frames)
 ./2026-09-27-M1-electron-leg.json    the Electron leg, same schema
+                                     (BOTH legs: working tree only, NOT committed — gitignored;
+                                     the records carry every row quoted from them)
 ./2026-09-27-M1-S2-chrome-leg-record.md   the Chrome leg's conditions and the defects it found
 ./2026-09-27-M1-S3-electron-leg-record.md the Electron leg and the pair tables
 ```

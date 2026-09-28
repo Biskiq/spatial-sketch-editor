@@ -64,11 +64,9 @@
 		type P23BDriveFixture,
 		type P23BDriveProgress
 	} from './drive';
-	import {
-		p23bM1FrameTiming,
-		p23bM1GestureFramesFor,
-		p23bM1LongFramesFor
-	} from '$lib/bench/p23b-m1-frame-timing';
+	import { p23bM1FrameTiming, p23bM1LongFramesFor } from '$lib/bench/p23b-m1-frame-timing';
+	import { p23bM1ActionArms } from '$lib/editor/layout/p23b-m1-room-drag-arm';
+import { p23bM1ActionLabelArms } from '$lib/editor/layout/p23b-m1-room-label-arm';
 	import {
 		buildP23BM1Record,
 		m1ClassLedger,
@@ -730,6 +728,18 @@
 	let m1Failure = $state('');
 	let m1Record = $state<P23BM1Record | null>(null);
 	let m1LadderPixelsPerMeter = $state<number | null>(null);
+	/**
+	 * Whether the record on screen came from a BEFORE/AFTER arm run. Only the
+	 * provenance and the record's `schema.arms` note depend on it; the rows carry
+	 * the per-arm split themselves.
+	 */
+	let m1ArmsRun = $state(false);
+	/**
+	 * The same, for the Room-label arm run: a different switch over a different
+	 * population (every class, not one), so it gets its own flag, its own protocol id
+	 * and its own note rather than sharing the room drag's.
+	 */
+	let m1LabelArmsRun = $state(false);
 
 	function driveNote(line: string) {
 		driveLog = [...driveLog, `${new Date().toISOString().slice(11, 19)} ${line}`];
@@ -1023,10 +1033,12 @@
 	 * Pre-P23B.8 follow-up M1 — the session's class rows.
 	 *
 	 * One row per `p23b-m1:` class, taken over the SAME population the interaction
-	 * report uses (completed, resolved path, warm-up excluded per path, accepted
-	 * only). The gesture series and the long-frame window are looked up from the M1
-	 * registry by fixture+class, so a series can never be reported under a class it
-	 * was not measured in.
+	 * report uses (completed, resolved path, warm-up slots excluded per path,
+	 * accepted only). The gesture REGISTRY is handed to `summarizeM1Class`, not a
+	 * pre-merged series: the class's own measured population decides which
+	 * registered brackets may be merged, so warm-up drags and retried attempts can
+	 * never enter a row that reports the measured class. The long-frame window is
+	 * looked up by fixture+class under the same key.
 	 */
 	function p23bM1ClassRows(): P23BM1ClassRow[] {
 		const timing = p23bM1FrameTiming();
@@ -1049,7 +1061,16 @@
 					ledger: m1ClassLedger(entry, p23bInteractionCaptureLedger),
 					containment: entry.record,
 					warmup: INTERACTION_WARMUP,
-					gestureFrames: p23bM1GestureFramesFor(timing, entry.fixtureId, actionClass),
+					actionsPerClass: DRIVE_ACTIONS_PER_PATH,
+					gestureRegistry: timing,
+					// The class's BEFORE/AFTER arm assignments, or an empty map for a
+					// class that ran one path: `summarizeM1Class` turns the empty map
+					// into a `null` arms block rather than an empty one.
+					actionArms: p23bM1ActionArms(entry.fixtureId, actionClass),
+					// The Room-label arm assignments: a DIFFERENT arm over a DIFFERENT
+					// population (every class, not one), handed to the record beside the
+					// room-drag one so the runner can split its windows by either.
+					actionLabelArms: p23bM1ActionLabelArms(entry.fixtureId, actionClass),
 					longFrameWindow: p23bM1LongFramesFor(timing, entry.fixtureId, actionClass)
 				})
 			);
@@ -1062,7 +1083,7 @@
 	 * labelled `browser-frame` PROXY here; the CDP runner is the only thing that may
 	 * replace it with a presentation-grade row, and it says so in the file it writes.
 	 */
-	function p23bM1Record(): P23BM1Record {
+	function p23bM1Record(arms = m1ArmsRun, labelArms = m1LabelArmsRun): P23BM1Record {
 		return buildP23BM1Record({
 			protocol:
 				'pre-P23B.8 follow-up M1 — one protocol, one runtime: the three committed fixtures in harness order plus the connected case LAST (advisory, never recorded), five action classes each in its own isolated settled session under the `p23b-m1:` prefix, 25 accepted actions per class with the leading five excluded as warm-up, every mutating action restored with the editor\'s own undo, DEV build, Plan only, one harness document.',
@@ -1078,8 +1099,18 @@
 				machine: data.machine,
 				operatingSystem: data.operatingSystem,
 				nodeVersion: data.nodeVersion,
-				protocolId: 'pre-P23B.8-follow-up-M1',
-				protocolRevision: 1,
+				protocolId: arms
+					? 'pre-P23B.8-follow-up-M1-arms'
+					: labelArms
+						? 'pre-P23B.8-follow-up-M1-label-arms'
+						: 'pre-P23B.8-follow-up-M1',
+				protocolRevision: arms ? 2 : labelArms ? 3 : 1,
+				arms: arms
+					? 'transient · per-move, interleaved per attempt on the whole-Room class (see schema.arms and each class row\'s arms block)'
+					: 'not run — one path per class',
+				labelArms: labelArms
+					? 'pruned-grid · per-cell-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — see each class row\'s labelArms block'
+					: 'not run — one grid per class',
 				warmupExcluded: INTERACTION_WARMUP,
 				actionsPerClass: DRIVE_ACTIONS_PER_PATH,
 				actionGuardMs: DRIVE_ACTION_TIMEOUT_MS,
@@ -1116,9 +1147,11 @@
 	 * five classes it opens are `p23b-m1:`-prefixed action-class sessions, which the
 	 * harness keeps as containment records only, and the connected case is advisory.
 	 */
-	async function runM1Capture(): Promise<P23BM1Record | null> {
+	async function runM1Capture(arms = false, labelArms = false): Promise<P23BM1Record | null> {
 		if (driveRunning || m1Running || capturing || running) return null;
 		m1Running = true;
+		m1ArmsRun = arms;
+		m1LabelArmsRun = labelArms;
 		m1Failure = '';
 		m1Record = null;
 		driveLog = [];
@@ -1148,9 +1181,9 @@
 			}
 		});
 		try {
-			await driver.runM1();
+			await driver.runM1(arms, labelArms);
 			m1LadderPixelsPerMeter = driver.ladderPixelsPerMeter();
-			const record = p23bM1Record();
+			const record = p23bM1Record(arms, labelArms);
 			m1Record = record;
 			(globalThis as typeof globalThis & { __P23B_M1_RECORD__?: unknown }).__P23B_M1_RECORD__ = record;
 			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
@@ -1183,10 +1216,16 @@
 		if (!dev) return;
 		const globals = globalThis as typeof globalThis & {
 			__P23B_M1_RUN__?: () => Promise<P23BM1Record | null>;
+			__P23B_M1_RUN_ARMS__?: () => Promise<P23BM1Record | null>;
+			__P23B_M1_RUN_LABEL_ARMS__?: () => Promise<P23BM1Record | null>;
 		};
 		globals.__P23B_M1_RUN__ = () => runM1Capture();
+		globals.__P23B_M1_RUN_ARMS__ = () => runM1Capture(true);
+		globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(false, true);
 		return () => {
 			delete globals.__P23B_M1_RUN__;
+			delete globals.__P23B_M1_RUN_ARMS__;
+			delete globals.__P23B_M1_RUN_LABEL_ARMS__;
 		};
 	});
 
@@ -1355,8 +1394,28 @@
 			listens per class. Run it once per runtime; the CDP runner adds the presentation-grade release row.
 			No baseline and no ratchet is read or written.
 		</p>
-		<button disabled={capturing || driveRunning || running || m1Running} onclick={runM1Capture}>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture()}>
 			{m1Running ? 'Running M1…' : 'Run M1 protocol'}
+		</button>
+		<p class="capture-hint">
+			<strong>Same-session before/after.</strong> The same protocol, but the whole-Room move class runs
+			BOTH code paths in one session, interleaved per attempt: the shipped <code>transient</code> proposal
+			and the pre-change <code>per-move</code> planner call, which is still reachable behind a DEV-only arm
+			switch so no pre-change tree is needed. The record then carries each class's per-arm rows and the
+			before/after table. Only the whole-Room class takes arms; every other class runs the shipped path.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(true)}>
+			{m1Running ? 'Running M1…' : 'Run M1 before/after arms'}
+		</button>
+		<p class="capture-hint">
+			<strong>Room-label before/after.</strong> The same protocol again, but the Room-label placer's
+			eligibility grid runs BOTH implementations in one session, interleaved per attempt: the shipped
+			<code>pruned-grid</code> and the pre-change <code>per-cell-grid</code>, which stays reachable behind a
+			DEV-only arm switch. The placer runs on every Plan render, so EVERY class takes this arm — the rows
+			it moves are the post-release windows, which the CDP runner reports per arm and per class.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true)}>
+			{m1Running ? 'Running M1…' : 'Run M1 room-label arms'}
 		</button>
 		{#if m1Failure}<p class="error">M1 failed: {m1Failure}</p>{/if}
 		{#if m1Record}

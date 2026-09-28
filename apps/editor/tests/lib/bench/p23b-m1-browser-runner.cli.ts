@@ -33,16 +33,50 @@
  *   vite-node --config vitest.config.ts tests/lib/bench/p23b-m1-browser-runner.cli.ts -- \
  *     --port 9223 --runtime "Google Chrome for Testing 152 (headless)" \
  *     --out <path>.json [--url http://127.0.0.1:5173/dev/perf/p23b] [--budget-ms 500]
+ *     [--arms] [--label-arms] [--cpu-profile <raw>.json]
+ *
+ * `--arms` runs the BEFORE/AFTER arm mode on the same protocol: no pre-change
+ * tree is needed, because the viewport can still run the path this change
+ * removed behind a DEV-only switch (see `p23b-m1-room-drag-arm.ts`).
+ *
+ * `--label-arms` does the same for the Room-label placer's eligibility grid
+ * (`p23b-m1-room-label-arm.ts`), with two differences that follow from what that
+ * change is: the arm alternates in EVERY class (the placer runs on every Plan
+ * render, so every class that redraws the Plan carries it), and the rows it moves
+ * are the post-release WINDOW rows, which is what the `labelArms` block reports —
+ * per arm and per class, with the same split re-priced from the CPU profile when
+ * one was taken. The release row is deliberately not split: both arms are released
+ * by the same click, so it is the unchanged control beside the split.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { summarizeM1Attribution } from '$lib/bench/p23b-m1-attribution';
+import {
+	summarizeCpuProfile,
+	summarizeCpuProfileWindows,
+	type P23BM1CpuProfile
+} from '$lib/bench/p23b-m1-cpu-profile';
 import {
 	correlatePresentedFrames,
+	p23bM1PricesTraceSpan,
+	summarizePresentedWindowArms,
+	summarizePresentedWindowPhases,
 	P23B_M1_PRESENTED_FRAME_DEFINITION,
-	type P23BM1PresentedFrameRow
+	P23B_M1_WINDOW_PHASE_DEFINITION,
+	P23B_M1_WINDOW_PHASES,
+	type P23BM1PresentedFrameRow,
+	type P23BM1PresentedWindow,
+	type P23BM1TraceSpan
 } from '$lib/bench/p23b-m1-frame-timing';
-import type { P23BM1ClassRow, P23BM1Record } from '$lib/bench/p23b-m1-record';
+import {
+	summarizeLabelArmWindows,
+	pairM1PostReleaseWithPresented,
+	type P23BM1ClassRow,
+	type P23BM1LabelArmWindowRow,
+	type P23BM1Record
+} from '$lib/bench/p23b-m1-record';
+import { P23B_M1_ROOM_LABEL_ARMS, type P23BM1RoomLabelArm } from '$lib/editor/layout/p23b-m1-room-label-arm';
 
 type Args = {
 	port: number;
@@ -59,6 +93,32 @@ type Args = {
 	 */
 	dryRun: boolean;
 	dryRunMs: number;
+	/**
+	 * BEFORE/AFTER mode: run the whole-Room class on BOTH code paths in this one
+	 * session (the DEV arm switch) instead of on the shipped path alone. The
+	 * record then carries the per-arm rows and the before/after table; the
+	 * presentation-grade release row the runner adds stays what it always was,
+	 * taken over the class's mixed population.
+	 */
+	arms: boolean;
+	/**
+	 * The ROOM-LABEL arm mode: EVERY class interleaves the shipped and the pre-change
+	 * eligibility grid per attempt, and the record's windows, window phases and CPU
+	 * slice are each reported per arm with a signed within-session delta. A separate
+	 * switch from `--arms` on purpose — the two changes are orthogonal, and flipping
+	 * both in one run would thin every cell to a quarter and confound them on the one
+	 * class they share.
+	 */
+	labelArms: boolean;
+	/**
+	 * Where to write the RAW V8 CPU profile of the protocol. Passing this turns the
+	 * profiler on; the record then carries the summarized self-time rows beside the
+	 * window phases. The raw profile is written where it is asked to be written and
+	 * nowhere else — it is a working artifact, not a record.
+	 */
+	cpuProfile: string | null;
+	/** V8's sampling interval, µs. Finer costs memory linearly; 1000 is the default. */
+	cpuProfileIntervalUs: number;
 };
 
 function parseArgs(argv: readonly string[]): Args {
@@ -78,16 +138,57 @@ function parseArgs(argv: readonly string[]): Args {
 		budgetMs: Number(flag('budget-ms') ?? '500'),
 		timeoutMs: Number(flag('timeout-ms') ?? String(4 * 60 * 60 * 1000)),
 		dryRun: argv.includes('--dry-run'),
-		dryRunMs: Number(flag('dry-run-ms') ?? '4000')
+		dryRunMs: Number(flag('dry-run-ms') ?? '4000'),
+		arms: argv.includes('--arms'),
+		labelArms: argv.includes('--label-arms'),
+		cpuProfile: flag('cpu-profile'),
+		cpuProfileIntervalUs: Number(flag('cpu-profile-interval-us') ?? '1000')
 	};
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** One distribution, stated as a distribution: never a mean, never a sum. */
+function cadenceOf(timestampsMs: readonly number[]): {
+	count: number;
+	windowMs: number;
+	gapsMs: { count: number; p50: number; p95: number; min: number; max: number } | null;
+} {
+	if (timestampsMs.length < 2) {
+		return { count: timestampsMs.length, windowMs: 0, gapsMs: null };
+	}
+	const gaps: number[] = [];
+	for (let index = 1; index < timestampsMs.length; index += 1) {
+		gaps.push(timestampsMs[index]! - timestampsMs[index - 1]!);
+	}
+	const sorted = [...gaps].sort((a, b) => a - b);
+	const at = (fraction: number): number =>
+		Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))]! * 1000) / 1000;
+	return {
+		count: timestampsMs.length,
+		windowMs: Math.round((timestampsMs[timestampsMs.length - 1]! - timestampsMs[0]!) * 1000) / 1000,
+		gapsMs: { count: gaps.length, p50: at(0.5), p95: at(0.95), min: at(0), max: at(0.999) }
+	};
+}
+
 type TraceEvent = {
 	name: string;
 	ts: number;
 	pid: number;
+	/**
+	 * Present only on COMPLETE events. Every row before the window-phase split needs
+	 * the instants alone, so `dur` was never read here; the split cannot price
+	 * anything without it.
+	 */
+	dur?: number;
+	/**
+	 * `b`/`e` for the ASYNC events (`AnimationFrame` and its children), which carry
+	 * no `dur`: they are paired by `id` (and `id2`, where the emitter scope-qualifies
+	 * them) below. Every row before the window-phase split reads instants only, so
+	 * this pairing never existed here.
+	 */
+	id?: number | string;
+	id2?: unknown;
 	cat?: string;
 	ph?: string;
 	args?: Record<string, unknown>;
@@ -223,7 +324,12 @@ async function main(): Promise<void> {
 	let ready = false;
 	for (let attempt = 0; attempt < 120 && !ready; attempt += 1) {
 		try {
-			ready = (await evaluate<boolean>('typeof globalThis.__P23B_M1_RUN__ === "function"')) === true;
+			const entry = args.arms
+				? '__P23B_M1_RUN_ARMS__'
+				: args.labelArms
+					? '__P23B_M1_RUN_LABEL_ARMS__'
+					: '__P23B_M1_RUN__';
+			ready = (await evaluate<boolean>(`typeof globalThis.${entry} === "function"`)) === true;
 		} catch {
 			// navigating
 		}
@@ -247,6 +353,19 @@ async function main(): Promise<void> {
 	/** Every presentation marker seen while tracing, with the process that emitted it. */
 	const presentedAll: { ts: number; pid: number }[] = [];
 	const nameCounts = new Map<string, number>();
+	/**
+	 * THE ONE PLACE THIS RUNNER RETAINS DURATIONS. Every row before the window-phase
+	 * split needs only INSTANTS, which is why a capture could say how long the
+	 * post-release wait is and nothing about its contents. Only the spans the
+	 * window split prices are kept (`p23bM1PricesTraceSpan`), so the retention stays
+	 * bounded and a capture that does not ask the question pays nothing for it.
+	 */
+	const traceSpans: P23BM1TraceSpan[] = [];
+	/** Async spans opened by a `b` phase, closed by their matching `e`. */
+	const openSpans = new Map<
+		string,
+		{ name: string; startMs: number; functionName?: string | null; url?: string | null; lineNumber?: number | null; columnNumber?: number | null }
+	>();
 	type Marker = { pid: number; ts: number };
 	// The trace markers arrive from an event callback and the page-clock readings
 	// from an awaited evaluate; they are kept apart and only joined once tracing has
@@ -258,6 +377,48 @@ async function main(): Promise<void> {
 	cdp.on('Tracing.dataCollected', (params: { value?: TraceEvent[] }) => {
 		for (const event of params.value ?? []) {
 			nameCounts.set(event.name, (nameCounts.get(event.name) ?? 0) + 1);
+			if (p23bM1PricesTraceSpan(event.name)) {
+				const data = (
+					event.args as
+						| { data?: { functionName?: string; url?: string; lineNumber?: number; columnNumber?: number } }
+						| undefined
+				)?.data;
+				// `FunctionCall` is the one priced family that can be NAMED; everything
+				// else is priced by family. The position CDP reports is the callee's
+				// DEFINITION site, which is what maps a row in a pre-bundled dependency
+				// chunk back to a source line.
+				const meta =
+					event.name === 'FunctionCall'
+						? {
+								functionName: data?.functionName ?? null,
+								url: data?.url ?? null,
+								lineNumber: data?.lineNumber ?? null,
+								columnNumber: data?.columnNumber ?? null
+							}
+						: {};
+				if (typeof event.dur === 'number' && event.dur > 0) {
+					// A COMPLETE event carries its own duration.
+					traceSpans.push({ name: event.name, startMs: event.ts / 1000, durMs: event.dur / 1000, ...meta });
+				} else if (event.ph === 'b' && event.id !== undefined) {
+					// An ASYNC event: `AnimationFrame` and its children. Pairing them is what
+					// makes frame occupancy measurable at all — the first version of this
+					// instrument retained `dur` alone and reported every window as zero
+					// frames while 9 k frame events sat unread in the same trace.
+					openSpans.set(`${event.pid}:${event.id}:${String(event.id2 ?? '')}`, {
+						name: event.name,
+						startMs: event.ts / 1000,
+						...meta
+					});
+				} else if (event.ph === 'e' && event.id !== undefined) {
+					const key = `${event.pid}:${event.id}:${String(event.id2 ?? '')}`;
+					const open = openSpans.get(key);
+					if (open && open.name === event.name) {
+						openSpans.delete(key);
+						const durMs = event.ts / 1000 - open.startMs;
+						if (durMs > 0) traceSpans.push({ ...open, durMs });
+					}
+				}
+			}
 			if (event.name === 'TimeStamp') {
 				const message = (event.args as { data?: { message?: string } } | undefined)?.data?.message;
 				if (message === 'p23b-m1-calibration-before') {
@@ -278,6 +439,23 @@ async function main(): Promise<void> {
 		transferMode: 'ReportEvents',
 		bufferUsageReportingInterval: 500
 	});
+
+	/**
+	 * THE SECOND INSTRUMENT, for the same window. The trace prices the post-release
+	 * window by phase and names the function that CONTAINS the work; a CPU profile
+	 * attributes each sample to the top frame on the stack, which is the only way to
+	 * separate a function's own time from the time it merely contains (V8 emits no
+	 * span for a frame it inlined). Started BEFORE the calibration marker below, so
+	 * that marker's trace instant is the profile clock's anchor — the summary
+	 * reports the difference between them rather than assuming the clocks agree.
+	 */
+	let samplingIntervalUs: number | null = null;
+	if (args.cpuProfile) {
+		await call('Profiler.enable');
+		await call('Profiler.setSamplingInterval', { interval: args.cpuProfileIntervalUs });
+		await call('Profiler.start');
+		samplingIntervalUs = args.cpuProfileIntervalUs;
+	}
 
 	/**
 	 * Emit the calibration marker and read the page clock in the SAME synchronous
@@ -307,6 +485,7 @@ async function main(): Promise<void> {
 
 	let record: P23BM1Record | null = null;
 	let runFailure: string | null = null;
+	let cpuProfileRaw: P23BM1CpuProfile | null = null;
 	try {
 		if (args.dryRun) {
 			// Same clocks, same tracing, same protocol viewport — everything except the
@@ -318,7 +497,14 @@ async function main(): Promise<void> {
 				requestAnimationFrame(loop);
 			})`, true);
 		} else {
-			record = await evaluate<P23BM1Record>('globalThis.__P23B_M1_RUN__()', true);
+			record = await evaluate<P23BM1Record>(
+				args.arms
+					? 'globalThis.__P23B_M1_RUN_ARMS__()'
+					: args.labelArms
+						? 'globalThis.__P23B_M1_RUN_LABEL_ARMS__()'
+						: 'globalThis.__P23B_M1_RUN__()',
+				true
+			);
 		}
 	} catch (error) {
 		runFailure = error instanceof Error ? error.message : String(error);
@@ -329,6 +515,13 @@ async function main(): Promise<void> {
 			cdp.on('Tracing.tracingComplete', () => resolve());
 			void call('Tracing.end');
 		});
+		if (args.cpuProfile) {
+			// Stopped AFTER tracing has closed, so the profile covers the protocol's
+			// whole span and not a prefix of it.
+			const stopped = await call<{ profile?: P23BM1CpuProfile }>('Profiler.stop');
+			cpuProfileRaw = stopped.profile ?? null;
+			await call('Profiler.disable').catch(() => {});
+		}
 	}
 
 	/**
@@ -392,6 +585,21 @@ async function main(): Promise<void> {
 			calibration: { offsetMs, calibrationResidualMs, rendererPid },
 			presentedFrames: presented.length,
 			presentedFramesAllProcesses: presentedAll.length,
+			/**
+			 * THE D6 FALSIFIER, and the reason it lives in the preflight. The preflight's
+			 * only work is a bare `requestAnimationFrame` loop — no fixtures, no drags, no
+			 * compiles. The cadence of the presented frames it produces is therefore the
+			 * MEASUREMENT SURFACE's own pacing floor: if a runtime presents an idle rAF loop
+			 * every ~150–200 ms, then a release-to-next-presented interval of the same size
+			 * says nothing about the work released, and every presented-wait row in the slice
+			 * needs that caveat before it is used to justify anything. Reported as gaps
+			 * between consecutive presented frames (p50/p95), in the same page clock the
+			 * release rows are correlated on. `null` where fewer than two frames arrived.
+			 */
+			presentedCadence: {
+				note: 'Gaps between consecutive presented frames of the preflight rAF loop (idle, no fixtures). This is the surface pacing floor, never a latency of any app work.',
+				...cadenceOf(presented)
+			},
 			nameCounts: Object.fromEntries([...nameCounts].sort((a, b) => b[1] - a[1]))
 		};
 		fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -406,6 +614,14 @@ async function main(): Promise<void> {
 
 	// ---- merge the presented-frame row into each class ----
 	const presentedRows: Record<string, P23BM1PresentedFrameRow | null> = {};
+	/** Every class's windows, collected so the span scan happens ONCE for the run. */
+	const windows: P23BM1PresentedWindow[] = [];
+	/**
+	 * The same windows by class key. The arm split needs ONE class's windows and the
+	 * span scan needs all of them, so the two are kept side by side rather than one
+	 * being filtered out of the other at the end.
+	 */
+	const windowsByClass = new Map<string, P23BM1PresentedWindow[]>();
 	const classes = record.fixtures.flatMap((fixture) => fixture.classes);
 	for (const entry of classes) {
 		if (offsetMs === null || presented.length === 0 || entry.releaseSpans.length === 0) {
@@ -427,6 +643,30 @@ async function main(): Promise<void> {
 			budgetMs: args.budgetMs
 		});
 		presentedRows[keyOf(entry)] = row;
+		// THE RESTORE-VERSUS-COMMIT SPLIT (D6): the class's own page-side window after
+		// each release, paired action-by-action with the presented instant measured for
+		// that same release. Both sides are per action; the pairing counts its matches.
+		entry.postReleaseVsPresented = pairM1PostReleaseWithPresented(entry.postRelease, row.samples);
+		// THE SAME PAIRING, PRICED BY THE TRACE'S OWN DURATIONS: the window one
+		// accepted release opened (its synchronous end → the presented instant it
+		// correlated to), handed to the window-phase summarizer below.
+		const releaseEndById = new Map(
+			entry.releaseSpans.map((span) => [span.actionIndex, span.end + offsetMs])
+		);
+		for (const sample of row.samples) {
+			const startMs = releaseEndById.get(sample.actionIndex);
+			if (startMs === undefined) continue;
+			const window: P23BM1PresentedWindow = {
+				key: keyOf(entry),
+				actionIndex: sample.actionIndex,
+				startMs,
+				endMs: sample.presentedMs
+			};
+			windows.push(window);
+			const sameClass = windowsByClass.get(window.key) ?? [];
+			sameClass.push(window);
+			windowsByClass.set(window.key, sameClass);
+		}
 		entry.releaseRow = {
 			...entry.releaseRow,
 			signal: 'presented-frame',
@@ -438,7 +678,43 @@ async function main(): Promise<void> {
 				coveredShare: row.coverage.measuredShare
 			}
 		};
+		// The partition is refreshed against the row the class now reports: leaving
+		// the page-side PROXY in `attribution.presentation` while `releaseRow` says
+		// `presented-frame` would put two different signals in one record, and the
+		// presentation-grade one is the signal the attribution pass reads.
+		entry.attribution = summarizeM1Attribution({
+			marks: entry.marks,
+			boundaries: entry.boundaries,
+			releaseRow: entry.releaseRow,
+			measuredActions: entry.population.measuredAccepted
+		});
 	}
+
+	// ---- the post-release window, priced per phase ----
+	const windowRows = summarizePresentedWindowPhases({ windows, spans: traceSpans });
+	for (const entry of classes) entry.presentedWindow = windowRows[keyOf(entry)] ?? null;
+
+	// ---- …and the same window, priced by V8's own samples ----
+	const cpuProfile =
+		cpuProfileRaw === null
+			? null
+			: summarizeCpuProfile({
+					profile: cpuProfileRaw,
+					windows,
+					// The calibration marker is taken a round trip after the profiler starts,
+					// and its trace instant is the only shared point between the two clocks.
+					markerTraceMs: before === null ? null : before.ts / 1000,
+					samplingIntervalUs
+				});
+
+	// ---- the label-arm split: the same windows and the same samples, per arm ----
+	const labelArmRows = labelArmWindowsOf({
+		classes,
+		windowsByClass,
+		spans: traceSpans,
+		profile: cpuProfileRaw,
+		samplingIntervalUs
+	});
 
 	const merged = {
 		...record,
@@ -469,18 +745,50 @@ async function main(): Promise<void> {
 			presentedFramesAllProcesses: presentedAll.length,
 			presentedInPageClock,
 			rows: presentedRows,
+			windowPhases: {
+				definition: P23B_M1_WINDOW_PHASE_DEFINITION,
+				phases: P23B_M1_WINDOW_PHASES.map((matcher) => matcher.phase),
+				spansRetained: traceSpans.length,
+				rows: windowRows,
+				notMeasuredReason:
+					windows.length === 0 || traceSpans.length === 0
+						? 'NOT MEASURED — no release was paired with a presented instant, or the trace retained no priced span; the wait is then reported without a contents split rather than as a zero.'
+						: null
+			},
 			notMeasuredReason:
 				presented.length === 0 || offsetMs === null
 					? 'NOT MEASURED — no presentation-grade signal was correlated on this runtime; the release row stays the labelled browser-frame PROXY.'
 					: null,
+			cpuProfile,
+			/**
+			 * THE LABEL ARM'S OWN EVIDENCE, per class. The page records which arm each
+			 * resolved action ran under; only this process can price what that arm moved,
+			 * because a presented frame and a trace duration are both read here.
+			 */
+			labelArms: summarizeLabelArmWindows({ rows: labelArmRows, presentedWindows: windows.length }),
 			nameCounts: Object.fromEntries([...nameCounts].sort((a, b) => b[1] - a[1]))
 		},
 		limitations: [
 			...record.limitations,
 			'The release-side presented-frame row is a compositor presentation marker read over CDP tracing; it is not paint time, GPU time or a promise of what a display shows. On a headless runtime the presented surface is offscreen, which the row states rather than hides.',
-			'Tracing runs for the whole M1 protocol and its own overhead is not subtracted from anything; both legs carry it identically.'
+			'The window-phase row prices the post-release window from trace DURATIONS on the page renderer. Its phases NEST (`AnimationFrame` contains `Render`, which contains `Paint`), so they are reported separately and never summed; the only partition stated is frame occupancy versus the window minus it. Compositor- and GPU-side phases are not in `devtools.timeline` on this surface, which is exactly why `outsideFramesMs` is a remainder and not an attribution to the compositor.',
+			'Tracing runs for the whole M1 protocol and its own overhead is not subtracted from anything; both legs carry it identically.',
+			...(cpuProfile === null
+				? []
+				: [
+						'The CPU profile is SAMPLED, not instrumented: a row is the work V8 attributed to that frame while it was the top frame on the stack, so a function whose callees were inlined into it carries their time and a function that ran but was never sampled carries none. It is also taken with the profiler and tracing both on, so its own overhead is in every row it prices.'
+					])
 		]
 	} as unknown as P23BM1Record & { presented: unknown };
+
+	if (args.cpuProfile && cpuProfileRaw !== null) {
+		const profilePath = path.resolve(process.cwd(), args.cpuProfile);
+		fs.mkdirSync(path.dirname(profilePath), { recursive: true });
+		fs.writeFileSync(profilePath, JSON.stringify(cpuProfileRaw));
+		console.log(
+			`M1 runner: CPU profile — ${cpuProfileRaw.samples.length} sample(s) over ${Math.round((cpuProfileRaw.endTime - cpuProfileRaw.startTime) / 1000)} ms at ${samplingIntervalUs} µs → ${profilePath}`
+		);
+	}
 
 	fs.mkdirSync(path.dirname(outPath), { recursive: true });
 	fs.writeFileSync(outPath, JSON.stringify(merged, null, 2));
@@ -492,6 +800,91 @@ async function main(): Promise<void> {
 
 function keyOf(row: P23BM1ClassRow): string {
 	return `${row.fixtureId}/${row.actionClass}`;
+}
+
+/**
+ * Split every class's post-release windows — and, when a profile was taken, V8's own
+ * samples inside them — by the Room-label arm the released action ran under.
+ *
+ * THE ARM IS PER ATTEMPT, THE WINDOW IS PER MEASURED ACTION, and the two are joined
+ * on the action index the driver recorded the arm against. A window whose action has
+ * no arm recorded cannot be placed in either side and is counted as unassigned rather
+ * than assumed into one: the classes that ran no arm at all are skipped here, and the
+ * record then says so instead of reporting an empty split as a comparison.
+ *
+ * The CPU slice keys each bucket `arm::class` because `summarizeCpuProfileWindows`
+ * groups by the window's own key and both arms would otherwise land in one bucket;
+ * the key is parsed back so the rows the record carries stay keyed the way the trace
+ * rows beside them are keyed — by the arm, inside the class row it belongs to.
+ */
+function labelArmWindowsOf(input: {
+	classes: readonly P23BM1ClassRow[];
+	windowsByClass: ReadonlyMap<string, readonly P23BM1PresentedWindow[]>;
+	spans: readonly P23BM1TraceSpan[];
+	profile: P23BM1CpuProfile | null;
+	samplingIntervalUs: number | null;
+}): P23BM1LabelArmWindowRow[] {
+	const arms = P23B_M1_ROOM_LABEL_ARMS;
+	const armKeyedWindows: P23BM1PresentedWindow[] = [];
+	const rows: P23BM1LabelArmWindowRow[] = [];
+	for (const entry of input.classes) {
+		const key = keyOf(entry);
+		const byAction = new Map<number, P23BM1RoomLabelArm>(
+			(entry.labelArms?.byAction ?? []).map((assignment) => [assignment.actionIndex, assignment.arm])
+		);
+		// A class that ran no label arm has no assignment to split by: it is skipped,
+		// never split into two empty halves that could read like a measured pair.
+		if (byAction.size === 0) continue;
+		const own = input.windowsByClass.get(key) ?? [];
+		const split = summarizePresentedWindowArms({
+			windows: own,
+			spans: input.spans,
+			byAction,
+			arms,
+			afterArm: 'pruned-grid',
+			beforeArm: 'per-cell-grid'
+		});
+		for (const window of own) {
+			const arm = byAction.get(window.actionIndex);
+			if (arm === undefined) continue;
+			armKeyedWindows.push({ ...window, key: `${arm}::${key}` });
+		}
+		rows.push({
+			key,
+			unassignedWindows: split.unassignedWindows,
+			arms: split.rows,
+			comparison: split.comparison,
+			cpu: []
+		});
+	}
+	if (input.profile !== null && armKeyedWindows.length > 0) {
+		const byClass = new Map(rows.map((row) => [row.key, row]));
+		for (const cpuRow of summarizeCpuProfileWindows({
+			profile: input.profile,
+			windows: armKeyedWindows
+		})) {
+			const parsed = parseArmBucketKey(cpuRow.key, arms);
+			if (parsed === null) continue;
+			const row = byClass.get(parsed.key);
+			if (!row) continue;
+			row.cpu.push({ ...cpuRow, key: parsed.arm });
+		}
+		for (const row of rows) {
+			row.cpu.sort((left, right) => right.sampledInWindowMs - left.sampledInWindowMs);
+		}
+	}
+	return rows;
+}
+
+/** The reverse of the `arm::class` bucket key, or `null` for a key it cannot own. */
+function parseArmBucketKey(
+	bucket: string,
+	arms: readonly P23BM1RoomLabelArm[]
+): { arm: P23BM1RoomLabelArm; key: string } | null {
+	for (const arm of arms) {
+		if (bucket.startsWith(`${arm}::`)) return { arm, key: bucket.slice(arm.length + 2) };
+	}
+	return null;
 }
 
 void main().then(

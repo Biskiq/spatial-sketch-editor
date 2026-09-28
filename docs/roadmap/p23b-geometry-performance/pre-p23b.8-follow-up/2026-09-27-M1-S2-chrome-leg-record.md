@@ -5,6 +5,14 @@ AUTHORITY: NONE — measurement evidence for M1, and the S2 step record of the r
            (§6 S2). The live capture beside this file (§7) is the machine-readable source; this
            record is a reading of it with the conditions it was taken under. No threshold, no
            baseline, no ratchet, no budget metric, no production change.
+
+           CORRECTED 2026-09-27 (this leg was RE-RUN on the same machine, protocol and runtime): the
+           gesture rows in this leg's first capture pooled warm-up drags and retried attempts, and           the `wall-authoring` classes' population (23 measured accepted, not 20) needed reconciling.
+           The capture beside this file is the RE-RUN (head `33d532f5` + this pass's diff, which was
+           uncommitted at capture time, `treeDirty: true`); the conditions and per-class tables BELOW are the FIRST session's (head
+           `b6f2203b`, clean tree) and must not be quoted as the re-run's. The corrected session's
+           per-class tables — D1 rows, gesture frames, coverage, populations — are in
+           ./2026-09-27-M1-R1-corrections-and-attribution-record.md §2.
 ```
 
 ## What was run
@@ -119,6 +127,9 @@ why the leg was captured more than once, and why only the last capture is cited 
 ```text
 LIVE  ./2026-09-27-M1-chrome-leg.json            (the full record: provenance, class rows, D1, D7,
                                                   presented rows, gesture series, long frames)
+      NOT COMMITTED — retained in the working tree at this path and gitignored: at ~40k pretty-printed
+      lines it would dominate the slice's PR diff. Every row this record quotes is in the tables above,
+      and the RE-READ command below regenerates the file.
 RE-READ (throws the capture away; ~7 minutes) — pin the browser to Chrome 152, one harness tab,
   viewport 1500×1000 DPR 1, DEV server on 5173, then:
   cd apps/editor && npm exec -- vite-node --config vitest.config.ts \
