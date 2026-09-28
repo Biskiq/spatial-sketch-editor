@@ -345,8 +345,68 @@ narrows the shape of a fix rather than widening it: identical grids do **not** m
 the result-level memo and the skipped pass are both refused on evidence, and **only a grid-level memo survives** —
 which is the reuse §6 was wary of, now the only one the data supports.
 - **Not changed:** anything the editor does. No placement decision, no arm default, no product path — the key, the
-  sequence and the counting are DEV-only, and the placement suite plus the three-arm parity differential are the
+  sequence and the counting are DEV-only, and the placement suite plus the arm parity differential are the
   evidence.
 - **Not claimed:** any timing delta (this pass measured no change, so there is no before/after to read), any cause
   for the trailing pass, any Electron number for this arm, and no user-visible claim beyond the synthetic harness
   on a headless runtime.
+
+## 14. Follow-on, same session: the memo arm, and what the reuse is worth
+
+§12 left exactly one reuse standing — the grid, keyed by its own inputs — and said it needed state that outlives
+a render, which the placer has never held. That state now exists, as a FOURTH ARM rather than as shipped
+behaviour: **`memo-grid`**, the same `seeded-grid` behind a content-addressed cache of the derived candidates,
+keyed by the grid's own exact inputs, cleared per attempt (so its lifetime is one action and its key IS its
+invalidation) and bound at 256 entries — above any attempt's key set, which §5 sized at the fixture's Room count.
+The arm changes only how MANY times a grid is built, never which one, so its parity with `seeded-grid` is by
+construction: asserted as such, with a test that also proves the memo HIT, because a cache that never hit would
+pass a parity test by doing nothing at all.
+
+Fifth leg, same protocol (Chrome 152 headless, residual 0.120 ms, 4,426 frames, 19 class rows), now with the arm
+interleaved in EVERY class beside the other three, so the reuse is read inside one session against its own base.
+
+**First, did it hit at all?** The counts cannot say — the arm records the KEY of every request it serves, so a
+repeated key looks the same whether it rebuilt the grid or came from the cache. Two readings do say:
+
+- **The profile, per arm, pooled over all 19 classes inside the measured post-release windows.** The placer's own
+  self time falls from **1108.4 ms** (`seeded-grid`) to **548.9 ms** (`memo-grid`), and the grid functions in it
+  from **983.4 ms** to **487.3 ms** — `edgeDistance` 480.0 → 231.0, `seededPolylineDistance` 279.7 → 144.6,
+  `segmentLowerBound` 201.1 → 104.5. **Half the grid work is not done**, which is what a cache that hits looks
+  like; the memo's own lookups are not a measurable cost (the only `get` in the whole profile is bundle-internal:
+  504.6 ms under `memo-grid` against 527.0 under `seeded-grid`).
+- **The counts, as a non-contradiction rather than as evidence.** `builds − distinctBuilds` is **28.0 %** under
+  `memo-grid` against **28.1 %** under each of the other three arms: the redundancy is still recorded — every
+  request still carries its key — it is just no longer paid for. This is also why the arm's reuse cannot be read
+  off `distinctBuilds`, which counts distinct INPUTS, not builds; the profile above is the evidence that it hit.
+
+**Second, what was it worth?** Post-release window p50, `seeded-grid` → `memo-grid`, per class (five windows
+each; the control is the same session's `seeded-grid` → `pruned-grid`):
+
+| fixture | classes | `memo-grid` ÷ `seeded-grid` | control `seeded-grid` ÷ `pruned-grid` |
+|---|---|---|---|
+| `p23b-40-wall-all-curved-v1` | 5 | **0.804 – 0.849** | 0.736 – 0.885 |
+| `connected-curved-grid-v1` | 5 | 0.761 – 0.974 | 0.674 – 0.882 |
+| `owner-40-curved-v1` | 5 | 0.903 – 1.094 | 0.858 – 1.027 |
+| `p23b-40-wall-straight-v1` | 4 | 0.841 – 1.040 | 0.950 – 1.064 |
+
+Median of the 19 class p50s: **38.50 ms → 36.08 ms** (the same session's `pruned-grid` median is 43.26 ms).
+Median per-class ratio **0.849** — the memo arm is 15 % faster — median per-class delta **−4.87 ms**, and the memo
+arm is faster in **17 of 19** classes. The all-curved fixture, the one §11 reads the `bend` window on, moves
+**88.1 → 72.2**, **88.0 → 72.1**, **92.4 → 76.1**, **78.3 → 66.5** and **89.8 → 72.2** ms, i.e. **−15 % to
+−20 %**. The two classes that are SLOWER are both `rigid-wall-drag`, on the fixtures with the smallest windows
+(`owner` **+3.7 ms**, straight **+1.0 ms**), and are read as noise at five windows rather than as a cost of the
+arm.
+
+**What that settles.** The reuse is real, and it is worth **≈15 % of the post-release window** across the protocol
+and **15–20 %** on the all-curved fixture — smaller than §11's ≈24–33 % bracket, because the memo skips the
+trailing pass's BUILDS and not its placement, which still runs on the memory it inherits. For scale, the same
+session's `seeded-grid` → `pruned-grid` control is 0.882 (the previous pass's kept change, reproduced in this leg
+at the same order), so the memo's own delta is of that order too.
+
+**Status: measured, not shipped.** `memo-grid` is reachable only through the DEV switch, `seeded-grid` is still
+the default, and the placement suite plus the four-arm parity differential are unchanged in what they require.
+Promoting it is a separate decision, not taken here.
+
+**Not claimed:** any Electron number for this arm, any user-visible claim beyond the synthetic harness on a
+headless runtime, and any cross-session comparison — every arm above was read inside this one leg, and the two
+classes that regressed are stated rather than smoothed.

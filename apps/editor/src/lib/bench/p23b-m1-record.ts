@@ -316,11 +316,13 @@ export type P23BM1LabelArmsBlock = {
 		labelCalls: P23BM1RecordedRoomLabelCall[];
 	}[];
 	/**
-	 * Eligibility grids one accepted action paid for, over the actions above. The count
-	 * is arm-INDEPENDENT by construction (every arm rebuilds the grid on every Plan
-	 * render it happens on), so it is the reuse budget: `p50` is how many times the
-	 * grid was able to change between one accepted action and the next, and a `p50` of
-	 * 1 with a `max` of 1 would mean there is nothing left to reuse.
+	 * Eligibility grids one accepted action REQUESTED, over the actions above. The count
+	 * is arm-INDEPENDENT by construction — every arm's placer asks for the same grids on
+	 * the same Plan renders — so it is the reuse budget: `p50` is how many times the grid
+	 * was able to change between one accepted action and the next, and a `p50` of 1 with a
+	 * `max` of 1 would mean there is nothing left to reuse. This counts REQUESTS, not
+	 * builds: `memo-grid` answers some of them from its cache, so it is `distinct` (below)
+	 * and the arm's own profile self time that move between arms, not this.
 	 */
 	buildsPerAction: {
 		actions: number;
@@ -328,8 +330,13 @@ export type P23BM1LabelArmsBlock = {
 		p50: number | null;
 		max: number;
 		/**
-		 * The attempts' own distinct keys, summed. `total − distinct` is what an
-		 * attempt-scoped memo could have skipped; `null` when this run recorded no keys.
+		 * The attempts' own distinct keys, summed — i.e. the number of REQUESTED inputs that
+		 * were new, which is the number of grids a memo scoped to one attempt would actually
+		 * build. `total − distinct` is therefore what such a memo could have skipped, and
+		 * under `memo-grid` what it DID skip: the arm still records the key of every request it
+		 * serves from the cache, so these counts cannot tell a hit from a rebuild — the arm's
+		 * profile slice (grid self time against `seeded-grid`'s) is the evidence that it hit.
+		 * `null` when this run recorded no keys.
 		 */
 		distinct: number | null;
 	};
