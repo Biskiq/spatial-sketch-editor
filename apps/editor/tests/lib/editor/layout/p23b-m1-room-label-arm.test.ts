@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	APPROXIMATE_TEXT_MEASURE,
 	placeRoomLabels,
+	resetRoomLabelGridCache,
 	roomFloorAreaM2,
 	type RoomLabelFacts,
 	type RoomLabelMask,
@@ -92,10 +93,10 @@ describe('M1 room-label arm — the DEV switch', () => {
 		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
 		setP23bM1RoomLabelArm('per-cell-grid');
 		expect(p23bM1RoomLabelArm()).toBe('per-cell-grid');
-		// The memo arm is not a fourth grid but the SAME grid behind a cache, so it must be
-		// selectable by name like any other arm and must never fall back to the shipped path.
-		setP23bM1RoomLabelArm('memo-grid');
-		expect(p23bM1RoomLabelArm()).toBe('memo-grid');
+		// The bypass arm is not a fourth grid but the SHIPPED grid with its cache skipped, so
+		// it must be selectable by name and must never fall back to the shipped path.
+		setP23bM1RoomLabelArm('no-memo-grid');
+		expect(p23bM1RoomLabelArm()).toBe('no-memo-grid');
 		setP23bM1RoomLabelArm(null);
 		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
 	});
@@ -122,7 +123,7 @@ describe('M1 room-label arm — the DEV switch', () => {
 			'seeded-grid',
 			'pruned-grid',
 			'per-cell-grid',
-			'memo-grid'
+			'no-memo-grid'
 		]);
 		expect(P23B_M1_ROOM_LABEL_ARM_AFTER).toBe('seeded-grid');
 		expect(P23B_M1_ROOM_LABEL_ARM_BEFORE).toBe('pruned-grid');
@@ -585,39 +586,47 @@ describe('M1 room-label arm — every arm places labels identically', () => {
 		expect((shippedFirst as unknown[]).length).toBeGreaterThan(0);
 	});
 
-	it('serves the memo arm from its cache, and places what the shipped grid places', () => {
-		// The case the memo exists for: the settled `lod` pass after the `geometry` pass of
-		// the same settle. Same geometry, so identical grid inputs, so the second pass must
-		// be served from the cache — which is ALSO why the two arms must agree, since a hit
-		// returns exactly the grid the shipped arm would have rebuilt.
-		const entry = cases.find((candidate) => candidate.mask !== undefined)!;
-		const placeTwice = (arm: P23BM1RoomLabelArm) => {
-			globals.__P2311_PERF__ = true;
-			setP23bM1RoomLabelArm(arm);
-			const memory: RoomLabelMemory = new Map();
-			const base = {
-				rooms: entry.rooms,
-				planView: entry.planView,
-				measure: APPROXIMATE_TEXT_MEASURE,
-				mask: entry.mask!,
-				settleGeneration: 4
+	it('runs the shipped path through its cache on EVERY fixture, and places what the BYPASS places', () => {
+		// The case the shipped cache exists for: the settled `lod` pass after the `geometry`
+		// pass of the same settle. Same geometry, so identical grid inputs, so the second pass
+		// must be served from the cache — which is ALSO why the two arms must agree, since a hit
+		// returns exactly the grid the bypass arm would have rebuilt.
+		//
+		// EVERY fixture, not one: a memo proved on the fixture it was designed around proves
+		// nothing about the concave face, the 256-vertex ring, the coarsened far-zoom grid or
+		// the duplicate-identity pair, and this change is shipped.
+		for (const entry of cases) {
+			const placeTwice = (arm: P23BM1RoomLabelArm) => {
+				globals.__P2311_PERF__ = true;
+				// A cold cache per arm: the shipped cache is module state and outlives one
+				// placement by design, so a test has to say when it wants a cold one.
+				resetRoomLabelGridCache();
+				setP23bM1RoomLabelArm(arm);
+				const memory: RoomLabelMemory = new Map();
+				const base = {
+					rooms: entry.rooms,
+					planView: entry.planView,
+					measure: APPROXIMATE_TEXT_MEASURE,
+					...(entry.mask ? { mask: entry.mask } : {}),
+					settleGeneration: 4
+				};
+				const geometry = placeRoomLabels({ ...base, reason: 'geometry', memory });
+				const hitsBefore = p23bM1RoomLabelMemoHits();
+				const lod = placeRoomLabels({ ...base, reason: 'lod', memory });
+				return {
+					labels: [geometry.labels, lod.labels],
+					memory: [...lod.memory.entries()].sort(([left], [right]) => left.localeCompare(right)),
+					hits: p23bM1RoomLabelMemoHits() - hitsBefore
+				};
 			};
-			const geometry = placeRoomLabels({ ...base, reason: 'geometry', memory });
-			const hitsBefore = p23bM1RoomLabelMemoHits();
-			const lod = placeRoomLabels({ ...base, reason: 'lod', memory });
-			return {
-				labels: [geometry.labels, lod.labels],
-				memory: [...lod.memory.entries()].sort(([left], [right]) => left.localeCompare(right)),
-				hits: p23bM1RoomLabelMemoHits() - hitsBefore
-			};
-		};
-		const shipped = placeTwice(P23B_M1_ROOM_LABEL_ARM_AFTER);
-		const memoized = placeTwice('memo-grid');
-		// The exercise FIRST: a cache that never hit would pass the equality below by doing
-		// nothing at all, and the shipped arm must not be reading a cache.
-		expect(memoized.hits).toBeGreaterThan(0);
-		expect(shipped.hits).toBe(0);
-		expect(memoized.labels).toEqual(shipped.labels);
-		expect(memoized.memory).toEqual(shipped.memory);
+			const bypassed = placeTwice('no-memo-grid');
+			const shipped = placeTwice(P23B_M1_ROOM_LABEL_ARM_AFTER);
+			// The exercise FIRST: a cache that never hit would pass the equality below by
+			// doing nothing at all, and the bypass arm must not be reading a cache at all.
+			expect(shipped.hits, `${entry.name}: the shipped cache was not exercised`).toBeGreaterThan(0);
+			expect(bypassed.hits, `${entry.name}: the bypass arm reads no cache`).toBe(0);
+			expect(shipped.labels, entry.name).toEqual(bypassed.labels);
+			expect(shipped.memory, entry.name).toEqual(bypassed.memory);
+		}
 	});
 });

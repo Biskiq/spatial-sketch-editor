@@ -1117,7 +1117,7 @@ import {
 					? 'transient · per-move, interleaved per attempt on the whole-Room class (see schema.arms and each class row\'s arms block)'
 					: 'not run — one path per class',
 				labelArms: labelArms
-					? 'seeded-grid · pruned-grid · per-cell-grid · memo-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — the signed pair is seeded-grid − pruned-grid, per-cell-grid is summarized beside them so the previous pass\'s pruned-grid − per-cell-grid delta stays recomputable from this session, and memo-grid (the SAME grid as seeded-grid, cached by its own inputs) is read against seeded-grid as the reuse delta; see each class row\'s labelArms block'
+					? 'seeded-grid · pruned-grid · per-cell-grid · no-memo-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — seeded-grid is the SHIPPED path and now runs the seeded grid through the placer\'s own bounded candidate cache, so the signed pair seeded-grid − pruned-grid is shipped against pre-change; per-cell-grid is summarized beside them so the previous pass\'s pruned-grid − per-cell-grid delta stays recomputable from this session; and no-memo-grid (the SAME grid with that cache BYPASSED) is read against seeded-grid as the reuse delta, from the cache\'s own hit counters; see each class row\'s labelArms block'
 					: 'not run — one grid per class',
 				warmupExcluded: INTERACTION_WARMUP,
 				actionsPerClass: DRIVE_ACTIONS_PER_PATH,
@@ -1418,11 +1418,11 @@ import {
 		<p class="capture-hint">
 			<strong>Room-label before/after.</strong> The same protocol again, but the Room-label placer's
 			eligibility grid runs every implementation in one session, interleaved per attempt: the shipped
-			<code>seeded-grid</code>, the previous <code>pruned-grid</code>, the pre-change <code>per-cell-grid</code>
-			and the reuse arm <code>memo-grid</code> (the same grid as <code>seeded-grid</code>, cached by its own
-			inputs), all reachable behind a DEV-only arm switch. The placer runs on every Plan render, so EVERY
-			class takes these arms — the rows they move are the post-release windows, which the CDP runner reports
-			per arm and per class.
+			<code>seeded-grid</code> (which now runs through the placer's own bounded candidate cache), the previous
+			<code>pruned-grid</code>, the pre-change <code>per-cell-grid</code> and the bypass arm
+			<code>no-memo-grid</code> (the same grid with that cache skipped), all reachable behind a DEV-only arm
+			switch. The placer runs on every Plan render, so EVERY class takes these arms — the rows they move are
+			the post-release windows, which the CDP runner reports per arm and per class.
 		</p>
 		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true)}>
 			{m1Running ? 'Running M1…' : 'Run M1 room-label arms'}

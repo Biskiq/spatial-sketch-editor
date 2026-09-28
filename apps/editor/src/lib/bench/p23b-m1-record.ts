@@ -282,13 +282,14 @@ export const P23B_M1_ARM_COMPARISON_NOTE =
  */
 /**
  * What the class's grid-build keys say, and what they deliberately do NOT say. The two
- * scopes are reported apart because they justify different things: a repeat WITHIN one
- * attempt is the placer's own business (a memo that lives as long as the placement that
- * filled it), while a repeat across the class's attempts would need a memo that outlives
- * the attempt and therefore an owner for its invalidation — a different decision.
+ * scopes are reported apart because they measure different reuses: a repeat WITHIN one
+ * attempt is the reuse the SHIPPED placer's own grid cache now takes (one owner, one bound,
+ * a key that IS its invalidation), while a repeat across the class's attempts is the
+ * ceiling for a cache that would OUTLIVE the attempt — a larger reuse, and a different
+ * decision, which this row does not recommend taking.
  */
 export const P23B_M1_GRID_BUILD_KEY_NOTE =
-	'Grid builds are keyed by the inputs that determine the grid (the Room’s projected polygon, the projected mask with its clearances, and the semantic centre), hashed over every coordinate’s exact bits, so two builds with one key would have produced one identical grid. `buildsPerAction.distinct` counts the attempt’s own distinct keys, summed over the class’s actions: `total − distinct` is what a memo scoped to ONE attempt could have skipped. `gridBuildKeys` reports the same question over the class’s actions taken together, so `repeatedBuilds` there is the ceiling for a memo that outlives the attempt — which would also need an owner for its invalidation, and is NOT what this row recommends. A key is derived from the inputs, never from the Room’s identity, so two Rooms with identical screen inputs share a key by construction; and the hashing itself is DEV-only, so its own cost appears in an instrumented capture’s profile and not in the shipped path. `byAction[].keySequence` is the attempt’s builds IN ARRIVAL ORDER, each as the ordinal of its key in first-seen order: the counts say how much repeated, and the order says whether a cache would have been there when the repeat arrived, so a cache policy can be simulated offline from this capture rather than assumed.';
+	'Grid builds are keyed by the inputs that determine the grid (the Room’s projected polygon, the projected mask with its clearances, and the semantic centre), hashed over every coordinate’s exact bits, so two builds with one key would have produced one identical grid. `buildsPerAction.distinct` counts the attempt’s own distinct keys, summed over the class’s actions: `total − distinct` is what a cache scoped to ONE attempt could have skipped, and what the SHIPPED placer’s own bounded grid cache now does skip — it is keyed by the same exact-bit inputs, owned by the grid’s own module, and needs no invalidation owner because a hit means the inputs are identical, which means the grid is. `gridBuildKeys` reports the same question over the class’s actions taken together, so `repeatedBuilds` there is the ceiling for a cache that OUTLIVES the attempt — a larger reuse and a different decision, and NOT one this row recommends. A key is derived from the inputs, never from the Room’s identity, so two Rooms with identical screen inputs share a key by construction; and the hashing is no longer DEV-only, because the shipped cache keys every grid request with it — one short walk over the polygon and mask per request, against the grid build it can skip. `byAction[].keySequence` is the attempt’s builds IN ARRIVAL ORDER, each as the ordinal of its key in first-seen order: the counts say how much repeated, and the order says whether a cache would have been there when the repeat arrived, so a cache policy can be simulated offline from this capture rather than assumed.';
 
 export type P23BM1LabelArmsBlock = {
 	rule: string;
@@ -321,8 +322,9 @@ export type P23BM1LabelArmsBlock = {
 	 * the same Plan renders — so it is the reuse budget: `p50` is how many times the grid
 	 * was able to change between one accepted action and the next, and a `p50` of 1 with a
 	 * `max` of 1 would mean there is nothing left to reuse. This counts REQUESTS, not
-	 * builds: `memo-grid` answers some of them from its cache, so it is `distinct` (below)
-	 * and the arm's own profile self time that move between arms, not this.
+	 * builds: the SHIPPED path now answers some of them from its grid cache, so it is
+	 * `distinct` (below), the cache's own hit counters and the per-arm profile self time
+	 * that move between arms, not this.
 	 */
 	buildsPerAction: {
 		actions: number;
@@ -331,12 +333,13 @@ export type P23BM1LabelArmsBlock = {
 		max: number;
 		/**
 		 * The attempts' own distinct keys, summed — i.e. the number of REQUESTED inputs that
-		 * were new, which is the number of grids a memo scoped to one attempt would actually
-		 * build. `total − distinct` is therefore what such a memo could have skipped, and
-		 * under `memo-grid` what it DID skip: the arm still records the key of every request it
-		 * serves from the cache, so these counts cannot tell a hit from a rebuild — the arm's
-		 * profile slice (grid self time against `seeded-grid`'s) is the evidence that it hit.
-		 * `null` when this run recorded no keys.
+		 * were new, which is the number of grids a cache scoped to one attempt would actually
+		 * build. `total − distinct` is therefore what such a cache could have skipped, and on
+		 * the shipped path what it DID skip. These counts still cannot tell a hit from a
+		 * rebuild — a cache hit records the key of the request it served like any other — so
+		 * the evidence that the shipped cache hit is its OWN counters
+		 * (`p23bM1RoomLabelMemoHits`) and the per-arm profile slice, where `seeded-grid`'s grid
+		 * self time sits against `no-memo-grid`'s. `null` when this run recorded no keys.
 		 */
 		distinct: number | null;
 	};

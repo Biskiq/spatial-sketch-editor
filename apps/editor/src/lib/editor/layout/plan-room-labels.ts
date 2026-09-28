@@ -34,10 +34,11 @@ import {
 	p23bM1DigestString,
 	p23bM1EndRoomLabelCall,
 	p23bM1EndRoomLabelValueDigest,
-	p23bM1MemoizedGridCandidates,
 	p23bM1RecordRoomLabelCall,
+	p23bM1RecordRoomLabelGridCache,
 	p23bM1RoomLabelArm
 } from './p23b-m1-room-label-arm';
+import { roomLabelGridKey } from './room-label-grid-key';
 
 /** The three text roles of a Room label stack, in display order. */
 export type TextMeasureStyle = 'room-name' | 'room-reference' | 'room-area';
@@ -770,6 +771,17 @@ function rowCrossings(polygonScreen: readonly LayoutVec2[], y: number): number[]
 type FreeCandidate = { point: LayoutVec2; clearance: number };
 
 /**
+ * THE SHIPPED GRID IS CACHED, AND THE CACHE IS NOT AN ARM. The shipped path builds the
+ * seeded grid behind a bounded, content-addressed cache of the derived candidates (see
+ * `cachedSeededGridCandidates` below): the same geometry is planned twice per settle — a
+ * `geometry` pass and the settled `lod` pass after it — and the second of those used to
+ * rebuild every Room's grid from byte-identical inputs. Measured, that reuse is worth a
+ * median 15 % of the post-release window (`bend` on the all-curved fixture −18 %), and it
+ * is the ONLY reuse the evidence allows: identical inputs make an identical GRID by
+ * construction, while the PLACEMENT reads the sticky memory the key does not cover, so a
+ * cache of RESULTS would paint the previous pass's labels (measured: they agree only
+ * 47.8 % of the time) and a skipped pass would paint nothing.
+ *
  * THE ARM DISPATCH — the one read of the DEV switch in this product module (pinned by
  * the wiring test), and the only thing the arms change here. The three GRIDS are the
  * shipped seeded walk, the walk shipped before it (`pruned`) and the pre-change grid
@@ -777,9 +789,10 @@ type FreeCandidate = { point: LayoutVec2; clearance: number };
  * placement decision: all three visit the same cells, keep the same eligible set, pick
  * the same representative point per component and rank the same candidates — the
  * placement suite requires identical labels from all of them. The fourth arm,
- * `memo-grid`, is not a grid at all: it is the SHIPPED walk behind a cache, so it can
- * only change how MANY times a grid is built, never which one — which is why its parity
- * with `seeded-grid` is by construction rather than by agreement.
+ * `no-memo-grid`, is not a grid at all: it is the SHIPPED walk with the cache BYPASSED,
+ * so it can only change how MANY times a grid is built, never which one — which is why its
+ * parity with the shipped path is by construction rather than by agreement, and why it is
+ * what the cache's own price is measured against.
  *
  * THE SAME CALL CARRIES THE GRID'S INPUTS, because this is the only place that has them
  * and the only call this module is allowed to make into the instrument. They are passed
@@ -787,6 +800,72 @@ type FreeCandidate = { point: LayoutVec2; clearance: number };
  * instrument uses them to key one build — its own concern, in its own module. Reading them
  * is not a decision: the arm is chosen here exactly as it was before they were passed.
  */
+/**
+ * HOW MANY GRID INPUT SETS THE SHIPPED CACHE KEEPS. The measured working set is the
+ * fixture's ROOM COUNT — 4–61 keys per attempt at the largest fixture, and the reuse that
+ * pays is the settled pass finding the pass before it — so this is comfortably above it.
+ * A document with more distinct inputs than this DEGRADES, it does not break: the cache
+ * evicts oldest-first, so the trailing pass still hits the recent keys and rebuilds the
+ * rest, because correctness never depends on capacity — only on the key.
+ */
+const ROOM_LABEL_GRID_CACHE_LIMIT = 256;
+
+/**
+ * The shipped grid's candidate cache, OWNED HERE — one map, one bound, one eviction rule,
+ * and no other module may read or write it. Its key is the grid's own exact-bit inputs
+ * (`roomLabelGridKey`), so an entry can never serve a different grid: the grid reads the
+ * projected polygon, the mask and the centre and NOTHING else, and those are exactly what
+ * the key hashes. That is what makes it SELF-INVALIDATING — there is no stale state to
+ * invalidate, because a hit means the inputs are identical, which means the grid is
+ * identical. It therefore needs no lifetime owner beyond this module, and nothing has to
+ * clear it for correctness; `resetRoomLabelGridCache` exists for tests and for a
+ * deliberately cold start.
+ *
+ * WHAT IT MAY NEVER SERVE. The key does NOT cover the distance ENGINE: it is the shipped
+ * (`seeded`) engine's key. The DEV `pruned` and `per-cell` grids are different grids built
+ * from the same inputs, so they must never be routed through this cache — and they are
+ * not (only the shipped branch below consults it). `no-memo-grid` is the shipped grid with
+ * this lookup deliberately skipped, which is what makes the cache measurable inside one arm
+ * session.
+ *
+ * THE RETURNED ARRAY IS SHARED WITH THE CACHE, and the caller must treat it as read-only.
+ * `placeRoomLabels` only reads the candidates it is handed (`.point` and `.clearance`), and
+ * the values are plain numbers, so a hit hands the same array to every pass that hits it.
+ */
+const roomLabelGridCache = new Map<string, FreeCandidate[]>();
+
+/** Empty the shipped grid cache. Not needed for correctness — the key is the whole input. */
+export function resetRoomLabelGridCache(): void {
+	roomLabelGridCache.clear();
+}
+
+/**
+ * The shipped grid, through the cache: a hit returns the pass before it's candidates, a
+ * miss builds the seeded grid and keeps it. DEV-only counting rides along (one gated,
+ * no-return call) so a test and a leg can say the cache was EXERCISED rather than assumed —
+ * the build counts cannot, because a hit still records the key of the request it served.
+ */
+function cachedSeededGridCandidates(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	centerScreen: LayoutVec2
+): FreeCandidate[] {
+	const key = roomLabelGridKey({ polygonScreen, mask, centerScreen });
+	const cached = roomLabelGridCache.get(key);
+	if (cached !== undefined) {
+		p23bM1RecordRoomLabelGridCache(true);
+		return cached;
+	}
+	const built = gridCandidates(polygonScreen, mask, centerScreen, 'seeded');
+	p23bM1RecordRoomLabelGridCache(false);
+	if (roomLabelGridCache.size >= ROOM_LABEL_GRID_CACHE_LIMIT) {
+		const oldest = roomLabelGridCache.keys().next().value;
+		if (oldest !== undefined) roomLabelGridCache.delete(oldest);
+	}
+	roomLabelGridCache.set(key, built);
+	return built;
+}
+
 function freeSpaceCandidates(
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask,
@@ -794,14 +873,11 @@ function freeSpaceCandidates(
 ): FreeCandidate[] {
 	const arm = p23bM1RoomLabelArm(polygonScreen, mask, centerScreen);
 	if (arm === 'per-cell-grid') return perCellGridCandidates(polygonScreen, mask, centerScreen);
-	// The memo arm builds the SHIPPED grid and only decides whether to build it at all: the
-	// thunk runs on a miss, so its candidates are `seeded-grid`'s by construction and a hit
-	// skips the whole walk. Returning the cached array means the caller must not mutate it,
-	// and `placeRoomLabels` only reads the candidates it is handed.
-	if (arm === 'memo-grid')
-		return p23bM1MemoizedGridCandidates(() =>
-			gridCandidates(polygonScreen, mask, centerScreen, 'seeded')
-		);
+	// The SHIPPED path is the only one that consults the cache. Every other arm builds its own
+	// grid UNCACHED: `pruned`/`per-cell` are different grids (a key for the shipped engine must
+	// never serve them) and `no-memo-grid` is the shipped grid with the cache bypassed on
+	// purpose, which is the reference the cache's price is read against.
+	if (arm === 'seeded-grid') return cachedSeededGridCandidates(polygonScreen, mask, centerScreen);
 	return gridCandidates(polygonScreen, mask, centerScreen, arm === 'pruned-grid' ? 'pruned' : 'seeded');
 }
 
