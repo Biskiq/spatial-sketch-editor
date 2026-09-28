@@ -410,3 +410,65 @@ Promoting it is a separate decision, not taken here.
 **Not claimed:** any Electron number for this arm, any user-visible claim beyond the synthetic harness on a
 headless runtime, and any cross-session comparison — every arm above was read inside this one leg, and the two
 classes that regressed are stated rather than smoothed.
+
+## 15. The reuse is PROMOTED, and re-measured on the shipped path
+
+§14 measured the reuse behind a DEV arm and left promoting it as a separate decision. It is now taken: the
+SHIPPED path runs the seeded grid through a bounded, content-addressed cache of the derived candidates, owned by
+the placer's own module, and the arm that measured it became **`no-memo-grid`** — the same grid with the cache
+BYPASSED, which is what the comparison below needs to price.
+
+**What shipped.** `plan-room-labels.ts` owns one `Map` keyed by the grid's own exact-bit inputs, bounded at 256
+entries with oldest-first eviction (above the measured working set — the fixture's Room count, 4–61) and cleared
+by nothing, because it is SELF-INVALIDATING: the grid reads the projected polygon, the mask and the centre and
+nothing else, and those are exactly what the key hashes, so a hit means identical inputs and therefore an
+identical grid. It needs no invalidation owner, no shared store and no new dependency. The key itself moved out
+of the arm instrument into its own module (`room-label-grid-key.ts`) so that a shipped path is not keyed by a
+module whose job is to measure it; the instrument imports the same function and the same primitives, so there is
+exactly one implementation of the hashing and §12's digests still mean what they say. The legacy `pruned` and
+`per-cell` grids never consult the cache — they build DIFFERENT grids from the same inputs — and `no-memo-grid`
+skips it on purpose.
+
+**The lifetime is deliberately the module's, not one settle's.** A per-settle lifetime would need a hook in the
+render path to clear the cache, i.e. a new invalidation owner for a cache whose key already IS its invalidation.
+This pass does not add one; bounded SIZE is what keeps the cache honest, and §5's measurement is the bound it is
+sized from.
+
+**Output identity, before any timing.** The arm parity differential now runs the shipped path against the bypass
+on EVERY fixture, and each case asserts both that the cache was EXERCISED (hits > 0, from the cache's own
+counters) and that the shipped path places exactly what the bypass places — labels AND the sticky memory — so the
+reuse is shown to be invisible in the output before its price is read.
+
+**Sixth leg, same protocol** (Chrome 152 headless, residual 0.134 ms, 4,420 frames, 19 class rows). The bypass
+arm reproduces the PRE-promotion shipped path to within 1 % on the same classes (pooled grid-function self time
+991.5 ms against §14's 983.4; `bend` window p50 85.1 against §14's 88.1 ms), so the two legs line up and the rows
+below compare a cache against the same grid without one.
+
+**The cache's own price**, post-release window p50, per fixture (median over its classes):
+
+| fixture | classes | shipped ÷ bypass | shipped ÷ pre-change |
+|---|---|---|---|
+| `p23b-40-wall-all-curved-v1` | 5 | **0.630** | 0.549 |
+| `connected-curved-grid-v1` | 5 | **0.636** | 0.558 |
+| `owner-40-curved-v1` | 5 | 0.899 | 0.845 |
+| `p23b-40-wall-straight-v1` | 4 | 0.851 | 0.879 |
+
+Median across the 19 classes **0.694**, and the shipped path is faster in **19 of 19** classes — no class
+regressed, so the straight fixture read as the falsifier did not fire (it shows the SMALLEST gain, 0.851, exactly
+where grids are cheapest). On the all-curved fixture the absolute move is 85.1 → **53.6** (`bend`), 84.6 → 51.8,
+88.6 → 55.6, 75.8 → 50.5 and 86.0 → 54.5 ms. Against the grid it replaced, the shipped path is 0.549–0.879 of the
+pre-change window across the four fixtures.
+
+**The mechanism, from the profile.** Pooled over all 19 classes inside the measured windows, the grid functions'
+self time falls from **991.5 ms** (`no-memo-grid`) to **1.5 ms** (shipped): the rebuilds are not made. The sampled
+time inside those windows falls with it (4,810 → 3,503 ms), and on `bend` alone 436.9 → 273.0 ms, which is the
+same order as that class's own window movement (−31.5 ms), so the window it saved is the grid it skipped.
+
+**THE LIMIT, and it is the one that matters.** This protocol repeats ONE action per class (25 attempts, the same
+drag restored between them), so a PERSISTENT cache also collects CROSS-ATTEMPT hits that the reuse §14 measured
+does not: §14's arm cleared its cache per attempt and read **0.849**, and this leg reads **0.694**, so the
+difference belongs to the cache outliving the attempt and to this workload's repetition — NOT to a claim about an
+arbitrary session. What generalises is the within-settle reuse §14 justified (≈15 % of the window, 15–20 % on the
+all-curved fixture); what a session that revisits the same geometry gets on top of that is real, is bounded, and
+is not quantified here. Also not claimed: any Electron number, any user-visible claim, and any cross-session or
+cross-tree comparison — every arm above was read inside this one leg.
