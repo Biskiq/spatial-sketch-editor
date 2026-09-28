@@ -782,14 +782,33 @@ read from the per-arm profile because the key counts cannot show a cache hit —
 post-release window (median of the 19 class p50s 38.50 → 36.08 ms, faster in **17 of 19** classes, **−15 % to −20 %**
 on the all-curved fixture; the same leg's `seeded-grid` → `pruned-grid` control reproduces the previous pass's kept
 change at 0.882). That is **less than the ≈24–33 %** the trailing pass's own p50 bracketed, because the memo skips
-that pass's BUILDS and not its placement. **Measured, not shipped:** `seeded-grid` is still the default and
-`memo-grid` is reachable only through the DEV switch; promoting it is a separate decision.
+that pass's BUILDS and not its placement. **IT IS NOW SHIPPED.** The reuse was promoted into the shipped path, behind its own bounded cache:
+`plan-room-labels.ts` owns one `Map` keyed by the grid's own exact-bit inputs (the key moved out of the arm
+instrument into its own module, so a shipped path is not keyed by a module whose job is to measure it — the
+instrument imports the same function and primitives, so there is exactly one implementation), bounded at 256
+entries with oldest-first eviction, and **self-invalidating** — the grid reads the projected polygon, the mask and
+the centre and nothing else, which is exactly what the key hashes, so a hit means identical inputs and therefore an
+identical grid. No invalidation owner, no shared store, no new dependency; the legacy `pruned`/`per-cell` grids
+never consult it. The arm that measured it became **`no-memo-grid`** (the same grid with the cache BYPASSED), so
+`seeded-grid` — the AFTER side and the shipped path — now includes the cache and the signed pair reads as shipped
+versus pre-change. Output identity is asserted BEFORE the timing: the parity differential runs the shipped path
+against the bypass on **every** fixture, each case requiring both that the cache was exercised and that the two
+place identical labels and sticky memory. In the promotion leg (Chrome 152 headless, residual 0.134 ms, 4,420
+frames) the bypass reproduces the pre-promotion shipped path to within 1 % (pooled grid-function self time 991.5 ms
+against the memo leg's 983.4; `bend` p50 85.1 against 88.1), and the shipped path's post-release window p50 is
+**0.694** of the bypass median — **0.630** all-curved, 0.636 connected, 0.899 owner, 0.851 straight — faster in
+**19 of 19** classes, with the grid functions' self time inside those windows falling **991.5 → 1.5 ms**. **Limit,
+stated with the number:** the protocol repeats one action per class, so a persistent cache also collects
+cross-attempt hits — the per-attempt-cleared memo leg read 0.849 against this leg's 0.694 — so that difference
+belongs to the cache outliving the attempt and to the workload's repetition, not to a claim about an arbitrary
+session; what generalises is the within-settle reuse above (~15 % of the window).
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json · the identity leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json · the memo leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json.
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json · the promotion leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 

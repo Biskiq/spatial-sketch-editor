@@ -541,6 +541,35 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
    DEV switch, and promoting it is a separate decision. The two classes that regressed are both `rigid-wall-drag`
    on the smallest windows (`owner` +3.7 ms, straight +1.0 ms, five windows each) and are stated as noise rather
    than smoothed.
+   AND THEN IT WAS PROMOTED, because the reuse the identity leg left standing was the one the data supported and the
+   price was worth taking. THE SHIPPED PATH NOW CARRIES IT: `plan-room-labels.ts` owns one bounded cache of the
+   derived grid candidates, keyed by the grid's own exact-bit inputs, bounded at 256 entries with oldest-first
+   eviction (above the measured working set of the fixture's Room count, 4–61) and cleared by nothing because it is
+   SELF-INVALIDATING — the grid reads the projected polygon, the mask and the centre and nothing else, and those
+   are exactly what the key hashes, so a hit means identical inputs and therefore an identical grid. It needs no
+   invalidation owner, no shared store and no new dependency, and the legacy `pruned` and `per-cell` grids never
+   consult it (they build DIFFERENT grids from the same inputs). THE KEY MOVED WITH IT, out of the arm instrument
+   into its own module: a shipped path must not be keyed by a module whose job is to measure it, and the instrument
+   now imports the same function and the same primitives, so there is exactly one implementation of the hashing and
+   the result digests still mean what §12 says they mean. THE ARM BECAME THE BYPASS: `memo-grid` is now
+   `no-memo-grid`, the SAME grid with the cache deliberately skipped, and `seeded-grid`, the AFTER side, is the
+   shipped path, so the signed pair `seeded-grid` − `pruned-grid` reads as shipped versus pre-change. The lifetime
+   is deliberately the module's rather than one settle's: a per-settle lifetime would need a hook in the render path
+   to clear it, i.e. a NEW invalidation owner for a cache whose key already IS its invalidation, and this pass does
+   not add one — bounded SIZE is what keeps it honest. OUTPUT IDENTITY FIRST: the arm parity differential now runs
+   the shipped path against the bypass on EVERY fixture, and each case asserts BOTH that the cache was exercised
+   (hits > 0, from the cache's own counters) and that the shipped path places exactly what the bypass places —
+   labels and sticky memory both — before any timing is read. SIXTH LEG, same protocol (Chrome 152 headless,
+   residual 0.134 ms, 4,420 frames, 19 class rows): the bypass reproduces the pre-promotion shipped path to within
+   1 % (pooled grid-function self time 991.5 ms against the memo leg's 983.4; `bend` p50 85.1 against 88.1), and the
+   cache's own price is a post-release window p50 median of 0.694 shipped ÷ bypass — 0.630 all-curved, 0.636
+   connected, 0.899 owner, 0.851 straight — faster in 19 of 19 classes, so nothing regressed and the straight
+   falsifier did not fire. Mechanically the grid functions' self time inside the measured windows falls 991.5 →
+   1.5 ms: the rebuilds are not made. THE LIMIT, stated with the number: this protocol repeats ONE action per class,
+   so a PERSISTENT cache also collects CROSS-ATTEMPT hits — the memo arm that cleared per attempt read 0.849 against
+   this leg's 0.694 — so the difference belongs to the cache outliving the attempt and to the workload's repetition,
+   NOT to a claim about an arbitrary session; what generalises is the within-settle reuse §14 justified (≈15 % of
+   the window, 15–20 % on the all-curved fixture).
    Record → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md.
    COMMITTED 2026-09-28 — the working tree every block above was written on has LANDED as a commit
    series on this branch — the three that carried the work, plus the follow-up commit that recorded
@@ -562,11 +591,14 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
    commit that carries the priced leg's folded capture with §11 of the record, and the commit that records both
    here, in the roadmap and in the acceptance record — the last of the three being the one this text rides on; and,
    for the identity measurement, the same three again (the result digests and their tests, the digest leg's folded
-   capture with §12 of the record, and the documentation commit that this text rides on); and, for the memo arm
-   above, `29f5abfa` the fourth arm — the shipped grid behind a content-addressed cache keyed by its own inputs and
-   cleared per attempt, with the arm rule, the page description and the protocol revision stating four arms — plus
-   the commit that carries the four-arm leg's folded capture with §14 of the record, and the documentation commit
-   that this text rides on.
+   capture with §12 of the record, and the documentation commit that this text rides on); for the memo arm above,
+   `29f5abfa` the fourth arm — the shipped grid behind a content-addressed cache keyed by its own inputs and cleared
+   per attempt, with the arm rule, the page description and the protocol revision stating four arms — plus the commit
+   that carries the four-arm leg's folded capture with §14 of the record, and the documentation commit that this text
+   rides on; and, for the PROMOTION above, `f001bdb3` the cache moved into the placer with the key moved into its own
+   module and the arm turned into the bypass (its tests asserting output identity against the bypass on every
+   fixture, with the cache shown exercised), plus the commit that carries the promotion leg's folded capture with §15
+   of the record and the documentation commit that this text rides on.
    The "NOT committed"
    wording inside those blocks is the state at the time each was written and is kept as provenance,
    never as status; the only things that stay deliberately uncommitted are the two 2026-09-27 M1 leg
@@ -579,8 +611,11 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
      baseline nor the P23B.5 ratchet;
    - the P23B.5 reuse ratchet is LIVE and only `npm run reuse:record --reason "…"` may move it — no
      hand-edits or new budget metric. P23B.6's M-3m reuse lives in the EXISTING weak generation
-     cache; do not add another cache, re-own the sample store, or claim P23B.5 release-scope M-3
-     (still unreachable/unimplemented). Do not restart P23B.4 or reopen P23B.6 / P23B.11;
+   cache; do not add another cache IN THAT LANE, re-own the sample store, or claim P23B.5
+   release-scope M-3 (still unreachable/unimplemented). Do not restart P23B.4 or reopen P23B.6 /
+   P23B.11. (The Room-label placer's grid cache above is NOT that lane: it is a separate,
+   owner-sanctioned cache owned by the placer's own module, keyed by the grid's exact-bit inputs and
+   bounded in size. It neither touches nor re-owns the sample store, the M-3 scope or the ratchet.);
    - P23B.7's unstarted follow-ups stay named, not silently dropped: the snapshot guard's documented
      limits and the bounded heap-retention follow-up (no redesign proposed).
 3. P23B.1 harvest review and the P23B.2 ACCEPT/PART-RETURN evidence decision remain open and separate;
@@ -608,7 +643,7 @@ P23B.11 closed step records (S1 profile · S3 short-circuits · S4 gate · S5 id
 P23B.11 LIVE measurement JSON records (S1 profile + classes · S7 profile) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 pre-P23B.8 follow-up decision doc (owner decisions 2026-09-27; M1 + R1 ratified scope; queued items + condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
 pre-P23B.8 follow-up records + plan (RATIFIED, EXECUTED and CLOSED 2026-09-27 — M1 session record · S2 Chrome leg · S3 Electron leg + pair tables · R1 ranking · acceptance + preservation record; executed head `b6f2203b`, evidence anchor `58a139f2`) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/
-pre-P23B.8 follow-up captures, COMMITTED as single-line JSON (cited machine-readable evidence: the arms run's per-arm frame series · the restore-vs-commit split pair with the postRelease split, the presented pairing and the containment pool · the Room-label arm leg's per-class `labelArms` assignment, per-arm window rows and per-arm CPU slice · the seeded/ranked grid leg's three-arm `labelArms` rows with the signed pair `seeded-grid` − `pruned-grid`, its per-arm CPU slice and its per-class `buildsPerAction` · and the rejected first revision's leg, kept for the falsifier reading that rejected it) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with its repeat count, and the `buildsPerAction` budget beside them) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, which carries that plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory, entry time and the range of the attempt's build order it produced) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json (the priced leg: the same `labelCalls` plus `durationMs`, each call's own wall time from entry to its one exit, which is what prices the trailing pass against the same session's windows) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json (the identity leg: the same `labelCalls` plus `labelsDigest` and `memoryDigest`, which is what shows that identical grids do NOT mean identical labels) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json (the memo leg: the SAME fields with a fourth arm interleaved in every class, so each class's per-arm window rows and per-arm CPU slice price `memo-grid` against `seeded-grid`'s — the grid self time that shows the cache hit, beside the window p50s it bought)
+pre-P23B.8 follow-up captures, COMMITTED as single-line JSON (cited machine-readable evidence: the arms run's per-arm frame series · the restore-vs-commit split pair with the postRelease split, the presented pairing and the containment pool · the Room-label arm leg's per-class `labelArms` assignment, per-arm window rows and per-arm CPU slice · the seeded/ranked grid leg's three-arm `labelArms` rows with the signed pair `seeded-grid` − `pruned-grid`, its per-arm CPU slice and its per-class `buildsPerAction` · and the rejected first revision's leg, kept for the falsifier reading that rejected it) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with its repeat count, and the `buildsPerAction` budget beside them) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, which carries that plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory, entry time and the range of the attempt's build order it produced) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json (the priced leg: the same `labelCalls` plus `durationMs`, each call's own wall time from entry to its one exit, which is what prices the trailing pass against the same session's windows) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json (the identity leg: the same `labelCalls` plus `labelsDigest` and `memoryDigest`, which is what shows that identical grids do NOT mean identical labels) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json (the memo leg: the SAME fields with a fourth arm interleaved in every class, so each class's per-arm window rows and per-arm CPU slice price the then-DEV `memo-grid` against `seeded-grid`'s — the grid self time that shows the cache hit, beside the window p50s it bought) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json (the promotion leg: the same shape with the cache SHIPPED, so `seeded-grid` is the shipped path and the fourth arm is `no-memo-grid`, the bypass — its per-arm CPU slice is what shows the grid work disappearing, and its per-arm window rows are what the cache's own price is read from)
 pre-P23B.8 follow-up M1 LEG captures, RETAINED BUT DELIBERATELY NOT COMMITTED (two exact root-.gitignore paths: ~40k pretty-printed lines each = 59,335 of the slice's 63,588 added PR lines, so they stay out of the PR; every quoted row is in the records and the S2/S3 runner commands regenerate them) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-electron-leg.json
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md
