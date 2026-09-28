@@ -459,9 +459,24 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
    31.7 % share of that window) before its own cost. That is not a local concern of the placer, and the
    trailing second pass reads like the PLAN BEING PLANNED MORE THAN ONCE PER SETTLE, which would make a
    cache the wrong tool — both are the class of change this thread stops and asks about.
-   THE QUESTION HANDED OVER: name that second pass with one more DEV-only census — `placeRoomLabels` calls
-   per accepted action, Rooms per call, `reason` per call — and let it choose between REMOVING THE
-   REDUNDANCY AT ITS SOURCE and PAYING FOR A CACHE. No product code changes for the census.
+   AND THEN THE CENSUS WAS RUN, SAME SESSION, SAME DEV-ONLY PATTERN (no product code changed): one record per
+   `placeRoomLabels` call — the Rooms it was handed, its `reason`, whether it got the sticky `memory`, its entry
+   time, and the range of the attempt's build order it produced — so every repeat is attributed to the call that
+   built it. SECOND LEG: 479 accepted actions, 2,692 calls (5.62 per call), 14,388 builds with 4,084 repeats
+   (28.4 %; the same instrument read 29.8 % in the first leg, and that gap IS the reproducibility bound).
+   THE PASS IS NAMED: 100 % of repeats come from calls AFTER the action's first, the first call of every action
+   repeats NOTHING, and ALL 479 actions end with a `lod` call that built a grid for every Room and was 100 %
+   repeats. The shape is identical in all 19 classes — a live `lod` pass, the gesture frames in `frozen` (which
+   build TEN grids across 965 calls, i.e. the placer ALREADY knows how to say "unchanged, do not rebuild"), a
+   `geometry` pass that re-optimises after the settle, and then that trailing `lod` pass 14–36 ms later over
+   BYTE-IDENTICAL inputs. So the redundancy is NOT scattered repeats: it is ONE EXTRA PLANNING PASS per accepted
+   action, on inputs the pass before it had already planned. WHAT THAT SETTLES AND WHAT IT DOES NOT: the GRID half
+   is proven from the capture (3,991 builds whose inputs were byte-identical to those of the pass 14–36 ms
+   earlier); the PLACEMENT half is NOT — the capture cannot see whether that pass's placement differed from the
+   one before it, nor whether its consumer needs a placement of its own at all. THAT is the choice now on the
+   table and it is NOT taken here: classify the trailing pass as unchanged (how the Plan decides a label layer
+   is stale — a render-path change) or give the placer a result-level memo (cross-call state keyed by a shipped
+   input hash). Still NO memo, NO cache and NO key in the product path.
    Record → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md.
    COMMITTED 2026-09-28 — the working tree every block above was written on has LANDED as a commit
    series on this branch — the three that carried the work, plus the follow-up commit that recorded
@@ -477,7 +492,9 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
    reads them (the shipped engine and the rejected first revision, both committed as folded single-line
    captures). Added for the repeat-rate pass above: `27396240` the DEV-only build keys and the arrival-order
    sequence, with the record plumbing, the page/driver wiring and their tests; and `572a6a7d` the leg's
-   folded capture with the record that reads it. The "NOT committed"
+   folded capture with the record that reads it; `d17cc500` the DEV-only call census that attributes every
+   repeat to the call that built it, and `acb0754f` the second leg's folded capture with the record that names
+   the trailing pass. The "NOT committed"
    wording inside those blocks is the state at the time each was written and is kept as provenance,
    never as status; the only things that stay deliberately uncommitted are the two 2026-09-27 M1 leg
    captures (gitignored at two exact paths for their ~40k-line size). Nothing was pushed and no PR was
@@ -518,7 +535,7 @@ P23B.11 closed step records (S1 profile · S3 short-circuits · S4 gate · S5 id
 P23B.11 LIVE measurement JSON records (S1 profile + classes · S7 profile) → ../roadmap/p23b-geometry-performance/p23b.11-wall-chain-release-delay/
 pre-P23B.8 follow-up decision doc (owner decisions 2026-09-27; M1 + R1 ratified scope; queued items + condition) → ../roadmap/p23b-geometry-performance/2026-09-27-pre-P23B.8-follow-up-decisions.md
 pre-P23B.8 follow-up records + plan (RATIFIED, EXECUTED and CLOSED 2026-09-27 — M1 session record · S2 Chrome leg · S3 Electron leg + pair tables · R1 ranking · acceptance + preservation record; executed head `b6f2203b`, evidence anchor `58a139f2`) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/
-pre-P23B.8 follow-up captures, COMMITTED as single-line JSON (cited machine-readable evidence: the arms run's per-arm frame series · the restore-vs-commit split pair with the postRelease split, the presented pairing and the containment pool · the Room-label arm leg's per-class `labelArms` assignment, per-arm window rows and per-arm CPU slice · the seeded/ranked grid leg's three-arm `labelArms` rows with the signed pair `seeded-grid` − `pruned-grid`, its per-arm CPU slice and its per-class `buildsPerAction` · and the rejected first revision's leg, kept for the falsifier reading that rejected it) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with its repeat count, and the `buildsPerAction` budget beside them)
+pre-P23B.8 follow-up captures, COMMITTED as single-line JSON (cited machine-readable evidence: the arms run's per-arm frame series · the restore-vs-commit split pair with the postRelease split, the presented pairing and the containment pool · the Room-label arm leg's per-class `labelArms` assignment, per-arm window rows and per-arm CPU slice · the seeded/ranked grid leg's three-arm `labelArms` rows with the signed pair `seeded-grid` − `pruned-grid`, its per-arm CPU slice and its per-class `buildsPerAction` · and the rejected first revision's leg, kept for the falsifier reading that rejected it) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with its repeat count, and the `buildsPerAction` budget beside them) · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, which carries that plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory, entry time and the range of the attempt's build order it produced)
 pre-P23B.8 follow-up M1 LEG captures, RETAINED BUT DELIBERATELY NOT COMMITTED (two exact root-.gitignore paths: ~40k pretty-printed lines each = 59,335 of the slice's 63,588 added PR lines, so they stay out of the PR; every quoted row is in the records and the S2/S3 runner commands regenerate them) → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-chrome-leg.json · ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-electron-leg.json
 docs startup boundary · update rules · skills → ../README.md
 test contract + concrete commands → ../../apps/editor/tests/README.md

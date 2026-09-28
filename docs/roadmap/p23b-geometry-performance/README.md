@@ -737,12 +737,22 @@ so: this is a rate, and every fixture repeats. **No memo, no cache and no key re
 nothing the editor does changed. What the number justifies — a cache outliving one `placeRoomLabels` call,
 sized by the Room count, keyed by a hash shipped into the product, correct only while that hash covers every
 grid input the grid ever grows, ceiling ≈**9 %** of the all-curved `bend` window — is not a local concern of
-the placer, and the trailing second pass reads like the Plan being planned more than once per settle, which
-would make a cache the wrong tool. **Handed over, not decided here:** one more DEV-only census to name that
-second pass (placer calls per accepted action, Rooms per call, `reason` per call), then choose between
-removing the redundancy at its source and paying for a cache.
-Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json.
+the placer. **The census then named the pass, in the same session, DEV-only, with no product code changed:** a
+second leg records one entry per `placeRoomLabels` call — Rooms, `reason`, memory, entry time, and the range of
+the attempt's build order it produced — giving 479 actions, **2,692 calls (5.62 per action)** and **14,388
+builds with 4,084 repeats (28.4 %** against the first leg's 29.8 %, which is the reproducibility bound). **100 %
+of the repeats come from calls after the action's first, the first call of every action repeats nothing, and all
+479 actions end with a `lod` call that built a grid for every Room and was 100 % repeats.** The shape is
+identical in all 19 classes: a live `lod` pass, the gesture frames in `frozen` (**ten grids across 965 calls** —
+the placer already knows how to say *unchanged, do not rebuild*), a `geometry` pass that re-optimises the settle,
+then that trailing `lod` pass **14–36 ms later over byte-identical inputs**. So the redundancy is one extra
+**planning pass** per accepted action, not scattered repeats — and the grid half is proven while the placement
+half is not. **On the table, not taken:** classify the trailing pass as unchanged (how the Plan decides a label
+layer is stale — a render-path change) or give the placer a result-level memo (cross-call state keyed by a
+shipped input hash). Still **no memo, no cache and no key in the product path**.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
@@ -854,7 +864,11 @@ child plans and execution status →
     revision's leg, kept because its straight-fixture reading is what made the falsifier discriminating) ·
   ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every
     recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with
-    its repeat count, and the `buildsPerAction` budget beside them)
+    its repeat count, and the `buildsPerAction` budget beside them) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, carrying the
+    same plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory,
+    entry time and the range of the attempt's build order it produced — which is what attributes each repeat
+    to the call that built it)
   · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
   ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
   pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
