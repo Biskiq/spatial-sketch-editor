@@ -363,12 +363,20 @@ export type P23BM1RecordedRoomLabelCall = P23BM1RoomLabelCall & {
 	buildStart: number;
 	/** How many grids this call built. */
 	builds: number;
+	/**
+	 * The call's own wall time, from its entry to its single exit — the whole pass, i.e.
+	 * its grid builds AND the placement work around them. `null` when the run recorded the
+	 * entry but no exit, which reads as NOT MEASURED rather than as free.
+	 */
+	durationMs: number | null;
 };
 
 let callSites: P23BM1RoomLabelCall[] = [];
 /** `gridBuilds` at the moment each recorded call started, which is what makes builds
  * attributable per call without the placer having to count its own. */
 let callBuildStarts: number[] = [];
+/** Each call's own wall time, filled in by its exit. */
+let callDurations: (number | null)[] = [];
 
 /**
  * The one call per `placeRoomLabels` invocation this module accepts. It is a DEV-only
@@ -379,6 +387,22 @@ export function p23bM1RecordRoomLabelCall(call: P23BM1RoomLabelCall): void {
 	if (!p23bM1RoomLabelArmEnabled()) return;
 	callSites.push(call);
 	callBuildStarts.push(gridBuilds);
+	callDurations.push(null);
+}
+
+/**
+ * The other half of the same recording, taken at the call's ONE exit: the pass's own wall
+ * time. Counting the grids a pass built says what part of it is redundant at the grid
+ * level; timing the whole pass says what the redundancy is WORTH, placement included —
+ * which is the number a fix has to beat, and the one the keys cannot see. Same gate, same
+ * no-return contract: with the instrument off this is one boolean and an early return.
+ */
+export function p23bM1EndRoomLabelCall(): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	const index = callSites.length - 1;
+	const call = callSites[index];
+	if (!call) return;
+	callDurations[index] = (typeof performance === 'undefined' ? 0 : performance.now()) - call.at;
 }
 
 /**
@@ -390,7 +414,12 @@ function recordedCalls(): P23BM1RecordedRoomLabelCall[] {
 	return callSites.map((call, index) => {
 		const buildStart = callBuildStarts[index] ?? 0;
 		const buildEnd = index + 1 < callBuildStarts.length ? (callBuildStarts[index + 1] ?? 0) : gridBuilds;
-		return { ...call, buildStart, builds: Math.max(0, buildEnd - buildStart) };
+		return {
+			...call,
+			buildStart,
+			builds: Math.max(0, buildEnd - buildStart),
+			durationMs: callDurations[index] ?? null
+		};
 	});
 }
 
@@ -409,6 +438,7 @@ export function setP23bM1RoomLabelArm(
 	attemptKeyOrdinals = [];
 	callSites = [];
 	callBuildStarts = [];
+	callDurations = [];
 	attemptContext = context ?? null;
 	const globals = globalThis as ArmGlobals;
 	if (arm === null) delete globals.__P23B_M1_ROOM_LABEL_ARM__;
@@ -462,6 +492,7 @@ export function p23bM1ResetActionLabelArms(): void {
 	attemptKeyOrdinals = [];
 	callSites = [];
 	callBuildStarts = [];
+	callDurations = [];
 	attemptContext = null;
 	classKeys = new Map();
 }

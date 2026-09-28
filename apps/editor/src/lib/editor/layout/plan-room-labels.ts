@@ -28,7 +28,11 @@ import {
 	worldToPlanScreen,
 	type PlanViewportState
 } from './layout-plan-transform';
-import { p23bM1RecordRoomLabelCall, p23bM1RoomLabelArm } from './p23b-m1-room-label-arm';
+import {
+	p23bM1EndRoomLabelCall,
+	p23bM1RecordRoomLabelCall,
+	p23bM1RoomLabelArm
+} from './p23b-m1-room-label-arm';
 
 /** The three text roles of a Room label stack, in display order. */
 export type TextMeasureStyle = 'room-name' | 'room-reference' | 'room-area';
@@ -1633,6 +1637,10 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 	for (const roomId of [...memory.keys()]) {
 		if (!liveRoomIds.has(roomId)) memory.delete(roomId);
 	}
+	// The other half of this call's recording, taken here because this is the pass's ONE
+	// exit: it prices the whole pass — its grid builds and the placement work around them —
+	// which is what a fix has to beat. Returns nothing, same as the entry.
+	p23bM1EndRoomLabelCall();
 	return { labels, readout, memory };
 }
 

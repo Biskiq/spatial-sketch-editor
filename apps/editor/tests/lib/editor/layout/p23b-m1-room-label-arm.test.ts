@@ -271,8 +271,28 @@ describe('M1 room-label arm — the grid-build key', () => {
 		p23bM1RecordRoomLabelCall({ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2 });
 		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 5, 'seeded-grid');
 		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend').at(-1)?.calls).toEqual([
-			{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2, buildStart: 0, builds: 0 }
+			{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2, buildStart: 0, builds: 0, durationMs: null }
 		]);
+	});
+
+	it('prices the pass: a placement records its entry and its own wall time at the one exit', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const result = placeRoomLabels({
+			rooms: [ring('room-a', 3, 64)],
+			planView: view(),
+			measure: APPROXIMATE_TEXT_MEASURE
+		});
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 8, 'seeded-grid');
+		const record = p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend')[0];
+		// The pass really ran (it placed something and built a grid), and the census holds
+		// ONE entry for it: what it was handed, and how long it took end to end.
+		expect(result.labels.length).toBeGreaterThan(0);
+		expect(record?.calls).toHaveLength(1);
+		expect(record?.calls[0]?.rooms).toBe(1);
+		expect(record?.calls[0]?.reason).toBe('lod');
+		expect(record?.calls[0]?.builds).toBeGreaterThan(0);
+		expect(typeof record?.calls[0]?.durationMs).toBe('number');
+		expect(record?.calls[0]?.durationMs ?? -1).toBeGreaterThanOrEqual(0);
 	});
 
 	it('keys a grid by its INPUTS, to the last bit, and not by the objects they arrived in', () => {
