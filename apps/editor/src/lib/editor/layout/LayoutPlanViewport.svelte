@@ -92,6 +92,7 @@
 		commitLayoutRoomEdit,
 		previewLayoutRoomUnit,
 		previewWallFirstRoomMove,
+		previewWallFirstRoomRotation,
 		wallFirstRoomMoveEligibility,
 		deleteLayoutObject,
 		deleteLayoutWallInteriorAnchor,
@@ -243,7 +244,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	type PlanControlCandidate,
 	type PlanControlKind
 } from './plan-acquisition';
-	import { layoutRoomUnitPivot } from './layout-room-transform';
+	import { layoutPolygonCentroid, layoutRoomUnitPivot } from './layout-room-transform';
 	import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
 	import type { PlanCurveControlCandidate } from './plan-hit';
 	import type { PlanHitIdentity } from '$lib/layout/plan-render-model';
@@ -283,7 +284,9 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		withLayoutSnapFeedback,
 		withPlanObjectRotationHandle,
 		withPlanSceneRotationHandle,
-		yawFeedbackText
+		withRoomUnitMoveIntent,
+		yawFeedbackText,
+		type LayoutRoomUnitMoveIntent
 	} from './plan-overlays';
 	import {
 		createWallFirstArchitectureVerdictScope,
@@ -308,6 +311,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		transientArchitectureEdit,
 		type LayoutTransientArchitectureEdit
 	} from './layout-transient-edit';
+	import {
+		transientRoomUnitMove,
+		transientRoomUnitRotation,
+		type LayoutTransientRoomUnitMove
+	} from './layout-transient-room-unit';
+	import { p23bM1RoomDragArm } from './p23b-m1-room-drag-arm';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
 	import { planCameraProjectionForProject } from './plan-camera-projection';
 	import PlanSvg from './PlanSvg.svelte';
@@ -662,6 +671,19 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	let architectureEditTransient = $state.raw<LayoutTransientArchitectureEdit | null>(null);
 	/**
+	 * Pre-P23B.8 follow-up (whole-Room drag slice) — the live whole-Room attempt,
+	 * derived once per pointermove from the frozen baseline and cleared with the
+	 * gesture.
+	 *
+	 * Before this, the drag re-derived, compiled and installed the whole document
+	 * on every move. The release has always re-derived from the RELEASE coordinate,
+	 * so every one of those installs was preview-only and discarded; nothing is
+	 * installed now, and `preview.project` keeps describing the baseline for the
+	 * whole gesture. Never document truth, never history, never an acceptance
+	 * signal.
+	 */
+	let roomUnitMoveTransient = $state.raw<LayoutTransientRoomUnitMove | null>(null);
+	/**
 	 * P23.13 S8 / §6 — the persisted refusal: a refused release's own mark, kept on
 	 * the drawing for the bounded-feedback lifetime instead of vanishing with the
 	 * drag that produced it. Bounded feedback is its own lifetime (§2), so it is
@@ -914,6 +936,17 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 */
 	function architectureEditBaselineDocument(): LayoutDocumentWallFirst | null {
 		const layout = architectureEditSnapshot?.project.layout;
+		if (!layout || !('formatVersion' in layout)) return null;
+		return layout as unknown as LayoutDocumentWallFirst;
+	}
+
+	/**
+	 * The whole-Room gesture's frozen baseline document — the same snapshot the
+	 * release restores from and the release planner is called against, never the
+	 * live preview.
+	 */
+	function roomUnitBaselineDocument(): LayoutDocumentWallFirst | null {
+		const layout = roomUnitSnapshot?.project.layout;
 		if (!layout || !('formatVersion' in layout)) return null;
 		return layout as unknown as LayoutDocumentWallFirst;
 	}
@@ -1875,8 +1908,25 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 	 * position/ink/opacity (nothing was installed), the refused attempt is gone
 	 * with its gesture, and what stays is the mark and the planner's own reason.
 	 */
+	/**
+	 * The live whole-Room attempt as a Plan overlay intent. Composed here (not in
+	 * the projection builder) because it is transient gesture presentation, like
+	 * the direct-edit intent above it: the committed drawing is untouched.
+	 */
+	const roomUnitMoveIntent = $derived<LayoutRoomUnitMoveIntent | null>(
+		roomUnitMoveTransient
+			? {
+					kind: 'room-unit-move',
+					walls: roomUnitMoveTransient.walls,
+					rooms: roomUnitMoveTransient.rooms
+				}
+			: null
+	);
 	const interactionProjection = $derived(
-		withPlanRefusalAnnotation(architectureEditProjection, activePlanRefusal)
+		withPlanRefusalAnnotation(
+			withRoomUnitMoveIntent(architectureEditProjection, roomUnitMoveIntent),
+			activePlanRefusal
+		)
 	);
 	const planModel = $derived(
 		p2311Measure('plan-render-model', () => buildPlanRenderModel(preview.geometry, cameraProjection, interactionProjection, sceneProjection))
@@ -2189,6 +2239,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		pendingWallBend = null;
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
+		roomUnitMoveTransient = null;
 		architectureEditSnapshot = null;
 		// P23B.5 M-3 — this path bypasses `finishArchitectureEditGesture`, so the
 		// gesture scope is released here too.
@@ -2760,6 +2811,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		cancelLayoutWallOpeningDrag(interaction);
 		dragSnapshot = null;
 		roomUnitSnapshot = null;
+		roomUnitMoveTransient = null;
 		rotationHoverScreen = null;
 		pointerId = null;
 	}
@@ -2778,11 +2830,12 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		mode: 'translate' | 'rotate',
 		point: LayoutVec2,
 		pivot: LayoutVec2,
-		groupRoomIds: readonly string[] = []
+		groupRoomIds: readonly string[] = [],
+		unit?: { wallIds: readonly string[]; junctionIds: readonly string[] }
 	): boolean {
 		if (!svgElement || !onLayoutTransactionBegin()) return false;
 		roomUnitSnapshot = captureLayoutPreviewSnapshot(preview);
-		beginLayoutRoomUnitDrag(interaction, roomId, mode, point, pivot, groupRoomIds);
+		beginLayoutRoomUnitDrag(interaction, roomId, mode, point, pivot, groupRoomIds, unit);
 		pointerId = event.pointerId;
 		svgElement.setPointerCapture(event.pointerId);
 		return true;
@@ -2794,6 +2847,37 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		if (!room) return null;
 		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
 		return handle && distance(handle, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX ? room : null;
+	}
+
+	/**
+	 * Pre-P23B.8 follow-up — the WALL-FIRST rotation handle's target Room, or `null`.
+	 *
+	 * The projection paints the arm and handle for a selected Room in either
+	 * document kind (P23.14 Decision 7 reversed); this is the hit test that turns
+	 * the same painted handle into a gesture, read off the same screen point the
+	 * hover state uses so what is hovered and what is hit cannot disagree. Whether
+	 * the unit may actually travel is the pointer-down caller's question, answered
+	 * by the shared isolation policy — the handle is an OFFER, like the move
+	 * gesture's own.
+	 */
+	function wallFirstRotationHandleHit(screen: LayoutVec2): string | null {
+		if (interaction.tool !== 'select') return null;
+		if (interaction.selection.kind !== 'room') return null;
+		const roomId = interaction.selection.roomId;
+		if (!wallFirstLayoutDocument()?.rooms.some((room) => room.id === roomId)) return null;
+		const handle = rotationHandleScreenPoint(interaction.planView, interactionProjection);
+		return handle && distance(handle, screen) <= LAYOUT_PLAN_HIT_RADIUS_PX ? roomId : null;
+	}
+
+	/**
+	 * The pivot a wall-first Room rotates about: the area-weighted centroid of its
+	 * COMPILED outline, through the same centroid rule the legacy Room-unit pivot
+	 * uses. A Room with no compiled outline has no pivot and therefore no gesture.
+	 */
+	function wallFirstRoomUnitPivot(roomId: string): LayoutVec2 | null {
+		const room = preview.geometry.rooms.find((entry) => entry.roomId === roomId);
+		if (!room || room.floorPolygon.length === 0) return null;
+		return layoutPolygonCentroid(room.floorPolygon);
 	}
 
 	/** Canonical wall-first Layout document, or null when the preview is legacy. */
@@ -3155,6 +3239,36 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				beginRoomUnitDrag(event, rotationRoom.id, 'rotate', point, layoutRoomUnitPivot(rotationRoom))
 			)
 				return;
+			// Pre-P23B.8 follow-up — the WALL-FIRST Room unit's rotation gesture
+			// (P23.14 Decision 7 reversed on the owner's direction). The rotatable unit
+			// is the same connected Room group the move gesture uses, resolved here ONCE
+			// through the planner's own isolation policy and frozen for the gesture; an
+			// ineligible Room hints and opens no transaction, exactly as the move path
+			// does.
+			const wallFirstRotationRoomId = wallFirstRotationHandleHit(screen);
+			if (wallFirstRotationRoomId) {
+				const pivot = wallFirstRoomUnitPivot(wallFirstRotationRoomId);
+				const eligibility = wallFirstRoomMoveEligibility(preview, wallFirstRotationRoomId);
+				if (pivot && eligibility.movable) {
+					beginRoomUnitDrag(
+						event,
+						wallFirstRotationRoomId,
+						'rotate',
+						point,
+						pivot,
+						eligibility.subgraph.roomIds,
+						{
+							wallIds: eligibility.subgraph.wallIds,
+							junctionIds: eligibility.subgraph.junctionIds
+						}
+					);
+					return;
+				}
+				if (!eligibility.movable) {
+					preview.statusMessage = eligibility.hint;
+					return;
+				}
+			}
 		}
 
 		if (interaction.tool === 'rectangle') {
@@ -3487,7 +3601,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				'translate',
 				point,
 				point,
-				eligibility.subgraph.roomIds
+				// The frozen moving set. It is resolved HERE, once, through the planner's
+				// own isolation policy, so no pointermove ever resolves it again.
+				eligibility.subgraph.roomIds,
+				{
+					wallIds: eligibility.subgraph.wallIds,
+					junctionIds: eligibility.subgraph.junctionIds
+				}
 			);
 		}
 	}
@@ -3738,20 +3858,66 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				event.shiftKey
 			);
 			const drag = interaction.roomUnitDrag;
-			// Every candidate is derived from the immutable gesture baseline, and
-			// its validity is recorded on the session (never inferred at release).
-			restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+			// Pre-P23B.8 follow-up — the wall-first Room unit keeps the canonical
+			// baseline installed and draws a transient ATTEMPT instead of
+			// re-deriving, compiling and installing the whole document per move.
+			// What commits is unchanged: the release below still re-derives from the
+			// RELEASE coordinate against the frozen baseline, so the removed installs
+			// were preview-only. Nothing here validates, accepts, compiles or writes
+			// history, and the drag session carries no presentation-only validity flag
+			// (there is no per-move planner verdict to record).
 			if (wallFirstLayoutDocument()) {
-				const result = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
-				drag.candidateValid = result.success;
-				if (!result.success) preview.statusMessage = result.message;
+				// Pre-P23B.8 follow-up §P5 — the M1 BEFORE arm. DEV-only and unreadable
+				// unless the measurement switch is on (`p23bM1RoomDragArm` returns
+				// `transient` otherwise), because it deliberately re-runs the per-move
+				// planner call this change removed. It is off in every ordinary run and
+				// in production; it exists so the before/after can be taken in ONE
+				// session without a pre-change tree. What commits is identical: the
+				// release below re-derives from the release coordinate against the
+				// frozen baseline and writes one history entry.
+				// The arm models the TRANSLATION change only: rotation has no per-move
+				// install to restore (there was no reachable rotation gesture to measure
+				// before this pass), so a rotate drag always takes the transient route
+				// below on both arms.
+				if (drag.mode === 'translate' && p23bM1RoomDragArm() === 'per-move') {
+					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
+					const armResult = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
+					if (!armResult.success) preview.statusMessage = armResult.message;
+					return;
+				}
+				// The moving set frozen at pointer-down, or `null` when this drag did
+				// not carry one (then there is no honest attempt to draw).
+				const frozenUnit =
+					drag.unitWallIds.length > 0
+						? { wallIds: drag.unitWallIds, junctionIds: drag.unitJunctionIds }
+						: null;
+				roomUnitMoveTransient =
+					drag.mode === 'rotate'
+						? transientRoomUnitRotation({
+								baseline: roomUnitBaselineDocument(),
+								unit: frozenUnit,
+								pivot: drag.pivot,
+								yaw: drag.yaw,
+								geometry: roomUnitSnapshot?.geometry ?? null,
+								roomIds: drag.groupRoomIds
+							})
+						: transientRoomUnitMove({
+								baseline: roomUnitBaselineDocument(),
+								unit: frozenUnit,
+								delta: drag.translation,
+								geometry: roomUnitSnapshot?.geometry ?? null,
+								roomIds: drag.groupRoomIds
+							});
 				return;
 			}
+			// The legacy Room-unit path keeps its per-move installer: its release
+			// commits the LAST PREVIEWED candidate rather than re-deriving, so a
+			// transient attempt there would change what commits.
+			restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
 			const result = previewLayoutRoomUnit(preview, drag.roomId, {
 				translation: drag.translation,
 				yaw: drag.yaw
 			});
-			drag.candidateValid = result.success;
 			if (!result.success) preview.statusMessage = result.message;
 			return;
 		}
@@ -4043,10 +4209,20 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 						interaction.planView.angleSnapEnabled,
 						event.shiftKey
 					);
-					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-					const finalResult = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
+					// A transient drag installs nothing, so the baseline is already the
+					// installed document: the guard skips a full reactive write (and
+					// project clone) of a document that never changed, while a path that
+					// did install still restores. The one canonical planner call below is
+					// unchanged: the RELEASE coordinate, against the frozen baseline.
+					restoreTransientArchitectureBaseline(preview, roomUnitSnapshot);
+					// ONE canonical planner call at the release coordinate, against the
+					// frozen baseline — the same rule for both rigid motions: a translation
+					// re-derives the release DELTA, a rotation re-derives the release ANGLE.
+					const finalResult =
+						drag.mode === 'rotate'
+							? previewWallFirstRoomRotation(preview, drag.roomId, drag.pivot, drag.yaw)
+							: previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
 					valid = finalResult.success;
-					drag.candidateValid = valid;
 					if (finalResult.success) movedRoomIds = finalResult.movedRoomIds;
 					else if (finalResult.code !== 'no_op') rejectionMessage = finalResult.message;
 				} else {
@@ -4058,7 +4234,13 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 					if (changed) {
 						const movedCount = movedRoomIds?.length ?? 1;
 						preview.statusMessage =
-							movedCount > 1 ? `Moved ${movedCount} rooms` : 'Moved room';
+							drag.mode === 'rotate'
+								? movedCount > 1
+									? `Rotated ${movedCount} rooms`
+									: 'Rotated room'
+								: movedCount > 1
+									? `Moved ${movedCount} rooms`
+									: 'Moved room';
 					}
 				} else {
 					p23bClassifyGestureOutcome('rejected');
@@ -4073,6 +4255,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			}
 			cancelLayoutRoomUnitDrag(interaction);
 			roomUnitSnapshot = null;
+			roomUnitMoveTransient = null;
 			rotationHoverScreen = null;
 			pointerId = null;
 			svgElement?.releasePointerCapture(event.pointerId);
@@ -4190,6 +4373,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			onLayoutTransactionCancel();
 			cancelLayoutRoomUnitDrag(interaction);
 			roomUnitSnapshot = null;
+			roomUnitMoveTransient = null;
 			rotationHoverScreen = null;
 			pointerId = null;
 		}
@@ -5587,6 +5771,7 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 				onLayoutTransactionCancel();
 				cancelLayoutRoomUnitDrag(interaction);
 				roomUnitSnapshot = null;
+				roomUnitMoveTransient = null;
 				rotationHoverScreen = null;
 				pointerId = null;
 				return;

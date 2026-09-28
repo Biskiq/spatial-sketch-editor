@@ -257,7 +257,6 @@ function moveRoomUnitDrag(
 	);
 	restoreLayoutPreviewSnapshot(layoutPreview, context.snapshot);
 	const result = previewWallFirstRoomMove(layoutPreview, drag.roomId, drag.translation);
-	drag.candidateValid = result.success;
 	return result;
 }
 
@@ -278,7 +277,6 @@ function releaseRoomUnitDrag(
 	);
 	restoreLayoutPreviewSnapshot(layoutPreview, context.snapshot);
 	const result = previewWallFirstRoomMove(layoutPreview, drag.roomId, drag.translation);
-	drag.candidateValid = result.success;
 	let kind: 'committed' | 'cancelled' = 'cancelled';
 	if (result.success) {
 		const changed = store.commitLayoutTransaction(captureLayoutPreviewSnapshot(layoutPreview));
@@ -611,23 +609,25 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 		expect(point(context, 'j-e1')).toEqual([8, 20]);
 	});
 
-	it('tracks candidate validity on the transient drag session only', () => {
+	it('carries no presentation-only candidate-validity flag on the drag session', () => {
 		const context = makeStore();
 		const { layoutInteraction } = context;
 		expect(startRoomUnitDrag(context, 'room-1')).toBe(true);
 		const drag = layoutInteraction.roomUnitDrag!;
-		expect(drag.candidateValid).toBe(false);
 
+		// Pre-P23B.8 follow-up — `candidateValid` was a per-move planner verdict that
+		// NO production renderer ever read, and a transient drag has no per-move
+		// planner call to consult. It is deleted rather than left written-and-unread,
+		// so the session must add no such field.
+		expect('candidateValid' in drag).toBe(false);
+		expect(Object.keys(drag)).not.toContain('candidateValid');
+
+		// The verdict is the planner result for the coordinate it was asked about and
+		// nothing else: a valid move succeeds, a non-finite one refuses.
 		expect(moveRoomUnitDrag(context, [12, 0]).success).toBe(true);
-		expect(drag.candidateValid).toBe(true);
-
-		// Any later update resets validity before the adapter re-resolves it. (The
-		// refusal is the reachable one for a live drag since S5; see the invalid-release
-		// case above.)
 		expect(moveRoomUnitDrag(context, [Number.NaN, 0]).success).toBe(false);
-		expect(drag.candidateValid).toBe(false);
 		cancelRoomUnitDrag(context);
-		// The transient flag never leaks into the undo snapshot.
+		// No such flag can leak into an undo snapshot either.
 		expect(JSON.stringify(live(context))).not.toContain('candidateValid');
 	});
 });
@@ -637,7 +637,7 @@ describe('P23.6a gesture — history, cancel and release semantics', () => {
 // ---------------------------------------------------------------------------
 
 describe('P23.6a amendment A — group move presentation', () => {
-	it('highlights every member Room while a group drag is live', () => {
+	it('draws no baseline-anchored group bounds while a group drag is live', () => {
 		const context = makeStore(twoRoomDocument());
 		expect(startRoomUnitDrag(context, 'room-left')).toBe(true);
 
@@ -647,16 +647,19 @@ describe('P23.6a amendment A — group move presentation', () => {
 			[],
 			model
 		);
-		const groupBounds = projection.selection.filter(
+		// Pre-P23B.8 follow-up — the per-member `selection-bounds` highlight was read
+		// off the INSTALLED model, so under the transient contract it stopped following
+		// the pointer. It is deleted rather than left as a stationary decoy. With no
+		// legacy Room registry passed, the selection's own bounds cannot appear either,
+		// so every member highlight this assertion could see must be the deleted one:
+		// re-adding the block would make this 2 again. The moving unit is drawn by the
+		// gesture's own attempt (`withRoomUnitMoveIntent`, covered in
+		// layout-transient-room-unit.test.ts).
+		const bounds = projection.selection.filter(
 			(primitive) => primitive.style === 'selection-bounds'
 		);
-		expect(groupBounds).toHaveLength(2);
-		const polygons = groupBounds.flatMap((primitive) =>
-			primitive.kind === 'polygon' ? [primitive.points] : []
-		);
-		expect(polygons).toHaveLength(2);
-		// Both 4×4 enclosures are highlighted, not just the dragged one.
-		for (const points of polygons) expect(points).toHaveLength(4);
+		expect(bounds.some((primitive) => primitive.key.includes('group-move-bounds'))).toBe(false);
+		expect(bounds).toHaveLength(0);
 		cancelRoomUnitDrag(context);
 	});
 });

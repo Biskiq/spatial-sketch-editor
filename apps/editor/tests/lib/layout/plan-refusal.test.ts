@@ -242,8 +242,12 @@ describe('P23.13 S8 refusal lifetime wiring (source contract)', () => {
 	});
 
 	it('composes the annotation over the live proposal instead of replacing it', () => {
+		// The transient chain is nested INSIDE the annotation, so the persisted
+		// refusal still composes over everything a live gesture draws — the
+		// direct-edit attempt and (pre-P23B.8 follow-up, whole-Room drag slice) the
+		// Room-unit attempt — rather than being replaced by either one.
 		expect(viewport).toContain(
-			'withPlanRefusalAnnotation(architectureEditProjection, activePlanRefusal)'
+			'withPlanRefusalAnnotation(\n\t\t\twithRoomUnitMoveIntent(architectureEditProjection, roomUnitMoveIntent),\n\t\t\tactivePlanRefusal\n\t\t)'
 		);
 	});
 });

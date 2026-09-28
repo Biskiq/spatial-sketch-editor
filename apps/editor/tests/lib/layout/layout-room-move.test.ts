@@ -17,7 +17,11 @@ import {
 	resolveIsolatedRoomGroupSubgraph,
 	resolveIsolatedRoomSubgraph
 } from '$lib/layout/layout-room-isolation';
-import { planWallFirstRoomMove, roomBoundaryCycleKey } from '$lib/layout/layout-room-move';
+import {
+	planWallFirstRoomMove,
+	planWallFirstRoomRotation,
+	roomBoundaryCycleKey
+} from '$lib/layout/layout-room-move';
 import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -815,3 +819,148 @@ function roomOf(
 	const room = document.rooms.find((candidate) => roomBoundaryCycleKey(candidate) === key);
 	return room?.id ?? 'missing';
 }
+
+/**
+ * Pre-P23B.8 follow-up — the whole-Room-unit ROTATION planner.
+ *
+ * Decision 7 was reversed on the owner's direction (2026-09-28), so a wall-first
+ * Room unit can rotate. What matters here is that the rotation is the SAME
+ * operation as the move: identical correspondence, identity assertion and
+ * canonical gates, with a rigidly rotated candidate. These tests pin the sort of
+ * thing a second rule set would get wrong — identity survival, rigidity, and the
+ * fact that the plan is derived from the frozen baseline rather than from
+ * anything a gesture accumulated.
+ */
+describe('planWallFirstRoomRotation — the same motion, rigidly rotated', () => {
+	// `isolatedRoomDocument()` is a 6×4 enclosure whose corners are (0,0), (6,0),
+	// (6,4), (0,4); its own centre is the pivot a user would grab.
+	const PIVOT: LayoutVec2 = [3, 2];
+	const QUARTER_TURN = Math.PI / 2;
+
+	/** The shipped rotation convention (core's `rotatePointAbout`). */
+	function spun(point: LayoutVec2, yaw: number): LayoutVec2 {
+		const cos = Math.cos(yaw);
+		const sin = Math.sin(yaw);
+		const x = point[0] - PIVOT[0];
+		const z = point[1] - PIVOT[1];
+		return [PIVOT[0] + x * cos + z * sin, PIVOT[1] - x * sin + z * cos];
+	}
+
+	const rounded = (value: number): number => Math.round(value * 1e9) / 1e9;
+	const pointOf = (document: LayoutDocumentWallFirst, id: string): LayoutVec2 => {
+		const junction = document.junctions.find((candidate) => candidate.id === id);
+		if (!junction) throw new Error(`missing junction ${id}`);
+		return junction.point;
+	};
+
+	it('commits one rotated document with every identity preserved', () => {
+		const baseline = isolatedRoomDocument();
+		const plan = success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN));
+
+		expect(plan.operation).toBe('room-rotate');
+		expect(plan.movedRoomId).toBe('room-1');
+		expect(plan.movedRoomIds).toEqual(['room-1']);
+		// No Room was born, retired, split or merged; ids and names survive exactly.
+		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(
+			baseline.rooms.map((room) => room.id).sort()
+		);
+		expect(plan.document.rooms[0]!.name).toBe(baseline.rooms[0]!.name);
+		// Wall identity, role, thickness and height are untouched — the rotation
+		// moves Junctions, it does not rewrite Wall records.
+		expect(plan.document.walls.map((wall) => [wall.id, wall.role, wall.thickness, wall.height])).toEqual(
+			baseline.walls.map((wall) => [wall.id, wall.role, wall.thickness, wall.height])
+		);
+		// The Room's boundary lineage is the same cycle: the key is Wall ids and
+		// directions, so an orientation-preserving motion cannot change it.
+		expect(roomBoundaryCycleKey(plan.document.rooms[0]!)).toBe(
+			roomBoundaryCycleKey(baseline.rooms[0]!)
+		);
+		// Only the unit's own boundary Walls moved: the roomless partition far to the
+		// right is not part of the resolved moving set and is never touched.
+		const isolation = resolveIsolatedRoomGroupSubgraph(baseline, 'room-1');
+		if (isolation.kind !== 'success') throw new Error(JSON.stringify(isolation));
+		expect(plan.changedWallIds).toEqual(isolation.subgraph.wallIds);
+		expect(plan.changedWallIds).not.toContain('wall-rl');
+	});
+
+	it('is rigid: every Junction is the pivot-rotation of its baseline point', () => {
+		const baseline = isolatedRoomDocument();
+		const plan = success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN));
+		const isolation = resolveIsolatedRoomGroupSubgraph(baseline, 'room-1');
+		if (isolation.kind !== 'success') throw new Error(JSON.stringify(isolation));
+		// Every MOVED Junction is the pivot-rotation of its baseline point…
+		for (const junction of baseline.junctions) {
+			const actual = pointOf(plan.document, junction.id);
+			if (!isolation.subgraph.junctionIds.includes(junction.id)) {
+				// …and a Junction outside the unit does not move at all.
+				expect(actual).toEqual(junction.point);
+				continue;
+			}
+			const expected = spun(junction.point, QUARTER_TURN);
+			expect([rounded(actual[0]), rounded(actual[1])]).toEqual([rounded(expected[0]), rounded(expected[1])]);
+		}
+		// A quarter turn of a 6×4 enclosure about its own centre lands it back on
+		// the same lattice: every Wall keeps its length exactly.
+		const length = (document: LayoutDocumentWallFirst, wallId: string): number => {
+			const wall = document.walls.find((candidate) => candidate.id === wallId)!;
+			const start = pointOf(document, wall.startJunctionId);
+			const end = pointOf(document, wall.endJunctionId);
+			return rounded(Math.hypot(end[0] - start[0], end[1] - start[1]));
+		};
+		for (const wall of baseline.walls) {
+			expect(length(plan.document, wall.id)).toBe(length(baseline, wall.id));
+		}
+	});
+
+	it('rotates an associated object with the unit and leaves an unassociated one alone', () => {
+		const baseline = isolatedRoomDocument();
+		const plan = success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN));
+		const rotated = plan.document.objects.find((object) => object.id === 'obj-1')!;
+		const original = baseline.objects.find((object) => object.id === 'obj-1')!;
+		const expected = spun([original.position[0], original.position[2]], QUARTER_TURN);
+		expect([rounded(rotated.position[0]), rounded(rotated.position[2])]).toEqual([
+			rounded(expected[0]),
+			rounded(expected[1])
+		]);
+		// Its authored height and orientation are not the unit's position.
+		expect(rotated.position[1]).toBe(original.position[1]);
+		expect(rotated.rotation).toEqual(original.rotation);
+		expect(plan.changedObjectIds).toEqual(['obj-1']);
+		expect(plan.document.objects.find((object) => object.id === 'obj-free')!.position).toEqual(
+			baseline.objects.find((object) => object.id === 'obj-free')!.position
+		);
+	});
+
+	it('plans from the frozen baseline, so asking twice cannot accumulate', () => {
+		const baseline = isolatedRoomDocument();
+		const first = success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN));
+		const second = success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN));
+		expect(JSON.stringify(second.document)).toBe(JSON.stringify(first.document));
+		// And the baseline itself is untouched.
+		expect(JSON.stringify(success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN)).document)).not.toBe(
+			JSON.stringify(baseline)
+		);
+	});
+
+	it('rejects a no-op angle, a non-finite angle or pivot, and an unknown Room', () => {
+		const baseline = isolatedRoomDocument();
+		expect(rejection(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, 0)).code).toBe('no_op');
+		expect(rejection(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, Number.NaN)).code).toBe(
+			'invalid_value'
+		);
+		expect(
+			rejection(planWallFirstRoomRotation(baseline, 'room-1', [Number.NaN, 0], QUARTER_TURN)).code
+		).toBe('invalid_value');
+		expect(
+			rejection(planWallFirstRoomRotation(baseline, 'room-none', PIVOT, QUARTER_TURN)).code
+		).toBe('unknown_room');
+	});
+
+	it('keeps the translation plan on its own operation through the shared pipeline', () => {
+		const baseline = isolatedRoomDocument();
+		expect(success(planWallFirstRoomMove(baseline, 'room-1', [12, -3])).operation).toBe('room-move');
+		expect(success(planWallFirstRoomRotation(baseline, 'room-1', PIVOT, QUARTER_TURN)).operation).toBe(
+			'room-rotate'
+		);
+	});
+});

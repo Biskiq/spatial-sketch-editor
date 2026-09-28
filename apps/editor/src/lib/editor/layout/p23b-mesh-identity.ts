@@ -45,7 +45,9 @@ export type P23BMeshIdentityPhase =
 	| 'commit-replace'
 	| 'restore'
 	| 'prebuild-hit'
-	| 'prebuild-miss';
+	| 'prebuild-miss'
+	/** One preparation's own `PreparedWallMeshSet.stats` — see {@link p2311ObserveWallMeshStats}. */
+	| 'prebuild-stats';
 
 export type P23BMeshIdentityRecord = {
 	seq: number;
@@ -58,7 +60,18 @@ export type P23BMeshIdentityRecord = {
 	sameAsLive: boolean | null;
 	lastInstallId: number | null;
 	sameAsInstall: boolean | null;
+	/**
+	 * The preparation's own accounting, on `prebuild-stats` rows only: how many
+	 * Walls were actually built this generation and how many were reused, with the
+	 * per-Wall refusal reasons when any were refused. It is the number the
+	 * `mesh-prebuild` duration beside it cannot state — a 62 ms preparation that
+	 * rebuilds 40 Walls and one that rebuilds 3 with the same input compare
+	 * nothing like each other. `null` on every other phase.
+	 */
+	stats: P23BWallMeshPreparationStats | null;
 };
+
+import type { WallMeshPreparationStats as P23BWallMeshPreparationStats } from './prepared-wall-meshes';
 
 /**
  * Room for a whole scripted capture (three fixtures, ~150 measured actions): the
@@ -136,10 +149,34 @@ export function p2311ObserveMeshIdentity(
 		liveId: hasLive ? idOf(live as object) : null,
 		sameAsLive: hasGeometry && hasLive ? geometry === live : null,
 		lastInstallId,
-		sameAsInstall: geometryId !== null ? geometryId === lastInstallId : null
+		sameAsInstall: geometryId !== null ? geometryId === lastInstallId : null,
+		stats: null
 	});
 	if (records.length > P23B_MESH_IDENTITY_LIMIT) records.shift();
 	(globalThis as { __P2311_MESH_IDENTITY__?: unknown }).__P2311_MESH_IDENTITY__ = records;
+}
+
+/**
+ * Record one preparation's own accounting, beside the identity it prepared for.
+ *
+ * THE QUESTION IT EXISTS FOR. Whole-Room preview preparation runs `mesh-prebuild`
+ * six times per accepted action at 62–70 ms, while dragging one Wall prepares once
+ * at 12.7 ms on the same fixture. The duration cannot say whether that is six full
+ * generations (the geometry genuinely differs per preview) or six preparations that
+ * ought to have been reused, so this row publishes the set's own
+ * `{ built, reused, refusedByReason }` — the accounting `prepared-wall-meshes.ts`
+ * has always computed and no record has ever shown. `built > 0` with a reason per
+ * refused Wall is a changed-input answer; `built` equal to the Wall count with no
+ * refusals is a different answer entirely, and only this row distinguishes them.
+ */
+export function p2311ObserveWallMeshStats(
+	stats: P23BWallMeshPreparationStats,
+	geometry?: unknown
+): void {
+	if (!enabled()) return;
+	p2311ObserveMeshIdentity('prebuild-stats', geometry);
+	const last = records[records.length - 1];
+	if (last) last.stats = { built: stats.built, reused: stats.reused, refusedByReason: { ...stats.refusedByReason } };
 }
 
 /** The probe's own records, for tests and for a DEV reader. */

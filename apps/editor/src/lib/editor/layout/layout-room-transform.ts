@@ -113,7 +113,16 @@ function rotateAround(point: LayoutVec2, pivot: LayoutVec2, yaw: number): Layout
 }
 
 function sampledPolygonCentroid(room: LayoutRoom): LayoutVec2 {
-	const points = roomBoundarySamples(room);
+	return layoutPolygonCentroid(roomBoundarySamples(room));
+}
+
+/**
+ * Area-weighted centroid of a polygon in document X/Z, falling back to the
+ * vertex average for a degenerate one. Exported so a WALL-FIRST Room — whose
+ * polygon comes from the compiled geometry rather than a legacy `LayoutRoom` —
+ * uses the SAME pivot rule: one centroid, wherever the polygon came from.
+ */
+export function layoutPolygonCentroid(points: readonly LayoutVec2[]): LayoutVec2 {
 	if (points.length < 3) return averagePoint(points);
 	let twiceArea = 0;
 	let x = 0;

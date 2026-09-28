@@ -38,21 +38,23 @@ export type LayoutRoomUnitDrag = LayoutRoomUnitTransform & {
 	pivot: LayoutVec2;
 	startAngle: number;
 	/**
-	 * P23.6a — did the **current** candidate resolve through the canonical
-	 * planner? Reset on every update and set from the adapter result, so a
-	 * rejected intermediate candidate can never be committed by a later release
-	 * that resolves nothing. Transient session state only: never persisted,
-	 * never part of an undo snapshot.
-	 */
-	candidateValid: boolean;
-	/**
 	 * P23.6a amendment A — every Room that travels with this drag (the connected
 	 * Room group resolved at pointer down; the dragged Room is always a member).
-	 * Presentation only: the plan overlay highlights each member so the whole
-	 * moving unit is visible before release. `[]` on the legacy Room-unit path,
-	 * which has no canonical group. Never persisted.
+	 * Presentation input only: the live attempt draws each member's moved outline
+	 * so the whole unit is visible before release. `[]` on the legacy Room-unit
+	 * path, which has no canonical group. Never persisted.
 	 */
 	groupRoomIds: readonly string[];
+	/**
+	 * Pre-P23B.8 follow-up (whole-Room drag slice) — the frozen moving set's
+	 * boundary graph, resolved by the SAME isolation policy the release planner
+	 * runs, and captured once at pointer-down so a live attempt needs no
+	 * per-pointermove re-resolution. `[]` on the legacy Room-unit path, which has
+	 * no canonical subgraph. Presentation input only: never persisted, never read
+	 * by any acceptance decision.
+	 */
+	unitWallIds: readonly string[];
+	unitJunctionIds: readonly string[];
 };
 
 export type LayoutPrimitiveDraft = {
@@ -1429,7 +1431,12 @@ export function beginLayoutRoomUnitDrag(
 	mode: 'translate' | 'rotate',
 	startWorld: LayoutVec2,
 	pivot: LayoutVec2,
-	groupRoomIds: readonly string[] = []
+	groupRoomIds: readonly string[] = [],
+	/**
+	 * The wall-first moving set the caller resolved at pointer-down (the release
+	 * planner's own isolation resolution). Omitted on the legacy path.
+	 */
+	unit?: { wallIds: readonly string[]; junctionIds: readonly string[] }
 ): void {
 	state.roomUnitDrag = {
 		roomId,
@@ -1439,8 +1446,9 @@ export function beginLayoutRoomUnitDrag(
 		startAngle: Math.atan2(startWorld[1] - pivot[1], startWorld[0] - pivot[0]),
 		translation: [0, 0],
 		yaw: 0,
-		candidateValid: false,
-		groupRoomIds: [...groupRoomIds]
+		groupRoomIds: [...groupRoomIds],
+		unitWallIds: [...(unit?.wallIds ?? [])],
+		unitJunctionIds: [...(unit?.junctionIds ?? [])]
 	};
 	state.editing = null;
 }
@@ -1454,8 +1462,6 @@ export function updateLayoutRoomUnitDrag(
 ): void {
 	const drag = state.roomUnitDrag;
 	if (!drag) return;
-	// The previous candidate was resolved against the previous pointer position.
-	drag.candidateValid = false;
 	if (drag.mode === 'translate') {
 		const target = snapEnabled ? snapToGrid(currentWorld) : currentWorld;
 		drag.translation = [target[0] - drag.startWorld[0], target[1] - drag.startWorld[1]];

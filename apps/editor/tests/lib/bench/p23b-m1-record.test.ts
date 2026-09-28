@@ -699,6 +699,33 @@ describe('M1 wiring', () => {
 			expect(body, `${file} must not import the M1 frame timing`).not.toContain('p23bM1');
 		}
 	});
+
+	it('gives the viewport exactly ONE DEV arm read, and nothing else about M1', () => {
+		// ONE DELIBERATE, NARROW EXCEPTION (pre-P23B.8 follow-up §P5). A
+		// same-session before/after needs the VIEWPORT to be able to run the path
+		// this change removed, and no page-side instrument can reach that branch. So
+		// the viewport learns exactly one thing — which arm to run — through one
+		// import and one call. This assertion is what keeps that from growing: the
+		// viewport may contain no recorder, no sampler, no observer, no registry and
+		// no direct read of the arm global, and the two counts below are pinned.
+		const viewport = fs.readFileSync(
+			path.resolve(editorRoot, 'src/lib/editor/layout/LayoutPlanViewport.svelte'),
+			'utf8'
+		);
+		for (const forbidden of [
+			'p23bM1RecordGestureFrames',
+			'p23bM1RecordActionArm',
+			'p23bM1RecordLongFrames',
+			'p23bM1ResetActionArms',
+			'createP23BGestureFrameSampler',
+			'p23bM1FrameTiming',
+			'__P23B_M1_ROOM_DRAG_ARM__'
+		]) {
+			expect(viewport, `LayoutPlanViewport must not contain ${forbidden}`).not.toContain(forbidden);
+		}
+		expect(occurrences(viewport, "from './p23b-m1-room-drag-arm'")).toBe(1);
+		expect(occurrences(viewport, 'p23bM1RoomDragArm()')).toBe(1);
+	});
 });
 
 describe('M1 record — the post-release window (restore versus commit)', () => {

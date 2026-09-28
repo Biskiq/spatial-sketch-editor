@@ -1,8 +1,4 @@
-import type {
-	CompiledLayoutGeometry,
-	CompiledPhysicalWall,
-	LayoutGeometryIssue
-} from '@portfolio/layout-core';
+import { p2311Measure, type CompiledLayoutGeometry, type CompiledPhysicalWall, type LayoutGeometryIssue } from '@portfolio/layout-core';
 import { legJoinsByWall } from '$lib/layout/layout-geometry-types';
 import {
 	buildRoomWallMesh,
@@ -238,6 +234,19 @@ export function collectPreparedWallMeshInputs(
 	return inputs;
 }
 
+/**
+ * P23B measurement-only step — the three phases of one preparation, separated.
+ *
+ * WHY. `mesh-prebuild` times the whole preparation, and the preparation's own
+ * `stats` say how many Walls were built versus reused. Whole-Room preview runs
+ * it per preview frame and a `stats` row of `{ built: 4, reused: 36 }` has been
+ * observed inside a 74–116 ms preparation — so the cost is not the four builds.
+ * These marks split what is left: collecting the per-Wall inputs (a walk of the
+ * whole compiled geometry, which the editor hands in as a `$state` proxy), the
+ * DEV structural validation over those inputs, and the per-Room mesh builds,
+ * which never cross generations. Names are additive: `mesh-prebuild` still wraps
+ * all three, so no existing row changes meaning and nothing is summed.
+ */
 function buildWallMeshesByRoom(
 	geometry: CompiledLayoutGeometry,
 	wallMeshInputsByWall: ReadonlyMap<string, PreparedWallMeshInput>,
@@ -252,21 +261,25 @@ function buildWallMeshesByRoom(
 	const stats: WallMeshPreparationStats = { built: 0, reused: 0, refusedByReason: {} };
 	const canonicalMode = geometry.walls.length > 0;
 
-	for (const room of geometry.rooms) {
-		if (room.walls.length === 0) {
-			if (!canonicalMode) {
-				const result = buildRoomWallMesh(room);
-				issues.push(...result.issues);
+	// Per-Room meshes never cross generations, so this phase is a full build every
+	// time; it is timed apart from the per-Wall loop that can reuse.
+	p2311Measure('mesh-room-meshes', () => {
+		for (const room of geometry.rooms) {
+			if (room.walls.length === 0) {
+				if (!canonicalMode) {
+					const result = buildRoomWallMesh(room);
+					issues.push(...result.issues);
+				}
+				continue;
 			}
-			continue;
+			const result = buildRoomWallMesh(room);
+			if (result.mesh) {
+				wallMeshesByRoom.set(room.roomId, result.mesh);
+				layout3dPickIndexByRoom.set(room.roomId, buildLayout3dTriangleIndex(result.mesh));
+			}
+			issues.push(...result.issues);
 		}
-		const result = buildRoomWallMesh(room);
-		if (result.mesh) {
-			wallMeshesByRoom.set(room.roomId, result.mesh);
-			layout3dPickIndexByRoom.set(room.roomId, buildLayout3dTriangleIndex(result.mesh));
-		}
-		issues.push(...result.issues);
-	}
+	});
 
 	// The reference is used only for canonical Walls; legacy Room meshes never
 	// cross generations. Its structure verdict and inputs came from its one prior
@@ -286,8 +299,14 @@ function buildWallMeshesByRoom(
 					issues: referenceIssues
 				}
 			: null;
+		// The build is timed apart from the refusal decision around it, so the
+		// containment tree's own exclusive self for `mesh-prebuild` reads as the
+		// per-Wall VALUE COMPARISON of the whole generation. Measured on the
+		// all-curved fixture: a preparation that reuses 36 of 40 Walls still costs
+		// 74–129 ms and builds 4, so what is left in `mesh-prebuild` after its
+		// children is the comparison, not the building.
 		const result = prepareWallMesh(input, wallReference, reuseInputsStructureValid, () =>
-			buildStandaloneWallMesh(input.wall, input.floorElevation, input.ends)
+			p2311Measure('mesh-build', () => buildStandaloneWallMesh(input.wall, input.floorElevation, input.ends))
 		);
 		if (result.reused) {
 			stats.reused += 1;
@@ -336,9 +355,9 @@ export function prepareWallMeshes(
 	const cached = derivedWallMeshes.get(generation);
 	if (cached) return cached;
 
-	const wallMeshInputsByWall = collectPreparedWallMeshInputs(generation);
+	const wallMeshInputsByWall = p2311Measure('mesh-inputs', () => collectPreparedWallMeshInputs(generation));
 	const reuseInputsStructureValid = import.meta.env.DEV
-		? validatePreparedWallMeshInputs(wallMeshInputsByWall)
+		? p2311Measure('mesh-input-validate', () => validatePreparedWallMeshInputs(wallMeshInputsByWall))
 		: true;
 	const reference = referenceGeneration ? derivedWallMeshes.get(referenceGeneration) : undefined;
 	const prepared = buildWallMeshesByRoom(

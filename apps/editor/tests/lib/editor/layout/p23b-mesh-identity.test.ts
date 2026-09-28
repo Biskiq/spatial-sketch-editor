@@ -12,6 +12,7 @@ import {
 	P23B_MESH_IDENTITY_LIMIT,
 	p2311MeshIdentityRecords,
 	p2311ObserveMeshIdentity,
+	p2311ObserveWallMeshStats,
 	p2311ResetMeshIdentity
 } from '$lib/editor/layout/p23b-mesh-identity';
 
@@ -66,6 +67,44 @@ describe('P23B DEV mesh-identity probe', () => {
 		const records = p2311MeshIdentityRecords();
 		expect(records[0]?.stateProxy).toBe(false);
 		expect(records[1]?.stateProxy).toBe(true);
+	});
+
+	it('publishes one preparation\'s own built/reused accounting on its own row', () => {
+		gate.__P2311_PERF__ = true;
+		const geometry = { walls: [1, 2, 3] };
+		const stats = { built: 4, reused: 36, refusedByReason: { 'compiled-wall-changed': 4 } };
+
+		// The identity rows of a preparation keep `stats: null`: the accounting is a
+		// fact about the preparation, not about the identity it ran for.
+		p2311ObserveMeshIdentity('prebuild-miss', geometry);
+		p2311ObserveWallMeshStats(stats, geometry);
+
+		const records = p2311MeshIdentityRecords();
+		expect(records.map((record) => record.phase)).toEqual(['prebuild-miss', 'prebuild-stats']);
+		expect(records[0]?.stats).toBeNull();
+		expect(records[1]?.stats).toEqual({
+			built: 4,
+			reused: 36,
+			refusedByReason: { 'compiled-wall-changed': 4 }
+		});
+		// The row carries the identity too, so a stats row says WHICH generation
+		// prepared 40 meshes out of 40 Walls.
+		expect(records[1]?.geometryId).toBe(records[0]?.geometryId);
+		// The recorded copy is the probe's own: a caller mutating its object
+		// afterwards must not rewrite what was recorded.
+		stats.built = 40;
+		stats.refusedByReason['compiled-wall-changed'] = 40;
+		expect(records[1]?.stats).toEqual({
+			built: 4,
+			reused: 36,
+			refusedByReason: { 'compiled-wall-changed': 4 }
+		});
+	});
+
+	it('records no preparation accounting while the perf gate is off', () => {
+		p2311ObserveWallMeshStats({ built: 1, reused: 0, refusedByReason: {} }, { walls: [] });
+		expect(p2311MeshIdentityRecords()).toHaveLength(0);
+		expect(gate.__P2311_MESH_IDENTITY__).toBeUndefined();
 	});
 
 	it('keeps a bounded log, and records a boundary marker that carries no geometry', () => {

@@ -101,7 +101,12 @@ export const HEAVY_FILES: string[] = [
 	// P23B.6 S2 retention exercise: 101 accepted edits, history branch and GC.
 	'tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts',
 	// P23B.6 S3 shared-mesh retention: both release oracle and strong-owner negative control require GC.
-	'tests/lib/editor/layout/p23b6-s3-h6-retention.test.ts'
+	'tests/lib/editor/layout/p23b6-s3-h6-retention.test.ts',
+	// Pre-P23B.8 follow-up, whole-Room drag slice — the preview-parity differential:
+	// it compiles every committed 40-Wall fixture (translated and rotated) to diff the
+	// compile against the rigid image of the baseline, so it is uniformly dense work
+	// rather than a representative sample of cheaper behaviour (~4s).
+	'tests/lib/layout/p23b-room-unit-proposal-parity.test.ts'
 ];
 
 /**
@@ -122,6 +127,10 @@ export const PERF_FILES: string[] = [
 	'tests/lib/bench/p23b5-reuse-budget.test.ts',
 	'tests/lib/layout/p23b-fixture-contract.test.ts',
 	'tests/lib/editor/layout/p23b-interaction-measure.test.ts',
+	// Pre-P23B.8 follow-up, whole-Room drag slice — the P0.4 timing gate: the added
+	// per-move proposal against the planner + compile + preparation it removes, so it
+	// is a budget gate on a ratio rather than an absolute millisecond target.
+	'tests/lib/layout/p23b-room-unit-proposal-cost.test.ts',
 	'tests/lib/bench/three-stats.test.ts',
 	'tests/lib/bench/plan-bench.test.ts'
 ];
