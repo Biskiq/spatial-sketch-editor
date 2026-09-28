@@ -761,11 +761,22 @@ those windows — and it is **a whole extra pass, not a fraction of one**. **On 
 trailing pass as unchanged (a render-path change) or give the placer a result-level memo (cross-call state keyed by
 a shipped input hash); and "skippable" still rests on identical inputs plus the placer's purity, because the
 capture does not record the pass's placement output — a DEV-only digest of each call's labels would show it.
-Still **no memo, no cache and no key in the product path**.
+**Then the pass's output was digested**, same session, DEV-only: each call now also carries `labelsDigest` (every
+label's Room id, tier, both anchors, accepted rectangle, lines and the readout — what a render paints) and
+`memoryDigest`. Against the pass before it: **inputs equal 479/479 = 100 %**, but **labels equal only 229/479 =
+47.8 %** — 0 % on both 40-wall fixtures, 100 % on `connected-curved-grid-v1` and four of five `owner-40-curved-v1`
+classes. **Identical grid inputs do not imply identical labels**, because the placement has an input the grid key does
+not cover: the sticky `memory` the previous pass just wrote. That **refuses both easy fixes** — a result-level memo
+would paint the previous pass's labels, and skipping the pass would paint nothing — and leaves **exactly the grid**,
+where identical key ⇒ identical grid necessarily, whatever else differs. A grid-level memo keyed by the grid's own
+inputs is therefore the only reuse that preserves the placement that genuinely differs, worth ≈**24 %** of measured
+placer wall time (≈7.7 of the trailing pass's 8.5 ms p50) and ≈**24–33 %** of the curved windows. Still **no memo,
+no cache and no key in the product path**.
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json.
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json · the identity leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
@@ -884,7 +895,10 @@ child plans and execution status →
     to the call that built it) ·
   ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json (the priced leg: the same
     `labelCalls` plus `durationMs`, each call's wall time from entry to its one exit — which is what prices the
-    trailing pass against the same session's windows)
+    trailing pass against the same session's windows) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json (the identity leg: the same
+    `labelCalls` plus `labelsDigest` and `memoryDigest` — which is what shows that identical grids do NOT mean
+    identical labels, and narrows any fix to reusing the grid alone)
   · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
   ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
   pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
