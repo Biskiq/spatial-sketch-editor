@@ -76,7 +76,12 @@ import {
 	type P23BM1LabelArmWindowRow,
 	type P23BM1Record
 } from '$lib/bench/p23b-m1-record';
-import { P23B_M1_ROOM_LABEL_ARMS, type P23BM1RoomLabelArm } from '$lib/editor/layout/p23b-m1-room-label-arm';
+import {
+	P23B_M1_ROOM_LABEL_ARMS,
+	P23B_M1_ROOM_LABEL_ARM_AFTER,
+	P23B_M1_ROOM_LABEL_ARM_BEFORE,
+	type P23BM1RoomLabelArm
+} from '$lib/editor/layout/p23b-m1-room-label-arm';
 
 type Args = {
 	port: number;
@@ -841,8 +846,8 @@ function labelArmWindowsOf(input: {
 			spans: input.spans,
 			byAction,
 			arms,
-			afterArm: 'pruned-grid',
-			beforeArm: 'per-cell-grid'
+			afterArm: P23B_M1_ROOM_LABEL_ARM_AFTER,
+			beforeArm: P23B_M1_ROOM_LABEL_ARM_BEFORE
 		});
 		for (const window of own) {
 			const arm = byAction.get(window.actionIndex);
