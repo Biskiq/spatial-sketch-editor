@@ -1,4 +1,4 @@
-# 2026-09-28 — The Room-label grid's reuse rate, measured
+# 2026-09-28 — The Room-label grid's reuse rate, measured, and the pass that produces it named
 
 **Phase:** [`../README.md`](../README.md) · Pre-P23B.8 follow-up
 **Predecessor:** [`2026-09-28-room-label-grid-ranked-walk-and-reuse-budget-record.md`](./2026-09-28-room-label-grid-ranked-walk-and-reuse-budget-record.md)
@@ -12,8 +12,10 @@ renders**, and left one question explicitly open —
 > the redundant share is unmeasured, and **no memo, cache or key was added**; counting how many of those builds
 > repeat identical inputs is the next pass's first step.
 
-This pass answers that question with DEV-only instrumentation, and stops at the answer. **No product behaviour was
-touched, and no memo was built** — §7 states why, and it is a decision the evidence does not make on its own.
+This pass answers that question with DEV-only instrumentation, then — in the same session — runs a second
+DEV-only census that names *which* pass does the repeating (§10). **No product behaviour was touched, and no memo,
+cache or key reached the product path** — §7 states why, and §10 states what the naming leaves open rather than
+assuming it.
 
 ## 2. The instrument: a key per build, and the order they arrived in
 
@@ -139,23 +141,27 @@ per-build cost is subtracted — on the class whose window the previous pass alr
 **The question this pass hands over:** name the second pass (§4) with one more DEV-only census — how many
 `placeRoomLabels` calls an accepted action makes, with how many Rooms each, under which `reason` — and let that
 choose between removing the redundancy at its source and paying for a cache. No product code changes for the
-census.
+census. **That census has since been run in the same session; §10 names the pass, and the choice it leaves is
+stated there rather than made here.**
 
 ## 8. Verification
 
 | Gate | Result |
 |---|---|
 | `apps/editor` `npm run check` (svelte-check) | 0 errors, 0 warnings |
-| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 14/14 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the class histogram, and the three-arm placement parity |
-| `tests/lib/bench/p23b-m1-record.test.ts`, `p23b-m1-frame-timing.test.ts` | 40 + 18 — the key summary and the sequence as the class row carries them |
+| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 15/15 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the call census with the build range each call produced, the class histogram, and the three-arm placement parity |
+| `tests/lib/bench/p23b-m1-record.test.ts`, `p23b-m1-frame-timing.test.ts` | 40 + 18 — the key summary, the sequence and the call census as the class row carries them |
 | `tests/lib/layout/plan-room-labels.test.ts` | 30/30 — the placer's own suite, unchanged by the instrument |
-| `apps/editor` `npm test` | 366 test files / 5,208 tests pass (2 files / 4 tests skipped by their own gates) |
+| `apps/editor` `npm test` | 366 test files / 5,209 tests pass (2 files / 4 tests skipped by their own gates) |
 
 ## 9. Live evidence / reproduce
 
 - `2026-09-28-room-label-grid-reuse-rate-chrome-leg.json` — the compact capture of the leg below, single line, with
   each per-occurrence label array folded to the counts the capture documents in its own `labelsFolded` field and
   nothing else removed. It carries `byAction[].keySequence` for all 479 recorded attempts.
+- `2026-09-28-room-label-grid-call-census-chrome-leg.json` — the second leg of the same protocol and the same
+  instrument, which carries everything the first one does **plus `byAction[].labelCalls`**. §10 (the census) was
+  read from it, and its own key readings are the second independent run behind §3's reproducibility bound.
 
 ```text
 node .freebuff/launch-chrome.mjs 9223 /tmp/p23b-chrome-label-arms   # pinned 152.0.7977.54, headless
@@ -177,14 +183,68 @@ An earlier leg of the same protocol (`p23b-40-wall-straight-v1` 27.0 %, `whole-r
 §3 on every class whose recorded action count matched — a second run of the same instrument, not a second
 measurement of a different thing.
 
-## 10. What this changes, and what it does not
+## 10. Follow-on, same day: the census names the trailing pass
+
+§4 left the mechanism unidentified and §7 handed over a census to name it. That census is now run —
+**DEV-only, no product code changed** — and it records one entry per `placeRoomLabels` call: the Rooms it was
+handed, its `reason`, whether it received the sticky `memory`, its entry time, and **the range of the
+attempt's build order it produced**, so every repeat in §3 can be attributed to the call that built it.
+
+Second leg, same protocol (Chrome 152 headless, residual 0.268 ms, 4,405 frames): **479 accepted actions,
+2,692 placer calls — 5.62 per action** — and **14,388 builds, 4,084 of them repeats (28.4 %)**. The same
+instrument run twice therefore reads the rate at 29.8 % and 28.4 %, which is the reproducibility bound on
+this number.
+
+| by call position | fresh | repeat |
+|---|---|---|
+| the action's **first** call | 2,970 | **0** |
+| every **later** call | 7,334 | **4,084 (35.8 % repeat)** |
+
+| call `reason` | calls | grid builds |
+|---|---|---|
+| `lod` | 1,248 | 10,387 |
+| `frozen` | 965 | **10** |
+| `geometry` | 479 | 3,991 |
+
+**Every one of the 479 actions ends with a `lod` call that built a grid for every Room and was 100 %
+repeats** (3,991 builds, 27.7 % of all builds), and **100 % of all repeats (4,084 of 4,084) came from later
+calls — the first call of an action never repeated a single build.** The shape is the same in all 19 classes:
+
+```text
+#0 lod  (10 Rooms, 10 fresh)          the live render
+#1..#3 frozen (10 Rooms, 0 builds)    the gesture frames — the memory skip, working
+#4 geometry (10 Rooms, 10 fresh)      the settle, re-optimised
+#5 lod  (10 Rooms, 10 REPEATS)        +14–36 ms, byte-identical inputs
+```
+
+So the trailing subset is **the settled-LOD pass that follows the geometry pass of the same settle**, over
+Rooms whose projected polygons, mask and centre did not change between the two — and the `frozen` rows are
+the proof that the placer already knows how to say "these inputs are unchanged, do not build a grid": it
+does exactly that in 965 calls and builds **ten** grids in all of them. The trailing pass is classified
+`lod`, which is what sends it down the free-space path instead.
+
+**What that does to the decision, and what it still does not settle.** The repeat is not scattered — it is a
+whole extra planning pass per accepted action, on inputs the previous pass had already planned, and the
+cheaper half of it is provable from the capture: 3,991 grid builds whose inputs were byte-identical to the
+pass 14–36 ms earlier. What the capture cannot see is whether the *placement* that pass produced differed
+from the one before it, or whether its consumer needs a placement of its own at all — and that is the
+difference between classifying that pass as unchanged (a change to how the Plan decides a label layer is
+stale, i.e. the render path) and giving the placer a result-level memo (cross-call state keyed by a shipped
+input hash). One of those is a local concern of the placer and the other is not, and neither is chosen here.
+Assisted by the census: any fix has to be worth less than one whole pass per accepted action, because that
+is what the redundancy costs — but only after the pass's own placement work is priced, which the grid keys
+do not measure.
+
+## 11. What this changes, and what it does not
 
 - **Changed:** the redundant share is no longer unmeasured — **29.8 % of grid builds rebuild byte-identical
   inputs**, 15.3–50.0 % per class, with the per-build keys and the arrival order now travelling in every capture
   that takes the arm.
 - **Changed:** the shape of the remaining lever. It is not "shave the grid's inner loop" any further (the previous
   pass did that and cut the window by 18 %), and it is not a small cache either: it is a decision between a
-  cross-call cache keyed by a shipped input hash and removing a duplicated pass at its source.
+  cross-call cache keyed by a shipped input hash and removing a duplicated pass at its source — and §10 has now
+  named that pass (the settled-`lod` pass following the `geometry` pass of the same settle, 100 % repeats in all
+  479 actions) without choosing between them.
 - **Not changed:** anything the editor does. No placement decision, no arm default, no product path — the key, the
   sequence and the counting are DEV-only, and the placement suite plus the three-arm parity differential are the
   evidence.
