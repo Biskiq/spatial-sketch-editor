@@ -141,6 +141,44 @@ export function shotAt(sch, t) {
   return cur;
 }
 
+// ---- one Experience end to end (the drawer's Whole lens) ----
+// Every Stop's content laid on a single ruler, with each shot transition named, so the
+// big picture can be read and scrubbed in one motion. Pure and seekable, exactly like
+// schedule()/evalStop(): the Whole lens, the Clock lens and the visitor preview all read
+// the same derivation — the ruler adds no second authority.
+
+const r2 = (v) => Math.round(v * 100) / 100;
+
+export function timeline(P, expId) {
+  const items = [];
+  let start = 0;
+  for (const occ of stopsOf(P, expId)) {
+    const sch = schedule(P, occ);
+    const trans = [];
+    sch.shots.forEach((s, i) => {
+      if (!i) return;
+      trans.push({
+        view: s.beat.view,
+        move: s.beat.move === 'travel' ? 'travel' : 'cut',
+        at: r2(s.start),
+        gap: !!s.gap,
+        cue: s.beat.rel === 'cue' ? s.beat.cue?.name ?? null : null,
+      });
+    });
+    items.push({ occ, sch, start: r2(start), len: r2(sch.length), waits: (occ.cont ?? 'hold') === 'hold', trans });
+    start += sch.length;
+  }
+  return { exp: P.exp.list[expId] ?? null, items, total: r2(start) };
+}
+
+export function timelineAt(tl, g) {
+  if (!tl.items.length) return null;
+  const c = clamp(g, 0, tl.total);
+  let item = tl.items[0];
+  for (const it of tl.items) if (it.start <= c + 1e-6) item = it;
+  return { item, t: Math.max(0, c - item.start), g: c };
+}
+
 // Pose of a Stop's first shot as the tour arrives, and during any travel into it.
 export function shotPose(P, occ, sch, shot, t) {
   if (!shot) return null;

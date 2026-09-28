@@ -22,6 +22,7 @@ export const S = {
   pendingMove: null, // { inst, pos }
   pendingPerf: null, // { perf, separation }
   presenter: { open: false, j: 0, s: 0, pos: null }, // pos: { x, y } when dragged; null = default bottom-left
+  track: { g: 0, playing: false, hold: true }, // the whole-Experience ruler (drawer's Whole lens): one authoring preview over every Stop
   world: { t: 0 },
   help: false,
   specimen: null, // 'visitor' when the page is only the visitor runtime

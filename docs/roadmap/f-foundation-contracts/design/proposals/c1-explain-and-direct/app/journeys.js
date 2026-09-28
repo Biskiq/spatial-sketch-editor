@@ -4,6 +4,7 @@
 
 import { S, app } from './state.js';
 import { store, accept, occByTitle } from './store.js';
+import * as D from './derive.js';
 import * as A from './actions.js';
 import * as RUN from './run.js';
 import { clamp, esc } from './util.js';
@@ -20,23 +21,36 @@ const TEXT_B = 'Everything you saw in pump A also happens in pump B, by the east
 const TEXT_A2 = 'Back at pump A. Because both pumps share one design, a spare impeller fits either — so one pump keeps running while the other is opened.';
 const TEXT_SVC = 'Open pump A fully and check the impeller vanes for wear before closing it again.';
 
+// The path the presenter teaches, in order. Each stage links to the journey that
+// walks it, so the overview is also a table of contents. Journeys 5 and 6 are
+// branches off the path (reuse across Experiences; revising a world that moved) —
+// they are deliberately not stages.
+export const PATH = [
+  { n: 'Set up', sub: 'look + capture', jid: '1' },
+  { n: 'Build', sub: 'stops + words', jid: '2' },
+  { n: 'Wire', sub: 'shots + cues', jid: '3' },
+  { n: 'Read & run', sub: 'scrub + preview', jid: '4' },
+];
+
 export const JOURNEYS = [
   {
     id: '1', title: 'Inspect & capture',
+    wire: 'Stage 1 of 4 · Set up. Nothing here is authored yet: inspect in your own camera, then <b>Capture</b> — the one place a Camera view and a Stop are born together, as a single accepted step.',
     steps: [
-      { t: 'One pump selected', b: 'Pump A is selected — session state. The viewport is your own camera. “How it works” has only an Introduction and an End so far.', go() { A.resetAll(); } },
-      { t: 'Inspect the casing', b: 'Press <kbd>I</kbd> or double-click the pump. The casing opens <b>view only</b>: a dashed ghost shows where it really is, and the strip names the depth. Drag the Opening slider — still nothing is saved.', go() { A.startInspect('pumpA'); } },
-      { t: 'Open the bay', b: '<kbd>B</kbd> lifts the roof and cuts the south wall — Layout evaluating a representation parameter, view only. <kbd>Esc</kbd> steps back one level.', go() { A.inspectBay(); } },
-      { t: 'Return without saving', b: 'Return puts everything back. The toast confirms Pump A is closed and in place, and the revision has not moved. Inspection is a session, not an edit.', go() { A.endInspect(); } },
-      { t: 'Capture: scope first', b: 'Inspect again and press <kbd>C</kbd>. The sheet lists what will be saved and where it goes (a Camera view; the casing state of a new Stop), and what never will: selection, the ghost, how you moved, the rotor.', go() { A.startInspect('pumpA'); A.openCapture(); } },
-      { t: 'Captured as one step', b: 'One accepted result: a Camera view <em>and</em> a Stop, revision 15. The Head’s Undo names both; <kbd>⌘Z</kbd> removes both together and <kbd>⇧⌘Z</kbd> brings both back. Notice End now shows <b>✕</b>: it arrives by travel, and Camera has no route from the new view — the insertion revealed a consequence instead of inventing a path.', go() { S.capture.title = 'Inside pump A'; A.commitCapture(); } },
+      { t: 'One pump selected', where: 'View bar › Free look · Outline › Subjects › Pump A · Outline › Explanation (the Stop list)', b: 'Pump A is selected — session state. The viewport is your own camera. “How it works” has only an Introduction and an End so far.', go() { A.resetAll(); } },
+      { t: 'Inspect the casing', where: 'View bar › Inspect I, or double-click the pump · session strip › Opening slider', b: 'Press <kbd>I</kbd> or double-click the pump. The casing opens <b>view only</b>: a dashed ghost shows where it really is, and the strip names the depth. Drag the Opening slider — still nothing is saved.', go() { A.startInspect('pumpA'); } },
+      { t: 'Open the bay', where: 'session strip › Open the bay B · crumbs › Where you were › Pump A casing › Bay cutaway', b: '<kbd>B</kbd> lifts the roof and cuts the south wall — Layout evaluating a representation parameter, view only. <kbd>Esc</kbd> steps back one level.', go() { A.inspectBay(); } },
+      { t: 'Return without saving', where: 'session strip › Return Esc', b: 'Return puts everything back. The toast confirms Pump A is closed and in place, and the revision has not moved. Inspection is a session, not an edit.', go() { A.endInspect(); } },
+      { t: 'Capture: scope first', where: 'session strip › Capture… C', b: 'Inspect again and press <kbd>C</kbd>. The sheet lists what will be saved and where it goes (a Camera view; the casing state of a new Stop), and what never will: selection, the ghost, how you moved, the rotor.', go() { A.startInspect('pumpA'); A.openCapture(); } },
+      { t: 'Captured as one step', where: 'capture sheet › Capture (commit) · head › Undo ↶ names both changes', b: 'One accepted result: a Camera view <em>and</em> a Stop, revision 15. The Head’s Undo names both; <kbd>⌘Z</kbd> removes both together and <kbd>⇧⌘Z</kbd> brings both back. Notice End now shows <b>✕</b>: it arrives by travel, and Camera has no route from the new view — the insertion revealed a consequence instead of inventing a path.', go() { S.capture.title = 'Inside pump A'; A.commitCapture(); } },
     ],
   },
   {
     id: '2', title: 'Build “How it works”',
+    wire: 'Stage 2 of 4 · Build. Stops, their order and their words. Everything here is a <b>still moment</b>: a view, the states it holds, words — no timing, so nothing moves between shots yet.',
     steps: [
-      { t: 'Words for the visit', b: 'Stop 2 gets its words. The Stop is still a <b>still moment</b>: a view, one held state (casing open) and words — no timing.', go() { const o = occ('Inside pump A'); doc({ kind: 'editText', occ: o.id, text: TEXT_A, dur: 9 }); A.selectStop(o.id); S.drawer.lens = 'still'; } },
-      { t: 'Compare with pump B', b: '“+ Add Stop” from a saved view is an Experience-only change. This Stop starts on pump A (still open) and is about pump B.', go() {
+      { t: 'Words for the visit', where: 'Outline › Stop 2 · Inspector › Words', b: 'Stop 2 gets its words. The Stop is still a <b>still moment</b>: a view, one held state (casing open) and words — no timing.', go() { const o = occ('Inside pump A'); doc({ kind: 'editText', occ: o.id, text: TEXT_A, dur: 9 }); A.selectStop(o.id); S.drawer.lens = 'still'; } },
+      { t: 'Compare with pump B', where: 'Outline › + Add Stop (the menu lists the saved Camera views) · Inspector › Words', b: '“+ Add Stop” from a saved view is an Experience-only change. This Stop starts on pump A (still open) and is about pump B.', go() {
         const a = occ('Inside pump A');
         const v = viewByName('Pump A · open casing');
         const r = doc({ kind: 'addStopFromView', exp: 'E-HOW', after: a.id, view: v.id, subject: 'pumpB', title: 'Compare with pump B' });
@@ -45,7 +59,7 @@ export const JOURNEYS = [
         doc({ kind: 'addState', occ: o.id, ch: 'pumpA.casing', v: 0.6, label: 'Pump A casing open' });
         A.selectStop(o.id); S.drawer.lens = 'beats';
       } },
-      { t: 'Back to pump A — a second visit', b: 'Same subject, <b>separate occurrence</b> with its own identity and words. The outline says visit 1 of 2 and visit 2 of 2; nothing was copied to fake the return.', go() {
+      { t: 'Back to pump A — a second visit', where: 'Outline › + Add Stop after “Compare with pump B” › pick the saved view', b: 'Same subject, <b>separate occurrence</b> with its own identity and words. The outline says visit 1 of 2 and visit 2 of 2; nothing was copied to fake the return.', go() {
         A.selectStop(occ('Compare with pump B').id);
         A.addStopFromView('V-4');
         const o = occ('Back to pump A');
@@ -56,14 +70,15 @@ export const JOURNEYS = [
   },
   {
     id: '3', title: 'Reuse & timing',
+    wire: 'Stage 3 of 4 · Wire. Beats join one shot to the next — <b>cut</b> or <b>travel</b>, at a word cue — and a reusable performance opens a casing. The last step lays every Stop on one ruler, so the whole Experience can be read and scrubbed in one motion.',
     steps: [
-      { t: 'Grow a state into timing', b: 'Stop 2’s still “Casing open” becomes a use of the reusable <b>“Open casing”</b> performance. The Stop is now timed; its beats appear: shot → use, with the words.', go() {
+      { t: 'Grow a state into timing', where: 'Stop drawer › Beats lens › “Animate with “Open casing”” (or Still lens › Add timing in Beats)', b: 'Stop 2’s still “Casing open” becomes a use of the reusable <b>“Open casing”</b> performance. The Stop is now timed; its beats appear: shot → use, with the words.', go() {
         const o = occ('Inside pump A');
         const st = o.states.find((s) => s.ch === 'pumpA.casing');
         const r = doc({ kind: 'animateState', occ: o.id, state: st.id, perf: 'P-OPEN' });
         A.selectStop(o.id); S.sel = { kind: 'beat', occ: o.id, id: r.created.beat }; S.drawer.lens = 'beats';
       } },
-      { t: 'Cut to pump B while the words play', b: 'A cut inside the Stop at the cue “pump B”. A cut implies no spatial route. The words now run across the cut, so the beat asks you to decide what happens to them.', go() {
+      { t: 'Cut to pump B while the words play', where: 'Stop drawer › + Cut › pick a saved view · the new beat’s Starts: ‹ after the previous beat / after … / at “pump B” in the words ›', b: 'A cut inside the Stop at the cue “pump B”. A cut implies no spatial route. The words now run across the cut, so the beat asks you to decide what happens to them.', go() {
         const o = occ('Compare with pump B');
         const say = beatOf(o, (b) => b.kind === 'say');
         doc({ kind: 'addCue', occ: o.id, beat: say.id, name: 'pump B', t: 2.8 });
@@ -71,19 +86,19 @@ export const JOURNEYS = [
         doc({ kind: 'setBeat', occ: o.id, beat: r.created.beat, patch: { rel: 'cue', cue: { beat: say.id, name: 'pump B' } }, label: 'Cut at “pump B”' });
         A.selectStop(o.id); S.sel = { kind: 'beat', occ: o.id, id: say.id }; S.drawer.lens = 'beats';
       } },
-      { t: 'Keep speaking across the cut', b: 'The words belong to the Stop, not to a shot, so they continue. The rotor is <b>world activity</b>: shown in every lens, owned by none of them.', go() {
+      { t: 'Keep speaking across the cut', where: 'Stop drawer › the “? crosses a cut — decide” row › Keep speaking across the cut', b: 'The words belong to the Stop, not to a shot, so they continue. The rotor is <b>world activity</b>: shown in every lens, owned by none of them.', go() {
         const o = occ('Compare with pump B');
         const say = beatOf(o, (b) => b.kind === 'say');
         doc({ kind: 'setBeat', occ: o.id, beat: say.id, patch: { crossCut: 'continue' }, label: 'Keep the words playing across the cut in “Compare with pump B”' });
       } },
-      { t: 'Reuse the opening on B, slower', b: 'The same definition, a second use. <b>×0.6 is local to this use</b> — the Inspector’s scope switch says so, and the definition still plays 2.4 s for everyone else.', go() {
+      { t: 'Reuse the opening on B, slower', where: 'Stop drawer › + Use › “Open casing” · Inspector › speed ×0.6 with the scope switch on “this use”', b: 'The same definition, a second use. <b>×0.6 is local to this use</b> — the Inspector’s scope switch says so, and the definition still plays 2.4 s for everyone else.', go() {
         const o = occ('Compare with pump B');
         const shotB = beatOf(o, (b) => b.kind === 'shot' && b.view === 'V-3');
         const r = doc({ kind: 'addUse', occ: o.id, perf: 'P-OPEN', subject: 'pumpB', afterBeat: shotB.id });
         doc({ kind: 'setBeat', occ: o.id, beat: r.created.beat, patch: { speed: 0.6 }, label: 'Play “Open casing” at ×0.6 on Pump B (this use only)' });
         A.selectStop(o.id); S.sel = { kind: 'beat', occ: o.id, id: r.created.beat }; S.useScope = 'use'; S.drawer.lens = 'beats';
       } },
-      { t: 'Travel needs a route', b: 'Switch that cut to <b>travel</b>: Camera has no route to the newly captured view, so the gap appears in the beat, on the Camera map and in Review. A cut would have been fine.', go() {
+      { t: 'Travel needs a route', where: 'Stop drawer › the beat’s Cut / Travel switch · Review › the ✕ “No Camera route” and Add a route', b: 'Switch that cut to <b>travel</b>: Camera has no route to the newly captured view, so the gap appears in the beat, on the Camera map and in Review. A cut would have been fine.', go() {
         const o = occ('Compare with pump B');
         const shotB = beatOf(o, (b) => b.kind === 'shot' && b.view === 'V-3');
         doc({ kind: 'setBeat', occ: o.id, beat: shotB.id, patch: { move: 'travel' }, label: 'Travel to “Pump B · side” in “Compare with pump B”' });
@@ -91,35 +106,45 @@ export const JOURNEYS = [
         doc({ kind: 'setBeat', occ: back.id, beat: beatOf(back, (b) => b.kind === 'shot').id, patch: { move: 'travel' }, label: 'Travel into “Back to pump A”' });
         A.selectStop(o.id); S.sel = { kind: 'beat', occ: o.id, id: shotB.id };
       } },
-      { t: 'The same beats on a clock', b: 'Back to a cut. The <b>Clock</b> lens shows the same beats on a Stop-local ruler: drag across a lane to see a moment, drag the end of Pump B’s bar to retime that use only. World activity runs past both edges.', go() {
+      { t: 'The same beats on a clock', where: 'Stop drawer › Clock lens › drag across a lane to scrub · drag a bar’s end to retime that use', b: 'Back to a cut. The <b>Clock</b> lens shows the same beats on a Stop-local ruler: drag across a lane to see a moment, drag the end of Pump B’s bar to retime that use only. World activity runs past both edges.', go() {
         const o = occ('Compare with pump B');
         const shotB = beatOf(o, (b) => b.kind === 'shot' && b.view === 'V-3');
         doc({ kind: 'setBeat', occ: o.id, beat: shotB.id, patch: { move: 'cut' }, label: 'Cut to “Pump B · side” in “Compare with pump B”' });
         A.selectStop(o.id); S.drawer.lens = 'clock'; S.scrub = 3.6;
       } },
+      { t: 'Every Stop on one ruler', where: 'Stop drawer › Whole lens › drag anywhere on the ruler · ⏮ ▶ ⏭ · Space · Hold at waiting moments', b: 'The <b>Whole</b> lens lays every Stop of this Experience end to end on one ruler. Each block is a Stop; each row below names how its shots join — “cut at “pump B” → Pump B · side” — and the Stops that <b>wait for the visitor</b> carry a dotted underline. Drag anywhere on the ruler to scrub the whole Experience in one motion, or press <kbd>Space</kbd> to play it through: with <b>Hold</b> on, play stops at each waiting moment exactly where the run stops. It is the same pure evaluation the Clock lens and the run use, so it writes nothing.', go() {
+        const o = occ('Compare with pump B');
+        A.selectStop(o.id);
+        S.drawer.lens = 'whole'; S.drawer.open = true;
+        const tl = D.timeline(P(), 'E-HOW');
+        const it = tl.items.find((x) => x.occ.id === o.id);
+        A.tlAct('seek', { g: it ? it.start : 0 });
+      } },
     ],
   },
   {
     id: '4', title: 'Preview, interrupt, rejoin',
+    wire: 'Stage 4 of 4 · Read and run. The run is the visitor’s view of everything above — pause, free look, a control conflict, handoff, and rejoin. Nothing it does is written.',
     steps: [
-      { t: 'Preview as a visitor', b: 'The frame is the visitor runtime — no selection, history or overlays. The run panel on the right is for you: who controls what, the run states, what happened.', go() { S.drawer.lens = 'beats'; A.startPreview('E-HOW'); A.runAct('play'); A.runAct('next'); A.runFor(1.4); } },
-      { t: 'Pause — the world keeps running', b: 'Pause holds what the tour owns: its camera, the opening, the words. The rotor keeps spinning — world activity is not the tour’s to pause.', go() { A.runFor(0.8); A.runAct('pause'); } },
-      { t: 'Look around and reach for the casing', b: 'Free look is a Camera profile. Asking to close Pump A’s casing conflicts with the tour’s opening (exclusive control). The visitor chooses: take it over, stop the opening, or leave it.', go() { A.runAct('look'); A.runFor(0.1); A.runAct('casing', { inst: 'pumpA', op: 'close' }); } },
-      { t: 'Take it over', b: 'Handoff from the value the tour had reached (captured origin). The casing is now the visitor’s — run state, never a Scene edit.', go() { A.runAct('resolve', { choice: 'handoff' }); A.runFor(1.2); } },
-      { t: 'Back to the tour', b: 'The camera returns from where the visitor was; the tour takes the casing back and blends from the visitor’s value; the words resume where they paused. “While you looked around” says what continued and what waited.', go() { A.runAct('back'); A.runFor(1.4); } },
-      { t: 'Restart is a fresh run', b: 'A new run: no handoffs, stops or held poses carried over. The Source check still reads the Scene baseline — both casings closed — and the same revision.', go() { A.runAct('restart'); A.runFor(0.5); } },
+      { t: 'Preview as a visitor', where: 'head › ▶ Preview P · the run panel down the right', b: 'The frame is the visitor runtime — no selection, history or overlays. The run panel on the right is for you: who controls what, the run states, what happened.', go() { S.drawer.lens = 'beats'; A.startPreview('E-HOW'); A.runAct('play'); A.runAct('next'); A.runFor(1.4); } },
+      { t: 'Pause — the world keeps running', where: 'run panel › ❚❚ Pause, or Space', b: 'Pause holds what the tour owns: its camera, the opening, the words. The rotor keeps spinning — world activity is not the tour’s to pause.', go() { A.runFor(0.8); A.runAct('pause'); } },
+      { t: 'Look around and reach for the casing', where: 'run panel › Look L (drag the frame), then click Pump A’s casing', b: 'Free look is a Camera profile. Asking to close Pump A’s casing conflicts with the tour’s opening (exclusive control). The visitor chooses: take it over, stop the opening, or leave it.', go() { A.runAct('look'); A.runFor(0.1); A.runAct('casing', { inst: 'pumpA', op: 'close' }); } },
+      { t: 'Take it over', where: 'run panel › the conflict: Take it over / Stop the opening / Leave it', b: 'Handoff from the value the tour had reached (captured origin). The casing is now the visitor’s — run state, never a Scene edit.', go() { A.runAct('resolve', { choice: 'handoff' }); A.runFor(1.2); } },
+      { t: 'Back to the tour', where: 'run panel › Back to the tour, or Esc', b: 'The camera returns from where the visitor was; the tour takes the casing back and blends from the visitor’s value; the words resume where they paused. “While you looked around” says what continued and what waited.', go() { A.runAct('back'); A.runFor(1.4); } },
+      { t: 'Restart is a fresh run', where: 'run panel › Restart R', b: 'A new run: no handoffs, stops or held poses carried over. The Source check still reads the Scene baseline — both casings closed — and the same revision.', go() { A.runAct('restart'); A.runFor(0.5); } },
     ],
   },
   {
     id: '5', title: 'A second Experience',
+    wire: 'Off the path · a branch. A second Experience reuses the same Stops and the same definitions without copying either.',
     steps: [
-      { t: 'Reuse in Service check', b: 'Stop 2 reused in <b>Service check</b>: a new occurrence with the same view and the same performance — its own words and invocation. How it works is untouched.', go() {
+      { t: 'Reuse in Service check', where: 'Inspector › Reuse › Reuse in Service check… · head › the Experience tabs', b: 'Stop 2 reused in <b>Service check</b>: a new occurrence with the same view and the same performance — its own words and invocation. How it works is untouched.', go() {
         if (S.mode === 'preview') A.exitPreview();
         A.reuseStop(occ('Inside pump A').id, 'E-SVC');
         const o = occ('Inside pump A', 'E-SVC');
         A.selectStop(o.id); S.drawer.lens = 'beats';
       } },
-      { t: 'Change only this invocation', b: 'Service check opens the casing fully (1.00 m) with different words. The use’s Inspector lists the other uses — How it works keeps its 0.60 m and ×0.6. Switch Experience tabs to see it unaffected.', go() {
+      { t: 'Change only this invocation', where: 'Inspector › the use’s Opening and its scope switch · Words', b: 'Service check opens the casing fully (1.00 m) with different words. The use’s Inspector lists the other uses — How it works keeps its 0.60 m and ×0.6. Switch Experience tabs to see it unaffected.', go() {
         const o = occ('Inside pump A', 'E-SVC');
         const u = beatOf(o, (b) => b.kind === 'use');
         doc({ kind: 'setBeat', occ: o.id, beat: u.id, patch: { over: { separation: 1.0 } }, refresh: true, label: 'Open fully for service (this use only)' });
@@ -130,38 +155,39 @@ export const JOURNEYS = [
   },
   {
     id: '6', title: 'Revise and repair',
+    wire: 'Off the path · a branch. What happens when the world changes under a finished Experience: references resolve, compositions do not, and Review says which is which.',
     steps: [
-      { t: 'Move pump A — see the reach first', b: 'Typing a new position previews the move and lists every Stop, in both Experiences, that shows Pump A — before anything changes. Moving it is a Scene edit.', go() {
+      { t: 'Move pump A — see the reach first', where: 'Outline › Subjects › Pump A · Inspector › position fields', b: 'Typing a new position previews the move and lists every Stop, in both Experiences, that shows Pump A — before anything changes. Moving it is a Scene edit.', go() {
         if (S.mode === 'preview') A.exitPreview();
         S.exp = 'E-HOW'; S.stop = occ('Back to pump A').id; S.look = 'free';
         S.sel = { kind: 'subject', inst: 'pumpA' }; S.pendingMove = { inst: 'pumpA', pos: [-1.6, 0.3] }; S.panel = 'inspect';
       } },
-      { t: 'Moved: follow vs locked', b: 'Stop 2’s view follows Pump A (subject-assisted). Stop 4’s <b>locked</b> shot no longer contains it: the reference resolves; the composition doesn’t. Review shows both frames side by side.', go() {
+      { t: 'Moved: follow vs locked', where: 'Inspector › apply the move · Review', b: 'Stop 2’s view follows Pump A (subject-assisted). Stop 4’s <b>locked</b> shot no longer contains it: the reference resolves; the composition doesn’t. Review shows both frames side by side.', go() {
         S.pendingMove = null;
         doc({ kind: 'moveSubject', inst: 'pumpA', pos: [-1.6, 0.3] });
         A.selectStop(occ('Back to pump A').id); S.panel = 'review';
       } },
-      { t: 'Change the shared opening', b: 'Editing the definition shows its reach before applying: two uses follow, Service check keeps its own 1.00 m, and Pump B’s use would pass through the east wall.', go() {
+      { t: 'Change the shared opening', where: 'Outline › Reusable › Open casing · Inspector › separation + its scope', b: 'Editing the definition shows its reach before applying: two uses follow, Service check keeps its own 1.00 m, and Pump B’s use would pass through the east wall.', go() {
         S.panel = 'inspect'; S.sel = { kind: 'perf', id: 'P-OPEN' }; S.pendingPerf = { perf: 'P-OPEN', separation: 0.9 };
       } },
-      { t: 'Review what it reached', b: 'Applied. Review lists the locked shot, Pump B’s collision, and Stop 2’s words — written for a 60 cm opening, now showing 90 cm. Every reference still resolves; the words need an editor.', go() {
+      { t: 'Review what it reached', where: 'Review › the list of what the change reached', b: 'Applied. Review lists the locked shot, Pump B’s collision, and Stop 2’s words — written for a 60 cm opening, now showing 90 cm. Every reference still resolves; the words need an editor.', go() {
         S.pendingPerf = null;
         doc({ kind: 'setPerf', perf: 'P-OPEN', patch: { separation: 0.9 } });
         S.panel = 'review';
       } },
-      { t: 'Repair one use, keep the definition', b: '“Repair this use only” gives Pump B’s use its own 0.60 m. The shared definition stays 0.90 m for every other use. “Follow Pump A” repairs the locked shot in Camera.', go() {
+      { t: 'Repair one use, keep the definition', where: 'Review › Repair this use only / Follow Pump A', b: '“Repair this use only” gives Pump B’s use its own 0.60 m. The shared definition stays 0.90 m for every other use. “Follow Pump A” repairs the locked shot in Camera.', go() {
         const o = occ('Compare with pump B');
         const u = beatOf(o, (b) => b.kind === 'use');
         A.repairUse(o.id, u.id);
         S.panel = 'review';
       } },
-      { t: 'A capture that goes stale', b: 'While the capture sheet was open, another writer accepted a change. The capture is rejected whole — no Camera view, no Stop (check the outline and Camera views). Your choices are kept.', go() {
+      { t: 'A capture that goes stale', where: 'Presenter tools below › Another writer edits, then Capture', b: 'While the capture sheet was open, another writer accepted a change. The capture is rejected whole — no Camera view, no Stop (check the outline and Camera views). Your choices are kept.', go() {
         S.panel = 'inspect'; S.sel = { kind: 'subject', inst: 'pumpB' };
         A.startInspect('pumpB'); A.openCapture(); S.capture.title = 'Pump B seal'; S.capture.viewName = 'Pump B · open casing';
         injectWriter();
         A.commitCapture();
       } },
-      { t: 'Captured on the new revision', b: 'Capture again: re-planned against the current revision and accepted as one step on top of the other writer’s change. Undo would remove this view and Stop together.', go() { A.retryCapture(); } },
+      { t: 'Captured on the new revision', where: 'capture sheet › Retry', b: 'Capture again: re-planned against the current revision and accepted as one step on top of the other writer’s change. Undo would remove this view and Stop together.', go() { A.retryCapture(); } },
     ],
   },
 ];
@@ -204,10 +230,12 @@ export function presenterAct(name, d) {
     case 'presenter': S.presenter.open = !S.presenter.open; return true;
     case 'j-close': S.presenter.open = false; return true;
     case 'j-tab': S.presenter.j = Number(d.j); S.presenter.s = 0; return true;
+    // A stage of the path is a place to go, not just a label: take the demo there.
+    case 'j-stage': { const i = JOURNEYS.findIndex((x) => x.id === d.jid); if (i >= 0) jumpTo(JOURNEYS[i].id + '.1'); return true; }
     case 'j-dot': S.presenter.s = Number(d.s); return true;
     case 'j-next': stepNext(1); return true;
     case 'j-prev': stepNext(-1); return true;
-    case 'j-setup': jumpTo(JOURNEYS[S.presenter.j].id + '.' + (S.presenter.s + 1)); return true;
+    case 'j-setup': case 'j-replay': jumpTo(JOURNEYS[S.presenter.j].id + '.' + (S.presenter.s + 1)); return true;
     case 'reset': A.resetAll(); S.presenter.at = null; A.toast('Fixture reset to revision 14.', 'session'); return true;
     case 'inject-writer': injectWriter(); return true;
     case 'inject-invalid': store.inject = { kind: 'invalid' }; A.toast('Presenter: the next capture will fail Camera validation.', 'session'); return true;
@@ -283,15 +311,21 @@ export function renderPresenter() {
   const s = j.steps[S.presenter.s];
   const id = j.id + '.' + (S.presenter.s + 1);
   const here = S.presenter.at === id;
+  const stage = PATH.find((x) => x.jid === j.id);
   el.innerHTML = `
     <div class="pr-head"><span class="pr-out">Presenter · outside the product <i class="pr-drag">drag to move</i></span><button class="pr-x" data-act="j-close" aria-label="Close presenter">×</button></div>
+    <div class="pr-path" role="group" aria-label="The authoring path">${PATH.map((x) => `<button class="${x === stage ? 'on' : ''}" data-act="j-stage" data-jid="${x.jid}" title="${esc(JOURNEYS.find((y) => y.id === x.jid)?.wire.replace(/<[^>]+>/g, '') || '')}"><b>${esc(x.n)}</b><span>${esc(x.sub)}</span></button>`).join('')}</div>
+    <p class="pr-wire">${j.wire}</p>
     <div class="pr-tabs" role="tablist">${JOURNEYS.map((x, i) => `<button role="tab" aria-selected="${i === S.presenter.j}" class="${i === S.presenter.j ? 'on' : ''}" data-act="j-tab" data-j="${i}">${x.id}<span>${esc(x.title)}</span></button>`).join('')}</div>
-    <div class="pr-kicker">Journey ${j.id} · step ${S.presenter.s + 1} of ${j.steps.length} · <span class="mono">?j=${id}</span>${here ? ' · <b>you are here</b>' : ''}</div>
+    <div class="pr-kicker">Journey ${j.id} · step ${S.presenter.s + 1} of ${j.steps.length} · <span class="mono">?j=${id}</span>${stage ? ' · stage ' + esc(stage.n) : ' · off the path'}${here ? ' · <b>you are here</b>' : ''}</div>
     <div class="pr-title">${esc(s.t)}</div>
     <div class="pr-body">${s.b}</div>
+    <div class="pr-where"><span>Where</span>${esc(s.where || '')}</div>
     <div class="pr-nav">
       <button class="pr-b" data-act="j-prev" aria-label="Previous step">‹</button>
       <div class="pr-dots">${j.steps.map((_, i) => `<button class="${i === S.presenter.s ? 'on' : ''}" data-act="j-dot" data-s="${i}" aria-label="Step ${i + 1}"></button>`).join('')}</div>
+      <span class="pr-count">${S.presenter.s + 1} / ${j.steps.length}</span>
+      <button class="pr-b" data-act="j-replay" title="Run this step again from the state it starts in">Replay</button>
       <button class="pr-b" data-act="j-setup">${here ? 'Set up again' : 'Set up this state'}</button>
       <button class="pr-b next" data-act="j-next">Next ›</button>
     </div>

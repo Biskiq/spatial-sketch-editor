@@ -47,7 +47,9 @@
   <p class="lede">A pump bay with two instances of one pump definition. The rotor runs on its own clock; the casing supports opening
   (one representation channel, <code>casing.separation</code>). Two Experiences — <b>How it works</b> and <b>Service check</b> —
   share the world. Everything in the brief’s six steps is interactive; the Presenter (<kbd>J</kbd>) replays each step as an
-  instant, resettable fixture so a reviewer can jump anywhere and keep going by hand.</p>
+  instant, resettable fixture so a reviewer can jump anywhere and keep going by hand. Its first row is the authoring
+  <em>path</em> — <b>Set up → Build → Wire → Read &amp; run</b> — and every step carries a <b>Where</b> line naming the
+  controls it uses, so the demo can be operated from the Presenter alone.</p>
   <div class="jgrid">
     <div class="jcard"><h4>1 · Inspect &amp; capture</h4><ol>
       <li><a href="index.html?j=1.1">1.1</a>One pump selected (session)</li>
@@ -306,6 +308,16 @@
     </div>
   </div>
   <p><b>Decision.</b> Beats is the authored model and the default lens once a Stop is timed; Clock is a read-mostly lens over the same beats, offering seek and local retime only. Still stays the default for untimed Stops. This keeps the “one linear timeline” risk named in the brief out of the model while still answering “when?”.</p>
+  <p><b>Added: a third reading — the whole Experience.</b> Both lenses above are Stop-local, which leaves the one
+  thing a reviewer cannot see: how one Stop joins the next. The drawer’s fourth lens, <b>Whole</b>
+  (<a href="index.html?j=3.7">journey 3.7</a>), lays every Stop of the Experience end to end on one derived ruler —
+  each block is a Stop, each row names how its shots join (“cut at “pump B” → Pump B · side”), Stops that wait carry a
+  dotted underline, and dragging the ruler scrubs all of them in one motion. With <b>Hold</b> on, play stops at each
+  waiting moment exactly where the run stops for the visitor; with it off it plays straight through the gates. It reads
+  <code>timeline()</code> over the same <code>schedule()</code>/<code>evalStop()</code> the Clock lens and the run use,
+  seeks only, and writes nothing — so it adds a way to read the Experience, not a second authority over it.
+  <span class="hyp">Hypothesis</span> that this is what makes the big picture legible without reinstating a
+  professional timeline.</p>
 </section>
 
 <!-- ============================================================ -->

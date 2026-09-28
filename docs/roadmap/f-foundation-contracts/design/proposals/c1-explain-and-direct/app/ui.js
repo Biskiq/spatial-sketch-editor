@@ -604,6 +604,7 @@ function renderHelp() {
     <span><kbd>Space</kbd> play / pause (preview)</span><span><kbd>←</kbd> <kbd>→</kbd> previous / next Stop (preview)</span>
     <span><kbd>L</kbd> look around (preview)</span><span><kbd>R</kbd> restart the run (preview)</span>
     <span><kbd>J</kbd> presenter (drag its header to move)</span><span><kbd>Shift</kbd> makes a camera move instant</span>
+    <span><kbd>Space</kbd> play the whole Experience (drawer › Whole)</span><span>Drag the Whole lens’s ruler to scrub every Stop</span>
     <span>Drag orbit · right-drag pan · wheel zoom</span><span>Double-click a pump to inspect it</span></div>
     <button class="btn sm" data-act="keys">Close</button></div>`;
 }

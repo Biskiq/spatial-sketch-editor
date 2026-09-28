@@ -82,7 +82,7 @@ function frame(nowMs) {
     pose = out.pose;
     const nowStatus = app.R.status + app.R.i + (app.R.conflict ? 'c' : '') + app.R.waiting;
     if (nowStatus !== prevStatus) app.ui();
-  } else ({ out, pose } = authorEval());
+  } else { A.tlTick(dt); ({ out, pose } = authorEval()); }
 
   const st = app.stage;
   st.setChannels(out.ch);
@@ -202,6 +202,14 @@ function clickAt(e) {
 
 let scrub = null;
 document.addEventListener('pointerdown', (e) => {
+  // The Whole lens's ruler: dragging anywhere on it scrubs the whole Experience.
+  const tk = e.target.closest('[data-track]');
+  if (tk && S.mode === 'author') {
+    e.preventDefault();
+    scrub = { kind: 'track', track: tk, len: Number(tk.dataset.len) || 0 };
+    trackTo(e);
+    return;
+  }
   const rt = e.target.closest('[data-retime]');
   if (rt && S.mode === 'author') {
     e.preventDefault();
@@ -220,6 +228,7 @@ document.addEventListener('pointerdown', (e) => {
 document.addEventListener('pointermove', (e) => {
   if (!scrub) return;
   if (scrub.kind === 'scrub') scrubTo(e);
+  else if (scrub.kind === 'track') trackTo(e);
   else {
     const r = scrub.track.getBoundingClientRect();
     if (!(r.width > 0)) return;
@@ -241,8 +250,13 @@ document.addEventListener('pointerup', () => {
       A.doc({ kind: 'setBeat', occ: s.occ, beat: s.beat, patch: { speed: v }, label: 'Retime “' + P().res.perfs[beat.perf].name + '” on ' + P().scene.inst[beat.subject].name + ' to ' + times(v) + ' (this use only)' });
     }
     app.ui();
-  }
+  } else if (s.kind === 'track') app.ui();
 });
+function trackTo(e) {
+  const r = scrub.track.getBoundingClientRect();
+  if (!(r.width > 0) || !Number.isFinite(e.clientX)) return;
+  A.tlAct('seek', { g: clamp(((e.clientX - r.left) / r.width) * scrub.len, 0, scrub.len) });
+}
 function scrubTo(e) {
   const r = scrub.track.getBoundingClientRect();
   const occ = P().occ[scrub.occ];
@@ -301,7 +315,27 @@ export function act(name, d = {}, el) {
     case 'capture-cancel': S.capture = null; break;
     // drawer
     case 'drawer': S.drawer.open = !S.drawer.open; setTimeout(() => app.stage.resize(), 0); break;
-    case 'lens': S.drawer.lens = d.v; S.drawer.open = true; break;
+    // Opening the Whole lens lands the ruler on the Stop you were reading, so the
+    // big-picture view starts where your attention already is.
+    case 'lens': {
+      S.drawer.open = true;
+      if (d.v === 'whole' && S.drawer.lens !== 'whole') {
+        S.drawer.lens = 'whole';
+        const tl = D.timeline(p, S.exp);
+        const i = tl.items.findIndex((it) => it.occ.id === S.stop);
+        A.tlAct('seek', { g: tl.items[Math.max(0, i)]?.start ?? 0 });
+      } else {
+        S.drawer.lens = d.v;
+        if (d.v !== 'whole') S.track.playing = false;
+      }
+      break;
+    }
+    // The Whole lens's transport.
+    case 'tl-toggle': A.tlAct('toggle'); break;
+    case 'tl-step': A.tlAct('step', { dir: Number(d.dir) || 1 }); break;
+    case 'tl-hold': A.tlAct('hold'); break;
+    case 'tl-reset': A.tlAct('seek', { g: 0 }); break;
+    case 'tl-seek': A.tlAct('seek', { g: Number(d.g) || 0 }); break;
     case 'beat': S.sel = { kind: 'beat', occ: d.occ, id: d.id }; S.stop = d.occ; S.panel = 'inspect'; { const it = D.schedule(p, occOf()).items.find((i) => i.beat.id === d.id); if (it) S.scrub = it.beat.kind === 'use' ? it.end : Math.min(it.start + 0.05, D.schedule(p, occOf()).length); S.look = 'shot'; } break;
     case 'state': S.sel = { kind: 'state', occ: d.occ, id: d.id }; S.stop = d.occ; S.panel = 'inspect'; break;
     case 'beat-move': A.doc({ kind: 'setBeat', occ: d.occ, beat: d.id, patch: { move: d.v }, label: (d.v === 'travel' ? 'Travel to' : 'Cut to') + ' “' + D.viewName(p, occOf().beats.find((b) => b.id === d.id).view) + '” in “' + occOf().title + '”' }); break;
@@ -468,6 +502,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.target.closest?.('button, a') && (e.key === 'Enter' || e.key === ' ')) return;
+  if (k === ' ' && !S.capture && S.drawer.open && S.drawer.lens === 'whole') { e.preventDefault(); A.tlAct('toggle'); app.ui(); return; }
   if (k === 'i' && S.sel?.kind === 'subject') A.startInspect(S.sel.inst);
   else if (k === 'b' && S.inspect) A.inspectBay();
   else if (k === 'c' && !S.capture) { A.openCapture(); setTimeout(() => document.querySelector('[data-fk="cap-commit"]')?.focus(), 0); }

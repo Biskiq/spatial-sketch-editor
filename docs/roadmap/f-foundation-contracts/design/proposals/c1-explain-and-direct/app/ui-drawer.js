@@ -1,7 +1,8 @@
-// The Stop drawer: one Stop's presentation seen three ways over the same data.
+// The Stop drawer: one Stop's presentation seen four ways over the same data.
 //   Still — the Stop as a moment (view + states + words), no timing.
 //   Beats — ordered beats with relations (after / with / at a cue). The default.
 //   Clock — the same beats on a Stop-local ruler, for precise alignment and retiming.
+//   Whole — every Stop of the Experience on one ruler, to read and scrub the big picture.
 // World activity appears in every lens as something the Stop does not own.
 
 import { S, app } from './state.js';
@@ -34,13 +35,13 @@ export function renderDrawer(diags) {
       <button class="dr-tog" data-act="drawer" aria-expanded="${S.drawer.open}" aria-label="Toggle the Stop drawer">${S.drawer.open ? '▾' : '▸'}</button>
       <span class="eng">Stop ${pos.i + 1}</span><span class="dr-title">${esc(occ.title)}</span><span class="ref">${occ.id}</span>
       ${preview ? life('run', 'Run #' + R.id) : `<div class="lens" role="radiogroup" aria-label="Show this Stop as">
-        ${['still', 'beats', 'clock'].map((l) => `<button role="radio" aria-checked="${lens === l}" class="${lens === l ? 'on' : ''}" data-act="lens" data-v="${l}" data-fk="lens:${l}">${{ still: 'Still', beats: 'Beats', clock: 'Clock' }[l]}</button>`).join('')}</div>`}
+        ${['still', 'beats', 'clock', 'whole'].map((l) => `<button role="radio" aria-checked="${lens === l}" class="${lens === l ? 'on' : ''}" data-act="lens" data-v="${l}" data-fk="lens:${l}"${l === 'whole' ? ' title="Every Stop of this Experience on one ruler — read and scrub it end to end"' : ''}>${{ still: 'Still', beats: 'Beats', clock: 'Clock', whole: 'Whole' }[l]}</button>`).join('')}</div>`}
       <span class="dr-len mono" id="drTime">${secs(sch.length)}</span>
       <span class="dr-cont">${timed ? '' : 'a still moment · '}${occ.cont === 'hold' ? 'then waits for the visitor' : 'then continues'}</span>
       <span class="grow"></span>
       ${preview ? '' : `<button class="btn xs" data-act="add-shot-menu" data-occ="${occ.id}" id="addShotBtn">+ Cut</button><button class="btn xs" data-act="add-use-menu" data-occ="${occ.id}" id="addUseBtn">+ Use</button>`}
     </div>
-    ${S.drawer.open ? `<div class="dr-body">${lens === 'still' ? still(p, occ, sch) : lens === 'clock' ? clock(p, occ, sch) : beats(p, occ, sch, preview)}</div>` : ''}`;
+    ${S.drawer.open ? `<div class="dr-body">${lens === 'still' ? still(p, occ, sch) : lens === 'clock' ? clock(p, occ, sch) : lens === 'whole' ? whole(p, occ) : beats(p, occ, sch, preview)}</div>` : ''}`;
 }
 
 function worldRow() {
@@ -126,6 +127,41 @@ function still(p, occ, sch) {
       ${D.isTimed(occ) ? `<p class="endpoints"><b>Endpoints don’t describe everything.</b> Over ${secs(sch.length)}, ${moments.join('; ')} — and the rotor keeps its own clock throughout. Use Beats or Clock to see how.</p>`
         : `<p class="endpoints">No timing: the Stop shows its view and states, then waits. <button class="linkish" data-act="lens" data-v="beats">Add timing in Beats</button> when something needs to happen over time.</p>`}
     </div></div>`;
+}
+
+// The whole Experience on one ruler: the same derivation the Clock lens and preview read,
+// laid end to end so the order, the transitions and the waiting moments can be seen together.
+function whole(p, occ) {
+  const tl = D.timeline(p, occ.exp);
+  const at = D.timelineAt(tl, S.track.g);
+  if (!tl.items.length) return `<div class="tl"><p class="tl-note">This Experience has no Stops yet — capture a view to make the first one.</p></div>`;
+  const w = (v) => (tl.total > 0 ? ((v / tl.total) * 100).toFixed(3) : '0') + '%';
+  const segs = tl.items.map((it, i) => `<div class="tl-seg${at.item === it ? ' on' : ''}${it.waits ? ' waits' : ''}" style="width:${w(it.len)}" data-act="tl-seek" data-g="${it.start}" title="Stop ${i + 1} · ${esc(it.occ.title)} · ${secs(it.len)}">
+      <span class="tl-n">${i + 1}</span><span class="tl-t">${esc(it.occ.title)}</span><span class="mono tl-s">${secs(it.len)}</span></div>`).join('');
+  const rows = tl.items.map((it, i) => {
+    const trans = it.trans.map((x) => `${x.move === 'travel' ? 'travel' : 'cut'}${x.cue ? ` at “${esc(x.cue)}”` : ''} → ${esc(D.viewName(p, x.view))}${x.gap ? ' <b class="t-err">✕ no route</b>' : ''}`).join(' · ');
+    const shots = it.sch.shots.length;
+    return `<button class="tl-row${at.item === it ? ' on' : ''}" data-act="tl-seek" data-g="${it.start}" data-fk="tlrow:${it.occ.id}">
+      <span class="tl-i mono">${i + 1}</span>
+      <span class="tl-body"><b>${esc(it.occ.title)}</b>${D.isTimed(it.occ) ? '' : ' <span class="q">still moment</span>'}
+        <span class="tl-sub">${shots > 1 ? shots + ' shots · ' + esc(trans) : 'one shot'} · ${secs(it.len)} · ${it.waits ? 'then waits for the visitor' : 'then continues'}</span></span></button>`;
+  }).join('');
+  return `<div class="tl">
+    <div class="tl-bar">
+      <button class="btn xs" data-act="tl-reset" title="Back to the start">⏮</button>
+      <button class="btn xs primary" data-act="tl-toggle" aria-pressed="${S.track.playing}" data-fk="tl-play">${S.track.playing ? '❚❚ Pause' : '▶ Play'}</button>
+      <button class="btn xs" data-act="tl-step" data-dir="1" title="Jump to the next Stop">⏭</button>
+      <span class="tl-now" id="tlNow">Stop ${D.position(p, at.item.occ).i + 1} · ${esc(at.item.occ.title)}</span>
+      <span class="tl-clock mono"><span id="tlTime">${secs(S.track.g)} / ${secs(tl.total)}</span></span>
+      <span class="grow"></span>
+      <button class="btn xs${S.track.hold ? ' on' : ''}" data-act="tl-hold" aria-pressed="${S.track.hold}" title="Stop at each waiting moment, as a visitor does" data-fk="tl-hold">Hold at waiting moments</button>
+    </div>
+    <div class="tl-ruler" data-track="1" data-len="${tl.total}" role="slider" tabindex="0" aria-label="The whole Experience" aria-valuemin="0" aria-valuemax="${tl.total}" aria-valuenow="${S.track.g}">
+      ${segs}<div class="tl-cursor" id="tlHead" style="left:${w(S.track.g)}"></div>
+    </div>
+    <div class="tl-map">${rows}</div>
+    <p class="tl-note">Every Stop of <b>${esc(tl.exp?.name ?? '')}</b> on one ruler — drag anywhere on it to scrub the whole Experience, or <kbd>Space</kbd> to play it through. This is authoring preview: the same pure evaluation the Clock lens and the run use, and it writes nothing. A waiting moment is the visitor's gate, so with <b>Hold</b> on, play stops there exactly as the run does.</p>
+  </div>`;
 }
 
 function clock(p, occ, sch) {

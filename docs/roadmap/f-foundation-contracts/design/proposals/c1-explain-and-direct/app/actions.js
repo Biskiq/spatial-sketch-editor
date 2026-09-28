@@ -38,6 +38,75 @@ export function currentPose() {
   return CAM.orbitPose(S.orbit);
 }
 
+// ---- the whole-Experience ruler (the drawer's Whole lens) ----
+// A session-level way to read and scrub an Experience in one motion: it seeks (Stop,
+// local time) through the same pure evaluation the Clock lens and the visitor preview
+// use, so it writes nothing and invents no second authority. Waiting moments are the
+// visitor's gate: the ruler can hold at them (mimicking the run) or play through them.
+
+export function tlAct(name, d = {}) {
+  if (S.mode !== 'author') return;
+  const tl = D.timeline(P(), S.exp);
+  switch (name) {
+    case 'play':
+      if (S.track.g >= tl.total - 1e-6) S.track.g = 0; // playing from the end restarts
+      S.track.playing = true;
+      break;
+    case 'pause': S.track.playing = false; break;
+    case 'toggle': return tlAct(S.track.playing ? 'pause' : 'play');
+    case 'hold': S.track.hold = !S.track.hold; break;
+    case 'seek': S.track.playing = false; S.track.g = Math.max(0, Number(d.g) || 0); break;
+    case 'step': return tlStep(Number(d.dir) || 1);
+    default: return;
+  }
+  tlSync();
+}
+
+function tlStep(dir) {
+  const tl = D.timeline(P(), S.exp);
+  const at = D.timelineAt(tl, S.track.g);
+  if (!at) return;
+  S.track.playing = false;
+  const i = tl.items.indexOf(at.item);
+  if (dir < 0) S.track.g = at.t > 0.05 ? at.item.start : (tl.items[Math.max(0, i - 1)] ?? at.item).start;
+  else S.track.g = (tl.items[i + 1] ?? null)?.start ?? tl.total;
+  tlSync();
+}
+
+// Follow the ruler: name the Stop it lands in and seek it to that local time.
+function tlSync() {
+  const tl = D.timeline(P(), S.exp);
+  const at = D.timelineAt(tl, S.track.g);
+  if (!at) return;
+  S.track.g = at.g;
+  S.scrub = at.t;
+  if (!S.inspect && S.look !== 'shot') S.look = 'shot';
+  // The outline and Stop header follow the ruler, but only when the Stop changes:
+  // the per-frame playhead handles everything else, so playing stays cheap.
+  if (S.stop !== at.item.occ.id) { S.stop = at.item.occ.id; app.ui(); }
+}
+
+// Called from the frame loop while the ruler is playing.
+export function tlTick(dt) {
+  const st = S.track;
+  if (!st.playing || S.mode !== 'author' || S.inspect) return;
+  const tl = D.timeline(P(), S.exp);
+  if (!tl.total) { st.playing = false; return; }
+  const before = D.timelineAt(tl, st.g);
+  const next = Math.min(tl.total, st.g + dt);
+  const after = D.timelineAt(tl, next);
+  if (before && after && after.item !== before.item && st.hold && before.item.waits) {
+    st.g = after.item.start; // the waiting moment: exactly where the run stops for the visitor
+    st.playing = false;
+    toast('Held at the waiting moment of “' + before.item.occ.title + '”. The visitor decides when to go on — restart to play through with Hold off.', 'session');
+  } else if (next >= tl.total) {
+    st.g = tl.total;
+    st.playing = false;
+    toast(tl.total.toFixed(1) + ' s played across ' + tl.items.length + ' Stop' + (tl.items.length === 1 ? '' : 's') + '.', 'session');
+  } else st.g = next;
+  tlSync();
+}
+
 export const casual = (name) => name.replace(/^Pump/, 'pump');
 
 export function followPose(viewId, occ) {
@@ -315,6 +384,8 @@ export function startPreview(expId = S.exp) {
   if (S.inspect) { S.inspect = null; S.camAnim = null; }
   S.capture = null;
   S.menu = null;
+  S.track.playing = false; // the ruler is authoring preview — the run takes over
+
   S.mode = 'preview';
   S.exp = expId;
   app.R = RUN.createRun(P(), expId, { reduced: S.motion === 'reduced' });

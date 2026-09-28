@@ -152,11 +152,29 @@ export function framePlayhead(out) {
   if (tt) tt.textContent = secs(t);
 }
 
+// The whole-Experience ruler's playhead (only present while the Whole lens is open).
+function frameTrack() {
+  const head = $('tlHead');
+  if (!head) return;
+  const tl = D.timeline(P(), S.exp);
+  if (!(tl.total > 0)) return;
+  const at = D.timelineAt(tl, S.track.g);
+  if (!at) return;
+  head.style.left = ((S.track.g / tl.total) * 100).toFixed(3) + '%';
+  const tt = $('tlTime');
+  if (tt) tt.textContent = secs(S.track.g) + ' / ' + secs(tl.total);
+  const now = $('tlNow');
+  if (now) now.textContent = 'Stop ' + (tl.items.indexOf(at.item) + 1) + ' · ' + at.item.occ.title;
+  document.querySelectorAll('.tl-row').forEach((row) => row.classList.toggle('on', row.dataset.fk === 'tlrow:' + at.item.occ.id));
+  document.querySelectorAll('.tl-seg').forEach((seg) => seg.classList.toggle('on', Number(seg.dataset.g) === at.item.start));
+}
+
 export function frameUI(out, pose) {
   frameTags(out);
   frameChip(out);
   frameMap(pose);
   framePlayhead(out);
+  frameTrack();
   frameVisitor(out);
   frameRunPanel(out);
 }
