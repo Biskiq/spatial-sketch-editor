@@ -66,7 +66,7 @@
 	} from './drive';
 	import { p23bM1FrameTiming, p23bM1LongFramesFor } from '$lib/bench/p23b-m1-frame-timing';
 	import { p23bM1ActionArms } from '$lib/editor/layout/p23b-m1-room-drag-arm';
-import { p23bM1ActionLabelArms } from '$lib/editor/layout/p23b-m1-room-label-arm';
+import { p23bM1ActionLabelArmRecordsFor } from '$lib/editor/layout/p23b-m1-room-label-arm';
 	import {
 		buildP23BM1Record,
 		m1ClassLedger,
@@ -1067,10 +1067,11 @@ import { p23bM1ActionLabelArms } from '$lib/editor/layout/p23b-m1-room-label-arm
 					// class that ran one path: `summarizeM1Class` turns the empty map
 					// into a `null` arms block rather than an empty one.
 					actionArms: p23bM1ActionArms(entry.fixtureId, actionClass),
-					// The Room-label arm assignments: a DIFFERENT arm over a DIFFERENT
-					// population (every class, not one), handed to the record beside the
-					// room-drag one so the runner can split its windows by either.
-					actionLabelArms: p23bM1ActionLabelArms(entry.fixtureId, actionClass),
+					// The Room-label arm assignments, with the grid-build count each
+					// attempt paid for: a DIFFERENT arm over a DIFFERENT population (every
+					// class, not one), handed to the record beside the room-drag one so the
+					// runner can split its windows by either.
+					actionLabelArms: p23bM1ActionLabelArmRecordsFor(entry.fixtureId, actionClass),
 					longFrameWindow: p23bM1LongFramesFor(timing, entry.fixtureId, actionClass)
 				})
 			);
@@ -1109,7 +1110,7 @@ import { p23bM1ActionLabelArms } from '$lib/editor/layout/p23b-m1-room-label-arm
 					? 'transient · per-move, interleaved per attempt on the whole-Room class (see schema.arms and each class row\'s arms block)'
 					: 'not run — one path per class',
 				labelArms: labelArms
-					? 'pruned-grid · per-cell-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — see each class row\'s labelArms block'
+					? 'seeded-grid · pruned-grid · per-cell-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — the signed pair is seeded-grid − pruned-grid, and per-cell-grid is summarized beside them so the previous pass\'s pruned-grid − per-cell-grid delta stays recomputable from this session; see each class row\'s labelArms block'
 					: 'not run — one grid per class',
 				warmupExcluded: INTERACTION_WARMUP,
 				actionsPerClass: DRIVE_ACTIONS_PER_PATH,

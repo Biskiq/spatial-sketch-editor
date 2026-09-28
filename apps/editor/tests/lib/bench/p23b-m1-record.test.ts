@@ -12,6 +12,7 @@ import {
 	m1Population,
 	summarizeLabelArmWindows,
 	summarizeM1Class,
+	summarizeM1LabelArms,
 	P23B6_S1B_D1_COMPARISON,
 	P23B_M1_D13_NOTE,
 	P23B_M1_WARMUP_RULE,
@@ -41,8 +42,10 @@ import {
 } from '$lib/editor/layout/p23b-m1-room-drag-arm';
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
+	P23B_M1_ROOM_LABEL_ARM_AFTER,
+	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
-	type P23BM1RoomLabelArm
+	type P23BM1ActionLabelArmRecord
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import { p23bM1MeasuredClass } from '../../../src/routes/dev/perf/p23b/drive';
 
@@ -631,7 +634,7 @@ describe('M1 wiring', () => {
 		for (const forbidden of [
 			'p23bM1RecordActionLabelArm',
 			'p23bM1ResetActionLabelArms',
-			'p23bM1ActionLabelArms',
+			'p23bM1ActionLabelArmRecordsFor',
 			'__P23B_M1_ROOM_LABEL_ARM__'
 		]) {
 			expect(placer, `the placer must not contain ${forbidden}`).not.toContain(forbidden);
@@ -654,7 +657,7 @@ describe('M1 wiring', () => {
 		);
 		// The page reports the ASSIGNMENT only; the per-arm rows are priced by the
 		// runner, which is the only process that can see a presented frame.
-		expect(page).toContain('p23bM1ActionLabelArms(');
+		expect(page).toContain('p23bM1ActionLabelArmRecordsFor(');
 		expect(page).not.toContain('summarizePresentedWindowArms');
 		// The M1 record takes its ladder from the M1 run, not from the P23B.11 one.
 		expect(page).toContain('planViewLadderPixelsPerMeter: m1LadderPixelsPerMeter');
@@ -1026,11 +1029,14 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 	const marks = [{ name: 'p2311:preview-compile', startTime: 210, duration: 30 }];
 	// The placer runs in EVERY class, so this dimension is recorded over every class —
 	// even and odd attempts alternating between the shipped and the pre-change grid.
-	const assignment: ReadonlyMap<number, P23BM1RoomLabelArm> = new Map<number, P23BM1RoomLabelArm>([
-		[0, 'pruned-grid'],
-		[1, 'per-cell-grid'],
-		[2, 'pruned-grid']
-	]);
+	// The arm module's own records, which is what the page hands over: the arm AND the
+	// attempt's grid-build count, taken at the same instant so the two cannot be paired
+	// across attempts.
+	const assignment: P23BM1ActionLabelArmRecord[] = [
+		{ fixtureId, actionClass, actionIndex: 0, arm: 'seeded-grid', builds: 5 },
+		{ fixtureId, actionClass, actionIndex: 1, arm: 'pruned-grid', builds: 5 },
+		{ fixtureId, actionClass, actionIndex: 2, arm: 'per-cell-grid', builds: 4 }
+	];
 
 	it('records the assignment per resolved action, sorted, with the rule it was made under', () => {
 		const row = summarizeM1Class({
@@ -1047,11 +1053,25 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		});
 		expect(row.labelArms?.rule).toBe(P23B_M1_ROOM_LABEL_ARM_RULE);
 		expect(row.labelArms?.arms).toEqual(P23B_M1_ROOM_LABEL_ARMS);
-		expect(row.labelArms?.byAction).toEqual([
-			{ actionIndex: 0, arm: 'pruned-grid' },
-			{ actionIndex: 1, arm: 'per-cell-grid' },
-			{ actionIndex: 2, arm: 'pruned-grid' }
+		// The assignment keeps the arm module's own index/arm/builds and drops nothing
+		// else the record needs: the fixture and class are the row's own keys.
+		expect(row.labelArms?.byAction).toEqual(assignment.map(({ actionIndex, arm, builds }) => ({
+			actionIndex,
+			arm,
+			builds
+		})));
+		// The grid-build budget travels with the same assignment: it is the reuse
+		// budget, and a class that paid for one grid per action has nothing to reuse.
+		expect(row.labelArms?.buildsPerAction).toEqual({ actions: 3, total: 14, p50: 5, max: 5 });
+	});
+
+	it('keeps the last record for one action index, so a retried action cannot appear twice in the split', () => {
+		const block = summarizeM1LabelArms([
+			...assignment,
+			{ fixtureId, actionClass, actionIndex: 1, arm: 'seeded-grid', builds: 2 }
 		]);
+		expect(block?.byAction.map((entry) => entry.actionIndex)).toEqual([0, 1, 2]);
+		expect(block?.byAction[1]).toEqual({ actionIndex: 1, arm: 'seeded-grid', builds: 2 });
 	});
 
 	it('reports NO label block for a run that took no arm, so the runner cannot invent a split', () => {
@@ -1065,7 +1085,7 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			warmup: 0,
 			gestureRegistry: noGestures(),
 			longFrameWindow: null,
-			actionLabelArms: new Map()
+			actionLabelArms: []
 		});
 		expect(row.labelArms).toBeNull();
 	});
@@ -1106,8 +1126,8 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		expect(block?.note).toBe(P23B_M1_WINDOW_ARM_NOTE);
 		// The shipped grid is the AFTER side by construction, so the sign of every
 		// delta is knowable without reading the rows.
-		expect(block?.afterArm).toBe('pruned-grid');
-		expect(block?.beforeArm).toBe('per-cell-grid');
+		expect(block?.afterArm).toBe(P23B_M1_ROOM_LABEL_ARM_AFTER);
+		expect(block?.beforeArm).toBe(P23B_M1_ROOM_LABEL_ARM_BEFORE);
 		expect(block?.notMeasuredReason).toBeNull();
 		expect(block?.rows[0]?.unassignedWindows).toBe(2);
 		expect(block?.rows[0]?.cpu.map((row) => row.key)).toEqual(['per-cell-grid']);

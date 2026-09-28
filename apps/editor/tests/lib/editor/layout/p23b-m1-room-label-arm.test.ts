@@ -10,14 +10,18 @@ import {
 } from '$lib/editor/layout/plan-room-labels';
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
+	P23B_M1_ROOM_LABEL_ARM_AFTER,
+	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	p23bM1ActionLabelArmRecords,
-	p23bM1ActionLabelArms,
+	p23bM1ActionLabelArmRecordsFor,
 	p23bM1RecordActionLabelArm,
 	p23bM1ResetActionLabelArms,
 	p23bM1RoomLabelArm,
 	p23bM1RoomLabelArmEnabled,
-	setP23bM1RoomLabelArm
+	p23bM1RoomLabelGridBuilds,
+	setP23bM1RoomLabelArm,
+	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import { createPlanViewportState, type PlanViewportState } from '$lib/editor/layout/layout-plan-transform';
 import type { LayoutVec2 } from '$lib/layout/layout-types';
@@ -26,13 +30,16 @@ import type { LayoutVec2 } from '$lib/layout/layout-types';
  * The BEFORE/AFTER arm is the one thing a product module learns about M1, so two
  * things are pinned here and nowhere else:
  *
- * 1. the GATE — the arm may only select the pre-change grid when the DEV build AND
+ * 1. the GATE — no experimental grid may be selected unless the DEV build AND
  *    `__P2311_PERF__` are both on, and the registry may only attribute an action to
- *    the arm it actually ran under; and
- * 2. the PARITY — both arms place labels IDENTICALLY on a fixture set that covers
+ *    the arm it actually ran under;
+ * 2. the PARITY — ALL THREE arms place labels IDENTICALLY on a fixture set that covers
  *    what the grid actually sees (long curved boundaries, concavity, masks of every
  *    kind, three zoom regimes, a sticky second pass). Without that, the arm would
- *    measure two behaviours instead of two costs.
+ *    measure three behaviours instead of three costs; and
+ * 3. the BUILD COUNT — the shipped placer reads the arm once per grid build, so the
+ *    switch's own call count is the grid's build count. It is pinned here because a
+ *    later "reuse the grid" change would be measured with it.
  */
 const globals = globalThis as {
 	__P2311_PERF__?: boolean;
@@ -52,13 +59,13 @@ describe('M1 room-label arm — the DEV switch', () => {
 		p23bM1ResetActionLabelArms();
 	});
 
-	it('cannot select the pre-change grid without the DEV measurement switch', () => {
+	it('cannot select an experimental grid without the DEV measurement switch', () => {
 		// The arm global alone is not enough: the whole instrument is gated like
 		// every other capture-side one, so a stray global in a production build
 		// still runs the shipped grid.
 		setP23bM1RoomLabelArm('per-cell-grid');
 		expect(p23bM1RoomLabelArmEnabled()).toBe(false);
-		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
+		expect(p23bM1RoomLabelArm()).toBe(P23B_M1_ROOM_LABEL_ARM_AFTER);
 
 		globals.__P2311_PERF__ = true;
 		expect(p23bM1RoomLabelArmEnabled()).toBe(true);
@@ -67,17 +74,40 @@ describe('M1 room-label arm — the DEV switch', () => {
 
 	it('defaults to the shipped grid, and ignores a value it does not know', () => {
 		globals.__P2311_PERF__ = true;
-		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
+		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
 		globals.__P23B_M1_ROOM_LABEL_ARM__ = 'something-else';
+		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
+		// The previous shipped grid is still selectable — it is the BEFORE side of this
+		// pass's pair — but it has to be asked for by name like any other arm.
+		setP23bM1RoomLabelArm('pruned-grid');
 		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
 		setP23bM1RoomLabelArm('per-cell-grid');
 		expect(p23bM1RoomLabelArm()).toBe('per-cell-grid');
 		setP23bM1RoomLabelArm(null);
-		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
+		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
+	});
+
+	it('counts the grid builds the switch is read for, and starts a new count per arm change', () => {
+		globals.__P2311_PERF__ = true;
+		setP23bM1RoomLabelArm('seeded-grid');
+		expect(p23bM1RoomLabelGridBuilds()).toBe(0);
+		p23bM1RoomLabelArm();
+		p23bM1RoomLabelArm();
+		expect(p23bM1RoomLabelGridBuilds()).toBe(2);
+		// The count belongs to ONE attempt: the arm is chosen per attempt, so changing
+		// it is what closes the previous attempt's window.
+		setP23bM1RoomLabelArm('pruned-grid');
+		expect(p23bM1RoomLabelGridBuilds()).toBe(0);
+		// And it counts a production read too: the gate cannot hide a build.
+		delete globals.__P2311_PERF__;
+		p23bM1RoomLabelArm();
+		expect(p23bM1RoomLabelGridBuilds()).toBe(1);
 	});
 
 	it('interleaves the shipped grid first, and states the one-session rule it exists for', () => {
-		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual(['pruned-grid', 'per-cell-grid']);
+		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual(['seeded-grid', 'pruned-grid', 'per-cell-grid']);
+		expect(P23B_M1_ROOM_LABEL_ARM_AFTER).toBe('seeded-grid');
+		expect(P23B_M1_ROOM_LABEL_ARM_BEFORE).toBe('pruned-grid');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('interleaved PER ATTEMPT');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('WITHIN-SESSION');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('session-conditioned');
@@ -98,22 +128,40 @@ describe('M1 room-label arm — the per-action registry', () => {
 		p23bM1RecordActionLabelArm('f2', 'p23b-m1:rigid-wall-drag', 3, 'pruned-grid');
 		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 0, 'per-cell-grid');
 
-		expect([...p23bM1ActionLabelArms('f1', 'p23b-m1:rigid-wall-drag')]).toEqual([
+		expect(
+			p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:rigid-wall-drag').map((record) => [
+				record.actionIndex,
+				record.arm
+			])
+		).toEqual([
 			[3, 'per-cell-grid'],
 			[4, 'pruned-grid']
 		]);
-		expect([...p23bM1ActionLabelArms('f2', 'p23b-m1:rigid-wall-drag')]).toEqual([[3, 'pruned-grid']]);
+		expect(p23bM1ActionLabelArmRecordsFor('f2', 'p23b-m1:rigid-wall-drag')).toHaveLength(1);
+		expect(p23bM1ActionLabelArmRecordsFor('f2', 'p23b-m1:rigid-wall-drag')[0]?.arm).toBe(
+			'pruned-grid'
+		);
+		// The build count travels with the action it was measured for: it is the same
+		// attempt window the arm belongs to, so a record can never pair an arm with a
+		// count taken while another arm was live.
+		expect(p23bM1ActionLabelArmRecords().map((record) => record.builds)).toEqual([0, 0, 0, 0]);
+		setP23bM1RoomLabelArm('pruned-grid');
+		p23bM1RoomLabelArm();
+		p23bM1RoomLabelArm();
+		p23bM1RoomLabelArm();
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 5, 'pruned-grid');
+		expect(p23bM1ActionLabelArmRecords().at(-1)?.builds).toBe(3);
 		// A class that recorded nothing reads as an empty map — never as "all one
 		// arm", which would silently invent a before/after for an uninstrumented run.
-		expect(p23bM1ActionLabelArms('f1', 'p23b-m1:room-creation-commit').size).toBe(0);
-		expect(p23bM1ActionLabelArms('f2', 'p23b-m1:bend').size).toBe(0);
+		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:room-creation-commit')).toHaveLength(0);
+		expect(p23bM1ActionLabelArmRecordsFor('f2', 'p23b-m1:bend')).toHaveLength(0);
 	});
 
 	it('drops everything on reset, so arms cannot leak from one run into the next', () => {
 		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 0, 'per-cell-grid');
 		p23bM1ResetActionLabelArms();
 		expect(p23bM1ActionLabelArmRecords()).toHaveLength(0);
-		expect(p23bM1ActionLabelArms('f1', 'p23b-m1:rigid-wall-drag').size).toBe(0);
+		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:rigid-wall-drag')).toHaveLength(0);
 	});
 });
 
@@ -202,7 +250,7 @@ const cases: { name: string; rooms: RoomLabelFacts[]; planView: PlanViewportStat
  */
 function runCase(
 	entry: (typeof cases)[number],
-	arm: 'pruned-grid' | 'per-cell-grid',
+	arm: P23BM1RoomLabelArm,
 	memory: RoomLabelMemory = new Map()
 ): { labels: unknown; readout: unknown; memory: [string, unknown][] } {
 	globals.__P2311_PERF__ = true;
@@ -227,19 +275,30 @@ function runCase(
 	};
 }
 
-describe('M1 room-label arm — both arms place labels identically', () => {
+describe('M1 room-label arm — every arm places labels identically', () => {
 	afterEach(() => {
 		delete globals.__P2311_PERF__;
 		delete globals.__P23B_M1_ROOM_LABEL_ARM__;
 	});
 
+	/**
+	 * The shipped arm is the reference and every other arm is compared against it, so a
+	 * three-arm run needs no pair matrix: if each arm equals the reference, they equal
+	 * each other. The reference is the AFTER side deliberately — the arm whose behaviour
+	 * ships is the one the others must not move.
+	 */
+	const reference = P23B_M1_ROOM_LABEL_ARM_AFTER;
+	const others = P23B_M1_ROOM_LABEL_ARMS.filter((arm) => arm !== reference);
+
 	it('agrees on every fixture, anchor and tier, and on the whole sticky memory', () => {
 		for (const entry of cases) {
-			const after = runCase(entry, 'pruned-grid');
-			const before = runCase(entry, 'per-cell-grid');
-			expect(before.labels, entry.name).toEqual(after.labels);
-			expect(before.readout, entry.name).toEqual(after.readout);
-			expect(before.memory, entry.name).toEqual(after.memory);
+			const shipped = runCase(entry, reference);
+			for (const arm of others) {
+				const other = runCase(entry, arm);
+				expect(other.labels, `${entry.name} · ${arm}`).toEqual(shipped.labels);
+				expect(other.readout, `${entry.name} · ${arm}`).toEqual(shipped.readout);
+				expect(other.memory, `${entry.name} · ${arm}`).toEqual(shipped.memory);
+			}
 		}
 	});
 
@@ -248,23 +307,21 @@ describe('M1 room-label arm — both arms place labels identically', () => {
 		// and the second reads it, so a grid that visited a different cell would move a
 		// label here even when pass one agreed.
 		const entry = cases.find((candidate) => candidate.mask !== undefined)!;
-		const afterMemory: RoomLabelMemory = new Map();
-		const beforeMemory: RoomLabelMemory = new Map();
-		let afterFirst: unknown = null;
-		let beforeFirst: unknown = null;
+		const memories = new Map<P23BM1RoomLabelArm, RoomLabelMemory>(
+			P23B_M1_ROOM_LABEL_ARMS.map((arm) => [arm, new Map<string, never>()] as const)
+		);
+		let shippedFirst: unknown = null;
 		for (let pass = 0; pass < 2; pass += 1) {
-			const after = runCase(entry, 'pruned-grid', afterMemory);
-			const before = runCase(entry, 'per-cell-grid', beforeMemory);
-			expect(before.labels, `${entry.name} pass ${pass}`).toEqual(after.labels);
-			expect(before.memory, `${entry.name} pass ${pass}`).toEqual(after.memory);
-			if (pass === 0) {
-				afterFirst = after.labels;
-				beforeFirst = before.labels;
+			const shipped = runCase(entry, reference, memories.get(reference) as RoomLabelMemory);
+			for (const arm of others) {
+				const other = runCase(entry, arm, memories.get(arm) as RoomLabelMemory);
+				expect(other.labels, `${entry.name} · ${arm} pass ${pass}`).toEqual(shipped.labels);
+				expect(other.memory, `${entry.name} · ${arm} pass ${pass}`).toEqual(shipped.memory);
 			}
+			if (pass === 0) shippedFirst = shipped.labels;
 		}
 		// A sanity check on the test itself: the fixture must have placed something,
-		// or "both arms agree" would be an agreement about nothing.
-		expect((afterFirst as unknown[]).length).toBeGreaterThan(0);
-		expect(beforeFirst).toEqual(afterFirst);
+		// or "the arms agree" would be an agreement about nothing.
+		expect((shippedFirst as unknown[]).length).toBeGreaterThan(0);
 	});
 });

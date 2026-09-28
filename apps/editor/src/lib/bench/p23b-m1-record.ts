@@ -34,6 +34,7 @@
  *    coverage and whether the runtime reported the entry type at all.
  */
 import {
+	percentile,
 	summarizeContainmentByPath,
 	walk,
 	type P23BContainmentNode,
@@ -54,7 +55,10 @@ import {
 } from '$lib/editor/layout/p23b-m1-room-drag-arm';
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
+	P23B_M1_ROOM_LABEL_ARM_AFTER,
+	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
+	type P23BM1ActionLabelArmRecord,
 	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import {
@@ -278,19 +282,53 @@ export type P23BM1LabelArmsBlock = {
 	rule: string;
 	arms: readonly P23BM1RoomLabelArm[];
 	/** Sorted by action index; the runner's split key. */
-	byAction: { actionIndex: number; arm: P23BM1RoomLabelArm }[];
+	byAction: { actionIndex: number; arm: P23BM1RoomLabelArm; builds: number }[];
+	/**
+	 * Eligibility grids one accepted action paid for, over the actions above. The count
+	 * is arm-INDEPENDENT by construction (every arm rebuilds the grid on every Plan
+	 * render it happens on), so it is the reuse budget: `p50` is how many times the
+	 * grid was able to change between one accepted action and the next, and a `p50` of
+	 * 1 with a `max` of 1 would mean there is nothing left to reuse.
+	 */
+	buildsPerAction: {
+		actions: number;
+		total: number;
+		p50: number | null;
+		max: number;
+	};
 };
 
+/**
+ * The class's Room-label arm assignment and its grid-build budget, from the arm
+ * module's own per-attempt records. Returns `null` — not an empty block — when the
+ * class ran no arm, so a non-arm run cannot be read as a measured pair.
+ *
+ * The count travels with the arm because both were taken at the same instant: the
+ * arm module's counter is reset when the arm is set, so `builds` is that attempt's
+ * own grid builds and never a neighbour's.
+ */
 export function summarizeM1LabelArms(
-	assignments: ReadonlyMap<number, P23BM1RoomLabelArm> | null
+	records: readonly P23BM1ActionLabelArmRecord[] | null
 ): P23BM1LabelArmsBlock | null {
-	if (!assignments || assignments.size === 0) return null;
+	if (!records || records.length === 0) return null;
+	// Later records win for one action index, so an action retried in the same
+	// attempt cannot appear twice in the split the runner keys by index.
+	const byIndex = new Map<number, P23BM1ActionLabelArmRecord>();
+	for (const record of records) byIndex.set(record.actionIndex, record);
+	const byAction = [...byIndex.values()]
+		.map(({ actionIndex, arm, builds }) => ({ actionIndex, arm, builds }))
+		.sort((left, right) => left.actionIndex - right.actionIndex);
+	const builds = byAction.map((entry) => entry.builds);
 	return {
 		rule: P23B_M1_ROOM_LABEL_ARM_RULE,
 		arms: P23B_M1_ROOM_LABEL_ARMS,
-		byAction: [...assignments.entries()]
-			.map(([actionIndex, arm]) => ({ actionIndex, arm }))
-			.sort((left, right) => left.actionIndex - right.actionIndex)
+		byAction,
+		buildsPerAction: {
+			actions: builds.length,
+			total: builds.reduce((sum, value) => sum + value, 0),
+			p50: builds.length === 0 ? null : percentile(builds, 50),
+			max: builds.length === 0 ? 0 : Math.max(...builds)
+		}
 	};
 }
 
@@ -322,9 +360,9 @@ export type P23BM1LabelArmWindowRow = {
 export type P23BM1LabelArmWindows = {
 	rule: string;
 	note: string;
-	/** The shipped grid: the AFTER side of every signed delta. */
+	/** The arm the runner signed as AFTER — the shipped grid for this pass. */
 	afterArm: P23BM1RoomLabelArm;
-	/** The pre-change grid: the BEFORE side. */
+	/** The arm the runner signed as BEFORE — the grid it replaced. */
 	beforeArm: P23BM1RoomLabelArm;
 	rows: P23BM1LabelArmWindowRow[];
 	/** Why the split reports no rows; `null` when it reports some. */
@@ -342,8 +380,8 @@ export function summarizeLabelArmWindows(input: {
 	/** Windows the run covered in total, for the not-measured reason. */
 	presentedWindows: number;
 }): P23BM1LabelArmWindows | null {
-	const afterArm = input.afterArm ?? 'pruned-grid';
-	const beforeArm = input.beforeArm ?? 'per-cell-grid';
+	const afterArm = input.afterArm ?? P23B_M1_ROOM_LABEL_ARM_AFTER;
+	const beforeArm = input.beforeArm ?? P23B_M1_ROOM_LABEL_ARM_BEFORE;
 	if (input.rows.length === 0) return null;
 	return {
 		rule: P23B_M1_LABEL_ARM_WINDOW_RULE,
@@ -1001,12 +1039,13 @@ export function summarizeM1Class(input: {
 	 */
 	actionArms?: ReadonlyMap<number, P23BM1RoomDragArm> | null;
 	/**
-	 * The Room-label arm each resolved action ran under, or `null`/empty. A separate
-	 * dimension from `actionArms`: it is recorded over EVERY class (the placer runs
-	 * on every Plan render), and its rows are the runner's windows, so the page
-	 * hands over the assignment and nothing else.
+	 * The Room-label arm each resolved action ran under, WITH the attempt's own
+	 * grid-build count, or `null`/empty. A separate dimension from `actionArms`: it is
+	 * recorded over EVERY class (the placer runs on every Plan render), and its rows
+	 * are the runner's windows, so the page hands over the arm module's records and
+	 * nothing else.
 	 */
-	actionLabelArms?: ReadonlyMap<number, P23BM1RoomLabelArm> | null;
+	actionLabelArms?: readonly P23BM1ActionLabelArmRecord[] | null;
 }): P23BM1ClassRow {
 	const population = m1Population(input.ledger, input.actionPath, input.warmup);
 	const {

@@ -14,15 +14,30 @@
  * the grid is built, that selects which of the two grid implementations the
  * shipped placer executes.
  *
- *   `pruned-grid`    the shipped path: one bounding-box prune on the
- *                    point-to-polyline distance, an early exit once a cell's slack
- *                    is already negative, active-text inflation hoisted out of the
- *                    per-cell loop, and the even-odd inside test computed per ROW
- *                    (the AFTER arm).
- *   `per-cell-grid`  the PRE-CHANGE path, verbatim: every cell measured against
- *                    every boundary vertex, the inside test walked per cell, the
- *                    inflation rebuilt per cell, the bbox in four mapped arrays and
- *                    a neighbour array per BFS cell (the BEFORE arm).
+ *   `seeded-grid`    the shipped path: the same grid as `pruned-grid` below, but
+ *                    each distance walk is SEEDED with the slack already found, so a
+ *                    term that cannot bind is never walked; the polylines are visited
+ *                    CHEAPEST-SEGMENTS-FIRST, so a four-segment rectangle Room is
+ *                    tested before a 40-wall mask and a flattened 256-vertex ring is
+ *                    tested last; and a per-polyline group bounding box is built only
+ *                    for a polyline long enough to earn one. Added by the 2026-09-28
+ *                    follow-up pass.
+ *   `pruned-grid`    the PREVIOUS shipped path, verbatim: one bounding-box prune on
+ *                    the point-to-polyline distance, each term walked from
+ *                    `+Infinity`, an early exit once a cell's slack is already
+ *                    negative, active-text inflation hoisted out of the per-cell
+ *                    loop, and the even-odd inside test computed per ROW.
+ *   `per-cell-grid`  the PRE-P23B.8-CHANGE path, verbatim: every cell measured
+ *                    against every boundary vertex, the inside test walked per cell,
+ *                    the inflation rebuilt per cell, the bbox in four mapped arrays
+ *                    and a neighbour array per BFS cell.
+ *
+ * THREE ARMS, TWO DELTAS. The pair this branch's runner compares is `seeded-grid`
+ * against `pruned-grid` — this pass's own change, measured in one session. The
+ * pre-change `per-cell-grid` stays interleaved and summarized beside them so a
+ * reader can still recompute the previous pass's `pruned-grid − per-cell-grid`
+ * delta from the SAME session's rows; an arm that is summarized but not compared
+ * is still measured, and the record states which pair it signed.
  *
  * THE ARM IS MEASUREMENT-ONLY AND CANNOT REACH A PRODUCT BUILD. It is read through
  * `p23bM1RoomLabelArm()`, which returns `pruned-grid` unless the DEV build AND
@@ -40,18 +55,28 @@
  * machine that warms up or throttles mid-run moves both arms, not one.
  */
 
-/** The two Room-label grid implementations M1 compares. */
-export type P23BM1RoomLabelArm = 'pruned-grid' | 'per-cell-grid';
+/** The Room-label grid implementations M1 compares. */
+export type P23BM1RoomLabelArm = 'seeded-grid' | 'pruned-grid' | 'per-cell-grid';
 
 /**
- * The arm order the driver interleaves. `pruned-grid` (the shipped path) takes the
- * even attempts and `per-cell-grid` (the pre-change path) the odd ones, so the arms
- * alternate across the whole class rather than in two blocks.
+ * The arm order the driver interleaves, round-robin by attempt index: the shipped
+ * path, the previous shipped path, then the pre-change path. Alternating rather than
+ * blocking is the drift control — a machine that warms up or throttles mid-run moves
+ * every arm, not one.
  */
-export const P23B_M1_ROOM_LABEL_ARMS = ['pruned-grid', 'per-cell-grid'] as const satisfies readonly P23BM1RoomLabelArm[];
+export const P23B_M1_ROOM_LABEL_ARMS = [
+	'seeded-grid',
+	'pruned-grid',
+	'per-cell-grid'
+] as const satisfies readonly P23BM1RoomLabelArm[];
+
+/** The pair the runner signs: the shipped path MINUS the previous shipped path. */
+export const P23B_M1_ROOM_LABEL_ARM_AFTER = 'seeded-grid' as const;
+/** The BEFORE side of that pair — the previous pass's shipped grid, kept verbatim. */
+export const P23B_M1_ROOM_LABEL_ARM_BEFORE = 'pruned-grid' as const;
 
 export const P23B_M1_ROOM_LABEL_ARM_RULE =
-	'One session, two arms, interleaved PER ATTEMPT, in every class of the protocol: `pruned-grid` (the shipped eligibility grid — bbox-pruned point-to-polyline distance, early exit on an already-negative slack, hoisted text inflation, per-row even-odd inside test) and `per-cell-grid` (the pre-change grid — every cell against every vertex, per-cell inside test, per-cell inflation, per-cell allocations). The arm is recorded against the RESOLVED ACTION index, and both arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so the comparison is a WITHIN-SESSION one by construction. The placer is a PRESENTATION-path cost, so the rows it moves are the post-release window (release end → first presented frame) and the samples inside that window, not the release itself; the release row is reported beside them as the unchanged control. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
+	'One session, THREE arms, interleaved PER ATTEMPT, in every class of the protocol: `seeded-grid` (the shipped eligibility grid — every distance walk seeded with the slack already found, so a term that cannot bind is never walked; polylines visited CHEAPEST-SEGMENTS-FIRST, so the Room’s own boundary is tested first when it is the cheapest of them and last when it is a flattened ring; and a per-polyline group bounding box built only for a polyline long enough to earn one), `pruned-grid` (the grid shipped before it — bbox-pruned point-to-polyline distance walked from +Infinity, early exit on an already-negative slack, hoisted text inflation, per-row even-odd inside test) and `per-cell-grid` (the pre-change grid — every cell against every vertex, per-cell inside test, per-cell inflation, per-cell allocations). The SIGNED pair is `seeded-grid` − `pruned-grid`; `per-cell-grid` is interleaved and summarized beside them so the previous pass’s `pruned-grid` − `per-cell-grid` delta stays recomputable from the same session. The arm is recorded against the RESOLVED ACTION index, and all arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so a comparison between them is a WITHIN-SESSION one by construction. The placer is a PRESENTATION-path cost, so the rows it moves are the post-release window (release end → first presented frame) and the samples inside that window, not the release itself; the release row is reported beside them as the unchanged control. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
 
 type ArmGlobals = typeof globalThis & {
 	__P2311_PERF__?: boolean;
@@ -67,19 +92,45 @@ export function p23bM1RoomLabelArmEnabled(): boolean {
 	return viteDev !== false && (globalThis as ArmGlobals).__P2311_PERF__ === true;
 }
 
+let gridBuilds = 0;
+
 /**
- * The implementation the next grid build uses. `pruned-grid` whenever the
- * instrument is off, so the shipped path is the default and the pre-change path is
- * unreachable without an explicit DEV switch.
+ * The implementation the next grid build uses, and the one call per build the
+ * shipped placer is allowed to make. `seeded-grid` whenever the instrument is off,
+ * so the shipped path is the default and no experimental path is reachable without
+ * an explicit DEV switch; an unrecognised value falls back to the shipped path
+ * rather than to an arm nobody asked for.
+ *
+ * IT ALSO COUNTS ITS OWN CALLS. The placer calls this exactly once per eligibility
+ * grid it builds, so the count is the grid's build count — which is what settles
+ * whether a grid could be reused across a render instead of rebuilt. The counter
+ * lives here rather than in the placer for the same reason the arm does: the
+ * product module keeps its single read, and the instrument that wants to know
+ * something about the grid does the counting.
  */
 export function p23bM1RoomLabelArm(): P23BM1RoomLabelArm {
-	if (!p23bM1RoomLabelArmEnabled()) return 'pruned-grid';
+	gridBuilds += 1;
+	if (!p23bM1RoomLabelArmEnabled()) return P23B_M1_ROOM_LABEL_ARM_AFTER;
 	const arm = (globalThis as ArmGlobals).__P23B_M1_ROOM_LABEL_ARM__;
-	return arm === 'per-cell-grid' ? 'per-cell-grid' : 'pruned-grid';
+	return arm === 'per-cell-grid' || arm === 'pruned-grid' ? arm : P23B_M1_ROOM_LABEL_ARM_AFTER;
 }
 
-/** Set (or with `null`, clear) the arm. Nothing here is persisted. */
+/**
+ * Eligibility grids built since the last arm change, then reset by the next one: the
+ * window that count belongs to is one attempt, which is the unit the arm alternates
+ * over. Read by the driver when the attempt resolves, so a class can report how many
+ * grid builds one accepted action paid for.
+ */
+export function p23bM1RoomLabelGridBuilds(): number {
+	return gridBuilds;
+}
+
+/**
+ * Set (or with `null`, clear) the arm, and start the next attempt's build count.
+ * Nothing here is persisted.
+ */
 export function setP23bM1RoomLabelArm(arm: P23BM1RoomLabelArm | null): void {
+	gridBuilds = 0;
 	const globals = globalThis as ArmGlobals;
 	if (arm === null) delete globals.__P23B_M1_ROOM_LABEL_ARM__;
 	else globals.__P23B_M1_ROOM_LABEL_ARM__ = arm;
@@ -92,13 +143,23 @@ export type P23BM1ActionLabelArmRecord = {
 	/** The ledger index of the resolved action, the same key the gesture registry uses. */
 	actionIndex: number;
 	arm: P23BM1RoomLabelArm;
+	/**
+	 * Eligibility grids built while this attempt's arm was set — the attempt's own
+	 * builds, since the arm is set once per attempt and setting it resets the count.
+	 */
+	builds: number;
 };
 
 let records: P23BM1ActionLabelArmRecord[] = [];
 
-/** Drop everything the M1 run has recorded so far. */
+/**
+ * Drop everything the M1 run has recorded so far, including the attempt's build
+ * count: a reset starts a new run, and a run whose first record carried builds counted
+ * before it began would attribute another run's grid to its own first action.
+ */
 export function p23bM1ResetActionLabelArms(): void {
 	records = [];
+	gridBuilds = 0;
 }
 
 /**
@@ -112,7 +173,7 @@ export function p23bM1RecordActionLabelArm(
 	actionIndex: number,
 	arm: P23BM1RoomLabelArm
 ): void {
-	records = [...records, { fixtureId, actionClass, actionIndex, arm }];
+	records = [...records, { fixtureId, actionClass, actionIndex, arm, builds: gridBuilds }];
 }
 
 /** A fixed copy, so a reader can never mutate the registry. */
@@ -121,19 +182,19 @@ export function p23bM1ActionLabelArmRecords(): readonly P23BM1ActionLabelArmReco
 }
 
 /**
- * The action index → arm map for one fixture+class, or an empty map when the class
- * ran no arms (every non-arm run). The record splits a class's population with
- * exactly this map, so an action can never be attributed to an arm it did not run
- * under.
+ * One fixture+class's own records, in the order they were taken, or an empty list
+ * for a class that ran no arms (every non-arm run).
+ *
+ * THIS IS THE CLASS'S ARM ASSIGNMENT, records and all: the record splits a class's
+ * population by it, so an action can never be attributed to an arm it did not run
+ * under — and the attempt's grid-build count travels with the same entry, so the
+ * count can never be paired with another attempt's arm.
  */
-export function p23bM1ActionLabelArms(
+export function p23bM1ActionLabelArmRecordsFor(
 	fixtureId: string,
 	actionClass: string
-): ReadonlyMap<number, P23BM1RoomLabelArm> {
-	const byIndex = new Map<number, P23BM1RoomLabelArm>();
-	for (const record of records) {
-		if (record.fixtureId !== fixtureId || record.actionClass !== actionClass) continue;
-		byIndex.set(record.actionIndex, record.arm);
-	}
-	return byIndex;
+): readonly P23BM1ActionLabelArmRecord[] {
+	return records
+		.filter((record) => record.fixtureId === fixtureId && record.actionClass === actionClass)
+		.map((record) => ({ ...record }));
 }
