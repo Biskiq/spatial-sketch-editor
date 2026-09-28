@@ -747,12 +747,25 @@ identical in all 19 classes: a live `lod` pass, the gesture frames in `frozen` (
 the placer already knows how to say *unchanged, do not rebuild*), a `geometry` pass that re-optimises the settle,
 then that trailing `lod` pass **14–36 ms later over byte-identical inputs**. So the redundancy is one extra
 **planning pass** per accepted action, not scattered repeats — and the grid half is proven while the placement
-half is not. **On the table, not taken:** classify the trailing pass as unchanged (how the Plan decides a label
-layer is stale — a render-path change) or give the placer a result-level memo (cross-call state keyed by a
-shipped input hash). Still **no memo, no cache and no key in the product path**.
+half is not. **Then the pass was priced**, same session, DEV-only as before: a third leg times every call from its
+entry to its **one exit**, so the call's duration is the whole pass — its grids *and* the placement around them.
+p50 by call group: the action's first `lod` **4.9 ms** · middle `lod` 7.5 · middle `geometry` 8.5 · **`frozen` (no
+grid builds) 0.8 ms** · **the trailing `lod` call 8.5 ms**. The trailing pass is **6,324.8 of 23,962.5 ms of
+measured placer wall time — 26.4 %** — and against the same session's own per-arm window rows it is **24.3–35.9 %**
+of the curved post-release windows (all-curved 27.3–35.9 %, connected 24.3–32.8 %, owner 9.0–15.1 %, straight
+5.4–17.6 %; `bend` p50 **25.4 ms of a 92.6 ms window**). The `frozen` row says where the money is: those calls walk
+the same Rooms and build essentially no grid (ten grids across 965 calls) for **0.8 ms p50**, so ~7 of the trailing
+pass's 8.5 ms p50 is the grid rebuild rather than the placement walk. For scale, the previous pass's kept change
+bought **18 %** of the `bend` window, so this is the largest single remaining item this thread has priced inside
+those windows — and it is **a whole extra pass, not a fraction of one**. **On the table, not taken:** classify the
+trailing pass as unchanged (a render-path change) or give the placer a result-level memo (cross-call state keyed by
+a shipped input hash); and "skippable" still rests on identical inputs plus the placer's purity, because the
+capture does not record the pass's placement output — a DEV-only digest of each call's labels would show it.
+Still **no memo, no cache and no key in the product path**.
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json.
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
@@ -868,7 +881,10 @@ child plans and execution status →
   ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, carrying the
     same plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory,
     entry time and the range of the attempt's build order it produced — which is what attributes each repeat
-    to the call that built it)
+    to the call that built it) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json (the priced leg: the same
+    `labelCalls` plus `durationMs`, each call's wall time from entry to its one exit — which is what prices the
+    trailing pass against the same session's windows)
   · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
   ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
   pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
