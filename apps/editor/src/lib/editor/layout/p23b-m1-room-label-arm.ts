@@ -31,13 +31,23 @@
  *                    against every boundary vertex, the inside test walked per cell,
  *                    the inflation rebuilt per cell, the bbox in four mapped arrays
  *                    and a neighbour array per BFS cell.
+ *   `memo-grid`      NOT a fourth grid: the SAME grid as `seeded-grid`, served from a
+ *                    cache keyed by the grid's own exact inputs. It is the one arm that
+ *                    changes no grid at all, which is exactly why the difference between
+ *                    it and `seeded-grid` is the redundant builds it skips and nothing
+ *                    else. It exists because the measured redundancy is a whole second
+ *                    pass, and because a memo of the RESULT is refuted by the identity
+ *                    leg (identical grids place identical labels only 47.8 % of the
+ *                    time, since placement reads the sticky memory the grid key omits).
  *
- * THREE ARMS, TWO DELTAS. The pair this branch's runner compares is `seeded-grid`
+ * FOUR ARMS, THREE DELTAS. The pair this branch's runner SIGNS is `seeded-grid`
  * against `pruned-grid` — this pass's own change, measured in one session. The
  * pre-change `per-cell-grid` stays interleaved and summarized beside them so a
  * reader can still recompute the previous pass's `pruned-grid − per-cell-grid`
- * delta from the SAME session's rows; an arm that is summarized but not compared
- * is still measured, and the record states which pair it signed.
+ * delta from the SAME session's rows. The memo arm adds the third delta, `seeded-grid`
+ * against `memo-grid` — the same grid from a cache, so the difference is the reuse
+ * alone. An arm that is summarized but not compared is still measured, and the record
+ * states which pairs it read.
  *
  * THE ARM IS MEASUREMENT-ONLY AND CANNOT REACH A PRODUCT BUILD. It is read through
  * `p23bM1RoomLabelArm()`, which returns `pruned-grid` unless the DEV build AND
@@ -56,7 +66,11 @@
  */
 
 /** The Room-label grid implementations M1 compares. */
-export type P23BM1RoomLabelArm = 'seeded-grid' | 'pruned-grid' | 'per-cell-grid';
+export type P23BM1RoomLabelArm =
+	| 'seeded-grid'
+	| 'pruned-grid'
+	| 'per-cell-grid'
+	| 'memo-grid';
 
 /**
  * The arm order the driver interleaves, round-robin by attempt index: the shipped
@@ -67,7 +81,8 @@ export type P23BM1RoomLabelArm = 'seeded-grid' | 'pruned-grid' | 'per-cell-grid'
 export const P23B_M1_ROOM_LABEL_ARMS = [
 	'seeded-grid',
 	'pruned-grid',
-	'per-cell-grid'
+	'per-cell-grid',
+	'memo-grid'
 ] as const satisfies readonly P23BM1RoomLabelArm[];
 
 /** The pair the runner signs: the shipped path MINUS the previous shipped path. */
@@ -76,7 +91,7 @@ export const P23B_M1_ROOM_LABEL_ARM_AFTER = 'seeded-grid' as const;
 export const P23B_M1_ROOM_LABEL_ARM_BEFORE = 'pruned-grid' as const;
 
 export const P23B_M1_ROOM_LABEL_ARM_RULE =
-	'One session, THREE arms, interleaved PER ATTEMPT, in every class of the protocol: `seeded-grid` (the shipped eligibility grid — every distance walk seeded with the slack already found, so a term that cannot bind is never walked; polylines visited CHEAPEST-SEGMENTS-FIRST, so the Room’s own boundary is tested first when it is the cheapest of them and last when it is a flattened ring; and a per-polyline group bounding box built only for a polyline long enough to earn one), `pruned-grid` (the grid shipped before it — bbox-pruned point-to-polyline distance walked from +Infinity, early exit on an already-negative slack, hoisted text inflation, per-row even-odd inside test) and `per-cell-grid` (the pre-change grid — every cell against every vertex, per-cell inside test, per-cell inflation, per-cell allocations). The SIGNED pair is `seeded-grid` − `pruned-grid`; `per-cell-grid` is interleaved and summarized beside them so the previous pass’s `pruned-grid` − `per-cell-grid` delta stays recomputable from the same session. The arm is recorded against the RESOLVED ACTION index, and all arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so a comparison between them is a WITHIN-SESSION one by construction. The placer is a PRESENTATION-path cost, so the rows it moves are the post-release window (release end → first presented frame) and the samples inside that window, not the release itself; the release row is reported beside them as the unchanged control. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
+	'One session, FOUR arms, interleaved PER ATTEMPT, in every class of the protocol: `seeded-grid` (the shipped eligibility grid — every distance walk seeded with the slack already found, so a term that cannot bind is never walked; polylines visited CHEAPEST-SEGMENTS-FIRST, so the Room’s own boundary is tested first when it is the cheapest of them and last when it is a flattened ring; and a per-polyline group bounding box built only for a polyline long enough to earn one), `pruned-grid` (the grid shipped before it — bbox-pruned point-to-polyline distance walked from +Infinity, early exit on an already-negative slack, hoisted text inflation, per-row even-odd inside test), `per-cell-grid` (the pre-change grid — every cell against every vertex, per-cell inside test, per-cell inflation, per-cell allocations) and `memo-grid` (NOT a fourth grid: the SAME grid as `seeded-grid`, served from a cache keyed by the grid’s own exact inputs, so the difference between it and `seeded-grid` is the redundant builds it skips and nothing else). The SIGNED pair is `seeded-grid` − `pruned-grid`; `per-cell-grid` is interleaved and summarized beside them so the previous pass’s `pruned-grid` − `per-cell-grid` delta stays recomputable from the same session; and `memo-grid` is read against `seeded-grid` as the reuse delta, where `distinctBuilds` is the arm’s ACTUAL grid constructions and `builds − distinctBuilds` its hits. The arm is recorded against the RESOLVED ACTION index, and all arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so a comparison between them is a WITHIN-SESSION one by construction. The placer is a PRESENTATION-path cost, so the rows it moves are the post-release window (release end → first presented frame) and the samples inside that window, not the release itself; the release row is reported beside them as the unchanged control. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
 
 type ArmGlobals = typeof globalThis & {
 	__P2311_PERF__?: boolean;
@@ -93,6 +108,12 @@ export function p23bM1RoomLabelArmEnabled(): boolean {
 }
 
 let gridBuilds = 0;
+/**
+ * The key of the build being made RIGHT NOW, stashed by `recordGridBuild` so the memo arm
+ * can key its cache from the hash the counting already paid for rather than hashing the same
+ * inputs twice, and cleared at the top of every arm read so it can never name another build.
+ */
+let lastGridKey: string | null = null;
 
 /**
  * The implementation the next grid build uses, and the one call per build the
@@ -118,10 +139,15 @@ export function p23bM1RoomLabelArm(
 	centerScreen?: P23BM1GridBuildInputs['centerScreen']
 ): P23BM1RoomLabelArm {
 	gridBuilds += 1;
+	// Only the build being made NOW may key the memo: a read that carried no inputs clears
+	// the stashed key rather than leaving another build's key behind for the memo to hit.
+	lastGridKey = null;
 	if (!p23bM1RoomLabelArmEnabled()) return P23B_M1_ROOM_LABEL_ARM_AFTER;
 	if (polygonScreen && mask && centerScreen) recordGridBuild({ polygonScreen, mask, centerScreen });
 	const arm = (globalThis as ArmGlobals).__P23B_M1_ROOM_LABEL_ARM__;
-	return arm === 'per-cell-grid' || arm === 'pruned-grid' ? arm : P23B_M1_ROOM_LABEL_ARM_AFTER;
+	return arm === 'per-cell-grid' || arm === 'pruned-grid' || arm === 'memo-grid'
+		? arm
+		: P23B_M1_ROOM_LABEL_ARM_AFTER;
 }
 
 /**
@@ -283,6 +309,7 @@ function classKeyOf(fixtureId: string, actionClass: string): string {
  */
 function recordGridBuild(inputs: P23BM1GridBuildInputs): void {
 	const key = p23bM1GridBuildKey(inputs);
+	lastGridKey = key;
 	let ordinal = attemptKeys.get(key);
 	if (ordinal === undefined) {
 		ordinal = attemptKeys.size + 1;
@@ -483,6 +510,90 @@ function recordedCalls(): P23BM1RecordedRoomLabelCall[] {
 	});
 }
 
+/* ------------------------------------------------------------------ *
+ * THE MEMO ARM — the same grid, keyed by its own inputs
+ * ------------------------------------------------------------------ */
+
+/**
+ * Bound on the memo. An attempt's own key set is the fixture's ROOM COUNT — 4–61 keys in
+ * the measured protocol — so this sits above any attempt's working set and eviction can only
+ * ever be a CROSS-attempt effect, which the per-attempt clear below makes unreachable. It is
+ * stated rather than implied so a reader can check that bound against the capture.
+ */
+export const P23B_M1_GRID_MEMO_MAX_ENTRIES = 256;
+
+let gridMemo = new Map<string, unknown>();
+let memoHits = 0;
+let memoMisses = 0;
+
+/**
+ * Empty the memo and its counters, and forget the stashed key. Called wherever the arm's own
+ * accounting is reset, so the memo's lifetime is exactly one attempt and the attempt's
+ * `distinctBuilds` therefore counts its misses exactly — the identity the record reads as
+ * `builds - distinctBuilds = hits`.
+ */
+function clearGridMemo(): void {
+	gridMemo = new Map();
+	memoHits = 0;
+	memoMisses = 0;
+	lastGridKey = null;
+}
+
+/**
+ * THE MEMO ARM'S CACHE, and the one call the placer makes for it. `seeded-grid` behind a
+ * content-addressed cache: the placer hands a build thunk, this keys the request exactly as
+ * the counting already did, and returns the cached candidates when the same inputs come back.
+ *
+ * WHY ONLY THE GRID CAN BE MEMOIZED, in one line: identical inputs make an identical grid BY
+ * CONSTRUCTION — the grid reads the projected polygon, the mask and the centre and nothing
+ * else, which is exactly what the key hashes — while the PLACEMENT reads the sticky memory the
+ * previous pass has just written, which is NOT in the key, so two passes with the same grid do
+ * not place the same labels (measured: 47.8 %, 0 % on both 40-wall fixtures). A memo of the
+ * RESULT would paint the previous pass's labels; this returns the previous pass's GRID and
+ * lets the placement run again on the memory it actually inherited.
+ *
+ * THE LIFETIME IS ONE ATTEMPT, and that is a decision rather than an accident: the cache can
+ * only ever serve the renders of the action whose arm filled it (the settled `lod` pass
+ * following the `geometry` pass of the same settle), so it never becomes a cross-action or
+ * cross-module cache and needs no invalidation owner of its own — its key IS its invalidation.
+ * The caller must treat the returned value as READ-ONLY; the cached array is shared between
+ * the calls that hit it, and `placeRoomLabels` only reads the candidates it is handed.
+ *
+ * Gated like everything here: with the instrument off the placer builds and this is never
+ * reached, and `memo-grid` is only ever selected by the DEV switch.
+ */
+export function p23bM1MemoizedGridCandidates<T>(build: () => T): T {
+	if (!p23bM1RoomLabelArmEnabled()) return build();
+	const key = lastGridKey;
+	if (key === null) return build();
+	const cached = gridMemo.get(key);
+	if (cached !== undefined) {
+		memoHits += 1;
+		return cached as T;
+	}
+	const value = build();
+	memoMisses += 1;
+	if (gridMemo.size >= P23B_M1_GRID_MEMO_MAX_ENTRIES) {
+		const oldest = gridMemo.keys().next().value;
+		if (oldest !== undefined) gridMemo.delete(oldest);
+	}
+	gridMemo.set(key, value);
+	return value;
+}
+
+/**
+ * How many requests the memo arm answered from its cache, and how many it had to build.
+ * DEV-only bookkeeping for the arm's own test, which has to be able to say the memo was
+ * EXERCISED — a cache that never hit would pass a parity test by doing nothing at all.
+ */
+export function p23bM1RoomLabelMemoHits(): number {
+	return memoHits;
+}
+
+export function p23bM1RoomLabelMemoMisses(): number {
+	return memoMisses;
+}
+
 /**
  * Set (or with `null`, clear) the arm, start the next attempt's build count, and — when
  * the caller knows them — the fixture and class the attempt belongs to, so a class can be
@@ -494,6 +605,7 @@ export function setP23bM1RoomLabelArm(
 	context?: { fixtureId: string; actionClass: string }
 ): void {
 	gridBuilds = 0;
+	clearGridMemo();
 	attemptKeys = new Map();
 	attemptKeyOrdinals = [];
 	callSites = [];
@@ -550,6 +662,7 @@ let records: P23BM1ActionLabelArmRecord[] = [];
 export function p23bM1ResetActionLabelArms(): void {
 	records = [];
 	gridBuilds = 0;
+	clearGridMemo();
 	attemptKeys = new Map();
 	attemptKeyOrdinals = [];
 	callSites = [];

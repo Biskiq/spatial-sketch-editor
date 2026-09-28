@@ -25,6 +25,7 @@ import {
 	p23bM1RoomLabelArm,
 	p23bM1RoomLabelArmEnabled,
 	p23bM1RoomLabelGridBuilds,
+	p23bM1RoomLabelMemoHits,
 	setP23bM1RoomLabelArm,
 	type P23BM1GridBuildInputs,
 	type P23BM1RoomLabelArm
@@ -39,10 +40,12 @@ import type { LayoutVec2 } from '$lib/layout/layout-types';
  * 1. the GATE — no experimental grid may be selected unless the DEV build AND
  *    `__P2311_PERF__` are both on, and the registry may only attribute an action to
  *    the arm it actually ran under;
- * 2. the PARITY — ALL THREE arms place labels IDENTICALLY on a fixture set that covers
+ * 2. the PARITY — ALL FOUR arms place labels IDENTICALLY on a fixture set that covers
  *    what the grid actually sees (long curved boundaries, concavity, masks of every
  *    kind, three zoom regimes, a sticky second pass). Without that, the arm would
- *    measure three behaviours instead of three costs; and
+ *    measure four behaviours instead of four costs; and the memo arm is asserted to have
+ *    HIT as well as to agree, because a cache that never hit would pass the parity by
+ *    doing nothing at all; and
  * 3. the BUILD COUNT — the shipped placer reads the arm once per grid build, so the
  *    switch's own call count is the grid's build count. It is pinned here because a
  *    later "reuse the grid" change would be measured with it.
@@ -89,6 +92,10 @@ describe('M1 room-label arm — the DEV switch', () => {
 		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
 		setP23bM1RoomLabelArm('per-cell-grid');
 		expect(p23bM1RoomLabelArm()).toBe('per-cell-grid');
+		// The memo arm is not a fourth grid but the SAME grid behind a cache, so it must be
+		// selectable by name like any other arm and must never fall back to the shipped path.
+		setP23bM1RoomLabelArm('memo-grid');
+		expect(p23bM1RoomLabelArm()).toBe('memo-grid');
 		setP23bM1RoomLabelArm(null);
 		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
 	});
@@ -111,7 +118,12 @@ describe('M1 room-label arm — the DEV switch', () => {
 	});
 
 	it('interleaves the shipped grid first, and states the one-session rule it exists for', () => {
-		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual(['seeded-grid', 'pruned-grid', 'per-cell-grid']);
+		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual([
+			'seeded-grid',
+			'pruned-grid',
+			'per-cell-grid',
+			'memo-grid'
+		]);
 		expect(P23B_M1_ROOM_LABEL_ARM_AFTER).toBe('seeded-grid');
 		expect(P23B_M1_ROOM_LABEL_ARM_BEFORE).toBe('pruned-grid');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('interleaved PER ATTEMPT');
@@ -571,5 +583,41 @@ describe('M1 room-label arm — every arm places labels identically', () => {
 		// A sanity check on the test itself: the fixture must have placed something,
 		// or "the arms agree" would be an agreement about nothing.
 		expect((shippedFirst as unknown[]).length).toBeGreaterThan(0);
+	});
+
+	it('serves the memo arm from its cache, and places what the shipped grid places', () => {
+		// The case the memo exists for: the settled `lod` pass after the `geometry` pass of
+		// the same settle. Same geometry, so identical grid inputs, so the second pass must
+		// be served from the cache — which is ALSO why the two arms must agree, since a hit
+		// returns exactly the grid the shipped arm would have rebuilt.
+		const entry = cases.find((candidate) => candidate.mask !== undefined)!;
+		const placeTwice = (arm: P23BM1RoomLabelArm) => {
+			globals.__P2311_PERF__ = true;
+			setP23bM1RoomLabelArm(arm);
+			const memory: RoomLabelMemory = new Map();
+			const base = {
+				rooms: entry.rooms,
+				planView: entry.planView,
+				measure: APPROXIMATE_TEXT_MEASURE,
+				mask: entry.mask!,
+				settleGeneration: 4
+			};
+			const geometry = placeRoomLabels({ ...base, reason: 'geometry', memory });
+			const hitsBefore = p23bM1RoomLabelMemoHits();
+			const lod = placeRoomLabels({ ...base, reason: 'lod', memory });
+			return {
+				labels: [geometry.labels, lod.labels],
+				memory: [...lod.memory.entries()].sort(([left], [right]) => left.localeCompare(right)),
+				hits: p23bM1RoomLabelMemoHits() - hitsBefore
+			};
+		};
+		const shipped = placeTwice(P23B_M1_ROOM_LABEL_ARM_AFTER);
+		const memoized = placeTwice('memo-grid');
+		// The exercise FIRST: a cache that never hit would pass the equality below by doing
+		// nothing at all, and the shipped arm must not be reading a cache.
+		expect(memoized.hits).toBeGreaterThan(0);
+		expect(shipped.hits).toBe(0);
+		expect(memoized.labels).toEqual(shipped.labels);
+		expect(memoized.memory).toEqual(shipped.memory);
 	});
 });

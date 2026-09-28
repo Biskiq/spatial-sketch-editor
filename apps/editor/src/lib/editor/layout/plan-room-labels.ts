@@ -34,6 +34,7 @@ import {
 	p23bM1DigestString,
 	p23bM1EndRoomLabelCall,
 	p23bM1EndRoomLabelValueDigest,
+	p23bM1MemoizedGridCandidates,
 	p23bM1RecordRoomLabelCall,
 	p23bM1RoomLabelArm
 } from './p23b-m1-room-label-arm';
@@ -770,12 +771,15 @@ type FreeCandidate = { point: LayoutVec2; clearance: number };
 
 /**
  * THE ARM DISPATCH — the one read of the DEV switch in this product module (pinned by
- * the wiring test), and the only thing the arms change here. The three grids are the
+ * the wiring test), and the only thing the arms change here. The three GRIDS are the
  * shipped seeded walk, the walk shipped before it (`pruned`) and the pre-change grid
  * (`perCellGridCandidates`, kept whole below). Choosing between them cannot reach a
  * placement decision: all three visit the same cells, keep the same eligible set, pick
  * the same representative point per component and rank the same candidates — the
- * placement suite requires identical labels from all three.
+ * placement suite requires identical labels from all of them. The fourth arm,
+ * `memo-grid`, is not a grid at all: it is the SHIPPED walk behind a cache, so it can
+ * only change how MANY times a grid is built, never which one — which is why its parity
+ * with `seeded-grid` is by construction rather than by agreement.
  *
  * THE SAME CALL CARRIES THE GRID'S INPUTS, because this is the only place that has them
  * and the only call this module is allowed to make into the instrument. They are passed
@@ -790,6 +794,14 @@ function freeSpaceCandidates(
 ): FreeCandidate[] {
 	const arm = p23bM1RoomLabelArm(polygonScreen, mask, centerScreen);
 	if (arm === 'per-cell-grid') return perCellGridCandidates(polygonScreen, mask, centerScreen);
+	// The memo arm builds the SHIPPED grid and only decides whether to build it at all: the
+	// thunk runs on a miss, so its candidates are `seeded-grid`'s by construction and a hit
+	// skips the whole walk. Returning the cached array means the caller must not mutate it,
+	// and `placeRoomLabels` only reads the candidates it is handed.
+	if (arm === 'memo-grid')
+		return p23bM1MemoizedGridCandidates(() =>
+			gridCandidates(polygonScreen, mask, centerScreen, 'seeded')
+		);
 	return gridCandidates(polygonScreen, mask, centerScreen, arm === 'pruned-grid' ? 'pruned' : 'seeded');
 }
 
