@@ -149,10 +149,10 @@ stated there rather than made here.**
 | Gate | Result |
 |---|---|
 | `apps/editor` `npm run check` (svelte-check) | 0 errors, 0 warnings |
-| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 16/16 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the call census with the build range each call produced and the pass's own wall time from a real placement, the class histogram, and the three-arm placement parity |
+| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 17/17 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the call census with the build range each call produced and the pass's own wall time from a real placement, the result digest (identical inputs ⇒ identical digest, a different placement ⇒ a different one), the class histogram, and the three-arm placement parity |
 | `tests/lib/bench/p23b-m1-record.test.ts`, `p23b-m1-frame-timing.test.ts` | 40 + 18 — the key summary, the sequence and the call census as the class row carries them |
 | `tests/lib/layout/plan-room-labels.test.ts` | 30/30 — the placer's own suite, unchanged by the instrument |
-| `apps/editor` `npm test` | 366 test files / 5,210 tests pass (2 files / 4 tests skipped by their own gates) |
+| `apps/editor` `npm test` | 366 test files / 5,211 tests pass (2 files / 4 tests skipped by their own gates) |
 
 ## 9. Live evidence / reproduce
 
@@ -164,6 +164,8 @@ stated there rather than made here.**
   read from it, and its own key readings are the second independent run behind §3's reproducibility bound.
 - `2026-09-28-room-label-grid-pass-cost-chrome-leg.json` — the third leg, whose `labelCalls` additionally carry
   `durationMs` (each call's own wall time, entry to exit). §11 (the price) was read from it.
+- `2026-09-28-room-label-grid-result-identity-chrome-leg.json` — the fourth leg, whose `labelCalls` additionally
+  carry `labelsDigest` and `memoryDigest`. §12 (what the pass produces) was read from it.
 
 ```text
 node .freebuff/launch-chrome.mjs 9223 /tmp/p23b-chrome-label-arms   # pinned 152.0.7977.54, headless
@@ -281,7 +283,52 @@ output**, so "the pass before it produced the same labels" is inferred, not show
 result (the placed labels and the readout, bitwise) would turn that inference into evidence, and it is the same
 kind of instrument this pass already added: one field on the call record, one leg, no product change.
 
-## 12. What this changes, and what it does not
+## 12. Follow-on, same session: what the trailing pass PRODUCES
+
+§11 priced the pass; this asks whether it produces what the pass before it produced — the question that decides
+between reusing its result and only reusing its grids. Every call now also carries two digests of what it returned,
+built from the same exact-bit machinery as the grid key: **`labelsDigest`** (each label's Room id, tier, both
+anchors, accepted rectangle and its lines' text/style/baseline, plus the readout — what a render paints) and
+**`memoryDigest`** (the sticky entries the next pass inherits).
+
+Fourth leg, same protocol (Chrome 152 headless, residual 0.092 ms, 4,406 frames, 479 accepted actions). For each
+action, the trailing call compared with the previous call that actually built grids:
+
+| what is compared | equal | share |
+|---|---|---|
+| **inputs** (same grid keys, same order) | **479** | **100.0 %** |
+| **labels** (same digest) | **229** | **47.8 %** |
+| memory (same digest) | 356 | 74.3 % |
+| all three | 229 | 47.8 % |
+
+**Identical grid inputs do not imply identical labels.** The placement has an input the grid key does not cover —
+the sticky `memory`, which the pass before it has just written — so the trailing `lod` pass resolves at the sticky
+anchors (and can even place a label for a Room the earlier `geometry` pass suppressed) and lands somewhere else in
+**52 %** of actions. Per class it splits cleanly: **0 %** on both 40-wall fixtures (straight *and* all-curved, every
+action), **0 %** on `owner-40-curved-v1` / `whole-room-move-bridge`, and **100 %** on `connected-curved-grid-v1` in
+all five classes and the other four `owner-40-curved-v1` classes.
+
+The digest is shown discriminating before its equalities are read: **487 distinct labels digests** across the calls,
+and only **65.8 %** of *consecutive* call pairs share one — a constant digest would read 100 % here and make every
+equality above vacuous.
+
+**What that settles — and it is the opposite of what §6 assumed:**
+
+- **The result-level memo is refused by the evidence.** Returning the previous placement would paint the previous
+  pass's labels, and those differ in half the actions.
+- **Skipping the trailing pass is refused too.** The render it belongs to would then paint nothing — or the previous
+  render's labels, which are not what it produces.
+- **What survives is exactly the grid**, and it survives for a reason nothing else has: identical key ⇒ identical
+  grid *necessarily*, whatever else about the two calls differs. A memo keyed by the grid's own inputs is therefore
+  sound where a result memo is not, and it is the only reuse that preserves the placement that genuinely differs.
+- **Its ceiling** is the grid share of the priced pass: at §11's p50s the trailing pass is 8.5 ms and the `frozen`
+  baseline puts ~0.8 ms of that in the placement walk, so ≈7.7 ms per accepted action — ≈24 % of measured placer
+  wall time and ≈24–33 % of the curved post-release windows. It is not a *small* cache either: the trailing pass
+  rebuilds every Room's grid, so a memo has to hold the pass's key set, which §5 sized at the fixture's Room count.
+- **Not claimed:** which line or tier diverges in the 52 % (the digests say *that* the labels differ, not where), and
+  no product change of any kind.
+
+## 13. What this changes, and what it does not
 
 - **Changed:** the redundant share is no longer unmeasured — **29.8 % of grid builds rebuild byte-identical
   inputs**, 15.3–50.0 % per class, with the per-build keys and the arrival order now travelling in every capture
@@ -293,7 +340,10 @@ kind of instrument this pass already added: one field on the call record, one le
   479 actions) without choosing between them — and §11 has now priced it: **26.4 % of all measured placer wall
 time**, and **27.3–35.9 %** of the all-curved post-release windows (25.4 ms p50 of a 92.6 ms window on `bend`),
 with the `frozen` baseline showing the placement walk alone costs 0.8 ms p50. The price is larger than the grid
-share §6 bounded the memo against, because the redundancy is a whole pass rather than a fraction of one.
+share §6 bounded the memo against, because the redundancy is a whole pass rather than a fraction of one. And §12
+narrows the shape of a fix rather than widening it: identical grids do **not** mean identical labels (47.8 %), so
+the result-level memo and the skipped pass are both refused on evidence, and **only a grid-level memo survives** —
+which is the reuse §6 was wary of, now the only one the data supports.
 - **Not changed:** anything the editor does. No placement decision, no arm default, no product path — the key, the
   sequence and the counting are DEV-only, and the placement suite plus the three-arm parity differential are the
   evidence.
