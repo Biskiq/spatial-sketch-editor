@@ -769,14 +769,27 @@ classes. **Identical grid inputs do not imply identical labels**, because the pl
 not cover: the sticky `memory` the previous pass just wrote. That **refuses both easy fixes** — a result-level memo
 would paint the previous pass's labels, and skipping the pass would paint nothing — and leaves **exactly the grid**,
 where identical key ⇒ identical grid necessarily, whatever else differs. A grid-level memo keyed by the grid's own
-inputs is therefore the only reuse that preserves the placement that genuinely differs, worth ≈**24 %** of measured
-placer wall time (≈7.7 of the trailing pass's 8.5 ms p50) and ≈**24–33 %** of the curved windows. Still **no memo,
-no cache and no key in the product path**.
+inputs is therefore the only reuse that preserves the placement that genuinely differs, and its ceiling was put at
+≈7.7 of the trailing pass's 8.5 ms p50 (≈24 % of measured placer wall time, ≈24–33 % of the curved windows).
+**That reuse was then built — as a FOURTH DEV ARM, so it is priced before it ships.** `memo-grid` is not a fourth
+grid but the SAME `seeded-grid` behind a content-addressed cache of the candidates, keyed by the grid's own exact
+inputs, cleared per attempt and bound at 256 entries; the cache lives in the DEV instrument module, so the product
+module keeps its single arm read and gains no cross-call state, and the arm can only change how MANY times a grid is
+built, never which one — parity with `seeded-grid` is therefore by construction, asserted as such with a test that
+also proves the memo HIT. In one four-arm leg (Chrome 152 headless, residual 0.120 ms, 4,426 frames, 19 class rows)
+the arm recovers **half the placer's self time** — 1108.4 ms → 548.9 ms, the grid functions in it 983.4 ms → 487.3 ms,
+read from the per-arm profile because the key counts cannot show a cache hit — and is worth a **median 15 %** of the
+post-release window (median of the 19 class p50s 38.50 → 36.08 ms, faster in **17 of 19** classes, **−15 % to −20 %**
+on the all-curved fixture; the same leg's `seeded-grid` → `pruned-grid` control reproduces the previous pass's kept
+change at 0.882). That is **less than the ≈24–33 %** the trailing pass's own p50 bracketed, because the memo skips
+that pass's BUILDS and not its placement. **Measured, not shipped:** `seeded-grid` is still the default and
+`memo-grid` is reachable only through the DEV switch; promoting it is a separate decision.
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json · the identity leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json.
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json · the memo leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
