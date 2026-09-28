@@ -1051,7 +1051,18 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			distinctBuilds: 2,
 			sequence: [1, 2, 1, 2, 1],
 			calls: [
-				{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 10, buildStart: 0, builds: 5, durationMs: 2.5 }
+				{
+					rooms: 2,
+					reason: 'lod',
+					settleGeneration: 4,
+					hasMemory: true,
+					at: 10,
+					buildStart: 0,
+					builds: 5,
+					durationMs: 2.5,
+					labelsDigest: 'aaa-111',
+					memoryDigest: 'bbb-222'
+				}
 			]
 		},
 		{
@@ -1063,8 +1074,30 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			distinctBuilds: 3,
 			sequence: [1, 2, 3, 1, 2],
 			calls: [
-				{ rooms: 2, reason: 'geometry', settleGeneration: 4, hasMemory: true, at: 20, buildStart: 0, builds: 2, durationMs: 1.5 },
-				{ rooms: 3, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 20.5, buildStart: 2, builds: 3, durationMs: 1.2 }
+				{
+					rooms: 2,
+					reason: 'geometry',
+					settleGeneration: 4,
+					hasMemory: true,
+					at: 20,
+					buildStart: 0,
+					builds: 2,
+					durationMs: 1.5,
+					labelsDigest: 'ccc-333',
+					memoryDigest: 'ddd-444'
+				},
+				{
+					rooms: 3,
+					reason: 'lod',
+					settleGeneration: 4,
+					hasMemory: false,
+					at: 20.5,
+					buildStart: 2,
+					builds: 3,
+					durationMs: 1.2,
+					labelsDigest: 'ccc-333',
+					memoryDigest: 'ddd-444'
+				}
 			]
 		},
 		{
@@ -1119,8 +1152,30 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		// carrying the range of the build order it produced, so a reader can ask WHICH call
 		// rebuilt the repeated inputs rather than only how many repeats there were.
 		expect(row.labelArms?.byAction[1]?.labelCalls).toEqual([
-			{ rooms: 2, reason: 'geometry', settleGeneration: 4, hasMemory: true, at: 20, buildStart: 0, builds: 2, durationMs: 1.5 },
-			{ rooms: 3, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 20.5, buildStart: 2, builds: 3, durationMs: 1.2 }
+			{
+				rooms: 2,
+				reason: 'geometry',
+				settleGeneration: 4,
+				hasMemory: true,
+				at: 20,
+				buildStart: 0,
+				builds: 2,
+				durationMs: 1.5,
+				labelsDigest: 'ccc-333',
+				memoryDigest: 'ddd-444'
+			},
+			{
+				rooms: 3,
+				reason: 'lod',
+				settleGeneration: 4,
+				hasMemory: false,
+				at: 20.5,
+				buildStart: 2,
+				builds: 3,
+				durationMs: 1.2,
+				labelsDigest: 'ccc-333',
+				memoryDigest: 'ddd-444'
+			}
 		]);
 		expect(row.labelArms?.byAction[2]?.labelCalls).toEqual([]);
 		// The grid-build budget travels with the same assignment: it is the reuse
@@ -1162,7 +1217,18 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 				distinctBuilds: 1,
 				sequence: [1, 1],
 				calls: [
-					{ rooms: 1, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 30, buildStart: 0, builds: 2, durationMs: 0.4 }
+					{
+						rooms: 1,
+						reason: 'lod',
+						settleGeneration: 4,
+						hasMemory: true,
+						at: 30,
+						buildStart: 0,
+						builds: 2,
+						durationMs: 0.4,
+						labelsDigest: 'eee-555',
+						memoryDigest: 'fff-666'
+					}
 				]
 			}
 		]);
@@ -1174,7 +1240,18 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			distinctBuilds: 1,
 			keySequence: [1, 1],
 			labelCalls: [
-				{ rooms: 1, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 30, buildStart: 0, builds: 2, durationMs: 0.4 }
+				{
+					rooms: 1,
+					reason: 'lod',
+					settleGeneration: 4,
+					hasMemory: true,
+					at: 30,
+					buildStart: 0,
+					builds: 2,
+					durationMs: 0.4,
+					labelsDigest: 'eee-555',
+					memoryDigest: 'fff-666'
+				}
 			]
 		});
 	});

@@ -271,7 +271,18 @@ describe('M1 room-label arm — the grid-build key', () => {
 		p23bM1RecordRoomLabelCall({ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2 });
 		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 5, 'seeded-grid');
 		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend').at(-1)?.calls).toEqual([
-			{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2, buildStart: 0, builds: 0, durationMs: null }
+			{
+				rooms: 2,
+				reason: 'lod',
+				settleGeneration: 4,
+				hasMemory: false,
+				at: 2,
+				buildStart: 0,
+				builds: 0,
+				durationMs: null,
+				labelsDigest: null,
+				memoryDigest: null
+			}
 		]);
 	});
 
@@ -293,6 +304,27 @@ describe('M1 room-label arm — the grid-build key', () => {
 		expect(record?.calls[0]?.builds).toBeGreaterThan(0);
 		expect(typeof record?.calls[0]?.durationMs).toBe('number');
 		expect(record?.calls[0]?.durationMs ?? -1).toBeGreaterThanOrEqual(0);
+	});
+
+	it('digests what the pass produced, so two passes can be COMPARED instead of assumed', () => {
+		const place = (rooms: RoomLabelFacts[], index: number) => {
+			setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+			placeRoomLabels({ rooms, planView: view(), measure: APPROXIMATE_TEXT_MEASURE });
+			p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', index, 'seeded-grid');
+			return p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend').at(-1)?.calls[0];
+		};
+		const first = place([ring('room-a', 3, 64)], 10);
+		expect(first?.labelsDigest).not.toBeNull();
+		expect(first?.memoryDigest).not.toBeNull();
+		// Identical inputs placed again: the same digest. This is the property a claim that
+		// one pass repeats the last one is made of — the keys prove the same GRIDS, and this
+		// proves the same LABELS, which the keys alone can never say.
+		const repeated = place([ring('room-a', 3, 64)], 11);
+		expect(repeated?.labelsDigest).toBe(first?.labelsDigest);
+		expect(repeated?.memoryDigest).toBe(first?.memoryDigest);
+		// A pass that places something else cannot hide behind a shared digest.
+		const different = place([ring('room-a', 1.2, 64)], 12);
+		expect(different?.labelsDigest).not.toBe(first?.labelsDigest);
 	});
 
 	it('keys a grid by its INPUTS, to the last bit, and not by the objects they arrived in', () => {

@@ -369,6 +369,18 @@ export type P23BM1RecordedRoomLabelCall = P23BM1RoomLabelCall & {
 	 * entry but no exit, which reads as NOT MEASURED rather than as free.
 	 */
 	durationMs: number | null;
+	/**
+	 * What this call PLACED — every label (Room id, tier, both anchors, the accepted
+	 * rectangle, its lines' text/styles/baselines) plus the optional readout — hashed over
+	 * exact bits and UTF-16 units. Identical inputs prove the same grids; only this can say
+	 * whether the pass that rebuilt them also placed the same labels. Two sections are kept
+	 * apart because they answer different questions: `labelsDigest` is what a render paints
+	 * (so equal digests mean its consumer could have reused the previous placement), while
+	 * `memoryDigest` is the sticky state the NEXT pass inherits. `null` when not measured.
+	 */
+	labelsDigest: string | null;
+	/** Digest of the memory entries this call left behind; see `labelsDigest`. */
+	memoryDigest: string | null;
 };
 
 let callSites: P23BM1RoomLabelCall[] = [];
@@ -377,6 +389,9 @@ let callSites: P23BM1RoomLabelCall[] = [];
 let callBuildStarts: number[] = [];
 /** Each call's own wall time, filled in by its exit. */
 let callDurations: (number | null)[] = [];
+/** Each call's result digests, filled in at the same exit. */
+let callLabelDigests: (string | null)[] = [];
+let callMemoryDigests: (string | null)[] = [];
 
 /**
  * The one call per `placeRoomLabels` invocation this module accepts. It is a DEV-only
@@ -388,6 +403,8 @@ export function p23bM1RecordRoomLabelCall(call: P23BM1RoomLabelCall): void {
 	callSites.push(call);
 	callBuildStarts.push(gridBuilds);
 	callDurations.push(null);
+	callLabelDigests.push(null);
+	callMemoryDigests.push(null);
 }
 
 /**
@@ -406,6 +423,47 @@ export function p23bM1EndRoomLabelCall(): void {
 }
 
 /**
+ * THE PASS'S RESULT, DIGESTED. Identical inputs prove the same grids; only the result can
+ * say whether the pass that rebuilt them also PLACED the same labels, and that difference is
+ * exactly the one between a redundant pass and a pass that merely looks redundant.
+ *
+ * Numbers are hashed over their exact bits and strings over their UTF-16 units, for the same
+ * reason the grid key is: "the same labels" has to mean it rather than mean "close enough".
+ * The placer opens the walk, feeds the values it is about to return, and closes it into one
+ * of two sections — `labels` (the labels + the readout: what a render paints) or `memory`
+ * (the sticky entries the next pass inherits). Gated, allocation-free, and with no return
+ * value the placer could branch on.
+ */
+export function p23bM1BeginRoomLabelValueDigest(): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	HASH_ACCUMULATOR[0] = 2166136261;
+	HASH_ACCUMULATOR[1] = 32452843;
+}
+
+/** One number of the value being digested, over all 64 of its bits. */
+export function p23bM1DigestNumber(value: number): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	hashKeyNumber(value);
+}
+
+/** One string of the value being digested: its length, then every UTF-16 unit. */
+export function p23bM1DigestString(value: string): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	hashKeyWord(value.length);
+	for (let index = 0; index < value.length; index += 1) hashKeyWord(value.charCodeAt(index));
+}
+
+/** Close the digest and attach it to the call being recorded. */
+export function p23bM1EndRoomLabelValueDigest(section: 'labels' | 'memory'): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	const index = callSites.length - 1;
+	if (index < 0) return;
+	const digest = `${HASH_ACCUMULATOR[0]!.toString(36)}-${HASH_ACCUMULATOR[1]!.toString(36)}`;
+	if (section === 'labels') callLabelDigests[index] = digest;
+	else callMemoryDigests[index] = digest;
+}
+
+/**
  * The attempt's calls, each with the range of the build order it produced. The last call
  * is closed with the attempt's current build count, so nothing a call built is attributed
  * to a neighbour.
@@ -418,7 +476,9 @@ function recordedCalls(): P23BM1RecordedRoomLabelCall[] {
 			...call,
 			buildStart,
 			builds: Math.max(0, buildEnd - buildStart),
-			durationMs: callDurations[index] ?? null
+			durationMs: callDurations[index] ?? null,
+			labelsDigest: callLabelDigests[index] ?? null,
+			memoryDigest: callMemoryDigests[index] ?? null
 		};
 	});
 }
@@ -439,6 +499,8 @@ export function setP23bM1RoomLabelArm(
 	callSites = [];
 	callBuildStarts = [];
 	callDurations = [];
+	callLabelDigests = [];
+	callMemoryDigests = [];
 	attemptContext = context ?? null;
 	const globals = globalThis as ArmGlobals;
 	if (arm === null) delete globals.__P23B_M1_ROOM_LABEL_ARM__;
@@ -493,6 +555,8 @@ export function p23bM1ResetActionLabelArms(): void {
 	callSites = [];
 	callBuildStarts = [];
 	callDurations = [];
+	callLabelDigests = [];
+	callMemoryDigests = [];
 	attemptContext = null;
 	classKeys = new Map();
 }
