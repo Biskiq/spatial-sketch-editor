@@ -267,8 +267,8 @@ The owner reviewed the pre-P23B.8 decision doc (the four revised proposals plus 
 deferred P23B.4/5/6/7 and P23B.11 item) inside P23B.11's PR #95 and filled in its OWNER DECISION
 lines on 2026-09-27. The follow-up is routed between P23B.11 and P23B.8. Its RATIFIED scope is ONE
 measurement session (M1 — gesture frames plus release-to-next-presented-frame on the heavy curved
-layout, headless Chrome and Electron under one protocol) and ONE release-cost ranking (R1 — canonical
-compile, then the install's room-geometry-compile, then mesh-prebuild, held until M1). The FOLDed
+layout, headless Chrome and Electron under one protocol) and ONE release-cost ranking (R1 — the
+decision doc's three candidates, held until M1). The FOLDed
 items beyond M1/R1 are queued by name, and each must be ratified, or explicitly routed to P23B.8 /
 P26, before P23B.8 entry — nothing reaches P23B.8 undecided. The decisions, sources and triggered
 edits are in ./2026-09-27-pre-P23B.8-follow-up-decisions.md. This amendment changes order only,
@@ -311,9 +311,8 @@ the recorded acceptance evidence. Every recorded anchor is a verified ancestor o
 The owner-ratified pre-P23B.8 follow-up RAN in plan order S1 → S6 and closed. It produced ONE
 measurement session (M1: one protocol, one session, two runtimes — headless Chrome 152 and Electron
 35 — both captures settled with zero dropped boundaries at executed head `b6f2203b` on a clean tree,
-each with its own provenance) and ONE release-cost ranking (R1: canonical compile, then
-room-geometry-compile, then mesh-prebuild, read from the closed S7 keyed capture, self-time only
-where priceable). Two DEV-only instruments landed (the drag-attached gesture-frame series and the
+each with its own provenance) and ONE release-cost ranking (R1: read from the closed S7 keyed capture,
+self-time only where priceable — CORRECTED 2026-09-27, see the review-correction section below). Two DEV-only instruments landed (the drag-attached gesture-frame series and the
 release-side presented-frame/LOAF pair), and NO product module was touched — a test asserts it.
 M1 re-read BOTH D1 rows on both runtimes and did NOT reproduce P23B.6's final-capture increases (a
 finding, not a fix: the increases stay UNRESOLVED and no cause is claimed); the release → next
@@ -329,6 +328,351 @@ The slice's records, its two LIVE captures and its acceptance record sit at thei
 compacted). NEXT: P23B.8's entry gate — this slice entered nothing into it, and the queued items
 (P1 · D4 · D5 · D6 · D8 · D9 · D10 · D13) must be ratified, or explicitly routed to P23B.8 / P26,
 before that entry.
+
+COMMITTED 2026-09-28 — every block below, from the review corrections to the Room-label arm, was
+written on one working tree and has LANDED as three commits on this branch: **`3ef60e68`** the M1
+measurement stack and the records it produced · **`2ccded81`** the whole-Room drag on the transient
+contract, rotation wired · **`58a0c5ef`** the Room-label placer's grid with the one-session arm that
+measures it. A block labelled "UNCOMMITTED" describes the state when it was written and is kept as
+provenance, not as status. The two 2026-09-27 M1 leg captures stay deliberately uncommitted (gitignored
+at two exact paths for their ~40k-line size); every other capture cited below is committed.
+
+## pre-P23B.8 follow-up review corrections — 2026-09-27 (committed 2026-09-28; performance pass)
+
+The owner reviewed the closed follow-up's records and both captures and raised three findings, all
+confirmed in code and all corrected on the same branch, with regression coverage: R1's ranking ordered
+rows 2/3 by the SMALLER exclusive self while placing row 1 by the largest total (now corrected in
+place — mesh-prebuild is the larger exclusive cost in five of the six committed classes and level in
+the sixth, room-geometry-compile is at or below it everywhere, and the canonical-gates row is reported,
+not ranked because its exclusive self is withheld in every class); the gesture rows pooled warm-up
+drags and retried attempts into the measured class (now restricted to the class's own measured
+population, with the exclusions COUNTED); and the `wall-authoring` classes' reported population (23)
+could not be reconciled with 20 (warm-up is sliced before the accepted filter, and a `setup` action of
+the same path consumes slots — the decomposition is now reported per class and per session). Both M1
+legs were RE-RUN against the corrected code on the same machine/protocol and the same two files carry
+the corrected rows plus the new `populations` and `attribution` sections (their provenance says
+`treeDirty: true`, because the corrections were uncommitted when captured). The pass also read the
+session's own rows for D4 (whole-Room move: per-preview full-generation mesh preparation, 61.8 / 70.5 ms
+p50 exclusive self per occurrence, SIX per accepted action, against ONE occurrence at 12.7 ms for a
+single-wall drag on the same fixture and session), D5 (pointer-move: wall-snap index derivation 173.2 /
+231.3 ms p50 per accepted geometry on the all-curved fixture against 13.3 / 13.8 ms on the straight
+control, and PROVABLY paid outside the synchronous release because the mark exceeds the class's own
+release p50 — arithmetic, not inference) and D6 (post-release wait: 150.8–214.0 / 183.0–195.2 ms p50 on
+the curved fixture against 23.0–56.0 ms on the straight one, a property of the FIXTURE, not explained by
+the release and not bounded by the `browser-frame` proxy).
+The corrected pair also exposed a FINDING THE REVIEW DID NOT RAISE: taken in a second browser session,
+every row the corrections cannot touch moved by ×0.38–×1.03 with no code change. M1's absolutes are
+SESSION-CONDITIONED, so the corrected whole-Room figures are published as a pair (212.8 / 377.1 Chrome,
+241.9 / 505.0 Electron, all-curved) and any future before/after must be taken in one session. The
+slice's findings survive in both sessions, and the fix/session split is stated per class in the
+corrections record §2.4–§2.5.
+Both candidate optimizations are PRODUCT code (mechanism owners unchanged: P26 §3.5 and the P23B.7
+family), so the scope expansion they need is REPORTED and not taken; no product module, cache, Worker or
+WASM path, no baseline and no ratchet was touched. Corrections + attribution record →
+./pre-p23b.8-follow-up/2026-09-27-M1-R1-corrections-and-attribution-record.md.
+
+## pre-P23B.8 follow-up — authorized D4/D5/D6 pass — 2026-09-27 (committed 2026-09-28; measurement only)
+
+The owner authorized the three optimization directions as EXPANDED SCOPE for this PR and all three
+"first moves" ran (DEV-only instruments; no product behavior, no cache, no Worker, no WASM, no baseline
+and no ratchet). What came back changed two of the proposal's own premises:
+
+- **D5 — the candidate was measured OUT and reverted.** The exact convex-hull + rotating-calipers extent
+  sweep was implemented, proven output-identical to the shipped per-pair scan on every fixture, and then
+  measured **up to 2.2× SLOWER** at the input the editor actually hands in (2,560 wall spans / 40 Walls /
+  k ≤ 128 endpoints per Wall: 1.358 vs 0.898 ms p50 on the all-curved 40-wall fixture, interleaved arms).
+  A live probe then showed what the cost IS: the same merge takes **43.7 ms over the live `$state`-proxied
+  geometry and 3.6 ms over the same values as plain objects (12.1×)**, on an input shape identical to the
+  fixture's, inside a `pointermove-rigid` of 114.3 ms. A copy-first fix does not pay (37.2 ms vs 27.0 ms).
+  The fix therefore belongs to the identity the frozen baseline is stored under — the P23B.7
+  preview-state family's ruling, not a change inside `layout-snap.ts`.
+- **D4 — reuse already works, and the price is the comparison.** The new `prebuild-stats` row shows every
+  whole-Room preparation reusing **36 of 40 Walls** and rebuilding exactly the 4 whose compiled wall
+  changed (`compiled-wall-changed`); the four additive preparation marks place **61–68 ms of each 72–81 ms
+  preparation in the per-Wall VALUE COMPARISON of the whole generation** and only 2.6–4.7 ms in the builds.
+  The corrections record's "six FULL-GENERATION preparations" is corrected in place.
+- **D6 — the falsifier came back NEGATIVE.** The runner's preflight now reports the idle presented-frame
+  cadence: **481 frames in 8,000.1 ms, gaps p50 16.668 / p95 17.360 ms** (Electron 35.0.2, calibration
+  residual 0.168 ms). The surface therefore paces at 60 Hz when idle, so the post-release wait is real
+  work — not measurement-surface pacing. The cold live action that followed it is superseded by the
+  steady-state split in the next entry.
+
+P23B.8's compute-bound prerequisite stays **UNPROVEN**, now with three measured reasons. The queued
+D4 · D5 · D6 items are routed WITH EVIDENCE to their existing owners (P26 §3.5; the P23B.7 family;
+P26 P6/P1) and still need a ruling before product code moves. Record + limitations →
+./pre-p23b.8-follow-up/2026-09-27-D4-D5-D6-live-attribution-record.md.
+
+## pre-P23B.8 follow-up — restore-vs-commit split of the post-release wait — 2026-09-27 (committed 2026-09-28; measurement only)
+
+Both M1 legs were re-run in steady state, in protocol, with the split instruments in place. **The answer
+to "how much of the release-to-presented wait is the baseline restore versus the commit" is none of it:
+0.0 ms of restore and 0.0 ms of commit AFTER a release, at p50 and p95, in all 38 class rows across both
+runtimes.** Both families land INSIDE the release: the restore at **7.0–10.8 ms** on a whole-Room move
+(0.1–3.6 ms on every other class) and the commit at **1.0–2.9 ms** there against 7.1–28.6 ms elsewhere —
+the one class where the two invert, consistent with the bridge's edit having already landed during the
+drag. The wait is therefore **1.6–5.3 ms of scheduling + the Plan render (17–52 % of it) + a tail of
+47–78 % (Electron) / 43–59 % (Chrome) after the page's LAST attributed mark**, which lands p50 11–89 ms
+in. That tail is real work the page shows no mark for, and pricing it needs the runner to keep trace
+event DURATIONS — **DONE 2026-09-28, AND THE GUESS IT IMPLIED IS WRONG.** "It is where a
+compositor/raster/present stage would sit" does not survive the durations: the wait is ~96–97 % page
+JavaScript, contained in one Svelte runtime task per release, and on the curved fixtures it was mostly
+the P23.13 Room-label placer's eligibility grid. See ./pre-p23b.8-follow-up/2026-09-28-post-release-window-attribution-and-room-label-fix-record.md. The pass also publishes the
+containment record's own pool, because a window bounded by an action's span cannot see the second, once-
+per-action restore chain that sits outside every span — that one prices at 0.2–0.9 ms of p50s, so the
+bound is tight. In protocol the new preparation marks confirm D4 there: **6 `mesh-prebuild` per accepted
+whole-Room action (49.2–70.6 ms p50, of which 33.9–63.0 ms is the comparison remainder) against 1 for a
+single-Wall drag (7.3–12.7 ms)**, with `mesh-build` at 0.3–0.7 ms and `mesh-inputs` / `mesh-room-meshes`
+at 0.0 ms. This SUPERSEDES the D4/D5/D6 pass's cold live observation that the post-release window
+contains the restore. Record → ./pre-p23b.8-follow-up/2026-09-27-M1-release-to-presented-split-record.md;
+captures → .../2026-09-27-M1-restore-split-chrome.json · .../2026-09-27-M1-restore-split-electron.json
+(the earlier corrected pair is left untouched).
+
+## pre-P23B.8 follow-up — why a whole-Room move pays per pointer move — 2026-09-27 (committed 2026-09-28; read-only trace)
+
+The live impression and the measurements agree, so the remaining question was causal: is the room
+gesture's per-frame cost required by changed geometry, or an identity accident? **Neither — and the two
+halves differ.** A press inside a Room interior and a press on a canonical Wall are different code paths:
+`LayoutPlanViewport.svelte:3455/:3484` starts a room-unit drag whose pointermove handler
+(`:3730–3748`) restores the baseline snapshot and then re-derives and installs the whole document, so a
+room move pays **6 restores + 6 preparations + 5 FULL compiles per accepted action** (9.9 + 70.6 + 31.0 ms
+p50 on the all-curved fixture); a Wall press (`:3716`) runs `previewArchitectureEdit` — "one snap, one
+proposal, one Plan update" — and compiles exactly **once**, at release, installing it as
+`preview-compile-reused`. So the restore and the compile are per-move **by mechanism** (P23.6a: "the
+candidate is always derived from the immutable baseline"), recompiling 100 % of the 40-Wall document for
+a delta that in fact changes ≈**3.3 Walls**; the preparation's 62–68 ms is caused by the
+**identity-keyed** mesh WeakMap, not by an unconsulted reference — the reference IS handed in
+(`applyCompiledLayout:644`) and **≈36.7 of 40 Walls are reused per frame**. In protocol the wall move's
+entire per-gesture heavy term is `snap-wall-index` at **190.0 / 170.7 ms** (D5's read amplification,
+once per gesture), everything else under 15 ms — which is what "relatively smooth" looks like in marks.
+Three candidate directions (provenance reuse · no compiled install per move · transform prepared
+outputs) are product decisions under the P23B.5 ratchet and none was taken; no code changed in this
+pass. Record → ./pre-p23b.8-follow-up/2026-09-27-room-move-reuse-trace-record.md.
+
+A DESIGN SKETCH follows it (design only — no code, no authority) of the same room drag on the **Wall
+drag's shipped transient contract**: pointerdown captures the immutable baseline, pointermove derives a
+proposal and installs nothing, pointerup makes the one canonical planner call. The load-bearing
+observation is that the release **already** re-derives from the release point against the frozen
+baseline, so today's six per-move installs are preview-only and removing them cannot change what
+commits — provided the room gesture's existing invariants (one history entry, invalid release commits
+nothing, `no_op` silent, shared eligibility, byte-equivalence, installed-not-recompiled accept, cancel
+paths, selection survival) stay unweakened and six new obligations are met, of which the first is an
+open read: **who consumes the installed preview during a room drag** (the D4-2 question). Two behaviour
+changes it cannot avoid — the original stays drawn under the overlay (the wall drag's accepted
+precedent) and refusals only the full planner can see move to release — and that second trade is the one
+to decide first. Sketch → ./pre-p23b.8-follow-up/2026-09-27-room-move-quick-sketch-design-sketch.md.
+
+## pre-P23B.8 follow-up — external research reviewed against the code + the plan it implies — 2026-09-27 (committed 2026-09-28; review only, no code change)
+
+An external research synthesis was obtained against the room-drag brief
+(`./pre-p23b.8-follow-up/2026-09-27-external-research-brief-room-drag-preview.md`) and reviewed against
+the shipped code before being trusted. Its conclusion — *gesture-scoped transient transform over the
+frozen baseline, canonical compile + install once at release, no second geometry authority, no Worker,
+no incremental compiler* — is **CONFIRMED**, and its two exclusions match our measurements. Three of its
+assumptions were corrected by reading the code, and each one changes the plan:
+
+- **There is no room-unit proposal and no room-unit preflight.** Core exports
+  `proposeWallFirstArchitectureGeometry` and `preflightWallFirstArchitectureCandidate` (direct
+  architecture edits) and `planWallFirstRoomMove` (the full planner) — nothing for room units. The room
+  drag's pointermove handler calls **the full planner** (`LayoutPlanViewport.svelte:3744–3757`), which is
+  why it pays 5 compiles + 6 preparations per action. So the synthesis's Slice A is **new core surface**
+  (extending the wall-set intent is the smallest form: proposal and preflight share ONE intent→candidate
+  mapping, so the sound-by-construction property is preserved) **plus** the viewport rewiring — not a
+  viewport-local refactor.
+- **The 3D consumer is resolved, in our favour.** `LayoutPreviewScene.svelte:83–89` prefers a transient
+  bundle over the committed source and `Workspace3DView.svelte:419` wires it — but `Workspace3DView` is
+  mounted in an **`{:else}`** branch (`EditorApp.svelte:2250`), so during a Plan room drag the 3D scene
+  is **not mounted**. The presentation set is Plan-local, no translated mesh input is needed, and the
+  sketch's "D4-2 read first" unknown is closed.
+- **The refusal trade is not the trade the synthesis warns about.** Per move the room path writes
+  `preview.statusMessage` on failure and sets `drag.candidateValid`, and the latter is **read by no
+  production renderer** (asserted only in gesture tests). Today's live signal is the geometry itself — a
+  fully recompiled candidate. So the fast path changes preview *fidelity*, not refusal colour, and needs
+  no preflight at all: a proposal-only per move is strictly smaller and avoids re-introducing the
+  `snap-wall-index` cost (173.2 / 231.3 ms p50 per gesture, the wall drag's entire heavy term) that the
+  room path currently does **not** pay (grid snap only, `layout-interaction.ts:1448–1462`).
+
+The reviewed plan is sequenced so the first step changes no product code (parity differential for rigid
+translation · cost probe of the added per-move work · consumer census · per-gesture call-count baseline),
+the core change carries core's owner authorization, and the two visible consequences (original stays
+drawn under the overlay; live geometry fidelity) are owner decisions taken before building. The added
+per-move cost is the plan's largest uncertainty and its stated falsifier. Worker/WASM and incremental
+compilation stay excluded, exactly as the synthesis argues and as the measurements require. Review +
+plan → ./pre-p23b.8-follow-up/2026-09-27-research-synthesis-review-and-plan.md.
+
+## pre-P23B.8 follow-up — whole-Room drag implemented on the transient contract — 2026-09-27 (committed 2026-09-28; owner-authorized expanded scope)
+
+The owner approved the reviewed plan and it was implemented. A whole-Room unit drag no longer
+re-derives, compiles and installs the whole document on every pointermove: it draws a transient attempt
+from the frozen baseline and compiles **once, at release** — where the shipped path already did, which is
+why removing the per-move installs cannot change what commits.
+
+**The plan's own P0 gate came back, and it is why this is admissible:**
+
+- **P0.2 translation parity PASSES EXACTLY** — `compile(translated) ≡ translate(compile(baseline))`
+  point-for-point (every moved Wall's samples, length, thickness, height, endpoints; every moved Room's
+  floor polygon) over all four committed fixtures × three deltas, and the drawn attempt **is** that
+  geometry rather than a second description of it (also exactly the baseline's samples shifted, so the
+  canonical points are moved and never resampled).
+- **P0.3 rotation parity FAILS at sampling density** — recorded, not worked around: a rotated isolated
+  group compiles to the rigid image of its Rooms (vertex-exact) and preserves every Wall's length, but
+  `samples(rotated)` and `rotate(samples)` do not agree on their **sample count**.
+- **P0.4 added-side cost 136–197× below the removed side** — 0.391–0.581 ms of proposal against
+  69.2–79.2 ms of planner + compile + prepare on the all-curved 40-Wall fixture, reproduced in the perf
+  lane; committed as a ratio gate with a 5× floor, not an absolute budget.
+- **P0.5 zero per-move work** — five pointermoves install nothing, leave the document byte-identical to
+  the frozen baseline, replace no compiled geometry and write no history; the release commits exactly the
+  planner's candidate for the **release** delta (proven against a different last-previewed position).
+
+**Deviation, reported rather than hidden: rotation is NOT wired.** It has no reachable committable
+wall-first target (the rotation handle reads the legacy Room registry, which is empty for a wall-first
+document, and the legacy Room-unit path commits its last previewed candidate rather than re-deriving), and
+its preview is not parity-equivalent anyway (§P0.3). The rotation surface exists in core, parity-evidenced
+and routed to a slice that owns a rotation release re-derive.
+
+> **SUPERSEDED 2026-09-28 — this deviation is closed.** The owner reversed P23.14 Decision 7 and the
+gesture is wired with a release re-derive; the P0.3 result is kept and answered by resampling (see the
+follow-up entry below and §3 of the follow-ups record).
+
+The planner's candidate construction is now extracted as `roomUnitMoveCandidate` and **shared** by the
+planner and the preview, so the two cannot describe different geometry; the drag carries its moving set
+frozen at pointer-down; the attempt draws in the pending token language composed inside the refusal
+annotation. The legacy path is untouched. Reviewer-visible consequences (the original stays drawn; the
+group's moving-bounds highlight no longer follows the cursor; refusals appear at release) are listed in the
+record.
+
+Gates on this tree: `check` 0/0 (editor) and 0 errors (`layout-core`) · `test` 363 files / 5,142 passed
+(was 360/5,129) · `test:arch` 23/254 · `test:heavy` 8/92 · `test:perf` 9/64 · `build` ok · the 17 shipped
+room-move gesture invariants pass **unmodified**. One existing test was changed deliberately and
+strengthened: `plan-refusal.test.ts`'s source-text guard now asserts the nested composition order. A new
+wiring guard (each path called exactly once, read from the viewport's source) caught a real defect before
+it shipped — two gesture-exit sites cleared `roomUnitSnapshot` without clearing the attempt, which would
+have left a stale attempt after a project replacement; both now clear it.
+**Confirmed live, one real gesture:** driving a whole-Room drag through the harness host on the real
+viewport (DEV, Chrome, owner-40-curved, ladder zoom 19.29 px/m) paid **one bounded proposal per
+pointermove** (4 moves → 4 `room-unit-proposal`, 0.5–1.4 ms) with **zero compiles and zero preparations
+per move**, drew the pending-language ghost beside the committed ink (5 polylines while the pointer was
+down, 0 after release), then reached the canonical path **exactly once per gesture** (1 `preview-compile`
+52.6 ms · 1 `mesh-prebuild` 12.2 ms), reported "Moved room", and was undone by exactly **one** history
+entry. **The live M1 protocol FRAME SERIES / before-after was NOT run at that point** — a same-session
+before needs a pre-change tree and every M1 absolute is session-conditioned, so the improvement was
+established as a mechanism, a unit-level ratio and a live per-gesture call-count accounting, not as a
+browser frame series. No cache, no Worker, no WASM, no baseline or ratchet
+write. Record → ./pre-p23b.8-follow-up/2026-09-27-room-move-transient-implementation-record.md.
+**FOLLOW-UP 2026-09-28 — the protocol can now take a before/after in ONE session, and did.** The M1
+driver gained a DEV-only BEFORE/AFTER ARM: the whole-Room class interleaves the shipped `transient`
+path with the pre-change `per-move` path (still reachable behind one DEV switch, so no pre-change tree
+is involved), and the record reports each arm's own rows and the signed delta. Measured live in one
+session on the real viewport (DEV, Chrome, owner-40-curved-v1, ladder zoom 19.29 px/m): 4 pointermoves
+cost **4 `room-unit-proposal` / 0 `preview-compile` / 0 `mesh-prebuild` / 40.2 ms** under `transient`,
+against **0 / 4 / 5 / 1006.6 ms** under `per-move`, with the release unchanged at 1 compile + 1
+preparation on both arms — a 25× move-phase difference taken as a within-session comparison, never a
+cross-session one. Two now-unused per-move signals the transient drag left behind were deleted: the
+`drag.candidateValid` flag (written but read by no production renderer) and the baseline-anchored
+per-member group-bounds highlight (superseded by the gesture's own moving-unit attempt). Room-drag
+ROTATION was then WIRED on the owner's ruling, which reversed the ratified P23.14 Decision 7 (scope A of
+the two the record offered): core gained `planWallFirstRoomRotation` (same isolation policy, same
+candidate mapping, same canonical gates as the move planner) and its overlay partner, the editor gained
+`previewWallFirstRoomRotation` and `transientRoomUnitRotation`, so the rotate branch installs nothing per
+pointermove and the **release re-derives one candidate at the release ANGLE** against the frozen
+baseline, exactly as translation re-derives the release DELTA; the arm and handle are now reachable for a
+wall-first Room, anchored to the COMPILED outline instead of the empty legacy registry, and the shipped
+negative test was rewritten to assert the reversal alongside what survives it. The P0.3 sampling-density
+result is kept: it rules out drawing a rotation by rotating the baseline's canonical points, so the
+attempt RESAMPLES the rotated centerline through the release's own sampler — which the new differential
+asserts makes the drawn attempt the release's candidate point-for-point. **The frame series the earlier
+entries left open now exists**: the arms protocol was run end to end on the Chrome leg (19 class rows,
+4,457 presented frames, clock residual 0.265 ms), splitting the whole-Room class into 40 accepted actions
+per arm across the four committed fixtures with release coverage 1 in both — `transient` p50 **17.2 ms**
+with 19.9 % of in-drag callback intervals ≥ 50 ms against `per-move` p50 **166.2 ms** with 82.0 % ≥ 50 ms,
+cleanly separated on every fixture, with the unchanged release as the control (p50 13.6–30.5 vs
+13.7–27.0 ms) and the mechanism visible as 1.00 vs 5.00 `preview-compile` and 1.00 vs 6.00
+`mesh-prebuild` per accepted action. Stated limits: the Electron leg was not spent, and the long-frame row
+is the class's window (identical across both arm rows), so it is read as class-level.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-drag-follow-ups-record.md · frames
+→ ./pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json.
+
+## pre-P23B.8 follow-up — the post-release window priced by name, and the Room-label cost found in it — 2026-09-28 (committed 2026-09-28; instrument + the slice's first PRODUCT change)
+
+The release-to-presented split left 43–59 % (Chrome) / 47–78 % (Electron) of the post-release wait
+unexplained because the runner kept trace event INSTANTS and not durations. With durations in place the
+wait is ~96–97 % JavaScript and it is CONTAINED in one Svelte runtime task per release: the window's
+script row is a single anonymous function whose definition site is `deps/chunk-AI5TZSIZ.js:739:20`
+(Svelte 5's microtask-flush wrapper), present in 20/20 windows at p50 143.4 ms of a 149.6 ms window on
+`p23b-40-wall-all-curved-v1` and 20.1 ms of 26.6 ms on straight, with NO APP FRAME named inside it — a
+`FunctionCall` span's duration includes everything it calls, so the trace can name the container and
+nothing else. Two instruments therefore closed it: the script rows now carry the definition site (line +
+column) and are keyed by it, and a **V8 CPU profile** was added (`--cpu-profile`, 1,000 µs sampling,
+self time per frame, sliced into each class's own windows, with the two clocks' relation REPORTED rather
+than assumed — the profile starts 272 ms before the trace's own calibration marker and ends 4.5 s after
+the closing one, elapsed time between anchors on one clock).
+
+**What was in the window: the P23.13 Room-label free-space placer's eligibility grid.** On all-curved
+`rigid-wall-drag` the placer's rows are 57.4 % of the window's sampled time (`edgeDistance` 39.5 %,
+`pointStrictlyInside` 10.2 %, `polylineDistance` 5.9 %), and whole-run `edgeDistance` is 49,764 ms —
+17.11 %, the largest row of the entire 285-second profile. The mechanism is a product of two counts: the
+mask grid is capped by cells (≥ 8 px, 24,000 max) while a CURVED Room's boundary polyline is not, so
+every cell was paying the exact distance to every vertex of its own boundary plus every protected edge.
+
+**The fix is a product change** in `apps/editor/src/lib/editor/layout/plan-room-labels.ts`, five
+decision-neutral edits: a bounding-box lower bound that prunes the point-to-polyline distance; the
+closed-polygon walk without its per-cell `[...polygon, polygon[0]]` copy; an early exit once a cell's
+slack is already negative (the magnitude of a discarded cell is read by nothing, which is what made most
+of that arithmetic DISCARDED arithmetic); active-text inflation hoisted out of the per-cell loop plus a
+one-pass bbox; and the even-odd inside test computed PER ROW as a crossing table (same orientation, same
+expression, so it agrees bit for bit) with each cell's answer the parity of crossings strictly to its
+right, plus four direct BFS visits instead of a per-cell neighbour array. Measured across three legs of
+the same protocol and flags: the distance loop 17.11 % → **9.96 %** of sampled run time, the inside test
+4.40–5.66 % → **0.26 %**, and the placer's share of the post-release window 57.4 % → **41.0 %**
+(all-curved), 52.1 % → 37.9 % (room-creation-commit), 25.1 % → 12.7 % (owner-curved), 7.1 % → 4.4 %
+(straight). End-to-end the all-curved windows fall 17–49 % (room-creation-commit p50 213.7 → 116.7 ms).
+Stated limits: three back-to-back sessions, so only within-run shares and within-window composition are
+compared — the third leg's own window column is NOT read as a delta because its run took 354.7 s of
+sampled time against the second's 236.5 s and the one class the last change cannot touch moved 23.7 →
+65.9 ms; a sampled profile is not an instrument (inlined callees stay on their inliner); and the
+end-to-end proof still needs ONE SESSION with both code paths, which is the DEV arm pattern the room drag
+already uses. Parity: `check` 0/0, 365 test files / 5,181 tests, `test:arch` 23/254, and the placement
+suite is the teeth — re-introducing the far-edge bound fails 16 of its 28 pre-existing tests — with the
+two new curved-room tests stated as coverage rather than teeth because they pass against the wrong bound
+too.
+Record → ./pre-p23b.8-follow-up/2026-09-28-post-release-window-attribution-and-room-label-fix-record.md.
+
+## pre-P23B.8 follow-up — the Room-label placer's before/after arm, measured in ONE session — 2026-09-28 (committed 2026-09-28; DEV arm + runner rows)
+
+The record above closed with one open item: the end-to-end proof needs ONE SESSION with both code paths.
+**The placer now has that arm, and the delta is measured.** `--label-arms` runs the shipped
+`pruned-grid` against the pre-change `per-cell-grid` (kept verbatim, reachable only under DEV +
+`__P2311_PERF__`) INTERLEAVED PER ATTEMPT, and — unlike the room drag's arm, which is confined to the
+class it changed — in EVERY class, because the placer runs on every Plan render. The arm is recorded
+against the action the attempt RESOLVED to, so the runner splits each class's post-release windows by
+exactly that index: a window whose action recorded no arm is DROPPED and counted, never assigned. The
+same split is re-priced from the CPU profile with `arm::class` buckets through ONE shared sample walk.
+
+**One session, Chrome 152 headless, 19 classes, 25 attempts per class, 4,415 presented frames,
+calibration residual 0.131 ms.** All-curved 40-wall window p50 (before → after): **219.4 → 149.4**
+(`bend`), **215.8 → 146.4** (`rigid-wall-drag`), **145.6 → 100.1** (`room-creation-commit`),
+**150.0 → 102.3** (`wall-authoring`), **169.4 → 114.8 ms** (`whole-room-move-bridge`) — ratio **0.68**
+on every class. Owner-curved −8.7…−10.2 ms and connected −18.9…−19.6 ms: the three curved fixtures order
+themselves by how much boundary the grid has to measure. **The falsifier behaves like one**: on the
+straight fixture, where the grid has no long curved polyline, the same arm moves −1.7 / −2.2 / +1.4 /
+−2.8 ms (0.95–1.02), with the pre-change arm's `edgeDistance` at 95.7 ms against the shipped arm's
+0.0 ms. In self time over the same windows: all-curved 9,884 → **6,732 ms** sampled, `edgeDistance`
+3,890.5 → **898.5**, the per-cell inside test 1,006.8 → **0**, the per-cell distance helper 691.6 →
+**0**, replaced by the prune's own `segmentLowerBound` 0 → 932.7 and `polylineDistance` 0 → 586.1, GC
+274.5 → 226.6.
+
+Coverage and parity are read from the capture itself: every measured action accepted in both arms in all
+19 classes, `unassignedWindows` 0 everywhere (the 10/10 and 12/11 splits are the arithmetic of 25
+alternating attempts), and the class's MIXED release p50 landing exactly on the shipped arm's last
+window — where the median of two separated halves must land. The placement identity is asserted, not
+inferred: both arms place identical labels, readouts and sticky memory over 8 fixtures (256-vertex ring,
+concave face, every mask class, three zoom regimes, a frozen gesture). One caveat stated in the record:
+the whole-run profile row is still dominated by the OLD code (`edgeDistance` 27,487 ms / **12.17 %**, the
+largest row of the run) because it spans BOTH arms — a mixed population, and the per-arm slice is the
+readable version of the same number. Still open: the placer remains the largest single consumer inside
+those windows, so the next lever is unchanged and now one run away — the grid's existence per placement,
+not another inner-loop constant — and this arm has no Electron leg.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-arm-before-after-record.md · capture
+→ ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
@@ -429,9 +773,17 @@ child plans and execution status →
   pre-P23B.8 follow-up records (S2 Chrome leg · S3 Electron leg + pair tables · S4 M1 session —
     gesture frames · presented frame · long-frame incidence · D7 · D13 · R1 ranking · acceptance
     record + preservation report) → ./pre-p23b.8-follow-up/
-  pre-P23B.8 follow-up LIVE captures (both runtimes; cited machine-readable evidence, never compacted) →
-  ./pre-p23b.8-follow-up/2026-09-27-M1-chrome-leg.json ·
-  ./pre-p23b.8-follow-up/2026-09-27-M1-electron-leg.json
+  pre-P23B.8 follow-up LIVE captures (cited machine-readable evidence; committed as single-line JSON) →
+  ./pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json (the arms run: per-arm frame series and the
+    within-session before/after) · ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json (the
+    Room-label arm leg: per-class `labelArms` assignment, per-arm window rows and the per-arm CPU slice)
+  · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
+  ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
+  pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
+  THE WORKING TREE and deliberately NOT COMMITTED (two exact repository-root `.gitignore` paths, reason
+  stated there): ~40k pretty-printed runner lines each, i.e. 59,335 of what was then a 63,588-line
+  branch diff (with this work committed the branch is 15,294 added lines over 66 files). Every row they are cited for is in the records above, and the S2/S3 records carry the runner
+  commands that regenerate them.
 measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
