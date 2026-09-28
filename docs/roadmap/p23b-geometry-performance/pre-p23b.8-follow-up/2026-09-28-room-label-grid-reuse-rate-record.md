@@ -149,10 +149,10 @@ stated there rather than made here.**
 | Gate | Result |
 |---|---|
 | `apps/editor` `npm run check` (svelte-check) | 0 errors, 0 warnings |
-| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 15/15 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the call census with the build range each call produced, the class histogram, and the three-arm placement parity |
+| `tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts` | 16/16 — the gate, the build counter, the key's exact-bit identity, the arrival-order sequence (including that it is a copy and that a new attempt starts its own order), the call census with the build range each call produced and the pass's own wall time from a real placement, the class histogram, and the three-arm placement parity |
 | `tests/lib/bench/p23b-m1-record.test.ts`, `p23b-m1-frame-timing.test.ts` | 40 + 18 — the key summary, the sequence and the call census as the class row carries them |
 | `tests/lib/layout/plan-room-labels.test.ts` | 30/30 — the placer's own suite, unchanged by the instrument |
-| `apps/editor` `npm test` | 366 test files / 5,209 tests pass (2 files / 4 tests skipped by their own gates) |
+| `apps/editor` `npm test` | 366 test files / 5,210 tests pass (2 files / 4 tests skipped by their own gates) |
 
 ## 9. Live evidence / reproduce
 
@@ -162,6 +162,8 @@ stated there rather than made here.**
 - `2026-09-28-room-label-grid-call-census-chrome-leg.json` — the second leg of the same protocol and the same
   instrument, which carries everything the first one does **plus `byAction[].labelCalls`**. §10 (the census) was
   read from it, and its own key readings are the second independent run behind §3's reproducibility bound.
+- `2026-09-28-room-label-grid-pass-cost-chrome-leg.json` — the third leg, whose `labelCalls` additionally carry
+  `durationMs` (each call's own wall time, entry to exit). §11 (the price) was read from it.
 
 ```text
 node .freebuff/launch-chrome.mjs 9223 /tmp/p23b-chrome-label-arms   # pinned 152.0.7977.54, headless
@@ -235,7 +237,51 @@ Assisted by the census: any fix has to be worth less than one whole pass per acc
 is what the redundancy costs — but only after the pass's own placement work is priced, which the grid keys
 do not measure.
 
-## 11. What this changes, and what it does not
+## 11. Follow-on, same session: what the trailing pass costs
+
+§10 named the pass; this prices it. The census now also times each call **from its entry to its one exit**, so a
+call's duration is the whole pass — its grid builds *and* the placement work around them. Third leg, same
+protocol (Chrome 152 headless, residual 0.109 ms, 4,407 frames, 479 accepted actions):
+
+| call group | n | p50 | mean | max |
+|---|---|---|---|---|
+| the action's first call (live render) | 479 | 4.900 ms | 10.649 ms | 80.700 ms |
+| middle `lod` calls | 411 | 7.500 ms | 12.619 ms | 51.700 ms |
+| middle `geometry` calls | 479 | 8.500 ms | 13.619 ms | 56.600 ms |
+| **`frozen` calls (no grid builds)** | 884 | **0.800 ms** | 0.936 ms | 4.000 ms |
+| **the trailing `lod` call (all repeats)** | 479 | **8.500 ms** | 13.204 ms | 53.800 ms |
+
+**The trailing pass is 6,324.8 of 23,962.5 ms of measured placer wall time — 26.4 % of it.** And the `frozen` row is
+the calibration that says where that money is: those calls walk the same Rooms and build essentially no grid
+(ten grids across 965 calls), and they cost **0.8 ms p50** — so roughly seven of the trailing pass's 8.5 ms p50 is
+the grid rebuild, not the placement walk. (Read that as an upper bound on how cheap the walk alone is, not as a
+clean subtraction: a `frozen` call also skips the re-optimisation resolution a `lod` call performs.)
+
+Priced against the window each pass lands in, from the **same session's** per-arm window rows:
+
+| fixture | trailing p50 | window p50 | share of the window |
+|---|---|---|---|
+| `p23b-40-wall-all-curved-v1` (`bend`) | 25.4 ms | 92.6 ms | **27.4 %** |
+| `p23b-40-wall-all-curved-v1` (`wall-authoring`) | 27.9 ms | 77.6 ms | **35.9 %** |
+| `p23b-40-wall-all-curved-v1` (`rigid-wall-drag`) | 24.3 ms | 86.8 ms | **28.0 %** |
+| `connected-curved-grid-v1` (`bend`) | 10.1 ms | 34.0 ms | **29.7 %** |
+| `owner-40-curved-v1` (`bend`) | 6.1 ms | 40.5 ms | 15.1 % |
+| `p23b-40-wall-straight-v1` (`wall-authoring`) | 5.4 ms | 30.7 ms | 17.6 % |
+| `p23b-40-wall-straight-v1` (`rigid-wall-drag`) | 1.4 ms | 24.4 ms | 5.7 % |
+
+The all-curved classes run **27.3–35.9 %** of their post-release window in this one redundant pass, and the
+connected-curved fixture 24.3–32.8 %. For scale against the work already landed: the previous pass's kept change
+(seeding and ranking the grid's walk) bought 18 % of the `bend` window; **this is the largest single remaining
+item inside those windows that this thread has priced**, and unlike the grid's inner loop it is a whole extra pass
+rather than a fraction of one.
+
+**What the price does not settle, and the one measurement that would.** The claim that the pass is *skippable* rest
+on identical grid inputs plus the placer's purity — the capture still does not record the pass's **placement
+output**, so "the pass before it produced the same labels" is inferred, not shown. A DEV-only digest of each call's
+result (the placed labels and the readout, bitwise) would turn that inference into evidence, and it is the same
+kind of instrument this pass already added: one field on the call record, one leg, no product change.
+
+## 12. What this changes, and what it does not
 
 - **Changed:** the redundant share is no longer unmeasured — **29.8 % of grid builds rebuild byte-identical
   inputs**, 15.3–50.0 % per class, with the per-build keys and the arrival order now travelling in every capture
@@ -244,7 +290,10 @@ do not measure.
   pass did that and cut the window by 18 %), and it is not a small cache either: it is a decision between a
   cross-call cache keyed by a shipped input hash and removing a duplicated pass at its source — and §10 has now
   named that pass (the settled-`lod` pass following the `geometry` pass of the same settle, 100 % repeats in all
-  479 actions) without choosing between them.
+  479 actions) without choosing between them — and §11 has now priced it: **26.4 % of all measured placer wall
+time**, and **27.3–35.9 %** of the all-curved post-release windows (25.4 ms p50 of a 92.6 ms window on `bend`),
+with the `frozen` baseline showing the placement walk alone costs 0.8 ms p50. The price is larger than the grid
+share §6 bounded the memo against, because the redundancy is a whole pass rather than a fraction of one.
 - **Not changed:** anything the editor does. No placement decision, no arm default, no product path — the key, the
   sequence and the counting are DEV-only, and the placement suite plus the three-arm parity differential are the
   evidence.
