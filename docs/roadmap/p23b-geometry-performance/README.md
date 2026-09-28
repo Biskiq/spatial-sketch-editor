@@ -721,6 +721,29 @@ Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-and-reu
 shipped leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · the rejected
 revision's leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json.
 
+**The redundant share is now measured, and the pass stopped at the measurement.** One leg of the same
+protocol (Chrome 152 headless, residual 0.833 ms, 4,434 frames, 479 recorded attempts, 0 without a sequence
+and 0 disagreeing with their attempt's build count) keys every grid build over the inputs that determine it
+— the projected polygon, the mask with its clearances, the semantic centre, hashed over each coordinate's
+**exact bits** — and records each attempt's builds **in arrival order**. Of **14,680 builds**, **4,376
+(29.8 %)** rebuilt byte-identical inputs: **27.0 %** straight, **32.3 %** all-curved, **28.8 %** owner,
+**31.5 %** connected; **15.3 %** (`room-creation-commit`) to **50.0 %** (`whole-room-move-bridge`) per class.
+The structure is the finding: every accepted action builds the fixture's Rooms once and then rebuilds a
+**trailing subset** of them (half, or all) from identical inputs — so **no repeat is adjacent** and a 1- or
+2-entry cache hits **zero** times on every class, while a cache that holds the pass (4 entries on the
+smallest fixture, 16 on the largest here) captures all of them, i.e. the size it needs is the **Room count**
+(4–61 keys per attempt), not a constant. The straight fixture is **not** a falsifier here and the record says
+so: this is a rate, and every fixture repeats. **No memo, no cache and no key reached the product path**, and
+nothing the editor does changed. What the number justifies — a cache outliving one `placeRoomLabels` call,
+sized by the Room count, keyed by a hash shipped into the product, correct only while that hash covers every
+grid input the grid ever grows, ceiling ≈**9 %** of the all-curved `bend` window — is not a local concern of
+the placer, and the trailing second pass reads like the Plan being planned more than once per settle, which
+would make a cache the wrong tool. **Handed over, not decided here:** one more DEV-only census to name that
+second pass (placer calls per accepted action, Rooms per call, `reason` per call), then choose between
+removing the redundancy at its source and paying for a cache.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json.
+
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
 P23B.11 was REVIEWED AND ACCEPTED by the owner with no remaining blocker: the review fix `2a5efeb1`
@@ -828,7 +851,10 @@ child plans and execution status →
     ranked, index-gated grid: the three-arm `labelArms` rows with the signed pair `seeded-grid` −
     `pruned-grid`, its per-arm CPU slice, and each class's `buildsPerAction` grid-build budget) ·
   ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json (the REJECTED first
-    revision's leg, kept because its straight-fixture reading is what made the falsifier discriminating)
+    revision's leg, kept because its straight-fixture reading is what made the falsifier discriminating) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every
+    recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with
+    its repeat count, and the `buildsPerAction` budget beside them)
   · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
   ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
   pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
