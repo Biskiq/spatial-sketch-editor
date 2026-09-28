@@ -46,7 +46,7 @@ A PRESS ON A CANONICAL WALL
 ```
 
 The room path's own design note is explicit and is the mechanism's reason, not an accident — P23.6a
-(`../p23-layout-depth/2026-09-12-P23.6a-wall-first-room-unit-move.md` §S6): *"Each pointer move:
+(`../../p23-layout-depth/2026-09-12-P23.6a-wall-first-room-unit-move.md` §S6): *"Each pointer move:
 `updateLayoutRoomUnitDrag()` (total delta from `startWorld`, never accumulated), then
 `restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot)`, then `previewWallFirstRoomMove()` with that
 total delta. The candidate is always derived from the immutable baseline."* The wall path's own note is

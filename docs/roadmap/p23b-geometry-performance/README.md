@@ -330,7 +330,8 @@ compacted). NEXT: P23B.8's entry gate — this slice entered nothing into it, an
 before that entry.
 
 COMMITTED 2026-09-28 — every block below, from the review corrections to the Room-label arm, was
-written on one working tree and has LANDED as three commits on this branch: **`3ef60e68`** the M1
+written on one working tree and has LANDED as a commit series on this branch — the three that carried
+the work, plus the follow-up commit that recorded them and carries this text: **`3ef60e68`** the M1
 measurement stack and the records it produced · **`2ccded81`** the whole-Room drag on the transient
 contract, rotation wired · **`58a0c5ef`** the Room-label placer's grid with the one-session arm that
 measures it. A block labelled "UNCOMMITTED" describes the state when it was written and is kept as

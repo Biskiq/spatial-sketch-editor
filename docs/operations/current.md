@@ -395,8 +395,9 @@ trade is the one to decide first. No cache, no Worker, no WASM, no baseline, no 
    a coarser cell budget when the projection has not changed), with the straight fixture as the
    falsifier that has to stay flat; and this arm has no Electron leg.
    Record → ../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-arm-before-after-record.md.
-   COMMITTED 2026-09-28 — the working tree every block above was written on has LANDED, as three
-   commits on this branch: `3ef60e68` the M1 measurement stack and the records it produced (class
+   COMMITTED 2026-09-28 — the working tree every block above was written on has LANDED as a commit
+   series on this branch — the three that carried the work, plus the follow-up commit that recorded
+   them and carries this text: `3ef60e68` the M1 measurement stack and the records it produced (class
    attribution, the post-release window by phase, the CPU profile, both DEV arm switches, the runner
    rows, and the 09-27 records and two compact captures); `2ccded81` the whole-Room drag on the
    transient contract with rotation wired and the two dead per-move signals deleted, with the room-move
