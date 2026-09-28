@@ -28,6 +28,7 @@ import {
 	worldToPlanScreen,
 	type PlanViewportState
 } from './layout-plan-transform';
+import { p23bM1RoomLabelArm } from './p23b-m1-room-label-arm';
 
 /** The three text roles of a Room label stack, in display order. */
 export type TextMeasureStyle = 'room-name' | 'room-reference' | 'room-area';
@@ -450,12 +451,42 @@ function polygonEdges(polygon: readonly LayoutVec2[]): [LayoutVec2, LayoutVec2][
 	return edges;
 }
 
+/**
+ * A lower bound on `edgeDistance(point, a, b)`, from the segment's own bounding
+ * box — cheap, exact and never an overestimate, so a segment it prunes can never
+ * have held the minimum.
+ *
+ * WHY IT EXISTS (measured, not guessed). The post-release window of the M1
+ * protocol is dominated by this module's eligibility grid, and a V8 CPU profile
+ * puts 39.5 % of that window's sampled time in `edgeDistance` itself on the
+ * all-curved fixture (`p23b-40-wall-all-curved-v1`, `rigid-wall-drag`). A curved
+ * Room's boundary is a long polyline, so the grid was asking for the exact
+ * distance to every one of its vertices from every cell: the cell count is capped
+ * (24 000) but the vertex count is not. A point's distance to a polyline is set by
+ * the few segments next to it, and the box test is what says so before the two
+ * `Math.hypot`s are paid.
+ */
+function segmentLowerBound(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2): number {
+	// Distance from the point to the segment's own bounding box, per axis: zero
+	// inside the interval, and the gap to the NEAR edge outside it. The near edge is
+	// why both terms are needed — `lo − point` and `point − hi`, never `point − lo`,
+	// which is the distance to the far edge and would prune segments that hold the
+	// minimum. (That exact slip cost this change 16 failing placement tests before
+	// the term was rewritten.)
+	const dx = Math.max(0, Math.min(a[0], b[0]) - point[0], point[0] - Math.max(a[0], b[0]));
+	const dz = Math.max(0, Math.min(a[1], b[1]) - point[1], point[1] - Math.max(a[1], b[1]));
+	return Math.max(dx, dz);
+}
+
 function polylineDistance(point: LayoutVec2, points: readonly LayoutVec2[]): number {
 	if (points.length === 0) return Number.POSITIVE_INFINITY;
 	if (points.length === 1) return Math.hypot(point[0] - points[0]![0], point[1] - points[0]![1]);
 	let best = Number.POSITIVE_INFINITY;
 	for (let index = 1; index < points.length; index += 1) {
-		best = Math.min(best, edgeDistance(point, points[index - 1]!, points[index]!));
+		const a = points[index - 1]!;
+		const b = points[index]!;
+		if (segmentLowerBound(point, a, b) >= best) continue;
+		best = Math.min(best, edgeDistance(point, a, b));
 	}
 	return best;
 }
@@ -645,20 +676,273 @@ function projectMask(mask: RoomLabelMask | undefined, planView: PlanViewportStat
 	};
 }
 
-/** Screen-space slack at one point (≥0 eligible), used by the mask grid. */
+/**
+ * Screen-space slack at one point (≥0 eligible), used by the mask grid.
+ *
+ * WHAT A NEGATIVE RETURN MEANS, stated precisely because it is what makes the early
+ * exits below decision-neutral. The grid stores this value per cell and its
+ * readers are: `slack[i] < 0` (eligible or not) and, for cells that passed that
+ * test, the value itself as a clearance to rank with. A cell that failed any one
+ * obstacle is ineligible, and its magnitude is never read — so the first failing
+ * term may end the walk and answer, which is what the measurement wanted: on the
+ * all-curved fixture most cells are near a wall or an edge band and were paying
+ * for every later obstacle's exact distance before being discarded, and a V8 CPU
+ * profile puts 39.5 % of the post-release window in that discarded arithmetic.
+ * Eligible cells are unaffected: for them every term still runs and the same
+ * minimum comes back, bit for bit.
+ */
 function pointSlack(
+	point: LayoutVec2,
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	/** Active-text rects already inflated by their clearance, once per placement. */
+	inflatedText: readonly ScreenRect[],
+	/** Whether this cell is inside the face — computed per ROW, see `insideFlags`. */
+	inside: boolean
+): number {
+	if (!inside) return Number.NEGATIVE_INFINITY;
+	let slack = polygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
+	if (slack < 0) return slack;
+	for (const edge of mask.protectedEdges) {
+		slack = Math.min(slack, polylineDistance(point, edge.points) - edge.clearancePx);
+		if (slack < 0) return slack;
+	}
+	for (const obstacle of mask.obstacles) {
+		slack = Math.min(slack, polygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
+		if (slack < 0) return slack;
+	}
+	for (const zone of mask.acquisition) {
+		slack = Math.min(
+			slack,
+			Math.hypot(point[0] - zone.center[0], point[1] - zone.center[1]) -
+				zone.radiusPx -
+				zone.clearancePx
+		);
+		if (slack < 0) return slack;
+	}
+	for (const inflated of inflatedText) {
+		slack = Math.min(slack, rectPointDistance(inflated, point));
+		if (slack < 0) return slack;
+	}
+	return slack;
+}
+
+/**
+ * The even-odd crossing table for ONE grid row, in the order the per-point test
+ * visits the edges — which is what makes the row computation decision-neutral: the
+ * inside/outside answer is the parity of the edges whose crossing lies to the RIGHT
+ * of the point, and parity does not care in what order the edges were toggled, so
+ * collecting them per row and counting is the same boolean as toggling per point.
+ * The crossing is computed with the same orientation and the same expression as
+ * `pointStrictlyInside`, so the two agree bit for bit rather than approximately.
+ *
+ * WHY (measured). After the distance loop was pruned, the point-in-polygon test was
+ * what remained: a V8 CPU profile of the M1 protocol puts it at 5.7 % of the whole
+ * run and 13 % of the post-release window on the all-curved fixture, because a
+ * curved face is a long polyline and the test was walking all of it for every one of
+ * up to 24 000 cells. Per row, each edge is crossed at most once: the walk becomes
+ * one pass over the boundary per row plus a walk over the sorted crossings.
+ */
+function rowCrossings(polygonScreen: readonly LayoutVec2[], y: number): number[] {
+	const crossings: number[] = [];
+	for (let index = 0, previous = polygonScreen.length - 1; index < polygonScreen.length; previous = index++) {
+		const a = polygonScreen[index]!;
+		const b = polygonScreen[previous]!;
+		if (a[1] > y !== b[1] > y) {
+			const x = ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0];
+			// A non-finite crossing never toggled in the per-point test either.
+			if (!Number.isNaN(x)) crossings.push(x);
+		}
+	}
+	crossings.sort((left, right) => left - right);
+	return crossings;
+}
+
+type FreeCandidate = { point: LayoutVec2; clearance: number };
+
+/**
+ * Derive up to eight large free-space candidates from the Room's projected
+ * polygon minus the eligibility mask. Connected components of eligible cells
+ * give the *free-space components*; each component contributes the cell with the
+ * greatest clearance, and the largest components are kept. Ranked by clearance,
+ * then proximity to the semantic center — invariant to Room document order.
+ */
+function freeSpaceCandidates(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	centerScreen: LayoutVec2
+): FreeCandidate[] {
+	// THE BEFORE/AFTER ARM (see `p23b-m1-room-label-arm`). The shipped grid is the
+	// default and the only reachable path outside a DEV instrument run; the pre-change
+	// grid below is kept verbatim so one session can measure both arms of the change
+	// that this module's own measurement produced.
+	if (p23bM1RoomLabelArm() === 'per-cell-grid') return perCellGridCandidates(polygonScreen, mask, centerScreen);
+	// One pass, not four mapped arrays: this is per Room per placement, and the four
+	// spreads each allocated a copy of the projected polygon.
+	let minX = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let minZ = Number.POSITIVE_INFINITY;
+	let maxZ = Number.NEGATIVE_INFINITY;
+	for (const [x, z] of polygonScreen) {
+		if (x < minX) minX = x;
+		if (x > maxX) maxX = x;
+		if (z < minZ) minZ = z;
+		if (z > maxZ) maxZ = z;
+	}
+	const widthPx = maxX - minX;
+	const heightPx = maxZ - minZ;
+	if (!(widthPx > 0) || !(heightPx > 0)) return [];
+	const cell = Math.max(
+		ROOM_LABEL_MASK_CELL_PX,
+		Math.ceil(Math.sqrt((widthPx * heightPx) / ROOM_LABEL_MASK_MAX_CELLS))
+	);
+	const columns = Math.max(1, Math.ceil(widthPx / cell));
+	const rows = Math.max(1, Math.ceil(heightPx / cell));
+	// Inflated once, not once per cell: the grid asks the same question up to 24 000
+	// times, and the inflation depends only on the mask.
+	const inflatedText: ScreenRect[] = mask.activeText.map((text) => ({
+		minX: text.rect.minX - text.clearancePx,
+		minY: text.rect.minY - text.clearancePx,
+		maxX: text.rect.maxX + text.clearancePx,
+		maxY: text.rect.maxY + text.clearancePx
+	}));
+	// Inside/outside is a property of the ROW, not of the cell: every cell in a row
+	// shares its z, so the boundary crossings are the same set and only the comparison
+	// against the cell's x differs. Computed once per row, walked left to right.
+	const insideFlags = new Uint8Array(columns * rows);
+	for (let row = 0; row < rows; row += 1) {
+		const y = minZ + (row + 0.5) * cell;
+		const crossings = rowCrossings(polygonScreen, y);
+		let crossing = 0;
+		for (let column = 0; column < columns; column += 1) {
+			const x = minX + (column + 0.5) * cell;
+			// A crossing exactly at the point does not count: the per-point test asked
+			// `point[0] < x`, which is false when they are equal.
+			while (crossing < crossings.length && crossings[crossing]! <= x) crossing += 1;
+			insideFlags[row * columns + column] = (crossings.length - crossing) % 2 === 1 ? 1 : 0;
+		}
+	}
+	const slack = new Float64Array(columns * rows).fill(Number.NEGATIVE_INFINITY);
+	for (let column = 0; column < columns; column += 1) {
+		for (let row = 0; row < rows; row += 1) {
+			const index = row * columns + column;
+			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
+			slack[index] = pointSlack(point, polygonScreen, mask, inflatedText, insideFlags[index] === 1);
+		}
+	}
+	const visited = new Uint8Array(columns * rows);
+	const components: { best: FreeCandidate; size: number }[] = [];
+	for (let start = 0; start < slack.length; start += 1) {
+		if (visited[start] === 1 || slack[start]! < 0) continue;
+		visited[start] = 1;
+		const queue = [start];
+		let size = 0;
+		let bestValue = Number.NEGATIVE_INFINITY;
+		let bestCenterDistance = Number.POSITIVE_INFINITY;
+		let bestPoint: LayoutVec2 = [0, 0];
+		/** Enqueue an eligible, unvisited neighbour; a boundary or ineligible cell is not one. */
+		const visit = (neighbour: number): void => {
+			if (visited[neighbour] === 1 || slack[neighbour]! < 0) return;
+			visited[neighbour] = 1;
+			queue.push(neighbour);
+		};
+		while (queue.length > 0) {
+			const index = queue.pop()!;
+			size += 1;
+			const column = index % columns;
+			const row = Math.floor(index / columns);
+			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
+			const value = slack[index]!;
+			// A component's representative point is its greatest-clearance cell,
+			// and among equal clearance the one nearest the semantic center — never
+			// the arbitrary first cell a traversal happens to visit. A symmetric
+			// Room ties along its bottleneck axis, so without this the label could
+			// sit a half-cell to one side for no visible reason.
+			const centerDistance = Math.hypot(point[0] - centerScreen[0], point[1] - centerScreen[1]);
+			if (
+				value > bestValue + 1e-9 ||
+				(Math.abs(value - bestValue) <= 1e-9 && centerDistance < bestCenterDistance - 1e-9)
+			) {
+				bestValue = value;
+				bestCenterDistance = centerDistance;
+				bestPoint = point;
+			}
+			// Four tests written out rather than collected into an array: this runs once
+			// per cell of the grid, so the array was one allocation per cell (up to
+			// 24 000 per Room) for a traversal that can only ever have four neighbours.
+			if (column > 0) visit(index - 1);
+			if (column < columns - 1) visit(index + 1);
+			if (row > 0) visit(index - columns);
+			if (row < rows - 1) visit(index + columns);
+		}
+		components.push({ best: { point: bestPoint, clearance: bestValue }, size });
+	}
+	// "Large free-space": the biggest components first, then clearance, then the
+	// semantic center. Ties resolve on the candidate point, so the ranking is a
+	// pure function of the geometry (no document-order dependence).
+	components.sort((a, b) => b.size - a.size || b.best.clearance - a.best.clearance);
+	const ranked = components
+		.slice(0, ROOM_LABEL_MAX_CANDIDATES)
+		.sort(
+			(a, b) =>
+				b.best.clearance - a.best.clearance ||
+				Math.hypot(a.best.point[0] - centerScreen[0], a.best.point[1] - centerScreen[1]) -
+					Math.hypot(b.best.point[0] - centerScreen[0], b.best.point[1] - centerScreen[1]) ||
+				a.best.point[0] - b.best.point[0] ||
+				a.best.point[1] - b.best.point[1]
+		);
+	return ranked.map((component) => component.best);
+}
+
+/* ------------------------------------------------------------------ *
+ * The arm's BEFORE path — the pre-change grid, kept verbatim
+ * ------------------------------------------------------------------ */
+
+/**
+ * EVERYTHING BELOW THIS LINE IS THE PRE-CHANGE IMPLEMENTATION, not a variant of
+ * the shipped one. It is here so the BEFORE/AFTER arm can run it on demand in the
+ * same session as the shipped path, because every M1 absolute is
+ * session-conditioned and a cross-session before/after measures the machine. The
+ * four functions are the ones the 2026-09-28 record measured: `edgeDistance` per
+ * boundary vertex per cell with no bbox prune, the inside test walked per cell, the
+ * active-text rect inflated per cell, the Room bbox in four mapped arrays and a
+ * neighbour array allocated per BFS cell — 17.11 % of a whole M1 run in one of them.
+ *
+ * IT DECIDES NOTHING DIFFERENTLY. Both arms visit the same cells, keep the same
+ * eligible set, pick the same representative point per component and rank the same
+ * candidates; the placement suite runs both and requires identical labels
+ * (`placeRoomLabels` under each arm), which is what makes the arm a measurement of
+ * COST rather than of behaviour. Nothing here may be optimised: a "small fix" would
+ * quietly turn the BEFORE arm into a second AFTER arm and the comparison into a
+ * comparison of two similar things.
+ */
+function perCellPolylineDistance(point: LayoutVec2, points: readonly LayoutVec2[]): number {
+	if (points.length === 0) return Number.POSITIVE_INFINITY;
+	if (points.length === 1) return Math.hypot(point[0] - points[0]![0], point[1] - points[0]![1]);
+	let best = Number.POSITIVE_INFINITY;
+	for (let index = 1; index < points.length; index += 1) {
+		best = Math.min(best, edgeDistance(point, points[index - 1]!, points[index]!));
+	}
+	return best;
+}
+
+function perCellPolygonBoundaryDistance(point: LayoutVec2, polygon: readonly LayoutVec2[]): number {
+	return perCellPolylineDistance(point, [...polygon, polygon[0]!]);
+}
+
+function perCellPointSlack(
 	point: LayoutVec2,
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask
 ): number {
 	if (!pointStrictlyInside(polygonScreen, point)) return Number.NEGATIVE_INFINITY;
-	let slack = polygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
+	let slack = perCellPolygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
 	if (slack < 0) return slack;
 	for (const edge of mask.protectedEdges) {
-		slack = Math.min(slack, polylineDistance(point, edge.points) - edge.clearancePx);
+		slack = Math.min(slack, perCellPolylineDistance(point, edge.points) - edge.clearancePx);
 	}
 	for (const obstacle of mask.obstacles) {
-		slack = Math.min(slack, polygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
+		slack = Math.min(slack, perCellPolygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
 	}
 	for (const zone of mask.acquisition) {
 		slack = Math.min(
@@ -680,16 +964,7 @@ function pointSlack(
 	return slack;
 }
 
-type FreeCandidate = { point: LayoutVec2; clearance: number };
-
-/**
- * Derive up to eight large free-space candidates from the Room's projected
- * polygon minus the eligibility mask. Connected components of eligible cells
- * give the *free-space components*; each component contributes the cell with the
- * greatest clearance, and the largest components are kept. Ranked by clearance,
- * then proximity to the semantic center — invariant to Room document order.
- */
-function freeSpaceCandidates(
+function perCellGridCandidates(
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask,
 	centerScreen: LayoutVec2
@@ -711,7 +986,7 @@ function freeSpaceCandidates(
 	for (let column = 0; column < columns; column += 1) {
 		for (let row = 0; row < rows; row += 1) {
 			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
-			slack[row * columns + column] = pointSlack(point, polygonScreen, mask);
+			slack[row * columns + column] = perCellPointSlack(point, polygonScreen, mask);
 		}
 	}
 	const visited = new Uint8Array(columns * rows);

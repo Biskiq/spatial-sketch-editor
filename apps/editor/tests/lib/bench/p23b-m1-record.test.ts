@@ -616,6 +616,28 @@ describe('M1 wiring', () => {
 		expect(drive).not.toContain('labelArms: labelArms && entry.actionClass');
 	});
 
+	it('keeps the label arm’s own grid inside the placer, as a second narrow, counted exception', () => {
+		// §4.5's guard rail says an instrument that cannot be added without touching a
+		// production module is a STOP. The grid is the exception that WAS authorized:
+		// the placer itself must choose which implementation to walk, and no page-side
+		// module can reach inside it. So the count is pinned — one import, one read —
+		// and the second reader is the DEV arm module, nothing else.
+		const placer = fs.readFileSync(
+			path.resolve(editorRoot, 'src/lib/editor/layout/plan-room-labels.ts'),
+			'utf8'
+		);
+		expect(occurrences(placer, "from './p23b-m1-room-label-arm'")).toBe(1);
+		expect(occurrences(placer, 'p23bM1RoomLabelArm()')).toBe(1);
+		for (const forbidden of [
+			'p23bM1RecordActionLabelArm',
+			'p23bM1ResetActionLabelArms',
+			'p23bM1ActionLabelArms',
+			'__P23B_M1_ROOM_LABEL_ARM__'
+		]) {
+			expect(placer, `the placer must not contain ${forbidden}`).not.toContain(forbidden);
+		}
+	});
+
 	it('publishes the runner entry point and keeps the record on a DEV global', () => {
 		expect(page).toContain('globals.__P23B_M1_RUN__ = () => runM1Capture();');
 		expect(page).toContain('__P23B_M1_RECORD__');
