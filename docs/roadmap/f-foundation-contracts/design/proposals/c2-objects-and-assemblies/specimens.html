@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Objects &amp; Assemblies — specimens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/doc.css">
+</head>
+<body>
+<header class="top"><b>Biskiq · Commission 2 — Objects &amp; Assemblies</b>
+  <nav aria-label="Commission pages"><a href="index.html">Prototype</a><a href="rationale.html">Rationale</a><a href="specimens.html" aria-current="page">Specimens</a><a href="HANDOFF.md">Handoff</a><a href="README.md">README</a></nav>
+</header>
+<main class="page wide">
+<div class="kicker">Reusable interaction &amp; visual specimens</div>
+<h1>Specimens</h1>
+<p class="lede">The patterns the brief asks to be reusable: capability disclosure, scope and impact, inherited values, relationships and repair, plus state specimens for unavailable resources and a cancelled update. The static drawings show each pattern on its own. The live tiles load the real prototype straight into that state.</p>
+<p class="note">Live tiles each start a WebGL view, so they load only when you click them. Every one also opens full size in its own tab. Each is reached through the same actions a creator would use, via <code>index.html?state=…</code>.</p>
+
+<h2 id="capability">1. Capability disclosure</h2>
+<p>Three groups, always in the same order and always all shown — an empty group says “none”, it isn't hidden. The file's claims and Biskiq's checks are kept apart, and source and provenance sit one disclosure away.</p>
+<div class="grid2">
+  <div class="spec"><h4>Structured model · desk-lamp.glb</h4>
+    <div class="t">Desk light</div><div class="q">Declared part manifest (4 parts, stable ids) · metres, checked</div>
+    <div class="capgrp ok">✓ Supported</div><ul><li>Parts: Base, Arm, Shade, Diffuser <span class="q">(Diffuser enclosed by Shade)</span></li><li>Shade finish · Brass / Matte black / Opal white</li><li>Diffuser glass · Frosted / Clear</li><li>Arm tilt −10°…55°, rests at 30°</li></ul>
+    <div class="capgrp idle">◌ Found, not active</div><ul><li>Clip <span class="mono">demo_swing</span> 4.0 s — kept, not bound. Nothing plays because it was imported.</li><li>Render meshes <span class="mono">bulb_glow</span>, <span class="mono">cable_01</span> — shown, not parts.</li></ul>
+    <div class="capgrp no">✕ Not supported</div><ul><li>Editing meshes · Selecting below the declared parts · Editing or retiming clips</li></ul>
+    <div class="q">▸ Source &amp; provenance — Studio Lumen · exported 2026-08-14 · sha 5e1c07d4…9a02 · retained copy <span class="sim">simulated</span></div>
+  </div>
+  <div class="spec"><h4>Flat model · tide-relief.glb</h4>
+    <div class="t">Tide relief</div><div class="q">None — no part manifest in the file · metres, checked</div>
+    <div class="capgrp ok">✓ Supported</div><ul><li>Whole object: place, rotate, duplicate, group, hang (if you add a mount), reuse</li></ul>
+    <div class="capgrp idle">◌ Found, not active</div><ul><li>14 meshes, 1 material — <b>render data, not parts</b></li></ul>
+    <div class="capgrp no">✕ Not supported</div><ul><li>Selecting parts — none declared</li><li>Changing finish — no material slots declared</li><li>Articulation — none declared</li></ul>
+    <div class="flashs refuse"><b>Double-click →</b> “Tide relief arrived flat — its 14 meshes are render data, not parts. Select it as a whole.”</div>
+  </div>
+</div>
+
+<h2 id="values">2. Value rows: inherited, this use, not allowed, unresolved, preview, view only</h2>
+<p>One row pattern for every lifetime. The edge style and the glyph carry the state; the provenance line says where the value comes from, in words.</p>
+<div class="grid2">
+  <div class="spec"><h4>Accepted values</h4>
+    <div class="row"><span class="k">Shade finish</span><span class="v"><span class="cue inh">↳</span> Brass</span><span class="p">inherited from Display light ← Desk light default</span></div>
+    <div class="row own"><span class="k">Shade finish</span><span class="v"><span class="cue own">◆</span> Matte black</span><span class="p">this use (U-B7Q2) · ↺ revert · make default for every use</span></div>
+    <div class="row bad"><span class="k">Arm tilt</span><span class="v"><span class="cue bad">!</span> 50°</span><span class="p">not allowed now — rev 2 limit is 45° · clamp to 45° · drop · detach</span></div>
+    <div class="row gone"><span class="k">Diffuser glass</span><span class="v"><span class="cue gone">✕</span> Clear</span><span class="p">unresolved — rev 2 has no Diffuser · drop · keep unresolved · detach</span></div>
+  </div>
+  <div class="spec"><h4>Values that are not written</h4>
+    <div class="row run"><span class="k">Arm tilt</span><span class="v"><span class="cue run">▶</span> 47°</span><span class="p">preview, not saved · baseline 30° · End preview · Keep this pose…</span></div>
+    <div class="row view"><span class="k">Separation</span><span class="v"><span class="cue view">⬚</span> 1.0</span><span class="p">view only — goes away when you return</span></div>
+    <div class="row"><span class="k">Shade finish</span><span class="v"><span class="cue draft">✎</span> Opal white</span><span class="p">bench draft — Apply to change 1 of 2 uses · Discard</span></div>
+    <div class="row"><span class="k">Along wall</span><span class="v"><span class="cue tape">2.30 m</span></span><span class="p">typeable during the drag; Enter commits, Esc cancels</span></div>
+  </div>
+</div>
+
+<h2 id="reach">3. Scope and impact: the reach control</h2>
+<div class="grid2">
+  <div class="spec"><h4>Before the edit</h4>
+    <div class="row own"><span class="k">Shade finish</span><span class="seg" aria-hidden="true"><span class="on">This use</span><span>Every use</span></span><span class="p">Hover “Every use” or a finish swatch: the viewport previews it on the uses it reaches.</span></div>
+    <div class="halo"><div class="chg">U-A4D1<br>→ changes</div><div class="keep">U-B7Q2<br>◆ keeps its own</div></div>
+    <p class="cap">In the viewport these halos sit on the models, with a legend. Nothing is written until you click.</p>
+  </div>
+  <div class="spec"><h4>After the edit: return summary</h4>
+    <div class="t">Display light changed</div>
+    <ul><li>1 of 2 uses changed.</li><li>U-B7Q2 kept its own setting.</li></ul>
+    <div class="btnrow"><span class="btn">Undo this</span><span class="btn pri">OK</span></div>
+    <p class="cap">The same summary closes an inspection (“1 accepted change while inspecting; the separation was view only”).</p>
+  </div>
+</div>
+
+<h2 id="relations">4. Relationship legend</h2>
+<div class="spec rel">
+  <svg viewBox="0 0 110 36" aria-hidden="true"><rect x="4" y="6" width="36" height="24" fill="none" stroke="#A37A3D" stroke-width="1.5"/><rect x="60" y="6" width="20" height="24" fill="#fff" stroke="#252A2E"/><rect x="86" y="6" width="20" height="24" fill="#fff" stroke="#252A2E"/><path d="M40 18 H58 M40 18 L84 18" stroke="#A37A3D" stroke-dasharray="2 2"/></svg><span><b>Definition → uses.</b> One definition, many uses. Named in Contents under Definitions with a use count.</span>
+  <svg viewBox="0 0 110 36" aria-hidden="true"><rect x="4" y="4" width="60" height="28" fill="none" stroke="#252A2E"/><rect x="10" y="10" width="20" height="16" fill="#D6E7FF" stroke="#145DA8"/><rect x="36" y="10" width="22" height="16" fill="#fff" stroke="#252A2E"/></svg><span><b>Component inside a use.</b> Reached by double-click / Enter; breadcrumb in the strip.</span>
+  <svg viewBox="0 0 110 36" aria-hidden="true"><path d="M4 4 h8 M4 4 v28 h8 M106 4 h-8 M106 4 v28 h-8" stroke="#545C62" fill="none"/><rect x="18" y="10" width="28" height="16" fill="#fff" stroke="#252A2E"/><rect x="62" y="10" width="28" height="16" fill="#fff" stroke="#252A2E"/></svg><span><b>Group.</b> Open bracket, “organizes only”. No shared identity, no physical link.</span>
+  <svg viewBox="0 0 110 36" aria-hidden="true"><rect x="4" y="2" width="10" height="32" fill="#CBD0D4"/><circle cx="20" cy="16" r="3" fill="#252A2E"/><rect x="24" y="8" width="30" height="16" fill="#fff" stroke="#252A2E"/><text x="60" y="20" font-size="9" font-family="Onest" fill="#252A2E">hung on</text></svg><span><b>Attachment.</b> Pin glyph + “hung on Back wall”. Follows the host.</span>
+  <svg viewBox="0 0 110 36" aria-hidden="true"><rect x="4" y="2" width="10" height="32" fill="#CBD0D4"/><rect x="30" y="8" width="30" height="16" fill="#fff" stroke="#252A2E" stroke-dasharray="3 2"/><text x="64" y="20" font-size="9" font-family="Onest" fill="#6A7278">near</text></svg><span><b>Near, not attached.</b> Shown on the selected wall's neighbours. Won't follow.</span>
+  <svg viewBox="0 0 110 36" aria-hidden="true"><rect x="40" y="18" width="30" height="16" fill="#fff" stroke="#252A2E"/><rect x="46" y="4" width="18" height="14" fill="#fff" stroke="#252A2E"/><text x="74" y="14" font-size="9" font-family="Onest" fill="#6A7278">rests on</text></svg><span><b>Rests on.</b> Placement at drop time only.</span>
+</div>
+
+<h2 id="repair">5. Repair rows (offered revision)</h2>
+<div class="grid2">
+  <div class="spec"><h4>Correspondence — declared ids only</h4>
+    <div class="row"><span class="k">Shade → <b>Hood</b></span><span class="v">p.shade · linked</span><span class="p">renamed, same id — overrides and references carry over</span></div>
+    <div class="row gone"><span class="k">Diffuser</span><span class="v">p.diffuser · removed</span></div>
+    <div class="row"><span class="k">Cord clip</span><span class="v">p.clip · new</span></div>
+    <div class="row view"><span class="k"><span class="mono">diffuser_ring</span></span><span class="v">render mesh · not linked</span><span class="p">looks like “Diffuser”; names never establish identity</span></div>
+  </div>
+  <div class="spec"><h4>Effect on each use</h4>
+    <div class="row own"><span class="k">U-B7Q2 · Hood finish ◆ Matte black</span><span class="v">kept</span></div>
+    <div class="row bad"><span class="k">U-B7Q2 · Arm tilt ! 50°</span><span class="v">◉ clamp to 45° ○ drop ○ keep</span></div>
+    <div class="row gone"><span class="k">U-A4D1 · Diffuser glass ✕ Clear</span><span class="v">○ drop ◉ keep unresolved</span></div>
+    <div class="row"><span class="k">☐ Detach U-A4D1 — keep it on rev 1 as a new definition</span><span class="v"></span></div>
+    <div class="row"><span class="k"><span class="cue rev">◐</span> “Shade close-up” (Camera view)</span><span class="v">needs review</span><span class="p">still resolves to Hood; its framing may no longer fit</span></div>
+    <div class="row gone"><span class="k"><span class="cue gone">✕</span> “Evening glow” (Experience state)</span><span class="v">unresolved</span><span class="p">points at the removed Diffuser — not redirected</span></div>
+    <div class="btnrow"><span class="btn pri">Accept rev 2 — 1 action</span><span class="btn">Stay on rev 1</span><span class="btn">Cancel</span></div>
+  </div>
+</div>
+
+<h2 id="unavailable">6. State specimens — unavailable resources</h2>
+<div class="grid3">
+  <div class="spec"><h4>Library unavailable · retained copy</h4>
+    <div class="t">Display light <span class="cue inh">rev 1 · retained copy</span></div>
+    <p>Renders and edits normally. Offers can't be checked; the Status Rail and Library popover say “library unavailable (simulated)”.</p>
+    <div class="flashs warn">Studio library is unavailable (simulated): references resolve from retained copies; offers can't be checked.</div>
+  </div>
+  <div class="spec"><h4>Unavailable · no retained copy</h4>
+    <div class="t">Display light <span class="cue gone">✕ unavailable</span></div>
+    <p>A dashed placeholder box at the use's placement, with its size. It keeps its identity and placement, and it's never deleted or swapped.</p>
+    <div class="btnrow"><span class="btn dis">Review offer</span><span class="btn">Try again</span><span class="btn">Find a replacement…</span></div>
+    <p class="cap">Designed, not built in the prototype (every use there has a retained copy).</p>
+  </div>
+  <div class="spec"><h4>Host removed · attachment kept</h4>
+    <div class="t">Display light U-B7Q2 <span class="cue gone">✕ host</span></div>
+    <p>Stays at its last pose, marked. “Repair: hang on another wall · set down · keep”.</p>
+    <p class="cap">The Remove-wall sheet makes this choice up front: set down, or keep as host removed.</p>
+  </div>
+</div>
+
+<h2 id="cancel">7. State specimens — cancelling an update</h2>
+<div class="grid3">
+  <div class="spec"><h4>Cancel review</h4><div class="flashs">Review closed — the update was not applied. Nothing changed.</div><p>The offer is still listed under Definitions (◐ rev 2 offered). Repair choices are dropped.</p></div>
+  <div class="spec"><h4>Stay on rev 1</h4><div class="flashs">Staying on rev 1. Rev 2 remains available under Definitions — nothing changed.</div><p>A decision, not an error. The offer stays in the list, quieter.</p></div>
+  <div class="spec"><h4>Stale accept</h4><div class="flashs refuse">Prepared against rev 25; the project is now rev 26.</div><div class="btnrow"><span class="btn pri">Re-check</span><span class="btn">Cancel</span></div><p>Another writer's change is kept. Re-check compares against the current revision again; your repair choices stay as they were.</p></div>
+</div>
+
+<h2 id="live">8. Live states</h2>
+<p>Click a tile to load that state from the running prototype.</p>
+<div class="lives">
+  <figure><div class="live" data-src="index.html?scenario=0&state=intake-lamp"></div><figcaption>Intake — structured model, previewed at the origin. <a href="index.html?scenario=0&state=intake-lamp" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=intake-relief"></div><figcaption>Intake — flat model. <a href="index.html?scenario=0&state=intake-relief" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=reach"></div><figcaption>Reach preview on the shade finish. <a href="index.html?scenario=0&state=reach" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=inspect"></div><figcaption>Inspection — view-only separation, Diffuser selected. <a href="index.html?scenario=0&state=inspect" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=preview"></div><figcaption>Articulation preview — arc, limits, baseline. <a href="index.html?scenario=0&state=preview" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=hang-refused"></div><figcaption>Hang refused across the window. <a href="index.html?scenario=0&state=hang-refused" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=remove-wall"></div><figcaption>Remove a host wall — the decision sheet. <a href="index.html?scenario=0&state=remove-wall" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=review"></div><figcaption>Offered revision 2 — review. <a href="index.html?scenario=0&state=review" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=review-stale"></div><figcaption>Stale accept refused. <a href="index.html?scenario=0&state=review-stale" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=update-cancelled"></div><figcaption>Update cancelled — offer remains. <a href="index.html?scenario=0&state=update-cancelled" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=lib-review"></div><figcaption>Second project — Accept / Stay pinned / Fork. <a href="index.html?scenario=0&state=lib-review" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=lib-unavailable"></div><figcaption>Library unavailable — retained copy. <a href="index.html?scenario=0&state=lib-unavailable" target="_blank">Open</a></figcaption></figure>
+  <figure><div class="live" data-src="index.html?scenario=0&state=bench"></div><figcaption>Definition bench (the compared approach) with a draft. <a href="index.html?scenario=0&state=bench" target="_blank">Open</a></figcaption></figure>
+</div>
+
+<h2 id="density">9. Narrower density specimen</h2>
+<p>The same review state at 1024 × 700 with <code>?density=compact</code>: Contents 220 px, Inspector 268 px (320 px while reviewing), 26 px rows, secondary hints hidden. Below 1080 px the undo label and view presets also drop out.</p>
+<div class="scaler"><div class="live" id="dense" data-w="1024" data-h="700" data-src="index.html?scenario=0&density=compact&state=review"></div></div>
+<p class="cap"><a href="index.html?scenario=0&density=compact&state=review" target="_blank">Open the compact specimen</a> — resize the window to try other widths.</p>
+</main>
+<script>
+// Live tiles render the prototype at a fixed desktop size, scaled to fit.
+function mount(el) {
+  const W = +(el.dataset.w || 1440), H = +(el.dataset.h || 900);
+  const f = document.createElement('iframe');
+  f.src = el.dataset.src;
+  f.title = 'Live prototype state';
+  f.style.width = W + 'px';
+  f.style.height = H + 'px';
+  f.style.transformOrigin = '0 0';
+  el.textContent = '';
+  el.appendChild(f);
+  const fit = () => { const k = el.clientWidth / W; f.style.transform = `scale(${k})`; el.style.height = H * k + 'px'; el.style.aspectRatio = 'auto'; };
+  fit();
+  new ResizeObserver(fit).observe(el);
+}
+for (const el of document.querySelectorAll('.live')) {
+  if (el.id === 'dense') { el.style.aspectRatio = '1024 / 700'; }
+  const box = document.createElement('div');
+  box.className = 'load';
+  box.innerHTML = '<span>Live state</span><button class="btn pri" type="button">Load</button>';
+  box.querySelector('button').addEventListener('click', () => mount(el));
+  el.appendChild(box);
+}
+</script>
+</body>
+</html>

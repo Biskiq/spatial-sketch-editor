@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "c1-explain-and-direct",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8827", "--directory", "docs/roadmap/f-foundation-contracts/design/proposals/c1-explain-and-direct"],
+      "port": 8827
+    },
+    {
+      "name": "c2-objects-and-assemblies",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8832", "--directory", "docs/roadmap/f-foundation-contracts/design/proposals/c2-objects-and-assemblies"],
+      "port": 8832
+    }
+  ]
+}

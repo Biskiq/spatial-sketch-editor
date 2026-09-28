@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biskiq · Objects & Assemblies — Commission 2 prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/app.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body class="app">
+  <a class="skip" href="#nav">Skip to Contents</a>
+  <nav class="spine" aria-label="Domain">
+    <a class="spine-brand" href="rationale.html" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span></a>
+    <button class="station on" aria-current="true"><span class="si si-scene" aria-hidden="true"></span>Scene</button>
+    <button class="station" disabled title="Camera is outside this commission"><span class="si si-camera" aria-hidden="true"></span>Camera</button>
+  </nav>
+
+  <header class="head" id="head"></header>
+
+  <aside class="nav" id="nav" aria-label="Contents"></aside>
+
+  <main class="work">
+    <div class="viewbar" id="viewbar" role="toolbar" aria-label="View"></div>
+    <div class="strip" id="strip" hidden role="toolbar" aria-label="Contextual instrument"></div>
+    <div class="stage" id="stage">
+      <canvas id="gl" tabindex="0" aria-label="3D world. Arrow keys move the selection or the view; Enter goes inside; brackets step between objects or parts; Escape goes up; Tab leaves the canvas."></canvas>
+      <svg id="ovSvg" class="ov-svg" aria-hidden="true"></svg>
+      <div id="ovHtml" class="ov-html"></div>
+      <div class="tray" id="tray" role="toolbar" aria-label="Tools"></div>
+      <div class="empty" id="empty" hidden></div>
+      <div class="summary" id="summary" hidden role="status"></div>
+      <div class="flash" id="flash" hidden role="status" aria-live="polite"></div>
+      <div class="sheet-host" id="sheet" hidden></div>
+    </div>
+  </main>
+
+  <aside class="insp" id="insp" aria-label="Inspector"></aside>
+
+  <footer class="status" id="status" aria-label="Status"></footer>
+
+  <div class="pop" id="pop" hidden></div>
+
+  <div class="finder" id="finder" hidden>
+    <div class="finder-box" role="dialog" aria-modal="true" aria-label="Find anything">
+      <input id="finderInput" role="combobox" aria-expanded="true" aria-controls="finderList" aria-autocomplete="list" placeholder="Find an object, part, wall, definition or reference" aria-label="Find anything" autocomplete="off">
+      <ul id="finderList" role="listbox"></ul>
+      <div class="finder-foot">Every result says what it is and where — including parts you can’t see from here</div>
+    </div>
+  </div>
+
+  <section class="scenario" id="scenario" aria-label="Scenario presenter (outside the product)"></section>
+  <button class="sc-toggle" id="scToggle" hidden>Scenario <kbd>J</kbd></button>
+
+  <script type="module" src="app/main.js"></script>
+</body>
+</html>

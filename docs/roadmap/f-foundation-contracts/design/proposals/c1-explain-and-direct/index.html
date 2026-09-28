@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biskiq · Explain &amp; Direct — commission 1 prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..100,400..600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/app.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body class="app">
+  <nav class="spine" aria-label="Domains">
+    <a class="spine-brand" href="rationale.html" target="_blank" rel="noopener" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span><span class="sr">Biskiq — design rationale</span></a>
+    <button class="station" disabled title="Scene workspace — outside this prototype"><span class="si si-scene" aria-hidden="true"></span>Scene</button>
+    <button class="station" disabled title="Camera workspace — outside this prototype"><span class="si si-camera" aria-hidden="true"></span>Camera</button>
+    <button class="station on" aria-current="page" title="Direction workspace (proposed Experience station)"><span class="si si-exp" aria-hidden="true"></span>Experience</button>
+  </nav>
+
+  <header class="head" id="head" aria-label="Project"></header>
+
+  <aside class="outline" id="outline" aria-label="Explanation outline"></aside>
+
+  <main class="work" id="work">
+    <div class="viewbar" id="viewbar" role="toolbar" aria-label="View"></div>
+    <div class="strip" id="strip" hidden role="toolbar" aria-label="Inspection"></div>
+    <div class="stage" id="stage">
+      <canvas id="gl" aria-label="Pump bay — 3D view"></canvas>
+      <div class="tags" id="tags" aria-hidden="true"></div>
+      <div class="paper-chip" id="paperChip" role="status"></div>
+      <svg class="cammap" id="cammap" viewBox="0 0 216 170" aria-label="Camera map"></svg>
+      <div class="visitor" id="visitor" hidden></div>
+      <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+    </div>
+    <section class="drawer open" id="drawer" aria-label="Stop drawer"></section>
+    <div class="sheet" id="sheet" hidden></div>
+  </main>
+
+  <aside class="insp" id="insp" aria-label="Inspector"></aside>
+
+  <footer class="status" id="status" aria-label="Status"></footer>
+
+  <div class="menu" id="menu" hidden></div>
+  <div class="help" id="help" hidden></div>
+  <section class="presenter" id="presenter" hidden aria-label="Presenter (outside the product)"></section>
+  <button class="p-toggle" id="pToggle" data-act="presenter">Presenter <kbd>J</kbd></button>
+  <div class="too-narrow" role="note"><strong>This authoring prototype needs a window at least 1000&nbsp;px wide.</strong> The narrow density specimen is 1100&nbsp;px; the visitor specimen for phones is <a href="?visitor=1">?visitor=1</a>. See <a href="rationale.html">the rationale</a>.</div>
+  <canvas id="thumbs" width="288" height="180" hidden></canvas>
+
+  <script type="module" src="app/main.js"></script>
+</body>
+</html>
