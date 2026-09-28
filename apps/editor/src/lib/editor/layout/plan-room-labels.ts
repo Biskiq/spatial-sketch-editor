@@ -28,7 +28,7 @@ import {
 	worldToPlanScreen,
 	type PlanViewportState
 } from './layout-plan-transform';
-import { p23bM1RoomLabelArm } from './p23b-m1-room-label-arm';
+import { p23bM1RecordRoomLabelCall, p23bM1RoomLabelArm } from './p23b-m1-room-label-arm';
 
 /** The three text roles of a Room label stack, in display order. */
 export type TextMeasureStyle = 'room-name' | 'room-reference' | 'room-area';
@@ -1394,6 +1394,17 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 	const mask = projectMask(input.mask, planView);
 	const reason = input.reason ?? 'lod';
 	const settleGeneration = input.settleGeneration ?? 0;
+	// WHAT THIS CALL WAS HANDED, recorded before any Room is visited: the grid key says how
+	// much of it recomputes, and this says which pass does the recomputing. It is the same
+	// DEV-only instrument the whole module reads through, it returns nothing, and with the
+	// gate off the shipped path pays one boolean.
+	p23bM1RecordRoomLabelCall({
+		rooms: input.rooms.length,
+		reason,
+		settleGeneration,
+		hasMemory: input.memory !== undefined,
+		at: typeof performance === 'undefined' ? 0 : performance.now()
+	});
 	const memory = input.memory ?? new Map<string, RoomLabelMemoryEntry>();
 	const selectedRoomId = input.selectedRoomId ?? null;
 	const labels: PlacedRoomLabel[] = [];

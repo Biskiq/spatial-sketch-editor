@@ -334,6 +334,66 @@ export function p23bM1GridBuildKeys(
 	};
 }
 
+/* ------------------------------------------------------------------ *
+ * WHICH CALL BUILT WHAT
+ * ------------------------------------------------------------------ */
+
+/**
+ * ONE CALL TO THE PLACER, as the placer itself sees it, plus the range of the attempt's
+ * build order it produced (`buildStart`/`builds` index `byAction[].keySequence`).
+ *
+ * The key measurement says HOW MUCH the grid recomputes; this says WHICH pass does the
+ * recomputing. A trailing subset rebuilt from identical inputs is consistent with at least
+ * two very different stories — a second consumer planning the same Rooms, or the same
+ * per-Room pass repeated — and they are told apart by what each call was handed: how many
+ * Rooms it was given, under which `reason`, whether it got the sticky `memory`, and how
+ * long after the previous call it started (`at`, `performance.now()` at entry).
+ */
+export type P23BM1RoomLabelCall = {
+	rooms: number;
+	reason: string;
+	settleGeneration: number;
+	hasMemory: boolean;
+	at: number;
+};
+
+/** The same, once the build count it produced is known. */
+export type P23BM1RecordedRoomLabelCall = P23BM1RoomLabelCall & {
+	/** Index into the attempt's own build order where this call's builds begin. */
+	buildStart: number;
+	/** How many grids this call built. */
+	builds: number;
+};
+
+let callSites: P23BM1RoomLabelCall[] = [];
+/** `gridBuilds` at the moment each recorded call started, which is what makes builds
+ * attributable per call without the placer having to count its own. */
+let callBuildStarts: number[] = [];
+
+/**
+ * The one call per `placeRoomLabels` invocation this module accepts. It is a DEV-only
+ * recording with no return value, so the placer's behaviour cannot depend on it: with the
+ * gate off this is one boolean test and an early return, and the shipped path is untouched.
+ */
+export function p23bM1RecordRoomLabelCall(call: P23BM1RoomLabelCall): void {
+	if (!p23bM1RoomLabelArmEnabled()) return;
+	callSites.push(call);
+	callBuildStarts.push(gridBuilds);
+}
+
+/**
+ * The attempt's calls, each with the range of the build order it produced. The last call
+ * is closed with the attempt's current build count, so nothing a call built is attributed
+ * to a neighbour.
+ */
+function recordedCalls(): P23BM1RecordedRoomLabelCall[] {
+	return callSites.map((call, index) => {
+		const buildStart = callBuildStarts[index] ?? 0;
+		const buildEnd = index + 1 < callBuildStarts.length ? (callBuildStarts[index + 1] ?? 0) : gridBuilds;
+		return { ...call, buildStart, builds: Math.max(0, buildEnd - buildStart) };
+	});
+}
+
 /**
  * Set (or with `null`, clear) the arm, start the next attempt's build count, and — when
  * the caller knows them — the fixture and class the attempt belongs to, so a class can be
@@ -347,6 +407,8 @@ export function setP23bM1RoomLabelArm(
 	gridBuilds = 0;
 	attemptKeys = new Map();
 	attemptKeyOrdinals = [];
+	callSites = [];
+	callBuildStarts = [];
 	attemptContext = context ?? null;
 	const globals = globalThis as ArmGlobals;
 	if (arm === null) delete globals.__P23B_M1_ROOM_LABEL_ARM__;
@@ -377,6 +439,13 @@ export type P23BM1ActionLabelArmRecord = {
 	 * the attempt built no grid, or in a run recorded before the sequence existed.
 	 */
 	sequence: readonly number[];
+	/**
+	 * The placer calls this attempt made, in order, each with the Rooms it was handed, its
+	 * `reason`, whether it received the sticky memory, when it started, and the range of
+	 * `sequence` it produced. This is what turns "a trailing subset was rebuilt" into
+	 * "which call rebuilt it, and on what instructions".
+	 */
+	calls: readonly P23BM1RecordedRoomLabelCall[];
 };
 
 let records: P23BM1ActionLabelArmRecord[] = [];
@@ -391,6 +460,8 @@ export function p23bM1ResetActionLabelArms(): void {
 	gridBuilds = 0;
 	attemptKeys = new Map();
 	attemptKeyOrdinals = [];
+	callSites = [];
+	callBuildStarts = [];
 	attemptContext = null;
 	classKeys = new Map();
 }
@@ -415,7 +486,8 @@ export function p23bM1RecordActionLabelArm(
 			arm,
 			builds: gridBuilds,
 			distinctBuilds: attemptKeys.size,
-			sequence: [...attemptKeyOrdinals]
+			sequence: [...attemptKeyOrdinals],
+			calls: recordedCalls()
 		}
 	];
 }

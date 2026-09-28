@@ -1042,9 +1042,41 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 	// attempt's grid-build count, taken at the same instant so the two cannot be paired
 	// across attempts.
 	const assignment: P23BM1ActionLabelArmRecord[] = [
-		{ fixtureId, actionClass, actionIndex: 0, arm: 'seeded-grid', builds: 5, distinctBuilds: 2, sequence: [1, 2, 1, 2, 1] },
-		{ fixtureId, actionClass, actionIndex: 1, arm: 'pruned-grid', builds: 5, distinctBuilds: 3, sequence: [1, 2, 3, 1, 2] },
-		{ fixtureId, actionClass, actionIndex: 2, arm: 'per-cell-grid', builds: 4, distinctBuilds: 4, sequence: [1, 2, 3, 4] }
+		{
+			fixtureId,
+			actionClass,
+			actionIndex: 0,
+			arm: 'seeded-grid',
+			builds: 5,
+			distinctBuilds: 2,
+			sequence: [1, 2, 1, 2, 1],
+			calls: [
+				{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 10, buildStart: 0, builds: 5 }
+			]
+		},
+		{
+			fixtureId,
+			actionClass,
+			actionIndex: 1,
+			arm: 'pruned-grid',
+			builds: 5,
+			distinctBuilds: 3,
+			sequence: [1, 2, 3, 1, 2],
+			calls: [
+				{ rooms: 2, reason: 'geometry', settleGeneration: 4, hasMemory: true, at: 20, buildStart: 0, builds: 2 },
+				{ rooms: 3, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 20.5, buildStart: 2, builds: 3 }
+			]
+		},
+		{
+			fixtureId,
+			actionClass,
+			actionIndex: 2,
+			arm: 'per-cell-grid',
+			builds: 4,
+			distinctBuilds: 4,
+			sequence: [1, 2, 3, 4],
+			calls: []
+		}
 	];
 	// The class's own keys: 14 builds over the three attempts, 7 of them from inputs the
 	// class had already built — one of which came back 5 times.
@@ -1074,14 +1106,23 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		// The assignment keeps the arm module's own index/arm/builds and drops nothing
 		// else the record needs: the fixture and class are the row's own keys.
 		expect(row.labelArms?.byAction).toEqual(
-			assignment.map(({ actionIndex, arm, builds, distinctBuilds, sequence }) => ({
+			assignment.map(({ actionIndex, arm, builds, distinctBuilds, sequence, calls }) => ({
 				actionIndex,
 				arm,
 				builds,
 				distinctBuilds,
-				keySequence: [...sequence]
+				keySequence: [...sequence],
+				labelCalls: calls.map((call) => ({ ...call }))
 			}))
 		);
+		// The call census travels with the same action: one call per `placeRoomLabels`, each
+		// carrying the range of the build order it produced, so a reader can ask WHICH call
+		// rebuilt the repeated inputs rather than only how many repeats there were.
+		expect(row.labelArms?.byAction[1]?.labelCalls).toEqual([
+			{ rooms: 2, reason: 'geometry', settleGeneration: 4, hasMemory: true, at: 20, buildStart: 0, builds: 2 },
+			{ rooms: 3, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 20.5, buildStart: 2, builds: 3 }
+		]);
+		expect(row.labelArms?.byAction[2]?.labelCalls).toEqual([]);
 		// The grid-build budget travels with the same assignment: it is the reuse
 		// budget, and a class that paid for one grid per action has nothing to reuse.
 		expect(row.labelArms?.buildsPerAction).toEqual({
@@ -1119,7 +1160,10 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 				arm: 'seeded-grid',
 				builds: 2,
 				distinctBuilds: 1,
-				sequence: [1, 1]
+				sequence: [1, 1],
+				calls: [
+					{ rooms: 1, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 30, buildStart: 0, builds: 2 }
+				]
 			}
 		]);
 		expect(block?.byAction.map((entry) => entry.actionIndex)).toEqual([0, 1, 2]);
@@ -1128,7 +1172,10 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			arm: 'seeded-grid',
 			builds: 2,
 			distinctBuilds: 1,
-			keySequence: [1, 1]
+			keySequence: [1, 1],
+			labelCalls: [
+				{ rooms: 1, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 30, buildStart: 0, builds: 2 }
+			]
 		});
 	});
 

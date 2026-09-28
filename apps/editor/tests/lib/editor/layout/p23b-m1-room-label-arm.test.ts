@@ -18,6 +18,7 @@ import {
 	p23bM1GridBuildKey,
 	p23bM1GridBuildKeys,
 	p23bM1RecordActionLabelArm,
+	p23bM1RecordRoomLabelCall,
 	p23bM1RoomLabelAttemptKeys,
 	p23bM1RoomLabelAttemptSequence,
 	p23bM1ResetActionLabelArms,
@@ -237,6 +238,43 @@ describe('M1 room-label arm — the grid-build key', () => {
 		expect(p23bM1RoomLabelAttemptSequence()).toEqual([]);
 	});
 
+	it('records one call per placement, with the range of the attempt’s builds it produced', () => {
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		const first = buildInputs();
+		const second = buildInputs(1);
+		const build = (inputs: P23BM1GridBuildInputs) =>
+			p23bM1RoomLabelArm(inputs.polygonScreen, inputs.mask, inputs.centerScreen);
+		// A first placement over two Rooms, then a second one that rebuilds the first
+		// Room's grid — the shape the leg reports, recorded as WHICH call built what.
+		p23bM1RecordRoomLabelCall({ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: true, at: 1 });
+		build(first);
+		build(second);
+		p23bM1RecordRoomLabelCall({ rooms: 1, reason: 'frozen', settleGeneration: 4, hasMemory: true, at: 1.5 });
+		build(first);
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 4, 'seeded-grid');
+		const record = p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend')[0];
+		expect(record?.sequence).toEqual([1, 2, 1]);
+		expect(
+			record?.calls.map((call) => ({
+				reason: call.reason,
+				rooms: call.rooms,
+				buildStart: call.buildStart,
+				builds: call.builds
+			}))
+		).toEqual([
+			{ reason: 'lod', rooms: 2, buildStart: 0, builds: 2 },
+			{ reason: 'frozen', rooms: 1, buildStart: 2, builds: 1 }
+		]);
+		// The attempt closes its own census: the next one starts with no calls, and a call
+		// that is never followed by a build is still recorded as having built nothing.
+		setP23bM1RoomLabelArm('seeded-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		p23bM1RecordRoomLabelCall({ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2 });
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 5, 'seeded-grid');
+		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend').at(-1)?.calls).toEqual([
+			{ rooms: 2, reason: 'lod', settleGeneration: 4, hasMemory: false, at: 2, buildStart: 0, builds: 0 }
+		]);
+	});
+
 	it('keys a grid by its INPUTS, to the last bit, and not by the objects they arrived in', () => {
 		// Two separately-built input sets with equal values: the same grid, so one key.
 		expect(p23bM1GridBuildKey(buildInputs())).toBe(p23bM1GridBuildKey(buildInputs()));
@@ -306,6 +344,10 @@ describe('M1 room-label arm — the grid-build key', () => {
 		expect(p23bM1RoomLabelGridBuilds()).toBe(2);
 		expect(p23bM1RoomLabelAttemptKeys()).toBe(0);
 		expect(p23bM1GridBuildKeys('f1', 'p23b-m1:bend')).toBeNull();
+		// The call census is behind the same gate: a run that took no key takes no census.
+		p23bM1RecordRoomLabelCall({ rooms: 3, reason: 'lod', settleGeneration: 1, hasMemory: false, at: 0 });
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 9, 'seeded-grid');
+		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:bend')[0]?.calls).toEqual([]);
 	});
 
 	it('drops the keys on reset, so a run cannot inherit another run’s repeat rate', () => {

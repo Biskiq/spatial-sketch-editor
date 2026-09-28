@@ -60,6 +60,7 @@ import {
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	type P23BM1ActionLabelArmRecord,
 	type P23BM1GridBuildKeySummary,
+	type P23BM1RecordedRoomLabelCall,
 	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 import {
@@ -306,6 +307,13 @@ export type P23BM1LabelArmsBlock = {
 		 * Empty for an attempt that built no grid.
 		 */
 		keySequence: number[];
+		/**
+		 * The placer calls this attempt made, in order, each with the Rooms, `reason`,
+		 * memory and entry time it was handed, and the range of `keySequence` it produced.
+		 * The keys say WHICH builds repeat; this says which CALL repeats them, which is what
+		 * tells a second consumer apart from the same pass run twice.
+		 */
+		labelCalls: P23BM1RecordedRoomLabelCall[];
 	}[];
 	/**
 	 * Eligibility grids one accepted action paid for, over the actions above. The count
@@ -350,12 +358,13 @@ export function summarizeM1LabelArms(
 	const byIndex = new Map<number, P23BM1ActionLabelArmRecord>();
 	for (const record of records) byIndex.set(record.actionIndex, record);
 	const byAction = [...byIndex.values()]
-		.map(({ actionIndex, arm, builds, distinctBuilds, sequence }) => ({
+		.map(({ actionIndex, arm, builds, distinctBuilds, sequence, calls }) => ({
 			actionIndex,
 			arm,
 			builds,
 			distinctBuilds,
-			keySequence: [...sequence]
+			keySequence: [...sequence],
+			labelCalls: calls.map((call) => ({ ...call }))
 		}))
 		.sort((left, right) => left.actionIndex - right.actionIndex);
 	const builds = byAction.map((entry) => entry.builds);
