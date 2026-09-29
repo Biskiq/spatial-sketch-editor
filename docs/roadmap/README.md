@@ -34,13 +34,15 @@ P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
 
 **Visual-system sequence (owner-directed):**
 
-1. Apply the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) on the working branch; review, validate the desired demo appearance and behavior, then merge.
-2. Wait for P23B to close fully.
-3. During the foundation gates, update the desired product visual language and shell contract from the accepted demo, distinguishing the target design from behavior still awaiting implementation.
+1. **DONE** — the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) was applied, validated and merged (#104, owner-accepted 2026-09-29). The demo is the accepted experience/visual reference; **journeys A–F remain its experience/QA authority**, and prototype shortcuts are not production contracts.
+2. **DONE** — P23B closed 2026-09-29 and its PR (#103) is merged to `main`.
+3. **DONE — this slice (docs-only)** — the desired product visual language and shell contract are updated from the accepted demo, with **landed-now · desired-from-demo · still-unbuilt** labelled explicitly: [`reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md) **§0.7** (section homes §4.4, §6.4, §10, §18.3, §23.1). It authorizes no implementation and closes no §0.3 owner call.
 4. Continue with the parallel tracks against the updated contracts.
 
 The demo revision is bounded design work; product implementation remains subject
-to the foundation and track gates below.
+to the foundation and track gates below. Step 3 is a **target statement**: the
+editor still runs the landed PLATE chrome until an explicit cutover, so the
+destination is never presented as shipped.
 
 Pre-redesign P24/P25/P26 scope, exclusions and sequencing are planning
 **evidence** only; each phase is re-derived against F before planning resumes.
@@ -51,7 +53,7 @@ and the promoted contracts ([`reference/north-star.md`](../reference/north-star.
 | Phase / track | Status | Goal | Workspace |
 |-------|--------|------|-----------|
 | P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
-| P23B | shipped | geometry performance + stabilization — closed 2026-09-29 by owner ruling after P23B.9's correctness + performance-regression gate was accepted and P23B.10's closeout made the phase closable; the merge of its PR (#103) stays the owner's open decision | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
+| P23B | shipped | geometry performance + stabilization — closed 2026-09-29 by owner ruling after P23B.9's correctness + performance-regression gate was accepted and P23B.10's closeout made the phase closable; shipped on `main` — PR #103 merged 2026-09-29 | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
 | F | planning (target contract owner-ratified 2026-09-27 with amendments; no implementation authorized) | foundation contracts F.1–F.5 before capability replanning | [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md) |
 | T1 — Spatial foundation | proposed (re-derived P26; replan after F) | shared viewport/projection seam, runtime-safe Layout representation, level-ready vertical/Plan semantics | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | T2 — Composition data | proposed (re-derived P24; replan after F) | definitions, instances, resource revisions/locks, ordinary placement, truthful single-model creator import | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
