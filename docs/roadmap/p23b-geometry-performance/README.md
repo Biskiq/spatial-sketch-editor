@@ -733,8 +733,9 @@ The structure is the finding: every accepted action builds the fixture's Rooms o
 2-entry cache hits **zero** times on every class, while a cache that holds the pass (4 entries on the
 smallest fixture, 16 on the largest here) captures all of them, i.e. the size it needs is the **Room count**
 (4–61 keys per attempt), not a constant. The straight fixture is **not** a falsifier here and the record says
-so: this is a rate, and every fixture repeats. **No memo, no cache and no key reached the product path**, and
-nothing the editor does changed. What the number justifies — a cache outliving one `placeRoomLabels` call,
+so: this is a rate, and every fixture repeats. **No memo, no cache and no key reached the product path AT THAT
+POINT**, and nothing the editor did changed then — **SUPERSEDED: a cache does reach the product path now**, see
+"IT IS NOW SHIPPED" below, so do not quote that sentence as current. What the number justifies — a cache outliving one `placeRoomLabels` call,
 sized by the Room count, keyed by a hash shipped into the product, correct only while that hash covers every
 grid input the grid ever grows, ceiling ≈**9 %** of the all-curved `bend` window — is not a local concern of
 the placer. **The census then named the pass, in the same session, DEV-only, with no product code changed:** a
@@ -802,13 +803,34 @@ stated with the number:** the protocol repeats one action per class, so a persis
 cross-attempt hits — the per-attempt-cleared memo leg read 0.849 against this leg's 0.694 — so that difference
 belongs to the cache outliving the attempt and to the workload's repetition, not to a claim about an arbitrary
 session; what generalises is the within-settle reuse above (~15 % of the window).
+**AND THAT LIMIT WAS THEN MEASURED INSTEAD OF LEFT STANDING.** A second workload runs the same five classes again
+under the `p23b-m1-cold:` prefix with one pan before every attempt, its direction advancing by the golden angle —
+a PAN and not a zoom, so the projected polygon is translated and the placer does the same work per action with only
+the cache key moving. One leg carries both workloads (Chrome 152 headless, 439 s, residual 2.335 ms, 10,656
+frames, 38 class rows), so the two readings are a within-leg comparison. The workload check, from the class-scoped
+key histogram: **563 distinct keys became 13,044** and the worst single key went from being rebuilt **118 times**
+to at most **6**, while the within-attempt reuse §5 measured is KEPT (28.2 % against 35.4 %, the cold side higher
+because it renders the camera move inside the attempt). Post-release window p50, shipped ÷ bypass, median per
+fixture: straight 0.829 → **0.958**, all-curved 0.620 → **0.804**, owner 0.875 → **0.960**, connected 0.621 →
+**0.859**, all 19 classes 0.739 → **0.872** — faster in **19 of 19 in both**, so the cache neither washes out nor
+regresses. Mechanically the grid functions' self time falls 970.0 → 0.0 ms on the repeat workload (100 % skipped)
+and 977.4 → 479.7 ms on the cold one (**50.9 %**): **about half the grid work the shipped cache skips is
+within-settle reuse any session gets, and about half was the geometry recurring.** **THE CACHE STAYS**, and the
+repeat-loop number stops being the headline: a per-attempt lifetime would need a NEW invalidation owner (a hook in
+the render path) to buy back a difference that exists only inside a loop, and the cold pass IS the bounded case in
+effect — a per-attempt-cleared cache and this one are the same thing whenever the geometry does not recur. So
+§15's 0.694 and this leg's 0.739 are **repeated-workload** ratios and must be quoted as such; the number a session
+can count on is **≈0.87 (about 13 % of the window), 0.80 on the all-curved fixture**. Limits: 5–6 windows per arm
+per class; the 2.335 ms clock residual is larger than the straight fixture's cold delta (0.6 ms), which is
+reported as inside the noise; the cold pass is the LOW end of a bracket and not a simulation of a user.
 Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json · the identity leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json · the memo leg →
 ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json · the promotion leg →
-./pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json.
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json · the cold-workload leg (both
+workloads in one run) → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-cold-workload-chrome-leg.json.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
