@@ -26,7 +26,31 @@ ctx.ui = requestUI;
 const UP = new V3(0, 1, 0), DOWN = new V3(0, -1, 0);
 const dirOf = (az, el) => new V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
 const angleTo = (c, home) => A.deg(dirOf(c.az, c.el).angleTo(dirOf(home.az, home.el)));
-const detent = (home, c) => 1 - A.smooth(2.5, 20, angleTo(c, home));
+// How far off the session's square home the view may wander before the paper is withdrawn. The
+// band was 2.5° - 20°, which is inside the range of an ordinary pan: a small turn repainted the
+// whole frame from vellum to mat. 4° - 30° keeps the paper while you inspect the wall off-square,
+// and leaves the withdrawal itself to the rate limit below.
+const detent = (home, c) => 1 - A.smooth(4, 30, angleTo(c, home));
+
+// The mat <-> paper swap repaints the entire frame, and its target hangs on the camera's own angle
+// (the session detent above, or the tilt into Plan). Following that target frame by frame swapped
+// the ground across ~180 counts of luminance in ~200 ms — the flicker. The value is therefore
+// rate-limited: a steady pose still lands on its exact value (the step clamps, so nothing is left
+// half-way at rest), but no pan, orbit or fly can repaint the ground faster than PAPER_SLEW_MS.
+const PAPER_SLEW_MS = 420;
+// A dropped frame must not turn the rate limit into a jump, so one step is capped at a tenth of the
+// sweep. On a machine running below ~25 fps the swap simply takes proportionally longer.
+const PAPER_SLEW_STEP_MS = 42;
+let paperShown = 0;
+let paperAt = 0;
+function slewPaper(target, now) {
+  const dt = Math.min(PAPER_SLEW_STEP_MS, Math.max(0, now - (paperAt || now)));
+  paperAt = now;
+  const step = dt / PAPER_SLEW_MS;
+  const d = target - paperShown;
+  paperShown = Math.abs(d) <= step ? target : paperShown + Math.sign(d) * step;
+  return paperShown;
+}
 
 function frameState() {
   const c = stage.cam;
@@ -69,7 +93,7 @@ function frameState() {
     hCap = h;
   }
   c.flat = flat;
-  stage.paper = flat;
+  stage.paper = slewPaper(flat, performance.now());
   // clipped and set-aside geometry would cast shadows that no longer match what is drawn
   stage.shadowsOff = planF > 0.02 || (s && s.kind !== 'lift') || !!(k?.p1);
   stage.setClips(clips);
