@@ -26,7 +26,31 @@ ctx.ui = requestUI;
 const UP = new V3(0, 1, 0), DOWN = new V3(0, -1, 0);
 const dirOf = (az, el) => new V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
 const angleTo = (c, home) => A.deg(dirOf(c.az, c.el).angleTo(dirOf(home.az, home.el)));
-const detent = (home, c) => 1 - A.smooth(2.5, 20, angleTo(c, home));
+// How far off the session's square home the view may wander before the paper is withdrawn. The
+// band was 2.5° - 20°, which is inside the range of an ordinary pan: a small turn repainted the
+// whole frame from vellum to mat. 4° - 30° keeps the paper while you inspect the wall off-square,
+// and leaves the withdrawal itself to the rate limit below.
+const detent = (home, c) => 1 - A.smooth(4, 30, angleTo(c, home));
+
+// The mat <-> paper swap repaints the entire frame, and its target hangs on the camera's own angle
+// (the session detent above, or the tilt into Plan). Following that target frame by frame swapped
+// the ground across ~180 counts of luminance in ~200 ms — the flicker. The value is therefore
+// rate-limited: a steady pose still lands on its exact value (the step clamps, so nothing is left
+// half-way at rest), but no pan, orbit or fly can repaint the ground faster than PAPER_SLEW_MS.
+const PAPER_SLEW_MS = 420;
+// A dropped frame must not turn the rate limit into a jump, so one step is capped at a tenth of the
+// sweep. On a machine running below ~25 fps the swap simply takes proportionally longer.
+const PAPER_SLEW_STEP_MS = 42;
+let paperShown = 0;
+let paperAt = 0;
+function slewPaper(target, now) {
+  const dt = Math.min(PAPER_SLEW_STEP_MS, Math.max(0, now - (paperAt || now)));
+  paperAt = now;
+  const step = dt / PAPER_SLEW_MS;
+  const d = target - paperShown;
+  paperShown = Math.abs(d) <= step ? target : paperShown + Math.sign(d) * step;
+  return paperShown;
+}
 
 function frameState() {
   const c = stage.cam;
@@ -69,7 +93,7 @@ function frameState() {
     hCap = h;
   }
   c.flat = flat;
-  stage.paper = flat;
+  stage.paper = slewPaper(flat, performance.now());
   // clipped and set-aside geometry would cast shadows that no longer match what is drawn
   stage.shadowsOff = planF > 0.02 || (s && s.kind !== 'lift') || !!(k?.p1);
   stage.setClips(clips);
@@ -347,9 +371,31 @@ ctx.ov.html.addEventListener('pointerdown', (e) => {
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, world);
   const start = stage.rayPlane(e.clientX, e.clientY, plane) || world;
   hdrag = { spec, plane, start, base: baseValues(spec), el: h };
+  h.classList.add('manipulating');
+  S.activeEdit = activeEditFor(spec);
   document.body.classList.add('dragging');
   A.beginEdit();
 });
+
+// The one value this gesture owns — used by the overlay to emphasise that measurement and no other.
+function activeEditFor(spec) {
+  switch (spec.type) {
+    case 'op-head': return { kind: 'op', id: spec.id, key: 'head' };
+    case 'op-sill': return { kind: 'op', id: spec.id, key: 'sill' };
+    case 'op-rise': return { kind: 'op', id: spec.id, key: 'rise' };
+    case 'op-jamb': return { kind: 'op', id: spec.id, key: 'w' };
+    case 'ridge': return { kind: 'top', wall: spec.wall, key: 'rh' };
+    case 'top': return { kind: 'top', wall: spec.wall, key: spec.key };
+    case 'ceil-h': return { kind: 'ceil', id: spec.id, key: 'base' };
+    default: return null;
+  }
+}
+
+function clearActiveEdit() {
+  if (hdrag?.el) { hdrag.el.classList.remove('manipulating'); hdrag.el.classList.remove('refused'); }
+  S.activeEdit = null;
+}
+window.addEventListener('pointercancel', () => { if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); requestUI(); } });
 
 window.addEventListener('pointermove', (e) => {
   if (!direct) return;
@@ -464,7 +510,7 @@ function dragKnifeGrip(e) {
 
 window.addEventListener('pointerup', () => {
   if (!hdrag) return;
-  hdrag.el.classList.remove('refused');
+  clearActiveEdit();
   document.body.classList.remove('dragging');
   if (hdrag.spec.view) { hdrag = null; A.setStatus('Line moved — the preview follows; nothing opens until you say so', 'view'); return; }
   if (S.refusal) {
@@ -490,12 +536,13 @@ function openTypein(el, spec) {
   typein.classList.remove('bad');
   $('#typeinErr').textContent = '';
   typeSpec = spec;
+  S.activeEdit = { kind: spec.type, id: spec.id, wall: spec.wall, key: spec.key };
   typeinInput.value = fmt(fieldValue(spec));
   typeinInput.focus();
   typeinInput.select();
 }
 
-function closeTypein() { typein.hidden = true; typeSpec = null; }
+function closeTypein() { typein.hidden = true; typeSpec = null; S.activeEdit = null; requestUI(); }
 
 typeinInput.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { e.stopPropagation(); closeTypein(); return; }
@@ -643,6 +690,22 @@ function doAct(a, el) {
     case 'gohost': A.goToHost(S.sel); break;
     case 'lookat': A.lookAt(S.sel); break;
     case 'faceit': A.face(S.sel); break;
+    case 'grid':
+      S.wallDrafting = !S.wallDrafting;
+      A.syncSheets();
+      A.setStatus(S.wallDrafting
+        ? 'Wall grid on: drafting paper on the wall you are working on'
+        : 'Wall grid off: walls show their real material — a displaced wall keeps its dashed footprint', 'view');
+      requestUI();
+      break;
+    case 'motion':
+      S.reduceMotion = !S.reduceMotion;
+      document.body.classList.toggle('reduce-motion', S.reduceMotion);
+      A.setStatus(S.reduceMotion
+        ? 'Reduced motion: every view move is now an instant change'
+        : 'Reduced motion off: moves play at the speed chosen in Motion', 'view');
+      requestUI();
+      break;
     case 'find': openFinder(); break;
     case 'summary-undo': A.undoSummary(); break;
     case 'summary-keep': S.summary = null; requestUI(); break;
@@ -791,6 +854,7 @@ window.addEventListener('keydown', (e) => {
     case 'u': A.lookUp(S.session?.ceilId || (thing(S.sel)?.kind === 'ceilings' ? S.sel : null)); break;
     case 'k': A.startKnife(); break;
     case 'm': A.toggleMirror(); requestUI(); break;
+    case 'g': doAct('grid'); break;
     case 'enter': if (S.knife) A.commitKnife(); break;
     case 'tab': if (S.knife) { e.preventDefault(); A.flipKnife(); } break;
     case '[': A.trailStep(-1); break;
@@ -828,6 +892,10 @@ function boot() {
   initJourneys();
   const q = new URLSearchParams(location.search);
   if (q.get('motion')) S.motion = q.get('motion');
+  if (q.get('grid') != null) S.wallDrafting = q.get('grid') !== '0';
+  if (q.get('reduced') != null) S.reduceMotion = q.get('reduced') !== '0';
+  else S.reduceMotion = S.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.toggle('reduce-motion', S.reduceMotion);
   if (q.get('shot')) document.body.classList.add('shot');
   requestAnimationFrame(frame);
   window.__me = { S, ctx, A, JOURNEYS };

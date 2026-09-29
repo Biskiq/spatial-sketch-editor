@@ -22,7 +22,8 @@ async function reset() {
     if (S.session) await A.exitSessionInner(A.home3D());
   });
   if (S.knife) A.cancelKnife(true);
-  Object.assign(S, { popover: null, reveal: null, recentCut: null, summary: null, beacon: null });
+  Object.assign(S, { popover: null, reveal: null, recentCut: null, summary: null, beacon: null, wallDrafting: true, reduceMotion: false });
+  document.body.classList.remove('reduce-motion');
   A.restoreQuiet(createMuseum());
   S.undo = []; S.redo = []; S.pending = null;
   const c = A.home3D();
@@ -104,7 +105,8 @@ export const JOURNEYS = [
     id: 'D', name: 'Fast repeat',
     kicker: 'Journey D · the same moves, for someone who knows them',
     steps: [
-      { t: 'Motion that learns', b: 'Each move plays at teaching speed the first two times you see it, with a caption; after that it is brisk and silent. And every opening is now <b>one</b> beat — the Rotunda goes from 3D to a flat sheet in one motion (0.8 s once learned, down from a 5.5 s six-step sequence). <kbd>Shift</kbd> makes any move instant.', run: async () => { await reset(); S.motion = 'adaptive'; S.seen = { face: 3, close: 3, section: 3, lift: 3, lookup: 3, plan: 3, '3d': 3, unfold: 3, fold: 3, switch: 3, side: 3, trail: 3 }; A.setStatus('Motion now brisk for moves you have already seen', 'view'); } },
+      { t: 'Motion that learns', b: 'Two controls, two different questions. <b>Motion</b>, at the end of the status rail, sets the <i>speed</i>: <b>Adaptive</b> plays a move at teaching speed the first two times you see it and fast from then on, <b>Brisk</b> is always fast, <b>Teach</b> always explains, <b>Instant</b> jumps. <kbd>Shift</kbd> makes a single move instant. And every opening is still <b>one</b> beat — the Rotunda goes from 3D to a flat sheet in one motion (0.8 s once learned, down from a 5.5 s six-step sequence).', run: async () => { await reset(); S.motion = 'adaptive'; S.seen = { face: 3, close: 3, section: 3, lift: 3, lookup: 3, plan: 3, '3d': 3, unfold: 3, fold: 3, switch: 3, side: 3, trail: 3 }; A.setStatus('Motion now brisk for moves you have already seen', 'view'); } },
+      { t: 'Reduce motion, when watching the move is the problem', b: '<b>Reduce motion</b>, in the view bar, answers the other question: should anything travel on screen at all? It cuts every move to an instant change — the same as the system reduced-motion setting, and without changing the speed chosen in Motion. Nothing is lost: the same standpoint, the same numbers, the same trail. Here the walk to the North wall and back is taken with it on.', run: async () => { S.reduceMotion = true; document.body.classList.add('reduce-motion'); ctx.ui(); const t0 = performance.now(); A.select('north'); await A.face('north'); const ms = Math.round(performance.now() - t0); await A.closeSession(); S.reduceMotion = false; document.body.classList.remove('reduce-motion'); A.setStatus(`Reduced motion: faced the North wall and came back in ${ms} ms`, 'view'); ctx.ui(); } },
       { t: 'One press to a flat sheet', b: 'Select the Rotunda wall and press <b>O</b> — or click its corner.', run: async () => { A.select('rotunda'); await A.unfold(); } },
       { t: 'Hop straight to another wall', b: 'Same kind of open state, so it replaces rather than nests: the Rotunda rolls up while the camera goes to the Entrance. Esc will go home, not back to the Rotunda.', run: async () => { A.select('entrance'); await A.face('entrance'); } },
       { t: 'Step back along the trail', b: '<kbd>[</kbd> and <kbd>]</kbd> walk the view history — standpoints restored exactly, including curvature and side. Undo is untouched.', run: async () => { A.trailStep(-1); } },
@@ -121,7 +123,8 @@ export const JOURNEYS = [
       { t: 'Tilt toward 3D', b: 'Drag the bead half-way. Nothing is swapped: as the walls stand up, the sill and head handles arrive because their axis has become readable. The selection never left.', run: async () => { await A.fly({ ...ctx.stage.camState(), el: 0.8, flat: 0 }, S.motion === 'instant' ? 0 : 1000); A.pushTrail('3D'); } },
       { t: 'Raise the head, in 3D', b: 'A coarse edit where you are: 3.40 → 3.80. The drag runs on the wall’s own face, so the number is exact even in perspective.', run: async () => { edit('Garden window head', () => A.applyOpening('gwin', { head: 3.8 })); } },
       { t: 'Face it for the profile', b: 'Profile details belong where you stand square: F walks you inside, facing it. The arch rise has its handle here; drop it to 0.60.', run: async () => { await A.face('gwin'); edit('Garden window arch rise', () => A.applyOpening('gwin', { rise: 0.6 })); } },
-      { t: 'Esc — exactly back', b: 'Back to the tilted standpoint you left, not to a default 3D. The summary names the one change made while facing.', run: async () => { await A.closeSession(); } },
+      { t: 'See the wall, or see the drawing', b: 'The grid is a reading of the wall, not the wall itself. <b>G</b> — or <b>Wall grid</b> in the view bar — takes the paper off so you can judge the surface you are actually editing: same standpoint, same selection, same numbers, and a displaced wall still shows its dashed footprint. Turn it back on when the layout is what you need to see.', run: async () => { S.wallDrafting = false; A.syncSheets(); A.setStatus('Wall grid off: the wall shows its real material', 'view'); ctx.ui(); } },
+      { t: 'Esc — exactly back', b: 'Back to the tilted standpoint you left, not to a default 3D. The summary names the one change made while facing.', run: async () => { S.wallDrafting = true; A.syncSheets(); await A.closeSession(); } },
       { t: 'Plan, then Undo twice', b: 'Back in Plan, ⌘Z twice undoes the rise and the head. The view does not move; Undo only knows the building.', run: async () => { await A.goPlan(); A.select('gwin'); A.undo(); A.undo(); } },
     ],
   },

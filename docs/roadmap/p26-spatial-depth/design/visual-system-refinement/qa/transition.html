@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>P26 transition — before / after</title>
+<style>
+body{margin:0;background:#14171a;color:#e8e6e0;font:14px/1.5 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+h1{font-size:18px;margin:20px 24px 4px} p.note{margin:0 24px 18px;color:#9aa3a8;max-width:1100px}
+section{margin:0 24px 22px} h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#c8a24a;margin:14px 0 8px;font-weight:600}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+figure{margin:0} img{width:100%;display:block;border:1px solid #2c3237;border-radius:4px}
+figcaption{font-size:12px;color:#9aa3a8;margin-top:4px}
+</style>
+<h1>Rotate away from the square home — the ground repaints</h1>
+<p class="note">Same camera path, same angular rate (~55°/s), same four wall-clock moments, full UI. Every still is a frame that build produced at that timestamp; the pose and the paper value are replayed from a live recording of the same move. <b>before</b> = the committed build, <b>after</b> = the rate-limited paper value. Watch how quickly the ground leaves the page in the before column, and what it passes through on the way.</p>
+<section><h2>300 ms into the rotate</h2><div class="pair"><figure><img src="transition/before/pan-300ms.png"><figcaption>before</figcaption></figure><figure><img src="transition/after/pan-300ms.png"><figcaption>after</figcaption></figure></div></section><section><h2>700 ms into the rotate</h2><div class="pair"><figure><img src="transition/before/pan-700ms.png"><figcaption>before</figcaption></figure><figure><img src="transition/after/pan-700ms.png"><figcaption>after</figcaption></figure></div></section><section><h2>1100 ms into the rotate</h2><div class="pair"><figure><img src="transition/before/pan-1100ms.png"><figcaption>before</figcaption></figure><figure><img src="transition/after/pan-1100ms.png"><figcaption>after</figcaption></figure></div></section><section><h2>1500 ms into the rotate</h2><div class="pair"><figure><img src="transition/before/pan-1500ms.png"><figcaption>before</figcaption></figure><figure><img src="transition/after/pan-1500ms.png"><figcaption>after</figcaption></figure></div></section>

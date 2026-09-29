@@ -356,11 +356,13 @@ KIND.face = {
   },
   apply(s, p) {
     s.settle = p;
+    syncSheet(s.wallId);
   },
   teardown(s) {
     const sd = st();
     for (const id of sd.items.keys()) sd.d(id).mode = 'normal';
     const ds = sd.d(s.wallId);
+    s.settle = 0;
     ds.u = 0; ds.sA = null; ds.sheet = false;
     sd.refreshWall(s.wallId);
     if (S.sel) sd.d(S.sel).hl = 'sel';
@@ -412,15 +414,36 @@ export const setSide = (side) => run(async () => {
 
 // ----- unfold: a curved wall laid flat around the anchor -----
 
-// A displaced wall wears the paper-sheet material for as long as it is off its footprint, so an
-// unrolled wall can never be mistaken for an authored change of shape.
+// The paper-sheet material answers one question: is this wall being shown as a drawing? It is on
+// for the settled subject of a face session — straight or curved, squared or tilted back to 3D, so
+// no wall changes surface because of its kind or because the representation moved — and for any
+// wall off its footprint, so an unrolled wall can never be mistaken for an authored change of
+// shape. The curvature slider therefore never recolours a wall it is asked to roll.
+export function sheetWanted(id) {
+  if (!S.wallDrafting) return false; // Wall grid off: work on the wall's real material
+  const s = S.session;
+  const settled = s?.kind === 'face' && s.wallId === id && (s.settle ?? 0) > 0.5;
+  return !!(settled || st().d(id).u > 0.01);
+}
+
+function syncSheet(id) {
+  const sd = st(), ds = sd.d(id);
+  const on = sheetWanted(id);
+  if (ds.sheet !== on) { ds.sheet = on; sd.restyle(); }
+}
+
+// Re-decide every wall at once: used when the Wall grid control changes, since it is not tied to
+// any one wall's gesture.
+export function syncSheets() {
+  for (const id of st().items.keys()) syncSheet(id);
+}
+
 export function applyUnroll(s, u) {
   s.u = u;
   const ds = st().d(s.wallId);
   ds.u = u;
   st().refreshWall(s.wallId);
-  const sheet = u > 0.01;
-  if (ds.sheet !== sheet) { ds.sheet = sheet; st().restyle(); }
+  syncSheet(s.wallId);
 }
 
 // One beat: the wall unrolls while the camera travels, lifting slightly mid-flight so the
@@ -520,6 +543,7 @@ export function beginPeel(wallId, sA) {
   sess.home = faceHome(sess);
   S.session = sess;
   S.summary = null;
+  syncSheet(w.id);
   ctx.ui();
   return sess;
 }

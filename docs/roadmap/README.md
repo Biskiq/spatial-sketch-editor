@@ -32,6 +32,16 @@ P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
   → P27–P30 (provisional)
 ```
 
+**Visual-system sequence (owner-directed):**
+
+1. Apply the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) on the working branch; review, validate the desired demo appearance and behavior, then merge.
+2. Wait for P23B to close fully.
+3. During the foundation gates, update the desired product visual language and shell contract from the accepted demo, distinguishing the target design from behavior still awaiting implementation.
+4. Continue with the parallel tracks against the updated contracts.
+
+The demo revision is bounded design work; product implementation remains subject
+to the foundation and track gates below.
+
 Pre-redesign P24/P25/P26 scope, exclusions and sequencing are planning
 **evidence** only; each phase is re-derived against F before planning resumes.
 Authority: [`../reference/decisions/northstar-ratification-2026-09-27.md`](../reference/decisions/northstar-ratification-2026-09-27.md)

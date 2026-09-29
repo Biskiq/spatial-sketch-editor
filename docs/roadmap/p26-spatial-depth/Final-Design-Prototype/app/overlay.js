@@ -1,6 +1,10 @@
+import { S } from './state.js';
+
 const NS = 'http://www.w3.org/2000/svg';
 
 function defaultPri(cls) {
+  // the value being dragged or edited must stay available, even against a handle beside it
+  if (/\bactive\b/.test(cls)) return 96;
   if (/\bwarn\b/.test(cls)) return 92;
   if (/\bedit\b/.test(cls)) return 88;
   if (/\bletter\b/.test(cls)) return 80;
@@ -64,13 +68,19 @@ export class Overlay {
   setHtml(e, html) { if (e._html !== html) { e.innerHTML = html; e._html = html; } }
 
   chip(key, x, y, html, cls = 'tape', attrs = {}) {
-    const e = this.get(key, attrs.tag || 'div');
+    // An editable number is a control: give it the same keyboard activation as any other button.
+    const e = this.get(key, attrs.tag || (attrs['data-edit'] ? 'button' : 'div'));
     this.setCls(e, cls);
     this.setHtml(e, html);
     e.style.left = `${x.toFixed(1)}px`;
     e.style.top = `${y.toFixed(1)}px`;
+    // A pooled label can be reassigned (an editable value becomes a reference or back), so a
+    // wrapper attribute from its previous role must never survive into this frame.
+    for (const k of ['data-edit', 'data-sel', 'data-gap']) {
+      if (!(k in attrs) && e.hasAttribute(k)) e.removeAttribute(k);
+    }
     for (const [k, v] of Object.entries(attrs)) if (k !== 'tag' && k !== 'pri' && e.getAttribute(k) !== String(v)) e.setAttribute(k, v);
-    e._pri = attrs.pri ?? defaultPri(cls);
+    e._pri = /\bactive\b/.test(cls) ? Math.max(attrs.pri ?? 0, 96) : (attrs.pri ?? defaultPri(cls));
     return e;
   }
 

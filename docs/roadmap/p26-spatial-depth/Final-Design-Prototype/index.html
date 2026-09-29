@@ -45,6 +45,9 @@
       <div class="vb-util">
         <button data-act="home" title="Back to the overview">Overview</button>
         <button data-act="help" title="Keys (?)">Keys</button>
+        <span class="vb-sep" aria-hidden="true"></span>
+        <button id="draftBtn" data-act="grid" aria-pressed="true" title="Wall grid: the wall you are working on wears drafting paper with a 1 m / 5 m grid. Turn it off to see the wall’s real material (G).">Wall grid</button>
+        <button id="motionBtn" data-act="motion" aria-pressed="false" title="Reduce motion: every view move becomes an instant change — the same as the system reduced-motion setting. The speeds stay in Motion, below.">Reduce motion</button>
       </div>
     </div>
     <div class="strip" id="strip" hidden role="toolbar" aria-label="Contextual instrument"></div>
@@ -98,6 +101,7 @@
           <span><kbd>S</kbd> square up to a wall</span><span>pull a curved wall’s corner · unroll it</span>
           <span><kbd>⌘Z</kbd> undo building changes</span><span><kbd>Shift</kbd> make a move instant</span>
           <span><kbd>M</kbd> mirror looking up</span><span><kbd>⌥ Drag</kbd> tilt out of a flat view</span>
+          <span><kbd>G</kbd> wall grid · off shows the wall’s real material</span><span>Wall grid, Reduce motion · right of the view bar</span>
           <span>double-click a wall · face it</span><span>double-click a ceiling · lift it</span>
         </div>
         <button class="btn" data-act="help">Close</button>

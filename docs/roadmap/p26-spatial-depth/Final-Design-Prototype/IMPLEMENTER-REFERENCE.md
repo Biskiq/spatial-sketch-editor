@@ -7,7 +7,7 @@ Read [rationale.html](./rationale.html) for the product model and [REVIEW-RECONC
 ```text
 Run:    python3 -m http.server 8826   →  http://localhost:8826/
 Debug:  window.__me = { S, ctx, A, JOURNEYS }   (state, stage/museum, all actions, scripted journeys)
-Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?shot=1
+Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?reduced=1   ?shot=1
 ```
 
 | File | Owns |
@@ -44,12 +44,21 @@ Per frame (`main.js frameState`):
 ```js
 freeFlat = smoothstep(70°, 88.5°, el)                        // the plan detent
 if (session) {
-  detent = 1 − smoothstep(2.5°, 20°, angle(viewDir, session.home))
+  detent = 1 − smoothstep(4°, 30°, angle(viewDir, session.home))
   flat   = lerp(freeFlat, detent · (session.flatWanted ?? 1), session.settle)
   planF  = freeFlat · (1 − session.settle)                   // plan cut fades while a session takes over
 } else { flat = freeFlat; planF = freeFlat }
-paper = flat                                                  // mat → paper, lights, line weight
+paper = slewPaper(flat, now)                                  // mat → paper, lights, line weight
 ```
+
+- **The ground's identity is rate-limited** (`slewPaper`). `paper` follows `flat`, but no pan, orbit
+  or fly can repaint the frame's largest surface faster than `PAPER_SLEW_MS` (420 ms), and one step
+  is capped at `PAPER_SLEW_STEP_MS` (42 ms) so a dropped frame cannot turn the limit into a jump. A
+  steady pose still lands on its exact value — the step clamps — so every endpoint and every spec
+  specimen is unchanged. The session detent band is 4°–30° rather than 2.5°–20° for the same reason:
+  at a 55°/s rotate the old band swapped the whole ground in ~200 ms, which reads as a flicker. Any
+  future change to either constant must be re-measured with `design/visual-system-refinement/qa/probe-flicker.sh`,
+  not judged by eye.
 
 - `session.settle` is animated 0→1 by entering and 1→0 by leaving, so entering from Plan passes *through* perspective and lands flat. The same formula makes leaving back to Plan continuous.
 - **Release rule** (`settleAfterOrbit`): inside a session, if the view is within 14° of `home`, animate back to `home`. In free mode, el > 79° snaps to 90° (Plan) with `az` rounded to 90°.
@@ -206,12 +215,40 @@ snap 0.05 m (Alt: 0.01 m)
 ## 9. Motion policy
 
 ```js
-dur(kind, base) = Shift | hurry | reduced-motion | 'instant' → 0
+dur(kind, base) = Shift | hurry | S.reduceMotion | prefers-reduced-motion | 'instant' → 0
                   'teach' → 1.55·base · 'brisk' → 0.42·base
                   'adaptive' → seen[kind] < 2 ? 1.3·base : 0.48·base
 ```
 
+Two controls, two different questions. **Motion** (status rail) picks the speed: `adaptive` is the
+learns-then-fast policy — teaching speed for the first two times a move is seen, fast after — and
+`brisk` is always fast. **Reduce motion** (view bar, `#motionBtn`, `S.reduceMotion`) asks whether
+anything should travel at all: it forces `dur → 0` for every move *without* changing the chosen
+speed, hides timed captions, and adds `body.reduce-motion` so CSS transitions stop too, mirroring the
+system setting (which also initialises the control). The endpoint is identical either way — same
+standpoint, same trail entry, same numbers.
+
 Captions show only while `teaching(kind)`. Commands go through `run()`: a new command sets `hurry` and finishes running tweens instantly, then queues. A motion is never cut off mid-air into an inconsistent state.
+
+## 9b. Reading controls
+
+Two view-bar controls decide what a surface *is*, not how it moves:
+
+- **Wall grid** (`#draftBtn`, `S.wallDrafting`, `G`, `?grid=0`). On: the wall being worked on wears
+the drafting sheet (`mat.sheet` — paper with the 1 m / 5 m wall-distance grid). Off: every wall keeps
+its real material, in every view and at every curvature, so an editor can judge the surface they are
+editing. `sheetWanted(id)` returns `false` outright when it is off, and `syncSheets()` re-decides
+every wall when it changes. Displacement cues do not depend on it: the dashed slate footprint and the
+strip's *view only* stay either way.
+- **Reduce motion** (`#motionBtn`, `S.reduceMotion`) — see §9.
+
+**The drafting sheet rule.** `sheetWanted(id)` in `app/actions.js` is the single answer to "does this
+wall wear paper": the **settled subject of a face view** (`settle > 0.5`), straight or curved, in the
+squared view and after tilting back to 3D — plus any wall **off its footprint** (`u > 0.01`). It is
+consulted from the face gesture's settle progress, from `applyUnroll`, and at the start of a peel.
+The curvature slider therefore never recolours a wall. Note the open design question and the §5
+conformance gap (a papered wall currently overrides the selection material) recorded in
+[`../design/visual-system-refinement/paper-surface-brief.md`](../design/visual-system-refinement/paper-surface-brief.md).
 
 ## 10. Renderer details that mattered
 
@@ -219,6 +256,15 @@ Captions show only while `teaching(kind)`. Commands go through `run()`: a new co
 - **Section caps are one mesh per source** (`userData.id = owner`), so a click on poche selects that wall or slab.
 - **Sun shadows are off** in drawing states, because clipped and ghosted geometry casts shadows that no longer match what is drawn.
 - **The hemisphere ground colour lerps to a light neutral** with `paper`, otherwise undersides look dark when looking up.
+- **Four ground layers, ordered.** Mat (`ground`), the mat's rule (`matGrid`), the paper (`paperGround`),
+  the drafting rule (`grid`), each 2–3 mm apart with explicit `renderOrder` and no depth writes on the
+  line layers. The two rules **hand over inside the paper crossfade** rather than being visible at
+  once: the mat's rule is gone by `p` = 0.5 and the drafting rule arrives over 0.55 → 0.85, so the
+  surface passes through one clean unruled moment. The mat's rule is a **fixed 1 m / 5 m** rule (a real
+  object's rule does not change with zoom, and a rung picked mid-move would step the lines underfoot);
+  the paper's rule follows the 1, 2, 5 × 10ⁿ ladder and is decimated by projected CSS-pixel spacing.
+  Both line layers fade out with view distance (16 → 44 m, `gridLayer`), which is what keeps a grazing
+  ground from aliasing into horizontal bands.
 - **The inset render must restore scene state in `finally`**: an exception there froze the frame loop during development.
 - **Declutter** (`overlay.js declutter`): after each frame, HTML overlay rects are read in one pass, sorted by priority (handles 1000, warnings 92, editable tapes 88, letters 80, default 50, quiet/ref 22), and a label that overlaps anything already placed is hidden. Reads happen before writes, so it costs one layout.
 
@@ -240,8 +286,8 @@ Actions offered by state: `beyond` → Include it (depth `need`) · Show it thro
 
 | Colour | Means | Never means |
 |---|---|---|
-| `#2F8CFF` selection (edge `#145DA8`, handle fill `#EDF3F8`) | the selected entity, its handles, Reveal x-ray, the beacon | anything else |
-| tape yellow `#F2B53C` | a number you can type, dimensions, scale, the armed knife | selection |
+| ochre `#E5A020` / deep `#8A5B10` (glyph `#17201D`) | **selection and manipulation:** the selected entity, its handles, Reveal x-ray, the beacon, an active edit, cut lines, datums | branding, history count |
+| tape gold `#F2B53C` | branding, history count | selection or a state colour |
 | dashed slate `#56707C` | displaced for this view: the as-built ghost, view-only tags, Navigator "moved" badges | an authored change |
 | coral | a gap, a refusal | |
 | green `#2A9384` | open on purpose | |
