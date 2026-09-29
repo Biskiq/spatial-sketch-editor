@@ -204,21 +204,28 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
    dimension hierarchy, character retention) is **unverified**, not passed.
 2. **Grid hue and sheet calibration — resolved.** Owner chose to keep the plan's §3 hexes and tune
    the sheet; §4 records the before/after and the calibration criterion.
-3. **Paper treatment is triggered by curvature, not by representation.** `actions.js` sets
-   `ds.sheet = u > 0.01`, and `scrubUnroll` returns early for straight walls, so a squared straight
-   wall keeps the plain `foam` surface while a squared rotunda wears vellum. Owner-reported on
-   2026-09-29; behaviour and target recorded below under *Open* at the end of this section.
-4. **DPR 2 raster.** The capture harness exposes no desktop device-scale-factor (only phone/tablet
+3. **Which wall wears paper is an owner interim choice, pending design.** `sheetWanted(id)` follows
+   the owner's instruction (“if it's 2D i.e. settle (square) make it consistent across”) rather than a
+   settled rule, and it reads wider than plan §4.5's “off their footprint” wording. Three candidate
+   rules, their costs and the open sub-questions are in
+   [`../paper-surface-brief.md`](../paper-surface-brief.md), which now also records the **Wall grid**
+   control as the editor-side override (§4b). Nothing here should be read as ratified.
+4. **A papered wall loses its selection cue (conformance gap, plan §5).** Measured on the same wall,
+   same selection: in 3D the body is `foamSel` and the outline `lineSel`; settled on paper the body is
+   `sheet` and the outline `line`, with no selection marks. §5 requires a “persistent contour … dark
+   ochre on paper”. Usable today only because the subject is the one un-ghosted wall and its handles
+   are drawn; **Wall grid off** avoids it entirely. To be fixed with the rule decision — see the brief.
+5. **DPR 2 raster.** The capture harness exposes no desktop device-scale-factor (only phone/tablet
    presets), so `capture-dpr2.sh` exercises the renderer's DPR-2 path (2× canvas backing store,
    `canvas.width = 2 × clientWidth`, identical textures/anisotropy, 0 errors) while the screenshot
    raster remains 1× CSS. CSS overlay linework is resolution-independent and unaffected.
-5. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
+6. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
    emulation was not captured (Instant motion is covered); the optional faint inner edge shadow on
    the perimeter was **not** added, because plan §4.2 permits it only on a comparison specimen that
    shows a material improvement and none was verified.
-6. **Optional specimen judgements** not asserted: “no moiré” at extreme zoom, and the dense-scene
+7. **Optional specimen judgements** not asserted: “no moiré” at extreme zoom, and the dense-scene
    comparison the plan asks for before accepting the stronger starting grid opacities.
-7. **Tape vs selection separation.** Per plan §3, branding, history-count and return cues keep their
+8. **Tape vs selection separation.** Per plan §3, branding, history-count and return cues keep their
    unchanged `--tape` values while selection/manipulation use the new `--ochre` family. This is a
    deliberate role split, recorded as a calibration point the owner may choose to unify.
 
@@ -282,10 +289,21 @@ no overflow at 1440, 1280 or 1060 CSS px and the button stays inside the bar at 
 Plan §2 excludes new features, so this is an owner-directed addition beyond the plan's scope; it
 changes no geometry, value, unit, camera path or history behaviour.
 
+**Wall grid: paper or real material is now the editor's choice.** The view bar carries **Wall grid**
+(`#draftBtn`, `S.wallDrafting`, `G`, `?grid=0`, on by default). Off, `sheetWanted` returns `false`
+outright and `syncSheets()` re-decides every wall, so a wall keeps its real material in every view at
+every curvature — for working on the surface itself rather than reading the layout. Measured on the
+same settled wall: on → body `sheet`, button pressed; off → body `foamSel` and outline `lineSel`, so
+the selection cue returns too (the paper is what was suppressing it, §7 item 4). A displaced wall with
+the control off keeps its dashed slate footprint, so the “view only” cue does not depend on the paper.
+Journey E carries it as the step “See the wall, or see the drawing”. This is the owner's proposal for
+resolving §7 item 4's open question and is recorded in the brief as **Option 4** — an override that
+does not by itself decide the default rule.
+
 Journey D now carries both ideas: “Motion that learns” explains Adaptive/Brisk/Teach/Instant, and a
 new step “Reduce motion, when watching the move is the problem” turns the control on, walks to the
-North wall and back with it, and reports the elapsed time. Journeys run **49/49** and the interaction
-checks **27/27** after the change, with 0 console errors.
+North wall and back with it, and reports the elapsed time. Journeys run **50/50** and the interaction
+checks **27/27** after the changes, with 0 console errors.
 
 This deliberately **widens plan §4.5's “off their footprint” wording** by owner decision: the sheet
 now also marks the wall the settled drawing is about. It adds no geometry, value, unit, camera,

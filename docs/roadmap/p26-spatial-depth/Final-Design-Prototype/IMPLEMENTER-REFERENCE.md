@@ -221,6 +221,26 @@ standpoint, same trail entry, same numbers.
 
 Captions show only while `teaching(kind)`. Commands go through `run()`: a new command sets `hurry` and finishes running tweens instantly, then queues. A motion is never cut off mid-air into an inconsistent state.
 
+## 9b. Reading controls
+
+Two view-bar controls decide what a surface *is*, not how it moves:
+
+- **Wall grid** (`#draftBtn`, `S.wallDrafting`, `G`, `?grid=0`). On: the wall being worked on wears
+the drafting sheet (`mat.sheet` — paper with the 1 m / 5 m wall-distance grid). Off: every wall keeps
+its real material, in every view and at every curvature, so an editor can judge the surface they are
+editing. `sheetWanted(id)` returns `false` outright when it is off, and `syncSheets()` re-decides
+every wall when it changes. Displacement cues do not depend on it: the dashed slate footprint and the
+strip's *view only* stay either way.
+- **Reduce motion** (`#motionBtn`, `S.reduceMotion`) — see §9.
+
+**The drafting sheet rule.** `sheetWanted(id)` in `app/actions.js` is the single answer to "does this
+wall wear paper": the **settled subject of a face view** (`settle > 0.5`), straight or curved, in the
+squared view and after tilting back to 3D — plus any wall **off its footprint** (`u > 0.01`). It is
+consulted from the face gesture's settle progress, from `applyUnroll`, and at the start of a peel.
+The curvature slider therefore never recolours a wall. Note the open design question and the §5
+conformance gap (a papered wall currently overrides the selection material) recorded in
+[`../design/visual-system-refinement/paper-surface-brief.md`](../design/visual-system-refinement/paper-surface-brief.md).
+
 ## 10. Renderer details that mattered
 
 - **Pad clip planes to a fixed count** (4 here, with a no-op plane): changing the count recompiles every material's shader.

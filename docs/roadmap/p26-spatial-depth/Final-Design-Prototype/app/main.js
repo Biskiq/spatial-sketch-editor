@@ -666,6 +666,14 @@ function doAct(a, el) {
     case 'gohost': A.goToHost(S.sel); break;
     case 'lookat': A.lookAt(S.sel); break;
     case 'faceit': A.face(S.sel); break;
+    case 'grid':
+      S.wallDrafting = !S.wallDrafting;
+      A.syncSheets();
+      A.setStatus(S.wallDrafting
+        ? 'Wall grid on: drafting paper on the wall you are working on'
+        : 'Wall grid off: walls show their real material — a displaced wall keeps its dashed footprint', 'view');
+      requestUI();
+      break;
     case 'motion':
       S.reduceMotion = !S.reduceMotion;
       document.body.classList.toggle('reduce-motion', S.reduceMotion);
@@ -822,6 +830,7 @@ window.addEventListener('keydown', (e) => {
     case 'u': A.lookUp(S.session?.ceilId || (thing(S.sel)?.kind === 'ceilings' ? S.sel : null)); break;
     case 'k': A.startKnife(); break;
     case 'm': A.toggleMirror(); requestUI(); break;
+    case 'g': doAct('grid'); break;
     case 'enter': if (S.knife) A.commitKnife(); break;
     case 'tab': if (S.knife) { e.preventDefault(); A.flipKnife(); } break;
     case '[': A.trailStep(-1); break;
@@ -859,6 +868,7 @@ function boot() {
   initJourneys();
   const q = new URLSearchParams(location.search);
   if (q.get('motion')) S.motion = q.get('motion');
+  if (q.get('grid') != null) S.wallDrafting = q.get('grid') !== '0';
   if (q.get('reduced') != null) S.reduceMotion = q.get('reduced') !== '0';
   else S.reduceMotion = S.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.body.classList.toggle('reduce-motion', S.reduceMotion);

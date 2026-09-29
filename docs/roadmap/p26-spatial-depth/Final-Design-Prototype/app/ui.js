@@ -67,6 +67,21 @@ function renderViewBar() {
   $('#tab3d').setAttribute('aria-pressed', String(k === '3d'));
 }
 
+// Wall grid: is the wall you are working on drawn as drafting paper, or as the surface you are
+// editing? On, the wall reads as a layout drawing; off, it keeps its own material so an editor can
+// judge the thing itself. The displaced-wall cue does not depend on it (the dashed slate footprint
+// and the strip's “view only” stay either way).
+function renderDrafting() {
+  const b = $('#draftBtn');
+  if (!b) return;
+  const on = S.wallDrafting !== false;
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on
+    ? 'Wall grid on: drafting paper with a 1 m / 5 m grid on the wall you are working on. Turn it off to see the wall’s real material (G).'
+    : 'Wall grid off: walls show their real material. Turn it on to read the layout on drafting paper (G).';
+}
+
 // The Motion control answers one question — should anything travel on screen? Esc and “Put it
 // back” are how you return; this is only about whether the move is watched.
 function renderMotion() {
@@ -412,6 +427,7 @@ function renderStatus() {
   if (tr._html !== html) { tr.innerHTML = html; tr._html = html; tr.scrollLeft = tr.scrollWidth; }
   document.querySelectorAll('#motion button').forEach((b) => b.classList.toggle('on', b.dataset.motion === S.motion));
   renderMotion();
+  renderDrafting();
 }
 
 function hintFor() {

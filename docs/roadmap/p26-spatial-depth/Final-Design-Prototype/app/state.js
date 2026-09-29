@@ -12,6 +12,9 @@ export const S = {
   motion: 'adaptive',
   /* the Motion control in the view bar: cut every move to an instant change, like the OS setting */
   reduceMotion: false,
+  /* the Wall grid control: draw the wall being worked on as drafting paper, or show its real
+     material. Off means the wall is never papered, in any view, for any curvature. */
+  wallDrafting: true,
   seen: {},
   trail: [],
   trailPos: -1,

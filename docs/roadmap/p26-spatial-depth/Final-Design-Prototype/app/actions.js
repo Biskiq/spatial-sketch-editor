@@ -420,6 +420,7 @@ export const setSide = (side) => run(async () => {
 // wall off its footprint, so an unrolled wall can never be mistaken for an authored change of
 // shape. The curvature slider therefore never recolours a wall it is asked to roll.
 export function sheetWanted(id) {
+  if (!S.wallDrafting) return false; // Wall grid off: work on the wall's real material
   const s = S.session;
   const settled = s?.kind === 'face' && s.wallId === id && (s.settle ?? 0) > 0.5;
   return !!(settled || st().d(id).u > 0.01);
@@ -429,6 +430,12 @@ function syncSheet(id) {
   const sd = st(), ds = sd.d(id);
   const on = sheetWanted(id);
   if (ds.sheet !== on) { ds.sheet = on; sd.restyle(); }
+}
+
+// Re-decide every wall at once: used when the Wall grid control changes, since it is not tied to
+// any one wall's gesture.
+export function syncSheets() {
+  for (const id of st().items.keys()) syncSheet(id);
 }
 
 export function applyUnroll(s, u) {

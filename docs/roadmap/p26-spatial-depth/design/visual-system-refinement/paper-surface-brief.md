@@ -120,12 +120,38 @@ straight or curved; settled walls never do.
   faced straight wall to show "vellum sheet, honest along-wall grid spacing", which this rule can
   never produce. Under Option 3 the grid is only ever seen on a curved or displaced wall.
 
-**Recommendation: Option 2**, because it is the only one of the three that makes the surface a
-property of the *representation* rather than of the wall — which is precisely the inconsistency the
-owner hit twice (straight vs curved wall; surface changing with curvature) — and it is what the
-plan's own §2 invariant already asserts. It also keeps the drafting grid where it is informative, on
-the measured page, while 3D keeps architecture as architecture. Adopt it in both modes for displaced
-walls, and pair it with the conformance fix in §5.
+### Option 4 — The editor decides *(owner proposal, implemented as a control)*
+Paper stops being an inference and becomes a **control**: the view bar's **Wall grid** (`#draftBtn`,
+`S.wallDrafting`, `G`, on by default) draws the wall being worked on as drafting paper with its 1 m /
+5 m grid; off, every wall keeps its **real material** in every view, whatever the curvature, so an
+editor can judge the surface they are editing.
+
+- **Fixes:** removes the guessing entirely — the two readings the owner described (work on the wall
+  vs visualise the layout) become two states a person chooses, not two states the software infers.
+  It also resolves §5's conformance gap in the "off" state: the selection material returns with the
+  real material (measured: body `sheet` → `foamSel`, outline `line` → `lineSel`), because the paper
+  is what was overriding it.
+- **Costs:** it does **not** remove the need for a default — the toggle has to pick an initial state,
+  so Options 1 vs 2 still have to be decided for the "on" case. A global control also cannot express
+  intent per wall in a scene where several walls matter, and it is one more thing to remember to set
+  before presenting or reviewing.
+- **Spec impact:** plan §2 excludes new features, so this is an owner-directed addition like Reduce
+  motion; §4.5 gains a user-facing clause; the Help overlay and Journey E carry it.
+- **Measured:** with the control on, a settled wall is `sheet` and the button reads pressed; with it
+  off, the same wall is `foamSel` + `lineSel` in every view; a displaced wall with the control off
+  keeps its dashed slate footprint, so the "view only" cue survives without the paper. Journeys
+  50/50, interactions 27/27, 0 console errors.
+
+**Recommendation: a combination.** The control (Option 4) is the right *override* — it gives the
+editor both readings on demand, which no inference can. But it does not answer the question underneath
+it: what the wall should look like **by default**, before anyone touches the control. For that default
+I still recommend **Option 2**, because it is the only rule that makes the surface a property of the
+*representation* rather than of the wall — which is precisely the inconsistency the owner hit twice
+(straight vs curved wall; surface changing with curvature) — and it is what the plan's own §2
+invariant already asserts: *"Paper treatment follows existing representation progress."* It also keeps
+the drafting grid where it is informative, on the measured page, while 3D keeps architecture as
+architecture. Either way, pair the decision with the conformance fix in §5 for the case the control
+is on.
 
 ---
 
@@ -208,8 +234,10 @@ wall, press `O`. Curvature control is on the strip; **Motion** is at the end of 
 
 ## 8. What I need from you
 
-1. **Which rule (§4)?** My recommendation is Option 2, with displaced walls keeping paper in both
-   modes.
+1. **Which rule is the default (§4)?** My recommendation is Option 2, with displaced walls keeping
+   paper in both modes — and Option 4's control above it as the override. If you would rather the
+   default stay Option 1, the control still gives editors the real material on demand, but the
+   straight-vs-curved inconsistency remains for anyone who never touches it.
 2. **If Option 2: what exactly triggers the swap?** Candidate: the squared threshold already used for
    the page (`flat ≥ 0.97`) with hysteresis on the way back, riding the existing move and adding no
    delay. Or tie it to `settle`/the "Square" action instead, so the surface changes when the *wall*
