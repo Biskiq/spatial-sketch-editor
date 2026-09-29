@@ -65,9 +65,34 @@ function renderViewBar() {
   $('#tabPlan').setAttribute('aria-pressed', String(k === 'plan' && !inSession));
   $('#tab3d').classList.toggle('on', (k === '3d' || inSession) && !(k === 'plan'));
   $('#tab3d').setAttribute('aria-pressed', String(k === '3d'));
-  const from = S.session ? (S.session.origin.label.startsWith('Plan') ? 'plan' : '3d') : null;
-  $('#tabPlan').classList.toggle('origin', from === 'plan');
-  $('#tab3d').classList.toggle('origin', from === '3d');
+}
+
+// Wall grid: is the wall you are working on drawn as drafting paper, or as the surface you are
+// editing? On, the wall reads as a layout drawing; off, it keeps its own material so an editor can
+// judge the thing itself. The displaced-wall cue does not depend on it (the dashed slate footprint
+// and the strip's “view only” stay either way).
+function renderDrafting() {
+  const b = $('#draftBtn');
+  if (!b) return;
+  const on = S.wallDrafting !== false;
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on
+    ? 'Wall grid on: drafting paper with a 1 m / 5 m grid on the wall you are working on. Turn it off to see the wall’s real material (G).'
+    : 'Wall grid off: walls show their real material. Turn it on to read the layout on drafting paper (G).';
+}
+
+// The Motion control answers one question — should anything travel on screen? Esc and “Put it
+// back” are how you return; this is only about whether the move is watched.
+function renderMotion() {
+  const b = $('#motionBtn');
+  if (!b) return;
+  const on = !!S.reduceMotion;
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on
+    ? 'Reduce motion is on: every view move is an instant change. The speeds stay in Motion, below.'
+    : 'Reduce motion: every view move becomes an instant change — the same as the system reduced-motion setting. The speeds stay in Motion, below.';
 }
 
 // per-frame: the bead shows where the one camera sits between Plan and 3D
@@ -401,6 +426,8 @@ function renderStatus() {
   const tr = $('#trail');
   if (tr._html !== html) { tr.innerHTML = html; tr._html = html; tr.scrollLeft = tr.scrollWidth; }
   document.querySelectorAll('#motion button').forEach((b) => b.classList.toggle('on', b.dataset.motion === S.motion));
+  renderMotion();
+  renderDrafting();
 }
 
 function hintFor() {

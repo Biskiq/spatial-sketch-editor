@@ -4,11 +4,24 @@ import { byId, planeY } from './model.js';
 
 export const COLORS = {
   mat: '#1D3A33', matDeep: '#152C26', grid: '#2B5147', gridMajor: '#3C6A5C',
-  paper: '#F3F4EE', paperGrid: '#E2E6DD', paperGridMajor: '#CFD6CB',
-  foam: '#F1F2EC', floor: '#D3DBD0', floorPaper: '#E7EBE3', ink: '#17201D', poche: '#26302C',
-  tape: '#F2B53C', coral: '#EC6A50', sky: '#8CC0EA', ghost: '#DCEBE4',
+  paper: '#F3F4EE', paperGrid: '#9FB2A2', paperGridMajor: '#809984',
+  paperGridAlpha: 0.28, paperGridMajorAlpha: 0.45,
+  foam: '#F1F2EC', floor: '#D3DBD0', floorPaper: '#E7EBE3', ink: '#202422', poche: '#26302C',
+  tape: '#F2B53C', coral: '#C85A48', sky: '#8CC0EA', ghost: '#DCEBE4',
+  /* selection and manipulation resolve to the tape gold (owner ruling on this branch) */
   sel: '#F2B53C', selEdge: '#C98A12', view: '#56707C',
 };
+
+// Grid decimation. The projected CSS-pixel spacing of a minor line decides which rung of the
+// 1, 2, 5 × 10ⁿ ladder is drawn, so the grid reads at a stable apparent density at any zoom.
+const GRID_LADDER = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+// The plan's density floor: the finest rung that still leaves 16 px between minor lines. At the
+// reference Plan and elevation framing that resolves 1 m minors with 5 m majors; sub-metre
+// divisions appear only when zoomed in, and the grid fades out and then vanishes below 8 px at
+// the coarse end of the ladder.
+const GRID_TARGET_PX = 16;
+const GRID_MIN_PX = 8;
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 const V3 = THREE.Vector3;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -17,18 +30,26 @@ const FOV_PERSP = 40;
 const FOV_FLAT = 0.9;
 export const fovFor = (flat) => Math.exp(lerp(Math.log(FOV_PERSP), Math.log(FOV_FLAT), flat));
 
-function gridTexture(bg, minor, major, lwMinor, lwMajor) {
+// A tile holds `cells` minor cells with a heavier line every `majorEvery`. With a transparent
+// background the tile is a line layer that can fade on its own; with a background it is an opaque
+// drafting sheet.
+function gridTexture(bg, minor, major, lwMinor, lwMajor, opts = {}) {
+  const { cells = 10, majorEvery = 5, alphaMinor = 1, alphaMajor = 1, size = 1024, transparentBg = false } = opts;
   const c = document.createElement('canvas');
-  c.width = c.height = 1024;
+  c.width = c.height = size;
   const g = c.getContext('2d');
-  g.fillStyle = bg; g.fillRect(0, 0, 1024, 1024);
-  for (let i = 0; i <= 10; i++) {
-    const p = (i / 10) * 1024;
-    g.strokeStyle = i % 5 === 0 ? major : minor;
-    g.lineWidth = i % 5 === 0 ? lwMajor : lwMinor;
-    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 1024); g.stroke();
-    g.beginPath(); g.moveTo(0, p); g.lineTo(1024, p); g.stroke();
+  if (transparentBg) g.clearRect(0, 0, size, size);
+  else { g.fillStyle = bg; g.fillRect(0, 0, size, size); }
+  for (let i = 0; i <= cells; i++) {
+    const p = (i / cells) * size;
+    const isMajor = i % majorEvery === 0;
+    g.globalAlpha = isMajor ? alphaMajor : alphaMinor;
+    g.strokeStyle = isMajor ? major : minor;
+    g.lineWidth = isMajor ? lwMajor : lwMinor;
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, size); g.stroke();
+    g.beginPath(); g.moveTo(0, p); g.lineTo(size, p); g.stroke();
   }
+  g.globalAlpha = 1;
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(120, 120);
@@ -82,7 +103,19 @@ export class Stage {
       foam: M({ color: COLORS.foam }),
       foamHover: M({ color: COLORS.foam, emissive: sel, emissiveIntensity: 0.07 }),
       foamSel: M({ color: COLORS.foam, emissive: sel, emissiveIntensity: 0.16 }),
-      sheet: M({ color: '#FBFBF7', emissive: new THREE.Color('#FBFBF7'), emissiveIntensity: 0.45, roughness: 1 }),
+      // Vellum: a drafting sheet, not a white light source. The tile is one major interval with
+      // five minor cells, so the wall's generated UVs carry honest measurement spacing. The
+      // emissive response is calibrated so the displaced wall renders as the same paper as the
+      // vellum ground it lies on, rather than a darker sage surface; it stays below the ground's
+      // own brightness so the sheet never glows over the page.
+      sheet: (() => {
+        const tex = gridTexture(COLORS.paper, COLORS.paperGrid, COLORS.paperGridMajor, 3, 5, {
+          cells: 5, majorEvery: 5, alphaMinor: COLORS.paperGridAlpha, alphaMajor: COLORS.paperGridMajorAlpha,
+        });
+        tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+        tex.repeat.set(1, 1); // the wall's UVs are already in major-interval units
+        return M({ color: '#FFFFFF', map: tex, roughness: 1, emissive: new THREE.Color(COLORS.paper), emissiveIntensity: 0.36 });
+      })(),
       floor: M({ color: COLORS.floor }),
       ceil: M({ color: '#E9EBE4' }),
       ceilSee: M({ color: '#E9EBE4', transparent: true, opacity: 0.1, depthWrite: false }),
@@ -127,12 +160,22 @@ export class Stage {
     this.ground.position.y = -0.135;
     this.ground.receiveShadow = true;
     this.scene.add(this.ground);
-    const papTex = gridTexture(COLORS.paper, COLORS.paperGrid, COLORS.paperGridMajor, 1.2, 2.2);
-    this.paperGround = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.MeshBasicMaterial({ map: papTex, transparent: true, opacity: 0, depthWrite: false }));
+    // Vellum paper with the grid on its own transparent layer above, so line density can be
+    // decimated and faded by projected spacing without touching the paper itself.
+    this.paperGround = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.MeshBasicMaterial({ color: COLORS.paper, transparent: true, opacity: 0, depthWrite: false }));
     this.paperGround.rotation.x = -Math.PI / 2;
-    this.paperGround.position.y = -0.13;
-    this.paperGround.renderOrder = -1;
+    this.paperGround.position.y = -0.132;
+    this.paperGround.renderOrder = -2;
     this.scene.add(this.paperGround);
+    this.gridTex = gridTexture(null, COLORS.paperGrid, COLORS.paperGridMajor, 3, 5, {
+      transparentBg: true, alphaMinor: COLORS.paperGridAlpha, alphaMajor: COLORS.paperGridMajorAlpha,
+    });
+    this.gridTex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    this.grid = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.MeshBasicMaterial({ map: this.gridTex, transparent: true, opacity: 0, depthWrite: false }));
+    this.grid.rotation.x = -Math.PI / 2;
+    this.grid.position.y = -0.129;
+    this.grid.renderOrder = -1;
+    this.scene.add(this.grid);
     this.cMat = new THREE.Color(COLORS.matDeep);
     this.cPaper = new THREE.Color(COLORS.paper);
     this.cUnder = new THREE.Color('#D4D8CF');
@@ -564,12 +607,34 @@ export class Stage {
   }
 
   // ----- per-frame look -----
+  // Drawn to scale, the mat becomes vellum: a 1, 2, 5 × 10ⁿ minor ladder anchored to the world
+  // datum, its rung chosen from the projected CSS-pixel spacing at the working plane. Hysteresis
+  // keeps the rung from flickering at a boundary; no timeline or delay is added to any view move.
+  applyGrid(p) {
+    const vis = p > 0.001 && this.groundOn !== false;
+    this.paperGround.material.opacity = p;
+    this.paperGround.visible = vis;
+    const wpp = this.cam.frameH / Math.max(1, this.h || 0);
+    let minor = GRID_LADDER[GRID_LADDER.length - 1];
+    for (const v of GRID_LADDER) { if (v / wpp >= GRID_TARGET_PX) { minor = v; break; } }
+    if (this._gridMinor) {
+      const r = minor / this._gridMinor;
+      if (r > 1 / 1.15 && r < 1.15) minor = this._gridMinor;
+    }
+    this._gridMinor = minor;
+    // major lines are five times the chosen minor interval, so a tile holds two major bands
+    const repeat = 1200 / (10 * minor);
+    this.gridTex.repeat.set(repeat, repeat);
+    const alpha = p * smoothstep(GRID_MIN_PX, GRID_TARGET_PX, minor / wpp);
+    this.grid.material.opacity = alpha;
+    this.grid.visible = vis && alpha > 0.004;
+  }
+
   applyPaper() {
     const p = this.paper;
     this.bg.copy(this.cMat).lerp(this.cPaper, p);
     this.scene.fog?.color.copy(this.bg);
-    this.paperGround.material.opacity = p;
-    this.paperGround.visible = p > 0.001 && this.groundOn !== false;
+    this.applyGrid(p);
     this.ground.visible = p < 0.999 && this.groundOn !== false;
     this.hemi.intensity = lerp(1.35, 2.35, p);
     this.hemi.groundColor.set('#35574d').lerp(this.cUnder, p);
@@ -581,7 +646,7 @@ export class Stage {
   renderInset(camState, rect, prep) {
     const r = this.renderer;
     Stage.placeCamera(this.peekCam, camState, rect.w / rect.h);
-    const saved = { bg: this.scene.background, fog: this.scene.fog, g: this.ground.visible, pg: this.paperGround.visible, aw: Object.values(this.aways).map((a) => [a, a.group.visible]) };
+    const saved = { bg: this.scene.background, fog: this.scene.fog, g: this.ground.visible, pg: this.paperGround.visible, gr: this.grid.visible, aw: Object.values(this.aways).map((a) => [a, a.group.visible]) };
     let undo = null;
     try {
       undo = prep?.();
@@ -589,6 +654,7 @@ export class Stage {
       this.scene.fog = null;
       this.ground.visible = false;
       this.paperGround.visible = false;
+      this.grid.visible = false;
       for (const [a] of saved.aw) a.group.visible = false;
       const y = this.h - rect.y - rect.h;
       r.setScissorTest(true);
@@ -603,6 +669,7 @@ export class Stage {
       undo?.();
       this.ground.visible = saved.g;
       this.paperGround.visible = saved.pg;
+      this.grid.visible = saved.gr;
       for (const [a, v] of saved.aw) a.group.visible = v;
     }
   }
