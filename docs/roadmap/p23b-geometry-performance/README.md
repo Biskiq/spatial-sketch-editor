@@ -14,8 +14,8 @@ PHASE CLOSE — P23B (2026-09-29, owner-invoked `phase-closeout`)
 
 STATUS: shipped
 STAGE: closed
-CLOSED: 2026-09-29 — owner ratification recorded in PR #103 (`p23b.9-gate`); the close's
-  provenance line, cycle preflight and preservation are in
+CLOSED: 2026-09-29 — owner ratification recorded in PR #103 (`p23b.9-gate`), close commit
+  `94215b0c`; the close's provenance line, cycle preflight and preservation are in
   ./p23b.10-phase-closeout/2026-09-29-P23B.10-closeout-record.md §PHASE CLOSE
 FINAL PHASE GATE: P23B.10 — Phase closeout gate and merge readiness
   (artifact: ./p23b.10-phase-closeout/2026-09-22-P23B.10-phase-closeout.md — now a closed stub —
