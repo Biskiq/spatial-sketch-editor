@@ -403,9 +403,16 @@ trailing pass's BUILDS and not its placement, which still runs on the memory it 
 session's `seeded-grid` → `pruned-grid` control is 0.882 (the previous pass's kept change, reproduced in this leg
 at the same order), so the memo's own delta is of that order too.
 
-**Status: measured, not shipped.** `memo-grid` is reachable only through the DEV switch, `seeded-grid` is still
-the default, and the placement suite plus the four-arm parity differential are unchanged in what they require.
-Promoting it is a separate decision, not taken here.
+**Status AT THIS POINT: measured, not shipped.** `memo-grid` is reachable only through the DEV switch,
+`seeded-grid` is still the default, and the placement suite plus the four-arm parity differential are unchanged in
+what they require. Promoting it is a separate decision, not taken here.
+
+> **SUPERSEDED FOR STATUS — read §15 and §16.** The decision this paragraph left open was taken: the cache now
+> reaches the shipped placer (§15), so "no cache reaches the product path" is no longer true of this work, and the
+> arm above is named `no-memo-grid` (§15). The paragraph is kept as the record of what was true when §14 was
+> written, which is also why `memo-grid` appears in it and nowhere else. §16 then re-prices the shipped cache on a
+> workload whose geometry does not repeat — the number a session can count on is ≈0.87 of the bypass, not the 0.694
+> §15 read on a repeated loop.
 
 **Not claimed:** any Electron number for this arm, any user-visible claim beyond the synthetic harness on a
 headless runtime, and any cross-session comparison — every arm above was read inside this one leg, and the two
@@ -472,3 +479,133 @@ arbitrary session. What generalises is the within-settle reuse §14 justified (�
 all-curved fixture); what a session that revisits the same geometry gets on top of that is real, is bounded, and
 is not quantified here. Also not claimed: any Electron number, any user-visible claim, and any cross-session or
 cross-tree comparison — every arm above was read inside this one leg.
+
+## 16. The shipped cache re-measured with the geometry NOT repeating — it holds, at about half the price
+
+§15 priced the shipped cache on a protocol that repeats ONE action per class, and said so: the undo between
+attempts returns the geometry to a state the previous attempt already drew, so a persistent cache serves the next
+attempt from it. That made **0.694** a repeated-workload number, and left the question it cannot answer — how much
+of it survives when the geometry does not come back — open. This section closes it with a second workload run in
+the SAME session, so the two readings are a within-leg comparison and not a cross-session one.
+
+**The cold workload (`--label-arms-cold`, protocol revision 5).** After each fixture's five classes, the SAME five
+classes run again under the `p23b-m1-cold:` prefix with one pan dispatched before every attempt, its direction
+advancing by the golden angle. Everything else is identical — the class list, the order, the gestures, the undo
+restore, the four-arm interleave, the window definition — so the only variable is whether a projection can recur.
+**It is a PAN and not a zoom**, which is what makes it a controlled read rather than a second workload: a pan
+translates the projected polygon and nothing else, so the cell budget (the polygon's own screen bounding box) and
+the mask shift with it and the placer does exactly the same work per action, with only the cache KEY moving. The
+pan is its own ledger action, deliberately left unassigned to any arm, so its windows are counted as
+`unassignedWindows` and never merged into a class's gesture population.
+
+### The workload check, and a measurement error in this pass that is recorded so it is not repeated
+
+**THE ATTEMPT-SCOPED ORDINALS IN `byAction[].keySequence` MUST NEVER BE COMPARED ACROSS ACTIONS.**
+`setP23bM1RoomLabelArm` resets `attemptKeys` on every attempt, so ordinal `1` means "the first new key THIS attempt
+built" — ordinal 1 in action 2 is a different key from ordinal 1 in action 1. An earlier reading of this session
+pooled those ordinals and reported a **96.8 % cross-action repeat** for the repeat workload; that number is an
+artifact of the ordinal space (every attempt restarts at 1, so "already seen" is automatic), not a measurement,
+and it is retracted. The cross-action-safe measure is the CLASS-scoped histogram (`labelArms.gridBuildKeys`),
+which is what the numbers below use; the within-attempt share uses `byAction[].builds − Σ distinctBuilds`, the same
+basis §5's replay used.
+
+| workload | builds (attempt-scoped) | within-attempt reuse — **§5's measure** | builds (class histogram) | class-scoped distinct keys | one key rebuilt at most |
+|---|---|---|---|---|---|
+| repeat | 14,341 | **28.2 %** | 24,281 | 563 | **118×** |
+| cold | 20,583 | **35.4 %** | 30,418 | **13,044** | **6×** |
+
+The two columns answer the two halves of the question, and both moved the right way:
+
+- **The within-attempt reuse §14 justified is KEPT** — 28.2 % on the repeat workload (reproducing §5's 29.8 % from
+a different mechanism and a different leg) against 35.4 % cold, which is *higher* because the cold classes render
+the camera move inside the attempt as well. That reuse lives inside one settle and is what a real session gets.
+- **The cross-attempt recurrence is REMOVED** — 563 distinct keys became **13,044** (23×), and the worst single key
+went from being rebuilt up to **118 times** to at most **6**. Per class the fall is consistent: `p23b-m1:rigid-wall-drag`
+20 distinct keys / 75 rebuilds of one key against `p23b-m1-cold:rigid-wall-drag` 520 / 5.
+
+So the cold pass is the other end of the bracket: the repeat pass is the session shape that gives a persistent cache
+the most, the cold pass the shape that gives it the least.
+
+### The price, both workloads in one session
+
+The seventh leg carries BOTH workloads in one run (Chrome 152 headless, 439 s, residual **2.335 ms**, 10,656
+presented frames, 38 class rows — the 19 repeat classes and their 19 cold twins, `connected-curved-grid-v1`
+advisory as always). Post-release window p50, shipped ÷ bypass, median over each fixture's classes:
+
+| fixture | classes | repeat | **cold** |
+|---|---|---|---|
+| `p23b-40-wall-straight-v1` (falsifier) | 4 | 0.829 | **0.958** |
+| `p23b-40-wall-all-curved-v1` (target) | 5 | 0.620 | **0.804** |
+| `owner-40-curved-v1` | 5 | 0.875 | **0.960** |
+| `connected-curved-grid-v1` (advisory) | 5 | 0.621 | **0.859** |
+| **all 19 classes** | | **0.739** | **0.872** |
+
+Shipped is faster in **19 of 19** classes in **both** workloads, so the cache neither washes out nor regresses when
+the geometry stops repeating. The repeat pass's own numbers here (all-curved 0.620, owner 0.875, median 0.739) are
+the same workload as §15 on a different runtime and are **not** compared with §15's figures; they exist so the two
+workloads can be read against each other inside one session, which is the only comparison the protocol admits.
+Median class p50 35.51 → 39.58 ms (repeat) and 38.21 → 40.25 ms (cold).
+
+**What it costs in the window.** Reading the cold column as the generalisable one: the cache is worth about
+**13 % of the post-release window** (median ratio 0.872) once the geometry stops coming back, against about **26 %**
+(0.739) on the repeated workload — i.e. **roughly half of §15's benefit was the undo loop**. On the target fixture
+the cold ratios are 0.787–0.851, deltas of 12–18 ms; on the falsifier the straight fixture's cold ratio is 0.958,
+a delta of **0.6 ms** — which is INSIDE this leg's 2.335 ms clock residual and therefore must not be read as a
+measured 4 % gain. On the smallest windows, in a session that does not repeat geometry, the cache is a near-wash.
+
+### The mechanism, from the profile
+
+Pooled over the measured windows, 99 per arm per workload (thin — see the limits), the grid functions' self time:
+
+| workload | `seeded-grid` (shipped) | `no-memo-grid` (bypass) | skipped |
+|---|---|---|---|
+| repeat | **0.0 ms** | 970.0 ms | 100 % |
+| cold | **479.7 ms** | 977.4 ms | **50.9 %** |
+
+`plan-room-labels` self time falls 1,126.4 → 3.8 ms and 1,131.7 → 553.6 ms on the same two. The repeat workload's
+0.0 ms is the loop in one number — every grid request inside the measured windows is a cache hit — and the cold
+workload's **50.9 %** is the answer to the question §15 left open: **about half the grid work the shipped cache
+skips is within-settle reuse that any session gets, and about half was the geometry recurring.**
+
+### Verdict: the cache STAYS, and the repeat-loop number stops being the headline
+
+The persistent cache is not a wash and not a regression, so the bounded-lifetime alternative §15 deferred is
+**not** taken, for the reason §15 gave and one new one:
+
+1. A per-attempt lifetime would need a hook in the render path to clear the cache — a NEW invalidation owner for a
+   cache whose key already IS its invalidation — to buy back a difference (0.872 → 0.739 on the repeat workload)
+   that exists only inside a loop. The cold workload shows the same cache at ~0.87 with no such hook at all.
+2. **The cold workload IS the bounded-lifetime case in effect.** A per-attempt-cleared cache and this cache are
+   the same thing whenever the geometry does not recur, which is exactly what the cold pass constructs; so the
+   column that stands in for the bounded design is already measured, and it is 0.872 — the shipped persistent
+   cache reaches it by having nothing to hit rather than by being cleared.
+
+What changes is the **claim**, not the code. §15's 0.694 and this leg's 0.739 are **repeated-workload** ratios and
+must be quoted as such; the number a session can count on is **≈0.87, about 13 % of the post-release window**, and
+**0.80 on the all-curved fixture** (deltas of 14–18 ms). No product behaviour changed in this section: the cold
+workload is a DEV protocol mode, the shipped path still runs the one cache §15 promoted.
+
+```text
+node .freebuff/launch-chrome.mjs 9223 /tmp/p23b-chrome-cold                # pinned 152.0.7977.54, headless
+node .freebuff/start-dev.mjs 5199 /tmp/p23b-dev-cold.log                   # this workspace's editor
+cd apps/editor && npm exec -- vite-node --config vitest.config.ts \
+  tests/lib/bench/p23b-m1-browser-runner.cli.ts -- \
+  --port 9223 --url http://127.0.0.1:5199/dev/perf/p23b \
+  --runtime "Chrome 152.0.7977.54 headless (cold workload)" \
+  --out .freebuff/m1-label-arms11-cold-chrome.json \
+  --cpu-profile /tmp/p23b-cold.cpuprofile \
+  --budget-ms 10000 --label-arms-cold
+```
+
+Like §5's leg, the dev server and the pinned Chrome were started for it and stopped afterwards, and the raw capture
+and the V8 profile are working artifacts (84 MB / the profile in `/tmp`) that are not committed — only the folded
+capture is, 7.26 MB because it carries both workloads' 38 class rows.
+
+**Limits, and they are not small.** The arms are thin: 99 windows per arm per workload pooled, i.e. **5–6 per arm
+per class**, because one leg now carries two workloads through a four-way interleave. The clock residual is
+2.335 ms (the leg ran 439 s, against 0.1 ms on the shorter legs), which is why the straight fixture's cold delta is
+reported as inside the noise rather than as a gain. The cold pass is the **LOW end of a bracket, not a simulation
+of a user**: a real session repeats some geometry (dragging the same Wall twice, undoing, returning to a view) and
+sits between 0.872 and 0.739, and where in that range it sits is NOT quantified here. Also not claimed: any Electron
+number, any user-visible claim, and any cross-session or cross-tree comparison — both workloads above were read
+inside this one leg, and `connected-curved-grid-v1` stays advisory and never recorded.
