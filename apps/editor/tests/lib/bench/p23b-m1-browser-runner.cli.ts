@@ -116,6 +116,14 @@ type Args = {
 	 */
 	labelArms: boolean;
 	/**
+	 * The COLD label-arm mode: `--label-arms` plus a second pass over the same five
+	 * classes with the camera moved between attempts (§16). Both workloads run in ONE
+	 * session, so the repeat rows (the shape that gives a persistent cache the most)
+	 * and the cold rows (the shape that gives it the least) are read on one runtime,
+	 * against one fixture remount, and are never compared across sessions.
+	 */
+	coldLabelArms: boolean;
+	/**
 	 * Where to write the RAW V8 CPU profile of the protocol. Passing this turns the
 	 * profiler on; the record then carries the summarized self-time rows beside the
 	 * window phases. The raw profile is written where it is asked to be written and
@@ -146,6 +154,7 @@ function parseArgs(argv: readonly string[]): Args {
 		dryRunMs: Number(flag('dry-run-ms') ?? '4000'),
 		arms: argv.includes('--arms'),
 		labelArms: argv.includes('--label-arms'),
+		coldLabelArms: argv.includes('--label-arms-cold'),
 		cpuProfile: flag('cpu-profile'),
 		cpuProfileIntervalUs: Number(flag('cpu-profile-interval-us') ?? '1000')
 	};
@@ -331,9 +340,11 @@ async function main(): Promise<void> {
 		try {
 			const entry = args.arms
 				? '__P23B_M1_RUN_ARMS__'
-				: args.labelArms
-					? '__P23B_M1_RUN_LABEL_ARMS__'
-					: '__P23B_M1_RUN__';
+				: args.coldLabelArms
+					? '__P23B_M1_RUN_LABEL_ARMS_COLD__'
+					: args.labelArms
+						? '__P23B_M1_RUN_LABEL_ARMS__'
+						: '__P23B_M1_RUN__';
 			ready = (await evaluate<boolean>(`typeof globalThis.${entry} === "function"`)) === true;
 		} catch {
 			// navigating
@@ -505,9 +516,11 @@ async function main(): Promise<void> {
 			record = await evaluate<P23BM1Record>(
 				args.arms
 					? 'globalThis.__P23B_M1_RUN_ARMS__()'
-					: args.labelArms
-						? 'globalThis.__P23B_M1_RUN_LABEL_ARMS__()'
-						: 'globalThis.__P23B_M1_RUN__()',
+					: args.coldLabelArms
+						? 'globalThis.__P23B_M1_RUN_LABEL_ARMS_COLD__()'
+						: args.labelArms
+							? 'globalThis.__P23B_M1_RUN_LABEL_ARMS__()'
+							: 'globalThis.__P23B_M1_RUN__()',
 				true
 			);
 		}

@@ -49,7 +49,12 @@ import {
 	type P23BM1ActionLabelArmRecord,
 	type P23BM1GridBuildKeySummary
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
-import { p23bM1MeasuredClass } from '../../../src/routes/dev/perf/p23b/drive';
+import {
+	P23B_M1_COLD_PREFIX,
+	P23B_M1_PREFIX,
+	p23bM1ColdMeasuredClass,
+	p23bM1MeasuredClass
+} from '../../../src/routes/dev/perf/p23b/drive';
 
 /** An empty M1 gesture registry: the shape every class row is built against. */
 const noGestures = (): { gestureFrames: []; longFrames: [] } => ({ gestureFrames: [], longFrames: [] });
@@ -406,6 +411,65 @@ describe('M1 record — the whole record', () => {
 		expect(record.d1.note).toContain('COMPARISON ONLY');
 	});
 
+	it('never substitutes a COLD class for the repeat class a name-matched table is defined over', () => {
+		// THE ONE WAY THIS COULD GO WRONG SILENTLY. D1 matches a class by the suffix
+		// `:${row}` and BOTH workloads end in it, so if the cold twin happened to sort
+		// first the table would report the cold pass's release row under the repeat
+		// class's name — a wrong number with nothing in the row to show it. The twin is
+		// placed FIRST here on purpose, and the flag attached by the page is what the
+		// table filters on.
+		const mixed = buildP23BM1Record({
+			protocol: 'test protocol',
+			provenance: { commitSha: 'deadbeef' },
+			fixtureOrder: ['fixture-a'],
+			limitations: ['advisory'],
+			classes: [
+				{ ...classFor('fixture-a', 'p23b-m1-cold:wall-authoring', 'wall-authoring'), cold: true },
+				classFor('fixture-a', 'p23b-m1:wall-authoring', 'wall-authoring')
+			]
+		});
+		expect(mixed.d1.rows.map((row) => row.actionClass)).toEqual(['p23b-m1:wall-authoring']);
+		// The cold row is excluded from the TABLE, not from the record: it is a measured
+		// class whose own rows are the cold leg's evidence.
+		expect(mixed.fixtures[0]?.classes).toHaveLength(2);
+		expect(mixed.fixtures[0]?.classes[0]?.cold).toBe(true);
+		expect(mixed.fixtures[0]?.classes[1]?.cold).toBeUndefined();
+	});
+
+	it('carries the cold flag on the row only when the class was measured cold', () => {
+		// The flag travels with the row instead of being re-derived from the name by each
+		// table, so it has to exist exactly when `summarizeM1Class` was told the class is
+		// a cold one — the repeat rows are every table's default population and must stay
+		// clean of it.
+		const repeat = classFor('fixture-a', 'p23b-m1:wall-authoring', 'wall-authoring');
+		expect(repeat.cold).toBeUndefined();
+		const capture = ledger([
+			{
+				index: 0,
+				intent: 'wall-authoring',
+				path: 'wall-authoring',
+				outcome: 'accepted',
+				status: 'completed',
+				planView: null,
+				samples: [{ boundary: 'release', duration: 120, start: 0, end: 120 }]
+			}
+		]);
+		const cold = summarizeM1Class({
+			fixtureId: 'fixture-a',
+			sessionId: 'session-cold',
+			actionClass: 'p23b-m1-cold:wall-authoring',
+			actionPath: 'wall-authoring',
+			ledger: capture,
+			containment: buildP23BContainment(capture, []),
+			warmup: 0,
+			actionsPerClass: 1,
+			gestureRegistry: noGestures(),
+			longFrameWindow: null,
+			cold: true
+		});
+		expect(cold.cold).toBe(true);
+	});
+
 	it('carries D7 rows, the D13 note and the schema rules', () => {
 		expect(record.d7.rows).toHaveLength(4);
 		expect(record.d7.rows[0]?.mark?.p50).toBe(60);
@@ -560,6 +624,10 @@ describe('M1 wiring', () => {
 		path.resolve(editorRoot, 'src/routes/dev/perf/p23b/+page.svelte'),
 		'utf8'
 	);
+	const recordSource = fs.readFileSync(
+		path.resolve(editorRoot, 'src/lib/bench/p23b-m1-record.ts'),
+		'utf8'
+	);
 	const occurrences = (text: string, needle: string): number => text.split(needle).length - 1;
 
 	it('defines the M1 protocol as one prefix, one fixture order and five classes', () => {
@@ -578,7 +646,7 @@ describe('M1 wiring', () => {
 		// window is opened per class — both once, so neither can be double-counted.
 		expect(occurrences(drive, 'bracketGestureFrames(timing')).toBe(3);
 		expect(occurrences(drive, 'const observer = timing ? longFrameObserverOf() : null')).toBe(1);
-		expect(drive).toContain('async function runM1(arms = false, labelArms = false)');
+		expect(drive).toContain('async function runM1(arms = false, labelArms = false, coldLabelArms = false)');
 	});
 
 	it('interleaves the BEFORE/AFTER arms on the whole-Room class and releases the switch afterwards', () => {
@@ -596,7 +664,7 @@ describe('M1 wiring', () => {
 		// later session.
 		expect(occurrences(drive, 'setP23bM1RoomDragArm(null);')).toBe(3);
 		expect(drive).toContain('p23bM1ResetActionArms();');
-		expect(drive).toContain('await runM1Fixture(fixture, arms, labelArms);');
+		expect(drive).toContain('await runM1Fixture(fixture, arms, labelArms, coldLabelArms);');
 	});
 
 	it('interleaves the ROOM-LABEL arms in EVERY class, records them per resolved action, and releases the switch', () => {
@@ -711,8 +779,59 @@ describe('M1 wiring', () => {
 		// and a population with no bracket reports null rather than a warm-up row.
 		expect(p23bM1GestureFramesFor(registry, 'fixture-a', measured, new Set([7]))).toBeNull();
 		p23bM1ResetFrameTiming();
-		// And the run keys every class that way.
-		expect(drive).toContain('actionClass: p23bM1MeasuredClass(entry.actionClass)');
+		// And the run keys every class that way — built from the workload's OWN prefix,
+		// so a class can only be found under the workload it was measured on.
+		expect(drive).toContain('actionClass: `${prefix}${entry.actionClass}`');
+		expect(p23bM1ColdMeasuredClass('rigid-wall-drag')).toBe('p23b-m1-cold:rigid-wall-drag');
+		expect(p23bM1ColdMeasuredClass('rigid-wall-drag')).not.toBe(measured);
+		expect(P23B_M1_COLD_PREFIX).not.toBe(P23B_M1_PREFIX);
+	});
+
+	it('runs the cold workload as a SECOND pass over the same classes, with the camera moved per attempt', () => {
+		// The cold pass answers one question — does a persistent cache pay when no render
+		// repeats a projection the session already drew? — so it must change exactly one
+		// thing and nothing else. Two passes, one class list, one class loop: the same
+		// code with a different prefix and a `cold` flag is what makes the two
+		// populations comparable at all.
+		expect(occurrences(drive, 'for (const entry of P23B_M1_ACTION_CLASSES)')).toBe(1);
+		expect(drive).toContain('const pass = async (cold: boolean): Promise<void> => {');
+		expect(drive).toContain('await pass(false);');
+		expect(drive).toContain('if (coldLabelArms) await pass(true);');
+		// The camera step is INSIDE the arm bracket, so the gesture and the release that
+		// follows it are both drawn under the moved projection; and the pan is left
+		// unassigned to any arm, so its own windows are counted rather than merged into
+		// the gesture's population.
+		expect(drive).toContain('if (timing?.cold) await nudgeCamera(index);');
+		expect(drive).toContain('async function nudgeCamera(attempt: number): Promise<void> {');
+		expect(drive).toContain('COLD_CAMERA_GOLDEN_ANGLE_RAD');
+		// A PAN, never a zoom: a zoom would change the cell budget with the scale, and
+		// then the cold pass would be a second workload instead of a controlled read.
+		expect(drive).not.toContain('zoomPlanViewport');
+		// The runner drives the cold entry point, and the page publishes it.
+		const runner = fs.readFileSync(
+			path.resolve(editorRoot, 'tests/lib/bench/p23b-m1-browser-runner.cli.ts'),
+			'utf8'
+		);
+		expect(runner).toContain('coldLabelArms: argv.includes(\'--label-arms-cold\')');
+		expect(occurrences(runner, "'globalThis.__P23B_M1_RUN_LABEL_ARMS_COLD__()'")).toBe(1);
+		expect(occurrences(runner, "'__P23B_M1_RUN_LABEL_ARMS_COLD__'")).toBe(1);
+		expect(page).toContain('globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(false, true, true);');
+		expect(page).toContain('delete globals.__P23B_M1_RUN_LABEL_ARMS_COLD__;');
+		// The page reports the workload, so a capture cannot be read as the other one.
+		expect(page).toContain('coldWorkload:');
+		expect(page).toContain("'pre-P23B.8-follow-up-M1-cold-label-arms'");
+	});
+
+	it('flags a cold class row so no name-matched table can take it for the repeat class', () => {
+		// Both prefixes end in `:${actionClass}`, so a suffix match alone cannot tell the
+		// two workloads apart — and the tables that match by suffix are defined over the
+		// REPEAT protocol. The flag is derived from the class name by the page, never
+		// hand-maintained, and it is the record's only defence.
+		expect(page).toContain('cold: resolved.cold,');
+		expect(page).toContain('function m1ClassSpecOf(');
+		expect(page).toContain('const cold = actionClass.startsWith(P23B_M1_COLD_PREFIX);');
+		// The record carries it, and every suffix-matched table filters on it.
+		expect(occurrences(recordSource, '!candidate.cold')).toBe(1);
 	});
 
 	it('adds no M1 instrumentation to a product module', () => {

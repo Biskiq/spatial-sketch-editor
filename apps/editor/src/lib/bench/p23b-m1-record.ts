@@ -179,6 +179,14 @@ export type P23BM1ClassRow = {
 	 */
 	attribution: P23BM1Attribution;
 	/**
+	 * `true` only on the cold pass's row for this class (§16) — the same class, the
+	 * same arms, the camera moved between attempts. Absent on the repeat row, which is
+	 * every table's default population. Every table that matches a class by name
+	 * suffix MUST skip a cold row: both prefixes end in `:${actionClass}`, so without
+	 * the flag the cold twin could be silently substituted for the repeat class.
+	 */
+	cold?: boolean;
+	/**
 	 * PAGE-SIDE WORK AFTER THE RELEASE, per accepted action, out of the class's own
 	 * containment trees. This is the component the D6 question needs: the
 	 * release-to-next-presented wait is a compositor fact, and the page can only say
@@ -1114,6 +1122,14 @@ export function summarizeM1Class(input: {
 	actionLabelArms?: readonly P23BM1ActionLabelArmRecord[] | null;
 	/** The class's grid-build keys, or `null` when the run recorded none. */
 	actionLabelArmKeys?: P23BM1GridBuildKeySummary | null;
+	/**
+	 * Whether this row is the class's COLD pass (§16): the same class, measured
+	 * again with the camera moved between attempts. A DIFFERENT population of the
+	 * same protocol, so every table defined over the repeat workload must be able to
+	 * skip it — and the two names differ only in a prefix, so the flag travels with
+	 * the row instead of being re-derived from the name by each table.
+	 */
+	cold?: boolean;
 }): P23BM1ClassRow {
 	const population = m1Population(input.ledger, input.actionPath, input.warmup);
 	const {
@@ -1187,6 +1203,10 @@ export function summarizeM1Class(input: {
 		sessionId: input.sessionId,
 		actionClass: input.actionClass,
 		actionPath: input.actionPath,
+		// Carried so a table defined over the REPEAT workload can exclude the cold
+		// pass's twin of the same class (§16). Both prefixes end in `:${actionClass}`,
+		// so a suffix match alone cannot tell them apart.
+		...(input.cold ? { cold: true } : {}),
 		ledger: {
 			recordedActions: input.ledger?.actions.length ?? null,
 			fixtureResets: input.ledger?.fixtureResets ?? null,
@@ -1414,8 +1434,14 @@ export function buildP23BM1Record(input: {
 			// recorded row: a connected case inside D1's table is a fixture leak.
 			if (fixture.advisory) continue;
 			// Matched on the CLASS, not the path: D1's second row is a drag that rides the
-			// shared `plan-drag-edit` path, so the path alone would pick the wrong class.
-			const entry = fixture.classes.find((candidate) => candidate.actionClass.endsWith(`:${row}`));
+			// shared `plan-drag-edit` path, so the path alone would pick the wrong class —
+			// and on the REPEAT workload: D1 is defined over the protocol as it has been
+			// run, and the cold pass's twin of the same class ends with the same suffix,
+			// so without this exclusion the cold class could be silently substituted for
+			// the measured one (see `P23BM1ClassRow.cold`).
+			const entry = fixture.classes.find(
+				(candidate) => !candidate.cold && candidate.actionClass.endsWith(`:${row}`)
+			);
 			const release = entry?.boundaries['release'];
 			if (!entry || !release) continue;
 			d1Rows.push({

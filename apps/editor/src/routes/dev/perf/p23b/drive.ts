@@ -147,6 +147,45 @@ export const P23B_M1_PREFIX = 'p23b-m1:';
 export function p23bM1MeasuredClass(actionClass: string): string {
 	return `${P23B_M1_PREFIX}${actionClass}`;
 }
+/**
+ * Pre-P23B.8 follow-up M1 §16 — the COLD protocol's session prefix.
+ *
+ * The cold pass runs the SAME five classes, the same gestures and the same window
+ * definitions as the repeat pass, and changes exactly one thing: the camera moves
+ * between attempts, so no render repeats a projection the session has already drawn.
+ * It is the same protocol read at the other end of the bracket — the repeat pass is
+ * the session shape that gives a persistent cache the MOST (the undo between attempts
+ * returns the geometry to a state the previous attempt already drew), the cold pass
+ * the shape that gives it the LEAST. A separate prefix keeps the two populations
+ * apart: their recorded class names are `p23b-m1-cold:…` and `p23b-m1:…`, so no row
+ * can be read as the other workload's.
+ */
+export const P23B_M1_COLD_PREFIX = 'p23b-m1-cold:';
+
+/** The cold prefix's measured-class name, the twin of `p23bM1MeasuredClass`. */
+export function p23bM1ColdMeasuredClass(actionClass: string): string {
+	return `${P23B_M1_COLD_PREFIX}${actionClass}`;
+}
+
+/**
+ * THE COLD WORKLOAD'S CAMERA STEP, in screen pixels: a fixed-length pan whose
+ * direction advances by the golden angle every attempt.
+ *
+ * TWO PROPERTIES ARE LOAD-BEARING, and both are the reason this is a controlled read
+ * of the reuse rather than a second workload. It is a PAN and not a zoom, so the
+ * projected polygon is TRANSLATED and nothing else: the cell budget comes from the
+ * polygon's own screen bounding box and the mask shifts with it, so the placer does
+ * exactly the same work per action and only the cache KEY moves. And the direction
+ * advances by the golden angle, which never revisits an earlier direction modulo the
+ * circle, so the walk does not return to a projection an earlier attempt drew — which
+ * is the whole point, and is checked by reading the cold capture's own cross-action
+ * repeat share rather than by assuming it.
+ *
+ * The step is small (8 px is ≈0.4 m at the shared ladder) so the walk stays near the
+ * fixture and every target stays in the neighbourhood it was measured in.
+ */
+const COLD_CAMERA_STEP_PX = 8;
+const COLD_CAMERA_GOLDEN_ANGLE_RAD = Math.PI * (3 - Math.sqrt(5));
 /** Wheel steps climbed after the zoom floor: 2 * 1.12^20 ≈ 19.29 px/m. */
 const ZOOM_STEPS_IN = 20;
 const ZOOM_OUT_STEPS = 40;
@@ -545,6 +584,20 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		await settleFrames(2);
 	}
 
+	/**
+	 * One step of the cold workload's camera walk (§16): see `COLD_CAMERA_STEP_PX`.
+	 *
+	 * A pan IS an action in the ledger, and it is deliberately left unassigned to any
+	 * Room-label arm: the arm split drops windows whose action recorded no arm, so the
+	 * camera move's own post-release window is counted as `unassignedWindows` instead of
+	 * being merged into the gesture's window population. The gesture that follows is
+	 * measured under the moved camera, which is the only thing the cold pass changes.
+	 */
+	async function nudgeCamera(attempt: number): Promise<void> {
+		const angle = attempt * COLD_CAMERA_GOLDEN_ANGLE_RAD;
+		await panBy([COLD_CAMERA_STEP_PX * Math.cos(angle), COLD_CAMERA_STEP_PX * Math.sin(angle)]);
+	}
+
 	/** The view every fixture must publish before its capture opens. */
 	async function setSharedView(targets: DriverTargets): Promise<PlanView> {
 		const anchor = canvasCenter();
@@ -906,6 +959,13 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		 * drawn takes this arm — which is all five of them.
 		 */
 		labelArms?: readonly P23BM1RoomLabelArm[] | null;
+		/**
+		 * Whether this class runs the COLD workload (§16): one `nudgeCamera` step before
+		 * every attempt, so no render repeats a projection the session already drew.
+		 * Chosen per class by `runM1Fixture`, and the ONLY difference between a class's
+		 * two passes.
+		 */
+		cold?: boolean;
 	};
 
 	let gestureSampler: ReturnType<typeof createP23BGestureFrameSampler> | null = null;
@@ -995,6 +1055,11 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 				fixtureId: timing.fixtureId,
 				actionClass: timing.actionClass
 			});
+		// THE COLD WORKLOAD (§16) — the camera moves BEFORE the gesture, inside the arm
+		// bracket, so the gesture and the release that follows it are drawn under a
+		// projection this session has not drawn before. Nothing else about the attempt
+		// changes: same arm, same gesture, same restore.
+		if (timing?.cold) await nudgeCamera(index);
 		const action = await work();
 		if (arm && timing) p23bM1RecordActionLabelArm(timing.fixtureId, timing.actionClass, action.index, arm);
 		return action;
@@ -1277,41 +1342,67 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * capture so D1's rows stay comparable. Each class is its own isolated,
 	 * settled session under the M1 prefix; the connected case is hosted last and
 	 * its classes are containment-only, so nothing about it can be recorded.
+	 *
+	 * When `coldLabelArms` is set the whole class list runs a SECOND time under the
+	 * cold prefix, with one camera step before every attempt (§16). Both passes are
+	 * inside one run, on one runtime, against one fixture remount, so the repeat and
+	 * cold populations are read in the same session and neither is compared across
+	 * sessions.
 	 */
-	async function runM1Fixture(fixture: P23BDriveFixture, arms = false, labelArms = false): Promise<void> {
+	async function runM1Fixture(
+		fixture: P23BDriveFixture,
+		arms = false,
+		labelArms = false,
+		coldLabelArms = false
+	): Promise<void> {
 		const { targets, selection } = await hostS1Fixture(fixture);
-		for (const entry of P23B_M1_ACTION_CLASSES) {
-			const timing: M1ClassTiming = {
-				fixtureId: fixture.id,
-				// The RECORDED class name, so the series and the window this class
-				// measures are found again by the row that reports them.
-				actionClass: p23bM1MeasuredClass(entry.actionClass),
-				drag: entry.drag,
-				// BEFORE/AFTER mode interleaves the arms on the whole-Room class and
-				// nowhere else: it is the one class this change touched.
-				arms: arms && entry.actionClass === 'whole-room-move-bridge' ? P23B_M1_ROOM_DRAG_ARMS : null,
-				// The Room-label arm is NOT confined to a class: the placer runs on every
-				// Plan render, so every class that changes the Plan while it is drawn
-				// takes it — which is all five.
-				labelArms: labelArms ? P23B_M1_ROOM_LABEL_ARMS : null
-			};
-			switch (entry.actionClass) {
-				case 'rigid-wall-drag':
-					await runRigidWallDragClass(fixture, targets, P23B_M1_PREFIX, timing);
-					break;
-				case 'bend':
-					await runBendClass(fixture, targets, selection, P23B_M1_PREFIX, timing);
-					break;
-				case 'whole-room-move-bridge':
-					await runWholeRoomMoveClass(fixture, targets, P23B_M1_PREFIX, timing);
-					break;
-				case 'wall-authoring':
-					await runWallAuthoringClass(fixture, targets, P23B_M1_PREFIX, timing);
-					break;
-				default:
-					await runRoomCreationClass(fixture, targets, P23B_M1_PREFIX, timing);
+		/**
+		 * ONE pass over the class list. `cold` is the whole of §16's difference: the
+		 * session prefix (and therefore the recorded class name) and one camera step
+		 * per attempt. Everything else — the classes, the order, the gestures, the
+		 * per-attempt arm, the undo restore, the window definition — is identical, so
+		 * the two passes are the same protocol at the two ends of one bracket.
+		 */
+		const pass = async (cold: boolean): Promise<void> => {
+			const prefix = cold ? P23B_M1_COLD_PREFIX : P23B_M1_PREFIX;
+			for (const entry of P23B_M1_ACTION_CLASSES) {
+				const timing: M1ClassTiming = {
+					fixtureId: fixture.id,
+					// The RECORDED class name, so the series and the window this class
+					// measures are found again by the row that reports them. The cold
+					// pass's name is the prefix apart, so it can never be read as the
+					// repeat pass's row.
+					actionClass: `${prefix}${entry.actionClass}`,
+					drag: entry.drag,
+					// BEFORE/AFTER mode interleaves the arms on the whole-Room class and
+					// nowhere else: it is the one class this change touched.
+					arms: arms && entry.actionClass === 'whole-room-move-bridge' ? P23B_M1_ROOM_DRAG_ARMS : null,
+					// The Room-label arm is NOT confined to a class: the placer runs on every
+					// Plan render, so every class that changes the Plan while it is drawn
+					// takes it — which is all five.
+					labelArms: labelArms ? P23B_M1_ROOM_LABEL_ARMS : null,
+					cold
+				};
+				switch (entry.actionClass) {
+					case 'rigid-wall-drag':
+						await runRigidWallDragClass(fixture, targets, prefix, timing);
+						break;
+					case 'bend':
+						await runBendClass(fixture, targets, selection, prefix, timing);
+						break;
+					case 'whole-room-move-bridge':
+						await runWholeRoomMoveClass(fixture, targets, prefix, timing);
+						break;
+					case 'wall-authoring':
+						await runWallAuthoringClass(fixture, targets, prefix, timing);
+						break;
+					default:
+						await runRoomCreationClass(fixture, targets, prefix, timing);
+				}
 			}
-		}
+		};
+		await pass(false);
+		if (coldLabelArms) await pass(true);
 		// The label arm is per fixture, not per class: it was set inside each attempt's
 		// gesture and must be released before the next fixture is hosted, or a render
 		// during hosting would run the pre-change grid.
@@ -1329,8 +1420,13 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * arms (every class). They are separate switches on purpose: the two changes are
 	 * orthogonal, and a run that flipped both at once would thin every cell to a
 	 * quarter and confound them on the one class they share.
+	 *
+	 * `coldLabelArms` adds §16's second pass over the same classes with the camera
+	 * moved between attempts. It is a THIRD switch rather than part of `labelArms` so
+	 * that a reader can still run the repeat workload alone, and so the cold pass can
+	 * never be mistaken for the population §14 §15 were measured on.
 	 */
-	async function runM1(arms = false, labelArms = false): Promise<void> {
+	async function runM1(arms = false, labelArms = false, coldLabelArms = false): Promise<void> {
 		installPointerCaptureNoop();
 		p23bM1ResetFrameTiming();
 		p23bM1ResetActionArms();
@@ -1340,7 +1436,13 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		progress = {
 			running: true,
 			fixtureId: null,
-			step: arms ? 'M1 arms starting' : labelArms ? 'M1 label arms starting' : 'M1 starting',
+			step: arms
+				? 'M1 arms starting'
+				: coldLabelArms
+					? 'M1 cold label arms starting'
+					: labelArms
+						? 'M1 label arms starting'
+						: 'M1 starting',
 			paths: {}
 		};
 		hooks.progress({ ...progress });
@@ -1350,9 +1452,17 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 				if (!fixture) throw new Error(`M1 fixture is missing: ${id}`);
 				progress = { ...progress, fixtureId: fixture.id, paths: {} };
 				hooks.progress({ ...progress });
-				await runM1Fixture(fixture, arms, labelArms);
+				await runM1Fixture(fixture, arms, labelArms, coldLabelArms);
 			}
-			report(arms ? 'M1 arms complete' : labelArms ? 'M1 label arms complete' : 'M1 complete');
+			report(
+				arms
+					? 'M1 arms complete'
+					: coldLabelArms
+						? 'M1 cold label arms complete'
+						: labelArms
+							? 'M1 label arms complete'
+							: 'M1 complete'
+			);
 		} finally {
 			// Both switches are released here as well as at their own boundaries, so an
 			// aborted run can never leave a before path selected for a later session.
