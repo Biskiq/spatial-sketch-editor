@@ -248,6 +248,14 @@ movement instead of popping. A wall off its footprint keeps the sheet as before,
 peeled wall still cannot be mistaken for an authored change of shape (plan §4.5), and journeys A–F
 and the 27 interaction checks were re-run unchanged (48/48 and 27/27, 0 console errors).
 
+**This rule is an owner interim choice, not a design resolution.** It reads wider than plan §4.5 and
+it has one measured conformance gap: a papered wall loses its selection cue (settled and selected →
+body `sheet`, outline `line`, no selection marks; in 3D the same wall is `foamSel` + `lineSel`, against
+plan §5's “persistent contour … dark ochre on paper”). A decision brief listing the three candidate
+rules, their costs and the open sub-questions is in
+[`paper-surface-brief.md`](../paper-surface-brief.md), for a principal designer to settle before the
+plan is revised.
+
 ## 4b. Owner-directed changes after the first review (2026-09-29)
 
 Three asks came from the owner reviewing the running demo. Two are outside the plan's letter and are
