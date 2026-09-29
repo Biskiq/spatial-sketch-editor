@@ -126,6 +126,8 @@ no recurring semantic review, no standing audit, no schema/format change
 
 These are historical text conflicts, not architecture candidates; none is a Phase 1 mechanism.
 
+EVIDENCE-PATHS: start — the pre-`650f7c1` contract paths the rows quote, as written at the revisions they name; evidence, not routes to follow
+
 | Contradiction | Text vs change | Status |
 |---|---|---|
 | X1 — the persistence contract said "no version field, no migrations" while wall-first `formatVersion`, migration and Scene `formatVersion: 1` were live (09-09 → 09-17) | `docs/components/persistence.md` (identical at `f8411f7`, `41a5cde`, `d41cfd5`, `810bc8c`, `368a799`) vs `13a96a0`, `41a5cde`, `d36695c`/`d41cfd5` | **Resolved inside the frozen range** by `650f7c1` (09-18), which rewrote the contract. A ~9-day overlap; no Phase 1 change |
@@ -133,6 +135,8 @@ These are historical text conflicts, not architecture candidates; none is a Phas
 | X3 — P23.0's cutover crossed the then-written Scene SoT and visitor-gating rules | A §6 (`41a5cde`, `b5427d8`, `2c9b04d`, `32b2e8f`) vs the same `AGENTS.md` rules | **Resolved inside the frozen range** by `650f7c1`; the direction itself was covered by the ratified North Star and the active P23.0 staged-rollout plans |
 | Historical authority caveat (load-bearing) | Until `f7a31e2` (09-19), rule 10 placed "source code + tests" first **when live docs conflicted**; that helps interpret X1 but does not override `AGENTS.md`'s express precedence for its hard rules. X2/X3 remained hard-rule contradictions until `650f7c1` repaired the text. The ratified North Star and active P23.0 staged-rollout plans establish the intended direction, not authorization from rule 10 to ignore the interim contradiction | Carry the direction, contradiction and in-range repair into `adjudication.md` without calling the hard-rule drift precedence-resolved |
 | Considered and **not** established | Visitor isolation vs the `layout-core` barrel (no chunk build performed); museum "frozen"/"read-only" vs source edits; the geometry boundary vs snap CSS-px parameters and dev-gated perf marks; test rule 16 vs production code (out of its stated scope) | Recorded, not resolved — no Phase 1 change either way |
+
+EVIDENCE-PATHS: end
 
 ### 2.3 Evidence-reading notes (about the frozen outputs)
 

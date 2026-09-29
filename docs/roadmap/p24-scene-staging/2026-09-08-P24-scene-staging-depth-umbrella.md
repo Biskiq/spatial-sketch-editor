@@ -53,6 +53,8 @@ PlanProxy fixtures, pipeline references and reject/defer lists.
 
 ### Phase 4 — P24B rich 3D staging
 
+EVIDENCE-PATHS: start — the absent full research source named below, recorded as written
+
 Current checked-in research:
 
 - `docs/roadmap/p24-scene-staging/research/deep-research-P24-3D-editing-compact.md`
@@ -62,6 +64,8 @@ The compact artifact says it is a compression/normalization of
 That full source file is **not currently present on `main`**. Until it is added,
 the compact artifact is the durable Phase 4 research input and agents must not
 claim to have inspected evidence that exists only in the absent source.
+
+EVIDENCE-PATHS: end
 
 Phase 4 is useful as a **capability/reference inventory**, not as a direct P24B
 implementation plan. Its generic “must-build” list includes several capabilities

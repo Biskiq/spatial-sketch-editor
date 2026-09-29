@@ -1,5 +1,7 @@
 # Architecture Operating Cycle — Workflow Harvest
 
+EVIDENCE-PATHS: start — paths as they stood at each cited revision (pre-`650f7c1` layout); evidence, not routes to follow
+
 Historical workflow harvest produced as Prerequisite 2 of the pre-implementation
 Architecture Operating Cycle plan. This is a workflow harvest, not a product-code
 harvest and not Phase 0.

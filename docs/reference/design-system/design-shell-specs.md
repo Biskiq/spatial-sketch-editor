@@ -1240,6 +1240,15 @@ Hierarchy selection follows the same mode authority:
 
 ---
 
+# 29.–30. Staging footprints and Scene selection continuity — moved 2026-08-21
+
+Scene workspace sections 29 (staging footprints) and 30 (scene selection
+continuity) moved with §6–13:
+[`Shell-scene-workspaces.md`](./shell-scene-workspaces.md) §29–§30. Section numbers
+are unchanged by the move; external `§N` references stay valid against that file.
+
+---
+
 # 31. Mode Persistence
 
 `layout | arrange` is remembered while the user remains in the editor

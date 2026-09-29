@@ -1,7 +1,11 @@
 # P24 3D Editing — Compact Reference Artifact
 
+EVIDENCE-PATHS: start — the full source artifact this compression names is not on `main`; recorded as written
+
 > Source: `docs/roadmap/p24-scene-staging/research/deep-research-P24-3D-editing.md` (202 lines). Compression/normalization, not summary. Covers deliverables A–S: P24B minimum 3D scene operations, follow-ups, operation spec, architecture, comparisons, tests, spikes, decision. All tools, matrix dimensions, features, ops, tests, and caveats preserved in dense form. No new research; uncertainty preserved (incl. conflicting snap increments as written); no citations invented.
 > Thesis: P24B = core 3D scene operations (select, transform, pivot, duplicate, replace, align, group, floor-snap, snapping, outliner, visibility, drag/drop, inspector, shortcuts, single coalesced undo) on one unified TransformControls pipeline + PBR/HDRI environment, with LayoutDocument/SceneDocument split and no persisted Three objects. Advanced modeling, VR, collaboration, animation, physics deferred.
+
+EVIDENCE-PATHS: end
 
 ## 1. Tool / Repo Shortlist
 

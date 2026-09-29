@@ -455,7 +455,9 @@ for:
 
 Do not use monospace for normal numeric fields. Inter with tabular figures keeps the UI cleaner.
 
----# 7. Core color system
+---
+
+# 7. Core color system
 
 The generated images do not provide exact CSS colors, so these become the normalized implementation tokens. All tokens use the `--editor-` prefix so the editor never collides with the host app or the `/museum` visitor.
 

@@ -136,7 +136,11 @@ imports back to `$lib`.
   `tests/helpers/docs-references.ts` derives the root from `import.meta.url` like
   the other boundary helpers, and intersects its walk with `git ls-files` so an
   untracked scratch copy is never held to the gate. When git is unavailable it
-  falls back to the walk alone, minus the named exclusions.
+  falls back to the walk alone, minus the named exclusions. Numbered sections are
+  held to their own sequence (a gap is a swallowed heading; a `# 6.–13. … — moved`
+  placeholder accounts for a declared range), and a heading glued to the rule
+  above it (`---# 7. Core color system`) is reported directly, because Markdown
+  renders it as prose and the section disappears.
 - **Keyboard/traversal contracts that slice Svelte source are shape pins.**
   `plan-keyboard-navigation` slices `LayoutPlanViewport.svelte` and asserts text —
   it passed while the announcement missed required value+units. The pure halves
@@ -188,9 +192,13 @@ cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs
 and `Repo-Audit/` (captured audit logs written against another checkout) are
 excluded by name — `NON_DOCUMENTATION_PREFIXES` in
 `tests/helpers/docs-references.ts`, which is the one place that decides coverage.
-Written paths are held to the repository's own file list (`git ls-files`), so a
-document may still name a deliberately local artifact it explains how to
-regenerate.
+A path `git check-ignore` reports is left alone too, so a document may still name
+the deliberately local artifact it explains how to regenerate `.env` from.
+A record that quotes paths which have since moved or been deleted declares them
+instead of rewriting them: `EVIDENCE-PATHS: start` … `EVIDENCE-PATHS: end` (an
+unclosed `start` runs to the end of the document). Only written paths are exempt
+inside such a region — a record's links and anchors are still resolved, because
+those are the reader's route today. `docs/README.md` owns the convention.
 
 The P23B.0 browser baseline is exported from `/dev/perf/p23b` and written only
 through `bench:record`:

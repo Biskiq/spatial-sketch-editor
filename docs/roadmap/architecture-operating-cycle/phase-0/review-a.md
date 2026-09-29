@@ -1,5 +1,7 @@
 # Phase 0 semantic architecture investigation — Reviewer A
 
+EVIDENCE-PATHS: start — paths as they stood at each revision this review inspected; evidence, not routes to follow
+
 Status: independently completed and frozen locally. This document records candidate evidence only. It does not classify candidates, ratify architecture, propose enforcement mechanisms, or answer the owner's adjudication questions.
 
 ## 1. Scope and method

@@ -1,5 +1,7 @@
 # Phase 0 — semantic architecture review B
 
+EVIDENCE-PATHS: start — paths as they stood at each revision this review inspected; evidence, not routes to follow
+
 ```text
 STATUS:  FROZEN (local) 2026-09-22 — Reviewer B output, held under the both-or-neither embargo
 ROLE:    Phase-0 evidence, architecture lane (Assignment B). Input to owner adjudication.

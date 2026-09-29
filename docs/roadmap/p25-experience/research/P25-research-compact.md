@@ -1,6 +1,10 @@
 # P25 Focused Experience Research — Compact
 
+EVIDENCE-PATHS: start — the full research source this compression names is not on `main`; recorded as written
+
 Source: `docs/roadmap/p25-experience/research/P25-research.md` ( §§0–14 ). Reorganized by concept; source-only, no version updates.
+
+EVIDENCE-PATHS: end
 
 ## 1. Thesis / direction
 
