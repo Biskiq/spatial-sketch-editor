@@ -107,6 +107,7 @@ not needed to contribute a normal test.
 |---|---|
 | Test suites | `tests/lib/...`, mirrored to `src/lib/...` |
 | Test-only helpers (`editor-test-utils.ts`, `layout-a1-fixtures.ts`) | `tests/lib/...` next to their consumers |
+| A repo-wide check with no `src/` counterpart (documentation cross-references) | `tests/helpers/docs-references.ts` + `tests/docs/` |
 | Fixtures (`__fixtures__/` dirs with `.ts` + `.json`) | `tests/lib/.../__fixtures__/` |
 | Modules imported by both tests **and** `src/` | stay in `src/lib/` (e.g. `bench-types.ts`, `plan-bench.ts` — used by the dev perf route) |
 
@@ -131,6 +132,15 @@ imports back to `$lib`.
 - **A drawing gesture on Plan needs `setPointerCapture` stubbed** for synthetic
   pointers. That is the only platform call QA stubs; no app gesture logic is
   touched by it.
+- **The documentation gate reads the repository root, not `src/`.**
+  `tests/helpers/docs-references.ts` derives the root from `import.meta.url` like
+  the other boundary helpers, and intersects its walk with `git ls-files` so an
+  untracked scratch copy is never held to the gate. When git is unavailable it
+  falls back to the walk alone, minus the named exclusions. Numbered sections are
+  held to their own sequence (a gap is a swallowed heading; a `# 6.–13. … — moved`
+  placeholder accounts for a declared range), and a heading glued to the rule
+  above it (`---# 7. Core color system`) is reported directly, because Markdown
+  renders it as prose and the section disappears.
 - **Keyboard/traversal contracts that slice Svelte source are shape pins.**
   `plan-keyboard-navigation` slices `LayoutPlanViewport.svelte` and asserts text —
   it passed while the announcement missed required value+units. The pure halves
@@ -165,6 +175,30 @@ The heavy lane sets `--expose-gc` and `P23B6_REQUIRE_GC=1`; P23B.6 H-6 lives
 in this lane and fails collection if the required `globalThis.gc` hook is absent.
 The regular full suite may skip the forced-GC H-6 cases when run without that
 environment.
+
+The arch lane also carries one **repo-wide documentation gate**
+(`tests/docs/documentation-references.test.ts`): every Markdown document the
+repository authors must resolve its own relative links, written-out paths and
+`#section` anchors. It belongs to the arch lane because nothing imports a `docs/`
+reference — no lane, build or type-check can see a moved file or a renamed
+heading, so only an unconditional lane can hold it. Run it alone while writing
+documentation:
+
+```bash
+cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs
+```
+
+`docs/archive/` (history, whose relative paths record the layouts of their time)
+and `Repo-Audit/` (captured audit logs written against another checkout) are
+excluded by name — `NON_DOCUMENTATION_PREFIXES` in
+`tests/helpers/docs-references.ts`, which is the one place that decides coverage.
+A path `git check-ignore` reports is left alone too, so a document may still name
+the deliberately local artifact it explains how to regenerate `.env` from.
+A record that quotes paths which have since moved or been deleted declares them
+instead of rewriting them: `EVIDENCE-PATHS: start` … `EVIDENCE-PATHS: end` (an
+unclosed `start` runs to the end of the document). Only written paths are exempt
+inside such a region — a record's links and anchors are still resolved, because
+those are the reader's route today. `docs/README.md` owns the convention.
 
 The P23B.0 browser baseline is exported from `/dev/perf/p23b` and written only
 through `bench:record`:

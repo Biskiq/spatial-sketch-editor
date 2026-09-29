@@ -275,6 +275,29 @@ When the owner decides: fold the ruling into the rule/section it governs.
 **Plans preserve conclusions and necessary rationale; Git/PR history preserves
 deliberation.**
 
+### Historical paths in a record (on-demand — writing a record)
+
+> **Trigger:** read when a record quotes a file that has since moved or been
+> deleted, or quotes another repository's checkout.
+
+A record states what was true at the revision it describes, so a path it quotes is
+evidence, not a route: a contract since moved under `docs/reference/`, a
+validation test a later phase deleted, another project's `packages/…` tree. Keep
+those paths exactly as written and declare them, rather than rewriting the record
+or letting them fail the cross-reference gate:
+
+```text
+EVIDENCE-PATHS: start — <what these paths are evidence of, and the revision>
+EVIDENCE-PATHS: end
+```
+
+Written paths inside the region are not resolved. Links, definitions and
+`#anchors` still are — a record's link is the reader's route today — and an
+unclosed `start` runs to the end of the document, so a wholly historical record
+declares one line. A path that routes a reader today ("the gate record is at …")
+is fixed rather than declared: the gate is
+`apps/editor/tests/docs/documentation-references.test.ts`.
+
 ## Update rules (on-demand — status / closeout / checkpoint events)
 
 > **Trigger:** read when actually promoting landed truth, changing P-level or

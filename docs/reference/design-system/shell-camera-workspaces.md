@@ -1,8 +1,8 @@
 # Museum Editor — Shell Spec · Camera Workspaces
 
-**Status:** part of the shell/workspace exposure specification — **ratified 2026-08-19**; split from [`Design-shell-specs.md`](./Design-shell-specs.md) 2026-08-21 (**section numbers preserved**); **P21+ tool-placement reconciliation 2026-09-03** (placement only — see note below).
+**Status:** part of the shell/workspace exposure specification — **ratified 2026-08-19**; split from [`Design-shell-specs.md`](./design-shell-specs.md) 2026-08-21 (**section numbers preserved**); **P21+ tool-placement reconciliation 2026-09-03** (placement only — see note below).
 **Scope:** §9 Camera → Plan · §10 Camera → 3D · §11 Timeline ownership · §12 Timeline exposure · §13 Camera selection continuity.
-Global shell / cross-domain rules live in [`Design-shell-specs.md`](./Design-shell-specs.md); scene workspaces in [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md).
+Global shell / cross-domain rules live in [`Design-shell-specs.md`](./design-shell-specs.md); scene workspaces in [`Shell-scene-workspaces.md`](./shell-scene-workspaces.md).
 
 > **P23.14 placement note (2026-09-19, landed):** the ribbon band is gone. Camera
 > Plan / Camera 3D mount the Contextual View Bar plus their own **Tool Tray** (a

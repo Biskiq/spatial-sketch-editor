@@ -1,5 +1,7 @@
 # Pascal Editor — completed harvest
 
+EVIDENCE-PATHS: start — paths in the pinned upstream checkout (`pascalorg/editor` @ `32c3c8a24dae17c55beaabf45029148900a3b409`); upstream evidence, not files in this repository
+
 **Date:** 2026-09-09
 **Status:** complete static harvest at the pinned revision. Not an implementation gate.
 **Brief:** [Pascal harvest brief](Pascal-editor-harvest-brief.md) (CLOSED)

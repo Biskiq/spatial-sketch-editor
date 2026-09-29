@@ -24,8 +24,8 @@
  * Durable architecture boundaries: visitor/editor isolation, single
  * camera-motion/navigation ownership (contracts' single-owner source group),
  * Layout/Scene format ownership, transaction guards, package/import
- * direction, plan-render, camera-core, wall-mesh shell and project-model
- * boundaries. Harvest §C KEEP_ARCH list.
+ * direction, plan-render, camera-core, wall-mesh shell, project-model and
+ * documentation cross-reference boundaries. Harvest §C KEEP_ARCH list.
  */
 export const ARCH_FILES: string[] = [
 	// Package / import direction + render/camera/wall boundaries.
@@ -57,6 +57,15 @@ export const ARCH_FILES: string[] = [
 	// unconditional boundaries that needed a home of their own are these.
 	'tests/lib/editor/app/editor-entry-boundary.test.ts',
 	'tests/lib/editor/gizmo/editor-gizmo-boundary.test.ts',
+	// Documentation cross-reference integrity. Durable and repo-wide: no product
+	// code imports a `docs/` link, so a moved file or a renamed section heading
+	// breaks a reader's route silently, in every lane and every build. Two such
+	// breaks were caught by hand in review of the P26 visual-language
+	// reconciliation, which is what makes this a boundary rather than a nicety.
+	// Written paths are held to the repository's own file list (`git ls-files`),
+	// so a document may still name the deliberately local captures it explains
+	// how to regenerate.
+	'tests/docs/documentation-references.test.ts',
 	// Frozen `/museum/editor` relic isolation (harvest §C.1.4 / T2c). Every one
 	// of its six claims is an unconditional mount/isolation guarantee — the
 	// mount target, the Paris-only gate, the frozen transport, the shared-store
