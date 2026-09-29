@@ -565,31 +565,14 @@ export function layoutPreviewSnapshotMatchesLive(
 }
 
 /**
- * P23B.7 S6 — compatibility mapping for a live state that proxies geometry.
- *
- * Before S-R, the outer `$state` graph deep-proxied `state.geometry`. A capture
- * then handed restore a different identity from the one the install cached,
- * causing a second mesh build on every accepted edit. S-R keeps this mapping as
- * a fallback for proxying state adapters, while production preview state exposes
- * geometry through a `$state.raw` field signal and normally needs no mapping.
- * Cache entries remain keyed to the compile's geometry object in either case.
- */
-const wallMeshIdentities = new WeakMap<object, object>();
-
-/** The cache key one geometry resolves to: always the compile's own object. */
-function wallMeshCacheKey(geometry: CompiledLayoutGeometry): CompiledLayoutGeometry {
-	return (wallMeshIdentities.get(geometry) as CompiledLayoutGeometry | undefined) ?? geometry;
-}
-
-/**
- * Write a compiled geometry onto the state and retain the S6 compatibility
- * mapping if an adapter reads it back through a proxy. The S-R production
- * accessors preserve the exact raw identity, so this mapping is dormant there.
+ * P23B.8 follow-up S3 (D9) — the P23B.7 S6 proxy-compatibility mapping is
+ * retired. S-R accessors expose geometry through a `$state.raw` field signal,
+ * so the live read-back is always the compile's own object; the mapping was
+ * dormant (proven by `p23b8-d9-dormant-scan`). Cache entries stay keyed to the
+ * compile's geometry object.
  */
 function installWallGeometry(state: LayoutPreviewState, geometry: CompiledLayoutGeometry): void {
 	state.geometry = geometry;
-	const live = state.geometry as unknown;
-	if (live !== geometry) wallMeshIdentities.set(live as object, wallMeshCacheKey(geometry));
 }
 
 /**
@@ -605,8 +588,8 @@ function resolveWallMeshes(
 	geometry: CompiledLayoutGeometry,
 	referenceGeometry?: CompiledLayoutGeometry
 ): ReturnType<typeof prepareWallMeshes> {
-	const key = wallMeshCacheKey(geometry);
-	const referenceKey = referenceGeometry ? wallMeshCacheKey(referenceGeometry) : undefined;
+	const key = geometry;
+	const referenceKey = referenceGeometry;
 	const cached = getPreparedWallMeshes(key);
 	if (cached) {
 		// P23B measurement-only step: which identity hit the cache.

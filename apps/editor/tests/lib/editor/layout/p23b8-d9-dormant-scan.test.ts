@@ -38,15 +38,15 @@ async function walkProductionFiles(root: string): Promise<string[]> {
 }
 
 describe('p23b.8 S3 — D9 dormant mapping has no production readers', () => {
-	it('wallMeshIdentities / wallMeshCacheKey are module-private with zero production importers', async () => {
+	it('wallMeshIdentities / wallMeshCacheKey are retired: absent from production source', async () => {
 		const defining = await readFile(
 			path.join(SRC_ROOT, 'lib/editor/layout/layout-preview-state.svelte.ts'),
 			'utf8'
 		);
-		// Not exported: no production module can name them.
-		expect(defining).not.toMatch(/export\s+(const|function)\s+wallMeshIdentities/);
-		expect(defining).not.toMatch(/export\s+function\s+wallMeshCacheKey/);
-		expect(defining).not.toMatch(/export\s+function\s+installWallGeometry/);
+		// Retired by P23B.8 S3 (D9): neither the WeakMap nor the compat key
+		// function may reappear in production source.
+		expect(defining).not.toMatch(/wallMeshIdentities/);
+		expect(defining).not.toMatch(/wallMeshCacheKey/);
 
 		const files = await walkProductionFiles(SRC_ROOT);
 		const readers: string[] = [];
