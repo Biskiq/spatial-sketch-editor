@@ -1,26 +1,32 @@
 # Current
 
-PHASE: P23B — geometry performance & stabilization (P-level status → ../roadmap/README.md)
-CHILD: P23B.8 follow-up — SHIPPED and closed 2026-09-29 (owner-accepted: all 4
-       calls confirmed as presented — lod (a) UNCHANGED · D10 ruling stands ·
-       S6 REVERT · S9 STAY; S0–S10 on branch `p23b.8-follow-up`, one PR #101,
-       squash-merged; tag `closed/p23b.8-follow-up` local only; recovery via
-       `refs/pull/101/head`; plan + 12 records live as P23B.9 gate evidence →
-       ../roadmap/p23b-geometry-performance/p23b.8-follow-up/2026-09-29-P23B.8-follow-up-acceptance-record.md).
-       Full contract green at close: fast 331/4,821 · arch 23/254 · heavy 8/93 ·
-       perf 9+1 · check 0/0 · builds ok · visitor-bundle 3/9.
-STAGE: P23 closed 2026-09-22. P23B executes the owner-ratified SEQUENCE between P23 and P26
-       (phase README §SEQUENCE + five owner-authorized amendments). Shipped and closed:
-       P23B.3a · P23B.0-durable · P23B.4 · P23B.5 · the measurement-only step · P23B.7 ·
-       P23B.6 · P23B.11 · the pre-P23B.8 follow-up (M1 + R1, then the expanded scope) ·
-       P23B.8 (decision) · P23B.8 follow-up. P23B.1 and P23B.2 retain their own review statuses.
-       Architecture cycle: PHASE_1 installed, no owner action required.
+PHASE: F — foundation contracts (P-level status → ../roadmap/README.md;
+       phase registration → ../roadmap/f-foundation-contracts/README.md)
+CHILD: F.1–F.5 — the target contract is WRITTEN and OWNER-RATIFIED (2026-09-27, with
+       amendments); NO IMPLEMENTATION IS AUTHORIZED. Normative text →
+       ../reference/composition-execution.md. What remains is drafting each exact interface
+       with its first consumer and ratifying it as an amendment — no track mints its own.
+STAGE: P23 closed 2026-09-22; P23B CLOSED 2026-09-29 by owner invocation of `phase-closeout`
+       (final gate P23B.10; P23B.9's correctness + performance gate accepted; all twelve
+       children shipped and closed; the `SEQUENCE` block preserved byte-identically; cycle
+       PHASE_1 unchanged — a same-state close, so no cycle write and no META pointer).
+       Close record → ../roadmap/p23b-geometry-performance/p23b.10-phase-closeout/2026-09-29-P23B.10-closeout-record.md
+       §PHASE CLOSE · phase close block →
+       ../roadmap/p23b-geometry-performance/README.md (PHASE CLOSE).
 RATIFIED DIRECTION (2026-09-27): Biskiq northstar decision record →
-       ../reference/decisions/northstar-ratification-2026-09-27.md (normative for new design);
-       F foundation contract F.1–F.5 → ../reference/composition-execution.md (authorizes no
-       implementation). P26 planning re-derived as T1 against F; P26 implementation unauthorized.
-NEXT: P23B.9 correctness + performance-regression gate — covers whatever the follow-up
-       shipped (S3/S8 equivalence evidence → the follow-up acceptance record). UNRATIFIED
-       and UNAUTHORIZED: starts only on the owner's ratification of its gate plan
-       (→ ../roadmap/p23b-geometry-performance/p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md).
-       P23B.10 stays unratified and unauthorized.
+       ../reference/decisions/northstar-ratification-2026-09-27.md (normative for new design).
+       Pipeline after F: parallel tracks T1 Spatial/P26 (the selected validation window,
+       planning only) · T2 Composition data/P24 · T3 Experience data/P25 · T4 Release, then
+       editing UI on T1's viewport seam, creator/audience trials, the Source Baseline and
+       P27–P30 (provisional). P26 implementation and validation remain gated.
+NEXT: F — draft and ratify the exact interfaces (reference/resolution result, unit header,
+       project envelope, authoring intent with expected revision, release manifest) with each
+       first consumer, as explicit amendments to the ratified contract.
+BLOCKERS: none for F. Open owner decisions carried: the MERGE of PR #103 (the P23B close
+       commits sit on branch `p23b.9-gate`, NOT merged — P-level `shipped` becomes true of
+       `main` when it lands) · phase-wide compaction of P23B's remaining landed plans and
+       records (P23B.10 C4, an owner call) · P23B.1's and P23B.2's own review statuses.
+CARRY: TD-4 (curved-fixture release-cost increases, unresolved) · TD-5 (the ~12×
+       `$state`-proxy cost) · the P23B.8 follow-up's D5 residual + probes · the M1
+       session-conditioning limitation (any before/after must be taken in ONE session) →
+       ../operations/tech-debt/README.md.
