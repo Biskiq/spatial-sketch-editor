@@ -8,13 +8,12 @@
  * ONE session, which is impossible for a change that is already in the tree
  * unless the tree can still run the OLD path on demand. This module is that
  * switch: a DEV-only arm, read per pointer event, that selects which of the two
- * whole-Room drag paths the shipped viewport executes.
+ * whole-Room drag paths the shipped viewport executes. (P23B.8 S8: the BEFORE
+ * arm is retired — only the shipped path remains. The recording registry below
+ * stays so old legs keep reading.)
  *
  *   `transient`  the shipped path: one proposal per pointermove, no planner
- *                call, no compile, no install, no history (the AFTER arm).
- *   `per-move`   the PRE-CHANGE path, verbatim: restore the frozen baseline and
- *                run the canonical planner per pointermove, installing every
- *                intermediate candidate (the BEFORE arm).
+ *                call, no compile, no install, no history.
  *
  * THE ARM IS MEASUREMENT-ONLY AND CANNOT REACH A PRODUCT BUILD. It is read
  * through `p23bM1RoomDragArm()`, which returns `transient` unless the DEV build
@@ -32,18 +31,16 @@
  * moves both arms, not one.
  */
 
-/** The two whole-Room drag paths M1 compares. */
-export type P23BM1RoomDragArm = 'transient' | 'per-move';
+/** The whole-Room drag path M1 ran. P23B.8 S8 retires the pre-change `per-move` path. */
+export type P23BM1RoomDragArm = 'transient';
 
 /**
- * The arm order the driver interleaves. `transient` (the shipped path) takes the
- * even attempts and `per-move` (the pre-change path) the odd ones, so the arms
- * alternate across the whole class rather than in two blocks.
+ * The arm order the driver interleaves. Post-S8 only the shipped path remains.
  */
-export const P23B_M1_ROOM_DRAG_ARMS = ['transient', 'per-move'] as const satisfies readonly P23BM1RoomDragArm[];
+export const P23B_M1_ROOM_DRAG_ARMS = ['transient'] as const satisfies readonly P23BM1RoomDragArm[];
 
 export const P23B_M1_ARM_RULE =
-	'One session, two arms, interleaved PER ATTEMPT: `transient` (the shipped path — one proposal per pointermove, no planner call, no compile, no install, no history) and `per-move` (the pre-change path — the frozen baseline restored and the canonical planner run per pointermove, every intermediate candidate installed). The arm is recorded against the RESOLVED ACTION index, and both arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so the comparison is a WITHIN-SESSION one by construction. Interleaving is the drift control: a machine that warms up, throttles or is otherwise re-conditioned mid-run moves both arms rather than one. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
+	'P23B.8 S8: the BEFORE/AFTER comparison is retired. One path remains: `transient` (the shipped path — one proposal per pointermove, no planner call, no compile, no install, no history). A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
 
 type ArmGlobals = typeof globalThis & {
 	__P2311_PERF__?: boolean;
@@ -60,14 +57,11 @@ export function p23bM1RoomDragArmEnabled(): boolean {
 }
 
 /**
- * The arm the next pointermove runs under. `transient` whenever the instrument is
- * off, so the shipped path is the default and the pre-change path is unreachable
- * without an explicit DEV switch.
+ * The arm the next pointermove runs under. Post-S8 always `transient`: the
+ * pre-change path is retired, so the shipped path is the only one.
  */
 export function p23bM1RoomDragArm(): P23BM1RoomDragArm {
-	if (!p23bM1RoomDragArmEnabled()) return 'transient';
-	const arm = (globalThis as ArmGlobals).__P23B_M1_ROOM_DRAG_ARM__;
-	return arm === 'per-move' ? 'per-move' : 'transient';
+	return 'transient';
 }
 
 /** Set (or with `null`, clear) the arm. Nothing here is persisted. */

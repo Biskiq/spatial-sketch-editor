@@ -12,7 +12,6 @@ import {
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
 	P23B_M1_ROOM_LABEL_ARM_AFTER,
-	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	p23bM1ActionLabelArmRecords,
 	p23bM1ActionLabelArmRecordsFor,
@@ -35,16 +34,16 @@ import { createPlanViewportState, type PlanViewportState } from '$lib/editor/lay
 import type { LayoutVec2 } from '$lib/layout/layout-types';
 
 /**
- * The BEFORE/AFTER arm is the one thing a product module learns about M1, so two
+ * The label arm is the one thing a product module learns about M1, so two
  * things are pinned here and nowhere else:
  *
- * 1. the GATE — no experimental grid may be selected unless the DEV build AND
+ * 1. the GATE — the bypass grid may be selected only when the DEV build AND
  *    `__P2311_PERF__` are both on, and the registry may only attribute an action to
  *    the arm it actually ran under;
- * 2. the PARITY — ALL FOUR arms place labels IDENTICALLY on a fixture set that covers
+ * 2. the PARITY — BOTH arms place labels IDENTICALLY on a fixture set that covers
  *    what the grid actually sees (long curved boundaries, concavity, masks of every
  *    kind, three zoom regimes, a sticky second pass). Without that, the arm would
- *    measure four behaviours instead of four costs; and the memo arm is asserted to have
+ *    measure two behaviours instead of two costs; and the memo arm is asserted to have
  *    HIT as well as to agree, because a cache that never hit would pass the parity by
  *    doing nothing at all; and
  * 3. the BUILD COUNT — the shipped placer reads the arm once per grid build, so the
@@ -73,13 +72,13 @@ describe('M1 room-label arm — the DEV switch', () => {
 		// The arm global alone is not enough: the whole instrument is gated like
 		// every other capture-side one, so a stray global in a production build
 		// still runs the shipped grid.
-		setP23bM1RoomLabelArm('per-cell-grid');
+		setP23bM1RoomLabelArm('no-memo-grid');
 		expect(p23bM1RoomLabelArmEnabled()).toBe(false);
 		expect(p23bM1RoomLabelArm()).toBe(P23B_M1_ROOM_LABEL_ARM_AFTER);
 
 		globals.__P2311_PERF__ = true;
 		expect(p23bM1RoomLabelArmEnabled()).toBe(true);
-		expect(p23bM1RoomLabelArm()).toBe('per-cell-grid');
+		expect(p23bM1RoomLabelArm()).toBe('no-memo-grid');
 	});
 
 	it('defaults to the shipped grid, and ignores a value it does not know', () => {
@@ -87,14 +86,9 @@ describe('M1 room-label arm — the DEV switch', () => {
 		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
 		globals.__P23B_M1_ROOM_LABEL_ARM__ = 'something-else';
 		expect(p23bM1RoomLabelArm()).toBe('seeded-grid');
-		// The previous shipped grid is still selectable — it is the BEFORE side of this
-		// pass's pair — but it has to be asked for by name like any other arm.
-		setP23bM1RoomLabelArm('pruned-grid');
-		expect(p23bM1RoomLabelArm()).toBe('pruned-grid');
-		setP23bM1RoomLabelArm('per-cell-grid');
-		expect(p23bM1RoomLabelArm()).toBe('per-cell-grid');
-		// The bypass arm is not a fourth grid but the SHIPPED grid with its cache skipped, so
+		// The bypass arm is not a second grid but the SHIPPED grid with its cache skipped, so
 		// it must be selectable by name and must never fall back to the shipped path.
+		// (P23B.8 S8: the pre-change and previous grids are retired.)
 		setP23bM1RoomLabelArm('no-memo-grid');
 		expect(p23bM1RoomLabelArm()).toBe('no-memo-grid');
 		setP23bM1RoomLabelArm(null);
@@ -110,7 +104,7 @@ describe('M1 room-label arm — the DEV switch', () => {
 		expect(p23bM1RoomLabelGridBuilds()).toBe(2);
 		// The count belongs to ONE attempt: the arm is chosen per attempt, so changing
 		// it is what closes the previous attempt's window.
-		setP23bM1RoomLabelArm('pruned-grid');
+		setP23bM1RoomLabelArm('no-memo-grid');
 		expect(p23bM1RoomLabelGridBuilds()).toBe(0);
 		// And it counts a production read too: the gate cannot hide a build.
 		delete globals.__P2311_PERF__;
@@ -119,21 +113,11 @@ describe('M1 room-label arm — the DEV switch', () => {
 	});
 
 	it('interleaves the shipped grid first, and states the one-session rule it exists for', () => {
-		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual([
-			'seeded-grid',
-			'pruned-grid',
-			'per-cell-grid',
-			'no-memo-grid'
-		]);
+		expect(P23B_M1_ROOM_LABEL_ARMS).toEqual(['seeded-grid', 'no-memo-grid']);
 		expect(P23B_M1_ROOM_LABEL_ARM_AFTER).toBe('seeded-grid');
-		expect(P23B_M1_ROOM_LABEL_ARM_BEFORE).toBe('pruned-grid');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('interleaved PER ATTEMPT');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('WITHIN-SESSION');
 		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('session-conditioned');
-		// The placer is a presentation cost, so the rule must say which rows it moves
-		// and which row stands beside them as the control.
-		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('post-release window');
-		expect(P23B_M1_ROOM_LABEL_ARM_RULE).toContain('unchanged control');
 	});
 });
 
@@ -142,10 +126,10 @@ describe('M1 room-label arm — the per-action registry', () => {
 	afterEach(() => p23bM1ResetActionLabelArms());
 
 	it('keys an arm to its fixture, class and action index, and to nothing else', () => {
-		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 3, 'per-cell-grid');
-		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 4, 'pruned-grid');
-		p23bM1RecordActionLabelArm('f2', 'p23b-m1:rigid-wall-drag', 3, 'pruned-grid');
-		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 0, 'per-cell-grid');
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 3, 'no-memo-grid');
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 4, 'seeded-grid');
+		p23bM1RecordActionLabelArm('f2', 'p23b-m1:rigid-wall-drag', 3, 'seeded-grid');
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:bend', 0, 'no-memo-grid');
 
 		expect(
 			p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:rigid-wall-drag').map((record) => [
@@ -153,22 +137,22 @@ describe('M1 room-label arm — the per-action registry', () => {
 				record.arm
 			])
 		).toEqual([
-			[3, 'per-cell-grid'],
-			[4, 'pruned-grid']
+			[3, 'no-memo-grid'],
+			[4, 'seeded-grid']
 		]);
 		expect(p23bM1ActionLabelArmRecordsFor('f2', 'p23b-m1:rigid-wall-drag')).toHaveLength(1);
 		expect(p23bM1ActionLabelArmRecordsFor('f2', 'p23b-m1:rigid-wall-drag')[0]?.arm).toBe(
-			'pruned-grid'
+			'seeded-grid'
 		);
 		// The build count travels with the action it was measured for: it is the same
 		// attempt window the arm belongs to, so a record can never pair an arm with a
 		// count taken while another arm was live.
 		expect(p23bM1ActionLabelArmRecords().map((record) => record.builds)).toEqual([0, 0, 0, 0]);
-		setP23bM1RoomLabelArm('pruned-grid');
+		setP23bM1RoomLabelArm('no-memo-grid');
 		p23bM1RoomLabelArm();
 		p23bM1RoomLabelArm();
 		p23bM1RoomLabelArm();
-		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 5, 'pruned-grid');
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 5, 'no-memo-grid');
 		expect(p23bM1ActionLabelArmRecords().at(-1)?.builds).toBe(3);
 		// A class that recorded nothing reads as an empty map — never as "all one
 		// arm", which would silently invent a before/after for an uninstrumented run.
@@ -177,7 +161,7 @@ describe('M1 room-label arm — the per-action registry', () => {
 	});
 
 	it('drops everything on reset, so arms cannot leak from one run into the next', () => {
-		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 0, 'per-cell-grid');
+		p23bM1RecordActionLabelArm('f1', 'p23b-m1:rigid-wall-drag', 0, 'no-memo-grid');
 		p23bM1ResetActionLabelArms();
 		expect(p23bM1ActionLabelArmRecords()).toHaveLength(0);
 		expect(p23bM1ActionLabelArmRecordsFor('f1', 'p23b-m1:rigid-wall-drag')).toHaveLength(0);
@@ -247,7 +231,7 @@ describe('M1 room-label arm — the grid-build key', () => {
 		held.push(99);
 		expect(p23bM1RoomLabelAttemptSequence()).toEqual([1, 2, 1, 2, 1]);
 		// The next attempt starts its own order, exactly as it starts its own count.
-		setP23bM1RoomLabelArm('pruned-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		setP23bM1RoomLabelArm('no-memo-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
 		expect(p23bM1RoomLabelAttemptSequence()).toEqual([]);
 	});
 
@@ -368,7 +352,7 @@ describe('M1 room-label arm — the grid-build key', () => {
 		expect(record?.distinctBuilds).toBe(2);
 		// The next attempt starts its own key set: the arm is set once per attempt, and
 		// setting it is what closes the previous one.
-		setP23bM1RoomLabelArm('pruned-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
+		setP23bM1RoomLabelArm('no-memo-grid', { fixtureId: 'f1', actionClass: 'p23b-m1:bend' });
 		expect(p23bM1RoomLabelAttemptKeys()).toBe(0);
 	});
 
@@ -543,10 +527,9 @@ describe('M1 room-label arm — every arm places labels identically', () => {
 	});
 
 	/**
-	 * The shipped arm is the reference and every other arm is compared against it, so a
-	 * three-arm run needs no pair matrix: if each arm equals the reference, they equal
-	 * each other. The reference is the AFTER side deliberately — the arm whose behaviour
-	 * ships is the one the others must not move.
+	 * The shipped arm is the reference and the other arm is compared against it: if it
+	 * equals the reference, they equal each other. The reference is the AFTER side
+	 * deliberately — the arm whose behaviour ships is the one the other must not move.
 	 */
 	const reference = P23B_M1_ROOM_LABEL_ARM_AFTER;
 	const others = P23B_M1_ROOM_LABEL_ARMS.filter((arm) => arm !== reference);

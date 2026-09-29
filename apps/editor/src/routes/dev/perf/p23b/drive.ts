@@ -40,13 +40,6 @@ import {
 	p23bM1ResetFrameTiming
 } from '$lib/bench/p23b-m1-frame-timing';
 import {
-	P23B_M1_ROOM_DRAG_ARMS,
-	p23bM1RecordActionArm,
-	p23bM1ResetActionArms,
-	setP23bM1RoomDragArm,
-	type P23BM1RoomDragArm
-} from '$lib/editor/layout/p23b-m1-room-drag-arm';
-import {
 	P23B_M1_ROOM_LABEL_ARMS,
 	p23bM1RecordActionLabelArm,
 	p23bM1ResetActionLabelArms,
@@ -978,12 +971,6 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		actionClass: string;
 		drag: boolean;
 		/**
-		 * The BEFORE/AFTER arm list this class interleaves per attempt, or `null`
-		 * for a class that runs one path only. Only the whole-Room class takes arms;
-		 * every other class leaves the arm switch alone.
-		 */
-		arms?: readonly P23BM1RoomDragArm[] | null;
-		/**
 		 * The Room-label arm list this class interleaves per attempt, or `null`.
 		 *
 		 * UNLIKE `arms` THIS ONE IS NOT CONFINED TO A CLASS. The placer runs on every
@@ -1202,26 +1189,18 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 			async (sessionId) => {
 				const roomCenter = targets.roomCenter;
 				const moved = p23bRoomMoveReleasePoint(roomCenter);
-				const arms = timing?.arms ?? null;
 				await repeatPath(sessionId, 'plan-drag-edit', DRIVE_ACTIONS_PER_PATH, async (index) => {
-					// The BEFORE/AFTER arm is chosen per ATTEMPT and recorded against the
-					// action the attempt resolved to, so the record can split the class's
-					// measured population by the arm that actually produced it.
-					const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;
-					if (arm) setP23bM1RoomDragArm(arm);
+					// P23B.8 S8: the BEFORE/AFTER comparison is retired — every
+					// attempt runs the shipped transient path.
 					const action = await withLabelArm(timing, index, () =>
 						bracketGestureFrames(timing, 'plan-drag-edit', () =>
 							pointerGesture(sessionId, clientPoint(roomCenter), clientPoint(moved))
 						)
 					);
-					if (arm && timing) p23bM1RecordActionArm(timing.fixtureId, timing.actionClass, action.index, arm);
 					const accepted = action.path === 'plan-drag-edit' && action.outcome === 'accepted';
 					if (accepted) await restore();
 					return { action, accepted };
 				});
-				// Hand the next class back the shipped path: the arm is per class, and a
-				// leaked `per-move` would silently measure the before arm everywhere.
-				if (arms) setP23bM1RoomDragArm(null);
 			},
 			prefix,
 			timing
@@ -1387,7 +1366,6 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 */
 	async function runM1Fixture(
 		fixture: P23BDriveFixture,
-		arms = false,
 		labelArms = false,
 		coldLabelArms = false
 	): Promise<void> {
@@ -1410,9 +1388,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 					// repeat pass's row.
 					actionClass: `${prefix}${entry.actionClass}`,
 					drag: entry.drag,
-					// BEFORE/AFTER mode interleaves the arms on the whole-Room class and
-					// nowhere else: it is the one class this change touched.
-					arms: arms && entry.actionClass === 'whole-room-move-bridge' ? P23B_M1_ROOM_DRAG_ARMS : null,
+					// P23B.8 S8: the room-drag BEFORE/AFTER comparison is retired.
 					// The Room-label arm is NOT confined to a class: the placer runs on every
 					// Plan render, so every class that changes the Plan while it is drawn
 					// takes it — which is all five.
@@ -1441,7 +1417,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		if (coldLabelArms) await pass(true);
 		// The label arm is per fixture, not per class: it was set inside each attempt's
 		// gesture and must be released before the next fixture is hosted, or a render
-		// during hosting would run the pre-change grid.
+		// during hosting would run a stale arm.
 		setP23bM1RoomLabelArm(null);
 		ensureTool('Select');
 	}
@@ -1452,33 +1428,28 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	 * instruments bracketed around the drags they belong to. This run writes no
 	 * baseline and reads none; every class it opens is `p23b-m1:`-prefixed.
 	 *
-	 * `arms` interleaves the room-drag arms (one class), `labelArms` the Room-label
-	 * arms (every class). They are separate switches on purpose: the two changes are
-	 * orthogonal, and a run that flipped both at once would thin every cell to a
-	 * quarter and confound them on the one class they share.
+	 * `labelArms` interleaves the Room-label arms (every class): the shipped grid
+	 * against its cache-bypassed self. (P23B.8 S8: the room-drag BEFORE/AFTER
+	 * comparison is retired.)
 	 *
 	 * `coldLabelArms` adds §16's second pass over the same classes with the camera
 	 * moved between attempts. It is a THIRD switch rather than part of `labelArms` so
 	 * that a reader can still run the repeat workload alone, and so the cold pass can
 	 * never be mistaken for the population §14 §15 were measured on.
 	 */
-	async function runM1(arms = false, labelArms = false, coldLabelArms = false): Promise<void> {
+	async function runM1(labelArms = false, coldLabelArms = false): Promise<void> {
 		installPointerCaptureNoop();
 		p23bM1ResetFrameTiming();
-		p23bM1ResetActionArms();
 		p23bM1ResetActionLabelArms();
-		setP23bM1RoomDragArm(null);
 		setP23bM1RoomLabelArm(null);
 		progress = {
 			running: true,
 			fixtureId: null,
-			step: arms
-				? 'M1 arms starting'
-				: coldLabelArms
-					? 'M1 cold label arms starting'
-					: labelArms
-						? 'M1 label arms starting'
-						: 'M1 starting',
+			step: coldLabelArms
+				? 'M1 cold label arms starting'
+				: labelArms
+					? 'M1 label arms starting'
+					: 'M1 starting',
 			paths: {}
 		};
 		hooks.progress({ ...progress });
@@ -1488,21 +1459,18 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 				if (!fixture) throw new Error(`M1 fixture is missing: ${id}`);
 				progress = { ...progress, fixtureId: fixture.id, paths: {} };
 				hooks.progress({ ...progress });
-				await runM1Fixture(fixture, arms, labelArms, coldLabelArms);
+				await runM1Fixture(fixture, labelArms, coldLabelArms);
 			}
 			report(
-				arms
-					? 'M1 arms complete'
-					: coldLabelArms
-						? 'M1 cold label arms complete'
-						: labelArms
-							? 'M1 label arms complete'
-							: 'M1 complete'
+				coldLabelArms
+					? 'M1 cold label arms complete'
+					: labelArms
+						? 'M1 label arms complete'
+						: 'M1 complete'
 			);
 		} finally {
-			// Both switches are released here as well as at their own boundaries, so an
-			// aborted run can never leave a before path selected for a later session.
-			setP23bM1RoomDragArm(null);
+			// The switch is released here as well as at its own boundary, so an
+			// aborted run can never leave an arm selected for a later session.
 			setP23bM1RoomLabelArm(null);
 			progress = { ...progress, running: false };
 			hooks.progress({ ...progress });

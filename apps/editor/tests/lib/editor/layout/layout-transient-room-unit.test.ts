@@ -591,25 +591,12 @@ describe('whole-Room drag wiring — each path is called exactly once', () => {
 		);
 		expect(occurrences(viewport, 'transientRoomUnitMove({')).toBe(1);
 		expect(occurrences(viewport, 'transientRoomUnitRotation({')).toBe(1);
-		// The SHIPPED path has exactly ONE canonical planner call per motion, both at
-		// the release. The only other occurrence is the DEV-gated BEFORE/AFTER arm
-		// (§P5) — the very path this slice removed, kept reachable so the before/after
-		// can be taken in one session without a pre-change tree. It is pinned inside
-		// the arm guard: a third occurrence, or one that is not arm-gated, fails here.
-		// Only translation has an arm: rotation had no pre-change path to compare
-		// against (it was unreachable), so it has no second call to pin.
-		const armGate = "if (drag.mode === 'translate' && p23bM1RoomDragArm() === 'per-move') {";
-		expect(occurrences(viewport, armGate)).toBe(1);
-		const armBranchStart = viewport.indexOf(armGate);
-		const armBranchEnd = viewport.indexOf('roomUnitMoveTransient =', armBranchStart);
-		expect(armBranchEnd).toBeGreaterThan(armBranchStart);
-		const armBranch = viewport.slice(armBranchStart, armBranchEnd);
-		expect(occurrences(armBranch, 'previewWallFirstRoomMove(')).toBe(1);
-		// Everything OUTSIDE the arm branch still has exactly the release's one call.
-		expect(
-			occurrences(viewport.slice(0, armBranchStart) + viewport.slice(armBranchEnd), 'previewWallFirstRoomMove(')
-		).toBe(1);
-		expect(occurrences(viewport, 'previewWallFirstRoomMove(')).toBe(2);
+		// The pointermove path makes NO canonical planner call: planning happens once,
+		// at the release. P23B.8 S8 retired the DEV-gated BEFORE/AFTER arm (§P5) that
+		// used to re-run the per-move planner call here, so any second occurrence —
+		// arm-gated or not — fails here.
+		expect(viewport).not.toContain('p23bM1RoomDragArm()');
+		expect(occurrences(viewport, 'previewWallFirstRoomMove(')).toBe(1);
 		expect(occurrences(viewport, 'previewWallFirstRoomRotation(')).toBe(1);
 		// The legacy Room-unit path keeps its own per-move installer, because its
 		// release commits the last previewed candidate rather than re-deriving.

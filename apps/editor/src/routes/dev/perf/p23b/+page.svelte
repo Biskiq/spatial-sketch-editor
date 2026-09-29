@@ -733,15 +733,9 @@ import {
 	let m1Record = $state<P23BM1Record | null>(null);
 	let m1LadderPixelsPerMeter = $state<number | null>(null);
 	/**
-	 * Whether the record on screen came from a BEFORE/AFTER arm run. Only the
-	 * provenance and the record's `schema.arms` note depend on it; the rows carry
-	 * the per-arm split themselves.
-	 */
-	let m1ArmsRun = $state(false);
-	/**
-	 * The same, for the Room-label arm run: a different switch over a different
-	 * population (every class, not one), so it gets its own flag, its own protocol id
-	 * and its own note rather than sharing the room drag's.
+	 * The same, for the Room-label arm run: a switch over every class (the placer
+	 * runs on every Plan render), so it gets its own flag, its own protocol id
+	 * and its own note.
 	 */
 	let m1LabelArmsRun = $state(false);
 	/**
@@ -1121,7 +1115,6 @@ import {
 	 * replace it with a presentation-grade row, and it says so in the file it writes.
 	 */
 	function p23bM1Record(
-		arms = m1ArmsRun,
 		labelArms = m1LabelArmsRun,
 		coldLabelArms = m1ColdLabelArmsRun
 	): P23BM1Record {
@@ -1140,19 +1133,15 @@ import {
 				machine: data.machine,
 				operatingSystem: data.operatingSystem,
 				nodeVersion: data.nodeVersion,
-				protocolId: arms
-					? 'pre-P23B.8-follow-up-M1-arms'
-					: coldLabelArms
-						? 'pre-P23B.8-follow-up-M1-cold-label-arms'
-						: labelArms
-							? 'pre-P23B.8-follow-up-M1-label-arms'
-							: 'pre-P23B.8-follow-up-M1',
-				protocolRevision: arms ? 2 : coldLabelArms ? 5 : labelArms ? 4 : 1,
-				arms: arms
-					? 'transient · per-move, interleaved per attempt on the whole-Room class (see schema.arms and each class row\'s arms block)'
-					: 'not run — one path per class',
+				protocolId: coldLabelArms
+					? 'pre-P23B.8-follow-up-M1-cold-label-arms'
+					: labelArms
+						? 'pre-P23B.8-follow-up-M1-label-arms'
+						: 'pre-P23B.8-follow-up-M1',
+				protocolRevision: coldLabelArms ? 5 : labelArms ? 4 : 1,
+				arms: 'not run — one path per class (P23B.8 S8: the BEFORE/AFTER comparison is retired)',
 				labelArms: labelArms
-					? 'seeded-grid · pruned-grid · per-cell-grid · no-memo-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — seeded-grid is the SHIPPED path and now runs the seeded grid through the placer\'s own bounded candidate cache, so the signed pair seeded-grid − pruned-grid is shipped against pre-change; per-cell-grid is summarized beside them so the previous pass\'s pruned-grid − per-cell-grid delta stays recomputable from this session; and no-memo-grid (the SAME grid with that cache BYPASSED) is read against seeded-grid as the reuse delta, from the cache\'s own hit counters; see each class row\'s labelArms block'
+					? 'seeded-grid · no-memo-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — seeded-grid is the SHIPPED path through the placer\'s own bounded candidate cache; no-memo-grid (the SAME grid with that cache BYPASSED) is read against seeded-grid as the reuse delta, from the cache\'s own hit counters; see each class row\'s labelArms block (P23B.8 S8: the pre-change/per-cell and previous/pruned arms are retired)'
 					: 'not run — one grid per class',
 				coldWorkload: coldLabelArms
 					? 'RUN, in the same session as the repeat workload: after each fixture\'s five repeat classes, the SAME five classes run again under the `p23b-m1-cold:` prefix with one pan before every attempt, whose direction advances by the golden angle — a camera walk that never returns to a projection an earlier attempt drew. It is a PAN and not a zoom, so the projected polygon is translated and nothing else: the placer does the same work per action and only the cache key moves, which is what makes the cold pass a controlled read of the reuse rather than a second workload. The camera move is its own ledger action and is deliberately left unassigned to any arm, so its windows are counted as `unassignedWindows` and never merged into a class\'s gesture windows. Read the cold rows as the LOW end of the bracket (a session shape that gives a persistent cache the least) and the `p23b-m1:` rows as the HIGH end (the undo between attempts returns the geometry to a state the previous attempt already drew); the within-settle reuse that generalises sits between them and near the low end.'
@@ -1194,13 +1183,11 @@ import {
 	 * harness keeps as containment records only, and the connected case is advisory.
 	 */
 	async function runM1Capture(
-		arms = false,
 		labelArms = false,
 		coldLabelArms = false
 	): Promise<P23BM1Record | null> {
 		if (driveRunning || m1Running || capturing || running) return null;
 		m1Running = true;
-		m1ArmsRun = arms;
 		m1LabelArmsRun = labelArms;
 		m1ColdLabelArmsRun = coldLabelArms;
 		m1Failure = '';
@@ -1232,9 +1219,9 @@ import {
 			}
 		});
 		try {
-			await driver.runM1(arms, labelArms, coldLabelArms);
+			await driver.runM1(labelArms, coldLabelArms);
 			m1LadderPixelsPerMeter = driver.ladderPixelsPerMeter();
-			const record = p23bM1Record(arms, labelArms, coldLabelArms);
+			const record = p23bM1Record(labelArms, coldLabelArms);
 			m1Record = record;
 			(globalThis as typeof globalThis & { __P23B_M1_RECORD__?: unknown }).__P23B_M1_RECORD__ = record;
 			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
@@ -1271,17 +1258,14 @@ import {
 		if (!dev) return;
 		const globals = globalThis as typeof globalThis & {
 			__P23B_M1_RUN__?: () => Promise<P23BM1Record | null>;
-			__P23B_M1_RUN_ARMS__?: () => Promise<P23BM1Record | null>;
 			__P23B_M1_RUN_LABEL_ARMS__?: () => Promise<P23BM1Record | null>;
 			__P23B_M1_RUN_LABEL_ARMS_COLD__?: () => Promise<P23BM1Record | null>;
 		};
 		globals.__P23B_M1_RUN__ = () => runM1Capture();
-		globals.__P23B_M1_RUN_ARMS__ = () => runM1Capture(true);
-		globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(false, true);
-		globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(false, true, true);
+		globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(true);
+		globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(true, true);
 		return () => {
 			delete globals.__P23B_M1_RUN__;
-			delete globals.__P23B_M1_RUN_ARMS__;
 			delete globals.__P23B_M1_RUN_LABEL_ARMS__;
 			delete globals.__P23B_M1_RUN_LABEL_ARMS_COLD__;
 		};
@@ -1456,25 +1440,14 @@ import {
 			{m1Running ? 'Running M1…' : 'Run M1 protocol'}
 		</button>
 		<p class="capture-hint">
-			<strong>Same-session before/after.</strong> The same protocol, but the whole-Room move class runs
-			BOTH code paths in one session, interleaved per attempt: the shipped <code>transient</code> proposal
-			and the pre-change <code>per-move</code> planner call, which is still reachable behind a DEV-only arm
-			switch so no pre-change tree is needed. The record then carries each class's per-arm rows and the
-			before/after table. Only the whole-Room class takes arms; every other class runs the shipped path.
-		</p>
-		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(true)}>
-			{m1Running ? 'Running M1…' : 'Run M1 before/after arms'}
-		</button>
-		<p class="capture-hint">
-			<strong>Room-label before/after.</strong> The same protocol again, but the Room-label placer's
-			eligibility grid runs every implementation in one session, interleaved per attempt: the shipped
-			<code>seeded-grid</code> (which now runs through the placer's own bounded candidate cache), the previous
-			<code>pruned-grid</code>, the pre-change <code>per-cell-grid</code> and the bypass arm
-			<code>no-memo-grid</code> (the same grid with that cache skipped), all reachable behind a DEV-only arm
-			switch. The placer runs on every Plan render, so EVERY class takes these arms — the rows they move are
+			<strong>Room-label arms.</strong> The same protocol again, but the Room-label placer's
+			eligibility grid runs two implementations in one session, interleaved per attempt: the shipped
+			<code>seeded-grid</code> (through the placer's own bounded candidate cache) and the bypass arm
+			<code>no-memo-grid</code> (the same grid with that cache skipped), both reachable behind a DEV-only arm
+			switch. (P23B.8 S8: the pre-change and previous grids are retired.) The placer runs on every Plan render, so EVERY class takes these arms — the rows they move are
 			the post-release windows, which the CDP runner reports per arm and per class.
 		</p>
-		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true)}>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(true)}>
 			{m1Running ? 'Running M1…' : 'Run M1 room-label arms'}
 		</button>
 		<p class="capture-hint">
@@ -1486,7 +1459,7 @@ import {
 			undo between attempts is what lets a persistent cache serve the next attempt, and the camera walk takes
 			that away. Read the repeat rows as the high end and the cold rows as the low end.
 		</p>
-		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true, true)}>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(true, true)}>
 			{m1Running ? 'Running M1…' : 'Run M1 room-label arms (cold workload)'}
 		</button>
 		{#if m1Failure}<p class="error">M1 failed: {m1Failure}</p>{/if}
