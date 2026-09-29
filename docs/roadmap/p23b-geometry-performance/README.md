@@ -992,6 +992,9 @@ child plans and execution status →
     runtimes, the R1 ranking method, and the two separable DEV-only instrumentation items; executed
     head `b6f2203b` on a clean tree; measurement and ranking only) →
   ./pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
+  P23B.8 follow-up plan (PROPOSED, unratified — parked items, one PR; implementation
+  unauthorized until ratified) →
+  ./p23b.8-follow-up/2026-09-29-P23B.8-follow-up-plan.md
   pre-P23B.8 follow-up records (S2 Chrome leg · S3 Electron leg + pair tables · S4 M1 session —
     gesture frames · presented frame · long-frame incidence · D7 · D13 · R1 ranking · acceptance
     record + preservation report) → ./pre-p23b.8-follow-up/
