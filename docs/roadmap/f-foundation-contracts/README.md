@@ -10,7 +10,8 @@ interface ownership, required/optional extensions) in the target contract
 direction **before P24/P25/P26 or later capabilities are re-planned**. F is
 contract-writing against the destination — not another architecture research
 cycle, and not a requirement to implement the complete composition kernel.
-Independent operational work (the P23B baton) continues by owner decision;
+Independent operational work (the P23B baton — that phase CLOSED 2026-09-29, so nothing runs
+beside F now) continues by owner decision;
 consumers must share these formats from their first new persisted or
 cross-domain implementation.
 

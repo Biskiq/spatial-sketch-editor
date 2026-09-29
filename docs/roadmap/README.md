@@ -20,7 +20,7 @@ there are grandfathered legacy).
 
 ```text
 PIPELINE (ratified 2026-09-27):
-P23B (continues)
+P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
   → F foundation contracts (F.1–F.5 owner-ratified 2026-09-27; exact interfaces land as amendments)
   → parallel tracks   T1 Spatial / P26
                       T2 Composition data / P24
@@ -41,7 +41,7 @@ and the promoted contracts ([`reference/north-star.md`](../reference/north-star.
 | Phase / track | Status | Goal | Workspace |
 |-------|--------|------|-----------|
 | P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
-| P23B | in-progress | geometry performance + stabilization; P23B.9's correctness + performance-regression gate is ACCEPTED and CLOSED 2026-09-29 and P23B.10's closeout is EXECUTED (both closeout-only, one branch/PR #103) — the phase is CLOSABLE and stays in-progress: the merge and the phase close are the owner's open decisions | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
+| P23B | shipped | geometry performance + stabilization — closed 2026-09-29 by owner ruling after P23B.9's correctness + performance-regression gate was accepted and P23B.10's closeout made the phase closable; the merge of its PR (#103) stays the owner's open decision | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
 | F | planning (target contract owner-ratified 2026-09-27 with amendments; no implementation authorized) | foundation contracts F.1–F.5 before capability replanning | [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md) |
 | T1 — Spatial foundation | proposed (re-derived P26; replan after F) | shared viewport/projection seam, runtime-safe Layout representation, level-ready vertical/Plan semantics | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | T2 — Composition data | proposed (re-derived P24; replan after F) | definitions, instances, resource revisions/locks, ordinary placement, truthful single-model creator import | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
