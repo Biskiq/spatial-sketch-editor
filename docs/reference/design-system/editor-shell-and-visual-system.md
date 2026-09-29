@@ -8,6 +8,13 @@ The post-implementation owner ratifications (R1–R4) and the implementation-era
 rules they produced are folded into the sections below (ratified 2026-09-19).
 **P23.14 is closed** (accepted 2026-09-21): this document is its durable outcome,
 the open owner calls it left behind are §0.3, and its dated artifacts are §0.6.  
+**Visual-language amendment (2026-09-29):** the **desired product visual language** is
+now the owner-accepted P26 demo redesign (merged #104), folded here as the owner-directed
+visual-system sequence step 3 ([`roadmap/README.md`](../../roadmap/README.md)). The
+destination is stated in **§0.7** and labelled **landed now / desired-from-demo
+(unbuilt) / still-unbuilt (T1 after F)** wherever it touches a section below. This is a
+**design target, not a cutover**: the editor still runs the landed PLATE Light chrome
+described here, and §0.3's open calls are unchanged.  
 **Working name:** **PLATE**  
 **Purpose:** the normative shell + visual-system contract for Museum Editor, and the
 first document a later phase reads before it touches shell composition, material,
@@ -24,9 +31,10 @@ the `git show` anchor inside it.
 `design/briefs/`, the historical
 Designer-D PNG exports, and the pre-PLATE shell specifications' numeric sections.
 
-> **Reading order for a later phase:** this document §0 → the section that owns
-your change (composition §5 · material §4/§6 · type + control §7 · state §18 ·
-density §22) → `editor-shell-ratifications.md` only when you need the
+> **Reading order for a later phase:** this document §0 → **§0.7 (the desired visual
+> language and its landed/target/unbuilt labels)** → the section that owns your change
+> (composition §5 · material §4/§6 · type + control §7 · state §18 · density §22) →
+> `editor-shell-ratifications.md` only when you need the
 > measurements behind a ratified decision. Do **not** take a numeric shell value
 > from `docs/reference/design-system/*` or from a component's scoped CSS; those
 > are descriptive or historical (§0.5).
@@ -64,7 +72,7 @@ The Atlas produced from this document is **not** the product specification. It i
 
 | Rank | Source | Normative for |
 | --- | --- | --- |
-| 1 | **This document** (`editor-shell-and-visual-system.md`, PLATE) | Shell + visual-system composition, material, typography, control metrics, state language, density, responsiveness |
+| 1 | **This document** (`editor-shell-and-visual-system.md`, PLATE) | Shell + visual-system composition, material, typography, control metrics, state language, density, responsiveness. Since 2026-09-29 it also states the **desired** visual language folded from the accepted P26 demo (§0.7), labelled landed-vs-target-vs-unbuilt |
 | 2 | **Subsystem authorities** — P23.12 identity contract; P23.13 Plan drafting, iconography and Plan Paper; `reference/north-star.md`; document/selection/navigation/camera-motion ownership specs | Their own domains, unchanged by P23.14. This document consumes them (§2.6, §2.7) and never overrides them |
 | 3 | **[`editor-shell-atlas/`](./editor-shell-atlas/index.html)** | Canonical interactive visual/interaction **QA companion**. It demonstrates this document; it never decides topology, domain ownership, validation or acceptance numbers |
 | 4 | The **other** `docs/reference/design-system/*` docs (this one excepted) and `docs/reference/components/shell.md` | Still canonical for **capability, ownership, exposure** and the frozen identity/icon/Plan contracts. Their shell **placement, dimension, type, control and material** statements are **descriptive of this document** (§0.5) |
@@ -117,6 +125,9 @@ an owner decision.
 | View Bar **pressed fill** | open — the recessed surface in §10/§18.2 is the current baseline; an accent-tinted fill is a one-line reconsideration |
 | **Tray width vs a renamed `TRANSFORM`** | open — product calls; §11 keeps the spec's own vocabulary and the 44 px rail |
 | **View Bar in a squeezed centre column** (progressive density) | open seam — see §22.2 |
+
+None of these rows is closed by the 2026-09-29 visual-language amendment (§0.7); that
+amendment's own open calls are listed separately in §0.7.6.
 
 Source of record for each: the P23.14 QA record,
 [`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
@@ -208,6 +219,96 @@ in (`P23.14 must…`, `P23.14 should…`, and references to the four PLATE PNGs 
 Atlas brief). Read that as **this contract** — the shell and visual-system
 requirements it governs — not as a claim about the slice's live review status. The
 slice's current status is §0.3; its dated artifacts are §0.6.
+
+## 0.7 Desired visual language — folded from the accepted P26 demo (2026-09-29)
+
+**Status of this section:** the **desired** product visual language, recorded here as the
+owner-directed visual-system sequence step 3
+([`roadmap/README.md`](../../roadmap/README.md)). It is a **design target, not a
+description of the editor.** The editor keeps the landed PLATE Light chrome (§5–§7,
+§6.1, §15–§18) until an explicit cutover, and nothing in this amendment is implemented
+or authorized (§0.7.5).
+
+### 0.7.1 Authority and evidence for the destination
+
+The destination lives **inside this document's rank-1 authority** (§0.1). It mints no
+competing authority; the sources below supply the accepted expression and its evidence.
+
+| Role | Source | What it decides |
+| --- | --- | --- |
+| **Normative** | **This section**, plus the section homes in §0.7.4 | The product's *desired* working-surface, material and state language |
+| **Accepted experience / QA authority** | [Final Design Prototype](../../roadmap/p26-spatial-depth/Final-Design-Prototype/README.md) — `styles/app.css`, `app/stage.js`, `app/draw.js`, `app/overlay.js`, `app/actions.js` — and **journeys A–F** (scripted in that folder) | The accepted runnable experience and its specimens. Journeys A–F remain the experience/QA authority for the P26 direction |
+| **Calibration evidence** | [Specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md) §3–§7 · [Acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md) §3–§6 · [Paper-surface brief](../../roadmap/p26-spatial-depth/design/visual-system-refinement/paper-surface-brief.md) | Palette, final calibration and the drafting-surface rule, with measured evidence |
+| **Not a contract** | The prototype's own key bindings, fixture states, notice wording and no-build harness | **Prototype shortcuts are not production contracts.** Never implement a demo shortcut as product behavior |
+
+The demo redesign was merged (#104) and owner-accepted 2026-09-29. The merge changed the
+**demo only**; the editor is unaffected.
+
+### 0.7.2 The desired language in one paragraph
+
+A **dark cutting mat** for spatial modeling, **vellum** for drafting, **technical ink** for
+architecture, and restrained **ochre** for selection and manipulation — held inside the
+same chassis, at the same shell geometry, type ladder and control metrics as the landed
+contract (§0.7.5). Tape (branding/history accents) never encodes selection. **Paper + a
+1 m / 5 m grid is the 2D layout reading**; **Wall grid** returns a wall to its real 3D
+material even in 2D; paper and selection compose. **Reduce motion** is a distinct control
+from motion speed. Caution, refusal and view-only (slate/dashed) stay three separate
+notices.
+
+### 0.7.3 Status labels used below
+
+| Label | Means |
+| --- | --- |
+| **landed now** | Shipped in the editor today — the existing PLATE rules |
+| **desired-from-demo** | Folded from the accepted demo as the target; **not implemented** |
+| **still-unbuilt (T1 after F)** | Demonstrated in the prototype, but production stays gated behind the F interfaces and the re-derived track plan |
+
+### 0.7.4 Where the destination is written
+
+| Section | Owns |
+| --- | --- |
+| §4.4 | Target working surfaces: mat / vellum / technical ink / grid / drafting sheet (**desired-from-demo**) |
+| §6.4 | Target theme values, selection ownership, **Wall grid** and the paper rule (**desired-from-demo**) |
+| §10 | Desired View Bar utilities (**Wall grid**, **Reduce motion**) and the absent return marker (**desired-from-demo**) |
+| §14, §18.3 | Status Rail constraint and target state language (paper + selection, caution vs refusal vs view-only) |
+| §21 | Contextual instruments — rules unchanged; the destination experience stays **still-unbuilt (T1 after F)** |
+| §23.1 | **Reduce motion** vs motion speed (**desired-from-demo**) |
+| §26.2 | What acceptance the destination does and does not inherit |
+
+### 0.7.5 What this amendment does not do
+
+- **No cutover, no implementation authorization.** The editor still runs the landed
+  chrome. [`reference/composition-execution.md`](../../reference/composition-execution.md)
+  (F) remains the operational baton and the format/ownership authority; production
+  implementation of this language is gated behind the foundation gates and the track plan
+  ([`roadmap/README.md`](../../roadmap/README.md) step 4).
+- **No shell metric, type or ownership change.** §5 geometry, §7 ladder / roles / control
+  metrics, §2.12 host-and-workspace ownership and §8–§17 composition are **preserved** —
+  the demo preserved them, so this amendment restates none of them.
+- **No new authority.** No second Camera/navigation authority, no second architectural
+  compiler, no second selection model, no production design-system package, and **no
+  fourth material class** (§4). The mat and the vellum are two expressions of **PAPER**;
+  ink and ochre are ink and state color (§6), not materials.
+- **No settled §0.3 call.** §0.3 is unchanged; §0.7.6 lists the calls this amendment
+  raises or leaves open.
+- **No re-plan.** T1/T2/T3 production scope is not re-planned here; that follows the F
+  interfaces.
+
+### 0.7.6 Open owner calls this amendment does not settle
+
+| Call | State |
+| --- | --- |
+| **Motion-speed control placement** | The demo puts it at the end of its Status Rail; §14 makes the rail readout-only. Rail vs View Bar vs Project Head is undecided — do not implement the demo's placement |
+| **Keyboard focus treatment** | The demo's 2 px dark + 2 px light offset ring is a candidate for the open §0.3 Tool Tray focus seam; that seam stays open |
+| **Mat ↔ paper transition** | The demo rate-limits the ground swap (full swap 420 ms) so a pan cannot flicker; whether that lag is acceptable, and whether a directional wipe is preferred to the global crossfade, is undecided |
+| **Demo evidence gaps** | `prefers-reduced-motion` emulation was not captured and the optional perimeter inner shadow was not added. Recorded unverified, not passed |
+
+**Settled by owner decision (recorded, not open):** selection and manipulation are
+**ochre** and tape never carries selection; the paper rule is **option 1** (the settled
+subject of a face session, straight or curved, or a wall off its footprint) with **Wall
+grid** as the editor-side override — *paper-as-page (option 2) is not open*; the grid
+keeps the plan's §3 hexes with the drafting sheet calibrated to the vellum ground;
+return is `Esc` / the back action / crumbs, not a tab marker.
 
 ---
 
@@ -438,6 +539,11 @@ The spatial working surface:
 
 The broader PLATE Paper baseline is warm and visually distinct from application chrome. Scene Plan and Camera Plan retain the landed P23.13 Plan Paper `#F5F7F8`; surrounding PLATE Light Chassis does not override this drawing token. A future Plan Paper change requires explicit owner re-ratification and a QA pass.
 
+> **Landed now.** The warm Paper baseline above and the landed P23.13 Plan Paper
+> `#F5F7F8` are what the editor paints today. The **desired-from-demo** Paper is the
+> mat/vellum pair in §4.4 — a target, not the current drawing token. Nothing in §4.4
+> supersedes the P23.13 Plan Paper until an explicit cutover.
+
 Paper may contain spatial drawing, geometry, routes, selection, guides, handles and editor overlays. It should not accumulate application controls.
 
 ## 4.3 INSTRUMENT
@@ -454,6 +560,40 @@ Controls that act on the work:
 Instrument surfaces may have a slight manufactured edge and small radius, but should still feel mechanically integrated into the Chassis.
 
 Do not invent a fourth material class.
+
+## 4.4 Target working surfaces — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
+
+The demo keeps PLATE's three material classes (§4.1–§4.3) and gives the **PAPER** class
+two coordinated expressions. It mints no fourth class, and it changes no shell region:
+
+| Expression | Where the demo uses it | Target meaning |
+| --- | --- | --- |
+| **Cutting mat** (dark) | Scene 3D, Camera 3D, spatial modeling | The *model* is the subject — depth, artwork and geometry read against a dark ground (`#1D3A33`, background/fog `#152C26`, grid `#2B5147` / `#3C6A5C`) |
+| **Vellum** (light drafting) | Scene Plan / Camera Plan layout reading, and a wall shown as a drawing | The *drawing* is the subject — measured paper (`#F3F4EE`) carrying the 1 m / 5 m grid |
+
+- **Ink, not material.** Technical ink draws architecture: `#202422` primary on light
+  surfaces, `#3E4440` reference dimension ink. It is a light-surface role, not a
+  universal mark color over the mat (§6.4).
+- **Ochre is a state color, not a material** — selection and manipulation only (§6.4,
+  §18.3).
+- **Paper boundary.** A 1 CSS px `#B8BEB3` perimeter inset **inside** the stage bounds
+  separates the working surface from the chassis. It must not reduce the canvas
+  rectangle or change camera aspect, overlay coordinates or pointer mapping, and must not
+  intercept picking or cover focus indicators and edge controls.
+- **The grid is a drafting property of Paper** — not a fourth authority and not a camera
+  mode. 1 m minor / 5 m major at the reference architectural scale, on a
+  `1, 2, 5 × 10^n` ladder with the major interval five times the minor; decimation is by
+  *projected CSS-pixel* spacing (target ≥ 16 px between minor lines, fade 16 → 8 px,
+  suppress below 8 px), anchored to the world/floor datum with a stable origin across
+  interval changes. Precision/guidance stays §19's; the grid never delays, changes or
+  decorates a view transition (§4.1).
+- **Drafting sheet.** A wall shown as a drawing wears vellum with the same grid derived
+  from wall distance and height (round, partly peeled or flat; inside or outside; the end
+  and reveal faces stay plain so they acquire no misleading measurement grid). Generated
+  grid coordinates are **display-only** — never authored state, never Undo.
+- The experience this surface serves — continuous Plan↔3D, first-class circular Room
+  creation, peeling, drawn-line Section/Reveal, ceiling lift/look-up — is **still-unbuilt
+  (T1 after F)**. The prototype demonstrates it; production is gated (§21).
 
 ---
 
@@ -507,6 +647,10 @@ The existing navy theme is no longer the product-defining baseline. If alternate
 
 These are the baseline default-theme values. Minor luminance adjustment is acceptable if necessary for accessibility or rendering consistency, but hue roles and contrast hierarchy must remain stable.
 
+> **Landed now.** §6.1 is the theme the editor ships. The **desired-from-demo** theme
+> is §6.4 — a target, not the current default. Do not migrate implementation tokens to
+> §6.4 from this contract; that is a cutover with its own acceptance (§26.2).
+
 ## 6.2 Surface rules
 
 - Major Chassis surfaces use no decorative shadows.
@@ -526,6 +670,56 @@ Scene brass and Camera cyan must not flood the Paper.
 Paper owns spatial state colors such as selection, snap/guide and refusal.
 
 No critical state may be communicated by hue alone.
+
+## 6.4 Target theme and color ownership — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
+
+These are the demo's **semantic roles**, not a drop-in token migration. Values that
+coincide stay separate roles; changing selection must not incidentally recolor warning,
+history-count, branding, return or displacement cues.
+
+| Semantic role | Target value |
+| --- | --- |
+| Drafting paper (vellum) | `#F3F4EE` |
+| Chassis main | `#EEEDE8` |
+| Chassis recessed / armed | `#E2E0D8` |
+| Instrument surface | `#F8F8F4` |
+| Chassis hover | `#F0EFE9` (perceptual lift) |
+| Primary technical ink | `#202422` on light surfaces |
+| Reference dimension ink | `#3E4440` on light surfaces |
+| Light overlay ink / halo | `#F3F4EE` |
+| Paper grid — minor / major | `#9FB2A2` @ 0.28 / `#809984` @ 0.45 |
+| Ochre core (selection, manipulation) | `#E5A020` |
+| Dark ochre boundary (on light surfaces) | `#8A5B10` |
+| Quiet selection fill | ochre core at 0.10 over the local surface |
+| Clearance caution | `#F7EDE8` surface · `#C85A48` accent · `#3A241D` body · `#7E2718` action |
+| Refusal | `#FDF3F0` fill · `#7E2718` text · terracotta edge |
+| View displacement (view-only) | `#56707C`, dashed |
+| Intentionally open | the existing open-state family, retained |
+| Spatial ground / background / grid | `#1D3A33` / `#152C26` / `#2B5147` minor, `#3C6A5C` major (§4.4) |
+
+**Color ownership, target.**
+
+- **Selection and manipulation are ochre.** Branding/history **tape** accents are not a
+  selection color and must never encode selection; the demo's interim tape-gold selection
+  was reverted and is history, not a variant.
+- **Paper + selection compose** (§18.3): the sheet and its grid stay, a dark-ochre contour
+  draws the selection, and **no ochre floods the page**.
+- **Wall grid** (View Bar, §10) is the editor-side override of the paper rule: on, the wall
+  being worked on is drawn as drafting paper with its measurement grid; off, every wall
+  keeps its **real material** in every view at every curvature, and a displaced wall keeps
+  its dashed slate footprint so the view-only cue does not depend on the paper.
+- **The paper rule is settled (option 1, not open):** a wall wears the sheet when it is the
+  settled subject of a face session — straight or curved — or when it is off its footprint,
+  and it keeps the sheet when the view tilts back to 3D. *Paper-as-page (option 2) is the
+  unelected alternative, not an open question.*
+- **Ink is surface-relative.** A single dark stroke cannot hold contrast on both the mat
+  and the paper; where content varies, use a two-tone boundary (dark stroke + light halo)
+  or a contrasting core.
+
+> **Calibration is design memory, not a target:** the drafting sheet is calibrated to match
+> the vellum ground so rolling a wall cannot read as a change of material; grid *hue* is
+> fixed by the plan's hexes and only opacity/emissive response were calibration
+> variables. Evidence: [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md) §3–§4.
 
 ---
 
@@ -709,6 +903,23 @@ Snap, Grid, route visibility, the camera Path/Frame helper toggles and the menu 
 exactly one writable control, and the View menu must not repeat an affordance the bar already
 exposes directly. Progressive density in a squeezed centre column (§22.1) may hide a utility but
 must not create a second copy of it elsewhere.
+
+**Desired-from-demo additions (unbuilt).** The destination View Bar owns two further
+workspace utilities, each with exactly one writable control (§2.12):
+
+- **Wall grid** — the wall being worked on is drawn as drafting paper with its 1 m / 5 m
+  grid; off, every wall keeps its real 3D material in every view at every curvature
+  (§6.4, §4.4).
+- **Reduce motion** — forces presentation duration to zero without changing the selected
+  motion speed (§23.1).
+
+**No return marker.** The destination View Bar carries **no origin/return tab marker**:
+returning is carried by `Esc`, the back/“put it back” action and the crumbs in the strip
+(§21). A tab marker must not be re-introduced as the return affordance.
+
+> The demo sits both utilities in the bar's utility group. Grouping and exact placement are
+> implementation details of the same single owner; the demo's **Motion speed** control is
+> **not** a View Bar decision — its placement is an open call (§0.7.6).
 
 ---
 
@@ -934,8 +1145,14 @@ It must not duplicate toolbar actions.
 One fact should have one authoritative control owner. Status may passively echo a fact but should not create a second control.
 
 Ratified rail outcomes (R3; §7.5): **10 px** status role, **12 px** side padding,
-**≈ 20 px** inter-item gaps, and the readable secondary ink tier — quietness comes from
-weight and size, never from under-contrast ink.
+**≈ 20 px** inter-item gaps, and the readable secondary ink tier — quietness
+comes from weight and size, never from under-contrast ink.
+
+**Landed now — and the destination keeps it.** The accepted demo places its **Motion
+speed** control at the end of its Status Rail. That is a **prototype placement, not a
+contract**: it is one of the open owner calls (§0.7.6), because the rail is readout-only
+and must not become a second toolbar. Do not implement a Status Rail control from the
+demo, and do not move Precision into the rail (§19).
 
 ---
 
@@ -1096,6 +1313,26 @@ owner reconsideration (§0.3); do not invent a second pressed treatment elsewher
 
 Selection coherence is a signature product behavior: Navigator ↔ viewport ↔ Inspector ↔ Timeline should feel like one identity moving through different representations.
 
+## 18.3 Target state language — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
+
+§18 and §18.1–§18.2 describe the **landed** state grammar. The destination refines its
+material expression without merging any state:
+
+| Concern | Target (unbuilt) |
+| --- | --- |
+| **Selected** | A persistent **ochre** contour: dark ochre (`#8A5B10`) on paper/light surfaces, ochre core (`#E5A020`) on dark content, a two-tone boundary where the surface varies. Quiet fill is ochre at 0.10 over the local surface — selection is a contour and a tint, never a flood |
+| **Paper + selection** | They **compose**: the sheet and grid stay, the contour draws, and no ochre fills the page. With **Wall grid** off the wall shows its real material + contour (§6.4) |
+| **Manipulating** | Ochre core on the active handle only; emphasize only the affected edge and its measurement. Preserve the selected identity; do not flood the Inspector or strengthen every dimension of the selected object |
+| **Hover** | A restrained tint/edge below selected emphasis (viewport) and the perceptual surface lift in the shell (§18.1) |
+| **Armed tool** | Unchanged — recessed neutral surface, normal ink, no selection-colored fill. The demo preserved R2 (§11.2) |
+| **Refusal** | Explicit refusal styling on the affected control/value plus a readable reason; it outranks the active value's fill/border but must **not** erase the focus indicator or the selected subject's identity. A refused action is not a caution |
+| **Caution / refusal / view-only stay separate** | A clearance caution is `#F7EDE8` / `#C85A48` with its explicit recovery action. Refusal is the dimension/control refusal treatment with a reason. **View-only displacement stays slate and dashed** with “set aside” wording and never becomes a warning merely because a wall moved. Intentionally open gaps keep the existing open-state family |
+
+**Not settled here.** The demo's keyboard focus ring (2 px dark stroke + 2 px light halo
+at 2 px offset) is a candidate for the open §0.3 focus seam; §0.3 stays open (§0.7.6).
+Stale emphasis must still clear on completion, cancellation, lost pointer capture or
+closing the numeric editor.
+
 ---
 
 # 19. Precision and guidance
@@ -1157,6 +1394,17 @@ The Atlas should include at least one non-authoritative P26 stress specimen show
 
 This specimen is for pressure-testing only and must not invent P26 product semantics.
 
+**Desired-from-demo (unbuilt).** The accepted demo demonstrates the destination
+experience for these instruments — Section, depth preview/Reveal, lift and look-up, and
+the drafted surface they read on. Its **journeys A–F remain the experience/QA authority**
+for that direction. Everything the demo shows beyond today's editor — continuous
+Plan↔3D, first-class circular Room creation with one self-connected Wall, peeling,
+drawn-line Section/Reveal, ceiling lift/look-up and exact return — is **still-unbuilt
+(T1 after F)**: production stays gated behind the F interfaces and the re-derived track
+plan, and this section's rules above are unchanged. The instrument remains a subordinate
+contextual instrument with an obvious return path, never a third peer view beside Plan
+and 3D, and the demo's shortcuts are not contracts (§0.7.1).
+
 ---
 
 # 22. Responsive and density behavior
@@ -1215,6 +1463,24 @@ The Atlas and implementation must validate:
 
 Motion should reinforce hierarchy and continuity, not decorate the shell.
 
+## 23.1 Reduce motion is a control distinct from motion speed (**desired-from-demo · unbuilt**)
+
+Two different questions get two different controls, and neither is a second motion
+authority:
+
+- **Motion speed** — *how* a move travels: the learns-then-fast policy (teaching speed for
+  the first repetitions, fast afterwards), or Brisk/Instant. This is motion *policy*.
+- **Reduce motion** — *whether* anything travels: it forces the presentation duration to
+  zero **without** changing the selected speed, hides timed captions, and stops CSS
+  transitions too. The system `prefers-reduced-motion` setting still initialises it and
+  still works on its own.
+
+Both are presentation inputs evaluated through the **single Camera motion evaluation**
+(AGENTS rule 1; §2.11) — the destination introduces no second evaluator, curve model or
+timeline. Reduce motion is not a re-labelling of Instant, and Instant is not a substitute
+for it. The demo's **Reduce motion** is a View Bar utility (§10); the demo's placement of
+**Motion speed** is an open call (§0.7.6).
+
 ---
 
 # 24. Explicit non-goals / rejected interpretations
@@ -1240,7 +1506,11 @@ P23.14 must not:
 - remove the keyboard focus cue without replacing it with a non-hue keyboard affordance (§18.1);
 - dress `MODE` as a third segment inside the `Layout | Arrange` capsule (§10);
 - generalize the Tool Tray's 6 px compact floor to ordinary shell typography (§7.3);
-- let a historical numeric value outrank the constraint it was meant to satisfy (§2.10).
+- let a historical numeric value outrank the constraint it was meant to satisfy (§2.10);
+- present the **desired-from-demo** visual language (§0.7) as shipped, or implement it
+  before its cutover and acceptance (§26.2);
+- migrate editor tokens/components to the §4.4/§6.4 destination as part of a docs or demo
+  change, or mint a production design-system package from the demo.
 
 ---
 
@@ -1372,6 +1642,17 @@ The ratified implementation adds these acceptance criteria:
     presents one resolved target in both header and body, and a retained selection stays
     remembered across workspace switches (§2.12).
 
+### 26.2 Destination acceptance (from the accepted P26 demo)
+
+§26 and §26.1 are the **landed** editor's shell acceptance gate. The destination visual
+language is accepted through the demo's [specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md)
+**§9.3** (the evidence-and-completion requirement) and the **owner visual acceptance recorded
+2026-09-29** in the demo's [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md);
+it is stated in §0.7. It does **not** inherit §26's gate, and passing §26 does not verify the
+destination. A cutover to
+§4.4/§6.4 will need its own acceptance, planned with its own slice — this amendment
+authorizes none.
+
 ---
 
 # 27. Final design statement
@@ -1387,3 +1668,12 @@ The Navigator scales from today’s Rooms to tomorrow’s Buildings, Floors, Spa
 The new PLATE Light theme becomes the default face of the product. Existing P23.12 identity and P23.13 drafting/iconography remain foundations rather than collateral damage from polish.
 
 This is the direction Designer D should now make concrete and falsifiable in the Atlas.
+
+**Added 2026-09-29 — the destination.** The durable shell contract above is unchanged and still
+describes the editor. What is new is the **destination**: §0.7, with §4.4, §6.4, §10,
+§18.3 and §23.1 folding the accepted P26 demo's material and state language —
+**dark cutting mat for spatial modeling, vellum for drafting, technical ink for
+architecture, ochre for selection and manipulation** — under the same chassis, type
+ladder, control metrics and ownership, and with every clause labelled landed-now,
+desired-from-demo or still-unbuilt. The editor keeps running today's landed chrome until
+an explicit cutover.
