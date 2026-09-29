@@ -7,7 +7,7 @@ export const COLORS = {
   paper: '#F3F4EE', paperGrid: '#E2E6DD', paperGridMajor: '#CFD6CB',
   foam: '#F1F2EC', floor: '#D3DBD0', floorPaper: '#E7EBE3', ink: '#17201D', poche: '#26302C',
   tape: '#F2B53C', coral: '#EC6A50', sky: '#8CC0EA', ghost: '#DCEBE4',
-  sel: '#2F8CFF', selEdge: '#145DA8', view: '#56707C',
+  sel: '#F2B53C', selEdge: '#C98A12', view: '#56707C',
 };
 
 const V3 = THREE.Vector3;
