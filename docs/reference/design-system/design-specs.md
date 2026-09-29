@@ -193,7 +193,7 @@ and its **Arrange** mode composes those footprints with existing Layout-object
 Plan render identities into one owner-aware hit set at layers 5–6 (P10).
 Camera Plan renders the same passive Scene footprint projection at render
 layer 6 as inert 2D spatial context beneath the camera graph (ratified
-2026-08-28, [`Camera-layout-design.md`](Camera-layout-design.md)), then shows
+2026-08-28, [`Camera-layout-design.md`](camera-layout-design.md)), then shows
 its permitted architectural/camera layers. Camera Plan footprints are
 presentation-only: no hit-testing, selection, or collision semantics.
 
@@ -755,7 +755,7 @@ no sequence number
 
 This distinction is mandatory.
 
-(Terminology renamed 2026-08-21 per [`Camera-flow-specs.md`](./Camera-flow-specs.md)
+(Terminology renamed 2026-08-21 per [`Camera-flow-specs.md`](./camera-flow-specs.md)
 §2 — the visual state is unchanged.)
 
 ## Connections
@@ -1464,7 +1464,7 @@ not editable
 Camera Plan may:
 
 * place cameras using floor hit testing
-* render passive object footprints as non-interactive spatial context (ratified 2026-08-28, [`Camera-layout-design.md`](Camera-layout-design.md))
+* render passive object footprints as non-interactive spatial context (ratified 2026-08-28, [`Camera-layout-design.md`](camera-layout-design.md))
 * select camera nodes
 * select connections
 * drag nodes

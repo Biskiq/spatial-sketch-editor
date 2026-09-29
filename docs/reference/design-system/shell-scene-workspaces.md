@@ -1,13 +1,13 @@
 # Museum Editor — Shell Spec · Scene Workspaces
 
-**Status:** part of the shell/workspace exposure specification — **ratified 2026-08-19**; split from [`Design-shell-specs.md`](./Design-shell-specs.md) 2026-08-21 (**section numbers preserved**); **P21+ tool-placement reconciliation 2026-09-03** (placement only — see note below).
+**Status:** part of the shell/workspace exposure specification — **ratified 2026-08-19**; split from [`Design-shell-specs.md`](./design-shell-specs.md) 2026-08-21 (**section numbers preserved**); **P21+ tool-placement reconciliation 2026-09-03** (placement only — see note below).
 **Scope:** §6 Scene → Plan (Layout | Arrange) · §7 Scene → 3D · §8 Asset-management state · §29 Arrange footprints · §30 Scene selection continuity.
 
 > **P10 amendment (2026-08-23):** Scene Plan's staging surface is now the
 > owner-aware **Arrange** surface. `Layout | Staging` terminology in this spec
 > refers to the shipped pre-P10 state; the ratified authority is §6 + §29 +
 > §30 as amended below.
-Global shell / cross-domain rules live in [`Design-shell-specs.md`](./Design-shell-specs.md); camera workspaces in [`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md).
+Global shell / cross-domain rules live in [`Design-shell-specs.md`](./design-shell-specs.md); camera workspaces in [`Shell-camera-workspaces.md`](./shell-camera-workspaces.md).
 
 > **P23.14 placement note (2026-09-19, landed):** the ribbon band is gone. Scene
 > Plan mounts the Contextual View Bar and its **Tool Tray** — a 44 px
@@ -430,7 +430,7 @@ The selected-object TransformControls gizmo is available only in **Scene →
 * it follows the active Select/Move/Rotate/Scale context and the selected
   object's rotation-aware bounds and pivot;
 * X/Y/Z handles use the canonical red/green/blue values from
-  [`Design-specs.md` §8](./Design-specs.md#8-transform-axis-and-scene-3d-overlay-colors);
+  [`Design-specs.md` §8](./design-specs.md#8-transform-axis-and-scene-3d-overlay-colors);
 * Scale presents independent X/Y/Z handles and a distinct uniform center
   affordance when the current scale mode is uniform;
 * the gizmo sits above the selected object's outline but remains below shell

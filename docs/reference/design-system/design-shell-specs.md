@@ -25,17 +25,17 @@ Current rules are written directly below rather than layered as amendments.
 > [`editor-shell-ratifications.md`](./editor-shell-ratifications.md).
 
 **Split 2026-08-21:** scene/camera workspace sections moved verbatim to
-[`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md) ·
-[`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md) — section
+[`Shell-scene-workspaces.md`](./shell-scene-workspaces.md) ·
+[`Shell-camera-workspaces.md`](./shell-camera-workspaces.md) — section
 numbers unchanged, so external `§N` references stay valid.
 
 | Working on… | Read | Sections |
 |---|---|---|
 | Global shell · switching · capability matrix · acceptance criteria | this file | §1–§5 · §14–§28 · §31 |
-| Scene workspaces (Plan/Layout/Arrange · 3D · assets) | [`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md) | §6–§8 · §29–§30 |
-| Camera workspaces (Plan · 3D · timeline) | [`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md) | §9–§13 |
+| Scene workspaces (Plan/Layout/Arrange · 3D · assets) | [`Shell-scene-workspaces.md`](./shell-scene-workspaces.md) | §6–§8 · §29–§30 |
+| Camera workspaces (Plan · 3D · timeline) | [`Shell-camera-workspaces.md`](./shell-camera-workspaces.md) | §9–§13 |
 
-This specification complements the [visual UI specification](./Design-specs.md). The domain/view terminology below is the current product shell contract and should be kept consistent with the North Star and architecture docs.
+This specification complements the [visual UI specification](./design-specs.md). The domain/view terminology below is the current product shell contract and should be kept consistent with the North Star and architecture docs.
 
 The visual specification answers:
 
@@ -432,11 +432,11 @@ A camera's Y position may exist in the data model while Camera Plan is active, b
 
 Scene workspaces — §6 Scene → Plan · §7 Scene → 3D · §8 Asset-management
 state · §29 Staging footprints · §30 Scene selection continuity:
-[`Shell-scene-workspaces.md`](./Shell-scene-workspaces.md).
+[`Shell-scene-workspaces.md`](./shell-scene-workspaces.md).
 
 Camera workspaces — §9 Camera → Plan · §10 Camera → 3D · §11 Timeline
 ownership · §12 Timeline exposure · §13 Camera selection continuity:
-[`Shell-camera-workspaces.md`](./Shell-camera-workspaces.md).
+[`Shell-camera-workspaces.md`](./shell-camera-workspaces.md).
 
 Section numbers are unchanged by the move; external `§N` references stay
 valid against the files above.
@@ -559,8 +559,8 @@ They should not be confused with authoring modes.
 ## Scene 3D gizmo and orientation-box contract
 
 The detailed Scene → 3D overlay contract is defined in
-[`Shell-scene-workspaces.md` §7](./Shell-scene-workspaces.md#7-scene--3d) and
-[`Design-specs.md` §28A](./Design-specs.md#28a-scene-3d-gizmo-selection-outlines-and-orientation-box).
+[`Shell-scene-workspaces.md` §7](./shell-scene-workspaces.md#7-scene--3d) and
+[`Design-specs.md` §28A](./design-specs.md#28a-scene-3d-gizmo-selection-outlines-and-orientation-box).
 The shell owns exposure and isolation:
 
 * the selected-object Move/Rotate/Scale gizmo is an authoring overlay exposed
