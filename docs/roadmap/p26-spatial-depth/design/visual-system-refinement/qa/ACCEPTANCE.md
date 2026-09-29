@@ -17,6 +17,7 @@ demo file touched. Nothing outside `docs/roadmap/p26-spatial-depth/` was changed
 | `app/geometry.js` | Generated display-only `uv` attribute on wall geometry; end/reveal faces masked |
 | `app/overlay.js` | Editable numbers become real buttons; pooled labels drop stale role attributes; the value being dragged keeps its place |
 | `app/draw.js` | Active-value emphasis; refusal notice class |
+| `app/actions.js` | One rule for the drafting sheet (`sheetWanted`/`syncSheet`): the settled subject of a face session wears it, straight or curved, in the squared view and after tilting back to 3D; any wall off its footprint still wears it |
 | `app/main.js` | Active-edit state on gesture start/end/cancel; vellum typing surface |
 | `app/state.js` | `activeEdit` presentation state |
 
@@ -39,6 +40,7 @@ bash journey-check.sh revised
 bash probe-roll.sh http://localhost:8826 revised        # §4 curvature-slider finding
 bash probe-roll.sh http://localhost:8826/_baseline baseline   # needs `git archive 674b2294` extracted there
 bash probe-sheet.sh http://localhost:8826 shipped       # §4 sheet calibration sweep
+bash probe-surface.sh http://localhost:8826 revised     # §7 drafting-surface rule
 agent-browser eval "$(cat contrast-check.js)"
 python3 make-compare.py                     # rebuilds compare.html
 ```
@@ -66,6 +68,7 @@ captures were produced with.
 | Sheet grid alpha | minor 0.28, major 0.45 | the plan's §3 values, identical to the vellum ground |
 | Sheet material | `map` = paper tile, `emissive` paper @ **0.36** (baseline 0.45) | calibrated to the vellum ground's own rendered brightness; see §4 |
 | Sheet UV step | open walls 5 m major / 1 m minor exactly; closed walls `L / round(L/5)` | rotunda: 4.937 m major → 0.987 m minor, u range `[0, 7]` exactly (seam closes) |
+| Sheet trigger | settled face subject (`settle > 0.5`) **or** `u > 0.01` | one rule for straight and curved walls; the curvature slider never recolours a wall (see §4) |
 | Perimeter | `#B8BEB3`, 1 px, `inset: 0`, `pointer-events: none`, `z-index: 1` | no layout, camera-aspect or pointer change |
 
 Measured at the reference Plan framing (1440 × 900): chosen minor **1 m**, minor spacing **21.7 px**,
@@ -81,7 +84,7 @@ Matched pairs: **34** (`compare.html`).
 | --- | --- | --- |
 | V1 | Plan, North wall selected | 1 m/5 m grid at 21.7/108.4 px; paper and grid at full opacity; Navigator `sel` edge uses dark ochre on light |
 | V2 | 3D overview, opening selected | Mat, depth, artwork unchanged; handles present on both dark ground and light geometry |
-| V3 | Garden window facing, fully unrolled | vellum sheet with `uv` present and matching vertex count; `u` range `[0, 7]` exactly; openings/artwork unobscured |
+| V3 | Garden window facing, fully unrolled | vellum sheet on the faced **straight** wall (this specimen previously showed plain architecture, because a straight wall could never earn the sheet); `uv` present and matching vertex count; `u` range `[0, 7]` exactly on the rotunda; openings/artwork unobscured |
 | V4a/b | Partly peeled, inside and outside | grid coordinates stable across `u`; no stretching (UVs derive from `s`); reveal/top faces masked to a plain texel |
 | V5 | Section, depth, view-only displacement | Beyond-depth is a **slate** chip and slate `where` block, not a warning; poche/opening selection unchanged |
 | V6 | Lift/look-up, clearance notice | caution surface (`#F7EDE8`/`#E2CBC1`/`#C85A48`/`#3A241D`) with the existing recovery action; intentional openings stay in the `--open` family |
@@ -219,14 +222,32 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
    unchanged `--tape` values while selection/manipulation use the new `--ochre` family. This is a
    deliberate role split, recorded as a calibration point the owner may choose to unify.
 
-**Open — consistency of the drafting surface (owner-reported 2026-09-29, decision pending).** When a
-wall settles square, the rotunda reads as paper while a straight wall does not, so the same settled
-state presents two different surfaces. The trigger is curvature only: `applyUnroll` sets
-`ds.sheet = u > 0.01`, and `scrubUnroll` exits early for `kind !== 'arc'` (status: “The … is straight,
-so its face is already to scale”). Plan §4.5 scopes the sheet to walls “off their footprint”, which
-is why a squared straight wall never qualifies. Making the paper follow the *representation* instead
-would change what the sheet means, so the target rule is the owner's call and no change has been
-made yet.
+**Resolved — consistency of the drafting surface (owner-reported 2026-09-29).** Owner chose: the
+paper follows the 2D drafting state. The trigger used to be curvature alone (`ds.sheet = u > 0.01` in
+`applyUnroll`, with `scrubUnroll` exiting early for straight walls), so in one settled state the
+rotunda read as paper and a straight wall did not. `sheetWanted(id)` now answers one question — is
+this wall being shown as a drawing? — and is consulted by `syncSheet` from the face gesture's settle
+progress, from `applyUnroll`, and when a peel session starts:
+
+| State (`probe-surface.sh`) | Before | After |
+| --- | --- | --- |
+| 3D home, no session | `foam` | `foam` (unchanged) |
+| north settled square | `foamSel` | **`sheet`** |
+| rotunda settled square | `sheet` | `sheet` (unchanged) |
+| rotunda faced, curvature slider at 0 | `foamSel` | **`sheet`** — the slider no longer recolours the wall |
+| rotunda settled, view tilted off square | `sheet` | `sheet` — colour stays consistent returning to 3D |
+| every wall in the model, settled in turn (north, south, west, rotunda) | mixed | **all `sheet`** |
+
+The material swap happens once, as the wall settles (`settle > 0.5`), so it rides the existing
+movement instead of popping. A wall off its footprint keeps the sheet as before, so an unrolled or
+peeled wall still cannot be mistaken for an authored change of shape (plan §4.5), and journeys A–F
+and the 27 interaction checks were re-run unchanged (48/48 and 27/27, 0 console errors).
+
+This deliberately **widens plan §4.5's “off their footprint” wording** by owner decision: the sheet
+now also marks the wall the settled drawing is about. It adds no geometry, value, unit, camera,
+history or picking behaviour — `sheetWanted` only chooses between two existing materials — and the
+plan's own V3 specimen asks for a vellum sheet on a faced straight wall, which the old curvature-only
+trigger could never produce.
 
 ## 8. Required repository checks
 
