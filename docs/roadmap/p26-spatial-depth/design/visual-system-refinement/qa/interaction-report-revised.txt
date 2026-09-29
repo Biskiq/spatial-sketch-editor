@@ -1,3 +1,4 @@
+[agent-browser] launched browser
 == V8 · real handle drag, release ==
 PASS  active handle present during drag  ({"manipulating":true,"active":["head4.70"]})
 PASS  one drag = one Undo entry  (1)

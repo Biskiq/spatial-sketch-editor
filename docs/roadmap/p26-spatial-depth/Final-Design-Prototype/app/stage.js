@@ -104,14 +104,17 @@ export class Stage {
       foamHover: M({ color: COLORS.foam, emissive: sel, emissiveIntensity: 0.07 }),
       foamSel: M({ color: COLORS.foam, emissive: sel, emissiveIntensity: 0.16 }),
       // Vellum: a drafting sheet, not a white light source. The tile is one major interval with
-      // five minor cells, so the wall's generated UVs carry honest measurement spacing.
+      // five minor cells, so the wall's generated UVs carry honest measurement spacing. The
+      // emissive response is calibrated so the displaced wall renders as the same paper as the
+      // vellum ground it lies on, rather than a darker sage surface; it stays below the ground's
+      // own brightness so the sheet never glows over the page.
       sheet: (() => {
         const tex = gridTexture(COLORS.paper, COLORS.paperGrid, COLORS.paperGridMajor, 3, 5, {
-          cells: 5, majorEvery: 5, alphaMinor: 0.34, alphaMajor: 0.55,
+          cells: 5, majorEvery: 5, alphaMinor: COLORS.paperGridAlpha, alphaMajor: COLORS.paperGridMajorAlpha,
         });
         tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
         tex.repeat.set(1, 1); // the wall's UVs are already in major-interval units
-        return M({ color: '#FFFFFF', map: tex, roughness: 1, emissive: new THREE.Color(COLORS.paper), emissiveIntensity: 0.08 });
+        return M({ color: '#FFFFFF', map: tex, roughness: 1, emissive: new THREE.Color(COLORS.paper), emissiveIntensity: 0.36 });
       })(),
       floor: M({ color: COLORS.floor }),
       ceil: M({ color: '#E9EBE4' }),

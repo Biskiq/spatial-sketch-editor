@@ -38,6 +38,7 @@ bash interaction-check.sh revised
 bash journey-check.sh revised
 bash probe-roll.sh http://localhost:8826 revised        # §4 curvature-slider finding
 bash probe-roll.sh http://localhost:8826/_baseline baseline   # needs `git archive 674b2294` extracted there
+bash probe-sheet.sh http://localhost:8826 shipped       # §4 sheet calibration sweep
 agent-browser eval "$(cat contrast-check.js)"
 python3 make-compare.py                     # rebuilds compare.html
 ```
@@ -62,8 +63,8 @@ captures were produced with.
 | Paper grid tile | 10 minor cells, major every 5 | `repeat = 1200 / (10 × minor)` |
 | Grid line weights | 3 px minor / 5 px major in a 1024² tile | ≈ 0.6–1.7 CSS px apparent at the reference scale |
 | Paper grid alpha | minor 0.28, major 0.45 | plan §3 values |
-| Sheet grid alpha | minor 0.34, major 0.55 | contextual sheet, subordinate to the drawing |
-| Sheet material | `map` = paper tile, `emissive` paper @ **0.08** (was 0.45) | vellum, not a light source |
+| Sheet grid alpha | minor 0.28, major 0.45 | the plan's §3 values, identical to the vellum ground |
+| Sheet material | `map` = paper tile, `emissive` paper @ **0.36** (baseline 0.45) | calibrated to the vellum ground's own rendered brightness; see §4 |
 | Sheet UV step | open walls 5 m major / 1 m minor exactly; closed walls `L / round(L/5)` | rotunda: 4.937 m major → 0.987 m minor, u range `[0, 7]` exactly (seam closes) |
 | Perimeter | `#B8BEB3`, 1 px, `inset: 0`, `pointer-events: none`, `z-index: 1` | no layout, camera-aspect or pointer change |
 
@@ -132,10 +133,31 @@ The switch is discrete, not a gradient: `actions.js` sets `ds.sheet = u > 0.01`,
 material changes from `foam` to vellum the moment the slider leaves 0. That threshold is
 pre-existing (the baseline swap is unchanged); only the material's appearance moved.
 
-**Owner decision required.** Grid *opacity* and sheet emissive are declared calibration variables
-(plan §3 last paragraph, §4.5), so a neutral-reading sheet can be restored without amending the
-plan by raising the sheet emissive and/or lightening the sheet grid alpha. Grid *hue* is a stated
-semantic value in §3; changing it is a plan amendment. See §7.
+**Resolved — owner decision (2026-09-29): keep the plan's §3 hexes; tune the sheet.** Grid *opacity*
+and the sheet's emissive response are declared calibration variables (plan §3 last paragraph, §4.5),
+so the fix belongs on the sheet rather than in the palette. Grid *hue* stays as written in §3.
+
+Calibration target: **the displaced wall must render as the same paper as the vellum ground it lies
+on**, so rolling a wall cannot read as a change of material. Measured with the ground and every other
+wall hidden (`probe-sheet.sh`), so these are the wall's own pixels:
+
+| State | mean RGB | G−R | G−B | reading |
+| --- | --- | --- | --- | --- |
+| vellum ground, bare (target) | 240,242,236 | +2 | +6 | the plan's paper under its own light |
+| same wall as `foam`, un-rolled | 229,227,216 | −2 | +11 | the architecture reading the owner expects |
+| sheet, before (em 0.08, grid 0.34/0.55) | 219,221,214 | +2 | +7 | 21 counts darker and 4 counts greener than the wall as foam |
+| **sheet, after (em 0.36, grid 0.28/0.45)** | **238,240,233** | **+2** | **+7** | matches the ground's hue; 2 counts off its brightness |
+
+The emissive sweep (grid alpha moves the frame mean by ≤ 0.04, so emissive is the lever that
+matters): `0.08` → 219,221,214 · `0.24` → 230,232,225 · `0.30` → 234,236,229 · **`0.36` →
+238,240,233** · `0.42` → 241,243,236, against a ground of 240,242,236. `0.36` was chosen rather
+than the value that matches exactly, so the sheet never renders brighter than the page it lies on —
+which is what plan §4.5 rules out at the baseline's `0.45` (245,246,242, above the page).
+
+End-to-end, on the framed rotunda with the ground visible (`probe-roll.sh`): `u` = 0.35 moves from
+218,221,213 (0.81 % strictly-green pixels) to **237,239,232 (0.33 %)**; the wall no longer darkens
+and sags greener as the roll slider travels. The sheet's own drafting grid keeps the plan's §3
+alphas, so it is exactly as strong as the vellum ground's grid.
 
 ## 5. Journeys and interactions
 
@@ -177,23 +199,34 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
 1. **Owner visual acceptance.** Not performed — this agent cannot see the captures. Every “required
    visible result” in plan §9.2 that is a judgement (dominance of cut geometry, restraint of the
    dimension hierarchy, character retention) is **unverified**, not passed.
-2. **Grid hue and sheet calibration — owner decision pending.** The plan's green drafting hue is
-   visible both on the vellum ground and on the contextual sheet (measured in §4); whether to keep
-   it, to tune the sheet's emissive/grid alpha back towards a neutral-reading sheet, or to amend §3
-   to a neutral technical hue, is the owner's call.
-3. **DPR 2 raster.** The capture harness exposes no desktop device-scale-factor (only phone/tablet
+2. **Grid hue and sheet calibration — resolved.** Owner chose to keep the plan's §3 hexes and tune
+   the sheet; §4 records the before/after and the calibration criterion.
+3. **Paper treatment is triggered by curvature, not by representation.** `actions.js` sets
+   `ds.sheet = u > 0.01`, and `scrubUnroll` returns early for straight walls, so a squared straight
+   wall keeps the plain `foam` surface while a squared rotunda wears vellum. Owner-reported on
+   2026-09-29; behaviour and target recorded below under *Open* at the end of this section.
+4. **DPR 2 raster.** The capture harness exposes no desktop device-scale-factor (only phone/tablet
    presets), so `capture-dpr2.sh` exercises the renderer's DPR-2 path (2× canvas backing store,
    `canvas.width = 2 × clientWidth`, identical textures/anisotropy, 0 errors) while the screenshot
    raster remains 1× CSS. CSS overlay linework is resolution-independent and unaffected.
-4. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
+5. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
    emulation was not captured (Instant motion is covered); the optional faint inner edge shadow on
    the perimeter was **not** added, because plan §4.2 permits it only on a comparison specimen that
    shows a material improvement and none was verified.
-5. **Optional specimen judgements** not asserted: “no moiré” at extreme zoom, and the dense-scene
+6. **Optional specimen judgements** not asserted: “no moiré” at extreme zoom, and the dense-scene
    comparison the plan asks for before accepting the stronger starting grid opacities.
-6. **Tape vs selection separation.** Per plan §3, branding, history-count and return cues keep their
+7. **Tape vs selection separation.** Per plan §3, branding, history-count and return cues keep their
    unchanged `--tape` values while selection/manipulation use the new `--ochre` family. This is a
    deliberate role split, recorded as a calibration point the owner may choose to unify.
+
+**Open — consistency of the drafting surface (owner-reported 2026-09-29, decision pending).** When a
+wall settles square, the rotunda reads as paper while a straight wall does not, so the same settled
+state presents two different surfaces. The trigger is curvature only: `applyUnroll` sets
+`ds.sheet = u > 0.01`, and `scrubUnroll` exits early for `kind !== 'arc'` (status: “The … is straight,
+so its face is already to scale”). Plan §4.5 scopes the sheet to walls “off their footprint”, which
+is why a squared straight wall never qualifies. Making the paper follow the *representation* instead
+would change what the sheet means, so the target rule is the owner's call and no change has been
+made yet.
 
 ## 8. Required repository checks
 
