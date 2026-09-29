@@ -913,6 +913,16 @@ pushed). The routine closeout re-ran no gate: it reuses the recorded acceptance 
 visitor-bundle 3/9). NEXT: P23B.9 (unratified, unauthorized — starts only on the owner's
 ratification); P23B.10 stays unratified.
 
+## Owner-authorized execution routing amendment — 2026-09-29 (P23B.9 start + P23B.10 compaction)
+
+SIXTH amendment: the owner authorized starting P23B.9 on branch `p23b.9-gate` (one PR)
+and compacted P23B.10 into the same branch/PR (closeout-only, no separate branch:
+P23B.10 C2 is satisfied by P23B.9's same-HEAD gate run; C3–C7 land in the same PR).
+Gate-criteria acceptance stays at P23B.9 S5 / X-2 review. Unchanged: no automatic phase
+close, no merge, and major-phase closure stays owner-invoked via the manual
+`phase-closeout` skill (P23B.10 MR-12/X-3/X-4). Slice identities/scopes/gates otherwise
+unchanged.
+
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
 P23B.11 was REVIEWED AND ACCEPTED by the owner with no remaining blocker: the review fix `2a5efeb1`

@@ -19,8 +19,9 @@ RATIFIED DIRECTION (2026-09-27): Biskiq northstar decision record →
        ../reference/decisions/northstar-ratification-2026-09-27.md (normative for new design);
        F foundation contract F.1–F.5 → ../reference/composition-execution.md (authorizes no
        implementation). P26 planning re-derived as T1 against F; P26 implementation unauthorized.
-NEXT: P23B.9 correctness + performance-regression gate — covers whatever the follow-up
-       shipped (S3/S8 equivalence evidence → the follow-up acceptance record). UNRATIFIED
-       and UNAUTHORIZED: starts only on the owner's ratification of its gate plan
-       (→ ../roadmap/p23b-geometry-performance/p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md).
-       P23B.10 stays unratified and unauthorized.
+NEXT: P23B.9 gate + P23B.10 closeout compaction — EXECUTING on branch `p23b.9-gate`
+       (owner-authorized 2026-09-29; one PR; gate-criteria acceptance at S5/X-2 review;
+       no auto-close, no merge — phase closure stays owner-invoked). Entry evidence →
+       ../roadmap/p23b-geometry-performance/p23b.8-follow-up/2026-09-29-P23B.8-follow-up-acceptance-record.md;
+       gate plan → ../roadmap/p23b-geometry-performance/p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md
+       (G15 applies, G16 N/A, G12 extended to the follow-up oracles).
