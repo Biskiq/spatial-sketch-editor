@@ -71,4 +71,27 @@ for id in $WALLS; do
   R=$(agent-browser eval "(() => { const st = __me.ctx.stage, keys = Object.keys(st.mat); const it = st.items.get('$id'); const m = it && it.mesh ? keys.find((k) => st.mat[k] === it.mesh.material) : 'none'; return JSON.stringify({ wall: '$id', mat: m, sheet: !!st.d('$id').sheet, flat: +st.cam.flat.toFixed(2) }); })()")
   echo "  [$id settled] $R"
 done
+echo "7. grid honesty on a newly papered straight wall (north settled)"
+js "__me.A.select('north'); 1"; js "__me.A.face('north'); 1"; sleep 1.5
+js "__me.A.squareUp(); 1"; sleep 1.3
+UV=$(cat <<'JS'
+(() => {
+  const st = __me.ctx.stage, it = st.items.get('north');
+  const uv = it.mesh.geometry.getAttribute('uv');
+  let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9;
+  for (let i = 0; i < uv.count; i++) {
+    const u = uv.getX(i), v = uv.getY(i);
+    if (u < u0) u0 = u; if (u > u1) u1 = u;
+    if (v < v0) v0 = v; if (v > v1) v1 = v;
+  }
+  const wpp = st.cam.frameH / Math.max(1, st.h);
+  return JSON.stringify({
+    uSpan: +(u1 - u0).toFixed(3), vSpan: +(v1 - v0).toFixed(3),
+    alongWallM: +((u1 - u0) * 5).toFixed(2), upM: +((v1 - v0) * 5).toFixed(2),
+    minorM: 1, majorM: 5, minorPx: +(1 / wpp).toFixed(1),
+  });
+})()
+JS
+)
+echo "  [north uv] $(agent-browser eval "$UV")"
 js "__me.A.closeSession(); 1"; sleep 1.4

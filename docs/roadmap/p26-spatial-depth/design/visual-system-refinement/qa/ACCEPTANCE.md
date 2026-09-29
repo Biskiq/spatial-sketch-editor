@@ -238,6 +238,11 @@ progress, from `applyUnroll`, and when a peel session starts:
 | rotunda settled, view tilted off square | `sheet` | `sheet` — colour stays consistent returning to 3D |
 | every wall in the model, settled in turn (north, south, west, rotunda) | mixed | **all `sheet`** |
 
+The grid on a newly papered straight wall is honestly spaced, not stretched: north settled square
+measures `uv` 3.251 × 0.800, i.e. **16.26 m along the wall and 4.00 m up** at 5 m per `uv` unit, so
+the tile's five minor cells are 1 m each with a 5 m major interval — 32.0 CSS px per metre at that
+framing, above the plan's 16 px decimation floor, with the major grid well clear of dense banding.
+
 The material swap happens once, as the wall settles (`settle > 0.5`), so it rides the existing
 movement instead of popping. A wall off its footprint keeps the sheet as before, so an unrolled or
 peeled wall still cannot be mistaken for an authored change of shape (plan §4.5), and journeys A–F
