@@ -922,9 +922,10 @@ describe('planWallFirstRoomRotation — the same motion, rigidly rotated', () =>
 			rounded(expected[0]),
 			rounded(expected[1])
 		]);
-		// Its authored height and orientation are not the unit's position.
+		// Its authored height is not the unit's position; its yaw inherits the
+		// unit's rotation (owner ruling, same convention as the legacy transform).
 		expect(rotated.position[1]).toBe(original.position[1]);
-		expect(rotated.rotation).toEqual(original.rotation);
+		expect(rotated.rotation).toEqual([original.rotation[0], original.rotation[1] + QUARTER_TURN, original.rotation[2]]);
 		expect(plan.changedObjectIds).toEqual(['obj-1']);
 		expect(plan.document.objects.find((object) => object.id === 'obj-free')!.position).toEqual(
 			baseline.objects.find((object) => object.id === 'obj-free')!.position

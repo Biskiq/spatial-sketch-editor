@@ -295,14 +295,16 @@ export function rotateRoomUnitMoveCandidate(
 		),
 		// Associated objects follow the same rigid motion as the Walls: an object
 		// left in place would keep its baseline X/Z and stop being associated with
-		// the Room it travelled with. Its own yaw is NOT rotated here — that is the
-		// object's authored orientation, not the Room unit's position.
+		// the Room it travelled with — and an object that orbited with the Room but
+		// kept its old heading would point the wrong way. Owner ruling: the yaw is
+		// inherited, the same convention as the legacy Room transform.
 		objects: document.objects.map((object) => {
 			if (!associatedObjectIds.has(object.id)) return object;
 			const [x, z] = rotate([object.position[0], object.position[2]]);
 			return {
 				...object,
-				position: [x, object.position[1], z] as typeof object.position
+				position: [x, object.position[1], z] as typeof object.position,
+				rotation: [object.rotation[0], object.rotation[1] + yaw, object.rotation[2]]
 			};
 		})
 	};

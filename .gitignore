@@ -22,11 +22,25 @@ vite.config.ts.timestamp-*
 .opencode/
 .env
 
-# Pre-P23B.8 follow-up — the two M1 leg captures are RETAINED IN THE WORKING TREE but deliberately
-# NOT committed: each is ~40k lines of pretty-printed runner output (1.3 MB) whose every quoted row
-# already lives in the slice's records, which is what a reviewer reads. Two exact paths, not a glob:
-# the compact single-line captures in the same directory (the arms and restore-split captures) are
-# cited evidence and stay in the repository. Regenerate the legs with the runner command recorded in
-# `docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-S2-chrome-leg-record.md`.
+# Pre-P23B.8 follow-up — the runner leg captures are RETAINED IN THE WORKING TREE but
+# deliberately NOT committed: each is raw per-action/per-attempt runner output whose every
+# quoted row already lives in the slice's records, which is what a reviewer reads. Exact
+# paths, not a glob. Owner ruling: keep the aggregates (the records), keep the raw legs
+# local. Regenerate any leg with the runner command recorded in the record that cites it
+# (M1 legs: `.../2026-09-27-M1-S2-chrome-leg-record.md`; arms legs: the before/after and
+# reuse-rate records beside them; the runner itself is `tests/lib/bench/p23b-m1-browser-runner.cli.ts`).
 docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-chrome-leg.json
 docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-electron-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-cold-workload-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json
+docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json
