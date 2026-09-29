@@ -30,3 +30,14 @@
 | major grid #809984 @ .45 / paper | decorative grid | 1.517:1 |
 | mat minor #2B5147 @ 1 / mat | decorative grid | 8.009:1 |
 | mat major #3C6A5C @ 1 / mat | decorative grid | 5.57:1 |
+| selection / shell | non-text | 1.56:1 |
+| selection / paper | non-text | 1.66:1 |
+| selection edge / paper | non-text | 3.14:1 |
+| selection edge / shell | non-text | 2.96:1 |
+| selection / mat | non-text | 6.71:1 |
+| ink-dark / selection (glyph on handle) | text | 9.08:1 |
+
+Rows marked `selection` are the role resolved to the tape gold by the owner ruling of 2026-09-29 (see
+`ACCEPTANCE.md` §6b). The ochre rows above remain the non-selection accents: the active edit, cut
+lines, datums. The earlier `ochre` selection rows are what the plan's §3 specified and are what the
+ruling replaced; the same script measures both, so the comparison stays honest.

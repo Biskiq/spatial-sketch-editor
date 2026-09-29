@@ -3,7 +3,15 @@
 **Plan:** [`specification-plan.md`](../specification-plan.md) §9.
 **Status:** implementation applied and machine-verified; **owner visual acceptance owed**.
 **Parent revision:** `674b2294` (P23B.8 closeout).
-**Implementation revision:** `731a66c0` — *P26 demo: apply the visual-system refinement (mat, vellum, ink, ochre)*.
+**Implementation revision:** `731a66c0` — *P26 demo: apply the visual-system refinement (mat, vellum, ink, ochre)*,
+plus the owner-directed work in §4b, and §4c. **All of it now lives on `p26-design-overhaul`**
+(merge `75ff6276` carries the eight refinement commits; `77db15ac` carries §4c). The work was made on
+`main` while the checkout was believed to be elsewhere; `main` was put back to `674b2294` and the
+safety tag `p26-work-backup-main` keeps the original commit ids reachable.
+**Selection ruling (2026-09-29):** this branch's own commit ruled that selection is tape gold and
+nothing else is gold. That supersedes plan §3's ochre **for the selection role only**: `--sel`
+resolves to the tape tokens and the canvas `COLORS.sel/selEdge` keep this branch's values. Ochre stays
+in play for the non-selection accents (active edit, cut lines, datums). Measurements in §6.
 **Demo-dirty state:** the evidence in `baseline/` was captured with every demo file clean at
 `674b2294`; `revised/` was captured with the seven implementation files modified and no other
 demo file touched. Nothing outside `docs/roadmap/p26-spatial-depth/` was changed by this work.
@@ -164,7 +172,9 @@ alphas, so it is exactly as strong as the vellum ground's grid.
 
 ## 5. Journeys and interactions
 
-- **Journeys A–F:** `journey-report-revised.txt` — **48/48 steps pass**, 0 console/page errors.
+- **Journeys A–F:** `journey-report-revised.txt` — **50/50 steps pass**, 0 console/page errors
+  (the count grew with the §4b and §4c steps; re-run 2026-09-29 on `p26-design-overhaul` after the
+  branch merge, with the rate-limited paper value in place).
 - **Interaction checks:** `interaction-report-revised.txt` — **27/27 pass** (drag/release one-edit,
   one-Undo, refusal cancellation, numeric entry/validation/cancel, Tab continuity, focus grammar,
   no history from view navigation, pooled-label role change).
@@ -197,6 +207,21 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
 | `#FFFFFF` / ochre | 2.24 | rejected alternative; glyphs and chip text use `--ink-dark` (7.44) instead |
 | brand tape / shell | 1.56 | decorative accent; the badge's ink text is 8.57 ✓ |
 
+Selection, measured where the ruling put it (tape gold), after the branch merge:
+
+| Pair | Ratio | Note |
+| --- | --- | --- |
+| selection / mat | 6.71 | the cue on the dark mat is the strongest of the set |
+| selection edge / paper | 3.14 | clears the 3:1 non-text floor; the deep gold is what carries selection on light surfaces |
+| selection edge / shell | 2.96 | **marginally under 3:1** — the fill is a light warm colour by construction (1.56 on shell, 1.66 on paper), so selection on the shell rests on the deep edge plus the ink glyph (9.08) and the contour, not on fill contrast |
+| ink-dark / selection (glyph on handle) | 9.08 ✓ | glyphs and chip text use `--ink-dark` |
+
+For comparison, the ochre the plan specifies scored 5.30 for the dark value on paper: the tape gold is
+a lighter colour, so this ruling costs roughly two points of edge contrast on the page. Above the
+floor, but the tightest non-text value in the system — worth knowing before it is locked in.
+
+## 6b. Selection contrasts under the ruling (2026-09-29)
+
 ## 7. Unresolved, unverified and limitations
 
 1. **Owner visual acceptance.** Not performed — this agent cannot see the captures. Every “required
@@ -219,7 +244,11 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
    presets), so `capture-dpr2.sh` exercises the renderer's DPR-2 path (2× canvas backing store,
    `canvas.width = 2 × clientWidth`, identical textures/anisotropy, 0 errors) while the screenshot
    raster remains 1× CSS. CSS overlay linework is resolution-independent and unaffected.
-6. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
+6. **Selection on the shell is the tightest non-text contrast in the system** (2.96 vs the 3:1 floor,
+   §6b). Not a defect in the ruling — gold is a light colour — but it is the one place where selection
+   depends on contour and glyph rather than fill contrast, and it is the first thing to check if the
+   palette is tuned again.
+7. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
    emulation was not captured (Instant motion is covered); the optional faint inner edge shadow on
    the perimeter was **not** added, because plan §4.2 permits it only on a comparison specimen that
    shows a material improvement and none was verified.
@@ -310,6 +339,55 @@ now also marks the wall the settled drawing is about. It adds no geometry, value
 history or picking behaviour — `sheetWanted` only chooses between two existing materials — and the
 plan's own V3 specimen asks for a vellum sheet on a faced straight wall, which the old curvature-only
 trigger could never produce.
+
+## 4c. The ground's mat → paper transition (owner report, 2026-09-29)
+
+The owner reported the background “flickering” while switching, panning and rotating between 3D and
+2D, with a mid-transition screenshot showing a pale wash crossed by hard horizontal bands.
+
+**What it was.** Not a bleed or a rendering fault: the ground's identity followed the camera angle
+frame by frame. `paper` hangs on the session detent (`1 − smoothstep(2.5°, 20°, angle to the square
+home)`) or, with no session, on the tilt into Plan (`smoothstep(70°, 88.5°, el)`), and both bands are
+narrow, so an ordinary 55°/s rotate repainted the frame's largest surface from vellum to mat across
+**~183 counts of luminance in 200–320 ms**. The pale bands in the capture were the model's ghosted
+slabs crossing that wash; the wash itself was the mat half-covered by a mid-opacity page.
+
+**Five changes** (no geometry, value, unit, camera path, history or picking behaviour):
+
+| Change | Where | Value |
+| --- | --- | --- |
+| The paper value is rate-limited — a steady pose still reaches its exact value, only the rate is bounded, and one step is capped so a dropped frame cannot become a jump | `app/main.js` `slewPaper` | full swap 420 ms; step cap 42 ms |
+| The session detent band is widened, so inspecting a wall off-square no longer repaints the ground | `app/main.js` `detent` | 2.5°–20° → **4°–30°** |
+| The two ground rules hand over inside the crossfade instead of the mat being cut out in the move's last frame: the mat's rule is gone by 0.5, the drafting rule arrives 0.55 → 0.85, and the mat stays visible until it is actually covered | `app/stage.js` `applyPaper`/`applyGrid` | — |
+| The context ghosts fade out with the mat, so they cannot read as streaks across the page | `app/stage.js` `applyPaper` | `0.07·(1−page)`, `0.22·(1−page)` |
+| The two discrete flips that cannot be interpolated (through-see ceilings, the sun's shadow) are pinned to the page covering the mat, so a move has one visible discontinuity instead of one at 0.5 and another at 0.6 | `app/stage.js` `restyle`/`render` | — |
+
+**Measured** on a 90-frame recording of the *same* rotate (ground-only patch, museum hidden — the
+museum crosses the patch as soon as the camera descends and would otherwise dominate the number):
+
+| Move | Build | Swap span (p 0.02 → 0.98) | Ground change per frame: median · p90 |
+| --- | --- | --- | --- |
+| rotate away from the square home (~55°/s) | before | 267 ms | 12.2 · 20.0 |
+| | **after** | **434 ms** | **7.7 · 10.0** |
+| face session → Plan | before | 701 ms | 6.5 · 19.5 |
+| | **after** | **918 ms** | **7.5 · 8.3** |
+| Plan → 3D | before | 317 ms | 10.3 · 34.3 |
+| | **after** | **451 ms** | **7.2 · 22.4** |
+
+Banding peak in the same patch: 1.166 → 0.708 on the Plan move, 0.297 → 0.272 on the rotate
+(comparable on the 3D move, 1.040 → 1.134).
+
+**Reproduce:** `qa/probe-flicker.sh <url-base> <label>` prints the table; `qa/capture-transition.sh
+<url-base> <label>` records the move live and replays four wall-clock moments as stills into
+`qa/transition/<label>/`; `qa/transition.html` places them side by side. The stills are a frame-by-frame
+record, not a judgement: they show the mid-swap lasting about twice as long, not vanishing.
+
+**What is still open.** The rate limit means the ground lags the pose by up to 420 ms *during motion*
+— the value at rest is exact, so this is a rate deviation from “paper follows representation
+progress” (plan §2), not a semantic one; if that is judged a spec change it belongs in §2's wording.
+The stills and numbers are a smoothness measurement, not the owner's visual acceptance, which remains
+owed. And the owner may prefer a *directional* wipe (the page drawn across the ground along the
+view direction) to a global crossfade; that would be a new treatment, not a tuning value.
 
 ## 8. Required repository checks
 
