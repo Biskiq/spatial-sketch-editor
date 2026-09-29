@@ -890,8 +890,12 @@ export function summarizePresentedWindowArms(input: {
 	arms: readonly string[];
 	/** The arm treated as the AFTER (shipped) side of the signed delta. */
 	afterArm: string;
-	/** The arm treated as the BEFORE (pre-change) side of the signed delta. */
-	beforeArm: string;
+	/**
+	 * The arm treated as the BEFORE (pre-change) side of the signed delta.
+	 * Optional since P23B.8 S8 retired the before side: when absent the rows
+	 * still split per arm but no signed comparison is derived.
+	 */
+	beforeArm?: string;
 }): {
 	rows: P23BM1WindowArmRow[];
 	comparison: P23BM1WindowArmComparisonRow[];
@@ -942,7 +946,7 @@ export function summarizePresentedWindowArms(input: {
 	}
 	const scriptP50 = (summary: P23BM1PresentedWindowSummary | undefined): number | null =>
 		summary?.phases.find((phase) => phase.phase === 'script')?.occupiedMs.p50 ?? null;
-	const before = byArm.get(input.beforeArm);
+	const before = input.beforeArm === undefined ? undefined : byArm.get(input.beforeArm);
 	const after = byArm.get(input.afterArm);
 	const comparison: P23BM1WindowArmComparisonRow[] = [];
 	const compare = (label: string, beforeMs: number | null, afterMs: number | null): void => {

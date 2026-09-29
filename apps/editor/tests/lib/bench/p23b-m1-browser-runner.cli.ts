@@ -33,20 +33,17 @@
  *   vite-node --config vitest.config.ts tests/lib/bench/p23b-m1-browser-runner.cli.ts -- \
  *     --port 9223 --runtime "Google Chrome for Testing 152 (headless)" \
  *     --out <path>.json [--url http://127.0.0.1:5173/dev/perf/p23b] [--budget-ms 500]
- *     [--arms] [--label-arms] [--cpu-profile <raw>.json]
+ *     [--label-arms] [--cpu-profile <raw>.json]
  *
- * `--arms` runs the BEFORE/AFTER arm mode on the same protocol: no pre-change
- * tree is needed, because the viewport can still run the path this change
- * removed behind a DEV-only switch (see `p23b-m1-room-drag-arm.ts`).
- *
- * `--label-arms` does the same for the Room-label placer's eligibility grid
- * (`p23b-m1-room-label-arm.ts`), with two differences that follow from what that
- * change is: the arm alternates in EVERY class (the placer runs on every Plan
- * render, so every class that redraws the Plan carries it), and the rows it moves
- * are the post-release WINDOW rows, which is what the `labelArms` block reports —
- * per arm and per class, with the same split re-priced from the CPU profile when
- * one was taken. The release row is deliberately not split: both arms are released
+ * `--label-arms` interleaves the shipped Room-label grid against its
+ * cache-bypassed self (`p23b-m1-room-label-arm.ts`): the arm alternates in
+ * EVERY class (the placer runs on every Plan render, so every class that
+ * redraws the Plan carries it), and the rows it moves are the post-release
+ * WINDOW rows, which is what the `labelArms` block reports — per arm and per
+ * class, with the same split re-priced from the CPU profile when one was
+ * taken. The release row is deliberately not split: both arms are released
  * by the same click, so it is the unchanged control beside the split.
+ * (P23B.8 S8: `--arms` and the before/after pair are retired.)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -79,7 +76,6 @@ import {
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
 	P23B_M1_ROOM_LABEL_ARM_AFTER,
-	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	type P23BM1RoomLabelArm
 } from '$lib/editor/layout/p23b-m1-room-label-arm';
 
@@ -99,20 +95,10 @@ type Args = {
 	dryRun: boolean;
 	dryRunMs: number;
 	/**
-	 * BEFORE/AFTER mode: run the whole-Room class on BOTH code paths in this one
-	 * session (the DEV arm switch) instead of on the shipped path alone. The
-	 * record then carries the per-arm rows and the before/after table; the
-	 * presentation-grade release row the runner adds stays what it always was,
-	 * taken over the class's mixed population.
-	 */
-	arms: boolean;
-	/**
-	 * The ROOM-LABEL arm mode: EVERY class interleaves the shipped and the pre-change
-	 * eligibility grid per attempt, and the record's windows, window phases and CPU
-	 * slice are each reported per arm with a signed within-session delta. A separate
-	 * switch from `--arms` on purpose — the two changes are orthogonal, and flipping
-	 * both in one run would thin every cell to a quarter and confound them on the one
-	 * class they share.
+	 * The ROOM-LABEL arm mode: EVERY class interleaves the shipped grid and its
+	 * cache-bypassed self per attempt, and the record's windows, window phases
+	 * and CPU slice are each reported per arm. (P23B.8 S8: the pre-change arms
+	 * are retired; no before/after pair is signed.)
 	 */
 	labelArms: boolean;
 	/**
@@ -143,6 +129,8 @@ function parseArgs(argv: readonly string[]): Args {
 	const out = flag('out');
 	if (!Number.isFinite(port) || port <= 0) throw new Error('--port is required');
 	if (!out) throw new Error('--out is required');
+	if (argv.includes('--arms'))
+		throw new Error('--arms is retired (P23B.8 S8): the room-drag BEFORE/AFTER comparison is removed');
 	return {
 		port,
 		out,
@@ -152,7 +140,6 @@ function parseArgs(argv: readonly string[]): Args {
 		timeoutMs: Number(flag('timeout-ms') ?? String(4 * 60 * 60 * 1000)),
 		dryRun: argv.includes('--dry-run'),
 		dryRunMs: Number(flag('dry-run-ms') ?? '4000'),
-		arms: argv.includes('--arms'),
 		labelArms: argv.includes('--label-arms'),
 		coldLabelArms: argv.includes('--label-arms-cold'),
 		cpuProfile: flag('cpu-profile'),
@@ -338,13 +325,11 @@ async function main(): Promise<void> {
 	let ready = false;
 	for (let attempt = 0; attempt < 120 && !ready; attempt += 1) {
 		try {
-			const entry = args.arms
-				? '__P23B_M1_RUN_ARMS__'
-				: args.coldLabelArms
-					? '__P23B_M1_RUN_LABEL_ARMS_COLD__'
-					: args.labelArms
-						? '__P23B_M1_RUN_LABEL_ARMS__'
-						: '__P23B_M1_RUN__';
+			const entry = args.coldLabelArms
+				? '__P23B_M1_RUN_LABEL_ARMS_COLD__'
+				: args.labelArms
+					? '__P23B_M1_RUN_LABEL_ARMS__'
+					: '__P23B_M1_RUN__';
 			ready = (await evaluate<boolean>(`typeof globalThis.${entry} === "function"`)) === true;
 		} catch {
 			// navigating
@@ -514,13 +499,11 @@ async function main(): Promise<void> {
 			})`, true);
 		} else {
 			record = await evaluate<P23BM1Record>(
-				args.arms
-					? 'globalThis.__P23B_M1_RUN_ARMS__()'
-					: args.coldLabelArms
-						? 'globalThis.__P23B_M1_RUN_LABEL_ARMS_COLD__()'
-						: args.labelArms
-							? 'globalThis.__P23B_M1_RUN_LABEL_ARMS__()'
-							: 'globalThis.__P23B_M1_RUN__()',
+				args.coldLabelArms
+					? 'globalThis.__P23B_M1_RUN_LABEL_ARMS_COLD__()'
+					: args.labelArms
+						? 'globalThis.__P23B_M1_RUN_LABEL_ARMS__()'
+						: 'globalThis.__P23B_M1_RUN__()',
 				true
 			);
 		}
@@ -859,8 +842,7 @@ function labelArmWindowsOf(input: {
 			spans: input.spans,
 			byAction,
 			arms,
-			afterArm: P23B_M1_ROOM_LABEL_ARM_AFTER,
-			beforeArm: P23B_M1_ROOM_LABEL_ARM_BEFORE
+			afterArm: P23B_M1_ROOM_LABEL_ARM_AFTER
 		});
 		for (const window of own) {
 			const arm = byAction.get(window.actionIndex);

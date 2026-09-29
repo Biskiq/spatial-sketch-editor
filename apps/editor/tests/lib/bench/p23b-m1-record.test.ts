@@ -44,7 +44,6 @@ import {
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
 	P23B_M1_ROOM_LABEL_ARM_AFTER,
-	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	type P23BM1ActionLabelArmRecord,
 	type P23BM1GridBuildKeySummary
@@ -646,25 +645,19 @@ describe('M1 wiring', () => {
 		// window is opened per class — both once, so neither can be double-counted.
 		expect(occurrences(drive, 'bracketGestureFrames(timing')).toBe(3);
 		expect(occurrences(drive, 'const observer = timing ? longFrameObserverOf() : null')).toBe(1);
-		expect(drive).toContain('async function runM1(arms = false, labelArms = false, coldLabelArms = false)');
+		expect(drive).toContain('async function runM1(labelArms = false, coldLabelArms = false)');
 	});
 
-	it('interleaves the BEFORE/AFTER arms on the whole-Room class and releases the switch afterwards', () => {
-		// The arm is chosen per ATTEMPT and recorded against the action the attempt
-		// resolved to, so the record can split the measured population by the arm
-		// that actually produced it. Only the whole-Room class takes arms.
-		expect(drive).toContain('arms: arms && entry.actionClass === \'whole-room-move-bridge\' ? P23B_M1_ROOM_DRAG_ARMS : null');
-		expect(drive).toContain('const arm = arms && arms.length > 0 ? arms[index % arms.length]! : null;');
-		expect(drive).toContain('setP23bM1RoomDragArm(arm);');
-		expect(drive).toContain(
-			'p23bM1RecordActionArm(timing.fixtureId, timing.actionClass, action.index, arm)'
-		);
-		// The switch is released at the run's start, per class AND in the run's
-		// `finally`, so an aborted run can never leave the before path selected for a
-		// later session.
-		expect(occurrences(drive, 'setP23bM1RoomDragArm(null);')).toBe(3);
-		expect(drive).toContain('p23bM1ResetActionArms();');
-		expect(drive).toContain('await runM1Fixture(fixture, arms, labelArms, coldLabelArms);');
+	it('retired the BEFORE/AFTER drag arms: the whole-Room class runs the shipped path only', () => {
+		// P23B.8 S8: the pre-change gesture path is removed. The drive must not
+		// interleave drag arms, set the drag switch, or record drag-arm actions —
+		// and the runner rejects `--arms` instead of silently measuring one path.
+		expect(drive).not.toContain('P23B_M1_ROOM_DRAG_ARMS');
+		expect(drive).not.toContain('setP23bM1RoomDragArm');
+		expect(drive).not.toContain('p23bM1RecordActionArm(timing.fixtureId');
+		expect(drive).not.toContain('p23bM1ResetActionArms');
+		expect(drive).not.toContain('timing?.arms');
+		expect(drive).toContain('await runM1Fixture(fixture, labelArms, coldLabelArms);');
 	});
 
 	it('interleaves the ROOM-LABEL arms in EVERY class, records them per resolved action, and releases the switch', () => {
@@ -723,14 +716,15 @@ describe('M1 wiring', () => {
 		expect(page).toContain('__P23B_M1_RECORD__');
 		expect(page).toContain('p23b-m1:');
 		expect(page).toContain('onclick={() => runM1Capture()}');
-		// The BEFORE/AFTER mode is reachable from the page and from the CDP runner.
+		// P23B.8 S8: the BEFORE/AFTER mode is retired — no page button, no runner
+		// entry. The runner rejects `--arms` instead of silently measuring one path.
+		expect(page).not.toContain('__P23B_M1_RUN_ARMS__');
+		expect(page).not.toContain('Run M1 before/after arms');
+		// …and the ROOM-LABEL arm mode is its own entry point: shipped grid
+		// against its cache-bypassed self.
 		expect(page).toContain('onclick={() => runM1Capture(true)}');
-		expect(page).toContain('globals.__P23B_M1_RUN_ARMS__ = () => runM1Capture(true);');
-		// …and the ROOM-LABEL arm mode is its own entry point, because the two changes
-		// are orthogonal and a run that flipped both would confound them.
-		expect(page).toContain('onclick={() => runM1Capture(false, true)}');
 		expect(page).toContain(
-			'globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(false, true);'
+			'globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(true);'
 		);
 		// The page reports the ASSIGNMENT only; the per-arm rows are priced by the
 		// runner, which is the only process that can see a presented frame.
@@ -815,7 +809,7 @@ describe('M1 wiring', () => {
 		expect(runner).toContain('coldLabelArms: argv.includes(\'--label-arms-cold\')');
 		expect(occurrences(runner, "'globalThis.__P23B_M1_RUN_LABEL_ARMS_COLD__()'")).toBe(1);
 		expect(occurrences(runner, "'__P23B_M1_RUN_LABEL_ARMS_COLD__'")).toBe(1);
-		expect(page).toContain('globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(false, true, true);');
+		expect(page).toContain('globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(true, true);');
 		expect(page).toContain('delete globals.__P23B_M1_RUN_LABEL_ARMS_COLD__;');
 		// The page reports the workload, so a capture cannot be read as the other one.
 		expect(page).toContain('coldWorkload:');
@@ -885,14 +879,11 @@ describe('M1 wiring', () => {
 		}
 	});
 
-	it('gives the viewport exactly ONE DEV arm read, and nothing else about M1', () => {
-		// ONE DELIBERATE, NARROW EXCEPTION (pre-P23B.8 follow-up §P5). A
-		// same-session before/after needs the VIEWPORT to be able to run the path
-		// this change removed, and no page-side instrument can reach that branch. So
-		// the viewport learns exactly one thing — which arm to run — through one
-		// import and one call. This assertion is what keeps that from growing: the
-		// viewport may contain no recorder, no sampler, no observer, no registry and
-		// no direct read of the arm global, and the two counts below are pinned.
+	it('gives the viewport NO DEV arm reads: the BEFORE path is retired', () => {
+		// P23B.8 S8: the pre-change gesture path is removed, so the viewport runs
+		// the shipped transient route unconditionally. This assertion pins the
+		// removal: no drag-arm import, no arm read, and still no recorder, sampler,
+		// observer, registry or direct arm-global read.
 		const viewport = fs.readFileSync(
 			path.resolve(editorRoot, 'src/lib/editor/layout/LayoutPlanViewport.svelte'),
 			'utf8'
@@ -904,12 +895,12 @@ describe('M1 wiring', () => {
 			'p23bM1ResetActionArms',
 			'createP23BGestureFrameSampler',
 			'p23bM1FrameTiming',
-			'__P23B_M1_ROOM_DRAG_ARM__'
+			'__P23B_M1_ROOM_DRAG_ARM__',
+			'p23b-m1-room-drag-arm',
+			'p23bM1RoomDragArm()'
 		]) {
 			expect(viewport, `LayoutPlanViewport must not contain ${forbidden}`).not.toContain(forbidden);
 		}
-		expect(occurrences(viewport, "from './p23b-m1-room-drag-arm'")).toBe(1);
-		expect(occurrences(viewport, 'p23bM1RoomDragArm()')).toBe(1);
 	});
 });
 
@@ -1024,27 +1015,27 @@ describe('M1 record — the post-release window (restore versus commit)', () => 
 	});
 });
 
-describe('M1 record — the before/after arms (one session, no pre-change tree)', () => {
+describe('M1 record — the retired before/after arms (one path, shipped only)', () => {
 	const fixtureId = 'fixture-arms';
 	const actionClass = 'p23b-m1:whole-room-move-bridge';
-	// Even attempts ran the shipped `transient` path, odd ones the pre-change
-	// `per-move` path — the interleave the driver performs, recorded per action.
+	// P23B.8 S8: every attempt runs the shipped `transient` path — the driver no
+	// longer interleaves arms, so the assignment carries one arm and the split is
+	// a single-arm block, never a mixed population.
 	const assignment: ReadonlyMap<number, P23BM1RoomDragArm> = new Map<number, P23BM1RoomDragArm>([
 		[0, 'transient'],
-		[1, 'per-move'],
+		[1, 'transient'],
 		[2, 'transient'],
-		[3, 'per-move']
+		[3, 'transient']
 	]);
-	/** Four drags: two per arm, with the arms given deliberately different costs. */
+	/** Four drags on the shipped path, with deliberately different costs. */
 	const drags = [
 		action(0, { release: { start: 100, end: 120 }, frame: { start: 120, end: 122 } }),
 		action(1, { release: { start: 200, end: 260 }, frame: { start: 260, end: 280 } }),
 		action(2, { release: { start: 300, end: 340 }, frame: { start: 340, end: 348 } }),
 		action(3, { release: { start: 400, end: 520 }, frame: { start: 520, end: 560 } })
 	];
-	// The pre-change path compiles and installs per pointermove; the shipped path
-	// does not. The mark is on the per-move actions ONLY — that asymmetry is the
-	// finding the split exists to report.
+	// Two of the four releases carry a `preview-compile` mark — the asymmetry the
+	// per-arm mark rows exist to report per arm.
 	const marks = [
 		{ name: 'p2311:preview-compile', startTime: 210, duration: 30 },
 		{ name: 'p2311:preview-compile', startTime: 410, duration: 60 }
@@ -1085,76 +1076,54 @@ describe('M1 record — the before/after arms (one session, no pre-change tree)'
 		});
 	}
 
-	it('splits the measured population by arm and marks the mixed class rows as mixed', () => {
+	it('splits the measured population by arm: one shipped arm, never a mixed population', () => {
 		const row = armRow();
 		expect(row.arms?.rule).toBe(P23B_M1_ARM_RULE);
-		expect(row.arms?.arms).toEqual(['transient', 'per-move']);
-		expect(row.arms?.mixed).toBe(true);
-		expect(row.arms?.rows.map((arm) => [arm.arm, arm.actions])).toEqual([
-			['transient', 2],
-			['per-move', 2]
-		]);
-		// The class's own rows beside the block span BOTH arms, which is exactly why
-		// the per-arm rows exist; the reader is told rather than left to infer it.
+		expect(row.arms?.arms).toEqual(['transient']);
+		expect(row.arms?.mixed).toBe(false);
+		expect(row.arms?.rows.map((arm) => [arm.arm, arm.actions])).toEqual([['transient', 4]]);
+		// The class's own rows beside the block span the same single arm.
 		expect(row.boundaries['release']?.count).toBe(4);
-		expect(row.arms?.mixed).toBe(true);
 	});
 
-	it('takes each arm over its OWN actions: the pre-move path pays preview-compile, the shipped path does not', () => {
+	it('takes the shipped arm over its own actions, with no before side to compare against', () => {
 		const row = armRow();
 		const transient = row.arms?.rows.find((arm) => arm.arm === 'transient');
-		const perMove = row.arms?.rows.find((arm) => arm.arm === 'per-move');
-		expect(transient?.marks['p2311:preview-compile']).toBeUndefined();
-		expect(perMove?.marks['p2311:preview-compile']).toMatchObject({ count: 2 });
-		// The class row pools both arms, so its own mark row is the mixed population
-		// the `mixed` flag warns about.
+		expect(transient?.marks['p2311:preview-compile']).toMatchObject({ count: 2 });
+		// The class row pools the same single arm.
 		expect(row.marks['p2311:preview-compile']?.count).toBe(2);
-		// Every arm's rows are taken over its own measured accepted actions.
-		expect(transient?.boundaries['release']?.count).toBe(2);
-		expect(perMove?.boundaries['release']?.count).toBe(2);
+		expect(transient?.boundaries['release']?.count).toBe(4);
 	});
 
-	it('reports the before/after table with signed deltas, and a null cell rather than a zero', () => {
+	it('reports the comparison with null before cells rather than a delta', () => {
 		const row = armRow();
 		const byLabel = new Map((row.arms?.comparison.rows ?? []).map((entry) => [entry.label, entry]));
 		const release = byLabel.get('release');
-		expect(release?.perMoveMs).not.toBeNull();
+		expect(release?.perMoveMs).toBeNull();
 		expect(release?.transientMs).not.toBeNull();
-		// Delay before, saving after: the delta is `transient − perMove` and is signed.
-		expect(release!.perMoveMs!).toBeGreaterThan(release!.transientMs!);
-		expect(release!.deltaMs!).toBeLessThan(0);
+		expect(release?.deltaMs).toBeNull();
 		const gesture = byLabel.get('gesture rAF interval p50');
-		expect(gesture?.perMoveMs).toBe(100);
+		expect(gesture?.perMoveMs).toBeNull();
 		expect(gesture?.transientMs).toBe(10);
-		expect(gesture?.deltaMs).toBe(-90);
-		expect(gesture?.ratio).toBe(0.1);
-		// The pre-move arm alone pays preview-compile, so the arm that never pays it
-		// reports NULL — a zero would read as "it was free", which is not measured.
+		expect(gesture?.deltaMs).toBeNull();
+		// The retired before arm paid preview-compile in old legs; with no before
+		// side the cell reports NULL — a zero would read as "it was free".
 		const compile = byLabel.get('mark p2311:preview-compile');
-		expect(compile?.transientMs).toBeNull();
+		expect(compile?.transientMs).not.toBeNull();
 		expect(compile?.deltaMs).toBeNull();
-		expect(compile?.perMoveMs).not.toBeNull();
+		expect(compile?.perMoveMs).toBeNull();
 		expect(row.arms?.comparison.note).toContain('WITHIN-SESSION');
 	});
 
-	it('resolves each arm\'s gesture series over that arm\'s own measured actions', () => {
+	it("resolves the shipped arm's gesture series over its own measured actions", () => {
 		const row = armRow();
 		const transient = row.arms?.rows.find((arm) => arm.arm === 'transient');
-		const perMove = row.arms?.rows.find((arm) => arm.arm === 'per-move');
-		// Each arm merges its OWN two brackets and COUNTS the other arm's two as
-		// excluded — an arm's row never pools the other arm's frames.
 		expect(transient?.gestureFrames?.coverage).toMatchObject({
-			drags: 2,
+			drags: 4,
 			registeredDrags: 4,
-			excludedDrags: 2
-		});
-		expect(perMove?.gestureFrames?.coverage).toMatchObject({
-			drags: 2,
-			registeredDrags: 4,
-			excludedDrags: 2
+			excludedDrags: 0
 		});
 		expect(transient?.gestureFrames?.distribution.p50).toBe(10);
-		expect(perMove?.gestureFrames?.distribution.p50).toBe(100);
 	});
 
 	it('reports NO arms block for a class that ran one path, instead of an empty one', () => {
@@ -1188,7 +1157,7 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 	];
 	const marks = [{ name: 'p2311:preview-compile', startTime: 210, duration: 30 }];
 	// The placer runs in EVERY class, so this dimension is recorded over every class —
-	// even and odd attempts alternating between the shipped and the pre-change grid.
+	// attempts alternating between the shipped grid and its cache-bypassed self.
 	// The arm module's own records, which is what the page hands over: the arm AND the
 	// attempt's grid-build count, taken at the same instant so the two cannot be paired
 	// across attempts.
@@ -1220,7 +1189,7 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			fixtureId,
 			actionClass,
 			actionIndex: 1,
-			arm: 'pruned-grid',
+			arm: 'no-memo-grid',
 			builds: 5,
 			distinctBuilds: 3,
 			sequence: [1, 2, 3, 1, 2],
@@ -1255,7 +1224,7 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 			fixtureId,
 			actionClass,
 			actionIndex: 2,
-			arm: 'per-cell-grid',
+			arm: 'seeded-grid',
 			builds: 4,
 			distinctBuilds: 4,
 			sequence: [1, 2, 3, 4],
@@ -1468,25 +1437,26 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 				{
 					key,
 					unassignedWindows: 2,
-					arms: [windowRow('pruned-grid', 3), windowRow('per-cell-grid', 2)],
+					arms: [windowRow('seeded-grid', 3), windowRow('no-memo-grid', 2)],
 					comparison: [
 						{ label: 'window p50', beforeMs: 200, afterMs: 120, deltaMs: -80, ratio: 0.6 }
 					],
 					cpu: [
-						{ key: 'per-cell-grid', windows: 2, sampledInWindowMs: 90, topSelfTime: [] }
+						{ key: 'no-memo-grid', windows: 2, sampledInWindowMs: 90, topSelfTime: [] }
 					]
 				}
 			]
 		});
 		expect(block?.rule).toBe(P23B_M1_LABEL_ARM_WINDOW_RULE);
 		expect(block?.note).toBe(P23B_M1_WINDOW_ARM_NOTE);
-		// The shipped grid is the AFTER side by construction, so the sign of every
-		// delta is knowable without reading the rows.
+		// The shipped grid is the AFTER side by construction. There is no BEFORE
+		// side anymore (P23B.8 S8 retired the pre-change arms), so the block
+		// carries per-arm rows with no signed pair.
 		expect(block?.afterArm).toBe(P23B_M1_ROOM_LABEL_ARM_AFTER);
-		expect(block?.beforeArm).toBe(P23B_M1_ROOM_LABEL_ARM_BEFORE);
+		expect(block?.beforeArm).toBeUndefined();
 		expect(block?.notMeasuredReason).toBeNull();
 		expect(block?.rows[0]?.unassignedWindows).toBe(2);
-		expect(block?.rows[0]?.cpu.map((row) => row.key)).toEqual(['per-cell-grid']);
+		expect(block?.rows[0]?.cpu.map((row) => row.key)).toEqual(['no-memo-grid']);
 	});
 
 	it('says NOT MEASURED when every arm came back empty, instead of an empty comparison', () => {
@@ -1507,7 +1477,7 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		});
 		const block = summarizeLabelArmWindows({
 			presentedWindows: 0,
-			rows: [{ key, unassignedWindows: 0, arms: [emptyArm('pruned-grid'), emptyArm('per-cell-grid')], comparison: [], cpu: [] }]
+			rows: [{ key, unassignedWindows: 0, arms: [emptyArm('seeded-grid'), emptyArm('no-memo-grid')], comparison: [], cpu: [] }]
 		});
 		expect(block?.notMeasuredReason).toContain('NOT MEASURED');
 		// …and the rows are still carried: an arm that ran 4 actions and covered no

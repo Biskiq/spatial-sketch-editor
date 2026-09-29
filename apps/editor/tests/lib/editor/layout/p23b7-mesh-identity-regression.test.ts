@@ -192,7 +192,7 @@ describe('P23B.7 S6 — compiled values stay raw inside the reactive preview sta
 		expect(buildMeasures() - before, 'a proxy identity cannot reuse the raw-keyed meshes').toBe(1);
 	});
 
-	it('maps proxy-backed installs through capture and commit to the original compile cache key', async () => {
+	it('retired P23B.8 S3 (D9): proxy-backed installs no longer resolve to the compile cache key', async () => {
 		const input = await harness(true);
 		expect(
 			isSvelteStateProxy(input.preview.geometry),
@@ -206,9 +206,13 @@ describe('P23B.7 S6 — compiled values stay raw inside the reactive preview sta
 		const builds = buildMeasures() - warmUp;
 		const interval = p2311MeshIdentityRecords().slice(probeMark);
 		const { misses, hits } = meshIdentity(interval);
-		expect(builds, 'the proxy-backed commit restores the installed cache entry').toBe(1);
-		expect(misses, 'the accepted install is the only build miss').toHaveLength(1);
-		expect(hits, 'capture/commit resolves the proxy back to the installed compile').toHaveLength(1);
+		// The D9 compatibility mapping is retired: a legacy proxy-backed state
+		// rebuilds on restore instead of resolving to the installed compile.
+		// Production (S-R raw-signal) behavior is unchanged — see the S-R
+		// oracle above and `p23b8-d9-dormant-scan`.
+		expect(builds, 'a proxy-backed commit rebuilds without the retired mapping').toBe(2);
+		expect(misses, 'install and restore each miss on distinct proxy identities').toHaveLength(2);
+		expect(hits, 'no hit without the retired mapping').toHaveLength(0);
 	});
 });
 

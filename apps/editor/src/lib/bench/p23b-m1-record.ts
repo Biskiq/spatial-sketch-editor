@@ -56,7 +56,6 @@ import {
 import {
 	P23B_M1_ROOM_LABEL_ARMS,
 	P23B_M1_ROOM_LABEL_ARM_AFTER,
-	P23B_M1_ROOM_LABEL_ARM_BEFORE,
 	P23B_M1_ROOM_LABEL_ARM_RULE,
 	type P23BM1ActionLabelArmRecord,
 	type P23BM1GridBuildKeySummary,
@@ -435,8 +434,8 @@ export type P23BM1LabelArmWindows = {
 	note: string;
 	/** The arm the runner signed as AFTER — the shipped grid for this pass. */
 	afterArm: P23BM1RoomLabelArm;
-	/** The arm the runner signed as BEFORE — the grid it replaced. */
-	beforeArm: P23BM1RoomLabelArm;
+	/** The arm signed as BEFORE — absent since P23B.8 S8 retired the before side. */
+	beforeArm?: P23BM1RoomLabelArm;
 	rows: P23BM1LabelArmWindowRow[];
 	/** Why the split reports no rows; `null` when it reports some. */
 	notMeasuredReason: string | null;
@@ -454,7 +453,8 @@ export function summarizeLabelArmWindows(input: {
 	presentedWindows: number;
 }): P23BM1LabelArmWindows | null {
 	const afterArm = input.afterArm ?? P23B_M1_ROOM_LABEL_ARM_AFTER;
-	const beforeArm = input.beforeArm ?? P23B_M1_ROOM_LABEL_ARM_BEFORE;
+	// P23B.8 S8: no before side is signed anymore — the comparison protocols are retired.
+	const beforeArm = input.beforeArm;
 	if (input.rows.length === 0) return null;
 	return {
 		rule: P23B_M1_LABEL_ARM_WINDOW_RULE,
@@ -1366,7 +1366,10 @@ export function summarizeM1Arms(input: {
 		};
 	});
 	const byArm = new Map(rows.map((row) => [row.arm, row]));
-	const before = byArm.get('per-move') ?? null;
+	// Legacy arm strings: old legs split `per-move` against `transient`, but no new
+	// run records `per-move` (P23B.8 S8 retired the BEFORE arm), so `before` is null
+	// going forward and the comparison rows carry nulls instead of a delta.
+	const before = byArm.get('per-move' as P23BM1RoomDragArm) ?? null;
 	const after = byArm.get('transient') ?? null;
 	const comparisonRows: P23BM1ArmComparisonRow[] = [];
 	const compare = (label: string, beforeMs: number | null, afterMs: number | null): void => {

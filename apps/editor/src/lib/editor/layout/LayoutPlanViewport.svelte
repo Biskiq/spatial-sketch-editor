@@ -316,7 +316,6 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 		transientRoomUnitRotation,
 		type LayoutTransientRoomUnitMove
 	} from './layout-transient-room-unit';
-	import { p23bM1RoomDragArm } from './p23b-m1-room-drag-arm';
 	import { wallFirstWallLength } from '$lib/layout/layout-wall-openings';
 	import { planCameraProjectionForProject } from './plan-camera-projection';
 	import PlanSvg from './PlanSvg.svelte';
@@ -3867,24 +3866,10 @@ import { createBrowserTextMeasure } from './plan-text-measure';	import {
 			// history, and the drag session carries no presentation-only validity flag
 			// (there is no per-move planner verdict to record).
 			if (wallFirstLayoutDocument()) {
-				// Pre-P23B.8 follow-up §P5 — the M1 BEFORE arm. DEV-only and unreadable
-				// unless the measurement switch is on (`p23bM1RoomDragArm` returns
-				// `transient` otherwise), because it deliberately re-runs the per-move
-				// planner call this change removed. It is off in every ordinary run and
-				// in production; it exists so the before/after can be taken in ONE
-				// session without a pre-change tree. What commits is identical: the
-				// release below re-derives from the release coordinate against the
-				// frozen baseline and writes one history entry.
-				// The arm models the TRANSLATION change only: rotation has no per-move
-				// install to restore (there was no reachable rotation gesture to measure
-				// before this pass), so a rotate drag always takes the transient route
-				// below on both arms.
-				if (drag.mode === 'translate' && p23bM1RoomDragArm() === 'per-move') {
-					restoreLayoutPreviewSnapshot(preview, roomUnitSnapshot);
-					const armResult = previewWallFirstRoomMove(preview, drag.roomId, drag.translation);
-					if (!armResult.success) preview.statusMessage = armResult.message;
-					return;
-				}
+				// P23B.8 S8: the M1 BEFORE arm (`per-move`) is retired — every
+				// pointermove takes the shipped transient route. What commits is
+				// unchanged: the release below re-derives from the release
+				// coordinate against the frozen baseline and writes one history entry.
 				// The moving set frozen at pointer-down, or `null` when this drag did
 				// not carry one (then there is no honest attempt to draw).
 				const frozenUnit =

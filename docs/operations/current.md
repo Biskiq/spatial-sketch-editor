@@ -1,24 +1,26 @@
 # Current
 
 PHASE: P23B — geometry performance & stabilization (P-level status → ../roadmap/README.md)
-CHILD: P23B.8 — SHIPPED and closed 2026-09-29 (owner-ratified negative: D-0 FAIL, Worker
-       NOT JUSTIFIED, Rust/WASM NOT JUSTIFIED; docs-only branch, no lane re-runs per
-       owner instruction, reused follow-up gates; decision + acceptance record →
-       ../roadmap/p23b-geometry-performance/p23b.8-rust-wasm-evaluation/2026-09-29-P23B.8-decision-record.md;
-       tag `closed/p23b.8` local only; squash-merged as `23b0b3cb` (PR #99, owner-authorized); recovery via
-       `refs/pull/99/head`). No product change, no migration, no toolchain/bundle change.
+CHILD: P23B.8 follow-up — SHIPPED and closed 2026-09-29 (owner-accepted: all 4
+       calls confirmed as presented — lod (a) UNCHANGED · D10 ruling stands ·
+       S6 REVERT · S9 STAY; S0–S10 on branch `p23b.8-follow-up`, one PR #101,
+       squash-merged; tag `closed/p23b.8-follow-up` local only; recovery via
+       `refs/pull/101/head`; plan + 12 records live as P23B.9 gate evidence →
+       ../roadmap/p23b-geometry-performance/p23b.8-follow-up/2026-09-29-P23B.8-follow-up-acceptance-record.md).
+       Full contract green at close: fast 331/4,821 · arch 23/254 · heavy 8/93 ·
+       perf 9+1 · check 0/0 · builds ok · visitor-bundle 3/9.
 STAGE: P23 closed 2026-09-22. P23B executes the owner-ratified SEQUENCE between P23 and P26
        (phase README §SEQUENCE + five owner-authorized amendments). Shipped and closed:
        P23B.3a · P23B.0-durable · P23B.4 · P23B.5 · the measurement-only step · P23B.7 ·
        P23B.6 · P23B.11 · the pre-P23B.8 follow-up (M1 + R1, then the expanded scope) ·
-       P23B.8 (decision). P23B.1 and P23B.2 retain their own review statuses.
+       P23B.8 (decision) · P23B.8 follow-up. P23B.1 and P23B.2 retain their own review statuses.
        Architecture cycle: PHASE_1 installed, no owner action required.
 RATIFIED DIRECTION (2026-09-27): Biskiq northstar decision record →
        ../reference/decisions/northstar-ratification-2026-09-27.md (normative for new design);
        F foundation contract F.1–F.5 → ../reference/composition-execution.md (authorizes no
        implementation). P26 planning re-derived as T1 against F; P26 implementation unauthorized.
-NEXT: P23B.8 FOLLOW-UP PLAN — one implementation slice for every remaining parked item
-       (P1 · D8 · D9 · D10 · trailing-`lod` disposition · BEFORE-side prune · probe
-       deletions · Electron leg · D5-identity + D6-compositor attempts), one branch, one PR.
-       The plan needs owner ratification before any code moves; P23B.9's gate covers
-       whatever the follow-up ships. P23B.9 and P23B.10 stay unratified and unauthorized.
+NEXT: P23B.9 correctness + performance-regression gate — covers whatever the follow-up
+       shipped (S3/S8 equivalence evidence → the follow-up acceptance record). UNRATIFIED
+       and UNAUTHORIZED: starts only on the owner's ratification of its gate plan
+       (→ ../roadmap/p23b-geometry-performance/p23b.9-correctness-performance-gate/2026-09-22-P23B.9-correctness-performance-gate.md).
+       P23B.10 stays unratified and unauthorized.

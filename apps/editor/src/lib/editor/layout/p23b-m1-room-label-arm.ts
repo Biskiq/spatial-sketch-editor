@@ -14,46 +14,27 @@
  * the grid is built, that selects which of the two grid implementations the
  * shipped placer executes.
  *
- *   `seeded-grid`    the shipped path: the same grid as `pruned-grid` below, but
- *                    each distance walk is SEEDED with the slack already found, so a
- *                    term that cannot bind is never walked; the polylines are visited
- *                    CHEAPEST-SEGMENTS-FIRST, so a four-segment rectangle Room is
- *                    tested before a 40-wall mask and a flattened 256-vertex ring is
- *                    tested last; and a per-polyline group bounding box is built only
- *                    for a polyline long enough to earn one. Added by the 2026-09-28
- *                    follow-up pass.
- *   `pruned-grid`    the PREVIOUS shipped path, verbatim: one bounding-box prune on
- *                    the point-to-polyline distance, each term walked from
- *                    `+Infinity`, an early exit once a cell's slack is already
- *                    negative, active-text inflation hoisted out of the per-cell
- *                    loop, and the even-odd inside test computed per ROW.
- *   `per-cell-grid`  the PRE-P23B.8-CHANGE path, verbatim: every cell measured
- *                    against every boundary vertex, the inside test walked per cell,
- *                    the inflation rebuilt per cell, the bbox in four mapped arrays
- *                    and a neighbour array per BFS cell.
- *   `no-memo-grid`   the SHIPPED grid with its cache BYPASSED — not a fourth grid at all,
+ *   `seeded-grid`    the shipped path: the same grid as below, run through the
+ *                    placer's bounded, content-addressed candidate cache.
+ *                    (P23B.8 S8: the pre-change `per-cell-grid` and the previous
+ *                    `pruned-grid` are retired.)
+ *   `no-memo-grid`   the SHIPPED grid with its cache BYPASSED — not a second grid at all,
  *                    just `seeded-grid` without the reuse the shipped path now runs. It
  *                    exists because that reuse was PROMOTED out of this arm and into the
  *                    placer, and an arm comparison must be able to run the shipped path's
  *                    own grid without its cache, or the cache's effect would be
  *                    unmeasurable inside the session the protocol exists to keep honest.
  *
- * THE CACHE IS NO LONGER AN ARM — IT IS THE SHIPPED PATH. `seeded-grid` is the AFTER side,
- * so it now runs the seeded grid THROUGH the placer's bounded, content-addressed candidate
- * cache; `no-memo-grid` is that same grid with the cache skipped, and the legacy
- * `pruned-grid` / `per-cell-grid` bypass it too (they build DIFFERENT grids, so a cache
- * keyed by the shipped engine's inputs must never be allowed to serve them). The arm list
- * still has four entries because the promotion changed what `seeded-grid` RUNS, not how many
+ * THE CACHE IS NO LONGER AN ARM — IT IS THE SHIPPED PATH. `seeded-grid` runs the
+ * seeded grid THROUGH the placer's bounded, content-addressed candidate cache;
+ * `no-memo-grid` is that same grid with the cache skipped. The arm list has two
+ * entries because the promotion changed what `seeded-grid` RUNS, not how many
  * arms the protocol compares.
  *
- * FOUR ARMS, THREE DELTAS. The pair this branch's runner SIGNS is `seeded-grid`
- * against `pruned-grid` — the SHIPPED path, cache included, against the grid it replaced,
- * which is the before/after a reader wants. The pre-change `per-cell-grid` stays interleaved
- * and summarized beside them so a reader can still recompute the previous pass's
- * `pruned-grid − per-cell-grid` delta from the SAME session's rows. `no-memo-grid` adds the
- * third delta, `seeded-grid` against `no-memo-grid` — one cache, so the difference is the
- * reuse alone. An arm that is summarized but not compared is still measured, and the record
- * states which pairs it read.
+ * TWO ARMS, ONE DELTA. The pair the runner reports is `seeded-grid` against
+ * `no-memo-grid` — the SHIPPED path, cache included, against itself bypassed,
+ * which is the reuse delta a reader wants. (P23B.8 S8: the signed before/after
+ * pair is retired with the pre-change arms.)
  *
  * THE ARM IS MEASUREMENT-ONLY AND CANNOT REACH A PRODUCT BUILD. It is read through
  * `p23bM1RoomLabelArm()`, which returns `P23B_M1_ROOM_LABEL_ARM_AFTER` unless the DEV build
@@ -95,33 +76,22 @@ import {
 export type P23BM1GridBuildInputs = RoomLabelGridInputs;
 export { roomLabelGridKey as p23bM1GridBuildKey };
 
-/** The Room-label grid implementations M1 compares. */
-export type P23BM1RoomLabelArm =
-	| 'seeded-grid'
-	| 'pruned-grid'
-	| 'per-cell-grid'
-	| 'no-memo-grid';
+/** The Room-label grid implementations M1 compares (P23B.8 S8: pre-change/previous retired). */
+export type P23BM1RoomLabelArm = 'seeded-grid' | 'no-memo-grid';
 
 /**
  * The arm order the driver interleaves, round-robin by attempt index: the shipped
- * path, the previous shipped path, then the pre-change path. Alternating rather than
+ * path, then the same grid with its cache bypassed. Alternating rather than
  * blocking is the drift control — a machine that warms up or throttles mid-run moves
  * every arm, not one.
  */
-export const P23B_M1_ROOM_LABEL_ARMS = [
-	'seeded-grid',
-	'pruned-grid',
-	'per-cell-grid',
-	'no-memo-grid'
-] as const satisfies readonly P23BM1RoomLabelArm[];
+export const P23B_M1_ROOM_LABEL_ARMS = ['seeded-grid', 'no-memo-grid'] as const satisfies readonly P23BM1RoomLabelArm[];
 
-/** The pair the runner signs: the shipped path MINUS the previous shipped path. */
+/** The shipped path — the only grid the placer runs. */
 export const P23B_M1_ROOM_LABEL_ARM_AFTER = 'seeded-grid' as const;
-/** The BEFORE side of that pair — the previous pass's shipped grid, kept verbatim. */
-export const P23B_M1_ROOM_LABEL_ARM_BEFORE = 'pruned-grid' as const;
 
 export const P23B_M1_ROOM_LABEL_ARM_RULE =
-	'One session, FOUR arms, interleaved PER ATTEMPT, in every class of the protocol: `seeded-grid` (the shipped eligibility grid — every distance walk seeded with the slack already found, so a term that cannot bind is never walked; polylines visited CHEAPEST-SEGMENTS-FIRST, so the Room’s own boundary is tested first when it is the cheapest of them and last when it is a flattened ring; and a per-polyline group bounding box built only for a polyline long enough to earn one), `pruned-grid` (the grid shipped before it — bbox-pruned point-to-polyline distance walked from +Infinity, early exit on an already-negative slack, hoisted text inflation, per-row even-odd inside test), `per-cell-grid` (the pre-change grid — every cell against every vertex, per-cell inside test, per-cell inflation, per-cell allocations) and `no-memo-grid` (NOT a fourth grid: the SAME grid as `seeded-grid`, with the candidate cache the SHIPPED path now runs BYPASSED, so the difference between it and `seeded-grid` is the reuse alone). The SIGNED pair is `seeded-grid` − `pruned-grid`; `per-cell-grid` is interleaved and summarized beside them so the previous pass’s `pruned-grid` − `per-cell-grid` delta stays recomputable from the same session; and `no-memo-grid` is read against `seeded-grid` as the reuse delta — read from the cache’s OWN counters rather than from the build counts, because a cache hit still records the key of the request it served, so `builds − distinctBuilds` cannot tell a hit from a rebuild. The arm is recorded against the RESOLVED ACTION index, and all arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so a comparison between them is a WITHIN-SESSION one by construction. The placer is a PRESENTATION-path cost, so the rows it moves are the post-release window (release end → first presented frame) and the samples inside that window, not the release itself; the release row is reported beside them as the unchanged control. A cross-session or cross-tree comparison is NOT admissible under this protocol — every M1 absolute is session-conditioned — and is never made here.';
+	'One session, TWO arms, interleaved PER ATTEMPT, in every class of the protocol: `seeded-grid` (the shipped eligibility grid) and `no-memo-grid` (the SAME grid with the candidate cache BYPASSED, so the difference is the reuse alone). The arm is recorded against the RESOLVED ACTION index, and both arms run under the same runtime, the same fixture, the same viewport and the same warm-up rule, so a comparison between them is a WITHIN-SESSION one by construction — every M1 absolute is session-conditioned — and is never made across sessions. (P23B.8 S8: the pre-change `per-cell-grid` and previous `pruned-grid` arms are retired; no before/after pair is signed anymore.)';
 
 type ArmGlobals = typeof globalThis & {
 	__P2311_PERF__?: boolean;
@@ -166,9 +136,7 @@ export function p23bM1RoomLabelArm(
 	if (!p23bM1RoomLabelArmEnabled()) return P23B_M1_ROOM_LABEL_ARM_AFTER;
 	if (polygonScreen && mask && centerScreen) recordGridBuild({ polygonScreen, mask, centerScreen });
 	const arm = (globalThis as ArmGlobals).__P23B_M1_ROOM_LABEL_ARM__;
-	return arm === 'per-cell-grid' || arm === 'pruned-grid' || arm === 'no-memo-grid'
-		? arm
-		: P23B_M1_ROOM_LABEL_ARM_AFTER;
+	return arm === 'no-memo-grid' ? arm : P23B_M1_ROOM_LABEL_ARM_AFTER;
 }
 
 /**
