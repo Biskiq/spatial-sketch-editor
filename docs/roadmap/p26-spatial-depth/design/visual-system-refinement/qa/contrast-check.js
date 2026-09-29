@@ -47,8 +47,7 @@
     pair('white / ochre (rejected)', '#FFFFFF', tok('--ochre'), 'text'),
     pair('brand tape / shell', tok('--tape'), chassis, 'non-text'),
     pair('ink / brand tape', tok('--ink'), tok('--tape'), 'text'),
-    // the selection role, which the owner ruling on this branch resolves to the tape gold, so it is
-    // measured where it is actually used: a mark on the shell, on paper and on the mat
+    // selection aliases ochre (plan §3); measured as a mark on the shell, on paper and on the mat
     pair('selection / shell', tok('--sel'), chassis, 'non-text'),
     pair('selection / paper', tok('--sel'), paper, 'non-text'),
     pair('selection edge / paper', tok('--sel-edge'), paper, 'non-text'),

@@ -4,7 +4,7 @@
    P26 demo visual-system refinement: dark cutting mat for spatial modeling, vellum for
    drafting, technical ink for architecture, restrained ochre for selection and manipulation.
    One meaning per colour; roles keep their own variable even where values coincide, so a
-   later change to selection never moves branding, history or the return cue. */
+   later change to selection never moves branding or history. */
 :root {
   --mat: #1D3A33;
   --mat-deep: #152C26;
@@ -19,14 +19,12 @@
   --ink-3: #5F665F;
   --ink-dark: #17201D;
   --rule: #D6DBD2;
-  /* ochre: manipulation accents that are not selection (armed edits, cut lines, datums) */
+  /* ochre: selection and manipulation */
   --ochre: #E5A020;
   --ochre-deep: #8A5B10;
   --ochre-soft: rgba(229, 160, 32, .1);
   --ochre-halo: #F3F4EE;
-  /* tape: branding, history count, the return cue — and, per the owner ruling on this branch,
-     selection too. Selection is tape gold and nothing else is gold, so the selection role is
-     addressed through these tokens and there is exactly one source for the colour. */
+  /* tape identity — branding, history count. Not a state colour. */
   --tape: #F2B53C;
   --tape-deep: #B97E0E;
   --tape-soft: #FBE7B8;
@@ -44,11 +42,11 @@
   --coral: #C85A48;
   --coral-ink: #7E2718;
   --coral-soft: #F7EDE8;
-  /* selection is the tape gold; the variables keep the role addressable */
-  --sel: var(--tape);
-  --sel-edge: var(--tape-deep);
-  --sel-hover: #F7C862;
-  --sel-soft: var(--tape-soft);
+  /* selection resolves to ochre; the variables keep the role addressable */
+  --sel: var(--ochre);
+  --sel-edge: var(--ochre-deep);
+  --sel-hover: #F0B64A;
+  --sel-soft: var(--ochre-soft);
   --sel-handle: #F8F8F4;
   /* view-only displacement: slate, dashed — never a colour an authored change could wear.
      The stroke/badge slate is retained; text on a light surface uses the legible variant. */

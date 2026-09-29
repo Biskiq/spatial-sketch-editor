@@ -1,20 +1,20 @@
 # P26 demo visual-system refinement — acceptance record
 
 **Plan:** [`specification-plan.md`](../specification-plan.md) §9.
-**Status:** implementation applied and machine-verified; **owner visual acceptance owed**.
+**Status:** implementation applied and machine-verified; **owner visual acceptance recorded 2026-09-29**.
 **Parent revision:** `674b2294` (P23B.8 closeout).
 **Implementation revision:** `731a66c0` — *P26 demo: apply the visual-system refinement (mat, vellum, ink, ochre)*,
 plus the owner-directed work in §4b, and §4c. **All of it now lives on `p26-design-overhaul`**
 (merge `75ff6276` carries the eight refinement commits; `77db15ac` carries §4c). The work was made on
 `main` while the checkout was believed to be elsewhere; `main` was put back to `674b2294` and the
 safety tag `p26-work-backup-main` keeps the original commit ids reachable.
-**Selection ruling (2026-09-29):** this branch's own commit ruled that selection is tape gold and
-nothing else is gold. That supersedes plan §3's ochre **for the selection role only**: `--sel`
-resolves to the tape tokens and the canvas `COLORS.sel/selEdge` keep this branch's values. Ochre stays
-in play for the non-selection accents (active edit, cut lines, datums). Measurements in §6.
+**Selection:** plan §3 ochre. `--sel` → `--ochre` (`#E5A020` / `#8A5B10`). Tape remains branding
+and history-count. A later tape-gold alias on this branch was reverted.
 **Demo-dirty state:** the evidence in `baseline/` was captured with every demo file clean at
 `674b2294`; `revised/` was captured with the seven implementation files modified and no other
 demo file touched. Nothing outside `docs/roadmap/p26-spatial-depth/` was changed by this work.
+Specimen rasters in `revised/` predate the ochre restoration; they show the tape-gold interim.
+Tokens now match plan §3; rasters were not re-shot.
 
 ## 1. What changed
 
@@ -206,57 +206,34 @@ Full table: [`contrast-table.md`](./contrast-table.md), measured from the runnin
 | refuse edge `#B2543A` / mat | 2.48 | below 3:1 on the mat; the near-white refusal *fill* (11.29 vs mat) carries visibility on dark |
 | `#FFFFFF` / ochre | 2.24 | rejected alternative; glyphs and chip text use `--ink-dark` (7.44) instead |
 | brand tape / shell | 1.56 | decorative accent; the badge's ink text is 8.57 ✓ |
-
-Selection, measured where the ruling put it (tape gold), after the branch merge:
-
-| Pair | Ratio | Note |
-| --- | --- | --- |
-| selection / mat | 6.71 | the cue on the dark mat is the strongest of the set |
-| selection edge / paper | 3.14 | clears the 3:1 non-text floor; the deep gold is what carries selection on light surfaces |
-| selection edge / shell | 2.96 | **marginally under 3:1** — the fill is a light warm colour by construction (1.56 on shell, 1.66 on paper), so selection on the shell rests on the deep edge plus the ink glyph (9.08) and the contour, not on fill contrast |
-| ink-dark / selection (glyph on handle) | 9.08 ✓ | glyphs and chip text use `--ink-dark` |
-
-For comparison, the ochre the plan specifies scored 5.30 for the dark value on paper: the tape gold is
-a lighter colour, so this ruling costs roughly two points of edge contrast on the page. Above the
-floor, but the tightest non-text value in the system — worth knowing before it is locked in.
-
-## 6b. Selection contrasts under the ruling (2026-09-29)
+| selection / mat | 5.50 | ochre core on the dark mat |
+| selection edge / paper | 5.30 | dark ochre; clears 3:1 |
+| selection edge / shell | 5.00 | dark ochre; clears 3:1 |
+| selection / shell · paper | 1.91 · 2.02 | fill is a quiet tint by construction; contour and glyph carry the cue |
+| ink-dark / selection (glyph on handle) | 7.44 | same pair as ink-dark / ochre ✓ |
 
 ## 7. Unresolved, unverified and limitations
 
-1. **Owner visual acceptance.** Not performed — this agent cannot see the captures. Every “required
-   visible result” in plan §9.2 that is a judgement (dominance of cut geometry, restraint of the
-   dimension hierarchy, character retention) is **unverified**, not passed.
+1. **Owner visual acceptance.** Recorded 2026-09-29. Specimen rasters in `revised/` predate the
+   ochre restoration and still show the tape-gold interim; tokens now match plan §3.
 2. **Grid hue and sheet calibration — resolved.** Owner chose to keep the plan's §3 hexes and tune
    the sheet; §4 records the before/after and the calibration criterion.
-3. **Which wall wears paper is an owner interim choice, pending design.** `sheetWanted(id)` follows
-   the owner's instruction (“if it's 2D i.e. settle (square) make it consistent across”) rather than a
-   settled rule, and it reads wider than plan §4.5's “off their footprint” wording. Three candidate
-   rules, their costs and the open sub-questions are in
-   [`../paper-surface-brief.md`](../paper-surface-brief.md), which now also records the **Wall grid**
-   control as the editor-side override (§4b). Nothing here should be read as ratified.
-4. **A papered wall loses its selection cue (conformance gap, plan §5).** Measured on the same wall,
-   same selection: in 3D the body is `foamSel` and the outline `lineSel`; settled on paper the body is
-   `sheet` and the outline `line`, with no selection marks. §5 requires a “persistent contour … dark
-   ochre on paper”. Usable today only because the subject is the one un-ghosted wall and its handles
-   are drawn; **Wall grid off** avoids it entirely. To be fixed with the rule decision — see the brief.
+3. **Paper rule is the owner override**, folded into plan §4.5: settled subject or off-footprint,
+   plus **Wall grid** as the editor-side override. Costs and alternatives remain in
+   [`../paper-surface-brief.md`](../paper-surface-brief.md) as design memory, not an open default.
+4. **Selection on paper — resolved.** Paper and selection compose: settled + selected → body
+   `sheet`, outline `lineSel`. Wall grid off still swaps to `foamSel` + `lineSel` (real material);
+   it is not the selection fix.
 5. **DPR 2 raster.** The capture harness exposes no desktop device-scale-factor (only phone/tablet
    presets), so `capture-dpr2.sh` exercises the renderer's DPR-2 path (2× canvas backing store,
    `canvas.width = 2 × clientWidth`, identical textures/anisotropy, 0 errors) while the screenshot
    raster remains 1× CSS. CSS overlay linework is resolution-independent and unaffected.
-6. **Selection on the shell is the tightest non-text contrast in the system** (2.96 vs the 3:1 floor,
-   §6b). Not a defect in the ruling — gold is a light colour — but it is the one place where selection
-   depends on contour and glyph rather than fill contrast, and it is the first thing to check if the
-   palette is tuned again.
-7. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
+6. **Specimen coverage gaps.** Journeys were run at 1440 × 900 only; `prefers-reduced-motion`
    emulation was not captured (Instant motion is covered); the optional faint inner edge shadow on
    the perimeter was **not** added, because plan §4.2 permits it only on a comparison specimen that
    shows a material improvement and none was verified.
 7. **Optional specimen judgements** not asserted: “no moiré” at extreme zoom, and the dense-scene
    comparison the plan asks for before accepting the stronger starting grid opacities.
-8. **Tape vs selection separation.** Per plan §3, branding, history-count and return cues keep their
-   unchanged `--tape` values while selection/manipulation use the new `--ochre` family. This is a
-   deliberate role split, recorded as a calibration point the owner may choose to unify.
 
 **Resolved — consistency of the drafting surface (owner-reported 2026-09-29).** Owner chose: the
 paper follows the 2D drafting state. The trigger used to be curvature alone (`ds.sheet = u > 0.01` in
@@ -284,13 +261,10 @@ movement instead of popping. A wall off its footprint keeps the sheet as before,
 peeled wall still cannot be mistaken for an authored change of shape (plan §4.5), and journeys A–F
 and the 27 interaction checks were re-run unchanged (48/48 and 27/27, 0 console errors).
 
-**This rule is an owner interim choice, not a design resolution.** It reads wider than plan §4.5 and
-it has one measured conformance gap: a papered wall loses its selection cue (settled and selected →
-body `sheet`, outline `line`, no selection marks; in 3D the same wall is `foamSel` + `lineSel`, against
-plan §5's “persistent contour … dark ochre on paper”). A decision brief listing the three candidate
-rules, their costs and the open sub-questions is in
-[`paper-surface-brief.md`](../paper-surface-brief.md), for a principal designer to settle before the
-plan is revised.
+**This rule is the owner override**, folded into plan §4.5. Selection on paper composes with it
+(plan §5): settled and selected → body `sheet`, outline `lineSel`; Wall grid off → `foamSel` +
+`lineSel`. Alternatives and costs stay in [`paper-surface-brief.md`](../paper-surface-brief.md)
+as design memory.
 
 ## 4b. Owner-directed changes after the first review (2026-09-29)
 
@@ -322,12 +296,11 @@ changes no geometry, value, unit, camera path or history behaviour.
 (`#draftBtn`, `S.wallDrafting`, `G`, `?grid=0`, on by default). Off, `sheetWanted` returns `false`
 outright and `syncSheets()` re-decides every wall, so a wall keeps its real material in every view at
 every curvature — for working on the surface itself rather than reading the layout. Measured on the
-same settled wall: on → body `sheet`, button pressed; off → body `foamSel` and outline `lineSel`, so
-the selection cue returns too (the paper is what was suppressing it, §7 item 4). A displaced wall with
+same settled wall: on → body `sheet` and, when selected, outline `lineSel`; off → body `foamSel`
+and outline `lineSel`. The toggle swaps surface only; the ochre contour stays. A displaced wall with
 the control off keeps its dashed slate footprint, so the “view only” cue does not depend on the paper.
-Journey E carries it as the step “See the wall, or see the drawing”. This is the owner's proposal for
-resolving §7 item 4's open question and is recorded in the brief as **Option 4** — an override that
-does not by itself decide the default rule.
+Journey E carries it as the step “See the wall, or see the drawing”. This is Option 4 in
+[`paper-surface-brief.md`](../paper-surface-brief.md) — an override on the Option 1 default.
 
 Journey D now carries both ideas: “Motion that learns” explains Adaptive/Brisk/Teach/Instant, and a
 new step “Reduce motion, when watching the move is the problem” turns the control on, walks to the

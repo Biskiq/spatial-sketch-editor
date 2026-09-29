@@ -43,21 +43,25 @@ STATUS: planning — experience target accepted; architecture/sequence are pre-r
 CURRENT: 2026-09-24-P26-continuous-spatial-authoring-umbrella.md (pre-redesign evidence
          until re-derived)
 NEXT: re-derive scope/slices/T1 plan against the owner-ratified F target contract
-      (F.1–F.5 → roadmap/README) and the ratified direction before any implementation
-      plan; exact F interfaces land as F amendments in shared code
+      (F.1–F.5 → roadmap/README) and the ratified direction before any production
+      implementation plan; exact F interfaces land as F amendments in shared code
 EXECUTION: P23B remains the operational baton by owner decision — P23B.11 shipped and
            closed 2026-09-27; the owner-routed pre-P23B.8 follow-up (M1 + R1) is next,
            starting only on the owner's go.
-GATE: no implementation approved; no child is implementation-ready. F and re-derivation
-      precede any P26 implementation authorization; the architecture cycle's validation
-      window remains closed.
+GATE: no production implementation approved; no production child is implementation-ready.
+      F and re-derivation precede P26 production implementation authorization;
+      the architecture cycle's validation window remains closed.
 ```
+
+**Demo design revision:** [Visual-system specification plan](./design/visual-system-refinement/specification-plan.md)
+— bounded demo work following the owner-directed [visual-system sequence](../README.md).
+This revision is separate from the pre-redesign production plans below.
 
 ## Routes and evidence (pre-redesign)
 
 - **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
 - **Accepted experience:** [Final Design Prototype](./Final-Design-Prototype/README.md) — runnable import unchanged; rationale, reconciliation, implementer reference and journeys are linked there. Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
-- **Shell design authority unchanged:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). Proposed deltas await the re-derived T1 plan's decision gate.
+- **Shell design authority unchanged:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment is scheduled during the foundation gates under the [roadmap sequence](../README.md); it is not yet ratified or implemented by this demo plan.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
 - **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.
 

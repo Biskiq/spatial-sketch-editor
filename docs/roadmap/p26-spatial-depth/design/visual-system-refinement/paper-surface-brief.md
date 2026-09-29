@@ -1,10 +1,11 @@
 # Decision brief — when does a wall wear paper?
 
 **For:** principal designer (visual system) · **From:** P26 demo refinement · **Date:** 2026-09-29
-**Status:** one rule is implemented and working; it answers the owner's complaint but was chosen by the
-owner as a stopgap. **A principal design call is needed**, then the spec is reconciled and revised.
+**Status:** owner override in force — Option 1 (drafted surface) with Option 4 (Wall grid) as the
+editor-side override; folded into [`specification-plan.md`](./specification-plan.md) §2 and §4.5.
+Selection on paper (D4) is resolved: sheet stays, `lineSel` draws the contour.
 **Working demo:** `Final-Design-Prototype/` (`python3 -m http.server 8826`) · **Evidence:** this folder's
-`qa/` (§6) · **Plan under revision:** [`specification-plan.md`](./specification-plan.md) §2, §4.5, §5.
+`qa/` (§6).
 
 ---
 
@@ -12,24 +13,17 @@ owner as a stopgap. **A principal design call is needed**, then the spec is reco
 
 A wall in this editor can be drawn two ways: as **architecture** in the 3D model (light neutral
 `foam`, shaded, on the dark cutting mat), or as a **drafting sheet** (bright vellum paper carrying a
-1 m / 5 m measurement grid keyed to real wall distance). Both exist today. What is not decided is
-**which wall, in which state, gets which surface** — and the two representations are currently
-inconsistent in a way a viewer notices immediately:
+1 m / 5 m measurement grid keyed to real wall distance). Both exist today.
+
+**Owner override:** Option 1 (the settled subject or a wall off its footprint wears paper) with
+Option 4 (**Wall grid**) as the editor-side override. D2/D3 are accepted as that rule's costs
+(paper survives a tilt back to 3D; "view only" on the strip distinguishes displacement). **D4
+is resolved:** a papered selected wall keeps the sheet and draws `lineSel`.
+
+The inconsistency that prompted the override:
 
 > Stand square to a straight wall and it stays plain architecture. Stand square to the round wall and
 > unroll it, and it becomes paper. Same settled state, two different surfaces.
-
-The owner's decisions needed, in priority order:
-
-- **D1 — the rule.** What does the paper *mean*? (three options in §4)
-- **D2 — the mode boundary.** If paper is tied to the squared/2D representation, exactly what
-  triggers the swap as the camera tilts, and must it be instantaneous? (plan §4.4 forbids adding
-  delay to a view move)
-- **D3 — displacement.** A wall that has left its footprint already wears paper — that is the
-  "this is a view, not an edit" signal. Does it keep that signal under the new rule, and if paper
-  also marks the subject, how are the two readings told apart?
-- **D4 — selection on paper.** Not a taste call, see §5: a papered wall currently loses its
-  selection cue entirely.
 
 ---
 
@@ -66,13 +60,12 @@ Because only mechanism 1 painted a *wall*, the owner hit this, and asked for con
 > 'paperlike' rotunda when unrolling. Me want: if it's 2D i.e. settle (square) make it consistent
 > across, if mode is 3D still: render the color so it stays consistent."
 
-**Implemented now (owner's interim choice, commit `f3310d75`):** one predicate, `sheetWanted(id)`, in
+**Implemented (owner override, commit `f3310d75`):** one predicate, `sheetWanted(id)`, in
 `app/actions.js` — paper is on when *this wall is the settled subject of a face view* (`settle > 0.5`)
 **or** *it is off its footprint*, straight or curved, and it stays on when the camera tilts back to
 3D. Consequences: every wall in the model reads alike when squared; the curvature slider no longer
 recolours the wall it rolls; that "green rotunda" reading the owner reported is gone. This is a
-**wider** reading than the plan's §4.5 wording, and it was taken as an owner decision, not a design
-resolution — hence this brief.
+**wider** reading than the original plan §4.5 “off their footprint” wording; it is now the plan.
 
 ---
 
@@ -128,9 +121,6 @@ editor can judge the surface they are editing.
 
 - **Fixes:** removes the guessing entirely — the two readings the owner described (work on the wall
   vs visualise the layout) become two states a person chooses, not two states the software infers.
-  It also resolves §5's conformance gap in the "off" state: the selection material returns with the
-  real material (measured: body `sheet` → `foamSel`, outline `line` → `lineSel`), because the paper
-  is what was overriding it.
 - **Costs:** it does **not** remove the need for a default — the toggle has to pick an initial state,
   so Options 1 vs 2 still have to be decided for the "on" case. A global control also cannot express
   intent per wall in a scene where several walls matter, and it is one more thing to remember to set
@@ -142,36 +132,25 @@ editor can judge the surface they are editing.
   keeps its dashed slate footprint, so the "view only" cue survives without the paper. Journeys
   50/50, interactions 27/27, 0 console errors.
 
-**Recommendation: a combination.** The control (Option 4) is the right *override* — it gives the
-editor both readings on demand, which no inference can. But it does not answer the question underneath
-it: what the wall should look like **by default**, before anyone touches the control. For that default
-I still recommend **Option 2**, because it is the only rule that makes the surface a property of the
-*representation* rather than of the wall — which is precisely the inconsistency the owner hit twice
-(straight vs curved wall; surface changing with curvature) — and it is what the plan's own §2
-invariant already asserts: *"Paper treatment follows existing representation progress."* It also keeps
-the drafting grid where it is informative, on the measured page, while 3D keeps architecture as
-architecture. Either way, pair the decision with the conformance fix in §5 for the case the control
-is on.
+**Chosen: Option 1 + Option 4.** The default is drafted-surface (settled subject or off-footprint);
+**Wall grid** is the override. Option 2 remains the unelected alternative: paper as a property of
+the 2D page rather than of the wall. Selection on paper is independent: the sheet stays, `lineSel`
+draws the contour.
 
 ---
 
-## 5. What must be fixed whichever option wins (D4)
+## 5. Selection on paper (D4) — resolved
 
-The paper state currently **suppresses the wall's selection cue**. Measured on the same wall, same
-selection, differing only in representation:
+The paper state used to **suppress the wall's selection cue**. Restyle now keeps the sheet and draws
+the ochre contour (`lineSel`) whenever the wall is highlighted:
 
-| State | Wall body material | Wall outline material | Overlay selection marks |
-| --- | --- | --- | --- |
-| straight wall selected, 3D | `foamSel` (ochre selection tint) | `lineSel` (ochre) | — |
-| straight wall selected, settled square | `sheet` (paper) | `line` (**plain ink**) | 0 |
+| State | Wall body material | Wall outline material |
+| --- | --- | --- |
+| straight wall selected, 3D | `foamSel` (ochre selection tint) | `lineSel` (ochre) |
+| straight wall selected, settled square | `sheet` (paper + grid) | `lineSel` (ochre) |
 
-Plan §5 requires the selected subject to keep a "persistent contour", and specifies "dark ochre on
-paper" for it, so the papered wall should carry a dark-ochre boundary (`#8A5B10`, 5.30:1 against
-paper — already in the palette and already used in the Navigator). Today the subject is still
-identifiable in a face view because every other wall is ghosted and its handles are drawn, so
-nothing is unusable; the conformance gap is the missing contour and fill on the selected wall itself.
-This is a bug relative to §5, not a design preference, but the fix should be made together with the
-rule so the paper's handling of selection is decided once.
+No ochre fill on the page. Wall grid off still shows `foamSel` + `lineSel` so the editor can judge
+the real wall; that toggle is a surface override, not the selection fix.
 
 ---
 
@@ -232,26 +211,6 @@ wall, press `O`. Curvature control is on the strip; **Motion** is at the end of 
 
 ---
 
-## 8. What I need from you
+## 8. Remaining
 
-1. **Which rule is the default (§4)?** My recommendation is Option 2, with displaced walls keeping
-   paper in both modes — and Option 4's control above it as the override. If you would rather the
-   default stay Option 1, the control still gives editors the real material on demand, but the
-   straight-vs-curved inconsistency remains for anyone who never touches it.
-2. **If Option 2: what exactly triggers the swap?** Candidate: the squared threshold already used for
-   the page (`flat ≥ 0.97`) with hysteresis on the way back, riding the existing move and adding no
-   delay. Or tie it to `settle`/the "Square" action instead, so the surface changes when the *wall*
-   settles rather than when the *page* does.
-3. **Does the paper keep its displacement meaning?** If the subject is paper *and* a displaced wall is
-   paper, one visual has two meanings. Alternatives: keep both and let the strip's "view only" carry
-   the distinction; or give the displaced state a second cue (a dashed paper edge, a slight lift) so
-   the two are separable.
-4. **Do you accept the §5 conformance fix as part of this?** A papered selected wall needs its dark
-   ochre boundary (and a restrained fill decision) rather than no cue.
-5. **Is the drafting grid wanted on a faced straight wall at all?** V3 says yes; if the answer is no,
-   V3 has to be re-scoped and the UV work is only justified for curved and displaced walls.
-
-Once you decide, the reconciliation is small and I can do it: §2/§4.5/§5 wording, the V3/V4 specimen
-definitions, journeys A/D narration, and the `sheetWanted` predicate plus the paper selection
-treatment — then re-run the specimens, journeys and interaction checks, and update the acceptance
-record.
+None on this question. Option 1 + Option 4 and the paper-selection contour are the demo rule.

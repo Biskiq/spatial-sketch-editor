@@ -8,8 +8,8 @@ export const COLORS = {
   paperGridAlpha: 0.28, paperGridMajorAlpha: 0.45,
   foam: '#F1F2EC', floor: '#D3DBD0', floorPaper: '#E7EBE3', ink: '#202422', poche: '#26302C',
   tape: '#F2B53C', coral: '#C85A48', sky: '#8CC0EA', ghost: '#DCEBE4',
-  /* selection and manipulation resolve to the tape gold (owner ruling on this branch) */
-  sel: '#F2B53C', selEdge: '#C98A12', view: '#56707C',
+  /* selection and manipulation resolve to the restrained ochre */
+  sel: '#E5A020', selEdge: '#8A5B10', view: '#56707C',
 };
 
 // Grid decimation. The projected CSS-pixel spacing of a minor line decides which rung of the
@@ -380,8 +380,10 @@ export class Stage {
       const ghost = ds.mode === 'ghost';
       it.group.visible = ds.mode !== 'hidden';
       if (it.kind === 'wall') {
+        // Surface and selection are independent: paper keeps the sheet (layout reading);
+        // highlight still gets the ochre contour. Do not flood ochre over the grid.
         it.mesh.material = ghost ? this.mat.ghost : ds.sheet ? this.mat.sheet : ds.hl === 'sel' ? this.mat.foamSel : ds.hl === 'hover' ? this.mat.foamHover : this.mat.foam;
-        it.lines.material = ghost ? this.mat.lineGhost : ds.hl && !ds.sheet ? this.mat.lineSel : this.mat.line;
+        it.lines.material = ghost ? this.mat.lineGhost : ds.hl ? this.mat.lineSel : this.mat.line;
         it.mesh.castShadow = !ghost;
       } else if (it.kind === 'ceiling') {
         const c = it.data;

@@ -2,7 +2,10 @@
 
 **Date:** 2026-09-29
 
-**Status:** specification prepared; implementation and visual acceptance pending.
+**Status:** implementation applied; owner visual acceptance recorded 2026-09-29.
+Selection uses plan §3 ochre (`--sel` → `--ochre`). Owner-directed overrides of this
+plan (paper rule, Wall grid, Reduce motion, return-marker removal, paper slew) are
+folded into the sections they govern.
 
 **Deliverable:** a revised, verified P26 demo, with evidence for review and merge.
 
@@ -50,6 +53,8 @@ orthographic projection in the prototype.
 - Shell dimensions, panel arrangement, typography, control sizing, and tool order.
 - Camera paths, projection behavior, transition timing, motion preferences, and
   exact return behavior. Paper treatment follows existing representation progress.
+  During camera motion the ground's mat↔paper value is rate-limited (full swap
+  420 ms) so a pan cannot flicker; the value at rest is exact.
 - Wall geometry, openings, topology, cut/peel/lift evaluation, constraints, picking,
   handle positions and shapes, hit targets, units, and measurement values.
 - Selection identity, edit validation, transaction boundaries, document Undo, and
@@ -58,10 +63,14 @@ orthographic projection in the prototype.
   except local adjustments required to render the contextual drafting sheet.
 - The keyed overlay pool and existing label-decluttering behavior.
 
-No new features, global interaction model, component rewrite, framework migration,
-production app/package changes, dependency upgrades, or visitor styling belong to
-this work. If a required result needs such a change, report the specific conflict
-instead of silently extending the scope.
+Owner-directed demo controls, in scope as asked overrides of this plan: **Reduce
+motion** in the view bar (forces duration to 0; distinct from Motion speed);
+**Wall grid** in the view bar (paper vs the wall's real material; default on);
+removal of the origin/return marker (Esc, Put it back, and crumbs already carry
+return). No other new features, global interaction model, component rewrite,
+framework migration, production app/package changes, dependency upgrades, or
+visitor styling belong to this work. If a required result needs such a change,
+report the specific conflict instead of silently extending the scope.
 
 ## 3. Checked baseline and proposed palette
 
@@ -197,13 +206,19 @@ white light source. Retain artwork and opening visibility. Generated grid data
 is display-only and never enters authored state or Undo. Reuse render resources;
 do not regenerate textures/materials every frame during a drag or camera move.
 
+A wall wears the sheet when it is the settled subject of a face session
+(`settle > 0.5`) or it is off its footprint, straight or curved, and it keeps the
+sheet when the camera tilts back to 3D. **Wall grid** off forces every wall to its
+real material in every view. This is wider than “off their footprint” only; it is
+the owner override for this demo.
+
 ## 5. Selection, manipulation, and focus
 
 | State | Viewport treatment | Shell / Navigator treatment |
 | --- | --- | --- |
 | Rest | Existing geometry and neutral linework | Neutral ink and surfaces |
 | Hover | Restrained tint/edge, below selected emphasis | Perceptual surface lift |
-| Selected | Persistent contour; dark ochre on paper, contrasting ochre/light treatment on dark content; restrained fill | Quiet tint and a persistent edge/notch on the same selected identity |
+| Selected | Persistent contour; dark ochre on paper, contrasting ochre/light treatment on dark content. Paper and selection compose: the sheet and grid stay; `lineSel` draws the contour; no ochre fill on the page. Real-material (Wall grid off) keeps `foamSel` + `lineSel`. | Quiet tint and a persistent edge/notch on the same selected identity |
 | Manipulating | Ochre core on the active handle; emphasize only the affected edge and measurement | Preserve selected identity; do not flood the whole Inspector |
 | Keyboard focus | Independent offset ring: 2 px dark stroke with 2 px light halo, visibly clear of the control | Same independent focus grammar on keyboard-reachable controls |
 | Armed tool | Existing tool identity and geometry | Recessed neutral surface, normal ink; no selection-colored fill |

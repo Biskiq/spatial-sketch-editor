@@ -286,8 +286,8 @@ Actions offered by state: `beyond` → Include it (depth `need`) · Show it thro
 
 | Colour | Means | Never means |
 |---|---|---|
-| tape gold `#F2B53C` (edge `#B97E0E`, glyph `#17201D`) | **selection:** the selected entity, its handles, Reveal x-ray, the beacon — and, by the same ruling, a number you can type, dimensions, scale, the armed knife | both roles, so the stylesheet has one source: `--sel` resolves to `--tape` |
-| ochre `#E5A020` / deep `#8A5B10` | manipulation accents that are not selection: the active edit, cut lines, datums, seam letters | selection |
+| ochre `#E5A020` / deep `#8A5B10` (glyph `#17201D`) | **selection and manipulation:** the selected entity, its handles, Reveal x-ray, the beacon, an active edit, cut lines, datums | branding, history count |
+| tape gold `#F2B53C` | branding, history count | selection or a state colour |
 | dashed slate `#56707C` | displaced for this view: the as-built ghost, view-only tags, Navigator "moved" badges | an authored change |
 | coral | a gap, a refusal | |
 | green `#2A9384` | open on purpose | |
