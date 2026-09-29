@@ -73,7 +73,17 @@ not needed to contribute a normal test.
 10. `test:heavy` owns dense correctness/property/stress work.
 11. `test:perf` owns timing/budget gates and never substitutes for functional
     correctness coverage. P23B fixture identity, browser-report and
-    instrumentation-disabled contracts live in this lane.
+    instrumentation-disabled contracts live in this lane. **Timing is asserted
+    RELATIVELY, never as a wall-clock floor.** A number that can pass or fail on
+    machine noise alone is not a gate: a check that needs a floor asserts a
+    relative fact on identical input (the P23.11 precedent — the broad phase must
+    beat the quadratic enumeration by a wide margin), and every absolute duration
+    is REPORTED (p50/p95 with warm-up, samples and provenance) and left advisory.
+    The enforceable set stays the deterministic metrics (`compiled-memory`,
+    `cache-key-code-units`, `svg-node-count`, `three-*-estimate`) plus the
+    committed reuse ratchet; a timing threshold becomes enforceable only through
+    an owner ratification, and a red deterministic metric is never answered by
+    re-recording the baseline.
 12. **Split, do not cut.** Moving expensive work to `heavy` keeps cheap
     representative behavior in `fast`.
 13. **Draw the boundary around the expensive `it`s**, not automatically around a
@@ -163,9 +173,19 @@ through `bench:record`:
 npm run bench:record -w @portfolio/editor -- --p23b-browser-report /absolute/path/p23b-browser-baseline.json
 ```
 
-The recorder requires the clean-tree, method-v4 browser report and validates
+The recorder requires the clean-tree, **method-v5** browser report and validates
 all seven fixture identities before writing `g3-baseline.json`. Tests never
-write the checked-in baseline.
+write the checked-in baseline. Baseline identity is `methodVersion` + `tiers` +
+the fixture workloads: the version constant is `BENCH_METHOD_VERSION`
+(`apps/editor/src/lib/bench/bench-types.ts`), the four tiers are `chopin` (7 Rooms) ·
+`small` 10 · `medium` 100 · `large` 1000, and the seven workloads carry their
+semantic class from `apps/editor/src/lib/bench/p23b-fixtures.ts` (class 5 = timing target,
+the rest controls). The report and the baseline both carry a
+`methodVersionReason` — never a hand-edited version number — and the v5 reason is
+the one in the recorded baseline: deferred boundaries start where the
+synchronous input ended, `plan-apply` is its own boundary rather than adapter
+CPU work, every interaction action is classified by the outcome it reached, and
+capture sessions settle before summarizing.
 
 The P23B.5 reuse ratchet (`…/p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json`)
 follows the same rule, and the perf-lane gate fails when its counts drift:

@@ -405,3 +405,138 @@ regression check rather than a baseline audit:
   passes against `be4e23b`.
 - [`../../reference/components/theme.md`](../../reference/components/theme.md) — the theme contract
   that declares the spatial colours invariant.
+
+---
+
+## TD-4 — Curved-fixture release cost: P23B.6's final-capture increases are unresolved and did not reproduce
+
+**Status:** open — **deferred to the interaction/preview-state owner** (the P23B.7 mechanism family),
+inside the T1/P26 window when it next touches the release path.
+**Found:** 2026-09-26 by P23B.6's S6 final capture; re-read 2026-09-27 by the pre-P23B.8 follow-up's M1
+session, where it did **not** reproduce.
+**Defer to:** whoever next owns the wall-authoring / whole-Room release timing. It is not urgent because no
+threshold, budget or regression guard was ever set on it: every number in this family is advisory by
+design, and P23B.9's gate (G10) closed with it advisory.
+
+### Symptom
+
+The all-curved 40-Wall fixtures show **release-side elapsed increases** against the P23B.0-durable
+baseline (whole-Room move and wall-authoring classes), while the same release's
+release-to-next-presented-frame is **214–292 ms p50** where the older `browser-frame` proxy read
+**5–40 ms** on the same releases. Overall interaction improvement is therefore NOT established for the
+curved fixtures.
+
+### Reproduce
+
+One session, one protocol, two runtimes — the M1 runner and its records:
+`docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/` (`2026-09-27-M1-*` records; the leg
+captures are local-only and regenerable from the runner command each record carries). Take a before and
+an after **in the same session**: M1's corrected pair showed every row it cannot touch moving by
+×0.38–×1.03 between browser sessions with no code change, so cross-session absolutes are not comparable.
+
+### Root cause
+
+**Not established, and not claimed.** M1's corrected session did not reproduce P23B.6's final-capture
+increases; the corrected decomposition attributes the largest curved-fixture term to the P23B.13
+Room-label placer's eligibility grid (since optimized in the P23B.8 follow-up) and the rest to page
+JavaScript inside one Svelte runtime task per release — that is attribution of the *wait*, not a cause
+for the *increase*.
+
+### Why green
+
+No test asserts a timing threshold on these releases (the PERF-lane rule in
+[`../../apps/editor/tests/README.md`](../../apps/editor/tests/README.md) §Test design rules 11: timing is
+asserted relatively, never as a wall-clock floor). The reuse counters are counts, not durations.
+
+### Fix options
+
+- **Option A (recommended framing):** re-measure in ONE session with a before/after arm and only then
+  decide — a relative arm can fail honestly where a cross-session absolute cannot.
+- **Option B:** leave as an accepted, documented state: the phase closes with the increases recorded as
+  unresolved. Legitimate, but then they must stay recorded, not quietly dropped.
+- **Must not do:** re-record `g3-baseline.json` to make a number look better; adopt Worker/WASM on this
+  evidence (P23B.8's D-0 gate FAILED, and its reopen conditions are written); fold browser long tasks or
+  Svelte reactive cost into a geometry claim.
+
+### Then add
+
+1. A same-session before/after arm whose relative assertion can fail.
+2. A regression row that names which class moved, so a later claim cannot pool classes.
+
+### Related
+
+- P23B.6 S6 final evidence and the release-delay diagnosis (closed stubs under
+  `../../roadmap/p23b-geometry-performance/p23b.6-rendering-optimization/`).
+- P23B.11 (closed): exact pair short-circuits, the identity condition and the accepted compile landed;
+  the wall-chain share is attributed and the increases were left unresolved by that slice.
+- The P23B.10 closeout record (§C5) — where this family's advisory/enforced state is recorded.
+
+---
+
+## TD-5 — Reuse and comparison over `$state`-proxied compiled geometry pay a ~12× per-read penalty
+
+**Status:** open — **deferred to the mechanism owners, not to a call site.**
+**Found:** 2026-09-27 by the pre-P23B.8 follow-up's D5 probe. A candidate optimization (exact
+convex-hull + rotating-calipers extent sweep) was implemented, proven output-identical to the shipped
+per-pair scan on every fixture, and then **measured OUT**: up to 2.2× SLOWER at the input the editor
+actually hands in (2,560 wall spans / 40 Walls: 1.358 vs 0.898 ms p50 on all-curved-40, interleaved
+arms).
+**Defer to:** the P23B.7 preview-state family and the P26 P6/P1 rows. The fix is **not** inside
+`layout-snap.ts`; it belongs to the identity the frozen baseline is stored under.
+
+### Symptom
+
+The same value merge costs **43.7 ms over the live `$state`-proxied geometry and 3.6 ms over the same
+values as plain objects (12.1×)**, inside a `pointermove-rigid` of 114.3 ms. Every whole-Room move
+prepares the generation six times, and **61–68 ms of each 72–81 ms preparation is the per-Wall VALUE
+COMPARISON of the whole generation**, against 2.6–4.7 ms in the builds themselves — while reuse itself
+is already working (≈36 of 40 Walls reused; exactly the 4 whose compiled Wall changed are rebuilt).
+
+### Reproduce
+
+`docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-D4-D5-D6-live-attribution-record.md`
+(the interleaved arms, the live probe and the `prebuild-stats` rows); the leg captures are local-only and
+regenerable from the runner command each record carries.
+
+### Root cause
+
+The compiled geometry consumers receive is a Svelte `$state` **proxy**, and identity-keyed reuse plus
+whole-generation comparisons read through it: every read pays proxy access. The STATE-SIDE pin (the
+P23B.6/P23B.7-era measurement step) is what identified the identity the commit hands
+`installWallMeshes`; D5 proved the same mechanism is what makes a comparison-first optimization lose.
+
+### Broke when
+
+Not a regression: a property of the editor's reactive state layer. The measurement-only step pinned it
+STATE-SIDE and the SEQUENCE order ruling followed from it.
+
+### Why green
+
+No test measures per-access proxy cost. The reuse gates count hits and derivations (the committed
+`reuse-counter-ratchet.json`), which cannot see duration, and P23B.5's ratchet is deliberately
+count-only.
+
+### Fix options
+
+- **Option A:** change the identity the frozen baseline is stored under, so reuse and comparison stop
+  reading through the proxy — the preview-state family's ruling (a `$state` regression oracle already
+exists as the precedent).
+- **Option B:** stop comparing the whole generation per move (the D4 finding: the comparison, not the
+  builds, is the price).
+- **Must not do:** a copy-first fix — it does **not** pay (37.2 ms vs 27.0 ms measured); and no second
+  geometry authority, second cache or second compiler may be introduced to make the numbers look better.
+
+### Then add
+
+1. An equivalence test proving any new identity path yields byte-equal compiled geometry (the reuse
+   guards' existing shape).
+2. A relative cost assertion over the proxied object, so the 12× cannot silently return.
+
+### Related
+
+- D5/D4/D6 records (pre-P23B.8 follow-up):
+  [`2026-09-27-D4-D5-D6-live-attribution-record.md`](../../roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-27-D4-D5-D6-live-attribution-record.md)
+  and the reuse trace beside it.
+- P23B.5 (closed): the preflight-only scope ruling and the count-only ratchet. The sample store's
+  absolute invariants are preserved verbatim and must not be re-owned by a fix for this row.
+- The P23B.7 STATE-SIDE identity pin — P23B.10's closeout record (§C5) names the mechanism family.
