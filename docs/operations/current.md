@@ -5,8 +5,8 @@ CHILD: P23B.8 — SHIPPED and closed 2026-09-29 (owner-ratified negative: D-0 FA
        NOT JUSTIFIED, Rust/WASM NOT JUSTIFIED; docs-only branch, no lane re-runs per
        owner instruction, reused follow-up gates; decision + acceptance record →
        ../roadmap/p23b-geometry-performance/p23b.8-rust-wasm-evaluation/2026-09-29-P23B.8-decision-record.md;
-       tag `closed/p23b.8` local only; squash-merged, owner-authorized; recovery via
-       `refs/pull/<n>/head`). No product change, no migration, no toolchain/bundle change.
+       tag `closed/p23b.8` local only; squash-merged as `23b0b3cb` (PR #99, owner-authorized); recovery via
+       `refs/pull/99/head`). No product change, no migration, no toolchain/bundle change.
 STAGE: P23 closed 2026-09-22. P23B executes the owner-ratified SEQUENCE between P23 and P26
        (phase README §SEQUENCE + five owner-authorized amendments). Shipped and closed:
        P23B.3a · P23B.0-durable · P23B.4 · P23B.5 · the measurement-only step · P23B.7 ·
