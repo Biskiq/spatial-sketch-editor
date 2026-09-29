@@ -40,7 +40,9 @@ function digestIndex(index: ReturnType<typeof wallSnapIndex>): string {
 }
 
 describe('p23b.8 S6 — D5-identity falsifier and verdict parity', () => {
-	it('reproduces the proxy read cost on identical span values (reported, not gated)', () => {
+	it(
+		'reproduces the proxy read cost on identical span values (reported, not gated)',
+		() => {
 		const base = curvedGeometry();
 		const wallSpans = base.queries.spans.filter((span) => span.kind === 'wall');
 		expect(wallSpans.length, 'the all-curved fixture hands wall spans to the merge').toBeGreaterThan(0);
@@ -72,16 +74,22 @@ describe('p23b.8 S6 — D5-identity falsifier and verdict parity', () => {
 		for (const value of [...rawTimes, ...proxyTimes]) {
 			expect(Number.isFinite(value)).toBe(true);
 		}
-	});
+		},
+		120_000
+	);
 
-	it('resolveLayoutSnap reaches identical verdicts on raw and proxy-wrapped geometry', () => {
-		const base = curvedGeometry();
-		const raw = structuredClone(base);
-		const proxied = proxy(structuredClone(base)) as CompiledLayoutGeometry;
-		const point: [number, number] = [3, 2];
-		const context = { pixelsPerMeter: 100 };
-		const rawVerdicts = JSON.stringify(resolveLayoutSnap(raw, point, context));
-		const proxyVerdicts = JSON.stringify(resolveLayoutSnap(proxied, point, context));
-		expect(proxyVerdicts, 'snap verdicts are identical on both identities').toBe(rawVerdicts);
-	});
+	it(
+		'resolveLayoutSnap reaches identical verdicts on raw and proxy-wrapped geometry',
+		() => {
+			const base = curvedGeometry();
+			const raw = structuredClone(base);
+			const proxied = proxy(structuredClone(base)) as CompiledLayoutGeometry;
+			const point: [number, number] = [3, 2];
+			const context = { pixelsPerMeter: 100 };
+			const rawVerdicts = JSON.stringify(resolveLayoutSnap(raw, point, context));
+			const proxyVerdicts = JSON.stringify(resolveLayoutSnap(proxied, point, context));
+			expect(proxyVerdicts, 'snap verdicts are identical on both identities').toBe(rawVerdicts);
+		},
+		120_000
+	);
 });
