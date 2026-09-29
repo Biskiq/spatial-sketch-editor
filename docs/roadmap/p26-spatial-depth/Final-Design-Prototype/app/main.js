@@ -347,9 +347,31 @@ ctx.ov.html.addEventListener('pointerdown', (e) => {
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, world);
   const start = stage.rayPlane(e.clientX, e.clientY, plane) || world;
   hdrag = { spec, plane, start, base: baseValues(spec), el: h };
+  h.classList.add('manipulating');
+  S.activeEdit = activeEditFor(spec);
   document.body.classList.add('dragging');
   A.beginEdit();
 });
+
+// The one value this gesture owns — used by the overlay to emphasise that measurement and no other.
+function activeEditFor(spec) {
+  switch (spec.type) {
+    case 'op-head': return { kind: 'op', id: spec.id, key: 'head' };
+    case 'op-sill': return { kind: 'op', id: spec.id, key: 'sill' };
+    case 'op-rise': return { kind: 'op', id: spec.id, key: 'rise' };
+    case 'op-jamb': return { kind: 'op', id: spec.id, key: 'w' };
+    case 'ridge': return { kind: 'top', wall: spec.wall, key: 'rh' };
+    case 'top': return { kind: 'top', wall: spec.wall, key: spec.key };
+    case 'ceil-h': return { kind: 'ceil', id: spec.id, key: 'base' };
+    default: return null;
+  }
+}
+
+function clearActiveEdit() {
+  if (hdrag?.el) { hdrag.el.classList.remove('manipulating'); hdrag.el.classList.remove('refused'); }
+  S.activeEdit = null;
+}
+window.addEventListener('pointercancel', () => { if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); requestUI(); } });
 
 window.addEventListener('pointermove', (e) => {
   if (!direct) return;
@@ -464,7 +486,7 @@ function dragKnifeGrip(e) {
 
 window.addEventListener('pointerup', () => {
   if (!hdrag) return;
-  hdrag.el.classList.remove('refused');
+  clearActiveEdit();
   document.body.classList.remove('dragging');
   if (hdrag.spec.view) { hdrag = null; A.setStatus('Line moved — the preview follows; nothing opens until you say so', 'view'); return; }
   if (S.refusal) {
@@ -490,12 +512,13 @@ function openTypein(el, spec) {
   typein.classList.remove('bad');
   $('#typeinErr').textContent = '';
   typeSpec = spec;
+  S.activeEdit = { kind: spec.type, id: spec.id, wall: spec.wall, key: spec.key };
   typeinInput.value = fmt(fieldValue(spec));
   typeinInput.focus();
   typeinInput.select();
 }
 
-function closeTypein() { typein.hidden = true; typeSpec = null; }
+function closeTypein() { typein.hidden = true; typeSpec = null; S.activeEdit = null; requestUI(); }
 
 typeinInput.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { e.stopPropagation(); closeTypein(); return; }

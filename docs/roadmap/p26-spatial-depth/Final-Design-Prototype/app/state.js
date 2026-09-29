@@ -17,6 +17,8 @@ export const S = {
   redo: [],
   pending: null,
   refusal: null,
+  /* the one value a gesture or the numeric editor currently owns, for emphasis only */
+  activeEdit: null,
   reveal: null,
   recentCut: null,
   popover: null,

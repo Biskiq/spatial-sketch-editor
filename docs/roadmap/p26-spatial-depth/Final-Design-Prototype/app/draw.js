@@ -12,6 +12,11 @@ const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const UP = [0, 1, 0];
 
+// Only the value being dragged or typed takes maximum emphasis; no other dimension of the same
+// subject strengthens, and the emphasis clears when the gesture ends, is cancelled or is refused.
+const isActive = (q) => { const a = S.activeEdit; if (!a) return false; for (const k in q) if (a[k] !== q[k]) return false; return true; };
+const aCls = (base, q) => (isActive(q) ? `${base} active` : base);
+
 export function drawAll() {
   const ov = ctx.ov;
   ov.begin();
@@ -272,7 +277,7 @@ function drawTopHandles(s, K, R) {
       type: tp.key === 'rh' ? 'ridge' : 'top', wall: w.id, key: tp.key, world: K.world(sv, y), normal: K.normal(sv), s0: sv, off: K.off,
       aria: `${w.name} ${name} height`,
     }, 'handle top', UP);
-    ov.chip(`topk-${tp.key}`, p.x, p.y - 22, `<span class="k">${name}</span>${fmt(y)}`, 'tape edit above', {
+    ov.chip(`topk-${tp.key}`, p.x, p.y - 22, `<span class="k">${name}</span>${fmt(y)}`, aCls('tape edit above', { kind: 'top', wall: w.id, key: tp.key }), {
       'data-edit': JSON.stringify({ type: 'top', wall: w.id, key: tp.key }),
     });
   }
@@ -330,19 +335,19 @@ function drawOpening(o, K, opts) {
     // the three numbers stack away from the wall, on whichever side of it is open paper
     const q = opts.tapeKit.sp(o.s, opts.y), c = K.sp(o.s, opts.y);
     const dy = q.y >= c.y ? 22 : -22;
-    ov.chip('w-k', q.x, q.y, `<span class="k">width</span>${fmt(o.w)}`, 'tape edit', edit('w'));
-    ov.chip('pl-sill', q.x, q.y + dy, `<span class="k">sill</span>${fmt(o.sill)}`, 'tape edit', { ...edit('sill'), pri: 86 });
-    ov.chip('pl-head', q.x, q.y + 2 * dy, `<span class="k">head</span>${fmt(o.head)}`, 'tape edit', { ...edit('head'), pri: 86 });
+    ov.chip('w-k', q.x, q.y, `<span class="k">width</span>${fmt(o.w)}`, aCls('tape edit', { kind: 'op', id: o.id, key: 'w' }), edit('w'));
+    ov.chip('pl-sill', q.x, q.y + dy, `<span class="k">sill</span>${fmt(o.sill)}`, aCls('tape edit', { kind: 'op', id: o.id, key: 'sill' }), { ...edit('sill'), pri: 86 });
+    ov.chip('pl-head', q.x, q.y + 2 * dy, `<span class="k">head</span>${fmt(o.head)}`, aCls('tape edit', { kind: 'op', id: o.id, key: 'head' }), { ...edit('head'), pri: 86 });
     return;
   }
 
   if (opts.dims === 'compact') {
     const hd = K.sp(o.s, o.head), sl = K.sp(o.s, o.sill);
-    ov.chip('c-head', hd.x, hd.y - 12, `<span class="k">head</span>${fmt(o.head)}`, 'tape edit above', edit('head'));
-    if (o.sill > 0.001) ov.chip('c-sill', sl.x, sl.y + 20, `<span class="k">sill</span>${fmt(o.sill)}`, 'tape edit', edit('sill'));
+    ov.chip('c-head', hd.x, hd.y - 12, `<span class="k">head</span>${fmt(o.head)}`, aCls('tape edit above', { kind: 'op', id: o.id, key: 'head' }), edit('head'));
+    if (o.sill > 0.001) ov.chip('c-sill', sl.x, sl.y + 20, `<span class="k">sill</span>${fmt(o.sill)}`, aCls('tape edit', { kind: 'op', id: o.id, key: 'sill' }), edit('sill'));
     const wl = K.sp(e1, midY), wr = K.sp(e0, midY);
     const right = wl.x >= wr.x;
-    ov.chip('c-w', wl.x + (right ? 18 : -18), wl.y, `<span class="k">width</span>${fmt(o.w)}`, right ? 'tape edit left' : 'tape edit right-of', edit('w'));
+    ov.chip('c-w', wl.x + (right ? 18 : -18), wl.y, `<span class="k">width</span>${fmt(o.w)}`, aCls(right ? 'tape edit left' : 'tape edit right-of', { kind: 'op', id: o.id, key: 'w' }), edit('w'));
     return;
   }
 
@@ -351,22 +356,22 @@ function drawOpening(o, K, opts) {
   const wline = along(K, e0, e1, wy);
   ov.path('w-dim', wline, 'dim');
   const wm = wline[Math.floor(wline.length / 2)];
-  ov.chip('w-k', wm.x, wm.y, `<span class="k">width</span>${fmt(o.w)}`, 'tape edit', edit('w'));
+  ov.chip('w-k', wm.x, wm.y, `<span class="k">width</span>${fmt(o.w)}`, aCls('tape edit', { kind: 'op', id: o.id, key: 'w' }), edit('w'));
   if (opts.profile && o.profile !== 'rect') {
     handleIf('h-rise', { ...base, type: 'op-rise', world: K.world(e1, sp0), normal: K.normal(e1), aria: `${o.name} arch rise` }, 'handle spring', UP);
     const ra = spo(e1 + 0.3, sp0), rb = spo(e1 + 0.3, o.head);
     ov.line('rise-dim', ra, rb, 'dim');
-    ov.chip('rise-k', ra.x + 6, (ra.y + rb.y) / 2, `<span class="k">rise</span>${fmt(o.rise)}`, 'tape edit left', edit('rise'));
+    ov.chip('rise-k', ra.x + 6, (ra.y + rb.y) / 2, `<span class="k">rise</span>${fmt(o.rise)}`, aCls('tape edit left', { kind: 'op', id: o.id, key: 'rise' }), edit('rise'));
     ov.path('spring-line', along(K, e0 - 0.1, e1 + 0.1, sp0, 8), 'spring');
   }
   if (o.sill > 0.001) {
     const a = spo(e0 - 0.35, 0), b = spo(e0 - 0.35, o.sill);
     ov.line('sill-dim', a, b, 'dim');
-    ov.chip('sill-k', a.x - 6, (a.y + b.y) / 2, `<span class="k">sill</span>${fmt(o.sill)}`, 'tape edit right-of', edit('sill'));
+    ov.chip('sill-k', a.x - 6, (a.y + b.y) / 2, `<span class="k">sill</span>${fmt(o.sill)}`, aCls('tape edit right-of', { kind: 'op', id: o.id, key: 'sill' }), edit('sill'));
   }
   const ha = spo(e0 - 0.95, 0), hb = spo(e0 - 0.95, o.head);
   ov.line('head-dim', ha, hb, 'dim');
-  ov.chip('head-k', hb.x - 6, hb.y, `<span class="k">head</span>${fmt(o.head)}`, 'tape edit right-of', edit('head'));
+  ov.chip('head-k', hb.x - 6, hb.y, `<span class="k">head</span>${fmt(o.head)}`, aCls('tape edit right-of', { kind: 'op', id: o.id, key: 'head' }), edit('head'));
 }
 
 // ---------------------------------------------------------------- opened along a line
@@ -402,7 +407,7 @@ function drawSection(s) {
       if (done.has(o.id)) continue;
       done.add(o.id);
       if (faceOn) {
-        if (osel) ov.chip(`sx-opk-${o.id}`, hd.x + 16, hd.y + 13, `${esc(th.item.name)} · <span class="k">head</span>${fmt(o.head)}`, 'tape edit left', { 'data-edit': JSON.stringify({ type: 'op', id: o.id, key: 'head' }), pri: 95 });
+        if (osel) ov.chip(`sx-opk-${o.id}`, hd.x + 16, hd.y + 13, `${esc(th.item.name)} · <span class="k">head</span>${fmt(o.head)}`, aCls('tape edit left', { kind: 'op', id: o.id, key: 'head' }), { 'data-edit': JSON.stringify({ type: 'op', id: o.id, key: 'head' }), pri: 95 });
         else ov.chip(`sx-opk-${o.id}`, hd.x + 10, hd.y + 10, th.item.ref, 'ref tiny-right', { 'data-sel': o.id, pri: 20 });
         const above = c.top - o.head;
         if (above > 0.05 && (osel || isSel)) {
@@ -512,7 +517,7 @@ function drawLookup(s) {
     const q = P(x, y, z);
     const sel = S.sel === c.id;
     ov.chip(`lu-${c.id}`, q.x, q.y, `<span class="lu-n">${esc(c.name)}</span><span class="lu-rel">${c.rel === 'closure' ? 'closes the room' : 'suspended'}${c.form === 'shed' ? ' · sloped' : ''}</span>`, sel ? 'lu-card sel' : 'lu-card', { 'data-sel': c.id, pri: sel ? 90 : 60 });
-    ov.chip(`luh-${c.id}`, q.x, q.y + 30, `<span class="k">underside</span>${fmt(c.plane.base)}`, 'tape edit', { 'data-edit': JSON.stringify({ type: 'ceil', id: c.id, key: 'base' }) });
+    ov.chip(`luh-${c.id}`, q.x, q.y + 30, `<span class="k">underside</span>${fmt(c.plane.base)}`, aCls('tape edit', { kind: 'ceil', id: c.id, key: 'base' }), { 'data-edit': JSON.stringify({ type: 'ceil', id: c.id, key: 'base' }) });
     for (const h of c.holes) {
       const [hx, hz] = centroid(h.pts);
       const hq = P(hx, y, hz);
@@ -608,7 +613,7 @@ function drawIdle() {
     if (w.top.form === 'constant') {
       handleIf('i-top', { type: 'top', wall: w.id, key: 'h', world: K.world(sv, y), normal: K.normal(sv), aria: `${w.name} height` }, 'handle top', UP);
     }
-    ov.chip('i-topk', q.x, q.y - 22, `<span class="k">top</span>${fmt(y)}`, 'tape edit above', w.top.form === 'constant' ? { 'data-edit': JSON.stringify({ type: 'top', wall: w.id, key: 'h' }) } : {});
+    ov.chip('i-topk', q.x, q.y - 22, `<span class="k">top</span>${fmt(y)}`, aCls('tape edit above', { kind: 'top', wall: w.id, key: 'h' }), w.top.form === 'constant' ? { 'data-edit': JSON.stringify({ type: 'top', wall: w.id, key: 'h' }) } : {});
     if (w.kind === 'arc') dogEar(w, sv + 1.2, side);
   } else if (t.kind === 'ceilings') {
     const c = t.item;
@@ -695,7 +700,7 @@ function drawBeacon() {
 function drawRefusal() {
   const r = S.refusal;
   if (!r.at) return;
-  ctx.ov.chip('refusal', r.at.x, r.at.y - 40, esc(r.msg), 'note warn above', { pri: 99 });
+  ctx.ov.chip('refusal', r.at.x, r.at.y - 40, esc(r.msg), 'note refuse above', { pri: 99 });
 }
 
 export { THREE };

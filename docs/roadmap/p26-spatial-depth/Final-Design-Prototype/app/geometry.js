@@ -55,7 +55,18 @@ export function buildWallGeometry(w, state = {}) {
   const bs = wallBreaks(w, sA);
   const tri = [];
   const lines = [];
-  const quad = (a, b, c, d) => tri.push(...a, ...b, ...c, ...a, ...c, ...d);
+  const uvArr = [];
+  // Display-only grid coordinates for the vellum sheet: u is distance along the wall from its
+  // start, v is height above the floor datum, both in major intervals. A closed wall fits a whole
+  // number of major bands so the pattern meets itself at the seam; an open wall uses 1 m minor
+  // and 5 m major exactly. Positions, topology, openings and picking are unchanged.
+  const uvStep = w.closed && L > 1e-6 ? L / Math.max(1, Math.round(L / 5)) : 5;
+  const MASK = [0.5, 0.5];
+  const quad = (a, b, c, d, uv4) => {
+    tri.push(...a, ...b, ...c, ...a, ...c, ...d);
+    if (uv4) uvArr.push(...uv4[0], ...uv4[1], ...uv4[2], ...uv4[0], ...uv4[2], ...uv4[3]);
+    else uvArr.push(...MASK, ...MASK, ...MASK, ...MASK, ...MASK, ...MASK);
+  };
   const seg = (a, b) => lines.push(...a, ...b);
   const P = (f, o, y) => S.point(f, o, y);
 
@@ -68,8 +79,10 @@ export function buildWallGeometry(w, state = {}) {
     const A = frameUnrolled(w, sA, d0, u);
     const B = frameUnrolled(w, sA, d1, u);
     for (const I of stripIntervals(w, s0, s1)) {
+      const uA = s0 / uvStep, uB = s1 / uvStep;
       for (const o of [t, -t]) {
-        quad(P(A, o, I.a0), P(B, o, I.b0), P(B, o, I.b1), P(A, o, I.a1));
+        quad(P(A, o, I.a0), P(B, o, I.b0), P(B, o, I.b1), P(A, o, I.a1),
+          [[uA, I.a0 / uvStep], [uB, I.b0 / uvStep], [uB, I.b1 / uvStep], [uA, I.a1 / uvStep]]);
         seg(P(A, o, I.a1), P(B, o, I.b1));
         seg(P(A, o, I.a0), P(B, o, I.b0));
       }
@@ -106,6 +119,7 @@ export function buildWallGeometry(w, state = {}) {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvArr, 2));
   g.computeVertexNormals();
   const lg = new THREE.BufferGeometry();
   lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
