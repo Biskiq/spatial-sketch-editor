@@ -336,6 +336,34 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		hooks.log(line);
 	}
 
+	/**
+	 * The progress line for ONE class, naming the workload it belongs to when it is the
+	 * cold one (§16). The two workloads run the same five classes, so without this the
+	 * status of a run says `rigid-wall-drag` for six of the ten classes it drives and a
+	 * reader watching a leg cannot tell which pass it is in — which is exactly the
+	 * ambiguity that makes a failed cold leg unattributable.
+	 */
+	function reportClass(fixtureId: string, actionClass: string, cold: boolean): void {
+		report(`${fixtureId}: ${cold ? 'cold ' : ''}${actionClass}`);
+	}
+
+	/**
+	 * EVERY class that drags the EXISTING document declares the Select tool, and it
+	 * declares it itself rather than relying on whoever ran before.
+	 *
+	 * The tool is PAGE state that outlives a class. The Wall-authoring class leaves
+	 * `Wall` on and the Rect Room class leaves `Rect Room` on — both deliberately, both
+	 * reset by their caller — so a class that needs `Select` and does not ask for it
+	 * draws its gesture with someone else's tool: the drag resolves to `wall-authoring`
+	 * and is REJECTED, every attempt, until `repeatPath` gives up. That is exactly how
+	 * §16's cold pass failed its first class the first six times it was run, silently
+	 * reading as a repeat-pass failure. A protocol that runs the same classes twice
+	 * cannot depend on the order a tool happens to be left in.
+	 */
+	function ensureSelectTool(): void {
+		ensureTool('Select');
+	}
+
 	function requireCanvas(): SVGSVGElement {
 		const canvas = planCanvas();
 		if (!canvas) throw new Error('The Plan canvas is not mounted');
@@ -841,9 +869,14 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		actionClass: string,
 		work: (sessionId: string) => Promise<void>,
 		prefix = 'p23b6:',
-		timing: { fixtureId: string; actionClass: string } | null = null
+		timing: { fixtureId: string; actionClass: string; cold?: boolean } | null = null
 	): Promise<void> {
-		report(`${fixture.id}: ${actionClass}`);
+		// THE ONE PLACE THAT KNOWS BOTH the class and the workload it was measured
+		// under. Every class-level `report` above it is overwritten by this line, so
+		// marking the workload anywhere else leaves a run that says `rigid-wall-drag`
+		// for six of the ten classes it drives — which is what made a failed cold leg
+		// read as a failed repeat leg.
+		reportClass(fixture.id, actionClass, timing?.cold === true);
 		const sessionId = hooks.startCapture(`${prefix}${actionClass}`);
 		// The long-frame observer (item (b2)) is started AFTER the session opens, so
 		// the DEV measurement switch is already on, and stopped after the session
@@ -1077,6 +1110,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		timing: M1ClassTiming | null = null
 	): Promise<void> {
 		report(`${fixture.id}: rigid-wall-drag`);
+		ensureSelectTool();
 		await captureS1Class(
 			fixture,
 			'rigid-wall-drag',
@@ -1122,6 +1156,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 	): Promise<void> {
 		if (fixture.notApplicable['bend-knot-edit'] || !targets.bend) return;
 		report(`${fixture.id}: bend`);
+		ensureSelectTool();
 		await captureS1Class(
 			fixture,
 			'bend',
@@ -1160,6 +1195,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		timing: M1ClassTiming | null = null
 	): Promise<void> {
 		report(`${fixture.id}: whole-room-move-bridge`);
+		ensureSelectTool();
 		await captureS1Class(
 			fixture,
 			'whole-room-move-bridge',

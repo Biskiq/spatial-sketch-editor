@@ -822,6 +822,38 @@ describe('M1 wiring', () => {
 		expect(page).toContain("'pre-P23B.8-follow-up-M1-cold-label-arms'");
 	});
 
+	it('makes every class that drags the existing document declare the Select tool itself', () => {
+		// THE TOOL IS PAGE STATE THAT OUTLIVES A CLASS, and the failure mode is silent: the
+		// Rect Room class leaves `Rect Room` on, so a class that needs `Select` and does not
+		// ask for it draws its gesture with someone else's tool, the drag resolves to
+		// `wall-authoring`, and `repeatPath` burns attempts until it gives up. §16's cold pass
+		// failed its first class exactly that way — six runs, every one of them reading as a
+		// repeat-pass failure because the progress line could not name the workload.
+		const dragsExistingDocument = ['rigid-wall-drag', 'bend', 'whole-room-move-bridge'];
+		for (const actionClass of dragsExistingDocument) {
+			expect(drive, `${actionClass} must declare the Select tool`).toContain(
+			`report(\`$\{fixture.id}: ${actionClass}\`);\n\t\tensureSelectTool();`
+			);
+		}
+		// The two classes that PUT a tool on keep declaring theirs, and neither may claim
+		// Select for itself: the Wall class draws Walls and the Rect Room class draws Rooms.
+		expect(drive).toContain('ensureTool(\'Wall\');');
+		expect(drive).toContain('ensureTool(\'Rect Room\');');
+		// The helper exists once, so the three call sites cannot drift apart.
+		expect(occurrences(drive, 'ensureSelectTool();')).toBe(3);
+	});
+
+	it('names the workload in the progress line from the one place that knows both', () => {
+		// `captureS1Class` reports the class AFTER every class-level `report` above it, so a
+		// workload marker anywhere else is overwritten and the status of a two-workload run is
+		// ambiguous — six of the ten classes it drives say `rigid-wall-drag` either way.
+		expect(drive).toContain('reportClass(fixture.id, actionClass, timing?.cold === true);');
+		expect(drive).toContain("report(`${fixtureId}: ${cold ? 'cold ' : ''}${actionClass}`);");
+		// And the page puts the driver's own recent lines in the failure status, so a refused
+		// attempt can say WHICH path and outcome it recorded.
+		expect(page).toContain('logTail: driveLog.slice(-16)');
+	});
+
 	it('flags a cold class row so no name-matched table can take it for the repeat class', () => {
 		// Both prefixes end in `:${actionClass}`, so a suffix match alone cannot tell the
 		// two workloads apart — and the tables that match by suffix are defined over the

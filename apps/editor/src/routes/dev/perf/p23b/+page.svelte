@@ -1249,7 +1249,11 @@ import {
 			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
 				running: false,
 				step: 'M1 failed',
-				failure: m1Failure
+				failure: m1Failure,
+				// The driver's own recent lines, so a failed leg can say WHICH attempt was
+				// refused and how — the `repeatPath` retry note names the path and outcome
+				// every rejected attempt recorded, which the runner cannot see from here.
+				logTail: driveLog.slice(-16)
 			};
 			driveNote(`M1 FAILED: ${m1Failure}`);
 			return null;
