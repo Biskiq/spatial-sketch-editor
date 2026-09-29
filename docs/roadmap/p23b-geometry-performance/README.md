@@ -911,8 +911,8 @@ closeout compacts); preservation report in the acceptance record at
 via `refs/pull/101/head`); recovery tag `closed/p23b.8-follow-up` (local only — not
 pushed). The routine closeout re-ran no gate: it reuses the recorded acceptance evidence
 (fast 331/4,821 · arch 23/254 · heavy 8/93 · perf 9+1 · check 0/0 · builds ok ·
-visitor-bundle 3/9). NEXT: P23B.9 (unratified, unauthorized — starts only on the owner's
-ratification); P23B.10 stays unratified.
+visitor-bundle 3/9). NEXT: P23B.9 — since RATIFIED, EXECUTED, ACCEPTED and CLOSED 2026-09-29, with
+P23B.10's closeout executed in the same PR (SUPERSEDED 2026-09-29; see the closeout sections above).
 
 ## Owner-authorized execution routing amendment — 2026-09-29 (P23B.9 start + P23B.10 compaction)
 
@@ -1117,8 +1117,9 @@ C2/R-1 and MR-2 consume, so `slice-closeout`'s gate-artifact exception applies t
 squash (repo policy — the branch is not an ancestor of `main` post-merge; recovery runs via
 `refs/pull/103/head`, recorded in the stub and the closeout record). The routine closeout re-ran no
 gate: it reuses the recorded evidence, and every commit after the gate HEAD in this PR is
-documentation-only (`git diff --stat db554353..HEAD -- apps packages` empty), so the gate HEAD is the
-final code head.
+documentation-only (`git diff --stat db554353..HEAD -- apps packages ':(exclude)*.md'` is empty; the
+only `apps/` file that changed after the gate is the test README, which is documentation), so the gate
+HEAD is the final code head.
 
 NEXT: P23B.10's closeout, in this same PR.
 
@@ -1132,8 +1133,9 @@ C1–C7, R-1…R-7, the MR-1…MR-12 checklist and the two decisions requested �
 
 ```text
 MR-1…MR-12  SATISFIED, including MR-2 (the gate ran at `db554353`, which IS the final code head:
-            `git diff --stat db554353..HEAD -- apps packages` is empty, so every later commit in
-            this PR is documentation-only) and MR-10 (the `SEQUENCE` block's byte region hashes
+            `git diff --stat db554353..HEAD -- apps packages ':(exclude)*.md'` is empty, so no code
+            differs — the only `apps/` file that changed after the gate is the test README, which is
+            documentation) and MR-10 (the `SEQUENCE` block's byte region hashes
             identically at `db554353` and at this HEAD — the owner-approved amended order is
             preserved, and byte equality to the pre-amendment block was never the test).
 C3          DURABLE KNOWLEDGE RECONCILED — two promotions, three explicit lefts, all with reasons:
