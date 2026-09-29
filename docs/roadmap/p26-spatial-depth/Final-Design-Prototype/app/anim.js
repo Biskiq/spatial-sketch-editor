@@ -39,15 +39,17 @@ export function run(fn) {
 export const wait = (ms) => tween(ms, () => {});
 
 // Motion that learns: a transition plays at teaching speed the first times you see it,
-// then gets brisk. Shift makes any single move instant.
+// then gets brisk. Shift makes any single move instant, and the Motion control in the view bar
+// cuts every move to an instant change without touching the chosen speed.
 export function teaching(kind) {
+  if (S.reduceMotion) return false;
   if (S.motion === 'teach') return true;
   if (S.motion !== 'adaptive') return false;
   return (S.seen[kind] || 0) < 2;
 }
 
 export function dur(kind, base) {
-  if (S.shift || S.hurry || reduced.matches) return 0;
+  if (S.shift || S.hurry || S.reduceMotion || reduced.matches) return 0;
   switch (S.motion) {
     case 'instant': return 0;
     case 'teach': return base * 1.55;
@@ -61,7 +63,7 @@ export function saw(kind) { S.seen[kind] = (S.seen[kind] || 0) + 1; }
 export function narrate(text, kind) {
   const el = document.getElementById('caption');
   if (!el) return;
-  if (!text || (kind && !teaching(kind)) || S.shift || S.motion === 'instant') { el.hidden = true; return; }
+  if (!text || (kind && !teaching(kind)) || S.shift || S.reduceMotion || S.motion === 'instant') { el.hidden = true; return; }
   el.innerHTML = text;
   el.hidden = false;
 }

@@ -92,7 +92,7 @@ Matched pairs: **34** (`compare.html`).
 | V8 | Real handle drag and release | active handle + one active value chip during the drag; emphasis cleared on release; **1** Undo entry; Undo restores the value |
 | V9 | Numeric entry / invalid / Enter / Tab / Escape | invalid input shows “Type a number in metres” beside the editor, writes no history; Escape clears the active emphasis; Enter accepts; Tab moves to the next editor |
 | V10 | Set aside, find, return | slate/dashed view state; selected identity retained |
-| V11 | Focus, armed, selected, disabled | keyboard focus = 2 px `rgb(32,36,34)` ring at 2 px offset with a light halo; armed tool is a recessed neutral surface |
+| V11 | Focus, armed, selected, disabled | keyboard focus = 2 px `rgb(32,36,34)` ring at 2 px offset with a light halo; armed tool is a recessed neutral surface; view bar carries the Reduce motion control and no `return` marker |
 | V12 | Plan↔3D and contextual return | ordinary-motion mid-flight and endpoint captured; instant motion used for the rest |
 
 **Owner-reported observation (2026-09-29).** Adjusting the curvature slider makes the rotunda read
@@ -247,6 +247,37 @@ The material swap happens once, as the wall settles (`settle > 0.5`), so it ride
 movement instead of popping. A wall off its footprint keeps the sheet as before, so an unrolled or
 peeled wall still cannot be mistaken for an authored change of shape (plan §4.5), and journeys A–F
 and the 27 interaction checks were re-run unchanged (48/48 and 27/27, 0 console errors).
+
+## 4b. Owner-directed changes after the first review (2026-09-29)
+
+Three asks came from the owner reviewing the running demo. Two are outside the plan's letter and are
+recorded as such; none touches geometry, values, units, camera paths, history or picking.
+
+**The `return` marker is gone.** `.vtab.origin::after` drew an 8 px mono “return” under whichever view
+tab the current chain started from. Returning is already carried by `Esc`, the “Put it back”/
+“Back ⌘Esc” button and the crumbs in the strip, so the marker was removed (`styles/app.css`) along
+with the `origin` class toggle in `ui.js`. Verified: no `origin` rule remains in the stylesheet chain
+and the tab's `::after` computes to `content: none`.
+
+**Reduce motion is now a control, not only a media query.** The view bar carries **Reduce motion**
+(`#motionBtn`, `S.reduceMotion`), beside Overview and Keys. It forces `dur → 0` for every move
+without changing the chosen speed, hides timed captions, and sets `body.reduce-motion` so CSS
+transitions stop as well; the system `prefers-reduced-motion` setting still initialises it and still
+works on its own. Measured on an unlearned move in `adaptive`: **1634 ms** with it off, **0 ms** with
+it on, and the endpoint identical (`flat` = 1, the wall wears the sheet). `?reduced=1` sets it at
+load. This is the same distinction the owner asked for between the two controls: **Motion** (status
+rail) sets the speed — `adaptive` is the learns-then-fast policy, teaching speed for the first two
+times a move is seen and fast after — while **Reduce motion** decides whether anything travels.
+
+The control was added to the existing `.vb-util` group rather than as a new bar: the view bar reports
+no overflow at 1440, 1280 or 1060 CSS px and the button stays inside the bar at every one of them.
+Plan §2 excludes new features, so this is an owner-directed addition beyond the plan's scope; it
+changes no geometry, value, unit, camera path or history behaviour.
+
+Journey D now carries both ideas: “Motion that learns” explains Adaptive/Brisk/Teach/Instant, and a
+new step “Reduce motion, when watching the move is the problem” turns the control on, walks to the
+North wall and back with it, and reports the elapsed time. Journeys run **49/49** and the interaction
+checks **27/27** after the change, with 0 console errors.
 
 This deliberately **widens plan §4.5's “off their footprint” wording** by owner decision: the sheet
 now also marks the wall the settled drawing is about. It adds no geometry, value, unit, camera,

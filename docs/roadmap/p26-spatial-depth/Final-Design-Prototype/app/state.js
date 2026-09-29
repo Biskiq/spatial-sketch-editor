@@ -10,6 +10,8 @@ export const S = {
   tool: 'select',
   knife: null,
   motion: 'adaptive',
+  /* the Motion control in the view bar: cut every move to an instant change, like the OS setting */
+  reduceMotion: false,
   seen: {},
   trail: [],
   trailPos: -1,

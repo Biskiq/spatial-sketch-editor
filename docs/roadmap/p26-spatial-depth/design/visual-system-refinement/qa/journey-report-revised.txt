@@ -1,5 +1,5 @@
 [agent-browser] launched browser
-journeys: [{"id":"A","name":"Curved wall","steps":11},{"id":"B","name":"Look inside","steps":10},{"id":"C","name":"Ceiling","steps":9},{"id":"D","name":"Fast repeat","steps":5},{"id":"E","name":"Everyday edit","steps":8},{"id":"F","name":"Where did it go?","steps":5}]
+journeys: [{"id":"A","name":"Curved wall","steps":11},{"id":"B","name":"Look inside","steps":10},{"id":"C","name":"Ceiling","steps":9},{"id":"D","name":"Fast repeat","steps":6},{"id":"E","name":"Everyday edit","steps":8},{"id":"F","name":"Where did it go?","steps":5}]
 
 PASS  Journey A · step 1/11 · Curved wall
 PASS  Journey A · step 2/11 · Curved wall
@@ -31,11 +31,12 @@ PASS  Journey C · step 6/9 · Ceiling
 PASS  Journey C · step 7/9 · Ceiling
 PASS  Journey C · step 8/9 · Ceiling
 PASS  Journey C · step 9/9 · Ceiling
-PASS  Journey D · step 1/5 · Fast repeat
-PASS  Journey D · step 2/5 · Fast repeat
-PASS  Journey D · step 3/5 · Fast repeat
-PASS  Journey D · step 4/5 · Fast repeat
-PASS  Journey D · step 5/5 · Fast repeat
+PASS  Journey D · step 1/6 · Fast repeat
+PASS  Journey D · step 2/6 · Fast repeat
+PASS  Journey D · step 3/6 · Fast repeat
+PASS  Journey D · step 4/6 · Fast repeat
+PASS  Journey D · step 5/6 · Fast repeat
+PASS  Journey D · step 6/6 · Fast repeat
 PASS  Journey E · step 1/8 · Everyday edit
 PASS  Journey E · step 2/8 · Everyday edit
 PASS  Journey E · step 3/8 · Everyday edit
@@ -50,6 +51,6 @@ PASS  Journey F · step 3/5 · Where did it go?
 PASS  Journey F · step 4/5 · Where did it go?
 PASS  Journey F · step 5/5 · Where did it go?
 
-journey steps PASS=48 FAIL=0
+journey steps PASS=49 FAIL=0
 == console/page errors after the full run ==
 errors: 0

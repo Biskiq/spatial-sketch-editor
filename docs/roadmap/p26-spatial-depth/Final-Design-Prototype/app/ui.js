@@ -65,9 +65,19 @@ function renderViewBar() {
   $('#tabPlan').setAttribute('aria-pressed', String(k === 'plan' && !inSession));
   $('#tab3d').classList.toggle('on', (k === '3d' || inSession) && !(k === 'plan'));
   $('#tab3d').setAttribute('aria-pressed', String(k === '3d'));
-  const from = S.session ? (S.session.origin.label.startsWith('Plan') ? 'plan' : '3d') : null;
-  $('#tabPlan').classList.toggle('origin', from === 'plan');
-  $('#tab3d').classList.toggle('origin', from === '3d');
+}
+
+// The Motion control answers one question — should anything travel on screen? Esc and “Put it
+// back” are how you return; this is only about whether the move is watched.
+function renderMotion() {
+  const b = $('#motionBtn');
+  if (!b) return;
+  const on = !!S.reduceMotion;
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on
+    ? 'Reduce motion is on: every view move is an instant change. The speeds stay in Motion, below.'
+    : 'Reduce motion: every view move becomes an instant change — the same as the system reduced-motion setting. The speeds stay in Motion, below.';
 }
 
 // per-frame: the bead shows where the one camera sits between Plan and 3D
@@ -401,6 +411,7 @@ function renderStatus() {
   const tr = $('#trail');
   if (tr._html !== html) { tr.innerHTML = html; tr._html = html; tr.scrollLeft = tr.scrollWidth; }
   document.querySelectorAll('#motion button').forEach((b) => b.classList.toggle('on', b.dataset.motion === S.motion));
+  renderMotion();
 }
 
 function hintFor() {

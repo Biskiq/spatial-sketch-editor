@@ -7,7 +7,7 @@ Read [rationale.html](./rationale.html) for the product model and [REVIEW-RECONC
 ```text
 Run:    python3 -m http.server 8826   →  http://localhost:8826/
 Debug:  window.__me = { S, ctx, A, JOURNEYS }   (state, stage/museum, all actions, scripted journeys)
-Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?shot=1
+Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?reduced=1   ?shot=1
 ```
 
 | File | Owns |
@@ -206,10 +206,18 @@ snap 0.05 m (Alt: 0.01 m)
 ## 9. Motion policy
 
 ```js
-dur(kind, base) = Shift | hurry | reduced-motion | 'instant' → 0
+dur(kind, base) = Shift | hurry | S.reduceMotion | prefers-reduced-motion | 'instant' → 0
                   'teach' → 1.55·base · 'brisk' → 0.42·base
                   'adaptive' → seen[kind] < 2 ? 1.3·base : 0.48·base
 ```
+
+Two controls, two different questions. **Motion** (status rail) picks the speed: `adaptive` is the
+learns-then-fast policy — teaching speed for the first two times a move is seen, fast after — and
+`brisk` is always fast. **Reduce motion** (view bar, `#motionBtn`, `S.reduceMotion`) asks whether
+anything should travel at all: it forces `dur → 0` for every move *without* changing the chosen
+speed, hides timed captions, and adds `body.reduce-motion` so CSS transitions stop too, mirroring the
+system setting (which also initialises the control). The endpoint is identical either way — same
+standpoint, same trail entry, same numbers.
 
 Captions show only while `teaching(kind)`. Commands go through `run()`: a new command sets `hurry` and finishes running tweens instantly, then queues. A motion is never cut off mid-air into an inconsistent state.
 

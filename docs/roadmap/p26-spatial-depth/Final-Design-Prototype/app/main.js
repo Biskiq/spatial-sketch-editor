@@ -666,6 +666,14 @@ function doAct(a, el) {
     case 'gohost': A.goToHost(S.sel); break;
     case 'lookat': A.lookAt(S.sel); break;
     case 'faceit': A.face(S.sel); break;
+    case 'motion':
+      S.reduceMotion = !S.reduceMotion;
+      document.body.classList.toggle('reduce-motion', S.reduceMotion);
+      A.setStatus(S.reduceMotion
+        ? 'Reduced motion: every view move is now an instant change'
+        : 'Reduced motion off: moves play at the speed chosen in Motion', 'view');
+      requestUI();
+      break;
     case 'find': openFinder(); break;
     case 'summary-undo': A.undoSummary(); break;
     case 'summary-keep': S.summary = null; requestUI(); break;
@@ -851,6 +859,9 @@ function boot() {
   initJourneys();
   const q = new URLSearchParams(location.search);
   if (q.get('motion')) S.motion = q.get('motion');
+  if (q.get('reduced') != null) S.reduceMotion = q.get('reduced') !== '0';
+  else S.reduceMotion = S.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.toggle('reduce-motion', S.reduceMotion);
   if (q.get('shot')) document.body.classList.add('shot');
   requestAnimationFrame(frame);
   window.__me = { S, ctx, A, JOURNEYS };
