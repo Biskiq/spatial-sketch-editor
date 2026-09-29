@@ -36,9 +36,9 @@ order, shell dimensions and typography.
 ## 2. How to reproduce
 
 ```sh
-cd docs/roadmap/p26-spatial-depth/Final-Design-Prototype
+cd prototypes/spatial-authoring
 python3 -m http.server 8826                 # http://localhost:8826/
-cd ../design/visual-system-refinement/qa
+cd docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa
 bash capture.sh baseline 1440 900           # only meaningful at 674b2294
 bash capture.sh revised 1440 900
 bash capture.sh revised 1280 800

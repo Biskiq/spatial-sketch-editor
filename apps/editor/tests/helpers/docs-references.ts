@@ -98,7 +98,7 @@ const PATH_EXTENSIONS =
  * repository top-level directory. Anything else is prose that happens to
  * contain a slash.
  */
-const PATH_PREFIX = /^(\.{1,2}\/|(docs|apps|packages|diagrams|Repo-Audit|\.agents)\/)/;
+const PATH_PREFIX = /^(\.{1,2}\/|(docs|apps|packages|prototypes|diagrams|Repo-Audit|\.agents)\/)/;
 
 /** Characters that mark a token as a pattern, a regex or a placeholder rather than a path. */
 const PLACEHOLDER = /[*{}<>…§\s?[\]^$|\\"'()]/;

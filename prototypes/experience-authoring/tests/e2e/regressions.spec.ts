@@ -1,0 +1,42 @@
+import { expect, test, type Page } from '@playwright/test';
+const snapshot = (page: Page) => page.evaluate(() => window.__biskiq.snapshot());
+test('editing a captured contribution updates the subject control and never duplicates the contribution', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Select Machine', exact: true }).click();
+  await page.getByLabel('Preview Run rotor', { exact: true }).check();
+  await page.getByRole('button', { name: 'Use Run rotor in Experience', exact: true }).click();
+  await page.getByLabel('Desired Run rotor', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Select Machine', exact: true }).click();
+  await expect(page.getByLabel('Preview Run rotor', { exact: true })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Use Run rotor in Experience', exact: true }).click();
+  const s = await snapshot(page);
+  const rotor = Object.values(s.document.experience.definitions).filter(def => def.kind === 'control' && def.capabilityId === 'rotor');
+  expect(rotor).toHaveLength(1); expect(rotor[0]).toMatchObject({ value: false });
+  expect(Object.values(s.document.experience.uses)).toHaveLength(1);
+});
+test('visitor preview never changes authoring selection', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Select Machine', exact: true }).click();
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Select Piano', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Select Piano', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'Exit Preview', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Select Machine', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Select Piano', exact: true })).toHaveAttribute('aria-pressed', 'false');
+});
+test('a continuous slider drag is a single undo step', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Select Machine', exact: true }).click();
+  await page.getByRole('button', { name: 'Create Encounter', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit View 1', exact: true }).click();
+  const slider = page.getByLabel('Distance adjustment', { exact: true });
+  await expect(slider).toHaveValue('1');
+  const box = (await slider.boundingBox())!;
+  await page.mouse.move(box.x + box.width * .2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * .8, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(slider).not.toHaveValue('1');
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(slider).toHaveValue('1');
+});

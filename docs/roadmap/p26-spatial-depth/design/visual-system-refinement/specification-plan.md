@@ -9,7 +9,9 @@ folded into the sections they govern.
 
 **Deliverable:** a revised, verified P26 demo, with evidence for review and merge.
 
-**Implementation target:** [`Final-Design-Prototype/`](../../Final-Design-Prototype/README.md).
+**Implementation target:** [`prototypes/spatial-authoring/`](../../../../../prototypes/spatial-authoring/README.md)
+— the P26 *Final Design Prototype*, moved to the durable
+[`prototypes/`](../../../../../prototypes/README.md) family 2026-09-29.
 
 ## 1. Purpose and authority
 
@@ -75,8 +77,8 @@ report the specific conflict instead of silently extending the scope.
 ## 3. Checked baseline and proposed palette
 
 Baseline inspected on 2026-09-29 in
-[`styles/app.css`](../../Final-Design-Prototype/styles/app.css) and
-[`app/stage.js`](../../Final-Design-Prototype/app/stage.js). Recheck these locations
+[`styles/app.css`](../../../../../prototypes/spatial-authoring/styles/app.css) and
+[`app/stage.js`](../../../../../prototypes/spatial-authoring/app/stage.js). Recheck these locations
 at implementation start if the demo has changed. Source symbols, not line numbers,
 identify the implementation anchors.
 
@@ -292,7 +294,7 @@ hover-only tooltip is insufficient. A new keyboard drag model is out of scope.
 
 ## 8. Implementation sequence and file boundaries
 
-All code paths below are relative to `Final-Design-Prototype/`. Inspect dependents
+All code paths below are relative to `prototypes/spatial-authoring/`. Inspect dependents
 as needed; mutation remains limited to the demo and this design workspace.
 
 | Order | Work | Expected locations | Check before proceeding |
@@ -311,7 +313,7 @@ separate scope. Small semantic markup changes in `index.html` are allowed only
 for existing controls; no structural shell rewrite is planned.
 
 Use the existing no-build demo entry point. The current
-[`scripts/shoot.sh`](../../Final-Design-Prototype/scripts/shoot.sh) identifies useful
+[`scripts/shoot.sh`](../../../../../prototypes/spatial-authoring/scripts/shoot.sh) identifies useful
 fixture states but writes to the prototype's existing `screens/` directory. Adapt
 capture output to this workspace's evidence directory rather than overwriting
 the original visual record as a side effect. Evidence setup through a fixture

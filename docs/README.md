@@ -59,6 +59,7 @@ reference/decisions = ratified destination direction (normative for new design)
 reference = current intended system (authoritative but falsifiable — see below)
 roadmap = future work (pre-redesign plans are evidence, re-derived against F)
 operations = live work
+prototypes = runnable product hypotheses + QA/reference evidence (never authority)
 archive = history
 ```
 
@@ -91,6 +92,7 @@ shipped.
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — states and triggers only | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
+| Prototype / QA reference — runnable product hypotheses and their specimens | [`../prototypes/README.md`](../prototypes/README.md) — durable executable artifacts; they test and challenge contracts but are **not** production, persisted-format or implementation authority | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
 
 ```text

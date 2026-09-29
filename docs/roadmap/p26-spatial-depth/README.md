@@ -28,8 +28,10 @@
   return), D the practised-creator variant, E Everyday edit (Plan → slide and
   widen → tilt → face → rise → back → Undo), F Where did it go? (find → why you
   can't see it → go to it). They are scripted in
-  [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md); prototype
-  implementation shortcuts are not production contracts.
+  [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/README.md)
+  (**Spatial Authoring Prototype** — the P26 *Final Design Prototype*, moved to
+  the durable [`prototypes/`](../../../prototypes/README.md) family 2026-09-29);
+  prototype implementation shortcuts are not production contracts.
 
 **Phase goal:** deliver one continuous, contextually editable spatial world: Plan↔3D,
 first-class circular Room creation with one self-connected Wall, Wall facing
@@ -60,7 +62,7 @@ This revision is separate from the pre-redesign production plans below.
 ## Routes and evidence (pre-redesign)
 
 - **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
-- **Accepted experience:** [Final Design Prototype](./Final-Design-Prototype/README.md) — runnable import unchanged; rationale, reconciliation, implementer reference and journeys are linked there. Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
+- **Accepted experience:** [Spatial Authoring Prototype](../../../prototypes/spatial-authoring/README.md) — the runnable import is unchanged; rationale, reconciliation, implementer reference and journeys are linked there, and a path-preserving stub remains at the old phase-local [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md). Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
 - **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** now states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. It is a target statement — no production implementation, no restyle and no cutover — and P26/T1 production planning still follows the F interfaces.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
 - **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.

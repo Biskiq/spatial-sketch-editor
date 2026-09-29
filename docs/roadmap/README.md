@@ -34,7 +34,7 @@ P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
 
 **Visual-system sequence (owner-directed):**
 
-1. **DONE** — the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) was applied, validated and merged (#104, owner-accepted 2026-09-29). The demo is the accepted experience/visual reference; **journeys A–F remain its experience/QA authority**, and prototype shortcuts are not production contracts.
+1. **DONE** — the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) was applied, validated and merged (#104, owner-accepted 2026-09-29). The demo is the accepted experience/visual reference — the [Spatial Authoring Prototype](../../prototypes/spatial-authoring/README.md); **journeys A–F remain its experience/QA authority**, and prototype shortcuts are not production contracts.
 2. **DONE** — P23B closed 2026-09-29 and its PR (#103) is merged to `main`.
 3. **DONE — this slice (docs-only)** — the desired product visual language and shell contract are updated from the accepted demo, with **landed-now · desired-from-demo · still-unbuilt** labelled explicitly: [`reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md) **§0.7** (section homes §4.4, §6.4, §10, §18.3, §23.1). It authorizes no implementation and closes no §0.3 owner call.
 4. Continue with the parallel tracks against the updated contracts.
