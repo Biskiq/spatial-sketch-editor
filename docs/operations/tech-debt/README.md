@@ -445,7 +445,7 @@ for the *increase*.
 ### Why green
 
 No test asserts a timing threshold on these releases (the PERF-lane rule in
-[`../../apps/editor/tests/README.md`](../../apps/editor/tests/README.md) §Test design rules 11: timing is
+[`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) §Test design rules 11: timing is
 asserted relatively, never as a wall-clock floor). The reuse counters are counts, not durations.
 
 ### Fix options
