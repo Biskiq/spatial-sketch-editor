@@ -595,6 +595,10 @@ two coordinated expressions. It mints no fourth class, and it changes no shell r
   creation, peeling, drawn-line Section/Reveal, ceiling lift/look-up — is **still-unbuilt
   (T1 after F)**. The prototype demonstrates it; production is gated (§21).
 
+---
+
+# 5. Reference desktop shell geometry
+
 The Atlas must include a reference desktop frame at **1440 × 900 CSS px** and reproduce the following geometry closely enough for implementation QA.
 
 | Region | Reference geometry |
@@ -1641,10 +1645,11 @@ The ratified implementation adds these acceptance criteria:
 ### 26.2 Destination acceptance (from the accepted P26 demo)
 
 §26 and §26.1 are the **landed** editor's shell acceptance gate. The destination visual
-language is accepted through the demo's own acceptance record
-([acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md)
-§9.3 evidence and owner visual acceptance, 2026-09-29) and is stated in §0.7. It does
-**not** inherit §26's gate, and passing §26 does not verify the destination. A cutover to
+language is accepted through the demo's [specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md)
+**§9.3** (the evidence-and-completion requirement) and the **owner visual acceptance recorded
+2026-09-29** in the demo's [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md);
+it is stated in §0.7. It does **not** inherit §26's gate, and passing §26 does not verify the
+destination. A cutover to
 §4.4/§6.4 will need its own acceptance, planned with its own slice — this amendment
 authorizes none.
 

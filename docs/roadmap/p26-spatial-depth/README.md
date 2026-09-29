@@ -46,7 +46,7 @@ NEXT: re-derive scope/slices/T1 plan against the owner-ratified F target contrac
       (F.1–F.5 → roadmap/README) and the ratified direction before any production
       implementation plan; exact F interfaces land as F amendments in shared code
 EXECUTION: P23B closed 2026-09-29 and #103 is merged; the operational baton is F
-           (→ ../operations/current.md). T1 production planning follows the F interfaces;
+           (→ ../../operations/current.md). T1 production planning follows the F interfaces;
            no P26 production child is implementation-ready.
 GATE: no production implementation approved; no production child is implementation-ready.
       F and re-derivation precede P26 production implementation authorization;
