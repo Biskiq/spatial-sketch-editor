@@ -669,6 +669,9 @@ export function scanSectionNumbering(source: string): Omit<Finding, 'file'>[] {
 
 	let expected = 1;
 	for (const section of byDepth.get(sequenceDepth)!) {
+		// A plain section 1 opens a new run, including numbered children under
+		// successive lettered parents. Earlier runs must not hide its gaps.
+		if (section.number === '1') expected = 1;
 		const value = integerOf(section.number);
 		if (value > expected) {
 			const missing = Array.from({ length: value - expected }, (_, index) => expected + index).join(', ');

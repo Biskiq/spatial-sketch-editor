@@ -210,6 +210,21 @@ describe('the reference grammar', () => {
 		expect(scanSectionNumbering(source)).toEqual([]);
 	});
 
+	it('catches a gap after numbered sections restart', () => {
+		const source = [
+			'# Original specification',
+			...Array.from({ length: 8 }, (_, index) => `## ${index + 1}. Original section`),
+			'# Ratified handoff',
+			'## 1. Terminology',
+			'## 2. Pipeline',
+			'## 3. Checklist'
+		].join('\n');
+		expect(scanSectionNumbering(source)).toEqual([]);
+		expect(
+			scanSectionNumbering(source.replace('## 2. Pipeline\n', '')).map((finding) => finding.reason)
+		).toEqual(['numbering gap: no section 2 before 3']);
+	});
+
 	it('reads a moved-section placeholder heading as covering its range', () => {
 		// `# 6.–13. Workspace exposure — moved` records that those numbers are held
 		// elsewhere, with their numbers preserved. It is a declaration, not a hole.
