@@ -57,8 +57,8 @@ paper = slewPaper(flat, now)                                  // mat → paper, 
   steady pose still lands on its exact value — the step clamps — so every endpoint and every spec
   specimen is unchanged. The session detent band is 4°–30° rather than 2.5°–20° for the same reason:
   at a 55°/s rotate the old band swapped the whole ground in ~200 ms, which reads as a flicker. Any
-  future change to either constant must be re-measured with `design/visual-system-refinement/qa/probe-flicker.sh`,
-  not judged by eye.
+  future change to either constant must be re-measured with
+  `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/probe-flicker.sh`, not judged by eye.
 
 - `session.settle` is animated 0→1 by entering and 1→0 by leaving, so entering from Plan passes *through* perspective and lands flat. The same formula makes leaving back to Plan continuous.
 - **Release rule** (`settleAfterOrbit`): inside a session, if the view is within 14° of `home`, animate back to `home`. In free mode, el > 79° snaps to 90° (Plan) with `az` rounded to 90°.
@@ -248,7 +248,7 @@ squared view and after tilting back to 3D — plus any wall **off its footprint*
 consulted from the face gesture's settle progress, from `applyUnroll`, and at the start of a peel.
 The curvature slider therefore never recolours a wall. Note the open design question and the §5
 conformance gap (a papered wall currently overrides the selection material) recorded in
-[`../design/visual-system-refinement/paper-surface-brief.md`](../design/visual-system-refinement/paper-surface-brief.md).
+[`paper-surface-brief.md`](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/paper-surface-brief.md).
 
 ## 10. Renderer details that mattered
 

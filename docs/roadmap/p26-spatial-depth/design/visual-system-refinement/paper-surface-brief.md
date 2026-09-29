@@ -4,7 +4,7 @@
 **Status:** owner override in force — Option 1 (drafted surface) with Option 4 (Wall grid) as the
 editor-side override; folded into [`specification-plan.md`](./specification-plan.md) §2 and §4.5.
 Selection on paper (D4) is resolved: sheet stays, `lineSel` draws the contour.
-**Working demo:** `Final-Design-Prototype/` (`python3 -m http.server 8826`) · **Evidence:** this folder's
+**Working demo:** `prototypes/spatial-authoring/` (`python3 -m http.server 8826`) · **Evidence:** this folder's
 `qa/` (§6).
 
 ---
@@ -198,8 +198,8 @@ history or picking — the whole question is which of two materials a mesh wears
 ## 7. How to see it
 
 ```sh
-cd Final-Design-Prototype && python3 -m http.server 8826
-cd ../design/visual-system-refinement/qa
+cd prototypes/spatial-authoring && python3 -m http.server 8826
+cd docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa
 bash probe-surface.sh http://localhost:8826 revised   # §6 state table, plus the grid check
 bash probe-roll.sh    http://localhost:8826 revised   # curvature slider, settled rotunda
 bash probe-sheet.sh   http://localhost:8826 shipped   # the calibration sweep in §6

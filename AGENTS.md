@@ -8,6 +8,10 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 ## Repo facts
 
 - npm workspaces; apps are `@portfolio/editor` and read-only `@portfolio/museum`.
+- `prototypes/` holds durable runnable prototypes and their QA/reference evidence
+  ([`prototypes/README.md`](./prototypes/README.md)). They are **not** npm
+  workspaces, not production applications and not authority — a prototype shortcut
+  never becomes a production contract by being kept there.
 - “Camera” = **3D guided PerspectiveCamera navigation**, not webcam.
 - Root `dev` / `test` target editor; root `build` / `check` cover both apps.
 

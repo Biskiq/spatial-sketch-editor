@@ -214,9 +214,11 @@ boundary-Wall faces, with world-local Layout objects.
 **Destination (re-derived under F as track T1).** One continuous spatial world:
 Plan↔3D authoring, contextual representations, circular/vertical architecture,
 sections and peeling, level-qualified contexts, and runtime-safe Layout
-representation evaluation. The accepted P26 prototype journeys A–F remain the
+representation evaluation. The accepted P26 prototype — the **Spatial Authoring
+Prototype** at `prototypes/spatial-authoring/` — keeps journeys A–F as the
 experience/QA authority for this direction (recorded in the
-[P26 router](../roadmap/p26-spatial-depth/README.md)); its architecture is
+[P26 router](../roadmap/p26-spatial-depth/README.md); family boundary →
+[`prototypes/README.md`](../../prototypes/README.md)); its architecture is
 re-derived from F, not inherited, and its implementation shortcuts are not
 production contracts. Multi-level UI and visitor reveal authoring may ship later,
 but their semantic ownership and runtime boundary are established now. The old
