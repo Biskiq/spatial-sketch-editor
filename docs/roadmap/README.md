@@ -41,7 +41,7 @@ and the promoted contracts ([`reference/north-star.md`](../reference/north-star.
 | Phase / track | Status | Goal | Workspace |
 |-------|--------|------|-----------|
 | P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
-| P23B | in-progress | geometry performance + stabilization; P23B.11 shipped and closed 2026-09-27; the owner-routed pre-P23B.8 follow-up (M1 + R1) is next, starting only on the owner's go | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
+| P23B | in-progress | geometry performance + stabilization; P23B.11 shipped and closed 2026-09-27; the pre-P23B.8 follow-up (M1 + R1 + authorized expanded scope) is owner-accepted and closed 2026-09-29 — NEXT is P23B.8's entry gate, unratified | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
 | F | planning (target contract owner-ratified 2026-09-27 with amendments; no implementation authorized) | foundation contracts F.1–F.5 before capability replanning | [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md) |
 | T1 — Spatial foundation | proposed (re-derived P26; replan after F) | shared viewport/projection seam, runtime-safe Layout representation, level-ready vertical/Plan semantics | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | T2 — Composition data | proposed (re-derived P24; replan after F) | definitions, instances, resource revisions/locks, ordinary placement, truthful single-model creator import | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
