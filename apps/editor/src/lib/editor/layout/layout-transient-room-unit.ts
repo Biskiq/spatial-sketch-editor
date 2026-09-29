@@ -34,6 +34,7 @@
 import {
 	proposeWallFirstRoomUnitGeometry,
 	proposeWallFirstRoomUnitRotation,
+	rotatePointAbout,
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
@@ -141,22 +142,15 @@ export function transientRoomUnitRotation(input: {
 	const walls = p2311Measure('room-unit-rotation', () =>
 		proposeWallFirstRoomUnitRotation(baseline, unit, pivot, yaw)
 	);
-	const cos = Math.cos(yaw);
-	const sin = Math.sin(yaw);
 	const rooms = roomIds.flatMap((roomId) => {
 		const room = geometry?.rooms.find((entry) => entry.roomId === roomId);
 		if (!room || room.floorPolygon.length === 0) return [];
 		return [
 			{
 				roomId,
-				// SAME handedness as the canonical candidate (`rotatePointAbout` in
-				// core) and the shipped legacy Room transform: one gesture turns an
-				// outline and its Wall ink the same way.
-				points: room.floorPolygon.map((point) => {
-					const x = point[0] - pivot[0];
-					const z = point[1] - pivot[1];
-					return [pivot[0] + x * cos + z * sin, pivot[1] - x * sin + z * cos] as LayoutVec2;
-				})
+				// Drawn through core's `rotatePointAbout`: one gesture turns an
+				// outline and its Wall ink the same way, by one definition.
+				points: room.floorPolygon.map((point) => rotatePointAbout(point, pivot, yaw))
 			}
 		];
 	});

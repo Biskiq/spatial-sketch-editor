@@ -331,8 +331,11 @@ export function proposeWallFirstRoomUnitRotation(
  * mathematical inverse, so ONE rotation gesture turns a Room the same way in
  * both document kinds. Flipping it here would silently make the new wall-first
  * rotation feel mirrored against the legacy one it sits beside.
+ *
+ * Exported (not module-private) so the transient overlay draws its outlines
+ * through this same function: one handedness decision, one definition.
  */
-function rotatePointAbout(point: LayoutVec2, pivot: LayoutVec2, yaw: number): LayoutVec2 {
+export function rotatePointAbout(point: LayoutVec2, pivot: LayoutVec2, yaw: number): LayoutVec2 {
 	const cos = Math.cos(yaw);
 	const sin = Math.sin(yaw);
 	const x = point[0] - pivot[0];

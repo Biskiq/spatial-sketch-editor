@@ -396,7 +396,7 @@ export function summarizeM1LabelArms(
 		buildsPerAction: {
 			actions: builds.length,
 			total: builds.reduce((sum, value) => sum + value, 0),
-			p50: builds.length === 0 ? null : percentile(builds, 50),
+			p50: builds.length === 0 ? null : percentile(builds, 0.5),
 			max: builds.length === 0 ? 0 : Math.max(...builds),
 			distinct: keyed ? byAction.reduce((sum, entry) => sum + entry.distinctBuilds, 0) : null
 		},

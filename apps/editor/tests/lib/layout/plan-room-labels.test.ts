@@ -358,6 +358,20 @@ describe('P23.13 S3 — curved Rooms: many-vertex boundaries', () => {
 		expect(pointInside(room.polygon, withEdge.anchorWorld)).toBe(true);
 		expect(distanceToEdge(withEdge)).toBeGreaterThan(distanceToEdge(without));
 	});
+
+	it('a label owns its anchor: mutating it cannot move the next identical pass', () => {
+		// The shipped grid is cached by input and its array is shared (see
+		// `roomLabelGridCache`); the label must hold a copy, so an in-place
+		// write to a returned anchor cannot steer the pass after it.
+		const rooms = [rectRoom('room-anchor-guard', [31, 17], [6, 5])];
+		const input = { rooms, planView: view(), measure: fixtureMeasure };
+		const first = labelFor(placeRoomLabels(input), 'room-anchor-guard')!;
+		const original: LayoutVec2 = [first.anchorScreen[0], first.anchorScreen[1]];
+		first.anchorScreen[0] = original[0] + 500;
+		first.anchorScreen[1] = original[1] + 500;
+		const second = labelFor(placeRoomLabels(input), 'room-anchor-guard')!;
+		expect(second.anchorScreen).toEqual(original);
+	});
 });
 
 describe('P23.13 S3 — tiers, drop order and duplicates', () => {

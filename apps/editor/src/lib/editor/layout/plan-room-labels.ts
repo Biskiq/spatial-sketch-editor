@@ -36,7 +36,8 @@ import {
 	p23bM1EndRoomLabelValueDigest,
 	p23bM1RecordRoomLabelCall,
 	p23bM1RecordRoomLabelGridCache,
-	p23bM1RoomLabelArm
+	p23bM1RoomLabelArm,
+	p23bM1RoomLabelArmEnabled
 } from './p23b-m1-room-label-arm';
 import { roomLabelGridKey } from './room-label-grid-key';
 
@@ -1494,13 +1495,17 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 	// much of it recomputes, and this says which pass does the recomputing. It is the same
 	// DEV-only instrument the whole module reads through, it returns nothing, and with the
 	// gate off the shipped path pays one boolean.
-	p23bM1RecordRoomLabelCall({
-		rooms: input.rooms.length,
-		reason,
-		settleGeneration,
-		hasMemory: input.memory !== undefined,
-		at: typeof performance === 'undefined' ? 0 : performance.now()
-	});
+	// Call-site gate: with the instrument off the shipped path pays one boolean,
+	// not an argument object, a clock read and a call.
+	if (p23bM1RoomLabelArmEnabled()) {
+		p23bM1RecordRoomLabelCall({
+			rooms: input.rooms.length,
+			reason,
+			settleGeneration,
+			hasMemory: input.memory !== undefined,
+			at: typeof performance === 'undefined' ? 0 : performance.now()
+		});
+	}
 	const memory = input.memory ?? new Map<string, RoomLabelMemoryEntry>();
 	const selectedRoomId = input.selectedRoomId ?? null;
 	const labels: PlacedRoomLabel[] = [];
@@ -1588,7 +1593,9 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 					const slack = rectSlack(fit.rect, polygonScreen, mask);
 					if (slack >= 0) {
 						resolved = { stack: full, fit, slack };
-						anchorScreen = candidate.point;
+						// Copy: `candidate` is shared with the grid cache (see
+						// `roomLabelGridCache`), so the label must own its anchor.
+						anchorScreen = [candidate.point[0], candidate.point[1]];
 						break;
 					}
 				}
@@ -1598,7 +1605,8 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 					const result = resolve(candidate.point, eligible.slice(1));
 					if (result) {
 						resolved = result;
-						anchorScreen = candidate.point;
+						// Copy: see above — the label must own its anchor.
+						anchorScreen = [candidate.point[0], candidate.point[1]];
 						break;
 					}
 				}
@@ -1732,49 +1740,54 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 	// The other half of this call's recording, taken here because this is the pass's ONE
 	// exit: it prices the whole pass — its grid builds and the placement work around them —
 	// which is what a fix has to beat. Returns nothing, same as the entry.
-	p23bM1EndRoomLabelCall();
-	// …and WHAT THE PASS PRODUCED, to the last bit. Identical inputs prove two passes built
-	// the same grids; only this can say whether they also PLACED the same labels, which is
-	// the difference between a redundant pass and a pass that merely looks redundant. Two
-	// digests, because they answer different questions: the labels + readout are what a
-	// render paints, the memory is what the next pass inherits. DEV-only and allocation-free.
-	p23bM1BeginRoomLabelValueDigest();
-	p23bM1DigestNumber(labels.length);
-	for (const label of labels) {
-		p23bM1DigestString(label.roomId);
-		p23bM1DigestString(label.tier);
-		p23bM1DigestNumber(label.anchorScreen[0]);
-		p23bM1DigestNumber(label.anchorScreen[1]);
-		p23bM1DigestNumber(label.anchorWorld[0]);
-		p23bM1DigestNumber(label.anchorWorld[1]);
-		p23bM1DigestNumber(label.widthPx);
-		p23bM1DigestNumber(label.heightPx);
-		p23bM1DigestNumber(label.lines.length);
-		for (const line of label.lines) {
-			p23bM1DigestString(line.text);
-			p23bM1DigestString(line.style);
-			p23bM1DigestNumber(line.baselineOffsetPx);
+	// Call-site gate around the whole exit recording: with the instrument off the
+	// shipped path pays one boolean, not two loop walks with a call per value.
+	// WHAT THE PASS PRODUCED, to the last bit: identical inputs prove two passes
+	// built the same grids; only the digests can say whether they also PLACED the
+	// same labels — the difference between a redundant pass and a pass that merely
+	// looks redundant. Two digests because they answer different questions: the
+	// labels + readout are what a render paints, the memory is what the next pass
+	// inherits.
+	if (p23bM1RoomLabelArmEnabled()) {
+		p23bM1EndRoomLabelCall();
+		p23bM1BeginRoomLabelValueDigest();
+		p23bM1DigestNumber(labels.length);
+		for (const label of labels) {
+			p23bM1DigestString(label.roomId);
+			p23bM1DigestString(label.tier);
+			p23bM1DigestNumber(label.anchorScreen[0]);
+			p23bM1DigestNumber(label.anchorScreen[1]);
+			p23bM1DigestNumber(label.anchorWorld[0]);
+			p23bM1DigestNumber(label.anchorWorld[1]);
+			p23bM1DigestNumber(label.widthPx);
+			p23bM1DigestNumber(label.heightPx);
+			p23bM1DigestNumber(label.lines.length);
+			for (const line of label.lines) {
+				p23bM1DigestString(line.text);
+				p23bM1DigestString(line.style);
+				p23bM1DigestNumber(line.baselineOffsetPx);
+			}
 		}
+		p23bM1DigestNumber(readout === null ? 0 : 1);
+		if (readout) {
+			p23bM1DigestString(readout.roomId);
+			p23bM1DigestString(readout.primary);
+			p23bM1DigestString(readout.reference ?? '');
+			p23bM1DigestString(readout.area ?? '');
+		}
+		p23bM1EndRoomLabelValueDigest('labels');
+		p23bM1BeginRoomLabelValueDigest();
+		p23bM1DigestNumber(memory.size);
+		for (const [roomId, entry] of memory) {
+			p23bM1DigestString(roomId);
+			p23bM1DigestString(entry.tier);
+			p23bM1DigestNumber(entry.anchorWorld[0]);
+			p23bM1DigestNumber(entry.anchorWorld[1]);
+			p23bM1DigestNumber(entry.suppressed ? 1 : 0);
+			p23bM1DigestNumber(entry.suppressedSettleGeneration);
+		}
+		p23bM1EndRoomLabelValueDigest('memory');
 	}
-	p23bM1DigestNumber(readout === null ? 0 : 1);
-	if (readout) {
-		p23bM1DigestString(readout.roomId);
-		p23bM1DigestString(readout.primary);
-		p23bM1DigestString(readout.reference ?? '');
-		p23bM1DigestString(readout.area ?? '');
-	}
-	p23bM1EndRoomLabelValueDigest('labels');
-	p23bM1BeginRoomLabelValueDigest();
-	p23bM1DigestNumber(memory.size);
-	for (const [roomId, entry] of memory) {
-		p23bM1DigestString(roomId);
-		p23bM1DigestString(entry.tier);
-		p23bM1DigestNumber(entry.anchorWorld[0]);
-		p23bM1DigestNumber(entry.anchorWorld[1]);
-		p23bM1DigestNumber(entry.suppressed ? 1 : 0);
-		p23bM1DigestNumber(entry.suppressedSettleGeneration);
-	}
-	p23bM1EndRoomLabelValueDigest('memory');
 	return { labels, readout, memory };
 }
 

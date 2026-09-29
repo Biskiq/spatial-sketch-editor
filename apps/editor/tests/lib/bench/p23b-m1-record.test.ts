@@ -1356,6 +1356,29 @@ describe('M1 record — the room-label arm (the assignment the page reports, the
 		expect(block?.gridBuildKeys).toBeNull();
 	});
 
+	it('reports the median builds-per-action, not the max (0–1 percentile convention)', () => {
+		// Regression pin: the containment percentile takes a 0–1 fraction, so a
+		// 0–100 call reads the last element. Builds [1, 2, 9] separate the two:
+		// median 2, max 9.
+		const block = summarizeM1LabelArms(
+			[1, 2, 9].map((builds, actionIndex) => ({
+				fixtureId,
+				actionClass,
+				actionIndex,
+				arm: 'seeded-grid' as const,
+				builds,
+				distinctBuilds: 1,
+				sequence: [1],
+				calls: []
+			})),
+			null
+		);
+		expect(block?.buildsPerAction.actions).toBe(3);
+		expect(block?.buildsPerAction.total).toBe(12);
+		expect(block?.buildsPerAction.p50).toBe(2);
+		expect(block?.buildsPerAction.max).toBe(9);
+	});
+
 	it('keeps the last record for one action index, so a retried action cannot appear twice in the split', () => {
 		const block = summarizeM1LabelArms([
 			...assignment,
