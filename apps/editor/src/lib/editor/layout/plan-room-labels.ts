@@ -28,6 +28,18 @@ import {
 	worldToPlanScreen,
 	type PlanViewportState
 } from './layout-plan-transform';
+import {
+	p23bM1BeginRoomLabelValueDigest,
+	p23bM1DigestNumber,
+	p23bM1DigestString,
+	p23bM1EndRoomLabelCall,
+	p23bM1EndRoomLabelValueDigest,
+	p23bM1RecordRoomLabelCall,
+	p23bM1RecordRoomLabelGridCache,
+	p23bM1RoomLabelArm,
+	p23bM1RoomLabelArmEnabled
+} from './p23b-m1-room-label-arm';
+import { roomLabelGridKey } from './room-label-grid-key';
 
 /** The three text roles of a Room label stack, in display order. */
 export type TextMeasureStyle = 'room-name' | 'room-reference' | 'room-area';
@@ -450,12 +462,42 @@ function polygonEdges(polygon: readonly LayoutVec2[]): [LayoutVec2, LayoutVec2][
 	return edges;
 }
 
+/**
+ * A lower bound on `edgeDistance(point, a, b)`, from the segment's own bounding
+ * box — cheap, exact and never an overestimate, so a segment it prunes can never
+ * have held the minimum.
+ *
+ * WHY IT EXISTS (measured, not guessed). The post-release window of the M1
+ * protocol is dominated by this module's eligibility grid, and a V8 CPU profile
+ * puts 39.5 % of that window's sampled time in `edgeDistance` itself on the
+ * all-curved fixture (`p23b-40-wall-all-curved-v1`, `rigid-wall-drag`). A curved
+ * Room's boundary is a long polyline, so the grid was asking for the exact
+ * distance to every one of its vertices from every cell: the cell count is capped
+ * (24 000) but the vertex count is not. A point's distance to a polyline is set by
+ * the few segments next to it, and the box test is what says so before the two
+ * `Math.hypot`s are paid.
+ */
+function segmentLowerBound(point: LayoutVec2, a: LayoutVec2, b: LayoutVec2): number {
+	// Distance from the point to the segment's own bounding box, per axis: zero
+	// inside the interval, and the gap to the NEAR edge outside it. The near edge is
+	// why both terms are needed — `lo − point` and `point − hi`, never `point − lo`,
+	// which is the distance to the far edge and would prune segments that hold the
+	// minimum. (That exact slip cost this change 16 failing placement tests before
+	// the term was rewritten.)
+	const dx = Math.max(0, Math.min(a[0], b[0]) - point[0], point[0] - Math.max(a[0], b[0]));
+	const dz = Math.max(0, Math.min(a[1], b[1]) - point[1], point[1] - Math.max(a[1], b[1]));
+	return Math.max(dx, dz);
+}
+
 function polylineDistance(point: LayoutVec2, points: readonly LayoutVec2[]): number {
 	if (points.length === 0) return Number.POSITIVE_INFINITY;
 	if (points.length === 1) return Math.hypot(point[0] - points[0]![0], point[1] - points[0]![1]);
 	let best = Number.POSITIVE_INFINITY;
 	for (let index = 1; index < points.length; index += 1) {
-		best = Math.min(best, edgeDistance(point, points[index - 1]!, points[index]!));
+		const a = points[index - 1]!;
+		const b = points[index]!;
+		if (segmentLowerBound(point, a, b) >= best) continue;
+		best = Math.min(best, edgeDistance(point, a, b));
 	}
 	return best;
 }
@@ -645,20 +687,650 @@ function projectMask(mask: RoomLabelMask | undefined, planView: PlanViewportStat
 	};
 }
 
-/** Screen-space slack at one point (≥0 eligible), used by the mask grid. */
+/**
+ * Screen-space slack at one point (≥0 eligible), used by the mask grid.
+ *
+ * WHAT A NEGATIVE RETURN MEANS, stated precisely because it is what makes the early
+ * exits below decision-neutral. The grid stores this value per cell and its
+ * readers are: `slack[i] < 0` (eligible or not) and, for cells that passed that
+ * test, the value itself as a clearance to rank with. A cell that failed any one
+ * obstacle is ineligible, and its magnitude is never read — so the first failing
+ * term may end the walk and answer, which is what the measurement wanted: on the
+ * all-curved fixture most cells are near a wall or an edge band and were paying
+ * for every later obstacle's exact distance before being discarded, and a V8 CPU
+ * profile puts 39.5 % of the post-release window in that discarded arithmetic.
+ * Eligible cells are unaffected: for them every term still runs and the same
+ * minimum comes back, bit for bit.
+ */
 function pointSlack(
+	point: LayoutVec2,
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	/** Active-text rects already inflated by their clearance, once per placement. */
+	inflatedText: readonly ScreenRect[],
+	/** Whether this cell is inside the face — computed per ROW, see `insideFlags`. */
+	inside: boolean
+): number {
+	if (!inside) return Number.NEGATIVE_INFINITY;
+	let slack = polygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
+	if (slack < 0) return slack;
+	for (const edge of mask.protectedEdges) {
+		slack = Math.min(slack, polylineDistance(point, edge.points) - edge.clearancePx);
+		if (slack < 0) return slack;
+	}
+	for (const obstacle of mask.obstacles) {
+		slack = Math.min(slack, polygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
+		if (slack < 0) return slack;
+	}
+	for (const zone of mask.acquisition) {
+		slack = Math.min(
+			slack,
+			Math.hypot(point[0] - zone.center[0], point[1] - zone.center[1]) -
+				zone.radiusPx -
+				zone.clearancePx
+		);
+		if (slack < 0) return slack;
+	}
+	for (const inflated of inflatedText) {
+		slack = Math.min(slack, rectPointDistance(inflated, point));
+		if (slack < 0) return slack;
+	}
+	return slack;
+}
+
+/**
+ * The even-odd crossing table for ONE grid row, in the order the per-point test
+ * visits the edges — which is what makes the row computation decision-neutral: the
+ * inside/outside answer is the parity of the edges whose crossing lies to the RIGHT
+ * of the point, and parity does not care in what order the edges were toggled, so
+ * collecting them per row and counting is the same boolean as toggling per point.
+ * The crossing is computed with the same orientation and the same expression as
+ * `pointStrictlyInside`, so the two agree bit for bit rather than approximately.
+ *
+ * WHY (measured). After the distance loop was pruned, the point-in-polygon test was
+ * what remained: a V8 CPU profile of the M1 protocol puts it at 5.7 % of the whole
+ * run and 13 % of the post-release window on the all-curved fixture, because a
+ * curved face is a long polyline and the test was walking all of it for every one of
+ * up to 24 000 cells. Per row, each edge is crossed at most once: the walk becomes
+ * one pass over the boundary per row plus a walk over the sorted crossings.
+ */
+function rowCrossings(polygonScreen: readonly LayoutVec2[], y: number): number[] {
+	const crossings: number[] = [];
+	for (let index = 0, previous = polygonScreen.length - 1; index < polygonScreen.length; previous = index++) {
+		const a = polygonScreen[index]!;
+		const b = polygonScreen[previous]!;
+		if (a[1] > y !== b[1] > y) {
+			const x = ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0];
+			// A non-finite crossing never toggled in the per-point test either.
+			if (!Number.isNaN(x)) crossings.push(x);
+		}
+	}
+	crossings.sort((left, right) => left - right);
+	return crossings;
+}
+
+type FreeCandidate = { point: LayoutVec2; clearance: number };
+
+/**
+ * THE SHIPPED GRID IS CACHED, AND THE CACHE IS NOT AN ARM. The shipped path builds the
+ * seeded grid behind a bounded, content-addressed cache of the derived candidates (see
+ * `cachedSeededGridCandidates` below): the same geometry is planned twice per settle — a
+ * `geometry` pass and the settled `lod` pass after it — and the second of those used to
+ * rebuild every Room's grid from byte-identical inputs. Measured, that reuse is worth a
+ * median 15 % of the post-release window (`bend` on the all-curved fixture −18 %), and it
+ * is the ONLY reuse the evidence allows: identical inputs make an identical GRID by
+ * construction, while the PLACEMENT reads the sticky memory the key does not cover, so a
+ * cache of RESULTS would paint the previous pass's labels (measured: they agree only
+ * 47.8 % of the time) and a skipped pass would paint nothing.
+ *
+ * THE ARM DISPATCH — the one read of the DEV switch in this product module (pinned by
+ * the wiring test), and the only thing the arms change here. The three GRIDS are the
+ * shipped seeded walk, the walk shipped before it (`pruned`) and the pre-change grid
+ * (`perCellGridCandidates`, kept whole below). Choosing between them cannot reach a
+ * placement decision: all three visit the same cells, keep the same eligible set, pick
+ * the same representative point per component and rank the same candidates — the
+ * placement suite requires identical labels from all of them. The fourth arm,
+ * `no-memo-grid`, is not a grid at all: it is the SHIPPED walk with the cache BYPASSED,
+ * so it can only change how MANY times a grid is built, never which one — which is why its
+ * parity with the shipped path is by construction rather than by agreement, and why it is
+ * what the cache's own price is measured against.
+ *
+ * THE SAME CALL CARRIES THE GRID'S INPUTS, because this is the only place that has them
+ * and the only call this module is allowed to make into the instrument. They are passed
+ * by reference (nothing is copied, allocated or hashed unless the gate is on), and the
+ * instrument uses them to key one build — its own concern, in its own module. Reading them
+ * is not a decision: the arm is chosen here exactly as it was before they were passed.
+ */
+/**
+ * HOW MANY GRID INPUT SETS THE SHIPPED CACHE KEEPS. The measured working set is the
+ * fixture's ROOM COUNT — 4–61 keys per attempt at the largest fixture, and the reuse that
+ * pays is the settled pass finding the pass before it — so this is comfortably above it.
+ * A document with more distinct inputs than this DEGRADES, it does not break: the cache
+ * evicts oldest-first, so the trailing pass still hits the recent keys and rebuilds the
+ * rest, because correctness never depends on capacity — only on the key.
+ */
+const ROOM_LABEL_GRID_CACHE_LIMIT = 256;
+
+/**
+ * The shipped grid's candidate cache, OWNED HERE — one map, one bound, one eviction rule,
+ * and no other module may read or write it. Its key is the grid's own exact-bit inputs
+ * (`roomLabelGridKey`), so an entry can never serve a different grid: the grid reads the
+ * projected polygon, the mask and the centre and NOTHING else, and those are exactly what
+ * the key hashes. That is what makes it SELF-INVALIDATING — there is no stale state to
+ * invalidate, because a hit means the inputs are identical, which means the grid is
+ * identical. It therefore needs no lifetime owner beyond this module, and nothing has to
+ * clear it for correctness; `resetRoomLabelGridCache` exists for tests and for a
+ * deliberately cold start.
+ *
+ * WHAT IT MAY NEVER SERVE. The key does NOT cover the distance ENGINE: it is the shipped
+ * (`seeded`) engine's key. The DEV `pruned` and `per-cell` grids are different grids built
+ * from the same inputs, so they must never be routed through this cache — and they are
+ * not (only the shipped branch below consults it). `no-memo-grid` is the shipped grid with
+ * this lookup deliberately skipped, which is what makes the cache measurable inside one arm
+ * session.
+ *
+ * THE RETURNED ARRAY IS SHARED WITH THE CACHE, and the caller must treat it as read-only.
+ * `placeRoomLabels` only reads the candidates it is handed (`.point` and `.clearance`), and
+ * the values are plain numbers, so a hit hands the same array to every pass that hits it.
+ */
+const roomLabelGridCache = new Map<string, FreeCandidate[]>();
+
+/** Empty the shipped grid cache. Not needed for correctness — the key is the whole input. */
+export function resetRoomLabelGridCache(): void {
+	roomLabelGridCache.clear();
+}
+
+/**
+ * The shipped grid, through the cache: a hit returns the pass before it's candidates, a
+ * miss builds the seeded grid and keeps it. DEV-only counting rides along (one gated,
+ * no-return call) so a test and a leg can say the cache was EXERCISED rather than assumed —
+ * the build counts cannot, because a hit still records the key of the request it served.
+ */
+function cachedSeededGridCandidates(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	centerScreen: LayoutVec2
+): FreeCandidate[] {
+	const key = roomLabelGridKey({ polygonScreen, mask, centerScreen });
+	const cached = roomLabelGridCache.get(key);
+	if (cached !== undefined) {
+		p23bM1RecordRoomLabelGridCache(true);
+		return cached;
+	}
+	const built = gridCandidates(polygonScreen, mask, centerScreen, 'seeded');
+	p23bM1RecordRoomLabelGridCache(false);
+	if (roomLabelGridCache.size >= ROOM_LABEL_GRID_CACHE_LIMIT) {
+		const oldest = roomLabelGridCache.keys().next().value;
+		if (oldest !== undefined) roomLabelGridCache.delete(oldest);
+	}
+	roomLabelGridCache.set(key, built);
+	return built;
+}
+
+function freeSpaceCandidates(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	centerScreen: LayoutVec2
+): FreeCandidate[] {
+	const arm = p23bM1RoomLabelArm(polygonScreen, mask, centerScreen);
+	if (arm === 'per-cell-grid') return perCellGridCandidates(polygonScreen, mask, centerScreen);
+	// The SHIPPED path is the only one that consults the cache. Every other arm builds its own
+	// grid UNCACHED: `pruned`/`per-cell` are different grids (a key for the shipped engine must
+	// never serve them) and `no-memo-grid` is the shipped grid with the cache bypassed on
+	// purpose, which is the reference the cache's price is read against.
+	if (arm === 'seeded-grid') return cachedSeededGridCandidates(polygonScreen, mask, centerScreen);
+	return gridCandidates(polygonScreen, mask, centerScreen, arm === 'pruned-grid' ? 'pruned' : 'seeded');
+}
+
+/**
+ * Derive up to eight large free-space candidates from the Room's projected
+ * polygon minus the eligibility mask. Connected components of eligible cells
+ * give the *free-space components*; each component contributes the cell with the
+ * greatest clearance, and the largest components are kept. Ranked by clearance,
+ * then proximity to the semantic center — invariant to Room document order.
+ *
+ * THE GRID AND THE SLACK ENGINE ARE SEPARATE ON PURPOSE. Everything above the slack
+ * call is the same work in both of this pass's arms — the bounding box, the cell
+ * budget, the row-wise inside flags, the connected-component walk and the ranking — so
+ * it is written once and cannot drift between them; the arms differ exactly where the
+ * change is, in how one cell's slack is measured (the engine closure below). That is
+ * the same rule the runner applies to its rows: a per-arm cell is produced by the same
+ * function that produces the class row, so the difference between arms is the change
+ * and not a second copy of the measurement.
+ */
+function gridCandidates(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	centerScreen: LayoutVec2,
+	/** Which distance engine measures a cell: the shipped seeded walk or the one before it. */
+	engine: 'seeded' | 'pruned'
+): FreeCandidate[] {
+	// One pass, not four mapped arrays: this is per Room per placement, and the four
+	// spreads each allocated a copy of the projected polygon.
+	let minX = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let minZ = Number.POSITIVE_INFINITY;
+	let maxZ = Number.NEGATIVE_INFINITY;
+	for (const [x, z] of polygonScreen) {
+		if (x < minX) minX = x;
+		if (x > maxX) maxX = x;
+		if (z < minZ) minZ = z;
+		if (z > maxZ) maxZ = z;
+	}
+	const widthPx = maxX - minX;
+	const heightPx = maxZ - minZ;
+	if (!(widthPx > 0) || !(heightPx > 0)) return [];
+	const cell = Math.max(
+		ROOM_LABEL_MASK_CELL_PX,
+		Math.ceil(Math.sqrt((widthPx * heightPx) / ROOM_LABEL_MASK_MAX_CELLS))
+	);
+	const columns = Math.max(1, Math.ceil(widthPx / cell));
+	const rows = Math.max(1, Math.ceil(heightPx / cell));
+	// Inflated once, not once per cell: the grid asks the same question up to 24 000
+	// times, and the inflation depends only on the mask.
+	const inflatedText: ScreenRect[] = mask.activeText.map((text) => ({
+		minX: text.rect.minX - text.clearancePx,
+		minY: text.rect.minY - text.clearancePx,
+		maxX: text.rect.maxX + text.clearancePx,
+		maxY: text.rect.maxY + text.clearancePx
+	}));
+	// Inside/outside is a property of the ROW, not of the cell: every cell in a row
+	// shares its z, so the boundary crossings are the same set and only the comparison
+	// against the cell's x differs. Computed once per row, walked left to right.
+	const insideFlags = new Uint8Array(columns * rows);
+	for (let row = 0; row < rows; row += 1) {
+		const y = minZ + (row + 0.5) * cell;
+		const crossings = rowCrossings(polygonScreen, y);
+		let crossing = 0;
+		for (let column = 0; column < columns; column += 1) {
+			const x = minX + (column + 0.5) * cell;
+			// A crossing exactly at the point does not count: the per-point test asked
+			// `point[0] < x`, which is false when they are equal.
+			while (crossing < crossings.length && crossings[crossing]! <= x) crossing += 1;
+			insideFlags[row * columns + column] = (crossings.length - crossing) % 2 === 1 ? 1 : 0;
+		}
+	}
+	const slackOf: (point: LayoutVec2, inside: boolean) => number =
+		engine === 'seeded'
+			? seededSlackEngine(polygonScreen, mask, inflatedText)
+			: (point, inside) => pointSlack(point, polygonScreen, mask, inflatedText, inside);
+	const slack = new Float64Array(columns * rows).fill(Number.NEGATIVE_INFINITY);
+	for (let column = 0; column < columns; column += 1) {
+		for (let row = 0; row < rows; row += 1) {
+			const index = row * columns + column;
+			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
+			slack[index] = slackOf(point, insideFlags[index] === 1);
+		}
+	}
+	const visited = new Uint8Array(columns * rows);
+	const components: { best: FreeCandidate; size: number }[] = [];
+	for (let start = 0; start < slack.length; start += 1) {
+		if (visited[start] === 1 || slack[start]! < 0) continue;
+		visited[start] = 1;
+		const queue = [start];
+		let size = 0;
+		let bestValue = Number.NEGATIVE_INFINITY;
+		let bestCenterDistance = Number.POSITIVE_INFINITY;
+		let bestPoint: LayoutVec2 = [0, 0];
+		/** Enqueue an eligible, unvisited neighbour; a boundary or ineligible cell is not one. */
+		const visit = (neighbour: number): void => {
+			if (visited[neighbour] === 1 || slack[neighbour]! < 0) return;
+			visited[neighbour] = 1;
+			queue.push(neighbour);
+		};
+		while (queue.length > 0) {
+			const index = queue.pop()!;
+			size += 1;
+			const column = index % columns;
+			const row = Math.floor(index / columns);
+			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
+			const value = slack[index]!;
+			// A component's representative point is its greatest-clearance cell,
+			// and among equal clearance the one nearest the semantic center — never
+			// the arbitrary first cell a traversal happens to visit. A symmetric
+			// Room ties along its bottleneck axis, so without this the label could
+			// sit a half-cell to one side for no visible reason.
+			const centerDistance = Math.hypot(point[0] - centerScreen[0], point[1] - centerScreen[1]);
+			if (
+				value > bestValue + 1e-9 ||
+				(Math.abs(value - bestValue) <= 1e-9 && centerDistance < bestCenterDistance - 1e-9)
+			) {
+				bestValue = value;
+				bestCenterDistance = centerDistance;
+				bestPoint = point;
+			}
+			// Four tests written out rather than collected into an array: this runs once
+			// per cell of the grid, so the array was one allocation per cell (up to
+			// 24 000 per Room) for a traversal that can only ever have four neighbours.
+			if (column > 0) visit(index - 1);
+			if (column < columns - 1) visit(index + 1);
+			if (row > 0) visit(index - columns);
+			if (row < rows - 1) visit(index + columns);
+		}
+		components.push({ best: { point: bestPoint, clearance: bestValue }, size });
+	}
+	// "Large free-space": the biggest components first, then clearance, then the
+	// semantic center. Ties resolve on the candidate point, so the ranking is a
+	// pure function of the geometry (no document-order dependence).
+	components.sort((a, b) => b.size - a.size || b.best.clearance - a.best.clearance);
+	const ranked = components
+		.slice(0, ROOM_LABEL_MAX_CANDIDATES)
+		.sort(
+			(a, b) =>
+				b.best.clearance - a.best.clearance ||
+				Math.hypot(a.best.point[0] - centerScreen[0], a.best.point[1] - centerScreen[1]) -
+					Math.hypot(b.best.point[0] - centerScreen[0], b.best.point[1] - centerScreen[1]) ||
+				a.best.point[0] - b.best.point[0] ||
+				a.best.point[1] - b.best.point[1]
+		);
+	return ranked.map((component) => component.best);
+}
+
+/* ------------------------------------------------------------------ *
+ * THE SHIPPED SLACK ENGINE — every distance walk seeded with the slack found so far
+ * ------------------------------------------------------------------ */
+
+/**
+ * WHAT THIS ENGINE CHANGES, and why the seed is the whole of it. A cell's slack is the
+ * minimum over a list of terms: the Room's own boundary minus a reserve, each protected
+ * edge, each obstacle, each acquisition zone, each active text rect. The engine shipped
+ * before this one walked every term from `+Infinity`, so each term paid its own pass
+ * over its own segments and could only skip the segments inside its own bounding box;
+ * measured on the 2026-09-28 all-curved post-release window, that walk is the grid's
+ * dominant cost (`segmentLowerBound` 12.3 % of the window, `edgeDistance` 12.0 % — the
+ * two halves of one loop).
+ *
+ * Two changes, and neither is a constant factor:
+ *
+ *   1. THE WALK IS SEEDED with `slackSoFar + clearance`, so a segment that cannot beat
+ *      what is already known is skipped without being measured, and a whole GROUP of
+ *      segments is skipped when its bounding box cannot beat it either.
+ *   2. THE CHEAP TERMS RUN FIRST, and "cheap" is counted in SEGMENTS, not assumed. Zones
+ *      and text rects are a handful of arithmetic operations and always lead; among the
+ *      polylines the shortest is visited first, so the expensive walks get a finite seed
+ *      and a cell deep inside the face — where the boundary is not what stops the label
+ *      — walks as little as possible. That is what puts a curved 256-vertex boundary
+ *      LAST (it is the longest polyline in the grid) and a four-segment rectangle Room
+ *      FIRST (it is the shortest, and the most selective). See `seededSlackEngine` for
+ *      the measurement behind the ranking, and `seedTerm` for the index gate.
+ *
+ * IT DECIDES NOTHING DIFFERENTLY, and that is provable rather than hoped for: pruning on
+ * `lowerBound >= best` can only skip a segment whose exact distance is at least `best`,
+ * which is at or above the seeded threshold, so the walk still returns the true minimum
+ * whenever that minimum is below the seed. Seeding also changes the ORDER in which terms
+ * are evaluated and therefore which negative value an ineligible cell returns — and the
+ * magnitude of a discarded cell is read by nothing (the grid only ever asks whether a
+ * cell is eligible, and ranks cells that are), so the eligible set and every eligible
+ * cell's value are unchanged.
+ *
+ * THE 1e-12 GUARD is what keeps "nothing below the seed" a statement about the geometry.
+ * Without it a term that exactly equals the slack would have to come back through
+ * `(slack + clearance) − clearance`, which can land one ulp below the slack and would
+ * change a value that the ranking reads.
+ */
+const SEED_GUARD = 1e-12;
+
+/**
+ * The fewest segments a polyline must have before a per-group box index earns its keep.
+ * MEASURED, not guessed. At the scale the M1 leg reports — ≈0.06 ms per grid build on the
+ * straight fixture, ≈0.6 ms on the all-curved one — an index built for a one-segment
+ * polyline is pure overhead: three typed arrays and a box test per group, to skip a walk
+ * that is one segment long. For a flattened 256-vertex ring it is the entire win. The grid
+ * is built between 20 and 72 times per accepted action, so whatever this costs is paid on
+ * every one of those builds.
+ */
+const GRID_INDEX_MIN_SEGMENTS = 8;
+
+/**
+ * One polyline term of the seeded engine: the polyline, the distance it must keep, and the
+ * group index it EARNED — or `null`, which is walked the same seeded way with nothing but
+ * the seed to prune against. Ranking the terms and deciding which of them get an index are
+ * both presentation-only decisions: neither changes a distance, a threshold or an eligible
+ * cell's value, which is why the arm's parity test still holds across them.
+ */
+type SeedTerm = {
+	points: readonly LayoutVec2[];
+	closed: boolean;
+	clearancePx: number;
+	segments: number;
+	index: PolylineIndex | null;
+};
+
+function seedTerm(
+	points: readonly LayoutVec2[],
+	closed: boolean,
+	clearancePx: number
+): SeedTerm {
+	const segments = closed ? points.length : Math.max(0, points.length - 1);
+	return {
+		points,
+		closed,
+		clearancePx,
+		segments,
+		index: segments >= GRID_INDEX_MIN_SEGMENTS ? buildPolylineIndex(points, closed) : null
+	};
+}
+
+/**
+ * A polyline's segments grouped, with each group's own bounding box: the bulk prune.
+ * A group's box contains every segment box in the group, so its distance is a lower
+ * bound on every segment's distance in it — the same safe direction as the per-segment
+ * box, one level up. `round(sqrt(segments))` segments per group balances the number of
+ * group tests against the segments a surviving group still walks.
+ */
+type PolylineIndex = {
+	/** Segments per group. */
+	group: number;
+	groups: number;
+	/** Closed rings have one segment per point; open polylines have one fewer. */
+	segments: number;
+	minX: Float64Array;
+	minZ: Float64Array;
+	maxX: Float64Array;
+	maxZ: Float64Array;
+};
+
+function buildPolylineIndex(polygon: readonly LayoutVec2[], closed: boolean): PolylineIndex {
+	const segments = closed ? polygon.length : Math.max(0, polygon.length - 1);
+	const group = Math.max(2, Math.min(32, Math.round(Math.sqrt(Math.max(segments, 4)))));
+	const groups = segments === 0 ? 0 : Math.max(1, Math.ceil(segments / group));
+	const index: PolylineIndex = {
+		group,
+		groups,
+		segments,
+		minX: new Float64Array(groups),
+		minZ: new Float64Array(groups),
+		maxX: new Float64Array(groups),
+		maxZ: new Float64Array(groups)
+	};
+	for (let groupIndex = 0; groupIndex < groups; groupIndex += 1) {
+		let loX = Number.POSITIVE_INFINITY;
+		let loZ = Number.POSITIVE_INFINITY;
+		let hiX = Number.NEGATIVE_INFINITY;
+		let hiZ = Number.NEGATIVE_INFINITY;
+		const from = groupIndex * group;
+		const to = Math.min(from + group, segments);
+		// `to` is inclusive here: group g covers segments [from, to) — `to` segments means
+		// `to + 1` points, and a closed ring's last point wraps to its first.
+		for (let i = from; i <= to; i += 1) {
+			const point = polygon[closed && i === segments ? 0 : i]!;
+			if (point[0] < loX) loX = point[0];
+			if (point[0] > hiX) hiX = point[0];
+			if (point[1] < loZ) loZ = point[1];
+			if (point[1] > hiZ) hiZ = point[1];
+		}
+		index.minX[groupIndex] = loX;
+		index.minZ[groupIndex] = loZ;
+		index.maxX[groupIndex] = hiX;
+		index.maxZ[groupIndex] = hiZ;
+	}
+	return index;
+}
+
+/**
+ * The exact distance from `point` to the polyline, or `null` when it is NOT below
+ * `threshold`. The sentinel is what keeps a "cannot bind" answer out of the arithmetic:
+ * the caller then leaves its slack untouched instead of re-deriving it from a seeded
+ * value. Callers pass `+Infinity` when they have nothing to prune against yet, which is
+ * the walk the previous engine always ran.
+ */
+function seededPolylineDistance(
+	point: LayoutVec2,
+	polygon: readonly LayoutVec2[],
+	closed: boolean,
+	threshold: number,
+	/** `null` for a polyline too short to earn an index: the same walk, same seed. */
+	index: PolylineIndex | null
+): number | null {
+	if (polygon.length === 0) return null;
+	const limit = Number.isFinite(threshold) ? threshold * (1 + SEED_GUARD) : threshold;
+	if (polygon.length === 1) {
+		// One point is one degenerate segment in both readings: today's closed walk puts
+		// the point next to itself and the segment distance collapses to the point's.
+		const only = polygon[0]!;
+		const distance = Math.hypot(point[0] - only[0], point[1] - only[1]);
+		return distance >= limit ? null : distance;
+	}
+	const px = point[0];
+	const pz = point[1];
+	let best = limit;
+	if (index === null) {
+		const last = closed ? polygon.length : polygon.length - 1;
+		for (let i = 0; i < last; i += 1) {
+			const a = polygon[i]!;
+			const b = polygon[closed && i + 1 === last ? 0 : i + 1]!;
+			if (segmentLowerBound(point, a, b) >= best) continue;
+			best = Math.min(best, edgeDistance(point, a, b));
+		}
+		return best >= limit ? null : best;
+	}
+	const { group, groups, segments, minX, minZ, maxX, maxZ } = index;
+	for (let groupIndex = 0; groupIndex < groups; groupIndex += 1) {
+		const groupDx = Math.max(0, minX[groupIndex]! - px, px - maxX[groupIndex]!);
+		if (groupDx >= best) continue;
+		const groupDz = Math.max(0, minZ[groupIndex]! - pz, pz - maxZ[groupIndex]!);
+		if (Math.max(groupDx, groupDz) >= best) continue;
+		const from = groupIndex * group;
+		const to = Math.min(from + group, segments);
+		for (let i = from; i < to; i += 1) {
+			const a = polygon[i]!;
+			const b = polygon[closed && i + 1 === segments ? 0 : i + 1]!;
+			if (segmentLowerBound(point, a, b) >= best) continue;
+			best = Math.min(best, edgeDistance(point, a, b));
+		}
+	}
+	return best >= limit ? null : best;
+}
+
+/**
+ * The shipped engine, bound once per grid: the polylines' terms — order and indexes —
+ * are settled here, and the per-cell work is a closure over them.
+ *
+ * THE TERMS ARE VISITED CHEAPEST-SEGMENTS-FIRST, AND THAT ORDER IS MEASURED. The walk's
+ * cost is the segments it visits, and a term that runs first ends the walk for every cell
+ * it rejects. On the all-curved fixture the Room's own ring is the longest polyline in the
+ * grid (a flattened 256-vertex curve), so it belongs last — which is what the first
+ * version of this engine hardcoded. On the straight fixture the same ring is a four-segment
+ * rectangle: the cheapest AND most selective term in the grid, and running it last made the
+ * engine slower than the pruned walk it replaces (0.61–0.95× on the shapes the leg reports,
+ * vs 1.47–2.35× when the terms are ranked). Ranking by segment count is right in both cases
+ * and costs one sort of a handful of terms per grid build; `sort` is stable, so terms of
+ * equal length keep the order they were added in. The zones and the text rects stay ahead of
+ * every polyline term: they are a hypot and a rect clamp against a cached array, cheaper
+ * than any one segment. `slackSoFar + clearance` is still each term's seed.
+ */
+function seededSlackEngine(
+	polygonScreen: readonly LayoutVec2[],
+	mask: ScreenMask,
+	inflatedText: readonly ScreenRect[]
+): (point: LayoutVec2, inside: boolean) => number {
+	const terms: SeedTerm[] = [
+		...mask.protectedEdges.map((edge) => seedTerm(edge.points, false, edge.clearancePx)),
+		...mask.obstacles.map((obstacle) => seedTerm(obstacle.polygon, true, obstacle.clearancePx)),
+		seedTerm(polygonScreen, true, ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX)
+	];
+	terms.sort((left, right) => left.segments - right.segments);
+	return (point, inside) => {
+		if (!inside) return Number.NEGATIVE_INFINITY;
+		let slack = Number.POSITIVE_INFINITY;
+		for (const zone of mask.acquisition) {
+			slack = Math.min(
+				slack,
+				Math.hypot(point[0] - zone.center[0], point[1] - zone.center[1]) -
+					zone.radiusPx -
+					zone.clearancePx
+			);
+			if (slack < 0) return slack;
+		}
+		for (const inflated of inflatedText) {
+			slack = Math.min(slack, rectPointDistance(inflated, point));
+			if (slack < 0) return slack;
+		}
+		for (const term of terms) {
+			const distance = seededPolylineDistance(
+				point,
+				term.points,
+				term.closed,
+				slack + term.clearancePx,
+				term.index
+			);
+			if (distance === null) continue;
+			slack = Math.min(slack, distance - term.clearancePx);
+			if (slack < 0) return slack;
+		}
+		return slack;
+	};
+}
+
+/* ------------------------------------------------------------------ *
+ * The arm's BEFORE path — the pre-change grid, kept verbatim
+ * ------------------------------------------------------------------ */
+
+/**
+ * EVERYTHING BELOW THIS LINE IS THE PRE-CHANGE IMPLEMENTATION, not a variant of
+ * the shipped one. It is here so the BEFORE/AFTER arm can run it on demand in the
+ * same session as the shipped path, because every M1 absolute is
+ * session-conditioned and a cross-session before/after measures the machine. The
+ * four functions are the ones the 2026-09-28 record measured: `edgeDistance` per
+ * boundary vertex per cell with no bbox prune, the inside test walked per cell, the
+ * active-text rect inflated per cell, the Room bbox in four mapped arrays and a
+ * neighbour array allocated per BFS cell — 17.11 % of a whole M1 run in one of them.
+ *
+ * IT DECIDES NOTHING DIFFERENTLY. Both arms visit the same cells, keep the same
+ * eligible set, pick the same representative point per component and rank the same
+ * candidates; the placement suite runs both and requires identical labels
+ * (`placeRoomLabels` under each arm), which is what makes the arm a measurement of
+ * COST rather than of behaviour. Nothing here may be optimised: a "small fix" would
+ * quietly turn the BEFORE arm into a second AFTER arm and the comparison into a
+ * comparison of two similar things.
+ */
+function perCellPolylineDistance(point: LayoutVec2, points: readonly LayoutVec2[]): number {
+	if (points.length === 0) return Number.POSITIVE_INFINITY;
+	if (points.length === 1) return Math.hypot(point[0] - points[0]![0], point[1] - points[0]![1]);
+	let best = Number.POSITIVE_INFINITY;
+	for (let index = 1; index < points.length; index += 1) {
+		best = Math.min(best, edgeDistance(point, points[index - 1]!, points[index]!));
+	}
+	return best;
+}
+
+function perCellPolygonBoundaryDistance(point: LayoutVec2, polygon: readonly LayoutVec2[]): number {
+	return perCellPolylineDistance(point, [...polygon, polygon[0]!]);
+}
+
+function perCellPointSlack(
 	point: LayoutVec2,
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask
 ): number {
 	if (!pointStrictlyInside(polygonScreen, point)) return Number.NEGATIVE_INFINITY;
-	let slack = polygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
+	let slack = perCellPolygonBoundaryDistance(point, polygonScreen) - ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX;
 	if (slack < 0) return slack;
 	for (const edge of mask.protectedEdges) {
-		slack = Math.min(slack, polylineDistance(point, edge.points) - edge.clearancePx);
+		slack = Math.min(slack, perCellPolylineDistance(point, edge.points) - edge.clearancePx);
 	}
 	for (const obstacle of mask.obstacles) {
-		slack = Math.min(slack, polygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
+		slack = Math.min(slack, perCellPolygonBoundaryDistance(point, obstacle.polygon) - obstacle.clearancePx);
 	}
 	for (const zone of mask.acquisition) {
 		slack = Math.min(
@@ -680,16 +1352,7 @@ function pointSlack(
 	return slack;
 }
 
-type FreeCandidate = { point: LayoutVec2; clearance: number };
-
-/**
- * Derive up to eight large free-space candidates from the Room's projected
- * polygon minus the eligibility mask. Connected components of eligible cells
- * give the *free-space components*; each component contributes the cell with the
- * greatest clearance, and the largest components are kept. Ranked by clearance,
- * then proximity to the semantic center — invariant to Room document order.
- */
-function freeSpaceCandidates(
+function perCellGridCandidates(
 	polygonScreen: readonly LayoutVec2[],
 	mask: ScreenMask,
 	centerScreen: LayoutVec2
@@ -711,7 +1374,7 @@ function freeSpaceCandidates(
 	for (let column = 0; column < columns; column += 1) {
 		for (let row = 0; row < rows; row += 1) {
 			const point: LayoutVec2 = [minX + (column + 0.5) * cell, minZ + (row + 0.5) * cell];
-			slack[row * columns + column] = pointSlack(point, polygonScreen, mask);
+			slack[row * columns + column] = perCellPointSlack(point, polygonScreen, mask);
 		}
 	}
 	const visited = new Uint8Array(columns * rows);
@@ -828,6 +1491,21 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 	const mask = projectMask(input.mask, planView);
 	const reason = input.reason ?? 'lod';
 	const settleGeneration = input.settleGeneration ?? 0;
+	// WHAT THIS CALL WAS HANDED, recorded before any Room is visited: the grid key says how
+	// much of it recomputes, and this says which pass does the recomputing. It is the same
+	// DEV-only instrument the whole module reads through, it returns nothing, and with the
+	// gate off the shipped path pays one boolean.
+	// Call-site gate: with the instrument off the shipped path pays one boolean,
+	// not an argument object, a clock read and a call.
+	if (p23bM1RoomLabelArmEnabled()) {
+		p23bM1RecordRoomLabelCall({
+			rooms: input.rooms.length,
+			reason,
+			settleGeneration,
+			hasMemory: input.memory !== undefined,
+			at: typeof performance === 'undefined' ? 0 : performance.now()
+		});
+	}
 	const memory = input.memory ?? new Map<string, RoomLabelMemoryEntry>();
 	const selectedRoomId = input.selectedRoomId ?? null;
 	const labels: PlacedRoomLabel[] = [];
@@ -915,7 +1593,9 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 					const slack = rectSlack(fit.rect, polygonScreen, mask);
 					if (slack >= 0) {
 						resolved = { stack: full, fit, slack };
-						anchorScreen = candidate.point;
+						// Copy: `candidate` is shared with the grid cache (see
+						// `roomLabelGridCache`), so the label must own its anchor.
+						anchorScreen = [candidate.point[0], candidate.point[1]];
 						break;
 					}
 				}
@@ -925,7 +1605,8 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 					const result = resolve(candidate.point, eligible.slice(1));
 					if (result) {
 						resolved = result;
-						anchorScreen = candidate.point;
+						// Copy: see above — the label must own its anchor.
+						anchorScreen = [candidate.point[0], candidate.point[1]];
 						break;
 					}
 				}
@@ -1055,6 +1736,57 @@ export function placeRoomLabels(input: RoomLabelPlacementInput): RoomLabelPlacem
 
 	for (const roomId of [...memory.keys()]) {
 		if (!liveRoomIds.has(roomId)) memory.delete(roomId);
+	}
+	// The other half of this call's recording, taken here because this is the pass's ONE
+	// exit: it prices the whole pass — its grid builds and the placement work around them —
+	// which is what a fix has to beat. Returns nothing, same as the entry.
+	// Call-site gate around the whole exit recording: with the instrument off the
+	// shipped path pays one boolean, not two loop walks with a call per value.
+	// WHAT THE PASS PRODUCED, to the last bit: identical inputs prove two passes
+	// built the same grids; only the digests can say whether they also PLACED the
+	// same labels — the difference between a redundant pass and a pass that merely
+	// looks redundant. Two digests because they answer different questions: the
+	// labels + readout are what a render paints, the memory is what the next pass
+	// inherits.
+	if (p23bM1RoomLabelArmEnabled()) {
+		p23bM1EndRoomLabelCall();
+		p23bM1BeginRoomLabelValueDigest();
+		p23bM1DigestNumber(labels.length);
+		for (const label of labels) {
+			p23bM1DigestString(label.roomId);
+			p23bM1DigestString(label.tier);
+			p23bM1DigestNumber(label.anchorScreen[0]);
+			p23bM1DigestNumber(label.anchorScreen[1]);
+			p23bM1DigestNumber(label.anchorWorld[0]);
+			p23bM1DigestNumber(label.anchorWorld[1]);
+			p23bM1DigestNumber(label.widthPx);
+			p23bM1DigestNumber(label.heightPx);
+			p23bM1DigestNumber(label.lines.length);
+			for (const line of label.lines) {
+				p23bM1DigestString(line.text);
+				p23bM1DigestString(line.style);
+				p23bM1DigestNumber(line.baselineOffsetPx);
+			}
+		}
+		p23bM1DigestNumber(readout === null ? 0 : 1);
+		if (readout) {
+			p23bM1DigestString(readout.roomId);
+			p23bM1DigestString(readout.primary);
+			p23bM1DigestString(readout.reference ?? '');
+			p23bM1DigestString(readout.area ?? '');
+		}
+		p23bM1EndRoomLabelValueDigest('labels');
+		p23bM1BeginRoomLabelValueDigest();
+		p23bM1DigestNumber(memory.size);
+		for (const [roomId, entry] of memory) {
+			p23bM1DigestString(roomId);
+			p23bM1DigestString(entry.tier);
+			p23bM1DigestNumber(entry.anchorWorld[0]);
+			p23bM1DigestNumber(entry.anchorWorld[1]);
+			p23bM1DigestNumber(entry.suppressed ? 1 : 0);
+			p23bM1DigestNumber(entry.suppressedSettleGeneration);
+		}
+		p23bM1EndRoomLabelValueDigest('memory');
 	}
 	return { labels, readout, memory };
 }

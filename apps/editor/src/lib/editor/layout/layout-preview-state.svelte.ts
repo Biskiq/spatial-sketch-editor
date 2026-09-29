@@ -27,7 +27,7 @@ import type {
 } from '$lib/layout/layout-types';
 import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-types';
 import { p23bMeasureActiveReactive } from './p23b-interaction-measure';
-import { p2311ObserveMeshIdentity } from './p23b-mesh-identity';
+import { p2311ObserveMeshIdentity, p2311ObserveWallMeshStats } from './p23b-mesh-identity';
 import {
 	layoutAuthoredCanonicalJson,
 	layoutIdentityCursor,
@@ -117,7 +117,9 @@ import {
 	type IsolatedRoomGroupSubgraph,
 	type RoomIsolationRejection
 } from '$lib/layout/layout-room-isolation';
-import { planWallFirstRoomMove, type RoomMoveRejectionCode } from '$lib/layout/layout-room-move';
+import {	planWallFirstRoomMove,
+	planWallFirstRoomRotation,
+ type RoomMoveRejectionCode } from '$lib/layout/layout-room-move';
 import { hasBlockingLayoutIssues, validateLayoutDocumentGeometry, validateLineRoom, type LayoutGeometryIssue } from '$lib/layout/layout-geometry-validation';
 import { deleteLayoutRoom as deleteRoomFromDocument } from './layout-room-editing';
 import {
@@ -272,7 +274,8 @@ export type WallFirstPrecisionMutationResult =
 /** P23.4 duplicate/repeat results carry the created IDs for selection. */
 /** P23.6a Room-unit move result through the one document-install point. */
 export type WallFirstRoomMoveMutationResult =
-	| { success: true; operation: 'room-move' }
+	/** `room-rotate` is the same install path with a rigidly rotated candidate. */
+	| { success: true; operation: 'room-move' | 'room-rotate' }
 	| { success: false; message: string };
 
 /**
@@ -608,12 +611,17 @@ function resolveWallMeshes(
 	if (cached) {
 		// P23B measurement-only step: which identity hit the cache.
 		p2311ObserveMeshIdentity('prebuild-hit', geometry);
+		p2311ObserveWallMeshStats(cached.stats, geometry);
 		return cached;
 	}
 	p2311ObserveMeshIdentity('prebuild-miss', geometry);
 	// One `mesh-prebuild` measurement counts one full-generation preparation.
-	// Per-Wall value comparisons/reuse happen inside that single call.
-	return p2311Measure('mesh-prebuild', () => prepareWallMeshes(key, referenceKey));
+	// Per-Wall value comparisons/reuse happen inside that single call, so the
+	// per-Wall split is only visible in the set's own stats (P23B measurement-only
+	// step: built / reused / refusedByReason, published per preparation).
+	const prepared = p2311Measure('mesh-prebuild', () => prepareWallMeshes(key, referenceKey));
+	p2311ObserveWallMeshStats(prepared.stats, geometry);
+	return prepared;
 }
 
 /** Install the derived wall-mesh caches for one geometry onto the live state. */
@@ -1230,14 +1238,14 @@ function applyWallFirstDocumentPlan(
 function applyWallFirstDocumentPlan(
 	state: LayoutPreviewState,
 	document: LayoutDocumentWallFirst,
-	operation: 'room-move',
+	operation: 'room-move' | 'room-rotate',
 	openingId?: string,
 	acceptance?: WallFirstAcceptanceCompile
 ): WallFirstRoomMoveMutationResult;
 function applyWallFirstDocumentPlan(
 	state: LayoutPreviewState,
 	document: LayoutDocumentWallFirst,
-	operation: PrecisionOperation | WallOpeningOperation | 'room-move',
+	operation: PrecisionOperation | WallOpeningOperation | 'room-move' | 'room-rotate',
 	openingId?: string,
 	acceptance?: WallFirstAcceptanceCompile
 ): WallFirstPrecisionMutationResult | WallFirstRoomMoveMutationResult {
@@ -1251,7 +1259,9 @@ function applyWallFirstDocumentPlan(
 		state.lastMutationMessage = null;
 		state.statusMessage = null;
 		state.importError = null;
-		if (operation === 'room-move') return { success: true, operation: 'room-move' };
+		if (operation === 'room-move' || operation === 'room-rotate') {
+			return { success: true, operation };
+		}
 		return openingId === undefined
 			? { success: true, operation: operation as PrecisionOperation }
 			: { success: true, operation: operation as WallOpeningOperation, openingId };
@@ -2155,6 +2165,37 @@ export function previewWallFirstRoomMove(
 	const layout = wallFirstLayoutOrError(state);
 	if (!layout) return failRoomMove(state, state.lastMutationMessage ?? 'Wall-first layout is not active');
 	const plan = planWallFirstRoomMove(layout, roomId, delta);
+	if (plan.kind === 'rejected') {
+		state.lastMutationMessage = plan.rejection.message;
+		return {
+			success: false,
+			message: plan.rejection.message,
+			code: plan.rejection.code
+		};
+	}
+	const applied = applyWallFirstDocumentPlan(state, plan.document, plan.operation);
+	return applied.success
+		? { success: true, movedRoomIds: plan.movedRoomIds }
+		: failRoomMove(state, applied.message);
+}
+
+/**
+ * Pre-P23B.8 follow-up — the ROTATION partner of `previewWallFirstRoomMove`.
+ *
+ * Same contract, same install point, same one-bundle/one-compile preview: the
+ * committed candidate is `planWallFirstRoomRotation`'s own document, so the
+ * preview cannot describe a rotation the release would not commit. A rejection
+ * writes nothing and reports its reason.
+ */
+export function previewWallFirstRoomRotation(
+	state: LayoutPreviewState,
+	roomId: string,
+	pivot: LayoutVec2,
+	yaw: number
+): LayoutRoomMoveResult {
+	const layout = wallFirstLayoutOrError(state);
+	if (!layout) return failRoomMove(state, state.lastMutationMessage ?? 'Wall-first layout is not active');
+	const plan = planWallFirstRoomRotation(layout, roomId, pivot, yaw);
 	if (plan.kind === 'rejected') {
 		state.lastMutationMessage = plan.rejection.message;
 		return {

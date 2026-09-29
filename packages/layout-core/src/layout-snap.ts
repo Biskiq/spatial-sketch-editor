@@ -576,15 +576,95 @@ export type DerivedWallSnapIndex = {
 
 const derivedWallSnapIndex = new WeakMap<CompiledLayoutGeometry, DerivedWallSnapIndex>();
 
+/**
+ * DEV-only input probe for the snap derivation: WHAT the derivation is handed,
+ * beside what it costs.
+ *
+ * THE QUESTION IT EXISTS FOR. The `snap-wall-index` mark reports a duration and
+ * nothing else, so the same mark reading cannot say whether a large number is
+ * large work on a large input or a small input read through something slow. The
+ * editor resolves snaps against a frozen baseline geometry that is a Svelte
+ * `$state` proxy, and every field read inside the merge then pays a trap — a
+ * multiplier the P23B.6 S1a probe already measured for the Plan model. This probe
+ * records the input shape (spans, walls, endpoints per wall) and runs the SAME
+ * merge twice: once on the geometry as handed in, once on a JSON copy of the same
+ * spans (plain objects, identical values). The difference between the two is the
+ * container's own read cost, measured on identical data.
+ *
+ * INERT BY DEFAULT, and deliberately NOT the same switch as `p2311Measure`: it
+ * runs only when Vite says DEV and `globalThis.__P2311_SNAP_INPUT_PROBE__` is
+ * `true`, so no recorded capture can enable it by turning measurement on. It
+ * writes nothing but the capped ring on `globalThis.__P2311_SNAP_INPUT_LOG__`.
+ */
+export type P23B1SnapInputEntry = {
+	/** Wall query spans the derivation was handed. */
+	spans: number;
+	walls: number;
+	/** Span endpoints of the largest wall group — the k of the per-wall pair scan. */
+	maxEndpointsPerWall: number;
+	endpointsP50: number;
+	/** The real merge's own duration, including the `p2311Measure` mark pair. */
+	givenMs: number;
+	/** The same merge on a JSON copy of the same spans; `null` if that arm failed. */
+	plainMs: number | null;
+};
+
+const SNAP_INPUT_LOG_LIMIT = 512;
+
+function snapInputProbeEnabled(): boolean {
+	const viteDev = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV;
+	return (
+		viteDev !== false &&
+		(globalThis as { __P2311_SNAP_INPUT_PROBE__?: boolean }).__P2311_SNAP_INPUT_PROBE__ === true
+	);
+}
+
+function recordSnapInputProbe(spans: readonly CompiledQuerySpan[], givenMs: number): void {
+	const host = globalThis as { __P2311_SNAP_INPUT_LOG__?: P23B1SnapInputEntry[] };
+	const log = (host.__P2311_SNAP_INPUT_LOG__ ??= []);
+	if (log.length >= SNAP_INPUT_LOG_LIMIT) return;
+	const byWall = new Map<string, number>();
+	for (const span of spans) {
+		const key = span.wallKey ?? span.segmentId;
+		byWall.set(key, (byWall.get(key) ?? 0) + 2);
+	}
+	const endpoints = [...byWall.values()].sort((a, b) => a - b);
+	let plainMs: number | null = null;
+	try {
+		const plain = JSON.parse(JSON.stringify(spans)) as CompiledQuerySpan[];
+		const started = performance.now();
+		dedupeWallSpans(plain);
+		plainMs = performance.now() - started;
+	} catch {
+		plainMs = null;
+	}
+	log.push({
+		spans: spans.length,
+		walls: byWall.size,
+		maxEndpointsPerWall: endpoints[endpoints.length - 1] ?? 0,
+		endpointsP50: endpoints.length > 0 ? endpoints[Math.floor((endpoints.length - 1) / 2)]! : 0,
+		givenMs,
+		plainMs
+	});
+}
+
 /** The memoized Wall snap index of one compiled geometry. */
 export function wallSnapIndex(geometry: CompiledLayoutGeometry): DerivedWallSnapIndex {
 	const cached = derivedWallSnapIndex.get(geometry);
 	if (cached) return cached;
+	const probing = snapInputProbeEnabled();
+	const probeStarted = probing ? performance.now() : 0;
 	const derived: DerivedWallSnapIndex = {
 		walls: p2311Measure('snap-wall-index', () =>
 			dedupeWallSpans(geometry.queries.spans.filter((span) => span.kind === 'wall'))
 		)
 	};
+	if (probing) {
+		recordSnapInputProbe(
+			geometry.queries.spans.filter((span) => span.kind === 'wall'),
+			performance.now() - probeStarted
+		);
+	}
 	derivedWallSnapIndex.set(geometry, derived);
 	return derived;
 }
@@ -1186,8 +1266,11 @@ export type MergedWallSpan = {
  * scan made Snap the dominant cost of a Plan drag (P23.11 live Snap gate).
  * Straightness is still the same relative-tolerance collinearity test, just
  * against the traversed chord. Curved walls, and any group whose metadata
- * cannot prove a traversal, resolve through the same exact farthest-pair scan
- * as before — nothing is inferred from a guess.
+ * cannot prove a traversal, resolve through the same exact farthest pair by
+ * comparing every pair in O(k²) ({@link farthestEndpointPair}) — measured to be
+ * the cheaper algorithm at this input's real k, where the O(k log k) sweep is up
+ * to 2.2× slower (see that function's note). The pair is IDENTICAL either way and
+ * nothing is inferred from a guess.
  *
  * Curved walls (auto-bezier) are detected geometrically — the sample path
  * is longer than the endpoint chord — and keep their per-sample spans:
@@ -1319,7 +1402,22 @@ function provenTraversalExtent(list: readonly CompiledQuerySpan[]): [LayoutVec2,
  * Farthest endpoint pair, ties broken by lexicographic point order so the
  * result is a pure function of the geometry (never array order). Called with
  * every span endpoint for the exact path and with the frames' outermost
- * endpoints for the O(k) path — one implementation, one tie-break.
+ * endpoints for the O(k) path — one RESULT and one tie-break, whichever
+ * algorithm reaches it.
+ *
+ * WHY THIS IS STILL THE PER-PAIR SCAN, and why no O(k log k) replacement ships:
+ * an exact convex-hull + rotating-calipers sweep was implemented in this slice
+ * behind a DEV A/B switch, verified to return this pair on every fixture, and
+ * then MEASURED SLOWER on the input the editor actually hands in.
+ * At the real scale — 2,560 Wall spans over 40 Walls, k ≤ 128 endpoints per Wall
+ * — the scan resolves in 2.4 ms and the sweep in 4.5–5.5 ms, a 0.46–1.07× ratio
+ * (up to 2.2× slower) on every fixture that has curved Walls, because a sampled
+ * curve's hull is nearly all of its points and k = 128 is only 8,128 pairs. The
+ * sweep is deleted rather than kept: at this k the arithmetic is not the cost.
+ * The measured cost is the READS — this function runs over the editor's
+ * `$state`-proxied geometry, and the same merge over the same values as plain
+ * objects is 12× faster (43.7 ms → 3.6 ms, live, one drag). See
+ * `recordSnapInputProbe`.
  */
 function farthestEndpointPair(points: readonly LayoutVec2[]): [LayoutVec2, LayoutVec2] {
 	let best: [LayoutVec2, LayoutVec2] = [points[0]!, points[1] ?? points[0]!];

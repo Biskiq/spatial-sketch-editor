@@ -874,6 +874,76 @@ export function withArchitectureEditIntent(
 }
 
 /**
+ * Pre-P23B.8 follow-up (whole-Room drag slice) — one live whole-Room unit
+ * attempt: the moving set's own centerlines and its Rooms' floor outlines,
+ * already rigidly transformed, for the Plan to draw beside the committed ink.
+ */
+export type LayoutRoomUnitMoveIntent = {
+	kind: 'room-unit-move';
+	walls: readonly { wallId: string; points: readonly LayoutVec2[] }[];
+	rooms: readonly { roomId: string; points: readonly LayoutVec2[] }[];
+};
+
+/** Close a ring for stroking, without mutating or duplicating the last point. */
+function closedRing(points: readonly LayoutVec2[]): LayoutVec2[] {
+	const ring = points.map((point) => [point[0], point[1]] as LayoutVec2);
+	const first = ring[0];
+	const last = ring[ring.length - 1];
+	if (first && last && (first[0] !== last[0] || first[1] !== last[1])) ring.push([first[0], first[1]]);
+	return ring;
+}
+
+/**
+ * Draw one live whole-Room attempt with the existing pending token family.
+ *
+ * Under the transient contract the canonical baseline stays installed for the
+ * whole gesture, so the Room's committed ink — fill, outline, area, label — keeps
+ * describing the baseline. That is the accepted "the original stays drawn"
+ * behaviour the Wall drag already ships, and it is why this draws the attempt
+ * BESIDE the committed drawing rather than replacing it.
+ *
+ * The attempt is drawn in the pending language (`architecture-edit-intent`), the
+ * same token the direct-edit proposal uses, because it is the same kind of thing:
+ * a live gesture whose canonical baseline is still installed. It is never
+ * document truth, never history, and never an acceptance signal — the release
+ * planner decides, once, at the release coordinate.
+ *
+ * There is deliberately no refusal language here. The whole-Room drag ships no
+ * per-move preflight (it was the per-move planner call that this change removes),
+ * so an attempt the planner will refuse looks pending while the pointer is down
+ * and is refused at release, with the reason on screen. Do not add a cheap gate
+ * here without measuring it first: a room-unit preflight that consults wall
+ * topology is what reintroduces the snap-index cost this path does not pay today.
+ */
+export function withRoomUnitMoveIntent(
+	projection: PlanInteractionProjection,
+	intent: LayoutRoomUnitMoveIntent | null
+): PlanInteractionProjection {
+	if (!intent) return projection;
+	const primitives: PlanRenderPrimitive[] = [];
+	for (const room of intent.rooms) {
+		if (room.points.length < 3) continue;
+		primitives.push({
+			kind: 'polyline',
+			key: geometryId(['plan', 'overlay', 'room-unit-move-room', room.roomId]),
+			points: closedRing(room.points),
+			style: 'architecture-edit-intent'
+		});
+	}
+	for (const wall of intent.walls) {
+		if (wall.points.length < 2) continue;
+		primitives.push({
+			kind: 'polyline',
+			key: geometryId(['plan', 'overlay', 'room-unit-move-wall', wall.wallId]),
+			points: wall.points.map((point) => [point[0], point[1]] as LayoutVec2),
+			style: 'architecture-edit-intent'
+		});
+	}
+	if (primitives.length === 0) return projection;
+	return { ...projection, drafts: [...projection.drafts, ...primitives] };
+}
+
+/**
  * P23.2 / P23.13 S5 — transient snap feedback as render primitives. Session
  * state only: the resolution is recomputed per pointer event and never mutates
  * the document or history.
@@ -1280,23 +1350,12 @@ export function buildPlanInteractionProjection(
 	const drafts: PlanRenderPrimitive[] = [];
 	const labels: PlanRenderPrimitive[] = [];
 
-	// P23.6a amendment A — a wall-first Room-unit drag moves the whole connected
-	// Room group. Every member shows its moving bounds while the gesture is live,
-	// so the unit that will commit is visible rather than inferred.
-	const draggedGroupRoomIds = interaction.roomUnitDrag?.groupRoomIds ?? [];
-	if (draggedGroupRoomIds.length > 1) {
-		for (const memberRoomId of draggedGroupRoomIds) {
-			const member = model.rooms.find((room) => room.roomId === memberRoomId);
-			if (!member || member.floorPolygon.length === 0) continue;
-			selection.push({
-				kind: 'polygon',
-				key: geometryId(['plan', 'overlay', 'group-move-bounds', memberRoomId]),
-				points: member.floorPolygon.map(([x, z]) => [x, z] as LayoutVec2),
-				style: 'selection-bounds'
-			});
-		}
-	}
-
+	// P23.6a amendment A originally drew each member Room's moving bounds here while
+	// a group drag was live. It was anchored to the BASELINE (this builder reads the
+	// installed model), so under the transient contract it stopped following the
+	// pointer — the moving unit is now drawn by the gesture's own attempt
+	// (`withRoomUnitMoveIntent`), which rigidly transforms every member's outline.
+	// The highlight is deleted rather than left as a stationary decoy.
 	const activeSelection = interaction.selection;
 	const selectedRoom =
 		interaction.tool === 'select' && activeSelection.kind === 'room'
@@ -1311,43 +1370,6 @@ export function buildPlanInteractionProjection(
 			points: points.map(([x, z]) => [x, z] as LayoutVec2),
 			style: 'selection-bounds'
 		});
-		// Locked Decision 7 — a canonical wall-first Room has no authored yaw: its
-		// shape **is** the Walls around it, so a rotation gesture has no honest
-		// result to commit. The arm and its handle are therefore suppressed at this
-		// seam (paint first, and through it the handle hit test that starts the
-		// drag) instead of being offered and then refused. Scene staging's arm and
-		// the P10 layout-object yaw arm are untouched — they rotate owners that do
-		// carry their own yaw.
-		const topCenter = !wallFirst ? roomTopCenter(model, selectedRoom.id) : null;
-		if (topCenter) {
-			selection.push({
-				kind: 'polyline',
-				key: geometryId(['plan', 'overlay', 'rotation-arm', selectedRoom.id]),
-				points: [topCenter, topCenter],
-				endOffsetPx: [0, -ROTATION_HANDLE_OFFSET_PX],
-				style: 'rotation-arm'
-			});
-			selection.push({
-				kind: 'circle',
-				key: geometryId(['plan', 'overlay', 'rotation-handle', selectedRoom.id]),
-				center: topCenter,
-				radiusPx: 7,
-				offsetPx: [0, -ROTATION_HANDLE_OFFSET_PX],
-				style: 'rotation-handle',
-				hit: { kind: 'room', roomId: selectedRoom.id }
-			});
-			const feedback = rotationFeedbackText(interaction);
-			if (feedback) {
-				selection.push({
-					kind: 'text',
-					key: geometryId(['plan', 'overlay', 'rotation-feedback', selectedRoom.id]),
-					anchor: topCenter,
-					text: feedback,
-					offsetPx: [0, -ROTATION_FEEDBACK_OFFSET_PX],
-					style: 'rotation-feedback'
-				});
-			}
-		}
 		for (const [index, point] of points.entries()) {
 			handles.push({
 				kind: 'circle',
@@ -1362,6 +1384,56 @@ export function buildPlanInteractionProjection(
 		// belongs to the S3 identity stack and its edges are not working
 		// information once nothing is being edited, so the old per-edge labels are
 		// replaced rather than restyled: a selected Room is not a measured one.
+	}
+
+	// P23.14 Decision 7 — REVERSED on the owner's direction (pre-P23B.8 follow-up,
+	// 2026-09-28). The lock said a canonical wall-first Room has no authored yaw, so
+	// "a rotation gesture has no honest result to commit", and the arm and its
+	// handle were suppressed at this seam. The honest result now exists and is
+	// committed by the canonical planner: a rigid WHOLE-UNIT rotation of the
+	// Room's boundary graph about a pivot (`planWallFirstRoomRotation`), exactly as
+	// the translation gesture commits `planWallFirstRoomMove`. The arm and handle
+	// are therefore offered for a selected Room in EITHER document kind, and the
+	// gesture's own eligibility policy decides at pointer-down whether the unit may
+	// travel — the same offer-then-hint behaviour the move gesture already has, not
+	// a promise that every Room is rotatable.
+	//
+	// The Room id comes from the selection when this builder has no legacy registry
+	// to consult (a wall-first document has no `floors`, so `selectedRoom` is
+	// undefined there); the compiled `model` is the geometry authority in both
+	// cases, so a Room that has no compiled outline simply draws no handle.
+	const rotationRoomId =
+		selectedRoom?.id ??
+		(wallFirst && activeSelection.kind === 'room' ? activeSelection.roomId : null);
+	const topCenter = rotationRoomId ? roomTopCenter(model, rotationRoomId) : null;
+	if (topCenter && rotationRoomId) {
+		selection.push({
+			kind: 'polyline',
+			key: geometryId(['plan', 'overlay', 'rotation-arm', rotationRoomId]),
+			points: [topCenter, topCenter],
+			endOffsetPx: [0, -ROTATION_HANDLE_OFFSET_PX],
+			style: 'rotation-arm'
+		});
+		selection.push({
+			kind: 'circle',
+			key: geometryId(['plan', 'overlay', 'rotation-handle', rotationRoomId]),
+			center: topCenter,
+			radiusPx: 7,
+			offsetPx: [0, -ROTATION_HANDLE_OFFSET_PX],
+			style: 'rotation-handle',
+			hit: { kind: 'room', roomId: rotationRoomId }
+		});
+		const feedback = rotationFeedbackText(interaction);
+		if (feedback) {
+			selection.push({
+				kind: 'text',
+				key: geometryId(['plan', 'overlay', 'rotation-feedback', rotationRoomId]),
+				anchor: topCenter,
+				text: feedback,
+				offsetPx: [0, -ROTATION_FEEDBACK_OFFSET_PX],
+				style: 'rotation-feedback'
+			});
+		}
 	}
 
 	for (const record of model.queries.points) {

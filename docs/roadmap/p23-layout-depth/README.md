@@ -122,6 +122,12 @@ rows — opening-insert commit, undo-with-field-open cancel — the Task 8 coars
 and locked Decision 7 on the wall-first Room rotation handle). Task 8's coarse-pointer row and
 Decision 7 are recorded as landed in the QA closeout; **the two Task 5 behaviour rows are not
 separately re-verified there**, so treat them as owed if a later slice depends on them.
+**Decision 7 itself was REVERSED by the owner on 2026-09-28** (pre-P23B.8 follow-up): the wall-first
+Room unit now offers a rotation affordance whose release re-derives through the canonical planner
+(`planWallFirstRoomRotation`), because the reason the lock gave — a canonical Room "has no honest result
+to commit" — no longer holds. What survives the reversal is pinned by the rewritten
+`layout-room-rotation.test.ts`. Record →
+[`p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-drag-follow-ups-record.md`](../p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-drag-follow-ups-record.md).
 P23.14 leaves no new carried rows: its residuals are held in its QA closeout record — TD-2
 (Inspector numeric `:invalid`), the manual-owed accessibility rows, the Inspector
 role-migration residue, the §0.3 open owner calls, and the two unverified Task 5 rows above.

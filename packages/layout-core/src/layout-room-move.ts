@@ -56,7 +56,7 @@ import {
 } from './layout-room-reconciliation';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import { validateWallFirstTopology } from './layout-wall-first-precision';
-import { translateWallCenterline } from './layout-wall-centerline';
+import { translateWallCenterline, wallCenterlineSamples } from './layout-wall-centerline';
 import type { LayoutDocumentWallFirst, LayoutWallFirstRoom } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-types';
 
@@ -91,7 +91,11 @@ export type RoomMovePlan =
 			kind: 'success';
 			/** Exact committed document — same IDs, moved Junction points. */
 			document: LayoutDocumentWallFirst;
-			operation: 'room-move';
+			/**
+			 * Which rigid motion produced it. A rotation is the same operation with a
+			 * different candidate: identical correspondence, identity and gate rules.
+			 */
+			operation: 'room-move' | 'room-rotate';
 			/** The dragged (anchor) Room — always a member of `movedRoomIds`. */
 			movedRoomId: string;
 			/**
@@ -152,42 +156,41 @@ function guardedAllocator(attempted: { value: boolean }): RoomIdAllocator {
 }
 
 /**
- * Plan one rigid X/Z move of a wall-first Room. Rejects with the existing
- * canonical gates' reasons — never a bespoke Room-move rule set.
+ * The moving set one rigid Room-unit gesture transforms, as its boundary graph:
+ * the connected Room group the shared isolation policy resolved at pointer-down.
  */
-export function planWallFirstRoomMove(
+export type RoomUnitMoveSubgraph = {
+	wallIds: readonly string[];
+	junctionIds: readonly string[];
+	associatedObjectIds?: readonly string[];
+};
+
+/** One moved Wall's overlay attempt: its canonical centerline, already transformed. */
+export type RoomUnitMoveProposalWall = {
+	wallId: string;
+	/** Sampled centerline points in document X/Z. Overlay truth only. */
+	points: LayoutVec2[];
+};
+
+/**
+ * The **single** moving-set→candidate mapping shared by the release planner and
+ * the live preview proposal below, so neither can describe geometry the other
+ * does not have — the same rule the P23.11 architecture proposal follows.
+ *
+ * Translates the group's boundary Junctions, the centerlines of the group's
+ * Walls, and the explicitly associated objects. Nothing is validated and nothing
+ * is written back: the caller keeps the canonical baseline installed.
+ */
+export function roomUnitMoveCandidate(
 	document: LayoutDocumentWallFirst,
-	roomId: string,
+	subgraph: RoomUnitMoveSubgraph,
 	delta: LayoutVec2
-): RoomMovePlan {
+): LayoutDocumentWallFirst {
 	const [dx, dz] = delta;
-	if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
-		return reject('invalid_value', 'Room move delta must be finite', [roomId]);
-	}
-	if (dx === 0 && dz === 0) {
-		return reject('no_op', 'Room move delta must be non-zero', [roomId]);
-	}
-	if (!document.rooms.some((room) => room.id === roomId)) {
-		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
-	}
-
-	// Shared isolation policy (P23.6a S1) in its group scope (amendment A): the
-	// movable unit is the connected Room group containing this Room.
-	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
-	if (isolation.kind === 'rejected') {
-		return reject(
-			isolation.rejection.code,
-			isolation.rejection.message,
-			isolation.rejection.targetIds
-		);
-	}
-	const { subgraph } = isolation;
-
-	// --- candidate: translate boundary Junctions + associated objects only ---
 	const movedJunctionIds = new Set(subgraph.junctionIds);
 	const movedWallIds = new Set(subgraph.wallIds);
-	const associatedObjectIds = new Set(subgraph.associatedObjectIds);
-	const candidateDocument = {
+	const associatedObjectIds = new Set(subgraph.associatedObjectIds ?? []);
+	return {
 		...document,
 		junctions: document.junctions.map((junction) =>
 			movedJunctionIds.has(junction.id)
@@ -220,14 +223,295 @@ export function planWallFirstRoomMove(
 				: object
 		)
 	};
-	// P23.6H/P23.6I — Wall records are untouched, so every authored `height`
+}
+
+/**
+ * Derive the live preview of a rigid Room-unit **translation**, without
+ * validating or installing a candidate document.
+ *
+ * Runs the planner's own moving-set→candidate mapping and samples each moved
+ * Wall through the one canonical centerline sampler, so the drawn attempt IS the
+ * release planner's geometry rather than a second description of it. A rigid
+ * translation is shown by moving the canonical points, never by re-deriving a
+ * sampling density, so the drawn curve cannot sit fractionally off the committed
+ * one. `undefined` results inside the sampler are skipped exactly as the
+ * architecture proposal skips them; an empty array is a truthful "nothing to
+ * draw", never a rejection.
+ */
+export function proposeWallFirstRoomUnitGeometry(
+	document: LayoutDocumentWallFirst,
+	subgraph: RoomUnitMoveSubgraph,
+	delta: LayoutVec2
+): RoomUnitMoveProposalWall[] {
+	return sampleMovedWallProposals(
+		roomUnitMoveCandidate(document, subgraph, delta),
+		subgraph.wallIds
+	);
+}
+
+/**
+ * The **rotation** partner of the candidate above: the same moving set rigidly
+ * rotated about `pivot`.
+ *
+ * WIRED on the owner's direction (pre-P23B.8 follow-up, 2026-09-28), which
+ * reversed P23.14 Decision 7 — the reason that decision gave was that a
+ * canonical Room has no authored yaw so "a rotation gesture has no honest result
+ * to commit", and the honest result is now this candidate, committed by
+ * `planWallFirstRoomRotation` exactly as a translation is committed by
+ * `planWallFirstRoomMove`. The release re-derives at the release angle against
+ * the frozen baseline, so the transient attempt the Plan drag draws is this same
+ * mapping (see `proposeWallFirstRoomUnitRotation` below).
+ *
+ * ONE CAVEAT, recorded rather than hidden: a Wall's canonical sampling density
+ * is NOT rotation-invariant, so `samples(rotated)` and `rotate(samples)` do not
+ * agree on their sample count. A rotation therefore cannot be drawn by moving
+ * the baseline's canonical points, the way a translation is; it is drawn by
+ * RESAMPLING the rotated centerline through the same sampler the release uses.
+ * That makes the drawn attempt the release's own geometry — stronger than the
+ * translation path needs — but the attempt's ink density can differ by a sample
+ * from the baseline's. It is a redraw difference, never a geometry difference.
+ */
+export function rotateRoomUnitMoveCandidate(
+	document: LayoutDocumentWallFirst,
+	subgraph: RoomUnitMoveSubgraph,
+	pivot: LayoutVec2,
+	yaw: number
+): LayoutDocumentWallFirst {
+	const rotate = (point: LayoutVec2): LayoutVec2 => rotatePointAbout(point, pivot, yaw);
+	const movedJunctionIds = new Set(subgraph.junctionIds);
+	const movedWallIds = new Set(subgraph.wallIds);
+	const associatedObjectIds = new Set(subgraph.associatedObjectIds ?? []);
+	return {
+		...document,
+		junctions: document.junctions.map((junction) =>
+			movedJunctionIds.has(junction.id) ? { ...junction, point: rotate(junction.point) } : junction
+		),
+		// A rotation is rigid about the pivot, so a moved Wall's absolute curve
+		// anchors rotate with its Junctions exactly as they translate with them.
+		walls: document.walls.map((wall) =>
+			movedWallIds.has(wall.id)
+				? { ...wall, centerline: transformWallCenterline(wall.centerline, rotate) }
+				: wall
+		),
+		// Associated objects follow the same rigid motion as the Walls: an object
+		// left in place would keep its baseline X/Z and stop being associated with
+		// the Room it travelled with — and an object that orbited with the Room but
+		// kept its old heading would point the wrong way. Owner ruling: the yaw is
+		// inherited, the same convention as the legacy Room transform.
+		objects: document.objects.map((object) => {
+			if (!associatedObjectIds.has(object.id)) return object;
+			const [x, z] = rotate([object.position[0], object.position[2]]);
+			return {
+				...object,
+				position: [x, object.position[1], z] as typeof object.position,
+				rotation: [object.rotation[0], object.rotation[1] + yaw, object.rotation[2]]
+			};
+		})
+	};
+}
+
+/** The overlay attempt for a rigid Room-unit **rotation**. See the candidate above. */
+export function proposeWallFirstRoomUnitRotation(
+	document: LayoutDocumentWallFirst,
+	subgraph: RoomUnitMoveSubgraph,
+	pivot: LayoutVec2,
+	yaw: number
+): RoomUnitMoveProposalWall[] {
+	return sampleMovedWallProposals(
+		rotateRoomUnitMoveCandidate(document, subgraph, pivot, yaw),
+		subgraph.wallIds
+	);
+}
+
+/**
+ * Rigid rotation of one point about `pivot`, in DOCUMENT X/Z.
+ *
+ * THE HANDEDNESS IS THE SHIPPED ONE. Plan X/Z has +Z DOWN the screen, and the
+ * gesture's `yaw` is `atan2(dz, dx)` of the pointer about the pivot — the same
+ * angle the legacy Room transform receives. This uses that transform's own
+ * convention (`layout-room-transform.ts`'s `transformRoom`) rather than the
+ * mathematical inverse, so ONE rotation gesture turns a Room the same way in
+ * both document kinds. Flipping it here would silently make the new wall-first
+ * rotation feel mirrored against the legacy one it sits beside.
+ *
+ * Exported (not module-private) so the transient overlay draws its outlines
+ * through this same function: one handedness decision, one definition.
+ */
+export function rotatePointAbout(point: LayoutVec2, pivot: LayoutVec2, yaw: number): LayoutVec2 {
+	const cos = Math.cos(yaw);
+	const sin = Math.sin(yaw);
+	const x = point[0] - pivot[0];
+	const z = point[1] - pivot[1];
+	return [pivot[0] + x * cos + z * sin, pivot[1] - x * sin + z * cos];
+}
+
+/**
+ * Rigid-motion copy of one canonical centerline: every bend point and every span
+ * control moves through `transform`. The rotation partner of
+ * `translateWallCenterline`; flat `line` centerlines carry no absolute data.
+ */
+function transformWallCenterline(
+	centerline: LayoutDocumentWallFirst['walls'][number]['centerline'],
+	transform: (point: LayoutVec2) => LayoutVec2
+): LayoutDocumentWallFirst['walls'][number]['centerline'] {
+	if (centerline.kind === 'line') return { kind: 'line' };
+	return {
+		kind: 'cubic-chain',
+		knots: centerline.knots.map((knot) => ({ id: knot.id, point: transform(knot.point) })),
+		spans: centerline.spans.map((span) => ({
+			handleOut: transform(span.handleOut),
+			handleIn: transform(span.handleIn)
+		}))
+	};
+}
+
+/** Sample every moved Wall of a candidate through the one canonical sampler. */
+function sampleMovedWallProposals(
+	candidate: LayoutDocumentWallFirst,
+	wallIds: readonly string[]
+): RoomUnitMoveProposalWall[] {
+	const pointById = new Map(candidate.junctions.map((junction) => [junction.id, junction.point]));
+	const proposals: RoomUnitMoveProposalWall[] = [];
+	for (const wallId of wallIds) {
+		const wall = candidate.walls.find((entry) => entry.id === wallId);
+		if (!wall) continue;
+		const start = pointById.get(wall.startJunctionId);
+		const end = pointById.get(wall.endJunctionId);
+		if (!start || !end) continue;
+		const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+		if (!sampled) continue;
+		proposals.push({
+			wallId,
+			points: sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2)
+		});
+	}
+	return proposals;
+}
+
+/**
+ * Plan one rigid X/Z move of a wall-first Room. Rejects with the existing
+ * canonical gates' reasons — never a bespoke Room-move rule set.
+ */
+export function planWallFirstRoomMove(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	delta: LayoutVec2
+): RoomMovePlan {
+	const [dx, dz] = delta;
+	if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
+		return reject('invalid_value', 'Room move delta must be finite', [roomId]);
+	}
+	if (dx === 0 && dz === 0) {
+		return reject('no_op', 'Room move delta must be non-zero', [roomId]);
+	}
+	if (!document.rooms.some((room) => room.id === roomId)) {
+		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
+	}
+
+	// Shared isolation policy (P23.6a S1) in its group scope (amendment A): the
+	// movable unit is the connected Room group containing this Room.
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
+	if (isolation.kind === 'rejected') {
+		return reject(
+			isolation.rejection.code,
+			isolation.rejection.message,
+			isolation.rejection.targetIds
+		);
+	}
+	const { subgraph } = isolation;
+
+	// --- candidate: translate boundary Junctions + associated objects only ---
+	return finalizeRoomUnitMotion(
+		document,
+		roomId,
+		subgraph,
+		roomUnitMoveCandidate(document, subgraph, delta),
+		'room-move'
+	);
+}
+
+/**
+ * Plan one rigid rotation of a wall-first Room unit about `pivot`.
+ *
+ * THIS IS THE RELEASE RE-DERIVE the transient rotation preview needs: the same
+ * isolation policy, the same candidate mapping (`rotateRoomUnitMoveCandidate`)
+ * and the same canonical gates as the translation above, called once at the
+ * release angle against the frozen baseline. Nothing about what commits is
+ * invented here — a rotation resolves exactly as a translation does, with the
+ * moving set rigidly rotated instead of translated.
+ *
+ * `yaw` is radians, counter-clockwise in the document X/Z plane (`atan2`
+ * convention, matching the shipped rotation gesture). A zero angle is `no_op`,
+ * like a zero translation.
+ */
+export function planWallFirstRoomRotation(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	pivot: LayoutVec2,
+	yaw: number
+): RoomMovePlan {
+	if (!Number.isFinite(pivot[0]) || !Number.isFinite(pivot[1]) || !Number.isFinite(yaw)) {
+		return reject('invalid_value', 'Room rotation pivot and angle must be finite', [roomId]);
+	}
+	if (yaw === 0) {
+		return reject('no_op', 'Room rotation must be non-zero', [roomId]);
+	}
+	if (!document.rooms.some((room) => room.id === roomId)) {
+		return reject('unknown_room', `Unknown room '${roomId}'`, [roomId]);
+	}
+
+	// Shared isolation policy (P23.6a S1) in its group scope: the rotatable unit is
+	// the connected Room group containing this Room, exactly as for translation.
+	const isolation = resolveIsolatedRoomGroupSubgraph(document, roomId);
+	if (isolation.kind === 'rejected') {
+		return reject(
+			isolation.rejection.code,
+			isolation.rejection.message,
+			isolation.rejection.targetIds
+		);
+	}
+	const { subgraph } = isolation;
+
+	return finalizeRoomUnitMotion(
+		document,
+		roomId,
+		subgraph,
+		rotateRoomUnitMoveCandidate(document, subgraph, pivot, yaw),
+		'room-rotate'
+	);
+}
+
+/**
+ * THE SHARED MOTION PIPELINE. Both rigid Room-unit motions — translation and
+ * rotation — build their candidate from the same moving set and then run through
+ * THIS function, so correspondence, global identity preservation and the
+ * canonical gates cannot be told apart by which motion was asked for. A rotation
+ * is the same operation with a different candidate; that is the whole of the
+ * difference, and a copy here would be a second rule set.
+ *
+ * The baseline is never mutated, and exactly one candidate document (or one
+ * rejection) comes back.
+ */
+function finalizeRoomUnitMotion(
+	document: LayoutDocumentWallFirst,
+	roomId: string,
+	/**
+	 * The resolved moving set. `roomIds` is required here (the isolation policy
+	 * always returns it) because the committed plan reports which Rooms travelled.
+	 */
+	subgraph: RoomUnitMoveSubgraph & { roomIds: readonly string[] },
+	candidateDocument: LayoutDocumentWallFirst,
+	operation: 'room-move' | 'room-rotate'
+): RoomMovePlan {
+	// P23.6H/P23.6I — Wall records carry no moved field, so every authored `height`
 	// survives verbatim and no Floor-level quantity is ever consulted.
 
 	// --- explicit boundary-lineage correspondence (D6) ---------------------
-	// A pure translation with unchanged wall IDs and directions leaves the
-	// canonical boundary-cycle key invariant, so correspondence is exact key
-	// equality over every predecessor Room — no overlap ground truth, so
-	// arbitrarily long moves resolve identically.
+	// A rigid motion with unchanged wall IDs and directions leaves the canonical
+	// boundary-cycle key invariant, so correspondence is exact key equality over
+	// every predecessor Room — no overlap ground truth, so arbitrarily long moves
+	// resolve identically. That the key is DIRECTION-only is what makes it hold for
+	// a rotation too: a rotation is orientation-preserving, so no Wall flips.
 	const extraction = extractBoundaryCandidateFaces(candidateDocument as LayoutDocumentWallFirst);
 	const components: ComponentLineage[] = document.rooms.map((room) => ({
 		candidateFaceKeys: [roomBoundaryCycleKey(room)],
@@ -321,12 +605,12 @@ export function planWallFirstRoomMove(
 	return {
 		kind: 'success',
 		document: structural.document,
-		operation: 'room-move',
+		operation,
 		movedRoomId: roomId,
 		movedRoomIds: [...subgraph.roomIds],
 		changedJunctionIds: [...subgraph.junctionIds],
-		changedWallIds: [...movedWallIds],
-		changedObjectIds: [...subgraph.associatedObjectIds]
+		changedWallIds: [...subgraph.wallIds],
+		changedObjectIds: [...(subgraph.associatedObjectIds ?? [])]
 	};
 }
 

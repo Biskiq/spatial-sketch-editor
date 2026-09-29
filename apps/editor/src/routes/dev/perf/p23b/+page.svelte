@@ -23,7 +23,8 @@
 		BenchProvenance,
 		BenchSample,
 		BenchWorkloadResult,
-		P23BBrowserRunReport
+		P23BBrowserRunReport,
+		P23BCaptureLedger
 	} from '$lib/bench/bench-types';
 	import {
 		buildP23BContainment,
@@ -55,10 +56,28 @@
 	import {
 		createP23BCaptureDriver,
 		DRIVE_ACTIONS_PER_PATH,
+		DRIVE_ACTION_TIMEOUT_MS,
 		P23B11_S1_FIXTURE_ORDER,
+		P23B_M1_ACTION_CLASSES,
+		P23B_M1_COLD_PREFIX,
+		P23B_M1_FIXTURE_ORDER,
+		P23B_M1_PREFIX,
 		type P23BDriveFixture,
 		type P23BDriveProgress
 	} from './drive';
+	import { p23bM1FrameTiming, p23bM1LongFramesFor } from '$lib/bench/p23b-m1-frame-timing';
+	import { p23bM1ActionArms } from '$lib/editor/layout/p23b-m1-room-drag-arm';
+import {
+	p23bM1ActionLabelArmRecordsFor,
+	p23bM1GridBuildKeys
+} from '$lib/editor/layout/p23b-m1-room-label-arm';
+	import {
+		buildP23BM1Record,
+		m1ClassLedger,
+		summarizeM1Class,
+		type P23BM1ClassRow,
+		type P23BM1Record
+	} from '$lib/bench/p23b-m1-record';
 	import {
 		buildP23B11ConnectedCase,
 		P23B11_CONNECTED_CASE_ID,
@@ -261,7 +280,24 @@
 	 * `g3-baseline.json` write), and it is what turns the pooled `nestedMarks` into
 	 * an action-attributed tree.
 	 */
-	let containmentFixtures = $state<{ fixtureId: string; sessionId: string; actionClass: string | null; record: P23BContainmentRecord }[]>([]);
+	type ContainmentFixtureEntry = {
+		fixtureId: string;
+		sessionId: string;
+		actionClass: string | null;
+		record: P23BContainmentRecord;
+		/**
+		 * The session's ledger, SNAPSHOTTED at the moment the class closes.
+		 *
+		 * The live registry keeps only the most recent few sessions readable
+		 * (`p23b-interaction-measure.ts`'s `SESSION_HISTORY`), so a record built after
+		 * a run of many class sessions cannot look a closed session up again — the
+		 * lookup returns null and every population column in that record reads as
+		 * missing. The snapshot is taken while the session is still readable, which is
+		 * the only moment the data is guaranteed to be there.
+		 */
+		ledger: P23BCaptureLedger | null;
+	};
+	let containmentFixtures = $state<ContainmentFixtureEntry[]>([]);
 	const capturing = $derived(captureSessionId !== null);
 
 	const MEASUREMENT_LIMITATIONS = [
@@ -598,7 +634,10 @@
 				fixtureId: hosted.id,
 				sessionId,
 				actionClass: currentCaptureActionClass,
-				record: buildP23BContainment(ledger, readMarks())
+				record: buildP23BContainment(ledger, readMarks()),
+				// Kept from the read-back above, taken while the session was still in the
+				// registry: a long run evicts old sessions, so a later lookup reads null.
+				ledger
 			}
 		];
 		captureSessionId = null;
@@ -664,10 +703,17 @@
 	 * sessions are action-class (containment-only) by construction.
 	 */
 	const driveFixtures: readonly P23BDriveFixture[] = HOSTED_FIXTURES.map(driveFixtureOf);
-	const p23b11DriveFixtures: readonly P23BDriveFixture[] = [
+	const withConnectedDriveFixtures: readonly P23BDriveFixture[] = [
 		...driveFixtures,
 		driveFixtureOf(CONNECTED_CASE_HOSTED)
 	];
+	/**
+	 * Pre-P23B.8 follow-up M1 — the same list: the three committed fixtures in
+	 * harness order, then the connected case LAST as advisory evidence. The connected
+	 * case is never recorded (its classes are containment-only action-class
+	 * sessions), so nothing about it can reach a baseline.
+	 */
+	const m1DriveFixtures: readonly P23BDriveFixture[] = withConnectedDriveFixtures;
 
 	let driveRunning = $state(false);
 	let driveLog = $state<string[]>([]);
@@ -676,6 +722,34 @@
 	let driveFailure = $state('');
 	/** Shared px/m ladder the P23B.11 S1 run left every hosted fixture on. */
 	let p23b11LadderPixelsPerMeter = $state<number | null>(null);
+	/**
+	 * Pre-P23B.8 follow-up M1 — the session's own state. The recorded ladder is
+	 * M1's (the protocol puts every fixture on the same px/m ladder; the number is
+	 * reported, not assumed), and the failure is kept separate from the driver
+	 * log's other runs so an M1 failure is never read as a P23B.11 one.
+	 */
+	let m1Running = $state(false);
+	let m1Failure = $state('');
+	let m1Record = $state<P23BM1Record | null>(null);
+	let m1LadderPixelsPerMeter = $state<number | null>(null);
+	/**
+	 * Whether the record on screen came from a BEFORE/AFTER arm run. Only the
+	 * provenance and the record's `schema.arms` note depend on it; the rows carry
+	 * the per-arm split themselves.
+	 */
+	let m1ArmsRun = $state(false);
+	/**
+	 * The same, for the Room-label arm run: a different switch over a different
+	 * population (every class, not one), so it gets its own flag, its own protocol id
+	 * and its own note rather than sharing the room drag's.
+	 */
+	let m1LabelArmsRun = $state(false);
+	/**
+	 * The same again, for the COLD pass (§16): the same classes, the same arms, with
+	 * the camera moved between attempts. It runs BOTH workloads in one session, so the
+	 * flag marks a record that carries the repeat rows AND the cold rows.
+	 */
+	let m1ColdLabelArmsRun = $state(false);
 
 	function driveNote(line: string) {
 		driveLog = [...driveLog, `${new Date().toISOString().slice(11, 19)} ${line}`];
@@ -768,13 +842,13 @@
 		driveStep = 'P23B.11 S1 starting';
 		drivePathProgress = {};
 		const driver = createP23BCaptureDriver({
-			fixtures: () => p23b11DriveFixtures,
-			host: (fixtureId) => hostFixture(fixtureId),
-			startCapture: (actionClass) => {
-				startCapture(actionClass ?? null);
-				if (!captureSessionId) throw new Error('The S1 capture session did not open');
-				return captureSessionId;
-			},
+		fixtures: () => withConnectedDriveFixtures,
+		host: (fixtureId) => hostFixture(fixtureId),
+		startCapture: (actionClass) => {
+			startCapture(actionClass ?? null);
+			if (!captureSessionId) throw new Error('The S1 capture session did not open');
+			return captureSessionId;
+		},
 			stopCapture: () => stopCapture(),
 			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
 			captureCount: () => captures.length,
@@ -802,7 +876,7 @@
 	}
 
 	function p23b11S1FixturesLabel(): string {
-		return p23b11DriveFixtures.map((fixture) => fixture.id).join(', ');
+		return withConnectedDriveFixtures.map((fixture) => fixture.id).join(', ');
 	}
 
 	/** The `p2311:` marks observed since the capture cleared them. */
@@ -965,6 +1039,254 @@
 		};
 	}
 
+	/**
+	 * Which M1 class a recorded session name belongs to, or `null`.
+	 *
+	 * TWO prefixes, ONE class list: `p23b-m1:` is the repeat workload and
+	 * `p23b-m1-cold:` (§16) the same classes with the camera moved between attempts.
+	 * The prefix is STRIPPED against itself, so a class can only ever be found under
+	 * the workload whose prefix it carries — the two populations have different rows
+	 * and neither can be read as the other's.
+	 */
+	function m1ClassSpecOf(
+		actionClass: string
+	): { spec: (typeof P23B_M1_ACTION_CLASSES)[number]; cold: boolean } | null {
+		const cold = actionClass.startsWith(P23B_M1_COLD_PREFIX);
+		const prefix = cold ? P23B_M1_COLD_PREFIX : P23B_M1_PREFIX;
+		if (!actionClass.startsWith(prefix)) return null;
+		const spec = P23B_M1_ACTION_CLASSES.find(
+			(candidate) => candidate.actionClass === actionClass.slice(prefix.length)
+		);
+		return spec ? { spec, cold } : null;
+	}
+
+	/**
+	 * Pre-P23B.8 follow-up M1 — the session's class rows.
+	 *
+	 * One row per M1 class — the repeat workload's five and, when the cold pass ran,
+	 * its five again under the cold prefix — taken over the SAME population the
+	 * interaction report uses (completed, resolved path, warm-up slots excluded per
+	 * path, accepted only). The gesture REGISTRY is handed to `summarizeM1Class`, not a
+	 * pre-merged series: the class's own measured population decides which registered
+	 * brackets may be merged, so warm-up drags and retried attempts can never enter a
+	 * row that reports the measured class. The long-frame window is looked up by
+	 * fixture+class under the same key.
+	 */
+	function p23bM1ClassRows(): P23BM1ClassRow[] {
+		const timing = p23bM1FrameTiming();
+		const rows: P23BM1ClassRow[] = [];
+		for (const entry of containmentFixtures) {
+			const actionClass = entry.actionClass ?? '';
+			const resolved = m1ClassSpecOf(actionClass);
+			if (!resolved) continue;
+			const spec = resolved.spec;
+			rows.push(					summarizeM1Class({
+						fixtureId: entry.fixtureId,
+						sessionId: entry.sessionId,
+						actionClass,
+						// The cold pass's row is flagged so no table can take it for the
+						// repeat class's (the two names differ only in a prefix).
+						cold: resolved.cold,
+					actionPath: spec.path,
+					// The close-time snapshot first, the live lookup only as a fallback:
+					// see `m1ClassLedger` and `ContainmentFixtureEntry.ledger`.
+					ledger: m1ClassLedger(entry, p23bInteractionCaptureLedger),
+					containment: entry.record,
+					warmup: INTERACTION_WARMUP,
+					actionsPerClass: DRIVE_ACTIONS_PER_PATH,
+					gestureRegistry: timing,
+					// The class's BEFORE/AFTER arm assignments, or an empty map for a
+					// class that ran one path: `summarizeM1Class` turns the empty map
+					// into a `null` arms block rather than an empty one.
+					actionArms: p23bM1ActionArms(entry.fixtureId, actionClass),
+					// The Room-label arm assignments, with the grid-build count each
+					// attempt paid for: a DIFFERENT arm over a DIFFERENT population (every
+					// class, not one), handed to the record beside the room-drag one so the
+					// runner can split its windows by either.
+					actionLabelArms: p23bM1ActionLabelArmRecordsFor(entry.fixtureId, actionClass),
+					// …and the class's grid-build KEYS, which is what turns the build count
+					// into a repeat rate: how many of those builds used inputs the class had
+					// already built.
+					actionLabelArmKeys: p23bM1GridBuildKeys(entry.fixtureId, actionClass),
+					longFrameWindow: p23bM1LongFramesFor(timing, entry.fixtureId, actionClass)
+				})
+			);
+		}
+		return rows;
+	}
+
+	/**
+	 * The M1 record for THIS runtime. The presented-frame section is left as the
+	 * labelled `browser-frame` PROXY here; the CDP runner is the only thing that may
+	 * replace it with a presentation-grade row, and it says so in the file it writes.
+	 */
+	function p23bM1Record(
+		arms = m1ArmsRun,
+		labelArms = m1LabelArmsRun,
+		coldLabelArms = m1ColdLabelArmsRun
+	): P23BM1Record {
+		return buildP23BM1Record({
+			protocol:
+				'pre-P23B.8 follow-up M1 — one protocol, one runtime: the three committed fixtures in harness order plus the connected case LAST (advisory, never recorded), five action classes each in its own isolated settled session under the `p23b-m1:` prefix, 25 accepted actions per class with the leading five excluded as warm-up, every mutating action restored with the editor\'s own undo, DEV build, Plan only, one harness document.',
+			provenance: {
+				capturedAt: new Date().toISOString(),
+				mode: 'DEV',
+				runtime: browserName(navigator.userAgent).name,
+				userAgent: navigator.userAgent,
+				viewport: { width: window.innerWidth, height: window.innerHeight },
+				devicePixelRatio: window.devicePixelRatio,
+				commitSha: data.commitSha,
+				treeDirty: data.treeDirty,
+				machine: data.machine,
+				operatingSystem: data.operatingSystem,
+				nodeVersion: data.nodeVersion,
+				protocolId: arms
+					? 'pre-P23B.8-follow-up-M1-arms'
+					: coldLabelArms
+						? 'pre-P23B.8-follow-up-M1-cold-label-arms'
+						: labelArms
+							? 'pre-P23B.8-follow-up-M1-label-arms'
+							: 'pre-P23B.8-follow-up-M1',
+				protocolRevision: arms ? 2 : coldLabelArms ? 5 : labelArms ? 4 : 1,
+				arms: arms
+					? 'transient · per-move, interleaved per attempt on the whole-Room class (see schema.arms and each class row\'s arms block)'
+					: 'not run — one path per class',
+				labelArms: labelArms
+					? 'seeded-grid · pruned-grid · per-cell-grid · no-memo-grid, interleaved per attempt in EVERY class (the Room-label placer runs on every Plan render), recorded per resolved action index — seeded-grid is the SHIPPED path and now runs the seeded grid through the placer\'s own bounded candidate cache, so the signed pair seeded-grid − pruned-grid is shipped against pre-change; per-cell-grid is summarized beside them so the previous pass\'s pruned-grid − per-cell-grid delta stays recomputable from this session; and no-memo-grid (the SAME grid with that cache BYPASSED) is read against seeded-grid as the reuse delta, from the cache\'s own hit counters; see each class row\'s labelArms block'
+					: 'not run — one grid per class',
+				coldWorkload: coldLabelArms
+					? 'RUN, in the same session as the repeat workload: after each fixture\'s five repeat classes, the SAME five classes run again under the `p23b-m1-cold:` prefix with one pan before every attempt, whose direction advances by the golden angle — a camera walk that never returns to a projection an earlier attempt drew. It is a PAN and not a zoom, so the projected polygon is translated and nothing else: the placer does the same work per action and only the cache key moves, which is what makes the cold pass a controlled read of the reuse rather than a second workload. The camera move is its own ledger action and is deliberately left unassigned to any arm, so its windows are counted as `unassignedWindows` and never merged into a class\'s gesture windows. Read the cold rows as the LOW end of the bracket (a session shape that gives a persistent cache the least) and the `p23b-m1:` rows as the HIGH end (the undo between attempts returns the geometry to a state the previous attempt already drew); the within-settle reuse that generalises sits between them and near the low end.'
+					: 'not run — only the repeat workload',
+				warmupExcluded: INTERACTION_WARMUP,
+				actionsPerClass: DRIVE_ACTIONS_PER_PATH,
+				actionGuardMs: DRIVE_ACTION_TIMEOUT_MS,
+				fixtureOrder: P23B_M1_FIXTURE_ORDER,
+				planViewLadderPixelsPerMeter: m1LadderPixelsPerMeter,
+				instrumentation: {
+					gestureFrames: '§4.2 (a) — rAF callback intervals bracketed around the drag workloads',
+					longFrames: '§4.3 (b2) — long-animation-frame observer, per class window',
+					presentedFrame:
+						'§4.3 (b1) — added by the CDP runner (presentation-grade) or reported as the browser-frame PROXY'
+				}
+			},
+			classes: p23bM1ClassRows(),
+			fixtureOrder: P23B_M1_FIXTURE_ORDER,
+			limitations: MEASUREMENT_LIMITATIONS
+		});
+	}
+
+	function downloadM1Record() {
+		const record = m1Record ?? p23bM1Record();
+		const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = 'p23b-m1-record.json';
+		anchor.click();
+		URL.revokeObjectURL(url);
+	}
+
+	/**
+	 * Pre-P23B.8 follow-up M1 — the run.
+	 *
+	 * One driver, one protocol, this runtime. Nothing is written to a baseline: the
+	 * five classes it opens are `p23b-m1:`-prefixed action-class sessions, which the
+	 * harness keeps as containment records only, and the connected case is advisory.
+	 */
+	async function runM1Capture(
+		arms = false,
+		labelArms = false,
+		coldLabelArms = false
+	): Promise<P23BM1Record | null> {
+		if (driveRunning || m1Running || capturing || running) return null;
+		m1Running = true;
+		m1ArmsRun = arms;
+		m1LabelArmsRun = labelArms;
+		m1ColdLabelArmsRun = coldLabelArms;
+		m1Failure = '';
+		m1Record = null;
+		driveLog = [];
+		driveStep = 'M1 starting';
+		drivePathProgress = {};
+		const driver = createP23BCaptureDriver({
+			fixtures: () => m1DriveFixtures,
+			host: (fixtureId) => hostFixture(fixtureId),
+			startCapture: (actionClass) => {
+				startCapture(actionClass ?? null);
+				if (!captureSessionId) throw new Error('The M1 capture session did not open');
+				return captureSessionId;
+			},
+			stopCapture: () => stopCapture(),
+			ledger: (sessionId) => p23bInteractionCaptureLedger(sessionId),
+			captureCount: () => captures.length,
+			recordFixtureReset: () => p23bRecordFixtureReset(),
+			log: driveNote,
+			progress: (next) => {
+				driveStep = next.step;
+				drivePathProgress = next.paths;
+				(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+					running: true,
+					step: next.step,
+					fixtureId: next.fixtureId
+				};
+			}
+		});
+		try {
+			await driver.runM1(arms, labelArms, coldLabelArms);
+			m1LadderPixelsPerMeter = driver.ladderPixelsPerMeter();
+			const record = p23bM1Record(arms, labelArms, coldLabelArms);
+			m1Record = record;
+			(globalThis as typeof globalThis & { __P23B_M1_RECORD__?: unknown }).__P23B_M1_RECORD__ = record;
+			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+				running: false,
+				step: 'M1 complete',
+				classes: record.fixtures.reduce((sum, fixture) => sum + fixture.classes.length, 0)
+			};
+			driveNote(`M1 capture complete: ${record.fixtures.length} fixture(s)`);
+			return record;
+		} catch (error) {
+			m1Failure = error instanceof Error ? error.message : String(error);
+			(globalThis as typeof globalThis & { __P23B_M1_STATUS__?: unknown }).__P23B_M1_STATUS__ = {
+				running: false,
+				step: 'M1 failed',
+				failure: m1Failure,
+				// The driver's own recent lines, so a failed leg can say WHICH attempt was
+				// refused and how — the `repeatPath` retry note names the path and outcome
+				// every rejected attempt recorded, which the runner cannot see from here.
+				logTail: driveLog.slice(-16)
+			};
+			driveNote(`M1 FAILED: ${m1Failure}`);
+			return null;
+		} finally {
+			m1Running = false;
+		}
+	}
+
+	/**
+	 * The CDP runner's entry point for this runtime (DEV only). One call runs the
+	 * whole M1 protocol on the page; the runner supplies the presentation-grade
+	 * clock and the viewport and merges them into the JSON it writes.
+	 */
+	$effect(() => {
+		if (!dev) return;
+		const globals = globalThis as typeof globalThis & {
+			__P23B_M1_RUN__?: () => Promise<P23BM1Record | null>;
+			__P23B_M1_RUN_ARMS__?: () => Promise<P23BM1Record | null>;
+			__P23B_M1_RUN_LABEL_ARMS__?: () => Promise<P23BM1Record | null>;
+			__P23B_M1_RUN_LABEL_ARMS_COLD__?: () => Promise<P23BM1Record | null>;
+		};
+		globals.__P23B_M1_RUN__ = () => runM1Capture();
+		globals.__P23B_M1_RUN_ARMS__ = () => runM1Capture(true);
+		globals.__P23B_M1_RUN_LABEL_ARMS__ = () => runM1Capture(false, true);
+		globals.__P23B_M1_RUN_LABEL_ARMS_COLD__ = () => runM1Capture(false, true, true);
+		return () => {
+			delete globals.__P23B_M1_RUN__;
+			delete globals.__P23B_M1_RUN_ARMS__;
+			delete globals.__P23B_M1_RUN_LABEL_ARMS__;
+			delete globals.__P23B_M1_RUN_LABEL_ARMS_COLD__;
+		};
+	});
+
 	function downloadP23B11S1Record() {
 		const record = (globalThis as typeof globalThis & { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__ ?? p23b11S1Record();
 		const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
@@ -1119,6 +1441,57 @@
 		<button disabled={capturing || driveRunning || running} onclick={runP23B11S1Capture}>Run P23B.11 S1 wall-chain capture</button>
 		{#if (globalThis as { __P23B11_S1_RECORD__?: unknown }).__P23B11_S1_RECORD__}
 			<button class="download" onclick={downloadP23B11S1Record}>Download P23B.11 S1 record JSON</button>
+		{/if}
+		<h2>Pre-P23B.8 M1 (one protocol, this runtime)</h2>
+		<p class="capture-hint">
+			The follow-up's M1 session: the three committed fixtures in harness order plus the connected case
+			last (advisory, never recorded), five action classes each in its own settled session under the
+			<code>p23b-m1:</code> prefix — rigid Wall drag, bend, whole-Room move, Wall authoring and Rect Room
+			commit. {DRIVE_ACTIONS_PER_PATH} accepted actions per class, leading five excluded as warm-up, every
+			mutation restored with editor Undo. The drags carry the gesture-frame series; the long-frame observer
+			listens per class. Run it once per runtime; the CDP runner adds the presentation-grade release row.
+			No baseline and no ratchet is read or written.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture()}>
+			{m1Running ? 'Running M1…' : 'Run M1 protocol'}
+		</button>
+		<p class="capture-hint">
+			<strong>Same-session before/after.</strong> The same protocol, but the whole-Room move class runs
+			BOTH code paths in one session, interleaved per attempt: the shipped <code>transient</code> proposal
+			and the pre-change <code>per-move</code> planner call, which is still reachable behind a DEV-only arm
+			switch so no pre-change tree is needed. The record then carries each class's per-arm rows and the
+			before/after table. Only the whole-Room class takes arms; every other class runs the shipped path.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(true)}>
+			{m1Running ? 'Running M1…' : 'Run M1 before/after arms'}
+		</button>
+		<p class="capture-hint">
+			<strong>Room-label before/after.</strong> The same protocol again, but the Room-label placer's
+			eligibility grid runs every implementation in one session, interleaved per attempt: the shipped
+			<code>seeded-grid</code> (which now runs through the placer's own bounded candidate cache), the previous
+			<code>pruned-grid</code>, the pre-change <code>per-cell-grid</code> and the bypass arm
+			<code>no-memo-grid</code> (the same grid with that cache skipped), all reachable behind a DEV-only arm
+			switch. The placer runs on every Plan render, so EVERY class takes these arms — the rows they move are
+			the post-release windows, which the CDP runner reports per arm and per class.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true)}>
+			{m1Running ? 'Running M1…' : 'Run M1 room-label arms'}
+		</button>
+		<p class="capture-hint">
+			<strong>Room-label arms, cold workload.</strong> The room-label arms again, plus a SECOND pass over the
+			same five classes under the <code>p23b-m1-cold:</code> prefix, where one pan is dispatched before every
+			attempt with its direction advancing by the golden angle. A pan translates the projected polygon and
+			changes nothing else, so the placer does the same work per action and only the cache key moves — which
+			makes this a controlled read of the reuse and not a second workload. It brackets the repeat run: the
+			undo between attempts is what lets a persistent cache serve the next attempt, and the camera walk takes
+			that away. Read the repeat rows as the high end and the cold rows as the low end.
+		</p>
+		<button disabled={capturing || driveRunning || running || m1Running} onclick={() => runM1Capture(false, true, true)}>
+			{m1Running ? 'Running M1…' : 'Run M1 room-label arms (cold workload)'}
+		</button>
+		{#if m1Failure}<p class="error">M1 failed: {m1Failure}</p>{/if}
+		{#if m1Record}
+			<button class="download" onclick={downloadM1Record}>Download M1 record JSON</button>
 		{/if}
 		{#if driveStep}<p class="status">Driver: {driveStep}</p>{/if}
 		{#each Object.entries(drivePathProgress) as [path, progress] (path)}

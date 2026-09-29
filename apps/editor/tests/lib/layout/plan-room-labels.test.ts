@@ -258,6 +258,122 @@ describe('P23.13 S3 — free-space candidates and the complete text rectangle', 
 	});
 });
 
+describe('P23.13 S3 — curved Rooms: many-vertex boundaries', () => {
+	/**
+	 * A curved Room, in the only form the placer ever sees one: a polygon whose
+	 * boundary is a long polyline. The other suites use rectangles and notches, but
+	 * a curved face is the shape the eligibility grid is expensive on — the cell
+	 * count is capped by the mask budget while the vertex count is not — so a
+	 * rewrite of the distance loop needs a fixture with a boundary long enough to
+	 * prune against.
+	 */
+	function curvedRoom(roomId: string, radiusM: number, vertices: number): RoomLabelFacts {
+		const polygon: LayoutVec2[] = [];
+		for (let index = 0; index < vertices; index += 1) {
+			const angle = (index / vertices) * Math.PI * 2;
+			polygon.push([Math.cos(angle) * radiusM, Math.sin(angle) * radiusM]);
+		}
+		return {
+			roomId,
+			polygon,
+			name: 'Gallery',
+			reference: 'R-7K3M',
+			areaM2: roomFloorAreaM2(polygon)
+		};
+	}
+
+	/** Independent even-odd containment, so the placer's own helper is not the judge. */
+	function pointInside(polygon: readonly LayoutVec2[], point: LayoutVec2): boolean {
+		let inside = false;
+		for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+			const a = polygon[index]!;
+			const b = polygon[previous]!;
+			if (a[1] > point[1] !== b[1] > point[1]) {
+				const x = ((b[0] - a[0]) * (point[1] - a[1])) / (b[1] - a[1]) + a[0];
+				if (point[0] < x) inside = !inside;
+			}
+		}
+		return inside;
+	}
+
+	function distanceToBoundary(polygon: readonly LayoutVec2[], point: LayoutVec2): number {
+		let best = Number.POSITIVE_INFINITY;
+		for (let index = 0; index < polygon.length; index += 1) {
+			const a = polygon[index]!;
+			const b = polygon[(index + 1) % polygon.length]!;
+			const dx = b[0] - a[0];
+			const dz = b[1] - a[1];
+			const lengthSquared = dx * dx + dz * dz;
+			const t =
+				lengthSquared <= 1e-12
+					? 0
+					: Math.min(1, Math.max(0, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / lengthSquared));
+			best = Math.min(best, Math.hypot(point[0] - (a[0] + t * dx), point[1] - (a[1] + t * dz)));
+		}
+		return best;
+	}
+
+	it('places a full stack inside a 256-vertex boundary, deterministically', () => {
+		const room = curvedRoom('room-curved', 3, 256);
+		const input = { rooms: [room], planView: view(), measure: fixtureMeasure };
+		const first = labelFor(placeRoomLabels(input), 'room-curved')!;
+		const second = labelFor(placeRoomLabels(input), 'room-curved')!;
+		expect(first.tier).toBe('full');
+		expect(linesOf(first)).toEqual(['room-name:Gallery', 'room-reference:R-7K3M', expect.stringMatching(/^room-area:/)]);
+		// The anchor is a world point on the compiled face — strictly inside it, and
+		// clear of the boundary by at least the core-geometry reserve. A distance loop
+		// that skipped the segment holding the minimum would put it against the wall.
+		expect(pointInside(room.polygon, first.anchorWorld)).toBe(true);
+		const clearanceWorld = distanceToBoundary(room.polygon, first.anchorWorld) * view().pixelsPerMeter;
+		expect(clearanceWorld).toBeGreaterThan(ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX);
+		expect(second.anchorWorld).toEqual(first.anchorWorld);
+		expect(second.tier).toBe(first.tier);
+	});
+
+	it('honours a many-vertex protected edge: the anchor moves off it and stays inside', () => {
+		// The mask's protected edges go through the same distance loop as the polygon,
+		// so a wrong prune would show up here as a label that keeps sitting on the edge:
+		// the placer would believe the edge is farther away than it is.
+		const room = curvedRoom('room-edge', 3, 256);
+		const edge: LayoutVec2[] = [];
+		for (let index = 0; index < 64; index += 1) edge.push([-3 + (index / 63) * 6, -1.5 + Math.sin(index / 4) * 0.1]);
+		const without = labelFor(
+			placeRoomLabels({ rooms: [room], planView: view(), measure: fixtureMeasure }),
+			'room-edge'
+		)!;
+		const withEdge = labelFor(
+			placeRoomLabels({
+				rooms: [room],
+				planView: view(),
+				measure: fixtureMeasure,
+				mask: { protectedEdges: [{ points: edge, clearancePx: ROOM_LABEL_CORE_GEOMETRY_RESERVE_PX }] }
+			}),
+			'room-edge'
+		)!;
+		const distanceToEdge = (label: { anchorWorld: LayoutVec2 }): number => {
+			let best = Number.POSITIVE_INFINITY;
+			for (const [x, z] of edge) best = Math.min(best, Math.hypot(label.anchorWorld[0] - x, label.anchorWorld[1] - z));
+			return best;
+		};
+		expect(pointInside(room.polygon, withEdge.anchorWorld)).toBe(true);
+		expect(distanceToEdge(withEdge)).toBeGreaterThan(distanceToEdge(without));
+	});
+
+	it('a label owns its anchor: mutating it cannot move the next identical pass', () => {
+		// The shipped grid is cached by input and its array is shared (see
+		// `roomLabelGridCache`); the label must hold a copy, so an in-place
+		// write to a returned anchor cannot steer the pass after it.
+		const rooms = [rectRoom('room-anchor-guard', [31, 17], [6, 5])];
+		const input = { rooms, planView: view(), measure: fixtureMeasure };
+		const first = labelFor(placeRoomLabels(input), 'room-anchor-guard')!;
+		const original: LayoutVec2 = [first.anchorScreen[0], first.anchorScreen[1]];
+		first.anchorScreen[0] = original[0] + 500;
+		first.anchorScreen[1] = original[1] + 500;
+		const second = labelFor(placeRoomLabels(input), 'room-anchor-guard')!;
+		expect(second.anchorScreen).toEqual(original);
+	});
+});
+
 describe('P23.13 S3 — tiers, drop order and duplicates', () => {
 	it('drops area → reference → the whole label, always at the existing candidate', () => {
 		// 1.6 m wide Rooms at 50 px/m = 80 px; the tier that fits follows the

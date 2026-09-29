@@ -24,7 +24,7 @@ P23B.3a, the owner-authorized topology-policy slice at sequence step 9, was acce
 separate GitHub review entries exist for them. Step 10 (P23B.0-durable) was ratified in Stage A on 2026-09-24 (revision `4b32034f`, O-1–O-4, W1–W7; scope amended 2026-09-25 §10 S-1…S-7), ran Stage B, was returned for correction on five findings plus the S-8 scheduling defect, and recorded the method-v5 baseline (`be525f7c`, SHA-256 `5534926e…`). The owner accepted the explicitly partial baseline (W6 §10.3 disposition A — post-release flush/frame coverage deferred, no further capture) and PR #87 merged 2026-09-25 (squash `d7b9de4e`; tree identical to continuation HEAD `935c5ada`). P23B.0-durable is SHIPPED and closed (recovery anchor `d7b9de4e`, tag `closed/p23b.0`); its plan, W6, W7 and Stage A handoff are path-preserving closed stubs.
 The recorded finding is that every fixture is slow, including the 40-straight-wall control. P23B.4's baseline gate is satisfied; its reconciled plan was RATIFIED and implementation AUTHORIZED 2026-09-25 (S1 first), the F1–F3 correction batch was ACCEPTED with no remaining blockers, and P23B.4 is SHIPPED (PR #88, anchor `4cbcc370`, tag `closed/p23b.4`; stubs at their own paths).
 P23B.5's reconciled plan (`f26e2319`) was ACCEPTED and RATIFIED by the owner on 2026-09-25, authorizing S0–S3; S0 then executed and recorded the disposition PREFLIGHT-ONLY: no baseline→candidate (release) reuse is reachable (each release re-parses its candidate into fresh centerline objects, so the object-identity key cannot hit across stages or releases), restore/undo/redo issue no sampling at all, and the only reachable cross-chain identity is preflight→preflight inside a frozen-baseline gesture (measured 120 requests → 44 derivations / 76 hits over three pointermoves, with full-result equality). That narrower scope was NOT assumed authorized and needed a separate owner scope ruling (the dependency map routes the wider gesture work to P23B.7); the owner then GRANTED it on 2026-09-25, so S1–S6 were implemented and S4 was taken at that preflight-only scope. A second owner ruling (stub §0.6) then committed those counters as a perf-lane ratchet. The slice was REVIEWED AND ACCEPTED with no remaining blocker, routine `slice-closeout` ran on the same branch, and the single PR (#90) was squash-merged; P23B.5 is SHIPPED, its plan is a path-preserving closed stub (anchor `75fbd8a0`, tag `closed/p23b.5`) and its ratchet record stays live. Release-scope M-3 remains unreachable and unimplemented.
-P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; tag `closed/p23b.7`, local only). NEXT: P23B.6 — SHIPPED and closed 2026-09-26 (owner accepted with no remaining blocker on PR #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only). P23B.11 is SHIPPED and closed 2026-09-27 (one PR for the slice: #95; accepted head `dcd3682f`; the plan, umbrella and the S1 · S3 · S4 · S5 · S6 · S7 · review-fix records are path-preserving closed stubs at their own paths; the three JSON capture records stay LIVE; tag `closed/p23b.11`, local only). NEXT: the pre-P23B.8 follow-up (owner-routed 2026-09-27; M1 + R1; starts only on the owner's go).
+P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; tag `closed/p23b.7`, local only). NEXT: P23B.6 — SHIPPED and closed 2026-09-26 (owner accepted with no remaining blocker on PR #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only). P23B.11 is SHIPPED and closed 2026-09-27 (one PR for the slice: #95; accepted head `dcd3682f`; the plan, umbrella and the S1 · S3 · S4 · S5 · S6 · S7 · review-fix records are path-preserving closed stubs at their own paths; the three JSON capture records stay LIVE; tag `closed/p23b.11`, local only). NEXT: the pre-P23B.8 follow-up — since EXECUTED and CLOSED 2026-09-27 (M1 + R1; records, local-only captures and acceptance record → ./pre-p23b.8-follow-up/); the next step is therefore P23B.8's entry gate, which this follow-up entered nothing into.
 The owner-approved Option E rule permits coincident independent components, keeps accidental duplicates
 within one connected component invalid, and lets only explicit Wall/Junction identity establish
 connectivity. No new representation, group id or schema field was added. D-10 Join/Connect remains a
@@ -33,8 +33,8 @@ The P23B.3a scope amendment and placement in the SEQUENCE remain unchanged.
 GATE: PHASE 0 and P23B.3's ratification gate are satisfied. The P23B.3 gate authorized P23B.3a only. A
 separate owner ruling on 2026-09-24 ratified P23B.0-durable revision `4b32034f` and authorized its W1–W7
 measurement work; the resulting baseline was accepted 2026-09-25 (disposition A) and P23B.0 shipped, so
-P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; closed plan + record stubs at their own paths; tag `closed/p23b.7`, local only) after the owner accepted its correction round with no remaining blocker. The P23B.5-closeout-authorized measurement-only step ran first and closed, starting no optimization and ending at a ranking, and its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 ran P23B.7 before P23B.6 (order only). P23B.6 is SHIPPED and closed 2026-09-26 after the owner REVIEWED AND ACCEPTED it with no remaining blocker (one PR for the slice: #93 — the closeout commit stays inside it; merge method squash, owner merges; accepted head `354f9b6f`; plan and per-record closed stubs at their own paths; the nine JSON measurement records stay LIVE; tag `closed/p23b.6`, local only). S-R and S3 M-3m landed; overall interaction improvement is NOT established and the unresolved curved release increases were owner-routed through P23B.11 — which attributed the wall-chain share and left the increases unresolved — and now sit with the pre-P23B.8 follow-up's M1 measurement. P23B.11 SHIPPED and closed 2026-09-27 (one PR for the slice: #95 — the closeout commit stays inside it; accepted head `dcd3682f`; closed stubs at their own paths; tag `closed/p23b.11`, local only). The next separately routed step is the pre-P23B.8 follow-up (M1 + R1, starting only on the owner's go; its amendment sits below). P23B.8 remains unratified and unauthorized, and P26 implementation/validation remain gated. No numerical performance target is proposed.
-NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92 — the closeout commit stays inside it; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; accepted head `ee0dbecd`; tag `closed/p23b.7`, local only). Its reconciled plan was RATIFIED and its implementation AUTHORIZED (2026-09-25 P23B.7-step routing amendment above; the two clarification rulings are folded into plan §0.8 and §7), and it executed on the dedicated `P23B.7` branch in the order S2 → S6 + regression → S6 measurement → S3 → S4 → S5 only if named → S7, then was reviewed, corrected (two P2 findings) and accepted. P23B.6 is SHIPPED and closed 2026-09-26 (one PR: #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only). NEXT: the pre-P23B.8 follow-up — owner-routed 2026-09-27, M1 + R1, starting only on the owner's go, with the queued items' before-P23B.8 condition (P23B.11 followed and is SHIPPED and closed 2026-09-27: one PR #95, accepted head `dcd3682f`, closed stubs at their own paths, tag `closed/p23b.11` local only); do NOT start P23B.8. Do not open a second cache or rewrite the baseline or ratchet. P23B.8 and P26 implementation/validation retain their existing gates. The Stage A packet and accepted P23B.0 plan/scope amendment are routed below as closed stubs.
+P23B.4 implementation is AUTHORIZED (plan ratified 2026-09-25). P23B.5 is SHIPPED and closed (PR #90 squash-merged; closed stub + anchor `75fbd8a0`, tag `closed/p23b.5`) after the owner accepted it with no remaining blocker. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92; accepted head `ee0dbecd`; closed plan + record stubs at their own paths; tag `closed/p23b.7`, local only) after the owner accepted its correction round with no remaining blocker. The P23B.5-closeout-authorized measurement-only step ran first and closed, starting no optimization and ending at a ranking, and its identity pin ruled STATE-SIDE, so the SEQUENCE's step 11 ran P23B.7 before P23B.6 (order only). P23B.6 is SHIPPED and closed 2026-09-26 after the owner REVIEWED AND ACCEPTED it with no remaining blocker (one PR for the slice: #93 — the closeout commit stays inside it; merge method squash, owner merges; accepted head `354f9b6f`; plan and per-record closed stubs at their own paths; the nine JSON measurement records stay LIVE; tag `closed/p23b.6`, local only). S-R and S3 M-3m landed; overall interaction improvement is NOT established and the unresolved curved release increases were owner-routed through P23B.11 — which attributed the wall-chain share and left the increases unresolved — and now sit with the pre-P23B.8 follow-up's M1 measurement. P23B.11 SHIPPED and closed 2026-09-27 (one PR for the slice: #95 — the closeout commit stays inside it; accepted head `dcd3682f`; closed stubs at their own paths; tag `closed/p23b.11`, local only). The pre-P23B.8 follow-up (M1 + R1) was then owner-routed, EXECUTED and CLOSED 2026-09-27 (records and LIVE captures at their own paths in ./pre-p23b.8-follow-up/; acceptance record there): measurement and ranking only, no product change, no threshold, no baseline or ratchet write. P23B.8 remains unratified and unauthorized, and P26 implementation/validation remain gated. No numerical performance target is proposed.
+NEXT: P23B.0-durable is closed (stubs + anchor `d7b9de4e`, tag `closed/p23b.0`). Read the closed W6 stub §0 for the finding and its stated coverage limit. P23B.4 is SHIPPED (anchor `4cbcc370`, tag `closed/p23b.4`); its plan and evidence record are path-preserving closed stubs. P23B.5 is SHIPPED (PR #90; plan is a path-preserving closed stub: the PREFLIGHT-ONLY disposition §0.2, the preflight-only scope ruling §0.4, the reuse-gate ruling §0.6 and the S1–S6 records are summarized there, with the full body recoverable via the anchor `75fbd8a0`; its `reuse-counter-ratchet.json` stays LIVE — a test imports it by path). Do NOT claim release-scope reuse, start a second cache, or re-own the sample store. The measurement-only step RAN, was reviewed and ACCEPTED, and is CLOSED (PR #91 squash-merged; closed stub + anchor `1d0fb220`, tag `closed/p23b-measurement`); its identity pin ruled STATE-SIDE, so the SEQUENCE runs P23B.7 before P23B.6. P23B.7 is SHIPPED and closed 2026-09-25 (one PR for the slice: #92 — the closeout commit stays inside it; the plan and the S4 · S6 · S7 · S7-follow-up · correction records are path-preserving closed stubs at their own paths; accepted head `ee0dbecd`; tag `closed/p23b.7`, local only). Its reconciled plan was RATIFIED and its implementation AUTHORIZED (2026-09-25 P23B.7-step routing amendment above; the two clarification rulings are folded into plan §0.8 and §7), and it executed on the dedicated `P23B.7` branch in the order S2 → S6 + regression → S6 measurement → S3 → S4 → S5 only if named → S7, then was reviewed, corrected (two P2 findings) and accepted. P23B.6 is SHIPPED and closed 2026-09-26 (one PR: #93; accepted head `354f9b6f`; closed stubs at their own paths; tag `closed/p23b.6`, local only). NEXT: P23B.8's entry gate, guarded by the queued items' before-P23B.8 condition. The pre-P23B.8 follow-up that came before it is EXECUTED and CLOSED 2026-09-27 (M1 + R1; records, local-only captures and acceptance record → ./pre-p23b.8-follow-up/; executed head `b6f2203b`; measurement and ranking only, no product change and no threshold). P23B.11 preceded it and is SHIPPED and closed 2026-09-27 (one PR #95, accepted head `dcd3682f`, closed stubs at their own paths, tag `closed/p23b.11` local only). Do NOT start P23B.8. Do not open a second cache or rewrite the baseline or ratchet. P23B.8 and P26 implementation/validation retain their existing gates. The Stage A packet and accepted P23B.0 plan/scope amendment are routed below as closed stubs.
 ```
 
 ```text
@@ -102,9 +102,13 @@ all three inform synthesis.
     release-to-next-presented-frame on the heavy curved layout, headless Chrome
     AND Electron under one protocol) and ONE release-cost ranking (R1 —
     canonical compile, then the install's room-geometry-compile, then
-    mesh-prebuild). Queued items carry the before-P23B.8 condition: each must
-    be ratified, or explicitly routed to P23B.8 / P26, before P23B.8 entry —
-    nothing reaches P23B.8 undecided.
+    mesh-prebuild). It EXECUTED and CLOSED 2026-09-27 (measurement and ranking
+    only; both captures taken at head `b6f2203b` on a clean tree; no product
+    path, threshold, baseline or ratchet touched) — records, the two LIVE
+    captures and the acceptance record → ./pre-p23b.8-follow-up/. Queued items
+    carry the before-P23B.8 condition: each must be ratified, or explicitly
+    routed to P23B.8 / P26, before P23B.8 entry — nothing reaches P23B.8
+    undecided.
     P23B.8 remains unratified and unauthorized under its existing entry gate.
     The P23B.7-before-P23B.6 order was owner-ruled from the measurement step's
     geometry-identity pin (STATE-SIDE: the object the commit hands
@@ -263,8 +267,8 @@ The owner reviewed the pre-P23B.8 decision doc (the four revised proposals plus 
 deferred P23B.4/5/6/7 and P23B.11 item) inside P23B.11's PR #95 and filled in its OWNER DECISION
 lines on 2026-09-27. The follow-up is routed between P23B.11 and P23B.8. Its RATIFIED scope is ONE
 measurement session (M1 — gesture frames plus release-to-next-presented-frame on the heavy curved
-layout, headless Chrome and Electron under one protocol) and ONE release-cost ranking (R1 — canonical
-compile, then the install's room-geometry-compile, then mesh-prebuild, held until M1). The FOLDed
+layout, headless Chrome and Electron under one protocol) and ONE release-cost ranking (R1 — the
+decision doc's three candidates, held until M1). The FOLDed
 items beyond M1/R1 are queued by name, and each must be ratified, or explicitly routed to P23B.8 /
 P26, before P23B.8 entry — nothing reaches P23B.8 undecided. The decisions, sources and triggered
 edits are in ./2026-09-27-pre-P23B.8-follow-up-decisions.md. This amendment changes order only,
@@ -301,6 +305,562 @@ ancestors of `main` post-merge, so recovery runs via `refs/pull/93/head`, record
 superseded S6 evidence checkpoint was retired. NEXT: P23B.11 — since SHIPPED and closed (see the
 closeout section below); P23B.8 stays unauthorized. The routine closeout re-ran no gate: it reuses
 the recorded acceptance evidence. Every recorded anchor is a verified ancestor of the tag target.
+
+## pre-P23B.8 follow-up closeout — 2026-09-27 (EXECUTED AND CLOSED; measurement + ranking)
+
+The owner-ratified pre-P23B.8 follow-up RAN in plan order S1 → S6 and closed. It produced ONE
+measurement session (M1: one protocol, one session, two runtimes — headless Chrome 152 and Electron
+35 — both captures settled with zero dropped boundaries at executed head `b6f2203b` on a clean tree,
+each with its own provenance) and ONE release-cost ranking (R1: read from the closed S7 keyed capture,
+self-time only where priceable — CORRECTED 2026-09-27, see the review-correction section below). Two DEV-only instruments landed (the drag-attached gesture-frame series and the
+release-side presented-frame/LOAF pair), and NO product module was touched — a test asserts it.
+M1 re-read BOTH D1 rows on both runtimes and did NOT reproduce P23B.6's final-capture increases (a
+finding, not a fix: the increases stay UNRESOLVED and no cause is claimed); the release → next
+presented frame is 214–292 ms p50 on the heavy all-curved fixture on both runtimes where the
+previously reported `browser-frame` proxy read 5–40 ms on the same releases. Three harness defects
+found by reading finished captures were closed with tests (a sub-threshold bend gesture; two
+registries keyed differently from how they are read, plus a session registry that keeps only its most
+recent few sessions; a runner that could measure an older document while reporting current
+provenance). No threshold, no target, no budget metric, no baseline or ratchet read or written, and
+the connected case stayed advisory (excluded from D1's and D7's tables by construction, with a test).
+The slice's records, its two local-only captures and its acceptance record sit at their own paths in
+./pre-p23b.8-follow-up/; the plan's STATUS is amended in place (no stub was created and no prose was
+compacted). NEXT: P23B.8's entry gate — this slice entered nothing into it, and the queued items
+(P1 · D4 · D5 · D6 · D8 · D9 · D10 · D13) must be ratified, or explicitly routed to P23B.8 / P26,
+before that entry.
+
+COMMITTED 2026-09-28 — every block below, from the review corrections to the Room-label arm, was
+written on one working tree and has LANDED as a commit series on this branch — the three that carried
+the work, plus the follow-up commit that recorded them and carries this text: **`3ef60e68`** the M1
+measurement stack and the records it produced · **`2ccded81`** the whole-Room drag on the transient
+contract, rotation wired · **`58a0c5ef`** the Room-label placer's grid with the one-session arm that
+measures it. Added to the same series the same day, for the block immediately after the arm section:
+**`bca3da02`** the seeded, ranked, index-gated grid walk, with the build budget that its attempt records
+now carry · **`2e292ade`** the runner signing the new pair from the arm module's own constants ·
+**`c88b511a`** the two legs and the record that reads them. A block labelled "UNCOMMITTED" describes the state when it was written and is kept as
+provenance, not as status. The two 2026-09-27 M1 leg captures stay deliberately uncommitted (gitignored
+at two exact paths for their ~40k-line size); every other capture cited below is committed.
+(SUPERSEDED AT CLOSEOUT 2026-09-29 — owner ruling: ALL fifteen leg captures are now local-only,
+gitignored at exact paths; the records keep the aggregates. See the expanded-scope closeout section.)
+
+## pre-P23B.8 follow-up review corrections — 2026-09-27 (committed 2026-09-28; performance pass)
+
+The owner reviewed the closed follow-up's records and both captures and raised three findings, all
+confirmed in code and all corrected on the same branch, with regression coverage: R1's ranking ordered
+rows 2/3 by the SMALLER exclusive self while placing row 1 by the largest total (now corrected in
+place — mesh-prebuild is the larger exclusive cost in five of the six committed classes and level in
+the sixth, room-geometry-compile is at or below it everywhere, and the canonical-gates row is reported,
+not ranked because its exclusive self is withheld in every class); the gesture rows pooled warm-up
+drags and retried attempts into the measured class (now restricted to the class's own measured
+population, with the exclusions COUNTED); and the `wall-authoring` classes' reported population (23)
+could not be reconciled with 20 (warm-up is sliced before the accepted filter, and a `setup` action of
+the same path consumes slots — the decomposition is now reported per class and per session). Both M1
+legs were RE-RUN against the corrected code on the same machine/protocol and the same two files carry
+the corrected rows plus the new `populations` and `attribution` sections (their provenance says
+`treeDirty: true`, because the corrections were uncommitted when captured). The pass also read the
+session's own rows for D4 (whole-Room move: per-preview full-generation mesh preparation, 61.8 / 70.5 ms
+p50 exclusive self per occurrence, SIX per accepted action, against ONE occurrence at 12.7 ms for a
+single-wall drag on the same fixture and session), D5 (pointer-move: wall-snap index derivation 173.2 /
+231.3 ms p50 per accepted geometry on the all-curved fixture against 13.3 / 13.8 ms on the straight
+control, and PROVABLY paid outside the synchronous release because the mark exceeds the class's own
+release p50 — arithmetic, not inference) and D6 (post-release wait: 150.8–214.0 / 183.0–195.2 ms p50 on
+the curved fixture against 23.0–56.0 ms on the straight one, a property of the FIXTURE, not explained by
+the release and not bounded by the `browser-frame` proxy).
+The corrected pair also exposed a FINDING THE REVIEW DID NOT RAISE: taken in a second browser session,
+every row the corrections cannot touch moved by ×0.38–×1.03 with no code change. M1's absolutes are
+SESSION-CONDITIONED, so the corrected whole-Room figures are published as a pair (212.8 / 377.1 Chrome,
+241.9 / 505.0 Electron, all-curved) and any future before/after must be taken in one session. The
+slice's findings survive in both sessions, and the fix/session split is stated per class in the
+corrections record §2.4–§2.5.
+Both candidate optimizations are PRODUCT code (mechanism owners unchanged: P26 §3.5 and the P23B.7
+family), so the scope expansion they need is REPORTED and not taken; no product module, cache, Worker or
+WASM path, no baseline and no ratchet was touched. Corrections + attribution record →
+./pre-p23b.8-follow-up/2026-09-27-M1-R1-corrections-and-attribution-record.md.
+
+## pre-P23B.8 follow-up — authorized D4/D5/D6 pass — 2026-09-27 (committed 2026-09-28; measurement only)
+
+The owner authorized the three optimization directions as EXPANDED SCOPE for this PR and all three
+"first moves" ran (DEV-only instruments; no product behavior, no cache, no Worker, no WASM, no baseline
+and no ratchet). What came back changed two of the proposal's own premises:
+
+- **D5 — the candidate was measured OUT and reverted.** The exact convex-hull + rotating-calipers extent
+  sweep was implemented, proven output-identical to the shipped per-pair scan on every fixture, and then
+  measured **up to 2.2× SLOWER** at the input the editor actually hands in (2,560 wall spans / 40 Walls /
+  k ≤ 128 endpoints per Wall: 1.358 vs 0.898 ms p50 on the all-curved 40-wall fixture, interleaved arms).
+  A live probe then showed what the cost IS: the same merge takes **43.7 ms over the live `$state`-proxied
+  geometry and 3.6 ms over the same values as plain objects (12.1×)**, on an input shape identical to the
+  fixture's, inside a `pointermove-rigid` of 114.3 ms. A copy-first fix does not pay (37.2 ms vs 27.0 ms).
+  The fix therefore belongs to the identity the frozen baseline is stored under — the P23B.7
+  preview-state family's ruling, not a change inside `layout-snap.ts`.
+- **D4 — reuse already works, and the price is the comparison.** The new `prebuild-stats` row shows every
+  whole-Room preparation reusing **36 of 40 Walls** and rebuilding exactly the 4 whose compiled wall
+  changed (`compiled-wall-changed`); the four additive preparation marks place **61–68 ms of each 72–81 ms
+  preparation in the per-Wall VALUE COMPARISON of the whole generation** and only 2.6–4.7 ms in the builds.
+  The corrections record's "six FULL-GENERATION preparations" is corrected in place.
+- **D6 — the falsifier came back NEGATIVE.** The runner's preflight now reports the idle presented-frame
+  cadence: **481 frames in 8,000.1 ms, gaps p50 16.668 / p95 17.360 ms** (Electron 35.0.2, calibration
+  residual 0.168 ms). The surface therefore paces at 60 Hz when idle, so the post-release wait is real
+  work — not measurement-surface pacing. The cold live action that followed it is superseded by the
+  steady-state split in the next entry.
+
+P23B.8's compute-bound prerequisite stays **UNPROVEN**, now with three measured reasons. The queued
+D4 · D5 · D6 items are routed WITH EVIDENCE to their existing owners (P26 §3.5; the P23B.7 family;
+P26 P6/P1) and still need a ruling before product code moves. Record + limitations →
+./pre-p23b.8-follow-up/2026-09-27-D4-D5-D6-live-attribution-record.md.
+
+## pre-P23B.8 follow-up — restore-vs-commit split of the post-release wait — 2026-09-27 (committed 2026-09-28; measurement only)
+
+Both M1 legs were re-run in steady state, in protocol, with the split instruments in place. **The answer
+to "how much of the release-to-presented wait is the baseline restore versus the commit" is none of it:
+0.0 ms of restore and 0.0 ms of commit AFTER a release, at p50 and p95, in all 38 class rows across both
+runtimes.** Both families land INSIDE the release: the restore at **7.0–10.8 ms** on a whole-Room move
+(0.1–3.6 ms on every other class) and the commit at **1.0–2.9 ms** there against 7.1–28.6 ms elsewhere —
+the one class where the two invert, consistent with the bridge's edit having already landed during the
+drag. The wait is therefore **1.6–5.3 ms of scheduling + the Plan render (17–52 % of it) + a tail of
+47–78 % (Electron) / 43–59 % (Chrome) after the page's LAST attributed mark**, which lands p50 11–89 ms
+in. That tail is real work the page shows no mark for, and pricing it needs the runner to keep trace
+event DURATIONS — **DONE 2026-09-28, AND THE GUESS IT IMPLIED IS WRONG.** "It is where a
+compositor/raster/present stage would sit" does not survive the durations: the wait is ~96–97 % page
+JavaScript, contained in one Svelte runtime task per release, and on the curved fixtures it was mostly
+the P23.13 Room-label placer's eligibility grid. See ./pre-p23b.8-follow-up/2026-09-28-post-release-window-attribution-and-room-label-fix-record.md. The pass also publishes the
+containment record's own pool, because a window bounded by an action's span cannot see the second, once-
+per-action restore chain that sits outside every span — that one prices at 0.2–0.9 ms of p50s, so the
+bound is tight. In protocol the new preparation marks confirm D4 there: **6 `mesh-prebuild` per accepted
+whole-Room action (49.2–70.6 ms p50, of which 33.9–63.0 ms is the comparison remainder) against 1 for a
+single-Wall drag (7.3–12.7 ms)**, with `mesh-build` at 0.3–0.7 ms and `mesh-inputs` / `mesh-room-meshes`
+at 0.0 ms. This SUPERSEDES the D4/D5/D6 pass's cold live observation that the post-release window
+contains the restore. Record → ./pre-p23b.8-follow-up/2026-09-27-M1-release-to-presented-split-record.md;
+captures → .../2026-09-27-M1-restore-split-chrome.json · .../2026-09-27-M1-restore-split-electron.json
+(the earlier corrected pair is left untouched).
+
+## pre-P23B.8 follow-up — why a whole-Room move pays per pointer move — 2026-09-27 (committed 2026-09-28; read-only trace)
+
+The live impression and the measurements agree, so the remaining question was causal: is the room
+gesture's per-frame cost required by changed geometry, or an identity accident? **Neither — and the two
+halves differ.** A press inside a Room interior and a press on a canonical Wall are different code paths:
+`LayoutPlanViewport.svelte:3455/:3484` starts a room-unit drag whose pointermove handler
+(`:3730–3748`) restores the baseline snapshot and then re-derives and installs the whole document, so a
+room move pays **6 restores + 6 preparations + 5 FULL compiles per accepted action** (9.9 + 70.6 + 31.0 ms
+p50 on the all-curved fixture); a Wall press (`:3716`) runs `previewArchitectureEdit` — "one snap, one
+proposal, one Plan update" — and compiles exactly **once**, at release, installing it as
+`preview-compile-reused`. So the restore and the compile are per-move **by mechanism** (P23.6a: "the
+candidate is always derived from the immutable baseline"), recompiling 100 % of the 40-Wall document for
+a delta that in fact changes ≈**3.3 Walls**; the preparation's 62–68 ms is caused by the
+**identity-keyed** mesh WeakMap, not by an unconsulted reference — the reference IS handed in
+(`applyCompiledLayout:644`) and **≈36.7 of 40 Walls are reused per frame**. In protocol the wall move's
+entire per-gesture heavy term is `snap-wall-index` at **190.0 / 170.7 ms** (D5's read amplification,
+once per gesture), everything else under 15 ms — which is what "relatively smooth" looks like in marks.
+Three candidate directions (provenance reuse · no compiled install per move · transform prepared
+outputs) are product decisions under the P23B.5 ratchet and none was taken; no code changed in this
+pass. Record → ./pre-p23b.8-follow-up/2026-09-27-room-move-reuse-trace-record.md.
+
+A DESIGN SKETCH follows it (design only — no code, no authority) of the same room drag on the **Wall
+drag's shipped transient contract**: pointerdown captures the immutable baseline, pointermove derives a
+proposal and installs nothing, pointerup makes the one canonical planner call. The load-bearing
+observation is that the release **already** re-derives from the release point against the frozen
+baseline, so today's six per-move installs are preview-only and removing them cannot change what
+commits — provided the room gesture's existing invariants (one history entry, invalid release commits
+nothing, `no_op` silent, shared eligibility, byte-equivalence, installed-not-recompiled accept, cancel
+paths, selection survival) stay unweakened and six new obligations are met, of which the first is an
+open read: **who consumes the installed preview during a room drag** (the D4-2 question). Two behaviour
+changes it cannot avoid — the original stays drawn under the overlay (the wall drag's accepted
+precedent) and refusals only the full planner can see move to release — and that second trade is the one
+to decide first. Sketch → ./pre-p23b.8-follow-up/2026-09-27-room-move-quick-sketch-design-sketch.md.
+
+## pre-P23B.8 follow-up — external research reviewed against the code + the plan it implies — 2026-09-27 (committed 2026-09-28; review only, no code change)
+
+An external research synthesis was obtained against the room-drag brief
+(`./pre-p23b.8-follow-up/2026-09-27-external-research-brief-room-drag-preview.md`) and reviewed against
+the shipped code before being trusted. Its conclusion — *gesture-scoped transient transform over the
+frozen baseline, canonical compile + install once at release, no second geometry authority, no Worker,
+no incremental compiler* — is **CONFIRMED**, and its two exclusions match our measurements. Three of its
+assumptions were corrected by reading the code, and each one changes the plan:
+
+- **There is no room-unit proposal and no room-unit preflight.** Core exports
+  `proposeWallFirstArchitectureGeometry` and `preflightWallFirstArchitectureCandidate` (direct
+  architecture edits) and `planWallFirstRoomMove` (the full planner) — nothing for room units. The room
+  drag's pointermove handler calls **the full planner** (`LayoutPlanViewport.svelte:3744–3757`), which is
+  why it pays 5 compiles + 6 preparations per action. So the synthesis's Slice A is **new core surface**
+  (extending the wall-set intent is the smallest form: proposal and preflight share ONE intent→candidate
+  mapping, so the sound-by-construction property is preserved) **plus** the viewport rewiring — not a
+  viewport-local refactor.
+- **The 3D consumer is resolved, in our favour.** `LayoutPreviewScene.svelte:83–89` prefers a transient
+  bundle over the committed source and `Workspace3DView.svelte:419` wires it — but `Workspace3DView` is
+  mounted in an **`{:else}`** branch (`EditorApp.svelte:2250`), so during a Plan room drag the 3D scene
+  is **not mounted**. The presentation set is Plan-local, no translated mesh input is needed, and the
+  sketch's "D4-2 read first" unknown is closed.
+- **The refusal trade is not the trade the synthesis warns about.** Per move the room path writes
+  `preview.statusMessage` on failure and sets `drag.candidateValid`, and the latter is **read by no
+  production renderer** (asserted only in gesture tests). Today's live signal is the geometry itself — a
+  fully recompiled candidate. So the fast path changes preview *fidelity*, not refusal colour, and needs
+  no preflight at all: a proposal-only per move is strictly smaller and avoids re-introducing the
+  `snap-wall-index` cost (173.2 / 231.3 ms p50 per gesture, the wall drag's entire heavy term) that the
+  room path currently does **not** pay (grid snap only, `layout-interaction.ts:1448–1462`).
+
+The reviewed plan is sequenced so the first step changes no product code (parity differential for rigid
+translation · cost probe of the added per-move work · consumer census · per-gesture call-count baseline),
+the core change carries core's owner authorization, and the two visible consequences (original stays
+drawn under the overlay; live geometry fidelity) are owner decisions taken before building. The added
+per-move cost is the plan's largest uncertainty and its stated falsifier. Worker/WASM and incremental
+compilation stay excluded, exactly as the synthesis argues and as the measurements require. Review +
+plan → ./pre-p23b.8-follow-up/2026-09-27-research-synthesis-review-and-plan.md.
+
+## pre-P23B.8 follow-up — whole-Room drag implemented on the transient contract — 2026-09-27 (committed 2026-09-28; owner-authorized expanded scope)
+
+The owner approved the reviewed plan and it was implemented. A whole-Room unit drag no longer
+re-derives, compiles and installs the whole document on every pointermove: it draws a transient attempt
+from the frozen baseline and compiles **once, at release** — where the shipped path already did, which is
+why removing the per-move installs cannot change what commits.
+
+**The plan's own P0 gate came back, and it is why this is admissible:**
+
+- **P0.2 translation parity PASSES EXACTLY** — `compile(translated) ≡ translate(compile(baseline))`
+  point-for-point (every moved Wall's samples, length, thickness, height, endpoints; every moved Room's
+  floor polygon) over all four committed fixtures × three deltas, and the drawn attempt **is** that
+  geometry rather than a second description of it (also exactly the baseline's samples shifted, so the
+  canonical points are moved and never resampled).
+- **P0.3 rotation parity FAILS at sampling density** — recorded, not worked around: a rotated isolated
+  group compiles to the rigid image of its Rooms (vertex-exact) and preserves every Wall's length, but
+  `samples(rotated)` and `rotate(samples)` do not agree on their **sample count**.
+- **P0.4 added-side cost 136–197× below the removed side** — 0.391–0.581 ms of proposal against
+  69.2–79.2 ms of planner + compile + prepare on the all-curved 40-Wall fixture, reproduced in the perf
+  lane; committed as a ratio gate with a 5× floor, not an absolute budget.
+- **P0.5 zero per-move work** — five pointermoves install nothing, leave the document byte-identical to
+  the frozen baseline, replace no compiled geometry and write no history; the release commits exactly the
+  planner's candidate for the **release** delta (proven against a different last-previewed position).
+
+**Deviation, reported rather than hidden: rotation is NOT wired.** It has no reachable committable
+wall-first target (the rotation handle reads the legacy Room registry, which is empty for a wall-first
+document, and the legacy Room-unit path commits its last previewed candidate rather than re-deriving), and
+its preview is not parity-equivalent anyway (§P0.3). The rotation surface exists in core, parity-evidenced
+and routed to a slice that owns a rotation release re-derive.
+
+> **SUPERSEDED 2026-09-28 — this deviation is closed.** The owner reversed P23.14 Decision 7 and the
+gesture is wired with a release re-derive; the P0.3 result is kept and answered by resampling (see the
+follow-up entry below and §3 of the follow-ups record).
+
+The planner's candidate construction is now extracted as `roomUnitMoveCandidate` and **shared** by the
+planner and the preview, so the two cannot describe different geometry; the drag carries its moving set
+frozen at pointer-down; the attempt draws in the pending token language composed inside the refusal
+annotation. The legacy path is untouched. Reviewer-visible consequences (the original stays drawn; the
+group's moving-bounds highlight no longer follows the cursor; refusals appear at release) are listed in the
+record.
+
+Gates on this tree: `check` 0/0 (editor) and 0 errors (`layout-core`) · `test` 363 files / 5,142 passed
+(was 360/5,129) · `test:arch` 23/254 · `test:heavy` 8/92 · `test:perf` 9/64 · `build` ok · the 17 shipped
+room-move gesture invariants pass **unmodified**. One existing test was changed deliberately and
+strengthened: `plan-refusal.test.ts`'s source-text guard now asserts the nested composition order. A new
+wiring guard (each path called exactly once, read from the viewport's source) caught a real defect before
+it shipped — two gesture-exit sites cleared `roomUnitSnapshot` without clearing the attempt, which would
+have left a stale attempt after a project replacement; both now clear it.
+**Confirmed live, one real gesture:** driving a whole-Room drag through the harness host on the real
+viewport (DEV, Chrome, owner-40-curved, ladder zoom 19.29 px/m) paid **one bounded proposal per
+pointermove** (4 moves → 4 `room-unit-proposal`, 0.5–1.4 ms) with **zero compiles and zero preparations
+per move**, drew the pending-language ghost beside the committed ink (5 polylines while the pointer was
+down, 0 after release), then reached the canonical path **exactly once per gesture** (1 `preview-compile`
+52.6 ms · 1 `mesh-prebuild` 12.2 ms), reported "Moved room", and was undone by exactly **one** history
+entry. **The live M1 protocol FRAME SERIES / before-after was NOT run at that point** — a same-session
+before needs a pre-change tree and every M1 absolute is session-conditioned, so the improvement was
+established as a mechanism, a unit-level ratio and a live per-gesture call-count accounting, not as a
+browser frame series. No cache, no Worker, no WASM, no baseline or ratchet
+write. Record → ./pre-p23b.8-follow-up/2026-09-27-room-move-transient-implementation-record.md.
+**FOLLOW-UP 2026-09-28 — the protocol can now take a before/after in ONE session, and did.** The M1
+driver gained a DEV-only BEFORE/AFTER ARM: the whole-Room class interleaves the shipped `transient`
+path with the pre-change `per-move` path (still reachable behind one DEV switch, so no pre-change tree
+is involved), and the record reports each arm's own rows and the signed delta. Measured live in one
+session on the real viewport (DEV, Chrome, owner-40-curved-v1, ladder zoom 19.29 px/m): 4 pointermoves
+cost **4 `room-unit-proposal` / 0 `preview-compile` / 0 `mesh-prebuild` / 40.2 ms** under `transient`,
+against **0 / 4 / 5 / 1006.6 ms** under `per-move`, with the release unchanged at 1 compile + 1
+preparation on both arms — a 25× move-phase difference taken as a within-session comparison, never a
+cross-session one. Two now-unused per-move signals the transient drag left behind were deleted: the
+`drag.candidateValid` flag (written but read by no production renderer) and the baseline-anchored
+per-member group-bounds highlight (superseded by the gesture's own moving-unit attempt). Room-drag
+ROTATION was then WIRED on the owner's ruling, which reversed the ratified P23.14 Decision 7 (scope A of
+the two the record offered): core gained `planWallFirstRoomRotation` (same isolation policy, same
+candidate mapping, same canonical gates as the move planner) and its overlay partner, the editor gained
+`previewWallFirstRoomRotation` and `transientRoomUnitRotation`, so the rotate branch installs nothing per
+pointermove and the **release re-derives one candidate at the release ANGLE** against the frozen
+baseline, exactly as translation re-derives the release DELTA; the arm and handle are now reachable for a
+wall-first Room, anchored to the COMPILED outline instead of the empty legacy registry, and the shipped
+negative test was rewritten to assert the reversal alongside what survives it. The P0.3 sampling-density
+result is kept: it rules out drawing a rotation by rotating the baseline's canonical points, so the
+attempt RESAMPLES the rotated centerline through the release's own sampler — which the new differential
+asserts makes the drawn attempt the release's candidate point-for-point. **The frame series the earlier
+entries left open now exists**: the arms protocol was run end to end on the Chrome leg (19 class rows,
+4,457 presented frames, clock residual 0.265 ms), splitting the whole-Room class into 40 accepted actions
+per arm across the four committed fixtures with release coverage 1 in both — `transient` p50 **17.2 ms**
+with 19.9 % of in-drag callback intervals ≥ 50 ms against `per-move` p50 **166.2 ms** with 82.0 % ≥ 50 ms,
+cleanly separated on every fixture, with the unchanged release as the control (p50 13.6–30.5 vs
+13.7–27.0 ms) and the mechanism visible as 1.00 vs 5.00 `preview-compile` and 1.00 vs 6.00
+`mesh-prebuild` per accepted action. Stated limits: the Electron leg was not spent, and the long-frame row
+is the class's window (identical across both arm rows), so it is read as class-level.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-drag-follow-ups-record.md · frames
+→ ./pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json.
+
+## pre-P23B.8 follow-up — the post-release window priced by name, and the Room-label cost found in it — 2026-09-28 (committed 2026-09-28; instrument + the slice's first PRODUCT change)
+
+The release-to-presented split left 43–59 % (Chrome) / 47–78 % (Electron) of the post-release wait
+unexplained because the runner kept trace event INSTANTS and not durations. With durations in place the
+wait is ~96–97 % JavaScript and it is CONTAINED in one Svelte runtime task per release: the window's
+script row is a single anonymous function whose definition site is `deps/chunk-AI5TZSIZ.js:739:20`
+(Svelte 5's microtask-flush wrapper), present in 20/20 windows at p50 143.4 ms of a 149.6 ms window on
+`p23b-40-wall-all-curved-v1` and 20.1 ms of 26.6 ms on straight, with NO APP FRAME named inside it — a
+`FunctionCall` span's duration includes everything it calls, so the trace can name the container and
+nothing else. Two instruments therefore closed it: the script rows now carry the definition site (line +
+column) and are keyed by it, and a **V8 CPU profile** was added (`--cpu-profile`, 1,000 µs sampling,
+self time per frame, sliced into each class's own windows, with the two clocks' relation REPORTED rather
+than assumed — the profile starts 272 ms before the trace's own calibration marker and ends 4.5 s after
+the closing one, elapsed time between anchors on one clock).
+
+**What was in the window: the P23.13 Room-label free-space placer's eligibility grid.** On all-curved
+`rigid-wall-drag` the placer's rows are 57.4 % of the window's sampled time (`edgeDistance` 39.5 %,
+`pointStrictlyInside` 10.2 %, `polylineDistance` 5.9 %), and whole-run `edgeDistance` is 49,764 ms —
+17.11 %, the largest row of the entire 285-second profile. The mechanism is a product of two counts: the
+mask grid is capped by cells (≥ 8 px, 24,000 max) while a CURVED Room's boundary polyline is not, so
+every cell was paying the exact distance to every vertex of its own boundary plus every protected edge.
+
+**The fix is a product change** in `apps/editor/src/lib/editor/layout/plan-room-labels.ts`, five
+decision-neutral edits: a bounding-box lower bound that prunes the point-to-polyline distance; the
+closed-polygon walk without its per-cell `[...polygon, polygon[0]]` copy; an early exit once a cell's
+slack is already negative (the magnitude of a discarded cell is read by nothing, which is what made most
+of that arithmetic DISCARDED arithmetic); active-text inflation hoisted out of the per-cell loop plus a
+one-pass bbox; and the even-odd inside test computed PER ROW as a crossing table (same orientation, same
+expression, so it agrees bit for bit) with each cell's answer the parity of crossings strictly to its
+right, plus four direct BFS visits instead of a per-cell neighbour array. Measured across three legs of
+the same protocol and flags: the distance loop 17.11 % → **9.96 %** of sampled run time, the inside test
+4.40–5.66 % → **0.26 %**, and the placer's share of the post-release window 57.4 % → **41.0 %**
+(all-curved), 52.1 % → 37.9 % (room-creation-commit), 25.1 % → 12.7 % (owner-curved), 7.1 % → 4.4 %
+(straight). End-to-end the all-curved windows fall 17–49 % (room-creation-commit p50 213.7 → 116.7 ms).
+Stated limits: three back-to-back sessions, so only within-run shares and within-window composition are
+compared — the third leg's own window column is NOT read as a delta because its run took 354.7 s of
+sampled time against the second's 236.5 s and the one class the last change cannot touch moved 23.7 →
+65.9 ms; a sampled profile is not an instrument (inlined callees stay on their inliner); and the
+end-to-end proof still needs ONE SESSION with both code paths, which is the DEV arm pattern the room drag
+already uses. Parity: `check` 0/0, 365 test files / 5,181 tests, `test:arch` 23/254, and the placement
+suite is the teeth — re-introducing the far-edge bound fails 16 of its 28 pre-existing tests — with the
+two new curved-room tests stated as coverage rather than teeth because they pass against the wrong bound
+too.
+Record → ./pre-p23b.8-follow-up/2026-09-28-post-release-window-attribution-and-room-label-fix-record.md.
+
+## pre-P23B.8 follow-up — the Room-label placer's before/after arm, measured in ONE session — 2026-09-28 (committed 2026-09-28; DEV arm + runner rows)
+
+The record above closed with one open item: the end-to-end proof needs ONE SESSION with both code paths.
+**The placer now has that arm, and the delta is measured.** `--label-arms` runs the shipped
+`pruned-grid` against the pre-change `per-cell-grid` (kept verbatim, reachable only under DEV +
+`__P2311_PERF__`) INTERLEAVED PER ATTEMPT, and — unlike the room drag's arm, which is confined to the
+class it changed — in EVERY class, because the placer runs on every Plan render. The arm is recorded
+against the action the attempt RESOLVED to, so the runner splits each class's post-release windows by
+exactly that index: a window whose action recorded no arm is DROPPED and counted, never assigned. The
+same split is re-priced from the CPU profile with `arm::class` buckets through ONE shared sample walk.
+
+**One session, Chrome 152 headless, 19 classes, 25 attempts per class, 4,415 presented frames,
+calibration residual 0.131 ms.** All-curved 40-wall window p50 (before → after): **219.4 → 149.4**
+(`bend`), **215.8 → 146.4** (`rigid-wall-drag`), **145.6 → 100.1** (`room-creation-commit`),
+**150.0 → 102.3** (`wall-authoring`), **169.4 → 114.8 ms** (`whole-room-move-bridge`) — ratio **0.68**
+on every class. Owner-curved −8.7…−10.2 ms and connected −18.9…−19.6 ms: the three curved fixtures order
+themselves by how much boundary the grid has to measure. **The falsifier behaves like one**: on the
+straight fixture, where the grid has no long curved polyline, the same arm moves −1.7 / −2.2 / +1.4 /
+−2.8 ms (0.95–1.02), with the pre-change arm's `edgeDistance` at 95.7 ms against the shipped arm's
+0.0 ms. In self time over the same windows: all-curved 9,884 → **6,732 ms** sampled, `edgeDistance`
+3,890.5 → **898.5**, the per-cell inside test 1,006.8 → **0**, the per-cell distance helper 691.6 →
+**0**, replaced by the prune's own `segmentLowerBound` 0 → 932.7 and `polylineDistance` 0 → 586.1, GC
+274.5 → 226.6.
+
+Coverage and parity are read from the capture itself: every measured action accepted in both arms in all
+19 classes, `unassignedWindows` 0 everywhere (the 10/10 and 12/11 splits are the arithmetic of 25
+alternating attempts), and the class's MIXED release p50 landing exactly on the shipped arm's last
+window — where the median of two separated halves must land. The placement identity is asserted, not
+inferred: both arms place identical labels, readouts and sticky memory over 8 fixtures (256-vertex ring,
+concave face, every mask class, three zoom regimes, a frozen gesture). One caveat stated in the record:
+the whole-run profile row is still dominated by the OLD code (`edgeDistance` 27,487 ms / **12.17 %**, the
+largest row of the run) because it spans BOTH arms — a mixed population, and the per-arm slice is the
+readable version of the same number. Still open: the placer remains the largest single consumer inside
+those windows, so the next lever is unchanged and now one run away — the grid's existence per placement,
+not another inner-loop constant — and this arm has no Electron leg.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-arm-before-after-record.md · capture
+→ ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json.
+
+## pre-P23B.8 follow-up — the grid's walk seeded and its terms ranked, and the price of the grid's existence — 2026-09-28 (committed 2026-09-28; product change + two legs)
+
+The arm closed with the placer still the largest single consumer inside the post-release windows, so the
+grid's own walk was next — and the same arm measured it the same day. Each term's distance walk is now
+**seeded with the slack already found**: `seededPolylineDistance` returns the exact distance, or `null`
+when the term cannot come in below the seed, so a term that cannot bind is never measured and a cell the
+cheap terms already reject never walks a curved boundary at all. Whole GROUPS of segments are pruned in
+bulk against a per-polyline bounding box, and the terms are visited **cheapest-segments-first** — a
+two-part change, because the falsifier caught the first part alone. The first revision ran the mask first
+and the Room's own boundary LAST, which is right when that boundary is a flattened 256-vertex curve and
+wrong when it is a four-segment rectangle: measured at the scale the leg itself reports, that order is
+**0.61–0.95×** on the straight shapes (0.70× at 50×50 cells) against **1.47–2.35×** for the ranked order,
+with the curved shapes at 3.5–7.6×. A per-group index is likewise built only for a polyline with at
+least 8 segments — the grid is built 8–72 times per accepted action and pays whatever that costs on
+every one. Parity is asserted, not argued: every variant matched the previous engine cell by cell over
+five shapes and three grid scalings (**0 eligible-value, 0 sign mismatches**), and the arm's parity suite
+requires identical labels from all THREE grids now interleaved (the shipped `seeded-grid`, the previous
+`pruned-grid`, the pre-change `per-cell-grid`) over 8 fixtures incl. the sticky-memory second pass.
+
+**Two legs, Chrome 152 headless, three arms interleaved per attempt in every class, signed pair
+`seeded-grid` − `pruned-grid`.** All-curved 40-wall post-release window p50 **113.1 → 94.9** (`bend`),
+**107.8 → 94.9** (`rigid-wall-drag`), **104.5 → 92.5** (`room-creation-commit`), **111.1 → 81.7**
+(`wall-authoring`), **102.9 → 91.3 ms** (`whole-room-move-bridge`) — **0.73–0.89 on all five classes**,
+the CPU slice agreeing (the placer's own self time per accepted action **13.30 → 9.24 ms** across all 19
+rows; the pre-change grid reads 33.34). Owner-curved 0.89–0.99 and connected 0.71–0.90. **The falsifier
+reads 0.92–1.03** on the straight fixture — and the REJECTED first revision is committed as its own leg
+at **1.00–1.10** rather than quietly rewritten, because that reading is what shows the falsifier is
+discriminating and that what it caught was the term order, not the seeding. Calibration residual
+0.062 ms, 4,418 presented frames, `unassignedWindows` 0 in all 19 rows.
+
+**The next lever is priced, not spent.** A counter that travels with each attempt's arm record shows the
+grid is built **8–72 times per accepted action** (40 on all-curved `bend`, 30 on the straight rigid drag,
+72 on `room-creation-commit`) against **5–6 `p2311:plan-render-model` renders per accepted action**, at
+≈0.6 ms per build on the all-curved fixture — so the whole grid budget there is ≈**24 ms per accepted
+action**, and the grid's *existence* is where the remaining money is. What is NOT measured is the
+**redundant share**: the counter counts builds, not repeated inputs, and a memo over inputs that never
+repeat would remove nothing while adding a correctness surface. No memo, no cache and no key were added;
+counting the key-hit rate is the next pass's first step. Still open: the placer remains the largest single
+consumer inside those windows, and this arm still has no Electron leg.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-and-reuse-budget-record.md · the
+shipped leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json · the rejected
+revision's leg → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json.
+
+**The redundant share is now measured, and the pass stopped at the measurement.** One leg of the same
+protocol (Chrome 152 headless, residual 0.833 ms, 4,434 frames, 479 recorded attempts, 0 without a sequence
+and 0 disagreeing with their attempt's build count) keys every grid build over the inputs that determine it
+— the projected polygon, the mask with its clearances, the semantic centre, hashed over each coordinate's
+**exact bits** — and records each attempt's builds **in arrival order**. Of **14,680 builds**, **4,376
+(29.8 %)** rebuilt byte-identical inputs: **27.0 %** straight, **32.3 %** all-curved, **28.8 %** owner,
+**31.5 %** connected; **15.3 %** (`room-creation-commit`) to **50.0 %** (`whole-room-move-bridge`) per class.
+The structure is the finding: every accepted action builds the fixture's Rooms once and then rebuilds a
+**trailing subset** of them (half, or all) from identical inputs — so **no repeat is adjacent** and a 1- or
+2-entry cache hits **zero** times on every class, while a cache that holds the pass (4 entries on the
+smallest fixture, 16 on the largest here) captures all of them, i.e. the size it needs is the **Room count**
+(4–61 keys per attempt), not a constant. The straight fixture is **not** a falsifier here and the record says
+so: this is a rate, and every fixture repeats. **No memo, no cache and no key reached the product path AT THAT
+POINT**, and nothing the editor did changed then — **SUPERSEDED: a cache does reach the product path now**, see
+"IT IS NOW SHIPPED" below, so do not quote that sentence as current. What the number justifies — a cache outliving one `placeRoomLabels` call,
+sized by the Room count, keyed by a hash shipped into the product, correct only while that hash covers every
+grid input the grid ever grows, ceiling ≈**9 %** of the all-curved `bend` window — is not a local concern of
+the placer. **The census then named the pass, in the same session, DEV-only, with no product code changed:** a
+second leg records one entry per `placeRoomLabels` call — Rooms, `reason`, memory, entry time, and the range of
+the attempt's build order it produced — giving 479 actions, **2,692 calls (5.62 per action)** and **14,388
+builds with 4,084 repeats (28.4 %** against the first leg's 29.8 %, which is the reproducibility bound). **100 %
+of the repeats come from calls after the action's first, the first call of every action repeats nothing, and all
+479 actions end with a `lod` call that built a grid for every Room and was 100 % repeats.** The shape is
+identical in all 19 classes: a live `lod` pass, the gesture frames in `frozen` (**ten grids across 965 calls** —
+the placer already knows how to say *unchanged, do not rebuild*), a `geometry` pass that re-optimises the settle,
+then that trailing `lod` pass **14–36 ms later over byte-identical inputs**. So the redundancy is one extra
+**planning pass** per accepted action, not scattered repeats — and the grid half is proven while the placement
+half is not. **Then the pass was priced**, same session, DEV-only as before: a third leg times every call from its
+entry to its **one exit**, so the call's duration is the whole pass — its grids *and* the placement around them.
+p50 by call group: the action's first `lod` **4.9 ms** · middle `lod` 7.5 · middle `geometry` 8.5 · **`frozen` (no
+grid builds) 0.8 ms** · **the trailing `lod` call 8.5 ms**. The trailing pass is **6,324.8 of 23,962.5 ms of
+measured placer wall time — 26.4 %** — and against the same session's own per-arm window rows it is **24.3–35.9 %**
+of the curved post-release windows (all-curved 27.3–35.9 %, connected 24.3–32.8 %, owner 9.0–15.1 %, straight
+5.4–17.6 %; `bend` p50 **25.4 ms of a 92.6 ms window**). The `frozen` row says where the money is: those calls walk
+the same Rooms and build essentially no grid (ten grids across 965 calls) for **0.8 ms p50**, so ~7 of the trailing
+pass's 8.5 ms p50 is the grid rebuild rather than the placement walk. For scale, the previous pass's kept change
+bought **18 %** of the `bend` window, so this is the largest single remaining item this thread has priced inside
+those windows — and it is **a whole extra pass, not a fraction of one**. **On the table, not taken:** classify the
+trailing pass as unchanged (a render-path change) or give the placer a result-level memo (cross-call state keyed by
+a shipped input hash); and "skippable" still rests on identical inputs plus the placer's purity, because the
+capture does not record the pass's placement output — a DEV-only digest of each call's labels would show it.
+**Then the pass's output was digested**, same session, DEV-only: each call now also carries `labelsDigest` (every
+label's Room id, tier, both anchors, accepted rectangle, lines and the readout — what a render paints) and
+`memoryDigest`. Against the pass before it: **inputs equal 479/479 = 100 %**, but **labels equal only 229/479 =
+47.8 %** — 0 % on both 40-wall fixtures, 100 % on `connected-curved-grid-v1` and four of five `owner-40-curved-v1`
+classes. **Identical grid inputs do not imply identical labels**, because the placement has an input the grid key does
+not cover: the sticky `memory` the previous pass just wrote. That **refuses both easy fixes** — a result-level memo
+would paint the previous pass's labels, and skipping the pass would paint nothing — and leaves **exactly the grid**,
+where identical key ⇒ identical grid necessarily, whatever else differs. A grid-level memo keyed by the grid's own
+inputs is therefore the only reuse that preserves the placement that genuinely differs, and its ceiling was put at
+≈7.7 of the trailing pass's 8.5 ms p50 (≈24 % of measured placer wall time, ≈24–33 % of the curved windows).
+**That reuse was then built — as a FOURTH DEV ARM, so it is priced before it ships.** `memo-grid` is not a fourth
+grid but the SAME `seeded-grid` behind a content-addressed cache of the candidates, keyed by the grid's own exact
+inputs, cleared per attempt and bound at 256 entries; the cache lives in the DEV instrument module, so the product
+module keeps its single arm read and gains no cross-call state, and the arm can only change how MANY times a grid is
+built, never which one — parity with `seeded-grid` is therefore by construction, asserted as such with a test that
+also proves the memo HIT. In one four-arm leg (Chrome 152 headless, residual 0.120 ms, 4,426 frames, 19 class rows)
+the arm recovers **half the placer's self time** — 1108.4 ms → 548.9 ms, the grid functions in it 983.4 ms → 487.3 ms,
+read from the per-arm profile because the key counts cannot show a cache hit — and is worth a **median 15 %** of the
+post-release window (median of the 19 class p50s 38.50 → 36.08 ms, faster in **17 of 19** classes, **−15 % to −20 %**
+on the all-curved fixture; the same leg's `seeded-grid` → `pruned-grid` control reproduces the previous pass's kept
+change at 0.882). That is **less than the ≈24–33 %** the trailing pass's own p50 bracketed, because the memo skips
+that pass's BUILDS and not its placement. **IT IS NOW SHIPPED.** The reuse was promoted into the shipped path, behind its own bounded cache:
+`plan-room-labels.ts` owns one `Map` keyed by the grid's own exact-bit inputs (the key moved out of the arm
+instrument into its own module, so a shipped path is not keyed by a module whose job is to measure it — the
+instrument imports the same function and primitives, so there is exactly one implementation), bounded at 256
+entries with oldest-first eviction, and **self-invalidating** — the grid reads the projected polygon, the mask and
+the centre and nothing else, which is exactly what the key hashes, so a hit means identical inputs and therefore an
+identical grid. No invalidation owner, no shared store, no new dependency; the legacy `pruned`/`per-cell` grids
+never consult it. The arm that measured it became **`no-memo-grid`** (the same grid with the cache BYPASSED), so
+`seeded-grid` — the AFTER side and the shipped path — now includes the cache and the signed pair reads as shipped
+versus pre-change. Output identity is asserted BEFORE the timing: the parity differential runs the shipped path
+against the bypass on **every** fixture, each case requiring both that the cache was exercised and that the two
+place identical labels and sticky memory. In the promotion leg (Chrome 152 headless, residual 0.134 ms, 4,420
+frames) the bypass reproduces the pre-promotion shipped path to within 1 % (pooled grid-function self time 991.5 ms
+against the memo leg's 983.4; `bend` p50 85.1 against 88.1), and the shipped path's post-release window p50 is
+**0.694** of the bypass median — **0.630** all-curved, 0.636 connected, 0.899 owner, 0.851 straight — faster in
+**19 of 19** classes, with the grid functions' self time inside those windows falling **991.5 → 1.5 ms**. **Limit,
+stated with the number:** the protocol repeats one action per class, so a persistent cache also collects
+cross-attempt hits — the per-attempt-cleared memo leg read 0.849 against this leg's 0.694 — so that difference
+belongs to the cache outliving the attempt and to the workload's repetition, not to a claim about an arbitrary
+session; what generalises is the within-settle reuse above (~15 % of the window).
+**AND THAT LIMIT WAS THEN MEASURED INSTEAD OF LEFT STANDING.** A second workload runs the same five classes again
+under the `p23b-m1-cold:` prefix with one pan before every attempt, its direction advancing by the golden angle —
+a PAN and not a zoom, so the projected polygon is translated and the placer does the same work per action with only
+the cache key moving. One leg carries both workloads (Chrome 152 headless, 439 s, residual 2.335 ms, 10,656
+frames, 38 class rows), so the two readings are a within-leg comparison. The workload check, from the class-scoped
+key histogram: **563 distinct keys became 13,044** and the worst single key went from being rebuilt **118 times**
+to at most **6**, while the within-attempt reuse §5 measured is KEPT (28.2 % against 35.4 %, the cold side higher
+because it renders the camera move inside the attempt). Post-release window p50, shipped ÷ bypass, median per
+fixture: straight 0.829 → **0.958**, all-curved 0.620 → **0.804**, owner 0.875 → **0.960**, connected 0.621 →
+**0.859**, all 19 classes 0.739 → **0.872** — faster in **19 of 19 in both**, so the cache neither washes out nor
+regresses. Mechanically the grid functions' self time falls 970.0 → 0.0 ms on the repeat workload (100 % skipped)
+and 977.4 → 479.7 ms on the cold one (**50.9 %**): **about half the grid work the shipped cache skips is
+within-settle reuse any session gets, and about half was the geometry recurring.** **THE CACHE STAYS**, and the
+repeat-loop number stops being the headline: a per-attempt lifetime would need a NEW invalidation owner (a hook in
+the render path) to buy back a difference that exists only inside a loop, and the cold pass IS the bounded case in
+effect — a per-attempt-cleared cache and this one are the same thing whenever the geometry does not recur. So
+§15's 0.694 and this leg's 0.739 are **repeated-workload** ratios and must be quoted as such; the number a session
+can count on is **≈0.87 (about 13 % of the window), 0.80 on the all-curved fixture**. Limits: 5–6 windows per arm
+per class; the 2.335 ms clock residual is larger than the straight fixture's cold delta (0.6 ms), which is
+reported as inside the noise; the cold pass is the LOW end of a bracket and not a simulation of a user.
+Record → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-record.md · the rate leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json · the census leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json · the priced leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json · the identity leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json · the memo leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-memo-chrome-leg.json · the promotion leg →
+./pre-p23b.8-follow-up/2026-09-28-room-label-grid-promoted-cache-chrome-leg.json · the cold-workload leg (both
+workloads in one run) → ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-cold-workload-chrome-leg.json.
+(All legs above are RETAINED IN THE WORKING TREE and deliberately NOT COMMITTED since the closeout
+below — owner ruling; regenerable from the recorded runner commands. Do not read "committed" or
+"LIVE" beside any of them as current.)
+
+## pre-P23B.8 follow-up — expanded-scope closeout — 2026-09-29 (owner accepted; routine `slice-closeout`)
+
+The owner reviewed the expanded-scope branch and ruled GREEN on the performance improvement, then
+ruled an audit (findings before fixes) and ruled the three items that needed a ruling. The slice is
+CLOSED: one PR for the whole follow-up (#97 — M1 + R1 + every authorized expanded-scope pass);
+merge is the owner's action, method squash, recovery via `refs/pull/97/head`. Per the follow-up's own
+precedent no prose is compacted and no stub is created — the records, the local-only captures and the
+acceptance record (which carries the audit findings, the rulings, the expanded-scope acceptance with
+reused gate evidence, the residual ledger, the entry points and the preservation report) stay at their
+own paths in ./pre-p23b.8-follow-up/.
+
+What closed it, beyond the sections above: the audit fixes (harness `buildsPerAction.p50` median-vs-max
+regression-pinned · label-anchor ownership of the shared cache entry, guard-verified · call-site gating
+of the placer's instrument recording · core `rotatePointAbout` exported with the transient overlay drawn
+through it) and the owner rulings (rotation yaw INHERITED by associated objects, legacy convention —
+the contract test that pinned the old behaviour asserts the ruled one · BEFORE-side instrument code
+kept for future legs, prune condition is harness retirement · the thirteen compact captures de-committed
+to local-only evidence). Landed product behaviour: the transient room drag, the placer grid cache, the
+rotation path with yaw inheritance. Gates reused on the accepted head `f4611aa0`: check 0/0 · build
+editor + museum ok · visitor bundle 3 server / 9 client · test 366 files / 5,220 passed (2 + 4 skipped) ·
+arch 23/254 · perf 9 + 1 skipped · heavy 8/93. Accepted head `f4611aa0`; tag
+`closed/pre-p23b.8-follow-up` (local only — not pushed). NEXT: P23B.8's entry gate — this slice entered
+nothing into it beyond the queued-item evidence it produced; the queued items' before-P23B.8 condition
+still applies. The routine closeout re-ran no gate: it reuses the recorded acceptance evidence.
 
 ## P23B.11 closeout — 2026-09-27 (owner accepted; routine `slice-closeout`)
 
@@ -394,6 +954,44 @@ child plans and execution status →
   pre-P23B.8 follow-up decision doc (owner decisions recorded 2026-09-27; M1 + R1 RATIFIED scope;
     queued items with the before-P23B.8 condition) →
   ./2026-09-27-pre-P23B.8-follow-up-decisions.md
+  pre-P23B.8 follow-up plan (RATIFIED, EXECUTED and CLOSED 2026-09-27 — the M1 protocol on both
+    runtimes, the R1 ranking method, and the two separable DEV-only instrumentation items; executed
+    head `b6f2203b` on a clean tree; measurement and ranking only) →
+  ./pre-p23b.8-follow-up/2026-09-27-pre-P23B.8-follow-up-plan.md
+  pre-P23B.8 follow-up records (S2 Chrome leg · S3 Electron leg + pair tables · S4 M1 session —
+    gesture frames · presented frame · long-frame incidence · D7 · D13 · R1 ranking · acceptance
+    record + preservation report) → ./pre-p23b.8-follow-up/
+  pre-P23B.8 follow-up local-only captures (regenerable runner output, RETAINED IN THE WORKING
+  TREE, deliberately NOT COMMITTED since the expanded-scope closeout — owner ruling; each record
+  carries the runner command that regenerates its leg) →
+  ./pre-p23b.8-follow-up/2026-09-28-M1-arms-chrome-leg.json (the arms run: per-arm frame series and the
+    within-session before/after) · ./pre-p23b.8-follow-up/2026-09-28-M1-label-arms-chrome-leg.json (the
+    Room-label arm leg: per-class `labelArms` assignment, per-arm window rows and the per-arm CPU slice)
+  · ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json (the shipped seeded,
+    ranked, index-gated grid: the three-arm `labelArms` rows with the signed pair `seeded-grid` −
+    `pruned-grid`, its per-arm CPU slice, and each class's `buildsPerAction` grid-build budget) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-first-revision-chrome-leg.json (the REJECTED first
+    revision's leg, kept because its straight-fixture reading is what made the falsifier discriminating) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json (the repeat-rate leg: every
+    recorded attempt's `byAction[].keySequence` in arrival order, each class's grid-build key histogram with
+    its repeat count, and the `buildsPerAction` budget beside them) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-call-census-chrome-leg.json (the census leg, carrying the
+    same plus `byAction[].labelCalls`: one entry per `placeRoomLabels` call with its Rooms, `reason`, memory,
+    entry time and the range of the attempt's build order it produced — which is what attributes each repeat
+    to the call that built it) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-pass-cost-chrome-leg.json (the priced leg: the same
+    `labelCalls` plus `durationMs`, each call's wall time from entry to its one exit — which is what prices the
+    trailing pass against the same session's windows) ·
+  ./pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json (the identity leg: the same
+    `labelCalls` plus `labelsDigest` and `memoryDigest` — which is what shows that identical grids do NOT mean
+    identical labels, and narrows any fix to reusing the grid alone)
+  · ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-chrome.json ·
+  ./pre-p23b.8-follow-up/2026-09-27-M1-restore-split-electron.json
+  pre-P23B.8 follow-up M1 LEG captures — `2026-09-27-M1-{chrome,electron}-leg.json` — are RETAINED IN
+  THE WORKING TREE and deliberately NOT COMMITTED (exact repository-root `.gitignore` paths, reason
+  stated there, with the thirteen legs above since the closeout): ~40k pretty-printed runner lines
+  each. Every row any record is cited for is in the records above, and the S2/S3 records carry the
+  runner commands that regenerate them.
 measurement evidence (P23B.0 — archived read-only reports; NOT benchmark baselines) →
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-a-12-curved-walls.md
   p23b.0-measurement-foundation/2026-09-22-P23B.0-read-only-pass-b-owner-40-curved-walls.md
@@ -641,8 +1239,11 @@ P23B.11 wall-chain release-delay follow-up — SHIPPED and closed 2026-09-27 (on
 **Startup stop:** a reader has what this phase currently needs once status, the SEQUENCE block, the phase
 gate and the ROUTE block are read. P23B.3a, P23B.0, P23B.4, P23B.5, P23B.6, P23B.7 and P23B.11 are
 shipped and closed (each with its own closed stubs, anchor and tag); the P23B.1 harvest and P23B.2
-research report retain their own review statuses. The pre-P23B.8 follow-up is the next separately
-routed step (M1 + R1; starts only on the owner's go). P23B.8 remains unratified and unauthorized; P26
+research report retain their own review statuses. The pre-P23B.8 follow-up (M1 + R1 plus the authorized
+expanded scope) is EXECUTED, owner-accepted and CLOSED — records, local-only captures and acceptance
+record → ./pre-p23b.8-follow-up/; tag `closed/pre-p23b.8-follow-up`, local only. NEXT is P23B.8's entry
+gate: the queued items' before-P23B.8 condition still applies — each must be ratified, or explicitly
+routed to P23B.8 / P26, before entry. P23B.8 remains unratified and unauthorized; P26
 implementation and validation remain gated. Later
 optimization slices remain downstream of the shipped P23B.4 key grammar and its owner gate.
 
