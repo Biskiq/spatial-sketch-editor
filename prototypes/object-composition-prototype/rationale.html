@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Objects &amp; Assemblies — rationale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/doc.css">
+</head>
+<body>
+<header class="top"><b>Biskiq · Commission 2 — Objects &amp; Assemblies</b>
+  <nav aria-label="Commission pages"><a href="index.html">Prototype</a><a href="rationale.html" aria-current="page">Rationale</a><a href="specimens.html">Specimens</a><a href="HANDOFF.md">Handoff</a><a href="README.md">README</a></nav>
+</header>
+<main class="page wide">
+<div class="kicker">Unratified design proposal · 2026-09-27</div>
+<h1>Compose a reusable display light</h1>
+<p class="lede">An object-first home in Biskiq: bring material in and learn what it honestly supports, combine it into something reusable, place several uses, change one or all of them on purpose, and accept or repair a revision without losing track of what changed.</p>
+<p class="note">This is a design proposal, not a description of shipped behaviour. Production today has catalogue models, primitives, lights and clusters — not definitions, components, attachments or offered revisions. Wherever this page says “the prototype does…”, it means the prototype. Usability conclusions are <span class="hyp">hypothesis</span> — nobody has tested it with users yet.</p>
+
+<ol class="toc">
+  <li><a href="#proposition">The proposition in one screen</a></li>
+  <li><a href="#journey">Journey &amp; state map</a></li>
+  <li><a href="#terms">Terminology and scope rules</a></li>
+  <li><a href="#lifetimes">Lifetimes and their cues</a></li>
+  <li><a href="#selection">Selection depth, names and return</a></li>
+  <li><a href="#compare">Contextual reach vs Definition bench</a></li>
+  <li><a href="#revision">Revisions, repair and reuse</a></li>
+  <li><a href="#rejected">Rejected alternatives</a></li>
+  <li><a href="#departures">Proposed departures from PLATE / P26</a></li>
+  <li><a href="#access">Keyboard, focus, reduced motion, density</a></li>
+  <li><a href="#hypotheses">Usability hypotheses and how to test them</a></li>
+</ol>
+
+<h2 id="proposition">1. The proposition in one screen</h2>
+<div class="grid3">
+  <div class="card"><h3>Begin with an object</h3><p>An empty project says “no room is needed”. The Contents list opens with <b>In this world</b>, not a Room. Architecture can arrive later as its own <b>Layout</b> section; objects stay world-local and nothing gets re-parented under it.</p></div>
+  <div class="card"><h3>Say what arrived</h3><p>Every import produces a capability card: <b>Supported</b>, <b>Found, not active</b> (a clip that won't play until you bind or preview it), <b>Not supported</b>. The flat relief states plainly that its 14 meshes are render data, not parts.</p></div>
+  <div class="card"><h3>Show reach before the edit</h3><p>Hovering a value previews it in the viewport on <i>exactly</i> the uses it would reach. Uses that won't change get a “◆ keeps its own” tag. Reach is part of the control, not a mode buried in a menu.</p></div>
+  <div class="card"><h3>Keep lifetimes apart</h3><p>Accepted edits, a view-only separation, a runtime preview and an offered revision each have their own line style, glyph and word. None of them turns into another without an explicit action.</p></div>
+  <div class="card"><h3>Revision as a decision</h3><p>An offered revision is compared before anything changes: linked, kept, not allowed now, unresolved. Repairs are chosen per use. Accepting is one action with one Undo; if someone else wrote in the meantime, Accept is refused.</p></div>
+  <div class="card"><h3>Reuse with a clear choice</h3><p>A second project uses the definition by reference with a retained copy. When a new revision arrives it can <b>accept</b>, <b>stay pinned</b> (same identity, offer kept) or <b>fork</b> (a new identity, no more offers).</p></div>
+</div>
+
+<h2 id="journey">2. Journey &amp; state map</h2>
+<p>The brief's six steps run left to right. The five horizontal bands are <b>lifetimes</b>: only arrows that end in the top band write accepted work. Everything in the temporary, refused and cancelled bands leaves the project exactly as it was. The prototype's presenter (<kbd>J</kbd>) can set up any column directly.</p>
+<figure>
+<svg class="map" viewBox="0 0 1210 600" role="img" aria-labelledby="mapT mapD" xmlns="http://www.w3.org/2000/svg">
+<title id="mapT">Journey and state map</title><desc id="mapD">Six scenario steps across five lifetimes: accepted project, temporary view, pending decision, refused or cancelled, and another project. Arrows show which transitions write accepted work; everything in the temporary, refused and cancelled lanes leaves the project unchanged.</desc>
+<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="#252A2E"/></marker></defs>
+<style>.l{font:600 11px Onest,sans-serif;fill:#252A2E}.s{font:400 10px Onest,sans-serif;fill:#545C62}.n{font:500 10.5px Onest,sans-serif;fill:#252A2E}.h{font:600 10.5px Onest,sans-serif;fill:#A37A3D;letter-spacing:.05em}.e{font:500 9px "Martian Mono",monospace;fill:#146D68}</style>
+<rect x="10" y="64" width="1190" height="90" rx="4" fill="#FFFFFF" fill-opacity=".5"/>
+<text class="l" x="20" y="86">Accepted project</text><text class="s" x="20" y="101">one action · one Undo</text>
+<rect x="10" y="168" width="1190" height="90" rx="4" fill="#E0E7EA" fill-opacity=".5"/>
+<text class="l" x="20" y="190">Temporary</text><text class="s" x="20" y="205">⬚ view only · ▶ preview</text>
+<rect x="10" y="272" width="1190" height="90" rx="4" fill="#F4E5C6" fill-opacity=".5"/>
+<text class="l" x="20" y="294">Pending decision</text><text class="s" x="20" y="309">intake · sheet · offer</text>
+<rect x="10" y="376" width="1190" height="90" rx="4" fill="#F2DADF" fill-opacity=".5"/>
+<text class="l" x="20" y="398">Refused / cancelled</text><text class="s" x="20" y="413">nothing half-applied</text>
+<rect x="10" y="480" width="1190" height="90" rx="4" fill="#EDE7F6" fill-opacity=".5"/>
+<text class="l" x="20" y="502">Other project</text><text class="s" x="20" y="517">library · simulated</text>
+<text class="h" x="184" y="40">1 IMPORT TRUTHFULLY</text>
+<line x1="176" y1="52" x2="176" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<text class="h" x="354" y="40">2 COMPOSE · 2 USES</text>
+<line x1="346" y1="52" x2="346" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<text class="h" x="524" y="40">3 INSPECT · PREVIEW</text>
+<line x1="516" y1="52" x2="516" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<text class="h" x="694" y="40">4 BAY · HANG</text>
+<line x1="686" y1="52" x2="686" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<text class="h" x="864" y="40">5 OFFERED REV 2</text>
+<line x1="856" y1="52" x2="856" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<text class="h" x="1034" y="40">6 REUSE ELSEWHERE</text>
+<line x1="1026" y1="52" x2="1026" y2="576" stroke="#C1C7CB" stroke-width="1"/>
+<path d="M261,280 L261,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M300,316 L300,384" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M480,280 L480,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M400,176 L400,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M570,176 L570,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M570,256 L570,280" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M650,280 L650,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M771,108 L771,280" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M771,316 L771,384" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M941,280 L941,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M892,316 L892,384" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M919,384 L919,316" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M980,316 L980,384" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M1150,488 L1150,316" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M1072,488 L1072,420" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<path d="M1111,280 L1111,108" stroke="#252A2E" stroke-width="1.1" fill="none" marker-end="url(#ar)"/>
+<rect x="184" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="191" y="294">Intake card</text><text class="s" x="191" y="308">checking → ready</text>
+<rect x="184" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="191" y="86">Desk light + Tide relief</text><text class="s" x="191" y="100">D-DK12 · D-TR05 (flat)</text>
+<rect x="184" y="384" width="75" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="191" y="398">Enter relief</text><text class="s" x="191" y="412">“render data”</text>
+<rect x="265" y="384" width="73" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="272" y="398">Cancel</text><text class="s" x="272" y="412">nothing added</text>
+<rect x="354" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="361" y="86">Display light D-DL01 ×2</text><text class="s" x="361" y="100">B: ◆ black · ◆ 50° · Group</text>
+<rect x="354" y="176" width="95" height="36" rx="3" fill="#FFFFFF" stroke="#56707C" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text class="n" x="361" y="190">Reach halo</text><text class="s" x="361" y="204">on hover</text>
+<rect x="354" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="361" y="294">Make reusable…</text><text class="s" x="361" y="308">next to Group</text>
+<rect x="524" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="531" y="86">A: glass ◆ clear</text><text class="s" x="531" y="100">accepted · own Undo</text>
+<rect x="524" y="176" width="95" height="36" rx="3" fill="#FFFFFF" stroke="#56707C" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text class="n" x="531" y="190">Inspect ⬚</text><text class="s" x="531" y="204">parts apart</text>
+<rect x="524" y="220" width="95" height="36" rx="3" fill="#FFFFFF" stroke="#56707C" stroke-width="1.3" stroke-dasharray="4 3"/>
+<text class="n" x="531" y="234">Preview ▶</text><text class="s" x="531" y="248">tilt arc</text>
+<rect x="524" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="531" y="294">Keep this pose…</text><text class="s" x="531" y="308">explicit scope</text>
+<rect x="694" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="701" y="86">Bay (Layout) · hang B</text><text class="s" x="701" y="100">wall move = Layout only</text>
+<rect x="694" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="701" y="294">Remove wall?</text><text class="s" x="701" y="308">set down | keep ✕ host</text>
+<rect x="694" y="384" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="701" y="398">Cancel</text><text class="s" x="701" y="412">wall + attachment kept</text>
+<rect x="694" y="428" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="701" y="442">Across the window</text><text class="s" x="701" y="456">refused · fix shown</text>
+<rect x="864" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="871" y="86">Accept rev 2</text><text class="s" x="871" y="100">one action · one Undo</text>
+<rect x="864" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="871" y="294">Review rev 2</text><text class="s" x="871" y="308">linked · kept · ! · ✕</text>
+<rect x="864" y="384" width="75" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="871" y="398">Stale</text><text class="s" x="871" y="412">refused</text>
+<rect x="945" y="384" width="73" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="952" y="398">Stay / Cancel</text><text class="s" x="952" y="412">offer stays</text>
+<rect x="1034" y="72" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#252A2E" stroke-width="1.3"/>
+<text class="n" x="1041" y="86">Café: Accept or Fork</text><text class="s" x="1041" y="100">Undo → rev 1 + offer</text>
+<rect x="1034" y="280" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#8A5A00" stroke-width="1.3"/>
+<text class="n" x="1041" y="294">Rev 2 offered to café</text><text class="s" x="1041" y="308">Accept · Stay · Fork</text>
+<rect x="1034" y="384" width="75" height="36" rx="3" fill="#FFFFFF" stroke="#9B3149" stroke-width="1.3"/>
+<text class="n" x="1041" y="398">Library off</text><text class="s" x="1041" y="412">copy renders</text>
+<rect x="1034" y="488" width="154" height="36" rx="3" fill="#FFFFFF" stroke="#6B4FA0" stroke-width="1.3" stroke-dasharray="1.5 2.5"/>
+<text class="n" x="1041" y="502">Library rev 1 → café</text><text class="s" x="1041" y="516">reference + retained copy</text>
+<rect x="264" y="186" width="23" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="267" y="195">Add</text>
+<rect x="483" y="186" width="28" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="486" y="195">Make</text>
+<rect x="403" y="134" width="34" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="406" y="143">Click</text>
+<rect x="573" y="134" width="28" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="576" y="143">edit</text>
+<rect x="653" y="186" width="28" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="656" y="195">Keep</text>
+<rect x="944" y="186" width="40" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="947" y="195">Accept</text>
+<rect x="922" y="342" width="51" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="925" y="351">re-check</text>
+<rect x="1114" y="186" width="40" height="12" rx="2" fill="#F5F2E9"/><text class="e" x="1117" y="195">Accept</text>
+</svg>
+
+<figcaption>Solid black arrow = user action. Bands: white = accepted project · slate dashed = temporary (view only / preview) · amber = pending decision · red = refused / cancelled · violet dotted = another project or the library (simulated storage).</figcaption>
+</figure>
+<table>
+  <thead><tr><th>Step</th><th>What the creator does</th><th>What it proves</th><th>Failure / alternate path in the prototype</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Imports <code>desk-lamp.glb</code> and <code>tide-relief.glb</code>, reads the capability card, adds both.</td><td>Truthful ingest. Nothing plays because it was imported. Provenance is one disclosure away. The flat model's meshes don't become parts.</td><td>Cancel import. Double-clicking the relief is refused with the reason.</td></tr>
+    <tr><td>2</td><td>Rests the lamp on a plinth, <b>Make reusable</b> “Display light”, places a second use, gives it a black shade and a 50° arm, groups the first use with the relief.</td><td>Definition vs use vs component vs group are different acts with different words. Resting on the plinth is placement, not attachment. Two uses with the same name stay distinguishable.</td><td>Group is offered next to Make reusable, with its consequence (“organizes only”). Hover a value to see its reach, then leave it: nothing changes.</td></tr>
+    <tr><td>3</td><td>Inspects the first light (parts separate), sets clear glass, returns; previews the arm articulation and ends it.</td><td>The separation is presentation only and disappears on return. The glass edit stays, listed in the return summary with its own Undo. The preview writes nothing.</td><td><b>Keep this pose…</b> is the only way a previewed pose becomes authored, and it asks for a scope.</td></tr>
+    <tr><td>4</td><td>Adds the prepared bay, hangs the second light on the back wall, moves the wall back in Layout mode.</td><td>Layout owns the wall; the move is recorded as Layout-only in history. The hung light follows because of a declared attachment; the light merely near the wall does not.</td><td>Hanging across the window is refused next to the pointer, with the fix. Removing the wall offers “set down” or “keep as host removed”, or Cancel.</td></tr>
+    <tr><td>5</td><td>Desk light rev 2 arrives. The creator reviews it, chooses repairs, and accepts.</td><td>Shade→Hood stays linked by declared id; a mesh called <code>diffuser_ring</code> is shown but not linked. The finish override is kept, the 50° arm is not allowed now, the glass setting is unresolved. References that need review are listed.</td><td>Another writer changes the project mid-review: Accept is refused and the review is re-checked. Stay on rev 1, Cancel, or detach one use (a new identity).</td></tr>
+    <tr><td>6</td><td>Shares Display light to the Studio library, uses it in Harbour café, publishes rev 2 from Saltmarsh, reviews it in the café.</td><td>The café changes only when someone there accepts. Accept, Stay pinned and Fork each have a different identity outcome. Undo returns to rev 1 and brings the offer back.</td><td>Make the library unavailable: the retained copy still renders, offers can't be checked, nothing is silently dropped.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="terms">3. Terminology and scope rules</h2>
+<table>
+  <thead><tr><th>Word in the UI</th><th>What it means</th><th>Rule</th></tr></thead>
+  <tbody>
+    <tr><td><b>Definition</b></td><td>A reusable thing: imported (<code>D-DK12</code> Desk light), flat (<code>D-TR05</code>), or a composition made here (<code>D-DL01</code> Display light). Typed resource, versioned on its own.</td><td>Edits to it reach every use that doesn't keep its own value. The UI never says “prefab” or “asset”.</td></tr>
+    <tr><td><b>Use</b></td><td>One placement of a definition in this world (<code>U-A4D1</code>, <code>U-B7Q2</code>). Owned by Scene.</td><td>Has its own placement and only the overrides the definition allows. Duplicating makes another use, never a copy of the definition.</td></tr>
+    <tr><td><b>Component</b> / <b>part</b></td><td>A component is a definition placed inside a composition (Lamp, Plinth). A part is a declared, stable-id piece of an imported model (Base, Arm, Shade, Diffuser).</td><td>Only declared parts exist. Render meshes (<code>bulb_glow</code>, <code>cable_01</code>) are never selectable parts.</td></tr>
+    <tr><td><b>Group</b></td><td>An organisational set of uses.</td><td>“Organizes only”: no identity for its members, no reuse, no physical link. Dissolving it changes no placement.</td></tr>
+    <tr><td><b>Hung on</b> (attachment)</td><td>A declared relationship between a use's mount and a Layout host (wall + distance along + height).</td><td>Proximity is never attachment. A host move carries hung uses; a host removal needs a decision.</td></tr>
+    <tr><td><b>Rests on</b></td><td>Placement on top of something, derived at drop time.</td><td>Written as placement only; later moves of the support don't carry it.</td></tr>
+    <tr><td><b>This use / Every use</b></td><td>The reach control for a value edit.</td><td>Every use means “the definition's default”; uses with their own value keep it and say so.</td></tr>
+    <tr><td><b>Offered revision</b></td><td>A newer source or library revision that has not been accepted here.</td><td>Nothing changes until someone in this project accepts it. Staying pinned is a real choice, not a failure.</td></tr>
+    <tr><td><b>Detach</b> / <b>Fork</b></td><td>Make an independent definition from one use / from a library definition.</td><td>Always a new identity with provenance (“forked from…”). Never a silent rename of the old one.</td></tr>
+  </tbody>
+</table>
+<h3>Scope rules the prototype enforces</h3>
+<ul>
+  <li><b>Identity is never a name or a path.</b> Both lights are called “Display light”; the UI tells them apart with their reference (<code>U-A4D1</code>), their place, and a viewport highlight. Renaming a component or a use changes nothing that points at it.</li>
+  <li><b>Correspondence is declared, not guessed.</b> Revision comparison uses the file's part manifest ids. Similar names (<code>diffuser_ring</code> vs Diffuser) are pointed out as <i>not linked</i>.</li>
+  <li><b>One accepted action, one Undo, one set of domains.</b> Every history entry lists the domains it touched (Scene, Layout, Resources). Removing a wall that hosts a light is one cross-domain entry.</li>
+  <li><b>Stale writers are refused.</b> A review is prepared against a project revision; if the project moved on, Accept is refused and the review re-checks.</li>
+  <li><b>View return is not Undo.</b> Leaving an inspection restores the view; it never reverts edits. Undo never moves the camera.</li>
+</ul>
+
+<h2 id="lifetimes">4. Lifetimes and their cues</h2>
+<p>No state is carried by colour alone: each one has a glyph, a word and a line style too, and each looks the same on the model, in the Contents list and in the Inspector.</p>
+<table>
+  <thead><tr><th>Cue</th><th>Lifetime</th><th>Where you see it</th><th>Leaves by</th></tr></thead>
+  <tbody>
+    <tr><td><span class="cue inh">↳ inherited</span></td><td>Value comes from the definition (or its source).</td><td>Inspector rows; “from Display light” provenance.</td><td>Setting a value for this use.</td></tr>
+    <tr><td><span class="cue own">◆ this use</span></td><td>An allowed override on one use.</td><td>Inspector row edge, Contents badge ◆n, “◆ keeps its own” tag in reach halos.</td><td>Revert (↺), or “Make this the default for every use”.</td></tr>
+    <tr><td><span class="cue bad">! not allowed now</span></td><td>An override the current definition no longer permits (50° arm vs a 45° limit).</td><td>Review table, Inspector, issue tag on the model.</td><td>Clamp, drop, or detach.</td></tr>
+    <tr><td><span class="cue gone">✕ unresolved</span></td><td>Points at something that no longer exists (removed Diffuser, removed host).</td><td>Dashed red outline, marker at the last known place.</td><td>Repair, drop, or keep visibly unresolved.</td></tr>
+    <tr><td><span class="cue view">⬚ view only</span></td><td>Temporary inspection separation.</td><td>Slate dashed leaders, strip “Inspecting — view only”.</td><td>Esc / Done. Nothing is written.</td></tr>
+    <tr><td><span class="cue run">▶ preview, not saved</span></td><td>Runtime evaluation of an articulation.</td><td>Violet arc with limits, baseline and running dot.</td><td>End preview. Only <b>Keep this pose…</b> writes.</td></tr>
+    <tr><td><span class="cue rev">◐ needs review</span></td><td>An offered revision or a presentation reference affected by one.</td><td>Offers button, Definition badge, reference list.</td><td>Accept, Stay, Cancel.</td></tr>
+    <tr><td><span class="cue draft">✎ draft</span></td><td>Bench approach only: unapplied definition edits.</td><td>Bench strip, draft count.</td><td>Apply or Discard.</td></tr>
+    <tr><td><span class="cue reach">→ changes</span></td><td>Hover preview of an edit's reach.</td><td>Teal dashed halos + legend in the viewport.</td><td>Pointer leaves. Nothing is written.</td></tr>
+    <tr><td><span class="cue tape">0.50 m</span></td><td>A typeable dimension during a gesture.</td><td>Along-wall and offset tapes.</td><td>Typing a value or releasing the gesture.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="selection">5. Selection depth, names and return</h2>
+<ul>
+  <li><b>Click</b> selects the outermost thing in the current context (a use, or a group when you're outside it). <b>Double-click</b> or <kbd>Enter</kbd> goes one level in; <kbd>Esc</kbd> goes one level out. <kbd>Alt</kbd>-click goes straight to the deepest declared part. <kbd>[</kbd> / <kbd>]</kbd> step between siblings at the current depth; <kbd>Tab</kbd> leaves the canvas for the next control.</li>
+  <li>The strip shows a breadcrumb (<i>Display light U-B7Q2 › Lamp › Shade</i>) whenever you are inside something, so the context is visible without the Contents list.</li>
+  <li>Hidden and enclosed parts (the Diffuser sits inside the Shade) are reachable from Contents and Find; the viewport then draws an edge beacon and suggests Inspect, answering “why can't I see it?”.</li>
+  <li>Duplicate names are always shown with their reference; Find (<kbd>/</kbd> or <kbd>⌘K</kbd>) lists kind and location for every hit.</li>
+  <li>The Inspector is property-first: the value, its lifetime cue, its reach control; identity and IDs live under <b>Technical details</b>.</li>
+</ul>
+
+<h2 id="compare">6. Contextual reach vs Definition bench</h2>
+<p>The brief asks for a comparison between a direct contextual approach and a more explicit resource-editing surface, judged on <i>predictability</i> rather than clicks. Both are built; the presenter's <b>Compare</b> toggle (or <code>?approach=bench</code>) switches them over the same fixture.</p>
+<div class="grid2">
+  <div class="card pick"><h3>A. Contextual reach <span class="cue reach">default</span></h3>
+    <p>Edit in place. Each value row has a reach control: <b>This use</b> or <b>Every use</b>. Hovering an option previews the value on exactly the uses it would reach, with “◆ keeps its own” on uses that won't change. One click commits; the return summary lists what changed and offers Undo.</p>
+    <p><b>Strengths:</b> the edit happens where the object is; reach is visible before commit; no mode to enter or leave.</p>
+    <p><b>Risks:</b> an accidental Every use is one click away (mitigated by preview + summary + Undo); several definition edits in a row have no shared draft.</p></div>
+  <div class="card"><h3>B. Definition bench</h3>
+    <p>Value rows in the world only offer <b>This use</b>. To change the definition you open its bench: the world is swapped for a single specimen on a disc, edits collect as <span class="cue draft">✎ draft</span>, and <b>Apply</b> commits them as one action listing how many uses change.</p>
+    <p><b>Strengths:</b> a very clear “I am editing the definition” boundary; several edits batch into one accepted action; Discard is honest.</p>
+    <p><b>Risks:</b> you lose sight of the placed uses while you edit (the band of use chips is a weak substitute); it's another place to learn; small edits cost more.</p></div>
+</div>
+<p><b>Recommendation <span class="hyp">hypothesis</span>:</b> make contextual reach the default and keep the bench as the place for multi-value definition work (and for definitions with no use in view). The deciding factor is that reach is predictable <i>at the point of decision</i> in A, while B makes it predictable only after you've navigated away from the uses it affects. This should be tested with the brief's first exercise (“change only the second light, then improve the shared definition, then inspect without editing”) and a count of wrong-scope edits in each version.</p>
+
+<h2 id="revision">7. Revisions, repair and reuse</h2>
+<ul>
+  <li>The review swaps the Inspector for a wider comparison (384 px) with four blocks: <b>parts</b> (same, changed, removed, new, look-alikes that aren't linked), <b>values</b>, <b>effect on each use</b> (with a radio for each repair and a “detach this use” checkbox), and <b>presentation references</b>.</li>
+  <li>The viewport can show rev 1, rev 2, or both (the accepted revision as a slate ghost behind the offered one).</li>
+  <li>Every repair defaults to <b>keep</b> (visibly unresolved) rather than a destructive guess. Accept is still allowed with unresolved items; they stay flagged.</li>
+  <li>Detaching creates a new definition locked to the old revision: new identity, provenance kept.</li>
+  <li>Library reuse keeps a <b>retained copy</b> in the project, so unavailability degrades to “can't check offers”, not “missing object”. Storage, network and the library are simulated and labelled as such.</li>
+</ul>
+
+<h2 id="rejected">8. Rejected alternatives</h2>
+<table>
+  <thead><tr><th>Alternative</th><th>Why it was rejected</th></tr></thead>
+  <tbody>
+    <tr><td>Classic scene-tree hierarchy as the primary surface</td><td>It makes hierarchy paths look like identity and turns groups, definitions and attachments into the same indentation. Contents stays, but grouped by kind of truth (world, Layout, definitions, references), with badges for relationships.</td></tr>
+    <tr><td>Prefab “open to edit” as the only way to change a definition</td><td>This is option B taken alone: predictable but slow, and it hides the uses you're affecting. Kept as the bench, not the default.</td></tr>
+    <tr><td>Name/mesh-order matching for revisions</td><td>It's the failure the brief warns about. The prototype shows look-alikes explicitly as <i>not linked</i> and relies on declared ids only.</td></tr>
+    <tr><td>Auto-repair on accept (clamp everything, drop the missing)</td><td>It hides loss. The default is to keep things visibly unresolved; repairs are chosen.</td></tr>
+    <tr><td>Snap-to-wall means attached</td><td>Proximity isn't attachment. Hanging is a separate tool with a mount, refusals and a tape; objects near a wall say “near, not attached”.</td></tr>
+    <tr><td>Exploded view as an editing mode</td><td>A displaced part would need an inverse transform to edit safely. Inspection is view-only; edits inside it are value edits and are listed on return.</td></tr>
+    <tr><td>Architecture as a special group (“Room”)</td><td>That would merge Layout into Scene. The bay arrives as its own Layout section with its own mode and history domain.</td></tr>
+    <tr><td>A permanent asset browser panel</td><td>Too much chrome for a one-object start. Import and library are sheets; definitions live in Contents.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="departures">9. Proposed departures from PLATE / P26</h2>
+<p>These are proposals. They don't amend the shell contract.</p>
+<table>
+  <thead><tr><th>Departure</th><th>Problem it solves</th></tr></thead>
+  <tbody>
+    <tr><td><b>Object-first Contents</b>: sections “In this world”, “Architecture · Layout”, “Definitions”, “Used by presentations” instead of a Room-first tree.</td><td>Lets a project start without a Room and keeps Layout visibly separate when it arrives. Challenges the museum/Room-first Navigator assumption, as the brief asks.</td></tr>
+    <tr><td><b>Wider Inspector (384 px) during review and intake only.</b></td><td>The correspondence table and per-use repair choices don't fit 300 px without horizontal scrolling. It goes back to normal width afterwards.</td></tr>
+    <tr><td><b>Reach control inside value rows.</b></td><td>PLATE value rows have no notion of scope; this adds one compact segmented control plus a hover preview.</td></tr>
+    <tr><td><b>Lifetime palette</b> (slate view-only, violet preview, amber needs-review, teal reach) added to the state language.</td><td>The brief needs inherited, override, inspection displacement and runtime action told apart. Each also has a glyph and line style, so hue is never the only carrier.</td></tr>
+    <tr><td><b>Presenter panel</b> (dark, labelled “not part of the product”).</td><td>Direct access to every state for review. Like P26's tutorial controller, it stays outside the product.</td></tr>
+    <tr><td>Camera station disabled on the spine.</td><td>Out of scope for this commission; shown so the shell reads correctly.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="access">10. Keyboard, focus, reduced motion, density</h2>
+<ul>
+  <li><b>Keyboard:</b> Contents is a roving-tabindex tree (<kbd>↑↓←→</kbd>, <kbd>Enter</kbd>); the canvas takes brackets for siblings, <kbd>Enter</kbd>/<kbd>Esc</kbd> for depth and arrows for nudging or orbiting. <kbd>Tab</kbd> exits to controls. Hang has a host selector and exact along-wall/height fields; the wall handle is focusable and moves with arrows. Sheets cycle focus, and Find announces its active result and returns focus on close. <kbd>?</kbd> lists the keys.</li>
+  <li><b>Focus:</b> an ink ring offset from the element, separate from selection blue and hover lift.</li>
+  <li><b>Reduced motion</b> (<code>?motion=reduced</code>, the OS setting, or the viewbar toggle): camera moves become cuts, intake checking is instant, and the articulation preview shows its two limits as static ghosts plus the chosen pose instead of a sweep — the same <i>meaning</i> (range, baseline, current) without motion.</li>
+  <li><b>Density:</b> <code>?density=compact</code> and widths below 1280 / 1080 px narrow the Contents list and Inspector and tighten rows. Contextual instruments wrap so their acceptance/return controls remain reachable; see the <a href="specimens.html#density">narrow specimen</a>.</li>
+</ul>
+
+<h2 id="hypotheses">11. Usability hypotheses and how to test them</h2>
+<p>None of this has been tested with users. Each line is a <span class="hyp">hypothesis</span> with the observation that would disprove it.</p>
+<table>
+  <thead><tr><th>Hypothesis</th><th>Would be disproved if…</th></tr></thead>
+  <tbody>
+    <tr><td>Hover reach halos let creators predict which uses change before they commit.</td><td>More than 1 in 5 participants commit an Every-use edit when asked to change only the second light.</td></tr>
+    <tr><td>“Make reusable” next to “Group”, each with its consequence, prevents grouping from being mistaken for reuse.</td><td>Participants expect a group member to follow another's finish change.</td></tr>
+    <tr><td>View-only slate cues let creators tell inspection from editing.</td><td>Participants believe the separated layout persists or needs undoing after return.</td></tr>
+    <tr><td>Creators can tell ! not allowed now from ✕ unresolved and pick different repairs.</td><td>Participants choose the same repair for both without reading, or can't explain the difference.</td></tr>
+    <tr><td>Accept / Stay pinned / Fork are understood as different identity outcomes.</td><td>Participants expect a fork to keep receiving library revisions, or stay pinned to lose the offer.</td></tr>
+    <tr><td>Renaming a component during the exercise doesn't break identity comprehension.</td><td>After a rename, participants think references or overrides were lost.</td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>
