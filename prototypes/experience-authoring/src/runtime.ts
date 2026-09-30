@@ -1,4 +1,4 @@
-import { capability, cueSeconds, definition, encounterName, interruption, orderedViews, positionName, positionView, resolvedDuration, resolveNext, solveView, useName, validate, viewStep, type Document, type Position, type SignalRef, type Speed, type Use, type Value, type Vec3 } from './model';
+import { capability, cueSeconds, definition, encounterName, entryViewUse, interruption, positionName, positionView, resolvedDuration, resolveNext, solveView, useName, validate, viewStep, type Document, type Position, type SignalRef, type Speed, type Use, type Value, type Vec3 } from './model';
 import { lerpPose, smoothstep, travelSeconds, type CameraPose } from './camera';
 import { BREATHING, positionPlan } from './presentation';
 export type Activity = { useId: string; status: 'waiting' | 'running' | 'paused' | 'complete' | 'stopped' | 'unavailable'; elapsed: number; duration: number | null; startValue?: Value; value?: Value; reason?: string };
@@ -124,7 +124,7 @@ export function createRuntime(d: Document, autoplay = false, pose: CameraPose | 
   if (start.kind === 'encounter' && d.experience.encounters[start.encounterId]) {
     // Standalone Presentation preview: never enters a Guide Stop and creates no bookmark.
     enterEncounter(r, d, start.encounterId);
-    const view = orderedViews(d, start.encounterId)[0] ?? null; if (view) requestCamera(r, d, view, null, true); else holdViewpoint(r);
+    const view = entryViewUse(d, start.encounterId); if (view) requestCamera(r, d, view, null, true); else holdViewpoint(r);
     r.autoplay = false; note(r, `Previewing ${encounterName(d, start.encounterId)} without a Guide`);
   } else {
     const first = d.experience.routes.find(route => route.id === 'main')?.ids[0]; if (first) go(r, d, first, false); else { r.exploring = true; note(r, 'Exploratory Experience: activate subjects or open an encounter'); }
@@ -165,7 +165,8 @@ export function chooseRuntime(d: Document, current: Runtime, targetId: string, d
   else { for (const b of r.bookmarks) closeEncounter(r, d, b.encounterId); r.bookmarks = []; go(r, d, targetId); }
   return r;
 }
-export function exploreRuntime(current: Runtime) { const r = structuredClone(current); r.exploring = true; r.autoplay = false; r.camera = null; r.movement = null; r.queue = []; r.currentViewUseId = null; note(r, 'Free exploration · activities keep their authored boundaries'); return r; }
+/** Free exploration releases the Camera; the live pose is remembered so rejoin and View choice start where the visitor actually is. */
+export function exploreRuntime(current: Runtime, pose: CameraPose | null = null) { const r = structuredClone(current); r.pose = pose ?? cameraPose(r) ?? r.pose; r.exploring = true; r.autoplay = false; r.camera = null; r.movement = null; r.queue = []; r.currentViewUseId = null; note(r, 'Free exploration · activities keep their authored boundaries'); return r; }
 export function resumeGuide(d: Document, current: Runtime, pose: CameraPose | null = null) { const r = structuredClone(current); r.exploring = false; r.autoplay = false; r.positionElapsed = 0; r.pose = pose ?? r.pose;  const p = r.positionId ? d.experience.positions[r.positionId] : null; if (p) { const view = positionView(d, p); if (view) requestCamera(r, d, view, p.travel, true); r.cueFloor = cueFloorFor(d, p); r.autoRemaining = positionRemaining(r, d, p.id); } note(r, 'Returned to guidance; autoplay remains paused'); return r; }
 export function autoplayRuntime(d: Document, current: Runtime, enabled: boolean) { const r = structuredClone(current); r.autoplay = enabled; r.positionElapsed = 0; const p = r.positionId ? d.experience.positions[r.positionId] : null;  r.pacingFallback = !!(p?.pacing.kind === 'signal' && signalEmitted(r, p.pacing.ref)); if (p) r.autoRemaining = positionRemaining(r, d, p.id); return r; }
 export function stopActivityRuntime(d: Document, current: Runtime, uid: string) { const r = structuredClone(current); stop(r, uid, 'Stopped by visitor', d); note(r, `${useName(d, uid)} stopped by visitor`); return r; }
@@ -173,12 +174,13 @@ export function activateRuntime(d: Document, current: Runtime, uid: string) { co
 export function openEncounterRuntime(d: Document, current: Runtime, eid: string) {
   const r = structuredClone(current); if (!d.experience.encounters[eid]) return r;
   if (r.positionId) { const narrationIds = Object.values(r.activities).filter(a => a.status === 'running' && d.experience.uses[a.useId]?.kind === 'narration').map(a => a.useId); r.bookmarks.push({ positionId: r.positionId, encounterId: r.encounterId, history: [...r.history], narrationIds, autoplay: r.autoplay, emitted: { ...r.emitted }, emittedVisit: { ...r.emittedVisit }, visits: r.visits }); narrationIds.forEach(uid => { r.activities[uid].status = 'paused'; }); r.encounterId = null; }
-  enterEncounter(r, d, eid); r.positionId = null; r.autoplay = false; r.exploring = false; r.cueFloor = 0; const view = Object.values(d.experience.uses).find(u => u.encounterId === eid && u.kind === 'view'); if (view) requestCamera(r, d, view.id, null, true); else holdViewpoint(r); return r;
+  enterEncounter(r, d, eid); r.positionId = null; r.autoplay = false; r.exploring = false; r.cueFloor = 0; const view = entryViewUse(d, eid); if (view) requestCamera(r, d, view, null, true); else holdViewpoint(r); return r;
 }
 export function closeRuntimeEncounter(d: Document, current: Runtime) { const r = structuredClone(current); closeEncounter(r, d, r.encounterId); r.encounterId = null; r.positionId = null; r.exploring = true; r.autoplay = false; holdViewpoint(r); return r; }
-export function lookRuntime(d: Document, current: Runtime, uid: string) { const r = structuredClone(current); const u = d.experience.uses[uid]; if (u?.kind === 'view' && u.encounterId === r.encounterId) { r.exploring = false; requestCamera(r, d, uid); note(r, `View suggestion: ${useName(d, uid)}`); } return r; }
+/** Choosing a View is an explicit return to guidance from wherever the visitor is: it starts at the live pose and leaves autoplay paused. It never moves the Stop. */
+export function lookRuntime(d: Document, current: Runtime, uid: string, pose: CameraPose | null = null) { const r = structuredClone(current); const u = d.experience.uses[uid]; if (u?.kind === 'view' && u.encounterId === r.encounterId) { if (r.exploring) { r.pose = pose ?? cameraPose(r) ?? r.pose; note(r, 'Rejoined the Presentation from free exploration · autoplay remains paused'); } r.exploring = false; requestCamera(r, d, uid); note(r, `View suggestion: ${useName(d, uid)}`); } return r; }
 /** Step to the next or previous View in the Presentation's suggested order. Manual View choice only; never a Guide move. */
-export function viewStepRuntime(d: Document, current: Runtime, delta: number) { const r = structuredClone(current); if (!r.encounterId) return r; const next = viewStep(d, r.encounterId, r.currentViewUseId, delta); return next ? lookRuntime(d, r, next) : r; }
+export function viewStepRuntime(d: Document, current: Runtime, delta: number, pose: CameraPose | null = null) { const r = structuredClone(current); if (!r.encounterId) return r; const next = viewStep(d, r.encounterId, r.currentViewUseId, delta); return next ? lookRuntime(d, r, next, pose) : r; }
 /** Bounded fixed simulation steps: a larger elapsed input is split so cues and arrivals are neither missed nor duplicated. */
 const MAX_STEP = .25;
 export function tickRuntime(d: Document, current: Runtime, seconds: number): Runtime {

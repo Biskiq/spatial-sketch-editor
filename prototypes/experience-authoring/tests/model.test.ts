@@ -342,4 +342,33 @@ describe('V1.1 Presentation / View / Guide experiment', () => {
     expect(r2.cueFloor).toBe(12); expect(r2.currentViewUseId).toBe(second.a3); expect(r2.camera!.token).toBe(1);
     r2 = tickRuntime(second.d, r2, 6); expect(r2.currentViewUseId).toBe(second.a3); expect(r2.camera!.token).toBeGreaterThan(1);
   });
+
+  it('uses the authored suggested order as the single entry authority for every open', () => {
+    const { d, e, a1, a2, a3 } = threeView();
+    suggestViewOrder(d, e); moveView(d, e, a3, -1); moveView(d, e, a3, -1);
+    expect(orderedViews(d, e)).toEqual([a3, a1, a2]); expect(entryViewUse(d, e)).toBe(a3);
+    const preview = createRuntime(d, false, null, { kind: 'encounter', encounterId: e });
+    expect(preview.currentViewUseId).toBe(a3); expect(preview.camera).not.toBeNull();
+    addToGuide(d, e); const guided = createRuntime(d);
+    expect(guided.positionId).toBe(d.experience.routes[0].ids[0]); expect(guided.currentViewUseId).toBe(a3);
+    const f = addEncounter(d, { kind: 'subjects', ids: ['piano'] }); addToGuide(d, f);
+    let r = nextRuntime(d, guided); expect(r.encounterId).toBe(f);
+    r = openEncounterRuntime(d, r, e); expect(r.encounterId).toBe(e); expect(r.positionId).toBeNull();
+    expect(r.currentViewUseId).toBe(a3); expect(r.camera).not.toBeNull();
+  });
+
+  it('rejoins from the live pose when a View is chosen during free exploration', () => {
+    const { d, e, a1, a2, nid } = threeView(); addToGuide(d, e);
+    let r = tickRuntime(d, createRuntime(d), 3); const position = r.positionId; const stop = r.encounterId; const elapsed = r.activities[nid].elapsed;
+    expect(r.currentViewUseId).toBe(a1); expect(r.activities[nid].status).toBe('running');
+    const live = { position: [12, 10, 16] as [number, number, number], target: [0, 1, 0] as [number, number, number] };
+    r = exploreRuntime(r, live);
+    expect(r.exploring).toBe(true); expect(r.camera).toBeNull(); expect(r.currentViewUseId).toBeNull();
+    r = lookRuntime(d, r, a2, live);
+    expect(r.positionId).toBe(position); expect(r.encounterId).toBe(stop);
+    expect(r.exploring).toBe(false); expect(r.autoplay).toBe(false);
+    expect(r.currentViewUseId).toBe(a2); expect(r.movement).not.toBeNull();
+    expect(r.movement!.from).toEqual(live); expect(r.movement!.to).toEqual(solveView(d, definition(d, a2) as ViewDefinition));
+    expect(r.activities[nid].elapsed).toBe(elapsed); expect(r.activities[nid].status).toBe('running');
+  });
 });
