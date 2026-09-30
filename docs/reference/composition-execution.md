@@ -11,7 +11,7 @@ to the common foundation.
 written 2026-09-27 and **owner-ratified 2026-09-27 with amendments (Camera
 cutover timing, interface ownership, required/optional extensions).**
 
-**Owner-directed reconciliation amendment, 2026-09-29:** F.1 distinguishes
+**Owner-directed [reconciliation amendment](./decisions/world-experience-reconciliation-2026-09-29.md), 2026-09-29:** F.1 distinguishes
 Presentation/Stop/visit identity and repairable authored bindings; F.2 names
 the Experience composition shape; F.3 permits declared replacement/handoff
 without changing default exclusive rejection; F.4 separates authored validity
@@ -66,8 +66,9 @@ establish identity across revisions or re-exports.
   cannot express its level context is not durable for multi-level Layout.
 - **Experience/occurrence identity.** Repeated guided placements are distinct
   Stop occurrences with stable authored identity; a Stop identity persists
-  across revisions while its subject persists. Editorial order never lives as
-  a second writable authority beside legacy node links.
+  across revisions while that authored occurrence persists, even if its
+  Presentation or referenced subject becomes unresolved. Editorial order never
+  lives as a second writable authority beside legacy node links.
 - **Presentation, Stop and invocation are distinct.** A Presentation names
   reusable Experience composition, a Stop names one authored Guide occurrence
   referencing it, and each actual visit has a session invocation identity.
@@ -138,8 +139,9 @@ link: in `packages/project-model/src/scene.ts`, Camera data (`navigationNodes`,
 `connections`) references only other Camera nodes plus world positions/targets
 — no Scene entity references — so separating it is a low-cost move with no
 cross-reference rewrite. The **split lands in the same cutover as the
-Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds` /
-`lockInteraction` leave Camera nodes for Experience): one migration of
+Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds`
+leave Camera nodes; legacy `lockInteraction` is migration input to explicit
+Experience Gates, continuation or interaction policy): one migration of
 `navigationNodes`, not two. The **landed current encoding remains Camera data
 inside `project.scene`** until that cutover; the co-location is a cutover
 obligation, not the destination.
@@ -257,9 +259,10 @@ Acceptance sequence:
 - **Human UI and agents use the same operations, diagnostics and
   expected-revision rule.** Temporary invalid gestures stay local previews;
   accepted cross-domain work and publication require coherent validity.
-- **First implementation: the Experience cutover**, where “add Stop here” can
-  create both a Camera view and a Stop in one acceptance. Do not defer the
-  contract to component or kit work.
+- **First implementation: the Experience cutover**, where a compound authoring
+  intent can capture a Camera View, bind it to a Presentation and, when a Guide
+  occurrence is requested, create a Stop referencing that Presentation in one
+  acceptance. Do not defer the contract to component or kit work.
 
 This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate

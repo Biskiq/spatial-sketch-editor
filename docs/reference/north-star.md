@@ -5,9 +5,10 @@ pitches. **Current implementation priorities and sequencing live in the tracker:
 [`../roadmap/README.md`](../roadmap/README.md).
 
 **Authority:** this document carries the promoted, live statements of the ratified
-2026-09-27 direction; the decision record
-([`decisions/northstar-ratification-2026-09-27.md`](./decisions/northstar-ratification-2026-09-27.md))
-is decision provenance and the normative destination authority. Where this document
+2026-09-27 direction as refined by the
+[`2026-09-29 World | Experience amendment`](./decisions/world-experience-reconciliation-2026-09-29.md);
+the [September 27 decision record](./decisions/northstar-ratification-2026-09-27.md)
+is historical decision provenance and the normative baseline. Where this document
 and pre-ratification reference/roadmap text conflict, the ratified direction wins.
 Landed contracts keep describing current behavior until their explicit cutover; no
 target capability below is presented as shipped. Open mechanism decisions (encodings,
@@ -455,7 +456,7 @@ Camera (authority)                      Experience (authority)
 ─────────────────────────────           ─────────────────────────────
 connectivity / routes                   Presentations and Stops
 paths / anchors / topology              guided order, holds, detours
-framing / projection                    interaction locks / continuation
+framing / projection                    Gates / continuation / interaction policy
 motion evaluation                       content, localization, UI config
 intrinsic movement profiles             invocation bindings
 progress markers / cues*                interaction bindings to markers
@@ -676,7 +677,8 @@ semantic intent (typed, serializable)
 ```
 
 Cross-domain mutation is a separate transaction boundary from runtime evaluation.
-For "insert kit, attach to Wall, create Camera view, bind a Stop": prepare domain
+For "insert kit, attach to Wall, capture a Camera View, bind it to a Presentation,
+optionally create a Stop": prepare domain
 candidates against one expected project revision, stage required resource
 revisions, validate the composed result, then accept all domains and the
 dependency lock together with one undo result. Renderers and publication see one
@@ -684,7 +686,8 @@ coherent accepted snapshot. Failed validation preserves the previous project;
 failed uploads may leave collectable staged bytes, never a half-installed kit.
 Naive stale writers are rejected by the expected-revision precondition. First
 implementation of this compound acceptance lands with the Experience cutover
-("add Stop here" can create both a Camera view and a Stop) — it is not deferred
+(capture a View, bind a Presentation and optionally add a Stop in one acceptance)
+— it is not deferred
 to component or kit work.
 
 No complete generic command framework is claimed to exist today, and none is
@@ -723,7 +726,7 @@ and several independent commits are never presented as one transaction.
    evaluation have one authority; every profile controller and Experience
    navigation intent resolves through it, and no second navigation, motion or
    pose/FOV interpolation model exists. Experience owns occurrences, order,
-   holds, interaction locks and continuation; invocation time mapping evaluates
+   holds, explicit Gates, interaction policy and continuation; invocation time mapping evaluates
    through Camera. Cue ownership follows the source: Camera emits its own
    progress markers, performances own their cues, Experience owns interaction
    bindings to them. Current filenames and the curve/guard mechanism are

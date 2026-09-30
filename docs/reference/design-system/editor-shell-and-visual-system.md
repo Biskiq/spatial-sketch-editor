@@ -261,8 +261,9 @@ A **dark cutting mat** for spatial modeling, **vellum** for drafting, **technica
 architecture, and restrained **ochre** for selection and manipulation — held inside the
 same chassis, at the same shell geometry, type ladder and control metrics as the landed
 contract (§0.7.5). Tape (branding/history accents) never encodes selection. **Paper + a
-1 m / 5 m grid is the 2D layout reading**; **Wall grid** returns a wall to its real 3D
-material even in 2D; paper and selection compose. **Reduce motion** is a distinct control
+1 m / 5 m grid is the 2D layout reading**; **Wall grid** controls whether the
+working wall wears the drafting sheet or shows its real material; paper and
+selection compose. **Reduce motion** is a distinct control
 from motion speed. Caution, refusal and view-only (slate/dashed) stay three separate
 notices.
 
@@ -283,7 +284,7 @@ it does not decide World | Experience shell geometry or control placement.
 | --- | --- |
 | §4.4 | Target working surfaces: mat / vellum / technical ink / grid / drafting sheet (**desired-from-demo**) |
 | §6.4 | Target theme values, selection ownership, **Wall grid** and the paper rule (**desired-from-demo**) |
-| §10 | Desired View Bar utilities (**Wall grid**, **Reduce motion**) and the absent return marker (**desired-from-demo**) |
+| §10 | Landed View Bar ownership; desired **Wall grid**, **Reduce motion** and return behavior without assigning their destination shell placement (**desired-from-demo**) |
 | §14, §18.3 | Status Rail constraint and target state language (paper + selection, caution vs refusal vs view-only) |
 | §21 | Contextual instruments — rules unchanged; the destination experience stays **still-unbuilt (T1 after F)** |
 | §23.1 | **Reduce motion** vs motion speed (**desired-from-demo**) |
@@ -324,7 +325,8 @@ it does not decide World | Experience shell geometry or control placement.
 subject of a face session, straight or curved, or a wall off its footprint) with **Wall
 grid** as the editor-side override — *paper-as-page (option 2) is not open*; the grid
 keeps the plan's §3 hexes with the drafting sheet calibrated to the vellum ground;
-return is `Esc` / the back action / crumbs, not a tab marker.
+the accepted demo returns via `Esc` / the back action / crumbs, without a tab
+marker. The replacement shell's return presentation remains open.
 
 ---
 
@@ -737,7 +739,7 @@ history-count, branding, return or displacement cues.
   was reverted and is history, not a variant.
 - **Paper + selection compose** (§18.3): the sheet and its grid stay, a dark-ochre contour
   draws the selection, and **no ochre floods the page**.
-- **Wall grid** (View Bar, §10) is the editor-side override of the paper rule: on, the wall
+- **Wall grid** (§10) is the editor-side override of the paper rule: on, the wall
   being worked on is drawn as drafting paper with its measurement grid; off, every wall
   keeps its **real material** in every view at every curvature, and a displaced wall keeps
   its dashed slate footprint so the view-only cue does not depend on the paper.
@@ -937,8 +939,9 @@ exactly one writable control, and the View menu must not repeat an affordance th
 exposes directly. Progressive density in a squeezed centre column (§22.1) may hide a utility but
 must not create a second copy of it elsewhere.
 
-**Desired-from-demo additions (unbuilt).** The destination View Bar owns two further
-workspace utilities, each with exactly one writable control (§2.12):
+**Desired-from-demo behaviors (unbuilt).** The accepted demo placed these utilities
+in its View Bar. The destination shell must expose each through one writable
+control (§2.12); the World | Experience design phase decides their placement:
 
 - **Wall grid** — the wall being worked on is drawn as drafting paper with its 1 m / 5 m
   grid; off, every wall keeps its real 3D material in every view at every curvature
@@ -946,13 +949,12 @@ workspace utilities, each with exactly one writable control (§2.12):
 - **Reduce motion** — forces presentation duration to zero without changing the selected
   motion speed (§23.1).
 
-**No return marker.** The destination View Bar carries **no origin/return tab marker**:
-returning is carried by `Esc`, the back/“put it back” action and the crumbs in the strip
-(§21). A tab marker must not be re-introduced as the return affordance.
+**Return behavior.** The accepted demo uses `Esc`, a back/“put it back” action and
+context crumbs rather than an origin/return tab marker (§21). The destination
+needs an obvious return path; its shell placement and presentation remain open.
 
-> The demo sits both utilities in the bar's utility group. Grouping and exact placement are
-> implementation details of the same single owner; the demo's **Motion speed** control is
-> **not** a View Bar decision — its placement is an open call (§0.7.6).
+> The demo's utility grouping is prototype evidence, not a placement contract.
+> Its **Motion speed** control placement is also an open call (§0.7.6).
 
 ---
 
@@ -1181,7 +1183,7 @@ Ratified rail outcomes (R3; §7.5): **10 px** status role, **12 px** side paddin
 **≈ 20 px** inter-item gaps, and the readable secondary ink tier — quietness
 comes from weight and size, never from under-contrast ink.
 
-**Landed now — and the destination keeps it.** The accepted demo places its **Motion
+**Landed rail constraint; demo placement is open.** The accepted demo places its **Motion
 speed** control at the end of its Status Rail. That is a **prototype placement, not a
 contract**: it is one of the open owner calls (§0.7.6), because the rail is readout-only
 and must not become a second toolbar. Do not implement a Status Rail control from the
@@ -1411,9 +1413,10 @@ The shell should absorb these by contextual density and progressive disclosure, 
 
 # 21. P26 contextual-instrument contract
 
-P23.14 must create a clear host for future contextual architectural instruments without deciding every P26 interaction today.
+P23.14 must create a clear host for future contextual architectural instruments
+within the landed shell without deciding every P26 interaction today.
 
-Future Section / Wall Elevation / Ceiling Focus should:
+In that landed shell, Section / Wall Elevation / Ceiling Focus should:
 
 - enter from an existing durable view;
 - replace or focus the central Paper surface;
@@ -1423,7 +1426,7 @@ Future Section / Wall Elevation / Ceiling Focus should:
 - expose an obvious return path to the owning durable view;
 - avoid appearing as a third peer view beside Plan and 3D.
 
-The Atlas should include at least one non-authoritative P26 stress specimen showing how a contextual instrument could occupy the shell while preserving this hierarchy.
+The Atlas should include at least one non-authoritative P26 stress specimen showing how a contextual instrument could occupy the landed shell while preserving this hierarchy.
 
 This specimen is for pressure-testing only and must not invent P26 product semantics.
 
@@ -1434,9 +1437,10 @@ for that direction. Everything the demo shows beyond today's editor — continuo
 Plan↔3D, first-class circular Room creation with one self-connected Wall, peeling,
 drawn-line Section/Reveal, ceiling lift/look-up and exact return — is **still-unbuilt
 (T1 after F)**: production stays gated behind the F interfaces and the re-derived track
-plan, and this section's rules above are unchanged. The instrument remains a subordinate
-contextual instrument with an obvious return path, never a third peer view beside Plan
-and 3D, and the demo's shortcuts are not contracts (§0.7.1).
+plan. Contextual identity, coherent selection and an obvious return path remain
+behavior constraints. The demo's subordinate Plan/3D presentation is evidence;
+the replacement shell hierarchy stays open, and its shortcuts are not contracts
+(§0.7.1).
 
 ---
 
@@ -1511,8 +1515,8 @@ authority:
 Both are presentation inputs evaluated through the **single Camera motion evaluation**
 (AGENTS rule 1; §2.11) — the destination introduces no second evaluator, curve model or
 timeline. Reduce motion is not a re-labelling of Instant, and Instant is not a substitute
-for it. The demo's **Reduce motion** is a View Bar utility (§10); the demo's placement of
-**Motion speed** is an open call (§0.7.6).
+for it. The demo places **Reduce motion** in its View Bar (§10); the destination
+placement of both controls remains open (§0.7.6).
 
 ---
 

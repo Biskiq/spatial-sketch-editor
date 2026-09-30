@@ -3,8 +3,8 @@
 **Read when:** ownership questions, editor vs relic boundary, import/export.
 For a specific surface, go straight to the matching contract doc (table below).
 
-**Authority:** the ratified decision record
-([`decisions/northstar-ratification-2026-09-27.md`](./decisions/northstar-ratification-2026-09-27.md))
+**Authority:** the [ratified decision record](./decisions/northstar-ratification-2026-09-27.md),
+as refined by the [2026-09-29 World | Experience amendment](./decisions/world-experience-reconciliation-2026-09-29.md),
 owns the destination. This document separates **current implementation** (what the
 code does today) from the **ratified destination** (what new design must conform
 to). Nothing below marked destination is shipped, and current encodings are cutover

@@ -64,7 +64,8 @@ archive = history
 ```
 
 **Authority precedence:** the ratified decision record
-([`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md))
+([`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md)),
+as refined by the later [World | Experience amendment](./reference/decisions/world-experience-reconciliation-2026-09-29.md),
 is normative for all new design and outranks conflicting pre-ratification
 `reference/` and `roadmap/` text. Landed contracts keep describing current
 behavior until their explicit cutover; the destination is never presented as
@@ -72,7 +73,7 @@ shipped.
 
 | Need | Read | Code |
 |------|------|------|
-| Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md) — normative destination; promoted concerns live in the routed contracts below | — |
+| Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md), as refined by the [`2026-09-29 World \| Experience amendment`](./reference/decisions/world-experience-reconciliation-2026-09-29.md); promoted concerns live in the routed contracts below | — |
 | What's next? | [`roadmap/README.md`](./roadmap/README.md), then stop (no source survey) | — |
 | Foundation contracts (F) — ratified target contract; F.1–F.5 written, implementation status inside | [`reference/composition-execution.md`](./reference/composition-execution.md) (phase registration/status → [`roadmap/f-foundation-contracts/README.md`](./roadmap/f-foundation-contracts/README.md)) | — |
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |

@@ -28,8 +28,9 @@ Save/Load and the P22 release path are the landed implementation.
 - **Compound acceptance:** one expected project revision; typed, serializable
   authoring intents; validation across affected domains and resource locks; one
   atomic accepted result and one undo result (F.4). Naive stale writers are
-  rejected by the expected-revision precondition, and "add Stop here" can
-  create both a Camera view and a Stop at the Experience cutover. Event
+  rejected by the expected-revision precondition; at the Experience cutover one
+  acceptance can capture a Camera View, bind it to a Presentation and optionally
+  create a Stop referencing the Presentation. Event
   sourcing, CRDTs, branch merge and selective actor undo remain separate
   decisions.
 - **Release formats stay separate from source formats:** the release reader
