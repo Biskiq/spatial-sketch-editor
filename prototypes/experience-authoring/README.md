@@ -32,16 +32,16 @@ Nothing above requires a duration, cue, start/end relationship, lifetime, defini
 ## Model in one page
 
 - **Encounter** — audience intention plus organizational membership. Contributions can be regrouped without changing when they run.
-- **View** — reusable framing. A first View can be presented on entry; additional Views are connected to a named phrase with **Show during this explanation** or left available for manual viewing. Listing Views creates neither playback order nor Guide positions.
+- **View** — reusable framing inside a Presentation. A first View can be presented on entry; additional Views are connected to a named phrase with **Show during this explanation**, left available for manual viewing, or optionally ordered as a **suggested progression** (visitor may still jump freely). Views stay inside the Presentation and never become Guide Stops.
 - **Explanation** — the narration textarea. Duration and captions derive from the text at a fixed reading rate; the duration field is an optional override.
 - **Activity** — an authored subject operation with its own start, boundary and interruption policy.
 - **Interaction** — a visitor offer with a separate activation subject and an invocation target. Availability is Experience-wide or Encounter-contextual.
-- **Optional Guide** — one route with positions. Each position is a distinct occurrence; repeated checkpoints share a View use unless you explicitly copy it.
+- **Optional Guide** — one route whose Stops order Presentations. **Add encounter to Guide** creates one Stop referencing the Presentation as a whole, with its entry framing; its Views stay internal. Each Stop is a distinct occurrence; the same Presentation may be used at several Stops.
 
 ### Guide, reuse and Next
 
-- **Add Encounter to Guide** creates one position. **Add selected views as checkpoints** is a separate, explicit action, and adding or removing Guide content never edits the Encounter.
-- Each position chooses one of three presentation behaviours: **Present this Encounter** runs its authored viewing relationships, **Start from this View** frames that View and continues with future cues, and **Keep current viewpoint** suppresses automatic viewing entirely while Activities continue. A null View reference alone is never asked to mean both.
+- **Add Encounter to Guide** creates one Stop presenting the Presentation as a whole. Adding or removing Guide content never edits the Presentation. (The legacy "Add selected views as checkpoints" authoring action is hidden in V1.1; its model/runtime path remains for comparison.)
+- Each Stop chooses one of three presentation behaviours: **Present this Presentation** runs its authored viewing relationships, **Enter through this View** sets the entry framing and continues with future cues, and **Keep current viewpoint** suppresses automatic viewing entirely while Activities continue. A null View reference alone is never asked to mean both.
 - Route order is the single authority for default **Next**. A position may instead carry an explicit target or end; one resolver serves the Guide strip, inspector, runtime and tests.
 - **Only this View use** edits one appearance; **Everywhere this View is used** edits the definition and reports the affected count. **Edit only this checkpoint** makes a private copy and retargets that position before editing. Adding a checkpoint never copies by itself.
 - Shared framing never shares connections, cue relationships, gates, lifetimes or interruption policies.

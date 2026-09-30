@@ -10,7 +10,7 @@ export type AppContextValue = {
   shared: boolean; setShared: (shared: boolean) => void; scene: RefObject<SceneHandle | null>; runtime: Runtime | null;
   updateRuntime: (fn: (r: Runtime) => Runtime) => void; reviewFlag: (name: string) => void; reviewFlags: Set<string>;
   focus: Focus; setFocusMode: (mode: 'selection' | 'view' | 'region' | 'environment') => void; focusMode: string; regionPicking: boolean; setRegionPicking: (value: boolean) => void;
-  createEncounter: () => void; switchMode: (mode: 'world' | 'experience') => void;
+  createEncounter: () => void; previewEncounter: (encounterId: string) => void; switchMode: (mode: 'world' | 'experience') => void;
 };
 export const AppContext = createContext<AppContextValue | null>(null);
 export function useApp() { const context = useContext(AppContext); if (!context) throw new Error('Application context missing'); return context; }

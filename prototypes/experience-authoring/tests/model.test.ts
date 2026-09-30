@@ -1,24 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { emptyDocument, exampleDocument } from '../src/fixture';
-import { addEncounter, addNarration, addToGuide, addView, captureControl, copyUse, definition, editDefinition, entryViewUse, movePosition, narrationDuration, narrationPassages, removePosition, removeUse, resolveNext, resolvedDuration, solveView, validate, type ViewDefinition } from '../src/model';
+import { addEncounter, addNarration, addToGuide, addView, captureControl, clearViewOrder, copyUse, definition, editDefinition, encounterViews, entryViewUse, movePosition, moveView, narrationDuration, narrationPassages, orderedViews, positionView, removePosition, removeUse, resolveNext, resolvedDuration, solveView, suggestViewOrder, validate, viewStep, type ViewDefinition } from '../src/model';
 import { travelSeconds } from '../src/camera';
 import { planPresentation, positionPlan } from '../src/presentation';
-import { activateRuntime, autoplayRuntime, chooseRuntime, createRuntime, exploreRuntime, gateState, nextRuntime, openEncounterRuntime, previousRuntime, projectedValue, resumeGuide, returnDetour, stopActivityRuntime, tickRuntime } from '../src/runtime';
+import { activateRuntime, autoplayRuntime, chooseRuntime, createRuntime, exploreRuntime, gateState, lookRuntime, nextRuntime, openEncounterRuntime, previousRuntime, projectedValue, resumeGuide, returnDetour, stopActivityRuntime, tickRuntime, viewStepRuntime } from '../src/runtime';
 const controlUse = (d: ReturnType<typeof exampleDocument>, capId: string, kind = 'behavior') => Object.values(d.experience.uses).find(u => u.kind === kind && definition(d, u)?.kind === 'control' && (definition(d, u) as { capabilityId: string }).capabilityId === capId)!;
 describe('identity and structural revision', () => {
   it('loads an example with independent navigation uses and a shared view definition', () => {
     const d = exampleDocument(); expect(validate(d)).toEqual([]);
-    const main = d.experience.routes[0].ids; const a = d.experience.uses[d.experience.positions[main[0]].viewUseId!], b = d.experience.uses[d.experience.positions[main[1]].viewUseId!];
+    const main = d.experience.routes[0].ids; const a = d.experience.uses[positionView(d, d.experience.positions[main[0]])!], b = d.experience.uses[positionView(d, d.experience.positions[main[1]])!];
     expect(a.id).not.toBe(b.id); expect(a.encounterId).not.toBe(b.encounterId); expect(a.definitionId).toBe(b.definitionId); expect(main).toHaveLength(2);
   });
   it('detaches only one use, and shared edits preserve connection identities', () => {
-    const d = exampleDocument(), main = d.experience.routes[0].ids; const a = d.experience.uses[d.experience.positions[main[0]].viewUseId!], b = d.experience.uses[d.experience.positions[main[1]].viewUseId!]; const beforeLinks = structuredClone(d.experience.positions);
+    const d = exampleDocument(), main = d.experience.routes[0].ids; const a = d.experience.uses[positionView(d, d.experience.positions[main[0]])!], b = d.experience.uses[positionView(d, d.experience.positions[main[1]])!]; const beforeLinks = structuredClone(d.experience.positions);
     editDefinition(d, a.id, true, { name: 'Shared overview' }); expect(definition(d, b)?.name).toBe('Shared overview');
     editDefinition(d, b.id, false, { name: 'Local overview', distance: 2 }); expect(a.definitionId).not.toBe(b.definitionId); expect(definition(d, a)?.name).toBe('Shared overview'); expect(d.experience.positions).toEqual(beforeLinks);
   });
   it('removes a view or Guide position without deleting the explanation', () => {
-    const d = exampleDocument(); const main = [...d.experience.routes[0].ids]; const uid = d.experience.positions[main[1]].viewUseId!; const encounter = d.experience.positions[main[1]].encounterId; const count = Object.keys(d.experience.uses).length;
-    removeUse(d, uid); expect(d.experience.positions[main[1]].viewUseId).toBeNull(); expect(d.experience.encounters[encounter]).toBeDefined(); expect(Object.keys(d.experience.uses)).toHaveLength(count - 1);
+    const d = exampleDocument(); const main = [...d.experience.routes[0].ids]; const uid = positionView(d, d.experience.positions[main[1]])!; const encounter = d.experience.positions[main[1]].encounterId; const count = Object.keys(d.experience.uses).length;
+    removeUse(d, uid); expect(positionView(d, d.experience.positions[main[1]])).toBeNull(); expect(d.experience.encounters[encounter]).toBeDefined(); expect(Object.keys(d.experience.uses)).toHaveLength(count - 1);
     removePosition(d, main[1]); expect(resolveNext(d, main[0]).id).toBeNull(); expect(d.experience.encounters[encounter]).toBeDefined();
   });
   it('reorders default connections while retaining named choice destinations', () => {
@@ -27,9 +27,10 @@ describe('identity and structural revision', () => {
   });
   it('checkpoint-only editing makes a private use and leaves connections intact', () => {
     const d = exampleDocument(); const main = [...d.experience.routes[0].ids]; const first = d.experience.positions[main[0]], second = d.experience.positions[main[1]];
-    const shared = d.experience.uses[first.viewUseId!].definitionId, next = structuredClone(first.next), choices = structuredClone(second.choices);
-    const fresh = copyUse(d, second.viewUseId!, second.encounterId, false); second.viewUseId = fresh;
-    expect(d.experience.uses[fresh].definitionId).not.toBe(shared); expect(d.experience.uses[first.viewUseId!].definitionId).toBe(shared); expect(definition(d, fresh)?.name).toBe(definition(d, first.viewUseId)?.name);
+    const firstView = positionView(d, first)!, secondView = positionView(d, second)!;
+    const shared = d.experience.uses[firstView].definitionId, next = structuredClone(first.next), choices = structuredClone(second.choices);
+    const fresh = copyUse(d, secondView, second.encounterId, false); second.viewUseId = fresh;
+    expect(d.experience.uses[fresh].definitionId).not.toBe(shared); expect(d.experience.uses[firstView].definitionId).toBe(shared); expect(definition(d, fresh)?.name).toBe(definition(d, firstView)?.name);
     expect(d.experience.positions[main[0]].next).toEqual(next); expect(d.experience.positions[main[1]].choices).toEqual(choices);
   });
   it('removing an encounter preserves its contributions for repair', () => {
@@ -43,12 +44,12 @@ describe('identity and structural revision', () => {
   });
   it('adds one Encounter position by default and resolves Next from route order', () => {
     const d = emptyDocument(); const a = addEncounter(d, { kind: 'subjects', ids: ['machine'] }); addView(d, a); addView(d, a);
-    const p = addToGuide(d, a); expect(p).toHaveLength(1); expect(resolveNext(d, p[0]).id).toBeNull();
+    const p = addToGuide(d, a); expect(p).toHaveLength(1); expect(d.experience.positions[p[0]].presentation).toBe('encounter'); expect(d.experience.positions[p[0]].viewUseId).toBeNull(); expect(resolveNext(d, p[0]).id).toBeNull();
     const b = addEncounter(d, { kind: 'subjects', ids: ['piano'] }); const q = addToGuide(d, b); expect(resolveNext(d, p[0]).id).toBe(q[0]);
   });
   it('adds a repeated checkpoint as a distinct occurrence of the same use', () => {
-    const d = exampleDocument(); const first = d.experience.positions[d.experience.routes[0].ids[0]]; const uid = first.viewUseId!; const count = Object.keys(d.experience.uses).length;
-    const added = addToGuide(d, first.encounterId, 'main', [uid]); expect(added[0]).not.toBe(first.id); expect(d.experience.positions[added[0]].viewUseId).toBe(uid); expect(d.experience.positions[first.id].viewUseId).toBe(uid); expect(Object.keys(d.experience.uses)).toHaveLength(count);
+    const d = exampleDocument(); const first = d.experience.positions[d.experience.routes[0].ids[0]]; const uid = positionView(d, first)!; const count = Object.keys(d.experience.uses).length;
+    const added = addToGuide(d, first.encounterId, 'main', [uid]); expect(added[0]).not.toBe(first.id); expect(d.experience.positions[added[0]].viewUseId).toBe(uid); expect(positionView(d, d.experience.positions[first.id])).toBe(uid); expect(Object.keys(d.experience.uses)).toHaveLength(count);
   });
   it('honours an explicit Next target independently of route order', () => {
     const d = exampleDocument(); const main = [...d.experience.routes[0].ids]; d.experience.positions[main[0]].next = { kind: 'target', positionId: main[1] };
@@ -252,5 +253,93 @@ describe('presentation planning and Camera evaluation', () => {
     expect(narrationDuration(text)).toBeCloseTo(8 / 2.6);
     const passages = narrationPassages(text); expect(passages).toHaveLength(2); expect(passages[0].start).toBe(0); expect(passages[1].start).toBeCloseTo(passages[0].end); expect(passages.at(-1)!.end).toBeCloseTo(narrationDuration(text));
     const d = emptyDocument(); const e = addEncounter(d, { kind: 'subjects', ids: ['machine'] }); const nid = addNarration(d, e); expect(resolvedDuration(definition(d, nid) as never)).toBe(1);
+  });
+});
+
+describe('V1.1 Presentation / View / Guide experiment', () => {
+  const threeView = () => { const d = emptyDocument(); const e = addEncounter(d, { kind: 'subjects', ids: ['machine'] }, 'Presentation A');
+    const a1 = Object.values(d.experience.uses).find(u => u.encounterId === e)!.id; const a2 = addView(d, e); const a3 = addView(d, e);
+    const nid = addNarration(d, e); const def = definition(d, nid)!; if (def.kind === 'narration') { def.duration = 18; def.markers = [{ id: 'm6', label: 'Six', time: 6 }, { id: 'm12', label: 'Twelve', time: 12 }]; }
+    d.experience.uses[a2].cue = { useId: nid, signal: 'marker:m6' }; d.experience.uses[a3].cue = { useId: nid, signal: 'marker:m12' }; return { d, e, a1, a2, a3, nid }; };
+
+  it('previews a Presentation with three Views without a Guide', () => {
+    const { d, e, a1 } = threeView();
+    const r = createRuntime(d, false, null, { kind: 'encounter', encounterId: e });
+    expect(r.positionId).toBeNull(); expect(r.encounterId).toBe(e); expect(r.bookmarks).toHaveLength(0);
+    expect(d.experience.routes[0].ids).toHaveLength(0); expect(r.currentViewUseId).toBe(a1); expect(r.camera).not.toBeNull();
+  });
+
+  it('lets a visitor freely choose View B then C while guided, without restarting the explanation', () => {
+    const { d, e, a2, a3, nid } = threeView(); addToGuide(d, e);
+    let r = tickRuntime(d, createRuntime(d), 3); const position = r.positionId; const elapsed = r.activities[nid].elapsed;
+    r = lookRuntime(d, r, a2); expect(r.positionId).toBe(position); expect(r.currentViewUseId).toBe(a2); expect(r.activities[nid].elapsed).toBe(elapsed); expect(r.activities[nid].status).toBe('running');
+    r = lookRuntime(d, r, a3); expect(r.positionId).toBe(position); expect(r.currentViewUseId).toBe(a3); expect(r.activities[nid].elapsed).toBe(elapsed);
+  });
+
+  it('exposes a suggested progression while manual jumps remain possible', () => {
+    const { d, e, a1, a2, a3 } = threeView(); addToGuide(d, e); suggestViewOrder(d, e);
+    expect(orderedViews(d, e)).toEqual([a1, a2, a3]); expect(entryViewUse(d, e)).toBe(a1); expect(viewStep(d, e, a1, 1)).toBe(a2);
+    let r = createRuntime(d); expect(r.currentViewUseId).toBe(a1);
+    r = viewStepRuntime(d, r, 1); expect(r.currentViewUseId).toBe(a2); r = viewStepRuntime(d, r, 1); expect(r.currentViewUseId).toBe(a3); expect(viewStep(d, e, a3, 1)).toBeNull();
+    r = lookRuntime(d, r, a1); expect(r.currentViewUseId).toBe(a1);
+    moveView(d, e, a3, -1); expect(orderedViews(d, e)).toEqual([a1, a3, a2]);
+    clearViewOrder(d, e); expect(orderedViews(d, e)).toEqual(encounterViews(d, e));
+  });
+
+  it('adds a Presentation to the Guide as one Stop and Next moves to the next Presentation', () => {
+    const d = emptyDocument(); const a = addEncounter(d, { kind: 'subjects', ids: ['machine'] }); addView(d, a); addView(d, a);
+    const b = addEncounter(d, { kind: 'subjects', ids: ['piano'] });
+    const [pa] = addToGuide(d, a); const [pb] = addToGuide(d, b);
+    expect(d.experience.positions[pa].presentation).toBe('encounter'); expect(d.experience.positions[pa].viewUseId).toBeNull(); expect(resolveNext(d, pa).id).toBe(pb);
+    let r = createRuntime(d); expect(r.positionId).toBe(pa); r = nextRuntime(d, r); expect(r.positionId).toBe(pb); expect(r.camera).not.toBeNull();
+  });
+
+  it('enters a Stop through View B while the Presentation still exposes A, B and C', () => {
+    const { d, e, a1, a2, a3 } = threeView(); addToGuide(d, e); const pid = d.experience.routes[0].ids[0];
+    d.experience.positions[pid].presentation = 'view'; d.experience.positions[pid].viewUseId = a2;
+    expect(positionView(d, d.experience.positions[pid])).toBe(a2); expect(orderedViews(d, e)).toEqual([a1, a2, a3]);
+    let r = createRuntime(d); expect(r.positionId).toBe(pid); expect(r.currentViewUseId).toBe(a2);
+    r = lookRuntime(d, r, a3); expect(r.currentViewUseId).toBe(a3); expect(r.positionId).toBe(pid);
+  });
+
+  it('keeps repeated Stops as separate occurrences of the same Presentation', () => {
+    const { d, e } = threeView(); const [p1] = addToGuide(d, e); const [p2] = addToGuide(d, e);
+    expect(p1).not.toBe(p2); expect(d.experience.positions[p1].encounterId).toBe(e); expect(d.experience.positions[p2].encounterId).toBe(e);
+    expect(d.experience.routes[0].ids).toEqual([p1, p2]); expect(resolveNext(d, p1).id).toBe(p2);
+  });
+
+  it('prunes viewOrder on removal, sanitizes stale ids and flags malformed orders', () => {
+    const { d, e, a1, a2 } = threeView(); suggestViewOrder(d, e); expect(d.experience.encounters[e].viewOrder).toHaveLength(3);
+    const a3 = encounterViews(d, e).find(uid => uid !== a1 && uid !== a2)!; removeUse(d, a3); expect(d.experience.encounters[e].viewOrder).toEqual([a1, a2]);
+    d.experience.encounters[e].viewOrder = ['ghost', a1]; expect(orderedViews(d, e)[0]).toBe(a1); expect(validate(d).some(i => i.kind === 'encounter' && i.id === e)).toBe(true);
+  });
+
+  it('tracks the active authored View only once a queued cue movement starts', () => {
+    const d = emptyDocument(); const e = addEncounter(d, { kind: 'subjects', ids: ['machine'] }); const entry = Object.values(d.experience.uses).find(u => u.encounterId === e)!.id;
+    const entryDef = definition(d, entry) as ViewDefinition; entryDef.automatic = false; entryDef.anchor = 'fixed'; entryDef.position = [40, 10, 40]; entryDef.target = [-3, 1.4, -1]; entryDef.speed = 'slow';
+    const second = addView(d, e, { position: [-3, 2.6, 3.1], target: [-3, 1.4, -1] }, 'Second'); const nid = addNarration(d, e); const def = definition(d, nid)!; if (def.kind === 'narration') { def.duration = 30; def.markers = [{ id: 'm', label: 'M', time: 1 }]; }
+    d.experience.uses[second].cue = { useId: nid, signal: 'marker:m' }; addToGuide(d, e);
+    let r = tickRuntime(d, createRuntime(d, false, { position: [12, 10, 16], target: [0, 1, 0] }), 2);
+    expect(r.currentViewUseId).toBe(entry); expect(r.queue).toHaveLength(1);
+    r = tickRuntime(d, r, 20); expect(r.currentViewUseId).toBe(second);
+    r = exploreRuntime(r); expect(r.currentViewUseId).toBeNull();
+  });
+
+  it('previews one Presentation standalone without entering the Guide', () => {
+    const d = emptyDocument(); const a = addEncounter(d, { kind: 'subjects', ids: ['machine'] }); addView(d, a);
+    const b = addEncounter(d, { kind: 'subjects', ids: ['piano'] }); addToGuide(d, a); addToGuide(d, b);
+    const r = createRuntime(d, false, null, { kind: 'encounter', encounterId: a });
+    expect(r.positionId).toBeNull(); expect(r.bookmarks).toHaveLength(0); expect(r.encounterId).toBe(a); expect(r.camera).not.toBeNull();
+  });
+
+  it('preserves default-entry versus explicit-later-entry cueFloor', () => {
+    const first = threeView(); addToGuide(first.d, first.e);
+    let r = tickRuntime(first.d, createRuntime(first.d), 7);
+    expect(r.cueFloor).toBe(0); expect(r.currentViewUseId).toBe(first.a2); expect(r.camera!.token).toBeGreaterThan(1);
+    const second = threeView(); addToGuide(second.d, second.e); const pid = second.d.experience.routes[0].ids[0];
+    second.d.experience.positions[pid].presentation = 'view'; second.d.experience.positions[pid].viewUseId = second.a3;
+    let r2 = tickRuntime(second.d, createRuntime(second.d), 7);
+    expect(r2.cueFloor).toBe(12); expect(r2.currentViewUseId).toBe(second.a3); expect(r2.camera!.token).toBe(1);
+    r2 = tickRuntime(second.d, r2, 6); expect(r2.currentViewUseId).toBe(second.a3); expect(r2.camera!.token).toBeGreaterThan(1);
   });
 });

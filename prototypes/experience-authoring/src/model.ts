@@ -23,14 +23,31 @@ export function interruption(d: Document, u: Use): Interruption { if (u.interrup
   const def = definition(d, u); if (def?.kind === 'narration') return 'cancel';
   if (def?.kind === 'control') { const cap = capability(d, def.subjectId, def.capabilityId); if (cap?.kind === 'loop') return 'continue'; if (cap?.duration) return 'finish'; }
   return 'cancel'; }
-export type Encounter = { id: string; name: string; purpose: string; focus: Focus };
+export type Encounter = { id: string; name: string; purpose: string; focus: Focus; /** Optional internal View progression. Absent or empty = Free Views; non-empty = Suggested order. Never a Guide sequence. */ viewOrder?: string[] };
 export type SignalRef = { useId: string; signal: string };
 export type Next = { kind: 'order' } | { kind: 'target'; positionId: string } | { kind: 'end' };
 /** How a position presents: run the Encounter's viewing relationships, start from a particular View, or hold the current viewpoint. */
 export type Presentation = 'encounter' | 'view' | 'hold';
 export type Pacing = { kind: 'auto' } | { kind: 'dwell'; seconds: number } | { kind: 'signal'; ref: SignalRef };
 export type Position = { id: string; encounterId: string; viewUseId: string | null; routeId: string; presentation: Presentation; next: Next; pacing: Pacing; travel: Speed | null; gate: SignalRef | null; choices: { id: string; label: string; kind: 'go' | 'detour'; targetId: string }[] };
-export function entryViewUse(d: Document, encounterId: string): string | null { return Object.values(d.experience.uses).find(u => u.encounterId === encounterId && u.kind === 'view')?.id ?? null; }
+/** View uses that belong to this Presentation, in insertion order. */
+export function encounterViews(d: Document, encounterId: string): string[] { return Object.values(d.experience.uses).filter(u => u.kind === 'view' && u.encounterId === encounterId).map(u => u.id); }
+/** Sanitized View order: authored viewOrder entries that are still valid View uses of this Presentation, then any remaining Views so manual choice is never lost. */
+export function orderedViews(d: Document, encounterId: string): string[] {
+  const all = encounterViews(d, encounterId); const authored = d.experience.encounters[encounterId]?.viewOrder ?? [];
+  const listed = authored.filter(uid => all.includes(uid));
+  return [...listed, ...all.filter(uid => !listed.includes(uid))];
+}
+/** The View this Presentation opens on: the first suggested View, or its first View. */
+export function entryViewUse(d: Document, encounterId: string): string | null { return orderedViews(d, encounterId)[0] ?? null; }
+/** Next or previous View in the suggested order, or null at the ends. */
+export function viewStep(d: Document, encounterId: string, currentId: string | null, delta: number): string | null { const list = orderedViews(d, encounterId); const at = currentId ? list.indexOf(currentId) : -1; return list[at + delta] ?? null; }
+/** Enable suggested progression from the current Views. */
+export function suggestViewOrder(d: Document, encounterId: string) { const e = d.experience.encounters[encounterId]; if (e) e.viewOrder = encounterViews(d, encounterId); }
+/** Return to Free Views. */
+export function clearViewOrder(d: Document, encounterId: string) { const e = d.experience.encounters[encounterId]; if (e) delete e.viewOrder; }
+/** Reorder one View within the suggested progression; never a Guide move. */
+export function moveView(d: Document, encounterId: string, uid: string, delta: number) { const e = d.experience.encounters[encounterId]; if (!e) return; const list = [...orderedViews(d, encounterId)]; const i = list.indexOf(uid), j = i + delta; if (i < 0 || j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; e.viewOrder = list; }
 /** The View this position presents on entry, or null when it holds the current viewpoint. */
 export function positionView(d: Document, p: Position): string | null { return p.presentation === 'view' ? p.viewUseId : p.presentation === 'encounter' ? entryViewUse(d, p.encounterId) : null; }
 export type ResolvedNext = { id: string | null; explicit: boolean; missing: boolean };
@@ -85,6 +102,7 @@ export function addView(d: Document, eid: string, camera?: { position: Vec3; tar
   const e = d.experience.encounters[eid]; const c = camera ?? automaticCamera(d, e.focus); const defId = id(d, 'def'); const useId = id(d, 'use');
   d.experience.definitions[defId] = { id: defId, kind: 'view', name: name ?? `View ${usesIn(d, eid).filter(u => u.kind === 'view').length + 1}`, focus: structuredClone(e.focus), anchor: camera ? 'fixed' : 'relative', automatic: !camera, position: c.position, target: c.target, offset: c.position.map((n, i) => n - c.target[i]) as Vec3, distance: 1, revision: d.world.revision, speed: 'auto' as Speed };
   d.experience.uses[useId] = { id: useId, kind: 'view', definitionId: defId, encounterId: eid, start: { kind: 'encounter', encounterId: eid }, end: { kind: 'encounter', encounterId: eid } };
+  const encounter = d.experience.encounters[eid]; if (encounter?.viewOrder) encounter.viewOrder.push(useId);
   return useId;
 }
 export function addEncounter(d: Document, focus: Focus, name?: string, withView = true) {
@@ -122,16 +140,19 @@ export function resolveNext(d: Document, pid: string): ResolvedNext {
   return { id: route && at >= 0 ? route.ids[at + 1] ?? null : null, explicit: false, missing: false };
 }
 /** Default: one position presenting the Encounter. Selected checkpoints are an explicit, separate action; occurrences are distinct positions and never clone a view use. */
+/**
+ * Default: one Stop referencing the Presentation as a whole; its entry framing comes from the Presentation's entry View.
+ * Selected checkpoints remain an explicit, legacy path: one occurrence per named View, never cloning a use.
+ */
 export function addToGuide(d: Document, eid: string, routeId = 'main', selectedViews?: string[]) {
   let route = d.experience.routes.find(r => r.id === routeId); if (!route) { route = { id: routeId, name: routeId === 'main' ? 'Guide' : encounterName(d, eid), ids: [] }; d.experience.routes.push(route); }
-  const views = usesIn(d, eid).filter(u => u.kind === 'view');
-  const picks = selectedViews?.length ? selectedViews.filter(uid => !!d.experience.uses[uid]) : [views[0]?.id ?? null];
-  const results: string[] = [];
-  for (const uid of picks) { const pid = id(d, 'position'); d.experience.positions[pid] = { id: pid, encounterId: eid, viewUseId: uid, routeId, presentation: uid ? 'view' : 'hold', next: { kind: 'order' }, pacing: { kind: 'auto' }, travel: null, gate: null, choices: [] }; route.ids.push(pid); results.push(pid); }
+  const results: string[] = []; const picks = selectedViews?.length ? selectedViews.filter(uid => !!d.experience.uses[uid]) : null;
+  if (picks) for (const uid of picks) { const pid = id(d, 'position'); d.experience.positions[pid] = { id: pid, encounterId: eid, viewUseId: uid, routeId, presentation: uid ? 'view' : 'hold', next: { kind: 'order' }, pacing: { kind: 'auto' }, travel: null, gate: null, choices: [] }; route.ids.push(pid); results.push(pid); }
+  else { const pid = id(d, 'position'); d.experience.positions[pid] = { id: pid, encounterId: eid, viewUseId: null, routeId, presentation: 'encounter', next: { kind: 'order' }, pacing: { kind: 'auto' }, travel: null, gate: null, choices: [] }; route.ids.push(pid); results.push(pid); }
   return results;
 }
 export function positionName(d: Document, pid: string | null | undefined) { const p = pid ? d.experience.positions[pid] : undefined; if (!p) return 'Missing position'; const view = positionView(d, p); return `${encounterName(d, p.encounterId)} / ${view ? useName(d, view) : 'Keep current viewpoint'}`; }
-export function removeUse(d: Document, uid: string) { delete d.experience.uses[uid]; Object.values(d.experience.positions).forEach(p => { if (p.viewUseId === uid) { p.viewUseId = null; p.presentation = 'hold'; } }); }
+export function removeUse(d: Document, uid: string) { delete d.experience.uses[uid]; Object.values(d.experience.positions).forEach(p => { if (p.viewUseId === uid) { p.viewUseId = null; p.presentation = 'hold'; } }); Object.values(d.experience.encounters).forEach(e => { if (e.viewOrder) e.viewOrder = e.viewOrder.filter(other => other !== uid); }); }
 export function removePosition(d: Document, pid: string) { const p = d.experience.positions[pid]; if (!p) return; const route = d.experience.routes.find(r => r.id === p.routeId); if (route) route.ids = route.ids.filter(i => i !== pid); delete d.experience.positions[pid]; }
 export function movePosition(d: Document, pid: string, delta: number) { const p = d.experience.positions[pid]; const r = d.experience.routes.find(r => r.id === p.routeId); if (!r) return; const i = r.ids.indexOf(pid), j = i + delta; if (j < 0 || j >= r.ids.length) return; [r.ids[i], r.ids[j]] = [r.ids[j], r.ids[i]]; }
 export function signals(d: Document, uid: string): string[] { const u = d.experience.uses[uid], def = definition(d, u); if (!def) return [];  if (def.kind === 'narration') { const span = resolvedDuration(def); return ['complete', ...def.markers.filter(m => m.time > 0 && m.time <= span).map(m => `marker:${m.id}`)]; } if (def.kind === 'control') return capability(d, def.subjectId, def.capabilityId)?.signals ?? []; return []; }
@@ -154,5 +175,6 @@ export function validate(d: Document): Issue[] {
     const seen = new Set([u.id]); let at: Use | undefined = u; while (at?.start.kind === 'after') { const dependencyId: string = at.start.useId; if (seen.has(dependencyId)) { push('use', u.id, 'Dependency cycle. Choose a different start.'); break; } seen.add(dependencyId); at = d.experience.uses[dependencyId]; }
   }
   for (const p of Object.values(d.experience.positions)) { if (!d.experience.encounters[p.encounterId]) push('position', p.id, 'Encounter removed. Replace this position’s encounter.'); if (p.presentation === 'view' && (!p.viewUseId || !d.experience.uses[p.viewUseId])) push('position', p.id, 'Framing removed. Choose a View or Keep current viewpoint.'); if (resolveNext(d, p.id).missing) push('position', p.id, 'Next destination removed. Choose a replacement.'); if (p.gate && !validSignal(p.gate)) push('position', p.id, 'Required signal unavailable. Repair or remove this gate.'); if (p.pacing.kind === 'signal' && !validSignal(p.pacing.ref)) push('position', p.id, 'Autoplay signal unavailable. Choose new pacing.'); p.choices.forEach(c => { if (!d.experience.positions[c.targetId]) push('position', p.id, `Choice “${c.label}” has a missing destination.`); }); }
+  for (const e of Object.values(d.experience.encounters)) if (e.viewOrder) { const valid = new Set(encounterViews(d, e.id)); if (e.viewOrder.some(uid => !valid.has(uid))) push('encounter', e.id, 'View progression references a View that is not part of this Presentation. Revise or clear it.'); }
   return issues;
 }
