@@ -16,12 +16,18 @@ invented here.
 
 **Current shell:** the shipped `Spatial` workspace (`Scene | Camera` × `Plan | 3D`)
 is the current authoring surface; `Experience`, `Assets` and `Publish` are the
-project-level surfaces from the 2026-08-31 shell ratification — **Experience mode
-is still destination, not shipped**, while Assets/Publish have current partial
+project-level surfaces from the 2026-08-31 shell ratification — **Experience
+authoring is still destination, not shipped**, while Assets/Publish have current partial
 implementations (P20/P22). Composition, material, typography and control metrics are owned by
 [`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md);
 shell changes still require focused capability/design planning. Current labels do not
-constrain the destination data model or future creative scope.
+constrain the destination data model or future creative scope. **Destination
+product framing (owner-directed reconciliation, 2026-09-29):** creators work
+through **World | Experience** lenses over one project. World is not a
+`WorldDocument`; it exposes Layout/Scene truth, typed resources and Camera
+inspection. Experience exposes visitor-facing composition and may delegate
+View/framing/movement edits to the canonical Camera authority. The replacement
+shell composition remains a design-phase decision.
 
 ## Ratified north star
 
@@ -93,9 +99,17 @@ express.
 | Performance definition | A reusable resource declaring target roles, parameters, channels, timing or progress, child uses and lifecycle. | An object opening, a reveal, coordinated lighting and narration. |
 | Binding / invocation / run | Assign definition roles to subjects; author a use with parameters and timing policy; execute it with private session state. | Two watches using the same opening definition at different times. |
 | Moment | A useful authoring/preview bookmark combining a view, resolved presentation state, content and permitted interaction. It need not be another stored entity kind. | The point at which an explanation pauses for inspection. |
-| Destination | Reusable visitor-facing meaning and an entry policy, which may reference a view and presentation. | "The valve" or "Alternative B." |
-| Stop | A particular guided occurrence, with stable identity and contextual content/presentation bindings. | The same Piano visited for construction and later for performance. |
-| Experience | The visitor-facing composition of destinations, guided order, content, presentations and bounded interaction. | A tour, an interactive explainer, or an embedded configurator. |
+| Presentation | Experience-owned reusable visitor-facing meaning and composition, with an explicit entry policy; it may reference subjects, Views, content and supported Activities. It is not a portable performance definition. | “Why this piano matters” or “How power reaches the generator.” |
+| Stop | A stable Guide occurrence referencing a Presentation, with contextual entry, pacing and continuation. Several Stops may reference one Presentation. | The same Piano Presentation entered twice with different framing. |
+| Experience | The visitor-facing composition of Presentations, Experience-wide Interactions, optional Guides and bounded session logic. | Free exploration, a tour, or an interactive explainer. |
+
+“Destination” remains ordinary vocabulary for a typed navigation target or
+address, not a second authored entity. A Presentation can exist without a Guide;
+an Experience may also expose Interactions without either a Guide or a
+Presentation. A Presentation may focus on zero, one or several World subjects,
+a spatial relationship or a captured viewpoint; focus does not automatically
+retarget its Camera Views. A reusable **performance resource** carries portable
+choreography and typed roles independently of an Experience Presentation.
 
 Repeated occurrences need occurrence identity: the current guided flow stores
 next/previous links and holds on camera nodes and its walker rejects revisiting a
@@ -132,7 +146,7 @@ is by concern, not by document count.
 | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances and world presentation | Scene, including environment/atmosphere, render settings and spatial trigger subjects. |
 | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles and camera evaluation | Camera, including reusable Camera resources. |
 | Reusable states, clips, performances, their typed role interfaces and composition | Typed resources in the common resource system; domain adapters own what their channels mean. |
-| Destinations, guided occurrences, editorial order, visitor-facing content/localization/UI configuration, choices and invocation bindings | Experience, as a distinct authored semantic domain. |
+| Presentations, optional Guides and Stops, editorial order, visitor-facing content/localization/UI configuration, choices and contextual Activity/Interaction bindings | Experience, as a distinct authored semantic domain. |
 | Source bytes, immutable resource revisions, derivatives, provenance, retention and resolution | Shared resource infrastructure serving every domain (destination: project and library scopes, not a mode-specific store). |
 | Accepted project revision, dependency lock, cross-domain validation, coherent history, release preparation | Project coordination over domain operations and resources. |
 | Active runs, clocks, channel control, visitor choices and media position | Execution-session state, isolated per preview/visitor/session; playback never writes back into authored definitions. |
@@ -203,7 +217,7 @@ layout and present algorithms do not define the architecture; the authorities
 above do. Editor camera trails, temporary selections, hidden authoring aids and
 pending gestures never become visitor behavior incidentally.
 
-## Build (Spatial) — architectural authoring
+## Build — World architecture
 
 Build creates and refines canonical architecture using Plan for construction and
 any legible standpoint for precision. The shipped, closed P23 foundation is
@@ -257,7 +271,7 @@ constraint sophistication) is demand/evidence-gated, not a prerequisite for the
 first Experience proof. Deep mesh topology editing, sculpting, UV authoring,
 rigging and character animation remain external-tool territory.
 
-## Stage (Spatial) — scene composition and shared assets
+## Stage — World composition and shared assets
 
 Scene owns scene-object composition: imported models, primitives, materials,
 lights, placement, transforms, visibility, authored object properties,
@@ -280,10 +294,12 @@ resources do not share mutable pose, materials, playback or overrides.
   binding may start a bounded ambient behavior when that Scene's execution
   context starts, through the common conductor — never a private animation loop
   writing around channel ownership.
-- **Reusable presentations and Experience orchestrations are separate from the
-  instance baseline.** Presentation definitions compose capability with optional
-  or required Camera, light, media and content roles; an Experience binds those
-  roles to concrete subjects, selects invocations and supplies contextual media.
+- **Reusable performances and Experience Presentations are separate from the
+  instance baseline.** Portable performance resources compose capabilities with
+  optional or required Camera, light, media and content roles. Experience-owned
+  Presentations supply visitor meaning and bind supported uses to concrete
+  subjects; neither is an instance baseline or a second copy of intrinsic
+  capability.
 - **Two override mechanisms:** composition overrides establish the effective
   instance baseline (definition defaults → selected variant → allowed instance
   overrides); invocation overrides supply parameters, bindings, time mapping and
@@ -317,7 +333,7 @@ clusters are named same-room member groups with no prefab/definition model; GLB
 import and provider search remain deferred. The current registry is a
 project-scoped implementation, not the destination resource system.
 
-## Direct (Spatial) — camera direction
+## Direct — Camera direction
 
 **Enduring guarantee:** Camera keeps connectivity, routes, framing, projection
 and evaluation as one authority. Every profile controller — guided travel, free
@@ -341,7 +357,9 @@ locks and detours move to Experience ownership. Camera retains possible spatial
 traversal, intrinsic movement profiles, framing/projection and evaluation;
 invocation time mapping is evaluated through Camera. Selecting a cut does not
 invent a spatial edge; selecting travel must resolve a supported route or report
-a gap. The new interface must prove retiming, seeking, projection and guard
+a gap. A read-only compatibility adapter may interpret legacy node order during
+migration; two editable order systems may not coexist. The new interface must
+prove retiming, seeking, projection and guard
 behavior together — a serialized prepared form is a conformance obligation, and
 dumping the current Three-object motion is not a design. Node links and
 Experience order must never remain coequal writable authorities.
@@ -352,12 +370,12 @@ listen to them. Spatial Camera does not become the owner of every performance
 event, and Experience bindings evaluate against canonical evaluation, never a
 copied timeline.
 
-## Experience mode — visitor-facing composition
+## Experience lens — visitor-facing composition
 
 Experience is a distinct authored semantic domain: the visitor-facing composition
-of destinations, guided occurrences with stable identity, editorial order,
-contextual content/localization/UI configuration, choices and invocation
-bindings. It answers:
+of Presentations, Experience-wide Interactions, optional Guides and Stops with
+stable occurrence identity, editorial order, content/localization/UI
+configuration, choices and contextual invocation bindings. It answers:
 
 > How does the visitor understand, navigate, and participate in the authored
 > spatial experience?
@@ -370,32 +388,52 @@ Experience unit is a ratified destination shape (F.2;
 [`composition-execution.md`](./composition-execution.md)) — not a designed
 schema, codec, or backend slice.
 
-Experience references Camera views and routes without duplicating poses, paths or
-timing; it owns occurrences, order, holds and continuation. Its
+Experience references Camera Views and routes without duplicating poses, paths,
+projection/FOV truth or an interpolation system; it owns occurrences, order,
+holds, continuation and explicit Gates. Its
 `Event → Target → Action` interaction model composes existing project meaning
 rather than compensating for missing Spatial capabilities. It must not create
 `ExperienceScene`, `ExperienceCameraGraph`, `ExperienceCameraPath`,
 `ExperienceRenderer` or equivalent second authorities.
 
+**Identity and execution (destination).** Presentation identity names reusable
+meaning; Stop identity names one authored Guide occurrence; a session invocation
+names one actual visit. Repeated Stops can reference one Presentation, and
+repeated visits to one Stop are distinct invocations. Activity runs have their
+own runtime identities and lifetimes. A subject/domain capability supplies
+intrinsic behavior, an optional typed performance resource supplies portable
+choreography, Experience authors an Activity invocation, and an execution
+session runs it. Experience cannot invent a capability absent from its owner.
+Execution duration, automatic readiness and progression permission are separate;
+only an explicit Gate blocks an otherwise valid manual continuation. Exploration
+releases guided Camera control; rejoin uses the current Camera pose and does not
+silently resume autoplay. The precise detour lifecycle remains a Prototype V2
+hypothesis, not an accepted default.
+
+**Repair and readiness (destination).** A valid authored project may retain an
+explicit unresolved subject, capability, View or resource binding so it can be
+inspected and repaired. Missing and intentional keep-current-viewpoint are
+distinct states. No resolver silently retargets by name, proximity or Room
+containment, and no repair erases the affected Presentation or Stop. Preview
+disables or refuses affected required behavior; publication requires executable
+closure for the selected program and supported profile. Cross-domain acceptance
+remains atomic under F.4.
+
 Representative direction:
 
 ```text
 Experience
-├─ Destinations and occurrences
-│  ├─ stable Stop identity (repeated visits)
-│  ├─ editorial order, holds, bounded branching
-│  └─ invocation time mapping through Camera
-├─ Content
-│  └─ titles, descriptions, media, info panels, links/actions, localization
-└─ Interactions / session logic
-   └─ Event → Target → Action + typed session declarations and guards
-       references Spatial subjects + typed resources
+├─ Presentations → focus, explanation, View uses, Activities, Interactions
+├─ Experience-wide Interactions
+└─ Guide (optional) → Stops referencing Presentations
+   └─ editorial order, continuation, holds and Gates
+       references World subjects, Camera Views and typed resources
 ```
 
 ## Same world, different authoring lens
 
-Spatial and Experience operate on the same project, world, cameras, resources and
-runtime, exposing different authoring lenses over shared truth:
+World and Experience operate on the same project, world, cameras and resources,
+exposing different authoring lenses over shared truth:
 
 ```text
 same project · same world · same cameras · same resources · same runtime
@@ -403,19 +441,19 @@ same project · same world · same cameras · same resources · same runtime
 different authoring surface / authority
 ```
 
-Spatial authors spatial truth; Experience authors visitor-facing meaning,
+World authors Layout/Scene source truth; Experience authors visitor-facing meaning,
 occurrences and interaction over it. Experience does not require an independent
 renderer or an alternate scene. Do not create duplicate camera graphs, sequences,
 paths, room definitions, scene objects or layout geometry, and do not fork domain
 evaluation into Experience-only code. Domain count and document boundaries no
 longer define the model — semantic authorities do.
 
-## Spatial camera authority vs Experience interaction authority
+## Camera authority vs Experience interaction authority
 
 ```text
 Camera (authority)                      Experience (authority)
 ─────────────────────────────           ─────────────────────────────
-connectivity / routes                   destinations and Stops
+connectivity / routes                   Presentations and Stops
 paths / anchors / topology              guided order, holds, detours
 framing / projection                    interaction locks / continuation
 motion evaluation                       content, localization, UI config
@@ -426,12 +464,11 @@ progress markers / cues*                interaction bindings to markers
 \* Cue ownership follows the source: Camera emits its own progress markers,
 performances own their cues, Experience owns interaction bindings to them.
 
-Experience may **reference and observe** authored Camera state and must not
-become another camera editor. Changing path shape, anchors, camera pose,
-transition timing, FOV or framing routes the author back to the canonical Camera
-surface; an Experience action such as **Edit Camera Path ↗** may switch there and
-preserve the relevant selection. Read-only values and canonical progress/cue
-events are legitimate.
+Experience may expose progressive View, framing and movement authoring, but each
+edit delegates to canonical Camera operations and evaluation. It never stores
+Camera pose, path, projection/FOV truth or a second graph. Transient World
+inspection becomes durable Camera intent only through explicit capture. The
+location and depth of Camera controls are open shell-design questions.
 
 Never:
 
@@ -444,7 +481,7 @@ Experience timing → a copied duplicate of Camera timing
 Motion accessibility changes presentation, not spatial truth: reduced/no-motion
 preferences select a supported presentation (for example a cut or reduced
 transition) that preserves meaning, without alternate camera graphs or duplicate
-destination state.
+Presentation state.
 
 ## Interaction and behavior authoring
 
@@ -662,13 +699,12 @@ and several independent commits are never presented as one transaction.
 1. **Semantic spatial authoring, not a general mesh editor.** Richer CAD-like
    and parametric construction extends the architectural domain and the single
    canonical compiler; no parallel general-purpose mesh-modeling subsystem.
-2. **One Spatial shell, two modes.** The shell structure places the `Spatial`
-   and `Experience` creative modes plus project-level `Assets` and `Publish`
-   surfaces, with `Scene | Camera` over `Plan | 3D` inside Spatial; only Spatial
-   is implemented today and Experience mode remains destination. This is the
-   durable shell composition, and current labels/surface boundaries do not
-   constrain the destination data model, which is owned by contract 3 and the
-   ratified direction. Shell composition/material/typography metrics remain
+2. **One project, World | Experience lenses.** The landed shell has `Spatial`
+   (`Scene | Camera` × `Plan | 3D`) plus partial project-level surfaces; it
+   remains the current description until cutover. The destination creator-facing
+   framing is World | Experience over one project, not a `WorldDocument` or a
+   merger of semantic authorities. Shell composition, navigation and Camera
+   control placement are left to focused design; visual-system roles remain
    owned by the shell contract.
 3. **Distinct, never-merged semantic authorities; world-local placement.**
    Layout, Scene, Camera, Experience and typed resources are separate
@@ -719,13 +755,14 @@ and several independent commits are never presented as one transaction.
     legacy project/Scene formats that the product already exports or publishes
     require explicit compatibility; compatibility never means migrating old
     editor session state.
-11. **Experience references Spatial — and owns its own layer.** Experience binds
+11. **Experience references World — and owns its own layer.** Experience binds
     to existing subjects, Camera views and routes and composes visitor-facing
     meaning, editorial occurrences, order, holds, continuation and interaction
     bindings; it never creates duplicate camera positions, graphs, sequences,
     paths, room definitions, scene objects or layout geometry, and it never
-    performs independent camera interpolation. Camera truth stays edited in
-    Camera; Experience's declared time mapping is evaluated through Camera.
+    performs independent camera interpolation. Experience controls may edit
+    Camera truth through canonical Camera operations; declared time mapping is
+    evaluated through Camera.
 12. **One typed resource system with explicit identity.** Project and library
     scopes share one typed resource system with revisions, dependency locks and
     no per-mode or per-owner stores; a project-local definition may be inline
@@ -870,7 +907,7 @@ Current production choices remain deliberate rather than ideological:
   authority
 - two coequal writable editorial-order authorities (node links beside
   Experience order), or Experience duplicating camera, geometry, room or
-  scene-authoring systems instead of referencing Spatial truth
+  scene-authoring systems instead of referencing domain-owned World truth
 - persisting Three.js/renderer objects, generated geometry, gizmo state,
   selection, or transient editor state as project truth (immutable reproducible
   delivery derivatives outside authored documents are permitted, not authored
@@ -915,7 +952,7 @@ current implementation slices:
 - assisted or AI-generated layouts, staging, tours, framing, interactions, and
   complete first drafts
 - multiple tours, branches, conditional experience flow, and free-roam rejoin
-- Experience workspace depth: visitor menu authoring, destination binding UI,
+- Experience workspace depth: visitor menu authoring, Presentation/address binding UI,
   contextual titles/info cards, visitor preferences, reduced-motion behavior
 - richer reuse: cross-project kits, library updates/repair, compatible variants,
   architectural alternatives, and participation/rejoin
@@ -989,13 +1026,12 @@ The destination converges on:
 ```text
 User Workspace
 └─ Project
-   ├─ Spatial
-   │  ├─ Scene → composition, placed instances, world presentation
-   │  └─ Camera → views, connectivity, routes, framing, evaluation
-   ├─ Experiences (one or several)      destination
-   │  ├─ Destinations · Stops · order
-   │  ├─ Content · localization · UI configuration
-   │  └─ Interactions · typed session state · guards
+   ├─ World lens → Layout + Scene source truth; Camera inspection
+   ├─ Experience lens → Experiences (one or several)
+   │  ├─ Presentations → visitor meaning, content, View/Activity uses
+   │  ├─ Experience-wide Interactions
+   │  └─ optional Guides → Stops → Presentations; order, Gates
+   ├─ Camera authority → Views, connectivity, routes, framing, evaluation
    ├─ Typed resources (project + library scopes)
    └─ Publish → per-Experience pointers → immutable releases
 ```

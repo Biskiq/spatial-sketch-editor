@@ -4,7 +4,13 @@
 
 This document captures the intended product and behavioral model demonstrated by the current Experience Authoring Prototype and subsequent product discussion.
 
-It is **pre-architecture reconciliation**.
+It is product/behavior input. Its architecture questions were reconciled in the
+[North Star](./reference/north-star.md), [architecture](./reference/architecture.md),
+[F contract](./reference/composition-execution.md) and
+[Camera contract](./reference/components/camera-tour.md); those live contracts
+own the answers. The [architecture synthesis](./World-Experience-Architecture-Synthesis.md)
+is provenance, and the [design-phase context](./World-Experience-Design-Context.md)
+names constraints still relevant to shell exploration.
 
 The prototype is evidence, not authority. Its implementation, terminology, UI composition, data structures, Camera shortcuts, and runtime mechanisms may drift from this synthesis. That drift is expected. The prototype will be revised after architecture and shell reconciliation.
 
@@ -824,11 +830,12 @@ Later unrelated Camera changes must not silently undo visitor actions or Activit
 
 ---
 
-# 16. Last command owns the affected channel
+# 16. Supported replacement and channel ownership
 
-The prototype demonstrates an important conflict rule:
+The prototype demonstrates an important replacement case:
 
-> The latest accepted command to a subject channel wins.
+> A newer accepted command can replace an older contribution on a channel
+> family that explicitly supports replacement or handoff.
 
 If a visitor explicitly stops the rotor:
 
@@ -839,9 +846,11 @@ Visitor Stop
 
 a later Camera transition must not reissue an old Presentation command and restart it.
 
-Likewise, removing an old effect must not overwrite a newer command from another owner.
+Likewise, removing an old effect must not overwrite a newer accepted
+contribution. Competing exclusive control otherwise rejects by default.
 
-Production execution will need a typed channel/conflict model, but this behavioral invariant should remain.
+The live F.3 contract owns the typed channel/conflict rule. The prototype's
+unconditional latest-command behavior is not a production policy.
 
 ---
 
@@ -1188,9 +1197,11 @@ The prototype may temporarily disagree with this synthesis while product and arc
 
 ---
 
-# 27. Architecture questions intentionally left open
+# 27. Architecture questions routed to reconciliation
 
-The next architecture/reconciliation pass must determine, without changing the product behavior casually:
+These were the input questions for the completed reconciliation. Read the live
+contracts linked in Status for resolved architecture; shell questions and the
+two Prototype V2 hypotheses remain open in the design-phase context.
 
 1. Does **Presentation** replace the North Star's current `Destination` concept, or do both have distinct jobs?
 
@@ -1317,21 +1328,23 @@ The simple path stays simple while advanced orchestration remains possible.
 
 ---
 
-# 30. Purpose of the next phase
+# 30. Handoff after architecture reconciliation
 
 This synthesis is the product-behavior input to the Experience/World convergence work.
 
-The next work should:
+The product model and architecture synthesis have now been reconciled with the
+codebase and durable contracts. The next baton is **World | Experience shell
+information architecture and visual/interaction design**, using the compact
+[design-phase context](./World-Experience-Design-Context.md). Prototype V2
+follows that design work; neither is started by this document.
+
+The progression remains:
 
 ```text
-behavior synthesis
-        ↓
-codebase reconnaissance
-        +
-architecture synthesis
-        ↓
-North Star / F reconciliation
-        ↓
+behavior synthesis + codebase reconnaissance + architecture synthesis
+        ↓ completed
+North Star / F / Camera / shell-exposure reconciliation
+        ↓ completed
 World | Experience shell information architecture
         ↓
 visual + interaction design

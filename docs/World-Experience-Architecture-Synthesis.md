@@ -1,11 +1,11 @@
 # World / Experience — architecture synthesis
 
-**Status: proposal for reconciliation, not a ratified contract or implementation plan.**  
+**Status: reconciliation provenance, not a live architecture contract or implementation plan.** Accepted conclusions are folded into the [North Star](./reference/north-star.md), [architecture](./reference/architecture.md), [F](./reference/composition-execution.md), [Camera contract](./reference/components/camera-tour.md), [shell contract](./reference/design-system/editor-shell-and-visual-system.md) and [T3 manifest](./roadmap/p25-experience/README.md). Read those owners for the current answer.
 **Date:** 2026-09-29.  
 **Product input:** [Experience Authoring — Product and Behavior Synthesis](./World-Experience-Model.md), read in full.  
-**Production baseline:** freshly fetched `origin/main` at `a6ee6dc28f209f23bb36e609d6f28b31f341796d`. The working branch's tracked tree at `23e5e8922608df6f865aa6313179fb3c5ca1b831` is identical to that main tree. The product-input Markdown is an additional, untracked input.
+**Production baseline:** `origin/main` at `a6ee6dc28f209f23bb36e609d6f28b31f341796d`; after rebase, branch `fd171ff67817d89564eed7b8235ff3c9057155df` differs from main only in this synthesis and the product-input Markdown before the reconciliation edits. The bounded implementation claims below were rechecked against that branch; they remain current for this reconciliation.
 
-This synthesis uses source and targeted test inspection. It does not claim a new browser run or production acceptance. Neither production code nor existing contracts, roadmap status, or prototypes were changed. **CURRENT** means verified implementation; **PROPOSED DESTINATION** means the recommendation here; **MIGRATION / CUTOVER** identifies replacement obligations; **DEFERRED** identifies mechanisms or depth not required for the first foundation.
+The original synthesis used source and targeted test inspection, without a browser run or production acceptance. Its initial pass changed no production code, contracts, roadmap status or prototypes; the subsequent reconciliation promoted accepted conclusions into the linked owners. **CURRENT** means verified implementation; **PROPOSED DESTINATION** labels the recommendation at the synthesis stage, now subordinate to live contracts; **MIGRATION / CUTOVER** identifies replacement obligations; **DEFERRED** identifies mechanisms or depth not required for the first foundation.
 
 Authority was reconciled against the [ratified decision record](./reference/decisions/northstar-ratification-2026-09-27.md), [North Star](./reference/north-star.md), [architecture](./reference/architecture.md), [F.1–F.5](./reference/composition-execution.md), [roadmap](./roadmap/README.md), and the [F](./roadmap/f-foundation-contracts/README.md), [T1/P26](./roadmap/p26-spatial-depth/README.md), [T2/P24](./roadmap/p24-scene-staging/README.md), and [T3/P25](./roadmap/p25-experience/README.md) manifests. Prototype behavior supplies evidence; its types and runtime do not supply authority.
 
@@ -415,7 +415,7 @@ These constrain behavior and ownership. They prescribe no Navigator, Inspector, 
 
 ## L. Required North Star / architecture amendments
 
-**Do not apply these amendments as part of this synthesis.** If accepted, reconcile the owning contracts in place and retain accurate current-state sections until implementation cutover.
+**Provenance of amendments now promoted into the owning contracts.** This table records the synthesis recommendation; the linked live contracts own the accepted wording and preserve current behavior until cutover. The two prototype questions in §M remain hypotheses.
 
 | Owning document / concern | Exact conceptual amendment required |
 |---|---|
@@ -437,11 +437,14 @@ These constrain behavior and ownership. They prescribe no Navigator, Inspector, 
 
 The ratified decision record remains provenance. Record accepted amendments explicitly and promote them to their concern owners; do not rewrite historical ratification text to imply these refinements were already approved.
 
-## M. Open questions requiring owner judgment
+## M. Design / Prototype V2 hypotheses (unresolved)
 
-The architectural recommendations above are resolved enough to proceed to reconciliation. Two demonstrated product semantics still require owner judgment; the [Experience prototype README](../prototypes/experience-authoring/README.md) explicitly identifies them as provisional experiments.
+The architecture reconciliation leaves two demonstrated product semantics open
+for integrated-shell Prototype V2. The recommendations below are hypotheses,
+not accepted defaults; the [Experience prototype README](../prototypes/experience-authoring/README.md)
+identifies them as provisional experiments.
 
 1. **What does promoting an interior View into a Stop mean for the explanation?** Recommend that a new Stop starts a distinct Presentation visit. A selected View changes entry framing; entering midway through the explanation requires an explicit supported semantic entry point. Do not silently retain the previous narration cursor merely because both Stops share the Presentation. The owner should decide whether “checkpoint” promises this semantic entry behavior or is primarily a framing affordance before it becomes durable product vocabulary.
 2. **Does a detour suspend the parent explanation or constitute departure?** Recommend an explicit detour suspends parent explanation and automatic Camera direction, retains the parent invocation, and resumes it without replaying entry; subject Activities follow their own lifetimes. Ordinary navigation away starts a new visit on return. The owner should ratify this distinction, because choosing restart/continue instead changes what visitors hear and what persistent work means. Rich nested detour machinery remains later depth.
 
-Acceptance of this synthesis would authorize the stated conceptual reconciliation only. The next artifact is the North Star/F reconciliation and then the design brief; this document does not begin shell exploration, prototype revision, production implementation or slice planning.
+The reconciled contracts and the [design-phase context](./World-Experience-Design-Context.md) are the next route. This synthesis remains evidence; it does not authorize shell exploration, prototype revision, production implementation or slice planning by itself.
