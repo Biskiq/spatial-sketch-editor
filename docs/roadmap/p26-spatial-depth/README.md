@@ -21,6 +21,10 @@
   if the first UI exposes one level.
 - IDs use the **F.1 reference format**; level/structure-qualified identity is
   present before vertical architecture expands.
+- T1 supplies the shared continuous viewport/projection, canonical picking and
+  runtime-safe Layout representation seams consumed by World and Experience
+  authoring. T3 data and Camera/order cutover may proceed in parallel; Camera
+  authoring adapters migrate after that cutover so node order is not renewed.
 - **Prototype journeys A–F** remain the **experience/QA authority** for this
   direction: A Curved wall (3D → peel → walk round → square up → flat → edit at
   any curvature → put back), B Look inside (draw a line → preview → part → face

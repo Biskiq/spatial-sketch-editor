@@ -21,7 +21,7 @@ in **`@portfolio/project-model`**; camera-core consumes only structural camera
 graph inputs. Visitor-only `CameraDirector.svelte` and
 `NavigationNode.svelte` remain app components.
 
-## Current vs destination (ratified 2026-09-27)
+## Current vs destination (ratified 2026-09-27; reconciled 2026-09-29)
 
 **Current (everything below, until its explicit cutover).** The node/connection
 graph, order links, holds, timeline scopes and evaluator described here are the
@@ -33,7 +33,7 @@ guarantee.
 evaluation as one authority; every profile controller (guided travel, free look,
 reduced motion, film, future XR) realizes viewing intent through it and no second
 navigation, motion or pose/FOV interpolation authority exists. Editorial
-occurrences, order, holds, interaction locks and detours move to **Experience**
+occurrences, order, holds, explicit Gates, interaction policy and detours move to **Experience**
 at cutover; Camera keeps possible spatial traversal and evaluation, and
 Experience's declared invocation time mapping is evaluated through Camera.
 Selecting a cut never invents a spatial edge, and selecting travel must resolve a
@@ -43,6 +43,26 @@ interaction bindings that listen to them. Node links and Experience order must
 never remain coequal writable authorities. See
 [`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)
 and [`../north-star.md`](../north-star.md) §Direct.
+
+**View and invocation (destination).** A View is Camera-owned spatial attention:
+pose/framing or explicitly adaptive subject framing, projection and evaluation
+stay here. A Presentation or Stop may reference a View, supply supported entry
+context and invocation time mapping, or deliberately keep the current viewpoint;
+it never copies Camera truth. A missing referenced View is a repairable unresolved
+binding, distinct from intentional keep-viewpoint. Transient World inspection
+does not become an authored View without explicit capture. Experience may expose
+progressive View/framing/movement controls, but all writes and evaluation go
+through Camera authority; the shell location of those controls is open.
+
+**Order cutover (destination).** Camera owns Views, connectivity/routes,
+framing/projection and movement evaluation. Experience owns Presentations, Stops,
+Guide editorial order/continuation/Gates and Camera invocation context.
+Legacy node `nextNodeId`/`previousNodeId` order, holds and `lockInteraction` are current
+Scene-encoded behavior only. A read-only compatibility adapter may serve
+migration, but no new writable node order may coexist with Experience Guide
+order. Exploration releases guided Camera control; rejoin evaluates from the
+current pose and leaves autoplay paused. The exact detour explanation lifecycle
+is reserved for Prototype V2.
 
 Directional view tracks may carry one optional `framingEnvelope` per travel
 direction: `0 ≤ enterStart ≤ enterEnd ≤ exitStart ≤ exitEnd ≤ 1`. Route
@@ -188,5 +208,5 @@ Visitor: plays the open-chain order (loop derived); free nodes via BFS; transiti
 Limits: no collision/navmesh; synthesized look; timeline drag-connect ≤1 new edge; guarded deletes.  
 Experience consumers reference this canonical camera graph/route/motion
 evaluation; they do not implement another one, and at the ratified cutover they
-take over editorial order/occurrences, holds, interaction locks and detours
+take over editorial order/occurrences, holds, explicit Gates, interaction policy and detours
 (see the current-vs-destination section above).

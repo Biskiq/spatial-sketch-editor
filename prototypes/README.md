@@ -45,6 +45,7 @@ production authority; their documentation is still a route a reader follows.
 | --- | --- | --- |
 | [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Accepted spatial-authoring / P26 experience reference. Its **journeys A–F** are the experience/QA authority for that direction. |
 | [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | The new Experience/Encounters authoring prototype: current experimental product/UX evidence, **pending architecture and shell reconciliation**. |
+| [`world-experience-shell-sketch/`](./world-experience-shell-sketch/index.html) | **World \| Experience shell sketch** | Disposable, three-file interaction mock of the [one spatial workbench proposal](../docs/World-Experience-Shell-V2-Design.md). It tests shell flow only; it is **not Prototype V2** or semantic authority. |
 
 ## Authority semantics (do not read this move as a promotion)
 
@@ -78,6 +79,10 @@ cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localh
 
 # Experience Authoring Prototype — Vite + Vitest + Playwright
 cd prototypes/experience-authoring && npm install && npm run dev
+
+# World | Experience shell sketch — plain HTML/CSS/JS
+python3 -m http.server 8831 --directory prototypes/world-experience-shell-sketch
+# Open http://localhost:8831/
 ```
 
 Serve each on its own port; more than one may be running at once, so treat a

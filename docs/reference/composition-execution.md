@@ -10,6 +10,14 @@ to the common foundation.
 §§5–6, §10) settles F.1–F.5's shapes; this document writes them. F.1–F.5 were
 written 2026-09-27 and **owner-ratified 2026-09-27 with amendments (Camera
 cutover timing, interface ownership, required/optional extensions).**
+
+**Owner-directed [reconciliation amendment](./decisions/world-experience-reconciliation-2026-09-29.md), 2026-09-29:** F.1 distinguishes
+Presentation/Stop/visit identity and repairable authored bindings; F.2 names
+the Experience composition shape; F.3 permits declared replacement/handoff
+without changing default exclusive rejection; F.4 separates authored validity
+from executable closure; session events are run-scoped; F.5 names Presentations.
+These are later refinements, not claims about the September 27 record.
+
 **Implementation: none of this contract is shipped.** Each
 section labels current behavior where a cutover applies; current encodings are
 cutover obligations, not limits, and the destination is never presented as
@@ -56,10 +64,16 @@ establish identity across revisions or re-exports.
 - **Layout multiplicity.** Level, structure and instanced-definition
   qualification exists before vertical architecture expands; a reference that
   cannot express its level context is not durable for multi-level Layout.
-- **Experience/occurrence identity.** Repeated visits are distinct occurrences
-  with stable identity; the same Stop identity persists across revisions while
-  its subject persists. Editorial order never lives as a second writable
-  authority beside legacy node links.
+- **Experience/occurrence identity.** Repeated guided placements are distinct
+  Stop occurrences with stable authored identity; a Stop identity persists
+  across revisions while that authored occurrence persists, even if its
+  Presentation or referenced subject becomes unresolved. Editorial order never
+  lives as a second writable authority beside legacy node links.
+- **Presentation, Stop and invocation are distinct.** A Presentation names
+  reusable Experience composition, a Stop names one authored Guide occurrence
+  referencing it, and each actual visit has a session invocation identity.
+  Repeated visits to the same Stop are separate runs; runtime lifecycle cannot
+  be keyed solely by Presentation, Stop or authored-use identity.
 - **Resources.** Inline project-local, library-hosted and vendored resources
   use the same identity semantics. Identical immutable bytes in two packages
   are delivery copies of one revision, not competing mutable definitions;
@@ -74,6 +88,12 @@ establish identity across revisions or re-exports.
   explicit, typed result: missing, removed, incompatible, unauthorized, or
   repair-required. Silent fallback by name, index or nearest match is not a
   resolution.
+- **Repairable authored bindings.** Validation can accept an explicitly
+  unresolved subject, capability, View or resource binding as authored state,
+  with its original identity and repair result intact. It never silently
+  retargets by name, proximity or Room containment, nor deletes the affected
+  Presentation/Stop. An intentional keep-current-viewpoint policy is distinct
+  from a missing View. Executable closure is a separate check (§F.4–F.5).
 
 **Current behavior (until T2/T3 cutover):** references are plain asset IDs and
 object IDs within one `ProjectDocument`; P22 publication addressing is keyed by
@@ -119,11 +139,20 @@ link: in `packages/project-model/src/scene.ts`, Camera data (`navigationNodes`,
 `connections`) references only other Camera nodes plus world positions/targets
 — no Scene entity references — so separating it is a low-cost move with no
 cross-reference rewrite. The **split lands in the same cutover as the
-Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds` /
-`lockInteraction` leave Camera nodes for Experience): one migration of
+Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds`
+leave Camera nodes; legacy `lockInteraction` is migration input to explicit
+Experience Gates, continuation or interaction policy): one migration of
 `navigationNodes`, not two. The **landed current encoding remains Camera data
 inside `project.scene`** until that cutover; the co-location is a cutover
 obligation, not the destination.
+
+The Experience unit is collection-capable and owns Presentations,
+Experience-wide Interactions and optional Guides whose Stops reference
+Presentations. “Destination” denotes a navigation target/address role, not a
+second authored entity. Camera owns View, route and projection truth; an
+Experience invocation stores references and context, never a duplicate Camera
+graph or pose/FOV authority. A read-only legacy order adapter may assist the
+cutover; two editable order systems may not coexist.
 
 **Typed resources** retain their identities whether inline, library-hosted or
 vendored, with immutable revisions and a project dependency lock. Resource
@@ -168,6 +197,14 @@ domain-owned composition operators.
   viewport; a second viewport is a distinct output, not another writer to the
   first. Different visitor runtimes are isolated contexts even over one authored
   world.
+- **Declared replacement/handoff.** For a channel family that explicitly
+  permits replacement or handoff, a newer accepted command may supersede an
+  older contribution under that family's policy. Acceptance establishes an
+  ordered ownership transition; the former run cannot later reclaim the
+  channel or clear the newer contribution during completion, cancellation or
+  cleanup. Other exclusive conflicts still reject. This is not a global
+  last-write-wins rule; exact arbitration operators remain first-consumer
+  interface work.
 - **Domain invariants bind after arbitration.** A generic channel cannot write
   Wall topology, bypass a valid variant selection, or interpolate Camera
   pose/FOV outside canonical Camera evaluation.
@@ -212,12 +249,20 @@ Acceptance sequence:
   writers.
 - **One coherent snapshot.** Renderers, preview and publication see the accepted
   snapshot; they never observe a partially applied cross-domain change.
+- **Authored validity versus executable closure.** A composed project may
+  atomically accept explicit unresolved bindings when its domain and reference
+  validators permit repairable authored state. This never relaxes expected
+  revision, resource-lock or cross-domain acceptance. Preview refuses or
+  disables affected required behavior; publication accepts only a closed
+  selected program/profile. An unresolved binding is never treated as a
+  silently resolved capability or View.
 - **Human UI and agents use the same operations, diagnostics and
   expected-revision rule.** Temporary invalid gestures stay local previews;
   accepted cross-domain work and publication require coherent validity.
-- **First implementation: the Experience cutover**, where “add Stop here” can
-  create both a Camera view and a Stop in one acceptance. Do not defer the
-  contract to component or kit work.
+- **First implementation: the Experience cutover**, where a compound authoring
+  intent can capture a Camera View, bind it to a Presentation and, when a Guide
+  occurrence is requested, create a Stop referencing that Presentation in one
+  acceptance. Do not defer the contract to component or kit work.
 
 This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate
@@ -255,6 +300,9 @@ are part of this foundation.
   state plus ordered input events; a value evaluator samples from that state and
   explicit clocks/inputs. Seeking a known run replays events or restores a
   checkpoint; it cannot infer an unrecorded visitor history.
+- **Run-scoped events:** completion, cancellation and channel cleanup are
+  scoped to the visit/invocation and accepted run epoch that produced them.
+  A stale event cannot change a later accepted contribution (§F.3).
 - Syntax, UI and the initial operator set are planning choices. Scripts remain
   the separately governed extension-module exception.
 
@@ -285,15 +333,16 @@ Envelope contents (shape, not encoding):
   support. A matching major version alone is insufficient if a required
   capability is absent.
 - **Selected Experience identities/entry points:** which Experiences publish,
-  with explicit selection/transition semantics. Publication pointers belong to
-  published Experiences, not exclusively to the project.
+  with explicit selection/transition semantics and supported Presentation or
+  Stop entry addresses. Publication pointers belong to published Experiences,
+  not exclusively to the project.
 - **Semantic public addresses:** F.1 addresses resolved against the release
   context.
 - **Program slots:** occurrences and editorial order; invocation bindings; typed
   session declarations with scopes and initial values; bounded side-effect-free
   guards/derived values; local time mappings; channel policies; lifecycle and
   event semantics.
-- **Visitor meaning:** destinations, contextual content, captions/transcripts,
+- **Visitor meaning:** Presentations, contextual content, captions/transcripts,
   localization, reduced-motion/non-3D alternatives.
 - **Public integration interface:** exposed parameters/actions/events and
   permitted host capabilities. Persisted audience records use these addresses

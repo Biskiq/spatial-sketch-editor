@@ -2,6 +2,12 @@
 
 **Date:** September 27, 2026. **Repository evidence:** `96aca756`, with the supplied working copies of the two repository proposals. **Status: RATIFIED 2026-09-27 by the owner.** The direction in §§5–10 establishes the product destination, architectural guarantees, and foundation-contract shapes; ratification does not make them implemented or authorize every capability phase. This ratified direction supersedes conflicting pre-redesign reference and roadmap direction; landed behavior remains evidence and an explicit cutover obligation. Authority rules and routing were updated in the same change set, as specified in the final handoff. **Scope:** the full recommended direction; no exceptions recorded. **Activation note:** this document is decision provenance and the normative destination authority; promoted contracts under `docs/reference/` carry the live reconciled statements.
 
+**Later amendment:** the [September 29 World | Experience reconciliation](./world-experience-reconciliation-2026-09-29.md)
+refines the Destination/Presentation model, creator-facing lenses and related
+execution boundaries. This September 27 record retains its original wording as
+historical ratification; follow the later amendment and routed live contracts
+for those concerns.
+
 ## 1. Recommended direction
 
 **Biskiq should become a browser-native studio for creating, composing, inspecting, directing, and publishing spatial experiences that remain understandable and editable as they change.** Its subjects include architecture, objects, components, light, sound, information, and visitor participation. A project can begin with a space, an object, an arrangement, a performance, or a question to explain.

@@ -18,19 +18,26 @@
 - A project supports **multiple Experiences over one shared world**; the
   persisted Experience unit is collection-capable (F.2). The UI may initially
   expose one Experience and simple choices.
-- Destinations, stable repeated occurrences (e.g. the accepted Intro → Piano →
-  Paris → Piano → Exit case), editorial order, holds, interaction locks and
-  continuation belong to Experience; **Camera-order cutover** happens here, and
-  node links and Experience order are never coequal writable authorities.
+- Presentations, Experience-wide Interactions and optional Guides with stable
+  Stops belong to Experience. Repeated Stops may reference one Presentation
+  (e.g. Intro → Piano → Paris → Piano → Exit), with distinct session visits.
+  Guide editorial order, holds, Gates and continuation belong to Experience;
+  **Camera-order cutover** happens here, and node links and Experience order
+  are never coequal writable authorities. “Destination” is target/address
+  vocabulary, not another authored entity.
 - **First compound acceptance** (F.4) lands with this cutover: one expected
   revision, typed intents, one atomic accepted result and one undo result.
 - Retained accessibility evidence (motion policy, semantic content, reduced
   motion) is carried into re-derivation and reconciled with the expanded
   direction rather than retained as an old scope exclusion.
 
-**Phase goal:** narrow complete Experience foundation: Destination + guided
-Stop/occurrence + reusable Content/Info Panel + bounded semantic Interaction,
-composed over existing Spatial/Camera/Assets meaning.
+**Phase goal:** narrow complete Experience foundation: collection-capable
+Experience unit, reusable Presentation, optional Guide/Stop, content and
+bounded semantic Interaction/Activity invocation; a first real
+domain-supported capability and narrow shared execution/session path. Preserve
+repairable unresolved authored bindings while Preview and publication require
+closure for affected required behavior. This does not require T2's full
+definition/component system or T1's later representation depth.
 
 **Status:** proposed — pre-redesign (banner above); re-derived as T3 after F.
 No P25.x implementation-ready child plans exist; none is authorized here.
@@ -47,3 +54,10 @@ No P25.x implementation-ready child plans exist; none is authorized here.
 - [`research/prompt-phase-5.md`](./research/prompt-phase-5.md)
 
 Experience is a ratified authored semantic domain; its persisted codec-bounded unit (collection-capable) is settled in F.2 ([`../../reference/composition-execution.md`](../../reference/composition-execution.md) §F.2), and no schema exists yet. `ExperienceDocument` is not a designed format and must not be frozen or implemented ahead of its authorized planning.
+
+**Prototype V2 hypotheses, not T3 defaults:** promoting an interior View to a
+Stop may imply only entry framing or a semantic explanation entry point; a
+detour may suspend a parent Presentation or act as departure/re-entry. Test
+both in the integrated shell before selecting behavior. The World | Experience
+shell composition, Navigator/Inspector/Guide placement and Camera exposure are
+also design-phase decisions, not fixed by this manifest.

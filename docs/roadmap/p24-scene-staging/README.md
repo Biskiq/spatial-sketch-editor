@@ -22,9 +22,14 @@
   (import or build → place → direct → publish → receive feedback → revise →
   re-share). It is no longer deferred behind a complete asset pipeline, and
   static-only catalogue supply is no longer the scope ceiling.
+- T2 owns definitions, components, reusable resources and truthful
+  domain-supported capability interfaces. T3 consumes those interfaces for
+  Activities as they land; its first real capability need not await all T2
+  depth. T2 authoring UI uses T1's shared viewport/projection seam.
 
-**Phase goal:** P24A Asset Supply + Canonical Ingest and P24B Rich Scene / Staging
-Authoring over the unified spatial system delivered by P26, retaining P23’s canonical ownership.
+**Phase goal:** re-derived T2 composition data, truthful ingest/placement and
+capability/resource foundations, retaining Scene ownership. Rich authoring UI
+consumes T1's viewport seam; the full T1 phase is not a data prerequisite.
 
 **Status:** proposed — pre-redesign (banner above); re-derived as T2 after F.
 Existing implementation briefs require re-derivation, not approval. No

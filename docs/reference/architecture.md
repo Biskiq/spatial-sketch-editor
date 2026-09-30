@@ -3,8 +3,8 @@
 **Read when:** ownership questions, editor vs relic boundary, import/export.
 For a specific surface, go straight to the matching contract doc (table below).
 
-**Authority:** the ratified decision record
-([`decisions/northstar-ratification-2026-09-27.md`](./decisions/northstar-ratification-2026-09-27.md))
+**Authority:** the [ratified decision record](./decisions/northstar-ratification-2026-09-27.md),
+as refined by the [2026-09-29 World | Experience amendment](./decisions/world-experience-reconciliation-2026-09-29.md),
 owns the destination. This document separates **current implementation** (what the
 code does today) from the **ratified destination** (what new design must conform
 to). Nothing below marked destination is shipped, and current encodings are cutover
@@ -12,6 +12,9 @@ obligations, not limits. Foundation contract shapes are written in
 [`composition-execution.md`](./composition-execution.md); phase registration and
 status are in
 [`../roadmap/f-foundation-contracts/README.md`](../roadmap/f-foundation-contracts/README.md).
+The owner-directed World | Experience reconciliation of 2026-09-29 refines
+product lenses and Experience composition without rewriting the historical
+ratification record.
 
 ## Two isolated lanes (current)
 
@@ -89,7 +92,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `project.layout` / `LayoutDocument` (`@portfolio/layout-core`), wall-first `formatVersion: 5`, one floor datum |
 | **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `project.scene` / `SceneDocument` (`@portfolio/project-model`), world-local `formatVersion: 1`, no `roomId` |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | Camera data inside `project.scene`; `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
-| **Experience** | Destinations, guided occurrences, editorial order, visitor-facing content/localization/UI configuration, choices, invocation bindings, typed session declarations | None — ratified destination; `ExperienceDocument` is not designed. F.2 settles its codec-bounded unit (collection-capable) |
+| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | None — destination; `ExperienceDocument` is not designed. F.2 settles its codec-bounded unit (collection-capable) |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | P20 project-scoped texture registry + catalogue; no general resource system |
 | **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectDocument` + versioned cloud saves; chronological Layout/Scene history, no compound acceptance, no expected-revision precondition |
 | **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | Editor-local playback/preview state; never written back to authored definitions |
@@ -102,6 +105,34 @@ persisted codec unit, validation, channel families/operators, evaluator and
 release lowering, effects, and conformance fixtures. Never hide a new domain in
 an existing document merely because it has storage space. See
 [`north-star.md`](./north-star.md) §Ownership, authority, and lifetimes.
+
+**Product lenses (destination).** World | Experience is creator-facing framing,
+not a new domain split. World exposes Layout/Scene source truth and Camera
+inspection; it is not a `WorldDocument`. Experience composes meaning over
+domain-qualified subjects and may expose Camera authoring through canonical
+Camera operations. The current `Scene | Camera` shell remains current until a
+separate design and implementation cutover. One selection facade, coherent
+history and F.4 project acceptance must serve both lenses.
+
+**Capability and execution boundary (destination).** A subject's domain
+declares intrinsic capabilities; typed resources may define reusable
+performances; an Experience Activity invokes a supported capability or
+performance; the execution session gives each visit and run private identity
+and state. Presentation identity, Stop occurrence identity and session
+visit/invocation identity are distinct. Neither a Presentation nor a Stop is a
+safe sole key for runtime lifecycle. Experience-wide and Presentation-local
+Interactions bind visitor events to supported behavior without fabricating
+intrinsic capabilities. The first T3 capability consumes a real domain
+adapter; full T2 definitions/components depth is not a prerequisite.
+
+**Common execution path (destination).** Editor Preview, visitor runtime and
+prepared release execution share semantic lowering and evaluation, with
+isolated sessions and runtime-safe domain evaluators. The current visitor
+surface/rendering infrastructure may be reused, but its node-based navigation
+is migration input, not Experience authority. Preview never writes source;
+visitor chunks exclude editor selection, history, gizmos and authoring stores.
+Repairable unresolved authored bindings remain explicit under F.1/F.4;
+selected executable/publication programs require closure under F.5.
 
 ### Shared composition and execution contract (F — destination)
 
@@ -163,7 +194,7 @@ versioned visitor package**: release manifest and closure (source revision,
 dependency lock, build provenance, compiler identity, required capabilities,
 resource hashes), resolved runtime composition, domain payloads, the execution
 program (states, performances, occurrences, typed session declarations,
-bounded expressions, lifecycle semantics), visitor meaning (destinations, order,
+bounded expressions, lifecycle semantics), visitor meaning (Presentations, order,
 content, captions, localization, reduced-motion alternatives), public
 integration addresses, and release-qualified traceability.
 

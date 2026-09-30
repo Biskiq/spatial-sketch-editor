@@ -57,13 +57,16 @@ and the promoted contracts ([`reference/north-star.md`](../reference/north-star.
 | F | planning (target contract owner-ratified 2026-09-27 with amendments; no implementation authorized) | foundation contracts F.1–F.5 before capability replanning | [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md) |
 | T1 — Spatial foundation | proposed (re-derived P26; replan after F) | shared viewport/projection seam, runtime-safe Layout representation, level-ready vertical/Plan semantics | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) |
 | T2 — Composition data | proposed (re-derived P24; replan after F) | definitions, instances, resource revisions/locks, ordinary placement, truthful single-model creator import | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) |
-| T3 — Experience data | proposed (re-derived P25; replan after F) | multi-Experience unit, destinations/occurrences, typed session declarations, Camera-order cutover, first compound acceptance | [`p25-experience/README.md`](./p25-experience/README.md) |
+| T3 — Experience data | proposed (re-derived P25; replan after F) | multi-Experience unit, Presentations/optional Guides/Stops, narrow shared execution/session foundation, Camera-order cutover, first compound acceptance | [`p25-experience/README.md`](./p25-experience/README.md) |
 | P27–P30 | provisional labels | components/reversible presentation · coordinated direction · reuse/alternatives/participation · delivery/presenting/review | — |
 
 ```text
 CROSS-TRACK CONSTRAINTS (interface/correctness gates, not a waterfall):
 - T2/T3 authoring UI consumes T1's viewport/projection seam; it does not wait
   for T1's later representation slices.
+- T3 data work may proceed alongside T1/T2. Rich Activities consume real
+  domain capabilities as they become available; T3 does not wait for all T2
+  definitions/components or all T1 representation depth.
 - T3's order cutover lands BEFORE T1 migrates the Camera authoring tools onto
   the new ownership contract; node links and Experience order are never
   coequal writable authorities.
