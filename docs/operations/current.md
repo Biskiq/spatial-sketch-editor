@@ -29,10 +29,15 @@ RATIFIED DIRECTION (2026-09-27): Biskiq northstar decision record →
        editing UI on T1's viewport seam, creator/audience trials, the Source Baseline and
        P27–P30 (provisional). P26 implementation and validation remain gated.
 NEXT: #112 — adopt the frozen unified shell into prototypes/spatial-authoring/ (preserve
-       P26 journeys A–F and behavioral laws, then run executable/visual QA). Bounded
-       prototype adoption: not production T1 implementation and not an F substitute. After
-       #112 the special design/prototype detour closes and F exact-interface work resumes:
-       F — draft and ratify the exact interfaces (reference/resolution result, unit header,
+       P26 journeys A–F and behavioral laws, then run executable/visual QA). Plan written
+       for review, implementation not started →
+       ../roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md.
+       Bounded prototype adoption: not production T1 implementation and not an F substitute.
+       After acceptance, owner-directed #113 baton (2026-10-01): build/adopt the finalized
+       Experience V2 executable reference against the shared shell and validate actual
+       World ↔ Experience continuity. #112 contains only a read-only continuity fixture.
+       Normal production route remains F — draft and ratify the exact interfaces
+       (reference/resolution result, unit header,
        project envelope, authoring intent with expected revision, release manifest) with each
        first consumer, as explicit amendments to the ratified contract.
 BLOCKERS: none for F. Open owner decisions carried: phase-wide compaction of P23B's

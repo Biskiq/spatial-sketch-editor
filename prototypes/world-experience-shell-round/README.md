@@ -96,3 +96,7 @@ Bounded successor PR #112: adopt the frozen shell into
 [`../spatial-authoring/`](../spatial-authoring/README.md), preserving P26
 journeys A–F and behavioral laws, then run executable/visual QA. That PR is
 prototype adoption — not production T1 implementation and not an F substitute.
+The [implementation plan](../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md)
+is written for review; no prototype implementation or evidence retirement has
+started. Its next boundary is #113: Experience V2 executable adoption and actual
+World ↔ Experience continuity, with the production gates unchanged.

@@ -63,6 +63,13 @@ GATE: no production implementation approved; no production child is implementati
 — bounded demo work following the owner-directed [visual-system sequence](../README.md).
 This revision is separate from the pre-redesign production plans below.
 
+**Next prototype adoption (#112):** [World Authoring Prototype implementation plan](./design/world-authoring-prototype/implementation-plan.md)
+— written for review, implementation not started. Evolve the existing executable
+in place; preserve A–F while replacing the predecessor shell against PLATE §0.8.
+The plan owns this bounded prototype scope only, not T1 production scope. After
+acceptance, #113 builds the Experience V2 executable and proves actual cross-lens
+continuity; F and the production track gates remain unchanged.
+
 **Shell/design authority vs executable state (2026-10-01, PR #111):**
 
 ```text
