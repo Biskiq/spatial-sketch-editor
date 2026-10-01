@@ -42,20 +42,68 @@ history, and PLATE's open §0.3/§0.7.6 owner calls. Nothing is invented here.
 
 ## Verification evidence
 
-Recorded at the final head of PR #111 (`world-workspace-redesign`):
+Run on `world-workspace-redesign` at the PR head immediately before this closeout
+commit (2026-10-01); the closeout commit itself is documentation-only, so no lane is
+invalidated by it.
 
-<!-- CLOSEOUT-VERIFICATION: replaced by the closeout commit with the actual run -->
+- **Documentation/link gate** (`cd apps/editor && npx vitest run --config
+  vitest.arch.config.ts tests/docs`) — **22 tests passed**; every relative link,
+  written path and `#anchor` in the tree resolves, including the synthesis →
+  QA-board links and the synthesis → PLATE §0.8 anchor.
+- **Full architecture lane** (`npm run test:arch -w @portfolio/editor`) —
+  **276 tests passed across 24 files** (includes the documentation gate).
+- **`git diff --check`** — clean (no whitespace errors).
+- **Package routes:** all ten QA boards exist under their semantic names in this
+  folder and every one is linked from the synthesis QA table.
+- **Pruning routes:** no live Markdown/code reference remains to the removed
+  designer brief, internal commission record or `designer-visuals.local`; the
+  prototype-family router points at this workspace's README.
+- **Residue scan:** no generation/copy residue remains in the accepted package.
+- **Stale-claim scan:** no live document still states that the replacement shell
+  is undesigned, that the round is preparing the independent design, or that no
+  successor design is accepted.
+- **Scope review:** the full PR diff touches `docs/` and `prototypes/` only — no
+  production code, no `apps/`, no `packages/`.
 
-- `cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs` — documentation/link gate result recorded at the final head.
-- `npm run test:arch -w @portfolio/editor` — full architecture lane result recorded at the final head.
-- `git diff --check` — clean.
-- Route checks: every Markdown route in the changed set resolves; all ten QA PNGs
-  exist under their semantic names; no live reference remains to the removed
-  commission files or `designer-visuals.local`; no `Pasted text` residue.
+## Pruned commission material (recovery)
+
+The external designer brief and the internal sourceful commission record were
+removed from the live tree in commit `15f13ccc`; their last full bodies are at
+`39edeb388940408cf4c28f75e61af684c5bc0211`. Recovery:
+
+```bash
+git show 39edeb38:prototypes/world-experience-shell-round/WORLD-EXPERIENCE-SHELL-DESIGNER-BRIEF.md
+git show 39edeb38:prototypes/world-experience-shell-round/WORLD-EXPERIENCE-SHELL-BRIEF.internal-sourceful.md
+```
+
+If this PR lands squashed, that revision is not an ancestor of `main`; recover it
+from the PR ref instead:
+
+```bash
+git fetch origin refs/pull/111/head && git show 39edeb38:<path>
+```
+
+The removed `designer-visuals.local/` copies were duplicates of already-retained
+canonical inputs ([V2 boards](../../integrated-experience-authoring/Design-QAs/),
+P26 references under `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`
+and [`spatial-authoring/screens/`](../../spatial-authoring/screens/)); they need no
+separate anchor.
+
+## Preservation summary
+
+```text
+prose compacted:                2 files (external brief, internal commission record) — Git anchors above
+duplicate evidence removed:     10 PNG input copies (canonical sources retained)
+durable promotions:             2 (PLATE §0.8 + §0.7.4/§26.2/§27 reconciliation; North Star lens-switch law)
+routing updated:                5 live documents (prototypes/README, docs/README, roadmap/README, P26 README, operations/current.md)
+new live → removed-file links:  0
+manual-owed verification rows:  0
+remaining deferred items:       4 (workspace README)
+```
 
 ## Merge readiness
 
-Merge-ready once the closeout self-check passes at the final head: stale
-authority/routing fixed, pruning complete, QA routes resolve, verification
-recorded, and no scope expansion beyond documentation/design/assets. Merging
+Merge-ready at the final head: stale authority/routing is fixed, pruning is
+complete, QA routes resolve, current-head verification passed, and the closeout
+self-check found no scope expansion beyond documentation/design/assets. Merging
 itself is the owner's action — this PR records acceptance, not a cutover.
