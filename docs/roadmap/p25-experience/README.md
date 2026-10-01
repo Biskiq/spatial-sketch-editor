@@ -59,5 +59,8 @@ Experience is a ratified authored semantic domain; its persisted codec-bounded u
 Stop may imply only entry framing or a semantic explanation entry point; a
 detour may suspend a parent Presentation or act as departure/re-entry. Test
 both in the integrated shell before selecting behavior. The World | Experience
-shell composition, Navigator/Inspector/Guide placement and Camera exposure are
-also design-phase decisions, not fixed by this manifest.
+shell composition is now the accepted destination direction
+([PLATE §0.8](../../reference/design-system/editor-shell-and-visual-system.md)
+plus the [#111 synthesis/QA](../../../prototypes/world-experience-shell-round/README.md));
+exact Navigator/Inspector/Guide placement and Camera exposure remain
+implementation work and are not fixed by this manifest.
