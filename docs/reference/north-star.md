@@ -28,7 +28,9 @@ through **World | Experience** lenses over one project. World is not a
 `WorldDocument`; it exposes Layout/Scene truth, typed resources and Camera
 inspection. Experience exposes visitor-facing composition and may delegate
 View/framing/movement edits to the canonical Camera authority. The replacement
-shell composition remains a design-phase decision.
+shell's accepted destination composition is recorded in the shell contract
+([`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md)
+§0.8); the landed shell remains current until an explicit cutover.
 
 ## Ratified north star
 
@@ -448,6 +450,11 @@ renderer or an alternate scene. Do not create duplicate camera graphs, sequences
 paths, room definitions, scene objects or layout geometry, and do not fork domain
 evaluation into Experience-only code. Domain count and document boundaries no
 longer define the model — semantic authorities do.
+
+Lens switching itself changes authoring intent only: the canonical selection and the
+Camera standpoint carry across, and a switch never captures a View, creates a
+Presentation or relation, opens a Guide, moves the Camera, or substitutes another
+selected identity.
 
 ## Camera authority vs Experience interaction authority
 
