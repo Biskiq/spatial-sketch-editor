@@ -54,6 +54,21 @@ Where relevant, distinguish a reusable definition, a placed instance and an inte
 
 World may expose more structure than Experience. Share interaction architecture, visual identity, selection, the Stage, return behavior and progressive depth; allow different information density because the jobs differ.
 
+### Object-first composition
+
+World is not only architectural authoring. A selected placed object may have a reusable definition, internal components, intrinsic capabilities, attachments, shared use/reach and repair states. The unified shell must provide a credible home for these without introducing a separate composition application or permanently exposing specialist controls. An object-first project must remain intelligible before architecture exists.
+
+Relate these needs to the common landmarks:
+
+| Landmark | Composition responsibility to support |
+| --- | --- |
+| **Index** | Location, relationships and where-used; distinguish this placement, internal components and shared source without making indentation imply ownership. |
+| **Stage** | Selection, placement, spatial manipulation and direct interaction with supported capabilities. |
+| **Card** | Selected identity, source versus instance, ownership, key capabilities and local versus shared edit reach. |
+| **Contextual instrument** | Deeper component, attachment, capability or repair work, opened around the selected subject when needed. |
+
+These responsibilities do not prescribe an exact UI. Make supported capability and unavailable or broken relationships understandable; retain identity and offer deliberate recovery rather than silently replacing a subject. Shared source impact must be visible, including uses that retain their own settings. Specialist depth should close coherently back to ordinary World work.
+
 ## World behavior that must remain possible
 
 Preserve the reasons behind the accepted spatial-authoring behavior, while designing its shell expression freely.
@@ -132,6 +147,7 @@ These are coverage requirements, not a mandatory screenshot count. Use coherent 
 5. **World → Experience:** carry the selected subject, Stage, standpoint and relevant inspection where appropriate. Replace source-edit affordances with visitor composition; structural orientation gives way to Presentation/relationship context. Make any context change deliberate and understandable.
 6. **Experience → World:** restore useful source context and structure with standpoint/selection continuity. Experience authorship remains preserved but inactive. Define what happens when the creator selects an unrelated World subject; do not silently attach it to remembered meaning or recapture a View.
 7. **Cross-lens density stress:** show structurally dense World alongside progressively quiet Experience. Both must read as states of one product, including when depth or available window space changes.
+8. **Object / composition pressure:** use a meaningful placed object with a reusable definition, an internal component or capability, a spatial relationship/attachment and more than one use. Show what is selected, this placement versus shared source, important capabilities within the common shell, deeper component/attachment work opened only when needed, and local versus shared edit reach. Show recognition and deliberate recovery from an unavailable or broken relationship. This tests shell adequacy; it does not reopen the composition model.
 
 ## Deliverables and review questions
 
@@ -145,6 +161,7 @@ Review will ask:
 - Does Experience retain the accepted V2 landmarks, quiet default and progressive disclosure?
 - Can World keep necessary hierarchy/search breadth without permanent deep tooling?
 - Can creators locate the selected identity, host/location and edit reach under density pressure?
+- Can object-first work, component depth, shared use and repair fit the same shell without a separate composition application or permanent specialist controls?
 - Are all accepted P26 capabilities accessible, with honest scale, local precision, refusal and exact return?
 - Do lens changes preserve spatial memory and source/meaning context without accidental capture or duplicated ownership?
 - Are Guide order, Camera topology, shared meaning and occurrence-local work visually distinct?

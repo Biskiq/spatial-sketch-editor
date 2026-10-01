@@ -1,18 +1,21 @@
-# Prototypes — durable executable product hypotheses
+# Prototypes — retained product and design evidence
 
 **Audience:** agents + humans.
 **Hub:** [`../docs/README.md`](../docs/README.md) (documentation router) · [`../AGENTS.md`](../AGENTS.md) (bootstrap + hard rules).
 
-`prototypes/` holds this repository's **durable runnable prototypes**: executable
-product hypotheses that double as QA and design reference. A prototype is kept
-here when it answers a question source, tests and prose cannot — *what exactly
-should happen, frame by frame, and what is the rule* — and it stays runnable so
-that answer can be re-checked against a live build rather than a screenshot.
+`prototypes/` holds this repository's **durable runnable prototypes** and
+**bounded design/QA workspaces that directly evolve or supersede retained
+prototype design**. Runnable artifacts answer what should happen, frame by
+frame, and stay executable so that answer can be re-checked. A design workspace
+records its question, evidence and acceptance boundary while preparing a
+successor; it need not already contain an executable prototype. This family is
+not a general home for unrelated design planning.
 
 ## Boundary
 
-- **What this family is.** Durable executable product hypotheses and QA/reference
-  artifacts. They may be used to **test and challenge product and design contracts**.
+- **What this family is.** Durable executable product hypotheses, their
+  QA/reference artifacts, and bounded workspaces directly evolving that design.
+  They may be used to **test and challenge product and design contracts**.
 - **What it is not.** Not a production application, not persisted-format authority,
   not implementation authority.
 - **`apps/`** remains the production applications.
@@ -20,11 +23,14 @@ that answer can be re-checked against a live build rather than a screenshot.
 - **`docs/reference/` and ratified contracts remain normative.** Where a prototype
   and a ratified contract disagree, the contract governs; the disagreement is
   reported as a finding rather than resolved by copying the prototype.
+  An owner-authorized destination shell round may propose replacement treatments;
+  it does not amend landed contracts or relax product/domain invariants.
 - **Prototype implementation shortcuts are never silently promoted into production
   contracts.** A prototype demonstrates interaction intent; production is built on
   the real architecture, and each prototype records the shortcuts it took.
-- **Independently runnable where practical.** Each prototype carries its own build
-  or serve entry point and is run from its own folder.
+- **Independently runnable where practical.** Runnable prototypes carry their own
+  build or serve entry point. Design/QA workspaces instead route their brief,
+  evidence and eventual design outputs; retention alone implies no acceptance.
 
 **Workspace boundary.** `prototypes/*` is deliberately **not** a root npm
 workspace. The production workspace boundary remains `apps/*` + `packages/*`, so
@@ -44,9 +50,10 @@ production authority; their documentation is still a route a reader follows.
 | Folder | Durable artifact | Status |
 | --- | --- | --- |
 | [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Accepted V2 design direction** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + canonical visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Current V2 design authority / design evidence (accepted PR #110). The future V2 implementation home. Not a ratified contract: where it and a ratified contract disagree, the contract governs. Retired-exploration findings harvested as reconciliation evidence live [beside the synthesis](./integrated-experience-authoring/design/retired-exploration-findings.md). |
-| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Retained spatial-authoring behavioral / QA evidence. Its **journeys A–F** are the experience/QA authority for that direction. |
+| [`world-experience-shell-round/`](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-DESIGNER-BRIEF.md) | **Active unified World \| Experience shell-hardening workspace** — [independent designer commission](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-DESIGNER-BRIEF.md) + [internal evidence/visual manifest](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-BRIEF.internal-sourceful.md) | Owner-designated prototype-level shell/design successor round (PR #111). Accepted V2 leads shell/disclosure; the round extends and unifies it around World without redesigning Experience. Acceptance may supersede P26 shell/chrome/tool exposure/disclosure; P26 remains the deep World behavioral oracle. No successor design or production cutover is yet accepted. |
+| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Primary accepted World behavioral / QA evidence. **Journeys A–F**, capabilities and interaction laws survive; shell/chrome/tool exposure/disclosure are open to supersession by the unified shell round. |
 | [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
-| [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained only for the bounded capability it demonstrates: object-first composition, capability disclosure, reach and repair behavior. Not shell authority. |
+| [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained unratified proposal for object-first composition, capability disclosure, reach and repair behavior. Secondary composition shell-pressure evidence for the unified round; its shell and model are not being reopened or adopted by that round. |
 
 ## Authority semantics (do not read this move as a promotion)
 
@@ -62,6 +69,14 @@ what it is authoritative for. In particular:
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
   clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
   intent, not production contracts**.
+- **Unified World | Experience shell round** — the active bounded design/QA
+  workspace intentionally lives here because it evolves retained prototype
+  design. The ratchet preserves P26 journeys/capabilities/interaction laws and
+  accepted V2 Experience semantics. It opens P26 shell, chrome, tool exposure and
+  disclosure to a successor that naturally belongs to V2's leading shell language.
+  C2 supplies secondary composition pressure, not destination UI. The resulting
+  accepted shell is intended for adoption by P26 before V2 Experience/cross-lens
+  implementation; this sequence grants no implementation or persistence authority.
 - **Experience Authoring Prototype** — retained Experience behavioral evidence /
   regression oracle, not current shell authority. Its architecture and shell have
   **not** been reconciled with PLATE, F or the current domain ownership, and no
@@ -69,7 +84,10 @@ what it is authoritative for. In particular:
   the accepted V2 synthesis above; its behavior remains the oracle for what the
   implemented V2 must still do.
 - **PLATE** ([`../docs/reference/design-system/editor-shell-and-visual-system.md`](../docs/reference/design-system/editor-shell-and-visual-system.md))
-  remains shell and visual-system authority.
+  remains the landed shell and visual-system contract. For the owner-authorized
+  unified shell commission, its current topology is later reconciliation input,
+  not independent-design destination authority. A proposed or accepted prototype
+  successor does not amend PLATE or authorize a production cutover.
 - **F** ([`../docs/reference/composition-execution.md`](../docs/reference/composition-execution.md))
   remains the composition/execution target authority.
 - **Layout / Scene / Camera / Experience ownership** remains governed by the
@@ -78,7 +96,8 @@ what it is authoritative for. In particular:
 
 ## Running them
 
-Each prototype is self-contained; run it from its own folder.
+Each runnable prototype is self-contained; run it from its own folder. The shell
+round currently routes a commission package, not a runnable application.
 
 ```sh
 # Spatial Authoring Prototype — no build step, vendored Three.js
@@ -97,6 +116,11 @@ port in use as another prototype's server rather than an error to clear.
 
 ## Provenance
 
+- **World | Experience shell round** — commissioned from main at
+  `1dfeb5d72e2d57cfd791cf14a3db9216581b0d63` and intentionally placed here by the
+  owner in [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111),
+  2026-10-01. Its internal record preserves source provenance and the limited
+  authority of the design round.
 - **Spatial Authoring Prototype** — moved here 2026-09-29 from
   `docs/roadmap/p26-spatial-depth/Final-Design-Prototype/`, where it was the P26
   *Final Design Prototype* synthesised from designers B and D. A path-preserving
