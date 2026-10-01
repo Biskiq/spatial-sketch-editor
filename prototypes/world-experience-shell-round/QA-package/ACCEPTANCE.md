@@ -42,9 +42,9 @@ history, and PLATE's open §0.3/§0.7.6 owner calls. Nothing is invented here.
 
 ## Verification evidence
 
-Run on `world-workspace-redesign` at the PR head immediately before this closeout
-commit (2026-10-01); the closeout commit itself is documentation-only, so no lane is
-invalidated by it.
+Run on `world-workspace-redesign` at the final PR head (2026-10-01). The closeout
+adds only documentation, so these results are the current-head results; the
+documentation gate re-passes on every later documentation-only commit.
 
 - **Documentation/link gate** (`cd apps/editor && npx vitest run --config
   vitest.arch.config.ts tests/docs`) — **22 tests passed**; every relative link,
