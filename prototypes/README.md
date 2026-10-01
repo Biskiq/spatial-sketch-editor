@@ -50,8 +50,8 @@ production authority; their documentation is still a route a reader follows.
 | Folder | Durable artifact | Status |
 | --- | --- | --- |
 | [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Accepted V2 design direction** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + canonical visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Current V2 design authority / design evidence (accepted PR #110). The future V2 implementation home. Not a ratified contract: where it and a ratified contract disagree, the contract governs. Retired-exploration findings harvested as reconciliation evidence live [beside the synthesis](./integrated-experience-authoring/design/retired-exploration-findings.md). |
-| [`world-experience-shell-round/`](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-DESIGNER-BRIEF.md) | **Active unified World \| Experience shell-hardening workspace** — [independent designer commission](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-DESIGNER-BRIEF.md) + [internal evidence/visual manifest](./world-experience-shell-round/WORLD-EXPERIENCE-SHELL-BRIEF.internal-sourceful.md) | Owner-designated prototype-level shell/design successor round (PR #111). Accepted V2 leads shell/disclosure; the round extends and unifies it around World without redesigning Experience. Acceptance may supersede P26 shell/chrome/tool exposure/disclosure; P26 remains the deep World behavioral oracle. No successor design or production cutover is yet accepted. |
-| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Primary accepted World behavioral / QA evidence. **Journeys A–F**, capabilities and interaction laws survive; shell/chrome/tool exposure/disclosure are open to supersession by the unified shell round. |
+| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Accepted unified World \| Experience shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Accepted/frozen prototype-level shell/disclosure direction (PR #111, 2026-10-01). The round is complete: it supersedes P26 shell/chrome/tool exposure/disclosure where the synthesis explicitly covers them, while P26 journeys A–F remain the deep World behavioral oracle and accepted V2 Experience semantics are preserved. Next: adopt the shell into [`spatial-authoring/`](./spatial-authoring/README.md) in the bounded successor PR #112. Design evidence only — no production cutover, no implementation authority. |
+| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Primary accepted World behavioral / QA evidence. **Journeys A–F**, capabilities and interaction laws remain behavioral authority; its executable shell/chrome/tool exposure/disclosure is the **predecessor shell pending adoption** of the accepted unified shell (#112). |
 | [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
 | [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained unratified proposal for object-first composition, capability disclosure, reach and repair behavior. Secondary composition shell-pressure evidence for the unified round; its shell and model are not being reopened or adopted by that round. |
 
@@ -69,14 +69,14 @@ what it is authoritative for. In particular:
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
   clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
   intent, not production contracts**.
-- **Unified World | Experience shell round** — the active bounded design/QA
-  workspace intentionally lives here because it evolves retained prototype
-  design. The ratchet preserves P26 journeys/capabilities/interaction laws and
-  accepted V2 Experience semantics. It opens P26 shell, chrome, tool exposure and
-  disclosure to a successor that naturally belongs to V2's leading shell language.
-  C2 supplies secondary composition pressure, not destination UI. The resulting
-  accepted shell is intended for adoption by P26 before V2 Experience/cross-lens
-  implementation; this sequence grants no implementation or persistence authority.
+- **Unified World | Experience shell round** — the accepted design package lives
+  here because it evolved retained prototype design. The ratchet preserves P26
+  journeys/capabilities/interaction laws and accepted V2 Experience semantics. It
+  supersedes P26 shell, chrome, tool exposure and disclosure where its synthesis
+  explicitly covers them. C2 supplied secondary composition pressure, not
+  destination UI. The accepted shell is intended for adoption by P26 before V2
+  Experience/cross-lens implementation; this sequence grants no implementation or
+  persistence authority, and PLATE §0.8 owns the durable destination shell laws.
 - **Experience Authoring Prototype** — retained Experience behavioral evidence /
   regression oracle, not current shell authority. Its architecture and shell have
   **not** been reconciled with PLATE, F or the current domain ownership, and no
@@ -97,7 +97,8 @@ what it is authoritative for. In particular:
 ## Running them
 
 Each runnable prototype is self-contained; run it from its own folder. The shell
-round currently routes a commission package, not a runnable application.
+round is a design package (synthesis + QA boards), not a runnable application;
+its accepted direction is adopted by the spatial-authoring prototype in #112.
 
 ```sh
 # Spatial Authoring Prototype — no build step, vendored Three.js
@@ -119,8 +120,10 @@ port in use as another prototype's server rather than an error to clear.
 - **World | Experience shell round** — commissioned from main at
   `1dfeb5d72e2d57cfd791cf14a3db9216581b0d63` and intentionally placed here by the
   owner in [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111),
-  2026-10-01. Its internal record preserves source provenance and the limited
-  authority of the design round.
+  2026-10-01; accepted/frozen by that same PR. The commissioning briefs and
+  designer-input copies are preserved in Git history only; the workspace
+  [README](./world-experience-shell-round/README.md) records the durable
+  provenance and authority boundary.
 - **Spatial Authoring Prototype** — moved here 2026-09-29 from
   `docs/roadmap/p26-spatial-depth/Final-Design-Prototype/`, where it was the P26
   *Final Design Prototype* synthesised from designers B and D. A path-preserving
