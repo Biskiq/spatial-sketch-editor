@@ -22,6 +22,8 @@ Guide overview remains intentionally abstract: numbered Stop entry pins on Stage
 
 The goal is a spatial authoring system whose complexity expands around the creator’s current question without fragmenting World, Camera and Experience into separate applications.
 
+Note :The Head / Index / Stage / Card / contextual Deck composition and Experience authoring direction are accepted design inputs. World-side expression of the same shell, including reconciliation of accepted P26 spatial-authoring behavior, is intentionally deferred to the repo-wide World | Experience shell hardening pass before V2 implementation.
+
 ---
 
 # 1. Product model
