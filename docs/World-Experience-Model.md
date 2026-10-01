@@ -9,8 +9,8 @@ It is product/behavior input. Its architecture questions were reconciled in the
 [F contract](./reference/composition-execution.md) and
 [Camera contract](./reference/components/camera-tour.md); those live contracts
 own the answers. The [architecture synthesis](./World-Experience-Architecture-Synthesis.md)
-is provenance, and the [design-phase context](./World-Experience-Design-Context.md)
-names constraints still relevant to shell exploration.
+is provenance. The shell design phase it once fed is complete; the accepted
+direction is the [final V2 synthesis](../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md).
 
 The prototype is evidence, not authority. Its implementation, terminology, UI composition, data structures, Camera shortcuts, and runtime mechanisms may drift from this synthesis. That drift is expected. The prototype will be revised after architecture and shell reconciliation.
 
@@ -1333,10 +1333,11 @@ The simple path stays simple while advanced orchestration remains possible.
 This synthesis is the product-behavior input to the Experience/World convergence work.
 
 The product model and architecture synthesis have now been reconciled with the
-codebase and durable contracts. The next baton is **World | Experience shell
-information architecture and visual/interaction design**, using the compact
-[design-phase context](./World-Experience-Design-Context.md). Prototype V2
-follows that design work; neither is started by this document.
+codebase and durable contracts. Shell information architecture and
+visual/interaction design have since been accepted as the V2 synthesis
+([final synthesis](../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
+PR #110). The next baton is repo-aware reconciliation and implementation
+planning; neither is started by this document.
 
 The progression remains:
 
@@ -1346,12 +1347,12 @@ behavior synthesis + codebase reconnaissance + architecture synthesis
 North Star / F / Camera / shell-exposure reconciliation
         ↓ completed
 World | Experience shell information architecture
-        ↓
+        ↓ completed (accepted V2 synthesis, PR #110)
 visual + interaction design
+        ↓ completed (accepted V2 synthesis, PR #110)
+V2 implementation (repo-aware reconciliation first)
         ↓
-Experience Prototype v2
-        ↓
-post-prototype reconciliation
+post-implementation reconciliation
         ↓
 durable QA / architecture authority
         ↓
