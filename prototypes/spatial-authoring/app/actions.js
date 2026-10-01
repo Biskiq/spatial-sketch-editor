@@ -463,18 +463,23 @@ export async function unfoldInner(s) {
   pushTrail(`${w.name} laid flat`);
 }
 
-export const unfold = () => run(async () => {
-  let s = S.session;
-  if (s?.kind === 'face') {
+// `id` is the subject asking to unroll — a Card or an Index row names its own subject, so the verb
+// never depends on what happens to be selected. An open face session is only reused when it is
+// already about that subject, target or focus; otherwise the walk starts from where you are.
+const faceCovers = (s, id) => !!s && (!id || id === s.wallId || id === s.subject || id === s.focusId);
+
+export const unfold = (id = S.sel) => run(async () => {
+  const s = S.session;
+  if (s?.kind === 'face' && faceCovers(s, id)) {
     if (s.u > 0.99) return;
     await unfoldInner(s);
     return;
   }
   // from anywhere: walk, face and unroll in a single motion
-  const r = resolveFace(S.sel);
+  const r = resolveFace(id);
   if (!r) return;
-  if (r.wall.kind !== 'arc') { await faceInner(S.sel); return; }
-  const sess = { kind: 'face', ...r, side: 1, subject: S.sel ?? r.focusId };
+  if (r.wall.kind !== 'arc') { await faceInner(id); return; }
+  const sess = { kind: 'face', ...r, side: 1, subject: id ?? r.focusId };
   T.begin({ kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name }, params: { side: 1 } });
   const to = flatHome(sess);
   sess.unfolding = true;

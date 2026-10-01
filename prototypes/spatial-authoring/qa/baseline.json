@@ -14,12 +14,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -49,6 +51,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -61,7 +69,7 @@
     "az": -1.736,
     "el": 0.36,
     "flat": 0,
-    "frameH": 17.476,
+    "frameH": 18.871,
     "mirror": false,
     "target": [
      9.389,
@@ -70,25 +78,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.923,
      -0.352,
      0.154
     ],
-    "dist": 24.007,
+    "dist": 25.923,
     "eye": [
-     -12.773,
-     10.357,
-     0.19
+     -14.541,
+     11.032,
+     -0.105
     ],
     "fov": 40,
-    "frameH": 17.476,
+    "frameH": 18.871,
     "mirror": false,
     "target": [
      9.389,
@@ -122,6 +132,23 @@
     "u": 0.5,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -147,12 +174,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -182,6 +211,12 @@
    "reveal": null,
    "sel": "rotunda",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -208,12 +243,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -243,6 +280,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -264,12 +307,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -316,6 +361,23 @@
     "u": 0.5,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside"
@@ -338,12 +400,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.707,
      0,
@@ -390,6 +454,23 @@
     "u": 0.5,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -404,7 +485,7 @@
     "az": -2.356,
     "el": 0,
     "flat": 1,
-    "frameH": 11.995,
+    "frameH": 12.953,
     "mirror": false,
     "target": [
      9.389,
@@ -413,25 +494,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.707,
      0,
      0.707
     ],
-    "dist": 763.62,
+    "dist": 824.572,
     "eye": [
-     -530.572,
+     -573.671,
      3.25,
-     -536.072
+     -579.171
     ],
     "fov": 0.9,
-    "frameH": 11.995,
+    "frameH": 12.953,
     "mirror": false,
     "target": [
      9.389,
@@ -465,6 +548,23 @@
     "u": 0.5,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -479,7 +579,7 @@
     "az": -2.356,
     "el": 0,
     "flat": 1,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -488,25 +588,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.707,
      0,
      0.707
     ],
-    "dist": 688.081,
+    "dist": 743.003,
     "eye": [
-     -477.157,
+     -515.993,
      3.25,
-     -482.657
+     -521.493
     ],
     "fov": 0.9,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -540,6 +642,23 @@
     "u": 1,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -555,7 +674,7 @@
     "az": -2.356,
     "el": 0,
     "flat": 1,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -564,25 +683,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.707,
      0,
      0.707
     ],
-    "dist": 688.081,
+    "dist": 743.003,
     "eye": [
-     -477.157,
+     -515.993,
      3.25,
-     -482.657
+     -521.493
     ],
     "fov": 0.9,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -616,6 +737,23 @@
     "u": 1,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -631,7 +769,7 @@
     "az": -2.356,
     "el": 0,
     "flat": 1,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -640,25 +778,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window width",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.707,
      0,
      0.707
     ],
-    "dist": 688.081,
+    "dist": 743.003,
     "eye": [
-     -477.157,
+     -515.993,
      3.25,
-     -482.657
+     -521.493
     ],
     "fov": 0.9,
-    "frameH": 10.809,
+    "frameH": 11.671,
     "mirror": false,
     "target": [
      9.389,
@@ -692,6 +832,23 @@
     "u": 1,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -707,7 +864,7 @@
     "az": -1.736,
     "el": 0.36,
     "flat": 0,
-    "frameH": 17.476,
+    "frameH": 18.871,
     "mirror": false,
     "target": [
      9.389,
@@ -716,25 +873,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window sill",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.923,
      -0.352,
      0.154
     ],
-    "dist": 24.007,
+    "dist": 25.923,
     "eye": [
-     -12.773,
-     10.357,
-     0.19
+     -14.541,
+     11.032,
+     -0.105
     ],
     "fov": 40,
-    "frameH": 17.476,
+    "frameH": 18.871,
     "mirror": false,
     "target": [
      9.389,
@@ -768,6 +927,23 @@
     "u": 0.5,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Rotunda wall at 180\u00b0 from outside",
@@ -784,7 +960,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -793,25 +969,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -828,6 +1006,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -841,7 +1025,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -850,25 +1034,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Gallery door head",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -885,6 +1071,12 @@
    "reveal": null,
    "sel": "gdoor",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan",
@@ -902,7 +1094,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -911,6 +1103,7 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": {
@@ -920,21 +1113,22 @@
     "stage": "aim"
    },
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -951,6 +1145,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -964,7 +1164,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -973,6 +1173,7 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": {
@@ -982,21 +1183,22 @@
     "stage": "aim"
    },
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -1013,6 +1215,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -1026,7 +1234,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1035,25 +1243,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 2086.679,
+    "dist": 2253.237,
     "eye": [
      -2.05,
      3.2,
-     2086.929
+     2253.487
     ],
     "fov": 0.9,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1102,6 +1312,22 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "section",
+    "subject": null,
+    "target": {
+     "kind": "cut",
+     "label": "looking north"
+    }
+   },
+   "taskTitle": "Open along a line",
    "trail": [
     "3D",
     "Plan",
@@ -1116,7 +1342,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1125,25 +1351,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 2086.679,
+    "dist": 2253.237,
     "eye": [
      -2.05,
      3.2,
-     2086.929
+     2253.487
     ],
     "fov": 0.9,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1192,6 +1420,22 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "section",
+    "subject": null,
+    "target": {
+     "kind": "cut",
+     "label": "looking north"
+    }
+   },
+   "taskTitle": "Open along a line",
    "trail": [
     "3D",
     "Plan",
@@ -1206,7 +1450,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 21.129,
+    "frameH": 22.815,
     "mirror": false,
     "target": [
      -6.871,
@@ -1217,25 +1461,27 @@
    "crumbs": [
     "Opened along a line \u00b7 looking north"
    ],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 1345.074,
+    "dist": 1452.437,
     "eye": [
      -6.871,
      2.25,
-     1341.574
+     1448.937
     ],
     "fov": 0.9,
-    "frameH": 21.129,
+    "frameH": 22.815,
     "mirror": false,
     "target": [
      -6.871,
@@ -1272,6 +1518,23 @@
     "u": 0,
     "wallId": "north"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 1,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "harbor",
+    "target": {
+     "id": "north",
+     "kind": "wall",
+     "label": "North wall"
+    }
+   },
+   "taskTitle": "Facing Harbor at Dusk",
    "trail": [
     "3D",
     "Plan",
@@ -1287,7 +1550,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1296,25 +1559,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 2086.679,
+    "dist": 2253.237,
     "eye": [
      -2.05,
      3.2,
-     2086.929
+     2253.487
     ],
     "fov": 0.9,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1363,6 +1628,22 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 2,
+    "focus": null,
+    "instrument": true,
+    "kind": "section",
+    "subject": "harbor",
+    "target": {
+     "kind": "cut",
+     "label": "looking north"
+    }
+   },
+   "taskTitle": "Open along a line",
    "trail": [
     "3D",
     "Plan",
@@ -1379,7 +1660,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1388,25 +1669,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 2086.679,
+    "dist": 2253.237,
     "eye": [
      -2.05,
      3.2,
-     2086.929
+     2253.487
     ],
     "fov": 0.9,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1455,6 +1738,22 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 2,
+    "focus": null,
+    "instrument": true,
+    "kind": "section",
+    "subject": "harbor",
+    "target": {
+     "kind": "cut",
+     "label": "looking north"
+    }
+   },
+   "taskTitle": "Open along a line",
    "trail": [
     "3D",
     "Plan",
@@ -1471,7 +1770,7 @@
     "az": 0,
     "el": 0,
     "flat": 1,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1480,25 +1779,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": "Gallery door head",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 2086.679,
+    "dist": 2253.237,
     "eye": [
      -2.05,
      3.2,
-     2086.929
+     2253.487
     ],
     "fov": 0.9,
-    "frameH": 32.778,
+    "frameH": 35.394,
     "mirror": false,
     "target": [
      -2.05,
@@ -1547,6 +1848,22 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 2,
+    "focus": null,
+    "instrument": true,
+    "kind": "section",
+    "subject": "harbor",
+    "target": {
+     "kind": "cut",
+     "label": "looking north"
+    }
+   },
+   "taskTitle": "Open along a line",
    "trail": [
     "3D",
     "Plan",
@@ -1572,12 +1889,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -1607,6 +1926,12 @@
    "reveal": null,
    "sel": "north",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -1628,12 +1953,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -1680,6 +2007,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "lift",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Long Gallery ceiling lifted",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted"
@@ -1702,12 +2046,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -1754,6 +2100,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "lift",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Long Gallery ceiling lifted",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted"
@@ -1776,12 +2139,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -1828,6 +2193,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "lift",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Long Gallery ceiling lifted",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted"
@@ -1850,12 +2232,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -1902,6 +2286,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "lift",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Long Gallery ceiling lifted",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted"
@@ -1915,7 +2316,7 @@
     "az": 3.142,
     "el": -1.571,
     "flat": 1,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": false,
     "target": [
      -6.871,
@@ -1926,25 +2327,27 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      1,
      0
     ],
-    "dist": 1409.775,
+    "dist": 1522.303,
     "eye": [
      -6.871,
-     -1406.775,
-     -0.141
+     -1519.303,
+     -0.152
     ],
     "fov": 0.9,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": false,
     "target": [
      -6.871,
@@ -1981,6 +2384,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 1,
+    "focus": null,
+    "instrument": true,
+    "kind": "lookup",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Looking up \u00b7 Long Gallery ceiling",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted",
@@ -1995,7 +2415,7 @@
     "az": 3.142,
     "el": -1.571,
     "flat": 1,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": true,
     "target": [
      -6.871,
@@ -2006,25 +2426,27 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      1,
      0
     ],
-    "dist": 1409.775,
+    "dist": 1522.303,
     "eye": [
      -6.871,
-     -1406.775,
-     -0.141
+     -1519.303,
+     -0.152
     ],
     "fov": 0.9,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": true,
     "target": [
      -6.871,
@@ -2061,6 +2483,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 1,
+    "focus": null,
+    "instrument": true,
+    "kind": "lookup",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Looking up \u00b7 Long Gallery ceiling",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted",
@@ -2075,7 +2514,7 @@
     "az": 3.142,
     "el": -1.571,
     "flat": 1,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": true,
     "target": [
      -6.871,
@@ -2086,25 +2525,27 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Entrance soffit height",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      1,
      0
     ],
-    "dist": 1409.775,
+    "dist": 1522.303,
     "eye": [
      -6.871,
-     -1406.775,
-     -0.141
+     -1519.303,
+     -0.152
     ],
     "fov": 0.9,
-    "frameH": 22.145,
+    "frameH": 23.913,
     "mirror": true,
     "target": [
      -6.871,
@@ -2141,6 +2582,23 @@
     "u": null,
     "wallId": null
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 1,
+    "focus": null,
+    "instrument": true,
+    "kind": "lookup",
+    "subject": "longc",
+    "target": {
+     "id": "longc",
+     "kind": "ceiling",
+     "label": "Long Gallery ceiling"
+    }
+   },
+   "taskTitle": "Looking up \u00b7 Long Gallery ceiling",
    "trail": [
     "3D",
     "Long Gallery ceiling lifted",
@@ -2164,12 +2622,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Entrance soffit height",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -2199,6 +2659,12 @@
    "reveal": null,
    "sel": "soffit",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Long Gallery ceiling lifted",
@@ -2223,12 +2689,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -2258,6 +2726,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -2279,12 +2753,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -2314,6 +2790,12 @@
    "reveal": null,
    "sel": "north",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Facing North wall",
@@ -2328,7 +2810,7 @@
     "az": 3.601,
     "el": 0,
     "flat": 1,
-    "frameH": 44.724,
+    "frameH": 46.017,
     "mirror": false,
     "target": [
      7.939,
@@ -2337,25 +2819,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.443,
      0,
      0.896
     ],
-    "dist": 2847.149,
+    "dist": 2929.46,
     "eye": [
-     -1254.494,
+     -1290.99,
      3.25,
-     -2547.035
+     -2620.812
     ],
     "fov": 0.9,
-    "frameH": 44.724,
+    "frameH": 46.017,
     "mirror": false,
     "target": [
      7.939,
@@ -2389,6 +2873,23 @@
     "u": 1,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "rotunda",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Rotunda wall",
    "trail": [
     "3D",
     "Facing North wall",
@@ -2404,7 +2905,7 @@
     "az": 1.571,
     "el": 0,
     "flat": 1,
-    "frameH": 10.051,
+    "frameH": 10.854,
     "mirror": false,
     "target": [
      -15,
@@ -2413,25 +2914,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      -1,
      0,
      0
     ],
-    "dist": 639.882,
+    "dist": 690.957,
     "eye": [
-     624.882,
+     675.957,
      2.35,
      0
     ],
     "fov": 0.9,
-    "frameH": 10.051,
+    "frameH": 10.854,
     "mirror": false,
     "target": [
      -15,
@@ -2465,6 +2968,23 @@
     "u": 0,
     "wallId": "west"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "entrance",
+    "target": {
+     "id": "west",
+     "kind": "wall",
+     "label": "West wall"
+    }
+   },
+   "taskTitle": "Facing Entrance",
    "trail": [
     "3D",
     "Facing North wall",
@@ -2481,7 +3001,7 @@
     "az": 3.601,
     "el": 0,
     "flat": 0,
-    "frameH": 44.724,
+    "frameH": 46.017,
     "mirror": false,
     "target": [
      7.939,
@@ -2490,25 +3010,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.443,
      0,
      0.896
     ],
-    "dist": 61.439,
+    "dist": 63.215,
     "eye": [
-     -19.303,
+     -20.091,
      3.25,
-     -50.139
+     -51.731
     ],
     "fov": 40,
-    "frameH": 44.724,
+    "frameH": 46.017,
     "mirror": false,
     "target": [
      7.939,
@@ -2542,6 +3064,23 @@
     "u": 1,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "rotunda",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Rotunda wall",
    "trail": [
     "3D",
     "Facing North wall",
@@ -2567,12 +3106,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -2602,6 +3143,12 @@
    "reveal": null,
    "sel": "entrance",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Facing North wall",
@@ -2618,7 +3165,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2627,25 +3174,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2662,6 +3211,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -2675,7 +3230,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2684,25 +3239,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window position",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2719,6 +3276,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -2732,7 +3295,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2741,25 +3304,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2776,6 +3341,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan"
@@ -2789,7 +3360,7 @@
     "az": 0,
     "el": 0.8,
     "flat": 0,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2798,25 +3369,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window width",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -0.717,
      -0.697
     ],
-    "dist": 51.077,
+    "dist": 52.554,
     "eye": [
      -2,
-     36.64,
-     35.586
+     37.7,
+     36.614
     ],
     "fov": 40,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2833,6 +3406,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan",
@@ -2847,7 +3426,7 @@
     "az": 0,
     "el": 0.8,
     "flat": 0,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2856,25 +3435,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window head",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -0.717,
      -0.697
     ],
-    "dist": 51.077,
+    "dist": 52.554,
     "eye": [
      -2,
-     36.64,
-     35.586
+     37.7,
+     36.614
     ],
     "fov": 40,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -2891,6 +3472,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan",
@@ -2905,7 +3492,7 @@
     "az": -2.734,
     "el": 0,
     "flat": 1,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      7.678,
@@ -2914,25 +3501,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.396,
      0,
      0.918
     ],
-    "dist": 896.989,
+    "dist": 922.921,
     "eye": [
-     -347.532,
+     -357.801,
      3.25,
-     -818.609
+     -842.421
     ],
     "fov": 0.9,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      7.678,
@@ -2966,6 +3555,23 @@
     "u": 0,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Plan",
@@ -2981,7 +3587,7 @@
     "az": -2.734,
     "el": 0,
     "flat": 1,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      7.678,
@@ -2990,25 +3596,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.396,
      0,
      0.918
     ],
-    "dist": 896.989,
+    "dist": 922.921,
     "eye": [
-     -347.532,
+     -357.801,
      3.25,
-     -818.609
+     -842.421
     ],
     "fov": 0.9,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      7.678,
@@ -3042,6 +3650,23 @@
     "u": 0,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "gwin",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Garden window",
    "trail": [
     "3D",
     "Plan",
@@ -3057,7 +3682,7 @@
     "az": 0,
     "el": 0.8,
     "flat": 0,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -3066,25 +3691,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -0.717,
      -0.697
     ],
-    "dist": 51.077,
+    "dist": 52.554,
     "eye": [
      -2,
-     36.64,
-     35.586
+     37.7,
+     36.614
     ],
     "fov": 40,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -3101,6 +3728,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan",
@@ -3117,7 +3750,7 @@
     "az": 0,
     "el": 1.571,
     "flat": 1,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -3126,25 +3759,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      -1,
      0
     ],
-    "dist": 2366.969,
+    "dist": 2435.398,
     "eye": [
      -2,
-     2366.969,
+     2435.398,
      0
     ],
     "fov": 0.9,
-    "frameH": 37.181,
+    "frameH": 38.256,
     "mirror": false,
     "target": [
      -2,
@@ -3161,6 +3796,12 @@
    "reveal": null,
    "sel": "gwin",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D",
     "Plan",
@@ -3187,12 +3828,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -3222,6 +3865,12 @@
    "reveal": null,
    "sel": null,
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -3243,12 +3892,14 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0124069478908189,
+    "aspect": 0.9832134292565947,
     "dir": [
      -0.544,
      -0.565,
@@ -3278,6 +3929,12 @@
    "reveal": null,
    "sel": "tide1",
    "session": null,
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": null,
+   "taskTitle": null,
    "trail": [
     "3D"
    ],
@@ -3290,7 +3947,7 @@
     "az": 3.414,
     "el": 0,
     "flat": 1,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      6.981,
@@ -3299,25 +3956,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.269,
      0,
      0.963
     ],
-    "dist": 896.989,
+    "dist": 922.921,
     "eye": [
-     -234.63,
+     -241.615,
      3.25,
-     -858.539
+     -883.513
     ],
     "fov": 0.9,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      6.981,
@@ -3351,6 +4010,23 @@
     "u": 0,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "tide1",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Tide Study I",
    "trail": [
     "3D",
     "Facing Tide Study I on the Rotunda wall"
@@ -3364,7 +4040,7 @@
     "az": 3.414,
     "el": 0,
     "flat": 1,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      6.981,
@@ -3373,25 +4049,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0.269,
      0,
      0.963
     ],
-    "dist": 896.989,
+    "dist": 922.921,
     "eye": [
-     -234.63,
+     -241.615,
      3.25,
-     -858.539
+     -883.513
     ],
     "fov": 0.9,
-    "frameH": 14.09,
+    "frameH": 14.498,
     "mirror": false,
     "target": [
      6.981,
@@ -3425,6 +4103,23 @@
     "u": 0,
     "wallId": "rotunda"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "tide1",
+    "target": {
+     "id": "rotunda",
+     "kind": "wall",
+     "label": "Rotunda wall"
+    }
+   },
+   "taskTitle": "Facing Tide Study I",
    "trail": [
     "3D",
     "Facing Tide Study I on the Rotunda wall"
@@ -3438,7 +4133,7 @@
     "az": 6.283,
     "el": 0,
     "flat": 1,
-    "frameH": 21.129,
+    "frameH": 22.815,
     "mirror": false,
     "target": [
      -6.871,
@@ -3447,25 +4142,27 @@
     ]
    },
    "crumbs": [],
+   "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "parked": null,
    "realized": {
-    "aspect": 1.0625,
+    "aspect": 0.9832134292565947,
     "dir": [
      0,
      0,
      -1
     ],
-    "dist": 1345.074,
+    "dist": 1452.437,
     "eye": [
      -6.871,
      2.25,
-     1341.574
+     1448.937
     ],
     "fov": 0.9,
-    "frameH": 21.129,
+    "frameH": 22.815,
     "mirror": false,
     "target": [
      -6.871,
@@ -3499,6 +4196,23 @@
     "u": 0,
     "wallId": "north"
    },
+   "stage": {
+    "h": 834,
+    "w": 820
+   },
+   "task": {
+    "depth": 0,
+    "focus": null,
+    "instrument": true,
+    "kind": "face",
+    "subject": "harbor",
+    "target": {
+     "id": "north",
+     "kind": "wall",
+     "label": "North wall"
+    }
+   },
+   "taskTitle": "Facing Harbor at Dusk",
    "trail": [
     "3D",
     "Facing Tide Study I on the Rotunda wall",

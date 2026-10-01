@@ -6,6 +6,8 @@
 #   qa/run-all.sh journey      Axis B journeys A–F only
 #   qa/run-all.sh interaction  Axis B real interaction paths only
 #   qa/run-all.sh flows        Axis B pointer flows and exact return only
+#   qa/run-all.sh policy       the lifecycle seams only
+#   qa/run-all.sh shell        the World shell's composition only
 #
 # Each script gets its own harness session and tears its browser down, so one wedged session cannot
 # make the next axis look broken. Later stages add axes here rather than in private scripts.
@@ -28,14 +30,16 @@ case "$WHICH" in
   interaction) run "Axis B · real interaction" interaction-check ;;
   flows) run "Axis B · pointer flows" flow-check ;;
   policy) run "Lifecycle · cancellation, identity, seams" policy-check ;;
+  shell) run "Stage S2 · the ordinary World shell" shell-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
     run "Axis B · pointer flows" flow-check
     run "Lifecycle · cancellation, identity, seams" policy-check
+    run "Stage S2 · the ordinary World shell" shell-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|all)"
     exit 2
     ;;
 esac

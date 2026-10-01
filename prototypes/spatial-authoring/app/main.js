@@ -649,10 +649,15 @@ document.addEventListener('click', (e) => {
   if (trail) { A.gotoTrail(+trail.dataset.trail); return; }
   const mo = t.closest('[data-motion]');
   if (mo) { S.motion = mo.dataset.motion; A.setStatus(motionText(), 'view'); return; }
-  const tool = t.closest('[data-tool]');
-  if (tool) { pickTool(tool.dataset.tool); return; }
   const act = t.closest('[data-act]');
-  if (act) { doAct(act.dataset.act, act); return; }
+  if (act) {
+    const a = act.dataset.act;
+    // A subject's own verbs are capabilities, not shell commands: the row or the Card names the
+    // subject it belongs to, and the seam routes it. Nothing here depends on what is selected.
+    if (a.startsWith('look-')) { T.invoke(a.slice(5), { id: act.dataset.id ?? S.sel }); return; }
+    doAct(a, act);
+    return;
+  }
   const sel = t.closest('[data-sel]');
   if (sel) { A.select(sel.dataset.sel); return; }
 });
@@ -677,16 +682,15 @@ function motionText() {
   }[S.motion];
 }
 
-function pickTool(tool) {
-  if (tool === 'select') { if (S.knife) A.cancelKnife(true); S.tool = 'select'; requestUI(); return; }
-  if (tool === 'knife') { A.startKnife(); return; }
-  A.setStatus('Drawing walls, openings and ceiling footprints works as it does today in Plan — outside this prototype', 'info');
-}
-
 function doAct(a, el) {
   const s = S.session;
   switch (a) {
-    case 'close': A.closeSession(); break;
+    // Back leaves the reading when there is one; with nothing open it only drops unaccepted work,
+    // so the same control is never a dead end.
+    case 'close':
+      if (s) A.closeSession();
+      else { cancelProposal('close'); T.end(); requestUI(); }
+      break;
     case 'face': A.face(S.sel); break;
     case 'unfold': A.unfold(); break;
     case 'fold': A.fold(); break;
@@ -961,6 +965,10 @@ const QA = {
   state() {
     return {
       view: A.viewLabel(), kind: A.viewKind(), sel: S.sel, hover: S.hover,
+      // the stage rect the realized Camera was rendered against: the fit, and therefore the realized
+      // eye, distance and frame height, are functions of it. Recorded so a shell change that resizes
+      // the stage is a named fact in a diff, never a silent reinterpretation of the numbers.
+      stage: (() => { const r = stageEl.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })(),
       undo: S.undo.length, redo: S.redo.length, lastUndo: S.undo[S.undo.length - 1]?.label ?? null,
       reveal: S.reveal, knife: S.knife ? { stage: S.knife.stage, hasLine: !!S.knife.p1, depth: S.knife.depth, side: S.knife.side } : null,
       session: sessionShape(), crumbs: A.crumbs().map((c) => c.label), trail: S.trail.map((e) => e.label), trailPos: S.trailPos,
@@ -1016,7 +1024,7 @@ function boot() {
   // uses the neutral teardown so no lens change ever animates back to an origin pose.
   T.setDispatch({
     face: (o) => A.face(o?.id ?? S.sel),
-    unroll: () => A.unfold(),
+    unroll: (o) => A.unfold(o?.id),
     section: () => A.startKnife(),
     lift: (o) => A.lift(o?.id ?? S.sel),
     lookup: (o) => A.lookUp(o?.id ?? S.sel),
