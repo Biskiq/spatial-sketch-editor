@@ -1,9 +1,25 @@
 # Museum Editor World Shell  
 ## Final synthesis: Calm World, Invoked Depth
 
+**Status — accepted/frozen prototype-level design direction (2026-10-01, PR #111).**
+This is the canonical final synthesis **for this World | Experience shell design
+round**: the accepted destination shell/disclosure evidence, and the direction the
+next bounded prototype PR adopts. It is subject to the ratified product/domain
+invariants ([North Star](../../../docs/reference/north-star.md),
+[architecture](../../../docs/reference/architecture.md),
+[F composition/execution](../../../docs/reference/composition-execution.md) and the
+component contracts), which govern wherever this document disagrees with them. It is
+**not** persisted-format authority, **not** production implementation authority, and
+**not** itself authorization to cut over production; the editor still runs the landed
+PLATE-era shell. The durable shell laws live in
+[PLATE §0.8](../../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111);
+the [QA boards](../QA-package/) are specimens, not contracts, and a raster never
+outranks the written contract. Round routes: [workspace README](../README.md) ·
+[acceptance record](../QA-package/ACCEPTANCE.md).
+
 ### Design thesis
 
-World and Experience are two authoring intentions over the same project, not two applications. World exposes source truth, spatial structure, intrinsic capability, composition, and repair. Experience exposes visitor meaning and encounter. They share the same shell, Stage, canonical selection, Camera authority, visual language, and return behavior. Pasted text
+World and Experience are two authoring intentions over the same project, not two applications. World exposes source truth, spatial structure, intrinsic capability, composition, and repair. Experience exposes visitor meaning and encounter. They share the same shell, Stage, canonical selection, Camera authority, visual language, and return behavior.
 
 The World shell follows one governing principle:
 
@@ -62,7 +78,7 @@ At rest it shows:
 
 The dominant continuous spatial surface.
 
-Plan, 3D, Section, Unroll, Look-up, Camera readings and direct manipulation are different readings of the same world, not separate applications. Pasted text
+Plan, 3D, Section, Unroll, Look-up, Camera readings and direct manipulation are different readings of the same world, not separate applications.
 
 ### Card
 
@@ -90,7 +106,7 @@ It appears only after creator action invokes work requiring it.
 
 Ordinary World is deliberately sparse.
 
-The accepted baseline is represented by `01-world-ordinary-piano.png`.
+The accepted baseline is represented by [`01-world-ordinary-piano.png`](../QA-package/01-world-ordinary-piano.png).
 
 A Piano selected in Piano Gallery produces:
 
@@ -142,7 +158,7 @@ World does not expose at rest:
 - precision controls;
 - disabled specialist tools.
 
-The design preserves World breadth without permanently displaying World depth. This follows the brief's distinction between necessary structural orientation and progressive technical disclosure. Pasted text
+The design preserves World breadth without permanently displaying World depth. This follows the brief's distinction between necessary structural orientation and progressive technical disclosure.
 
 ---
 
@@ -182,7 +198,7 @@ This preserves important distinctions:
 - location is not ownership;
 - indentation is not source identity.
 
-World still supports Project, structure, Level, Room/Space, architecture and object orientation without requiring the UI tree to become the storage model. Pasted text
+World still supports Project, structure, Level, Room/Space, architecture and object orientation without requiring the UI tree to become the storage model.
 
 Only non-empty relevant groups appear.
 
@@ -194,7 +210,7 @@ The local Context Index is intentionally not the complete project browser.
 
 Wider breadth appears through explicit **Browse** or **Search**.
 
-The accepted dense example is `02-world-dense-search-recovery.png`.
+The accepted dense example is [`02-world-dense-search-recovery.png`](../QA-package/02-world-dense-search-recovery.png).
 
 ## Browse
 
@@ -255,7 +271,7 @@ Select · Reveal
 
 Selecting a result never silently moves the Camera or changes inspection state.
 
-This preserves the accepted "find with reason" contract. Pasted text
+This preserves the accepted "find with reason" contract.
 
 ---
 
@@ -320,7 +336,7 @@ Examples:
 
 `Look` may appear visually beside selected Stage geometry, but it is shell interaction, not a spatial entity or Camera object.
 
-The image set begins after invocation in `03-world-look-unroll-window.png`; the interaction contract is still:
+The image set begins after invocation in [`03-world-look-unroll-window.png`](../QA-package/03-world-look-unroll-window.png); the interaction contract is still:
 
 **Select Garden window → Look → Unroll host wall**
 
@@ -391,7 +407,7 @@ A measured state can communicate scale honestly:
 Unrolled · height to scale · width foreshortened
 ```
 
-Exact model values remain exact even if current visual reading foreshortens one axis. Pasted text
+Exact model values remain exact even if current visual reading foreshortens one axis.
 
 ---
 
@@ -401,7 +417,7 @@ Precision is not a global application mode.
 
 It deepens the **currently active task**.
 
-The accepted state is `04-world-precision-refusal-window.png`.
+The accepted state is [`04-world-precision-refusal-window.png`](../QA-package/04-world-precision-refusal-window.png).
 
 A width handle becomes available because the width axis reads clearly. Clicking it opens a single active writer inside the existing Instrument.
 
@@ -455,7 +471,7 @@ Invalid work does not:
 - clear selection;
 - obscure current writer.
 
-Only valid acceptance creates the logical edit. Pasted text
+Only valid acceptance creates the logical edit.
 
 ---
 
@@ -506,7 +522,7 @@ Entity names alone do not secretly change selection.
 
 # 12. Task focus is not selection
 
-The accepted object composition state is `05-world-details-piano-component-focus.png`.
+The accepted object composition state is [`05-world-details-piano-component-focus.png`](../QA-package/05-world-details-piano-component-focus.png).
 
 Piano stays selected.
 
@@ -528,7 +544,7 @@ The same pattern applies to:
 - repair;
 - supported capability work.
 
-World remains one application rather than spawning a separate composition editor. Pasted text
+World remains one application rather than spawning a separate composition editor.
 
 ---
 
@@ -571,7 +587,7 @@ They are not interchangeable.
 
 A shared source can participate in a local operation. Ownership alone does not describe blast radius. Provenance does not imply edit scope.
 
-The accepted shared-source state is `06-world-shared-source-reach.png`.
+The accepted shared-source state is [`06-world-shared-source-reach.png`](../QA-package/06-world-shared-source-reach.png).
 
 Crucially, these facts appear **at the decision point**.
 
@@ -593,7 +609,7 @@ At parent rest:
 
 Only when creator invokes the problem does Repair become the task.
 
-Accepted example: `07-world-repair-attached-lamp.png`.
+Accepted example: [`07-world-repair-attached-lamp.png`](../QA-package/07-world-repair-attached-lamp.png).
 
 ```text
 Repair attachment
@@ -629,7 +645,7 @@ Missing identity remains explicit.
 
 Lens crossing changes authoring intent, not identity.
 
-Accepted example: `08-experience-foreign-world-piano.png`.
+Accepted example: [`08-experience-foreign-world-piano.png`](../QA-package/08-experience-foreign-world-piano.png).
 
 Suppose Piano is selected in World.
 
@@ -677,7 +693,7 @@ Create Presentation…
 
 `Create Presentation…` means deliberate creation of another/new Presentation. Lens switching itself creates nothing.
 
-The brief explicitly requires lens crossing without accidental capture or duplicated ownership. Pasted text
+The brief explicitly requires lens crossing without accidental capture or duplicated ownership.
 
 ---
 
@@ -685,7 +701,7 @@ The brief explicitly requires lens crossing without accidental capture or duplic
 
 The reverse transition follows the exact same law.
 
-Accepted example: `09-world-foreign-presentation.png`.
+Accepted example: [`09-world-foreign-presentation.png`](../QA-package/09-world-foreign-presentation.png).
 
 If Presentation `Why this piano matters` is canonical selection in Experience, switching to World does **not** restore previously selected Piano.
 
@@ -748,7 +764,7 @@ Required user-facing contract:
 
 > **Put it back restores the expected spatial reading and standpoint.**
 
-Undo remains document/source history only. Pasted text
+Undo remains document/source history only.
 
 ---
 
@@ -801,7 +817,7 @@ This keeps source truth clear.
 
 # 20. Narrow desktop
 
-The accepted compression state is `10-world-narrow-unroll.png`.
+The accepted compression state is [`10-world-narrow-unroll.png`](../QA-package/10-world-narrow-unroll.png).
 
 The product does not become a second responsive application.
 
@@ -874,7 +890,7 @@ Reduced motion changes transition behavior, not endpoint meaning or access.
 
 Every spatial handle requiring precision must have a non-pointer path through Instrument controls.
 
-The brief explicitly locks these semantic distinctions while leaving World presentation open to redesign. Pasted text
+The brief explicitly locks these semantic distinctions while leaving World presentation open to redesign.
 
 ---
 
@@ -913,26 +929,30 @@ The accepted QA set intentionally uses stylized authoring geometry rather than p
 
 # 23. Accepted visual QA package
 
-| PNG | Contract demonstrated |
+| Board | Contract demonstrated |
 |---|---|
-| `01-world-ordinary-piano.png` | Calm resting World, local relation context, tiny Card |
-| `02-world-dense-search-recovery.png` | Browse/Search breadth, out-of-context selection, visibility recovery |
-| `03-world-look-unroll-window.png` | Invoked spatial inspection, selected subject vs host task |
-| `04-world-precision-refusal-window.png` | Precision, one writer, refused proposal, local correction |
-| `05-world-details-piano-component-focus.png` | Details, explicit verbs, component task focus |
-| `06-world-shared-source-reach.png` | Owner, Source and Reach at decision point |
-| `07-world-repair-attached-lamp.png` | Proportional repair and broken relationship handling |
-| `08-experience-foreign-world-piano.png` | World subject crossing into Experience unchanged |
-| `09-world-foreign-presentation.png` | Experience identity crossing into World unchanged |
-| `10-world-narrow-unroll.png` | Narrow desktop, preserved Stage and active Instrument |
+| [`01-world-ordinary-piano.png`](../QA-package/01-world-ordinary-piano.png) | Calm resting World, local relation context, tiny Card |
+| [`02-world-dense-search-recovery.png`](../QA-package/02-world-dense-search-recovery.png) | Browse/Search breadth, out-of-context selection, visibility recovery |
+| [`03-world-look-unroll-window.png`](../QA-package/03-world-look-unroll-window.png) | Invoked spatial inspection, selected subject vs host task |
+| [`04-world-precision-refusal-window.png`](../QA-package/04-world-precision-refusal-window.png) | Precision, one writer, refused proposal, local correction |
+| [`05-world-details-piano-component-focus.png`](../QA-package/05-world-details-piano-component-focus.png) | Details, explicit verbs, component task focus |
+| [`06-world-shared-source-reach.png`](../QA-package/06-world-shared-source-reach.png) | Owner, Source and Reach at decision point |
+| [`07-world-repair-attached-lamp.png`](../QA-package/07-world-repair-attached-lamp.png) | Proportional repair and broken relationship handling |
+| [`08-experience-foreign-world-piano.png`](../QA-package/08-experience-foreign-world-piano.png) | World subject crossing into Experience unchanged |
+| [`09-world-foreign-presentation.png`](../QA-package/09-world-foreign-presentation.png) | Experience identity crossing into World unchanged |
+| [`10-world-narrow-unroll.png`](../QA-package/10-world-narrow-unroll.png) | Narrow desktop, preserved Stage and active Instrument |
 
 The QA package contains minor visual generator drift that is not normative:
 
 - active lens styling is more amber than final semantic hierarchy should require;
-- PNG 03 shows state after Look invocation rather than the closed Look menu itself;
-- PNG 08's `Create Presentation…` is an explicit additional creation action, not something caused by lens switch.
+- [`03-world-look-unroll-window.png`](../QA-package/03-world-look-unroll-window.png)
+  shows state after Look invocation rather than the closed Look menu itself;
+- [`08-experience-foreign-world-piano.png`](../QA-package/08-experience-foreign-world-piano.png)
+  shows `Create Presentation…` as an explicit additional creation action, not
+  something caused by lens switch.
 
-None changes the interaction contract.
+None changes the interaction contract, and no board outranks the written contract
+above.
 
 ---
 
