@@ -1,19 +1,21 @@
-# Museum Editor World Shell  
+# Museum Editor World Shell
 ## Final synthesis: Calm World, Invoked Depth
 
-**Status — accepted/frozen prototype-level design direction (2026-10-01, PR #111).**
+**Status — finalized World design, promoted into the durable destination shell design
+(2026-10-01, PR #111).**
 This is the canonical final synthesis **for this World | Experience shell design
-round**: the accepted destination shell/disclosure evidence, and the direction the
-next bounded prototype PR adopts. It is subject to the ratified product/domain
+round** and the direction the next bounded prototype PR adopts. Its shell requirements,
+together with the finalized V2 Experience design, are promoted into
+[PLATE §0.8](../../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111),
+the normative durable home for new shell design. This synthesis preserves the final
+design record and specimens. It remains subject to the ratified product/domain
 invariants ([North Star](../../../docs/reference/north-star.md),
 [architecture](../../../docs/reference/architecture.md),
 [F composition/execution](../../../docs/reference/composition-execution.md) and the
 component contracts), which govern wherever this document disagrees with them. It is
 **not** persisted-format authority, **not** production implementation authority, and
 **not** itself authorization to cut over production; the editor still runs the landed
-PLATE-era shell. The durable shell laws live in
-[PLATE §0.8](../../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111);
-the [QA boards](../QA-package/) are specimens, not contracts, and a raster never
+PLATE-era shell. The [QA boards](../QA-package/) are specimens, not contracts, and a raster never
 outranks the written contract. Round routes: [workspace README](../README.md) ·
 [acceptance record](../QA-package/ACCEPTANCE.md).
 
@@ -239,16 +241,16 @@ There is no permanent selection pin.
 
 Search separates four operations that must never collapse into one:
 
-**Select**  
+**Select**
 Changes canonical identity.
 
-**Open location**  
+**Open location**
 Changes Index browsing context.
 
-**Bring into view**  
+**Bring into view**
 Requests viewpoint motion from canonical Camera/navigation authority.
 
-**Reveal / Include / Face**  
+**Reveal / Include / Face**
 Begins a temporary World inspection procedure.
 
 Search can explain why a result is not currently visible:
@@ -504,16 +506,16 @@ The explicit verbs matter.
 
 ## Details grammar
 
-**Expand**  
+**Expand**
 Reveal information. Selection unchanged.
 
-**Focus**  
+**Focus**
 Enter deeper task focus while selection remains unchanged.
 
-**Select**  
+**Select**
 Change canonical selection explicitly.
 
-**Open task**  
+**Open task**
 Open specialist Instrument work around current selection or related target.
 
 Entity names alone do not secretly change selection.
@@ -667,6 +669,20 @@ On switching to Experience:
 - Reveal;
 - World Browse/Search procedural state.
 
+Parked procedure is inactive session context: the Instrument and temporary readings
+deactivate together; accepted source edits survive. Returning to World shows the
+current canonical selection and Camera standpoint at ordinary rest, with no automatic
+restoration of inspection, old Browse context or task surface.
+
+Resuming is explicit through relevant Look/Details context, only after the original
+identity is selected and the task's targets/configuration are revalidated. Changed
+selection is never replaced to resume a task; unresolved targets never silently
+retarget. A resumed Instrument and its reading activate together from the current
+standpoint, without restoring a parked Camera pose. Put it back uses canonical
+navigation's current return context, not an obsolete standpoint from before the
+other lens's movement. The common rule, including Experience task parking, is
+[PLATE §0.8.2](../../../docs/reference/design-system/editor-shell-and-visual-system.md#082-parked-procedure-and-lens-return).
+
 **Does not happen**
 
 - no View capture;
@@ -729,11 +745,20 @@ World does not infer:
 
 A referenced World entity becomes selected only through explicit user action.
 
-The same rule applies if foreign selection is:
+The same identity-continuity rule applies to an Experience-owned Stop or another
+Experience-owned identity: its Card stays honest about ownership and World exposure.
 
-- Stop;
-- Camera View;
-- another Experience-owned identity.
+A **Camera View is Camera-owned**, including when authored through Experience or
+referenced by a Presentation. Switching to World retains that View's identity and
+Camera ownership; World may expose Camera inspection, while durable View edits
+delegate to Camera operations through Experience's authoring controls. Lens exposure
+does not change source ownership, select the framed World subject, or capture another
+View.
+
+Returning with a Presentation selected leaves any previously parked World task
+inactive. To resume Garden window's Unroll, explicitly select Garden window and
+invoke Resume; current target/configuration validation and Camera standpoint govern
+the resumed task (§15 and PLATE §0.8.2).
 
 ---
 
@@ -992,28 +1017,28 @@ This is the essential World expression:
 
 The shell can now be summarized by eight laws.
 
-1. **One selection.**  
+1. **One selection.**
    Lens changes never substitute identity.
 
-2. **One Card.**  
+2. **One Card.**
    Card always represents canonical selection.
 
-3. **One task surface.**  
+3. **One task surface.**
    Instrument appears only because creator invoked work.
 
-4. **Look means spatial procedure.**  
+4. **Look means spatial procedure.**
    Details means subject structure and relations.
 
-5. **Task focus is not selection.**  
+5. **Task focus is not selection.**
    Related hosts and components do not cause automatic selection churn.
 
-6. **Owner, Source and Reach are different facts.**  
+6. **Owner, Source and Reach are different facts.**
    Reveal each only when relevant to a decision.
 
-7. **One spatial return authority.**  
+7. **One spatial return authority.**
    Camera/navigation owns viewpoint motion and spatial return; Undo owns accepted source history.
 
-8. **Lens crossing parks procedure, not meaning.**  
+8. **Lens crossing parks procedure, not meaning.**
    It does not capture, infer, create, or move anything by itself.
 
 ---

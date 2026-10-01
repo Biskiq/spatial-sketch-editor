@@ -476,7 +476,10 @@ Experience may expose progressive View, framing and movement authoring, but each
 edit delegates to canonical Camera operations and evaluation. It never stores
 Camera pose, path, projection/FOV truth or a second graph. Transient World
 inspection becomes durable Camera intent only through explicit capture. The
-location and depth of Camera controls are open shell-design questions.
+destination location and depth of Camera controls follow the promoted shell design
+([PLATE §0.8.1](./design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression));
+exact metrics and V2's remaining usability experiments stay explicit there. Camera
+ownership is unchanged by lens exposure or shell promotion.
 
 Never:
 

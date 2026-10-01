@@ -49,21 +49,24 @@ production authority; their documentation is still a route a reader follows.
 
 | Folder | Durable artifact | Status |
 | --- | --- | --- |
-| [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Accepted V2 design direction** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + canonical visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Current V2 design authority / design evidence (accepted PR #110). The future V2 implementation home. Not a ratified contract: where it and a ratified contract disagree, the contract governs. Retired-exploration findings harvested as reconciliation evidence live [beside the synthesis](./integrated-experience-authoring/design/retired-exploration-findings.md). |
-| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Accepted unified World \| Experience shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Accepted/frozen prototype-level shell/disclosure direction (PR #111, 2026-10-01). The round is complete: it supersedes P26 shell/chrome/tool exposure/disclosure where the synthesis explicitly covers them, while P26 journeys A–F remain the deep World behavioral oracle and accepted V2 Experience semantics are preserved. Next: adopt the shell into [`spatial-authoring/`](./spatial-authoring/README.md) in the bounded successor PR #112. Design evidence only — no production cutover, no implementation authority. |
+| [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Finalized V2 Experience prototype design** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Accepted in #110; shell requirements promoted by the owner in #111 into PLATE §0.8.1 (2026-10-01). This retains the final design record and is the future V2 prototype implementation home; it establishes no persisted formats or implementation mechanisms. Retired-exploration findings remain [reconciliation evidence](./integrated-experience-authoring/design/retired-exploration-findings.md). |
+| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Finalized World shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Finalized/frozen; shell requirements promoted into PLATE §0.8 (PR #111, 2026-10-01), alongside V2 Experience. Supersedes P26 shell/chrome/tool exposure/disclosure where covered; journeys A–F remain the deep World behavioral oracle. Next: bounded adoption into [`spatial-authoring/`](./spatial-authoring/README.md), #112. Promotion fixes destination design, with no production cutover. |
 | [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Primary accepted World behavioral / QA evidence. **Journeys A–F**, capabilities and interaction laws remain behavioral authority; its executable shell/chrome/tool exposure/disclosure is the **predecessor shell pending adoption** of the accepted unified shell (#112). |
 | [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
 | [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained unratified proposal for object-first composition, capability disclosure, reach and repair behavior. Secondary composition shell-pressure evidence for the unified round; its shell and model are not being reopened or adopted by that round. |
 
-## Authority semantics (do not read this move as a promotion)
+## Authority semantics — retention and explicit shell promotion
 
 Relocating a prototype into a durable family changes **where it is kept**, not
-what it is authoritative for. In particular:
+what it is authoritative for. The separate owner promotion in #111 places both
+finalized designs' shell requirements in PLATE, not in prototype code. In particular:
 
 - **Accepted V2 synthesis + canonical QA** (`integrated-experience-authoring/`) —
-  the current design direction for integrated Experience authoring. It is design
-  evidence guiding the coming repo-aware reconciliation and implementation
-  planning — not a ratified contract, not production authority.
+  the finalized Experience prototype design. Its shell requirements are promoted
+  into **PLATE §0.8.1**, the durable authority, including Scale × Depth, Set,
+  Peek/Overview/Seam Deck, Ask Rule and progressive Camera disclosure. The retained
+  synthesis/QA record supplies rationale and specimens, not persisted formats or
+  implementation mechanisms.
 - **Spatial Authoring Prototype** — accepted experience/QA reference for the P26
   direction. Its implementation shortcuts (analytic caps, JavaScript modules,
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
@@ -72,7 +75,9 @@ what it is authoritative for. In particular:
   shell**, pending adoption of the accepted unified shell in #112; journeys A–F
   remain behavioral authority through that adoption.
 - **Unified World | Experience shell round** — the accepted design package lives
-  here because it evolved retained prototype design. The ratchet preserves P26
+  here because it evolved retained prototype design. Its shell requirements are
+  promoted into **PLATE §0.8**, alongside the finalized Experience expression;
+  §0.8.2 owns explicit parked-task return. The ratchet preserves P26
   journeys/capabilities/interaction laws and accepted V2 Experience semantics. It
   supersedes P26 shell, chrome, tool exposure and disclosure where its synthesis
   explicitly covers them. C2 supplied secondary composition pressure, not
@@ -86,10 +91,10 @@ what it is authoritative for. In particular:
   the accepted V2 synthesis above; its behavior remains the oracle for what the
   implemented V2 must still do.
 - **PLATE** ([`../docs/reference/design-system/editor-shell-and-visual-system.md`](../docs/reference/design-system/editor-shell-and-visual-system.md))
-  remains the landed shell and visual-system contract. For the owner-authorized
-  unified shell commission, its current topology is later reconciliation input,
-  not independent-design destination authority. A proposed or accepted prototype
-  successor does not amend PLATE or authorize a production cutover.
+  owns both the landed shell descriptions and the explicitly promoted destination
+  shell design (§0.8–§0.8.3). Those states remain distinct until cutover. Retention
+  or prototype acceptance alone never amends PLATE; #111's owner promotion does.
+  Promotion authorizes no production cutover.
 - **F** ([`../docs/reference/composition-execution.md`](../docs/reference/composition-execution.md))
   remains the composition/execution target authority.
 - **Layout / Scene / Camera / Experience ownership** remains governed by the

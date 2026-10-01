@@ -3,8 +3,9 @@
 **Audience:** agents + humans.
 **Hub:** [`../README.md`](../README.md) (prototype family) · [`../../docs/README.md`](../../docs/README.md) (documentation router).
 
-**Status:** **accepted / frozen prototype-level World | Experience shell design
-direction** (PR #111, 2026-10-01). The independent design round is complete: its
+**Status:** **finalized / frozen World design, promoted into durable destination
+shell design alongside V2 Experience** (PR #111, 2026-10-01). The independent design
+round is complete: its
 [final synthesis](./design/design-synthesis.md) and canonical
 [visual QA package](./QA-package/) are the durable outputs. The commissioning
 briefs and the copied designer-input rasters are retired to Git history. The
@@ -29,8 +30,10 @@ adoption PR.
 
 ## Authority
 
-- Accepted **successor shell/disclosure design evidence** for World | Experience
-  and the destination the next bounded prototype PR adopts.
+- Finalized **successor World shell/disclosure design**, promoted alongside V2
+  Experience into **PLATE §0.8–§0.8.3**, the normative destination shell authority.
+  This package retains the final design record and specimens; the next bounded
+  prototype PR adopts the World expression.
 - Preserves accepted **V2 Experience semantics**
   ([final V2 synthesis](../integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
   and **P26 journeys A–F, capabilities and interaction laws**
@@ -46,7 +49,8 @@ adoption PR.
   not persisted-format authority and not production implementation authority.
 - Does **not** itself authorize a production cutover. The durable shell contract
   ([PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md)
-  §0.8) states the accepted destination shell laws; production implementation
+  §0.8–§0.8.3) owns shared/World laws, the Experience expression and explicit
+  parked-procedure return; production implementation
   remains gated by F and the re-derived track plans.
 
 ## Provenance
@@ -78,9 +82,10 @@ Implementation-dependent questions this design round deliberately leaves open:
   work.
 - **Exact representation of temporary World reading state** (Section depth,
   Unroll curvature/side, Reveal, Lift, mirrored Look-up) travelling with canonical
-  Camera/navigation history. The user-facing contract is "Put it back restores the
-  expected spatial reading and standpoint"; the storage mechanism is not designed
-  here.
+  Camera/navigation history. PLATE §0.8.2 fixes the user-facing behavior: returning
+  does not resume; explicit Resume revalidates the original identity/targets and
+  starts from the current standpoint. The session payload/storage mechanism remains
+  undesigned; that does not leave the return behavior open.
 - **PLATE's own open owner calls** (§0.3, §0.7.6) remain open, including
   motion-speed control placement, keyboard-focus treatment and the mat↔paper
   transition.

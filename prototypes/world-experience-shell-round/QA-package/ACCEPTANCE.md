@@ -2,8 +2,9 @@
 
 **Accepted:** 2026-10-01 · [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111) ·
 branch `world-workspace-redesign`.
-**Nature:** accepted/frozen **prototype-level design direction** (design evidence),
-not a production contract and not implementation authorization.
+**Nature:** finalized/frozen World and V2 Experience shell requirements, owner-promoted
+into the durable destination shell contract. The syntheses/QA retain design records
+and specimens; production implementation and cutover remain separately gated.
 
 ## Accepted outcome
 
@@ -17,9 +18,10 @@ not a production contract and not implementation authorization.
 - Obsolete design-commission inputs (external designer brief, internal sourceful
   commission record, duplicated designer-input rasters) are pruned; Git history
   preserves them.
-- Durable shell/reference authority is reconciled: PLATE §0.8 states the accepted
-  destination shell laws and routes to the synthesis + QA; roadmap, P26 routing
-  and the operations baton reflect the frozen state.
+- Durable shell/reference authority is reconciled: PLATE §0.8–§0.8.3 owns shared/World
+  laws, the finalized V2 Experience expression and explicit parked-procedure return.
+  Both syntheses are promoted; their status labels, roadmap, P25/P26 routes and the
+  operations baton agree. Camera View ownership remains Camera regardless of lens.
 - P26 journeys A–F remain the deep World behavioral authority; accepted V2
   Experience semantics are preserved and not reopened.
 - Production remains unimplemented: the editor still runs the landed PLATE-era
@@ -42,9 +44,10 @@ history, and PLATE's open §0.3/§0.7.6 owner calls. Nothing is invented here.
 
 ## Verification evidence
 
-Run on `world-workspace-redesign` at the final PR head (2026-10-01). The closeout
-adds only documentation, so these results are the current-head results; the
-documentation gate re-passes on every later documentation-only commit.
+Recorded for `world-workspace-redesign` on 2026-10-01, including the review fixes in
+the working tree. The architecture lane below was rerun after the documentation
+changes. These checks verify documentation and production architecture boundaries;
+executable/visual prototype adoption acceptance belongs to #112.
 
 - **Documentation/link gate** (`cd apps/editor && npx vitest run --config
   vitest.arch.config.ts tests/docs`) — **22 tests passed**; every relative link,
@@ -52,16 +55,20 @@ documentation gate re-passes on every later documentation-only commit.
   QA-board links and the synthesis → PLATE §0.8 anchor.
 - **Full architecture lane** (`npm run test:arch -w @portfolio/editor`) —
   **276 tests passed across 24 files** (includes the documentation gate).
-- **`git diff --check`** — clean (no whitespace errors).
+- **Whitespace** (`git diff --check` and `git diff --check main`) — clean. The latter
+  checks the complete main-to-working-tree PR content, including committed changes
+  and the local review fixes. Markdown trailing-space line breaks in the new World
+  synthesis were removed; the earlier bare working-tree check did not cover the
+  committed PR diff.
 - **Package routes:** all ten QA boards exist under their semantic names in this
   folder and every one is linked from the synthesis QA table.
 - **Pruning routes:** no live Markdown/code reference remains to the removed
   designer brief, internal commission record or `designer-visuals.local`; the
   prototype-family router points at this workspace's README.
 - **Residue scan:** no generation/copy residue remains in the accepted package.
-- **Stale-claim scan:** no live document still states that the replacement shell
-  is undesigned, that the round is preparing the independent design, or that no
-  successor design is accepted.
+- **Status/authority scan:** the live router, prototype index, both final syntheses,
+  PLATE and P25/P26 routes agree on the promoted destination design; World hardening
+  is complete and the #112 prototype adoption baton remains explicit.
 - **Scope review:** the full PR diff touches `docs/` and `prototypes/` only — no
   production code, no `apps/`, no `packages/`.
 
@@ -94,8 +101,8 @@ separate anchor.
 ```text
 prose compacted:                2 files (external brief, internal commission record) — Git anchors above
 duplicate evidence removed:     10 PNG input copies (canonical sources retained)
-durable promotions:             2 (PLATE §0.8 + §0.7.4/§26.2/§27 reconciliation; North Star lens-switch law)
-routing updated:                5 live documents (prototypes/README, docs/README, roadmap/README, P26 README, operations/current.md)
+durable promotions:             2 homes (PLATE shared/World + V2 Experience shell and return requirements; North Star lens-switch/Camera-exposure reconciliation)
+routing updated:                6 live documents (prototypes/README, docs/README, roadmap/README, P25 README, P26 README, operations/current.md)
 new live → removed-file links:  0
 manual-owed verification rows:  0
 remaining deferred items:       4 (workspace README)
@@ -103,7 +110,8 @@ remaining deferred items:       4 (workspace README)
 
 ## Merge readiness
 
-Merge-ready at the final head: stale authority/routing is fixed, pruning is
-complete, QA routes resolve, current-head verification passed, and the closeout
-self-check found no scope expansion beyond documentation/design/assets. Merging
-itself is the owner's action — this PR records acceptance, not a cutover.
+The design package has reconciled authority/routing, complete pruning and resolved
+QA routes. The verification above records the reviewed file contents, including the
+fixes; it does not claim that later revisions inherit a pass automatically. The
+preservation/self-check found no scope expansion beyond documentation/design/assets.
+This record states design acceptance, not a production cutover.

@@ -67,8 +67,9 @@ This revision is separate from the pre-redesign production plans below.
 
 ```text
 BEHAVIORAL AUTHORITY:   P26 journeys A–F / spatial-authoring behavior (banner above)
-SHELL DESIGN AUTHORITY: PLATE §0.8 (durable laws)
-                        + the #111 synthesis/QA (detailed design evidence)
+SHELL DESIGN AUTHORITY: PLATE §0.8–§0.8.3 (promoted shared/World laws,
+                        Experience expression and parked-task return)
+                        #111's syntheses/QA retain final design records/specimens
 EXECUTABLE STATE:       the spatial-authoring prototype still runs its predecessor
                         shell; #112 adopts the accepted shell there — prototype
                         evidence only
@@ -80,7 +81,7 @@ PRODUCTION STATE:       unchanged — planning / re-derived T1; no production ch
 
 - **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
 - **Accepted experience:** [Spatial Authoring Prototype](../../../prototypes/spatial-authoring/README.md) — the runnable import is unchanged; rationale, reconciliation, implementer reference and journeys are linked there, and a path-preserving stub remains at the old phase-local [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md). Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
-- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. The accepted destination shell lands as sequence step 4: PLATE **§0.8** (2026-10-01, PR #111) states the durable unified World | Experience shell laws and routes to the frozen [final synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and canonical [QA package](../../../prototypes/world-experience-shell-round/QA-package/) as the detailed design evidence. Both are target statements — no production implementation, no restyle and no cutover — and P26/T1 production planning still follows the F interfaces.
+- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. Sequence step 4 promotes both finalized designs into PLATE **§0.8–§0.8.3** (2026-10-01, PR #111): shared/World laws, Experience expression and explicit parked-task return. The [final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [QA package](../../../prototypes/world-experience-shell-round/QA-package/) retain the detailed design record/specimens. These are normative destination design requirements — no production implementation, restyle or cutover — and P26/T1 production planning still follows the F interfaces.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
 - **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.
 

@@ -16,12 +16,12 @@ STAGE: P23 closed 2026-09-22; P23B CLOSED 2026-09-29 by owner invocation of `pha
        ../roadmap/p23b-geometry-performance/README.md (PHASE CLOSE).
 SLICE: World | Experience shell design freeze — completed owner-directed design side
        sequence ([PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111),
-       2026-10-01; docs/design/assets only): the unified shell synthesis + QA package are
-       accepted/frozen, the obsolete commission inputs are pruned, and the durable shell
-       authority is reconciled → ../reference/design-system/editor-shell-and-visual-system.md
-       §0.8 (PLATE) · ../roadmap/README.md visual-system sequence step 4 · the workspace
-       package at ../../prototypes/world-experience-shell-round/README.md. Design evidence
-       only: no production code, no cutover, no F/T1 advance.
+       2026-10-01; docs/design/assets only): finalized World and V2 Experience shell
+       requirements are owner-promoted → ../reference/design-system/editor-shell-and-visual-system.md
+       §0.8–§0.8.3 (PLATE: shared/World laws, Experience expression, explicit parked-task
+       return) · ../roadmap/README.md visual-system sequence step 4 · design/QA records
+       at ../../prototypes/world-experience-shell-round/README.md. Normative destination
+       design only: no production code, no cutover, no F/T1 advance.
 RATIFIED DIRECTION (2026-09-27): Biskiq northstar decision record →
        ../reference/decisions/northstar-ratification-2026-09-27.md (normative for new design).
        Pipeline after F: parallel tracks T1 Spatial/P26 (the selected validation window,
