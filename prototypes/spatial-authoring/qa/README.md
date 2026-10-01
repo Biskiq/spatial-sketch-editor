@@ -5,10 +5,11 @@ owns its own static server for **this** checkout (an ephemeral port), waits for 
 **exits nonzero** when an assertion fails.
 
 ```sh
-qa/run-all.sh              # both axes
+qa/run-all.sh              # every axis
 qa/run-all.sh journey      # axis B: journeys A–F, one checkpoint per step
 qa/run-all.sh interaction  # axis B: real pointer and keyboard paths
 qa/run-all.sh flows        # axis B: peel, nested return, trail restore, knife, grid, reopen
+qa/run-all.sh policy       # lifecycle: cancellation, identity vs target, neutral teardown
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -26,6 +27,7 @@ an already-running copy instead of starting one; `QA_OUT` moves the captures.
 | `realized()` | the camera as rendered, not as requested — the distinction parking and resizing must keep |
 | `faultList()` / `clearFaults()` | every command error inside `anim.run`, every frame error and every page error |
 | `idle()` | resolves when the command queue is empty |
+| `render()` | draws one frame on demand. A backgrounded tab stops `requestAnimationFrame`, so waiting for frames would hang the harness; assertions about what is drawn ask for a frame instead |
 
 ## Baselines and tolerances
 
@@ -62,4 +64,5 @@ an already-running copy instead of starting one; `QA_OUT` moves the captures.
 | `journey-check.sh` | axis B presenter replay against the baseline |
 | `interaction-check.sh` | axis B pointer/keyboard interaction wiring |
 | `flow-check.sh` | axis B harvested flows and exact return |
+| `policy-check.sh` | lifecycle: one cancellation policy, identity vs technical target, parking that keeps the realized camera |
 | `run-all.sh` | the axis driver |

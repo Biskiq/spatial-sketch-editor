@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone } from './state.js';
 import { tween, dur, saw, narrate, run } from './anim.js';
+import * as nav from './navigation.js';
+import * as T from './tasks.js';
+import { onCancel, cancelProposal } from './cancel.js';
 import {
   frameAt, wallLength, maxTop, topAt, bbox, planeY, fmt, pointInPoly, modS, springOf, centroid,
   validateOpening, validateWall, validateCeiling, byId,
@@ -42,16 +45,10 @@ export function viewLabel(s = S.session) {
 
 // The camera travels on one eased curve. `arc` lifts the eye mid-flight so the floor is seen
 // on the way — a single beat that explains the move instead of a stop-and-go sequence.
-export function camAt(a, b, e, arc = 0) {
-  st().lerpCam(a, b, e);
-  if (arc) st().cam.el += Math.sin(Math.PI * e) * arc;
-}
+export function camAt(a, b, e, arc = 0) { nav.camAt(a, b, e, arc); }
 
-export async function fly(to, ms, arc = 0) {
-  const a = st().camState();
-  await tween(ms, (t) => camAt(a, to, ease(t), arc));
-  if (to.mirror != null) st().cam.mirror = to.mirror;
-}
+// Movement is asked of the navigation seam, which owns releasing any parked hold.
+export const fly = (to, ms, arc = 0) => nav.fly(to, ms, arc);
 
 // ---------------------------------------------------------------- recipes: what an open state is, exactly
 
@@ -76,17 +73,8 @@ export function crumbs() {
 
 // ---------------------------------------------------------------- trail (view history, never Undo)
 
-export function pushTrail(label) {
-  if (S.navTrail) return;
-  const entry = { ...recipeOf(), label: label || viewLabel() };
-  const t = S.trail.slice(0, S.trailPos + 1);
-  const last = t[t.length - 1];
-  if (last && last.label === entry.label) t[t.length - 1] = entry;
-  else t.push(entry);
-  S.trail = t.slice(-12);
-  S.trailPos = S.trail.length - 1;
-  ctx.ui();
-}
+// The navigation seam stores the trail; this layer supplies the complete reading recipe.
+export function pushTrail(label) { nav.pushTrail(label, recipeOf()); }
 
 // Re-enter a recipe exactly: same open state, same parameters, same camera, same nesting.
 async function enterRecipe(e) {
@@ -107,9 +95,7 @@ async function enterRecipe(e) {
 export const gotoTrail = (i) => run(async () => {
   const e = S.trail[i];
   if (!e) return;
-  S.navTrail = true;
-  try { await enterRecipe(e); } finally { S.navTrail = false; }
-  S.trailPos = i;
+  await nav.gotoTrail(i);
   setStatus(`Back to “${e.label}” exactly as you left it — a view change, so Undo is untouched`, 'view');
 });
 
@@ -232,12 +218,17 @@ export async function exitSessionInner(toCam) {
   });
   KIND[sess.kind].teardown(sess);
   S.session = null;
+  T.end();
   st().cam.mirror = false;
   saw('close');
   narrate(null);
   summarize(sess);
   pushTrail();
 }
+
+// The operation layer owns how a recipe is entered; the navigation seam owns the record.
+nav.setEnterRecipe((e) => enterRecipe(e));
+nav.setReadingLabel(() => viewLabel());
 
 // Esc: one level out — back into the open state this one was opened from, exactly as it was.
 export async function backInner() {
@@ -378,7 +369,10 @@ async function faceInner(id, opts = {}) {
   if (!opts.restore && cur?.kind === 'face' && cur.wallId === r.wall.id && cur.side === side) {
     if (Math.abs(cur.sA - r.sA) < 0.01 || cur.u > 0.5) { setStatus(`Already facing the ${r.wall.name}`, 'info'); return; }
   }
-  const sess = { kind: 'face', ...r, side };
+  // The subject is what the user asked about; the wall is the technical target. An artwork on the
+  // Rotunda wall keeps the artwork as its subject while the wall is the target.
+  const sess = { kind: 'face', ...r, side, subject: opts.subject ?? id };
+  T.begin({ kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name }, params: { side } });
   const u = opts.u ?? 0;
   const home = faceHome(sess);
   const inRoom = byId(ctx.museum.galleries, r.wall.gallery).name;
@@ -480,7 +474,8 @@ export const unfold = () => run(async () => {
   const r = resolveFace(S.sel);
   if (!r) return;
   if (r.wall.kind !== 'arc') { await faceInner(S.sel); return; }
-  const sess = { kind: 'face', ...r, side: 1 };
+  const sess = { kind: 'face', ...r, side: 1, subject: S.sel ?? r.focusId };
+  T.begin({ kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name }, params: { side: 1 } });
   const to = flatHome(sess);
   sess.unfolding = true;
   await openSession(sess, to, {
@@ -536,7 +531,9 @@ export function beginPeel(wallId, sA) {
   const w = W(wallId);
   const side = sideOfCamera(w, sA);
   const r = resolveFace(S.sel && thing(S.sel)?.wall?.id === wallId ? S.sel : wallId) || {};
-  const sess = { kind: 'face', wall: w, sA, focusId: r.focusId || wallId, focusName: r.focusName || w.name, opening: r.opening, side, peeled: true };
+  const subject = r.opening ? S.sel : wallId;
+  const sess = { kind: 'face', wall: w, sA, focusId: r.focusId || wallId, focusName: r.focusName || w.name, opening: r.opening, side, peeled: true, subject };
+  T.begin({ kind: 'face', subject, target: { kind: 'wall', id: wallId, label: w.name }, params: { side, directly: true } });
   Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.face.setup(sess);
@@ -560,6 +557,7 @@ export function endPeel() {
   if (s.u < 0.04) {
     KIND.face.teardown(s);
     S.session = null;
+    T.end();
     ctx.ui();
     return;
   }
@@ -680,7 +678,10 @@ export function refreshSection() {
 }
 
 async function openSectionInner(cut, opts = {}) {
-  const sess = { kind: 'section', cut: { ...cut } };
+  // A location-based cut with nothing selected records the explicit absence: no fabricated identity.
+  const subject = opts.subject !== undefined ? opts.subject : S.sel;
+  const sess = { kind: 'section', cut: { ...cut }, subject };
+  T.begin({ kind: 'section', subject, target: { kind: 'cut', label: lookWord(cut) }, params: { depth: cut.depth, side: cut.side } });
   const home = sectionHome(sess.cut);
   const narr = `Parting the museum along your line. The near half slides toward you; the camera turns to face the cut, ${lookWord(cut)}. Ink marks everything the line passes through.`;
   await openSession(sess, home, { ...opts, label: opts.label || `Opened along a line · ${lookWord(cut)}`, narr, base: 1600 });
@@ -929,7 +930,8 @@ function liftHome(c) {
 async function liftInner(id, opts = {}) {
   const c = C(id);
   if (!c) return;
-  const sess = { kind: 'lift', ceilId: id };
+  const sess = { kind: 'lift', ceilId: id, subject: opts.subject ?? id };
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name } });
   const narr = `Lifting the <b>${c.name}</b> off its walls. Every wall it rests on is tethered and named — gaps show in coral, openings meant to be open in green. The dashed outline is where it really is.`;
   await openSession(sess, liftHome(c), { ...opts, label: opts.label || `${c.name} lifted`, narr, base: 1200 });
 }
@@ -939,7 +941,8 @@ export const lift = (id = S.sel) => run(() => liftInner(id));
 // D's lid tab: drag the lid up from where you stand. Past a third it finishes lifting; less and it drops back.
 export function beginLid(id) {
   if (S.busy || S.session || S.knife) return null;
-  const sess = { kind: 'lift', ceilId: id, direct: true };
+  const sess = { kind: 'lift', ceilId: id, direct: true, subject: S.sel ?? id };
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: C(id)?.name || id } });
   Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid });
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.lift.setup(sess);
@@ -961,6 +964,7 @@ export const endLid = () => run(async () => {
     await tween(dur('lid', 300), (t) => KIND.lift.apply(s, p0 * (1 - ease(t))));
     KIND.lift.teardown(s);
     S.session = null;
+    T.end();
     ctx.ui();
     return;
   }
@@ -1067,7 +1071,8 @@ async function lookUpInner(id, opts = {}) {
   const b = bbox(c.outline);
   const home = { target: new V3(b.cx, 3, b.cz), az: Math.PI, el: -Math.PI / 2 + 1e-4, frameH: st().fitFrame(b.w / 2 + 0.8, b.d / 2 + 0.8, 1.14), flat: 1 };
   const via = { target: new V3(b.cx, 1.4, b.cz), az: Math.PI, el: 0.34, frameH: st().fitFrame(b.w / 2 + 0.8, 3.4, 1.1), flat: 0 };
-  const sess = { kind: 'lookup', ceilId: id };
+  const sess = { kind: 'lookup', ceilId: id, subject: opts.subject ?? id };
+  T.begin({ kind: 'lookup', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name } });
   const narr = `Settling the lid, then sinking below the floor to look straight up. Everything under <b>1.60</b> above the floor is sliced away, so the ceiling reads like a plan seen from underneath. East is on your left — you are looking up, not down.`;
   const arrive = opts.arrive ? { ...opts.arrive, mirror: opts.mirror ?? false } : null;
   await openSession(sess, home, { ...opts, arrive, label: opts.label || `Looking up · ${c.name}`, narr, base: 1900, via });
@@ -1234,3 +1239,50 @@ export function setProfile(id, profile) {
 }
 
 export function springLine(o) { return springOf(o); }
+
+// ---------------------------------------------------------------- cancellation owners
+// Everything unaccepted a spatial operation can be holding. Registered with the one policy in
+// cancel.js, which calls them in order: previewed consequences first, then the aim, then the
+// candidate snapshot the gesture or the draft was written against.
+onCancel(() => {
+  if (S.preview) { restoreQuiet(S.preview); S.preview = null; }
+  S.previewing = null;
+  S.popover = null;
+}, 30, 'gap-preview');
+
+onCancel(() => {
+  if (!S.knife) return;
+  S.knife = null;
+  S.tool = 'select';
+  st().clearAway('preview');
+  st().setSectionCaps(null);
+}, 40, 'knife-aim');
+
+onCancel(() => {
+  if (!S.pending) return;
+  restoreQuiet(S.pending);
+  S.pending = null;
+}, 60, 'candidate-edit');
+
+// ---------------------------------------------------------------- neutral teardown
+// Drop the reading without animating anywhere and without restoring an origin pose: temporary
+// geometry, clips, ghosts, the mirrored reading and the aim all go; source, canonical selection and
+// the realized standpoint stay. The caller holds the realized pose first (tasks.park does), so a
+// deactivated reading cannot silently dolly the camera.
+export function parkReading() {
+  cancelProposal('park');
+  const s = S.session;
+  if (s) { KIND[s.kind].teardown(s); S.session = null; }
+  S.knife = null;
+  S.tool = 'select';
+  S.reveal = null;
+  S.popover = null;
+  S.previewing = null;
+  S.summary = null;
+  S.refusal = null;
+  st().clearAway('preview');
+  st().setSectionCaps(null);
+  st().cam.mirror = false;
+  T.end();
+  ctx.ui();
+}

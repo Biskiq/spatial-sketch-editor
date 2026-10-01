@@ -37,6 +37,15 @@ export const S = {
   summary: null,
   finder: null,
   gated: [],
+  /* the work the editor is doing: capability, initiating identity, technical target, local focus.
+     Set and cleared by the task seam; the linger selection is not this. */
+  task: null,
+  /* an inactive task remembered for explicit Resume, and only that */
+  parked: null,
+  /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
+  flatHold: null,
+  /* browse/search context: query and focused row. Never selection, never a standpoint. */
+  browse: { q: '', focus: null },
   /* QA observation only: a command that threw, or a page error. Never a source of product behaviour;
      the acceptance harness asserts this stays empty. See qa/README.md. */
   faults: [],

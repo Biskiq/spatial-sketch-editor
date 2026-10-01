@@ -27,13 +27,15 @@ case "$WHICH" in
   journey) run "Axis B · journeys A–F" journey-check ;;
   interaction) run "Axis B · real interaction" interaction-check ;;
   flows) run "Axis B · pointer flows" flow-check ;;
+  policy) run "Lifecycle · cancellation, identity, seams" policy-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
     run "Axis B · pointer flows" flow-check
+    run "Lifecycle · cancellation, identity, seams" policy-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|all)"
     exit 2
     ;;
 esac

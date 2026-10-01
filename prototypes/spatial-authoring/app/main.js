@@ -5,6 +5,9 @@ import { Stage, ease } from './stage.js';
 import { Overlay } from './overlay.js';
 import { tickTweens, run, dur } from './anim.js';
 import * as A from './actions.js';
+import * as nav from './navigation.js';
+import * as T from './tasks.js';
+import { onCancel, cancelProposal } from './cancel.js';
 import { drawAll } from './draw.js';
 import { requestUI, renderUI, updateTilt, updateWhere, updateStripLive, fieldValue, applyField, applySeg, mapInv } from './ui.js';
 import { sectionCaps } from './geometry.js';
@@ -87,6 +90,10 @@ function frameState() {
     }
     if (inPlace) { clips.push(k.planes.keep, k.planes.depthKeep); stage.capV.visible = true; }
   }
+  // A parked reading holds the flatness it was rendered with: the derived formula must not dolly
+  // the eye just because the reading stopped being open. Explicit spatial input releases it.
+  const held = nav.hold();
+  if (held != null) { flat = held; planF = held; }
   if (planF > 0.01) {
     const h = A.lerp(9.5, 1.2, ease(planF));
     clips.push(new THREE.Plane(DOWN.clone(), h));
@@ -152,8 +159,12 @@ function truthBar() {
 
 let lastRestyle = 0;
 let lastErr = '';
-function frame(now) {
-  requestAnimationFrame(frame);
+function frame(now) { requestAnimationFrame(frame); frameOnce(now); }
+
+// One pass of the frame work, callable on demand. The animation loop uses it, and so does the QA
+// surface: a backgrounded tab stops requestAnimationFrame, so an assertion about what is drawn must
+// be able to ask for a frame instead of waiting for one.
+function frameOnce(now) {
   try {
     tickTweens(now);
     frameState();
@@ -166,8 +177,10 @@ function frame(now) {
     updateStripLive();
     truthBar();
     if (S.status && now - S.status.t > 6000 && !S.status.cleared) { S.status.cleared = true; requestUI(); }
+    return true;
   } catch (e) {
     if (e.message !== lastErr) { lastErr = e.message; recordFault('frame', e); console.error(e); }
+    return false;
   }
 }
 
@@ -244,6 +257,8 @@ canvas.addEventListener('pointermove', (e) => {
     drag.x = e.clientX; drag.y = e.clientY;
     if (Math.abs(e.clientX - drag.x0) + Math.abs(e.clientY - drag.y0) > 4) drag.moved = true;
     if (!drag.moved || S.busy) return;
+    // Explicit spatial input: the standpoint is being re-derived by hand, so any parked hold ends.
+    nav.releaseHold();
     const c = stage.cam;
     if (drag.mode === 'orbit') {
       c.az -= dx * 0.006;
@@ -304,6 +319,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (S.busy) return;
+  nav.releaseHold();
   const c = stage.cam;
   const f = Math.exp(e.deltaY * 0.0012);
   const dir = new V3();
@@ -395,7 +411,19 @@ function clearActiveEdit() {
   if (hdrag?.el) { hdrag.el.classList.remove('manipulating'); hdrag.el.classList.remove('refused'); }
   S.activeEdit = null;
 }
-window.addEventListener('pointercancel', () => { if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); requestUI(); } });
+// Lost capture, pointercancel and Esc are the same policy: whatever was being written is dropped,
+// nothing is accepted, and no trailing pointerup/change/blur can commit it afterwards.
+window.addEventListener('pointercancel', () => { cancelProposal('pointercancel'); requestUI(); });
+window.addEventListener('lostpointercapture', () => { if (hdrag || direct || typeSpec) cancelProposal('lost-capture'); requestUI(); });
+
+// This module holds the pointer writers, so it registers how to drop them. Order 10: the writer
+// stops before the candidate snapshot it was written against is rolled back (actions.js, order 60).
+onCancel(() => {
+  if (direct) { direct = null; document.body.classList.remove('dragging'); }
+  if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); }
+  if (typeSpec) closeTypein();
+  S.refusal = null;
+}, 10, 'pointer-writer');
 
 window.addEventListener('pointermove', (e) => {
   if (!direct) return;
@@ -570,8 +598,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { e.stopPropagation(); S.fieldErr = null; f.value = fmt(fieldValue(JSON.parse(f.dataset.field))); f.blur(); }
 }, true);
 document.addEventListener('change', (e) => {
-  const f = e.target.closest?.('[data-field]');
-  if (f) commitField(f);
+  // No acceptance through blur: a field commits on Enter (or the drawing's own Tab), never because
+  // focus moved on. Leaving a half-typed value behind is the thing this prevents.
   if (e.target.dataset?.scrub === 'unroll') {
     A.setStatus('Curvature is a view setting — lengths along the wall never change, and Undo is untouched', 'view');
     A.pushTrail();
@@ -822,6 +850,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
   if (S.session || S.busy) return;
   const track = $('#tiltTrack').getBoundingClientRect();
   const setFrom = (x) => {
+    nav.releaseHold();
     const t = 1 - Math.max(0, Math.min(1, (x - track.left) / track.width));
     stage.cam.el = A.rad(20 + 70 * t);
   };
@@ -842,14 +871,18 @@ window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); openFinder(); return; }
   if (e.metaKey || e.ctrlKey) return;
   switch (k) {
-    case 'escape':
-      if (S.popover) { A.unpreview(); S.popover = null; requestUI(); }
-      else if (!$('#help').hidden) $('#help').hidden = true;
+    case 'escape': {
+      // The one policy first: an unaccepted writer, draft, preview or aim is dropped before any
+      // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
+      const held = S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
+      if (held) cancelProposal('esc');
+      if (e.shiftKey) { if (S.session) A.closeAll(); requestUI(); break; }
+      if (held) { requestUI(); break; }
+      if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
-      else if (S.knife) A.cancelKnife();
-      else if (S.session) (e.shiftKey ? A.closeAll() : A.closeSession());
-      else A.select(null);
+      else if (S.session) A.closeSession();
       break;
+    }
     case '/': e.preventDefault(); openFinder(); break;
     case 's': if (S.session?.kind === 'face') A.squareUp(); break;
     case '1': A.goPlan(); break;
@@ -931,6 +964,8 @@ const QA = {
       undo: S.undo.length, redo: S.redo.length, lastUndo: S.undo[S.undo.length - 1]?.label ?? null,
       reveal: S.reveal, knife: S.knife ? { stage: S.knife.stage, hasLine: !!S.knife.p1, depth: S.knife.depth, side: S.knife.side } : null,
       session: sessionShape(), crumbs: A.crumbs().map((c) => c.label), trail: S.trail.map((e) => e.label), trailPos: S.trailPos,
+      task: S.task ? { kind: S.task.kind, subject: S.task.subject, target: S.task.target, focus: S.task.focus, depth: S.task.depth, instrument: !!S.task.instrument } : null,
+      taskTitle: T.describe()?.title ?? null, parked: S.parked ? { kind: S.parked.kind, subject: S.parked.subject } : null, flatHold: nav.hold(),
       cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
       realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),
       faults: S.faults.length,
@@ -944,6 +979,15 @@ const QA = {
   faultList() { return S.faults.slice(); },
   clearFaults() { S.faults.length = 0; return true; },
   async idle() { while (S.busy) await new Promise((r) => setTimeout(r, 30)); return true; },
+  /* draw one frame now and settle the pending UI batch, so an assertion about what is on screen does
+     not depend on the tab being visible */
+  async render() {
+    frameOnce(performance.now());
+    renderUI();
+    await new Promise((r) => setTimeout(r, 0));
+    frameOnce(performance.now());
+    return true;
+  },
   settleFor(ms) { return new Promise((r) => setTimeout(r, ms)); },
 };
 
@@ -968,8 +1012,20 @@ function boot() {
   else S.reduceMotion = S.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.body.classList.toggle('reduce-motion', S.reduceMotion);
   if (q.get('shot')) document.body.classList.add('shot');
+  // Capability dispatch: the shell asks the task seam, which routes to these operations. Parking
+  // uses the neutral teardown so no lens change ever animates back to an origin pose.
+  T.setDispatch({
+    face: (o) => A.face(o?.id ?? S.sel),
+    unroll: () => A.unfold(),
+    section: () => A.startKnife(),
+    lift: (o) => A.lift(o?.id ?? S.sel),
+    lookup: (o) => A.lookUp(o?.id ?? S.sel),
+    plan: () => A.goPlan(),
+    three: () => A.go3D(),
+  });
+  T.setNeutralize(() => A.parkReading());
   requestAnimationFrame(frame);
-  window.__me = { S, ctx, A, JOURNEYS, qa: QA };
+  window.__me = { S, ctx, A, JOURNEYS, nav, tasks: T, qa: QA };
   window.__me.ready = true;
   document.body.dataset.ready = '1';
   window.addEventListener('error', (e) => recordFault('page', e.error || e.message));

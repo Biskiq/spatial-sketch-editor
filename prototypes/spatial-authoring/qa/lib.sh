@@ -98,12 +98,9 @@ trap qa_serve_stop EXIT
 # Evaluate an expression in the page and print its JSON-serialised value on one line. The expression
 # is awaited, so an async IIFE works. agent-browser prints a resolved string as a JSON string; this
 # decodes it once and re-encodes it, so callers always compare JSON.
-qa_js() {
-  # An eval issued while the page is still handling a key press or a pointer release can come back
-  # with no output at all; that is a race in the harness, not a result, so it is retried.
-  local out="" i
-  for i in 1 2 3 4 5 6 7 8; do
-    out="$(agent-browser eval "(async () => { const v = await ($1); return JSON.stringify(v === undefined ? null : v); })()" 2>/dev/null | tail -1 | python3 -c 'import sys, json
+# One attempt at an eval, decoded.
+qa_js_once() {
+  agent-browser eval "(async () => { const v = await ($1); return JSON.stringify(v === undefined ? null : v); })()" 2>/dev/null | tail -1 | python3 -c 'import sys, json
 s = sys.stdin.read().strip()
 v = json.loads(s)
 if isinstance(v, str):
@@ -111,10 +108,28 @@ if isinstance(v, str):
         v = json.loads(v)
     except ValueError:
         pass
-print(json.dumps(v))' 2>/dev/null)"
+print(json.dumps(v))' 2>/dev/null
+}
+
+# An eval issued while the page is still handling a key press or a pointer release can come back with
+# no output at all; that is a race in the harness, not a result. Short retries cover the race, and a
+# long wait on a trivial probe covers a wedged session, so a slow environment cannot masquerade as a
+# behaviour failure.
+qa_js() {
+  local out="" i probe
+  for i in 1 2 3; do
+    out="$(qa_js_once "$1")"
     [ -n "$out" ] && break
     sleep 0.4
   done
+  if [ -z "$out" ]; then
+    for _ in $(seq 1 30); do
+      probe="$(agent-browser eval '1+1' 2>/dev/null | tail -1)"
+      [ "$probe" = "2" ] && break
+      sleep 1
+    done
+    out="$(qa_js_once "$1")"
+  fi
   printf '%s' "$out"
 }
 
@@ -124,8 +139,10 @@ s = sys.stdin.read().strip()
 v = json.loads(s) if s else None
 print(v if isinstance(v, str) else json.dumps(v))' 2>/dev/null; }
 
+# Draw a frame on demand. A backgrounded tab stops requestAnimationFrame, so waiting for frames
+# would hang the harness and leave the session wedged; the page exposes a render instead.
 qa_frames() {
-  agent-browser eval "new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))" >/dev/null 2>&1
+  agent-browser eval "(async () => { if (window.__me && window.__me.qa) { await window.__me.qa.render(); } else { await new Promise((r) => setTimeout(r, 60)); } return true; })()" >/dev/null 2>&1
 }
 
 # The page answered at all (its module booted). Under load an eval can come back empty for a
@@ -147,7 +164,7 @@ qa_wait_ready() {
     local v
     v="$(agent-browser eval "!!(window.__me && window.__me.ready && document.body.dataset.ready === '1')" 2>/dev/null | tail -1)"
     if [ "$v" = "true" ]; then
-      agent-browser eval "(async () => { await __me.qa.idle(); return true; })()" >/dev/null 2>&1
+      agent-browser eval "(async () => { await __me.qa.idle(); await __me.qa.render(); return true; })()" >/dev/null 2>&1
       qa_frames
       return 0
     fi
