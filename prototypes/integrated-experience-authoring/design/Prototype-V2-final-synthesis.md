@@ -2,7 +2,7 @@
 
 ## 0. Decision
 
-The final direction original core:
+The final direction's original core:
 
 - **Set** for one Presentation’s Camera Views;
 - **Seam** for the relationship between adjacent Stop occurrences;

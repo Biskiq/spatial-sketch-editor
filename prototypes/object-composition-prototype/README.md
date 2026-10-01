@@ -1,7 +1,7 @@
 # Commission 2 — Objects & Assemblies (prototype)
 
 An unratified design proposal for the brief in
-[`../2026-09-27-biskiq-durable-design-commissions.md`](../2026-09-27-biskiq-durable-design-commissions.md)
+[`2026-09-27-biskiq-durable-design-commissions.md`](../../docs/roadmap/f-foundation-contracts/design/proposals/2026-09-27-biskiq-durable-design-commissions.md)
 (Commission 2, “Compose a reusable display light”). It's a runnable design prototype, not production code, and nothing in it is shipped behaviour.
 
 ## Run
@@ -9,7 +9,7 @@ An unratified design proposal for the brief in
 From the repository root:
 
 ```bash
-python3 -m http.server 8832 --bind 127.0.0.1 --directory docs/roadmap/f-foundation-contracts/design/proposals/c2-objects-and-assemblies
+python3 -m http.server 8832 --bind 127.0.0.1 --directory prototypes/object-composition-prototype
 ```
 
 Then open [the demo](http://127.0.0.1:8832/). (There's also a `c2-objects-and-assemblies` entry in `.claude/launch.json`.) No build step: plain ES modules with vendored Three.js r175 (`vendor/`, MIT).

@@ -18,6 +18,7 @@ production cutover.
 | Execution and repair | Exclusive channel conflicts reject by default; only declared replacement/handoff on supporting channel families may supersede a run, and stale runs cannot reclaim or clear a newer contribution. Explicit unresolved authored bindings can remain repairable; Preview refuses or disables affected required behavior, and publication requires executable closure. [F.1, F.3–F.5](../composition-execution.md) own these rules. |
 
 Current Scene | Camera shell behavior and Scene-encoded Camera data remain landed
-descriptions until explicit migration. The integrated design phase retains the
-interior-View-to-Stop meaning and detour lifecycle as Prototype V2 hypotheses
-([design context](../../World-Experience-Design-Context.md)).
+descriptions until explicit migration. The interior-View-to-Stop meaning and
+detour lifecycle were carried into Prototype V2 design as hypotheses; the
+accepted direction is now the [final V2 synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
+and the next step is repo-aware reconciliation and implementation planning.

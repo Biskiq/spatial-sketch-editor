@@ -1,5 +1,10 @@
 # Prototype V2 — Designer Brief
 
+**Status (PR #110):** design commission complete. The accepted direction is the
+[final V2 synthesis](./Prototype-V2-final-synthesis.md) with the canonical QA
+boards in the sibling `Design-QAs/` folder. This brief remains as commission
+provenance, not current authority.
+
 **What V2 is.** An integrated authoring prototype around **one project with one continuous
 spatial Stage**. A creator points at something in the world, shapes it, makes it meaningful to a
 visitor, optionally orders it into guidance, and checks it as the visitor will see it — without

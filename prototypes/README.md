@@ -43,24 +43,31 @@ production authority; their documentation is still a route a reader follows.
 
 | Folder | Durable artifact | Status |
 | --- | --- | --- |
-| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Accepted spatial-authoring / P26 experience reference. Its **journeys A–F** are the experience/QA authority for that direction. |
-| [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | The new Experience/Encounters authoring prototype: current experimental product/UX evidence, **pending architecture and shell reconciliation**. |
-| [`world-experience-shell-sketch/`](./world-experience-shell-sketch/index.html) | **World \| Experience shell sketch** | Disposable, three-file interaction mock of the [one spatial workbench proposal](../docs/World-Experience-Shell-V2-Design.md). It tests shell flow only; it is **not Prototype V2** or semantic authority. |
+| [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Accepted V2 design direction** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + canonical visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Current V2 design authority / design evidence (accepted PR #110). The future V2 implementation home. Not a ratified contract: where it and a ratified contract disagree, the contract governs. |
+| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Retained spatial-authoring behavioral / QA evidence. Its **journeys A–F** are the experience/QA authority for that direction. |
+| [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
+| [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained only for the bounded capability it demonstrates: object-first composition, capability disclosure, reach and repair behavior. Not shell authority. |
 
 ## Authority semantics (do not read this move as a promotion)
 
 Relocating a prototype into a durable family changes **where it is kept**, not
 what it is authoritative for. In particular:
 
+- **Accepted V2 synthesis + canonical QA** (`integrated-experience-authoring/`) —
+  the current design direction for integrated Experience authoring. It is design
+  evidence guiding the coming repo-aware reconciliation and implementation
+  planning — not a ratified contract, not production authority.
 - **Spatial Authoring Prototype** — accepted experience/QA reference for the P26
   direction. Its implementation shortcuts (analytic caps, JavaScript modules,
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
   clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
   intent, not production contracts**.
-- **Experience Authoring Prototype** — current experimental product/UX evidence,
-  pending reconciliation. Its architecture and shell have **not** been reconciled
-  with PLATE, F or the current domain ownership, and no reconciliation is
-  authorized by its being kept here.
+- **Experience Authoring Prototype** — retained Experience behavioral evidence /
+  regression oracle, not current shell authority. Its architecture and shell have
+  **not** been reconciled with PLATE, F or the current domain ownership, and no
+  reconciliation is authorized by its being kept here. Its shell is superseded by
+  the accepted V2 synthesis above; its behavior remains the oracle for what the
+  implemented V2 must still do.
 - **PLATE** ([`../docs/reference/design-system/editor-shell-and-visual-system.md`](../docs/reference/design-system/editor-shell-and-visual-system.md))
   remains shell and visual-system authority.
 - **F** ([`../docs/reference/composition-execution.md`](../docs/reference/composition-execution.md))
@@ -80,9 +87,9 @@ cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localh
 # Experience Authoring Prototype — Vite + Vitest + Playwright
 cd prototypes/experience-authoring && npm install && npm run dev
 
-# World | Experience shell sketch — plain HTML/CSS/JS
-python3 -m http.server 8831 --directory prototypes/world-experience-shell-sketch
-# Open http://localhost:8831/
+# Objects & Assemblies prototype — no build step, vendored Three.js
+python3 -m http.server 8832 --bind 127.0.0.1 --directory prototypes/object-composition-prototype
+# Open http://127.0.0.1:8832/
 ```
 
 Serve each on its own port; more than one may be running at once, so treat a
