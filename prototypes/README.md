@@ -68,7 +68,9 @@ what it is authoritative for. In particular:
   direction. Its implementation shortcuts (analytic caps, JavaScript modules,
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
   clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
-  intent, not production contracts**.
+  intent, not production contracts**. Its executable shell is the **predecessor
+  shell**, pending adoption of the accepted unified shell in #112; journeys A–F
+  remain behavioral authority through that adoption.
 - **Unified World | Experience shell round** — the accepted design package lives
   here because it evolved retained prototype design. The ratchet preserves P26
   journeys/capabilities/interaction laws and accepted V2 Experience semantics. It
