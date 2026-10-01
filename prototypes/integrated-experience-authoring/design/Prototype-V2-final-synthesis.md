@@ -2,6 +2,15 @@
 
 ## 0. Decision
 
+**Status — finalized Experience prototype design, promoted into the durable destination
+shell design (2026-10-01, PR #111).** Its shell requirements live in
+[PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression);
+the shared and World expression is PLATE §0.8, and lens parking/return is §0.8.2.
+This synthesis remains the finalized design record and QA reference. Promotion fixes
+the destination shell requirements; it does not promote prototype mechanisms,
+design a persisted format, authorize production implementation, or override the
+ratified product/domain contracts. The landed editor stays current until cutover.
+
 The final direction's original core:
 
 - **Set** for one Presentation’s Camera Views;
@@ -22,7 +31,12 @@ Guide overview remains intentionally abstract: numbered Stop entry pins on Stage
 
 The goal is a spatial authoring system whose complexity expands around the creator’s current question without fragmenting World, Camera and Experience into separate applications.
 
-Note :The Head / Index / Stage / Card / contextual Deck composition and Experience authoring direction are accepted design inputs. World-side expression of the same shell, including reconciliation of accepted P26 spatial-authoring behavior, is intentionally deferred to the repo-wide World | Experience shell hardening pass before V2 implementation.
+The Head / Index / Stage / Card / contextual Deck composition and Experience
+disclosure are the finalized Experience expression. The completed
+[World shell synthesis](../../world-experience-shell-round/design/design-synthesis.md)
+supplies the complementary World design while preserving P26 journeys A–F.
+Both are promoted through PLATE; the next bounded PR (#112) adopts the World shell
+into the spatial-authoring prototype before V2 Experience/cross-lens implementation.
 
 ---
 

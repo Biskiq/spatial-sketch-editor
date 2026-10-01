@@ -15,6 +15,15 @@ destination is stated in **§0.7** and labelled **landed now / desired-from-demo
 (unbuilt) / still-unbuilt (T1 after F)** wherever it touches a section below. This is a
 **design target, not a cutover**: the editor still runs the landed PLATE Light chrome
 described here, and §0.3's open calls are unchanged.  
+**Unified-shell amendment (2026-10-01, PR #111):** the owner promotes both finalized
+designs — V2 Experience and the World shell round — into the **durable destination
+shell design**. **§0.8** owns the shared and World laws, **§0.8.1** the Experience
+expression, and **§0.8.2** parked-procedure return. The syntheses and QA remain the
+finalized design records and specimens. These requirements are normative for new
+shell design; they are not a production cutover. The editor still runs the landed
+PLATE chrome, production implementation remains gated, and §0.3's open calls are
+unchanged.
+
 **Working name:** **PLATE**  
 **Purpose:** the normative shell + visual-system contract for Museum Editor, and the
 first document a later phase reads before it touches shell composition, material,
@@ -32,7 +41,8 @@ the `git show` anchor inside it.
 Designer-D PNG exports, and the pre-PLATE shell specifications' numeric sections.
 
 > **Reading order for a later phase:** this document §0 → **§0.7 (the desired visual
-> language and its landed/target/unbuilt labels)** → the section that owns your change
+> language and its landed/target/unbuilt labels)** → **§0.8 (the accepted destination
+> shell direction)** → the section that owns your change
 > (composition §5 · material §4/§6 · type + control §7 · state §18 · density §22) →
 > `editor-shell-ratifications.md` only when you need the
 > measurements behind a ratified decision. Do **not** take a numeric shell value
@@ -55,7 +65,8 @@ P23.14 slice (§0.6).
 Timeline and Camera exposure rules below describe the **landed shell** and its
 P23.14 acceptance. The destination creator-facing lenses are **World |
 Experience** over one project ([North Star](../north-star.md)); the replacement
-shell is deliberately undesigned. No current panel placement, axis, dock or
+shell's accepted destination composition is stated in **§0.8** (2026-10-01, PR
+#111). No current panel placement, axis, dock or
 Plan/3D presentation is a destination composition constraint. Visual material,
 typography, control roles, state language and the one-selection/one-writable-owner
 principles remain this contract's authority. World is not a new document:
@@ -83,7 +94,7 @@ The Atlas produced from this document is **not** the product specification. It i
 
 | Rank | Source | Normative for |
 | --- | --- | --- |
-| 1 | **This document** (`editor-shell-and-visual-system.md`, PLATE) | Shell + visual-system composition, material, typography, control metrics, state language, density, responsiveness. Since 2026-09-29 it also states the **desired** visual language folded from the accepted P26 demo (§0.7), labelled landed-vs-target-vs-unbuilt |
+| 1 | **This document** (`editor-shell-and-visual-system.md`, PLATE) | Shell + visual-system composition, material, typography, control metrics, state language, density, responsiveness. Since 2026-09-29 it also states the **desired** visual language folded from the accepted P26 demo (§0.7), labelled landed-vs-target-vs-unbuilt; since 2026-10-01 it also states the accepted destination **World \| Experience** shell direction (§0.8) |
 | 2 | **Subsystem authorities** — P23.12 identity contract; P23.13 Plan drafting, iconography and Plan Paper; `reference/north-star.md`; document/selection/navigation/camera-motion ownership specs | Their own domains, unchanged by P23.14. This document consumes them (§2.6, §2.7) and never overrides them |
 | 3 | **[`editor-shell-atlas/`](./editor-shell-atlas/index.html)** | Canonical interactive visual/interaction **QA companion**. It demonstrates this document; it never decides topology, domain ownership, validation or acceptance numbers |
 | 4 | The **other** `docs/reference/design-system/*` docs (this one excepted) and `docs/reference/components/shell.md` | Still canonical for **capability, ownership, exposure** and the frozen identity/icon/Plan contracts. Their shell **placement, dimension, type, control and material** statements are **descriptive of this document** (§0.5) |
@@ -268,7 +279,9 @@ from motion speed. Caution, refusal and view-only (slate/dashed) stay three sepa
 notices.
 
 The demo's same-geometry calibration applies to this visual-language specimen;
-it does not decide World | Experience shell geometry or control placement.
+World | Experience shell geometry and control placement are not decided by this
+section — §0.8 owns the accepted destination shell laws, and exact geometry and
+placement remain destination implementation work.
 
 ### 0.7.3 Status labels used below
 
@@ -288,6 +301,7 @@ it does not decide World | Experience shell geometry or control placement.
 | §14, §18.3 | Status Rail constraint and target state language (paper + selection, caution vs refusal vs view-only) |
 | §21 | Contextual instruments — rules unchanged; the destination experience stays **still-unbuilt (T1 after F)** |
 | §23.1 | **Reduce motion** vs motion speed (**desired-from-demo**) |
+| §0.8–§0.8.3 | Promoted destination **shell/disclosure** design for World \| Experience (2026-10-01, PR #111) — shared/World laws, V2 Experience expression, parked-task return and routes to both final syntheses/QA |
 | §26.2 | What acceptance the destination does and does not inherit |
 
 ### 0.7.5 What this amendment does not do
@@ -300,8 +314,7 @@ it does not decide World | Experience shell geometry or control placement.
 - **No shell metric, type or ownership change from the visual amendment.** §5
   geometry, §7 ladder / roles / control metrics, §2.12 current host-and-workspace
   ownership and §8–§17 landed composition were **preserved in the demo**. Their
-  destination exposure is separately open under the architecture reconciliation
-  in §0.
+  destination exposure is stated by the accepted shell direction in §0.8.
 - **No new authority.** No second Camera/navigation authority, no second architectural
   compiler, no second selection model, no production design-system package, and **no
   fourth material class** (§4). The mat and the vellum are two expressions of **PAPER**;
@@ -326,7 +339,201 @@ subject of a face session, straight or curved, or a wall off its footprint) with
 grid** as the editor-side override — *paper-as-page (option 2) is not open*; the grid
 keeps the plan's §3 hexes with the drafting sheet calibrated to the vellum ground;
 the accepted demo returns via `Esc` / the back action / crumbs, without a tab
-marker. The replacement shell's return presentation remains open.
+marker. The destination return behavior is fixed in §0.8.2; exact control geometry
+remains implementation work.
+
+---
+
+## 0.8 Accepted destination shell — unified World | Experience direction (2026-10-01, PR #111)
+
+The owner promotes **both finalized designs** into this durable destination shell
+contract (2026-10-01, PR #111):
+
+- [Final V2 Experience synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+  and its [visual QA](../../../prototypes/integrated-experience-authoring/Design-QAs/)
+  — the finalized Experience prototype design; its shell requirements are §0.8.1.
+- [Final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md)
+  and its [visual QA](../../../prototypes/world-experience-shell-round/QA-package/)
+  — the finalized World design; its shared and World shell requirements are below.
+  The workspace [README](../../../prototypes/world-experience-shell-round/README.md)
+  routes provenance, acceptance and deferred implementation questions.
+
+**Authority of the destination.** This is the accepted **destination shell/disclosure
+direction** for the unified shell and the direction the bounded prototype-adoption PR
+(#112) implements in [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/README.md).
+The requirements promoted here are **normative destination shell design**, including
+V2's Experience expression, not merely prototype evidence. This document is their
+durable authority; the retained syntheses preserve detailed design rationale and QA
+specimens without becoming another semantic or implementation authority. The design
+preserves P26 journeys A–F and supersedes predecessor P26 shell/chrome/tool
+exposure/disclosure where the World synthesis explicitly covers them. Shell promotion
+does not establish persisted formats or implementation mechanisms, authorize production
+work, or override the ratified product/domain authorities
+([North Star](../north-star.md), [architecture](../architecture.md),
+[F composition/execution](../composition-execution.md), component contracts).
+
+**Shared and World shell laws.** Experience's complementary expression is §0.8.1;
+the common return rule is §0.8.2. QA boards are specimens and never override prose.
+
+- **Two lenses over one project.** World and Experience are authoring intentions over
+the same project/world — not two applications and not merged semantic documents. Both
+use the same Stage, visual language and return behavior.
+- **Persistent shared landmarks.** Head (project identity, lens switch, active Experience
+in Experience context, save/history, Preview) · Index (World's local orientation;
+Experience's Presentation/relationship locator) · Stage (the dominant continuous
+spatial surface) · Card (canonical selected identity). World invokes the full
+Browse/Search hierarchy. World Instrument and Experience Deck are contextual task
+surfaces, not replacements for Card identity.
+- **Persistent breadth, invoked depth.** Ordinary World stays calm — place, nearby
+relation-aware context, selected identity, the world itself. Specialist depth appears
+through procedure: **Select → Look or Details → Instrument → Precision**.
+- **One canonical selection.** Exactly one selected identity across Stage, Index, Card,
+search, Details references and both lenses; no parallel remembered selections, and a
+lens switch never substitutes another identity.
+- **Card identity stability.** The Card represents the canonical selected identity and
+never becomes the current tool, inspection, component focus, host or Instrument.
+- **Look vs Details.** *Look* is capability-driven spatial procedure associated with the
+selection, never a universal menu of disabled commands and never world geometry or
+Camera state. *Details* is subject structure and relations with explicit verbs — Expand /
+Focus / Select / Open task — and relation rows never secretly change selection.
+- **One task surface.** The World Instrument represents the current task and appears
+only because the creator invoked specialist work; there is no Instrument at ordinary
+rest. Spatial inspection and its Instrument stay together: no state where
+Unroll/Section/etc. remains active while the Instrument is hidden.
+- **Task focus is not selection.** A selected Opening may invoke work on its host Wall
+and a selected object may focus an internal component; related host/component identity
+never automatically replaces canonical selection.
+- **Relation-aware Context Index.** Local orientation uses relational groups (for
+example Bounds, Openings on bounds, Located here, Overlays, Attached here) rather than
+hierarchy that would teach false containment or ownership; only non-empty relevant
+groups appear, and the Index is not a verbose graph browser.
+- **Owner / Source / Reach stay distinct** — domain authority, provenance, and the
+consequence of the proposed edit — and appear at the decision point, not as permanent
+glyphs.
+- **One spatial return authority.** Canonical Camera/navigation owns viewpoint movement
+and spatial return; the shell may request Face, Bring into view, Put it back. No
+shell-owned Camera/viewpoint history, and Undo remains accepted source/document
+history. The deterministic unwind is writer/proposal → precision → spatial Instrument →
+Put it back → rest.
+- **Lens crossing parks procedure, not meaning.** Selection and Camera standpoint carry;
+invoked procedure parks and returns only by explicit action (§0.8.2); lens switching
+itself captures no View, creates no Presentation or relation, opens no Guide, moves
+no Camera, and infers no cross-lens
+subject. Foreign selection is represented honestly (a Presentation stays selected and
+inert in World; a Wall stays selected in Experience), and an explicit cross-lens action —
+never the lens toggle itself — may intentionally change lens and selection together.
+- **Unaccepted writer/drag proposals cancel on lens switch** — never a silent commit;
+accepted source edits survive, and there is no speculative "Reopen edit" draft.
+- **Repair is proportional.** A quiet discoverable warning at the parent level; repair
+machinery appears when repair becomes the task; never a silent match by name, proximity
+or containment.
+- **Calmness must not erase orientation.** Ordinary World remains Index + Stage + Card
+with nearby useful structure visible; specialist depth is invoked.
+- **State language survives.** §18's semantic distinctions (selected, hover, keyboard
+focus, armed, disabled, warning, refusal, temporary inspection, preview, authored vs
+derived, canonical selection, task focus, referenced identity) hold in the destination,
+and state is never carried by color alone.
+- **Narrow desktop.** The destination compresses to compact location and
+selected-identity controls with the Stage dominant and the Instrument keeping a coherent
+home; it does not become a second responsive application, and shell-driven Stage
+resizing implies no Camera fit, pan or fly-to.
+
+### 0.8.1 Finalized Experience shell expression
+
+These are the shell requirements promoted from the final V2 design. Experience
+authors meaning and occurrence context; View and route edits delegate to Camera.
+
+- **Scale × Depth.** Subject, Presentation, View, Stop and Guide/Seam are contexts;
+  technical depth is independent. Camera precision is reachable from a View without
+  opening Guide work, and expanding Guide context does not force precision.
+- **Quiet ordinary Experience.** Index is a locator, Stage is dominant, and Card
+  remains the stable identity/meaning/scope surface. A fresh Presentation exposes
+  Meaning, Focus, Show and an explicit add-behavior/offer action. No Guide means no
+  Guide rail; ordinary work has no full Deck, global timeline or Camera rig. Creating
+  or opening a Presentation is explicit, and Preview requires no Guide or Camera graph.
+- **Set is unordered.** A Presentation's View uses form a local constellation, not a
+  filmstrip or progression. Coexistence creates neither Stop occurrences nor Camera
+  edges. View-use roles belong to the Presentation; View geometry belongs to Camera.
+  Plan and 3D show the same working Set with the same meaning.
+- **Stable bottom Deck: Peek → Overview → Seam.** An existing Guide starts with quiet
+  Peek awareness, not a full workspace resize. Overview uses occurrence cards at
+  L0 identity/position, L1 summary and L2 expanded detail; the active occurrence expands
+  while distant occurrences compress. Stage shows numbered Stop entry pins, without
+  entry-facing glyphs or Camera topology. An expanded occurrence exposes its
+  Presentation's unordered Set and distinguishes shared meaning from this Stop's use.
+- **Seam is local transition work.** Adjacent Stop occurrences are bookends around
+  the invoked bottom instrument; unrelated occurrences compress. Opening a Seam does
+  not move Camera or switch Stage to Plan. Explicit route editing may request a useful
+  Plan reading with a return crumb through canonical navigation. Camera relationships
+  are scoped to possible origin Views and destination entry View; each origin's
+  reachability or gap is shown honestly. Cut creates no Camera edge; Travel references
+  supported connectivity and cannot invent motion.
+- **Coordination is invoked depth.** A local temporal strip appears when Coordinate
+  is invoked or the Seam already has coordination. It shares stable Camera stations
+  with the spatial projection; generated points cannot become authored station
+  references. Path geometry is edited on Stage, never in a second route editor.
+  Camera stations and route facts remain distinct from Experience-owned beats, holds
+  and occurrence coordination. The Stage remains dominant; there is no global timeline.
+- **Card and Ask Rule.** Card stays at its vertical landmark with canonical target,
+  property owner and edit reach legible at the decision point. Lower strata collapse
+  according to actual content. An edit reaching beyond the current use requires an
+  explicit scope decision; local and shared choices are offered only when supported by
+  the domain. This is no license to invent placement overrides or fork semantics.
+- **Progressive Camera disclosure.** Auto → Hints → Capture → Precise. Capture is
+  explicit. Outside, Through and Plan are postures on the same Camera View/route, not
+  separate systems. Only the active grip displays its numeric tape. Through retains
+  editor chrome and is visibly distinct from visitor Preview.
+- **Preview is visitor execution.** Authoring infrastructure disappears and visitor
+  session state never writes source. Exit restores authoring lens, selection, Card
+  context, Stage standpoint and inspection state through their canonical authorities.
+  Preview exit and lens switching have distinct return contracts.
+
+V2's remaining usability experiments are Through-versus-Outside initial posture,
+Deck crop-docking and station-bound coordination comprehension (V2 §23). They do not
+reopen the accepted shell architecture or settle PLATE's §0.3/§0.7.6 owner calls.
+Exact dimensions and implementation mechanisms are not derived from QA raster pixels.
+
+### 0.8.2 Parked procedure and lens return
+
+**Park means inactive, remembered session context.** On lens exit, cancel unaccepted
+writers/drags, deactivate that lens's invoked task surface and temporary readings,
+and retain the accepted source edits. World Unroll/Section/Reveal/Lift and Browse/Search
+procedure park; Experience's invoked Deck/Seam and precise Camera procedure follow the
+same rule. Parking stores no authored state and creates no second navigation history.
+
+**Returning to a lens does not resume its parked procedure.** Render the current
+canonical selection and Camera standpoint with ordinary lens context. World returns
+without an active Instrument or inspection; Experience may show quiet awareness of
+an existing Guide but does not reopen Guide or precise Camera work. No old selection,
+Camera snapshot, Browse context or temporary reading is restored by the lens toggle.
+
+**Resume is an explicit task action.** Offer it in relevant Look/Details or Experience
+task context only when the original canonical identity is selected and the task's
+targets still resolve. Revalidate the task against current source before activating
+its surface and reading together. If selection changed, first explicitly select the
+original identity; if a target is missing or the old configuration is invalid, explain
+the unavailable task or offer valid fresh work rather than silently retargeting it.
+Unaccepted proposals never resume.
+
+Reopening starts from the **current** Camera standpoint. Resume does not restore a
+parked Camera pose; any requested Face, Bring into view or Put it back uses canonical
+Camera/navigation. A resumed spatial invocation uses that authority's current return
+context, so Put it back cannot unexpectedly rewind movement performed in the other
+lens. The exact session payload/storage remains implementation work.
+
+For example: Unroll Garden window → Experience → select a Presentation → World
+shows the foreign Presentation with no Instrument. Selecting Garden window and
+explicitly resuming may reopen a revalidated Unroll Instrument. If the Camera moved
+in Experience, that new standpoint survives both the lens return and Resume; any
+subsequent spatial movement is a separate explicit navigation action.
+
+### 0.8.3 Adoption and cutover boundary
+
+This section changes no landed behavior, authorizes no production
+implementation, closes no §0.3 or §0.7.6 owner call, and does not re-plan T1/T2/T3
+production scope. §§5 and 8–17's landed composition descriptions remain current behavior
+until an explicit cutover; their destination exposure is now governed by this section
+and by §0.7's visual language rather than left open.
 
 ---
 
@@ -336,8 +543,8 @@ P23.14 should make Museum Editor feel like a **professional spatial-authoring in
 
 The landed shell has hierarchy on the left, work in the center, properties on
 the right, Scene/Camera as domain context, Plan/3D views and a Camera Timeline.
-Those placements remain current behavior until cutover; the World | Experience
-design phase decides their destination arrangement.
+Those placements remain current behavior until cutover; §0.8 states the accepted
+destination arrangement.
 
 The visual identity must come from structure, material, typography, state and interaction—not decoration.
 
@@ -380,8 +587,8 @@ World or Experience lens.
 ## 2.2 Durable top-level views
 
 Plan and 3D are the landed durable top-level views. T1's continuous
-viewport/projection seam is destination direction; its shell presentation is
-for the World | Experience design phase.
+viewport/projection seam is destination direction; its shell presentation
+follows the accepted destination direction (§0.8).
 
 P26 contextual orthographic instruments—such as Section, Wall Elevation and Ceiling Focus—must be subordinate contextual instruments entered from a durable view with an obvious return path. They must not become a third peer view or a new top-level world.
 
@@ -397,7 +604,7 @@ It is part of the central work surface, not a global application footer and not 
 ## 2.4 Scene Plan local modes
 
 Layout and Arrange are current Scene Plan local modes. Their destination
-exposure follows the World | Experience shell design and T1 viewport seam.
+exposure follows the accepted shell direction (§0.8) and the T1 viewport seam.
 
 ## 2.5 One selection authority
 
@@ -941,7 +1148,8 @@ must not create a second copy of it elsewhere.
 
 **Desired-from-demo behaviors (unbuilt).** The accepted demo placed these utilities
 in its View Bar. The destination shell must expose each through one writable
-control (§2.12); the World | Experience design phase decides their placement:
+control (§2.12); §0.8 fixes the shared shell laws, not these utilities' exact
+placement:
 
 - **Wall grid** — the wall being worked on is drawn as drafting paper with its 1 m / 5 m
   grid; off, every wall keeps its real 3D material in every view at every curvature
@@ -951,7 +1159,8 @@ control (§2.12); the World | Experience design phase decides their placement:
 
 **Return behavior.** The accepted demo uses `Esc`, a back/“put it back” action and
 context crumbs rather than an origin/return tab marker (§21). The destination
-needs an obvious return path; its shell placement and presentation remain open.
+uses §0.8.2's explicit return/resume behavior; exact control geometry remains
+implementation work.
 
 > The demo's utility grouping is prototype evidence, not a placement contract.
 > Its **Motion speed** control placement is also an open call (§0.7.6).
@@ -1439,8 +1648,8 @@ drawn-line Section/Reveal, ceiling lift/look-up and exact return — is **still-
 (T1 after F)**: production stays gated behind the F interfaces and the re-derived track
 plan. Contextual identity, coherent selection and an obvious return path remain
 behavior constraints. The demo's subordinate Plan/3D presentation is evidence;
-the replacement shell hierarchy stays open, and its shortcuts are not contracts
-(§0.7.1).
+the accepted destination shell hierarchy is stated in §0.8, and the demo's
+shortcuts are not contracts (§0.7.1).
 
 ---
 
@@ -1685,10 +1894,13 @@ The ratified implementation adds these acceptance criteria:
 language is accepted through the demo's [specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md)
 **§9.3** (the evidence-and-completion requirement) and the **owner visual acceptance recorded
 2026-09-29** in the demo's [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md);
-it is stated in §0.7. It does **not** inherit §26's gate, and passing §26 does not verify the
+it is stated in §0.7. Both finalized designs' **shell/disclosure** requirements are
+separately promoted into §0.8–§0.8.3 (PR #111), with their syntheses and QA specimens.
+Neither amendment inherits
+§26's gate, and passing §26 does not verify the
 destination. A cutover to
-§4.4/§6.4 will need its own acceptance, planned with its own slice — this amendment
-authorizes none.
+§4.4/§6.4/§0.8 will need its own acceptance, planned with its own slice — these
+amendments authorize none.
 
 ---
 
@@ -1714,3 +1926,14 @@ architecture, ochre for selection and manipulation** — calibrated in the demo
 under the same chassis, type ladder, control metrics and landed ownership, with clauses labelled landed-now,
 desired-from-demo or still-unbuilt. The editor keeps running today's landed chrome until
 an explicit cutover.
+
+**Added 2026-10-01 — the shell destination.** Both finalized World and V2 Experience
+designs are promoted into this contract (§0.8–§0.8.3), fixing destination shell/disclosure
+laws: two lenses
+over one project, persistent breadth with invoked depth, one canonical selection,
+Card identity stability, Look vs Details, a task-only Instrument, one
+Camera/navigation return authority, and lens crossing that parks procedure without
+capturing, creating or substituting, with explicit revalidated task resumption. The
+Experience expression fixes Scale × Depth, unordered Sets, Peek/Overview/Seam Deck,
+Ask Rule and progressive Camera disclosure. The landed shell described above remains
+the editor's current behavior until an explicit cutover.

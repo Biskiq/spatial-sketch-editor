@@ -28,7 +28,9 @@ through **World | Experience** lenses over one project. World is not a
 `WorldDocument`; it exposes Layout/Scene truth, typed resources and Camera
 inspection. Experience exposes visitor-facing composition and may delegate
 View/framing/movement edits to the canonical Camera authority. The replacement
-shell composition remains a design-phase decision.
+shell's accepted destination composition is recorded in the shell contract
+([`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md)
+§0.8); the landed shell remains current until an explicit cutover.
 
 ## Ratified north star
 
@@ -449,6 +451,11 @@ paths, room definitions, scene objects or layout geometry, and do not fork domai
 evaluation into Experience-only code. Domain count and document boundaries no
 longer define the model — semantic authorities do.
 
+Lens switching itself changes authoring intent only: the canonical selection and the
+Camera standpoint carry across, and a switch never captures a View, creates a
+Presentation or relation, opens a Guide, moves the Camera, or substitutes another
+selected identity.
+
 ## Camera authority vs Experience interaction authority
 
 ```text
@@ -469,7 +476,10 @@ Experience may expose progressive View, framing and movement authoring, but each
 edit delegates to canonical Camera operations and evaluation. It never stores
 Camera pose, path, projection/FOV truth or a second graph. Transient World
 inspection becomes durable Camera intent only through explicit capture. The
-location and depth of Camera controls are open shell-design questions.
+destination location and depth of Camera controls follow the promoted shell design
+([PLATE §0.8.1](./design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression));
+exact metrics and V2's remaining usability experiments stay explicit there. Camera
+ownership is unchanged by lens exposure or shell promotion.
 
 Never:
 
