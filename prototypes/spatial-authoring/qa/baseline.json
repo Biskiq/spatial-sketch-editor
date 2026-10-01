@@ -1,0 +1,5064 @@
+{
+ "checkpoints": {
+  "A1": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "A10": {
+   "cam": {
+    "az": -1.736,
+    "el": 0.36,
+    "flat": 0,
+    "frameH": 17.476,
+    "mirror": false,
+    "target": [
+     9.389,
+     1.9,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Rotunda wall top \u2192 Gable",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.923,
+     -0.352,
+     0.154
+    ],
+    "dist": 24.007,
+    "eye": [
+     -12.773,
+     10.357,
+     0.19
+    ],
+    "fov": 40,
+    "frameH": 17.476,
+    "mirror": false,
+    "target": [
+     9.389,
+     1.9,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "rotunda",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0.5,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat",
+    "Rotunda wall at 180\u00b0"
+   ],
+   "trailPos": 4,
+   "undo": 4,
+   "view": "Rotunda wall at 180\u00b0"
+  },
+  "A11": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": "Rotunda wall top \u2192 Gable",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "rotunda",
+   "session": null,
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat",
+    "Rotunda wall at 180\u00b0",
+    "3D"
+   ],
+   "trailPos": 5,
+   "undo": 4,
+   "view": "3D"
+  },
+  "A2": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "A3": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": -1,
+    "u": 0.5,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Rotunda wall at 180\u00b0 from outside"
+  },
+  "A4": {
+   "cam": {
+    "az": -2.356,
+    "el": 0,
+    "flat": 1,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.707,
+     0,
+     0.707
+    ],
+    "dist": 1591.517,
+    "eye": [
+     -1115.983,
+     3.25,
+     -1121.483
+    ],
+    "fov": 0.9,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0.5,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "Rotunda wall at 180\u00b0"
+  },
+  "A5": {
+   "cam": {
+    "az": -2.356,
+    "el": 0,
+    "flat": 1,
+    "frameH": 11.995,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.707,
+     0,
+     0.707
+    ],
+    "dist": 763.62,
+    "eye": [
+     -530.572,
+     3.25,
+     -536.072
+    ],
+    "fov": 0.9,
+    "frameH": 11.995,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0.5,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "Rotunda wall at 180\u00b0"
+  },
+  "A6": {
+   "cam": {
+    "az": -2.356,
+    "el": 0,
+    "flat": 1,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.707,
+     0,
+     0.707
+    ],
+    "dist": 688.081,
+    "eye": [
+     -477.157,
+     3.25,
+     -482.657
+    ],
+    "fov": 0.9,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 1,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat"
+   ],
+   "trailPos": 3,
+   "undo": 0,
+   "view": "Rotunda wall laid flat"
+  },
+  "A7": {
+   "cam": {
+    "az": -2.356,
+    "el": 0,
+    "flat": 1,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Garden window arch rise",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.707,
+     0,
+     0.707
+    ],
+    "dist": 688.081,
+    "eye": [
+     -477.157,
+     3.25,
+     -482.657
+    ],
+    "fov": 0.9,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 1,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat"
+   ],
+   "trailPos": 3,
+   "undo": 1,
+   "view": "Rotunda wall laid flat"
+  },
+  "A8": {
+   "cam": {
+    "az": -2.356,
+    "el": 0,
+    "flat": 1,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Garden window width",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.707,
+     0,
+     0.707
+    ],
+    "dist": 688.081,
+    "eye": [
+     -477.157,
+     3.25,
+     -482.657
+    ],
+    "fov": 0.9,
+    "frameH": 10.809,
+    "mirror": false,
+    "target": [
+     9.389,
+     3.25,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 1,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat"
+   ],
+   "trailPos": 3,
+   "undo": 2,
+   "view": "Rotunda wall laid flat"
+  },
+  "A9": {
+   "cam": {
+    "az": -1.736,
+    "el": 0.36,
+    "flat": 0,
+    "frameH": 17.476,
+    "mirror": false,
+    "target": [
+     9.389,
+     1.9,
+     3.889
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Garden window sill",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.923,
+     -0.352,
+     0.154
+    ],
+    "dist": 24.007,
+    "eye": [
+     -12.773,
+     10.357,
+     0.19
+    ],
+    "fov": 40,
+    "frameH": 17.476,
+    "mirror": false,
+    "target": [
+     9.389,
+     1.9,
+     3.889
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 1,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0.5,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Rotunda wall at 180\u00b0 from outside",
+    "Rotunda wall at 180\u00b0",
+    "Rotunda wall laid flat",
+    "Rotunda wall at 180\u00b0"
+   ],
+   "trailPos": 4,
+   "undo": 3,
+   "view": "Rotunda wall at 180\u00b0"
+  },
+  "B1": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Plan"
+  },
+  "B10": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": "Gallery door head",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gdoor",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north",
+    "Facing Harbor at Dusk on the North wall",
+    "Opened along a line \u00b7 looking north",
+    "Plan"
+   ],
+   "trailPos": 5,
+   "undo": 1,
+   "view": "Plan"
+  },
+  "B2": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": {
+    "depth": 6,
+    "hasLine": true,
+    "side": -1,
+    "stage": "aim"
+   },
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Plan"
+  },
+  "B3": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": {
+    "depth": 6,
+    "hasLine": true,
+    "side": -1,
+    "stage": "aim"
+   },
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Plan"
+  },
+  "B4": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "section",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 2086.679,
+    "eye": [
+     -2.05,
+     3.2,
+     2086.929
+    ],
+    "fov": 0.9,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": {
+    "ceilId": null,
+    "cut": {
+     "depth": 6,
+     "n": [
+      0,
+      -1
+     ],
+     "p0": [
+      -17,
+      0.25
+     ],
+     "p1": [
+      13,
+      0.25
+     ],
+     "side": -1
+    },
+    "focusId": null,
+    "focusName": null,
+    "id": 2,
+    "kind": "section",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": null,
+    "part": 1,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "Opened along a line \u00b7 looking north"
+  },
+  "B5": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "section",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 2086.679,
+    "eye": [
+     -2.05,
+     3.2,
+     2086.929
+    ],
+    "fov": 0.9,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": {
+     "depth": 3,
+     "n": [
+      0,
+      -1
+     ],
+     "p0": [
+      -17,
+      0.25
+     ],
+     "p1": [
+      13,
+      0.25
+     ],
+     "side": -1
+    },
+    "focusId": null,
+    "focusName": null,
+    "id": 2,
+    "kind": "section",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": null,
+    "part": 1,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "Opened along a line \u00b7 looking north"
+  },
+  "B6": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 21.129,
+    "mirror": false,
+    "target": [
+     -6.871,
+     2.25,
+     -3.5
+    ]
+   },
+   "crumbs": [
+    "Opened along a line \u00b7 looking north"
+   ],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 1345.074,
+    "eye": [
+     -6.871,
+     2.25,
+     1341.574
+    ],
+    "fov": 0.9,
+    "frameH": 21.129,
+    "mirror": false,
+    "target": [
+     -6.871,
+     2.25,
+     -3.5
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "north",
+    "focusName": "Harbor at Dusk on the North wall",
+    "id": 3,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": {
+     "kind": "section",
+     "label": "Opened along a line \u00b7 looking north"
+    },
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "north"
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north",
+    "Facing Harbor at Dusk on the North wall"
+   ],
+   "trailPos": 3,
+   "undo": 0,
+   "view": "Facing Harbor at Dusk on the North wall"
+  },
+  "B7": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "section",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 2086.679,
+    "eye": [
+     -2.05,
+     3.2,
+     2086.929
+    ],
+    "fov": 0.9,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": {
+     "depth": 3,
+     "n": [
+      0,
+      -1
+     ],
+     "p0": [
+      -17,
+      0.25
+     ],
+     "p1": [
+      13,
+      0.25
+     ],
+     "side": -1
+    },
+    "focusId": null,
+    "focusName": null,
+    "id": 4,
+    "kind": "section",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": null,
+    "part": 1,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north",
+    "Facing Harbor at Dusk on the North wall",
+    "Opened along a line \u00b7 looking north"
+   ],
+   "trailPos": 4,
+   "undo": 0,
+   "view": "Opened along a line \u00b7 looking north"
+  },
+  "B8": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "section",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 2086.679,
+    "eye": [
+     -2.05,
+     3.2,
+     2086.929
+    ],
+    "fov": 0.9,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": {
+     "depth": 4,
+     "n": [
+      0,
+      -1
+     ],
+     "p0": [
+      -17,
+      0.25
+     ],
+     "p1": [
+      13,
+      0.25
+     ],
+     "side": -1
+    },
+    "focusId": null,
+    "focusName": null,
+    "id": 4,
+    "kind": "section",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": null,
+    "part": 1,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north",
+    "Facing Harbor at Dusk on the North wall",
+    "Opened along a line \u00b7 looking north"
+   ],
+   "trailPos": 4,
+   "undo": 0,
+   "view": "Opened along a line \u00b7 looking north"
+  },
+  "B9": {
+   "cam": {
+    "az": 0,
+    "el": 0,
+    "flat": 1,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "section",
+   "knife": null,
+   "lastUndo": "Gallery door head",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 2086.679,
+    "eye": [
+     -2.05,
+     3.2,
+     2086.929
+    ],
+    "fov": 0.9,
+    "frameH": 32.778,
+    "mirror": false,
+    "target": [
+     -2.05,
+     3.2,
+     0.25
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gdoor",
+   "session": {
+    "ceilId": null,
+    "cut": {
+     "depth": 6,
+     "n": [
+      0,
+      -1
+     ],
+     "p0": [
+      -17,
+      0.25
+     ],
+     "p1": [
+      13,
+      0.25
+     ],
+     "side": -1
+    },
+    "focusId": null,
+    "focusName": null,
+    "id": 4,
+    "kind": "section",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "Plan"
+    },
+    "parent": null,
+    "part": 1,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "Opened along a line \u00b7 looking north",
+    "Facing Harbor at Dusk on the North wall",
+    "Opened along a line \u00b7 looking north"
+   ],
+   "trailPos": 4,
+   "undo": 1,
+   "view": "Opened along a line \u00b7 looking north"
+  },
+  "C1": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "north",
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "C2": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "lift",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 5,
+    "kind": "lift",
+    "lift": 1,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Long Gallery ceiling lifted"
+  },
+  "C3": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "lift",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 5,
+    "kind": "lift",
+    "lift": 1,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Long Gallery ceiling lifted"
+  },
+  "C4": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "lift",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 5,
+    "kind": "lift",
+    "lift": 1,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Long Gallery ceiling lifted"
+  },
+  "C5": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "lift",
+   "knife": null,
+   "lastUndo": "Raise North wall",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 5,
+    "kind": "lift",
+    "lift": 1,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted"
+   ],
+   "trailPos": 1,
+   "undo": 1,
+   "view": "Long Gallery ceiling lifted"
+  },
+  "C6": {
+   "cam": {
+    "az": 3.142,
+    "el": -1.571,
+    "flat": 1,
+    "frameH": 22.145,
+    "mirror": false,
+    "target": [
+     -6.871,
+     3,
+     0
+    ]
+   },
+   "crumbs": [
+    "Long Gallery ceiling lifted"
+   ],
+   "hover": null,
+   "kind": "lookup",
+   "knife": null,
+   "lastUndo": "Raise North wall",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     1,
+     0
+    ],
+    "dist": 1409.775,
+    "eye": [
+     -6.871,
+     -1406.775,
+     -0.141
+    ],
+    "fov": 0.9,
+    "frameH": 22.145,
+    "mirror": false,
+    "target": [
+     -6.871,
+     3,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 6,
+    "kind": "lookup",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": {
+     "kind": "lift",
+     "label": "Long Gallery ceiling lifted"
+    },
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted",
+    "Looking up \u00b7 Long Gallery ceiling"
+   ],
+   "trailPos": 2,
+   "undo": 1,
+   "view": "Looking up \u00b7 Long Gallery ceiling"
+  },
+  "C7": {
+   "cam": {
+    "az": 3.142,
+    "el": -1.571,
+    "flat": 1,
+    "frameH": 22.145,
+    "mirror": true,
+    "target": [
+     -6.871,
+     3,
+     0
+    ]
+   },
+   "crumbs": [
+    "Long Gallery ceiling lifted"
+   ],
+   "hover": null,
+   "kind": "lookup",
+   "knife": null,
+   "lastUndo": "Raise North wall",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     1,
+     0
+    ],
+    "dist": 1409.775,
+    "eye": [
+     -6.871,
+     -1406.775,
+     -0.141
+    ],
+    "fov": 0.9,
+    "frameH": 22.145,
+    "mirror": true,
+    "target": [
+     -6.871,
+     3,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "longc",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 6,
+    "kind": "lookup",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": {
+     "kind": "lift",
+     "label": "Long Gallery ceiling lifted"
+    },
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted",
+    "Looking up \u00b7 Long Gallery ceiling"
+   ],
+   "trailPos": 2,
+   "undo": 1,
+   "view": "Looking up \u00b7 Long Gallery ceiling"
+  },
+  "C8": {
+   "cam": {
+    "az": 3.142,
+    "el": -1.571,
+    "flat": 1,
+    "frameH": 22.145,
+    "mirror": true,
+    "target": [
+     -6.871,
+     3,
+     0
+    ]
+   },
+   "crumbs": [
+    "Long Gallery ceiling lifted"
+   ],
+   "hover": null,
+   "kind": "lookup",
+   "knife": null,
+   "lastUndo": "Entrance soffit height",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     1,
+     0
+    ],
+    "dist": 1409.775,
+    "eye": [
+     -6.871,
+     -1406.775,
+     -0.141
+    ],
+    "fov": 0.9,
+    "frameH": 22.145,
+    "mirror": true,
+    "target": [
+     -6.871,
+     3,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "soffit",
+   "session": {
+    "ceilId": "longc",
+    "cut": null,
+    "focusId": null,
+    "focusName": null,
+    "id": 6,
+    "kind": "lookup",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": {
+     "kind": "lift",
+     "label": "Long Gallery ceiling lifted"
+    },
+    "part": null,
+    "side": null,
+    "u": null,
+    "wallId": null
+   },
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted",
+    "Looking up \u00b7 Long Gallery ceiling"
+   ],
+   "trailPos": 2,
+   "undo": 2,
+   "view": "Looking up \u00b7 Long Gallery ceiling"
+  },
+  "C9": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": "Entrance soffit height",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "soffit",
+   "session": null,
+   "trail": [
+    "3D",
+    "Long Gallery ceiling lifted",
+    "Looking up \u00b7 Long Gallery ceiling",
+    "3D"
+   ],
+   "trailPos": 3,
+   "undo": 2,
+   "view": "3D"
+  },
+  "D1": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "D2": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "north",
+   "session": null,
+   "trail": [
+    "3D",
+    "Facing North wall",
+    "3D"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "3D"
+  },
+  "D3": {
+   "cam": {
+    "az": 3.601,
+    "el": 0,
+    "flat": 1,
+    "frameH": 44.724,
+    "mirror": false,
+    "target": [
+     7.939,
+     3.25,
+     4.93
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.443,
+     0,
+     0.896
+    ],
+    "dist": 2847.149,
+    "eye": [
+     -1254.494,
+     3.25,
+     -2547.035
+    ],
+    "fov": 0.9,
+    "frameH": 44.724,
+    "mirror": false,
+    "target": [
+     7.939,
+     3.25,
+     4.93
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "rotunda",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "rotunda",
+    "focusName": "Rotunda wall",
+    "id": 8,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 1,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Facing North wall",
+    "3D",
+    "Rotunda wall laid flat"
+   ],
+   "trailPos": 3,
+   "undo": 0,
+   "view": "Rotunda wall laid flat"
+  },
+  "D4": {
+   "cam": {
+    "az": 1.571,
+    "el": 0,
+    "flat": 1,
+    "frameH": 10.051,
+    "mirror": false,
+    "target": [
+     -15,
+     2.35,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     -1,
+     0,
+     0
+    ],
+    "dist": 639.882,
+    "eye": [
+     624.882,
+     2.35,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 10.051,
+    "mirror": false,
+    "target": [
+     -15,
+     2.35,
+     0
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "entrance",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "entrance",
+    "focusName": "Entrance",
+    "id": 9,
+    "kind": "face",
+    "lift": null,
+    "opening": "entrance",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "west"
+   },
+   "trail": [
+    "3D",
+    "Facing North wall",
+    "3D",
+    "Rotunda wall laid flat",
+    "Facing Entrance"
+   ],
+   "trailPos": 4,
+   "undo": 0,
+   "view": "Facing Entrance"
+  },
+  "D5": {
+   "cam": {
+    "az": 3.601,
+    "el": 0,
+    "flat": 0,
+    "frameH": 44.724,
+    "mirror": false,
+    "target": [
+     7.939,
+     3.25,
+     4.93
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.443,
+     0,
+     0.896
+    ],
+    "dist": 61.439,
+    "eye": [
+     -19.303,
+     3.25,
+     -50.139
+    ],
+    "fov": 40,
+    "frameH": 44.724,
+    "mirror": false,
+    "target": [
+     7.939,
+     3.25,
+     4.93
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "entrance",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "rotunda",
+    "focusName": "Rotunda wall",
+    "id": 10,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 1,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Facing North wall",
+    "3D",
+    "Rotunda wall laid flat",
+    "Facing Entrance"
+   ],
+   "trailPos": 3,
+   "undo": 0,
+   "view": "Rotunda wall laid flat"
+  },
+  "D6": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "entrance",
+   "session": null,
+   "trail": [
+    "3D",
+    "Facing North wall",
+    "3D",
+    "Rotunda wall laid flat",
+    "3D"
+   ],
+   "trailPos": 4,
+   "undo": 0,
+   "view": "3D"
+  },
+  "E1": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Plan"
+  },
+  "E2": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": "Garden window position",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 1,
+   "view": "Plan"
+  },
+  "E3": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": "Garden window width",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 1,
+   "undo": 2,
+   "view": "Plan"
+  },
+  "E4": {
+   "cam": {
+    "az": 0,
+    "el": 0.8,
+    "flat": 0,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": "Garden window width",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -0.717,
+     -0.697
+    ],
+    "dist": 51.077,
+    "eye": [
+     -2,
+     36.64,
+     35.586
+    ],
+    "fov": 40,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan",
+    "3D"
+   ],
+   "trailPos": 2,
+   "undo": 2,
+   "view": "3D"
+  },
+  "E5": {
+   "cam": {
+    "az": 0,
+    "el": 0.8,
+    "flat": 0,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": "Garden window head",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -0.717,
+     -0.697
+    ],
+    "dist": 51.077,
+    "eye": [
+     -2,
+     36.64,
+     35.586
+    ],
+    "fov": 40,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan",
+    "3D"
+   ],
+   "trailPos": 2,
+   "undo": 3,
+   "view": "3D"
+  },
+  "E6": {
+   "cam": {
+    "az": -2.734,
+    "el": 0,
+    "flat": 1,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     7.678,
+     3.25,
+     5.05
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Garden window arch rise",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.396,
+     0,
+     0.918
+    ],
+    "dist": 896.989,
+    "eye": [
+     -347.532,
+     3.25,
+     -818.609
+    ],
+    "fov": 0.9,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     7.678,
+     3.25,
+     5.05
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 11,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "3D",
+    "Facing Garden window"
+   ],
+   "trailPos": 3,
+   "undo": 4,
+   "view": "Facing Garden window"
+  },
+  "E7": {
+   "cam": {
+    "az": -2.734,
+    "el": 0,
+    "flat": 1,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     7.678,
+     3.25,
+     5.05
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": "Garden window arch rise",
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.396,
+     0,
+     0.918
+    ],
+    "dist": 896.989,
+    "eye": [
+     -347.532,
+     3.25,
+     -818.609
+    ],
+    "fov": 0.9,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     7.678,
+     3.25,
+     5.05
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "gwin",
+    "focusName": "Garden window",
+    "id": 11,
+    "kind": "face",
+    "lift": null,
+    "opening": "gwin",
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Plan",
+    "3D",
+    "Facing Garden window"
+   ],
+   "trailPos": 3,
+   "undo": 4,
+   "view": "Facing Garden window"
+  },
+  "E8": {
+   "cam": {
+    "az": 0,
+    "el": 0.8,
+    "flat": 0,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": "Garden window arch rise",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -0.717,
+     -0.697
+    ],
+    "dist": 51.077,
+    "eye": [
+     -2,
+     36.64,
+     35.586
+    ],
+    "fov": 40,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan",
+    "3D",
+    "Facing Garden window",
+    "3D"
+   ],
+   "trailPos": 4,
+   "undo": 4,
+   "view": "3D"
+  },
+  "E9": {
+   "cam": {
+    "az": 0,
+    "el": 1.571,
+    "flat": 1,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "plan",
+   "knife": null,
+   "lastUndo": "Garden window width",
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     0,
+     -1,
+     0
+    ],
+    "dist": 2366.969,
+    "eye": [
+     -2,
+     2366.969,
+     0
+    ],
+    "fov": 0.9,
+    "frameH": 37.181,
+    "mirror": false,
+    "target": [
+     -2,
+     0,
+     0
+    ],
+    "up": [
+     0,
+     0,
+     -1
+    ]
+   },
+   "redo": 2,
+   "reveal": null,
+   "sel": "gwin",
+   "session": null,
+   "trail": [
+    "3D",
+    "Plan",
+    "3D",
+    "Facing Garden window",
+    "3D",
+    "Plan"
+   ],
+   "trailPos": 5,
+   "undo": 2,
+   "view": "Plan"
+  },
+  "F1": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": null,
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "F2": {
+   "cam": {
+    "az": 0.72,
+    "el": 0.6,
+    "flat": 0,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "3d",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0124069478908189,
+    "dir": [
+     -0.544,
+     -0.565,
+     -0.62
+    ],
+    "dist": 34.343,
+    "eye": [
+     16.19,
+     20.592,
+     21.61
+    ],
+    "fov": 40,
+    "frameH": 25,
+    "mirror": false,
+    "target": [
+     -2.5,
+     1.2,
+     0.3
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "tide1",
+   "session": null,
+   "trail": [
+    "3D"
+   ],
+   "trailPos": 0,
+   "undo": 0,
+   "view": "3D"
+  },
+  "F3": {
+   "cam": {
+    "az": 3.414,
+    "el": 0,
+    "flat": 1,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     6.981,
+     3.25,
+     5.297
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.269,
+     0,
+     0.963
+    ],
+    "dist": 896.989,
+    "eye": [
+     -234.63,
+     3.25,
+     -858.539
+    ],
+    "fov": 0.9,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     6.981,
+     3.25,
+     5.297
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "tide1",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "rotunda",
+    "focusName": "Tide Study I on the Rotunda wall",
+    "id": 12,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Facing Tide Study I on the Rotunda wall"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Facing Tide Study I on the Rotunda wall"
+  },
+  "F4": {
+   "cam": {
+    "az": 3.414,
+    "el": 0,
+    "flat": 1,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     6.981,
+     3.25,
+     5.297
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0.269,
+     0,
+     0.963
+    ],
+    "dist": 896.989,
+    "eye": [
+     -234.63,
+     3.25,
+     -858.539
+    ],
+    "fov": 0.9,
+    "frameH": 14.09,
+    "mirror": false,
+    "target": [
+     6.981,
+     3.25,
+     5.297
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "rotunda",
+    "focusName": "Tide Study I on the Rotunda wall",
+    "id": 12,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "rotunda"
+   },
+   "trail": [
+    "3D",
+    "Facing Tide Study I on the Rotunda wall"
+   ],
+   "trailPos": 1,
+   "undo": 0,
+   "view": "Facing Tide Study I on the Rotunda wall"
+  },
+  "F5": {
+   "cam": {
+    "az": 6.283,
+    "el": 0,
+    "flat": 1,
+    "frameH": 21.129,
+    "mirror": false,
+    "target": [
+     -6.871,
+     2.25,
+     -3.5
+    ]
+   },
+   "crumbs": [],
+   "hover": null,
+   "kind": "face",
+   "knife": null,
+   "lastUndo": null,
+   "realized": {
+    "aspect": 1.0625,
+    "dir": [
+     0,
+     0,
+     -1
+    ],
+    "dist": 1345.074,
+    "eye": [
+     -6.871,
+     2.25,
+     1341.574
+    ],
+    "fov": 0.9,
+    "frameH": 21.129,
+    "mirror": false,
+    "target": [
+     -6.871,
+     2.25,
+     -3.5
+    ],
+    "up": [
+     0,
+     1,
+     0
+    ]
+   },
+   "redo": 0,
+   "reveal": null,
+   "sel": "harbor",
+   "session": {
+    "ceilId": null,
+    "cut": null,
+    "focusId": "north",
+    "focusName": "Harbor at Dusk on the North wall",
+    "id": 13,
+    "kind": "face",
+    "lift": null,
+    "opening": null,
+    "origin": {
+     "label": "3D"
+    },
+    "parent": null,
+    "part": null,
+    "side": 1,
+    "u": 0,
+    "wallId": "north"
+   },
+   "trail": [
+    "3D",
+    "Facing Tide Study I on the Rotunda wall",
+    "Facing Harbor at Dusk on the North wall"
+   ],
+   "trailPos": 2,
+   "undo": 0,
+   "view": "Facing Harbor at Dusk on the North wall"
+  }
+ },
+ "fixture": {
+  "art": [
+   {
+    "by": "Maren Okafor",
+    "h": 1.7,
+    "id": "harbor",
+    "name": "Harbor at Dusk",
+    "paint": "harbor",
+    "s": 7.6,
+    "w": 2.8,
+    "wall": "north",
+    "y": 1.6
+   },
+   {
+    "by": "Ida Voss",
+    "h": 1.3,
+    "id": "pears",
+    "name": "Three Pears",
+    "paint": "pears",
+    "s": 4.4,
+    "w": 1.1,
+    "wall": "south",
+    "y": 1.45
+   },
+   {
+    "by": "Tomas Reyes",
+    "h": 2,
+    "id": "kestrel",
+    "name": "Kestrel, Winter",
+    "paint": "kestrel",
+    "s": 14.2,
+    "w": 1.6,
+    "wall": "south",
+    "y": 1.5
+   },
+   {
+    "by": "Ana Lund",
+    "h": 1.3,
+    "id": "tide1",
+    "name": "Tide Study I",
+    "paint": "tide1",
+    "s": 7.13937979737193,
+    "w": 1,
+    "wall": "rotunda",
+    "y": 1.5
+   },
+   {
+    "by": "Ana Lund",
+    "h": 1.3,
+    "id": "tide2",
+    "name": "Tide Study II",
+    "paint": "tide2",
+    "s": 8.63937979737193,
+    "w": 1,
+    "wall": "rotunda",
+    "y": 1.5
+   },
+   {
+    "by": "Ana Lund",
+    "h": 1.3,
+    "id": "tide3",
+    "name": "Tide Study III",
+    "paint": "tide3",
+    "s": 10.13937979737193,
+    "w": 1,
+    "wall": "rotunda",
+    "y": 1.5
+   },
+   {
+    "by": "Maren Okafor",
+    "h": 2.2,
+    "id": "marsh",
+    "name": "Salt Marsh, Morning",
+    "paint": "marsh",
+    "s": 25.91813939211579,
+    "w": 3.6,
+    "wall": "rotunda",
+    "y": 1.9
+   }
+  ],
+  "ceilings": [
+   {
+    "form": "flat",
+    "gallery": "long",
+    "holes": [
+     {
+      "id": "slot",
+      "intentional": true,
+      "name": "Light slot",
+      "pts": [
+       [
+        -12,
+        -0.45
+       ],
+       [
+        -3,
+        -0.45
+       ],
+       [
+        -3,
+        0.45
+       ],
+       [
+        -12,
+        0.45
+       ]
+      ]
+     }
+    ],
+    "id": "longc",
+    "intended": [],
+    "name": "Long Gallery ceiling",
+    "outline": [
+     [
+      -15,
+      -3.5
+     ],
+     [
+      1.2573593128807152,
+      -3.5
+     ],
+     [
+      1.0632928204203793,
+      -3.2504814109092592
+     ],
+     [
+      0.8838815901519963,
+      -2.9902258821470893
+     ],
+     [
+      0.719718250462642,
+      -2.720093085730718
+     ],
+     [
+      0.5713450631442427,
+      -2.440975320114353
+     ],
+     [
+      0.4392521322028555,
+      -2.1537945627628114
+     ],
+     [
+      0.323875784954728,
+      -1.8594994246898717
+     ],
+     [
+      0.22559713075669485,
+      -1.5590620170211282
+     ],
+     [
+      0.14474080213167184,
+      -1.2534747399316306
+     ],
+     [
+      0.08157388244755204,
+      -0.9437470045650467
+     ],
+     [
+      0.03630502369157629,
+      -0.6309018987624742
+     ],
+     [
+      0.00908375725433519,
+      -0.3159728076145716
+     ],
+     [
+      0,
+      6.735557395310443e-16
+     ],
+     [
+      0.00908375725433519,
+      0.3159728076145729
+     ],
+     [
+      0.03630502369157629,
+      0.6309018987624755
+     ],
+     [
+      0.08157388244755204,
+      0.9437470045650481
+     ],
+     [
+      0.14474080213167184,
+      1.2534747399316295
+     ],
+     [
+      0.22559713075669485,
+      1.5590620170211298
+     ],
+     [
+      0.323875784954728,
+      1.859499424689873
+     ],
+     [
+      0.4392521322028555,
+      2.153794562762813
+     ],
+     [
+      0.5713450631442445,
+      2.4409753201143567
+     ],
+     [
+      0.7197182504626429,
+      2.720093085730719
+     ],
+     [
+      0.8838815901519972,
+      2.9902258821470906
+     ],
+     [
+      1.0632928204203802,
+      3.25048141090926
+     ],
+     [
+      1.2573593128807152,
+      3.5
+     ],
+     [
+      -15,
+      3.5
+     ]
+    ],
+    "plane": {
+     "base": 4.2,
+     "gx": 0,
+     "gz": 0
+    },
+    "ref": "C-LONG",
+    "rel": "closure",
+    "thick": 0.15
+   },
+   {
+    "form": "flat",
+    "gallery": "long",
+    "holes": [],
+    "id": "soffit",
+    "intended": [],
+    "name": "Entrance soffit",
+    "outline": [
+     [
+      -14.87,
+      -3.37
+     ],
+     [
+      -9.5,
+      -3.37
+     ],
+     [
+      -9.5,
+      3.37
+     ],
+     [
+      -14.87,
+      3.37
+     ]
+    ],
+    "plane": {
+     "base": 3.2,
+     "gx": 0,
+     "gz": 0
+    },
+    "ref": "C-ENT",
+    "rel": "suspended",
+    "thick": 0.1
+   },
+   {
+    "form": "flat",
+    "gallery": "rotunda",
+    "holes": [
+     {
+      "id": "oculus",
+      "intentional": true,
+      "name": "Oculus",
+      "pts": [
+       [
+        6.487688340595137,
+        -0.1564344650402311
+       ],
+       [
+        6.451056516295154,
+        -0.3090169943749476
+       ],
+       [
+        6.391006524188368,
+        -0.45399049973954697
+       ],
+       [
+        6.3090169943749475,
+        -0.5877852522924734
+       ],
+       [
+        6.207106781186547,
+        -0.7071067811865477
+       ],
+       [
+        6.087785252292473,
+        -0.8090169943749476
+       ],
+       [
+        5.953990499739547,
+        -0.8910065241883679
+       ],
+       [
+        5.8090169943749475,
+        -0.9510565162951536
+       ],
+       [
+        5.65643446504023,
+        -0.9876883405951378
+       ],
+       [
+        5.5,
+        -1
+       ],
+       [
+        5.343565534959769,
+        -0.9876883405951377
+       ],
+       [
+        5.1909830056250525,
+        -0.9510565162951535
+       ],
+       [
+        5.046009500260453,
+        -0.8910065241883678
+       ],
+       [
+        4.912214747707527,
+        -0.8090169943749473
+       ],
+       [
+        4.792893218813452,
+        -0.7071067811865475
+       ],
+       [
+        4.6909830056250525,
+        -0.587785252292473
+       ],
+       [
+        4.608993475811632,
+        -0.45399049973954625
+       ],
+       [
+        4.548943483704846,
+        -0.30901699437494773
+       ],
+       [
+        4.512311659404862,
+        -0.15643446504023073
+       ],
+       [
+        4.5,
+        1.2246467991473532e-16
+       ],
+       [
+        4.512311659404863,
+        0.15643446504023098
+       ],
+       [
+        4.548943483704846,
+        0.3090169943749475
+       ],
+       [
+        4.608993475811632,
+        0.45399049973954686
+       ],
+       [
+        4.6909830056250525,
+        0.5877852522924732
+       ],
+       [
+        4.792893218813452,
+        0.7071067811865476
+       ],
+       [
+        4.912214747707527,
+        0.8090169943749475
+       ],
+       [
+        5.046009500260453,
+        0.8910065241883679
+       ],
+       [
+        5.1909830056250525,
+        0.9510565162951536
+       ],
+       [
+        5.343565534959769,
+        0.9876883405951377
+       ],
+       [
+        5.5,
+        1
+       ],
+       [
+        5.656434465040231,
+        0.9876883405951378
+       ],
+       [
+        5.8090169943749475,
+        0.9510565162951535
+       ],
+       [
+        5.953990499739547,
+        0.8910065241883678
+       ],
+       [
+        6.087785252292473,
+        0.8090169943749475
+       ],
+       [
+        6.207106781186548,
+        0.7071067811865475
+       ],
+       [
+        6.3090169943749475,
+        0.5877852522924731
+       ],
+       [
+        6.391006524188368,
+        0.45399049973954675
+       ],
+       [
+        6.451056516295154,
+        0.3090169943749474
+       ],
+       [
+        6.487688340595138,
+        0.15643446504023087
+       ],
+       [
+        6.5,
+        0
+       ]
+      ]
+     }
+    ],
+    "id": "rotc",
+    "intended": [],
+    "name": "Rotunda ceiling",
+    "outline": [
+     [
+      11,
+      0
+     ],
+     [
+      10.988224077812319,
+      0.35971721076578683
+     ],
+     [
+      10.952946737555958,
+      0.7178940572102837
+     ],
+     [
+      10.894319042217766,
+      1.0729967710887054
+     ],
+     [
+      10.812592044589875,
+      1.423504748063864
+     ],
+     [
+      10.708115712223082,
+      1.7679170591673887
+     ],
+     [
+      10.581337428812077,
+      2.1047588780079938
+     ],
+     [
+      10.432800078429786,
+      2.432587796204507
+     ],
+     [
+      10.263139720814413,
+      2.7499999999999996
+     ],
+     [
+      10.073082867663999,
+      3.055636281607812
+     ],
+     [
+      9.863443371601793,
+      3.3481878595479637
+     ],
+     [
+      9.635118941134376,
+      3.6264019830503784
+     ],
+     [
+      9.38908729652601,
+      3.889087296526011
+     ],
+     [
+      9.126401983050378,
+      4.135118941134375
+     ],
+     [
+      8.848187859547963,
+      4.363443371601793
+     ],
+     [
+      8.555636281607812,
+      4.573082867663999
+     ],
+     [
+      8.25,
+      4.763139720814412
+     ],
+     [
+      7.932587796204507,
+      4.932800078429786
+     ],
+     [
+      7.604758878007994,
+      5.081337428812077
+     ],
+     [
+      7.26791705916739,
+      5.208115712223081
+     ],
+     [
+      6.9235047480638645,
+      5.312592044589875
+     ],
+     [
+      6.572996771088706,
+      5.394319042217767
+     ],
+     [
+      6.217894057210285,
+      5.4529467375559575
+     ],
+     [
+      5.859717210765787,
+      5.488224077812319
+     ],
+     [
+      5.5,
+      5.5
+     ],
+     [
+      5.140282789234213,
+      5.488224077812319
+     ],
+     [
+      4.782105942789718,
+      5.4529467375559575
+     ],
+     [
+      4.427003228911294,
+      5.394319042217767
+     ],
+     [
+      4.0764952519361355,
+      5.312592044589875
+     ],
+     [
+      3.7320829408326124,
+      5.208115712223082
+     ],
+     [
+      3.3952411219920067,
+      5.081337428812077
+     ],
+     [
+      3.067412203795494,
+      4.932800078429786
+     ],
+     [
+      2.7500000000000013,
+      4.763139720814413
+     ],
+     [
+      2.4443637183921894,
+      4.573082867664
+     ],
+     [
+      2.1518121404520363,
+      4.363443371601793
+     ],
+     [
+      1.8735980169496216,
+      4.135118941134376
+     ],
+     [
+      1.6109127034739892,
+      3.8890872965260117
+     ],
+     [
+      1.3648810588656248,
+      3.6264019830503793
+     ],
+     [
+      1.136556628398207,
+      3.3481878595479646
+     ],
+     [
+      0.9269171323360004,
+      3.055636281607812
+     ],
+     [
+      0.7368602791855867,
+      2.7499999999999996
+     ],
+     [
+      0.5671999215702144,
+      2.432587796204507
+     ],
+     [
+      0.41866257118792305,
+      2.104758878007994
+     ],
+     [
+      0.2918842877769192,
+      1.7679170591673896
+     ],
+     [
+      0.18740795541012467,
+      1.4235047480638656
+     ],
+     [
+      0.10568095778223263,
+      1.0729967710887074
+     ],
+     [
+      0.04705326244404251,
+      0.7178940572102837
+     ],
+     [
+      0.011775922187680976,
+      0.35971721076578717
+     ],
+     [
+      0,
+      6.735557395310443e-16
+     ],
+     [
+      0.011775922187680976,
+      -0.3597172107657858
+     ],
+     [
+      0.04705326244404251,
+      -0.7178940572102848
+     ],
+     [
+      0.10568095778223263,
+      -1.072996771088706
+     ],
+     [
+      0.18740795541012378,
+      -1.4235047480638618
+     ],
+     [
+      0.2918842877769183,
+      -1.7679170591673885
+     ],
+     [
+      0.41866257118792216,
+      -2.1047588780079933
+     ],
+     [
+      0.5671999215702144,
+      -2.4325877962045057
+     ],
+     [
+      0.7368602791855876,
+      -2.7500000000000004
+     ],
+     [
+      0.9269171323360004,
+      -3.0556362816078106
+     ],
+     [
+      1.1365566283982051,
+      -3.348187859547962
+     ],
+     [
+      1.364881058865624,
+      -3.6264019830503784
+     ],
+     [
+      1.6109127034739879,
+      -3.889087296526011
+     ],
+     [
+      1.8735980169496202,
+      -4.135118941134375
+     ],
+     [
+      2.1518121404520354,
+      -4.363443371601792
+     ],
+     [
+      2.444363718392188,
+      -4.573082867663999
+     ],
+     [
+      2.7499999999999973,
+      -4.7631397208144115
+     ],
+     [
+      3.0674122037954925,
+      -4.932800078429786
+     ],
+     [
+      3.395241121992003,
+      -5.081337428812076
+     ],
+     [
+      3.73208294083261,
+      -5.208115712223081
+     ],
+     [
+      4.076495251936136,
+      -5.312592044589875
+     ],
+     [
+      4.427003228911293,
+      -5.3943190422177665
+     ],
+     [
+      4.782105942789716,
+      -5.4529467375559575
+     ],
+     [
+      5.140282789234215,
+      -5.488224077812319
+     ],
+     [
+      5.499999999999999,
+      -5.5
+     ],
+     [
+      5.859717210765783,
+      -5.48822407781232
+     ],
+     [
+      6.217894057210282,
+      -5.4529467375559575
+     ],
+     [
+      6.572996771088706,
+      -5.394319042217767
+     ],
+     [
+      6.923504748063862,
+      -5.312592044589876
+     ],
+     [
+      7.267917059167388,
+      -5.208115712223082
+     ],
+     [
+      7.6047588780079955,
+      -5.081337428812076
+     ],
+     [
+      7.932587796204506,
+      -4.9328000784297865
+     ],
+     [
+      8.25,
+      -4.763139720814412
+     ],
+     [
+      8.55563628160781,
+      -4.573082867664
+     ],
+     [
+      8.848187859547963,
+      -4.363443371601793
+     ],
+     [
+      9.12640198305038,
+      -4.135118941134374
+     ],
+     [
+      9.38908729652601,
+      -3.889087296526012
+     ],
+     [
+      9.635118941134373,
+      -3.6264019830503815
+     ],
+     [
+      9.863443371601793,
+      -3.3481878595479646
+     ],
+     [
+      10.073082867663999,
+      -3.055636281607812
+     ],
+     [
+      10.263139720814412,
+      -2.7500000000000027
+     ],
+     [
+      10.432800078429786,
+      -2.432587796204508
+     ],
+     [
+      10.581337428812077,
+      -2.1047588780079973
+     ],
+     [
+      10.70811571222308,
+      -1.7679170591673903
+     ],
+     [
+      10.812592044589875,
+      -1.4235047480638638
+     ],
+     [
+      10.894319042217766,
+      -1.072996771088708
+     ],
+     [
+      10.952946737555958,
+      -0.7178940572102843
+     ],
+     [
+      10.988224077812319,
+      -0.3597172107657854
+     ]
+    ],
+    "plane": {
+     "base": 6,
+     "gx": 0,
+     "gz": 0
+    },
+    "ref": "C-ROT",
+    "rel": "closure",
+    "thick": 0.18
+   }
+  ],
+  "floors": [
+   {
+    "id": "longf",
+    "outline": [
+     [
+      -15,
+      -3.5
+     ],
+     [
+      1.2573593128807152,
+      -3.5
+     ],
+     [
+      1.0632928204203793,
+      -3.2504814109092592
+     ],
+     [
+      0.8838815901519963,
+      -2.9902258821470893
+     ],
+     [
+      0.719718250462642,
+      -2.720093085730718
+     ],
+     [
+      0.5713450631442427,
+      -2.440975320114353
+     ],
+     [
+      0.4392521322028555,
+      -2.1537945627628114
+     ],
+     [
+      0.323875784954728,
+      -1.8594994246898717
+     ],
+     [
+      0.22559713075669485,
+      -1.5590620170211282
+     ],
+     [
+      0.14474080213167184,
+      -1.2534747399316306
+     ],
+     [
+      0.08157388244755204,
+      -0.9437470045650467
+     ],
+     [
+      0.03630502369157629,
+      -0.6309018987624742
+     ],
+     [
+      0.00908375725433519,
+      -0.3159728076145716
+     ],
+     [
+      0,
+      6.735557395310443e-16
+     ],
+     [
+      0.00908375725433519,
+      0.3159728076145729
+     ],
+     [
+      0.03630502369157629,
+      0.6309018987624755
+     ],
+     [
+      0.08157388244755204,
+      0.9437470045650481
+     ],
+     [
+      0.14474080213167184,
+      1.2534747399316295
+     ],
+     [
+      0.22559713075669485,
+      1.5590620170211298
+     ],
+     [
+      0.323875784954728,
+      1.859499424689873
+     ],
+     [
+      0.4392521322028555,
+      2.153794562762813
+     ],
+     [
+      0.5713450631442445,
+      2.4409753201143567
+     ],
+     [
+      0.7197182504626429,
+      2.720093085730719
+     ],
+     [
+      0.8838815901519972,
+      2.9902258821470906
+     ],
+     [
+      1.0632928204203802,
+      3.25048141090926
+     ],
+     [
+      1.2573593128807152,
+      3.5
+     ],
+     [
+      -15,
+      3.5
+     ]
+    ]
+   },
+   {
+    "id": "rotf",
+    "outline": [
+     [
+      11,
+      0
+     ],
+     [
+      10.988224077812319,
+      0.35971721076578683
+     ],
+     [
+      10.952946737555958,
+      0.7178940572102837
+     ],
+     [
+      10.894319042217766,
+      1.0729967710887054
+     ],
+     [
+      10.812592044589875,
+      1.423504748063864
+     ],
+     [
+      10.708115712223082,
+      1.7679170591673887
+     ],
+     [
+      10.581337428812077,
+      2.1047588780079938
+     ],
+     [
+      10.432800078429786,
+      2.432587796204507
+     ],
+     [
+      10.263139720814413,
+      2.7499999999999996
+     ],
+     [
+      10.073082867663999,
+      3.055636281607812
+     ],
+     [
+      9.863443371601793,
+      3.3481878595479637
+     ],
+     [
+      9.635118941134376,
+      3.6264019830503784
+     ],
+     [
+      9.38908729652601,
+      3.889087296526011
+     ],
+     [
+      9.126401983050378,
+      4.135118941134375
+     ],
+     [
+      8.848187859547963,
+      4.363443371601793
+     ],
+     [
+      8.555636281607812,
+      4.573082867663999
+     ],
+     [
+      8.25,
+      4.763139720814412
+     ],
+     [
+      7.932587796204507,
+      4.932800078429786
+     ],
+     [
+      7.604758878007994,
+      5.081337428812077
+     ],
+     [
+      7.26791705916739,
+      5.208115712223081
+     ],
+     [
+      6.9235047480638645,
+      5.312592044589875
+     ],
+     [
+      6.572996771088706,
+      5.394319042217767
+     ],
+     [
+      6.217894057210285,
+      5.4529467375559575
+     ],
+     [
+      5.859717210765787,
+      5.488224077812319
+     ],
+     [
+      5.5,
+      5.5
+     ],
+     [
+      5.140282789234213,
+      5.488224077812319
+     ],
+     [
+      4.782105942789718,
+      5.4529467375559575
+     ],
+     [
+      4.427003228911294,
+      5.394319042217767
+     ],
+     [
+      4.0764952519361355,
+      5.312592044589875
+     ],
+     [
+      3.7320829408326124,
+      5.208115712223082
+     ],
+     [
+      3.3952411219920067,
+      5.081337428812077
+     ],
+     [
+      3.067412203795494,
+      4.932800078429786
+     ],
+     [
+      2.7500000000000013,
+      4.763139720814413
+     ],
+     [
+      2.4443637183921894,
+      4.573082867664
+     ],
+     [
+      2.1518121404520363,
+      4.363443371601793
+     ],
+     [
+      1.8735980169496216,
+      4.135118941134376
+     ],
+     [
+      1.6109127034739892,
+      3.8890872965260117
+     ],
+     [
+      1.3648810588656248,
+      3.6264019830503793
+     ],
+     [
+      1.136556628398207,
+      3.3481878595479646
+     ],
+     [
+      0.9269171323360004,
+      3.055636281607812
+     ],
+     [
+      0.7368602791855867,
+      2.7499999999999996
+     ],
+     [
+      0.5671999215702144,
+      2.432587796204507
+     ],
+     [
+      0.41866257118792305,
+      2.104758878007994
+     ],
+     [
+      0.2918842877769192,
+      1.7679170591673896
+     ],
+     [
+      0.18740795541012467,
+      1.4235047480638656
+     ],
+     [
+      0.10568095778223263,
+      1.0729967710887074
+     ],
+     [
+      0.04705326244404251,
+      0.7178940572102837
+     ],
+     [
+      0.011775922187680976,
+      0.35971721076578717
+     ],
+     [
+      0,
+      6.735557395310443e-16
+     ],
+     [
+      0.011775922187680976,
+      -0.3597172107657858
+     ],
+     [
+      0.04705326244404251,
+      -0.7178940572102848
+     ],
+     [
+      0.10568095778223263,
+      -1.072996771088706
+     ],
+     [
+      0.18740795541012378,
+      -1.4235047480638618
+     ],
+     [
+      0.2918842877769183,
+      -1.7679170591673885
+     ],
+     [
+      0.41866257118792216,
+      -2.1047588780079933
+     ],
+     [
+      0.5671999215702144,
+      -2.4325877962045057
+     ],
+     [
+      0.7368602791855876,
+      -2.7500000000000004
+     ],
+     [
+      0.9269171323360004,
+      -3.0556362816078106
+     ],
+     [
+      1.1365566283982051,
+      -3.348187859547962
+     ],
+     [
+      1.364881058865624,
+      -3.6264019830503784
+     ],
+     [
+      1.6109127034739879,
+      -3.889087296526011
+     ],
+     [
+      1.8735980169496202,
+      -4.135118941134375
+     ],
+     [
+      2.1518121404520354,
+      -4.363443371601792
+     ],
+     [
+      2.444363718392188,
+      -4.573082867663999
+     ],
+     [
+      2.7499999999999973,
+      -4.7631397208144115
+     ],
+     [
+      3.0674122037954925,
+      -4.932800078429786
+     ],
+     [
+      3.395241121992003,
+      -5.081337428812076
+     ],
+     [
+      3.73208294083261,
+      -5.208115712223081
+     ],
+     [
+      4.076495251936136,
+      -5.312592044589875
+     ],
+     [
+      4.427003228911293,
+      -5.3943190422177665
+     ],
+     [
+      4.782105942789716,
+      -5.4529467375559575
+     ],
+     [
+      5.140282789234215,
+      -5.488224077812319
+     ],
+     [
+      5.499999999999999,
+      -5.5
+     ],
+     [
+      5.859717210765783,
+      -5.48822407781232
+     ],
+     [
+      6.217894057210282,
+      -5.4529467375559575
+     ],
+     [
+      6.572996771088706,
+      -5.394319042217767
+     ],
+     [
+      6.923504748063862,
+      -5.312592044589876
+     ],
+     [
+      7.267917059167388,
+      -5.208115712223082
+     ],
+     [
+      7.6047588780079955,
+      -5.081337428812076
+     ],
+     [
+      7.932587796204506,
+      -4.9328000784297865
+     ],
+     [
+      8.25,
+      -4.763139720814412
+     ],
+     [
+      8.55563628160781,
+      -4.573082867664
+     ],
+     [
+      8.848187859547963,
+      -4.363443371601793
+     ],
+     [
+      9.12640198305038,
+      -4.135118941134374
+     ],
+     [
+      9.38908729652601,
+      -3.889087296526012
+     ],
+     [
+      9.635118941134373,
+      -3.6264019830503815
+     ],
+     [
+      9.863443371601793,
+      -3.3481878595479646
+     ],
+     [
+      10.073082867663999,
+      -3.055636281607812
+     ],
+     [
+      10.263139720814412,
+      -2.7500000000000027
+     ],
+     [
+      10.432800078429786,
+      -2.432587796204508
+     ],
+     [
+      10.581337428812077,
+      -2.1047588780079973
+     ],
+     [
+      10.70811571222308,
+      -1.7679170591673903
+     ],
+     [
+      10.812592044589875,
+      -1.4235047480638638
+     ],
+     [
+      10.894319042217766,
+      -1.072996771088708
+     ],
+     [
+      10.952946737555958,
+      -0.7178940572102843
+     ],
+     [
+      10.988224077812319,
+      -0.3597172107657854
+     ]
+    ]
+   }
+  ],
+  "galleries": [
+   {
+    "id": "long",
+    "name": "Long Gallery",
+    "ref": "R-LONG"
+   },
+   {
+    "id": "rotunda",
+    "name": "Rotunda",
+    "ref": "R-ROT"
+   }
+  ],
+  "name": "Saltmarsh Museum",
+  "objects": [
+   {
+    "by": "Studio Hale",
+    "id": "vessel",
+    "kind": "sculpture",
+    "name": "Blue Vessel",
+    "x": 5.5,
+    "z": 0
+   },
+   {
+    "by": "",
+    "id": "bench",
+    "kind": "bench",
+    "name": "Oak bench",
+    "x": -7.5,
+    "z": 0.6
+   }
+  ],
+  "walls": [
+   {
+    "a": [
+     -15,
+     -3.5
+    ],
+    "b": [
+     1.2573593128807152,
+     -3.5
+    ],
+    "gallery": "long",
+    "id": "north",
+    "kind": "line",
+    "name": "North wall",
+    "openings": [],
+    "ref": "W-N",
+    "thick": 0.25,
+    "top": {
+     "form": "constant",
+     "h": 4
+    }
+   },
+   {
+    "a": [
+     1.2573593128807152,
+     3.5
+    ],
+    "b": [
+     -15,
+     3.5
+    ],
+    "gallery": "long",
+    "id": "south",
+    "kind": "line",
+    "name": "South wall",
+    "openings": [
+     {
+      "head": 3.7,
+      "id": "clere",
+      "kind": "window",
+      "name": "Clerestory",
+      "profile": "rect",
+      "ref": "O-CL",
+      "rise": 0,
+      "s": 9,
+      "sill": 2.9,
+      "w": 3.2
+     }
+    ],
+    "ref": "W-S",
+    "thick": 0.25,
+    "top": {
+     "form": "constant",
+     "h": 4.2
+    }
+   },
+   {
+    "a": [
+     -15,
+     3.5
+    ],
+    "b": [
+     -15,
+     -3.5
+    ],
+    "gallery": "long",
+    "id": "west",
+    "kind": "line",
+    "name": "West wall",
+    "openings": [
+     {
+      "head": 2.8,
+      "id": "entrance",
+      "kind": "door",
+      "name": "Entrance",
+      "profile": "rect",
+      "ref": "O-EN",
+      "rise": 0,
+      "s": 3.3,
+      "sill": 0,
+      "w": 1.8
+     }
+    ],
+    "ref": "W-W",
+    "thick": 0.25,
+    "top": {
+     "form": "constant",
+     "h": 4.2
+    }
+   },
+   {
+    "a0": 0,
+    "closed": true,
+    "cx": 5.5,
+    "cz": 0,
+    "gallery": "rotunda",
+    "id": "rotunda",
+    "kind": "arc",
+    "name": "Rotunda wall",
+    "openings": [
+     {
+      "head": 2.8,
+      "id": "gdoor",
+      "kind": "door",
+      "name": "Gallery door",
+      "profile": "rect",
+      "ref": "O-GD",
+      "rise": 0,
+      "s": 17.27875959474386,
+      "sill": 0,
+      "w": 2
+     },
+     {
+      "head": 3.4,
+      "id": "gwin",
+      "kind": "window",
+      "name": "Garden window",
+      "profile": "round",
+      "ref": "O-GW",
+      "rise": 0.8,
+      "s": 4.319689898685965,
+      "sill": 0.9,
+      "w": 1.6
+     },
+     {
+      "head": 4.8,
+      "id": "mwin",
+      "kind": "window",
+      "name": "Moon window",
+      "profile": "pointed",
+      "ref": "O-MW",
+      "rise": 0.6,
+      "s": 30.237829290801756,
+      "sill": 3.6,
+      "w": 1.2
+     }
+    ],
+    "r": 5.5,
+    "ref": "W-ROT",
+    "sweep": 6.283185307179586,
+    "thick": 0.3,
+    "top": {
+     "form": "constant",
+     "h": 6
+    }
+   }
+  ]
+ },
+ "fixtureHash": "650e93c4",
+ "journeys": [
+  {
+   "id": "A",
+   "name": "Curved wall",
+   "steps": 11
+  },
+  {
+   "id": "B",
+   "name": "Look inside",
+   "steps": 10
+  },
+  {
+   "id": "C",
+   "name": "Ceiling",
+   "steps": 9
+  },
+  {
+   "id": "D",
+   "name": "Fast repeat",
+   "steps": 6
+  },
+  {
+   "id": "E",
+   "name": "Everyday edit",
+   "steps": 9
+  },
+  {
+   "id": "F",
+   "name": "Where did it go?",
+   "steps": 5
+  }
+ ]
+}

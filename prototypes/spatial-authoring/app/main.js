@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { S, ctx, W, C, thing } from './state.js';
+import { S, ctx, W, C, thing, clone, recordFault } from './state.js';
 import { createMuseum, fmt, wallLength, frameAt, modS, openingTopAt, bbox } from './model.js';
 import { Stage, ease } from './stage.js';
 import { Overlay } from './overlay.js';
@@ -167,7 +167,7 @@ function frame(now) {
     truthBar();
     if (S.status && now - S.status.t > 6000 && !S.status.cleared) { S.status.cleared = true; requestUI(); }
   } catch (e) {
-    if (e.message !== lastErr) { lastErr = e.message; console.error(e); }
+    if (e.message !== lastErr) { lastErr = e.message; recordFault('frame', e); console.error(e); }
   }
 }
 
@@ -724,7 +724,12 @@ function openFinder(q = '') {
   renderFinder();
   finderInput.focus();
 }
-function closeFinder() { finder.hidden = true; }
+function closeFinder() {
+  finder.hidden = true;
+  // A hidden field must not keep the keyboard: after a result is picked, Esc belongs to the view
+  // again (clear the beacon, then step out of the reading), not to a dialog that is already closed.
+  if (document.activeElement === finderInput) finderInput.blur();
+}
 function finderItems() {
   const m = ctx.museum;
   const g = (id) => m.galleries.find((x) => x.id === id)?.name || '';
@@ -876,6 +881,72 @@ function openSelected() {
   else A.face(S.sel);
 }
 
+// ---------------------------------------------------------------- QA observation
+// The prototype's own acceptance harness reads this surface: source values, canonical selection,
+// reading/session parameters, the realized Camera (eye, up, FOV and framing as rendered, not the
+// request), and every command or page fault. It observes; it never writes. See qa/README.md.
+
+function realizedCamera() {
+  const cam = stage.camera;
+  const fov = cam.fov;
+  const tgt = stage.cam.target;
+  const dist = cam.position.distanceTo(tgt);
+  return {
+    eye: [cam.position.x, cam.position.y, cam.position.z],
+    up: [cam.up.x, cam.up.y, cam.up.z],
+    target: [tgt.x, tgt.y, tgt.z],
+    dir: (() => { const d = new V3(); cam.getWorldDirection(d); return [d.x, d.y, d.z]; })(),
+    fov, dist, frameH: 2 * dist * Math.tan((fov * Math.PI) / 360), mirror: !!stage.cam.mirror, aspect: cam.aspect,
+  };
+}
+
+const round3 = (v) => Math.round(v * 1000) / 1000;
+const roundVec = (a) => a.map(round3);
+
+function sessionShape(s = S.session) {
+  if (!s) return null;
+  return {
+    kind: s.kind, id: s.id, wallId: s.wallId ?? null, focusId: s.focusId ?? null, focusName: s.focusName ?? null,
+    opening: s.opening ?? null, ceilId: s.ceilId ?? null, side: s.side ?? null,
+    u: s.u != null ? round3(s.u) : null, part: s.part != null ? round3(s.part) : null, lift: s.lift != null ? round3(s.lift) : null,
+    cut: s.cut ? { p0: [...s.cut.p0], p1: [...s.cut.p1], side: s.cut.side, depth: s.cut.depth, n: s.cut.n.map(round3) } : null,
+    parent: s.parent ? { kind: s.parent.kind, label: s.parent.label } : null,
+    origin: s.origin ? { label: s.origin.label } : null,
+  };
+}
+
+// A stable digest of the fixture's source values: the same accepted model must hash the same in
+// every stage, so any silent change to source data shows up as a diff, not a screenshot.
+function museumHash(m) {
+  const s = JSON.stringify(m);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+const QA = {
+  state() {
+    return {
+      view: A.viewLabel(), kind: A.viewKind(), sel: S.sel, hover: S.hover,
+      undo: S.undo.length, redo: S.redo.length, lastUndo: S.undo[S.undo.length - 1]?.label ?? null,
+      reveal: S.reveal, knife: S.knife ? { stage: S.knife.stage, hasLine: !!S.knife.p1, depth: S.knife.depth, side: S.knife.side } : null,
+      session: sessionShape(), crumbs: A.crumbs().map((c) => c.label), trail: S.trail.map((e) => e.label), trailPos: S.trailPos,
+      cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
+      realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),
+      faults: S.faults.length,
+    };
+  },
+  /* the three questions an A–F checkpoint asks, independently of any screen */
+  reading() { return A.viewLabel(); },
+  realized() { return realizedCamera(); },
+  museum() { return clone(ctx.museum); },
+  hash() { return museumHash(ctx.museum); },
+  faultList() { return S.faults.slice(); },
+  clearFaults() { S.faults.length = 0; return true; },
+  async idle() { while (S.busy) await new Promise((r) => setTimeout(r, 30)); return true; },
+  settleFor(ms) { return new Promise((r) => setTimeout(r, ms)); },
+};
+
 // ---------------------------------------------------------------- boot
 
 function resize() { stage.resize(); }
@@ -898,6 +969,10 @@ function boot() {
   document.body.classList.toggle('reduce-motion', S.reduceMotion);
   if (q.get('shot')) document.body.classList.add('shot');
   requestAnimationFrame(frame);
-  window.__me = { S, ctx, A, JOURNEYS };
+  window.__me = { S, ctx, A, JOURNEYS, qa: QA };
+  window.__me.ready = true;
+  document.body.dataset.ready = '1';
+  window.addEventListener('error', (e) => recordFault('page', e.error || e.message));
+  window.addEventListener('unhandledrejection', (e) => recordFault('promise', e.reason));
 }
 boot();

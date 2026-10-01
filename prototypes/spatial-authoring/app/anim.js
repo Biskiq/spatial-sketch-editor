@@ -1,4 +1,4 @@
-import { S, ctx } from './state.js';
+import { S, ctx, recordFault } from './state.js';
 
 // One tween clock for every choreography. A new command never cuts a motion off
 // mid-air: it hurries the running one to its end state, then runs.
@@ -30,7 +30,7 @@ export function run(fn) {
   chain = chain.then(async () => {
     S.busy = true;
     S.hurry = false;
-    try { await fn(); } catch (e) { console.error(e); }
+    try { await fn(); } catch (e) { recordFault('command', e); console.error(e); }
     finally { S.busy = false; S.hurry = false; narrate(null); ctx.ui(); }
   });
   return chain;

@@ -37,7 +37,17 @@ export const S = {
   summary: null,
   finder: null,
   gated: [],
+  /* QA observation only: a command that threw, or a page error. Never a source of product behaviour;
+     the acceptance harness asserts this stays empty. See qa/README.md. */
+  faults: [],
 };
+
+let faultSeq = 0;
+export function recordFault(kind, detail) {
+  faultSeq += 1;
+  S.faults.push({ n: faultSeq, kind, message: String(detail?.message ?? detail ?? ''), stack: detail?.stack ? String(detail.stack).split('\n').slice(0, 4).join(' | ') : '', at: performance.now() });
+  if (S.faults.length > 200) S.faults.shift();
+}
 
 export const ctx = {
   museum: null,
