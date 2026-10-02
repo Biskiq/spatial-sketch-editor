@@ -1,6 +1,11 @@
 {
  "checkpoints": {
   "A1": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -14,12 +19,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -65,6 +72,11 @@
    "view": "3D"
   },
   "A10": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -1.736,
     "el": 0.36,
@@ -78,12 +90,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -165,6 +179,11 @@
    "view": "Rotunda wall at 180\u00b0"
   },
   "A11": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -178,12 +197,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -234,6 +255,11 @@
    "view": "3D"
   },
   "A2": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -247,12 +273,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -298,6 +326,11 @@
    "view": "3D"
   },
   "A3": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -311,12 +344,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -395,6 +430,11 @@
    "view": "Rotunda wall at 180\u00b0 from outside"
   },
   "A4": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.356,
     "el": 0,
@@ -408,12 +448,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -493,6 +535,11 @@
    "view": "Rotunda wall at 180\u00b0"
   },
   "A5": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.356,
     "el": 0,
@@ -506,12 +553,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -591,6 +640,11 @@
    "view": "Rotunda wall at 180\u00b0"
   },
   "A6": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.356,
     "el": 0,
@@ -604,12 +658,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -690,6 +746,11 @@
    "view": "Rotunda wall laid flat"
   },
   "A7": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.356,
     "el": 0,
@@ -703,12 +764,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -789,6 +852,11 @@
    "view": "Rotunda wall laid flat"
   },
   "A8": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.356,
     "el": 0,
@@ -802,12 +870,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window width",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -888,6 +958,11 @@
    "view": "Rotunda wall laid flat"
   },
   "A9": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -1.736,
     "el": 0.36,
@@ -901,12 +976,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window sill",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -988,6 +1065,11 @@
    "view": "Rotunda wall at 180\u00b0"
   },
   "B1": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -1001,12 +1083,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1053,6 +1137,11 @@
    "view": "Plan"
   },
   "B10": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -1066,12 +1155,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Gallery door head",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1122,6 +1213,11 @@
    "view": "Plan"
   },
   "B2": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -1135,6 +1231,7 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
@@ -1146,6 +1243,7 @@
    },
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1192,6 +1290,11 @@
    "view": "Plan"
   },
   "B3": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -1205,6 +1308,7 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
@@ -1216,6 +1320,7 @@
    },
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1262,6 +1367,11 @@
    "view": "Plan"
   },
   "B4": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1275,12 +1385,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1373,6 +1485,11 @@
    "view": "Opened along a line \u00b7 looking north"
   },
   "B5": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1386,12 +1503,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1484,6 +1603,11 @@
    "view": "Opened along a line \u00b7 looking north"
   },
   "B6": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1499,12 +1623,14 @@
    "crumbs": [
     "Opened along a line \u00b7 looking north"
    ],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1588,6 +1714,11 @@
    "view": "Facing Harbor at Dusk on the North wall"
   },
   "B7": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1601,12 +1732,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1701,6 +1834,11 @@
    "view": "Opened along a line \u00b7 looking north"
   },
   "B8": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1714,12 +1852,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1814,6 +1954,11 @@
    "view": "Opened along a line \u00b7 looking north"
   },
   "B9": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0,
@@ -1827,12 +1972,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "section",
    "knife": null,
    "lastUndo": "Gallery door head",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1927,6 +2074,11 @@
    "view": "Opened along a line \u00b7 looking north"
   },
   "C1": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -1940,12 +2092,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -1991,6 +2145,11 @@
    "view": "3D"
   },
   "C2": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2004,12 +2163,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2088,6 +2249,11 @@
    "view": "Long Gallery ceiling lifted"
   },
   "C3": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2101,12 +2267,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2185,6 +2353,11 @@
    "view": "Long Gallery ceiling lifted"
   },
   "C4": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2198,12 +2371,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2282,6 +2457,11 @@
    "view": "Long Gallery ceiling lifted"
   },
   "C5": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2295,12 +2475,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lift",
    "knife": null,
    "lastUndo": "Raise North wall",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2379,6 +2561,11 @@
    "view": "Long Gallery ceiling lifted"
   },
   "C6": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 3.142,
     "el": -1.571,
@@ -2394,12 +2581,14 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2482,6 +2671,11 @@
    "view": "Looking up \u00b7 Long Gallery ceiling"
   },
   "C7": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 3.142,
     "el": -1.571,
@@ -2497,12 +2691,14 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2585,6 +2781,11 @@
    "view": "Looking up \u00b7 Long Gallery ceiling"
   },
   "C8": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 3.142,
     "el": -1.571,
@@ -2600,12 +2801,14 @@
    "crumbs": [
     "Long Gallery ceiling lifted"
    ],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Entrance soffit height",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2688,6 +2891,11 @@
    "view": "Looking up \u00b7 Long Gallery ceiling"
   },
   "C9": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2701,12 +2909,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Entrance soffit height",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2755,6 +2965,11 @@
    "view": "3D"
   },
   "D1": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2768,12 +2983,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2819,6 +3036,11 @@
    "view": "3D"
   },
   "D2": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -2832,12 +3054,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2885,6 +3109,11 @@
    "view": "3D"
   },
   "D3": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 3.601,
     "el": 0,
@@ -2898,12 +3127,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -2984,6 +3215,11 @@
    "view": "Rotunda wall laid flat"
   },
   "D4": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 1.571,
     "el": 0,
@@ -2997,12 +3233,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3084,6 +3322,11 @@
    "view": "Facing Entrance"
   },
   "D5": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 3.601,
     "el": 0,
@@ -3097,12 +3340,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3184,6 +3429,11 @@
    "view": "Rotunda wall laid flat"
   },
   "D6": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -3197,12 +3447,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3252,6 +3504,11 @@
    "view": "3D"
   },
   "E1": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -3265,12 +3522,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3317,6 +3576,11 @@
    "view": "Plan"
   },
   "E2": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -3330,12 +3594,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window position",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3382,6 +3648,11 @@
    "view": "Plan"
   },
   "E3": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -3395,12 +3666,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3447,6 +3720,11 @@
    "view": "Plan"
   },
   "E4": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0.8,
@@ -3460,12 +3738,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window width",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3513,6 +3793,11 @@
    "view": "3D"
   },
   "E5": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0.8,
@@ -3526,12 +3811,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window head",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3579,6 +3866,11 @@
    "view": "3D"
   },
   "E6": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.734,
     "el": 0,
@@ -3592,12 +3884,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3678,6 +3972,11 @@
    "view": "Facing Garden window"
   },
   "E7": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": -2.734,
     "el": 0,
@@ -3691,12 +3990,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3777,6 +4078,11 @@
    "view": "Facing Garden window"
   },
   "E8": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 0.8,
@@ -3790,12 +4096,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window arch rise",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3845,6 +4153,11 @@
    "view": "3D"
   },
   "E9": {
+   "browse": {
+    "focus": null,
+    "page": 0,
+    "q": ""
+   },
    "cam": {
     "az": 0,
     "el": 1.571,
@@ -3858,12 +4171,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3914,6 +4229,12 @@
    "view": "Plan"
   },
   "F1": {
+   "browse": {
+    "at": null,
+    "focus": null,
+    "page": 0,
+    "q": "tide"
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -3927,12 +4248,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -3978,6 +4301,12 @@
    "view": "3D"
   },
   "F2": {
+   "browse": {
+    "at": null,
+    "focus": null,
+    "page": 0,
+    "q": "tide"
+   },
    "cam": {
     "az": 0.72,
     "el": 0.6,
@@ -3991,12 +4320,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -4042,6 +4373,12 @@
    "view": "3D"
   },
   "F3": {
+   "browse": {
+    "at": null,
+    "focus": null,
+    "page": 0,
+    "q": "tide"
+   },
    "cam": {
     "az": 3.414,
     "el": 0,
@@ -4055,12 +4392,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -4139,6 +4478,12 @@
    "view": "Facing Tide Study I on the Rotunda wall"
   },
   "F4": {
+   "browse": {
+    "at": null,
+    "focus": null,
+    "page": 0,
+    "q": "tide"
+   },
    "cam": {
     "az": 3.414,
     "el": 0,
@@ -4152,12 +4497,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -4236,6 +4583,12 @@
    "view": "Facing Tide Study I on the Rotunda wall"
   },
   "F5": {
+   "browse": {
+    "at": null,
+    "focus": null,
+    "page": 0,
+    "q": "tide"
+   },
    "cam": {
     "az": 6.283,
     "el": 0,
@@ -4249,12 +4602,14 @@
     ]
    },
    "crumbs": [],
+   "expand": false,
    "flatHold": null,
    "hover": null,
    "kind": "face",
    "knife": null,
    "lastUndo": null,
    "parked": null,
+   "preview": null,
    "realized": {
     "aspect": 0.9832134292565947,
     "dir": [
@@ -4412,6 +4767,21 @@
     "w": 3.6,
     "wall": "rotunda",
     "y": 1.9
+   },
+   {
+    "by": "Ida Voss",
+    "h": 1.6,
+    "id": "panel",
+    "lastAt": {
+     "x": -2.4,
+     "z": 3
+    },
+    "name": "Unplaced panel",
+    "paint": "pears",
+    "s": 0,
+    "w": 1.3,
+    "wall": null,
+    "y": 1.6
    }
   ],
   "ceilings": [
@@ -5853,7 +6223,7 @@
    }
   ]
  },
- "fixtureHash": "650e93c4",
+ "fixtureHash": "c9c8929a",
  "journeys": [
   {
    "id": "A",

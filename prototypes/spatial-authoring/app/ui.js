@@ -7,7 +7,8 @@ import * as T from './tasks.js';
 import * as nav from './navigation.js';
 import {
   memberOf, viewKind, viewLabel, lidRelations, gapOptions, lookWord, knifeCut, editOnce,
-  applyOpening, applyWallTop, applyCeiling, setTopForm, setProfile, deg, whereIs, crumbs,
+  applyOpening, applyWallTop, applyCeiling, setTopForm, setProfile, deg, whereIs, crumbs, declareRepair,
+  isUnresolved,
 } from './actions.js';
 
 const $ = (s) => document.querySelector(s);
@@ -78,7 +79,7 @@ function renderStageTools() {
 
 const BADGE = {
   flat: ['laid flat', 'moved'], opened: ['unrolled', 'moved'], facing: ['facing', 'quiet'], aside: ['set aside', 'quiet'], cut: ['cut', 'cut'],
-  away: ['opened away', 'away'], beyond: ['beyond depth', 'away'], lifted: ['lifted', 'moved'],
+  away: ['opened away', 'away'], beyond: ['beyond depth', 'away'], lifted: ['lifted', 'moved'], unresolved: ['unresolved', 'away'],
 };
 
 function badgeFor(id) {
@@ -169,6 +170,7 @@ function renderIndex() {
     const rel = relationsOf(S.sel);
     if (rel.length) html += `<div class="ix-group">Around it</div>` + rel.map((r) => `<div class="ix-rel"><span class="dot"></span>${r}</div>`).join('');
   }
+  html += unresolvedRows();
   if (el._html !== html) { el.innerHTML = html; el._html = html; }
 }
 
@@ -228,6 +230,9 @@ function inContext(r, f) {
   if (!f || f.kind === 'rel') return true;
   if (f.kind === 'records') return !r.geom;
   if (!r.geom) return false;
+  // An unresolved reference is a fact about the document, not about a place: it stays listed in every
+  // context, exactly as the Index shows it in every context.
+  if (isUnresolved(r.id)) return true;
   return placesOfThing(r.id).some((p) => p.id === f.id);
 }
 
@@ -247,7 +252,7 @@ export function browseShown() {
 
 // D's tag vocabulary, kept: the reason a subject may not be on screen, in the same words the resolver
 // returns to the Card, the Index and the beacon — one reason, three surfaces.
-const WHERE_TAG = { visible: 'in view', off: 'out of frame', behind: 'hidden behind', beyond: 'beyond depth', away: 'opened away', aside: 'set aside', cut: 'cut', flat: 'laid flat', opened: 'unrolled', facing: 'facing', lifted: 'lifted' };
+const WHERE_TAG = { visible: 'in view', off: 'out of frame', behind: 'hidden behind', beyond: 'beyond depth', away: 'opened away', aside: 'set aside', cut: 'cut', flat: 'laid flat', opened: 'unrolled', facing: 'facing', lifted: 'lifted', unresolved: 'unresolved' };
 
 // A row's verbs come from the record and the reading, not from a catalogue. Nothing is offered that
 // could not act on the *named* record, and a record with no geometry is never promised a flight.
@@ -255,6 +260,12 @@ function browseVerbs(r, w) {
   const t = r.geom ? thing(r.id) : null;
   const out = [`<button class="fx-v sel" data-act="sel" data-id="${r.id}" title="Select ${esc(r.name)} — the identity only: no view move, nothing opens">Select</button>`];
   if (!r.geom) return out.join('');
+  // No host, no geometry verbs: the row offers the one operation that can resolve the reference, and
+  // none of the verbs that would need a wall to exist first.
+  if (isUnresolved(r.id)) {
+    out.push(`<button class="fx-v" data-act="look-repair" data-id="${r.id}" title="Name the wall the ${esc(r.name)} belongs on — nothing is guessed">Repair</button>`);
+    return out.join('');
+  }
   const hostless = t && (t.kind === 'objects');
   if (t && !hostless) out.push(`<button class="fx-v" data-act="open-loc" data-id="${r.id}" title="Open the place that holds the ${esc(t.item.name)} — the specialist work, on the named record">Open location</button>`);
   if (w.state === 'off' || w.state === 'behind') out.push(`<button class="fx-v" data-act="lookat" data-id="${r.id}" title="Bring it into view from where you stand — nothing opens, the selection does not change">Bring into view</button>`);
@@ -275,6 +286,17 @@ function browseRow(r) {
     <span class="fx-acts">${browseVerbs(r, w || { state: 'none' })}</span>
     ${r.geom ? '' : `<span class="fx-note">no location here — kept in the ${esc(r.where)}; Select only, nothing to fly to</span>`}
   </li>`;
+}
+
+// The reference warning belongs to the document, not to a place: it is shown whatever the Index is
+// showing, so an unresolved reference is never hidden by which context happens to be focused.
+function unresolvedRows() {
+  const loose = ctx.museum.art.filter((a) => !W(a.wall));
+  if (!loose.length) return '';
+  return `<div class="ix-group">Unresolved references</div>` + loose.map((a) => `<div class="ix-row warn${S.sel === a.id ? ' sel' : ''}">
+    <button class="ix-go" data-sel="${a.id}" aria-selected="${S.sel === a.id}" title="${esc(a.name)} has no wall reference — select it and Repair names the wall">
+      <span class="glyph art"></span><span class="ix-name">${esc(a.name)}</span><span class="ix-note">no wall reference · Repair from its Card</span>
+    </button></div>`).join('');
 }
 
 function emptyBrowse() {
@@ -348,7 +370,8 @@ function cardHead(kicker, title, sub) {
 
 // What the subject itself offers. The verbs come from the fixture's own capabilities, so a bench
 // offers nothing and a curved wall offers unrolling: no tool catalogue, and no button that cannot act.
-// Spatial work and in-place measurement are different promises, so they are offered separately.
+// Spatial work, in-place measurement and work about a reference are different promises, so they are
+// offered separately — an unresolved reference offers Repair, and no Look that would need a host.
 function looks(id) {
   const caps = T.capabilities(id).filter((c) => c !== 'reveal');
   if (!caps.length) return '';
@@ -356,10 +379,51 @@ function looks(id) {
   const verb = (c) => `<button class="verb" data-act="look-${c}" data-id="${id}" title="${esc(T.VERB[c])} ${esc(name)}"><span class="vg ${c}"></span>${esc(T.VERB[c])}</button>`;
   const spatial = caps.filter((c) => T.SPATIAL.includes(c));
   const inPlace = caps.filter((c) => T.IN_PLACE.includes(c));
+  const reference = caps.filter((c) => T.REFERENCE.includes(c));
   let html = '';
+  if (reference.length) html += `<div class="c-sec">Reference</div><div class="c-acts">${reference.map(verb).join('')}<span class="c-note">the fixture leaves this unresolved — nothing is guessed</span></div>`;
   if (spatial.length) html += `<div class="c-sec">Look</div><div class="c-acts">${spatial.map(verb).join('')}</div>`;
   if (inPlace.length) html += `<div class="c-sec">In place</div><div class="c-acts">${inPlace.map(verb).join('')}<span class="c-note">no view moves, nothing opens</span></div>`;
   return html;
+}
+
+// Owner / Source / Reach, shown where the decision is actually made: which document owns the fact, where
+// the value really comes from, and what changing it touches. Only supported facts — no shared-use
+// counts, no source forks and no instance-only choices, because no such model exists in this prototype.
+function facts(id) {
+  const t = thing(id);
+  if (!t) return null;
+  const host = t.kind === 'art' ? W(t.item.wall) : null;
+  if (t.kind === 'walls') return {
+    owner: 'Layout document — the museum’s walls, and the openings they carry',
+    source: 'prototype-local fixture · <b>app/model.js</b>, no production schema behind it',
+    reach: 'this wall only — its top and its own openings. The ceilings that meet it keep their own planes',
+  };
+  if (t.kind === 'openings') return {
+    owner: 'Layout document — an opening belongs to the wall that carries it',
+    source: 'prototype-local fixture · <b>app/model.js</b>, no production schema behind it',
+    reach: `this opening only — the ${esc(t.wall.name)} keeps its own geometry, and no other wall is touched`,
+  };
+  if (t.kind === 'ceilings') return {
+    owner: 'Layout document — ceiling regions, their closure or suspension, and their planes',
+    source: 'prototype-local fixture · <b>app/model.js</b>, no production schema behind it',
+    reach: 'this region only — it overlaps its gallery and owns none of it',
+  };
+  if (t.kind === 'art') return {
+    owner: 'Scene document — the artwork, and the wall it hangs on',
+    source: host ? 'prototype-local fixture · <b>app/model.js</b> — its stored size and its wall reference' : 'prototype-local fixture · <b>app/model.js</b> — its wall reference, unresolved',
+    reach: host ? `this artwork only — the ${esc(host.name)} is referenced, and never edited` : 'this artwork only — Repair writes one reference, and never the wall',
+  };
+  return null;
+}
+
+function factsHtml(id) {
+  const f = facts(id);
+  if (!f) return '';
+  return `<div class="c-sec">Who owns this fact <span class="det-n">at the field, not in the abstract</span></div><div class="own">`
+    + `<div class="own-row"><span class="own-k">Owner</span><span>${f.owner}</span></div>`
+    + `<div class="own-row"><span class="own-k">Source</span><span>${f.source}</span></div>`
+    + `<div class="own-row"><span class="own-k">Reach</span><span>${f.reach}</span></div></div>`;
 }
 
 // ----- the numbers of a subject, from one source -----
@@ -429,10 +493,12 @@ function numbersOf(id) {
     ];
   }
   if (t.kind === 'art' && typeof t.item.w === 'number') {
+    const w = W(t.item.wall);
+    // With no host there is no station to report: the panel's own size is real, where it hangs is not.
     return [{ sec: 'Measured', items: [
       { field: ['Width', { type: 'ro' }, t.item.w, { readonly: true }] },
       { field: ['Height', { type: 'ro' }, t.item.h, { readonly: true }] },
-      { field: ['Hangs at', { type: 'ro' }, t.item.s, { readonly: true, hint: `along the ${W(t.item.wall)?.name || 'wall'}` }] },
+      ...(w ? [{ field: ['Hangs at', { type: 'ro' }, t.item.s, { readonly: true, hint: `along the ${w.name}` }] }] : []),
     ] }];
   }
   return [];
@@ -461,9 +527,16 @@ function detailRows(id) {
   const sel = (target) => ({ act: 'sel', id: target, label: 'Select', title: `Select ${labelOf(target)}` });
   const face = (target) => ({ act: 'look-face', id: target, label: 'Look', title: `Face ${labelOf(target)}` });
   const focusTop = (wall) => ({ act: 'focus', id: wall, focus: 'wall-top', label: 'Focus top', title: `Focus the ${labelOf(wall)} top for the next work — the selection does not change` });
+  const repair = (target) => ({ act: 'look-repair', id: target, label: 'Repair', title: `Name the wall the ${labelOf(target)} belongs on — nothing is guessed` });
   const out = [];
   if (t.kind === 'openings') out.push({ label: 'Host', name: t.wall.name, acts: [sel(t.wall.id), face(t.wall.id), focusTop(t.wall.id)] });
-  if (t.kind === 'art') out.push({ label: 'Hangs on', name: W(t.item.wall)?.name || t.item.wall, acts: [sel(t.item.wall), face(t.item.wall), focusTop(t.item.wall)] });
+  if (t.kind === 'art') {
+    const w = W(t.item.wall);
+    // The relation is named as it really is. Unresolved, it offers the one operation that can resolve it
+    // — Repair — and none of the verbs that would need a host to exist first.
+    if (w) out.push({ label: 'Hangs on', name: w.name, acts: [sel(w.id), face(w.id), focusTop(w.id)] });
+    else out.push({ label: 'Wall reference', name: 'unresolved', acts: [repair(t.item.id)] });
+  }
   if (t.kind === 'walls') {
     for (const a of ctx.museum.art.filter((x) => x.wall === t.item.id)) out.push({ label: 'Attached here', name: a.name, acts: [sel(a.id), face(a.id)] });
     for (const c of ctx.museum.ceilings) {
@@ -486,7 +559,7 @@ function where(id) {
   const r = whereIs(id);
   const t = thing(id);
   const s = S.session;
-  const act = (a, label, primary) => `<button class="w-act${primary ? ' primary' : ''}" data-act="${a}">${label}</button>`;
+  const act = (a, label, primary, target) => `<button class="w-act${primary ? ' primary' : ''}" data-act="${a}"${target ? ` data-id="${target}"` : ''}>${label}</button>`;
   const hostWord = t.kind === 'ceilings' ? 'Lift it' : t.kind === 'walls' ? 'Face it' : 'Go to its wall';
   const block = (cls, text, acts = []) => `<div class="where ${cls}"><span class="dot"></span><div><span>${text}</span>${acts.length ? `<div class="w-acts">${acts.join('')}</div>` : ''}</div></div>`;
   if (r.state === 'beyond' || r.state === 'away') {
@@ -497,6 +570,9 @@ function where(id) {
     if (t.kind !== 'objects') acts.push(act('gohost', hostWord));
     return block('warn', `<b>${r.state === 'beyond' ? 'Beyond depth' : 'Opened away'}</b> — ${esc(r.reason)}. Still selected; nothing was deleted.`, acts);
   }
+  // An unresolved reference is not a view problem: there is nothing to look at, fly to or reveal. The
+  // reason is stated, and the one real operation is offered on the record it belongs to.
+  if (r.state === 'unresolved') return block('quiet', `<b>Unresolved reference</b> — no wall is named for it in the source, so nothing here is a host: the marker on the drawing is where it was last seen, not where it hangs. It keeps its own size; only its wall is missing.`, [act('look-repair', 'Repair', true, id)]);
   if (r.state === 'aside') return block('quiet', `Set aside while you face the ${esc(s.wall.name)}.`, t.kind === 'walls' || t.kind === 'openings' || t.kind === 'art' ? [act('faceit', 'Face it instead')] : []);
   if (r.state === 'off') return block('quiet', `Out of frame — ${esc(r.reason)}.`, [act('lookat', 'Bring it into view', true)]);
   if (r.state === 'behind') return block('quiet', `Hidden ${esc(r.reason)}.`, [act('lookat', 'Look at it', true), ...(t.kind !== 'objects' && t.kind !== 'ceilings' ? [act('faceit', 'Face it')] : [])]);
@@ -545,6 +621,7 @@ function cardWall(w) {
   html += where(w.id);
   html += looks(w.id);
   html += numbersHtml(numbersOf(w.id));
+  html += factsHtml(w.id);
   const rel = wallCeilingNote(w);
   if (rel) html += rel;
   if (w.openings.length) {
@@ -569,6 +646,7 @@ function cardOpening(o, w) {
   html += where(o.id);
   html += looks(o.id);
   html += numbersHtml(numbersOf(o.id), { secs: false });
+  html += factsHtml(o.id);
   html += `<div class="c-foot">The handles on the drawing and these fields are the same numbers — change either, one Undo step.</div>`;
   html += details(o.id);
   return html;
@@ -581,6 +659,7 @@ function cardCeiling(c) {
   html += `<div class="c-sec">Relationship</div>`;
   html += seg('Relationship', { type: 'rel', id: c.id }, [['closure', 'Closes the room'], ['suspended', 'Suspended']], c.rel);
   html += numbersHtml(numbersOf(c.id));
+  html += factsHtml(c.id);
   const rels = lidRelations(c);
   if (rels.length) {
     html += `<div class="c-sec">Where it meets walls</div><ul class="rels">${rels.map((r) => `<li class="${r.status}"><span class="dot"></span>${esc(r.wall.name)}<span class="rel-st">${r.status === 'gap' ? `${Math.round(r.gap * 100)} cm gap` : r.status === 'intended' ? 'kept open' : 'meets'}</span></li>`).join('')}</ul>`;
@@ -594,6 +673,7 @@ function cardScene(t) {
   let html = cardHead(`${t.kind === 'art' ? 'Artwork' : 'Object'} · Scene`, it.name, it.by ? esc(it.by) : '');
   html += where(it.id);
   html += looks(it.id);
+  html += factsHtml(it.id);
   html += `<div class="relation quiet"><span class="dot"></span><span>Staged content lives in the Scene document. Here it is passive context — edit it in <b>Arrange</b>.</span></div>`;
   html += details(it.id);
   return html;
@@ -641,6 +721,12 @@ function precisionGroups() {
   const t = S.task;
   if (!t) return [];
   if (t.kind === 'dims') return numbersOf(t.subject);
+  // The declared candidate: values the editor is naming here, not values the source already has. They go
+  // through the same cast as every other number, and the fixture's own validation still decides.
+  if (t.kind === 'repair') return [{ sec: 'Declared candidate', items: [
+    { field: ['Station along the wall', { type: 'repair', key: 's' }, t.params.s, { hint: 'from the wall’s own start — declared here, written only on accept' }] },
+    { field: ['Centre height', { type: 'repair', key: 'y' }, t.params.y, { hint: 'the panel’s centre above the floor' }] },
+  ] }];
   const s = S.session;
   if (!s) return [];
   if (s.kind === 'face' && s.opening) return numbersOf(s.opening);
@@ -673,6 +759,17 @@ function renderInstrument() {
     if (!cut) html += `<span class="st-meta">Press and drag across the museum in Plan or 3D. Nothing opens until you say so.</span>`;
     else html += `<span class="st-title">${esc(lookWord(cut))}</span>${depthCtl(cut.depth)}<button class="st-btn" data-act="knife-flip">Look the other way <kbd>Tab</kbd></button><button class="st-btn primary" data-act="knife-open">Open it <kbd>↵</kbd></button>`;
     html += `<button class="st-btn ghost" data-act="knife-cancel">Cancel <kbd>Esc</kbd></button>`;
+  } else if (S.task?.kind === 'repair') {
+    // The reference work: the wall is chosen explicitly and the station and height are declared —
+    // nothing is inferred from the marker or from proximity. Accept writes one validated edit; leaving
+    // unresolved writes nothing, and no verb here acts on any other subject.
+    const p = S.task.params;
+    const w = W(p.wall);
+    html = `<span class="st-kind">Unresolved reference</span><span class="st-title">${esc(d ? d.title : 'Repair')}</span>`;
+    html += `<span class="st-meta">${w ? `candidate · ${esc(w.name)} · station ${fmt(p.s)} · centre ${fmt(p.y)}` : 'pick the wall it belongs on — it is never inferred'}</span>`;
+    html += `<span class="st-seg rel" role="group" aria-label="Compatible walls">${ctx.museum.walls.map((x) => `<button class="${x.id === p.wall ? 'on' : ''}" data-act="repair-pick" data-id="${x.id}" aria-pressed="${x.id === p.wall}">${esc(x.name.replace(/ wall$/, ''))}</button>`).join('')}</span>`;
+    if (w) html += `<button class="st-btn primary" data-act="repair-accept" title="Validate against the fixture and write one edit — one Undo entry">Accept <kbd>↵</kbd></button>`;
+    html += `<button class="st-btn close" data-act="repair-leave" title="Leave the reference exactly as the fixture has it">Leave unresolved <kbd>Esc</kbd></button>`;
   } else if (!s || (S.task && S.task.kind !== s.kind)) {
     // Work in hand that is not the reading's own surface: in-place measurement, and later a repair.
     // One active task surface — the reading itself is untouched underneath and comes back with it.
@@ -720,7 +817,7 @@ function renderInstrument() {
   }
   // One row always, and the numbers when the work in hand is the numbers (in-place measurement) or
   // when Precision has been asked for. Never the whole subject: only what this work is about.
-  const showNumbers = !!S.task && (S.task.kind === 'dims' || !!S.task.precision);
+  const showNumbers = !!S.task && (S.task.kind === 'dims' || S.task.kind === 'repair' || !!S.task.precision);
   const prec = showNumbers ? precisionHtml() : '';
   const body = `<div class="st-row">${html}</div>${prec}`;
   el.classList.toggle('prec', !!prec);
@@ -929,6 +1026,9 @@ export function updateWhere() {
 // ---------------------------------------------------------------- fields shared by Card and on-drawing numbers
 
 export function fieldValue(spec) {
+  // A declared candidate is not a source value: it lives in the work in hand, and the source is only
+  // touched by accepting it.
+  if (spec.type === 'repair') return S.task?.params?.[spec.key] ?? 0;
   if (spec.type === 'op') return thing(spec.id).item[spec.key];
   if (spec.type === 'top') return W(spec.wall).top[spec.key];
   if (spec.type === 'ceil') {
@@ -941,6 +1041,7 @@ export function fieldValue(spec) {
 
 export function applyField(spec, v) {
   if (!Number.isFinite(v)) return 'Type a number in metres';
+  if (spec.type === 'repair') return declareRepair(spec.key, v);
   if (spec.type === 'op') {
     const o = thing(spec.id).item;
     const names = { w: 'width', sill: 'sill', head: 'head', rise: 'arch rise', s: 'position' };

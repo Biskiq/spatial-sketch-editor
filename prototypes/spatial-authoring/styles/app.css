@@ -524,6 +524,8 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .vg.up { border-bottom: 3px solid var(--ochre); }
 .vg.up::after { content: '↑'; position: absolute; inset: -4px 0 0; text-align: center; color: var(--ochre); font-weight: 700; }
 .vg.cut { background: linear-gradient(90deg, transparent 40%, var(--ochre) 40% 60%, transparent 60%); }
+.vg.repair { border: 2px dashed var(--coral); border-radius: 2px; }
+.vg.repair::after { content: ''; position: absolute; left: 50%; top: 3px; bottom: 3px; width: 2px; margin-left: -1px; background: var(--coral); }
 .vg.plan { border: 1.5px solid var(--ink-2); }
 .vg.three { border: 1.5px solid var(--ink-2); transform: skewY(-12deg); }
 .pseg { display: flex; background: var(--recess); border-radius: 3px; padding: 2px; }
@@ -563,6 +565,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .rels li { display: flex; gap: 8px; align-items: flex-start; color: var(--ink-2); }
 .rels .dot { width: 7px; height: 7px; border-radius: 50%; background: #8FA59C; flex: none; margin-top: 4px; }
 .rels li .rel-st { margin-left: auto; font-family: var(--mono); font-stretch: 78%; white-space: nowrap; }
+/* Owner / Source / Reach: three named rows at the edit decision, in the Card's own voice. */
+.own { display: grid; gap: 4px; font-size: var(--tsm); color: var(--ink-2); }
+.own-row { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.own-k { font: 600 var(--txs) var(--ui); color: var(--ink-3); }
+.own-row b { color: var(--ink); font-weight: 600; }
+/* An unresolved reference is a document fact, not a warning about the view: quiet, at rest, always there. */
+.ix-row.warn { border-left: 2px solid var(--coral); margin: 2px 0 0; padding-left: 6px; color: var(--ink-2); }
+.ix-row.warn .ix-note { font-size: var(--t2xs); color: var(--coral-ink); opacity: .9; }
 .rels .gap .dot { background: var(--coral); }
 .rels .gap { color: var(--coral-ink); }
 .rels .intended .dot { background: var(--sky-deep); }

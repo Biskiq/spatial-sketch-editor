@@ -36,7 +36,10 @@ export function capabilities(id) {
     if (t.wall && t.wall.kind === 'arc') out.push('unroll');
     out.push('dims');
   } else if (t.kind === 'art') {
-    out.push('face');
+    // A hanging artwork's Look is the wall it hangs on. With no wall reference there is nothing to face
+    // and nothing to fly to, so the work it offers is Repair — not a guessed host.
+    if (t.item.wall) out.push('face');
+    else out.push('repair');
     if (typeof t.item.w === 'number' && typeof t.item.h === 'number') out.push('dims');
   } else if (t.kind === 'ceilings') {
     out.push('lift', 'lookup', 'dims');
@@ -55,12 +58,15 @@ export const VERB = {
   lookup: 'Look up',
   dims: 'Measure',
   reveal: 'Reveal',
+  repair: 'Repair',
 };
 
 // The capabilities that do real spatial work, as opposed to the in-place measurement task. The Card
 // keeps them in separate sections so "Look" never means "show me the numbers".
 export const SPATIAL = ['face', 'unroll', 'lift', 'lookup'];
 export const IN_PLACE = ['dims'];
+// Work about a reference itself: neither a standpoint nor a measurement — a second kind of decision.
+export const REFERENCE = ['repair'];
 
 // ----- the active task ---------------------------------------------------
 

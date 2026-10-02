@@ -737,6 +737,12 @@ function doAct(a, el) {
         : 'Details collapsed — disclosure only: the subject, the view and the work in hand are as they were', 'view');
       break;
     case 'focus': focusRelation(el.dataset.id, el.dataset.focus || 'wall-top'); break;
+    // ----- Repair: an unresolved reference -----
+    // The wall is picked explicitly; the station and height are declared; acceptance is one validated
+    // edit; leaving it unresolved writes nothing. None of these depends on the selection.
+    case 'repair-pick': A.pickRepairWall(el.dataset.id); break;
+    case 'repair-accept': A.acceptRepair(); break;
+    case 'repair-leave': A.leaveRepair(); break;
     case 'reveal': A.toggleReveal(el.dataset.id ?? S.sel); requestUI(); break;
     case 'plan': A.goPlan(); break;
     case '3d': A.go3D(); break;
@@ -981,7 +987,12 @@ window.addEventListener('keydown', (e) => {
     case 'm': A.toggleMirror(); requestUI(); break;
     case 'p': if (S.task) A.setPrecision(!S.task.precision); break;
     case 'g': doAct('grid'); break;
-    case 'enter': if (S.knife) A.commitKnife(); break;
+    case 'enter':
+      // Enter opens the drawn line, or accepts the declared candidate. A field keeps its own Enter: the
+      // window handler never sees a key that belongs to an input.
+      if (S.knife) A.commitKnife();
+      else if (S.task?.kind === 'repair' && S.task.params.wall) A.acceptRepair();
+      break;
     case 'tab': if (S.knife) { e.preventDefault(); A.flipKnife(); } break;
     case '[': A.trailStep(-1); break;
     case ']': A.trailStep(1); break;
@@ -1064,6 +1075,9 @@ const QA = {
       task: S.task ? { kind: S.task.kind, subject: S.task.subject, target: S.task.target, focus: S.task.focus, depth: S.task.depth, instrument: !!S.task.instrument } : null,
       browse: { q: S.browse.q, focus: S.browse.focus ? { ...S.browse.focus } : null, page: S.browse.page, at: S.browse.at },
       expand: !!S.expand,
+      // The declared candidate, as the drawing has it: a preview is never an accepted source, so QA can
+      // read what is drawn without reading the model.
+      preview: ctx.stage.previewPlace ? { ...ctx.stage.previewPlace } : null,
       taskTitle: T.describe()?.title ?? null, parked: S.parked ? { kind: S.parked.kind, subject: S.parked.subject } : null, flatHold: nav.hold(),
       cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
       realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),
@@ -1120,6 +1134,7 @@ function boot() {
     lift: (o) => A.lift(o?.id ?? S.sel),
     lookup: (o) => A.lookUp(o?.id ?? S.sel),
     dims: (o) => A.dimensionTask(o?.id ?? S.sel),
+    repair: (o) => A.repairTask(o?.id ?? S.sel),
     plan: () => A.goPlan(),
     three: () => A.go3D(),
   });

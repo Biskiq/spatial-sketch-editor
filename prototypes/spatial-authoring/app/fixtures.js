@@ -97,7 +97,8 @@ export function browseRecords(museum) {
   for (const c of museum.ceilings) out.push({ id: c.id, name: c.name, kind: c.rel === 'closure' ? 'Ceiling · closes the room' : 'Ceiling · suspended', where: listingOf(c.id, 'ceilings', museum), ref: c.ref, geom: true });
   for (const a of museum.art) {
     const w = wallOf(a.wall);
-    out.push({ id: a.id, name: a.name, kind: 'Artwork · Scene', where: `on the ${w ? w.name : a.wall}`, ref: '', geom: true });
+    // A reference the fixture leaves unresolved is labelled as such: the row never implies a host.
+    out.push({ id: a.id, name: a.name, kind: 'Artwork · Scene', where: w ? `on the ${w.name}` : 'unresolved wall reference', ref: '', geom: true });
   }
   for (const o of museum.objects) out.push({ id: o.id, name: o.name, kind: 'Object · Scene', where: listingOf(o.id, 'objects', museum), ref: '', geom: true });
   for (const r of METADATA) out.push({ ...r, geom: false });

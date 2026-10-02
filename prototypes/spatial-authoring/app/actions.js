@@ -6,7 +6,7 @@ import * as T from './tasks.js';
 import { onCancel, cancelProposal } from './cancel.js';
 import {
   frameAt, wallLength, maxTop, topAt, bbox, planeY, fmt, pointInPoly, modS, springOf, centroid,
-  validateOpening, validateWall, validateCeiling, byId,
+  validateOpening, validateWall, validateCeiling, validateArtPlacement, byId,
 } from './model.js';
 import { sectionCaps } from './geometry.js';
 import { metadataOf } from './fixtures.js';
@@ -18,6 +18,13 @@ export const rad = (d) => (d * Math.PI) / 180;
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const st = () => ctx.stage;
+
+// A reference the fixture itself leaves unresolved. Nothing anywhere may upgrade this into a host: the
+// last-seen locator is drawn, never read; a name or a nearby wall is never an answer.
+const unresolvedArt = (t) => (t?.kind === 'art' && !W(t.item.wall)
+  ? { why: 'its wall reference is unresolved', note: 'the marker is where it was last seen, not where it hangs' }
+  : null);
+export const isUnresolved = (id) => !!unresolvedArt(thing(id));
 const MUSEUM_BOX = { x0: -15.4, x1: 11.3, z0: -5.9, z1: 5.9 };
 
 // ---------------------------------------------------------------- standpoints
@@ -281,6 +288,8 @@ function resolveFace(id) {
   }
   if (t.kind === 'art') {
     const w = W(t.item.wall);
+    // No host, no walk: an unresolved reference is never faced by guessing a wall for it.
+    if (!w) return null;
     return { wall: w, sA: t.item.s, focusId: w.id, focusName: `${t.item.name} on the ${w.name}` };
   }
   return null;
@@ -364,7 +373,14 @@ KIND.face = {
 
 async function faceInner(id, opts = {}) {
   const r = resolveFace(id);
-  if (!r) { setStatus('Select a wall, an opening or an artwork to face it', 'info'); return; }
+  if (!r) {
+    const t = thing(id);
+    const u = unresolvedArt(t);
+    setStatus(u
+      ? `${t.item.name}: ${u.why} — name the wall it belongs on with Repair, from its Card`
+      : 'Select a wall, an opening or an artwork to face it', 'info');
+    return;
+  }
   const cur = S.session;
   const side = opts.side || 1;
   if (!opts.restore && cur?.kind === 'face' && cur.wallId === r.wall.id && cur.side === side) {
@@ -753,6 +769,10 @@ export function memberOf(id) {
   const s = S.session;
   const t = thing(id);
   if (!t) return { state: 'none' };
+  // An unresolved reference is not in any reading, any cut or any side: it has no place yet, and saying
+  // otherwise would be the host guess this fixture exists to catch.
+  const u = unresolvedArt(t);
+  if (u) return { state: 'unresolved', reason: `${u.why} — ${u.note}` };
   if (!s) return { state: 'in' };
   if (s.kind === 'face') {
     const w = s.wall;
@@ -834,6 +854,7 @@ export const openLocation = (id = S.sel) => run(async () => {
       : 'Select a wall, an opening, a ceiling or an artwork to open its location', 'info');
     return;
   }
+  if (unresolvedArt(t)) { await faceInner(id); return; }
   if (t.kind === 'ceilings') await liftInner(id);
   else if (t.kind === 'objects') setStatus(`${t.item.name} is staged content — no specialist depth in this prototype. Select it, or bring it into view`, 'info');
   else await faceInner(id);
@@ -844,6 +865,10 @@ export const openLocation = (id = S.sel) => run(async () => {
 export function worldOf(id) {
   const t = thing(id);
   if (!t) return null;
+  // Where it *is*: an unresolved reference has nowhere yet. Its last-seen locator is drawn by the
+  // Stage, and returning it here would let membership, the beacon and Look treat a display position as
+  // a real one.
+  if (unresolvedArt(t)) return null;
   if (t.kind === 'art') { const w = W(t.item.wall); const f = frameAt(w, t.item.s); const o = w.thick / 2 + 0.06; return [f.x + f.nx * o, t.item.y, f.z + f.nz * o]; }
   if (t.kind === 'openings') { const f = frameAt(t.wall, t.item.s); return [f.x, (t.item.sill + t.item.head) / 2, f.z]; }
   if (t.kind === 'walls') { const w = t.item; const f = frameAt(w, w.kind === 'arc' ? arcSNearCamera(w) : wallLength(w) / 2); return [f.x, maxTop(w) * 0.6, f.z]; }
@@ -856,8 +881,9 @@ export function whereIs(id) {
   const t = thing(id);
   if (!t) return { state: 'none' };
   const m = memberOf(id);
-  if (m.state === 'beyond' || m.state === 'away' || m.state === 'aside') return m;
+  if (m.state === 'unresolved' || m.state === 'beyond' || m.state === 'away' || m.state === 'aside') return m;
   const p = worldOf(id);
+  if (!p) return { ...m, state: 'unresolved', reason: 'it has no place in this museum yet' };
   const q = st().project(p);
   const pad = 20;
   if (q.behind || q.x < pad || q.y < pad || q.x > st().w - pad || q.y > st().h - pad) return { ...m, state: 'off', reason: 'outside the frame from where you stand' };
@@ -872,7 +898,13 @@ export function whereIs(id) {
 
 export const lookAt = (id = S.sel) => run(async () => {
   const t = thing(id);
-  const p = new V3(...worldOf(id));
+  const pos = worldOf(id);
+  if (!t || !pos) {
+    const u = unresolvedArt(t);
+    setStatus(u ? `There is nothing to bring into view — ${t.item.name}: ${u.why}` : 'Nothing to bring into view', 'info');
+    return;
+  }
+  const p = new V3(...pos);
   let az = st().cam.az;
   if (t.kind === 'art' || t.kind === 'openings') {
     const w = t.kind === 'art' ? W(t.item.wall) : t.wall;
@@ -1000,6 +1032,104 @@ export function dimensionTask(id = S.sel) {
   return S.task;
 }
 
+// ----- repair: a reference the fixture leaves unresolved -----
+// The panel's `wall` is explicitly null. Repair is its own work: it opens no reading and moves nothing,
+// it records the wall the editor explicitly picks and the station and height they declare, it draws the
+// declared candidate where it would hang, and it writes exactly one source edit on acceptance. Leaving
+// it unresolved writes nothing at all. Nothing here is inferred — not from the last-seen locator, not
+// from the nearest wall, not from a name: the only input that can resolve a reference is a chosen wall
+// plus values that pass the fixture's own validation.
+const artOf = (id) => ctx.museum.art.find((x) => x.id === id) || null;
+const round2 = (v) => Math.round(v * 20) / 20;
+
+function drawRepairPreview() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return null;
+  if (!t.params.wall) { ctx.stage.clearArtPreview(); return null; }
+  return ctx.stage.setArtPreview({ art: t.subject, wall: t.params.wall, s: t.params.s, y: t.params.y });
+}
+
+export function repairTask(id = S.sel) {
+  const t = thing(id);
+  if (!t || !T.capabilities(id).includes('repair')) return null;
+  if (S.task?.kind === 'repair' && S.task.subject === id) { endTaskInHand(); return null; }
+  T.begin({
+    kind: 'repair', subject: id,
+    target: { kind: 'reference', id, label: `${t.item.name} · wall reference` },
+    focus: { kind: 'reference', id, label: 'the unresolved wall reference' },
+    params: { wall: null, s: round2(t.item.s || 0), y: t.item.y },
+  });
+  setStatus(`${t.item.name} has no wall reference. Pick the wall it belongs on — the candidate is drawn, and nothing is written until you accept`, 'info');
+  ctx.ui();
+  return S.task;
+}
+
+// An explicit pick, checked against the fixture's own walls. The station defaults to the middle of the
+// wall that was chosen and the height to the panel's own stored value: both declared, both visible, and
+// neither of them read from the last-seen marker.
+export function pickRepairWall(wallId) {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  const w = W(wallId);
+  if (!w) return 'That is not a wall in this museum — pick one of the walls offered';
+  t.params = { ...t.params, wall: w.id, s: round2(wallLength(w) / 2) };
+  drawRepairPreview();
+  // The declared default is the middle of the wall, and it is checked like any other declared value:
+  // when the fixture refuses it, that is said out loud rather than nudged into something it likes.
+  const err = validateArtPlacement(w, artOf(t.subject), t.params);
+  setStatus(err
+    ? `Candidate: the ${w.name}. The middle of the wall would not take it — ${err}. Declare a station that clears it; nothing is written yet`
+    : `Candidate: the ${w.name}, station ${fmt(t.params.s)} along it and centre height ${fmt(t.params.y)}. Drawn where it would hang; nothing written`,
+    err ? 'refuse' : 'view');
+  ctx.ui();
+  return null;
+}
+
+// The declared values go through the same one cast as every other number, and are refused in place with
+// the fixture's reason: a refusal leaves the declaration and the preview exactly as they were.
+export function declareRepair(key, value) {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  if (!Number.isFinite(value)) return 'Type a number in metres';
+  const a = artOf(t.subject);
+  const w = W(t.params.wall);
+  if (!w) return 'Choose a wall first';
+  const next = { ...t.params, [key]: key === 's' ? round2(value) : Math.round(value * 100) / 100 };
+  const err = validateArtPlacement(w, a, next);
+  if (err) return err;
+  t.params = next;
+  drawRepairPreview();
+  setStatus(`${key === 's' ? 'Station' : 'Centre height'} ${fmt(t.params[key])} — declared and drawn, not yet written`, 'view');
+  ctx.ui();
+  return null;
+}
+
+// Acceptance: one validated source edit, one Undo entry, and the work ends because the reference it was
+// about is resolved. A refusal changes nothing and leaves the candidate standing.
+export function acceptRepair() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  const a = artOf(t.subject);
+  const w = W(t.params.wall);
+  const err = editOnce(`Repaired the wall reference of the ${a.name}`, () => applyArtPlacement(a.id, { wall: t.params.wall, s: t.params.s, y: t.params.y }));
+  if (err) { setStatus(`Refused — ${err}. Nothing changed.`, 'refuse'); ctx.ui(); return err; }
+  endTaskInHand();
+  setStatus(`The ${a.name} now hangs on the ${w.name} — one Undo entry puts the reference back`, 'edit');
+  ctx.ui();
+  return null;
+}
+
+// The other honest ending, and the only one Esc needs: the reference stays exactly as the fixture has it.
+export function leaveRepair() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return false;
+  const a = artOf(t.subject);
+  endTaskInHand();
+  setStatus(`${a ? a.name : 'The reference'} stays unresolved — nothing was written, and the marker is still where it was last seen`, 'info');
+  ctx.ui();
+  return true;
+}
+
 // The reading in hand always has its task. Dismissing overlay work (an in-place measurement, later a
 // repair) returns the seam to the reading underneath it, and an invocation that finds the reading
 // already open records its work rather than leaving the task stale. The reading itself is untouched:
@@ -1034,6 +1164,9 @@ export function resumeReadingTask() {
 // own task, so the Instrument that reappears is never a surface without a task behind it.
 export function endTaskInHand() {
   T.end();
+  // Unaccepted work does not outlive the work it belonged to: a declared candidate is taken off the
+  // drawing here, on every exit path, whether the work was left unresolved or something replaced it.
+  ctx.stage?.clearArtPreview();
   resumeReadingTask();
   ctx.ui();
 }
@@ -1173,7 +1306,7 @@ export function ceilingForSelection() {
   const t = thing(S.sel);
   if (!t) return 'longc';
   if (t.kind === 'ceilings') return t.item.id;
-  const g = t.item.gallery || (t.wall && t.wall.gallery) || (t.kind === 'art' && W(t.item.wall).gallery);
+  const g = t.item.gallery || (t.wall && t.wall.gallery) || (t.kind === 'art' && W(t.item.wall)?.gallery);
   return g === 'rotunda' ? 'rotc' : 'longc';
 }
 
@@ -1283,6 +1416,21 @@ function afterWall(id) {
   st().refreshWall(id);
   st().capsDirty = true;
   if (S.session?.kind === 'section') refreshSection();
+}
+
+// A wall-attached artwork's reference, through the one validated edit path: the wall the editor chose,
+// the declared station and height, all checked by the fixture before anything is written.
+export function applyArtPlacement(id, place) {
+  const a = artOf(id);
+  if (!a) return 'Not an artwork';
+  const w = W(place.wall);
+  const err = validateArtPlacement(w, a, place);
+  if (err) return err;
+  a.wall = w.id;
+  a.s = w.closed ? modS(w, place.s ?? 0) : place.s;
+  a.y = place.y;
+  afterWall(w.id);
+  return null;
 }
 
 export function applyOpening(id, patch) {
