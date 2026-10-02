@@ -1,4 +1,5 @@
-import { S, ctx, W, C, thing, refOf } from './state.js';
+import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
+import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf } from './fixtures.js';
 import {
   wallLength, frameAt, fmt, maxTop, topAt, springOf, centroid, planeY, byId, FLOOR_Y, modS, bbox,
 } from './model.js';
@@ -24,6 +25,7 @@ export function renderUI() {
   renderHead();
   renderStageTools();
   renderIndex();
+  renderBrowse();
   renderCard();
   renderInstrument();
   renderStatus();
@@ -86,60 +88,84 @@ function badgeFor(id) {
   return b ? `<span class="state ${b[1]}">${b[0]}</span>` : '';
 }
 
+// Which relation is focused as local context — the point the next work will be about. Focus is not
+// identity: it never moves the selection, and Select never moves the focus.
+function focusNote(id) {
+  const f = S.browse.focus;
+  if (f?.kind !== 'rel' || f.at !== id) return '';
+  return f.what === 'wall-top' ? 'focused · the next work is about its top' : 'focused · the next work is about it';
+}
+
 function indexRow(id, glyph, opts = {}) {
   const t = thing(id);
   if (!t) return '';
   const verbs = opts.noVerbs ? '' : T.capabilities(id)
     .filter((c) => c !== 'reveal')
     .map((c) => `<button class="ix-verb" data-act="look-${c}" data-id="${id}" title="${esc(T.VERB[c])} · ${esc(t.item.name)}">${esc(T.VERB[c])}</button>`).join('');
-  return `<div class="ix-row${S.sel === id ? ' sel' : ''}${opts.cls ? ' ' + opts.cls : ''}">
+  const note = [opts.note, focusNote(id)].filter(Boolean).join(' · ');
+  return `<div class="ix-row${S.sel === id ? ' sel' : ''}${focusNote(id) ? ' focused' : ''}${opts.cls ? ' ' + opts.cls : ''}">
     <button class="ix-go" data-sel="${id}" aria-selected="${S.sel === id}">
-      <span class="glyph ${glyph}"></span><span class="ix-name">${esc(t.item.name)}</span><span class="ix-ref">${esc(refOf(id))}</span>
+      <span class="glyph ${glyph}"></span><span class="ix-name">${esc(t.item.name)}</span><span class="ix-ref">${esc(refOf(id))}</span>${note ? `<span class="ix-note">${esc(note)}</span>` : ''}
     </button>${badgeFor(id)}${verbs}</div>`;
 }
 
-// Which place are we in? Derived from the current subject's gallery when there is one: the index is
-// about where you are, and a shared bound may legitimately appear in two places.
-function placeOf(id) {
+// Which place are we in? The explicit relations first (a shared bound is listed by both places),
+// then the subject's own declared place. The Index is about where you are — the selection rides along.
+function placeFor(id) {
   const t = thing(id);
   if (!t) return null;
   const g = t.item.gallery || t.wall?.gallery || (t.kind === 'art' ? W(t.item.wall)?.gallery : null);
-  return g ? byId(ctx.museum.galleries, g) : null;
+  const own = g ? PLACES.find((p) => p.id === g) : null;
+  if (own) return own;
+  const direct = placesOfThing(id);
+  return direct[0] || null;
+}
+
+// The name of a place, for the shell: a context chip, an announcement. Never an identity.
+export const placeNameOf = (id) => placeOf(id)?.name || id;
+
+function sharedNoteFor(wid, place) {
+  const others = placesOfBound(wid).filter((p) => p.id !== place.id);
+  return others.length ? `shared bound · also in the ${others.map((p) => p.name).join(' and the ')}` : '';
 }
 
 function renderIndex() {
   const el = $('#index');
   if (!el) return;
-  const sel = thing(S.sel);
-  const place = placeOf(S.sel);
+  const f = S.browse.focus;
+  const focused = f?.kind === 'place' ? placeOf(f.id) : null;
+  const place = focused || (S.sel ? placeFor(S.sel) : null);
+  const selRecord = S.sel ? metadataOf(S.sel) : null;
   let html = '';
-  if (place) {
-    html += `<div class="ix-head"><span class="ix-title">${esc(place.name)}</span><span class="ix-place">${place.ref}</span></div>`;
-    const walls = ctx.museum.walls.filter((w) => w.gallery === place.id);
-    const ceils = ctx.museum.ceilings.filter((c) => c.gallery === place.id);
-    const art = ctx.museum.art.filter((a) => W(a.wall)?.gallery === place.id);
-    const objs = ctx.museum.objects.filter((o) => (place.id === 'rotunda' ? o.x > 0 : o.x <= 0));
+  if (f?.kind === 'records' || (selRecord && !focused)) {
+    html += recordsIndex();
+  } else if (place) {
+    html += `<div class="ix-head"><button class="ix-title" data-act="place" data-id="${place.id}" title="Focus this place — the context changes, the selection does not">${esc(place.name)}</button><span class="ix-place">${place.ref}</span>${focused ? `<span class="ix-note">focused · context, not selection</span>` : ''}</div>`;
     html += `<div class="ix-group">Bounds and openings</div>`;
-    for (const w of walls) {
-      html += indexRow(w.id, w.kind === 'arc' ? 'arc' : 'wall');
+    for (const wid of place.bounds) {
+      const w = W(wid);
+      if (!w) continue;
+      html += indexRow(w.id, w.kind === 'arc' ? 'arc' : 'wall', { note: sharedNoteFor(wid, place) });
       for (const o of w.openings) html += indexRow(o.id, 'open', { cls: 'sub' });
     }
     html += `<div class="ix-group">Ceilings</div>`;
-    for (const c of ceils) html += indexRow(c.id, c.rel === 'suspended' ? 'ceil susp' : 'ceil');
+    for (const cid of place.ceilings) { const c = C(cid); if (c) html += indexRow(c.id, c.rel === 'suspended' ? 'ceil susp' : 'ceil'); }
     html += `<div class="ix-group">On display <span class="ix-note">Scene · passive here</span></div>`;
-    for (const a of art) html += indexRow(a.id, 'art', { cls: 'scene' });
-    for (const o of objs) html += indexRow(o.id, 'obj', { cls: 'scene' });
+    for (const aid of place.onDisplay) if (thing(aid)) html += indexRow(aid, 'art', { cls: 'scene' });
+    for (const oid of place.located) if (thing(oid)) html += indexRow(oid, 'obj', { cls: 'scene' });
   } else {
     html += `<div class="ix-head"><span class="ix-title">${esc(ctx.museum.name)}</span><span class="ix-place">everything</span></div>`;
-    for (const g of ctx.museum.galleries) {
-      const main = ctx.museum.ceilings.find((c) => c.gallery === g.id && c.rel === 'closure');
-      html += `<div class="ix-group">${esc(g.name)} <span class="ix-note">${main ? `ceiling ${fmt(main.plane.base)}` : ''}</span></div>`;
-      for (const w of ctx.museum.walls.filter((x) => x.gallery === g.id)) html += indexRow(w.id, w.kind === 'arc' ? 'arc' : 'wall', { noVerbs: true });
-      for (const c of ctx.museum.ceilings.filter((x) => x.gallery === g.id)) html += indexRow(c.id, 'ceil', { noVerbs: true });
+    for (const p of PLACES) {
+      const closureId = p.ceilings.find((cid) => C(cid)?.rel === 'closure');
+      const main = closureId ? C(closureId) : null;
+      html += `<div class="ix-group">${esc(p.name)} <span class="ix-note">${main ? `ceiling ${fmt(main.plane.base)}` : ''}</span></div>`;
+      for (const wid of p.bounds) { const w = W(wid); if (w) html += indexRow(w.id, w.kind === 'arc' ? 'arc' : 'wall', { noVerbs: true, note: sharedNoteFor(wid, p) }); }
+      for (const cid of p.ceilings) { const c = C(cid); if (c) html += indexRow(c.id, 'ceil', { noVerbs: true }); }
     }
     html += `<div class="ix-group">Elsewhere</div><div class="ix-hint">Paintings, furniture and references are found by name, with a reason why they may not be in view (<kbd>/</kbd>).</div>`;
+    html += `<div class="ix-row rec"><button class="ix-go" data-act="ctx" data-ctx="records" title="Show the register as context: records with no Stage location"><span class="glyph rec"></span><span class="ix-name">Records register</span><span class="ix-note">no Stage location</span></button></div>`;
   }
-  if (sel) {
+  if (S.sel && place) {
     const rel = relationsOf(S.sel);
     if (rel.length) html += `<div class="ix-group">Around it</div>` + rel.map((r) => `<div class="ix-rel"><span class="dot"></span>${r}</div>`).join('');
   }
@@ -166,6 +192,140 @@ export function relationsOf(id) {
   }
   if (t.kind === 'objects') out.push('staged content · no specialist depth in this prototype');
   return out;
+}
+
+// ---------------------------------------------------------------- Browse and Search
+// One bounded list, honestly labelled: the museum's own subjects, which have Stage geometry, and the
+// dense metadata fixture, which does not. Query, context, page and the highlighted row are shell
+// session state — they are never the selection, and nothing here moves the Camera. Each row carries
+// its own verbs, so Select, Open location, Bring into view, Include, Reveal and Face stay separate
+// promises: a record with no geometry says where it really lives and offers Select alone, because
+// there is nothing to fly to, reveal or include.
+
+const PAGE = 9;
+
+// One list per museum, rebuilt only when the fixture changes: Browse cannot invent a second registry.
+const recCache = { museum: null, list: [] };
+export function records() {
+  if (recCache.museum !== ctx.museum) { recCache.museum = ctx.museum; recCache.list = recordList(ctx.museum); }
+  return recCache.list;
+}
+
+export const recordOf = (id) => metadataOf(id);
+
+const contexts = () => [{ id: null, name: 'All places' }, ...PLACES.map((p) => ({ id: p.id, name: p.name })), { id: 'records', name: 'Records register' }];
+
+function ctxOn(c) {
+  const f = S.browse.focus;
+  if (!c.id) return !f || f.kind === 'rel';
+  if (c.id === 'records') return f?.kind === 'records';
+  return f?.kind === 'place' && f.id === c.id;
+}
+
+// Explicit relations only: a museum subject is in a place context when that place names it, and a
+// metadata record is in the register — never inferred into a gallery from the coordinates it lacks.
+function inContext(r, f) {
+  if (!f || f.kind === 'rel') return true;
+  if (f.kind === 'records') return !r.geom;
+  if (!r.geom) return false;
+  return placesOfThing(r.id).some((p) => p.id === f.id);
+}
+
+const matches = (r, q) => !q || `${r.name} ${r.kind} ${r.where} ${r.ref || ''} ${r.id}`.toLowerCase().includes(q);
+const queryOf = () => S.browse.q.trim().toLowerCase();
+
+export function browseMatches() {
+  const q = queryOf();
+  const f = S.browse.focus;
+  return records().filter((r) => inContext(r, f) && matches(r, q));
+}
+
+// What is on screen: the first (page + 1) pages. Scroll reaches the rest of a page; More pages it.
+export function browseShown() {
+  return browseMatches().slice(0, (S.browse.page + 1) * PAGE);
+}
+
+// D's tag vocabulary, kept: the reason a subject may not be on screen, in the same words the resolver
+// returns to the Card, the Index and the beacon — one reason, three surfaces.
+const WHERE_TAG = { visible: 'in view', off: 'out of frame', behind: 'hidden behind', beyond: 'beyond depth', away: 'opened away', aside: 'set aside', cut: 'cut', flat: 'laid flat', opened: 'unrolled', facing: 'facing', lifted: 'lifted' };
+
+// A row's verbs come from the record and the reading, not from a catalogue. Nothing is offered that
+// could not act on the *named* record, and a record with no geometry is never promised a flight.
+function browseVerbs(r, w) {
+  const t = r.geom ? thing(r.id) : null;
+  const out = [`<button class="fx-v sel" data-act="sel" data-id="${r.id}" title="Select ${esc(r.name)} — the identity only: no view move, nothing opens">Select</button>`];
+  if (!r.geom) return out.join('');
+  const hostless = t && (t.kind === 'objects');
+  if (t && !hostless) out.push(`<button class="fx-v" data-act="open-loc" data-id="${r.id}" title="Open the place that holds the ${esc(t.item.name)} — the specialist work, on the named record">Open location</button>`);
+  if (w.state === 'off' || w.state === 'behind') out.push(`<button class="fx-v" data-act="lookat" data-id="${r.id}" title="Bring it into view from where you stand — nothing opens, the selection does not change">Bring into view</button>`);
+  if (w.state === 'beyond') out.push(`<button class="fx-v" data-act="include" data-id="${r.id}" title="Reach just far enough to include it — a view setting with a number on it, not an edit">Include it · ${fmt(w.need)} m</button>`);
+  if (w.state === 'beyond' || w.state === 'away') out.push(`<button class="fx-v${S.reveal === r.id ? ' on' : ''}" data-act="reveal" data-id="${r.id}" title="Show it through at its true place — the depth and the cut are untouched">${S.reveal === r.id ? 'Stop showing' : 'Show it through'}</button>`);
+  if (t && (t.kind === 'walls' || t.kind === 'openings' || t.kind === 'art')) out.push(`<button class="fx-v" data-act="faceit" data-id="${r.id}" title="Face the wall that holds it — the specialist reading, on the named record">Face it</button>`);
+  return out.join('');
+}
+
+function browseRow(r) {
+  const w = r.geom ? whereIs(r.id) : null;
+  const tag = w ? WHERE_TAG[w.state] : '';
+  return `<li class="fx-row${S.sel === r.id ? ' sel' : ''}${S.browse.at === r.id ? ' on' : ''}" data-rec="${r.id}" role="option" aria-selected="${S.sel === r.id}">
+    <button class="fx-go" data-act="sel" data-id="${r.id}" title="Select the ${esc(r.name)} — the identity only">
+      <span class="fn">${esc(r.name)}</span><span class="fk">${esc(r.kind)}${r.ref ? ' · ' + esc(r.ref) : ''} · ${esc(r.where)}</span>
+      ${tag ? `<span class="state ${w.state === 'visible' || w.state === 'cut' ? 'ok' : 'away'}">${esc(tag)}</span>` : ''}
+    </button>
+    <span class="fx-acts">${browseVerbs(r, w || { state: 'none' })}</span>
+    ${r.geom ? '' : `<span class="fx-note">no location here — kept in the ${esc(r.where)}; Select only, nothing to fly to</span>`}
+  </li>`;
+}
+
+function emptyBrowse() {
+  const q = S.browse.q.trim();
+  const ql = queryOf();
+  const f = S.browse.focus;
+  const elsewhere = records().filter((r) => !inContext(r, f) && matches(r, ql)).length;
+  const where = f?.kind === 'records' ? 'the register' : f?.kind === 'place' ? (placeOf(f.id)?.name || 'this place') : 'the whole museum';
+  return `<li class="empty">Nothing${q ? ` matches “${esc(q)}”` : ' is listed'} in ${esc(where)}${elsewhere ? ` · ${elsewhere} match${elsewhere === 1 ? '' : 'es'} in another context` : ''}</li>`;
+}
+
+export function renderBrowse() {
+  if ($('#finder').hidden) return;
+  const all = browseMatches();
+  const shown = all.slice(0, (S.browse.page + 1) * PAGE);
+  const ctx = $('#finderCtx');
+  if (ctx) {
+    const html = `<span class="fx-ctx-k">Look in</span>${contexts().map((c) => `<button class="fx-chip${ctxOn(c) ? ' on' : ''}" data-act="ctx" data-ctx="${c.id ?? ''}" aria-pressed="${ctxOn(c)}">${esc(c.name)}</button>`).join('')}`;
+    if (ctx._html !== html) { ctx.innerHTML = html; ctx._html = html; }
+  }
+  const list = $('#finderList');
+  if (list) {
+    const html = shown.length ? shown.map((r) => browseRow(r)).join('') : emptyBrowse();
+    if (list._html !== html) { list.innerHTML = html; list._html = html; }
+  }
+  const more = $('#finderMore');
+  if (more) {
+    const html = `<span class="fx-n">${shown.length} of ${all.length}</span>`
+      + (shown.length < all.length ? `<button class="fx-v" data-act="more">More results</button>` : '')
+      + (S.browse.page > 0 ? `<button class="fx-v ghost" data-act="less">Back to the first ${PAGE}</button>` : '');
+    if (more._html !== html) { more.innerHTML = html; more._html = html; }
+  }
+}
+
+// The register as Index context: no geometry, so no Look, no badge and no camera verb — a selected
+// record is still an identity, and the Index says what it is instead of where it would be.
+function recordIndexRow(r) {
+  return `<div class="ix-row rec${S.sel === r.id ? ' sel' : ''}">
+    <button class="ix-go" data-sel="${r.id}" aria-selected="${S.sel === r.id}" title="Select the ${esc(r.name)} — a record with no Stage location">
+      <span class="glyph rec"></span><span class="ix-name">${esc(r.name)}</span><span class="ix-ref">${esc(r.ref || '')}</span>
+      <span class="ix-note">${esc(r.where)}</span>
+    </button></div>`;
+}
+
+function recordsIndex() {
+  let html = `<div class="ix-head"><span class="ix-title">Records register</span><span class="ix-place">no Stage location</span>${S.browse.focus?.kind === 'records' ? '<span class="ix-note">focused · context, not selection</span>' : ''}</div>`;
+  html += `<div class="ix-hint">Sheets, files and photographs this museum keeps elsewhere. They can be selected — an identity is an identity — but there is no geometry here to open, reveal or fly to.</div>`;
+  html += `<div class="ix-group">Kept elsewhere</div>`;
+  for (const r of records().filter((x) => !x.geom)) html += recordIndexRow(r);
+  html += `<div class="ix-row rec"><button class="ix-go" data-act="ctx" data-ctx="" title="Back to the whole museum"><span class="ix-name">Back to the museum</span></button></div>`;
+  return html;
 }
 
 // ---------------------------------------------------------------- the Card
@@ -282,11 +442,42 @@ function numbersHtml(groups, { secs = true } = {}) {
   return groups.map((g) => (secs ? `<div class="c-sec">${g.sec}</div>` : '') + g.items.map((it) => (it.seg ? seg(...it.seg) : field(...it.field))).join('')).join('');
 }
 
-// What it is attached to, and what the current reading is doing to it. Context, not ownership.
+// Details: what it is attached to, named as a relation with its own target — and, once expanded, each
+// relation's own verbs. Expand changes disclosure only; Select changes the canonical identity; Focus
+// sets the local point the next work will be about (never the selection); the task verbs invoke
+// specialist work on the *named target*, not on whatever happens to be selected.
 function details(id) {
-  const rel = relationsOf(id);
-  if (!rel.length) return '';
-  return `<div class="c-sec">Details</div><ul class="rels">${rel.map((r) => `<li><span class="dot"></span><span>${r}</span></li>`).join('')}</ul>`;
+  const rows = detailRows(id);
+  if (!rows.length) return '';
+  const open = !!S.expand;
+  const head = `<div class="c-sec">Details <span class="det-n">${rows.length} relation${rows.length === 1 ? '' : 's'}</span><button class="c-toggle" data-act="expand" aria-expanded="${open}">${open ? 'Collapse' : 'Expand'}</button></div>`;
+  if (!open) return head + `<div class="c-hint">Expand to name each relation and act on it directly.</div>`;
+  return head + `<ul class="rels">${rows.map((r) => `<li class="rel-row"><span class="dot"></span><span class="rel-what">${esc(r.label)} <b>${esc(r.name)}</b></span><span class="rel-acts">${r.acts.map((a) => `<button class="c-v" data-act="${a.act}" data-id="${a.id}"${a.focus ? ` data-focus="${a.focus}"` : ''} title="${esc(a.title)} · ${esc(r.name)}">${esc(a.label)}</button>`).join('')}</span></li>`).join('')}</ul>`;
+}
+
+function detailRows(id) {
+  const t = thing(id);
+  if (!t) return [];
+  const sel = (target) => ({ act: 'sel', id: target, label: 'Select', title: `Select ${labelOf(target)}` });
+  const face = (target) => ({ act: 'look-face', id: target, label: 'Look', title: `Face ${labelOf(target)}` });
+  const focusTop = (wall) => ({ act: 'focus', id: wall, focus: 'wall-top', label: 'Focus top', title: `Focus the ${labelOf(wall)} top for the next work — the selection does not change` });
+  const out = [];
+  if (t.kind === 'openings') out.push({ label: 'Host', name: t.wall.name, acts: [sel(t.wall.id), face(t.wall.id), focusTop(t.wall.id)] });
+  if (t.kind === 'art') out.push({ label: 'Hangs on', name: W(t.item.wall)?.name || t.item.wall, acts: [sel(t.item.wall), face(t.item.wall), focusTop(t.item.wall)] });
+  if (t.kind === 'walls') {
+    for (const a of ctx.museum.art.filter((x) => x.wall === t.item.id)) out.push({ label: 'Attached here', name: a.name, acts: [sel(a.id), face(a.id)] });
+    for (const c of ctx.museum.ceilings) {
+      const r = lidRelations(c).find((x) => x.wall.id === t.item.id);
+      if (!r) continue;
+      const status = r.status === 'gap' ? `${Math.round(r.gap * 100)} cm gap` : r.status === 'intended' ? 'kept open' : 'meets';
+      out.push({ label: 'Ceiling', name: `${c.name} · ${status}`, acts: [sel(c.id), { act: 'look-lift', id: c.id, label: 'Lift', title: `Lift the ${c.name}` }] });
+    }
+    out.push({ label: 'Top', name: `${t.item.name} top`, acts: [focusTop(t.item.id), ...(t.item.kind === 'arc' ? [{ act: 'look-unroll', id: t.item.id, label: 'Unroll', title: `Unroll the ${t.item.name}` }] : [])] });
+  }
+  if (t.kind === 'ceilings') {
+    for (const r of lidRelations(t.item)) out.push({ label: 'Meets', name: `${r.wall.name} · ${r.status === 'gap' ? `${Math.round(r.gap * 100)} cm gap` : r.status === 'intended' ? 'kept open' : 'meets'}`, acts: [sel(r.wall.id), face(r.wall.id), focusTop(r.wall.id)] });
+  }
+  return out;
 }
 
 // Where is it, and what can you do about it — the same resolver Search and the beacon read.
@@ -321,8 +512,10 @@ function renderCard() {
   if (!el) return;
   const id = S.sel;
   const t = thing(id);
+  const rec = id ? metadataOf(id) : null;
   let html = '';
-  if (!t) html = emptyCard();
+  if (rec) html = cardRecord(rec);
+  else if (!t) html = emptyCard();
   else if (t.kind === 'walls') html = cardWall(t.item);
   else if (t.kind === 'openings') html = cardOpening(t.item, t.wall);
   else if (t.kind === 'ceilings') html = cardCeiling(t.item);
@@ -403,6 +596,15 @@ function cardScene(t) {
   html += looks(it.id);
   html += `<div class="relation quiet"><span class="dot"></span><span>Staged content lives in the Scene document. Here it is passive context — edit it in <b>Arrange</b>.</span></div>`;
   html += details(it.id);
+  return html;
+}
+
+// A record with no Stage geometry is not an empty Card: it is an identity with a home outside the
+// model, and it says where that is. No verb here offers to fly to, reveal or include it.
+function cardRecord(r) {
+  let html = cardHead(`Record · ${r.ref || 'registry'}`, r.name, esc(r.kind));
+  html += `<div class="where quiet"><span class="dot"></span><div><span>No Stage location — this one is kept in the <b>${esc(r.where)}</b>. Selected, it stays an identity: nothing opens, no view moves, and there is no geometry to reveal or include.</span></div></div>`;
+  html += `<div class="c-sec">Listing</div><div class="c-foot">${esc(r.where)} · prototype registry, not a document store</div>`;
   return html;
 }
 

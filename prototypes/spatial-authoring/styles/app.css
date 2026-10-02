@@ -126,6 +126,9 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .ix-row.scene { color: var(--ink-3); }
 .ix-row:hover { background: var(--chassis-hover); color: var(--ink); }
 .ix-row.sel { background: var(--sel-soft); color: var(--ink); box-shadow: inset 3px 0 0 var(--sel-edge); }
+.ix-row.focused { box-shadow: inset 3px 0 0 var(--ochre-deep); }
+.ix-row.focused.sel { box-shadow: inset 3px 0 0 var(--sel-edge), inset 3px 0 0 4px var(--ochre-deep); }
+.ix-row.rec .ix-note { font-size: var(--t2xs); }
 .ix-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; text-align: left; color: inherit; }
 .ix-name { overflow: hidden; text-overflow: ellipsis; }
 .ix-ref { font: 500 var(--txs) var(--mono); font-stretch: 78%; color: var(--ink-3); }
@@ -148,6 +151,7 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .glyph.ceil.susp { border-top-style: dashed; }
 .glyph.art { background: linear-gradient(135deg, transparent 45%, currentColor 45% 55%, transparent 55%); }
 .glyph.obj { border-radius: 50%; }
+.glyph.rec { border-style: dashed; border-radius: 0; height: 10px; }
 
 /* ---------- work column ---------- */
 .work { grid-area: work; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -296,14 +300,32 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .finder { position: fixed; inset: 0; z-index: 40; background: rgba(20,28,25,.12); }
 .finder-box { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: 480px; background: var(--paper); border-radius: 4px; box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow: hidden; }
 #finderInput { width: 100%; border: 0; border-bottom: 1px solid var(--rule); padding: 12px 14px; font: 500 var(--txl) var(--ui); background: none; outline: none; }
+/* the context bar: which place you are browsing in. Context, never selection. */
+.fx-ctx { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+.fx-ctx-k { font-size: var(--txs); color: var(--ink-3); margin-right: 2px; }
+.fx-chip { border: 1px solid var(--rule); background: var(--instrument); border-radius: 999px; padding: 2px 9px; font-size: var(--txs); color: var(--ink-2); }
+.fx-chip:hover { border-color: var(--ink-3); }
+.fx-chip.on { background: var(--recess); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--rule); }
 #finderList { list-style: none; margin: 0; padding: 4px; max-height: 360px; overflow: auto; }
-#finderList li { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'n s' 'k s'; gap: 1px 10px; padding: 7px 10px; border-radius: 3px; cursor: pointer; }
+#finderList li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 6px 9px; border-radius: 3px; }
 #finderList li.on, #finderList li:hover { background: var(--sel-soft); }
-#finderList li.empty { color: var(--ink-3); cursor: default; }
+#finderList li.sel .fn { font-weight: 700; }
+#finderList li.empty { color: var(--ink-3); cursor: default; display: block; }
+.fx-go { grid-column: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'n s' 'k s'; gap: 1px 10px; border: 0; background: none; padding: 0; text-align: left; color: inherit; min-width: 0; }
 .fn { grid-area: n; font-weight: 600; }
-.fk { grid-area: k; font-size: var(--txs); color: var(--ink-3); }
-#finderList .state { grid-area: s; align-self: center; font: 500 var(--t2xs) var(--mono); font-stretch: 78%; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+.fk { grid-area: k; font-size: var(--txs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+#finderList .state { grid-area: s; align-self: center; font: 500 var(--t2xs) var(--mono); font-stretch: 78%; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
 #finderList .state.ok { background: var(--recess); color: var(--ink-2); }
+#finderList .state.away { background: var(--view-soft); color: var(--view-ink); box-shadow: inset 0 0 0 1px var(--view); }
+.fx-acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 300px; }
+.fx-v { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 2px 7px; font-size: var(--txs); color: var(--ink-2); white-space: nowrap; }
+.fx-v:hover { border-color: var(--ochre-deep); background: #FDF9EF; }
+.fx-v.sel { border-color: var(--sel-edge); }
+.fx-v.on { background: var(--recess); font-weight: 600; }
+.fx-v.ghost { background: none; }
+.fx-note { grid-column: 1 / -1; font-size: var(--txs); color: var(--ink-3); }
+.fx-more { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--rule); }
+.fx-n { font: 500 var(--txs) var(--mono); font-stretch: 78%; color: var(--ink-3); }
 .finder-foot { font-size: var(--txs); color: var(--ink-3); padding: 7px 14px 9px; border-top: 1px solid var(--rule); }
 
 /* ---------- overlay vocabulary (from D) ---------- */
@@ -544,6 +566,17 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .rels .gap .dot { background: var(--coral); }
 .rels .gap { color: var(--coral-ink); }
 .rels .intended .dot { background: var(--sky-deep); }
+/* Details: one named relation per row, and each relation's own verbs. Disclosure only — nothing here
+   is the selection, and Focus sets local task context without moving it. */
+.det-n { margin-left: 6px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+.c-toggle { margin-left: auto; border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 2px 7px; font-size: var(--txs); color: var(--ink-2); text-transform: none; letter-spacing: 0; }
+.c-toggle:hover { border-color: var(--ink-3); }
+.c-hint { font-size: var(--tsm); color: var(--ink-3); padding: 3px 0 0; }
+.rels .rel-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 3px 0; }
+.rels .rel-what b { font-weight: 600; color: var(--ink); }
+.rels .rel-acts { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.c-v { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 2px 7px; font-size: var(--txs); color: var(--ink-2); white-space: nowrap; }
+.c-v:hover { border-color: var(--ochre-deep); background: #FDF9EF; }
 
 /* ---------- status rail ---------- */
 .status { grid-area: status; display: flex; align-items: center; gap: 14px; padding: 0 10px; border-top: 1px solid var(--rule); background: var(--chassis); font-size: var(--txs); white-space: nowrap; overflow: hidden; }

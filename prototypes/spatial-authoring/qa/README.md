@@ -12,6 +12,7 @@ qa/run-all.sh flows        # axis B: peel, nested return, trail restore, knife, 
 qa/run-all.sh policy       # lifecycle: cancellation, identity vs target, neutral teardown
 qa/run-all.sh shell        # the World shell's composition: one head, Index, Card, invoked Instrument
 qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Precision
+qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the Details grammar
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -105,4 +106,5 @@ What the harness knows about keys, measured rather than assumed:
 | `policy-check.sh` | lifecycle: one cancellation policy, identity vs technical target, parking that keeps the realized camera |
 | `shell-check.sh` | the World shell's composition: one search entry, the Index, the Card, the Instrument that takes no space, and a row's verb acting on the row's subject |
 | `precision-check.sh` | stage S3: Look's three routes, the retained first gesture, in-place measurement, one active surface, Precision and its refusal, and a number reached where no handle is legible |
+| `browse-check.sh` | stage S4: one bounded dense list with paging and an honest register, browse/context that never selects or moves, Select that changes identity only, Open location/Bring into view/Include/Reveal/Face each on the named record, and Details Expand/Focus/Select/Open task as four distinct effects |
 | `run-all.sh` | the axis driver |

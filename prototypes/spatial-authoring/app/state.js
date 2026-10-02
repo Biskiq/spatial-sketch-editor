@@ -44,8 +44,10 @@ export const S = {
   parked: null,
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
-  /* browse/search context: query and focused row. Never selection, never a standpoint. */
-  browse: { q: '', focus: null },
+  /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */
+  browse: { q: '', focus: null, page: 0 },
+  /* the Card's Details disclosure. A disclosure toggle changes what is shown and nothing else. */
+  expand: false,
   /* QA observation only: a command that threw, or a page error. Never a source of product behaviour;
      the acceptance harness asserts this stays empty. See qa/README.md. */
   faults: [],

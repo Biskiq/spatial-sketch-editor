@@ -9,6 +9,7 @@ import {
   validateOpening, validateWall, validateCeiling, byId,
 } from './model.js';
 import { sectionCaps } from './geometry.js';
+import { metadataOf } from './fixtures.js';
 import { ease } from './stage.js';
 
 const V3 = THREE.Vector3;
@@ -819,6 +820,23 @@ export const goToHost = (id = S.sel) => run(async () => {
   if (t.kind === 'walls' || t.kind === 'openings' || t.kind === 'art') await faceInner(id);
   else if (t.kind === 'ceilings') await liftInner(id);
   else setStatus(`${t.item.name} is staged content — look at it in 3D, edit it in Arrange`, 'info');
+});
+
+// Open the place that holds a record: the same specialist reading an Index row or a Card verb would
+// invoke, on the named record rather than on the selection. A record with no Stage geometry has no
+// place to open, and says where it really lives instead of flying somewhere plausible.
+export const openLocation = (id = S.sel) => run(async () => {
+  const t = thing(id);
+  if (!t) {
+    const r = metadataOf(id);
+    setStatus(r
+      ? `The ${r.name} is a record with no Stage location — kept in the ${r.where}, so there is nothing here to open`
+      : 'Select a wall, an opening, a ceiling or an artwork to open its location', 'info');
+    return;
+  }
+  if (t.kind === 'ceilings') await liftInner(id);
+  else if (t.kind === 'objects') setStatus(`${t.item.name} is staged content — no specialist depth in this prototype. Select it, or bring it into view`, 'info');
+  else await faceInner(id);
 });
 
 // ----- where is it? one resolver for Find, the Inspector and the beacon -----

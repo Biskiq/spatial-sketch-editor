@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { S, ctx, W, C, thing, clone, recordFault } from './state.js';
+import { S, ctx, W, C, thing, clone, recordFault, labelOf } from './state.js';
 import { createMuseum, fmt, wallLength, frameAt, modS, openingTopAt, bbox } from './model.js';
 import { Stage, ease } from './stage.js';
 import { Overlay } from './overlay.js';
@@ -9,7 +9,7 @@ import * as nav from './navigation.js';
 import * as T from './tasks.js';
 import { onCancel, cancelProposal } from './cancel.js';
 import { drawAll } from './draw.js';
-import { requestUI, renderUI, updateTilt, updateWhere, updateStripLive, fieldValue, applyField, applySeg, mapInv } from './ui.js';
+import { requestUI, renderUI, updateTilt, updateWhere, updateStripLive, fieldValue, applyField, applySeg, mapInv, renderBrowse, browseShown, recordOf, placeNameOf } from './ui.js';
 import { sectionCaps } from './geometry.js';
 import { initJourneys, JOURNEYS } from './journeys.js';
 
@@ -654,12 +654,14 @@ document.addEventListener('click', (e) => {
     const a = act.dataset.act;
     // A subject's own verbs are capabilities, not shell commands: the row or the Card names the
     // subject it belongs to, and the seam routes it. Nothing here depends on what is selected.
-    if (a.startsWith('look-')) { T.invoke(a.slice(5), { id: act.dataset.id ?? S.sel }); return; }
+    if (a.startsWith('look-')) { closeFinder(); T.invoke(a.slice(5), { id: act.dataset.id ?? S.sel }); return; }
     doAct(a, act);
     return;
   }
+  // Every Select in the shell reaches the same facade with the same announcement: the Index, a Card
+  // relation, a result row. Browsing itself never gets here.
   const sel = t.closest('[data-sel]');
-  if (sel) { A.select(sel.dataset.sel); return; }
+  if (sel) { selectFrom(sel.dataset.sel); return; }
 });
 
 document.addEventListener('mouseover', (e) => {
@@ -682,8 +684,13 @@ function motionText() {
   }[S.motion];
 }
 
+// A listing is a lookup surface: as soon as a verb acts on the world — or a result is chosen — it gets
+// out of the way. Disclosure and context stay exactly where they are.
+const WORLD_ACT = new Set(['sel', 'open-loc', 'lookat', 'include', 'reveal', 'faceit', 'gohost', 'lookup', 'face', 'unfold', 'fold', 'lift', 'lift-rel', 'square', 'stepback', 'crumb', 'close', 'close-all', 'plan', '3d', 'home', 'knife', 'knife-open', 'measure', 'precision', 'reopen-cut', 'side-in', 'side-out', 'undo', 'redo', 'summary-undo', 'summary-keep']);
+
 function doAct(a, el) {
   const s = S.session;
+  if (WORLD_ACT.has(a)) closeFinder();
   switch (a) {
     // Back leaves the reading when there is one; with nothing open it only drops unaccepted work,
     // so the same control is never a dead end.
@@ -713,7 +720,24 @@ function doAct(a, el) {
     case 'knife-cancel': A.cancelKnife(); break;
     case 'depth-': A.setDepth((s?.cut.depth ?? S.knife?.depth ?? 6) - 0.5); break;
     case 'depth+': A.setDepth((s?.cut.depth ?? S.knife?.depth ?? 6) + 0.5); break;
-    case 'reveal': A.toggleReveal(S.sel); requestUI(); break;
+    // ----- Browse and Details -------------------------------------------------
+    // Select is the canonical identity and nothing else: the view, the reading and the work in hand
+    // are as they were. Every other verb below names its own target, so none of them depends on what
+    // happens to be selected — that is what makes them independently exercisable.
+    case 'sel': selectFrom(el.dataset.id); break;
+    case 'open-loc': A.openLocation(el.dataset.id); break;
+    case 'place': focusPlace(el.dataset.id); break;
+    case 'ctx': setContext(el.dataset.ctx || null); break;
+    case 'more': S.browse.page += 1; requestUI(); break;
+    case 'less': S.browse.page = 0; requestUI(); break;
+    case 'expand':
+      S.expand = !S.expand;
+      A.setStatus(S.expand
+        ? 'Details expanded — each relation is named and acts on its own target. The selection and the view are unchanged'
+        : 'Details collapsed — disclosure only: the subject, the view and the work in hand are as they were', 'view');
+      break;
+    case 'focus': focusRelation(el.dataset.id, el.dataset.focus || 'wall-top'); break;
+    case 'reveal': A.toggleReveal(el.dataset.id ?? S.sel); requestUI(); break;
     case 'plan': A.goPlan(); break;
     case '3d': A.go3D(); break;
     case 'reopen-cut': if (S.recentCut) A.openSection(S.recentCut); break;
@@ -725,10 +749,10 @@ function doAct(a, el) {
     case 'crumb': A.backTo(+el.dataset.depth); break;
     case 'side-in': A.setSide(1); break;
     case 'side-out': A.setSide(-1); break;
-    case 'include': A.includeIt(S.sel); break;
-    case 'gohost': A.goToHost(S.sel); break;
-    case 'lookat': A.lookAt(S.sel); break;
-    case 'faceit': A.face(S.sel); break;
+    case 'include': A.includeIt(el.dataset.id ?? S.sel); break;
+    case 'gohost': A.goToHost(el.dataset.id ?? S.sel); break;
+    case 'lookat': A.lookAt(el.dataset.id ?? S.sel); break;
+    case 'faceit': A.face(el.dataset.id ?? S.sel); break;
     case 'grid':
       S.wallDrafting = !S.wallDrafting;
       A.syncSheets();
@@ -753,65 +777,109 @@ function doAct(a, el) {
 }
 
 // ---------------------------------------------------------------- find anything
-// D's finder, answering through the same resolver as the Inspector: every result carries its
-// membership and why it may not be visible from here.
+// Search answers through the same resolver as the Card, the Index and the beacon, and it is context:
+// typing, paging and moving the place context write nothing, select nothing and leave the Camera
+// alone. Choosing a result is an explicit Select — with a beacon where the subject really is, or the
+// register's own reason where it has no Stage location — and every other verb on a row names the
+// record it belongs to, so no verb here depends on what happens to be selected.
 
 const finder = $('#finder'), finderInput = $('#finderInput');
+
 function openFinder(q = '') {
   finder.hidden = false;
+  S.browse.q = q;
   finderInput.value = q;
-  renderFinder();
+  S.browse.at = null;
+  renderBrowse();
   finderInput.focus();
 }
 function closeFinder() {
-  finder.hidden = true;
+  if (!finder.hidden) { finder.hidden = true; S.browse.at = null; }
   // A hidden field must not keep the keyboard: after a result is picked, Esc belongs to the view
   // again (clear the beacon, then step out of the reading), not to a dialog that is already closed.
   if (document.activeElement === finderInput) finderInput.blur();
 }
-function finderItems() {
-  const m = ctx.museum;
-  const g = (id) => m.galleries.find((x) => x.id === id)?.name || '';
-  const out = [];
-  for (const w of m.walls) {
-    out.push({ id: w.id, n: w.name, k: w.kind === 'arc' ? 'Curved wall' : 'Wall', g: g(w.gallery), ref: w.ref });
-    for (const o of w.openings) out.push({ id: o.id, n: o.name, k: o.kind === 'door' ? 'Door' : 'Window', g: `in ${w.name}`, ref: o.ref });
-  }
-  for (const c of m.ceilings) out.push({ id: c.id, n: c.name, k: 'Ceiling region', g: g(c.gallery), ref: c.ref });
-  for (const a of m.art) out.push({ id: a.id, n: a.name, k: 'Artwork · Scene', g: a.by, ref: '' });
-  for (const o of m.objects) out.push({ id: o.id, n: o.name, k: 'Object · Scene', g: o.by, ref: '' });
-  return out;
-}
-const WHERE_TAG = { visible: 'in view', off: 'out of frame', behind: 'hidden behind', beyond: 'beyond depth', away: 'opened away', aside: 'set aside', cut: 'cut', flat: 'laid flat', opened: 'unrolled', facing: 'facing', lifted: 'lifted' };
-function renderFinder() {
-  const q = finderInput.value.trim().toLowerCase();
-  const items = finderItems().filter((i) => !q || `${i.n} ${i.k} ${i.g} ${i.ref}`.toLowerCase().includes(q)).slice(0, 9);
-  $('#finderList').innerHTML = items.map((i, k) => {
-    const r = A.whereIs(i.id);
-    const tag = WHERE_TAG[r.state] || '';
-    return `<li class="${k ? '' : 'on'}" data-find="${i.id}"><span class="fn">${i.n}</span><span class="fk">${i.k}${i.ref ? ' · ' + i.ref : ''} · ${i.g}</span>${tag ? `<span class="state ${r.state === 'visible' || r.state === 'cut' ? 'ok' : 'away'}">${tag}</span>` : ''}</li>`;
-  }).join('') || '<li class="empty">Nothing by that name in this museum</li>';
-}
 function pickFinder(id) {
   closeFinder();
+  selectFrom(id);
+}
+
+// One Select for every entry point: the Index, a Card relation, a result row, a keyboard choice. The
+// identity changes and nothing else does; the beacon says where the subject is, and a record without
+// Stage geometry says where it really lives instead of being marked on a drawing it is not in.
+function selectFrom(id) {
+  if (!id) return;
   A.select(id);
+  const rec = recordOf(id);
+  if (rec) {
+    A.setStatus(`Selected the ${rec.name} — a record with no Stage location, kept in the ${rec.where}. Nothing opens, and the view does not move`, 'view');
+    return;
+  }
   S.beacon = id;
   const r = A.whereIs(id);
-  A.setStatus(r.state === 'visible' ? `${thing(id).item.name} is in view — the beacon marks it` : `${thing(id).item.name}: ${r.reason}. The Inspector says what you can do`, 'view');
+  A.setStatus(r.state === 'visible' || r.state === 'cut'
+    ? `${labelOf(id)} is in view — the beacon marks it. Nothing opened, the view unchanged`
+    : `${labelOf(id)}: ${r.reason}. The Card says what you can do about it`, 'view');
 }
-finderInput.addEventListener('input', renderFinder);
+
+// Focus and context. A place (or the register) is the context the Index shows; a relation is the
+// local point the next work will be about. Neither is the selection, and neither moves the view.
+function focusPlace(id) {
+  if (!id) return;
+  const on = S.browse.focus?.kind === 'place' && S.browse.focus.id === id;
+  S.browse.focus = on ? null : { kind: 'place', id };
+  resetBrowse();
+  A.setStatus(on
+    ? 'Back to the whole museum in the Index — the selection and the view are unchanged'
+    : `The ${placeNameOf(id)} focused as context — the Index shows what is there. The selection does not change`, 'view');
+}
+function setContext(c) {
+  const f = S.browse.focus;
+  const on = !c ? !f || f.kind === 'rel'
+    : c === 'records' ? f?.kind === 'records'
+      : f?.kind === 'place' && f.id === c;
+  S.browse.focus = !c || on ? null : c === 'records' ? { kind: 'records' } : { kind: 'place', id: c };
+  resetBrowse();
+  const now = S.browse.focus;
+  A.setStatus(now?.kind === 'records'
+    ? 'Browsing the records register — context only: these have no Stage location, and the selection does not change'
+    : now ? `Browsing ${placeNameOf(now.id)} — context only. The selection and the view are unchanged`
+      : 'Browsing the whole museum — context only', 'view');
+}
+function resetBrowse() { S.browse.page = 0; S.browse.at = null; requestUI(); }
+function focusRelation(id, what) {
+  const label = `${labelOf(id)} ${what === 'wall-top' ? 'top' : what}`;
+  S.browse.focus = { kind: 'rel', at: id, what, label };
+  // Work that is about one local point takes the focus with it, but only when the focused thing is its
+  // own target or subject: an unrelated invocation is never rewritten by naming a relation elsewhere.
+  // A measurement is about the whole subject, so it keeps its own focus — the relation stays context
+  // for the next work rather than pretending the numbers have narrowed.
+  const t = S.task;
+  if (t && t.kind !== 'dims' && (t.target?.id === id || t.subject === id)) T.setFocus({ kind: what, id, label });
+  A.setStatus(`Focused the ${label} — local context for the next work. The selection and the view are unchanged`, 'view');
+}
+
+function moveBrowse(d) {
+  const shown = browseShown();
+  if (!shown.length) return;
+  const i = shown.findIndex((r) => r.id === S.browse.at);
+  const j = i < 0 ? (d > 0 ? 0 : shown.length - 1) : Math.max(0, Math.min(shown.length - 1, i + d));
+  S.browse.at = shown[j]?.id ?? null;
+  requestUI();
+}
+
+finderInput.addEventListener('input', () => { S.browse.q = finderInput.value; resetBrowse(); });
 finderInput.addEventListener('keydown', (e) => {
-  const lis = [...document.querySelectorAll('#finderList li[data-find]')];
-  const i = lis.findIndex((l) => l.classList.contains('on'));
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveBrowse(e.key === 'ArrowDown' ? 1 : -1); return; }
+  if (e.key === 'Enter') {
     e.preventDefault();
-    const j = (i + (e.key === 'ArrowDown' ? 1 : lis.length - 1)) % lis.length;
-    lis.forEach((l, k) => l.classList.toggle('on', k === j));
+    const id = S.browse.at || browseShown()[0]?.id;
+    if (!id) return;
+    if (e.shiftKey && !recordOf(id)) { closeFinder(); A.openLocation(id); return; }
+    pickFinder(id);
   }
-  if (e.key === 'Enter' && lis[Math.max(0, i)]) pickFinder(lis[Math.max(0, i)].dataset.find);
   if (e.key === 'Escape') { e.stopPropagation(); closeFinder(); }
 });
-$('#finderList').addEventListener('click', (e) => { const li = e.target.closest('[data-find]'); if (li) pickFinder(li.dataset.find); });
 finder.addEventListener('pointerdown', (e) => { if (e.target === finder) closeFinder(); });
 
 // slide an open cut along its normal by dragging its line on the locator — the one place its axis reads
@@ -926,7 +994,12 @@ window.addEventListener('blur', () => { S.shift = false; });
 
 function openSelected() {
   const t = thing(S.sel);
-  if (!t) { A.startKnife(); return; }
+  if (!t) {
+    const rec = S.sel ? recordOf(S.sel) : null;
+    if (rec) { A.setStatus(`${rec.name} is a record with no Stage location — there is nothing here to open, and nothing to fly to`, 'info'); return; }
+    A.startKnife();
+    return;
+  }
   if (t.kind === 'ceilings') { A.lift(S.sel); return; }
   const w = t.kind === 'walls' ? t.item : t.kind === 'openings' ? t.wall : t.kind === 'art' ? W(t.item.wall) : null;
   if (!w) return;
@@ -989,6 +1062,8 @@ const QA = {
       reveal: S.reveal, knife: S.knife ? { stage: S.knife.stage, hasLine: !!S.knife.p1, depth: S.knife.depth, side: S.knife.side } : null,
       session: sessionShape(), crumbs: A.crumbs().map((c) => c.label), trail: S.trail.map((e) => e.label), trailPos: S.trailPos,
       task: S.task ? { kind: S.task.kind, subject: S.task.subject, target: S.task.target, focus: S.task.focus, depth: S.task.depth, instrument: !!S.task.instrument } : null,
+      browse: { q: S.browse.q, focus: S.browse.focus ? { ...S.browse.focus } : null, page: S.browse.page, at: S.browse.at },
+      expand: !!S.expand,
       taskTitle: T.describe()?.title ?? null, parked: S.parked ? { kind: S.parked.kind, subject: S.parked.subject } : null, flatHold: nav.hold(),
       cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
       realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),

@@ -80,6 +80,7 @@
           <span><kbd>U</kbd> look up</span><span><kbd>K</kbd> open along a line</span>
           <span><kbd>Esc</kbd> back one open state</span><span><kbd>⇧Esc</kbd> put everything back</span>
           <span><kbd>/</kbd> search anything</span><span><kbd>[</kbd> <kbd>]</kbd> view trail</span>
+          <span><kbd>↵</kbd> select the result</span><span><kbd>⇧↵</kbd> open its location</span>
           <span><kbd>S</kbd> square up to a wall</span><span>pull a curved wall’s corner · unroll it</span>
           <span><kbd>⌘Z</kbd> undo building changes</span><span><kbd>Shift</kbd> make a move instant</span>
           <span><kbd>M</kbd> mirror looking up</span><span><kbd>⌥ Drag</kbd> tilt out of a flat view</span>
@@ -101,11 +102,16 @@
        attached to, and what to do when the view cannot show it. -->
   <aside class="card" id="card" aria-label="Selected subject"></aside>
 
+  <!-- Search: one bounded list of the museum's subjects and its records. Query, place context and page
+       are context only — browsing never selects and never moves the Camera; every result carries its
+       own verbs, and a record with no Stage location says so instead of pretending to fly there. -->
   <div class="finder" id="finder" hidden>
     <div class="finder-box" role="dialog" aria-label="Search anything">
-      <input id="finderInput" placeholder="Search a wall, opening, ceiling or artwork" aria-label="Search anything" autocomplete="off">
-      <ul id="finderList" role="listbox"></ul>
-      <div class="finder-foot">Every result says where it is from here — and why you might not see it</div>
+      <input id="finderInput" placeholder="Search a wall, opening, ceiling, artwork or record" aria-label="Search anything" autocomplete="off">
+      <div class="fx-ctx" id="finderCtx"></div>
+      <ul id="finderList" role="listbox" aria-label="Results"></ul>
+      <div class="fx-more" id="finderMore"></div>
+      <div class="finder-foot">Every result says where it is from here, and why you might not see it. Nothing is selected until you choose Select.</div>
     </div>
   </div>
 
