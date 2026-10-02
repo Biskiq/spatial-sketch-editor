@@ -14,6 +14,7 @@ qa/run-all.sh shell        # the World shell's composition: one head, Index, Car
 qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Precision
 qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the Details grammar
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
+qa/run-all.sh lens         # stage S6: the lens, parked work, and explicit Resume from the bridge
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -109,4 +110,5 @@ What the harness knows about keys, measured rather than assumed:
 | `precision-check.sh` | stage S3: Look's three routes, the retained first gesture, in-place measurement, one active surface, Precision and its refusal, and a number reached where no handle is legible |
 | `browse-check.sh` | stage S4: one bounded dense list with paging and an honest register, browse/context that never selects or moves, Select that changes identity only, Open location/Bring into view/Include/Reveal/Face each on the named record, and Details Expand/Focus/Select/Open task as four distinct effects |
 | `repair-check.sh` | stage S5: the quiet rest warning for an unresolved reference, the locator that is never a host, Repair's explicit wall pick and declared station/height, the fixture's own refusals, one accepted edit with Undo/Redo moving the reference and not the view, canceled and left-unresolved work writing nothing, and Owner/Source/Reach as supported facts |
+| `lens-check.sh` | stage S6: crossing lenses parks World work as an inactive record with the realized eye and FOV unmoved, the read-only bridge's two identities and its named refusals for World work and Search, the foreign Card on return, contextual Resume explained locally for a changed selection or a changed/missing target, Resume as a fresh invocation with a fresh return context, and one cancellation covering an open draft and a live aim |
 | `run-all.sh` | the axis driver |

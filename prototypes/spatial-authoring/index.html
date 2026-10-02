@@ -15,7 +15,12 @@
        World is the one a building is authored in. -->
   <header class="head">
     <a class="brand" href="rationale.html" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span>Museum Editor</a>
-    <div class="lens" id="lens" aria-label="Lens"><span class="lens-on" aria-current="true">World</span></div>
+    <!-- The lens says what kind of document is in hand. Both lenses are real: the Experience one is the
+         prototype's read-only continuity fixture, not a disabled promise of unbuilt work. -->
+    <div class="lens" id="lens" role="tablist" aria-label="Lens">
+      <button class="lens-btn on" data-act="lens" data-lens="world" role="tab" aria-selected="true" title="World: the museum, authored in place">World</button>
+      <button class="lens-btn" data-act="lens" data-lens="experience" role="tab" aria-selected="false" title="Experience: one read-only Presentation fixture, sharing this selection and this Camera">Experience</button>
+    </div>
     <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="doc-state" id="docState">All changes saved</span></div>
     <button class="find-btn" data-act="find" title="Search anything (/)">Search anything <kbd>/</kbd></button>
     <div class="head-hist" aria-label="Building history">
@@ -84,6 +89,7 @@
           <span><kbd>S</kbd> square up to a wall</span><span>pull a curved wall’s corner · unroll it</span>
           <span><kbd>⌘Z</kbd> undo building changes</span><span><kbd>Shift</kbd> make a move instant</span>
           <span><kbd>M</kbd> mirror looking up</span><span><kbd>⌥ Drag</kbd> tilt out of a flat view</span>
+          <span>the lens button · World, or the read-only continuity fixture</span><span>Resume · offered on the parked work's own identity</span>
           <span><kbd>P</kbd> Precision: the work's numbers, by keyboard</span><span>Measure in place · from the Card’s In place section</span>
           <span><kbd>G</kbd> wall grid · off shows the wall’s real material</span><span>Wall grid, Reduce motion · the status rail</span>
           <span>double-click a wall · face it</span><span>double-click a ceiling · lift it</span>

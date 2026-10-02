@@ -1,5 +1,5 @@
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
-import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf } from './fixtures.js';
+import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf, PRESENTATION, presentationOf } from './fixtures.js';
 import {
   wallLength, frameAt, fmt, maxTop, topAt, springOf, centroid, planeY, byId, FLOOR_Y, modS, bbox,
 } from './model.js';
@@ -8,7 +8,7 @@ import * as nav from './navigation.js';
 import {
   memberOf, viewKind, viewLabel, lidRelations, gapOptions, lookWord, knifeCut, editOnce,
   applyOpening, applyWallTop, applyCeiling, setTopForm, setProfile, deg, whereIs, crumbs, declareRepair,
-  isUnresolved,
+  isUnresolved, parkedContext,
 } from './actions.js';
 
 const $ = (s) => document.querySelector(s);
@@ -43,6 +43,13 @@ function renderHead() {
   const u = S.undo[S.undo.length - 1], r = S.redo[S.redo.length - 1];
   const ub = $('#undoBtn'), rb = $('#redoBtn');
   if (!ub || !rb) return;
+  // The lens is a document state, shown where the document's identity is: which kind of document is in
+  // hand, with both lenses real — the bridge is a fixture, not a disabled placeholder.
+  for (const b of document.querySelectorAll('#lens [data-act="lens"]')) {
+    const on = b.dataset.lens === S.lens;
+    if (b.classList.contains('on') !== on) b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', String(on));
+  }
   ub.disabled = !u; rb.disabled = !r;
   ub.title = u ? `Undo “${u.label}” (⌘Z)` : 'Nothing to undo';
   rb.title = r ? `Redo “${r.label}” (⇧⌘Z)` : 'Nothing to redo';
@@ -133,6 +140,7 @@ function sharedNoteFor(wid, place) {
 function renderIndex() {
   const el = $('#index');
   if (!el) return;
+  if (S.lens !== 'world') { renderBridgeIndex(el); return; }
   const f = S.browse.focus;
   const focused = f?.kind === 'place' ? placeOf(f.id) : null;
   const place = focused || (S.sel ? placeFor(S.sel) : null);
@@ -590,12 +598,21 @@ function renderCard() {
   const t = thing(id);
   const rec = id ? metadataOf(id) : null;
   let html = '';
-  if (rec) html = cardRecord(rec);
-  else if (!t) html = emptyCard();
-  else if (t.kind === 'walls') html = cardWall(t.item);
-  else if (t.kind === 'openings') html = cardOpening(t.item, t.wall);
-  else if (t.kind === 'ceilings') html = cardCeiling(t.item);
-  else html = cardScene(t);
+  if (S.lens !== 'world') html = cardBridge(id, t, rec);
+  else {
+    if (rec) html = cardRecord(rec);
+    // An identity from another lens is not a World subject, and the World says so instead of showing the
+    // empty state: the selection is real, and what can be done with it is the bridge's own act.
+    else if (!t && id) html = cardForeignInWorld(id);
+    else if (!t) html = emptyCard();
+    else if (t.kind === 'walls') html = cardWall(t.item);
+    else if (t.kind === 'openings') html = cardOpening(t.item, t.wall);
+    else if (t.kind === 'ceilings') html = cardCeiling(t.item);
+    else html = cardScene(t);
+    // Above the identity: the parked work belongs to the session, not to the subject, and it must never
+    // be the thing you have to scroll a long Card to find.
+    html = parkedBlock() + html;
+  }
   if (el._html !== html) {
     const focused = document.activeElement?.dataset?.field;
     el.innerHTML = html;
@@ -747,6 +764,9 @@ function renderInstrument() {
   if (!el) return;
   const s = S.session;
   const k = S.knife;
+  // No World work stands in the bridge: the work in hand is parked and inactive, so the Instrument is
+  // absent from the DOM, not a hidden remnant of another lens' presentation.
+  if (S.lens !== 'world') { el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
   const d = T.describe();
   // No work, no Instrument: the row is dropped from the DOM as well as hidden, so no stale control
   // (the numbers row, a crumb) can be found or reached once the work it belonged to is gone.
@@ -953,6 +973,9 @@ function renderWhereStatic() {
 export function updateWhere() {
   const box = $('#where');
   if (!box) return;
+  // The plan locator is World furniture: it belongs to reading the museum, so it does not stand in the
+  // bridge, where no World reading is open.
+  if (S.lens !== 'world') { box.hidden = true; return; }
   const s = S.session;
   // the locator earns its corner of the paper only while something is open or being drawn
   box.hidden = !s && !S.knife;
@@ -1021,6 +1044,88 @@ export function updateWhere() {
   if (g && g._html !== dyn) { g.innerHTML = dyn; g._html = dyn; }
   const cap = $('#whereCap');
   if (cap && cap.textContent !== caption) cap.textContent = caption;
+}
+
+// ---------------------------------------------------------------- the bridge lens, and parked work
+// The Experience lens is one read-only continuity fixture, and the shell says so where it is used: what
+// it is, what it references, and what it deliberately does not do. It shares this selection slot and
+// this Camera with the World; the World's own work is parked meanwhile, and Resume is offered in the
+// World lens on the identity it belongs to — never restored by switching back.
+
+function renderBridgeIndex(el) {
+  const p = PRESENTATION;
+  let html = `<div class="ix-head"><span class="ix-title">${esc(p.name)}</span><span class="ix-place">${esc(p.ref)}</span><span class="ix-note">${esc(p.note)}</span></div>`;
+  html += `<div class="ix-group">Presentations <span class="ix-note">one fixture</span></div>`;
+  html += `<div class="ix-row${S.sel === p.id ? ' sel' : ''}"><button class="ix-go" data-act="pres-sel" data-id="${p.id}" aria-selected="${S.sel === p.id}"><span class="glyph pres"></span><span class="ix-name">${esc(p.name)}</span><span class="ix-ref">${esc(p.ref)}</span></button>${S.sel === p.id ? '<span class="state quiet">selected</span>' : ''}</div>`;
+  html += `<div class="ix-group">Referenced <span class="ix-note">World subjects</span></div>`;
+  for (const s of p.slots) {
+    const t = thing(s.ref);
+    html += `<div class="ix-row sub${S.sel === s.ref ? ' sel' : ''}"><button class="ix-go" data-act="pres-ref" data-id="${s.ref}" aria-selected="${S.sel === s.ref}"><span class="glyph open"></span><span class="ix-name">${esc(t?.item.name || s.label)}</span><span class="ix-ref">${esc(t ? refOf(s.ref) : s.ref)}</span></button><button class="ix-verb" data-act="pres-ref" data-id="${s.ref}" title="Select the referenced window — the same identity the World lens uses">Select</button></div>`;
+  }
+  html += `<div class="ix-hint">This lens is a continuity fixture for the World Authoring Prototype. It reads the same selection and the same Camera, and it does not yet create presentations, guide, capture, author a Camera View or preview a visitor — those belong to #113.</div>`;
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+}
+
+function cardBridge(id, t, rec) {
+  const p = presentationOf(id);
+  if (p) return cardPresentation(p);
+  if (t || rec) return cardForeign(id, t, rec);
+  return `<div class="c-empty"><div class="c-k">The Experience lens</div>
+  <p>One read-only continuity fixture sits here: <b>${esc(PRESENTATION.name)}</b>, referencing the ${esc(thing(PRESENTATION.slots[0].ref)?.item.name || PRESENTATION.slots[0].label)}.</p>
+  <div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${PRESENTATION.id}"><span class="vg pres"></span>Select Presentation</button></div>
+  <p class="c-hint">The World's work is parked while this lens is in hand. It is inactive — nothing is open, nothing is drawn, and no Camera is remembered.</p></div>`;
+}
+
+function cardPresentation(p) {
+  let html = cardHead('Experience · continuity fixture', p.name, `${p.ref} · ${p.note}`);
+  html += `<div class="c-sec">Referenced</div>`;
+  for (const s of p.slots) {
+    const t = thing(s.ref);
+    html += `<div class="relation quiet"><span class="dot"></span><span><b>${esc(t?.item.name || s.label)}</b> — a World subject, by identity. This lens reads it and never edits it.</span><button class="lnk" data-act="pres-ref" data-id="${s.ref}">Select referenced window</button></div>`;
+  }
+  html += `<div class="c-sec">What this lens can do</div><div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${p.id}"><span class="vg pres"></span>Select Presentation</button></div>`;
+  html += `<div class="c-hint">Ordinary Camera input is the same Camera: orbit, zoom, Plan and 3D all still work on the museum. There is no ${p.absent.slice(0, -1).map((s) => s.toLowerCase()).join(', no ')} and no ${p.absent.slice(-1)[0].toLowerCase()} in this prototype.</div>`;
+  html += parkedBlock();
+  return html;
+}
+
+// The World lens, holding an identity that belongs to the bridge. It is not a subject here and it is not
+// nothing: the Card names it, and the one act that makes sense is the explicit selection of a World
+// subject. A parked record about it is never resumed from a foreign identity.
+function cardForeignInWorld(id) {
+  const p = presentationOf(id);
+  const name = p ? p.name : 'Another lens’ subject';
+  const sub = p ? `${p.ref} · ${p.note}` : 'selected outside the World lens';
+  return cardHead('Foreign identity · not a World subject', name, sub)
+    + `<div class="relation quiet"><span class="dot"></span><span>It was selected in the Experience lens. The World edits nothing about it: select a wall, an opening, a ceiling or an artwork to work on the building.</span></div>`;
+}
+
+function cardForeign(id, t, rec) {
+  const name = t ? t.item.name : rec.name;
+  const ref = t ? refOf(id) : `${rec.ref || ''} record · no Stage location`;
+  let html = cardHead('From the World lens · read-only here', name, ref);
+  html += `<div class="c-sec">In this lens</div>`;
+  html += `<div class="relation quiet"><span class="dot"></span><span>It is the World's subject, not the bridge's: selecting it here is the same identity the World lens uses. Nothing in this lens edits it or opens a reading about it.</span></div>`;
+  html += `<div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${PRESENTATION.id}"><span class="vg pres"></span>Select Presentation</button></div>`;
+  return html;
+}
+
+// Parked work, offered where it belongs: on its own identity, with the reason when it cannot be used.
+// Nothing here is a hidden session, and nothing is restored by the lens toggle itself.
+function parkedBlock() {
+  const p = S.parked;
+  if (!p) return '';
+  const v = parkedContext();
+  const kinds = { face: 'a reading', section: 'a section', lift: 'a lift', lookup: 'a look-up', dims: 'measurements', repair: 'a repair' };
+  const what = `${p.name ? `the ${p.name}` : 'a location'} · ${p.chain.map((c) => kinds[c.kind] || c.kind).join(' + ')}`;
+  // In the bridge the record is still valid, but Resume is World work: it is named where it will be
+  // offered rather than as a button that could not act here.
+  if (v.wrongLens) return `<div class="relation parked quiet"><span class="dot"></span><span><b>Parked</b> — ${esc(what)}. Inactive, and waiting in the World lens, where Resume is offered on its own identity.</span></div>`;
+  if (v.ok) {
+    return `<div class="relation parked"><span class="dot"></span><span><b>Parked</b> — ${esc(what)}. Inactive: nothing is open, nothing is drawn, and no Camera is remembered.</span><button class="lnk" data-act="resume">Resume</button><button class="lnk" data-act="parked-off">Dismiss</button></div>`;
+  }
+  const act = v.fix === 'select' && p.identity ? `<button class="lnk" data-act="sel" data-id="${p.identity}">Select ${esc(p.name || p.identity)}</button>` : '';
+  return `<div class="relation parked quiet"><span class="dot"></span><span><b>Parked, not resumable</b> — ${esc(v.reason)}. Resume never guesses a host or a name: start the work fresh instead.</span>${act}<button class="lnk" data-act="parked-off">Dismiss</button></div>`;
 }
 
 // ---------------------------------------------------------------- fields shared by Card and on-drawing numbers

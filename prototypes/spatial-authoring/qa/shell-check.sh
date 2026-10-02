@@ -64,7 +64,8 @@ qa_ok "no inspector panel" "$(qa_js '!!document.querySelector("#insp, .in-head")
 qa_ok "no permanent tool tray" "$(qa_js '!!document.querySelector(".tray, [data-tool]")')" "false"
 qa_ok "no permanent instrument strip" "$(qa_js '!!document.querySelector("#strip")')" "false"
 qa_ok "exactly one search entry" "$(qa_js 'document.querySelectorAll("[data-act=\"find\"]").length')" "1"
-qa_ok "the lens names the World, with no second lens to click" "$(qa_jsv 'document.querySelector("#lens").textContent.trim() + "/" + document.querySelectorAll("#lens button").length')" "World/0"
+qa_ok "the lens names both documents, and both are real buttons" "$(qa_jsv '[...document.querySelectorAll("#lens button")].map(b => b.textContent.trim()).join("|") + "/" + document.querySelectorAll("#lens button").length')" "World|Experience/2"
+qa_ok "the World is the lens in hand, and it is the one shown as current" "$(qa_jsv 'window.__me.S.lens + "/" + [...document.querySelectorAll("#lens button")].filter(b => b.classList.contains("on")).map(b => b.dataset.lens).join(",")')" "world/world"
 
 echo "-- nothing offered is inert"
 qa_ok "no disabled control outside the building history" "$(qa_js '[...document.querySelectorAll("button:disabled")].filter(b => !b.closest(".head-hist")).length')" "0"

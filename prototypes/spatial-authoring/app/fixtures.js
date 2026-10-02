@@ -83,6 +83,31 @@ export function listingOf(id, kind, museum) {
   return 'this museum';
 }
 
+// ----- the minimum Experience bridge -------------------------------------
+
+// One named, read-only Presentation. It is *not* an Experience implementation: there is no creation,
+// no Guide, no Stop, no Deck, no capture, no authored Camera View and no visitor Preview here. It
+// exists so that crossing lenses can be proved on honest data — the same canonical selection slot and
+// the same Camera as the World, one foreign identity that references a real World subject, and nothing
+// that pretends to persist, execute or preview anything. #113 replaces it with real behaviour.
+//
+// `slots[].ref` names an existing museum subject by identity. It is a reference, not a copy: selecting
+// the referenced window selects the World subject itself, which is exactly what makes a parked World
+// reading about it either resumable or honestly refused.
+export const PRESENTATION = {
+  id: 'pres-highlights',
+  name: 'Saltmarsh Highlights',
+  ref: 'PRES-01',
+  note: 'read-only continuity fixture',
+  slots: [
+    { n: 1, ref: 'gwin', label: 'Garden window' },
+  ],
+  // Named so the shell can say what this fixture is not, rather than implying unsupported work.
+  absent: ['Presentation creation', 'Guide', 'Stop', 'Deck', 'capture', 'authored Camera View', 'visitor Preview'],
+};
+
+export const presentationOf = (id) => (id === PRESENTATION.id ? PRESENTATION : null);
+
 // ----- everything Browse/Search lists -----------------------------------
 
 // The museum's own subjects (which have geometry) and the metadata records (which do not). `geom` is

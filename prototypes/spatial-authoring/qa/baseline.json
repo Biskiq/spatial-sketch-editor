@@ -25,6 +25,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -96,6 +97,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -203,6 +205,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": "Rotunda wall top \u2192 Gable",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -279,6 +282,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -350,6 +354,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -454,6 +459,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -559,6 +565,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -664,6 +671,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -770,6 +778,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -876,6 +885,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window width",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -982,6 +992,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window sill",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1089,6 +1100,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1161,6 +1173,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": "Gallery door head",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1242,6 +1255,7 @@
     "stage": "aim"
    },
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1319,6 +1333,7 @@
     "stage": "aim"
    },
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1391,6 +1406,7 @@
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1509,6 +1525,7 @@
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1629,6 +1646,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1738,6 +1756,7 @@
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1858,6 +1877,7 @@
    "kind": "section",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -1978,6 +1998,7 @@
    "kind": "section",
    "knife": null,
    "lastUndo": "Gallery door head",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2098,6 +2119,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2169,6 +2191,7 @@
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2273,6 +2296,7 @@
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2377,6 +2401,7 @@
    "kind": "lift",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2481,6 +2506,7 @@
    "kind": "lift",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2587,6 +2613,7 @@
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2697,6 +2724,7 @@
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Raise North wall",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2807,6 +2835,7 @@
    "kind": "lookup",
    "knife": null,
    "lastUndo": "Entrance soffit height",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2915,6 +2944,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": "Entrance soffit height",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -2989,6 +3019,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3060,6 +3091,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3133,6 +3165,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3239,6 +3272,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3346,6 +3380,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3453,6 +3488,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3528,6 +3564,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3600,6 +3637,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window position",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3672,6 +3710,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3744,6 +3783,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window width",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3817,6 +3857,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window head",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3890,6 +3931,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -3996,6 +4038,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4102,6 +4145,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": "Garden window arch rise",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4177,6 +4221,7 @@
    "kind": "plan",
    "knife": null,
    "lastUndo": "Garden window width",
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4254,6 +4299,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4326,6 +4372,7 @@
    "kind": "3d",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4398,6 +4445,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4503,6 +4551,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {
@@ -4608,6 +4657,7 @@
    "kind": "face",
    "knife": null,
    "lastUndo": null,
+   "lens": "world",
    "parked": null,
    "preview": null,
    "realized": {

@@ -9,7 +9,7 @@ import {
   validateOpening, validateWall, validateCeiling, validateArtPlacement, byId,
 } from './model.js';
 import { sectionCaps } from './geometry.js';
-import { metadataOf } from './fixtures.js';
+import { metadataOf, presentationOf, PRESENTATION } from './fixtures.js';
 import { ease } from './stage.js';
 
 const V3 = THREE.Vector3;
@@ -417,7 +417,10 @@ async function faceInner(id, opts = {}) {
   if (u > 0.5) sess.home = flatHome(sess);
 }
 
-export const face = (id = S.sel, opts) => run(() => faceInner(id, opts));
+// Every way into spatial work goes through worldOnly(): while the read-only bridge is the document in
+// hand, World work is refused locally and by name, so crossing can never leave a half-invocation or a
+// hidden task behind. See the lens section at the end of this file.
+export const face = (id = S.sel, opts) => run(() => (worldOnly() ? null : faceInner(id, opts)));
 
 // Inside / Outside: walk round the wall. The anchor stays put; the camera swings through 180°.
 export const setSide = (side) => run(async () => {
@@ -498,6 +501,7 @@ export async function unfoldInner(s) {
 const faceCovers = (s, id) => !!s && (!id || id === s.wallId || id === s.subject || id === s.focusId);
 
 export const unfold = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
   const s = S.session;
   if (s?.kind === 'face' && faceCovers(s, id)) {
     if (s.u > 0.99) return;
@@ -733,7 +737,7 @@ async function openSectionInner(cut, opts = {}) {
   await openSession(sess, home, { ...opts, label: opts.label || `Opened along a line · ${lookWord(cut)}`, narr, base: 1600 });
 }
 
-export const openSection = (cut) => run(() => openSectionInner(cut));
+export const openSection = (cut) => run(() => (worldOnly() ? null : openSectionInner(cut)));
 
 export function setDepth(v) {
   const s = S.session;
@@ -806,6 +810,7 @@ export function memberOf(id) {
 }
 
 export function toggleReveal(id = S.sel, force) {
+  if (worldOnly()) return;
   const m = memberOf(id);
   const t = thing(id);
   const srcId = t?.kind === 'openings' ? t.wall.id : id;
@@ -825,6 +830,7 @@ export function toggleReveal(id = S.sel, force) {
 
 // B's recovery, kept: reach just far enough to include it — a view change with a number on it.
 export function includeIt(id = S.sel) {
+  if (worldOnly()) return;
   const m = memberOf(id);
   if (m.state !== 'beyond') return;
   const from = S.session.cut.depth;
@@ -835,6 +841,7 @@ export function includeIt(id = S.sel) {
 
 // … or go to the wall that hosts it. It nests, so Esc comes straight back to this cut and depth.
 export const goToHost = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
   const t = thing(id);
   if (!t) return;
   if (t.kind === 'walls' || t.kind === 'openings' || t.kind === 'art') await faceInner(id);
@@ -846,6 +853,7 @@ export const goToHost = (id = S.sel) => run(async () => {
 // invoke, on the named record rather than on the selection. A record with no Stage geometry has no
 // place to open, and says where it really lives instead of flying somewhere plausible.
 export const openLocation = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
   const t = thing(id);
   if (!t) {
     const r = metadataOf(id);
@@ -919,6 +927,7 @@ export const lookAt = (id = S.sel) => run(async () => {
 // ----- knife: draw the line, see the cut before committing -----
 
 export function startKnife() {
+  if (worldOnly()) return null;
   run(async () => {
     if (S.session) await exitSessionInner();
     S.tool = 'knife';
@@ -1015,7 +1024,7 @@ async function liftInner(id, opts = {}) {
   await openSession(sess, liftHome(c), { ...opts, label: opts.label || `${c.name} lifted`, narr, base: 1200 });
 }
 
-export const lift = (id = S.sel) => run(() => liftInner(id));
+export const lift = (id = S.sel) => run(() => (worldOnly() ? null : liftInner(id)));
 
 // ----- in place: the measurement task -----
 // The numbers of a subject, in place: nothing opens, nothing moves, no reading is entered. What is
@@ -1023,6 +1032,7 @@ export const lift = (id = S.sel) => run(() => liftInner(id));
 // width, sill and head, a ceiling's underside and footprint — and each value keeps the one validated
 // edit path the Card uses. Invoking it again on the same subject puts it away.
 export function dimensionTask(id = S.sel) {
+  if (worldOnly()) return null;
   const t = thing(id);
   if (!t || !T.capabilities(id).includes('dims')) return null;
   if (S.task?.kind === 'dims' && S.task.subject === id) { endTaskInHand(); return null; }
@@ -1050,6 +1060,7 @@ function drawRepairPreview() {
 }
 
 export function repairTask(id = S.sel) {
+  if (worldOnly()) return null;
   const t = thing(id);
   if (!t || !T.capabilities(id).includes('repair')) return null;
   if (S.task?.kind === 'repair' && S.task.subject === id) { endTaskInHand(); return null; }
@@ -1323,7 +1334,7 @@ async function lookUpInner(id, opts = {}) {
   await openSession(sess, home, { ...opts, arrive, label: opts.label || `Looking up · ${c.name}`, narr, base: 1900, via });
 }
 
-export const lookUp = (id) => run(() => lookUpInner(id || ceilingForSelection()));
+export const lookUp = (id) => run(() => (worldOnly() ? null : lookUpInner(id || ceilingForSelection())));
 
 export function toggleMirror() {
   if (S.session?.kind !== 'lookup') return;
@@ -1542,6 +1553,9 @@ export function parkReading() {
   S.refusal = null;
   st().clearAway('preview');
   st().setSectionCaps(null);
+  // A declared candidate is a proposal: like the aim and the ghost, it comes off the drawing when the
+  // reading that held it is dropped. Nothing here restores a pose.
+  st().clearArtPreview();
   st().cam.mirror = false;
   T.end();
   ctx.ui();
@@ -1549,3 +1563,215 @@ export function parkReading() {
 
 // Esc, in the order the plan sets: the writer or proposal first (cancel.js owns that), then Precision,
 // then the spatial reading through its canonical return. Nothing here replaces the selection.
+
+// ---------------------------------------------------------------- lens: parking World work, resuming it explicitly
+// World is where a building is authored. The Experience lens is, in this prototype, one read-only
+// continuity fixture (fixtures.js): it exists so that crossing can be proved — an *inactive* parked
+// record instead of a hidden session, one canonical selection, one Camera shared by both lenses, an
+// ordinary return, and an explicit validated Resume rather than an automatic restore. Nothing here
+// creates, guides, stops, captures, authors a view or previews a visitor; #113 owns real Experience
+// behaviour and this bridge cannot prove it.
+
+export const lens = () => S.lens;
+export const lensIs = (which) => S.lens === which;
+
+// The refusal that keeps the bridge honest: no World work can be invoked from inside it, so no half
+// invocation, hidden reading or unaccepted proposal can exist while another lens is the document.
+function worldOnly() {
+  if (S.lens === 'world') return false;
+  setStatus('That is World work — the Experience lens is a read-only continuity fixture. Switch back to the World lens, then invoke it', 'refuse');
+  ctx.ui();
+  return true;
+}
+
+// One open reading, recorded as its resolving target and its parameters. No Camera: a reading is always
+// re-entered from where the Camera actually stands when Resume is asked for.
+function recordReading(s) {
+  const r = { kind: s.kind, subject: s.subject ?? null };
+  if (s.kind === 'face') Object.assign(r, {
+    wallId: s.wallId, opening: s.opening ?? null, focusId: s.focusId, focusName: s.focusName,
+    side: s.side ?? 1, u: s.u ?? 0,
+  });
+  if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: S.reveal ?? null });
+  if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { ceilId: s.ceilId, mirror: !!st().cam.mirror });
+  return r;
+}
+
+const nameOfId = (id) => thing(id)?.item?.name || null;
+
+// Park: cancel what is unaccepted, freeze the realized standpoint, record the original identity and the
+// resolving targets, then drop the reading without animating anywhere. Source, canonical selection and
+// history are untouched, and no unaccepted proposal is ever part of the record.
+export function parkWorldWork() {
+  const s = S.session, t = S.task, k = S.knife;
+  const overlay = t && (!s || t.kind !== s.kind) ? { kind: t.kind, subject: t.subject ?? null, precision: !!t.precision } : null;
+  const canceled = [];
+  if (k) canceled.push(k.p1 ? 'line-aim' : 'line');
+  if (S.pending) canceled.push('candidate');
+  const chain = [...(s ? [recordReading(s)] : []), ...(overlay ? [overlay] : [])];
+  if (!chain.length) {
+    // A knife aim, a live candidate and an uncommitted draft are proposals, and proposals are never
+    // parked: they are canceled, and an earlier record is not thrown away by a crossing that had
+    // nothing restorable in hand.
+    cancelProposal('lens');
+    return S.parked;
+  }
+  const identity = s?.subject ?? overlay?.subject ?? S.sel ?? null;
+  S.parked = {
+    lens: 'world', at: performance.now(),
+    identity, name: nameOfId(identity),
+    selection: S.sel ?? null,
+    chain,
+    canceled,
+  };
+  T.park(); // holds the realized pose, cancels every proposal, and tears the reading down neutrally
+  ctx.ui();
+  return S.parked;
+}
+
+// Is the parked work still about what it says it is? Revalidated against the fixture's current accepted
+// model, and every failure is a local explanation: never a name match, never a nearby wall, never a
+// substituted host, never a restored proposal.
+function validateStep(c, identityThing) {
+  if (c.kind === 'face') {
+    const w = c.wallId ? W(c.wallId) : null;
+    if (!w) return 'the wall it was about is not in this museum any more';
+    if (c.opening && !w.openings.some((o) => o.id === c.opening)) return `the ${c.focusName || 'opening'} is no longer an opening in the ${w.name}`;
+    if (identityThing?.kind === 'art' && identityThing.item.wall !== w.id) return `the ${identityThing.item.name} no longer hangs on the ${w.name} — the relationship changed, so the parked reading would be about a subject it is not`;
+    if (!(c.u >= 0 && c.u <= 1) || (c.side !== 1 && c.side !== -1)) return 'the reading parameters are no longer valid';
+    return null;
+  }
+  if (c.kind === 'section') {
+    if (!c.cut || !Number.isFinite(c.cut.depth) || !Array.isArray(c.cut.p0) || !Array.isArray(c.cut.p1)) return 'the cut it was about is no longer a valid reading';
+    if (!ctx.museum.walls.length) return 'there is no architecture left to open';
+    return null;
+  }
+  if (c.kind === 'lift' || c.kind === 'lookup') {
+    return C(c.ceilId) ? null : 'the ceiling it was about is not in this museum any more';
+  }
+  if (c.kind === 'dims') {
+    return identityThing && T.capabilities(c.subject).includes('dims') ? null : 'there are no measurements to take on it any more';
+  }
+  if (c.kind === 'repair') {
+    if (!identityThing) return 'the artwork it was about is not in this museum any more';
+    return identityThing.item.wall ? 'its wall reference is resolved now — there is nothing left to repair' : null;
+  }
+  return 'the parked work is no longer a kind this prototype can enter';
+}
+
+// What Resume would do, and why it cannot: read by the Card, the presenter and QA, never a hidden
+// decision. `fix` names the one explicit act that would make it available again.
+export function parkedContext() {
+  const p = S.parked;
+  if (!p) return null;
+  const out = { ok: false, identity: p.identity, name: p.name, selection: p.selection, chain: p.chain.map((c) => c.kind), canceled: [...p.canceled], reason: '', fix: null, wrongLens: S.lens !== 'world' };
+  const t = p.identity ? thing(p.identity) : null;
+  if (p.identity && !t) { out.reason = `${p.name || p.identity} is not in this museum any more`; return out; }
+  if (p.identity && S.sel !== p.identity) {
+    out.reason = S.sel
+      ? `${nameOfId(S.sel) || 'something else'} is selected now — the parked work is about the ${p.name || p.identity}`
+      : `nothing is selected now — the parked work is about the ${p.name || p.identity}`;
+    out.fix = 'select';
+    return out;
+  }
+  for (const c of p.chain) {
+    const bad = validateStep(c, t);
+    if (bad) { out.reason = bad; return out; }
+  }
+  out.ok = true;
+  return out;
+}
+
+// Re-enter one recorded step. Readings are re-derived by the operation itself (no `arrive`, so no
+// recorded Camera), their validated parameters reapplied, and the return context starts here: the
+// pre-crossing root is never reused. Overlay work is re-invoked fresh, because a picked wall or a
+// declared candidate was a proposal, and proposals are never parked.
+async function reenter(step) {
+  const opts = { parent: null, restore: true };
+  if (step.kind === 'face') { await faceInner(step.subject ?? step.focusId, { ...opts, side: step.side, u: step.u }); return; }
+  if (step.kind === 'section') {
+    await openSectionInner(step.cut, { ...opts, subject: step.subject });
+    if (step.reveal) toggleReveal(step.reveal, true);
+    return;
+  }
+  if (step.kind === 'lift') { await liftInner(step.ceilId, { ...opts, subject: step.subject }); return; }
+  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject, mirror: step.mirror }); return; }
+  if (step.kind === 'dims') { dimensionTask(step.subject); if (step.precision) T.setPrecision(true); return; }
+  if (step.kind === 'repair') { repairTask(step.subject); if (step.precision) T.setPrecision(true); }
+}
+
+// Explicit Resume: the record is consumed, the reading is rebuilt from the current standpoint, and the
+// source-summary cursor restarts (openSession records undoFrom now), so returning names only what this
+// invocation changed.
+export const resumeParked = () => run(async () => {
+  const p = S.parked, v = parkedContext();
+  if (!p || !v) { setStatus('Nothing is parked — there is no work to resume', 'info'); return null; }
+  if (v.wrongLens) {
+    setStatus('Resume is World work — switch back to the World lens, where the parked work belongs', 'refuse');
+    ctx.ui();
+    return null;
+  }
+  if (!v.ok) {
+    setStatus(`Resume is not available — ${v.reason}. Start the work fresh instead of restoring a guess`, 'refuse');
+    ctx.ui();
+    return null;
+  }
+  S.parked = null;
+  nav.releaseHold(); // the held flatness was the parked standpoint; explicit work re-derives it from here
+  for (const step of p.chain) await reenter(step);
+  setStatus(`Resumed the work on the ${p.name || 'subject'} — a fresh invocation from where you stand: Put it back returns here, not to where it was parked`, 'view');
+  ctx.ui();
+  return p;
+});
+
+// The other honest ending: the record is dropped without restoring anything and without writing.
+export function dismissParked() {
+  if (!S.parked) return false;
+  const name = S.parked.name || 'The parked work';
+  S.parked = null;
+  setStatus(`${name} is no longer parked — nothing was restored and nothing was written`, 'info');
+  ctx.ui();
+  return true;
+}
+
+// The lens button itself. Crossing to the bridge parks; crossing back is ordinary — no Instrument, no
+// reading, no writer, no restored Search context and no Camera restoration. The parked record waits for
+// an explicit Resume and is never applied by the toggle.
+export function switchLens(which) {
+  if (which === S.lens) return S.lens;
+  if (which === 'experience') {
+    const parked = parkWorldWork();
+    S.lens = 'experience';
+    setStatus(parked
+      ? `The Experience lens: the read-only continuity fixture. The work on the ${parked.name || 'selection'} is parked — inactive, not hidden, with no Camera of its own`
+      : 'The Experience lens: the read-only continuity fixture. The same selection and the same Camera as the World', 'view');
+  } else {
+    S.lens = 'world';
+    cancelProposal('lens');
+    setStatus(S.parked
+      ? `Back in the World. The work on the ${S.parked.name || 'selection'} is still parked and inactive — Resume is offered on its own identity, and nothing was restored`
+      : 'Back in the World lens — ordinary: no reading, no work in hand, and the Camera exactly where the bridge left it', 'view');
+  }
+  ctx.ui();
+  return S.lens;
+}
+
+// The bridge's two explicit actions, and nothing else: change the canonical selection to the
+// Presentation fixture itself, or to the World subject it references. Selection is the one slot both
+// lenses share, so this is the same identity the World lens will come back to — it is not a copy, and
+// no lens ever rewrites the Card to another subject.
+export function selectBridge(id) {
+  const p = presentationOf(id);
+  select(id);
+  if (p) {
+    setStatus(`Selected the ${p.name} — ${p.note}. This lens creates, captures and previews nothing; the World's work is parked and inactive`, 'view');
+    return p.id;
+  }
+  const t = thing(id);
+  setStatus(t
+    ? `Selected ${labelName(id)} — referenced by the ${PRESENTATION.name}. It is a World subject: the same identity the World lens uses, and this lens never edits it`
+    : 'Nothing to select there', t ? 'view' : 'info');
+  return id;
+}
+
+const labelName = (id) => thing(id)?.item?.name || id;

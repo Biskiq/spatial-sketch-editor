@@ -573,6 +573,9 @@ function openTypein(el, spec) {
 function closeTypein() { typein.hidden = true; typeSpec = null; S.activeEdit = null; requestUI(); }
 
 typeinInput.addEventListener('keydown', (e) => {
+  // A draft that is no longer in hand cannot be committed by a late key: the writer was dropped (Esc,
+  // pointercancel, a lens change), so the key has nothing to write and says so by doing nothing.
+  if (!typeSpec) { if (e.key === 'Escape' || e.key === 'Enter') e.stopPropagation(); return; }
   if (e.key === 'Escape') { e.stopPropagation(); closeTypein(); return; }
   if (e.key === 'Enter' || e.key === 'Tab') {
     e.preventDefault();
@@ -775,7 +778,15 @@ function doAct(a, el) {
         : 'Reduced motion off: moves play at the speed chosen in Motion', 'view');
       requestUI();
       break;
-    case 'find': openFinder(); break;
+    case 'find': searchRequest(); break;
+    // ----- the lens, and the parked work the crossing leaves behind -----
+    // The bridge is a read-only fixture: its two explicit selections are the only things it offers, and
+    // it shares this one selection slot with the World. Resume is offered only on the parked identity,
+    // with the World lens in hand, and never automatically.
+    case 'lens': closeFinder(); A.switchLens(el.dataset.lens); break;
+    case 'resume': A.resumeParked(); break;
+    case 'parked-off': A.dismissParked(); break;
+    case 'pres-sel': case 'pres-ref': closeFinder(); A.selectBridge(el.dataset.id); break;
     case 'summary-undo': A.undoSummary(); break;
     case 'summary-keep': S.summary = null; requestUI(); break;
     case 'beacon-off': S.beacon = null; requestUI(); break;
@@ -790,6 +801,16 @@ function doAct(a, el) {
 // record it belongs to, so no verb here depends on what happens to be selected.
 
 const finder = $('#finder'), finderInput = $('#finderInput');
+
+// Search is World work — a reading of the museum's subjects and records. It is not available from
+// inside the read-only bridge, and the refusal names the reason instead of opening an empty list.
+function searchRequest(q = '') {
+  if (S.lens !== 'world') {
+    A.setStatus('Search is World work — the Experience lens is a read-only continuity fixture. Switch back to the World lens to search the museum', 'refuse');
+    return;
+  }
+  openFinder(q);
+}
 
 function openFinder(q = '') {
   finder.hidden = false;
@@ -953,7 +974,7 @@ window.addEventListener('keydown', (e) => {
   if (e.target.matches?.('input, textarea')) return;
   const k = e.key.toLowerCase();
   if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); e.shiftKey ? A.redo() : A.undo(); return; }
-  if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); openFinder(); return; }
+  if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); searchRequest(); return; }
   if (e.metaKey || e.ctrlKey) return;
   switch (k) {
     case 'escape': {
@@ -976,7 +997,7 @@ window.addEventListener('keydown', (e) => {
       else if (S.task) { cancelProposal('esc'); A.endTaskInHand(); requestUI(); }
       break;
     }
-    case '/': e.preventDefault(); openFinder(); break;
+    case '/': e.preventDefault(); searchRequest(); break;
     case 's': if (S.session?.kind === 'face') A.squareUp(); break;
     case '1': A.goPlan(); break;
     case '2': A.go3D(); break;
@@ -1078,7 +1099,16 @@ const QA = {
       // The declared candidate, as the drawing has it: a preview is never an accepted source, so QA can
       // read what is drawn without reading the model.
       preview: ctx.stage.previewPlace ? { ...ctx.stage.previewPlace } : null,
-      taskTitle: T.describe()?.title ?? null, parked: S.parked ? { kind: S.parked.kind, subject: S.parked.subject } : null, flatHold: nav.hold(),
+      taskTitle: T.describe()?.title ?? null,
+      lens: S.lens, flatHold: nav.hold(),
+      // Parked work, as a record and as a verdict: an inactive record is not a hidden session, so QA
+      // reads both what it holds and whether Resume would accept it, plus the two ways it can be wrong.
+      parked: (() => {
+        const p = S.parked;
+        if (!p) return null;
+        const v = A.parkedContext();
+        return { name: p.name, identity: p.identity, selection: p.selection, chain: p.chain.map((c) => c.kind), canceled: p.canceled, ok: !!v?.ok, reason: v?.reason || '', fix: v?.fix || null };
+      })(),
       cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
       realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),
       faults: S.faults.length,

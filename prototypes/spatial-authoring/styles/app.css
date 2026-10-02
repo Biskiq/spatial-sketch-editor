@@ -100,7 +100,13 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
    second lens is real, so nothing here is ever a disabled placeholder. */
 .lens { display: flex; background: var(--recess); border-radius: 3px; padding: 2px; }
 .lens button, .lens .lens-on { border: 0; background: none; height: 22px; padding: 0 10px; border-radius: 2px; font: 600 var(--tsm) var(--ui); color: var(--ink-2); display: inline-flex; align-items: center; }
-.lens .lens-on { background: var(--instrument); color: var(--ink); }
+.lens .lens-on, .lens button.on { background: var(--instrument); color: var(--ink); }
+.lens button:hover { color: var(--ink); }
+.lens button:focus-visible { outline: 2px solid var(--sel-edge); outline-offset: 1px; }
+/* the bridge's own glyph, and the parked-work block: a relation between two documents, not a warning */
+.glyph.pres { border-width: 1.5px 1.5px 3px; }
+.relation.parked { background: var(--recess); color: var(--ink-2); box-shadow: inset 3px 0 0 var(--ochre-deep); }
+.relation.parked .lnk { color: var(--ink); }
 .doc { display: flex; align-items: baseline; gap: 10px; padding-left: 14px; border-left: 1px solid var(--rule); }
 .doc-name { font: 600 14px var(--ui); }
 .doc-state { color: var(--ink-3); font-size: var(--txs); }

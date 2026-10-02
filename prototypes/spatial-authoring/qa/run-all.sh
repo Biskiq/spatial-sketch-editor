@@ -11,6 +11,7 @@
 #   qa/run-all.sh precision    spatial tasks and Precision only
 #   qa/run-all.sh browse       Browse/Search and the Details grammar only
 #   qa/run-all.sh repair       the unresolved reference and its Repair only
+#   qa/run-all.sh lens         the lens, parked World work and explicit Resume only
 #
 # Each script gets its own harness session and tears its browser down, so one wedged session cannot
 # make the next axis look broken and no browser helper is left behind for the next axis (or the next
@@ -41,6 +42,7 @@ case "$WHICH" in
   precision) run "Stage S3 · spatial tasks and Precision" precision-check ;;
   browse) run "Stage S4 · Browse/Search and Details" browse-check ;;
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
+  lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
@@ -50,9 +52,10 @@ case "$WHICH" in
     run "Stage S3 · spatial tasks and Precision" precision-check
     run "Stage S4 · Browse/Search and Details" browse-check
     run "Stage S5 · an unresolved reference and its repair" repair-check
+    run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|all)"
     exit 2
     ;;
 esac

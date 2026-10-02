@@ -3,6 +3,10 @@ import { byId, findThing } from './model.js';
 // Editor session state. Nothing here is architecture: the museum lives in ctx.museum,
 // and view state (standpoint, what is open, the trail) never enters Undo.
 export const S = {
+  /* which kind of document is in hand. World is where a building is authored; the Experience lens is,
+     in this prototype, one read-only continuity fixture that proves parking, a foreign identity and
+     explicit Resume. The lens is a document state, not a mode of the tools. */
+  lens: 'world',
   sel: null,
   hover: null,
   session: null,
@@ -40,7 +44,9 @@ export const S = {
   /* the work the editor is doing: capability, initiating identity, technical target, local focus.
      Set and cleared by the task seam; the linger selection is not this. */
   task: null,
-  /* an inactive task remembered for explicit Resume, and only that */
+  /* An inactive task remembered for explicit Resume, and only that: the original identity, the
+     resolving targets and the reading/task parameters. Never a Camera, a selection snapshot, an
+     unaccepted proposal or a geometry object. See actions.js (parkWorldWork / parkedContext). */
   parked: null,
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
