@@ -113,5 +113,18 @@ unchanged. No P26 major-phase close is claimed.
 
 ## Preservation
 
-S9 preservation details and final repository gates are appended after retirement. The full accepted
-plan body is preserved before compaction; the tag protects this local clone and is not pushed.
+CLOSEOUT PRESERVATION — World Authoring Prototype (2026-10-02)
+
+- Prose compacted: 1, the accepted implementation plan retains a stub at its original path.
+- Reference promotions: 0; prototype mechanics belong beside the executable, never production authority.
+- Renderable evidence archived: 0, per the plan's explicit Git-retirement rule; 27 current captures replace redundant boards.
+- Transient/predecessor artifacts removed: 148 files / 35,278,506 bytes, each mapped above; unique material/contrast/transition evidence retained.
+- Historical anchor: `7c9bc81b6edb54cc5ec3ce37f3f45011b6050504` · annotated `closed/world-authoring-prototype`, local only, not pushed. Full plan body and every retired artifact are reachable there.
+- New live → archived-prose links: 0. Manual-owed acceptance rows: 0.
+- Deferred scopes: #113 Experience/two-way continuity; F/production tracks; model expansion/reuse/component identity; product/device/performance studies. Top-left switch placement is disclosed above.
+
+Working and complete base-to-head whitespace, Markdown routes, relative HTML/image links and scope
+are checked after retirement. Full architecture recheck: 24 files / 276 tests; docs gate: 22 tests.
+The plan is compacted only after its full accepted body was committed and tagged. The preservation
+tag is verified locally; P1 merge-commit and post-merge main reachability remain outside this local
+commit request. No merge-ready or merged-main claim is made.

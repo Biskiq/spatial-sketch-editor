@@ -1,5 +1,7 @@
 # P26 demo visual-system refinement — acceptance record
 
+<!-- EVIDENCE-PATHS: start -->
+
 **Plan:** [`specification-plan.md`](../specification-plan.md) §9.
 **Status:** implementation applied and machine-verified; **owner visual acceptance recorded 2026-09-29**.
 **Parent revision:** `674b2294` (P23B.8 closeout).
@@ -15,6 +17,14 @@ and history-count. A later tape-gold alias on this branch was reverted.
 demo file touched. Nothing outside `docs/roadmap/p26-spatial-depth/` was changed by this work.
 Specimen rasters in `revised/` predate the ochre restoration; they show the tape-gold interim.
 Tokens now match plan §3; rasters were not re-shot.
+
+**Current successor (2026-10-02):** [World acceptance/harvest](../../../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md)
+owns live executable proof and current specimens. Baseline/revised boards and comparison tooling
+below are historical names retired after equivalent World checks; recover their bytes with
+`git show closed/world-authoring-prototype:<repository-path>`. Material calibration, contrast,
+420/42 ms paper-slew measurements and transition images remain unique evidence here. The original
+owner acceptance and numerical judgments below are preserved; shell adoption did not fix or
+ratify them anew. The journey/interaction entry scripts now forward to current QA.
 
 ## 1. What changed
 
@@ -373,3 +383,5 @@ Plan §9.2 asks that the demo scope not waive repository checks; the uncondition
 therefore run in full. The fast lane was withdrawn as a low-value use of time once it was
 established that the change set touches no product source — the demo has its own behavioural
 evidence above (journeys, interactions, layout invariants).
+
+<!-- EVIDENCE-PATHS: end -->

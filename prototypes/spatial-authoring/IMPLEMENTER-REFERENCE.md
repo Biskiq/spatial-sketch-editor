@@ -1,8 +1,8 @@
-# P26 continuous spatial authoring — implementer reference
+# World Authoring Prototype — implementer reference
 
-This is the reference for the P26 implementation agent. The prototype in this folder is a **working model of the hardest interactions**, not production code. Use it to answer "what exactly should happen, frame by frame" and "what is the rule", then build it on the real compiler, selection, history and PLATE shell.
+This is the current executable prototype mechanics reference, preserving P26 A–F. The prototype in this folder is a **working model of the hardest interactions**, not production code. Use it to answer "what exactly should happen, frame by frame" and "what is the rule", then build it on the real compiler, selection, history and PLATE shell.
 
-Read [rationale.html](./rationale.html) for the product model and [REVIEW-RECONCILIATION.md](./REVIEW-RECONCILIATION.md) for why the model changed after peer review. This file covers mechanics.
+Read [rationale.html](./rationale.html) for the product model and [QA acceptance](./qa/ACCEPTANCE.md) for current coverage and harvested predecessor evidence. This file covers mechanics; PLATE §0.8 owns shell design.
 
 ```text
 Run:    python3 -m http.server 8826   →  http://localhost:8826/
@@ -15,11 +15,14 @@ Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?re
 | `app/model.js` | Sample museum; wall frames (`frameAt`, `frameUnrolled`); wall-top profile (`topAt`); opening outline (`archHeight`, `openingTopAt`, `springOf`); validation (`validateOpening`, `validateWall`, `validateCeiling`) |
 | `app/geometry.js` | Wall/slab tessellation with profile tops and arches; `horizontalCaps` (plan / look-up poche); `sectionCaps` (vertical poche + crossings) |
 | `app/stage.js` | Three.js stage: one camera (`placeCamera`, `fovFor`), paper blend (`applyPaper`), clipping (`setClips`), caps, displaced copies (`buildAway`, `setAway`, `revealIn`), picking, inset render |
-| `app/actions.js` | Every command: sessions (face, unfold, section, lift, look up), knife, membership (`memberOf`), trail, edits/undo |
+| `app/actions.js` | Spatial commands/reading lifecycle, knife, membership, source edits/Undo, current-source parking validation |
+| `app/navigation.js` | Camera realization, neutral hold, invocation origin, fly and chronological recipe trail |
+| `app/tasks.js` | Capability dispatch, identity/target/focus, one task in hand, Precision |
+| `app/cancel.js` | Ordered, idempotent cancellation of every unaccepted writer/candidate/preview/aim |
 | `app/main.js` | Frame loop (`frameState`: flatness, clips, caps); input (orbit/pan/zoom, settle on release, handle drags, typed values, keys) |
 | `app/draw.js` | Per-frame overlays: the legibility gate, one opening kit for Plan / 3D / face, sheet, section (label budget, locator), lid, look-up, plan, knife grips, beacon |
 | `app/overlay.js` | Keyed element pool and priority declutter |
-| `app/ui.js` | Navigator, Inspector (fields share one edit path with handles), strip, trail, locator |
+| `app/ui.js` | Index, canonical identity Card, Details, invoked Instrument/Precision, trail and locator |
 | `app/anim.js` | Tween clock, command queue, motion policy |
 
 ---
@@ -47,7 +50,7 @@ if (session) {
   detent = 1 − smoothstep(4°, 30°, angle(viewDir, session.home))
   flat   = lerp(freeFlat, detent · (session.flatWanted ?? 1), session.settle)
   planF  = freeFlat · (1 − session.settle)                   // plan cut fades while a session takes over
-} else { flat = freeFlat; planF = freeFlat }
+} else { flat = S.flatHold ?? freeFlat; planF = freeFlat }
 paper = slewPaper(flat, now)                                  // mat → paper, lights, line weight
 ```
 
@@ -89,8 +92,8 @@ backTo(depth)        // a breadcrumb click
 
 - **`apply(s, p)` must be a pure function of `p ∈ [0,1]`.** The same code then drives enter (0→1), exit (1→0), switching, scrubbing, and "hurry" (jump to 1).
 - **Nest vs replace.** Opening a session while one is open: if the kinds differ it **nests** (`parent = recipeOf(old)`); if they match it **replaces** (`parent = old.parent`). So section → face nests, face → face hops. `origin` and `undoFrom` are always inherited from the root.
-- **Recipes** (`recipeOf`) are the one description of "standing here": `{ kind, cam, label, parent, id?, u?, side?, cut?, reveal?, mirror? }`. `enterRecipe` re-enters one **exactly**: it tweens to `recipe.cam` (`arrive`), not to the canonical home, and restores `u`, `side`, `reveal` and `mirror`. Esc, breadcrumbs and the trail all use it.
-- **Strip**: breadcrumb `origin › parent… ›` then the current state (kind above title, with `· view only` when displaced). The close button reads **Back** when there is a parent, and **Put it back** otherwise. `crumbs()` walks `parent` links.
+- **Recipes** (`recipeOf`) are the one description of "standing here": `{ kind, cam, label, parent, subject?, id?, u?, side?, cut?, reveal?, mirror? }`. `enterRecipe` re-enters one **exactly**: it tweens to `recipe.cam` (`arrive`), not to the canonical home, and restores `u`, `side`, `reveal` and `mirror`. Esc, breadcrumbs and the trail all use it.
+- **Instrument**: breadcrumb `origin › parent… ›` then the current state (kind above title, with `· view only` when displaced). The close button reads **Back** when there is a parent, and **Put it back** otherwise. `crumbs()` walks `parent` links.
 - **Exit summary** (`summarize`): when the root closes and `S.undo.length > sess.undoFrom`, `S.summary` lists those entries. *Undo these* pops back to `undoFrom`. It clears on the next edit, on manual Undo, or on opening a session.
 
 | kind | setup | apply(p) | clips | flatWanted |
@@ -108,7 +111,7 @@ backTo(depth)        // a breadcrumb click
 
 **The rule that makes curvature a view**: the unroll is **isometric**. Distance along the displayed wall equals distance along the real wall at every `u`. So handles, tapes and dimensions are true at any curvature, from any camera. Only the picture is foreshortened. All face overlays are anchored on the displayed wall (`sampler.point(frameS(s), t, y)`), never on screen offsets, so they follow the curve in perspective.
 
-**Curvature dial** (strip; `unrollTo`, `scrubUnroll`, `ui.updateStripLive`): stops at 360° (`u=0`), 180° (`0.5`) and Flat (`1`), plus a scrubber (the peel has a magnetic stop at 90° too). `wrap° = 360·(1−u)`. It moves only the wall, never the camera. **Square up** (`squareUp`) settles face-on with a frame fitted to the current curvature. **Step back** (`stepBack`) goes to a 3D standpoint (`az = home.az + 0.62`, `el ≈ 21°`, target on the anchor) and keeps the session; every handle whose axis reads from there stays live (§6). The strip markup doesn't depend on `u` (a live updater fills in the readout) so the scrubber is never re-rendered mid-drag. Changing curvature pushes a trail entry and never touches Undo. The trail recipe stores `u` and restores it.
+**Curvature dial** (Instrument; `unrollTo`, `scrubUnroll`, `ui.updateStripLive`): stops at 360° (`u=0`), 180° (`0.5`) and Flat (`1`), plus a scrubber (the peel has a magnetic stop at 90° too). `wrap° = 360·(1−u)`. It moves only the wall, never the camera. **Square up** (`squareUp`) settles face-on with a frame fitted to the current curvature. **Step back** (`stepBack`) goes to a 3D standpoint (`az = home.az + 0.62`, `el ≈ 21°`, target on the anchor) and keeps the session; every handle whose axis reads from there stays live (§6). The Instrument markup doesn't depend on `u` (a live updater fills in the readout) so the scrubber is never re-rendered mid-drag. Changing curvature pushes a trail entry and never touches Undo. The trail recipe stores `u` and restores it.
 
 **Unroll** (`model.js frameUnrolled`) — anchored at `sA`, curvature relaxes from 1/r to 0:
 
@@ -144,14 +147,14 @@ sectionHome(cut): az = atan2(−n.x, −n.z), el = 0; frame the museum's extent 
 ```
 
 - **Default look side** (`defaultSide`): in 3D, look away from the camera. In Plan, look "up the screen" (north), or east for a north–south line. `Tab` flips it.
-- **Preview before commit**: in 3D the clips apply in place, with a near-half ghost at zero offset and live caps. In Plan (where in-place is invisible) a **peek inset** renders the settled section with scissor (`renderInset`). The strip shows depth, look word, Flip, Open, Cancel. The line, arrow and depth band are drawn on the ground.
+- **Preview before commit**: in 3D the clips apply in place, with a near-half ghost at zero offset and live caps. In Plan (where in-place is invisible) a **peek inset** renders the settled section with scissor (`renderInset`). The Instrument shows depth, look word, Flip, Open, Cancel. The line, arrow and depth band are drawn on the ground.
 - **Commit**: the near copy slides toward the viewer and fades while the camera swings to `home` and settles.
-- **Depth** is view state (`setDepth`): the strip number is draggable and ± buttons step it. The **far edge of the band on the locator card is draggable**. Depth writes no history.
+- **Depth** is view state (`setDepth`): the Instrument number is draggable and ± buttons step it. The **far edge of the band on the locator card is draggable**. Depth writes no history.
 - **Exploring before commit**: in the aim stage the drawn line has a **slide grip** (drag along `n`) and **end grips**. They are view handles (`spec.view`) that skip Undo and set `knife.dirty`, so the caps, the in-place preview and the peek re-derive live (`main.js dragKnifeGrip`).
 - **Sliding an open cut** (`slideCut`): drag the cut line on the locator (`[data-cut-line]`). Its axis runs along the line of sight in the section, so by the legibility rule the control lives in plan.
 - **Excluded recovery**: `memberOf` now returns `lo`, `hi` and, for `beyond`, `need = ceil((hi + 0.2)·10)/10`. `includeIt` sets depth to `need` and pushes the trail. `goToHost` faces the host wall (or lifts a ceiling); it nests, so Esc returns to the same cut and depth. The selected-but-excluded source keeps a **locator** on the drawing (a dashed ring at its true place — displaced by the part offset if `away` — plus its reason).
 - **Label budget** (`drawSection`): unselected sources show their reference quietly (`W-ROT 6.00`, `O-GD`, `C-LONG 4.20`, priority ~25). The selection gets its name at full strength. Derived facts (`X of wall above`) appear only for the selection or its host. The ceiling-to-ceiling relation note appears only with nothing, or a ceiling, selected. Labels are skipped in perspective (`flat < 0.85`); handles are not.
-- **Membership** (`memberOf`): `cut` (straddles), `in`, `away` (near half), `beyond` (past depth), each with a reason string. The Navigator badges and Inspector "where it is" read it. ⚠ Production: this must be the **same** evaluation the renderer and hit-tester use (I11). The prototype's clipping is separate.
+- **Membership** (`memberOf`): `cut` (straddles), `in`, `away` (near half), `beyond` (past depth), each with a reason string. The Index badges and Precision "where it is" read it. ⚠ Production: this must be the **same** evaluation the renderer and hit-tester use (I11). The prototype's clipping is separate.
 - **Reveal** (`toggleReveal`): marks one source in the `beyond` / `near` copy as solid x-ray at its true place. Depth is unchanged and nothing enters Undo. Changing depth closes it.
 - **Edits at the cut**: only values the cut shows truthfully — the head/sill of openings it crosses and a level wall top at the crossing.
 
@@ -193,9 +196,9 @@ snap 0.05 m (Alt: 0.01 m)
 | `top` / `ridge` | the profile key `+ dy`; ridge also `rs + dt`; a closed wall ties `h1 = h0` |
 | `ceil-h` | `plane.base + dy` |
 
-**Every pointer move validates.** A valid candidate is applied live, and the Inspector follows because it reads the same value. An invalid candidate is not applied: the handle turns coral and the reason floats beside it. **Releasing while invalid cancels the whole gesture** (`cancelEdit`) and writes zero history. Otherwise it is **one commit** with a human label ("Garden window arch rise").
+**Every pointer move validates.** A valid candidate is applied live, and the Precision follows because it reads the same value. An invalid candidate is not applied: the handle turns coral and the reason floats beside it. **Releasing while invalid cancels the whole gesture** (`cancelEdit`) and writes zero history. Otherwise it is **one commit** with a human label ("Garden window arch rise").
 
-**Typed values**: any `.tape.edit` or Inspector field → `applyField(spec, v)` → `editOnce(label, apply*)`. `Enter` commits, `Tab` moves to the next tape, `Esc` cancels. An invalid value keeps the field open with the reason. Handles, tapes and fields call the same `applyOpening` / `applyWallTop` / `applyCeiling`.
+**Typed values**: any `.tape.edit` or Precision field → `applyField(spec, v)` → `editOnce(label, apply*)`. `Enter` commits, `Tab` moves to the next tape, `Esc` cancels. An invalid value keeps the field open with the reason. Handles, tapes and fields call the same `applyOpening` / `applyWallTop` / `applyCeiling`.
 
 **Validation messages** are in `model.js` and name the fix: "Head would cross the wall top (4.20) — lower it or raise the wall"; "The ridge must sit between the two ends — move it inward or choose Slope".
 
@@ -222,33 +225,31 @@ dur(kind, base) = Shift | hurry | S.reduceMotion | prefers-reduced-motion | 'ins
 
 Two controls, two different questions. **Motion** (status rail) picks the speed: `adaptive` is the
 learns-then-fast policy — teaching speed for the first two times a move is seen, fast after — and
-`brisk` is always fast. **Reduce motion** (view bar, `#motionBtn`, `S.reduceMotion`) asks whether
+`brisk` is always fast. **Reduce motion** (Stage rail, `#motionBtn`, `S.reduceMotion`) asks whether
 anything should travel at all: it forces `dur → 0` for every move *without* changing the chosen
 speed, hides timed captions, and adds `body.reduce-motion` so CSS transitions stop too, mirroring the
-system setting (which also initialises the control). The endpoint is identical either way — same
+system setting (separate `S.osReduced`, initialized at boot and followed live). The endpoint is identical either way — same
 standpoint, same trail entry, same numbers.
 
 Captions show only while `teaching(kind)`. Commands go through `run()`: a new command sets `hurry` and finishes running tweens instantly, then queues. A motion is never cut off mid-air into an inconsistent state.
 
 ## 9b. Reading controls
 
-Two view-bar controls decide what a surface *is*, not how it moves:
+Two Stage rail controls decide what a surface *is*, not how it moves:
 
 - **Wall grid** (`#draftBtn`, `S.wallDrafting`, `G`, `?grid=0`). On: the wall being worked on wears
 the drafting sheet (`mat.sheet` — paper with the 1 m / 5 m wall-distance grid). Off: every wall keeps
 its real material, in every view and at every curvature, so an editor can judge the surface they are
 editing. `sheetWanted(id)` returns `false` outright when it is off, and `syncSheets()` re-decides
 every wall when it changes. Displacement cues do not depend on it: the dashed slate footprint and the
-strip's *view only* stay either way.
+Instrument's *view only* stay either way.
 - **Reduce motion** (`#motionBtn`, `S.reduceMotion`) — see §9.
 
 **The drafting sheet rule.** `sheetWanted(id)` in `app/actions.js` is the single answer to "does this
 wall wear paper": the **settled subject of a face view** (`settle > 0.5`), straight or curved, in the
 squared view and after tilting back to 3D — plus any wall **off its footprint** (`u > 0.01`). It is
 consulted from the face gesture's settle progress, from `applyUnroll`, and at the start of a peel.
-The curvature slider therefore never recolours a wall. Note the open design question and the §5
-conformance gap (a papered wall currently overrides the selection material) recorded in
-[`paper-surface-brief.md`](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/paper-surface-brief.md).
+The curvature slider therefore never recolours a wall. Prior owner calibration composes selected paper with the ochre `lineSel` outline; Wall grid off uses the real selection material. This was resolved before shell adoption, as recorded in [material acceptance §7](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md#7-unresolved-unverified-and-limitations). The [paper-surface brief](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/paper-surface-brief.md) retains the original question and numerical calibration; PLATE’s owner calls remain separate.
 
 ## 10. Renderer details that mattered
 
@@ -270,7 +271,7 @@ conformance gap (a papered wall currently overrides the selection material) reco
 
 ## 11. Where is it? — one resolver
 
-`whereIs(id)` answers for the Navigator badges, the Inspector's "where" block, Find and the beacon. They never decide separately.
+`whereIs(id)` answers for the Index badges, the Precision's "where" block, Find and the beacon. They never decide separately.
 
 ```js
 m = memberOf(id)                                   // beyond · away · aside win first (with reasons)
@@ -280,7 +281,7 @@ behind if stage.occluder(p, not self, not host)    // one ray, eye → p, throug
 else visible (or m.state: cut · flat · opened · lifted)
 ```
 
-Actions offered by state: `beyond` → Include it (depth `need`) · Show it through · Go to its wall; `away` → Show it through · Go to its wall; `aside` → Face it instead; `off` → Bring it into view; `behind` → Look at it · Face it. **Find** (`/`, ⌘K) lists names and references with the state tag; picking selects and sets `S.beacon` (a pulsing ring, clamped to the paper edge when off-frame). The Inspector re-evaluates on camera release and after zoom settles.
+Actions offered by state: `beyond` → Include it (depth `need`) · Show it through · Go to its wall; `away` → Show it through · Go to its wall; `aside` → Face it instead; `off` → Bring it into view; `behind` → Look at it · Face it. **Search** (`/`, ⌘K) lists names and references with the state tag. Select changes identity without moving Camera; Open location changes context; Bring into view, Include, Reveal and Face are explicit row verbs. Recovery sets `S.beacon` at the source (clamped to the Stage edge when off-frame). The Card re-evaluates on camera release and after zoom settles. Unresolved host references return an explicit reason, never a cached-position host guess.
 
 ## 12. Colour semantics
 
@@ -288,9 +289,34 @@ Actions offered by state: `beyond` → Include it (depth `need`) · Show it thro
 |---|---|---|
 | ochre `#E5A020` / deep `#8A5B10` (glyph `#17201D`) | **selection and manipulation:** the selected entity, its handles, Reveal x-ray, the beacon, an active edit, cut lines, datums | branding, history count |
 | tape gold `#F2B53C` | branding, history count | selection or a state colour |
-| dashed slate `#56707C` | displaced for this view: the as-built ghost, view-only tags, Navigator "moved" badges | an authored change |
+| dashed slate `#56707C` | displaced for this view: the as-built ghost, view-only tags, Index "moved" badges | an authored change |
 | coral | a gap, a refusal | |
 | green `#2A9384` | open on purpose | |
+
+## 13. Shell lifetimes and neutral parking
+
+`S.sel` is the single canonical selection. `S.task` separately records subject, technical target,
+local focus, parameters and Precision. An opening/artwork task can work on its host while its own
+identity remains on the Card. Relation Expand/Focus/Select/Open task have distinct effects;
+Browse/Search and narrow sheets own disclosure only. Direct grips and Look dispatch the same task.
+
+Every non-accepting exit calls `cancelProposal`: model candidate rollback, numerical writer,
+frozen gap/repair preview, pointer closures/capture, refusal and knife aim. Selection changes,
+reading invocation/return, task end and lens switching all use it; late events cannot accept.
+Gap options freeze before preview, and keyboard focus previews/cancels like hover.
+
+`parkWorldWork` records the whole nested chain's original subjects, resolving target IDs and reading
+parameters. It has no selection snapshot, Camera snapshot, origin, active geometry or writer.
+`navigation.holdRealized` carries the neutral Camera projection after clips/displacement are
+removed. World return never revives the chain. Resume validates current subjects, host relations,
+capabilities and Section endpoints/side/depth, then re-invokes each step from the present Camera.
+A fresh root captures requested pose **and** held realization; Put it back restores that root.
+Nested Back restores parent depth/Reveal/curvature/mirror and its visible Instrument. Overlay
+Measure/Repair resumes freshly; unaccepted candidates are never remembered.
+
+This session-only mechanism is prototype evidence, not F storage, production Camera history or a
+persisted format. The read-only Experience bridge proves World-side crossing; #113 owns real
+Experience procedures and two-way continuity.
 
 ## Prototype-only shortcuts (do not copy)
 
@@ -302,3 +328,5 @@ Actions offered by state: `beyond` → Include it (depth `need`) · Show it thro
 - No generated-ceiling fallback, overlap joints, spanning regions, columns or platforms.
 - Occlusion for Find is one ray to one representative point; production needs the membership stage's per-source visibility.
 - Plan authoring edits existing openings only; drawing new walls or openings in the one renderer is not prototyped.
+
+Unperformed product studies include dog-ear discovery, per-axis scale comprehension and long-chain Esc usability. Keyboard line/typed controls, refusal announcements and live reduced motion are now checked; screen-reader listening, touch/pen, dense-museum/cubic performance, vertical crop/cut-only and new architecture drawing remain outside this bounded prototype. See [acceptance limits](./qa/ACCEPTANCE.md#limits-and-handoff).

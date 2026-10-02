@@ -9,10 +9,7 @@ round is complete: its
 [final synthesis](./design/design-synthesis.md) and canonical
 [visual QA package](./QA-package/) are the durable outputs. The commissioning
 briefs and the copied designer-input rasters are retired to Git history. The
-direction is accepted; the shell itself is **not implemented** — the editor still
-runs the landed PLATE chrome until an explicit production cutover, and the
-spatial-authoring prototype still runs its predecessor shell until the bounded
-adoption PR.
+direction is accepted; the editor still runs the landed PLATE chrome until an explicit production cutover. The [World Authoring Prototype](../spatial-authoring/README.md) now adopts this design in place under #112; its [executable acceptance](../spatial-authoring/qa/ACCEPTANCE.md) is separate from this design freeze.
 
 ## Canonical artifacts
 
@@ -32,12 +29,11 @@ adoption PR.
 
 - Finalized **successor World shell/disclosure design**, promoted alongside V2
   Experience into **PLATE §0.8–§0.8.3**, the normative destination shell authority.
-  This package retains the final design record and specimens; the next bounded
-  prototype PR adopts the World expression.
+  This package retains the final design record and specimens; the World executable adopts it under #112.
 - Preserves accepted **V2 Experience semantics**
   ([final V2 synthesis](../integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
   and **P26 journeys A–F, capabilities and interaction laws**
-  ([Spatial Authoring Prototype](../spatial-authoring/README.md)).
+  ([World Authoring Prototype](../spatial-authoring/README.md)).
 - Supersedes predecessor **P26 shell/chrome/tool exposure/disclosure** where the
   synthesis explicitly covers them. P26 remains the deep World behavioral oracle.
 - Does **not** supersede product/domain ownership contracts. The ratified
@@ -63,12 +59,13 @@ adoption PR.
   in Git history (PR #111) and are not live routes.
 - Accepted/frozen by [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111)
   on `world-workspace-redesign`.
-- Design inputs are retained at their canonical sources, not duplicated here:
-  the four V2 boards in
+- Design inputs are not duplicated here. The four V2 boards remain in
   [`../integrated-experience-authoring/Design-QAs/`](../integrated-experience-authoring/Design-QAs/),
-  and the six P26 references under
-  [`../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/)
-  and [`../spatial-authoring/screens/`](../spatial-authoring/screens/).
+  while the original six P26 input rasters are recoverable through the
+  [World acceptance preservation anchor](../spatial-authoring/qa/ACCEPTANCE.md#preservation).
+  Unique material evidence remains under
+  [`../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/);
+  [`../spatial-authoring/screens/`](../spatial-authoring/screens/) now contains current executable specimens.
 
 ## Deferred to repository-aware reconciliation
 
@@ -92,11 +89,9 @@ Implementation-dependent questions this design round deliberately leaves open:
 
 ## Next step
 
-Bounded successor PR #112: adopt the frozen shell into
-[`../spatial-authoring/`](../spatial-authoring/README.md), preserving P26
-journeys A–F and behavioral laws, then run executable/visual QA. That PR is
-prototype adoption — not production T1 implementation and not an F substitute.
-The [implementation plan](../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md)
-is written for review; no prototype implementation or evidence retirement has
-started. Its next boundary is #113: Experience V2 executable adoption and actual
-World ↔ Experience continuity, with the production gates unchanged.
+#112 World adoption is accepted: [current executable](../spatial-authoring/README.md),
+[QA acceptance](../spatial-authoring/qa/ACCEPTANCE.md) and
+[closed plan](../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md).
+#113 builds the finalized V2 Experience executable against the shared shell and validates actual
+World ↔ Experience continuity. The World bridge is read-only; production F/T1 gates are unchanged.
+The ten boards and syntheses here remain frozen design evidence, independent of executable QA.

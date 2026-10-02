@@ -185,9 +185,12 @@ measures 16.26 m along its length and 4.00 m up, at 5 m per texture repeat — 1
 intervals, 32 CSS px per metre at that framing, comfortably above the plan's 16 px decimation floor.
 The grid derives from wall distance, so partial unroll states stay unstretched.
 
-**Specimens to look at** (`qa/compare.html` is the labelled side-by-side of all 34 pairs):
-`revised/1440x900/v01-plan-north`, `v03-face-flat-gwin` (the faced straight wall, which the old rule
-left bare), `v04a-peel-inside` / `v04b-peel-outside` (displaced), `v07-dense-dims`, `v11-states`.
+**Current specimens:** [World screens](../../../../../prototypes/spatial-authoring/screens/)
+contain ordinary Plan/3D, half-wrap inside/outside, flat sheet, precision refusal and narrow shell.
+The former 34 baseline/revised comparison pairs are historical, recovered through the
+[World preservation anchor](../../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md#preservation).
+Their numerical calibration and original material question remain recorded below and in
+[material acceptance](./qa/ACCEPTANCE.md); current shell proof has its own acceptance.
 
 **Behaviour is unaffected by this question:** journeys A–F 49/49, interaction checks 27/27, 0 console
 errors, 60.2 fps in the flat face view. Nothing here touches geometry, values, units, camera paths,
@@ -206,8 +209,8 @@ bash probe-sheet.sh   http://localhost:8826 shipped   # the calibration sweep in
 ```
 
 In the browser: select a wall, press `F` to face it, `S` to square up. Then `Esc`, select the round
-wall, press `O`. Curvature control is on the strip; **Motion** is at the end of the status rail and
-**Reduce motion** is in the view bar.
+wall, press `O`. Curvature control is on the Instrument; **Motion** is at the end of the status rail and
+**Reduce motion** is on the Stage rail.
 
 ---
 

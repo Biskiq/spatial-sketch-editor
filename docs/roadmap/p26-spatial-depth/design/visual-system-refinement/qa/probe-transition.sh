@@ -19,7 +19,8 @@ set -e
 cd "$(dirname "$0")"
 BASE="${1:?usage: probe-transition.sh <url-base> [label]}"
 LABEL="${2:-revised}"
-export AGENT_BROWSER_SESSION="p26trans-$LABEL"
+export AGENT_BROWSER_SESSION="p26trans-$LABEL-$$"
+trap 'agent-browser close >/dev/null 2>&1 || true' EXIT
 U="$BASE/index.html?shot=1&motion=teach"
 js() { agent-browser eval "$1" >/dev/null; }
 

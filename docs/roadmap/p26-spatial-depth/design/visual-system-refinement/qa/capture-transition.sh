@@ -15,7 +15,8 @@ W=1440
 H=900
 OUT="$(pwd)/transition/$LABEL"
 mkdir -p "$OUT"
-export AGENT_BROWSER_SESSION="p26trans-$LABEL"
+export AGENT_BROWSER_SESSION="p26trans-$LABEL-$$"
+trap 'agent-browser close >/dev/null 2>&1 || true' EXIT
 U="$BASE/index.html?shot=1&motion=teach"
 TMPS="${TMPDIR:-/tmp}"
 
