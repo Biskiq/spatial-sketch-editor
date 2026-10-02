@@ -61,7 +61,7 @@ BLOB='(() => {
     cardTitle: txt("#card .c-t"),
     cardVerbs: [...document.querySelectorAll("#card .verb")].map((b) => b.dataset.act).join(","),
     cardWarn: txt("#card .where"),
-    own: [...document.querySelectorAll("#card .own-row")].map((r) => r.textContent).join(" || "),
+    own: [...document.querySelectorAll("#instrument .own-row")].map((r) => r.textContent).join(" || "),
     cardText: t("#card") ? t("#card").textContent : "",
     indexText: t("#index") ? t("#index").textContent : "",
     instrKind: txt("#instrument .st-kind"),
@@ -203,7 +203,9 @@ last="$(step "document.querySelector('#instrument [data-act=\"repair-pick\"][dat
 declare 0 4.0 accept || qa_fail_msg "the declared station never took before the cancel"
 last="$(step '')"
 qa_ok "a candidate is drawn, on a wall that would hold it" "$(field preview)" "north|4.00|1.60"
-qa_press Escape
+# S7 retains the field's focus after Enter: first cancel that writer, then leave the task.
+qa_key_dispatch Escape
+qa_key_dispatch Escape
 last="$(step '')"
 qa_ok "Escape leaves the work unresolved: nothing written, nothing drawn, no work in hand" "$(field task) / $(field preview) / $(field art)" "none / none / unresolved|0.00|1.60"
 qa_ok "…with the same history it started with" "$(field undo) / $(field warnRows)" "$U1 / 1"
@@ -215,12 +217,12 @@ qa_ok "…and it writes nothing either" "$(field task) / $(field preview) / $(fi
 qa_ok "no command or page fault through any of it" "$(field faults)" "0"
 
 qa_say "-- Owner/Source/Reach: three supported facts at the edit decision, and no invented scope"
-last="$(step "A.select('gwin');")"
+last="$(step "A.select('gwin'); A.dimensionTask('gwin'); await __me.qa.render(); document.querySelector('#instrument .st-facts summary').click();")"
 OW="$(field own)"
 qa_okc "an opening's fact is owned by the Layout document" "$OW" "Layout document"
 qa_okc "…its source is named as this prototype's fixture" "$OW" "prototype-local fixture"
 qa_okc "…and what it reaches is that opening and its wall alone" "$OW" "this opening only"
-last="$(step "A.select('panel');")"
+last="$(step "A.select('panel'); A.repairTask('panel'); await __me.qa.render(); document.querySelector('#instrument .st-facts summary').click();")"
 OW="$(field own)"
 qa_okc "an artwork's fact is owned by the Scene document" "$OW" "Scene document"
 qa_okc "…its source is named as unresolved rather than a place" "$OW" "wall reference, unresolved"

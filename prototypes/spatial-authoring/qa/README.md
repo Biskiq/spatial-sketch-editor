@@ -16,6 +16,8 @@ qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the 
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
 qa/run-all.sh lens         # stage S6: the lens, parked work, and explicit Resume from the bridge
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
+qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
+qa/mutation-check.sh       # protected regressions on disposable copies
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -37,7 +39,7 @@ What the harness knows about keys, measured rather than assumed:
 - `agent-browser press <printable key>` does not release the key: the page then receives thousands of
   keydowns a second, forever, so the key's command re-runs whenever the state changes (close a reading
   and watch it open again). `qa_press` therefore dispatches the keydown itself for a single-character
-  key, and keeps the CLI's press for Escape, Enter, Tab and the arrows.
+  key, and dispatches Escape on the focused element after native Escape stalls, and keeps native Enter, Tab and arrows.
 - With a live knife aim on screen, `press` hangs for about 30 seconds and drops the key. Where that
   matters, `qa_key_dispatch` dispatches the keydown explicitly instead.
 - A press can therefore also land after the eval that followed it, which is why key-driven assertions
@@ -75,6 +77,7 @@ What the harness knows about keys, measured rather than assumed:
   `lastUndo`, `fov`, `dir`, `up`, `target`) were identical, and only the fit-dependent fields moved.
   The Instrument overlays the stage rather than taking layout space, so the stage rect is constant
   across all 50 checkpoints and invoking work cannot change the fit of a reading.
+- B7–B9 preserve the originally unselected Section subject as null; only these three expectations changed during S8, independently protected by correctness parking checks.
 - Screens are captures, never the assertion mechanism.
 
 ## Coverage limits (recorded, not hidden)
@@ -86,8 +89,7 @@ What the harness knows about keys, measured rather than assumed:
 2. Real gestures are covered where they carry a rule: handle drag and release, refusal rollback,
    typed values, Tab continuity, the peel, Plan and 3D drags, the knife slide, the reopen control.
    Pan/orbit/pinch feel, trackpad, touch and pen are not asserted here.
-3. Accessibility proof includes S7 field focus, refusal announcements, keyboard line definition, sheet focus/return and shortcut isolation. Screen-reader listening and assistive-device testing remain unperformed. Earlier proof: keyboard reach for search, selection, numeric entry and unwind is
-   asserted. Screen-reader announcements and focus order across the whole shell are not yet.
+3. Keyboard proof includes search/selection/invocation, fields/refusal announcements, line definition, sheet focus/return, shortcut isolation, gap preview/cancel, Repair/Resume and unwind. Screen-reader listening and assistive-device/usability trials remain outside this prototype acceptance.
 4. Responsive proof covers 1440×900, 1280×800, 1024×768 and DPR2 with canvas/picking agreement and unchanged realized pose/source.
 5. Intermediate visuals (mid-peel, mid-lift, mid-cut) are captured on demand (`QA_SHOT=1`) and are
    evidence, not assertions.
@@ -112,4 +114,6 @@ What the harness knows about keys, measured rather than assumed:
 | `repair-check.sh` | stage S5: the quiet rest warning for an unresolved reference, the locator that is never a host, Repair's explicit wall pick and declared station/height, the fixture's own refusals, one accepted edit with Undo/Redo moving the reference and not the view, canceled and left-unresolved work writing nothing, and Owner/Source/Reach as supported facts |
 | `lens-check.sh` | stage S6: crossing lenses parks World work as an inactive record with the realized eye and FOV unmoved, the read-only bridge's two identities and its named refusals for World work and Search, the foreign Card on return, contextual Resume explained locally for a changed selection or a changed/missing target, Resume as a fresh invocation with a fresh return context, and one cancellation covering an open draft and a live aim |
 | `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
+| `correctness-check.sh` | remaining numerical and nested-lifecycle obligations, no duplicate broad shell suite |
+| `mutation-check.sh` | same-defect replacement proof, disposable copies only |
 | `run-all.sh` | the axis driver |

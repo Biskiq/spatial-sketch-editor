@@ -64,9 +64,9 @@ export const fly = (to, ms, arc = 0) => nav.fly(to, ms, arc);
 // was opened from. Used by the view trail and by Esc, so "back" and "history" restore identically.
 function recipeOf(s = S.session) {
   const cam = st().camState();
-  if (!s) return { kind: viewKind(), cam, label: viewLabel(null) };
-  const r = { kind: s.kind, cam, label: viewLabel(s), parent: s.parent || null };
-  if (s.kind === 'face') Object.assign(r, { id: s.focusId, u: s.u, side: s.side });
+  if (!s) return { kind: viewKind(), cam, hold: nav.hold(), label: viewLabel(null) };
+  const r = { kind: s.kind, subject: s.subject ?? null, cam, label: viewLabel(s), parent: s.parent || null };
+  if (s.kind === 'face') Object.assign(r, { id: s.focusId, wallId: s.wallId, opening: s.opening ?? null, u: s.u, side: s.side });
   if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: S.reveal });
   if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { id: s.ceilId, mirror: st().cam.mirror });
   return r;
@@ -89,10 +89,11 @@ async function enterRecipe(e) {
   if (e.kind === 'plan' || e.kind === '3d') {
     if (S.session) await exitSessionInner(e.cam);
     else await fly(e.cam, dur('trail', 800));
+    nav.restoreOriginHold(e);
     return;
   }
-  const opts = { arrive: e.cam, parent: e.parent ?? null, label: e.label, restore: true };
-  if (e.kind === 'face') await faceInner(e.id, { ...opts, side: e.side, u: e.u });
+  const opts = { arrive: e.cam, subject: e.subject, parent: e.parent ?? null, label: e.label, restore: true };
+  if (e.kind === 'face') await faceInner(e.subject ?? e.id, { ...opts, side: e.side, u: e.u });
   else if (e.kind === 'section') {
     await openSectionInner(e.cut, opts);
     if (e.reveal) toggleReveal(e.reveal, true);
@@ -122,6 +123,7 @@ export function setStatus(text, kind = 'info') {
 // ---------------------------------------------------------------- selection
 
 export function select(id) {
+  if (id !== S.sel) cancelProposal('selection');
   const sd = st();
   if (S.sel && sd.items.has(S.sel)) sd.d(S.sel).hl = null;
   S.sel = id;
@@ -148,9 +150,12 @@ const KIND = {};
 // One lifecycle for every open state. Opening a different kind from inside one nests it (Esc steps
 // back out to where you were); opening the same kind replaces it (hopping wall to wall).
 async function openSession(sess, home, { label, narr, base = 1100, via = null, arrive = null, parent, onTween = null, arc = 0, restore = false } = {}) {
+  cancelProposal('invoke');
   if (S.knife) cancelKnife(true);
   let origin, undoFrom;
   const a0 = st().camState();
+  const invocationOrigin = nav.captureOrigin(viewLabel(null));
+  nav.releaseHold();
   if (S.session) {
     const old = S.session;
     origin = old.origin;
@@ -165,7 +170,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
     KIND[old.kind].teardown(old);
     S.session = null;
   } else {
-    origin = { cam: a0, label: viewLabel(null) };
+    origin = invocationOrigin;
     undoFrom = S.undo.length;
     if (viewKind() === '3d') S.last3D = a0;
     parent = parent ?? null;
@@ -208,6 +213,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
 
 // Close everything and return to the standpoint the first open state began from.
 export async function exitSessionInner(toCam) {
+  cancelProposal('return');
   const sess = S.session;
   if (!sess) return;
   const to = toCam || sess.origin.cam;
@@ -228,6 +234,7 @@ export async function exitSessionInner(toCam) {
   S.session = null;
   T.end();
   st().cam.mirror = false;
+  nav.restoreOriginHold(toCam ? null : sess.origin);
   saw('close');
   narrate(null);
   summarize(sess);
@@ -240,6 +247,7 @@ nav.setReadingLabel(() => viewLabel());
 
 // Esc: one level out — back into the open state this one was opened from, exactly as it was.
 export async function backInner() {
+  cancelProposal('return');
   const s = S.session;
   if (!s) return;
   if (!s.parent) { await exitSessionInner(); return; }
@@ -580,7 +588,8 @@ export function beginPeel(wallId, sA) {
     focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${w.name}` } : { kind: 'wall-top', id: wallId, label: `${w.name} top` },
     params: { side, directly: true },
   });
-  Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
+  Object.assign(sess, { origin: nav.captureOrigin(viewLabel(null)), undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
+  nav.releaseHold();
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.face.setup(sess);
   sess.home = faceHome(sess);
@@ -1233,6 +1242,7 @@ export function resumeReadingTask() {
 // Putting away work that is not the reading's own surface: the reading underneath comes back with its
 // own task, so the Instrument that reappears is never a surface without a task behind it.
 export function endTaskInHand() {
+  cancelProposal('task-end');
   T.end();
   // Unaccepted work does not outlive the work it belonged to: a declared candidate is taken off the
   // drawing here, on every exit path, whether the work was left unresolved or something replaced it.
@@ -1258,7 +1268,8 @@ export function beginLid(id) {
   if (S.busy || S.session || S.knife) return null;
   const sess = { kind: 'lift', ceilId: id, direct: true, subject: S.sel ?? id };
   T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: C(id)?.name || id }, focus: { kind: 'underside', id, label: `${C(id)?.name || id} underside` } });
-  Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid });
+  Object.assign(sess, { origin: nav.captureOrigin(viewLabel(null)), undoFrom: S.undo.length, parent: null, id: ++S.sid });
+  nav.releaseHold();
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.lift.setup(sess);
   sess.home = st().camState();
@@ -1647,12 +1658,14 @@ function worldOnly() {
 // re-entered from where the Camera actually stands when Resume is asked for.
 function recordReading(s) {
   const r = { kind: s.kind, subject: s.subject ?? null };
+  const face = s.kind === 'face' ? resolveFace(s.subject ?? s.id ?? s.focusId) : null;
   if (s.kind === 'face') Object.assign(r, {
-    wallId: s.wallId, opening: s.opening ?? null, focusId: s.focusId, focusName: s.focusName,
+    wallId: s.wallId ?? face?.wall.id, opening: s.opening ?? face?.opening ?? null,
+    focusId: s.focusId ?? face?.focusId, focusName: s.focusName ?? face?.focusName,
     side: s.side ?? 1, u: s.u ?? 0,
   });
-  if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: S.reveal ?? null });
-  if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { ceilId: s.ceilId, mirror: !!st().cam.mirror });
+  if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: 'reveal' in s ? s.reveal : S.reveal ?? null });
+  if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { ceilId: s.ceilId ?? s.id, mirror: s.mirror ?? !!st().cam.mirror });
   return r;
 }
 
@@ -1667,7 +1680,9 @@ export function parkWorldWork() {
   const canceled = [];
   if (k) canceled.push(k.p1 ? 'line-aim' : 'line');
   if (S.pending) canceled.push('candidate');
-  const chain = [...(s ? [recordReading(s)] : []), ...(overlay ? [overlay] : [])];
+  const chain = [];
+  for (let reading = s; reading; reading = reading.parent) chain.unshift(recordReading(reading));
+  if (overlay) chain.push(overlay);
   if (!chain.length) {
     // A knife aim, a live candidate and an uncommitted draft are proposals, and proposals are never
     // parked: they are canceled, and an earlier record is not thrown away by a crossing that had
@@ -1675,11 +1690,10 @@ export function parkWorldWork() {
     cancelProposal('lens');
     return S.parked;
   }
-  const identity = s?.subject ?? overlay?.subject ?? S.sel ?? null;
+  const identity = s ? s.subject ?? null : overlay?.subject ?? null;
   S.parked = {
     lens: 'world', at: performance.now(),
     identity, name: nameOfId(identity),
-    selection: S.sel ?? null,
     chain,
     canceled,
   };
@@ -1701,7 +1715,10 @@ function validateStep(c, identityThing) {
     return null;
   }
   if (c.kind === 'section') {
-    if (!c.cut || !Number.isFinite(c.cut.depth) || !Array.isArray(c.cut.p0) || !Array.isArray(c.cut.p1)) return 'the cut it was about is no longer a valid reading';
+    const cut = c.cut, point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+    if (!cut || !Number.isFinite(cut.depth) || cut.depth < 0.5 || cut.depth > 30 ||
+        !point(cut.p0) || !point(cut.p1) || ![-1, 1].includes(cut.side) ||
+        Math.hypot(cut.p1[0] - cut.p0[0], cut.p1[1] - cut.p0[1]) < 0.1) return 'the cut it was about is no longer a valid reading';
     if (!ctx.museum.walls.length) return 'there is no architecture left to open';
     return null;
   }
@@ -1723,7 +1740,7 @@ function validateStep(c, identityThing) {
 export function parkedContext() {
   const p = S.parked;
   if (!p) return null;
-  const out = { ok: false, identity: p.identity, name: p.name, selection: p.selection, chain: p.chain.map((c) => c.kind), canceled: [...p.canceled], reason: '', fix: null, wrongLens: S.lens !== 'world' };
+  const out = { ok: false, identity: p.identity, name: p.name, selection: S.sel, chain: p.chain.map((c) => c.kind), canceled: [...p.canceled], reason: '', fix: null, wrongLens: S.lens !== 'world' };
   const t = p.identity ? thing(p.identity) : null;
   if (p.identity && !t) { out.reason = `${p.name || p.identity} is not in this museum any more`; return out; }
   if (p.identity && S.sel !== p.identity) {
@@ -1733,8 +1750,11 @@ export function parkedContext() {
     out.fix = 'select';
     return out;
   }
+  if (!p.identity && S.sel) { out.reason = 'this location task began without a selected subject — start a fresh Section in the current context'; return out; }
   for (const c of p.chain) {
-    const bad = validateStep(c, t);
+    const subject = c.subject ? thing(c.subject) : null;
+    if (c.subject && !subject) { out.reason = 'a subject in the parked chain is no longer in this museum'; return out; }
+    const bad = validateStep(c, subject);
     if (bad) { out.reason = bad; return out; }
   }
   out.ok = true;
@@ -1745,16 +1765,17 @@ export function parkedContext() {
 // recorded Camera), their validated parameters reapplied, and the return context starts here: the
 // pre-crossing root is never reused. Overlay work is re-invoked fresh, because a picked wall or a
 // declared candidate was a proposal, and proposals are never parked.
-async function reenter(step) {
-  const opts = { parent: null, restore: true };
+async function reenter(step, first) {
+  const opts = { restore: true, ...(first ? { parent: null } : {}) };
   if (step.kind === 'face') { await faceInner(step.subject ?? step.focusId, { ...opts, side: step.side, u: step.u }); return; }
   if (step.kind === 'section') {
-    await openSectionInner(step.cut, { ...opts, subject: step.subject });
+    const { p0, p1, side, depth } = step.cut;
+    await openSectionInner(makeCut(p0, p1, side, depth), { ...opts, subject: step.subject });
     if (step.reveal) toggleReveal(step.reveal, true);
     return;
   }
   if (step.kind === 'lift') { await liftInner(step.ceilId, { ...opts, subject: step.subject }); return; }
-  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject, mirror: step.mirror }); return; }
+  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject }); st().cam.mirror = !!step.mirror; return; }
   if (step.kind === 'dims') { dimensionTask(step.subject); if (step.precision) T.setPrecision(true); return; }
   if (step.kind === 'repair') { repairTask(step.subject); if (step.precision) T.setPrecision(true); }
 }
@@ -1776,8 +1797,7 @@ export const resumeParked = () => run(async () => {
     return null;
   }
   S.parked = null;
-  nav.releaseHold(); // the held flatness was the parked standpoint; explicit work re-derives it from here
-  for (const step of p.chain) await reenter(step);
+  for (let i = 0; i < p.chain.length; i++) await reenter(p.chain[i], i === 0);
   setStatus(`Resumed the work on the ${p.name || 'subject'} — a fresh invocation from where you stand: Put it back returns here, not to where it was parked`, 'view');
   ctx.ui();
   return p;

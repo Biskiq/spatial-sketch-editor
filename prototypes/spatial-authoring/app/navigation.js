@@ -73,6 +73,10 @@ export function holdRealized() {
 }
 export const hold = () => (S.flatHold == null ? null : S.flatHold);
 export function releaseHold() { S.flatHold = null; }
+// A new invocation can start at a neutral, parked realization. Its explicit return must preserve
+// that realization as well as the requested pose; this belongs to navigation, never parked tasks.
+export function captureOrigin(label) { return { cam: camState(), label, hold: hold() }; }
+export function restoreOriginHold(origin) { S.flatHold = origin?.hold ?? null; }
 
 // ----- the view history -------------------------------------------------
 

@@ -368,7 +368,7 @@ function recordsIndex() {
 }
 
 // ---------------------------------------------------------------- the Card
-// The stable identity of the subject: ref, name, the subject's own numbers, what it is attached to,
+// The stable identity of the subject: ref, name, capabilities and what it is attached to,
 // and — when the view cannot show it — why not and what to do about it. Nothing here depends on
 // which reading happens to be open; the reading's own controls are the Instrument, below the stage.
 
@@ -444,8 +444,8 @@ function factsHtml(id) {
 }
 
 // ----- the numbers of a subject, from one source -----
-// The Card shows them as identity, Precision shows the ones the work in hand is about, and the
-// in-place measurement task shows them where the subject is. All three read this, so a value can
+// Precision shows the numbers the work in hand is about; in-place Measure shows the subject’s
+// numbers without moving Camera. Both read this, so a value can
 // never disagree with itself, and every field keeps the one validated edit path.
 
 function numbersOf(id) {
@@ -501,7 +501,7 @@ function numbersOf(id) {
     ];
     if (c.form === 'shed') items.push({ field: ['Rise per metre', { type: 'ceil', id: c.id, key: 'gx' }, c.plane.gx, { hint: 'toward the east' }] });
     return [
-      { sec: 'Underside', items },
+      { sec: 'Underside', items: [{ seg: ['Relationship', { type: 'rel', id: c.id }, [['closure', 'Closes the room'], ['suspended', 'Suspended']], c.rel] }, ...items] },
       { sec: 'Measured', items: [
         { field: ['Thickness', { type: 'ro' }, c.thick, { readonly: true }] },
         { field: ['Width', { type: 'ro' }, Math.round((bbox(c.outline).x1 - bbox(c.outline).x0) * 1000) / 1000, { readonly: true }] },
@@ -519,10 +519,6 @@ function numbersOf(id) {
     ] }];
   }
   return [];
-}
-
-function numbersHtml(groups, { secs = true } = {}) {
-  return groups.map((g) => (secs ? `<div class="c-sec">${g.sec}</div>` : '') + g.items.map((it) => (it.seg ? seg(...it.seg) : field(...it.field))).join('')).join('');
 }
 
 // Details: what it is attached to, named as a relation with its own target — and, once expanded, each
@@ -646,8 +642,6 @@ function cardWall(w) {
   let html = cardHead(`${w.kind === 'arc' ? 'Curved wall' : 'Wall'} · ${w.ref}`, w.name, `${esc(byId(ctx.museum.galleries, w.gallery).name)} · ${fmt(L)} m${w.kind === 'arc' ? ' around' : ''} · ${fmt(w.thick)} thick`);
   html += where(w.id);
   html += looks(w.id);
-  html += numbersHtml(numbersOf(w.id));
-  html += factsHtml(w.id);
   const rel = wallCeilingNote(w);
   if (rel) html += rel;
   if (w.openings.length) {
@@ -671,9 +665,6 @@ function cardOpening(o, w) {
   let html = cardHead(`${o.kind === 'door' ? 'Door' : 'Window'} · ${o.ref}`, o.name, `in <button class="lnk inline" data-sel="${w.id}">${esc(w.name)}</button> · ${w.ref}`);
   html += where(o.id);
   html += looks(o.id);
-  html += numbersHtml(numbersOf(o.id), { secs: false });
-  html += factsHtml(o.id);
-  html += `<div class="c-foot">The handles on the drawing and these fields are the same numbers — change either, one Undo step.</div>`;
   html += details(o.id);
   return html;
 }
@@ -682,14 +673,6 @@ function cardCeiling(c) {
   let html = cardHead(`Ceiling region · ${c.ref}`, c.name, `${c.rel === 'closure' ? 'closes the room over its footprint' : 'hangs below the room ceiling'} · ${esc(byId(ctx.museum.galleries, c.gallery).name)} (overlaps, does not own)`);
   html += where(c.id);
   html += looks(c.id);
-  html += `<div class="c-sec">Relationship</div>`;
-  html += seg('Relationship', { type: 'rel', id: c.id }, [['closure', 'Closes the room'], ['suspended', 'Suspended']], c.rel);
-  html += numbersHtml(numbersOf(c.id));
-  html += factsHtml(c.id);
-  const rels = lidRelations(c);
-  if (rels.length) {
-    html += `<div class="c-sec">Where it meets walls</div><ul class="rels">${rels.map((r) => `<li class="${r.status}"><span class="dot"></span>${esc(r.wall.name)}<span class="rel-st">${r.status === 'gap' ? `${Math.round(r.gap * 100)} cm gap` : r.status === 'intended' ? 'kept open' : 'meets'}</span></li>`).join('')}</ul>`;
-  }
   html += details(c.id);
   return html;
 }
@@ -699,7 +682,6 @@ function cardScene(t) {
   let html = cardHead(`${t.kind === 'art' ? 'Artwork' : 'Object'} · Scene`, it.name, it.by ? esc(it.by) : '');
   html += where(it.id);
   html += looks(it.id);
-  html += factsHtml(it.id);
   html += `<div class="relation quiet"><span class="dot"></span><span>Staged content lives in the Scene document. Here it is passive context — edit it in <b>Arrange</b>.</span></div>`;
   html += details(it.id);
   return html;
@@ -742,7 +724,7 @@ function sectionCounts() {
 }
 
 // The numbers the work in hand is about: the reading's local focus, or the subject of an in-place
-// measurement. Never a catalogue of the whole subject — the Card owns that.
+// measurement. Only invoked work discloses technical numbers.
 function precisionGroups() {
   const t = S.task;
   if (!t) return [];
@@ -765,7 +747,8 @@ function precisionHtml() {
   const groups = precisionGroups();
   if (!groups.length) return '';
   const groupsRendered = groups.map((g) => g.items.map((it) => (it.seg ? seg(...it.seg) : field(...it.field))).join('')).join('');
-  return `<div class="st-prec" id="precision"><span class="st-prec-label">Precision</span>${groupsRendered}<span class="st-meta">${esc(S.task.focus?.label || '')}</span></div>`;
+  const factId = ['dims','repair'].includes(S.task.kind) ? S.task.subject : S.task.focus?.id;
+  return `<div class="st-prec" id="precision"><span class="st-prec-label">Precision</span>${groupsRendered}<span class="st-meta">${esc(S.task.focus?.label || '')}</span></div><details class="st-facts"><summary>Owner · Source · Reach</summary>${factsHtml(factId)}</details>`;
 }
 
 function renderInstrument() {

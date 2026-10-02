@@ -423,6 +423,7 @@ onCancel(() => {
   if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); }
   if (typeSpec) closeTypein();
   S.refusal = null;
+  S.fieldErr = null;
 }, 10, 'pointer-writer');
 
 window.addEventListener('pointermove', (e) => {
@@ -632,9 +633,7 @@ document.addEventListener('click', (e) => {
   if (gap) {
     const s = S.session;
     const r = gap.getBoundingClientRect(), sr = stageEl.getBoundingClientRect();
-    S.popover = { wall: gap.dataset.gap, ceil: s.ceilId, anchor: { x: r.left + r.width / 2 - sr.left, y: r.bottom - sr.top } };
-    A.select(gap.dataset.gap);
-    S.popover = { wall: gap.dataset.gap, ceil: s.ceilId, anchor: { x: r.left + r.width / 2 - sr.left, y: r.bottom - sr.top - 18 } };
+    S.popover = { wall: gap.dataset.gap, ceil: s.ceilId, opts: A.gapOptions(gap.dataset.gap, s.ceilId), anchor: { x: r.left + r.width / 2 - sr.left, y: r.bottom - sr.top - 18 } };
     requestUI();
     return;
   }
@@ -676,6 +675,14 @@ document.addEventListener('mouseover', (e) => {
 document.addEventListener('mouseout', (e) => {
   const opt = e.target.closest?.('[data-opt]');
   if (opt && !e.relatedTarget?.closest?.('[data-opt]')) { S.previewing = null; A.unpreview(); }
+});
+// Keyboard focus previews the same frozen correction as hover, and leaving it cancels the preview.
+document.addEventListener('focusin', (e) => {
+  const opt = e.target.closest?.('[data-opt]');
+  if (opt && S.popover?.opts) A.previewOption(S.popover.opts[+opt.dataset.opt]);
+});
+document.addEventListener('focusout', (e) => {
+  if (e.target.closest?.('[data-opt]')) A.unpreview();
 });
 
 function motionText() {
@@ -1179,7 +1186,7 @@ const QA = {
         const p = S.parked;
         if (!p) return null;
         const v = A.parkedContext();
-        return { name: p.name, identity: p.identity, selection: p.selection, chain: p.chain.map((c) => c.kind), canceled: p.canceled, ok: !!v?.ok, reason: v?.reason || '', fix: v?.fix || null };
+        return { name: p.name, identity: p.identity, chain: p.chain.map((c) => c.kind), canceled: p.canceled, ok: !!v?.ok, reason: v?.reason || '', fix: v?.fix || null };
       })(),
       cam: { az: round3(stage.cam.az), el: round3(stage.cam.el), frameH: round3(stage.cam.frameH), flat: round3(stage.cam.flat), mirror: !!stage.cam.mirror, target: roundVec([stage.cam.target.x, stage.cam.target.y, stage.cam.target.z]) },
       realized: (() => { const r = realizedCamera(); return { ...r, eye: roundVec(r.eye), up: roundVec(r.up), target: roundVec(r.target), dir: roundVec(r.dir), fov: round3(r.fov), dist: round3(r.dist), frameH: round3(r.frameH) }; })(),

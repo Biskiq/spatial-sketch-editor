@@ -1834,7 +1834,7 @@
     },
     "instrument": true,
     "kind": "section",
-    "subject": "harbor",
+    "subject": null,
     "target": {
      "kind": "cut",
      "label": "looking north"
@@ -1955,7 +1955,7 @@
     },
     "instrument": true,
     "kind": "section",
-    "subject": "harbor",
+    "subject": null,
     "target": {
      "kind": "cut",
      "label": "looking north"
@@ -2076,7 +2076,7 @@
     },
     "instrument": true,
     "kind": "section",
-    "subject": "harbor",
+    "subject": null,
     "target": {
      "kind": "cut",
      "label": "looking north"

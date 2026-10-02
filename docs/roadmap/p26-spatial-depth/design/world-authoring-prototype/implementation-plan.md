@@ -1,7 +1,7 @@
 # #112 — World Authoring Prototype implementation plan
 
-**Date:** 2026-10-01. **Status:** implementation authorized; S0–S7 complete,
-S8 acceptance and S9 closeout in progress (2026-10-02). All stages below belong to one bounded prototype-adoption PR, #112.
+**Date:** 2026-10-01. **Status:** implementation authorized; S0–S8 complete,
+S9 closeout in progress (2026-10-02). All stages below belong to one bounded prototype-adoption PR, #112.
 Stage boundaries permit independent review/commits; they are not production children.
 
 **Target:** evolve [the existing prototype](../../../../../prototypes/spatial-authoring/README.md)
@@ -18,7 +18,10 @@ Progress checked against Git and the executable, not the former planning status:
 | --- | --- |
 | S0–S6 | Landed in staged commits `01f19dc8` through `645adad7`; prototype-local QA covers baseline, cancellation, shell, tasks, browse, repair and parking |
 | S7 | Responsive sheets, focus/refusal announcements, keyboard line controls and live reduced motion; focused check 15/15, root architecture lane 276/276 |
-| S8–S9 | Pending independent full regression, visual/mutation evidence and retirement/routing; no production cutover |
+| S8 | Accepted: 498 shell/spatial observations, 50 A–F checkpoints, 27 current specimens visually reviewed, two protected mutations rejected, root architecture 276/276; evidence in current prototype QA |
+| S9 | Documentation harvest, gated retirement and routing in progress; no production cutover |
+
+**S8 acceptance:** [recorded verification and harvest map](../../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md). Full sequential regression plus affected-axis retries; zero command/page errors. Bare supplemental correctness checks preserve nested parking/fresh realized return, model validators, summary history and cancellation. Visual review corrected ordinary Card disclosure and Instrument clipping. Production test/check/build lanes are not applicable to this prototype-only impact; whole repository architecture and docs gates remain required.
 
 ## 1. Outcome and authority
 

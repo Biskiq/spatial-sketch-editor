@@ -12,6 +12,8 @@
 #   qa/run-all.sh browse       Browse/Search and the Details grammar only
 #   qa/run-all.sh repair       the unresolved reference and its Repair only
 #   qa/run-all.sh lens         the lens, parked World work and explicit Resume only
+#   qa/run-all.sh responsive   viewport/DPR, keyboard and motion only
+#   qa/run-all.sh correctness  remaining source and nested-return obligations
 #
 # Each script gets its own harness session and tears its browser down, so one wedged session cannot
 # make the next axis look broken and no browser helper is left behind for the next axis (or the next
@@ -44,6 +46,7 @@ case "$WHICH" in
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
   responsive) run "Stage S7 · responsive and keyboard" responsive-check ;;
+  correctness) run "Additional source and nested correctness" correctness-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
@@ -55,9 +58,10 @@ case "$WHICH" in
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     run "Stage S7 · responsive and keyboard" responsive-check
+    run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|responsive|correctness|all)"
     exit 2
     ;;
 esac

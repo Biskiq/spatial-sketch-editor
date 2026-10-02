@@ -219,14 +219,16 @@ qa_move() { agent-browser mouse move "$1" "$2" >/dev/null 2>&1; }
 #   * in this environment `agent-browser press <letter>` leaves the key held down — the page keeps
 #     receiving thousands of keydowns a second, forever, so the key's command re-runs at every later
 #     state change (closing a reading and watching it open again is the visible symptom). A printable
-#     key is therefore dispatched as the keydown the page listens for; `press` is kept for the keys
-#     the browser does not repeat (Escape, Enter, Tab, arrows).
+#     key is therefore dispatched as the keydown the page listens for. Escape uses the same focused
+#     dispatch: native Escape repeatedly stalled after canceling a numeric writer. Enter/Tab/arrows
+#     retain native default behavior.
 #   * a press and an eval issued back to back race: the eval can come back empty while the page is
 #     still handling the key, which reads as a behaviour failure. The settle below covers that, and
 #     callers that need the key's *effect* wait for the state it causes.
 qa_press() { # qa_press <key>
   local k
   case "$1" in
+    Escape) qa_key_dispatch "$1"; return ;;
     ?)
       k="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1")"
       agent-browser eval "(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true })); return true; })()" >/dev/null 2>&1

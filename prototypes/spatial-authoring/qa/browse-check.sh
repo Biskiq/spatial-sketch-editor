@@ -75,7 +75,8 @@ BLOB='(() => {
     indexFocused: document.querySelectorAll("#index .ix-row.focused").length,
     instrKind: txt("#instrument .st-kind"),
     instrFocus: txt("#instrument .st-focus b"),
-    status: txt("#statusText"),
+    // The display expires after six seconds; assert the emitted outcome independent of CLI latency.
+    status: S.status?.text || txt("#statusText"),
   });
 })()'
 

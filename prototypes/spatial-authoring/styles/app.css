@@ -138,12 +138,15 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .ix-row.focused { box-shadow: inset 3px 0 0 var(--ochre-deep); }
 .ix-row.focused.sel { box-shadow: inset 3px 0 0 var(--sel-edge), inset 3px 0 0 4px var(--ochre-deep); }
 .ix-row.rec .ix-note { font-size: var(--t2xs); }
-.ix-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; text-align: left; color: inherit; }
-.ix-name { overflow: hidden; text-overflow: ellipsis; }
+.ix-go { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; text-align: left; color: inherit; }
+.ix-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ix-go .ix-note { flex-basis: 100%; margin-left: 24px; white-space: normal; }
+.ix-row { position: relative; }
+.ix-ref, .ix-row .state { flex: none; }
 .ix-ref { font: 500 var(--txs) var(--mono); font-stretch: 78%; color: var(--ink-3); }
 /* a row's verbs are the subject's own capabilities, offered where the subject is named */
-.ix-verb { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 2px 6px; font-size: var(--txs); color: var(--ink-2); opacity: 0; }
-.ix-row:hover .ix-verb, .ix-row:focus-within .ix-verb { opacity: 1; }
+.ix-verb { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 2px 6px; font-size: var(--txs); color: var(--ink-2); position: absolute; right: 6px; opacity: 0; }
+.ix-row:hover .ix-verb, .ix-row:focus-within .ix-verb { position: static; opacity: 1; }
 .ix-verb:hover { border-color: var(--ochre-deep); background: #FDF9EF; }
 .ix-rel { display: flex; gap: 7px; align-items: flex-start; padding: 4px 8px 0 10px; font-size: var(--tsm); color: var(--ink-2); }
 .ix-row .state { font: 500 var(--t2xs) var(--mono); font-stretch: 78%; text-transform: uppercase; letter-spacing: .02em; padding: 1px 5px; border-radius: 3px; }
@@ -516,8 +519,13 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .st-focus { font: 500 var(--txs) var(--ui); color: var(--ink-3); white-space: nowrap; }
 .st-focus b { color: var(--ink-2); font-weight: 600; }
 .instrument { flex-direction: column; align-items: stretch; }
-.st-row { display: flex; align-items: center; gap: 10px; min-height: 34px; white-space: nowrap; overflow: hidden; }
+.st-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 34px; white-space: nowrap; }
 .st-row > * { flex: none; }
+.st-row .close { margin-left: auto; }
+.st-row .st-focus { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.st-facts { font-size: var(--txs); border-top: 1px solid var(--rule); padding-top: 5px; }
+.st-facts summary { cursor: pointer; color: var(--ink-2); }
+.st-facts .own { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .st-row .st-meta { flex: 0 1 auto; min-width: 0; }
 .instrument.prec .st-row { min-height: 38px; }
 .st-prec { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; margin-top: 2px; border-top: 1px dashed var(--rule); overflow-x: auto; white-space: nowrap; }

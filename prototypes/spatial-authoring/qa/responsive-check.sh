@@ -72,6 +72,8 @@ block 'keyboard line: seed, slide, turn, depth, cancel without edits' '
   check(!S.knife && !S.task && source() === s7.startSource, "aim cancellation");'
 block 'numeric refusal announces, retains value and field focus; shortcuts respect writer' '
   el("#gl").focus(); await A.face("gwin"); await settle(); key("p"); await settle();
+  const box=el("#instrument").getBoundingClientRect();
+  check([...el("#instrument .st-row").querySelectorAll("button,input")].every(b=>{const r=b.getBoundingClientRect();return r.left>=box.left && r.right<=box.right && r.bottom<=box.bottom;}),"clipped Instrument control");
   let f = el("#precision input[data-field]"); check(f, "no numeric access"); f.focus();
   s7.beforeWrite = source(); f.value = "-4"; key("Enter"); await settle();
   check(source() === s7.beforeWrite && el("[aria-invalid=true]") && el("#announcer").textContent, "refusal/history/announcement");

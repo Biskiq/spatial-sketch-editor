@@ -69,7 +69,7 @@ BLOB='(() => {
     preview: ctx.stage.previewPlace ? JSON.stringify(ctx.stage.previewPlace) : null,
     unroll: ctx.stage.items.has("rotunda") ? +(ctx.stage.d("rotunda").u || 0).toFixed(3) : null,
     gwinHead: w.openings.find((o) => o.id === "gwin").head,
-    fieldW: fieldOf("\"key\":\"w\""),
+    fieldW: w.openings.find(o => o.id === "gwin").w.toFixed(2),
     typein: t("#typein") ? !t("#typein").hidden : null,
     harborHost: art("harbor") ? art("harbor").wall : null,
     panelGone: !art("panel"),
@@ -178,7 +178,7 @@ last="$(step "await A.face('gwin'); await A.unrollTo(0.5);")"
 qa_ok "a half-unrolled reading is open about the window on its host wall" "$(field reading) / $(field u) / $(field task)" "face/rotunda/gwin / 0.500 / face|gwin|rotunda||opening"
 P_EYE="$(field eye)"; P_FOV="$(field fov)"; P_HASH="$(field hash)"; P_UNDO="$(field undo)"; P_TRAIL="$(field trail)"
 bridge
-qa_ok "the parked record holds the identity, the host and the reading parameters" "$(field parkedJson)" '{"name":"Garden window","identity":"gwin","selection":"gwin","chain":["face"],"canceled":[],"ok":true,"reason":"","fix":null}'
+qa_ok "the parked record holds the identity, the host and the reading parameters" "$(field parkedJson)" '{"name":"Garden window","identity":"gwin","chain":["face"],"canceled":[],"ok":true,"reason":"","fix":null}'
 qa_ok "the reading is really gone, not hidden: no session, no work, no knife" "$(field reading) / $(field task) / $(field knife)" "none / none / False"
 qa_ok "…the wall is back where it was built, and the Instrument has no Work to show" "$(field unroll) / $(field instr)" "0 / False"
 qa_ok "…and the realized eye survived the crossing exactly" "$(eyediff "$(field eye)" "$P_EYE")" "0"
@@ -233,7 +233,7 @@ ordinary panel || qa_fail_msg "could not reach the ordinary state before the rep
 last="$(step "A.repairTask('panel'); await A.pickRepairWall('south'); A.declareRepair('s', 3.0);")"
 qa_ok "a repair is in hand with a declared candidate drawn" "$(field task) / $(field preview)" "repair|panel|panel|wall:south|reference / {\"art\":\"panel\",\"wall\":\"south\",\"s\":3,\"y\":1.6}"
 bridge
-qa_ok "crossing parks the repair as its own work, with no reading invented" "$(field parkedJson)" '{"name":"Unplaced panel","identity":"panel","selection":"panel","chain":["repair"],"canceled":[],"ok":true,"reason":"","fix":null}'
+qa_ok "crossing parks the repair as its own work, with no reading invented" "$(field parkedJson)" '{"name":"Unplaced panel","identity":"panel","chain":["repair"],"canceled":[],"ok":true,"reason":"","fix":null}'
 qa_ok "…the declared candidate is taken off the drawing, not carried over" "$(field preview) / $(field task)" "None / none"
 world
 tap '#card [data-act="resume"]'

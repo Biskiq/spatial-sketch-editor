@@ -57,6 +57,7 @@ qa_faults_clear
 echo "-- one shell, and none of the retired one"
 qa_ok "the Index panel is the relation Index" "$(qa_jsv 'document.querySelector("#index")?.getAttribute("aria-label")')" "Index of this place"
 qa_ok "the Card panel is the selected subject" "$(qa_jsv 'document.querySelector("#card")?.getAttribute("aria-label")')" "Selected subject"
+qa_ok "ordinary Card has no technical writer or ownership catalogue" "$(qa_js '!document.querySelector("#card [data-field], #card [data-seg], #card .own")')" true
 qa_ok "the stage is the world" "$(qa_js '!!document.querySelector("#stage #gl")')" "true"
 qa_ok "no domain spine" "$(qa_js '!!document.querySelector(".spine, .station")')" "false"
 qa_ok "no navigator tree" "$(qa_js '!!document.querySelector("#nav, .nv-row")')" "false"
@@ -118,6 +119,7 @@ qa_js 'document.querySelector("#card [data-act=\"look-face\"][data-id=\"tide1\"]
 run_js
 qa_ok "the artwork's own verb walks to its wall" "$(qa_jsv 'window.__me.S.session?.wallId + ":" + window.__me.S.session?.focusName')" "rotunda:Tide Study I on the Rotunda wall"
 qa_ok "…keeping the artwork as the subject that asked" "$(qa_jsv 'window.__me.S.task.subject + ">" + window.__me.S.task.target.id')" "tide1>rotunda"
+qa_ok "the artwork verb also preserves canonical selection and Card" "$(qa_jsv 'window.__me.S.sel + " / " + document.querySelector("#card .c-t").textContent')" "tide1 / Tide Study I"
 qa_ok "no shell panel overlaps the world it frames" "$(bounds_ok)" "true"
 
 qa_faults_ok "no command or page fault while driving the shell"
