@@ -215,13 +215,39 @@ qa_click_chip() { # qa_click_chip <data-edit substring> [name]
 
 qa_move() { agent-browser mouse move "$1" "$2" >/dev/null 2>&1; }
 
-# A key press, then a real settle. A press and an eval issued back to back race: the eval can come
-# back empty while the page is still handling the key, which reads as a behaviour failure.
+# A key press, then a real settle. Two things must be true of the press itself:
+#   * in this environment `agent-browser press <letter>` leaves the key held down — the page keeps
+#     receiving thousands of keydowns a second, forever, so the key's command re-runs at every later
+#     state change (closing a reading and watching it open again is the visible symptom). A printable
+#     key is therefore dispatched as the keydown the page listens for; `press` is kept for the keys
+#     the browser does not repeat (Escape, Enter, Tab, arrows).
+#   * a press and an eval issued back to back race: the eval can come back empty while the page is
+#     still handling the key, which reads as a behaviour failure. The settle below covers that, and
+#     callers that need the key's *effect* wait for the state it causes.
 qa_press() { # qa_press <key>
-  agent-browser press "$1" >/dev/null 2>&1
+  local k
+  case "$1" in
+    ?)
+      k="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1")"
+      agent-browser eval "(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true })); return true; })()" >/dev/null 2>&1
+      ;;
+    *) agent-browser press "$1" >/dev/null 2>&1 ;;
+  esac
   agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
   qa_frames
 }
+# Dispatch the keydown the page listens for, once, on the focused element so it travels the whole
+# path (document capture listeners for a field first, then the window's shortcut handler). This is the
+# fallback for the states where the CLI's real press cannot be delivered: with a live knife aim the
+# press hangs for 30 s and drops the key, which reads as a failure of the policy under test.
+qa_key_dispatch() { # qa_key_dispatch <key> [shift]
+  local k
+  k="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1")"
+  agent-browser eval "(() => { const t = document.activeElement || document.body; t.dispatchEvent(new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true, shiftKey: ${2:-false} })); return true; })()" >/dev/null 2>&1
+  agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
+  qa_frames
+}
+
 qa_down() { agent-browser mouse down left >/dev/null 2>&1; }
 qa_up() { agent-browser mouse up left >/dev/null 2>&1; }
 

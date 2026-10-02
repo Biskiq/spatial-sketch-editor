@@ -134,7 +134,9 @@ qa_ok "the trail is the seam's, not a copy in the shell" "$(qa_js 'window.__me.S
 LEN0="$(qa_js 'window.__me.nav.trail().length')"
 run_js "(() => { window.__me.A.startKnife(); return 1; })()"
 qa_ok "an aim is open and unaccepted" "$(qa_js '!!window.__me.S.knife')" "true"
-qa_press Escape
+# The real press cannot be delivered while the aim's overlay is live (the CLI hangs on it and drops
+# the key); the page's own shortcut handler is what this block is about, so the keydown is dispatched.
+qa_key_dispatch Escape
 run_js
 qa_ok "a canceled aim records no view change" "$(qa_js 'window.__me.nav.trail().length')" "$LEN0"
 qa_ok "…and leaves no aim behind" "$(qa_js 'window.__me.S.knife === null')" "true"

@@ -90,7 +90,7 @@ function indexRow(id, glyph, opts = {}) {
   const t = thing(id);
   if (!t) return '';
   const verbs = opts.noVerbs ? '' : T.capabilities(id)
-    .filter((c) => c !== 'dims' && c !== 'reveal')
+    .filter((c) => c !== 'reveal')
     .map((c) => `<button class="ix-verb" data-act="look-${c}" data-id="${id}" title="${esc(T.VERB[c])} · ${esc(t.item.name)}">${esc(T.VERB[c])}</button>`).join('');
   return `<div class="ix-row${S.sel === id ? ' sel' : ''}${opts.cls ? ' ' + opts.cls : ''}">
     <button class="ix-go" data-sel="${id}" aria-selected="${S.sel === id}">
@@ -188,12 +188,98 @@ function cardHead(kicker, title, sub) {
 
 // What the subject itself offers. The verbs come from the fixture's own capabilities, so a bench
 // offers nothing and a curved wall offers unrolling: no tool catalogue, and no button that cannot act.
+// Spatial work and in-place measurement are different promises, so they are offered separately.
 function looks(id) {
-  const caps = T.capabilities(id).filter((c) => c !== 'dims' && c !== 'reveal');
+  const caps = T.capabilities(id).filter((c) => c !== 'reveal');
   if (!caps.length) return '';
   const name = thing(id)?.item.name ?? '';
-  const verbs = caps.map((c) => `<button class="verb" data-act="look-${c}" data-id="${id}" title="${esc(T.VERB[c])} ${esc(name)}"><span class="vg ${c}"></span>${esc(T.VERB[c])}</button>`).join('');
-  return `<div class="c-sec">Look</div><div class="c-acts">${verbs}</div>`;
+  const verb = (c) => `<button class="verb" data-act="look-${c}" data-id="${id}" title="${esc(T.VERB[c])} ${esc(name)}"><span class="vg ${c}"></span>${esc(T.VERB[c])}</button>`;
+  const spatial = caps.filter((c) => T.SPATIAL.includes(c));
+  const inPlace = caps.filter((c) => T.IN_PLACE.includes(c));
+  let html = '';
+  if (spatial.length) html += `<div class="c-sec">Look</div><div class="c-acts">${spatial.map(verb).join('')}</div>`;
+  if (inPlace.length) html += `<div class="c-sec">In place</div><div class="c-acts">${inPlace.map(verb).join('')}<span class="c-note">no view moves, nothing opens</span></div>`;
+  return html;
+}
+
+// ----- the numbers of a subject, from one source -----
+// The Card shows them as identity, Precision shows the ones the work in hand is about, and the
+// in-place measurement task shows them where the subject is. All three read this, so a value can
+// never disagree with itself, and every field keeps the one validated edit path.
+
+function numbersOf(id) {
+  const t = thing(id);
+  if (!t) return [];
+  if (t.kind === 'openings') {
+    const o = t.item;
+    const w = t.wall;
+    return [
+      { sec: 'Shape', items: [
+        { seg: ['Profile', { type: 'profile', id: o.id }, [['rect', 'Square'], ['round', 'Round'], ['pointed', 'Pointed']], o.profile] },
+        { field: ['Width', { type: 'op', id: o.id, key: 'w' }, o.w, { hint: w.kind === 'arc' ? 'measured along the curve' : '' }] },
+        { field: ['Centre along wall', { type: 'op', id: o.id, key: 's' }, o.s, { hint: w.closed ? 'from the seam, going round' : 'from the wall’s start' }] },
+      ] },
+      { sec: 'Vertical', items: [
+        { field: ['Sill', { type: 'op', id: o.id, key: 'sill' }, o.sill] },
+        { field: ['Head', { type: 'op', id: o.id, key: 'head' }, o.head, { hint: `overall top · world ${fmt(o.head + FLOOR_Y)}` }] },
+        ...(o.profile !== 'rect' ? [{ field: ['Arch rise', { type: 'op', id: o.id, key: 'rise' }, o.rise, { hint: `head stays put; the spring line moves (now ${fmt(springOf(o))})` }] }] : []),
+        { field: ['Clear height', { type: 'ro' }, Math.round((o.head - o.sill) * 1000) / 1000, { readonly: true, hint: 'read-out: head minus sill' }] },
+      ] },
+    ];
+  }
+  if (t.kind === 'walls') {
+    const w = t.item;
+    const p = w.top;
+    const L = wallLength(w);
+    const items = [
+      { seg: ['Top form', { type: 'form', wall: w.id }, [['constant', 'Level'], ['slope', 'Slope'], ['gable', 'Gable']], p.form] },
+    ];
+    if (p.form === 'constant') items.push({ field: ['Height', { type: 'top', wall: w.id, key: 'h' }, p.h, { hint: `top at world ${fmt(p.h + FLOOR_Y)}` }] });
+    else if (p.form === 'slope') {
+      items.push({ field: ['At start', { type: 'top', wall: w.id, key: 'h0' }, p.h0] });
+      items.push({ field: ['At end', { type: 'top', wall: w.id, key: 'h1' }, p.h1] });
+    } else {
+      items.push({ field: [w.closed ? 'At the low point' : 'At start', { type: 'top', wall: w.id, key: 'h0' }, p.h0] });
+      items.push({ field: ['Ridge height', { type: 'top', wall: w.id, key: 'rh' }, p.rh] });
+      items.push({ field: ['Ridge along wall', { type: 'top', wall: w.id, key: 'rs' }, p.rs, { hint: 'distance along the wall from its start' }] });
+      if (!w.closed) items.push({ field: ['At end', { type: 'top', wall: w.id, key: 'h1' }, p.h1] });
+    }
+    return [
+      { sec: 'Top', items },
+      { sec: 'Measured', items: [
+        { field: [`Length${w.kind === 'arc' ? ' along the curve' : ''}`, { type: 'ro' }, Math.round(L * 1000) / 1000, { readonly: true, hint: w.kind === 'arc' ? 'measured with the wall as built' : '' }] },
+        { field: ['Thickness', { type: 'ro' }, w.thick, { readonly: true }] },
+      ] },
+    ];
+  }
+  if (t.kind === 'ceilings') {
+    const c = t.item;
+    const items = [
+      { seg: ['Form', { type: 'cform', id: c.id }, [['flat', 'Flat'], ['shed', 'Sloped']], c.form] },
+      { field: ['Height', { type: 'ceil', id: c.id, key: 'base' }, fieldValue({ type: 'ceil', id: c.id, key: 'base' }), { hint: c.form === 'shed' ? 'at the west end of the gallery' : `world ${fmt(c.plane.base + FLOOR_Y)}` }] },
+    ];
+    if (c.form === 'shed') items.push({ field: ['Rise per metre', { type: 'ceil', id: c.id, key: 'gx' }, c.plane.gx, { hint: 'toward the east' }] });
+    return [
+      { sec: 'Underside', items },
+      { sec: 'Measured', items: [
+        { field: ['Thickness', { type: 'ro' }, c.thick, { readonly: true }] },
+        { field: ['Width', { type: 'ro' }, Math.round((bbox(c.outline).x1 - bbox(c.outline).x0) * 1000) / 1000, { readonly: true }] },
+        { field: ['Depth', { type: 'ro' }, Math.round((bbox(c.outline).z1 - bbox(c.outline).z0) * 1000) / 1000, { readonly: true }] },
+      ] },
+    ];
+  }
+  if (t.kind === 'art' && typeof t.item.w === 'number') {
+    return [{ sec: 'Measured', items: [
+      { field: ['Width', { type: 'ro' }, t.item.w, { readonly: true }] },
+      { field: ['Height', { type: 'ro' }, t.item.h, { readonly: true }] },
+      { field: ['Hangs at', { type: 'ro' }, t.item.s, { readonly: true, hint: `along the ${W(t.item.wall)?.name || 'wall'}` }] },
+    ] }];
+  }
+  return [];
+}
+
+function numbersHtml(groups, { secs = true } = {}) {
+  return groups.map((g) => (secs ? `<div class="c-sec">${g.sec}</div>` : '') + g.items.map((it) => (it.seg ? seg(...it.seg) : field(...it.field))).join('')).join('');
 }
 
 // What it is attached to, and what the current reading is doing to it. Context, not ownership.
@@ -262,22 +348,10 @@ function emptyCard() {
 
 function cardWall(w) {
   const L = wallLength(w);
-  const p = w.top;
   let html = cardHead(`${w.kind === 'arc' ? 'Curved wall' : 'Wall'} · ${w.ref}`, w.name, `${esc(byId(ctx.museum.galleries, w.gallery).name)} · ${fmt(L)} m${w.kind === 'arc' ? ' around' : ''} · ${fmt(w.thick)} thick`);
   html += where(w.id);
   html += looks(w.id);
-  html += `<div class="c-sec">Top</div>`;
-  html += seg('Top form', { type: 'form', wall: w.id }, [['constant', 'Level'], ['slope', 'Slope'], ['gable', 'Gable']], p.form);
-  if (p.form === 'constant') html += field('Height', { type: 'top', wall: w.id, key: 'h' }, p.h, { hint: `top at world ${fmt(p.h + FLOOR_Y)}` });
-  else if (p.form === 'slope') {
-    html += field('At start', { type: 'top', wall: w.id, key: 'h0' }, p.h0);
-    html += field('At end', { type: 'top', wall: w.id, key: 'h1' }, p.h1);
-  } else {
-    html += field(w.closed ? 'At the low point' : 'At start', { type: 'top', wall: w.id, key: 'h0' }, p.h0);
-    html += field('Ridge height', { type: 'top', wall: w.id, key: 'rh' }, p.rh);
-    html += field('Ridge along wall', { type: 'top', wall: w.id, key: 'rs' }, p.rs, { hint: 'distance along the wall from its start' });
-    if (!w.closed) html += field('At end', { type: 'top', wall: w.id, key: 'h1' }, p.h1);
-  }
+  html += numbersHtml(numbersOf(w.id));
   const rel = wallCeilingNote(w);
   if (rel) html += rel;
   if (w.openings.length) {
@@ -301,15 +375,7 @@ function cardOpening(o, w) {
   let html = cardHead(`${o.kind === 'door' ? 'Door' : 'Window'} · ${o.ref}`, o.name, `in <button class="lnk inline" data-sel="${w.id}">${esc(w.name)}</button> · ${w.ref}`);
   html += where(o.id);
   html += looks(o.id);
-  html += `<div class="c-sec">Shape</div>`;
-  html += seg('Profile', { type: 'profile', id: o.id }, [['rect', 'Square'], ['round', 'Round'], ['pointed', 'Pointed']], o.profile);
-  html += field('Width', { type: 'op', id: o.id, key: 'w' }, o.w, { hint: w.kind === 'arc' ? 'measured along the curve' : '' });
-  html += field('Centre along wall', { type: 'op', id: o.id, key: 's' }, o.s, { hint: w.closed ? 'from the seam, going round' : 'from the wall’s start' });
-  html += `<div class="c-sec">Vertical</div>`;
-  html += field('Sill', { type: 'op', id: o.id, key: 'sill' }, o.sill);
-  html += field('Head', { type: 'op', id: o.id, key: 'head' }, o.head, { hint: `overall top · world ${fmt(o.head + FLOOR_Y)}` });
-  if (o.profile !== 'rect') html += field('Arch rise', { type: 'op', id: o.id, key: 'rise' }, o.rise, { hint: `head stays put; the spring line moves (now ${fmt(springOf(o))})` });
-  html += field('Clear height', { type: 'ro' }, o.head - o.sill, { readonly: true, hint: 'read-out: head minus sill' });
+  html += numbersHtml(numbersOf(o.id), { secs: false });
   html += `<div class="c-foot">The handles on the drawing and these fields are the same numbers — change either, one Undo step.</div>`;
   html += details(o.id);
   return html;
@@ -321,11 +387,7 @@ function cardCeiling(c) {
   html += looks(c.id);
   html += `<div class="c-sec">Relationship</div>`;
   html += seg('Relationship', { type: 'rel', id: c.id }, [['closure', 'Closes the room'], ['suspended', 'Suspended']], c.rel);
-  html += `<div class="c-sec">Underside</div>`;
-  html += seg('Form', { type: 'cform', id: c.id }, [['flat', 'Flat'], ['shed', 'Sloped']], c.form);
-  html += field('Height', { type: 'ceil', id: c.id, key: 'base' }, fieldValue({ type: 'ceil', id: c.id, key: 'base' }), { hint: c.form === 'shed' ? 'at the west end of the gallery' : `world ${fmt(c.plane.base + FLOOR_Y)}` });
-  if (c.form === 'shed') html += field('Rise per metre', { type: 'ceil', id: c.id, key: 'gx' }, c.plane.gx, { hint: 'toward the east' });
-  html += field('Thickness', { type: 'ro' }, c.thick, { readonly: true });
+  html += numbersHtml(numbersOf(c.id));
   const rels = lidRelations(c);
   if (rels.length) {
     html += `<div class="c-sec">Where it meets walls</div><ul class="rels">${rels.map((r) => `<li class="${r.status}"><span class="dot"></span>${esc(r.wall.name)}<span class="rel-st">${r.status === 'gap' ? `${Math.round(r.gap * 100)} cm gap` : r.status === 'intended' ? 'kept open' : 'meets'}</span></li>`).join('')}</ul>`;
@@ -371,13 +433,36 @@ function sectionCounts() {
   return out;
 }
 
+// The numbers the work in hand is about: the reading's local focus, or the subject of an in-place
+// measurement. Never a catalogue of the whole subject — the Card owns that.
+function precisionGroups() {
+  const t = S.task;
+  if (!t) return [];
+  if (t.kind === 'dims') return numbersOf(t.subject);
+  const s = S.session;
+  if (!s) return [];
+  if (s.kind === 'face' && s.opening) return numbersOf(s.opening);
+  if (s.kind === 'face') return numbersOf(s.wallId).slice(0, 1);
+  if (s.kind === 'lift' || s.kind === 'lookup') return numbersOf(s.ceilId).slice(0, 1);
+  return [];
+}
+
+function precisionHtml() {
+  const groups = precisionGroups();
+  if (!groups.length) return '';
+  const groupsRendered = groups.map((g) => g.items.map((it) => (it.seg ? seg(...it.seg) : field(...it.field))).join('')).join('');
+  return `<div class="st-prec" id="precision"><span class="st-prec-label">Precision</span>${groupsRendered}<span class="st-meta">${esc(S.task.focus?.label || '')}</span></div>`;
+}
+
 function renderInstrument() {
   const el = $('#instrument');
   if (!el) return;
   const s = S.session;
   const k = S.knife;
   const d = T.describe();
-  if (!s && !k && !S.task) { el.hidden = true; el._html = ''; return; }
+  // No work, no Instrument: the row is dropped from the DOM as well as hidden, so no stale control
+  // (the numbers row, a crumb) can be found or reached once the work it belonged to is gone.
+  if (!s && !k && !S.task) { el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
   el.hidden = false;
   let html = '';
   if (k) {
@@ -386,10 +471,11 @@ function renderInstrument() {
     if (!cut) html += `<span class="st-meta">Press and drag across the museum in Plan or 3D. Nothing opens until you say so.</span>`;
     else html += `<span class="st-title">${esc(lookWord(cut))}</span>${depthCtl(cut.depth)}<button class="st-btn" data-act="knife-flip">Look the other way <kbd>Tab</kbd></button><button class="st-btn primary" data-act="knife-open">Open it <kbd>↵</kbd></button>`;
     html += `<button class="st-btn ghost" data-act="knife-cancel">Cancel <kbd>Esc</kbd></button>`;
-  } else if (!s) {
-    // invoked work with no reading of its own (a subject's Details, a repair)
-    html = `<span class="st-kind">In hand</span><span class="st-title">${esc(d ? d.title : 'Work')}</span>`;
-    if (d?.subject) html += `<span class="st-meta">on ${esc(d.subjectName || d.subject)}</span>`;
+  } else if (!s || (S.task && S.task.kind !== s.kind)) {
+    // Work in hand that is not the reading's own surface: in-place measurement, and later a repair.
+    // One active task surface — the reading itself is untouched underneath and comes back with it.
+    html = `<span class="st-kind">${d?.kind === 'dims' ? 'Measured' : 'In hand'}</span><span class="st-title">${esc(d ? d.title : 'Work')}</span>`;
+    html += `<span class="st-meta">${d?.kind === 'dims' ? 'in place · nothing opened, nothing moved' : `on ${esc(d?.subjectName || d?.subject || '')}`}</span>`;
     html += `<button class="st-btn close" data-act="close">Close <kbd>Esc</kbd></button>`;
   } else {
     // where you are, as a path: the durable view you came from, then each open state it passed through.
@@ -424,11 +510,19 @@ function renderInstrument() {
       html += id('Looking up', c.name, false) + `<span class="st-meta">sliced at <b>1.60</b></span>`;
       html += `<button class="st-btn ${ctx.stage.cam.mirror ? 'on' : ''}" data-act="mirror" aria-pressed="${ctx.stage.cam.mirror}">Mirror <kbd>M</kbd></button>`;
     }
+    if (d?.focusLabel) html += `<span class="st-focus">at <b>${esc(d.focusLabel)}</b></span>`;
+    html += `<button class="st-btn ${S.task?.precision ? 'on' : ''}" data-act="precision" aria-pressed="${!!S.task?.precision}" title="Precision: reach the numbers of this work without a pointer (P)">Precision <kbd>P</kbd></button>`;
     html += s.parent
       ? `<button class="st-btn close" data-act="close" title="Back to ${esc(shortLabel(s.parent))}, exactly as you left it">Back <kbd>Esc</kbd></button>`
       : `<button class="st-btn close" data-act="close" title="Put everything back and return to ${esc(s.origin.label)}">Put it back <kbd>Esc</kbd></button>`;
   }
-  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+  // One row always, and the numbers when the work in hand is the numbers (in-place measurement) or
+  // when Precision has been asked for. Never the whole subject: only what this work is about.
+  const showNumbers = !!S.task && (S.task.kind === 'dims' || !!S.task.precision);
+  const prec = showNumbers ? precisionHtml() : '';
+  const body = `<div class="st-row">${html}</div>${prec}`;
+  el.classList.toggle('prec', !!prec);
+  if (el._html !== body) { el.innerHTML = body; el._html = body; }
 }
 
 // per-frame: the curvature readout follows the wall without re-rendering the instrument

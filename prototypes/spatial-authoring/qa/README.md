@@ -11,16 +11,37 @@ qa/run-all.sh interaction  # axis B: real pointer and keyboard paths
 qa/run-all.sh flows        # axis B: peel, nested return, trail restore, knife, grid, reopen
 qa/run-all.sh policy       # lifecycle: cancellation, identity vs target, neutral teardown
 qa/run-all.sh shell        # the World shell's composition: one head, Index, Card, invoked Instrument
+qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Precision
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
 Requires `agent-browser` and `python3`. `QA_SHOT=0` skips captures; `QA_BASE=http://host:port` measures
 an already-running copy instead of starting one; `QA_OUT` moves the captures.
 
-A run costs one browser session per axis; `agent-browser` starts dropping results after roughly a
-hundred evals in a session, which shows up as **empty** results rather than wrong ones. An assertion
-that failed with no value at all is a harness symptom: re-run that axis on its own session before
-treating it as a behaviour failure.
+Each axis is one browser session, torn down however its script ends — pass, failure or interrupt — and
+the next axis never starts until that helper is gone. Never fan an axis into sections that each open
+their own browser and server: every copy pays startup again and leaves the machine slower for the run
+after it. The rules live in `.agents/skills/browser-test-hygiene`.
+
+Minimum testing: an axis asserts only what its stage can break, aims at seconds rather than tens of
+minutes, and is run on its own while a stage is being built; the full set belongs to a checkpoint.
+Inside an axis, one eval returns a block's whole JSON blob and the assertions compare it in bash, so an
+assertion costs no browser round trip.
+
+What the harness knows about keys, measured rather than assumed:
+
+- `agent-browser press <printable key>` does not release the key: the page then receives thousands of
+  keydowns a second, forever, so the key's command re-runs whenever the state changes (close a reading
+  and watch it open again). `qa_press` therefore dispatches the keydown itself for a single-character
+  key, and keeps the CLI's press for Escape, Enter, Tab and the arrows.
+- With a live knife aim on screen, `press` hangs for about 30 seconds and drops the key. Where that
+  matters, `qa_key_dispatch` dispatches the keydown explicitly instead.
+- A press can therefore also land after the eval that followed it, which is why key-driven assertions
+  wait for the state the key should cause, and why the ordinary state a block depends on is established
+  and then verified rather than assumed.
+- What produces **no value at all** in an assertion is a command that hung or was dropped, not the
+  number of evals: 220 plain evals in one session returned clean in 6 seconds. An empty result is a
+  harness symptom; re-run the axis before reading it as a defect.
 
 ## What is observed
 
@@ -83,4 +104,5 @@ treating it as a behaviour failure.
 | `flow-check.sh` | axis B harvested flows and exact return |
 | `policy-check.sh` | lifecycle: one cancellation policy, identity vs technical target, parking that keeps the realized camera |
 | `shell-check.sh` | the World shell's composition: one search entry, the Index, the Card, the Instrument that takes no space, and a row's verb acting on the row's subject |
+| `precision-check.sh` | stage S3: Look's three routes, the retained first gesture, in-place measurement, one active surface, Precision and its refusal, and a number reached where no handle is legible |
 | `run-all.sh` | the axis driver |

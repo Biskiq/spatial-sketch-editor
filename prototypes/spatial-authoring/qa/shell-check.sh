@@ -73,9 +73,9 @@ qa_ok "no work is in hand at rest" "$(qa_js 'document.querySelector("#instrument
 run_js "window.__me.A.select('bench')"
 qa_ok "a subject with nothing to offer offers nothing" "$(qa_js 'document.querySelectorAll("#card .verb").length')" "0"
 run_js "window.__me.A.select('rotunda')"
-qa_ok "a curved wall offers looking at it, and unrolling it" "$(verbs '#card .verb')" "look-face look-unroll"
+qa_ok "a curved wall offers looking at it, unrolling it, and its numbers in place" "$(verbs '#card .verb')" "look-face look-unroll look-dims"
 run_js "window.__me.A.select('soffit')"
-qa_ok "a ceiling offers lifting it and looking up at it" "$(verbs '#card .verb')" "look-lift look-lookup"
+qa_ok "a ceiling offers lifting it, looking up at it, and its numbers in place" "$(verbs '#card .verb')" "look-lift look-lookup look-dims"
 qa_ok "every verb a subject offers is dispatchable" "$(qa_js '[...document.querySelectorAll(".ix-verb, #card .verb")].every(b => window.__me.tasks.dispatchable().includes(b.dataset.act.slice(5)))')" "true"
 qa_ok "…and every offered verb names its own subject" "$(qa_js '[...document.querySelectorAll(".ix-verb, #card .verb")].every(b => !!b.dataset.id)')" "true"
 
@@ -100,7 +100,7 @@ qa_ok "the Instrument leaves when the work does" "$(qa_js 'document.querySelecto
 echo "-- a row's verb acts on the row's subject, and never rewrites the identity"
 run_js "window.__me.A.select('tide1')"
 qa_ok "the artwork's Card is the artwork" "$(qa_jsv 'document.querySelector("#card .c-t").textContent')" "Tide Study I"
-qa_ok "the artwork offers its own verb, not the wall's" "$(verbs '#card .verb')" "look-face"
+qa_ok "the artwork offers its own verbs, not the wall's" "$(verbs '#card .verb')" "look-face look-dims"
 qa_ok "the wall it hangs on is in the Index, with the wall's own verb" "$(qa_js '!!document.querySelector("#index [data-act=\"look-unroll\"][data-id=\"rotunda\"]")')" "true"
 qa_js 'document.querySelector("#index [data-act=\"look-unroll\"][data-id=\"rotunda\"]").click()' >/dev/null
 run_js

@@ -37,9 +37,14 @@ own preconditions. If a section runner exists, delete it rather than adapt it.
 - Each harness command spawns a CLI process and talks to a live browser. A pass costs roughly
   (evals + pointer ops + key presses) × that per-call latency — far slower than an in-process unit
   test, by construction. Shorten a pass by making **fewer calls**, not by waiting less.
-- `agent-browser` starts dropping results after roughly **100 evals in one session**, and the drop
-  looks like an **empty** result, not a wrong one. Empty is a harness symptom: re-run the axis; never
-  "fix" the app because of it.
+- **Keys are the sharp edge, measured on 2026-10-01.** `agent-browser press <printable key>` leaves the
+  key held: the page receives thousands of keydowns a second forever, so the key's command re-runs at
+  every later state change — a reading that keeps re-opening after every close is the symptom, and it
+  also burns CPU for the whole run. Dispatch the keydown for printable keys (`qa_press` does), and know
+  that with a live knife aim `press` hangs ~30 s and drops the key (`qa_key_dispatch` for that case).
+- A command that hangs or is dropped comes back as **empty**, not wrong. Empty is a harness symptom:
+  re-run the axis; never "fix" the app because of it. It is not a count — 220 plain evals in one
+  session returned clean in 6 seconds, so an eval budget is the wrong thing to tune.
 - Batch reads: one eval per block that returns a JSON blob; assert on the blob in bash. An assertion
   should cost no browser round trip.
 - Keys can be delivered **after** the next eval. Key-driven checks wait for the state the key causes

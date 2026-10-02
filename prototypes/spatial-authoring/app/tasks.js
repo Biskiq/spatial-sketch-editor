@@ -20,6 +20,9 @@ import * as nav from './navigation.js';
 
 // Capability is a property of the fixture, not of the shell: a bench offers nothing, a curved wall
 // can unroll, a ceiling can lift and be looked up at, an artwork faces the wall it hangs on.
+// 'dims' is the in-place measurement task: it opens no reading and moves nothing, so it is offered
+// wherever the fixture really carries numbers. An artwork without a stored size offers none, because
+// the prototype would have nothing real to report.
 export function capabilities(id) {
   const t = thing(id);
   if (!t) return [];
@@ -27,13 +30,16 @@ export function capabilities(id) {
   if (t.kind === 'walls') {
     out.push('face');
     if (t.item.kind === 'arc') out.push('unroll');
+    out.push('dims');
   } else if (t.kind === 'openings') {
     out.push('face');
     if (t.wall && t.wall.kind === 'arc') out.push('unroll');
+    out.push('dims');
   } else if (t.kind === 'art') {
-    out.push('face', 'dims');
+    out.push('face');
+    if (typeof t.item.w === 'number' && typeof t.item.h === 'number') out.push('dims');
   } else if (t.kind === 'ceilings') {
-    out.push('lift', 'lookup');
+    out.push('lift', 'lookup', 'dims');
   }
   if (S.session?.kind === 'section' || S.knife) out.push('reveal');
   return out;
@@ -47,9 +53,14 @@ export const VERB = {
   unroll: 'Unroll',
   lift: 'Lift',
   lookup: 'Look up',
-  dims: 'Details',
+  dims: 'Measure',
   reveal: 'Reveal',
 };
+
+// The capabilities that do real spatial work, as opposed to the in-place measurement task. The Card
+// keeps them in separate sections so "Look" never means "show me the numbers".
+export const SPATIAL = ['face', 'unroll', 'lift', 'lookup'];
+export const IN_PLACE = ['dims'];
 
 // ----- the active task ---------------------------------------------------
 
@@ -76,19 +87,30 @@ export function setFocus(focus) { if (S.task) S.task.focus = focus; }
 export function clearFocus() { if (S.task) S.task.focus = null; }
 export function setParam(key, value) { if (S.task) S.task.params = { ...S.task.params, [key]: value }; }
 
+// Precision is a state of the active task, not a mode of the shell: it is where the numbers of the
+// work in hand are reached without a pointer, and it exists only while a task does. Exiting it
+// restores the task surface exactly as it was.
+export function setPrecision(on) {
+  if (!S.task) return false;
+  S.task.precision = !!on;
+  return S.task.precision;
+}
+export const isPrecision = () => !!S.task?.precision;
+
 // For the shell: one description of the current work, with the subject and the target named
 // separately so no title can conflate them.
 export function describe(task = S.task) {
   if (!task) return null;
   const subjectName = task.subject ? nameOf(task.subject) : null;
   const targetName = task.target?.label || (task.target?.id ? nameOf(task.target.id) : null);
+  const focusLabel = task.focus?.label || null;
   const titles = {
     face: subjectName ? `Facing ${subjectName}` : 'Facing the wall',
     unroll: targetName ? `${targetName} · unroll around ${subjectName || 'the subject'}` : 'Unrolling the wall',
     section: 'Open along a line',
     lift: targetName ? `${targetName} lifted` : 'Lifting the ceiling',
     lookup: targetName ? `Looking up · ${targetName}` : 'Looking up',
-    dims: subjectName ? `${subjectName} · dimensions` : 'Dimensions',
+    dims: subjectName ? `${subjectName} · measurements` : 'Measurements',
     repair: subjectName ? `Repairing ${subjectName}` : 'Repairing a missing reference',
   };
   return {
@@ -99,7 +121,9 @@ export function describe(task = S.task) {
     target: task.target,
     targetName,
     focus: task.focus,
+    focusLabel,
     depth: task.depth || 0,
+    precision: !!task.precision,
   };
 }
 

@@ -138,7 +138,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -367,7 +371,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -460,7 +468,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -554,7 +566,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -648,7 +664,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -743,7 +763,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -838,7 +862,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -933,7 +961,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -1318,7 +1350,10 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "kind": "cut",
+     "label": "the cut, looking north"
+    },
     "instrument": true,
     "kind": "section",
     "subject": null,
@@ -1426,7 +1461,10 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "kind": "cut",
+     "label": "the cut, looking north"
+    },
     "instrument": true,
     "kind": "section",
     "subject": null,
@@ -1524,7 +1562,11 @@
    },
    "task": {
     "depth": 1,
-    "focus": null,
+    "focus": {
+     "id": "north",
+     "kind": "wall-top",
+     "label": "North wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "harbor",
@@ -1634,7 +1676,10 @@
    },
    "task": {
     "depth": 2,
-    "focus": null,
+    "focus": {
+     "kind": "cut",
+     "label": "the cut, looking north"
+    },
     "instrument": true,
     "kind": "section",
     "subject": "harbor",
@@ -1744,7 +1789,10 @@
    },
    "task": {
     "depth": 2,
-    "focus": null,
+    "focus": {
+     "kind": "cut",
+     "label": "the cut, looking north"
+    },
     "instrument": true,
     "kind": "section",
     "subject": "harbor",
@@ -1854,7 +1902,10 @@
    },
    "task": {
     "depth": 2,
-    "focus": null,
+    "focus": {
+     "kind": "cut",
+     "label": "the cut, looking north"
+    },
     "instrument": true,
     "kind": "section",
     "subject": "harbor",
@@ -2013,7 +2064,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lift",
     "subject": "longc",
@@ -2106,7 +2161,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lift",
     "subject": "longc",
@@ -2199,7 +2258,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lift",
     "subject": "longc",
@@ -2292,7 +2355,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lift",
     "subject": "longc",
@@ -2390,7 +2457,11 @@
    },
    "task": {
     "depth": 1,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lookup",
     "subject": "longc",
@@ -2489,7 +2560,11 @@
    },
    "task": {
     "depth": 1,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lookup",
     "subject": "longc",
@@ -2588,7 +2663,11 @@
    },
    "task": {
     "depth": 1,
-    "focus": null,
+    "focus": {
+     "id": "longc",
+     "kind": "underside",
+     "label": "Long Gallery ceiling underside"
+    },
     "instrument": true,
     "kind": "lookup",
     "subject": "longc",
@@ -2879,7 +2958,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "rotunda",
+     "kind": "wall-top",
+     "label": "Rotunda wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "rotunda",
@@ -2974,7 +3057,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "entrance",
+     "kind": "opening",
+     "label": "Entrance in the West wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "entrance",
@@ -3070,7 +3157,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "rotunda",
+     "kind": "wall-top",
+     "label": "Rotunda wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "rotunda",
@@ -3561,7 +3652,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -3656,7 +3751,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "gwin",
+     "kind": "opening",
+     "label": "Garden window in the Rotunda wall"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "gwin",
@@ -4016,7 +4115,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "rotunda",
+     "kind": "wall-top",
+     "label": "Rotunda wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "tide1",
@@ -4109,7 +4212,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "rotunda",
+     "kind": "wall-top",
+     "label": "Rotunda wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "tide1",
@@ -4202,7 +4309,11 @@
    },
    "task": {
     "depth": 0,
-    "focus": null,
+    "focus": {
+     "id": "north",
+     "kind": "wall-top",
+     "label": "North wall top"
+    },
     "instrument": true,
     "kind": "face",
     "subject": "harbor",

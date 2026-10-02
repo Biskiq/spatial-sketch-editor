@@ -688,8 +688,11 @@ function doAct(a, el) {
     // Back leaves the reading when there is one; with nothing open it only drops unaccepted work,
     // so the same control is never a dead end.
     case 'close':
-      if (s) A.closeSession();
-      else { cancelProposal('close'); T.end(); requestUI(); }
+      // Work in hand that is not the reading's own surface is put away first; the reading underneath
+      // is exactly as it was, and only then is there a reading to leave.
+      if (S.task && s && S.task.kind !== s.kind) { cancelProposal('close'); A.endTaskInHand(); requestUI(); }
+      else if (s) A.closeSession();
+      else { cancelProposal('close'); A.endTaskInHand(); requestUI(); }
       break;
     case 'face': A.face(S.sel); break;
     case 'unfold': A.unfold(); break;
@@ -700,6 +703,10 @@ function doAct(a, el) {
     case 'lift-rel': A.lift(el.dataset.id); break;
     case 'lookup': A.lookUp(s?.ceilId || (thing(S.sel)?.kind === 'ceilings' ? S.sel : null)); break;
     case 'mirror': A.toggleMirror(); requestUI(); break;
+    // Precision: the numbers of the work in hand, reached without a pointer. It belongs to the task,
+    // so it cannot outlive the work it belongs to.
+    case 'precision': A.setPrecision(!S.task?.precision); break;
+    case 'measure': A.dimensionTask(el?.dataset?.id ?? S.sel); break;
     case 'knife': A.startKnife(); break;
     case 'knife-open': A.commitKnife(); break;
     case 'knife-flip': A.flipKnife(); break;
@@ -884,7 +891,15 @@ window.addEventListener('keydown', (e) => {
       if (held) { requestUI(); break; }
       if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
+      // Precision sits between the writer and the reading: it is a state of the work in hand, so it is
+      // left before any spatial return, and leaving it changes nothing else.
+      else if (S.task?.precision) A.setPrecision(false);
+      // In-place work has no reading to return through: it is put away in one step, and whatever
+      // reading was underneath it comes back with its own Instrument. Nothing is authored, moved or
+      // selected differently by leaving it.
+      else if (S.task && (!S.session || S.task.kind !== S.session.kind)) { cancelProposal('esc'); A.endTaskInHand(); requestUI(); }
       else if (S.session) A.closeSession();
+      else if (S.task) { cancelProposal('esc'); A.endTaskInHand(); requestUI(); }
       break;
     }
     case '/': e.preventDefault(); openFinder(); break;
@@ -896,6 +911,7 @@ window.addEventListener('keydown', (e) => {
     case 'u': A.lookUp(S.session?.ceilId || (thing(S.sel)?.kind === 'ceilings' ? S.sel : null)); break;
     case 'k': A.startKnife(); break;
     case 'm': A.toggleMirror(); requestUI(); break;
+    case 'p': if (S.task) A.setPrecision(!S.task.precision); break;
     case 'g': doAct('grid'); break;
     case 'enter': if (S.knife) A.commitKnife(); break;
     case 'tab': if (S.knife) { e.preventDefault(); A.flipKnife(); } break;
@@ -1028,6 +1044,7 @@ function boot() {
     section: () => A.startKnife(),
     lift: (o) => A.lift(o?.id ?? S.sel),
     lookup: (o) => A.lookUp(o?.id ?? S.sel),
+    dims: (o) => A.dimensionTask(o?.id ?? S.sel),
     plan: () => A.goPlan(),
     three: () => A.go3D(),
   });

@@ -367,12 +367,24 @@ async function faceInner(id, opts = {}) {
   const cur = S.session;
   const side = opts.side || 1;
   if (!opts.restore && cur?.kind === 'face' && cur.wallId === r.wall.id && cur.side === side) {
-    if (Math.abs(cur.sA - r.sA) < 0.01 || cur.u > 0.5) { setStatus(`Already facing the ${r.wall.name}`, 'info'); return; }
+    if (Math.abs(cur.sA - r.sA) < 0.01 || cur.u > 0.5) {
+      // The work asked for is the work already open: the task seam is brought back to the reading in
+      // hand instead of being left pointing at whatever came before.
+      resumeReadingTask();
+      setStatus(`Already facing the ${r.wall.name}`, 'info');
+      return;
+    }
   }
   // The subject is what the user asked about; the wall is the technical target. An artwork on the
   // Rotunda wall keeps the artwork as its subject while the wall is the target.
   const sess = { kind: 'face', ...r, side, subject: opts.subject ?? id };
-  T.begin({ kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name }, params: { side } });
+  // The focus is the local point the work is about — the opening you walked to, or the wall's own top.
+  // It is what Precision offers numbers for, and it never becomes an identity.
+  T.begin({
+    kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${r.wall.name}` } : { kind: 'wall-top', id: r.wall.id, label: `${r.wall.name} top` },
+    params: { side },
+  });
   const u = opts.u ?? 0;
   const home = faceHome(sess);
   const inRoom = byId(ctx.museum.galleries, r.wall.gallery).name;
@@ -480,7 +492,11 @@ export const unfold = (id = S.sel) => run(async () => {
   if (!r) return;
   if (r.wall.kind !== 'arc') { await faceInner(id); return; }
   const sess = { kind: 'face', ...r, side: 1, subject: id ?? r.focusId };
-  T.begin({ kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name }, params: { side: 1 } });
+  T.begin({
+    kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${r.wall.name}` } : { kind: 'wall-top', id: r.wall.id, label: `${r.wall.name} top` },
+    params: { side: 1 },
+  });
   const to = flatHome(sess);
   sess.unfolding = true;
   await openSession(sess, to, {
@@ -538,7 +554,11 @@ export function beginPeel(wallId, sA) {
   const r = resolveFace(S.sel && thing(S.sel)?.wall?.id === wallId ? S.sel : wallId) || {};
   const subject = r.opening ? S.sel : wallId;
   const sess = { kind: 'face', wall: w, sA, focusId: r.focusId || wallId, focusName: r.focusName || w.name, opening: r.opening, side, peeled: true, subject };
-  T.begin({ kind: 'face', subject, target: { kind: 'wall', id: wallId, label: w.name }, params: { side, directly: true } });
+  T.begin({
+    kind: 'face', subject, target: { kind: 'wall', id: wallId, label: w.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${w.name}` } : { kind: 'wall-top', id: wallId, label: `${w.name} top` },
+    params: { side, directly: true },
+  });
   Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.face.setup(sess);
@@ -686,7 +706,11 @@ async function openSectionInner(cut, opts = {}) {
   // A location-based cut with nothing selected records the explicit absence: no fabricated identity.
   const subject = opts.subject !== undefined ? opts.subject : S.sel;
   const sess = { kind: 'section', cut: { ...cut }, subject };
-  T.begin({ kind: 'section', subject, target: { kind: 'cut', label: lookWord(cut) }, params: { depth: cut.depth, side: cut.side } });
+  T.begin({
+    kind: 'section', subject, target: { kind: 'cut', label: lookWord(cut) },
+    focus: { kind: 'cut', label: `the cut, ${lookWord(cut)}` },
+    params: { depth: cut.depth, side: cut.side },
+  });
   const home = sectionHome(sess.cut);
   const narr = `Parting the museum along your line. The near half slides toward you; the camera turns to face the cut, ${lookWord(cut)}. Ink marks everything the line passes through.`;
   await openSession(sess, home, { ...opts, label: opts.label || `Opened along a line · ${lookWord(cut)}`, narr, base: 1600 });
@@ -936,18 +960,83 @@ async function liftInner(id, opts = {}) {
   const c = C(id);
   if (!c) return;
   const sess = { kind: 'lift', ceilId: id, subject: opts.subject ?? id };
-  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name } });
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name }, focus: { kind: 'underside', id, label: `${c.name} underside` } });
   const narr = `Lifting the <b>${c.name}</b> off its walls. Every wall it rests on is tethered and named — gaps show in coral, openings meant to be open in green. The dashed outline is where it really is.`;
   await openSession(sess, liftHome(c), { ...opts, label: opts.label || `${c.name} lifted`, narr, base: 1200 });
 }
 
 export const lift = (id = S.sel) => run(() => liftInner(id));
 
+// ----- in place: the measurement task -----
+// The numbers of a subject, in place: nothing opens, nothing moves, no reading is entered. What is
+// reported is what the fixture really carries — a wall's length, height and thickness, an opening's
+// width, sill and head, a ceiling's underside and footprint — and each value keeps the one validated
+// edit path the Card uses. Invoking it again on the same subject puts it away.
+export function dimensionTask(id = S.sel) {
+  const t = thing(id);
+  if (!t || !T.capabilities(id).includes('dims')) return null;
+  if (S.task?.kind === 'dims' && S.task.subject === id) { endTaskInHand(); return null; }
+  T.begin({ kind: 'dims', subject: id, target: { kind: t.kind, id, label: t.item.name }, focus: { kind: 'measure', id, label: t.item.name } });
+  setStatus(`Measuring the ${t.item.name} — read-only where the fixture has no authored value, and editable where it does`, 'info');
+  ctx.ui();
+  return S.task;
+}
+
+// The reading in hand always has its task. Dismissing overlay work (an in-place measurement, later a
+// repair) returns the seam to the reading underneath it, and an invocation that finds the reading
+// already open records its work rather than leaving the task stale. The reading itself is untouched:
+// nothing is re-entered, nothing moves, no history is written.
+export function resumeReadingTask() {
+  const s = S.session;
+  if (!s) return null;
+  if (S.task && S.task.kind === s.kind) return S.task;
+  if (s.kind === 'face') {
+    T.begin({
+      kind: 'face', subject: s.subject ?? s.focusId, target: { kind: 'wall', id: s.wallId, label: s.wall.name },
+      focus: s.opening ? { kind: 'opening', id: s.opening, label: `${s.focusName} in the ${s.wall.name}` } : { kind: 'wall-top', id: s.wallId, label: `${s.wall.name} top` },
+      params: { side: s.side, resumed: true },
+    });
+  } else if (s.kind === 'section') {
+    T.begin({
+      kind: 'section', subject: s.subject ?? null, target: { kind: 'cut', label: lookWord(s.cut) },
+      focus: { kind: 'cut', label: `the cut, ${lookWord(s.cut)}` }, params: { depth: s.cut.depth, side: s.cut.side, resumed: true },
+    });
+  } else if (s.kind === 'lift' || s.kind === 'lookup') {
+    const name = C(s.ceilId)?.name || s.ceilId;
+    T.begin({
+      kind: s.kind, subject: s.subject ?? s.ceilId, target: { kind: 'ceiling', id: s.ceilId, label: name },
+      focus: { kind: 'underside', id: s.ceilId, label: `${name} underside` }, params: { resumed: true },
+    });
+  }
+  ctx.ui();
+  return S.task;
+}
+
+// Putting away work that is not the reading's own surface: the reading underneath comes back with its
+// own task, so the Instrument that reappears is never a surface without a task behind it.
+export function endTaskInHand() {
+  T.end();
+  resumeReadingTask();
+  ctx.ui();
+}
+
+// Precision belongs to the active task, so it is entered and left through the seam; exiting restores
+// the task surface with nothing else changed.
+export function setPrecision(on) {
+  if (!S.task) return false;
+  const next = T.setPrecision(on);
+  setStatus(next
+    ? 'Precision: the numbers of this work, reached by keyboard — no handle has to be legible to type a value'
+    : 'Precision off: back to the drawing', 'view');
+  ctx.ui();
+  return next;
+}
+
 // D's lid tab: drag the lid up from where you stand. Past a third it finishes lifting; less and it drops back.
 export function beginLid(id) {
   if (S.busy || S.session || S.knife) return null;
   const sess = { kind: 'lift', ceilId: id, direct: true, subject: S.sel ?? id };
-  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: C(id)?.name || id } });
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: C(id)?.name || id }, focus: { kind: 'underside', id, label: `${C(id)?.name || id} underside` } });
   Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid });
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.lift.setup(sess);
@@ -1077,7 +1166,7 @@ async function lookUpInner(id, opts = {}) {
   const home = { target: new V3(b.cx, 3, b.cz), az: Math.PI, el: -Math.PI / 2 + 1e-4, frameH: st().fitFrame(b.w / 2 + 0.8, b.d / 2 + 0.8, 1.14), flat: 1 };
   const via = { target: new V3(b.cx, 1.4, b.cz), az: Math.PI, el: 0.34, frameH: st().fitFrame(b.w / 2 + 0.8, 3.4, 1.1), flat: 0 };
   const sess = { kind: 'lookup', ceilId: id, subject: opts.subject ?? id };
-  T.begin({ kind: 'lookup', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name } });
+  T.begin({ kind: 'lookup', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name }, focus: { kind: 'underside', id, label: `${c.name} underside` } });
   const narr = `Settling the lid, then sinking below the floor to look straight up. Everything under <b>1.60</b> above the floor is sliced away, so the ceiling reads like a plan seen from underneath. East is on your left — you are looking up, not down.`;
   const arrive = opts.arrive ? { ...opts.arrive, mirror: opts.mirror ?? false } : null;
   await openSession(sess, home, { ...opts, arrive, label: opts.label || `Looking up · ${c.name}`, narr, base: 1900, via });
@@ -1291,3 +1380,6 @@ export function parkReading() {
   T.end();
   ctx.ui();
 }
+
+// Esc, in the order the plan sets: the writer or proposal first (cancel.js owns that), then Precision,
+// then the spatial reading through its canonical return. Nothing here replaces the selection.

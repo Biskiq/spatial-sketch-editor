@@ -469,6 +469,22 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .c-s { color: var(--ink-2); font-size: var(--tmd); }
 .c-sec { font: 600 var(--txs) var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--rule); }
 .c-acts { display: flex; flex-direction: column; gap: 5px; }
+.c-note { font-size: var(--txs); color: var(--ink-3); padding: 0 2px; }
+/* precision: the numbers of the work in hand, reached without a pointer. The Instrument gains one
+   labelled row and grows upward from the bottom edge; nothing about the world moves for it. */
+.st-focus { font: 500 var(--txs) var(--ui); color: var(--ink-3); white-space: nowrap; }
+.st-focus b { color: var(--ink-2); font-weight: 600; }
+.instrument { flex-direction: column; align-items: stretch; }
+.st-row { display: flex; align-items: center; gap: 10px; min-height: 34px; white-space: nowrap; overflow: hidden; }
+.st-row > * { flex: none; }
+.st-row .st-meta { flex: 0 1 auto; min-width: 0; }
+.instrument.prec .st-row { min-height: 38px; }
+.st-prec { display: flex; align-items: center; gap: 10px; padding: 6px 0 4px; margin-top: 2px; border-top: 1px dashed var(--rule); overflow-x: auto; white-space: nowrap; }
+.st-prec .pk { white-space: nowrap; }
+.st-prec .pf { grid-template-columns: auto 92px; gap: 2px 6px; }
+.st-prec .ph { display: none; }
+.st-prec .pseg { min-width: 150px; }
+.st-prec-label { font: 600 var(--t2xs) var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); flex: none; }
 .c-empty p { color: var(--ink-2); margin: 6px 0 10px; }
 .c-empty .c-acts, .c-empty .verb { margin-bottom: 5px; }
 .c-foot { font-size: var(--txs); color: var(--ink-3); margin-top: 4px; }

@@ -8,9 +8,11 @@
 #   qa/run-all.sh flows        Axis B pointer flows and exact return only
 #   qa/run-all.sh policy       the lifecycle seams only
 #   qa/run-all.sh shell        the World shell's composition only
+#   qa/run-all.sh precision    spatial tasks and Precision only
 #
 # Each script gets its own harness session and tears its browser down, so one wedged session cannot
-# make the next axis look broken. Later stages add axes here rather than in private scripts.
+# make the next axis look broken and no browser helper is left behind for the next axis (or the next
+# run) to fight with. Later stages add axes here rather than in private scripts.
 set -u
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHICH="${1:-all}"
@@ -23,6 +25,9 @@ run() { # run <name> <script>
   echo "  $1"
   echo "=================================================================="
   QA_SESSION="p26-qa-$2" QA_OUT="$QA_DIR/out/$2" bash "$QA_DIR/$2.sh" || rc=1
+  # The axis closes its own browser on every exit path; this is belt and braces for a hard kill, so
+  # the next axis never starts behind a live helper. Never --all: that would close another agent's.
+  QA_SESSION="p26-qa-$2" agent-browser close >/dev/null 2>&1 || true
 }
 
 case "$WHICH" in
@@ -31,15 +36,17 @@ case "$WHICH" in
   flows) run "Axis B · pointer flows" flow-check ;;
   policy) run "Lifecycle · cancellation, identity, seams" policy-check ;;
   shell) run "Stage S2 · the ordinary World shell" shell-check ;;
+  precision) run "Stage S3 · spatial tasks and Precision" precision-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
     run "Axis B · pointer flows" flow-check
     run "Lifecycle · cancellation, identity, seams" policy-check
     run "Stage S2 · the ordinary World shell" shell-check
+    run "Stage S3 · spatial tasks and Precision" precision-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|all)"
     exit 2
     ;;
 esac
