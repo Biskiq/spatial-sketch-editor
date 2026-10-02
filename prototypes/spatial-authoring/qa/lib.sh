@@ -91,7 +91,10 @@ qa_serve_stop() {
     qa_srv_pid=""
   fi
 }
-trap qa_serve_stop EXIT
+# Both the private server and this script's own browser are released however the script ends — a pass,
+# a failure, or an interrupt. A browser left running slows every later run down; a long-lived session
+# driven for a hundred evals also starts dropping results, which would read as a product failure.
+trap 'qa_close_browser; qa_serve_stop' EXIT
 
 # ---------------------------------------------------------------- page driving
 
@@ -314,12 +317,14 @@ qa_browser_errors_ok() { # name
   fi
 }
 
-# One browser per script, torn down by run-all.sh (QA_CLOSE_ON_EXIT=1): sessions are reused inside a
-# script, and a long-lived CLI session that has been driven for a hundred evals starts dropping
-# results, which would read as a product failure.
+# One browser per script, closed when that script ends. Sessions are reused inside a script, so the
+# cost of starting one is paid once per run, not once per assertion. Teardown is this script's own
+# session only — never --all, which would close another agent's browser.
+#   QA_CLOSE_ON_EXIT=0   leave it running (the caller owns teardown)
+QA_CLOSE_ON_EXIT="${QA_CLOSE_ON_EXIT:-1}"
 qa_close_browser() {
-  [ "${QA_CLOSE_ON_EXIT:-0}" = "1" ] || return 0
-  agent-browser close --all >/dev/null 2>&1
+  [ "$QA_CLOSE_ON_EXIT" = "0" ] && return 0
+  agent-browser close >/dev/null 2>&1
   return 0
 }
 
