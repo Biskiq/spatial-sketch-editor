@@ -52,6 +52,12 @@ export const S = {
   flatHold: null,
   /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */
   browse: { q: '', focus: null, page: 0 },
+  /* the narrow shell's sheets: the Index and the Card over the stage. A disclosure, so it changes what
+     is shown and nothing else — never the reading, the work in hand or the Camera. */
+  sheet: { index: false, card: false },
+  /* the system's own reduced-motion preference, followed live. Separate from the user's Reduce-motion
+     choice below: the choice is the editor's, the preference is the machine's. */
+  osReduced: false,
   /* the Card's Details disclosure. A disclosure toggle changes what is shown and nothing else. */
   expand: false,
   /* QA observation only: a command that threw, or a page error. Never a source of product behaviour;

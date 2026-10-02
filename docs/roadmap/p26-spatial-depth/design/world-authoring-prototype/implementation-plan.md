@@ -1,7 +1,7 @@
 # #112 — World Authoring Prototype implementation plan
 
-**Date:** 2026-10-01. **Status:** plan written for owner review; implementation has
-not started. All stages below belong to one bounded prototype-adoption PR, #112.
+**Date:** 2026-10-01. **Status:** implementation authorized; S0–S7 complete,
+S8 acceptance and S9 closeout in progress (2026-10-02). All stages below belong to one bounded prototype-adoption PR, #112.
 Stage boundaries permit independent review/commits; they are not production children.
 
 **Target:** evolve [the existing prototype](../../../../../prototypes/spatial-authoring/README.md)
@@ -11,6 +11,14 @@ planning change. Git carries the predecessor implementation.
 
 **Routes:** [P26/T1 status](../../README.md) · [prototype family](../../../../../prototypes/README.md)
 · [#111 design package](../../../../../prototypes/world-experience-shell-round/README.md).
+
+Progress checked against Git and the executable, not the former planning status:
+
+| Stages | Evidence / current state |
+| --- | --- |
+| S0–S6 | Landed in staged commits `01f19dc8` through `645adad7`; prototype-local QA covers baseline, cancellation, shell, tasks, browse, repair and parking |
+| S7 | Responsive sheets, focus/refusal announcements, keyboard line controls and live reduced motion; focused check 15/15, root architecture lane 276/276 |
+| S8–S9 | Pending independent full regression, visual/mutation evidence and retirement/routing; no production cutover |
 
 ## 1. Outcome and authority
 

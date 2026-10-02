@@ -50,6 +50,15 @@ function renderHead() {
     if (b.classList.contains('on') !== on) b.classList.toggle('on', on);
     b.setAttribute('aria-selected', String(on));
   }
+  // The narrow shell's two sheets: real toggles that say whether their panel is open. They are hidden
+  // at the widths where the columns are there, never disabled.
+  for (const which of ['index', 'card']) {
+    const b = document.querySelector(`[data-act="sheet-${which}"]`);
+    if (!b) continue;
+    const on = !!S.sheet[which];
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-expanded', String(on));
+  }
   ub.disabled = !u; rb.disabled = !r;
   ub.title = u ? `Undo “${u.label}” (⌘Z)` : 'Nothing to undo';
   rb.title = r ? `Redo “${r.label}” (⇧⌘Z)` : 'Nothing to redo';
@@ -365,7 +374,7 @@ function recordsIndex() {
 
 function field(label, spec, value, opts = {}) {
   const err = S.fieldErr && S.fieldErr.key === JSON.stringify(spec) ? S.fieldErr.msg : null;
-  return `<label class="pf${err ? ' bad' : ''}${opts.readonly ? ' ro' : ''}"><span class="pk">${label}</span><span class="pv"><input data-field="${J(spec)}" value="${fmt(value)}" inputmode="decimal" ${opts.readonly ? 'readonly tabindex="-1"' : ''} aria-label="${esc(label)}"><span class="pu">m</span></span>${opts.hint ? `<span class="ph">${opts.hint}</span>` : ''}${err ? `<span class="perr">${esc(err)}</span>` : ''}</label>`;
+  return `<label class="pf${err ? ' bad' : ''}${opts.readonly ? ' ro' : ''}"><span class="pk">${label}</span><span class="pv"><input data-field="${J(spec)}" value="${fmt(value)}" inputmode="decimal" ${opts.readonly ? 'readonly tabindex="-1"' : ''} aria-label="${esc(label)}" aria-invalid="${err ? 'true' : 'false'}"><span class="pu">m</span></span>${opts.hint ? `<span class="ph">${opts.hint}</span>` : ''}${err ? `<span class="perr" role="alert">${esc(err)}</span>` : ''}</label>`;
 }
 
 function seg(name, spec, options, value) {
@@ -764,13 +773,32 @@ function renderInstrument() {
   if (!el) return;
   const s = S.session;
   const k = S.knife;
+  // Where the keyboard was, if it was in here: the Instrument is rebuilt as the work changes, and a
+  // control that is still offered afterwards must not have been dropped out from under a keyboard user.
+  const was = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
+  const handoff = () => { if (was) document.querySelector('#gl')?.focus?.(); };
+  const restore = () => {
+    if (!was) return;
+    // A rebuilt row gives the keyboard back to the same control: the same verb where it is still
+    // offered, and the same field where it is still there, so a numeric writer keeps its caret across
+    // the commit it just made. A control that is genuinely gone hands focus to the drawing.
+    const sel = was.dataset.act
+      ? `[data-act="${was.dataset.act}"]${was.dataset.id ? `[data-id="${was.dataset.id}"]` : ''}`
+      : null;
+    const next = sel
+      ? el.querySelector(sel)
+      : was.dataset.field
+        ? [...el.querySelectorAll('input[data-field]')].find((i) => i.dataset.field === was.dataset.field)
+        : null;
+    if (next) next.focus(); else document.querySelector('#gl')?.focus?.();
+  };
   // No World work stands in the bridge: the work in hand is parked and inactive, so the Instrument is
   // absent from the DOM, not a hidden remnant of another lens' presentation.
-  if (S.lens !== 'world') { el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
+  if (S.lens !== 'world') { handoff(); el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
   const d = T.describe();
   // No work, no Instrument: the row is dropped from the DOM as well as hidden, so no stale control
   // (the numbers row, a crumb) can be found or reached once the work it belonged to is gone.
-  if (!s && !k && !S.task) { el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
+  if (!s && !k && !S.task) { handoff(); el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
   el.hidden = false;
   let html = '';
   if (k) {
@@ -841,7 +869,7 @@ function renderInstrument() {
   const prec = showNumbers ? precisionHtml() : '';
   const body = `<div class="st-row">${html}</div>${prec}`;
   el.classList.toggle('prec', !!prec);
-  if (el._html !== body) { el.innerHTML = body; el._html = body; }
+  if (el._html !== body) { el.innerHTML = body; el._html = body; restore(); }
 }
 
 // per-frame: the curvature readout follows the wall without re-rendering the instrument
@@ -873,6 +901,13 @@ function renderStatus() {
   const fresh = st && performance.now() - st.t < 6000;
   el.className = `status-text ${fresh ? st.kind : ''}`;
   el.innerHTML = fresh ? esc(st.text) : hintFor();
+  // The rail is the shell's polite voice; a refusal is announced assertively, because it is the answer
+  // to something the editor just asked for and it names what did not happen.
+  const ann = $('#announcer');
+  if (ann) {
+    const say = fresh && st.kind === 'refuse' ? st.text : '';
+    if (ann._say !== say) { ann._say = say; ann.textContent = say; }
+  }
   let html = '';
   S.trail.forEach((e, i) => {
     html += `${i ? '<span class="tr-sep">›</span>' : ''}<button class="tr-stop${i === S.trailPos ? ' on' : ''}" data-trail="${i}" title="Go back to this standpoint (view only)">${esc(e.label)}</button>`;
@@ -917,11 +952,14 @@ function renderDrafting() {
 function renderMotion() {
   const b = $('#motionBtn');
   if (!b) return;
+  // The control is the editor's own choice; the machine's preference is followed separately, and when
+  // it is in force the button says so rather than pretending nothing changed.
   const on = !!S.reduceMotion;
-  b.classList.toggle('on', on);
+  const os = !S.reduceMotion && (!!S.osReduced || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  b.classList.toggle('on', on || os);
   b.setAttribute('aria-pressed', String(on));
-  b.title = on
-    ? 'Reduce motion is on: every view move is an instant change. The speeds stay in Motion.'
+  b.title = on || os
+    ? `Reduce motion is in force${on ? '' : ' from the system setting'}: every view move is an instant change. The speeds stay in Motion.`
     : 'Reduce motion: every view move becomes an instant change — the same as the system reduced-motion setting. The speeds stay in Motion.';
 }
 

@@ -15,6 +15,7 @@ qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Prec
 qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the Details grammar
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
 qa/run-all.sh lens         # stage S6: the lens, parked work, and explicit Resume from the bridge
+qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -85,15 +86,14 @@ What the harness knows about keys, measured rather than assumed:
 2. Real gestures are covered where they carry a rule: handle drag and release, refusal rollback,
    typed values, Tab continuity, the peel, Plan and 3D drags, the knife slide, the reopen control.
    Pan/orbit/pinch feel, trackpad, touch and pen are not asserted here.
-3. Accessibility proof is partial: keyboard reach for search, selection, numeric entry and unwind is
+3. Accessibility proof includes S7 field focus, refusal announcements, keyboard line definition, sheet focus/return and shortcut isolation. Screen-reader listening and assistive-device testing remain unperformed. Earlier proof: keyboard reach for search, selection, numeric entry and unwind is
    asserted. Screen-reader announcements and focus order across the whole shell are not yet.
-4. Responsive proof is 1440×900 in these scripts; other viewports and DPR2 belong to the stage that
-   adds them, with the same harness.
+4. Responsive proof covers 1440×900, 1280×800, 1024×768 and DPR2 with canvas/picking agreement and unchanged realized pose/source.
 5. Intermediate visuals (mid-peel, mid-lift, mid-cut) are captured on demand (`QA_SHOT=1`) and are
    evidence, not assertions.
 6. Shell composition is asserted as geometry and inventory (what exists, where it sits, which verbs a
    subject offers), not as appearance: colour, type and spacing are the design system's business and
-   are reviewed by eye. The 1440×900 viewport is the only one measured so far.
+   are reviewed by eye. The S7 axis also measures narrow desktop and DPR2.
 
 ## Files
 
@@ -111,4 +111,5 @@ What the harness knows about keys, measured rather than assumed:
 | `browse-check.sh` | stage S4: one bounded dense list with paging and an honest register, browse/context that never selects or moves, Select that changes identity only, Open location/Bring into view/Include/Reveal/Face each on the named record, and Details Expand/Focus/Select/Open task as four distinct effects |
 | `repair-check.sh` | stage S5: the quiet rest warning for an unresolved reference, the locator that is never a host, Repair's explicit wall pick and declared station/height, the fixture's own refusals, one accepted edit with Undo/Redo moving the reference and not the view, canceled and left-unresolved work writing nothing, and Owner/Source/Reach as supported facts |
 | `lens-check.sh` | stage S6: crossing lenses parks World work as an inactive record with the realized eye and FOV unmoved, the read-only bridge's two identities and its named refusals for World work and Search, the foreign Card on return, contextual Resume explained locally for a changed selection or a changed/missing target, Resume as a fresh invocation with a fresh return context, and one cancellation covering an open draft and a live aim |
+| `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
 | `run-all.sh` | the axis driver |

@@ -983,6 +983,65 @@ export function presetKnife(p0, p1, side, depth = 6) {
   ctx.ui();
 }
 
+// ----- the same line, defined by keys ------------------------------------
+// A line is a line whether it was dragged or typed: the same two points, the same side, the same depth,
+// and the same later commands (slide, flip, open). With nothing drawn yet the first key seeds a line
+// across the museum — a starting position the editor then moves, not a guess at what they meant.
+export function knifeLine() {
+  const k = S.knife;
+  if (!k) return null;
+  if (!k.p1) {
+    const p0 = [-17, 0.25], p1 = [13, 0.25];
+    Object.assign(k, { p0, p1, side: defaultSide(p0, p1), stage: 'aim', dirty: true });
+    setStatus('Line drawn from the keyboard — ← → slide it, ↑ ↓ turn it, − = set the depth, Tab looks the other way, ↵ opens it, Esc drops it', 'view');
+    ctx.ui();
+  }
+  return knifeCut();
+}
+
+// Slide the whole line along its own normal: the cut moves through the building, nothing opens.
+export function slideKnife(d) {
+  const k = S.knife;
+  const cut = knifeLine();
+  if (!cut) return null;
+  k.p0 = [k.p0[0] + cut.n[0] * d, k.p0[1] + cut.n[1] * d];
+  k.p1 = [k.p1[0] + cut.n[0] * d, k.p1[1] + cut.n[1] * d];
+  k.dirty = true;
+  setStatus(`Line slid ${fmt(Math.abs(d))} m — a view reading; nothing has opened`, 'view');
+  ctx.ui();
+  return knifeCut();
+}
+
+// Turn it about its own midpoint: the same centre, a different way through the museum.
+export function turnKnife(deg) {
+  const k = S.knife;
+  if (!knifeLine()) return null;
+  const r = rad(deg);
+  const mx = (k.p0[0] + k.p1[0]) / 2, mz = (k.p0[1] + k.p1[1]) / 2;
+  const rot = ([x, z]) => [
+    mx + (x - mx) * Math.cos(r) - (z - mz) * Math.sin(r),
+    mz + (x - mx) * Math.sin(r) + (z - mz) * Math.cos(r),
+  ];
+  k.p0 = rot(k.p0);
+  k.p1 = rot(k.p1);
+  k.dirty = true;
+  setStatus(`Line turned ${Math.abs(deg)}° about its centre — the width it crosses is unchanged`, 'view');
+  ctx.ui();
+  return knifeCut();
+}
+
+// How far in the picture reaches. A view setting with a number on it, like the Instrument's depth
+// control in an open section: half-metre steps, and the same rule for the keys as for the drag.
+export function depthKnife(d) {
+  const k = S.knife;
+  if (!k) return null;
+  k.depth = Math.max(0.5, Math.min(30, Math.round((k.depth + d) * 2) / 2));
+  k.dirty = true;
+  setStatus(`Depth ${fmt(k.depth)} m — how far the picture reaches. A view setting, not an edit`, 'view');
+  ctx.ui();
+  return k.depth;
+}
+
 // ----- lift: raise a ceiling like a lid -----
 
 KIND.lift = {

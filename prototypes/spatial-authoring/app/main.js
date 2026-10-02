@@ -772,13 +772,19 @@ function doAct(a, el) {
       break;
     case 'motion':
       S.reduceMotion = !S.reduceMotion;
-      document.body.classList.toggle('reduce-motion', S.reduceMotion);
+      applyMotionPref();
       A.setStatus(S.reduceMotion
         ? 'Reduced motion: every view move is now an instant change'
         : 'Reduced motion off: moves play at the speed chosen in Motion', 'view');
       requestUI();
       break;
     case 'find': searchRequest(); break;
+    // ----- the narrow shell's sheets -----------------------------------------------------------
+    // The Index and the Card over the stage, at the widths where the shell has no columns for them.
+    // A sheet is a disclosure: it changes what is shown, moves focus into itself, and leaves the
+    // reading, the work in hand and the Camera exactly as they were.
+    case 'sheet-index': toggleSheet('index'); break;
+    case 'sheet-card': toggleSheet('card'); break;
     // ----- the lens, and the parked work the crossing leaves behind -----
     // The bridge is a read-only fixture: its two explicit selections are the only things it offers, and
     // it shares this one selection slot with the World. Resume is offered only on the parked identity,
@@ -813,6 +819,9 @@ function searchRequest(q = '') {
 }
 
 function openFinder(q = '') {
+  // One surface in front at a time. A listing is a search over the whole museum, so it takes the place
+  // of a sheet rather than stacking with it — and the sheet's toggle is cleared, not left claiming open.
+  closeSheets(false);
   finder.hidden = false;
   S.browse.q = q;
   finderInput.value = q;
@@ -820,11 +829,54 @@ function openFinder(q = '') {
   renderBrowse();
   finderInput.focus();
 }
+// ---------------------------------------------------------------- the narrow shell's sheets
+// Two panels over the stage: the Index and the Card. They exist for the widths where the shell has no
+// columns for them, they are opened from the Head, and they are the lightest possible thing — a
+// disclosure that moves focus into itself and restores it to the control that opened it.
+
+function sheetEl(which) { return which === 'index' ? $('#index') : $('#card'); }
+
+function focusFirst(el) {
+  if (!el) return;
+  const f = el.querySelector('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
+  if (f) f.focus();
+  else { el.tabIndex = -1; el.focus(); }
+}
+
+function applySheets() {
+  document.body.classList.toggle('sheet-index', !!S.sheet.index);
+  document.body.classList.toggle('sheet-card', !!S.sheet.card);
+}
+
+function toggleSheet(which) {
+  const on = !S.sheet[which];
+  S.sheet = { index: false, card: false, [which]: on };
+  applySheets();
+  if (on) focusFirst(sheetEl(which));
+  A.setStatus(on
+    ? `The ${which === 'index' ? 'Index' : 'Card'} is open over the stage — the reading, the work in hand and the Camera are unchanged`
+    : 'Sheet closed — the reading and the work in hand are exactly as they were', 'view');
+  requestUI();
+  if (!on) $(`[data-act="sheet-${which}"]`)?.focus?.();
+}
+
+function closeSheets(returnFocus) {
+  const which = S.sheet.index ? 'index' : S.sheet.card ? 'card' : null;
+  S.sheet = { index: false, card: false };
+  applySheets();
+  if (which && returnFocus) $(`[data-act="sheet-${which}"]`)?.focus?.();
+  return !!which;
+}
+
 function closeFinder() {
+  // Focus goes back to the control that opened it, so a keyboard user is not left at the top of the
+  // document by a listing they just asked to close.
+  const back = !finder.hidden && finder.contains(document.activeElement);
   if (!finder.hidden) { finder.hidden = true; S.browse.at = null; }
   // A hidden field must not keep the keyboard: after a result is picked, Esc belongs to the view
   // again (clear the beacon, then step out of the reading), not to a dialog that is already closed.
   if (document.activeElement === finderInput) finderInput.blur();
+  if (back) $('[data-act="find"]')?.focus?.();
 }
 function pickFinder(id) {
   closeFinder();
@@ -982,10 +1034,13 @@ window.addEventListener('keydown', (e) => {
       // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
       const held = S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
       if (held) cancelProposal('esc');
-      if (e.shiftKey) { if (S.session) A.closeAll(); requestUI(); break; }
+      if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
       if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
+      // A sheet is the surface in front: Esc closes it before anything about the reading changes, and
+      // closing it touches nothing else — no ghost reading, no Instrument lost behind it.
+      else if (S.sheet.index || S.sheet.card) { closeSheets(true); requestUI(); }
       // Precision sits between the writer and the reading: it is a state of the work in hand, so it is
       // left before any spatial return, and leaving it changes nothing else.
       else if (S.task?.precision) A.setPrecision(false);
@@ -1001,6 +1056,23 @@ window.addEventListener('keydown', (e) => {
     case 's': if (S.session?.kind === 'face') A.squareUp(); break;
     case '1': A.goPlan(); break;
     case '2': A.go3D(); break;
+    // The line, defined by keys. With an aim in hand the arrows slide and turn it, − and = set the
+    // depth, and the first key seeds a line to move: the same command set the drag ends in. Shift
+    // takes a larger step. None of these opens anything.
+    case 'arrowleft': case 'arrowright': {
+      if (!S.knife) break;
+      e.preventDefault();
+      A.slideKnife((k === 'arrowleft' ? -1 : 1) * (e.shiftKey ? 2 : 0.5));
+      break;
+    }
+    case 'arrowup': case 'arrowdown': {
+      if (!S.knife) break;
+      e.preventDefault();
+      A.turnKnife((k === 'arrowup' ? 1 : -1) * (e.shiftKey ? 30 : 7.5));
+      break;
+    }
+    case '-': case '_': if (S.knife) { e.preventDefault(); A.depthKnife(-0.5); } break;
+    case '=': case '+': if (S.knife) { e.preventDefault(); A.depthKnife(0.5); } break;
     case 'f': A.face(S.sel); break;
     case 'o': openSelected(); break;
     case 'u': A.lookUp(S.session?.ceilId || (thing(S.sel)?.kind === 'ceilings' ? S.sel : null)); break;
@@ -1100,7 +1172,7 @@ const QA = {
       // read what is drawn without reading the model.
       preview: ctx.stage.previewPlace ? { ...ctx.stage.previewPlace } : null,
       taskTitle: T.describe()?.title ?? null,
-      lens: S.lens, flatHold: nav.hold(),
+      lens: S.lens, flatHold: nav.hold(), sheet: { ...S.sheet }, reduced: reducedMotion(), osReduced: !!S.osReduced,
       // Parked work, as a record and as a verdict: an inactive record is not a hidden session, so QA
       // reads both what it holds and whether Resume would accept it, plus the two ways it can be wrong.
       parked: (() => {
@@ -1136,9 +1208,31 @@ const QA = {
 
 // ---------------------------------------------------------------- boot
 
-function resize() { stage.resize(); }
+// The sheet breakpoint, in one place per side: the CSS draws the sheets at this width and this line
+// keeps the state honest across a resize. A sheet that outlives its width would leave a toggle saying
+// "open" over a panel that is a column again, so the state is cleared rather than hidden.
+const SHEET_MAX_W = 1060;
+function resize() {
+  stage.resize();
+  if (window.innerWidth > SHEET_MAX_W && (S.sheet.index || S.sheet.card)) {
+    S.sheet = { index: false, card: false };
+    applySheets();
+    requestUI();
+  }
+}
 window.addEventListener('resize', resize);
 new ResizeObserver(resize).observe(stageEl);
+
+// Whether anything travels on screen: the editor's own Reduce-motion choice, or the machine's
+// preference — which is followed live, so changing the OS setting acts without a reload. The chosen
+// Motion speed is a separate thing and is untouched by either.
+const osMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function reducedMotion() { return !!S.reduceMotion || !!S.osReduced || osMotion.matches; }
+function applyMotionPref() {
+  document.body.classList.toggle('reduce-motion', reducedMotion());
+  renderUI();
+}
+osMotion.addEventListener('change', (e) => { S.osReduced = e.matches; applyMotionPref(); });
 
 function boot() {
   resize();
@@ -1152,8 +1246,8 @@ function boot() {
   if (q.get('motion')) S.motion = q.get('motion');
   if (q.get('grid') != null) S.wallDrafting = q.get('grid') !== '0';
   if (q.get('reduced') != null) S.reduceMotion = q.get('reduced') !== '0';
-  else S.reduceMotion = S.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  document.body.classList.toggle('reduce-motion', S.reduceMotion);
+  S.osReduced = osMotion.matches;
+  applyMotionPref();
   if (q.get('shot')) document.body.classList.add('shot');
   // Capability dispatch: the shell asks the task seam, which routes to these operations. Parking
   // uses the neutral teardown so no lens change ever animates back to an origin pose.

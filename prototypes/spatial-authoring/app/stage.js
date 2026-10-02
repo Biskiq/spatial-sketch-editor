@@ -583,6 +583,10 @@ export class Stage {
   // ----- camera -----
   resize() {
     const r = this.canvas.parentElement.getBoundingClientRect();
+    // The device scale is re-read here, not only at construction: it changes with the window (a move to
+    // another display, a browser zoom, an emulated device), and a drawing buffer left at the old ratio
+    // is a canvas painted below the pixels it is drawn into. Capped at 2, as at construction.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(r.width, r.height, false);
     this.w = r.width; this.h = r.height;
     this.camera.aspect = r.width / Math.max(1, r.height);
@@ -611,6 +615,8 @@ export class Stage {
   }
 
   applyCamera() {
+    // A display-scale change can leave the CSS box unchanged, so ResizeObserver need not fire.
+    if (this.renderer.getPixelRatio() !== Math.min(window.devicePixelRatio, 2)) this.resize();
     this.dist = Stage.placeCamera(this.camera, this.cam, this.w / Math.max(1, this.h));
     this.scene.fog.near = this.dist + 40;
     this.scene.fog.far = this.dist + 200;

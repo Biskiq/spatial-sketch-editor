@@ -42,7 +42,7 @@ export const wait = (ms) => tween(ms, () => {});
 // then gets brisk. Shift makes any single move instant, and the Motion control in the view bar
 // cuts every move to an instant change without touching the chosen speed.
 export function teaching(kind) {
-  if (S.reduceMotion) return false;
+  if (S.reduceMotion || reduced.matches) return false;
   if (S.motion === 'teach') return true;
   if (S.motion !== 'adaptive') return false;
   return (S.seen[kind] || 0) < 2;
@@ -63,7 +63,7 @@ export function saw(kind) { S.seen[kind] = (S.seen[kind] || 0) + 1; }
 export function narrate(text, kind) {
   const el = document.getElementById('caption');
   if (!el) return;
-  if (!text || (kind && !teaching(kind)) || S.shift || S.reduceMotion || S.motion === 'instant') { el.hidden = true; return; }
+  if (!text || (kind && !teaching(kind)) || S.shift || S.reduceMotion || reduced.matches || S.motion === 'instant') { el.hidden = true; return; }
   el.innerHTML = text;
   el.hidden = false;
 }

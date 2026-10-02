@@ -43,6 +43,7 @@ case "$WHICH" in
   browse) run "Stage S4 · Browse/Search and Details" browse-check ;;
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
+  responsive) run "Stage S7 · responsive and keyboard" responsive-check ;;
   all)
     run "Axis B · journeys A–F" journey-check
     run "Axis B · real interaction" interaction-check
@@ -53,6 +54,7 @@ case "$WHICH" in
     run "Stage S4 · Browse/Search and Details" browse-check
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
+    run "Stage S7 · responsive and keyboard" responsive-check
     ;;
   *)
     echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|all)"

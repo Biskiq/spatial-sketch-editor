@@ -69,6 +69,9 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+/* Visually hidden, still read aloud: the assertive refusal channel, and anything that must keep a
+   name where there is no room to draw it. A single 1 px box, never display:none and never aria-hidden. */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 html, body { margin: 0; height: 100%; }
 /* The World shell: head, the local relation Index, the stage, the identity Card, the status rail.
    The invoked Instrument sits between the stage and the rail only while work is in hand. */
@@ -244,6 +247,10 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
    overlay coordinate or pointer mapping and intercepts no picking. */
 .stage::after { content: ''; position: absolute; inset: 0; border: 1px solid var(--perimeter); pointer-events: none; z-index: 1; }
 #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* The drawing is focusable, because the arrows define a line on it and a pointer drag is not the only
+   way to work. Its ring is drawn inside its own bounds: the stage clips overflow, so an offset outline
+   would be cut off at the edges and a keyboard user would see nothing. */
+#gl:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; box-shadow: inset 0 0 0 6px rgba(243, 244, 238, .8); }
 .ov-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .ov-html { position: absolute; inset: 0; pointer-events: none; }
 .ov-html > * { position: absolute; pointer-events: auto; }
@@ -303,6 +310,12 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 /* find anything */
 .find-btn { margin-left: 18px; height: 24px; border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 0 6px 0 10px; font-size: var(--tsm); color: var(--ink-3); display: inline-flex; align-items: center; gap: 22px; }
 .find-btn:hover { border-color: var(--ink-3); color: var(--ink-2); }
+/* The Head's two sheets. They are the Index and the Card for the widths that have no columns for them:
+   hidden where the columns stand, shown where they do not — the same two panels, reachable at every
+   width, and never a second set of controls. */
+.sheet-btn { display: none; height: 24px; border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 0 9px; font: 600 var(--tsm) var(--ui); color: var(--ink-2); align-items: center; }
+.sheet-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+.sheet-btn.on { background: var(--ink); border-color: var(--ink); color: var(--instrument); }
 .finder { position: fixed; inset: 0; z-index: 40; background: rgba(20,28,25,.12); }
 .finder-box { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: 480px; background: var(--paper); border-radius: 4px; box-shadow: 0 18px 50px rgba(0,0,0,.35); overflow: hidden; }
 #finderInput { width: 100%; border: 0; border-bottom: 1px solid var(--rule); padding: 12px 14px; font: 500 var(--txl) var(--ui); background: none; outline: none; }
@@ -654,10 +667,24 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
   .undo-label { max-width: 140px; }
   .trail-wrap { flex-basis: 300px; }
 }
+/* ---------- the narrow shell: two sheets over one stage ---------- */
+/* Below the width where the Index and the Card stop being columns, the Head offers the same two panels
+   as sheets over the stage. A sheet is a disclosure, not a modal: it leaves the grid, so the stage keeps
+   its box, its aspect, its Camera and its picking, and nothing behind it is disabled or dimmed. */
 @media (max-width: 1060px) {
-  body.app { grid-template-columns: 0 minmax(0, 1fr) 288px; }
-  .index { display: none; }
-  .j-toggle, .journeys { right: 300px; }
+  body.app { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  .index, .card { display: none; }
+  .sheet-btn { display: inline-flex; }
+  .undo-label, .brand-text { display: none; }
+  .doc { padding-left: 0; border-left: 0; }
+  .trail-wrap { flex-basis: 190px; }
+  .j-toggle, .journeys { right: 12px; }
+  body.sheet-index .index, body.sheet-card .card {
+    display: flex; flex-direction: column; position: fixed; top: 40px; bottom: 26px; z-index: 24;
+    background: var(--chassis); box-shadow: 0 18px 44px rgba(23, 32, 29, .38);
+  }
+  body.sheet-index .index { left: 0; width: min(420px, 88vw); border-right: 1px solid var(--ink-3); }
+  body.sheet-card .card { right: 0; width: min(400px, 92vw); border-left: 1px solid var(--ink-3); }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
