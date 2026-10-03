@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone } from './state.js';
 import { tween, dur, saw, narrate, run } from './anim.js';
 import * as nav from './navigation.js';
+import { buildCapabilitySubjects } from './experience-scene.js';
 import * as T from './tasks.js';
 import { onCancel, cancelProposal } from './cancel.js';
 import {
@@ -1447,7 +1448,7 @@ export const resetView = () => run(async () => {
 // ---------------------------------------------------------------- edits (the only things Undo knows)
 
 export function beginEdit() { if (!S.pending) { S.pending = clone(ctx.museum); S.pendingDomains = domainSnapshot(); } }
-export const domainSnapshot = () => ({ experience: clone(ctx.experience), cameraSource: clone(ctx.cameraSource) });
+export const domainSnapshot = () => ({ experience: clone(ctx.experience), cameraSource: clone(ctx.cameraSource), sceneSource: clone(ctx.sceneSource) });
 
 export function commitEdit(label) {
   if (!S.pending) return;
@@ -1466,9 +1467,10 @@ export function cancelEdit() {
 }
 
 export function restoreQuiet(m, domains) {
-  if (domains) { ctx.experience = clone(domains.experience); ctx.cameraSource = clone(domains.cameraSource); }
+  if (domains) { ctx.experience = clone(domains.experience); ctx.cameraSource = clone(domains.cameraSource); ctx.sceneSource = clone(domains.sceneSource); }
   ctx.museum = m;
   st().setMuseum(m);
+  buildCapabilitySubjects();
   const s = S.session;
   if (s?.kind === 'face') { s.wall = W(s.wallId); }
   if (s?.kind === 'section') refreshSection();

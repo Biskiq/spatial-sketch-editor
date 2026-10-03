@@ -1,3 +1,5 @@
+import { capability, capabilities } from './experience-capabilities.js';
+import { gateState, narrationCaption } from './experience-runtime.js';
 import { stations } from './camera-evaluation.js';
 import { coordinateTiming } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, viewReach } from './experience-model.js';
@@ -9,7 +11,7 @@ export function experienceIndex() {
   const e = ctx.experience;
   return `<div class="ix-head"><span class="ix-title">Experience</span><span class="ix-note">Meaning in the same World</span></div><div class="ix-group">Presentations</div>`
   + Object.values(e.presentations).map(p => `<div class="ix-row${S.sel === p.id ? ' sel' : ''}"><button class="ix-go" data-act="exp-open" data-id="${p.id}"><span class="glyph pres"></span><span class="ix-name">${esc(p.name)}</span></button></div>`).join('')
-  + `<div class="c-acts">${button('exp-create','+ Presentation')}${button('exp-environment','Present environment')}${button('exp-region','Present region')}</div>`;
+  + `<div class="ix-group">Scene capability subjects</div>${Object.values(ctx.sceneSource.subjects).map(s=>`<div class="ix-row"><button class="ix-go" data-act="pres-ref" data-id="${s.id}">${esc(s.name)}</button></div>`).join('')}<div class="c-acts">${button('exp-create','+ Presentation')}${button('exp-environment','Present environment')}${button('exp-region','Present region')}</div><details class="experience-presenter"><summary>Prototype examples</summary>${button('exp-reset','Reset')}${button('exp-example','Load Example')}<p>${['Ordinary Presentation','Unordered Set','Guide and Seams','Visitor execution'][S.experiencePresenter||0]}</p>${button('exp-presenter','Back').replace('data-id=','data-delta="-1" data-id=')}${button('exp-presenter','Skip').replace('data-id=','data-delta="1" data-id=')}</details>`;
 }
 export function experienceCard() {
   const r = resolveExperience(S.sel);
@@ -18,11 +20,11 @@ export function experienceCard() {
     const focus = p.focus.kind === 'subjects' ? p.focus.ids.map(id => `${thing(id)?.item.name || id} <button class="lnk" data-act="pres-ref" data-id="${esc(id)}">Select</button>`).join(', ') : esc(p.focus.kind);
     return `<div class="c-head"><div class="c-k">Presentation · Experience</div><div class="c-t">${esc(p.name)}</div><div class="c-ref">Owner · Experience · used by ${Object.values(ctx.experience.stops).filter(s=>s.presentationId===p.id).length} Stops</div></div>
     <div class="c-sec">Meaning</div><label class="exp-label">Name<input data-exp-field="name" data-id="${p.id}" value="${esc(p.name)}"></label><label class="exp-label">Meaning<textarea data-exp-field="meaning" data-id="${p.id}">${esc(p.meaning)}</textarea></label>
-    <div class="c-sec">Focus</div><div class="relation">${focus}</div><div class="c-sec">Show</div><p class="c-hint">Auto framing. Capture is explicit; the Set has no order.</p>${setHtml(p)}<div class="c-acts">${button("exp-auto","Auto")}${button("exp-capture","Capture")}${button("exp-preview","Preview",p.id)}${button("exp-add-guide","Add to Guide",p.id)}</div>`;
+    <div class="c-sec">Focus</div><div class="relation">${focus}</div><div class="c-sec">Show</div><p class="c-hint">Auto framing. Capture is explicit; the Set has no order.</p>${setHtml(p)}<div class="c-acts">${button("exp-auto","Auto")}${button("exp-capture","Capture")}${button("exp-preview","Preview",p.id)}${button("exp-add-guide","Add to Guide",p.id)}</div><label class="exp-label">Reuse View <select data-exp-reuse="${p.id}"><option value="">Choose existing Camera View</option>${Object.values(ctx.cameraSource.views).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></label><div class="c-sec">Contributions</div><div class="c-acts">${button('exp-narration','Add narration')}${button('exp-offer','+ Add behavior or offer')}</div>${contributionsHtml(p.id)}${offerHtml()}`;
   }
   if(r?.kind==='Stop') {
    const p=ctx.experience.presentations[r.item.presentationId];
-   return `<div class="c-head"><div class="c-k">This Stop · Experience</div><div class="c-t">${esc(p?.name||'Missing Presentation')}</div><div class="c-ref">Occurrence ${ctx.experience.guide.indexOf(r.item.id)+1} · shared meaning</div></div><div class="c-acts">${button('exp-open','Open shared Presentation',p?.id)}${button('exp-stop','Expand this occurrence',r.item.id)}</div>${p?setHtml(p):'<p>Repair required</p>'}`;
+   return `<div class="c-head"><div class="c-k">This Stop · Experience</div><div class="c-t">${esc(p?.name||'Missing Presentation')}</div><div class="c-ref">Occurrence ${ctx.experience.guide.indexOf(r.item.id)+1} · shared meaning</div></div><div class="c-acts">${button('exp-open','Open shared Presentation',p?.id)}${button('exp-stop','Expand this occurrence',r.item.id)}</div>${p?setHtml(p):'<p>Repair required</p>'}${stopDetails(r.item)}`;
   }
   if(r?.kind==='View use'  || r?.kind==='Camera View') {
    const v=r.kind==='View use'?ctx.cameraSource.views[r.item.viewId]:r.item;
@@ -37,7 +39,7 @@ export const foreignExperienceCard = () => {
 };
 
 export function setHtml(p) {
- return `<div class="exp-set" aria-label="Unordered View Set">${p.uses.map(id=>{const u=ctx.experience.uses[id],v=ctx.cameraSource.views[u?.viewId];return `<div class="exp-view"><button class="lnk" data-act="pres-ref" data-id="${id}">○ ${esc(v?.name||'Missing View')}</button><span>${esc(u.role)}</span>${button('exp-hints','Hints',id)}${button('exp-precise','Precise',id)}<div>${button('exp-role','Entry',id).replace('data-id=', 'data-role="entry" data-id=')}${button('exp-role','Visitor choice',id).replace('data-id=', 'data-role="choice" data-id=')}</div></div>`;}).join('')}</div>`;
+ return `<div class="exp-set" aria-label="Unordered View Set">${p.uses.map(id=>{const u=ctx.experience.uses[id],v=ctx.cameraSource.views[u?.viewId];return `<div class="exp-view"><button class="lnk" data-act="pres-ref" data-id="${id}">○ ${esc(v?.name||'Missing View')}</button><span>${esc(u.role)}</span>${button('exp-hints','Hints',id)}${button('exp-precise','Precise',id)}${cueSelect(id)}${!v?`<select data-exp-repair="${id}"><option value="">Choose replacement View</option>${Object.values(ctx.cameraSource.views).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select>`:''}<div>${button('exp-role','Entry',id).replace('data-id=', 'data-role="entry" data-id=')}${button('exp-role','Visitor choice',id).replace('data-id=', 'data-role="choice" data-id=')}</div></div>`;}).join('')}</div>`;
 }
 export function renderExperienceSurfaces() {
  renderDeck();
@@ -45,7 +47,8 @@ export function renderExperienceSurfaces() {
  let el=document.querySelector('#visitorSurface');
  if(!el){el=document.createElement('section');el.id='visitorSurface';document.querySelector('#stage').append(el);}
  el.hidden=!S.visitor;
- if(S.visitor) { const p=S.visitor.source.experience.presentations[S.visitor.runtime.presentationId];const html=`<div class="visitor-title">${esc(p?.name)}</div><p>${esc(p?.meaning)}</p>${button('exp-exit-preview','Exit Preview')}`;if(el._html!==html){el.innerHTML=html;el._html=html;} }
+ if(S.visitor) { const html=visitorHtml();if(el._html!==html){el.innerHTML=html;el._html=html;} }
+
 }
 
 export function renderDeck() {
@@ -85,10 +88,40 @@ export function hintsHtml() {
 export function coordinationHtml(seam) {
  const c=ctx.cameraSource.connections[S.task?.params.connection],timing=coordinateTiming(ctx.cameraSource,seam);
  const options=c?stations(c):[];
- return `<div class="coordination-strip"><b>Local coordination · Experience beats / Camera stations</b>${c?`<label>Station <select data-exp-station>${options.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></label><label>Pace <select data-exp-pace>${['slow','auto','fast'].map(s=>`<option ${s===c.speed?'selected':''}>${s}</option>`).join('')}</select></label>${button('exp-beat','Hold here')}`:'Choose a resolving Camera route'}<div class="beat-strip">${timing.map(b=>`<button class="beat" data-station="${b.stationId}">${esc(b.stationId)} · ${b.at===null?'Repair':b.at.toFixed(2)+' s'} · hold ${b.seconds}s</button>`).join('')}</div><p>Geometry on Stage. ${c?button('exp-route','Edit route on Stage',c.id):''}</p>${S.expRouteAsk?`<div class="ask-rule">Shared route reaches ${S.expRouteAsk.affected.map(s=>esc(s.key)).join(', ')} ${button('exp-route-scope','Update shared route')}</div>`:''}</div>`;
+ return `<div class="coordination-strip"><b>Local coordination · Experience beats / Camera stations</b>${c?`<label>Station <select data-exp-station>${options.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></label><label>Pace <select data-exp-pace>${['slow','auto','fast'].map(s=>`<option ${s===c.speed?'selected':''}>${s}</option>`).join('')}</select></label>${button('exp-beat','Hold here')}${button('exp-mark-station','Name mid-route station')}<select data-exp-invoke-use><option value="">Choose contribution</option>${Object.values(ctx.experience.uses).filter(u=>!u.viewId).map(u=>`<option value="${u.id}">${esc(ctx.experience.definitions[u.definitionId]?.name)}</option>`).join('')}</select>${button('exp-invoke-beat','Invoke here')}`:'Choose a resolving Camera route'}<div class="beat-strip">${timing.map(b=>`<button class="beat" data-station="${b.stationId}">${esc(b.stationId)} · ${b.at===null?'Repair':b.at.toFixed(2)+' s'} · ${b.kind==='hold'?'hold '+b.seconds+'s':'invoke '+esc(b.useId)}</button>`).join('')}</div><p>Geometry on Stage. ${c?button('exp-route','Edit route on Stage',c.id):''}</p>${S.expRouteAsk?`<div class="ask-rule">Shared route reaches ${S.expRouteAsk.affected.map(s=>esc(s.key)).join(', ')} ${button('exp-route-scope','Update shared route')}</div>`:''}</div>`;
 }
 
 export function askHtml() {
  const ask=S.expAsk;if(!ask)return '';
  return `<div class="ask-rule"><b>Camera · Update scope</b><p>Affects ${ask.reach.uses.map(u=>esc(u.name)).join(', ')}; Stops: ${ask.reach.stops.map(s=>esc(s.name)).join(', ')||'none'}</p>${button('exp-scope-shared','Update all affected uses')}${button('exp-scope-local',ask.stopId?'Only this Stop entry':'Detach this use')}${button('exp-scope-cancel','Cancel')}</div>`;
+}
+
+const signalOptions=()=>Object.values(ctx.experience.uses).flatMap(u=>{const d=ctx.experience.definitions[u.definitionId];if(d?.kind==='narration')return [{useId:u.id,signal:'complete'},...d.markers.map(m=>({useId:u.id,signal:`marker:${m.id}`}))];if(d?.kind==='control'&&capability(ctx.sceneSource,d.subjectId,d.capabilityId)?.kind!=='loop')return [{useId:u.id,signal:'complete'}];return [];});
+export function cueSelect(id) {
+ const use=ctx.experience.uses[id];
+ return `<label class="cue-select">Cue <select data-exp-cue="${id}"><option value="">No cue</option>${signalOptions().filter(ref=>ctx.experience.definitions[ctx.experience.uses[ref.useId]?.definitionId]?.kind==='narration').map(ref=>`<option value="${esc(JSON.stringify(ref))}" ${JSON.stringify(use.cue)===JSON.stringify(ref)?'selected':''}>${esc(ref.signal)}</option>`).join('')}</select></label>`;
+}
+export function contributionsHtml(pid) {
+ return Object.values(ctx.experience.uses).filter(u=>u.presentationId===pid&&!u.viewId).map(u=>{const d=ctx.experience.definitions[u.definitionId];if(!d)return '<p>Missing contribution — Repair required</p>';
+ return `<div class="contribution"><b>${esc(d.name)} · ${esc(u.kind)}</b>${d.kind==='narration'?`<textarea data-exp-def="text" data-id="${u.id}">${esc(d.text)}</textarea>${button('exp-marker','Add named phrase',u.id)}<p>${d.markers.map(m=>esc(m.label)).join(', ')}</p>`:`<p>Target · ${esc(ctx.sceneSource.subjects[d.subjectId]?.name||'Missing subject')} · ${esc(d.capabilityId)} · ${esc(d.value)}</p><p>Activation · ${esc(ctx.sceneSource.subjects[u.triggerSubjectId]?.name||'No trigger')}</p>`}<details><summary>Start · boundary · interruption</summary><label>Interruption <select data-exp-interruption="${u.id}"><option value="">Type default</option>${['cancel','finish','continue'].map(v=>`<option ${u.interruption===v?'selected':''}>${v}</option>`).join('')}</select></label><label>Start after <select data-exp-after="${u.id}"><option value="">Visit entry</option>${signalOptions().filter(r=>r.useId!==u.id).map(r=>`<option value="${esc(JSON.stringify(r))}">${esc(r.useId)} · ${esc(r.signal)}</option>`).join('')}</select></label></details>${button('exp-remove-contribution','Remove',u.id)}</div>`;}).join('');
+}
+export function offerHtml() {
+ const draft=S.expOfferDraft;if(!draft)return '';
+ const scene=ctx.sceneSource,cap=capability(scene,draft.subjectId,draft.capabilityId);
+ const subjects=selected=>Object.values(scene.subjects).map(s=>`<option value="${s.id}" ${selected===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+ return `<div class="offer-draft"><b>Add behavior or offer</b><label>Kind <select data-exp-offer="kind"><option value="behavior">Behavior</option><option value="interaction" ${draft.kind==='interaction'?'selected':''}>Visitor offer</option></select></label><label>Target <select data-exp-offer="subjectId">${subjects(draft.subjectId)}</select></label><label>Capability <select data-exp-offer="capabilityId">${capabilities(scene,draft.subjectId).map(c=>`<option value="${c.id}" ${c.id===draft.capabilityId?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label>${cap?.control==='range'?`<label>Value <input type="number" data-exp-offer="value" value="${Number(draft.value)}" min="${cap.min}" max="${cap.max}" step=".1"></label>`:`<label>Value <select data-exp-offer="value"><option value="true">On / Play</option><option value="false" ${draft.value==='false'?'selected':''}>Off / Stop</option></select></label>`}${draft.kind==='interaction'?`<label>Activation <select data-exp-offer="trigger">${subjects(draft.trigger)}</select></label>`:''}<div class="c-acts">${button('exp-offer-accept','Add')}${button('exp-offer-cancel','Cancel')}</div></div>`;
+}
+export function stopDetails(s) {
+ const e=ctx.experience,p=e.presentations[s.presentationId];
+ return `<details class="stop-details"><summary>This Stop · Entry · Next · Pacing · Gate</summary><label>Entry <select data-exp-entry="${s.id}"><option value="presentation">Presentation Entry</option><option value="hold" ${s.entry.kind==='hold'?'selected':''}>Keep current viewpoint (explicit)</option>${p?.uses.map(id=>`<option value="${id}" ${s.entry.useId===id?'selected':''}>${esc(e.uses[id]?.name)}</option>`).join('')||''}</select></label><label>Next <select data-exp-next="${s.id}"><option value="order">Guide order</option><option value="end">End</option>${e.guide.filter(id=>id!==s.id).map(id=>`<option value="${id}">${esc(e.stops[id].name)}</option>`).join('')}</select></label><label>Gate <select data-exp-gate="${s.id}"><option value="">None</option>${signalOptions().map(ref=>`<option value="${esc(JSON.stringify(ref))}">${esc(ref.useId)} · ${esc(ref.signal)}</option>`).join('')}</select></label><label>Pacing <select data-exp-pacing="${s.id}"><option value="auto">Auto</option><option value="dwell">Dwell 5s</option></select></label><label>Detour <select data-exp-detour="${s.id}"><option value="">Add choice</option>${e.guide.filter(id=>id!==s.id).map(id=>`<option value="${id}">${esc(e.stops[id].name)}</option>`).join('')}</select></label>${button('exp-remove-stop','Remove Stop',s.id)}</details>`;
+}
+export function visitorHtml() {
+ const {source,runtime:r}=S.visitor,e=source.experience,p=e.presentations[r.presentationId],gate=gateState(e,source.camera,r);
+ const visitorButton=(command,text,id='')=>button('exp-visitor',text,id).replace('data-id=',`data-command="${command}" data-id=`);
+ const interactions=Object.values(e.uses).filter(u=>u.kind==='interaction'&&(!u.availability||u.availability===r.presentationId));
+ return `<div class="visitor-title">${esc(p?.name)}</div><p>${esc(p?.meaning)}</p><p class="visitor-caption" aria-live="polite">${esc(narrationCaption(e,r))}</p><div class="visitor-controls">${r.stopId?`${visitorButton('back','Back')}${visitorButton('next','Next').replace('class="verb"',`class="verb" ${gate.allowed?'':'disabled'}`)}${visitorButton('auto',r.autoplay?'Pause Auto':'Auto')}<span>${esc(gate.reason)}</span>`:e.guide.length?visitorButton('start','Start Guide'):''}${visitorButton(r.exploring?'rejoin':'explore',r.exploring?'Rejoin':'Explore')}${r.bookmarks.length?visitorButton('return','Return from detour'):''}${button('exp-exit-preview','Exit Preview')}</div><div>${p?.uses.filter(id=>e.uses[id]?.role==='choice').map(id=>visitorButton('look',esc(e.uses[id].name),id)).join('')||''}</div><div>${interactions.map(u=>visitorButton('activate',esc(e.definitions[u.definitionId]?.name||'Unavailable')+' · '+esc(source.scene.subjects[u.triggerSubjectId]?.name||'Missing activation'),u.id)).join('')}</div><div>${Object.values(r.activities).filter(a=>a.status==='running').map(a=>visitorButton('stop','Stop '+esc(e.definitions[e.uses[a.useId]?.definitionId]?.name||a.useId),a.token)).join('')}</div>${e.stops[r.stopId]?.choices.map(choice=>visitorButton('detour',esc(choice.label),choice.targetId)).join('')||''}${r.refusal?`<p role="status">${esc(r.refusal)}</p>`:''}`;
+}
+export function sceneCapabilityCard(id) {
+ const scene=ctx.sceneSource,s=scene?.subjects[id];if(!s)return '';
+ return `<div class="c-sec">Scene source capabilities</div>${capabilities(scene,id).filter(c=>c.sourceEditable).map(c=>`<label class="exp-label">${esc(c.label)} <input type="number" data-exp-scene="${c.id}" data-id="${id}" value="${s.properties[c.channel]}" min="${c.min??0}" max="${c.max??1}" step=".1"></label>`).join('')}<p class="c-hint">Scene source edits share history. Experience effects stay in visitor session state.</p>`;
 }

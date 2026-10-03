@@ -1,8 +1,9 @@
 // Pure Camera kernel beneath navigation.js. Both estimates and visitor execution consume it.
 export const RATES = { cut: 0, slow: 4, auto: 7, fast: 13 };
 export const distance = (a,b) => Math.hypot(...a.map((n,i)=>n-b[i]));
+export const fovFor=flat=>Math.exp(Math.log(40)+(Math.log(.9)-Math.log(40))*flat);
 export function eye(p) {
- const d=p.frameH/(2*Math.tan(Math.PI/8));
+ const d=p.frameH/(2*Math.tan(fovFor(p.flat||0)*Math.PI/360));
  return p.target.map((n,i)=>n+ d*[Math.cos(p.el)*Math.sin(p.az),Math.sin(p.el),Math.cos(p.el)*Math.cos(p.az)][i]);
 }
 export function interpolate(a,b,t) {

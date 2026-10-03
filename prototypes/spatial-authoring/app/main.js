@@ -1,3 +1,4 @@
+import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
 import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone, recordFault, labelOf } from './state.js';
 import { createMuseum, fmt, wallLength, frameAt, modS, openingTopAt, bbox } from './model.js';
@@ -23,6 +24,7 @@ ctx.museum = createMuseum();
 E.initExperience();
 const stage = new Stage(canvas, ctx.museum);
 ctx.stage = stage;
+buildCapabilitySubjects();
 ctx.ov = new Overlay($('#ovSvg'), $('#ovHtml'));
 ctx.ui = requestUI;
 
@@ -101,6 +103,7 @@ function frameState() {
     clips.push(new THREE.Plane(DOWN.clone(), h));
     hCap = h;
   }
+  if(S.visitor){flat=S.visitor.runtime.pose.flat??0;planF=flat;}
   c.flat = flat;
   stage.paper = slewPaper(flat, performance.now());
   // clipped and set-aside geometry would cast shadows that no longer match what is drawn
@@ -171,6 +174,7 @@ function frameOnce(now) {
     tickTweens(now);
     E.visitorFrame(now);
     frameState();
+    realizeCapabilities();
     if (now - lastRestyle > 90) { stage.restyle(); lastRestyle = now; }
     const inset = peekInset();
     stage.render(inset);
@@ -312,6 +316,7 @@ canvas.addEventListener('pointerup', (e) => {
 });
 
 canvas.addEventListener('dblclick', (e) => {
+  if(S.visitor)return;
   const id = resolveHit(stage.pick(e.clientX, e.clientY));
   const t = thing(id);
   if (!t) return;
@@ -324,6 +329,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (S.visitor&&!S.visitor.runtime.exploring)return;
   if (S.busy) return;
   nav.releaseHold();
   const c = stage.cam;
@@ -1038,7 +1044,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
 // ---------------------------------------------------------------- keyboard
 
 window.addEventListener('keydown', (e) => {
-  if (S.visitor) { if (e.key === 'Escape') E.exitPreview(); return; }
+  if (S.visitor) { if (e.key === 'Escape') E.exitPreview(); if(e.key==='ArrowRight')E.visitorCommand('next');if(e.key==='ArrowLeft')E.visitorCommand('back');return; }
   if (e.key === 'Shift') S.shift = true;
   if (e.target.matches?.('input, textarea')) return;
   const k = e.key.toLowerCase();
@@ -1297,3 +1303,27 @@ window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
 document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);});
 
 document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});
+
+document.addEventListener('change',event=>{
+ const el=event.target;
+ if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
+ if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
+ if(el.dataset.expReuse)E.reuseFraming(el.dataset.expReuse,el.value);
+ if(el.dataset.expCue)E.command('Set explicit narration cue',e=>{e.uses[el.dataset.expCue].cue=el.value?JSON.parse(el.value):null;});
+ if(el.dataset.expRepair)E.command('Repair missing framing',e=>{e.uses[el.dataset.expRepair].viewId=el.value;});
+ if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
+});
+window.addEventListener('pointermove',event=>{if(S.visitorDrag&&S.visitor?.runtime.exploring){const d=S.visitorDrag;ctx.stage.cam.az-=(event.clientX-d.x)*.006;ctx.stage.cam.el=Math.max(.06,Math.min(1.5,ctx.stage.cam.el+(event.clientY-d.y)*.005));d.x=event.clientX;d.y=event.clientY;S.visitor.runtime.pose=nav.plainPose();}});
+window.addEventListener('pointerup',()=>{S.visitorDrag=null;});
+
+document.addEventListener('change',event=>{const d=event.target.dataset,value=event.target.value;
+ if(d.expInterruption)E.command('Set interruption',e=>e.uses[d.expInterruption].interruption=value||null);
+ if(d.expAfter)E.command('Set start signal',e=>e.uses[d.expAfter].start=value?{kind:'after',...JSON.parse(value)}:{kind:'visit'});
+ if(d.expGate)E.command('Set connection Gate',e=>e.stops[d.expGate].gate=value?JSON.parse(value):null);
+ if(d.expPacing)E.command('Set Stop pacing',e=>e.stops[d.expPacing].pacing=value==='dwell'?{kind:'dwell',seconds:5}:{kind:'auto'});
+ if(d.expNext)E.command('Set Next',e=>e.stops[d.expNext].next=value==='order'||value==='end'?{kind:value}:{kind:'target',id:value});
+ if(d.expEntry)E.command('Set explicit Stop entry',e=>e.stops[d.expEntry].entry=value==='presentation'||value==='hold'?{kind:value}:{kind:'use',useId:value});
+ if(d.expDetour&&value)E.command('Add detour choice',e=>e.stops[d.expDetour].choices.push({id:'choice-'+(++e.serial),targetId:value,label:'Explore '+e.stops[value].name,kind:'detour'}));
+});
+
+document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});

@@ -1,4 +1,4 @@
-import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces } from './experience-ui.js';
+import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard } from './experience-ui.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
 import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf, PRESENTATION, presentationOf } from './fixtures.js';
 import {
@@ -615,7 +615,7 @@ function renderCard() {
     else if (t.kind === 'walls') html = cardWall(t.item);
     else if (t.kind === 'openings') html = cardOpening(t.item, t.wall);
     else if (t.kind === 'ceilings') html = cardCeiling(t.item);
-    else html = cardScene(t);
+    else html = cardScene(t) + sceneCapabilityCard(id);
     // Above the identity: the parked work belongs to the session, not to the subject, and it must never
     // be the thing you have to scroll a long Card to find.
     html = parkedBlock() + html;

@@ -1,11 +1,15 @@
+import { createSceneCapabilities, capability, capabilities, setSceneValue } from './experience-capabilities.js';
+import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
 import * as nav from './navigation.js';
 import * as T from './tasks.js';
 import { cancelProposal, onCancel } from './cancel.js';
+import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat } from './experience-model.js';
 export function initExperience() {
+  ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
   S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null };
 }
@@ -55,8 +59,21 @@ export function handleExperienceAction(el) {
   if (action === 'exp-scope-local') acceptFraming('local');
   if (action === 'exp-scope-cancel') {S.expAsk=null;ctx.ui();}
   if (action === 'exp-coordinate') coordinate();
+  if (action === 'exp-mark-station') command('Name Camera station',(e,c)=>{const r=c.connections[S.task.params.connection];r.markers.push({id:fresh(c,'marker'),name:'Mid-route station',progress:.5});});
+  if (action === 'exp-invoke-beat') {const s=S.experienceContext.seam;command('Coordinate capability at station',(e,c)=>addInvocationBeat(e,c,s.from,s.to,S.task.params.connection,S.task.params.station,S.task.params.invokeUse));}
   if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
   if (action === 'exp-route-scope') acceptRoutePace();
+  if (action === 'exp-narration') addNarration();
+  if (action === 'exp-offer') beginOffer(el.dataset.kind||'behavior');
+  if (action === 'exp-offer-accept') acceptOffer();
+  if (action === 'exp-offer-cancel') {S.expOfferDraft=null;ctx.ui();}
+  if (action === 'exp-marker') addMarker(el.dataset.id);
+  if (action === 'exp-visitor') visitorCommand(el.dataset.command,el.dataset.id);
+  if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
+  if (action === 'exp-remove-contribution') command('Remove contribution',e=>delete e.uses[el.dataset.id]);
+  if (action === 'exp-reset') resetExperience(false);
+  if (action === 'exp-example') resetExperience(true);
+  if (action === 'exp-presenter') presenterStep(Number(el.dataset.delta));
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
@@ -69,7 +86,7 @@ export function handleExperienceAction(el) {
 export function presentationValid(id) { const p = ctx.experience.presentations[id]; return !!p && validateFocus(p, id => !!A.worldOf(id)); }
 
 export function captureView(pid=S.experienceContext.presentation) {
- return command('Capture Camera View', (e,c)=>addView(e,c,pid,nav.plainPose(),'Captured framing',entryUse(e,pid)?'choice':'entry'));
+ return command('Capture Camera View', (e,c)=>{const id=addView(e,c,pid,nav.plainPose(),'Captured framing',entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});
 }
 export function autoView(pid=S.experienceContext.presentation) {
  const p=ctx.experience.presentations[pid]; if(!p)return false;
@@ -77,7 +94,7 @@ export function autoView(pid=S.experienceContext.presentation) {
  if(p.focus.kind==='subjects') { const points=p.focus.ids.map(A.worldOf).filter(Boolean); if(points.length)target=points[0]; }
  if(p.focus.kind==='region')target=p.focus.min.map((n,i)=>(n+p.focus.max[i])/2);
  const pose={target,az:.7,el:.35,frameH:8,flat:0,mirror:false};
- return command('Add automatic framing',(e,c)=>{const id=addView(e,c,pid,pose,'Auto framing',entryUse(e,pid)?'choice':'entry'); c.views[e.uses[id].viewId].anchor='relative';return id;});
+ return command('Add automatic framing',(e,c)=>{const id=addView(e,c,pid,pose,'Auto framing',entryUse(e,pid)?'choice':'entry'); c.views[e.uses[id].viewId].anchor='relative';c.views[e.uses[id].viewId].focusOffset=[0,0,0];return id;});
 }
 export function changeRole(id,role) { return command('Change View role',e=>setRole(e,id,role)); }
 export function preview(pid=S.experienceContext.presentation) {
@@ -86,7 +103,8 @@ export function preview(pid=S.experienceContext.presentation) {
  const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),task:S.task,session:S.session,expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
  // Suspend authoring without writing source or passing through lens parking.
  T.park();
- S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:ctx.cameraSource}),runtime:createRuntime(ctx.experience,ctx.cameraSource,pid,nav.plainPose())};
+ nav.releaseHold();
+ S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),pid,nav.plainPose(),ctx.sceneSource)};
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
 export function exitPreview() {
@@ -99,7 +117,8 @@ let runtimeAt=0;
 export function visitorFrame(now) {
  if(!S.visitor) {runtimeAt=now;return;}
  const v=S.visitor,dt=Math.min(.25,Math.max(0,(now-runtimeAt)/1000));runtimeAt=now;
- v.runtime=tickRuntime(v.source.experience,v.source.camera,v.runtime,dt);
+ v.runtime=tickRuntime(v.source.experience,v.source.camera,v.runtime,dt,v.source.scene);
+ if(now-(v.uiAt||0)>160){v.uiAt=now;ctx.ui();}
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);
 }
 
@@ -234,3 +253,74 @@ export function acceptRoutePace() {
  command('Set Camera route pace',(e,c)=>{if(!c.connections[ask.id])throw Error('Route removed');c.connections[ask.id].speed=ask.speed;});S.expRouteAsk=null;ctx.ui();return true;
 }
 onCancel(()=>{S.expRouteAsk=null;},12,'Camera route pace proposal');
+
+export function addNarration(pid=S.experienceContext.presentation) {
+ return command('Add narration',e=>addContribution(e,pid,{kind:'narration',name:'Narration',text:e.presentations[pid]?.meaning||'An explanation of this place.',markers:[]},'narration'));
+}
+export function editDefinition(uid,key,value) {return command('Edit contribution',e=>{const d=e.definitions[e.uses[uid]?.definitionId];if(!d)throw Error('Contribution removed');d[key]=value;});}
+export function addMarker(uid,label='Named phrase') {
+ return command('Add narration phrase',e=>{const d=e.definitions[e.uses[uid]?.definitionId];if(d?.kind!=='narration')throw Error('Not narration');d.markers.push({id:fresh(e,'phrase'),label,fraction:.5});});
+}
+export function beginOffer(kind='behavior') {
+ const p=ctx.experience.presentations[S.experienceContext.presentation];
+ const subject=p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
+ S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true};ctx.ui();
+}
+export function acceptOffer() {
+ const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;
+ const value=cap.control==='range'?Number(draft.value):draft.value===true||draft.value==='true';
+ const id=command('Add '+draft.kind,e=>addContribution(e,S.experienceContext.presentation,{kind:'control',name:cap.label,subjectId:draft.subjectId,capabilityId:cap.id,value},draft.kind,draft.trigger));
+ S.expOfferDraft=null;ctx.ui();return id;
+}
+export function changeOfferField(key,value){if(!S.expOfferDraft)return;S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value)[0];S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
+export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
+export function visitorCommand(action,id=null){
+ const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;
+ if(action==='next')v.runtime=R.nextRuntime(e,c,r,scene);
+ if(action==='back')v.runtime=R.previousRuntime(e,c,r,scene);
+ if(action==='start')v.runtime=R.startGuide(e,c,r,scene);
+ if(action==='auto') {v.runtime.autoplay=!r.autoplay;v.runtime.elapsed=0;const s=e.stops[r.stopId];v.runtime.pacingFallback=s?.pacing.kind==='signal'&&R.signalEmitted(r,s.pacing.ref);}
+ if(action==='activate')v.runtime=R.activateRuntime(e,c,r,id,scene);
+ if(action==='stop')v.runtime=R.stopActivityRuntime(e,r,id);
+ if(action==='explore')v.runtime=R.exploreRuntime(r,nav.plainPose());
+ if(action==='rejoin')v.runtime=R.resumeGuide(e,c,r,nav.plainPose());
+ if(action==='look')v.runtime=R.lookRuntime(e,c,r,id,nav.plainPose());
+ if(action==='detour')v.runtime=R.chooseRuntime(e,c,r,id,true,scene);
+ if(action==='return')v.runtime=R.returnDetour(e,c,r,scene);
+ if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;
+}
+export function visitorPointer(event){
+ const v=S.visitor;if(!v)return;
+ if(v.runtime.exploring) {S.visitorDrag={x:event.clientX,y:event.clientY};return;}
+ const hit=ctx.stage.pick(event.clientX,event.clientY),id=hit?.object?.userData?.id||hit?.id;
+ const e=v.source.experience,u=Object.values(e.uses).find(u=>u.kind==='interaction'&&u.triggerSubjectId===id&&(!u.availability||u.availability===v.runtime.presentationId));if(u)visitorCommand('activate',u.id);
+}
+export function sourceCapability(sid,cid,value){return command('Edit Scene capability',()=>setSceneValue(ctx.sceneSource,sid,cid,value));}
+onCancel(()=>{S.expOfferDraft=null;},12,'Experience offer draft');
+
+export function resetExperience(example=false) {
+ if(S.visitor)exitPreview();cancelProposal('reset');T.park();initExperience();
+ S.parked=null;S.parkedByLens={};S.undo=[];S.redo=[];S.sel=null;S.expand=false;S.task=null;
+ if(example){
+  const e=ctx.experience,c=ctx.cameraSource;
+  const pid=addPresentation(e,{kind:'subjects',ids:['machine']},'Understand the drive');
+  e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
+  const base={target:[-10,1.2,1],az:.7,el:.3,frameH:6,flat:0};
+  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:3},'Inside','choice'),output=addView(e,c,pid,{...base,az:1.2},'Output','choice');
+  const n=addContribution(e,pid,{kind:'narration',name:'How the drive works',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',fraction:1/3},{id:'output',label:'Follow output',fraction:2/3}]},'narration');
+  e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
+  const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};
+  const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete'};e.uses[run].end={kind:'experience'};
+  const piano=addContribution(e,null,{kind:'control',name:'Play Piano',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');e.uses[piano].availability=null;
+  const light=addContribution(e,null,{kind:'control',name:'Light from Switch',subjectId:'light',capabilityId:'intensity',value:3},'interaction','switch');e.uses[light].availability=null;
+  const compare=addPresentation(e,{kind:'subjects',ids:['machine','mesh']},'Compare materials');reuseView(e,c,compare,e.uses[entry].viewId);setRole(e,e.presentations[compare].uses[0],'entry');
+  const a=addStop(e,pid),b=addStop(e,compare);e.stops[a].choices.push({id:fresh(e,'choice'),label:'Compare materials detour',targetId:b,kind:'detour'});
+  S.experienceContext.presentation=pid;S.sel=pid;
+ }
+ buildCapabilitySubjects();ctx.ui();return true;
+}
+export function presenterStep(delta) {S.experiencePresenter=Math.max(0,Math.min(3,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
+
+export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
+
+export function cameraSnapshot(){const positions=Object.fromEntries(Object.values(ctx.cameraSource.views).flatMap(v=>(v.focus?.ids||[]).map(id=>[id,A.worldOf(id)])));return lowerCamera(ctx.cameraSource,positions);}

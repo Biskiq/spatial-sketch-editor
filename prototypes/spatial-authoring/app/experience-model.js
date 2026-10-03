@@ -103,3 +103,42 @@ export function addBeat(e,c,a,b,connectionId,stationId,hold=1) {
 export function connectionReach(e,c,id) {
  return Object.entries(e.seams).filter(([,s])=>originCoverage(e,c,s.from,s.to).some(r=>r.connectionId===id)).map(([key,s])=>({key,from:s.from,to:s.to}));
 }
+export function addContribution(e,pid,definition,kind='behavior',trigger=null) {
+ if(pid&&!e.presentations[pid])throw Error('Presentation removed');
+ const did=fresh(e,'definition'),id=fresh(e,'contribution');e.definitions[did]={...copy(definition),id:did};
+ e.uses[id]={id,kind,definitionId:did,presentationId:pid,triggerSubjectId:trigger||definition.subjectId||null,start:{kind:pid?'visit':'experience'},end:{kind:pid?'visit':'experience'},interruption:null,availability:pid,toggle:false};
+ return id;
+}
+export function narrationDuration(d) {return d.duration ?? Math.max(1,d.text.trim().split(/\s+/).filter(Boolean).length/2.5);}
+export function cueSeconds(e,cue) {
+ const u=e.uses[cue?.useId],d=e.definitions[u?.definitionId];if(d?.kind!=='narration')return null;
+ if(cue.signal==='complete')return narrationDuration(d);
+ const m=d.markers.find(m=>`marker:${m.id}`===cue.signal);return m?m.fraction*narrationDuration(d):null;
+}
+export function contributionIssues(e,c,scene,capability) {
+ const issues=[];
+ for(const u of Object.values(e.uses)) {
+  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});continue;}
+  const d=e.definitions[u.definitionId];if(!d){issues.push({id:u.id,message:'Definition missing'});continue;}
+  if(d.kind==='control'&&!capability(scene,d.subjectId,d.capabilityId))issues.push({id:u.id,message:'Subject or capability unavailable'});
+  if(u.kind==='interaction'&&!scene.subjects[u.triggerSubjectId])issues.push({id:u.id,message:'Activation subject missing'});
+  const seen=new Set([u.id]);let dependency=u;
+  while(dependency?.start.kind==='after'){if(seen.has(dependency.start.useId)){issues.push({id:u.id,message:'Dependency cycle'});break;}seen.add(dependency.start.useId);dependency=e.uses[dependency.start.useId];if(!dependency)issues.push({id:u.id,message:'Start dependency missing'});}
+ }
+ return issues;
+}
+export function reuseView(e,c,pid,vid){if(!c.views[vid]||!e.presentations[pid])throw Error('Reuse target unresolved');const id=fresh(e,'use');e.uses[id]={id,kind:'view',name:c.views[vid].name,presentationId:pid,viewId:vid,role:'choice',cue:null};e.presentations[pid].uses.push(id);return id;}
+export function lowerCamera(c,positions) {
+ const derived=copy(c);
+ for(const v of Object.values(derived.views)) {
+  if(v.focus?.kind!=='subjects')continue;
+  const current=positions[v.focus.ids[0]];if(!current){v.unresolved=true;continue;}
+  if(v.anchor==='relative')v.pose.target=current.map((n,i)=>n+(v.focusOffset?.[i]||0));
+  else if(v.focusAt&&current.some((n,i)=>Math.abs(n-v.focusAt[i])>1e-6))v.review='World changed — review fixed framing';
+ }
+ return derived;
+}
+export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId) {
+ const u=e.uses[useId];if(!u||u.viewId)throw Error('Choose a supported capability or narration contribution');
+ const id=addBeat(e,c,a,b,connectionId,stationId,0),beat=e.seams[seamKey(a,b)].beats.find(b=>b.id===id);beat.kind='invoke';beat.useId=useId;return id;
+}

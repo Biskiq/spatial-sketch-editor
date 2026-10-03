@@ -1,6 +1,6 @@
 # Experience V2 unified prototype — implementation plan (#113)
 
-**Status:** implementation authorized on 2026-10-03; S0 complete. This is prototype work only. It satisfies no production
+**Status:** implementation authorized on 2026-10-03; S0–S7 complete, S8–S9 in progress. This is prototype work only. It satisfies no production
 F/T gate and closes no major phase.
 
 **Goal:** replace the read-only Experience bridge in the accepted World executable
@@ -184,7 +184,9 @@ Paper receives the unified executable, stable selection/navigation/history/cance
 | Slice | Status | Evidence |
 |---|---|---|
 | S0 | baseline verified; mapping recorded in this plan | donor: 62 tests + typecheck pass; all eleven existing World QA axes pass (2026-10-03) |
-| S1–S9 | not started | implementation requires a subsequent owner request; acceptance record will name commands and results |
+| S1–S6 | complete; one commit per slice | focused tests and browser 8 → 30 assertions; exact early slice snapshots verified |
+| S7 | complete | focused 29/29, visitor browser 13/13, architecture 276/276; detailed evidence → prototype `qa/EXPERIENCE-ACCEPTANCE.md` |
+| S8–S9 | in progress | continuity, full acceptance and preservation remain |
 
 No owner product or architecture decision blocks this plan. Outside is the initial
 precision posture as a documented prototype experiment; exact CSS metrics are

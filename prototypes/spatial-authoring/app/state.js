@@ -81,7 +81,7 @@ export const ctx = {
 
 export const W = (id) => byId(ctx.museum.walls, id);
 export const C = (id) => byId(ctx.museum.ceilings, id);
-export const thing = (id) => (id ? findThing(ctx.museum, id) : null);
+export const thing = (id) => (id ? findThing(ctx.museum, id) || (ctx.sceneSource?.subjects[id] ? {kind:'objects',item:ctx.sceneSource.subjects[id]} : null) : null);
 export const clone = (o) => JSON.parse(JSON.stringify(o));
 export const galleryName = (id) => byId(ctx.museum.galleries, id)?.name;
 
