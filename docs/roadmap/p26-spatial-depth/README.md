@@ -66,7 +66,7 @@ This revision is separate from the pre-redesign production plans below.
 **Prototype adoption (#112) accepted 2026-10-02:** [closed plan and recovery](./design/world-authoring-prototype/implementation-plan.md)
 · [current World executable](../../../prototypes/spatial-authoring/README.md)
 · [acceptance/harvest](../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md).
-The shell is adopted in place with A–F preserved. Next: **#113**, real Experience V2 executable
+The shell is adopted in place with A–F preserved. Next: **#113**, [Experience V2 implementation plan](../p25-experience/design/experience-v2-prototype/implementation-plan.md), extending the shared executable
 and both directions of continuity. F and T1/T2/T3 production gates remain unchanged.
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.

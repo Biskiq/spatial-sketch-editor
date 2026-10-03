@@ -67,3 +67,11 @@ alongside the [final World design](../../../prototypes/world-experience-shell-ro
 Card/Deck composition and progressive Camera disclosure are fixed destination design;
 exact metrics, the remaining V2 usability experiments and implementation mechanisms
 remain later work. Promotion changes no T3 implementation gate.
+
+## Unified Experience V2 prototype (#113)
+
+**Plan ready, implementation not started (2026-10-03):** [implementation plan](./design/experience-v2-prototype/implementation-plan.md)
+plans to extend [the shared executable](../../../prototypes/spatial-authoring/README.md) in
+place. The donor stays a runnable regression oracle; the integrated design folder
+retains the finalized synthesis and boards. This work authorizes no T3 production
+implementation. #113 precedes Paper PA0–PA12 and the return to F.
