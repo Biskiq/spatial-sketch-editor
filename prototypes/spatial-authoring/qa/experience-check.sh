@@ -24,6 +24,25 @@ qa_ok 'shared Undo restores Experience from World' "$(qa_js '__me.ctx.experience
 agent-browser click '#redoBtn' >/dev/null
 qa_frames
 qa_ok 'shared Redo restores rename' "$(qa_js '__me.ctx.experience.presentations["pres-highlights"].name')" '"Garden meaning"'
+agent-browser click '[data-act="lens"][data-lens="experience"]' >/dev/null
+qa_frames
+# Opening, Capture and Auto are exercised through controls.
+agent-browser click '[data-act="exp-open"][data-id="pres-highlights"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-capture"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-auto"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-capture"]' >/dev/null
+qa_frames
+qa_ok 'three Views coexist without Guide or edges' "$(qa_js '(__me.ctx.experience.presentations["pres-highlights"].uses.length === 3 && __me.ctx.experience.guide.length === 0 && Object.keys(__me.ctx.cameraSource.connections).length === 0)')" 'true'
+qa_js '__me.S.previewBefore = { source:JSON.stringify(__me.A.domainSnapshot()),pose:JSON.stringify(__me.nav.plainPose()),sel:__me.S.sel,lens:__me.S.lens }' >/dev/null
+agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_frames
+qa_ok 'Preview without Guide takes over authoring' "$(qa_js '(!!__me.S.visitor && document.body.classList.contains("visitor-preview") && __me.S.visitor.runtime.stopId === null)')" 'true'
+agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
+qa_frames
+qa_ok 'Preview restores lens selection pose and frozen source' "$(qa_js '(__me.S.previewBefore.source === JSON.stringify(__me.A.domainSnapshot()) && __me.S.previewBefore.pose === JSON.stringify(__me.nav.plainPose()) && __me.S.previewBefore.sel === __me.S.sel && __me.S.previewBefore.lens === __me.S.lens)')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'

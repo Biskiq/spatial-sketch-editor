@@ -1,3 +1,4 @@
+import { drawExperience } from './experience-draw.js';
 import * as THREE from 'three';
 import { S, ctx, W, C, thing } from './state.js';
 import {
@@ -31,6 +32,7 @@ export function drawAll() {
   if (S.knife) drawKnife();
   if (S.beacon) drawBeacon();
   if (S.refusal) drawRefusal();
+  drawExperience();
   ov.end();
 }
 

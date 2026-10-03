@@ -119,3 +119,11 @@ export function backTo(depth, crumbs) {
 
 let readingLabel = () => '';
 export function setReadingLabel(fn) { readingLabel = fn; }
+
+// Camera's shared prototype evaluation kernel; authored sources contain no generated endpoints.
+export { pathSeconds, evaluatePath, connectionPath, findConnection, stations, stationProgress } from './camera-evaluation.js';
+export function plainPose() {
+ const p=camState(); return {...p,target:[p.target.x,p.target.y,p.target.z]};
+}
+export function applyPose(p) { setCam({...p,target:new V3(...p.target)}); }
+export function restoreCapture(token) { setCam(token.cam); restoreOriginHold(token); }

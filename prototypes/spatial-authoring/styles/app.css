@@ -704,3 +704,12 @@ body.reduce-motion * { transition: none !important; }
 .exp-label { display: block; margin: 10px 16px; font-size: 12px; }
 .exp-label input, .exp-label textarea { display: block; width: 100%; margin-top: 6px; padding: 8px; background: var(--paper, #faf7ee); color: inherit; border: 1px solid #c9c4b7; border-radius: 4px; font: inherit; }
 .exp-label textarea { min-height: 80px; resize: vertical; }
+.exp-set { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px; }
+.exp-view { border: 1px solid #d5d0c3; border-radius: 16px; padding: 10px; font-size: 11px; }
+.exp-view:nth-child(3n) { grid-column: 1 / -1; justify-self: center; }
+.exp-view .verb { font-size: 10px; padding: 4px; }
+.exp-view span { display: block; color: #81745a; }
+.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0 1fr 0; }
+.visitor-preview > .head, .visitor-preview > .index, .visitor-preview > .card, .visitor-preview > footer, .visitor-preview .stage-tools, .visitor-preview #instrument, .visitor-preview #truth, .visitor-preview #ovHtml, .visitor-preview #ovSvg, .visitor-preview #where { display: none !important; }
+#visitorSurface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(600px, 90%); padding: 18px; color: #f8f5ea; background: #242623ed; border-radius: 8px; }
+.visitor-title { font-size: 22px; }

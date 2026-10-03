@@ -15,7 +15,11 @@ export function experienceCard() {
     const focus = p.focus.kind === 'subjects' ? p.focus.ids.map(id => `${thing(id)?.item.name || id} <button class="lnk" data-act="pres-ref" data-id="${esc(id)}">Select</button>`).join(', ') : esc(p.focus.kind);
     return `<div class="c-head"><div class="c-k">Presentation · Experience</div><div class="c-t">${esc(p.name)}</div><div class="c-ref">Owner · Experience · used by ${Object.values(ctx.experience.stops).filter(s=>s.presentationId===p.id).length} Stops</div></div>
     <div class="c-sec">Meaning</div><label class="exp-label">Name<input data-exp-field="name" data-id="${p.id}" value="${esc(p.name)}"></label><label class="exp-label">Meaning<textarea data-exp-field="meaning" data-id="${p.id}">${esc(p.meaning)}</textarea></label>
-    <div class="c-sec">Focus</div><div class="relation">${focus}</div><div class="c-sec">Show</div><p class="c-hint">Auto framing. Capture is explicit; the Set has no order.</p>`;
+    <div class="c-sec">Focus</div><div class="relation">${focus}</div><div class="c-sec">Show</div><p class="c-hint">Auto framing. Capture is explicit; the Set has no order.</p>${setHtml(p)}<div class="c-acts">${button("exp-auto","Auto")}${button("exp-capture","Capture")}${button("exp-preview","Preview",p.id)}${button("exp-add-guide","Add to Guide",p.id)}</div>`;
+  }
+  if(r?.kind==='View use'  || r?.kind==='Camera View') {
+   const v=r.kind==='View use'?ctx.cameraSource.views[r.item.viewId]:r.item;
+   return `<div class="c-head"><div class="c-k">Camera View · Camera</div><div class="c-t">${esc(v?.name||'Missing framing')}</div></div><p class="c-hint">Framing belongs to Camera. Roles belong to the Presentation. ${v?'Capture and precise work are explicit.':'Repair required; missing framing is not Keep current viewpoint.'}</p>`;
   }
   const t = thing(S.sel);
   return `<div class="c-head"><div class="c-k">${t ? 'From the World lens' : 'Experience'}</div><div class="c-t">${esc(t?.item.name || 'Meaning in this World')}</div></div><p class="c-hint">Create or open a Presentation explicitly. Selection alone never captures or moves Camera.</p><div class="c-acts">${button('exp-create',t ? 'Present this' : '+ Presentation')}</div>`;
@@ -24,3 +28,14 @@ export const foreignExperienceCard = () => {
   const r = resolveExperience(S.sel);
   return r ? `<div class="c-head"><div class="c-k">Foreign identity · not a World subject</div><div class="c-t">${esc(r.item.name || r.kind)}</div><div class="c-ref">${r.owner} · ${esc(r.item.id)}</div></div><p class="c-hint">Select a World subject to work on the building.</p>` : '';
 };
+
+export function setHtml(p) {
+ return `<div class="exp-set" aria-label="Unordered View Set">${p.uses.map(id=>{const u=ctx.experience.uses[id],v=ctx.cameraSource.views[u?.viewId];return `<div class="exp-view"><button class="lnk" data-act="pres-ref" data-id="${id}">○ ${esc(v?.name||'Missing View')}</button><span>${esc(u.role)}</span><div>${button('exp-role','Entry',id).replace('data-id=', 'data-role="entry" data-id=')}${button('exp-role','Visitor choice',id).replace('data-id=', 'data-role="choice" data-id=')}</div></div>`;}).join('')}</div>`;
+}
+export function renderExperienceSurfaces() {
+ document.body.classList.toggle('visitor-preview',!!S.visitor);
+ let el=document.querySelector('#visitorSurface');
+ if(!el){el=document.createElement('section');el.id='visitorSurface';document.querySelector('#stage').append(el);}
+ el.hidden=!S.visitor;
+ if(S.visitor) { const p=S.visitor.source.experience.presentations[S.visitor.runtime.presentationId];const html=`<div class="visitor-title">${esc(p?.name)}</div><p>${esc(p?.meaning)}</p>${button('exp-exit-preview','Exit Preview')}`;if(el._html!==html){el.innerHTML=html;el._html=html;} }
+}

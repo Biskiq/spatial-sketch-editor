@@ -29,3 +29,7 @@ S1–S9 records are appended as each slice passes. No acceptance is inferred fro
 S1: one focused test; browser 8/8. Explicit opening/rename, inert lens crossing,
 canonical identity, shared Undo/Redo and no ordinary Deck. The exact S1 index
 snapshot was exported and rerun before its commit, preserving later working changes.
+
+S2: focused 3/3; exact slice snapshot browser 11/11. Unordered three-View Set,
+explicit roles, no implicit Guide/edge, standalone visitor takeover and frozen-source
+return. Camera kernel is beneath navigation; region creation is an explicit Stage task.
