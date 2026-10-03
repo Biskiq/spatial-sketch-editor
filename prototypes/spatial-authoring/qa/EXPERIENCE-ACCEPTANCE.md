@@ -54,3 +54,15 @@ S6: focused 7/7; browser 30/30. Stage adds an interior anchor; local coordinatio
 selects only stable departure/anchor/arrival/named stations. Pace and anchor edits
 rederive timing without changing beat references; missing stations remain repairable.
 The strip edits holds and pace, never path geometry; shared route reach is explicit.
+
+S7: focused 29/29 (explicit A0–A22 harvest rows), visitor browser 13/13, existing
+Experience wiring 30/30, root `npm run test:arch` 276/276. Retained algorithms are
+native ESM adaptations of donor arm/begin/close, interruption, cue queue, readiness,
+Next and bounded .25s stepping; regression oracle stays untouched. New tests cover
+visit/run ownership, declared fixture replacement, missing framing/cycles, source
+isolation, fixed/relative framing review, and station-bound holds/invocations.
+Visitor controls prove viewport takeover, independent Piano, Switch → Light,
+keyboard Gate parity, captions/cues, exploration/rejoin and exact ordinary return.
+Presenter Skip observes only; explicit Load Example initializes deterministic source
+and never plays. Media is a deterministic fixture simulation, as in the donor,
+not a production audio/video system. Detour pause remains characterization.

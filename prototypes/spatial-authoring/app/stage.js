@@ -1,3 +1,4 @@
+import { fovFor } from './camera-evaluation.js';
 import * as THREE from 'three';
 import { buildWallGeometry, buildSlabGeometry, paintTexture, placeArtwork, wallSampler, horizontalCaps } from './geometry.js';
 import { byId, planeY, FLOOR_Y } from './model.js';
@@ -33,9 +34,7 @@ const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b
 const V3 = THREE.Vector3;
 const lerp = (a, b, t) => a + (b - a) * t;
 export const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const FOV_PERSP = 40;
-const FOV_FLAT = 0.9;
-export const fovFor = (flat) => Math.exp(lerp(Math.log(FOV_PERSP), Math.log(FOV_FLAT), flat));
+export { fovFor };
 
 // A tile holds `cells` minor cells with a heavier line every `majorEvery`. With a transparent
 // background the tile is a line layer that can fade on its own; with a background it is an opaque

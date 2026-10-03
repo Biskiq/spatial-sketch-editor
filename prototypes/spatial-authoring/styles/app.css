@@ -709,7 +709,7 @@ body.reduce-motion * { transition: none !important; }
 .exp-view:nth-child(3n) { grid-column: 1 / -1; justify-self: center; }
 .exp-view .verb { font-size: 10px; padding: 4px; }
 .exp-view span { display: block; color: #81745a; }
-.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0 1fr 0; }
+body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0 1fr 0; }
 .visitor-preview > .head, .visitor-preview > .index, .visitor-preview > .card, .visitor-preview > footer, .visitor-preview .stage-tools, .visitor-preview #instrument, .visitor-preview #truth, .visitor-preview #ovHtml, .visitor-preview #ovSvg, .visitor-preview #where { display: none !important; }
 #visitorSurface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(600px, 90%); padding: 18px; color: #f8f5ea; background: #242623ed; border-radius: 8px; }
 .visitor-title { font-size: 22px; }
@@ -745,3 +745,14 @@ body.reduce-motion * { transition: none !important; }
 .exp-deck.coordination .seam-bookends article { padding: 6px; }
 .exp-deck.coordination .seam-instrument p { margin: 3px 0; }
 .coordination-strip p { margin: 4px 0; }
+.contribution, .offer-draft, .stop-details { margin: 10px 14px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; font-size: 12px; }
+.contribution textarea { width: 100%; min-height: 70px; margin: 8px 0; font: inherit; }
+.offer-draft label, .stop-details label, .contribution details label { display: flex; justify-content: space-between; gap: 8px; margin: 8px 0; }
+.offer-draft select { max-width: 165px; }
+.cue-select { display: block; font-size: 10px; margin: 6px 0; }
+.cue-select select { width: 100%; }
+.visitor-preview #visitorSurface { z-index: 20; max-height: 48%; overflow: auto; }
+.visitor-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#visitorSurface .verb { width: auto; display: inline-flex; margin: 4px; padding: 6px 10px; color: #f6f2e5; border-color: #6b6a5e; }
+.visitor-caption { min-height: 24px; color: #f1dbad; }
+#visitorSurface [disabled] { opacity: .45; }
