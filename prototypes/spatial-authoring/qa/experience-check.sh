@@ -105,6 +105,30 @@ qa_ok 'Through visibly remains authoring' "$(qa_js '(__me.S.task.params.posture 
 agent-browser click '#undoBtn' >/dev/null
 qa_frames
 qa_ok 'Undo reunites original Stop entry without restoring Camera' "$(qa_js '(__me.ctx.experience.stops[__me.S.experienceContext.stop].entry.kind === "presentation")')" 'true'
+agent-browser click '[data-act="exp-close"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-guide"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-seam"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-route"]' >/dev/null
+qa_frames
+p="$(qa_at '#gl' 360 180)"; qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
+qa_ok 'Stage authors one interior anchor' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '1'
+agent-browser click '[data-act="exp-route-return"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-coordinate"]' >/dev/null
+qa_frames
+station="$(qa_jsv '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors[0].id')"
+agent-browser select '[data-exp-station]' "$station" >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-beat"]' >/dev/null
+qa_frames
+qa_js '__me.S.beatBefore={ref:JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats),time:document.querySelector(".beat").textContent}' >/dev/null
+agent-browser select '[data-exp-pace]' 'slow' >/dev/null
+qa_frames
+qa_ok 'pace derives timing and keeps stable beat reference' "$(qa_js '(__me.S.beatBefore.ref === JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats) && __me.S.beatBefore.time !== document.querySelector(".beat").textContent)')" 'true'
+qa_ok 'station options contain no generated samples' "$(qa_js '([...document.querySelectorAll("[data-exp-station] option")].every(o=>!o.value.startsWith("sample")))')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'

@@ -1296,3 +1296,4 @@ window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
 
 document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);});
 
+document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});

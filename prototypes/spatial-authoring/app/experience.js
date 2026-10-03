@@ -4,7 +4,7 @@ import { cancelProposal, onCancel } from './cancel.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach } from './experience-model.js';
 export function initExperience() {
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
   S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null };
@@ -54,6 +54,9 @@ export function handleExperienceAction(el) {
   if (action === 'exp-scope-shared') acceptFraming('shared');
   if (action === 'exp-scope-local') acceptFraming('local');
   if (action === 'exp-scope-cancel') {S.expAsk=null;ctx.ui();}
+  if (action === 'exp-coordinate') coordinate();
+  if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
+  if (action === 'exp-route-scope') acceptRoutePace();
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
@@ -211,3 +214,23 @@ export function moveCameraDrag(event,point) {
 export function endCameraDrag() {const d=S.cameraDraft;if(!d)return false;S.cameraDraft=null;proposePatch(d.pose);return true;}
 onCancel(()=>{S.cameraDraft=null;},5,'Camera framing gesture');
 
+export function coordinate() {
+ const x=S.experienceContext,s=x.seam;if(!s)return false;
+ const rows=originCoverage(ctx.experience,ctx.cameraSource,s.from,s.to);
+ if(!S.task.params.connection)S.task.params.connection=rows.find(r=>r.connectionId)?.connectionId||null;
+ if(!S.task.params.connection){A.setStatus('Connect a Camera route before coordinating its stations','refuse');return false;}
+ x.depth='coordination';S.task.kind='experience-coordination';S.task.params.station='departure';ctx.ui();return true;
+}
+export function beatAtStation(stationId,seconds=1) {
+ const {from,to}=S.experienceContext.seam;return command('Add station-bound Experience hold',(e,c)=>addBeat(e,c,from,to,S.task.params.connection,stationId,seconds));
+}
+export function routePace(speed) {
+ const id=S.task?.params.connection;if(!id)return false;
+ const affected=connectionReach(ctx.experience,ctx.cameraSource,id);
+ S.expRouteAsk={id,speed,affected};if(affected.length<=1)return acceptRoutePace();ctx.ui();return true;
+}
+export function acceptRoutePace() {
+ const ask=S.expRouteAsk;if(!ask)return false;
+ command('Set Camera route pace',(e,c)=>{if(!c.connections[ask.id])throw Error('Route removed');c.connections[ask.id].speed=ask.speed;});S.expRouteAsk=null;ctx.ui();return true;
+}
+onCancel(()=>{S.expRouteAsk=null;},12,'Camera route pace proposal');

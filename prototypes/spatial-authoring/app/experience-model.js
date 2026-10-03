@@ -94,3 +94,12 @@ export function editView(c,id,patch) {
  if(!pose.target?.every(Number.isFinite)||![pose.az,pose.el,pose.frameH].every(Number.isFinite)||pose.frameH<=.1)throw Error('Invalid Camera framing');
  v.pose=pose;v.anchor='fixed';v.revision++;
 }
+export function addBeat(e,c,a,b,connectionId,stationId,hold=1) {
+ const route=c.connections[connectionId];if(!route)throw Error('Connection missing');
+ const valid=['departure',...route.anchors.map(a=>a.id),...route.markers.map(m=>m.id),'arrival'];
+ if(!valid.includes(stationId))throw Error('Generated samples are not authored Camera stations');
+ const seam=editSeam(e,a,b,{}),id=fresh(e,'beat');seam.beats.push({id,connectionId,stationId,kind:'hold',seconds:Math.max(0,hold)});return id;
+}
+export function connectionReach(e,c,id) {
+ return Object.entries(e.seams).filter(([,s])=>originCoverage(e,c,s.from,s.to).some(r=>r.connectionId===id)).map(([key,s])=>({key,from:s.from,to:s.to}));
+}

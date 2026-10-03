@@ -733,7 +733,15 @@ body.reduce-motion * { transition: none !important; }
 .numeric-tape { display: inline-flex; gap: 12px; align-items: center; padding: 8px 14px; margin: 8px; border: 1px solid #b28c48; background: #fffcf1; font-family: 'Martian Mono', monospace; }
 .numeric-tape input { width: 85px; font: inherit; }
 .ask-rule { padding: 12px; background: #eee4cc; border-radius: 5px; }
+.coordination-strip { border-top: 1px solid #ccbea0; margin-top: 12px; padding-top: 8px; font-size: 12px; }
+.coordination-strip label { display:inline-block; margin: 6px 10px; }
+.beat-strip { display: flex; gap: 8px; }
+.beat { padding: 8px; border: 1px solid #d2ba82; background: #fff7df; border-radius: 4px; }
 .stop-strip { max-height: 220px; align-items: flex-start; }
 .stop-card { flex-shrink: 0; max-height: 210px; overflow: auto; }
 .seam-link { align-self: center; min-height: 36px; flex-shrink: 0; }
 .exp-deck .verb { width: auto; display: inline-flex; min-height: 28px; align-items: center; font-size: 11px; padding: 6px 9px; }
+.exp-deck.coordination .seam-bookends h3 { margin: 3px 0; }
+.exp-deck.coordination .seam-bookends article { padding: 6px; }
+.exp-deck.coordination .seam-instrument p { margin: 3px 0; }
+.coordination-strip p { margin: 4px 0; }

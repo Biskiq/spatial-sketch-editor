@@ -52,3 +52,14 @@ test('Stop-only detachment retargets one occurrence atomically and shared reach 
  assert.equal(viewReach(e,vid).stops.length,2);
  Object.assign(e,before.e);Object.assign(c,before.c);assert.equal(stopEntry(e,a).id,uid);
 });
+import { addBeat } from '../app/experience-model.js';
+import { coordinateTiming } from '../app/experience-coordination.js';
+test('coordination binds stable Camera stations; pace and anchors alter timing without retargeting',()=>{
+ const e=createExperience(),c=createCamera(),p=addPresentation(e),q=addPresentation(e),u=addView(e,c,p,pose,'From','entry'),v=addView(e,c,q,{...pose,target:[20,1,0]},'To','entry'),a=addStop(e,p),b=addStop(e,q),id=addConnection(c,e.uses[u].viewId,e.uses[v].viewId);
+ const aid=addAnchor(c,id,[5,1,0]);const beat=addBeat(e,c,a,b,id,aid,2);addBeat(e,c,a,b,id,'arrival',1);
+ const seam=e.seams[`${a}>${b}`],before=coordinateTiming(c,seam);
+ c.connections[id].anchors[0].position=[10,1,0];c.connections[id].speed='slow';const after=coordinateTiming(c,seam);
+ assert.equal(after[0].id,beat);assert.equal(after[0].stationId,aid);assert.notEqual(before[0].at,after[0].at);
+ assert.throws(()=>addBeat(e,c,a,b,id,'sample-4'),/Generated samples/);
+ c.connections[id].anchors=[];assert.equal(coordinateTiming(c,seam)[0].at,null);
+});
