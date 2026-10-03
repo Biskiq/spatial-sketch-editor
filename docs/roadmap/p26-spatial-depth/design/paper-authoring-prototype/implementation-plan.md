@@ -1,7 +1,9 @@
 # World Paper authoring — prototype adoption plan
 
-Status: **planned 2026-10-03, review-ready, not started.** No slice is implemented. Start and
-order against #113 are the owner's call (§11).
+Status: **planned 2026-10-03, review-ready, not started.** No slice is implemented. The
+owner-decided sequence places this plan **after #113**: #112 close/merge → #113 Experience V2 +
+real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype detour closes →
+F exact-interface amendments → T1/T2/T3/T4 (§11 item 7, §12).
 Contract: [PLATE §0.8.4](../../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 (normative), within PLATE §0.8–§0.8.3; Wall-role domain destination in
 [architecture](../../../../reference/architecture.md) §Ownership.
@@ -871,22 +873,19 @@ Explicitly out of scope:
    may decide later.
 6. **Selection-set kinds.** The prototype limits sets to objects and structures. Which domain kinds
    support sets in production follows the selection facade's placement sets.
-7. **#113 ordering.** #113 edits the lens bridge, Head and `ui.js`, which PA2, PA4 and PA5 also
-   touch.
-   - PA0 and PA1 conflict with nothing and can start at any time.
-   - Either finish #113 first and rebase PA2 onward, or run PA2–PA5 first and let #113 rebase on
-     the new Head.
+7. **#113 ordering — decided 2026-10-03.** #113 lands first (it is the current baton); Paper
+   PA0–PA12 is the next PR after it, then the prototype detour closes. #113 edits the lens bridge,
+   Head and `ui.js`, which PA2, PA4 and PA5 also touch, so PA2 onward rebases on #113's Head.
+   - PA0 and PA1 conflict with nothing, but they land in the Paper PR after #113, not before it.
    - The Experience Deck is never touched by this plan.
-   - The owner chooses. The recommended order is #113 first, then PA2 onward, because #113 is the
-     current baton (`operations/current.md`).
 8. **PLATE open calls** (keyboard focus treatment, mat ↔ paper timing) stay open. Visual work uses
    the existing treatments without ratifying them.
 
 ## 12. Recommended implementation sequence
 
-1. PA0. Then PA1, which can begin immediately and in parallel, since it is domain-only and
-   digest-stable.
-2. After the owner's #113 ordering call: PA2 → PA3, then PA4 → PA5.
+1. PA0. Then PA1, which is domain-only and digest-stable and can be prepared without waiting on
+   any other slice, all inside the Paper PR after #113.
+2. After #113 merges (the decided order): PA2 → PA3, then PA4 → PA5.
 3. PA6 → PA7.
 4. PA8 (needs PA1) → PA9.
 5. PA10.

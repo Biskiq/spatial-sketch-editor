@@ -94,7 +94,11 @@ Predecessor paths below are historical evidence recovered through the preservati
 | #111 ten-board QA and finalized syntheses | PLATE §0.8 destination design + frozen design package | Retained as design evidence; never presented as executable acceptance |
 <!-- EVIDENCE-PATHS: end -->
 
-The lens switch is currently beside Museum Editor at the top left. The centered position shown in the design boards has not been adopted; the shared Head landmark and switching behavior are implemented.
+The lens switch is currently beside Museum Editor at the top left. The shared Head landmark and
+switching behavior are implemented, and this top-left placement is **accepted transitional visual
+drift**: the #112 executable may keep the lens control top left, which is not a rejection of the
+centered destination specimen. Exact shared-shell visual reconciliation is owned by the later
+integrated Experience/Paper prototype work; PLATE §0.8 destination authority is unchanged.
 
 ## Limits and handoff
 
@@ -121,7 +125,7 @@ CLOSEOUT PRESERVATION — World Authoring Prototype (2026-10-02)
 - Transient/predecessor artifacts removed: 148 files / 35,278,506 bytes, each mapped above; unique material/contrast/transition evidence retained.
 - Historical anchor: `7c9bc81b6edb54cc5ec3ce37f3f45011b6050504` · annotated `closed/world-authoring-prototype`, local only, not pushed. Full plan body and every retired artifact are reachable there.
 - New live → archived-prose links: 0. Manual-owed acceptance rows: 0.
-- Deferred scopes: #113 Experience/two-way continuity; F/production tracks; model expansion/reuse/component identity; product/device/performance studies. Top-left switch placement is disclosed above.
+- Deferred scopes: #113 Experience/two-way continuity; F/production tracks; model expansion/reuse/component identity; product/device/performance studies. The top-left switch placement is disclosed above as accepted transitional visual drift, with shared-shell visual reconciliation deferred to the later integrated Experience/Paper prototype work.
 
 Working and complete base-to-head whitespace, Markdown routes, relative HTML/image links and scope
 are checked after retirement. Full architecture recheck: 24 files / 276 tests; docs gate: 22 tests.

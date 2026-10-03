@@ -27,7 +27,11 @@ Entry points: [World executable](../../../../../prototypes/spatial-authoring/REA
 Residuals: #113 builds real finalized Experience V2 behavior and both directions of continuity.
 F interfaces, production persistence/domain encodings, architecture creation, source/reuse semantics,
 component identity and product usability/performance studies remain separately owned.
-The lens switch remains top left; the centered design-board position is not adopted.
+**Accepted transitional visual drift:** the #112 executable keeps the lens switch top left (beside
+Museum Editor) while the accepted design boards place it centered. That placement is a transitional
+executable state, not a rejection of the centered destination specimen; exact shared-shell visual
+reconciliation is owned by the later integrated Experience/Paper prototype work. PLATE §0.8
+destination authority is unchanged.
 
 Recovery of the full accepted plan and predecessor evidence:
 
