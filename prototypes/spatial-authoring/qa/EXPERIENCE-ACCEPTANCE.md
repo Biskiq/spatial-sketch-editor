@@ -37,3 +37,8 @@ return. Camera kernel is beneath navigation; region creation is an explicit Stag
 S3: focused 4/4; exact slice snapshot browser 15/15. Guide starts at Peek, Overview
 and expanded occurrence keep Camera, repeated Stops share their Presentation's Set,
 and reorder only changes editorial order. Stage Overview pins contain occurrence numbers.
+
+S4: focused 5/5; browser 22/22. Seam opening preserves pose/projection, per-origin
+coverage proves 2/3 then explicit 3/3 repair, Cut adds no edge and Travel exposes gaps.
+Explicit route work enters Plan with a canonical return crumb. Connections store only
+interior anchors; generated endpoints and the common evaluator own estimate/execution.

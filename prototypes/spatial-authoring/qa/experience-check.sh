@@ -58,6 +58,30 @@ qa_ok 'expanded occurrence exposes same unordered Set' "$(qa_js '(document.query
 agent-browser click '.stop-card.expanded [data-act="exp-move-stop"][data-delta="1"]' >/dev/null
 qa_frames
 qa_ok 'reorder changes order only' "$(qa_js '(__me.ctx.experience.guide[1] === __me.S.sel && Object.keys(__me.ctx.cameraSource.connections).length === 0)')" 'true'
+qa_js '__me.S.seamPose=JSON.stringify(__me.nav.plainPose())' >/dev/null
+agent-browser click '[data-act="exp-seam"]' >/dev/null
+qa_frames
+qa_ok 'opening Seam keeps pose and projection' "$(qa_js '(__me.S.seamPose === JSON.stringify(__me.nav.plainPose()) && __me.S.experienceContext.depth === "seam")')" 'true'
+agent-browser click '[data-act="exp-connect"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-connect"]' >/dev/null
+qa_frames
+qa_ok 'two origins have reach; third remains a gap' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 2 of 3")')" 'true'
+agent-browser click '[data-act="exp-cut"]' >/dev/null
+qa_frames
+qa_ok 'Cut creates no edge' "$(qa_js 'Object.keys(__me.ctx.cameraSource.connections).length')" '2'
+agent-browser click '[data-act="exp-travel"]' >/dev/null
+qa_frames
+qa_ok 'Travel exposes unresolved support locally' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Travel refused")')" 'true'
+agent-browser click '[data-act="exp-connect"]' >/dev/null
+qa_frames
+qa_ok 'explicit repair covers third origin only' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3")')" 'true'
+agent-browser click '[data-act="exp-route"]' >/dev/null
+qa_frames
+qa_ok 'explicit route work requests Plan and return crumb' "$(qa_js '(__me.S.experienceContext.depth === "route" && __me.S.task.params.routeReturn != null && __me.ctx.stage.cam.el > 1.5)')" 'true'
+agent-browser click '[data-act="exp-route-return"]' >/dev/null
+qa_frames
+qa_ok 'route crumb restores previous standpoint' "$(qa_js '(__me.S.seamPose === JSON.stringify(__me.nav.plainPose()))')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'

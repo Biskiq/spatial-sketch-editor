@@ -224,6 +224,7 @@ let hoverQueued = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (S.visitor) { E.visitorPointer?.(e); return; }
+  if(S.experienceContext.depth === 'route' && e.button===0 && !e.altKey) { const p=groundAt(e); if(p)E.routePoint(p); return; }
   if(S.task?.kind === 'experience-region') { const p=groundAt(e); if(p)E.regionPoint(p); return; }
   canvas.setPointerCapture(e.pointerId);
   S.popover = null;
@@ -354,6 +355,7 @@ function settleAfterOrbit() {
 let hdrag = null;
 let direct = null;
 ctx.ov.html.addEventListener('pointerdown', (e) => {
+  if(E.beginAnchorDrag(e))return;
   // D's direct openings: pull the dog-ear to unroll, lift the tab to raise the lid — from where you stand
   const peel = e.target.closest('[data-peel]');
   const lid = e.target.closest('[data-lid]');
@@ -1288,3 +1290,6 @@ function boot() {
 boot();
 
 document.addEventListener('change', event => { const el = event.target; if (el.dataset.expField) E.updatePresentation(el.dataset.id, el.dataset.expField, el.value); });
+
+window.addEventListener('pointermove',e=>{if(S.expDrag){const p=groundAt(e);if(p)E.moveAnchorDrag(p);}});
+window.addEventListener('pointerup',()=>E.endAnchorDrag());

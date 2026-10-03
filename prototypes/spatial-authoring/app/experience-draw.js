@@ -1,9 +1,20 @@
+import { originCoverage } from './experience-model.js';
 import { S, ctx } from './state.js';
 import { eye, connectionPath } from './camera-evaluation.js';
 const escape=v=>String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 export function drawExperience() {
  if(S.lens!=='experience'||S.visitor)return;
  const e=ctx.experience,c=ctx.cameraSource,x=S.experienceContext;
+ if(x.seam && ['seam','route','coordination'].includes(x.depth)) {
+  for(const row of originCoverage(e,c,x.seam.from,x.seam.to)) {
+   const route=c.connections[row.connectionId];if(!route)continue;
+   const path=connectionPath(route,c.views[route.from].pose,c.views[route.to].pose);
+   ctx.ov.path(`route-${route.id}`,path.map(p=>ctx.stage.project(p.target)),'exp-route-path');
+   route.anchors.forEach(a=>{const at=ctx.stage.project(a.position);if(!at.behind)ctx.ov.chip(`anchor-${a.id}`,at.x,at.y,'◆','tape exp-anchor',{'data-exp-anchor':a.id,'data-connection':route.id,tag:'button',pri:99});});
+   // Generated endpoints and samples are visual data, never authored grips.
+  }
+  return;
+ }
  if(x.depth==='overview') {
   e.guide.forEach((id,i)=>{const s=e.stops[id],u=e.presentations[s.presentationId]?.uses.map(uid=>e.uses[uid]).find(u=>u?.role==='entry'),v=c.views[u?.viewId];if(!v)return;const at=ctx.stage.project(v.pose.target);if(!at.behind)ctx.ov.chip(`stop-${id}`,at.x,at.y,String(i+1),'tape exp-stop-pin',{'data-act':'exp-stop','data-id':id,tag:'button',pri:90});});return;
  }

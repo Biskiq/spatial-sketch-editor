@@ -720,3 +720,11 @@ body.reduce-motion * { transition: none !important; }
 .stop-card { display:flex; flex-direction: column; min-width: 120px; max-width: 200px; padding: 10px; border: 1px solid #cbc3b2; border-radius: 6px; background: #fcfaf3; font-size: 12px; }
 .stop-card.expanded { min-width: 300px; max-width: 360px; }
 .exp-stop-pin { border-radius: 50%; background: #b28145; color: #fff; }
+.seam-bookends { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 12px; font-size: 12px; }
+.seam-bookends article { background: #fffaf1; border: 1px solid #d3cab8; padding: 12px; border-radius: 6px; }
+.seam-bookends h3 { font-size: 14px; }
+.seam-link { border: 0; background: transparent; color: #9d7541; font-size: 11px; }
+.origin-row { margin: 4px 0; }
+.origin-row .verb { font-size: 10px; padding: 4px; }
+.exp-route-path { fill: none; stroke: #986d32; stroke-width: 2; stroke-dasharray: 5 3; }
+.exp-anchor { background: #fcf4dc; color: #8a601d; cursor: grab; }

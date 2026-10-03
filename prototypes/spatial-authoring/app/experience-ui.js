@@ -1,3 +1,4 @@
+import { originCoverage, getSeam, resolveNext, stopEntry } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
 import { resolveExperience } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -52,6 +53,14 @@ export function renderDeck() {
  if(!el){el=document.createElement('section');el.id='experienceDeck';document.querySelector('#stage').append(el);}
  let html='';el.className=`exp-deck ${x.depth}`;
  if(x.depth==='ordinary')html=`<span>Guide · ${e.guide.length} Stops</span>${button('exp-guide','Overview')}`;
- else html=`<div class="deck-head"><b>Guide Overview</b>${button('exp-close','Close')}</div><div class="stop-strip">${e.guide.map((id,i)=>{const s=e.stops[id],p=e.presentations[s.presentationId];return `<article class="stop-card ${x.stop===id?'expanded':''}"><small>STOP ${i+1}</small>${button('exp-stop',esc(p?.name||'Missing Presentation'),id)}${x.stop===id?`<p>${esc(p?.meaning)}</p>${setHtml(p)}${button('exp-move-stop','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-move-stop','→',id).replace('data-id=','data-delta="1" data-id=')}`:''}</article>`;}).join('')}</div>`;
+ else html=`<div class="deck-head"><b>Guide Overview</b>${button('exp-close','Close')}</div><div class="stop-strip">${e.guide.map((id,i)=>{const s=e.stops[id],p=e.presentations[s.presentationId];return `${i?`<button class="seam-link" data-act="exp-seam" data-from="${e.guide[i-1]}" data-to="${id}">Seam</button>`:''}<article class="stop-card ${x.stop===id?'expanded':''}"><small>STOP ${i+1}</small>${button('exp-stop',esc(p?.name||'Missing Presentation'),id)}${x.stop===id?`<p>${esc(p?.meaning)}</p>${setHtml(p)}${button('exp-move-stop','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-move-stop','→',id).replace('data-id=','data-delta="1" data-id=')}`:''}</article>`;}).join('')}</div>`;
+ if(x.seam&&['seam','route','coordination'].includes(x.depth))html=seamHtml(x.seam);
  if(el._html!==html){el.innerHTML=html;el._html=html;}
+}
+
+export function seamHtml({from,to}) {
+ const e=ctx.experience,c=ctx.cameraSource,seam=getSeam(e,from,to),rows=originCoverage(e,c,from,to);
+ const name=id=>e.presentations[e.stops[id]?.presentationId]?.name||'Missing Presentation';
+ const reachable=rows.filter(r=>r.connectionId&&!r.missing).length;
+ return `<div class="deck-head"><b>Seam · ${esc(seam.mode)} · Experience / Camera</b>${button('exp-close','Close')}</div><div class="seam-bookends"><article><small>FROM STOP ${e.guide.indexOf(from)+1}</small><h3>${esc(name(from))}</h3>${rows.map(r=>`<div class="origin-row">${esc(c.views[r.viewId]?.name||'Missing View')} · ${r.connectionId?'✓':'GAP'} ${button(r.connectionId?'exp-route':'exp-connect',r.connectionId?'Edit route':'Connect',r.connectionId||r.useId)}</div>`).join('')}</article><article class="seam-instrument"><p>Reachable from ${reachable} of ${rows.length} Views</p>${button('exp-cut','Cut')}${button('exp-travel','Travel')}<p>${seam.mode==='travel'&&reachable<rows.length?'Travel refused for unresolved origins':'Cut authors no Camera edge'}</p>${S.experienceContext.depth==='route'?`${button('exp-route-return','Return to Seam reading')}<p>Click Stage to add an interior anchor; drag its diamond.</p>`:''}</article><article><small>TO STOP ${e.guide.indexOf(to)+1}</small><h3>${esc(name(to))}</h3><p>Entry · ${esc(c.views[e.uses[stopEntry(e,to).id]?.viewId]?.name||'Keep current viewpoint')}</p></article></div>`;
 }
