@@ -7,6 +7,7 @@ import { tickTweens, run, dur } from './anim.js';
 import * as A from './actions.js';
 import * as nav from './navigation.js';
 import * as T from './tasks.js';
+import * as E from './experience.js';
 import { onCancel, cancelProposal } from './cancel.js';
 import { drawAll } from './draw.js';
 import { requestUI, renderUI, updateTilt, updateWhere, updateStripLive, fieldValue, applyField, applySeg, mapInv, renderBrowse, browseShown, recordOf, placeNameOf } from './ui.js';
@@ -19,6 +20,7 @@ const canvas = $('#gl');
 const stageEl = $('#stage');
 
 ctx.museum = createMuseum();
+E.initExperience();
 const stage = new Stage(canvas, ctx.museum);
 ctx.stage = stage;
 ctx.ov = new Overlay($('#ovSvg'), $('#ovHtml'));
@@ -701,6 +703,7 @@ const WORLD_ACT = new Set(['sel', 'open-loc', 'lookat', 'include', 'reveal', 'fa
 function doAct(a, el) {
   const s = S.session;
   if (WORLD_ACT.has(a)) closeFinder();
+  if (E.handleExperienceAction(el)) { requestUI(); return; }
   switch (a) {
     // Back leaves the reading when there is one; with nothing open it only drops unaccepted work,
     // so the same control is never a dead end.
@@ -1271,10 +1274,12 @@ function boot() {
   });
   T.setNeutralize(() => A.parkReading());
   requestAnimationFrame(frame);
-  window.__me = { S, ctx, A, JOURNEYS, nav, tasks: T, qa: QA };
+  window.__me = { E, S, ctx, A, JOURNEYS, nav, tasks: T, qa: QA };
   window.__me.ready = true;
   document.body.dataset.ready = '1';
   window.addEventListener('error', (e) => recordFault('page', e.error || e.message));
   window.addEventListener('unhandledrejection', (e) => recordFault('promise', e.reason));
 }
 boot();
+
+document.addEventListener('change', event => { const el = event.target; if (el.dataset.expField) E.updatePresentation(el.dataset.id, el.dataset.expField, el.value); });

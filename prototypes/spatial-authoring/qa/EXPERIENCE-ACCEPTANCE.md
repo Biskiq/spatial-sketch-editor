@@ -25,3 +25,7 @@ visit/run ownership, capability replacement policy, missing-View repair and neut
 ## Slice evidence
 
 S1–S9 records are appended as each slice passes. No acceptance is inferred from implementation.
+
+S1: one focused test; browser 8/8. Explicit opening/rename, inert lens crossing,
+canonical identity, shared Undo/Redo and no ordinary Deck. The exact S1 index
+snapshot was exported and rerun before its commit, preserving later working changes.
