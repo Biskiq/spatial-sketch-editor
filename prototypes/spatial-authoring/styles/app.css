@@ -700,3 +700,7 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
 /* The Motion control in the view bar does what the system preference does, so the choice is
    available without changing an OS setting. */
 body.reduce-motion * { transition: none !important; }
+/* Experience meaning shares the Card landmark and existing shell material. */
+.exp-label { display: block; margin: 10px 16px; font-size: 12px; }
+.exp-label input, .exp-label textarea { display: block; width: 100%; margin-top: 6px; padding: 8px; background: var(--paper, #faf7ee); color: inherit; border: 1px solid #c9c4b7; border-radius: 4px; font: inherit; }
+.exp-label textarea { min-height: 80px; resize: vertical; }

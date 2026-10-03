@@ -1,3 +1,4 @@
+import { experienceIndex, experienceCard, foreignExperienceCard } from './experience-ui.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
 import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf, PRESENTATION, presentationOf } from './fixtures.js';
 import {
@@ -149,7 +150,7 @@ function sharedNoteFor(wid, place) {
 function renderIndex() {
   const el = $('#index');
   if (!el) return;
-  if (S.lens !== 'world') { renderBridgeIndex(el); return; }
+  if (S.lens !== 'world') { const html = experienceIndex(); if (el._html !== html) { el.innerHTML = html; el._html = html; } return; }
   const f = S.browse.focus;
   const focused = f?.kind === 'place' ? placeOf(f.id) : null;
   const place = focused || (S.sel ? placeFor(S.sel) : null);
@@ -603,12 +604,12 @@ function renderCard() {
   const t = thing(id);
   const rec = id ? metadataOf(id) : null;
   let html = '';
-  if (S.lens !== 'world') html = cardBridge(id, t, rec);
+  if (S.lens !== 'world') html = experienceCard() + parkedBlock();
   else {
     if (rec) html = cardRecord(rec);
     // An identity from another lens is not a World subject, and the World says so instead of showing the
     // empty state: the selection is real, and what can be done with it is the bridge's own act.
-    else if (!t && id) html = cardForeignInWorld(id);
+    else if (!t && id) html = foreignExperienceCard();
     else if (!t) html = emptyCard();
     else if (t.kind === 'walls') html = cardWall(t.item);
     else if (t.kind === 'openings') html = cardOpening(t.item, t.wall);
@@ -1113,7 +1114,7 @@ function cardPresentation(p) {
 // The World lens, holding an identity that belongs to the bridge. It is not a subject here and it is not
 // nothing: the Card names it, and the one act that makes sense is the explicit selection of a World
 // subject. A parked record about it is never resumed from a foreign identity.
-function cardForeignInWorld(id) {
+function legacyForeignCard(id) {
   const p = presentationOf(id);
   const name = p ? p.name : 'Another lens’ subject';
   const sub = p ? `${p.ref} · ${p.note}` : 'selected outside the World lens';

@@ -1446,12 +1446,13 @@ export const resetView = () => run(async () => {
 
 // ---------------------------------------------------------------- edits (the only things Undo knows)
 
-export function beginEdit() { if (!S.pending) S.pending = clone(ctx.museum); }
+export function beginEdit() { if (!S.pending) { S.pending = clone(ctx.museum); S.pendingDomains = domainSnapshot(); } }
+export const domainSnapshot = () => ({ experience: clone(ctx.experience), cameraSource: clone(ctx.cameraSource) });
 
 export function commitEdit(label) {
   if (!S.pending) return;
-  if (JSON.stringify(S.pending) === JSON.stringify(ctx.museum)) { S.pending = null; return; }
-  S.undo.push({ label, before: S.pending, sel: S.sel });
+  if (JSON.stringify(S.pending) === JSON.stringify(ctx.museum) && JSON.stringify(S.pendingDomains) === JSON.stringify(domainSnapshot())) { S.pending = null; return; }
+  S.undo.push({ label, before: S.pending, domains: S.pendingDomains, sel: S.sel });
   S.redo = [];
   S.pending = null;
   if (!S.session) S.summary = null;
@@ -1460,11 +1461,12 @@ export function commitEdit(label) {
 
 export function cancelEdit() {
   if (!S.pending) return;
-  restoreQuiet(S.pending);
+  restoreQuiet(S.pending, S.pendingDomains);
   S.pending = null;
 }
 
-export function restoreQuiet(m) {
+export function restoreQuiet(m, domains) {
+  if (domains) { ctx.experience = clone(domains.experience); ctx.cameraSource = clone(domains.cameraSource); }
   ctx.museum = m;
   st().setMuseum(m);
   const s = S.session;
@@ -1477,8 +1479,8 @@ export function restoreQuiet(m) {
 export function undo(quiet) {
   const e = S.undo.pop();
   if (!e) { setStatus('Nothing to undo', 'info'); return; }
-  S.redo.push({ label: e.label, before: clone(ctx.museum), sel: S.sel });
-  restoreQuiet(e.before);
+  S.redo.push({ label: e.label, before: clone(ctx.museum), domains: domainSnapshot(), sel: S.sel });
+  restoreQuiet(e.before, e.domains);
   select(e.sel);
   if (!quiet && S.summary) S.summary = null;
   if (!quiet) setStatus(`Undid “${e.label}” — your view stayed where it is`, 'edit');
@@ -1487,8 +1489,8 @@ export function undo(quiet) {
 export function redo() {
   const e = S.redo.pop();
   if (!e) { setStatus('Nothing to redo', 'info'); return; }
-  S.undo.push({ label: e.label, before: clone(ctx.museum), sel: S.sel });
-  restoreQuiet(e.before);
+  S.undo.push({ label: e.label, before: clone(ctx.museum), domains: domainSnapshot(), sel: S.sel });
+  restoreQuiet(e.before, e.domains);
   select(e.sel);
   setStatus(`Redid “${e.label}”`, 'edit');
 }
@@ -1601,7 +1603,7 @@ onCancel(() => {
 
 onCancel(() => {
   if (!S.pending) return;
-  restoreQuiet(S.pending);
+  restoreQuiet(S.pending, S.pendingDomains);
   S.pending = null;
 }, 60, 'candidate-edit');
 
