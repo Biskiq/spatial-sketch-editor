@@ -12,7 +12,7 @@ agent-browser click '[data-act="exp-open"][data-id="pres-highlights"]' >/dev/nul
 qa_frames
 qa_ok 'explicit Presentation uses canonical identity' "$(qa_js '__me.S.sel')" '"pres-highlights"'
 agent-browser fill '[data-exp-field="name"]' 'Garden meaning' >/dev/null
-agent-browser press Tab >/dev/null
+agent-browser press Enter >/dev/null
 qa_frames
 qa_ok 'rename writes one source step' "$(qa_js '(__me.ctx.experience.presentations[__me.S.sel].name === "Garden meaning" && __me.S.undo.length === 1)')" 'true'
 agent-browser click '[data-act="lens"][data-lens="world"]' >/dev/null
@@ -93,7 +93,7 @@ agent-browser click '.stop-card.expanded [data-act="exp-precise"]' >/dev/null
 qa_frames
 qa_ok 'Outside precision keeps standpoint and shows one numeric tape' "$(qa_js '(__me.S.preciseBefore.pose === JSON.stringify(__me.nav.plainPose()) && document.querySelectorAll("[data-exp-precision]").length === 1 && __me.S.task.params.posture === "outside")')" 'true'
 agent-browser fill '[data-exp-precision="frameH"]' '6' >/dev/null
-agent-browser press Tab >/dev/null
+agent-browser press Enter >/dev/null
 qa_frames
 qa_ok 'Ask Rule names affected Stops before source edit' "$(qa_js '(!!__me.S.expAsk && __me.S.expAsk.reach.stops.length === 2 && __me.S.preciseBefore.undo === __me.S.undo.length)')" 'true'
 agent-browser click '[data-act="exp-scope-local"]' >/dev/null

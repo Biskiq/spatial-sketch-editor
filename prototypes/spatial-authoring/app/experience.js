@@ -74,6 +74,8 @@ export function handleExperienceAction(el) {
   if (action === 'exp-reset') resetExperience(false);
   if (action === 'exp-example') resetExperience(true);
   if (action === 'exp-presenter') presenterStep(Number(el.dataset.delta));
+  if (action === 'exp-resume') resumeExperience();
+  if (action === 'exp-dismiss-parked') {S.parkedByLens.experience=null;ctx.ui();}
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
@@ -100,18 +102,18 @@ export function changeRole(id,role) { return command('Change View role',e=>setRo
 export function preview(pid=S.experienceContext.presentation) {
  if(S.visitor || !ctx.experience.presentations[pid]) return false;
  cancelProposal('preview');
- const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),task:S.task,session:S.session,expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
+ const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
  // Suspend authoring without writing source or passing through lens parking.
  T.park();
  nav.releaseHold();
  S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),pid,nav.plainPose(),ctx.sceneSource)};
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
-export function exitPreview() {
+export async function exitPreview() {
  const v=S.visitor;if(!v)return false;
  S.visitor=null;const t=v.returnToken;
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
- nav.restoreCapture(t.origin);ctx.ui();return true;
+ await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);ctx.ui();return true;
 }
 let runtimeAt=0;
 export function visitorFrame(now) {
@@ -155,9 +157,10 @@ export function connectOrigin(uid) {
 export async function editRoute(id) {
  const route=ctx.cameraSource.connections[id];if(!route)return false;
  cancelProposal('invoke');
+ const epoch=nav.travelEpoch();
  const origin=nav.captureOrigin('Return to Seam reading');
  S.experienceContext.depth='route';S.task.params.connection=id;S.task.params.routeReturn=origin;
- await nav.fly(A.planCam(),S.motion==='instant'?0:700);ctx.ui();return true;
+ await nav.fly(A.planCam(),S.motion==='instant'?0:700);if(epoch!==nav.travelEpoch())return false;ctx.ui();return true;
 }
 export function returnRouteReading() {const o=S.task?.params.routeReturn;if(o)nav.restoreCapture(o);S.experienceContext.depth='seam';if(S.task)delete S.task.params.routeReturn;ctx.ui();}
 export function routePoint(p) {
@@ -324,3 +327,35 @@ export function presenterStep(delta) {S.experiencePresenter=Math.max(0,Math.min(
 export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
 
 export function cameraSnapshot(){const positions=Object.fromEntries(Object.values(ctx.cameraSource.views).flatMap(v=>(v.focus?.ids||[]).map(id=>[id,A.worldOf(id)])));return lowerCamera(ctx.cameraSource,positions);}
+
+export function parkExperience() {
+ const t=S.task,x=S.experienceContext;
+ if(t?.kind.startsWith('experience-')) {
+  const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','invokeUse','stop'];
+  S.parkedByLens.experience={lens:'experience',identity:t.subject,name:resolveExperience(t.subject)?.item.name||t.subject||'Guide',kind:t.kind,context:structuredClone(x),target:structuredClone(t.target),params:Object.fromEntries(acceptedKeys.filter(k=>k in t.params).map(k=>[k,structuredClone(t.params[k])]))};
+ }
+ cancelProposal('lens');T.park();S.experienceContext={...x,depth:'ordinary',stop:null,seam:null};ctx.ui();return S.parkedByLens.experience;
+}
+export function experienceParkedContext() {
+ const p=S.parkedByLens.experience;if(!p)return null;
+ const result={ok:false,reason:'',identity:p.identity,name:p.name,wrongLens:S.lens!=='experience'};
+ if(p.identity&&!resolveExperience(p.identity)&&!ctx.sceneSource.subjects[p.identity]){result.reason='Original identity removed';return result;}
+ if(S.sel!==p.identity){result.reason='Select the original identity explicitly';result.fix='select';return result;}
+ const x=p.context;
+ if(x.presentation&&!ctx.experience.presentations[x.presentation]){result.reason='Presentation removed';return result;}
+ if(x.stop&&!ctx.experience.stops[x.stop]){result.reason='Stop removed';return result;}
+ if(x.seam&&resolveNext(ctx.experience,x.seam.from).id!==x.seam.to){result.reason='Seam bookends changed';return result;}
+ if(p.params.useId){const use=resolveUse(ctx.experience,ctx.cameraSource,p.params.useId);if(!use||use.view.id!==p.target?.id){result.reason='Framing removed or rebound';return result;}}
+ if(p.params.connection&&!ctx.cameraSource.connections[p.params.connection]){result.reason='Camera connection removed';return result;}
+ if(p.params.station){const route=ctx.cameraSource.connections[p.params.connection];if(!route||!nav.stations(route).some(s=>s.id===p.params.station)){result.reason='Camera station removed';return result;}}
+ result.ok=true;return result;
+}
+export function resumeExperience() {
+ const p=S.parkedByLens.experience,v=experienceParkedContext();
+ if(!p||!v?.ok||v.wrongLens){A.setStatus(v?.reason||'Experience work cannot resume here','refuse');return false;}
+ cancelProposal('resume');S.experienceContext=structuredClone(p.context);
+ T.begin({kind:p.kind,subject:p.identity,target:structuredClone(p.target),params:structuredClone(p.params)});
+ // Surface reactivation is neutral even when the remembered posture was Through or Plan.
+ S.parkedByLens.experience=null;ctx.ui();return true;
+}
+A.registerLensWork({park:parkExperience,resume:resumeExperience});

@@ -47,7 +47,13 @@ export const S = {
   /* An inactive task remembered for explicit Resume, and only that: the original identity, the
      resolving targets and the reading/task parameters. Never a Camera, a selection snapshot, an
      unaccepted proposal or a geometry object. See actions.js (parkWorldWork / parkedContext). */
-  parked: null,
+  parkedByLens: {world:null,experience:null},
+  // Compatibility view for retained World QA; storage is the one lens-keyed map.
+  get parked() { return this.parkedByLens.world; },
+  set parked(value) { this.parkedByLens.world=value; },
+  /* A listing a crossing is leaving, remembered beside the parked record rather than inside it: it is
+     context, not work, and only an explicit Resume puts it back. Never a selection, never a Camera. */
+  browseMemory: null,
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
   /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */

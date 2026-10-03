@@ -67,3 +67,6 @@ export function narrate(text, kind) {
   el.innerHTML = text;
   el.hidden = false;
 }
+
+// Cancel at the current realization. Unlike hurrying a command, this never applies its endpoint.
+export function cancelTweens() { for(const tw of [...tweens]) { tweens.delete(tw);tw.resolve(); } }
