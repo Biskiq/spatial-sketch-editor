@@ -13,6 +13,7 @@ PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 
        detour closes → F exact-interface amendments → T1/T2/T3/T4.
        #113 — build the finalized Experience V2 executable against the shared shell and prove
        World ↔ Experience continuity.
+       Implementation in progress: S0–S7 complete; S8 continuity and S9 acceptance remain → ../roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md.
        Design → ../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md.
        Current World entry → ../../prototypes/spatial-authoring/README.md;
        the read-only bridge is the replacement seam. This work satisfies no F/T1 gate.
