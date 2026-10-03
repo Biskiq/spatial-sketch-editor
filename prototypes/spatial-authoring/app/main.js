@@ -169,6 +169,7 @@ function frame(now) { requestAnimationFrame(frame); frameOnce(now); }
 function frameOnce(now) {
   try {
     tickTweens(now);
+    E.visitorFrame(now);
     frameState();
     if (now - lastRestyle > 90) { stage.restyle(); lastRestyle = now; }
     const inset = peekInset();
@@ -222,6 +223,8 @@ let drag = null;
 let hoverQueued = false;
 
 canvas.addEventListener('pointerdown', (e) => {
+  if (S.visitor) { E.visitorPointer?.(e); return; }
+  if(S.task?.kind === 'experience-region') { const p=groundAt(e); if(p)E.regionPoint(p); return; }
   canvas.setPointerCapture(e.pointerId);
   S.popover = null;
   if (S.knife && e.button === 0 && !e.altKey) {
@@ -702,6 +705,7 @@ const WORLD_ACT = new Set(['sel', 'open-loc', 'lookat', 'include', 'reveal', 'fa
 
 function doAct(a, el) {
   const s = S.session;
+  if (S.visitor && !a?.startsWith('exp-')) return;
   if (WORLD_ACT.has(a)) closeFinder();
   if (E.handleExperienceAction(el)) { requestUI(); return; }
   switch (a) {
@@ -1032,6 +1036,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
 // ---------------------------------------------------------------- keyboard
 
 window.addEventListener('keydown', (e) => {
+  if (S.visitor) { if (e.key === 'Escape') E.exitPreview(); return; }
   if (e.key === 'Shift') S.shift = true;
   if (e.target.matches?.('input, textarea')) return;
   const k = e.key.toLowerCase();

@@ -1,4 +1,4 @@
-import { experienceIndex, experienceCard, foreignExperienceCard } from './experience-ui.js';
+import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces } from './experience-ui.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
 import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf, PRESENTATION, presentationOf } from './fixtures.js';
 import {
@@ -34,6 +34,7 @@ export function renderUI() {
   renderPopover();
   renderWhereStatic();
   renderSummary();
+  renderExperienceSurfaces();
 }
 
 // ---------------------------------------------------------------- head
