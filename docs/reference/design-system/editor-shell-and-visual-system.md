@@ -24,6 +24,11 @@ shell design; they are not a production cutover. The editor still runs the lande
 PLATE chrome, production implementation remains gated, and §0.3's open calls are
 unchanged.
 
+**World Paper amendment (2026-10-03):** the owner accepts the Paper authoring shell;
+**§0.8.4** owns the destination for authoring in World's Paper reading (rail families,
+Wall authoring with a derived spatial role, Card facts, Search vs Find, precision,
+drafting state, consequences, Paper ⟷ 3D). Not a cutover.
+
 **Working name:** **PLATE**  
 **Purpose:** the normative shell + visual-system contract for Museum Editor, and the
 first document a later phase reads before it touches shell composition, material,
@@ -42,7 +47,7 @@ Designer-D PNG exports, and the pre-PLATE shell specifications' numeric sections
 
 > **Reading order for a later phase:** this document §0 → **§0.7 (the desired visual
 > language and its landed/target/unbuilt labels)** → **§0.8 (the accepted destination
-> shell direction)** → the section that owns your change
+> shell direction; §0.8.4 for World Paper authoring)** → the section that owns your change
 > (composition §5 · material §4/§6 · type + control §7 · state §18 · density §22) →
 > `editor-shell-ratifications.md` only when you need the
 > measurements behind a ratified decision. Do **not** take a numeric shell value
@@ -302,6 +307,7 @@ placement remain destination implementation work.
 | §21 | Contextual instruments — rules unchanged; the destination experience stays **still-unbuilt (T1 after F)** |
 | §23.1 | **Reduce motion** vs motion speed (**desired-from-demo**) |
 | §0.8–§0.8.3 | Promoted destination **shell/disclosure** design for World \| Experience (2026-10-01, PR #111) — shared/World laws, V2 Experience expression, parked-task return and routes to both final syntheses/QA |
+| §0.8.4 | Promoted destination **World Paper authoring** (2026-10-03): rail families, Wall authoring with derived role, host-seeking, Card facts, Search vs Find, precision ladder, drafting state, consequences, Paper ⟷ 3D, narrow desktop, selection/task/history ownership |
 | §26.2 | What acceptance the destination does and does not inherit |
 
 ### 0.7.5 What this amendment does not do
@@ -328,7 +334,7 @@ placement remain destination implementation work.
 
 | Call | State |
 | --- | --- |
-| **Motion-speed control placement** | The demo puts it at the end of its Status Rail; §14 makes the rail readout-only. Rail vs View Bar vs Project Head is undecided — do not implement the demo's placement |
+| **Motion-speed control placement** | **Settled 2026-10-03 by §0.8.4:** the World status rail is retired, and Reduce motion and Motion speed live in Settings. Do not implement the demo's rail placement |
 | **Keyboard focus treatment** | The demo's 2 px dark + 2 px light offset ring is a candidate for the open §0.3 Tool Tray focus seam; that seam stays open |
 | **Mat ↔ paper transition** | The demo rate-limits the ground swap (full swap 420 ms) so a pan cannot flicker; whether that lag is acceptable, and whether a directional wipe is preferred to the global crossfade, is undecided |
 | **Demo evidence gaps** | `prefers-reduced-motion` emulation was not captured and the optional perimeter inner shadow was not added. Recorded unverified, not passed |
@@ -387,9 +393,10 @@ surfaces, not replacements for Card identity.
 - **Persistent breadth, invoked depth.** Ordinary World stays calm — place, nearby
 relation-aware context, selected identity, the world itself. Specialist depth appears
 through procedure: **Select → Look or Details → Instrument → Precision**.
-- **One canonical selection.** Exactly one selected identity across Stage, Index, Card,
-search, Details references and both lenses; no parallel remembered selections, and a
-lens switch never substitutes another identity.
+- **One canonical selection.** Exactly one canonical selection value across Stage, Index,
+Card, search, Details references and both lenses: one identity, or an explicit set where
+the domain supports sets (§0.8.4). No parallel remembered selections, and a lens switch
+never substitutes another identity.
 - **Card identity stability.** The Card represents the canonical selected identity and
 never becomes the current tool, inspection, component focus, host or Instrument.
 - **Look vs Details.** *Look* is capability-driven spatial procedure associated with the
@@ -529,11 +536,212 @@ subsequent spatial movement is a separate explicit navigation action.
 
 ### 0.8.3 Adoption and cutover boundary
 
-This section changes no landed behavior, authorizes no production
-implementation, closes no §0.3 or §0.7.6 owner call, and does not re-plan T1/T2/T3
-production scope. §§5 and 8–17's landed composition descriptions remain current behavior
-until an explicit cutover; their destination exposure is now governed by this section
+This section and §0.8.4 change no landed behavior, authorize no production
+implementation and do not re-plan T1/T2/T3 production scope. They close no §0.3 owner
+call; §0.8.4 settles only §0.7.6's motion-speed placement, because it retires the rail
+that call compared. §§5 and 8–17's landed composition descriptions remain current behavior
+until an explicit cutover; their destination exposure is now governed by §0.8–§0.8.4
 and by §0.7's visual language rather than left open.
+
+### 0.8.4 World Paper authoring (destination)
+
+The owner accepted the Paper authoring shell on 2026-10-03, with its four refinement
+reviews and every recommended ruling, and corrected its Wall semantics. The
+[Paper shell proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md)
+keeps the rationale, comparisons and schematic specimens. Its wireframes are not pixel
+contracts, and its Saltmarsh values are fixture evidence. This subsection is the normative
+destination for authoring in the World lens's Paper reading. It keeps every §0.8 law and
+journeys A–F, and leaves Experience's expression (§0.8.1) unchanged.
+
+**Paper inside World.** Paper is a reading of World's one Stage: plan Paper and a wall
+laid flat (Face, Unroll). It is not a lens, a workspace, a mode with separate state, or a
+document. Paper draws Layout and Scene and owns no authored data. Its reading settings are
+view state: never authored, never in Undo, never project data.
+
+**Responsibilities.** Each region answers one question and never another's:
+
+| Region | Answers | Holds | Never holds |
+| --- | --- | --- | --- |
+| Head | which project, which lens, what changed | app menu (Settings, Keys, Hide side panels), lens switch, Undo/Redo with a verb label, save state, Preview | search, history list, tools, reading settings |
+| Index | where am I, and where is that thing | place and level, relation groups (§0.8), Search and Browse for subjects | tools, measures, task state, capability search |
+| Stage | what the World looks like | the drawing plus four small furniture objects: reading cluster, tool rail, scale bar, datum key; the World Instrument when invoked | panels, persistent messages, a status rail |
+| Tool rail | what my pointer does | the permanent pointer families | facts, steps, Apply |
+| Card | what this thing is | identity and name, the kind line, at most three read-only key facts, a condition line only while true, Look · Details, ⋯ | writable numbers, verb rows, proposal values, steps, validation, Apply/Cancel, tool or reading settings |
+| World Instrument | what I am doing to it | exactly one of Find, Dimensions, a procedure, a Look session | identity (the Card owns it), subject results |
+
+**Permanent pointer families.** A rail slot is admitted only for a distinct pointer
+grammar: a pairing of what the pointer targets and what its gesture produces that no
+family already has, armable with nothing selected, finding its own target or refusing in
+words. Frequency, familiarity and importance never qualify. A new kind of an existing
+gesture is a variant inside its family, and a new slot needs an owner ruling. The rail is
+**Select · Draw · Opening · Place · Measure · More**:
+
+- **Draw** authors new architectural geometry on a working plane (Wall shapes: chain,
+  rectangle, circle, polygon).
+- **Opening** cuts an embedded opening into an existing host, in the host's own
+  coordinates. It may change connectivity (a door through a wall that bounds two rooms
+  joins them), but joining spaces is a possible consequence, not the definition: a niche
+  or a future skylight need not join anything. Opening would lose its slot only if openings
+  became fixed catalogue items (a Place variant) or host-seeking became a modifier every
+  family shares.
+- **Place** puts an item at a point and dispatches it to its owning authority (Layout
+  structure or Scene object), naming the owner where it matters.
+- **Measure** takes temporary distance and angle measurements; nothing it shows is
+  authored until an annotation domain exists.
+- **More** opens Find.
+
+Tools stay armed until Esc or Select. Arming never changes the selection, and what a
+gesture makes becomes selected. A tool's option strip holds only its defaults for the next
+thing it makes, plus a fading key hint; never facts of existing things, steps or Apply.
+
+**Wall authoring: Draw authors spatial geometry; the system derives and explains the
+spatial role it produces.** The Wall is the authored primitive. Draw never asks the
+creator to choose boundary, division or free-standing semantics before drawing, and no
+Make-bounding or Make-free-standing command exists. Walls that take part in a closed
+enclosure act as its boundary. A Wall that encloses nothing is described as free-standing,
+and a Wall drawn across an enclosed room divides it and produces the derived room
+topology. The derived role is previewed at the gesture, described on the Card's kind line
+and in Index relations (*bounds …*, *divides … ↔ …*, *free-standing in …*), and changes only
+through geometry: an end moved to close or open an enclosure, or a Wall added or
+deleted. Rooms stay derived from architecture, and no Room geometry is editable.
+*Divide room* stays a findable intent and procedure for exact placement; its mechanism is
+the same Wall authoring plus topology and consequence planning. A Makes chooser appears
+only once a second authored primitive exists, and a Makes entry is never a Wall role. The
+Layout cutover this requires is recorded in
+[architecture](../architecture.md) §Ownership; the landed authored role stays current until then.
+
+**Host-seeking capability.** Opening and hosted Place items seek an eligible host under the
+pointer, project onto the host's axis, refuse ineligible hosts in words, and stay armed from
+host to host. Each kind names its host class. With a host selected (or an opening, whose
+host counts), the tool starts on that host and the host wins ties. The preferred host is
+task focus, never selection (§0.8). No separate *Add opening* verb exists.
+
+**Capability placement.** Each capability is a registry entry (id, label and synonyms,
+family, form, subject and host kinds, owner, consequence class, precision schema,
+legibility, order and key), and placement is computed from it; features never hand-place
+chrome. In order: a capability that changes no World fact is a reading or app setting; one
+done by pulling something already legible is direct (handles and tags); a new pointer
+grammar is permanent (owner ruling only); one that needs a chosen subject is contextual;
+one that needs steps, several parameters, validation, consequences or Apply is a
+procedure in the Instrument; and every capability is also disclosed in Find.
+
+**Card facts versus active work.** The Card is identity, not work. Its kind line and key
+facts are read-only displays, and every fact is a door to its one writer: a measure opens
+Dimensions on that field, a derived fact opens its derivation in Details, and a condition
+offers its own fix (Repair, Resume, Bring into view). The name is its one writable fact.
+During a procedure the Card keeps showing accepted values.
+
+**No Card verb row.** The Card keeps §0.8's Look and Details and adds no third row. Besides
+those it acts only through a door on the fact a change alters (a kind word with ▾, where a
+subject can become another kind with its identity kept) or on the condition it resolves.
+Nothing on it arms a tool. One ⋯ opens the subject's scoped list: the same list, in one
+fixed order per subject kind that use never re-ranks, as the context menu and Find's
+"For …" group. A Wall has no role kind word.
+
+**Two homes for discovery.** Subjects (identities, places, levels, rooms, objects,
+relations, project structure) are found in the Index's Search and Browse, which keep the
+World synthesis's result verbs: **Select, Open location, Bring into view and Reveal** are
+separate verbs, each acting directly on its own result with its reason. Bring into view,
+Open location and Reveal need no prior selection. Capabilities (tools, variants, actions,
+procedures, readings, checks, keys, settings) are found in **Find**, inside the World
+Instrument, which never lists subjects, never selects and never moves the camera. Find's
+"For …" group and the Card's ⋯ take their scope from the selection. Each home offers at
+most one handoff row that carries the query to the other and never renders the other's
+results. There is no Head search.
+
+**Precision disclosure.** Precision is invoked, never opened by default:
+
+1. **Direct**: drag a handle, with snap marks at the snap point. One undo step on
+   release; an invalid release cancels with none.
+2. **Read**: live tags at the gesture (length, angle, offset, clearance).
+3. **Type at the gesture**: digits turn the live tag into the numeric entry field;
+   commit once, Esc restores and then cancels, blur never commits.
+4. **Dimensions**: every settled writable measure of the selection in the Instrument,
+   with units, keep-anchors and refusal at the field.
+5. **Procedure**: parameters, validation and consequences, committed on Apply.
+
+Settled facts have exactly one shell writer, Dimensions. A live gesture owns its transient
+parameter, and the matching Dimensions field shows it as a display while that lasts; the
+two are never writers at once (§2.12). A Dimensions field commits one undo step; a
+procedure commits one undo step on Apply. While a proposal or gesture is live, Undo and
+Redo are unavailable and say why. A procedure whose options need several source changes
+waits for an atomic composed plan rather than producing several undo steps.
+
+**Direct manipulation first.** What can be done by pulling something legible is done on
+Stage with handles and live tags, not by a command: there are no Move, Rotate or Scale
+commands. Every move validates, and refusals and cautions appear beside the field or
+pointer that caused them, in words. A gesture that changes topology draws its consequences
+during the gesture and commits one step on release, with no Apply interruption.
+
+**Drafting state versus configuration.** Scale, grid and snap are the drafting state:
+always legible as three words beside the Paper ⟷ 3D switch, with off states written as
+words, never shown by colour alone. The scale word opens detents and *Fit all*, each a
+framing request to the one Camera authority. The grid and snap words write on or off and
+name the interval and increment in force. A held modifier suspends snap for one gesture,
+and the snap word says so. Configuration (grid ladder, snap increment and targets, labels
+and dimension display, rulers, cut height, what to show, and the datum as a display of
+Layout's) lives in the Sheet, which shows grid and snap on or off read-only. A property
+joins the drafting state only if it changes how a distance reads or where the next point
+lands; a fourth word needs an owner ruling, and the cluster never carries messages,
+hints, history, tool state or motion settings. **Grid is one fact across Paper surfaces**:
+on a wall laid flat it is the measurement grid that §6.4 and §10 call *Wall grid*, and off
+shows the wall's real material. The paper rule (§6.4) is unchanged. The World status rail
+is retired. Its refusals and hints move to the gesture (§19), and Reduce motion and Motion
+speed move to Settings, which settles §0.7.6's motion-speed placement.
+
+**One World Instrument.** Find, Dimensions, procedures and Look sessions share one task
+surface at the Stage's lower edge, one state at a time, changing in place. It never moves
+the camera and never covers the reading cluster; if it covers its subject, its header
+offers *Bring into view*.
+
+**Consequence disclosure.** For local edits the Stage preview is the consequence.
+Consequences show only when earned: identities created or retired other than the subject,
+splitting or merging, changed derived membership or connectivity, another level, or a
+changed resolution of Camera or Experience references. The grammar is **Creates · Keeps ·
+Splits · Moves (derived) · Connects · Elsewhere · one undo step**, with counts from their
+owning authorities as read-only queries. Focusing a row emphasises that identity on Stage
+as view-only; the selection does not change.
+
+**Paper ⟷ 3D continuity.** One switch over the one Camera authority. A flip tilts about the
+current target and keeps scale; Paper settles azimuth to the nearest 90° detent, and the
+3D end returns to the last working elevation, not a remembered pose. Selection, Card,
+Index, armed tool, open Instrument work, history, grid and snap survive a flip. A flip
+never refits, retargets or rescales, never changes lens and creates no second camera or
+viewport state. A reading flip is not a lens crossing, so work continues.
+
+**Narrow desktop.** Below the width that holds Index, Card and a usable Stage, the Index
+becomes a Head location control opening a sheet (`/` opens it with Search focused), and the
+Card becomes a Head identity chip opening a sheet. The context menu and Find reach the
+scoped list without that sheet. The rail, reading cluster, scale bar and datum key are
+unchanged. The Instrument keeps its lower home, and opening a procedure closes the Card
+sheet. Sheets overlay the Stage and never resize it, and nothing refits on resize (§0.8).
+Hiding the side panels gives the same composition at any width.
+
+**Deterministic ownership of selection, task and history.**
+
+- **One canonical selection value.** It is one identity, or an explicit set where the
+  domain supports sets, never parallel selections. The Card shows a set as one identity
+  (count, kinds, shared extent), with Align and Distribute in its Dimensions and scoped
+  list. Stage, Index rows, the Index's Select verb and Details references write it; Find
+  never does.
+- **Task focus is not selection**: preferred hosts, consequence emphasis and linked tags
+  are view-only.
+- **One writer per fact** (§2.12): armed tool from the rail, reading from the switch,
+  framing from the Camera authority, the drafting words, Sheet configuration, the name
+  from the Card, settled measures from Dimensions, procedure parameters from their
+  procedure, derived facts (including a Wall's role) from no shell writer.
+- **Esc unwinds one level at a time**: field → live gesture (the tool stays armed) →
+  procedure proposal → Find or Dimensions → armed tool to Select → Look session (Put it
+  back) → selection → rest. This refines §0.8's unwind order for Paper.
+- **History.** Undo/Redo is one chronological source history with a verb label, tagged by
+  owning authority. View changes, Paper settings and spatial return are never in it.
+- **Lens crossing.** An unaccepted proposal cancels and its procedure parks; return never
+  resumes it, and Resume is explicit (§0.8.2).
+
+**Not promoted.** Keys (the adoption plan settles them for the prototype), exact geometry,
+prototype mechanisms, fixture values, and any schema for Spaces, Zones, levels,
+constraints, annotations or references. The landed View Bar (§10), Tool Tray (§11) and
+Status Rail (§14) remain current until the World cutover.
 
 ---
 
@@ -1163,7 +1371,9 @@ uses §0.8.2's explicit return/resume behavior; exact control geometry remains
 implementation work.
 
 > The demo's utility grouping is prototype evidence, not a placement contract.
-> Its **Motion speed** control placement is also an open call (§0.7.6).
+> For World Paper, §0.8.4 now assigns the destination placement: grid (including the
+> Wall grid meaning on wall Paper) and snap in the reading cluster's drafting state,
+> their configuration in the Sheet, and Reduce motion and Motion speed in Settings.
 
 ---
 
@@ -1895,8 +2105,9 @@ language is accepted through the demo's [specification plan](../../roadmap/p26-s
 **§9.3** (the evidence-and-completion requirement) and the **owner visual acceptance recorded
 2026-09-29** in the demo's [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md);
 it is stated in §0.7. Both finalized designs' **shell/disclosure** requirements are
-separately promoted into §0.8–§0.8.3 (PR #111), with their syntheses and QA specimens.
-Neither amendment inherits
+separately promoted into §0.8–§0.8.3 (PR #111), with their syntheses and QA specimens,
+and the World Paper authoring destination into §0.8.4 (2026-10-03).
+None of these amendments inherits
 §26's gate, and passing §26 does not verify the
 destination. A cutover to
 §4.4/§6.4/§0.8 will need its own acceptance, planned with its own slice — these
@@ -1937,3 +2148,10 @@ capturing, creating or substituting, with explicit revalidated task resumption. 
 Experience expression fixes Scale × Depth, unordered Sets, Peek/Overview/Seam Deck,
 Ask Rule and progressive Camera disclosure. The landed shell described above remains
 the editor's current behavior until an explicit cutover.
+
+**Added 2026-10-03 — World Paper authoring.** §0.8.4 fixes the destination for authoring
+in World's Paper reading: six permanent pointer families (Select · Draw · Opening · Place ·
+Measure · More), Walls authored with their spatial role derived rather than chosen, a
+read-only fact Card without a verb row, subjects found in the Index and capabilities in
+Find, an invoked precision ladder, a legible Scale · Grid · Snap drafting state, earned
+consequences and Paper ⟷ 3D as one switch over the one Camera authority.

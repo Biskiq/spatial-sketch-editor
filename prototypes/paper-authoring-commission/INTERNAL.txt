@@ -1,0 +1,116 @@
+Museum Editor — independent Paper commission preparation
+Prepared 2026-10-02. INTERNAL: do not include this file in the designer handoff.
+
+HANDOFF
+Copy only designer-packet/: COMMISSION.md and references/ (six PNGs).
+The packet contains one Markdown file, with its brief, outputs, fixed/open sheet,
+visual-language sheet, visual captions and manifest consolidated at the owner's
+request. No designer was contacted and no Paper proposal was produced.
+This is a bounded successor-design commission workspace under prototypes/;
+it records no new acceptance, contract change or production cutover.
+
+SOURCE SNAPSHOT
+Repository HEAD during preparation: 4eea6c5ac858327837a7ce2d1487da70c92d491b.
+Local finalized records were inspected; no production capability survey was used.
+
+Exact source routing and provenance:
+- docs/README.md and prototypes/README.md: authority and retained-artifact routes.
+- prototypes/world-experience-shell-round/design/design-synthesis.md:
+  design thesis; shared Head/Index/Stage/Card/Instrument responsibilities;
+  visual expression and QA raster-drift notes. Final World shell design accepted
+  alongside finalized V2 Experience, 2026-10-01.
+- prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png
+  -> designer-packet/references/01-world-at-rest.png (unaltered copy).
+- prototypes/world-experience-shell-round/QA-package/08-experience-foreign-world-piano.png
+  -> designer-packet/references/02-same-project-other-lens.png (unaltered copy).
+  This deliberately demonstrates cross-lens selection continuity, not ordinary
+  Experience or a Paper tool proposal. Captions correct overly amber lens styling.
+- prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md:
+  finalized Experience product/shell model and stable landmarks. No V2 task board
+  was included: it would add unrelated detail to the narrow Paper problem.
+- docs/reference/design-system/editor-shell-and-visual-system.md:
+  section 0 authority; 0.7.2 desired visual language; 0.8 shared/World laws;
+  0.8.1 Experience shell; 0.8.2 explicit parked-procedure return;
+  4.4 working surfaces/grid; 6.4 target palette; 7 typography/control roles;
+  18 semantic state distinctions. These reconcile specimens, not an inventory.
+- docs/reference/north-star.md: ratified purpose paragraph for the short product
+  description (spatial experience creation; a room/tour is not a mandatory start).
+- prototypes/spatial-authoring/README.md: current accepted executable provenance.
+  The accepted shell adoption retains spatial evidence; prototype acceptance is not
+  described as shipped production behavior anywhere in the designer packet.
+- prototypes/spatial-authoring/index.html and styles/app.css: specimen font names
+  and capture element bounds only. No control list was carried into the brief.
+- apps/editor/tests/README.md: documentation and architecture verification contract.
+
+EXCERPT PROVENANCE
+Rectangles below are x,y,width,height in native source pixels. Browser element
+screenshots extracted rectangles without recoloring or redrawing. Source captures
+are 1440 x 900; pixel comparison confirmed exact matches for all four excerpts.
+- 03-spatial-mat.png (820 x 740):
+  prototypes/spatial-authoring/screens/world-bench.png; rectangle 292,110,820,740.
+- 04-paper-plan.png (820 x 740):
+  fresh accepted prototype screenshot at the source snapshot above; same rectangle.
+  Capture: private ephemeral server, named private browser, 1440 x 900; ordinary
+  start, clear selection, invoke plan, wait until idle and Paper transition settled
+  (paper=1, selected=null), render, capture. No source/UI modifications.
+  Capture support functions were used only for deterministic specimen acquisition.
+- 05-paper-in-space.png (820 x 565):
+  prototypes/spatial-authoring/screens/unroll-step-back.png; 292,240,820,565.
+- 06-paper-selection-detail.png (820 x 585):
+  prototypes/spatial-authoring/screens/unroll-flat.png; 292,215,820,585.
+
+DELIBERATE EXCLUSIONS
+- Production authoring capability inventory, tool/group names, toolbar geometry,
+  availability/missing-feature comparisons and planned feature inventory.
+- Production source, persistence/domain encoding, frameworks, implementation
+  shortcuts, technical debt and statements about what current code can support.
+- Prior rejected toolbars, alternate designer proposals and predecessor shell
+  controls. No new control arrangement or tool-family mapping was introduced.
+- Full prototype screenshots with demo limitation copy, global shortcut/status
+  lists, task panels or controls that could become an unintended feature brief.
+- Whole journey lists, runnable prototypes, source code, fixture data, repair and
+  precision QA catalogs, and implementation/reference documents as handoff inputs.
+- Full V2 Experience boards and specialist World shell boards: ordinary shell and
+  continuity suffice; detailed instruments would increase irrelevant form bias.
+- Pixel-derived shell dimensions and raster drift promoted into new requirements.
+
+CURATION JUDGMENT
+Two full shell views show persistent landmarks and one coherent selected identity.
+Four surface excerpts show mat, measured plan, spatial Paper and local selection/
+precision. This covers product character without a 2D control solution. The plan
+capture was allowed to settle before inclusion. Palette/type/state text bridges
+photoreal shell QA and stylized spatial specimens; strongest lens amber is explicitly
+corrected. Grid access, transition choreography and focus geometry are left open.
+The fixed/open sheet names responsibilities rather than today's feature families.
+The brief asks for a designer-chosen mature editor model and growth demonstration.
+
+VERIFICATION
+- Copied only designer-packet/ into a temporary directory outside the repository.
+  Its one Markdown file and six PNGs require no other file, external asset, font
+  installation or service. All six image links resolve within that copied folder;
+  all images decode. No repository-relative escape or external link is present.
+- Two full QA images are byte-identical to their accepted source files. All four
+  surface excerpts are pixel-identical to the documented source rectangles.
+- Visually inspected all six references, including the new settled plan capture.
+  Surface crops exclude task/control panels, demo limitation text and shortcuts.
+- Reviewed the copied brief without consulting repository context: purpose and
+  World/Experience/Paper terms are defined; shell roles and product character are
+  explicit; the 2D boundary and four disclosure conditions are clear; palette,
+  type, grid and selection supply high-fidelity calibration; the designer owns
+  vocabulary, forms, information architecture and growth examples.
+- Independence audit: no production capability inventory, missing-feature list,
+  planned feature inventory, implementation limitation, prior toolbar solution,
+  preferred control pattern, source-dependent link or implicit shell redesign.
+  Specimen content, numeric values and handles are expressly illustrative.
+- Excluded-context scan across this entire workspace: clean.
+- npm run test:arch -w @portfolio/editor: 276 tests passed in 24 files, including
+  22 documentation tests. The versioned prototype-family router resolves to the
+  new brief. The gate's versioned-file scope is supplemented by the explicit
+  standalone link/image scan covering every new packet artifact.
+- git diff --check: clean. Only this new commission workspace and the prototype
+  index were changed. No commits and no production changes.
+
+No unresolved ambiguity prevents an independent designer from responding.
+Open control forms, authoring vocabulary, information architecture and transition
+details are the intended design freedom, not missing commissioning context.
+This note stays outside the standalone designer folder.

@@ -3,6 +3,10 @@ import { byId, findThing } from './model.js';
 // Editor session state. Nothing here is architecture: the museum lives in ctx.museum,
 // and view state (standpoint, what is open, the trail) never enters Undo.
 export const S = {
+  /* which kind of document is in hand. World is where a building is authored; the Experience lens is,
+     in this prototype, one read-only continuity fixture that proves parking, a foreign identity and
+     explicit Resume. The lens is a document state, not a mode of the tools. */
+  lens: 'world',
   sel: null,
   hover: null,
   session: null,
@@ -37,7 +41,36 @@ export const S = {
   summary: null,
   finder: null,
   gated: [],
+  /* the work the editor is doing: capability, initiating identity, technical target, local focus.
+     Set and cleared by the task seam; the linger selection is not this. */
+  task: null,
+  /* An inactive task remembered for explicit Resume, and only that: the original identity, the
+     resolving targets and the reading/task parameters. Never a Camera, a selection snapshot, an
+     unaccepted proposal or a geometry object. See actions.js (parkWorldWork / parkedContext). */
+  parked: null,
+  /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
+  flatHold: null,
+  /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */
+  browse: { q: '', focus: null, page: 0 },
+  /* the narrow shell's sheets: the Index and the Card over the stage. A disclosure, so it changes what
+     is shown and nothing else — never the reading, the work in hand or the Camera. */
+  sheet: { index: false, card: false },
+  /* the system's own reduced-motion preference, followed live. Separate from the user's Reduce-motion
+     choice below: the choice is the editor's, the preference is the machine's. */
+  osReduced: false,
+  /* the Card's Details disclosure. A disclosure toggle changes what is shown and nothing else. */
+  expand: false,
+  /* QA observation only: a command that threw, or a page error. Never a source of product behaviour;
+     the acceptance harness asserts this stays empty. See qa/README.md. */
+  faults: [],
 };
+
+let faultSeq = 0;
+export function recordFault(kind, detail) {
+  faultSeq += 1;
+  S.faults.push({ n: faultSeq, kind, message: String(detail?.message ?? detail ?? ''), stack: detail?.stack ? String(detail.stack).split('\n').slice(0, 4).join(' | ') : '', at: performance.now() });
+  if (S.faults.length > 200) S.faults.shift();
+}
 
 export const ctx = {
   museum: null,

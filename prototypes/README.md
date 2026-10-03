@@ -49,9 +49,10 @@ production authority; their documentation is still a route a reader follows.
 
 | Folder | Durable artifact | Status |
 | --- | --- | --- |
+| [`paper-authoring-commission/`](./paper-authoring-commission/designer-packet/COMMISSION.md) | **Independent 2D Paper design commission package** — one standalone Markdown brief with curated shell/surface references | Context preparation within the accepted World \| Experience shell. Its in-repository destination proposal, [`PAPER-SHELL-PROPOSAL.md`](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md), was **accepted by the owner 2026-10-03** (four refinement reviews, all rulings, corrected Wall semantics) and promoted into PLATE §0.8.4; the proposal remains rationale and design evidence. The [Paper adoption plan](../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md) plans the work in [`spatial-authoring/`](./spatial-authoring/README.md); nothing is implemented. No commission dispatch and no production cutover. Copy only its `designer-packet/` folder for the independent handoff; the sibling `INTERNAL.txt` stays in the repository. |
 | [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Finalized V2 Experience prototype design** — [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) + visual QA boards in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/) | Accepted in #110; shell requirements promoted by the owner in #111 into PLATE §0.8.1 (2026-10-01). This retains the final design record and is the future V2 prototype implementation home; it establishes no persisted formats or implementation mechanisms. Retired-exploration findings remain [reconciliation evidence](./integrated-experience-authoring/design/retired-exploration-findings.md). |
-| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Finalized World shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Finalized/frozen; shell requirements promoted into PLATE §0.8 (PR #111, 2026-10-01), alongside V2 Experience. Supersedes P26 shell/chrome/tool exposure/disclosure where covered; journeys A–F remain the deep World behavioral oracle. Next: bounded adoption into [`spatial-authoring/`](./spatial-authoring/README.md), #112. Promotion fixes destination design, with no production cutover. |
-| [`spatial-authoring/`](./spatial-authoring/README.md) | **Spatial Authoring Prototype** | Primary accepted World behavioral / QA evidence. **Journeys A–F**, capabilities and interaction laws remain behavioral authority; its executable shell/chrome/tool exposure/disclosure is the **predecessor shell pending adoption** of the accepted unified shell (#112). |
+| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Finalized World shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Finalized/frozen; shell requirements promoted into PLATE §0.8 (PR #111, 2026-10-01), alongside V2 Experience. Supersedes P26 shell/chrome/tool exposure/disclosure where covered; journeys A–F remain the deep World behavioral oracle. World adoption is accepted in [`spatial-authoring/`](./spatial-authoring/README.md), #112; next is the #113 Experience executable/continuity proof. Promotion fixes destination design, with no production cutover. |
+| [`spatial-authoring/`](./spatial-authoring/README.md) | **World Authoring Prototype** | Current accepted executable World shell + inherited P26 **A–F**, capabilities and spatial laws (#112). [QA acceptance](./spatial-authoring/qa/ACCEPTANCE.md) proves World-side parking/return through a read-only bridge; #113 owns real Experience continuity. No production cutover. |
 | [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
 | [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained unratified proposal for object-first composition, capability disclosure, reach and repair behavior. Secondary composition shell-pressure evidence for the unified round; its shell and model are not being reopened or adopted by that round. |
 
@@ -67,13 +68,11 @@ finalized designs' shell requirements in PLATE, not in prototype code. In partic
   Peek/Overview/Seam Deck, Ask Rule and progressive Camera disclosure. The retained
   synthesis/QA record supplies rationale and specimens, not persisted formats or
   implementation mechanisms.
-- **Spatial Authoring Prototype** — accepted experience/QA reference for the P26
+- **World Authoring Prototype** — accepted executable/QA reference retaining the P26
   direction. Its implementation shortcuts (analytic caps, JavaScript modules,
   whole-model snapshots, tiny-FOV orthographic stand-in, independent
   clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
-  intent, not production contracts**. Its executable shell is the **predecessor
-  shell**, pending adoption of the accepted unified shell in #112; journeys A–F
-  remain behavioral authority through that adoption.
+  intent, not production contracts**. Its accepted unified World shell replaces the predecessor in place (#112); journeys A–F remain behavioral authority. Its Experience lens is a read-only continuity fixture, pending #113.
 - **Unified World | Experience shell round** — the accepted design package lives
   here because it evolved retained prototype design. Its shell requirements are
   promoted into **PLATE §0.8**, alongside the finalized Experience expression;
@@ -81,8 +80,8 @@ finalized designs' shell requirements in PLATE, not in prototype code. In partic
   journeys/capabilities/interaction laws and accepted V2 Experience semantics. It
   supersedes P26 shell, chrome, tool exposure and disclosure where its synthesis
   explicitly covers them. C2 supplied secondary composition pressure, not
-  destination UI. The accepted shell is intended for adoption by P26 before V2
-  Experience/cross-lens implementation; this sequence grants no implementation or
+  destination UI. The accepted shell is adopted by the World prototype (#112);
+  V2 Experience/cross-lens implementation follows in #113. This sequence grants no production implementation or
   persistence authority, and PLATE §0.8 owns the durable destination shell laws.
 - **Experience Authoring Prototype** — retained Experience behavioral evidence /
   regression oracle, not current shell authority. Its architecture and shell have
@@ -92,8 +91,9 @@ finalized designs' shell requirements in PLATE, not in prototype code. In partic
   implemented V2 must still do.
 - **PLATE** ([`../docs/reference/design-system/editor-shell-and-visual-system.md`](../docs/reference/design-system/editor-shell-and-visual-system.md))
   owns both the landed shell descriptions and the explicitly promoted destination
-  shell design (§0.8–§0.8.3). Those states remain distinct until cutover. Retention
-  or prototype acceptance alone never amends PLATE; #111's owner promotion does.
+  shell design (§0.8–§0.8.4). Those states remain distinct until cutover. Retention
+  or prototype acceptance alone never amends PLATE; owner promotions do (#111 for
+  §0.8–§0.8.3, the 2026-10-03 Paper acceptance for §0.8.4).
   Promotion authorizes no production cutover.
 - **F** ([`../docs/reference/composition-execution.md`](../docs/reference/composition-execution.md))
   remains the composition/execution target authority.
@@ -108,7 +108,7 @@ round is a design package (synthesis + QA boards), not a runnable application;
 its accepted direction is adopted by the spatial-authoring prototype in #112.
 
 ```sh
-# Spatial Authoring Prototype — no build step, vendored Three.js
+# World Authoring Prototype — no build step, vendored Three.js
 cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localhost:8826/
 
 # Experience Authoring Prototype — Vite + Vitest + Playwright

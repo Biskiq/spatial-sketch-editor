@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildWallGeometry, buildSlabGeometry, paintTexture, placeArtwork, wallSampler, horizontalCaps } from './geometry.js';
-import { byId, planeY } from './model.js';
+import { byId, planeY, FLOOR_Y } from './model.js';
 
 export const COLORS = {
   mat: '#1D3A33', matDeep: '#152C26', grid: '#2B5147', gridMajor: '#3C6A5C',
@@ -244,6 +244,9 @@ export class Stage {
     }
     for (const a of m.art) this.buildArt(a);
     for (const o of m.objects) this.buildObject(o);
+    // A full rebuild drops the drawn preview with everything else; the declared candidate is part of
+    // the work in hand, so it is drawn again from its own parameters, never from a host guess.
+    if (this.previewPlace) this.setArtPreview(this.previewPlace);
     this.restyle();
   }
 
@@ -303,14 +306,64 @@ export class Stage {
     group.add(frame, face);
     this.root.add(group);
     this.items.set(a.id, { kind: 'art', data: a, mesh: frame, face, canvasMat, lines: null, group });
-    this.placeArt(a);
+    if (a.wall) this.placeArt(a);
+    else this.layUnplaced(a);
   }
 
   placeArt(a) {
     const it = this.items.get(a.id);
     const w = byId(this.museum.walls, a.wall);
+    // An unresolved reference is never placed on a wall the fixture does not name.
+    if (!it || !w) return false;
+    it.unplaced = false;
     const ds = this.d(w.id);
     placeArtwork(it.group, w, a, { u: ds.u, sA: ds.sA ?? undefined, lift: ds.lift, y: ds.y });
+    return true;
+  }
+
+  // A reference with no host still has a body: it lies where it was last seen. This is the display
+  // locator the plan allows — visible, pickable, and never an answer to "which wall": placeArt refuses
+  // to move it anywhere until the source itself names a wall.
+  layUnplaced(a) {
+    const it = this.items.get(a.id);
+    if (!it || !a.lastAt) return false;
+    it.unplaced = true;
+    it.group.position.set(a.lastAt.x, FLOOR_Y + 0.05, a.lastAt.z);
+    it.group.rotation.set(-Math.PI / 2, 0, 0);
+    return true;
+  }
+
+  // The declared candidate, drawn where it would hang: a preview, not a source write, and gone the
+  // moment the work it belongs to ends. Building it reads only the declared place.
+  setArtPreview(place) {
+    this.clearArtPreview();
+    const a = byId(this.museum.art, place.art);
+    const w = byId(this.museum.walls, place.wall);
+    if (!a || !w) return null;
+    const group = new THREE.Group();
+    group.userData = { artPreview: a.id };
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(a.w + 0.1, a.h + 0.1, 0.06), this.mat.ghost);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(a.w, a.h), this.mat.ghost);
+    face.position.z = 0.032;
+    group.add(frame, face);
+    this.root.add(group);
+    const ds = this.d(w.id);
+    placeArtwork(group, w, { ...a, s: place.s, y: place.y }, { u: ds.u, sA: ds.sA ?? undefined, lift: ds.lift, y: ds.y });
+    this.previewPlace = { ...place };
+    this.artPreview = { art: a.id, wall: w.id, s: place.s, y: place.y };
+    return this.artPreview;
+  }
+
+  // Nothing unaccepted survives leaving the work: the drawn candidate goes, and the declared place with
+  // it, so a later rebuild cannot resurrect a preview that was never accepted.
+  clearArtPreview() {
+    const p = this.artPreview;
+    this.previewPlace = null;
+    if (!p) return false;
+    const group = this.root.children.find((c) => c.userData?.artPreview === p.art);
+    if (group) { this.root.remove(group); group.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+    this.artPreview = null;
+    return true;
   }
 
   buildObject(o) {
@@ -356,6 +409,9 @@ export class Stage {
   refreshAll() {
     for (const w of this.museum.walls) this.refreshWall(w.id);
     for (const c of this.museum.ceilings) this.refreshCeiling(c.id);
+    // Every refresh settles each artwork by its source: hung on the wall it names, or lying at the
+    // locator when the fixture names none. Undo and Redo therefore move the body with the reference.
+    for (const a of this.museum.art) { if (a.wall) this.placeArt(a); else this.layUnplaced(a); }
     this.restyle();
   }
   setMuseum(m) {
@@ -527,6 +583,10 @@ export class Stage {
   // ----- camera -----
   resize() {
     const r = this.canvas.parentElement.getBoundingClientRect();
+    // The device scale is re-read here, not only at construction: it changes with the window (a move to
+    // another display, a browser zoom, an emulated device), and a drawing buffer left at the old ratio
+    // is a canvas painted below the pixels it is drawn into. Capped at 2, as at construction.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(r.width, r.height, false);
     this.w = r.width; this.h = r.height;
     this.camera.aspect = r.width / Math.max(1, r.height);
@@ -555,6 +615,8 @@ export class Stage {
   }
 
   applyCamera() {
+    // A display-scale change can leave the CSS box unchanged, so ResizeObserver need not fire.
+    if (this.renderer.getPixelRatio() !== Math.min(window.devicePixelRatio, 2)) this.resize();
     this.dist = Stage.placeCamera(this.camera, this.cam, this.w / Math.max(1, this.h));
     this.scene.fog.near = this.dist + 40;
     this.scene.fog.far = this.dist + 200;

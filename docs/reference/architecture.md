@@ -267,6 +267,22 @@ Scene edits are outside this rule. F.4's compound acceptance generalizes the
 acceptance boundary across domains at the Experience cutover; it does not
 retrofit this layering rule.
 
+**Wall role (destination, owner ruling 2026-10-03).** The Wall is the authored
+primitive, and its spatial role is derived: Walls taking part in a closed
+enclosure bound it, a Wall that encloses nothing is free-standing, and a Wall
+drawn across an enclosed Room divides it, producing the derived Room topology
+through the canonical compiler and its lineage. Rooms stay derived, and no Room
+geometry becomes editable. *Current encoding until an explicit Layout cutover:*
+the wall-first document stores an authored `role: 'boundary' | 'partition'`, and
+only `boundary` Walls take part in face extraction (`LayoutWallRole`); the
+editor chooses a chain's role when drawing (`wallChainRoleForTool`) and plans
+role changes. The cutover retires creator-chosen roles as creator-facing
+operations, and Layout must decide two things then: migrating existing
+`partition` Walls, and whether a closed ring may ever be intentionally
+non-enclosing. Division keeps the landed Room reconciliation (P23.8 lineage:
+split survivor by evidence order, one Room born). The creator-facing expression is
+[PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
+
 ## Where to look (per surface)
 
 Doc routing lives in the router ([`../README.md`](../README.md) §Where truth

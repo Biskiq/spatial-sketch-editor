@@ -44,3 +44,6 @@ docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-labe
 docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-ranked-walk-chrome-leg.json
 docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-result-identity-chrome-leg.json
 docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-label-grid-reuse-rate-chrome-leg.json
+
+# prototype QA captures
+prototypes/spatial-authoring/qa/out/

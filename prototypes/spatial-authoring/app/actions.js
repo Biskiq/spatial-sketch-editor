@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone } from './state.js';
 import { tween, dur, saw, narrate, run } from './anim.js';
+import * as nav from './navigation.js';
+import * as T from './tasks.js';
+import { onCancel, cancelProposal } from './cancel.js';
 import {
   frameAt, wallLength, maxTop, topAt, bbox, planeY, fmt, pointInPoly, modS, springOf, centroid,
-  validateOpening, validateWall, validateCeiling, byId,
+  validateOpening, validateWall, validateCeiling, validateArtPlacement, byId,
 } from './model.js';
 import { sectionCaps } from './geometry.js';
+import { metadataOf, presentationOf, PRESENTATION } from './fixtures.js';
 import { ease } from './stage.js';
 
 const V3 = THREE.Vector3;
@@ -14,6 +18,13 @@ export const rad = (d) => (d * Math.PI) / 180;
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const st = () => ctx.stage;
+
+// A reference the fixture itself leaves unresolved. Nothing anywhere may upgrade this into a host: the
+// last-seen locator is drawn, never read; a name or a nearby wall is never an answer.
+const unresolvedArt = (t) => (t?.kind === 'art' && !W(t.item.wall)
+  ? { why: 'its wall reference is unresolved', note: 'the marker is where it was last seen, not where it hangs' }
+  : null);
+export const isUnresolved = (id) => !!unresolvedArt(thing(id));
 const MUSEUM_BOX = { x0: -15.4, x1: 11.3, z0: -5.9, z1: 5.9 };
 
 // ---------------------------------------------------------------- standpoints
@@ -42,16 +53,10 @@ export function viewLabel(s = S.session) {
 
 // The camera travels on one eased curve. `arc` lifts the eye mid-flight so the floor is seen
 // on the way — a single beat that explains the move instead of a stop-and-go sequence.
-export function camAt(a, b, e, arc = 0) {
-  st().lerpCam(a, b, e);
-  if (arc) st().cam.el += Math.sin(Math.PI * e) * arc;
-}
+export function camAt(a, b, e, arc = 0) { nav.camAt(a, b, e, arc); }
 
-export async function fly(to, ms, arc = 0) {
-  const a = st().camState();
-  await tween(ms, (t) => camAt(a, to, ease(t), arc));
-  if (to.mirror != null) st().cam.mirror = to.mirror;
-}
+// Movement is asked of the navigation seam, which owns releasing any parked hold.
+export const fly = (to, ms, arc = 0) => nav.fly(to, ms, arc);
 
 // ---------------------------------------------------------------- recipes: what an open state is, exactly
 
@@ -59,9 +64,9 @@ export async function fly(to, ms, arc = 0) {
 // was opened from. Used by the view trail and by Esc, so "back" and "history" restore identically.
 function recipeOf(s = S.session) {
   const cam = st().camState();
-  if (!s) return { kind: viewKind(), cam, label: viewLabel(null) };
-  const r = { kind: s.kind, cam, label: viewLabel(s), parent: s.parent || null };
-  if (s.kind === 'face') Object.assign(r, { id: s.focusId, u: s.u, side: s.side });
+  if (!s) return { kind: viewKind(), cam, hold: nav.hold(), label: viewLabel(null) };
+  const r = { kind: s.kind, subject: s.subject ?? null, cam, label: viewLabel(s), parent: s.parent || null };
+  if (s.kind === 'face') Object.assign(r, { id: s.focusId, wallId: s.wallId, opening: s.opening ?? null, u: s.u, side: s.side });
   if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: S.reveal });
   if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { id: s.ceilId, mirror: st().cam.mirror });
   return r;
@@ -76,27 +81,19 @@ export function crumbs() {
 
 // ---------------------------------------------------------------- trail (view history, never Undo)
 
-export function pushTrail(label) {
-  if (S.navTrail) return;
-  const entry = { ...recipeOf(), label: label || viewLabel() };
-  const t = S.trail.slice(0, S.trailPos + 1);
-  const last = t[t.length - 1];
-  if (last && last.label === entry.label) t[t.length - 1] = entry;
-  else t.push(entry);
-  S.trail = t.slice(-12);
-  S.trailPos = S.trail.length - 1;
-  ctx.ui();
-}
+// The navigation seam stores the trail; this layer supplies the complete reading recipe.
+export function pushTrail(label) { nav.pushTrail(label, recipeOf()); }
 
 // Re-enter a recipe exactly: same open state, same parameters, same camera, same nesting.
 async function enterRecipe(e) {
   if (e.kind === 'plan' || e.kind === '3d') {
     if (S.session) await exitSessionInner(e.cam);
     else await fly(e.cam, dur('trail', 800));
+    nav.restoreOriginHold(e);
     return;
   }
-  const opts = { arrive: e.cam, parent: e.parent ?? null, label: e.label, restore: true };
-  if (e.kind === 'face') await faceInner(e.id, { ...opts, side: e.side, u: e.u });
+  const opts = { arrive: e.cam, subject: e.subject, parent: e.parent ?? null, label: e.label, restore: true };
+  if (e.kind === 'face') await faceInner(e.subject ?? e.id, { ...opts, side: e.side, u: e.u });
   else if (e.kind === 'section') {
     await openSectionInner(e.cut, opts);
     if (e.reveal) toggleReveal(e.reveal, true);
@@ -107,9 +104,7 @@ async function enterRecipe(e) {
 export const gotoTrail = (i) => run(async () => {
   const e = S.trail[i];
   if (!e) return;
-  S.navTrail = true;
-  try { await enterRecipe(e); } finally { S.navTrail = false; }
-  S.trailPos = i;
+  await nav.gotoTrail(i);
   setStatus(`Back to “${e.label}” exactly as you left it — a view change, so Undo is untouched`, 'view');
 });
 
@@ -128,6 +123,7 @@ export function setStatus(text, kind = 'info') {
 // ---------------------------------------------------------------- selection
 
 export function select(id) {
+  if (id !== S.sel) cancelProposal('selection');
   const sd = st();
   if (S.sel && sd.items.has(S.sel)) sd.d(S.sel).hl = null;
   S.sel = id;
@@ -154,9 +150,12 @@ const KIND = {};
 // One lifecycle for every open state. Opening a different kind from inside one nests it (Esc steps
 // back out to where you were); opening the same kind replaces it (hopping wall to wall).
 async function openSession(sess, home, { label, narr, base = 1100, via = null, arrive = null, parent, onTween = null, arc = 0, restore = false } = {}) {
+  cancelProposal('invoke');
   if (S.knife) cancelKnife(true);
   let origin, undoFrom;
   const a0 = st().camState();
+  const invocationOrigin = nav.captureOrigin(viewLabel(null));
+  nav.releaseHold();
   if (S.session) {
     const old = S.session;
     origin = old.origin;
@@ -171,7 +170,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
     KIND[old.kind].teardown(old);
     S.session = null;
   } else {
-    origin = { cam: a0, label: viewLabel(null) };
+    origin = invocationOrigin;
     undoFrom = S.undo.length;
     if (viewKind() === '3d') S.last3D = a0;
     parent = parent ?? null;
@@ -214,6 +213,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
 
 // Close everything and return to the standpoint the first open state began from.
 export async function exitSessionInner(toCam) {
+  cancelProposal('return');
   const sess = S.session;
   if (!sess) return;
   const to = toCam || sess.origin.cam;
@@ -232,15 +232,22 @@ export async function exitSessionInner(toCam) {
   });
   KIND[sess.kind].teardown(sess);
   S.session = null;
+  T.end();
   st().cam.mirror = false;
+  nav.restoreOriginHold(toCam ? null : sess.origin);
   saw('close');
   narrate(null);
   summarize(sess);
   pushTrail();
 }
 
+// The operation layer owns how a recipe is entered; the navigation seam owns the record.
+nav.setEnterRecipe((e) => enterRecipe(e));
+nav.setReadingLabel(() => viewLabel());
+
 // Esc: one level out — back into the open state this one was opened from, exactly as it was.
 export async function backInner() {
+  cancelProposal('return');
   const s = S.session;
   if (!s) return;
   if (!s.parent) { await exitSessionInner(); return; }
@@ -289,6 +296,8 @@ function resolveFace(id) {
   }
   if (t.kind === 'art') {
     const w = W(t.item.wall);
+    // No host, no walk: an unresolved reference is never faced by guessing a wall for it.
+    if (!w) return null;
     return { wall: w, sA: t.item.s, focusId: w.id, focusName: `${t.item.name} on the ${w.name}` };
   }
   return null;
@@ -372,13 +381,35 @@ KIND.face = {
 
 async function faceInner(id, opts = {}) {
   const r = resolveFace(id);
-  if (!r) { setStatus('Select a wall, an opening or an artwork to face it', 'info'); return; }
+  if (!r) {
+    const t = thing(id);
+    const u = unresolvedArt(t);
+    setStatus(u
+      ? `${t.item.name}: ${u.why} — name the wall it belongs on with Repair, from its Card`
+      : 'Select a wall, an opening or an artwork to face it', 'info');
+    return;
+  }
   const cur = S.session;
   const side = opts.side || 1;
   if (!opts.restore && cur?.kind === 'face' && cur.wallId === r.wall.id && cur.side === side) {
-    if (Math.abs(cur.sA - r.sA) < 0.01 || cur.u > 0.5) { setStatus(`Already facing the ${r.wall.name}`, 'info'); return; }
+    if (Math.abs(cur.sA - r.sA) < 0.01 || cur.u > 0.5) {
+      // The work asked for is the work already open: the task seam is brought back to the reading in
+      // hand instead of being left pointing at whatever came before.
+      resumeReadingTask();
+      setStatus(`Already facing the ${r.wall.name}`, 'info');
+      return;
+    }
   }
-  const sess = { kind: 'face', ...r, side };
+  // The subject is what the user asked about; the wall is the technical target. An artwork on the
+  // Rotunda wall keeps the artwork as its subject while the wall is the target.
+  const sess = { kind: 'face', ...r, side, subject: opts.subject ?? id };
+  // The focus is the local point the work is about — the opening you walked to, or the wall's own top.
+  // It is what Precision offers numbers for, and it never becomes an identity.
+  T.begin({
+    kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${r.wall.name}` } : { kind: 'wall-top', id: r.wall.id, label: `${r.wall.name} top` },
+    params: { side },
+  });
   const u = opts.u ?? 0;
   const home = faceHome(sess);
   const inRoom = byId(ctx.museum.galleries, r.wall.gallery).name;
@@ -394,7 +425,10 @@ async function faceInner(id, opts = {}) {
   if (u > 0.5) sess.home = flatHome(sess);
 }
 
-export const face = (id = S.sel, opts) => run(() => faceInner(id, opts));
+// Every way into spatial work goes through worldOnly(): while the read-only bridge is the document in
+// hand, World work is refused locally and by name, so crossing can never leave a half-invocation or a
+// hidden task behind. See the lens section at the end of this file.
+export const face = (id = S.sel, opts) => run(() => (worldOnly() ? null : faceInner(id, opts)));
 
 // Inside / Outside: walk round the wall. The anchor stays put; the camera swings through 180°.
 export const setSide = (side) => run(async () => {
@@ -469,18 +503,29 @@ export async function unfoldInner(s) {
   pushTrail(`${w.name} laid flat`);
 }
 
-export const unfold = () => run(async () => {
-  let s = S.session;
-  if (s?.kind === 'face') {
+// `id` is the subject asking to unroll — a Card or an Index row names its own subject, so the verb
+// never depends on what happens to be selected. An open face session is only reused when it is
+// already about that subject, target or focus; otherwise the walk starts from where you are.
+const faceCovers = (s, id) => !!s && (!id || id === s.wallId || id === s.subject || id === s.focusId);
+
+export const unfold = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
+  const s = S.session;
+  if (s?.kind === 'face' && faceCovers(s, id)) {
     if (s.u > 0.99) return;
     await unfoldInner(s);
     return;
   }
   // from anywhere: walk, face and unroll in a single motion
-  const r = resolveFace(S.sel);
+  const r = resolveFace(id);
   if (!r) return;
-  if (r.wall.kind !== 'arc') { await faceInner(S.sel); return; }
-  const sess = { kind: 'face', ...r, side: 1 };
+  if (r.wall.kind !== 'arc') { await faceInner(id); return; }
+  const sess = { kind: 'face', ...r, side: 1, subject: id ?? r.focusId };
+  T.begin({
+    kind: 'face', subject: sess.subject, target: { kind: 'wall', id: r.wall.id, label: r.wall.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${r.wall.name}` } : { kind: 'wall-top', id: r.wall.id, label: `${r.wall.name} top` },
+    params: { side: 1 },
+  });
   const to = flatHome(sess);
   sess.unfolding = true;
   await openSession(sess, to, {
@@ -536,8 +581,15 @@ export function beginPeel(wallId, sA) {
   const w = W(wallId);
   const side = sideOfCamera(w, sA);
   const r = resolveFace(S.sel && thing(S.sel)?.wall?.id === wallId ? S.sel : wallId) || {};
-  const sess = { kind: 'face', wall: w, sA, focusId: r.focusId || wallId, focusName: r.focusName || w.name, opening: r.opening, side, peeled: true };
-  Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
+  const subject = r.opening ? S.sel : wallId;
+  const sess = { kind: 'face', wall: w, sA, focusId: r.focusId || wallId, focusName: r.focusName || w.name, opening: r.opening, side, peeled: true, subject };
+  T.begin({
+    kind: 'face', subject, target: { kind: 'wall', id: wallId, label: w.name },
+    focus: r.opening ? { kind: 'opening', id: r.opening, label: `${r.focusName} in the ${w.name}` } : { kind: 'wall-top', id: wallId, label: `${w.name} top` },
+    params: { side, directly: true },
+  });
+  Object.assign(sess, { origin: nav.captureOrigin(viewLabel(null)), undoFrom: S.undo.length, parent: null, id: ++S.sid, settle: 1 });
+  nav.releaseHold();
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.face.setup(sess);
   sess.home = faceHome(sess);
@@ -560,6 +612,7 @@ export function endPeel() {
   if (s.u < 0.04) {
     KIND.face.teardown(s);
     S.session = null;
+    T.end();
     ctx.ui();
     return;
   }
@@ -680,13 +733,20 @@ export function refreshSection() {
 }
 
 async function openSectionInner(cut, opts = {}) {
-  const sess = { kind: 'section', cut: { ...cut } };
+  // A location-based cut with nothing selected records the explicit absence: no fabricated identity.
+  const subject = opts.subject !== undefined ? opts.subject : S.sel;
+  const sess = { kind: 'section', cut: { ...cut }, subject };
+  T.begin({
+    kind: 'section', subject, target: { kind: 'cut', label: lookWord(cut) },
+    focus: { kind: 'cut', label: `the cut, ${lookWord(cut)}` },
+    params: { depth: cut.depth, side: cut.side },
+  });
   const home = sectionHome(sess.cut);
   const narr = `Parting the museum along your line. The near half slides toward you; the camera turns to face the cut, ${lookWord(cut)}. Ink marks everything the line passes through.`;
   await openSession(sess, home, { ...opts, label: opts.label || `Opened along a line · ${lookWord(cut)}`, narr, base: 1600 });
 }
 
-export const openSection = (cut) => run(() => openSectionInner(cut));
+export const openSection = (cut) => run(() => (worldOnly() ? null : openSectionInner(cut)));
 
 export function setDepth(v) {
   const s = S.session;
@@ -722,6 +782,10 @@ export function memberOf(id) {
   const s = S.session;
   const t = thing(id);
   if (!t) return { state: 'none' };
+  // An unresolved reference is not in any reading, any cut or any side: it has no place yet, and saying
+  // otherwise would be the host guess this fixture exists to catch.
+  const u = unresolvedArt(t);
+  if (u) return { state: 'unresolved', reason: `${u.why} — ${u.note}` };
   if (!s) return { state: 'in' };
   if (s.kind === 'face') {
     const w = s.wall;
@@ -755,6 +819,7 @@ export function memberOf(id) {
 }
 
 export function toggleReveal(id = S.sel, force) {
+  if (worldOnly()) return;
   const m = memberOf(id);
   const t = thing(id);
   const srcId = t?.kind === 'openings' ? t.wall.id : id;
@@ -774,6 +839,7 @@ export function toggleReveal(id = S.sel, force) {
 
 // B's recovery, kept: reach just far enough to include it — a view change with a number on it.
 export function includeIt(id = S.sel) {
+  if (worldOnly()) return;
   const m = memberOf(id);
   if (m.state !== 'beyond') return;
   const from = S.session.cut.depth;
@@ -784,6 +850,7 @@ export function includeIt(id = S.sel) {
 
 // … or go to the wall that hosts it. It nests, so Esc comes straight back to this cut and depth.
 export const goToHost = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
   const t = thing(id);
   if (!t) return;
   if (t.kind === 'walls' || t.kind === 'openings' || t.kind === 'art') await faceInner(id);
@@ -791,11 +858,34 @@ export const goToHost = (id = S.sel) => run(async () => {
   else setStatus(`${t.item.name} is staged content — look at it in 3D, edit it in Arrange`, 'info');
 });
 
+// Open the place that holds a record: the same specialist reading an Index row or a Card verb would
+// invoke, on the named record rather than on the selection. A record with no Stage geometry has no
+// place to open, and says where it really lives instead of flying somewhere plausible.
+export const openLocation = (id = S.sel) => run(async () => {
+  if (worldOnly()) return;
+  const t = thing(id);
+  if (!t) {
+    const r = metadataOf(id);
+    setStatus(r
+      ? `The ${r.name} is a record with no Stage location — kept in the ${r.where}, so there is nothing here to open`
+      : 'Select a wall, an opening, a ceiling or an artwork to open its location', 'info');
+    return;
+  }
+  if (unresolvedArt(t)) { await faceInner(id); return; }
+  if (t.kind === 'ceilings') await liftInner(id);
+  else if (t.kind === 'objects') setStatus(`${t.item.name} is staged content — no specialist depth in this prototype. Select it, or bring it into view`, 'info');
+  else await faceInner(id);
+});
+
 // ----- where is it? one resolver for Find, the Inspector and the beacon -----
 
 export function worldOf(id) {
   const t = thing(id);
   if (!t) return null;
+  // Where it *is*: an unresolved reference has nowhere yet. Its last-seen locator is drawn by the
+  // Stage, and returning it here would let membership, the beacon and Look treat a display position as
+  // a real one.
+  if (unresolvedArt(t)) return null;
   if (t.kind === 'art') { const w = W(t.item.wall); const f = frameAt(w, t.item.s); const o = w.thick / 2 + 0.06; return [f.x + f.nx * o, t.item.y, f.z + f.nz * o]; }
   if (t.kind === 'openings') { const f = frameAt(t.wall, t.item.s); return [f.x, (t.item.sill + t.item.head) / 2, f.z]; }
   if (t.kind === 'walls') { const w = t.item; const f = frameAt(w, w.kind === 'arc' ? arcSNearCamera(w) : wallLength(w) / 2); return [f.x, maxTop(w) * 0.6, f.z]; }
@@ -808,8 +898,9 @@ export function whereIs(id) {
   const t = thing(id);
   if (!t) return { state: 'none' };
   const m = memberOf(id);
-  if (m.state === 'beyond' || m.state === 'away' || m.state === 'aside') return m;
+  if (m.state === 'unresolved' || m.state === 'beyond' || m.state === 'away' || m.state === 'aside') return m;
   const p = worldOf(id);
+  if (!p) return { ...m, state: 'unresolved', reason: 'it has no place in this museum yet' };
   const q = st().project(p);
   const pad = 20;
   if (q.behind || q.x < pad || q.y < pad || q.x > st().w - pad || q.y > st().h - pad) return { ...m, state: 'off', reason: 'outside the frame from where you stand' };
@@ -824,7 +915,13 @@ export function whereIs(id) {
 
 export const lookAt = (id = S.sel) => run(async () => {
   const t = thing(id);
-  const p = new V3(...worldOf(id));
+  const pos = worldOf(id);
+  if (!t || !pos) {
+    const u = unresolvedArt(t);
+    setStatus(u ? `There is nothing to bring into view — ${t.item.name}: ${u.why}` : 'Nothing to bring into view', 'info');
+    return;
+  }
+  const p = new V3(...pos);
   let az = st().cam.az;
   if (t.kind === 'art' || t.kind === 'openings') {
     const w = t.kind === 'art' ? W(t.item.wall) : t.wall;
@@ -839,6 +936,7 @@ export const lookAt = (id = S.sel) => run(async () => {
 // ----- knife: draw the line, see the cut before committing -----
 
 export function startKnife() {
+  if (worldOnly()) return null;
   run(async () => {
     if (S.session) await exitSessionInner();
     S.tool = 'knife';
@@ -894,6 +992,65 @@ export function presetKnife(p0, p1, side, depth = 6) {
   ctx.ui();
 }
 
+// ----- the same line, defined by keys ------------------------------------
+// A line is a line whether it was dragged or typed: the same two points, the same side, the same depth,
+// and the same later commands (slide, flip, open). With nothing drawn yet the first key seeds a line
+// across the museum — a starting position the editor then moves, not a guess at what they meant.
+export function knifeLine() {
+  const k = S.knife;
+  if (!k) return null;
+  if (!k.p1) {
+    const p0 = [-17, 0.25], p1 = [13, 0.25];
+    Object.assign(k, { p0, p1, side: defaultSide(p0, p1), stage: 'aim', dirty: true });
+    setStatus('Line drawn from the keyboard — ← → slide it, ↑ ↓ turn it, − = set the depth, Tab looks the other way, ↵ opens it, Esc drops it', 'view');
+    ctx.ui();
+  }
+  return knifeCut();
+}
+
+// Slide the whole line along its own normal: the cut moves through the building, nothing opens.
+export function slideKnife(d) {
+  const k = S.knife;
+  const cut = knifeLine();
+  if (!cut) return null;
+  k.p0 = [k.p0[0] + cut.n[0] * d, k.p0[1] + cut.n[1] * d];
+  k.p1 = [k.p1[0] + cut.n[0] * d, k.p1[1] + cut.n[1] * d];
+  k.dirty = true;
+  setStatus(`Line slid ${fmt(Math.abs(d))} m — a view reading; nothing has opened`, 'view');
+  ctx.ui();
+  return knifeCut();
+}
+
+// Turn it about its own midpoint: the same centre, a different way through the museum.
+export function turnKnife(deg) {
+  const k = S.knife;
+  if (!knifeLine()) return null;
+  const r = rad(deg);
+  const mx = (k.p0[0] + k.p1[0]) / 2, mz = (k.p0[1] + k.p1[1]) / 2;
+  const rot = ([x, z]) => [
+    mx + (x - mx) * Math.cos(r) - (z - mz) * Math.sin(r),
+    mz + (x - mx) * Math.sin(r) + (z - mz) * Math.cos(r),
+  ];
+  k.p0 = rot(k.p0);
+  k.p1 = rot(k.p1);
+  k.dirty = true;
+  setStatus(`Line turned ${Math.abs(deg)}° about its centre — the width it crosses is unchanged`, 'view');
+  ctx.ui();
+  return knifeCut();
+}
+
+// How far in the picture reaches. A view setting with a number on it, like the Instrument's depth
+// control in an open section: half-metre steps, and the same rule for the keys as for the drag.
+export function depthKnife(d) {
+  const k = S.knife;
+  if (!k) return null;
+  k.depth = Math.max(0.5, Math.min(30, Math.round((k.depth + d) * 2) / 2));
+  k.dirty = true;
+  setStatus(`Depth ${fmt(k.depth)} m — how far the picture reaches. A view setting, not an edit`, 'view');
+  ctx.ui();
+  return k.depth;
+}
+
 // ----- lift: raise a ceiling like a lid -----
 
 KIND.lift = {
@@ -929,18 +1086,190 @@ function liftHome(c) {
 async function liftInner(id, opts = {}) {
   const c = C(id);
   if (!c) return;
-  const sess = { kind: 'lift', ceilId: id };
+  const sess = { kind: 'lift', ceilId: id, subject: opts.subject ?? id };
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name }, focus: { kind: 'underside', id, label: `${c.name} underside` } });
   const narr = `Lifting the <b>${c.name}</b> off its walls. Every wall it rests on is tethered and named — gaps show in coral, openings meant to be open in green. The dashed outline is where it really is.`;
   await openSession(sess, liftHome(c), { ...opts, label: opts.label || `${c.name} lifted`, narr, base: 1200 });
 }
 
-export const lift = (id = S.sel) => run(() => liftInner(id));
+export const lift = (id = S.sel) => run(() => (worldOnly() ? null : liftInner(id)));
+
+// ----- in place: the measurement task -----
+// The numbers of a subject, in place: nothing opens, nothing moves, no reading is entered. What is
+// reported is what the fixture really carries — a wall's length, height and thickness, an opening's
+// width, sill and head, a ceiling's underside and footprint — and each value keeps the one validated
+// edit path the Card uses. Invoking it again on the same subject puts it away.
+export function dimensionTask(id = S.sel) {
+  if (worldOnly()) return null;
+  const t = thing(id);
+  if (!t || !T.capabilities(id).includes('dims')) return null;
+  if (S.task?.kind === 'dims' && S.task.subject === id) { endTaskInHand(); return null; }
+  T.begin({ kind: 'dims', subject: id, target: { kind: t.kind, id, label: t.item.name }, focus: { kind: 'measure', id, label: t.item.name } });
+  setStatus(`Measuring the ${t.item.name} — read-only where the fixture has no authored value, and editable where it does`, 'info');
+  ctx.ui();
+  return S.task;
+}
+
+// ----- repair: a reference the fixture leaves unresolved -----
+// The panel's `wall` is explicitly null. Repair is its own work: it opens no reading and moves nothing,
+// it records the wall the editor explicitly picks and the station and height they declare, it draws the
+// declared candidate where it would hang, and it writes exactly one source edit on acceptance. Leaving
+// it unresolved writes nothing at all. Nothing here is inferred — not from the last-seen locator, not
+// from the nearest wall, not from a name: the only input that can resolve a reference is a chosen wall
+// plus values that pass the fixture's own validation.
+const artOf = (id) => ctx.museum.art.find((x) => x.id === id) || null;
+const round2 = (v) => Math.round(v * 20) / 20;
+
+function drawRepairPreview() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return null;
+  if (!t.params.wall) { ctx.stage.clearArtPreview(); return null; }
+  return ctx.stage.setArtPreview({ art: t.subject, wall: t.params.wall, s: t.params.s, y: t.params.y });
+}
+
+export function repairTask(id = S.sel) {
+  if (worldOnly()) return null;
+  const t = thing(id);
+  if (!t || !T.capabilities(id).includes('repair')) return null;
+  if (S.task?.kind === 'repair' && S.task.subject === id) { endTaskInHand(); return null; }
+  T.begin({
+    kind: 'repair', subject: id,
+    target: { kind: 'reference', id, label: `${t.item.name} · wall reference` },
+    focus: { kind: 'reference', id, label: 'the unresolved wall reference' },
+    params: { wall: null, s: round2(t.item.s || 0), y: t.item.y },
+  });
+  setStatus(`${t.item.name} has no wall reference. Pick the wall it belongs on — the candidate is drawn, and nothing is written until you accept`, 'info');
+  ctx.ui();
+  return S.task;
+}
+
+// An explicit pick, checked against the fixture's own walls. The station defaults to the middle of the
+// wall that was chosen and the height to the panel's own stored value: both declared, both visible, and
+// neither of them read from the last-seen marker.
+export function pickRepairWall(wallId) {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  const w = W(wallId);
+  if (!w) return 'That is not a wall in this museum — pick one of the walls offered';
+  t.params = { ...t.params, wall: w.id, s: round2(wallLength(w) / 2) };
+  drawRepairPreview();
+  // The declared default is the middle of the wall, and it is checked like any other declared value:
+  // when the fixture refuses it, that is said out loud rather than nudged into something it likes.
+  const err = validateArtPlacement(w, artOf(t.subject), t.params);
+  setStatus(err
+    ? `Candidate: the ${w.name}. The middle of the wall would not take it — ${err}. Declare a station that clears it; nothing is written yet`
+    : `Candidate: the ${w.name}, station ${fmt(t.params.s)} along it and centre height ${fmt(t.params.y)}. Drawn where it would hang; nothing written`,
+    err ? 'refuse' : 'view');
+  ctx.ui();
+  return null;
+}
+
+// The declared values go through the same one cast as every other number, and are refused in place with
+// the fixture's reason: a refusal leaves the declaration and the preview exactly as they were.
+export function declareRepair(key, value) {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  if (!Number.isFinite(value)) return 'Type a number in metres';
+  const a = artOf(t.subject);
+  const w = W(t.params.wall);
+  if (!w) return 'Choose a wall first';
+  const next = { ...t.params, [key]: key === 's' ? round2(value) : Math.round(value * 100) / 100 };
+  const err = validateArtPlacement(w, a, next);
+  if (err) return err;
+  t.params = next;
+  drawRepairPreview();
+  setStatus(`${key === 's' ? 'Station' : 'Centre height'} ${fmt(t.params[key])} — declared and drawn, not yet written`, 'view');
+  ctx.ui();
+  return null;
+}
+
+// Acceptance: one validated source edit, one Undo entry, and the work ends because the reference it was
+// about is resolved. A refusal changes nothing and leaves the candidate standing.
+export function acceptRepair() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return 'No repair is in hand';
+  const a = artOf(t.subject);
+  const w = W(t.params.wall);
+  const err = editOnce(`Repaired the wall reference of the ${a.name}`, () => applyArtPlacement(a.id, { wall: t.params.wall, s: t.params.s, y: t.params.y }));
+  if (err) { setStatus(`Refused — ${err}. Nothing changed.`, 'refuse'); ctx.ui(); return err; }
+  endTaskInHand();
+  setStatus(`The ${a.name} now hangs on the ${w.name} — one Undo entry puts the reference back`, 'edit');
+  ctx.ui();
+  return null;
+}
+
+// The other honest ending, and the only one Esc needs: the reference stays exactly as the fixture has it.
+export function leaveRepair() {
+  const t = S.task;
+  if (t?.kind !== 'repair') return false;
+  const a = artOf(t.subject);
+  endTaskInHand();
+  setStatus(`${a ? a.name : 'The reference'} stays unresolved — nothing was written, and the marker is still where it was last seen`, 'info');
+  ctx.ui();
+  return true;
+}
+
+// The reading in hand always has its task. Dismissing overlay work (an in-place measurement, later a
+// repair) returns the seam to the reading underneath it, and an invocation that finds the reading
+// already open records its work rather than leaving the task stale. The reading itself is untouched:
+// nothing is re-entered, nothing moves, no history is written.
+export function resumeReadingTask() {
+  const s = S.session;
+  if (!s) return null;
+  if (S.task && S.task.kind === s.kind) return S.task;
+  if (s.kind === 'face') {
+    T.begin({
+      kind: 'face', subject: s.subject ?? s.focusId, target: { kind: 'wall', id: s.wallId, label: s.wall.name },
+      focus: s.opening ? { kind: 'opening', id: s.opening, label: `${s.focusName} in the ${s.wall.name}` } : { kind: 'wall-top', id: s.wallId, label: `${s.wall.name} top` },
+      params: { side: s.side, resumed: true },
+    });
+  } else if (s.kind === 'section') {
+    T.begin({
+      kind: 'section', subject: s.subject ?? null, target: { kind: 'cut', label: lookWord(s.cut) },
+      focus: { kind: 'cut', label: `the cut, ${lookWord(s.cut)}` }, params: { depth: s.cut.depth, side: s.cut.side, resumed: true },
+    });
+  } else if (s.kind === 'lift' || s.kind === 'lookup') {
+    const name = C(s.ceilId)?.name || s.ceilId;
+    T.begin({
+      kind: s.kind, subject: s.subject ?? s.ceilId, target: { kind: 'ceiling', id: s.ceilId, label: name },
+      focus: { kind: 'underside', id: s.ceilId, label: `${name} underside` }, params: { resumed: true },
+    });
+  }
+  ctx.ui();
+  return S.task;
+}
+
+// Putting away work that is not the reading's own surface: the reading underneath comes back with its
+// own task, so the Instrument that reappears is never a surface without a task behind it.
+export function endTaskInHand() {
+  cancelProposal('task-end');
+  T.end();
+  // Unaccepted work does not outlive the work it belonged to: a declared candidate is taken off the
+  // drawing here, on every exit path, whether the work was left unresolved or something replaced it.
+  ctx.stage?.clearArtPreview();
+  resumeReadingTask();
+  ctx.ui();
+}
+
+// Precision belongs to the active task, so it is entered and left through the seam; exiting restores
+// the task surface with nothing else changed.
+export function setPrecision(on) {
+  if (!S.task) return false;
+  const next = T.setPrecision(on);
+  setStatus(next
+    ? 'Precision: the numbers of this work, reached by keyboard — no handle has to be legible to type a value'
+    : 'Precision off: back to the drawing', 'view');
+  ctx.ui();
+  return next;
+}
 
 // D's lid tab: drag the lid up from where you stand. Past a third it finishes lifting; less and it drops back.
 export function beginLid(id) {
   if (S.busy || S.session || S.knife) return null;
-  const sess = { kind: 'lift', ceilId: id, direct: true };
-  Object.assign(sess, { origin: { cam: st().camState(), label: viewLabel(null) }, undoFrom: S.undo.length, parent: null, id: ++S.sid });
+  const sess = { kind: 'lift', ceilId: id, direct: true, subject: S.sel ?? id };
+  T.begin({ kind: 'lift', subject: sess.subject, target: { kind: 'ceiling', id, label: C(id)?.name || id }, focus: { kind: 'underside', id, label: `${C(id)?.name || id} underside` } });
+  Object.assign(sess, { origin: nav.captureOrigin(viewLabel(null)), undoFrom: S.undo.length, parent: null, id: ++S.sid });
+  nav.releaseHold();
   if (viewKind() === '3d') S.last3D = st().camState();
   KIND.lift.setup(sess);
   sess.home = st().camState();
@@ -961,6 +1290,7 @@ export const endLid = () => run(async () => {
     await tween(dur('lid', 300), (t) => KIND.lift.apply(s, p0 * (1 - ease(t))));
     KIND.lift.teardown(s);
     S.session = null;
+    T.end();
     ctx.ui();
     return;
   }
@@ -1057,7 +1387,7 @@ export function ceilingForSelection() {
   const t = thing(S.sel);
   if (!t) return 'longc';
   if (t.kind === 'ceilings') return t.item.id;
-  const g = t.item.gallery || (t.wall && t.wall.gallery) || (t.kind === 'art' && W(t.item.wall).gallery);
+  const g = t.item.gallery || (t.wall && t.wall.gallery) || (t.kind === 'art' && W(t.item.wall)?.gallery);
   return g === 'rotunda' ? 'rotc' : 'longc';
 }
 
@@ -1067,13 +1397,14 @@ async function lookUpInner(id, opts = {}) {
   const b = bbox(c.outline);
   const home = { target: new V3(b.cx, 3, b.cz), az: Math.PI, el: -Math.PI / 2 + 1e-4, frameH: st().fitFrame(b.w / 2 + 0.8, b.d / 2 + 0.8, 1.14), flat: 1 };
   const via = { target: new V3(b.cx, 1.4, b.cz), az: Math.PI, el: 0.34, frameH: st().fitFrame(b.w / 2 + 0.8, 3.4, 1.1), flat: 0 };
-  const sess = { kind: 'lookup', ceilId: id };
+  const sess = { kind: 'lookup', ceilId: id, subject: opts.subject ?? id };
+  T.begin({ kind: 'lookup', subject: sess.subject, target: { kind: 'ceiling', id, label: c.name }, focus: { kind: 'underside', id, label: `${c.name} underside` } });
   const narr = `Settling the lid, then sinking below the floor to look straight up. Everything under <b>1.60</b> above the floor is sliced away, so the ceiling reads like a plan seen from underneath. East is on your left — you are looking up, not down.`;
   const arrive = opts.arrive ? { ...opts.arrive, mirror: opts.mirror ?? false } : null;
   await openSession(sess, home, { ...opts, arrive, label: opts.label || `Looking up · ${c.name}`, narr, base: 1900, via });
 }
 
-export const lookUp = (id) => run(() => lookUpInner(id || ceilingForSelection()));
+export const lookUp = (id) => run(() => (worldOnly() ? null : lookUpInner(id || ceilingForSelection())));
 
 export function toggleMirror() {
   if (S.session?.kind !== 'lookup') return;
@@ -1168,6 +1499,21 @@ function afterWall(id) {
   if (S.session?.kind === 'section') refreshSection();
 }
 
+// A wall-attached artwork's reference, through the one validated edit path: the wall the editor chose,
+// the declared station and height, all checked by the fixture before anything is written.
+export function applyArtPlacement(id, place) {
+  const a = artOf(id);
+  if (!a) return 'Not an artwork';
+  const w = W(place.wall);
+  const err = validateArtPlacement(w, a, place);
+  if (err) return err;
+  a.wall = w.id;
+  a.s = w.closed ? modS(w, place.s ?? 0) : place.s;
+  a.y = place.y;
+  afterWall(w.id);
+  return null;
+}
+
 export function applyOpening(id, patch) {
   const t = thing(id);
   if (!t || t.kind !== 'openings') return 'Not an opening';
@@ -1234,3 +1580,277 @@ export function setProfile(id, profile) {
 }
 
 export function springLine(o) { return springOf(o); }
+
+// ---------------------------------------------------------------- cancellation owners
+// Everything unaccepted a spatial operation can be holding. Registered with the one policy in
+// cancel.js, which calls them in order: previewed consequences first, then the aim, then the
+// candidate snapshot the gesture or the draft was written against.
+onCancel(() => {
+  if (S.preview) { restoreQuiet(S.preview); S.preview = null; }
+  S.previewing = null;
+  S.popover = null;
+}, 30, 'gap-preview');
+
+onCancel(() => {
+  if (!S.knife) return;
+  S.knife = null;
+  S.tool = 'select';
+  st().clearAway('preview');
+  st().setSectionCaps(null);
+}, 40, 'knife-aim');
+
+onCancel(() => {
+  if (!S.pending) return;
+  restoreQuiet(S.pending);
+  S.pending = null;
+}, 60, 'candidate-edit');
+
+// ---------------------------------------------------------------- neutral teardown
+// Drop the reading without animating anywhere and without restoring an origin pose: temporary
+// geometry, clips, ghosts, the mirrored reading and the aim all go; source, canonical selection and
+// the realized standpoint stay. The caller holds the realized pose first (tasks.park does), so a
+// deactivated reading cannot silently dolly the camera.
+export function parkReading() {
+  cancelProposal('park');
+  const s = S.session;
+  if (s) { KIND[s.kind].teardown(s); S.session = null; }
+  S.knife = null;
+  S.tool = 'select';
+  S.reveal = null;
+  S.popover = null;
+  S.previewing = null;
+  S.summary = null;
+  S.refusal = null;
+  st().clearAway('preview');
+  st().setSectionCaps(null);
+  // A declared candidate is a proposal: like the aim and the ghost, it comes off the drawing when the
+  // reading that held it is dropped. Nothing here restores a pose.
+  st().clearArtPreview();
+  st().cam.mirror = false;
+  T.end();
+  ctx.ui();
+}
+
+// Esc, in the order the plan sets: the writer or proposal first (cancel.js owns that), then Precision,
+// then the spatial reading through its canonical return. Nothing here replaces the selection.
+
+// ---------------------------------------------------------------- lens: parking World work, resuming it explicitly
+// World is where a building is authored. The Experience lens is, in this prototype, one read-only
+// continuity fixture (fixtures.js): it exists so that crossing can be proved — an *inactive* parked
+// record instead of a hidden session, one canonical selection, one Camera shared by both lenses, an
+// ordinary return, and an explicit validated Resume rather than an automatic restore. Nothing here
+// creates, guides, stops, captures, authors a view or previews a visitor; #113 owns real Experience
+// behaviour and this bridge cannot prove it.
+
+export const lens = () => S.lens;
+export const lensIs = (which) => S.lens === which;
+
+// The refusal that keeps the bridge honest: no World work can be invoked from inside it, so no half
+// invocation, hidden reading or unaccepted proposal can exist while another lens is the document.
+function worldOnly() {
+  if (S.lens === 'world') return false;
+  setStatus('That is World work — the Experience lens is a read-only continuity fixture. Switch back to the World lens, then invoke it', 'refuse');
+  ctx.ui();
+  return true;
+}
+
+// One open reading, recorded as its resolving target and its parameters. No Camera: a reading is always
+// re-entered from where the Camera actually stands when Resume is asked for.
+function recordReading(s) {
+  const r = { kind: s.kind, subject: s.subject ?? null };
+  const face = s.kind === 'face' ? resolveFace(s.subject ?? s.id ?? s.focusId) : null;
+  if (s.kind === 'face') Object.assign(r, {
+    wallId: s.wallId ?? face?.wall.id, opening: s.opening ?? face?.opening ?? null,
+    focusId: s.focusId ?? face?.focusId, focusName: s.focusName ?? face?.focusName,
+    side: s.side ?? 1, u: s.u ?? 0,
+  });
+  if (s.kind === 'section') Object.assign(r, { cut: { ...s.cut }, reveal: 'reveal' in s ? s.reveal : S.reveal ?? null });
+  if (s.kind === 'lift' || s.kind === 'lookup') Object.assign(r, { ceilId: s.ceilId ?? s.id, mirror: s.mirror ?? !!st().cam.mirror });
+  return r;
+}
+
+const nameOfId = (id) => thing(id)?.item?.name || null;
+
+// Park: cancel what is unaccepted, freeze the realized standpoint, record the original identity and the
+// resolving targets, then drop the reading without animating anywhere. Source, canonical selection and
+// history are untouched, and no unaccepted proposal is ever part of the record.
+export function parkWorldWork() {
+  const s = S.session, t = S.task, k = S.knife;
+  const overlay = t && (!s || t.kind !== s.kind) ? { kind: t.kind, subject: t.subject ?? null, precision: !!t.precision } : null;
+  const canceled = [];
+  if (k) canceled.push(k.p1 ? 'line-aim' : 'line');
+  if (S.pending) canceled.push('candidate');
+  const chain = [];
+  for (let reading = s; reading; reading = reading.parent) chain.unshift(recordReading(reading));
+  if (overlay) chain.push(overlay);
+  if (!chain.length) {
+    // A knife aim, a live candidate and an uncommitted draft are proposals, and proposals are never
+    // parked: they are canceled, and an earlier record is not thrown away by a crossing that had
+    // nothing restorable in hand.
+    cancelProposal('lens');
+    return S.parked;
+  }
+  const identity = s ? s.subject ?? null : overlay?.subject ?? null;
+  S.parked = {
+    lens: 'world', at: performance.now(),
+    identity, name: nameOfId(identity),
+    chain,
+    canceled,
+  };
+  T.park(); // holds the realized pose, cancels every proposal, and tears the reading down neutrally
+  ctx.ui();
+  return S.parked;
+}
+
+// Is the parked work still about what it says it is? Revalidated against the fixture's current accepted
+// model, and every failure is a local explanation: never a name match, never a nearby wall, never a
+// substituted host, never a restored proposal.
+function validateStep(c, identityThing) {
+  if (c.kind === 'face') {
+    const w = c.wallId ? W(c.wallId) : null;
+    if (!w) return 'the wall it was about is not in this museum any more';
+    if (c.opening && !w.openings.some((o) => o.id === c.opening)) return `the ${c.focusName || 'opening'} is no longer an opening in the ${w.name}`;
+    if (identityThing?.kind === 'art' && identityThing.item.wall !== w.id) return `the ${identityThing.item.name} no longer hangs on the ${w.name} — the relationship changed, so the parked reading would be about a subject it is not`;
+    if (!(c.u >= 0 && c.u <= 1) || (c.side !== 1 && c.side !== -1)) return 'the reading parameters are no longer valid';
+    return null;
+  }
+  if (c.kind === 'section') {
+    const cut = c.cut, point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+    if (!cut || !Number.isFinite(cut.depth) || cut.depth < 0.5 || cut.depth > 30 ||
+        !point(cut.p0) || !point(cut.p1) || ![-1, 1].includes(cut.side) ||
+        Math.hypot(cut.p1[0] - cut.p0[0], cut.p1[1] - cut.p0[1]) < 0.1) return 'the cut it was about is no longer a valid reading';
+    if (!ctx.museum.walls.length) return 'there is no architecture left to open';
+    return null;
+  }
+  if (c.kind === 'lift' || c.kind === 'lookup') {
+    return C(c.ceilId) ? null : 'the ceiling it was about is not in this museum any more';
+  }
+  if (c.kind === 'dims') {
+    return identityThing && T.capabilities(c.subject).includes('dims') ? null : 'there are no measurements to take on it any more';
+  }
+  if (c.kind === 'repair') {
+    if (!identityThing) return 'the artwork it was about is not in this museum any more';
+    return identityThing.item.wall ? 'its wall reference is resolved now — there is nothing left to repair' : null;
+  }
+  return 'the parked work is no longer a kind this prototype can enter';
+}
+
+// What Resume would do, and why it cannot: read by the Card, the presenter and QA, never a hidden
+// decision. `fix` names the one explicit act that would make it available again.
+export function parkedContext() {
+  const p = S.parked;
+  if (!p) return null;
+  const out = { ok: false, identity: p.identity, name: p.name, selection: S.sel, chain: p.chain.map((c) => c.kind), canceled: [...p.canceled], reason: '', fix: null, wrongLens: S.lens !== 'world' };
+  const t = p.identity ? thing(p.identity) : null;
+  if (p.identity && !t) { out.reason = `${p.name || p.identity} is not in this museum any more`; return out; }
+  if (p.identity && S.sel !== p.identity) {
+    out.reason = S.sel
+      ? `${nameOfId(S.sel) || 'something else'} is selected now — the parked work is about the ${p.name || p.identity}`
+      : `nothing is selected now — the parked work is about the ${p.name || p.identity}`;
+    out.fix = 'select';
+    return out;
+  }
+  if (!p.identity && S.sel) { out.reason = 'this location task began without a selected subject — start a fresh Section in the current context'; return out; }
+  for (const c of p.chain) {
+    const subject = c.subject ? thing(c.subject) : null;
+    if (c.subject && !subject) { out.reason = 'a subject in the parked chain is no longer in this museum'; return out; }
+    const bad = validateStep(c, subject);
+    if (bad) { out.reason = bad; return out; }
+  }
+  out.ok = true;
+  return out;
+}
+
+// Re-enter one recorded step. Readings are re-derived by the operation itself (no `arrive`, so no
+// recorded Camera), their validated parameters reapplied, and the return context starts here: the
+// pre-crossing root is never reused. Overlay work is re-invoked fresh, because a picked wall or a
+// declared candidate was a proposal, and proposals are never parked.
+async function reenter(step, first) {
+  const opts = { restore: true, ...(first ? { parent: null } : {}) };
+  if (step.kind === 'face') { await faceInner(step.subject ?? step.focusId, { ...opts, side: step.side, u: step.u }); return; }
+  if (step.kind === 'section') {
+    const { p0, p1, side, depth } = step.cut;
+    await openSectionInner(makeCut(p0, p1, side, depth), { ...opts, subject: step.subject });
+    if (step.reveal) toggleReveal(step.reveal, true);
+    return;
+  }
+  if (step.kind === 'lift') { await liftInner(step.ceilId, { ...opts, subject: step.subject }); return; }
+  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject }); st().cam.mirror = !!step.mirror; return; }
+  if (step.kind === 'dims') { dimensionTask(step.subject); if (step.precision) T.setPrecision(true); return; }
+  if (step.kind === 'repair') { repairTask(step.subject); if (step.precision) T.setPrecision(true); }
+}
+
+// Explicit Resume: the record is consumed, the reading is rebuilt from the current standpoint, and the
+// source-summary cursor restarts (openSession records undoFrom now), so returning names only what this
+// invocation changed.
+export const resumeParked = () => run(async () => {
+  const p = S.parked, v = parkedContext();
+  if (!p || !v) { setStatus('Nothing is parked — there is no work to resume', 'info'); return null; }
+  if (v.wrongLens) {
+    setStatus('Resume is World work — switch back to the World lens, where the parked work belongs', 'refuse');
+    ctx.ui();
+    return null;
+  }
+  if (!v.ok) {
+    setStatus(`Resume is not available — ${v.reason}. Start the work fresh instead of restoring a guess`, 'refuse');
+    ctx.ui();
+    return null;
+  }
+  S.parked = null;
+  for (let i = 0; i < p.chain.length; i++) await reenter(p.chain[i], i === 0);
+  setStatus(`Resumed the work on the ${p.name || 'subject'} — a fresh invocation from where you stand: Put it back returns here, not to where it was parked`, 'view');
+  ctx.ui();
+  return p;
+});
+
+// The other honest ending: the record is dropped without restoring anything and without writing.
+export function dismissParked() {
+  if (!S.parked) return false;
+  const name = S.parked.name || 'The parked work';
+  S.parked = null;
+  setStatus(`${name} is no longer parked — nothing was restored and nothing was written`, 'info');
+  ctx.ui();
+  return true;
+}
+
+// The lens button itself. Crossing to the bridge parks; crossing back is ordinary — no Instrument, no
+// reading, no writer, no restored Search context and no Camera restoration. The parked record waits for
+// an explicit Resume and is never applied by the toggle.
+export function switchLens(which) {
+  if (which === S.lens) return S.lens;
+  if (which === 'experience') {
+    const parked = parkWorldWork();
+    S.lens = 'experience';
+    setStatus(parked
+      ? `The Experience lens: the read-only continuity fixture. The work on the ${parked.name || 'selection'} is parked — inactive, not hidden, with no Camera of its own`
+      : 'The Experience lens: the read-only continuity fixture. The same selection and the same Camera as the World', 'view');
+  } else {
+    S.lens = 'world';
+    cancelProposal('lens');
+    setStatus(S.parked
+      ? `Back in the World. The work on the ${S.parked.name || 'selection'} is still parked and inactive — Resume is offered on its own identity, and nothing was restored`
+      : 'Back in the World lens — ordinary: no reading, no work in hand, and the Camera exactly where the bridge left it', 'view');
+  }
+  ctx.ui();
+  return S.lens;
+}
+
+// The bridge's two explicit actions, and nothing else: change the canonical selection to the
+// Presentation fixture itself, or to the World subject it references. Selection is the one slot both
+// lenses share, so this is the same identity the World lens will come back to — it is not a copy, and
+// no lens ever rewrites the Card to another subject.
+export function selectBridge(id) {
+  const p = presentationOf(id);
+  select(id);
+  if (p) {
+    setStatus(`Selected the ${p.name} — ${p.note}. This lens creates, captures and previews nothing; the World's work is parked and inactive`, 'view');
+    return p.id;
+  }
+  const t = thing(id);
+  setStatus(t
+    ? `Selected ${labelName(id)} — referenced by the ${PRESENTATION.name}. It is a World subject: the same identity the World lens uses, and this lens never edits it`
+    : 'Nothing to select there', t ? 'view' : 'info');
+  return id;
+}
+
+const labelName = (id) => thing(id)?.item?.name || id;

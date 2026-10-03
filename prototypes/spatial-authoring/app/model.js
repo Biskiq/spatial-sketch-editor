@@ -86,6 +86,10 @@ export function createMuseum() {
       { id: 'tide2', name: 'Tide Study II', by: 'Ana Lund', wall: 'rotunda', s: R * Math.PI * 0.5, y: 1.5, w: 1.0, h: 1.3, paint: 'tide2' },
       { id: 'tide3', name: 'Tide Study III', by: 'Ana Lund', wall: 'rotunda', s: R * Math.PI * 0.5 + 1.5, y: 1.5, w: 1.0, h: 1.3, paint: 'tide3' },
       { id: 'marsh', name: 'Salt Marsh, Morning', by: 'Maren Okafor', wall: 'rotunda', s: R * Math.PI * 1.5, y: 1.9, w: 3.6, h: 2.2, paint: 'marsh' },
+      // An isolated unresolved reference: this panel's `wall` is explicitly null, so no host may be
+      // guessed for it. `lastAt` is where it was last seen — a display locator for the drawing, and
+      // nothing else reads it: it is never treated as where the panel belongs.
+      { id: 'panel', name: 'Unplaced panel', by: 'Ida Voss', wall: null, s: 0, y: 1.6, w: 1.3, h: 1.6, paint: 'pears', lastAt: { x: -2.4, z: 3.0 } },
     ],
     objects: [
       { id: 'vessel', name: 'Blue Vessel', by: 'Studio Hale', kind: 'sculpture', x: ROT.cx, z: ROT.cz },
@@ -286,6 +290,25 @@ export function validateOpening(w, o) {
     const top = topAt(w, modS(w, s));
     const oy = openingTopAt(o, s);
     if (oy > top - 0.1) return `Head would cross the wall top (${fmt(top)}) — lower it or raise the wall`;
+  }
+  return null;
+}
+
+// A wall-attached artwork's placement, checked against the fixture before anything is accepted: off the
+// wall's ends, through its top, below the floor, or over an opening the fixture really knows about. The
+// last-seen locator is never an input here — a declared station is, and nothing is inferred from it.
+export function validateArtPlacement(w, a, place) {
+  if (!w) return 'Choose a wall first';
+  const L = wallLength(w);
+  const s = w.closed ? modS(w, place.s ?? 0) : place.s ?? 0;
+  const y = place.y ?? a.y;
+  if (!w.closed && (s - a.w / 2 < 0.15 || s + a.w / 2 > L - 0.15)) return `${a.name} would run past the end of the ${w.name}`;
+  const top = maxTop(w);
+  if (y - a.h / 2 < FLOOR_Y) return `${a.name} would hang below the floor`;
+  if (y + a.h / 2 > top + FLOOR_Y + 0.05) return `The ${w.name} is only ${fmt(top)} high — the panel would cross its top`;
+  for (const o of w.openings) {
+    const gap = Math.abs(wrapD(w, o.s - s)) - (o.w + a.w) / 2;
+    if (gap < 0.05) return `${a.name} would cover the ${o.name}`;
   }
   return null;
 }

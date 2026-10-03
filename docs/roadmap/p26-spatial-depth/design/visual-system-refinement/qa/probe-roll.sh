@@ -11,7 +11,8 @@ set -e
 cd "$(dirname "$0")"
 BASE="${1:?usage: probe-roll.sh <url-base> [label]}"
 LABEL="${2:-build}"
-export AGENT_BROWSER_SESSION="p26roll-$LABEL"
+export AGENT_BROWSER_SESSION="p26roll-$LABEL-$$"
+trap 'agent-browser close >/dev/null 2>&1 || true' EXIT
 U="$BASE/index.html?shot=1&motion=instant"
 js() { agent-browser eval "$1" >/dev/null; }
 

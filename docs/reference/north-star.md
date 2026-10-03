@@ -241,6 +241,15 @@ production contracts. Multi-level UI and visitor reveal authoring may ship later
 but their semantic ownership and runtime boundary are established now. The old
 editor-only and single-floor restrictions are superseded.
 
+**Wall role is derived (destination, owner ruling 2026-10-03).** The Wall is the
+authored primitive. Creators draw spatial geometry; whether a Wall bounds an
+enclosure, divides a room or stands free is derived from the resulting topology
+and explained, never chosen before drawing. Rooms stay derived, and dividing a
+room is drawing a Wall across it. The current authored `boundary`/`partition`
+role stays the landed encoding until an explicit Layout cutover
+([architecture](./architecture.md) §Ownership); the creator-facing expression
+is [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
+
 `LayoutRoom` is the current enclosed-region minimum, not the universal spatial
 abstraction. The destination distinguishes physical architecture (Walls,
 Openings, floors/elements), derived spatial topology (faces, adjacency,
