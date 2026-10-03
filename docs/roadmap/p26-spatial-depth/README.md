@@ -71,12 +71,20 @@ and both directions of continuity. F and T1/T2/T3 production gates remain unchan
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 
+**Paper authoring adoption — planned 2026-10-03, not started:** [Paper adoption plan](./design/paper-authoring-prototype/implementation-plan.md)
+· [accepted contract, PLATE §0.8.4](../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+· [rationale](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md).
+It adopts the accepted World Paper shell into the same World executable in dependency-ordered
+slices, preserving A–F and the #112 seams. Its start and its ordering against #113 are the
+owner's call (plan §Coordination). Prototype evidence only; no F/T1 gate moves.
+
 **Shell/design authority vs executable state (2026-10-01, PR #111):**
 
 ```text
 BEHAVIORAL AUTHORITY:   P26 journeys A–F / spatial-authoring behavior (banner above)
-SHELL DESIGN AUTHORITY: PLATE §0.8–§0.8.3 (promoted shared/World laws,
-                        Experience expression and parked-task return)
+SHELL DESIGN AUTHORITY: PLATE §0.8–§0.8.4 (promoted shared/World laws,
+                        Experience expression, parked-task return and,
+                        since 2026-10-03, World Paper authoring)
                         #111's syntheses/QA retain final design records/specimens
 EXECUTABLE STATE:       World Authoring Prototype adopts the accepted shell in place
                         (#112), retaining A–F; Experience is a read-only bridge
@@ -89,7 +97,7 @@ PRODUCTION STATE:       unchanged — planning / re-derived T1; no production ch
 
 - **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
 - **Accepted experience:** [World Authoring Prototype](../../../prototypes/spatial-authoring/README.md) — the current executable adopts the World shell; rationale, QA acceptance, implementer reference and journeys are linked there, and a path-preserving stub remains at the old phase-local [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md). Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
-- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. Sequence step 4 promotes both finalized designs into PLATE **§0.8–§0.8.3** (2026-10-01, PR #111): shared/World laws, Experience expression and explicit parked-task return. The [final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [QA package](../../../prototypes/world-experience-shell-round/QA-package/) retain the detailed design record/specimens. These are normative destination design requirements — no production implementation, restyle or cutover — and P26/T1 production planning still follows the F interfaces.
+- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. Sequence step 4 promotes both finalized designs into PLATE **§0.8–§0.8.3** (2026-10-01, PR #111): shared/World laws, Experience expression and explicit parked-task return. The [final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [QA package](../../../prototypes/world-experience-shell-round/QA-package/) retain the detailed design record/specimens. The accepted World Paper authoring shell is promoted into PLATE **§0.8.4** (2026-10-03), with the [Paper shell proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) as its rationale. These are normative destination design requirements — no production implementation, restyle or cutover — and P26/T1 production planning still follows the F interfaces.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
 - **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.
 

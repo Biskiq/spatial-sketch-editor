@@ -13,9 +13,12 @@ PROTOTYPE BATON: owner-directed #113 — build the finalized Experience V2 execu
        Design → ../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md.
        Current World entry → ../../prototypes/spatial-authoring/README.md;
        the read-only bridge is the replacement seam. This work satisfies no F/T1 gate.
+       QUEUED (not started; order vs #113 is the owner's call): World Paper adoption →
+       ../roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md;
+       contract → PLATE §0.8.4 (accepted 2026-10-03).
 BLOCKERS: none for F. Owner calls remain: P23B phase-wide compaction and P23B.1/.2
        review statuses → ../roadmap/p23b-geometry-performance/README.md;
-       PLATE motion-speed placement, keyboard focus and mat↔paper transition →
+       PLATE keyboard focus and mat↔paper transition (motion-speed placement settled by §0.8.4) →
        ../reference/design-system/editor-shell-and-visual-system.md §0.3, §0.7.6.
        Internal-component selectable identity, source/placement override semantics and
        production representation of temporary readings → ../../prototypes/world-experience-shell-round/README.md.

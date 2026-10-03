@@ -40,14 +40,15 @@ P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
 4. **DONE** — the unified **World | Experience design freeze and durable shell promotion** ([PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111), 2026-10-01, docs/design/assets only): both the [final World synthesis](../../prototypes/world-experience-shell-round/design/design-synthesis.md) with its [QA package](../../prototypes/world-experience-shell-round/QA-package/) and the [final V2 Experience synthesis](../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) are promoted into [`PLATE`](../reference/design-system/editor-shell-and-visual-system.md) **§0.8–§0.8.3**: shared/World laws, Experience expression, and explicit parked-task return. The retained syntheses/QA are the finalized design records; PLATE owns normative destination shell requirements.
 5. **DONE — prototype adoption accepted 2026-10-02** — the [World Authoring Prototype](../../prototypes/spatial-authoring/README.md) (#112) implements the frozen shell in place, preserving P26 A–F. [Acceptance and harvest](../../prototypes/spatial-authoring/qa/ACCEPTANCE.md) record both axes and retirement; the [closed plan](./p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md) preserves exact recovery. No production cutover.
 6. **NEXT — owner-directed prototype baton (2026-10-01)** — #113 builds/adopts the [Experience V2 executable reference](../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) against the unified shell and validates actual World ↔ Experience continuity. #112 includes only a minimum read-only Experience fixture for World-side parking/return proof.
-7. **Normal production route remains** F exact-interface amendments, then T1/T2/T3 re-derived planning and gates, then production V2 implementation. The prototype sequence satisfies none of these gates.
+7. **PLANNED — World Paper authoring (2026-10-03)** — the owner accepted the Paper authoring shell; it is promoted into [PLATE §0.8.4](../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) (with the derived Wall-role destination in [architecture](../reference/architecture.md) §Ownership). The [Paper adoption plan](./p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md) adopts it into the World Authoring Prototype; not started, and its order against #113 is owner-directed. Prototype validation only.
+8. **Normal production route remains** F exact-interface amendments, then T1/T2/T3 re-derived planning and gates, then production V2 implementation. The prototype sequence satisfies none of these gates.
 
 The demo revision and the shell round are bounded design work; product
 implementation remains subject to the foundation and track gates below. Steps 3
 and 4 are **target statements**: the editor still runs the landed PLATE chrome
 until an explicit cutover, so the destination is never presented as shipped.
 
-**#111, #112 and #113 are design/prototype validation.** They do not satisfy F, do not
+**#111, #112, #113 and the Paper adoption are design/prototype validation.** They do not satisfy F, do not
 advance T1 implementation state, and do not authorize production; only the F
 interfaces and the re-derived track plans gate production capability work.
 
