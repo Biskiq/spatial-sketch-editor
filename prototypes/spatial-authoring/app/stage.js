@@ -431,7 +431,7 @@ export class Stage {
     // moment the ground changes identity, instead of one at 0.5 and another at 0.6.
     const looking = this.cam.el > 0.25 && this.paper < 0.999;
     for (const [id, it] of this.items) {
-      const ds = this.d(id);
+      const ds = this.authoring===false ? {...this.d(id),hl:null} : this.d(id);
       const ghost = ds.mode === 'ghost';
       it.group.visible = ds.mode !== 'hidden';
       if (it.kind === 'wall') {

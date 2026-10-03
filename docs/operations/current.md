@@ -11,12 +11,14 @@ NEXT: production route (resumes after the prototype detour closes, below) remain
 PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 Experience V2
        + real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype
        detour closes → F exact-interface amendments → T1/T2/T3/T4.
-       #113 — build the finalized Experience V2 executable against the shared shell and prove
-       World ↔ Experience continuity.
-       Implementation in progress: S0–S7 complete; S8 continuity and S9 acceptance remain → ../roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md.
-       Design → ../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md.
-       Current World entry → ../../prototypes/spatial-authoring/README.md;
-       the read-only bridge is the replacement seam. This work satisfies no F/T1 gate.
+       #113 — S0–S9 implemented and self-reviewed; final repository gates/closeout blocked →
+       ../roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md.
+       Executable/evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md.
+       Required prototype/architecture proof passes. Broader repo checks expose the pre-existing
+       deleted P23B owner fixture; exact restoration is awaiting scope approval.
+       RESUME → ./checkpoints/pr113-experience-v2.md; next: approved fixture restoration,
+       then final gates and slice closeout. Pushes remain unauthorized.
+       This work satisfies no F/T1 gate.
        PAPER — next PR after #113, not started: World Paper adoption, PA0–PA12 →
        ../roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md;
        contract → PLATE §0.8.4 (accepted 2026-10-03).

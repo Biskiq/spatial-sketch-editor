@@ -60,6 +60,7 @@ function slewPaper(target, now) {
 }
 
 function frameState() {
+  stage.authoring=!S.visitor;
   const c = stage.cam;
   const s = S.session;
   const freeFlat = A.smooth(70, 88.5, A.deg(c.el));
@@ -250,6 +251,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  if(S.visitor)return;
   S.pointer = { x: e.clientX - cr().left, y: e.clientY - cr().top };
   if (drag?.kind === 'knife') {
     const g = groundAt(e);
@@ -286,7 +288,7 @@ canvas.addEventListener('pointermove', (e) => {
     hoverQueued = true;
     requestAnimationFrame(() => {
       hoverQueued = false;
-      if (drag || S.knife) return;
+      if (drag || S.knife || S.visitor) return;
       A.setHover(resolveHit(stage.pick(e.clientX, e.clientY)));
       canvas.style.cursor = S.hover ? 'pointer' : '';
     });
@@ -817,13 +819,11 @@ function doAct(a, el) {
     case 'sheet-index': toggleSheet('index'); break;
     case 'sheet-card': toggleSheet('card'); break;
     // ----- the lens, and the parked work the crossing leaves behind -----
-    // The bridge is a read-only fixture: its two explicit selections are the only things it offers, and
-    // it shares this one selection slot with the World. Resume is offered only on the parked identity,
-    // with the World lens in hand, and never automatically.
+    // Crossings park invoked work; returning is ordinary and Resume remains explicit.
     case 'lens': {const browse=!finder.hidden||S.browse.focus; if(S.lens==='world'&&browse)A.rememberBrowse({...S.browse}); A.switchLens(el.dataset.lens);closeFinder();break;}
     case 'resume': A.resumeParked(); break;
     case 'parked-off': A.dismissParked(); break;
-    case 'pres-sel': case 'pres-ref': closeFinder(); A.selectBridge(el.dataset.id); break;
+    case 'pres-ref': closeFinder(); A.select(el.dataset.id); break;
     case 'summary-undo': A.undoSummary(); break;
     case 'summary-keep': S.summary = null; requestUI(); break;
     case 'beacon-off': S.beacon = null; requestUI(); break;
@@ -840,10 +840,10 @@ function doAct(a, el) {
 const finder = $('#finder'), finderInput = $('#finderInput');
 
 // Search is World work — a reading of the museum's subjects and records. It is not available from
-// inside the read-only bridge, and the refusal names the reason instead of opening an empty list.
+// inside Experience, and the refusal names the reason instead of opening an empty list.
 function searchRequest(q = '') {
   if (S.lens !== 'world') {
-    A.setStatus('Search is World work — the Experience lens is a read-only continuity fixture. Switch back to the World lens to search the museum', 'refuse');
+    A.setStatus('Search is World work — switch back to the World lens to search the museum', 'refuse');
     return;
   }
   openFinder(q);
@@ -1339,7 +1339,7 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
 
-const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene);
+const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene || el.dataset.expHold);
 let experienceDraft=null,fieldEpoch=0;
 document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
 onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
@@ -1353,5 +1353,6 @@ document.addEventListener('keydown',event=>{
  if(el.dataset.expField)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
  if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
  if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);
+ if(el.dataset.expHold)E.updateHold(el.dataset.expHold,Number(el.value));
  if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
 },true);

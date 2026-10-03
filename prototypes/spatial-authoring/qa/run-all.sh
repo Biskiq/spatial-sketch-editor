@@ -13,6 +13,8 @@
 #   qa/run-all.sh repair       the unresolved reference and its Repair only
 #   qa/run-all.sh lens         the lens, parked World work and explicit Resume only
 #   qa/run-all.sh experience   Experience wiring and the visitor's isolated preview only
+#   qa/run-all.sh visitor      visitor execution controls and source isolation only
+#   qa/run-all.sh reconciliation shared-shell, saved controls and narrow Experience proof
 #   qa/run-all.sh continuity   both-directions parking, neutral Resume, Preview return, history only
 #   qa/run-all.sh responsive   viewport/DPR, keyboard and motion only
 #   qa/run-all.sh correctness  remaining source and nested-return obligations
@@ -48,6 +50,8 @@ case "$WHICH" in
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
+  visitor) run "Visitor execution" visitor-check ;;
+  reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
   continuity) run "Stage S8 · full continuity between the two lenses" continuity-check ;;
   responsive) run "Stage S7 · responsive and keyboard" responsive-check ;;
   correctness) run "Additional source and nested correctness" correctness-check ;;
@@ -62,12 +66,14 @@ case "$WHICH" in
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check
+    run "Visitor execution" visitor-check
+    run "Shared shell and narrow Experience" reconciliation-check
     run "Stage S8 · full continuity between the two lenses" continuity-check
     run "Stage S7 · responsive and keyboard" responsive-check
     run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|experience|continuity|responsive|correctness|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
     exit 2
     ;;
 esac

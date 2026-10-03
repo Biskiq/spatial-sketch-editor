@@ -1,6 +1,6 @@
-import { originCoverage } from './experience-model.js';
+import { originCoverage, stopEntry, resolveUse } from './experience-model.js';
 import { S, ctx } from './state.js';
-import { eye, connectionPath } from './camera-evaluation.js';
+import { eye, connectionPath, stations, stationProgress, evaluatePath } from './camera-evaluation.js';
 const escape=v=>String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 export function drawExperience() {
  if(S.lens!=='experience'||S.visitor)return;
@@ -10,18 +10,22 @@ export function drawExperience() {
    const route=c.connections[row.connectionId];if(!route)continue;
    const path=connectionPath(route,c.views[route.from].pose,c.views[route.to].pose);
    ctx.ov.path(`route-${route.id}`,path.map(p=>ctx.stage.project(p.target)),'exp-route-path');
-   route.anchors.forEach(a=>{const at=ctx.stage.project(a.position);if(!at.behind)ctx.ov.chip(`anchor-${a.id}`,at.x,at.y,'◆','tape exp-anchor',{'data-exp-anchor':a.id,'data-connection':route.id,tag:'button',pri:99});});
+   if(x.depth==='route')route.anchors.forEach(a=>{const at=ctx.stage.project(a.position);if(!at.behind)ctx.ov.chip(`anchor-${a.id}`,at.x,at.y,'◆','tape exp-anchor',{'data-exp-anchor':a.id,'data-connection':route.id,tag:'button',pri:99});});
+   if(x.depth==='coordination')for(const station of stations(route)) {
+    const progress=stationProgress(route,path,station.id),at=ctx.stage.project(evaluatePath(path,progress).target);
+    if(!at.behind)ctx.ov.chip(`station-${route.id}-${station.id}`,at.x,at.y,escape(station.label),'tape exp-station',{'data-exp-station-label':station.id,tag:'span',pri:92});
+   }
    // Generated endpoints and samples are visual data, never authored grips.
   }
   return;
  }
  if(x.depth==='overview') {
-  e.guide.forEach((id,i)=>{const s=e.stops[id],u=e.presentations[s.presentationId]?.uses.map(uid=>e.uses[uid]).find(u=>u?.role==='entry'),v=c.views[u?.viewId];if(!v)return;const at=ctx.stage.project(v.pose.target);if(!at.behind)ctx.ov.chip(`stop-${id}`,at.x,at.y,String(i+1),'tape exp-stop-pin',{'data-act':'exp-stop','data-id':id,tag:'button',pri:90});});return;
+  e.guide.forEach((id,i)=>{const s=e.stops[id],v=resolveUse(e,c,stopEntry(e,s.id).id)?.view;if(!v)return;const at=ctx.stage.project(v.pose.target);if(!at.behind)ctx.ov.chip(`stop-${id}`,at.x,at.y,String(i+1),'tape exp-stop-pin',{'data-act':'exp-stop','data-id':id,tag:'button',pri:90});});return;
  }
  if(x.depth==='precision') {
   const view=c.views[S.task?.target?.id];if(!view)return;
   const pose=S.cameraDraft?.pose||view.pose;
-  const position=['x','y','z'].includes(S.task.params.grip)?pose.target:eye(pose),at=ctx.stage.project(position);
+  const position=S.task.params.posture==='through'||['x','y','z'].includes(S.task.params.grip)?pose.target:eye(pose),at=ctx.stage.project(position);
   if(!at.behind)ctx.ov.chip('camera-grip',at.x,at.y,`◇ ${S.task.params.grip}`,'tape exp-anchor',{'data-exp-camera':view.id,tag:'button',pri:99});
   return;
  }

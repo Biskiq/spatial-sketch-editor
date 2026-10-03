@@ -29,3 +29,37 @@ test('A20 bounded stepping is deterministic within 1e-8 at supported boundaries'
 test('A21–A22 Presenter/Reset are observational; fixture construction deterministic',()=>{const f=fixture(),r=runtime(f),source=JSON.stringify(f);const plan=R.estimatePresentation(f.e,f.c,f.p,pose);assert.equal(plan,2);assert.equal(JSON.stringify(f),source);assert.equal(r.autoplay,false);assert.deepEqual(createSceneCapabilities(),createSceneCapabilities());});
 test('fixed framing review and relative lowering never mutate authored Camera',()=>{const f=fixture(),id=M.addView(f.e,f.c,f.p,pose,'Camera'),v=f.c.views[f.e.uses[id].viewId];v.focusAt=[-10,1,1];const source=JSON.stringify(f.c);assert.match(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].review,/review fixed/);v.anchor='relative';const current=JSON.stringify(f.c);assert.deepEqual(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].pose.target,[-8,1,1]);assert.equal(JSON.stringify(f.c),current);assert.notEqual(current,source);});
 test('station-bound holds delay arrival; invoked controls run once at Camera station',()=>{const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry'),id=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId);const {a,b}=guide(f),controlId=control(f,'light','intensity',4,null);const seam=M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,'arrival',2);M.addInvocationBeat(f.e,f.c,a,b,id,'departure',controlId);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);const duration=r.movement.duration;r=tick(f,r,.25);const token=r.active[controlId];assert.equal(R.projectedValue(f.scene,r,'light','intensity'),4);r=tick(f,r,duration);assert.equal(r.active[controlId],token);assert.equal(r.movement,null);assert.deepEqual(r.pose.target,[10,1,0]);assert.equal(seam.mode,'travel');});
+
+test('multi-origin coordination executes only the traversed connection, and Cut skips route beats',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'First','entry'),other=M.addView(f.e,f.c,f.p,{...pose,target:[-10,1,0]},'Other'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry');
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),unused=M.addConnection(f.c,f.e.uses[other].viewId,f.e.uses[v].viewId),{a,b}=guide(f);
+ M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,unused,'arrival',30);
+ const invocation=control(f,'light','intensity',4,f.q,'interaction');M.addInvocationBeat(f.e,f.c,a,b,unused,'departure',invocation);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);
+ assert.equal(r.movement.duration,r.movement.travelDuration);r=tick(f,r,4);assert.equal(r.active[invocation],undefined);
+ M.addBeat(f.e,f.c,a,b,route,'arrival',2);M.editSeam(f.e,a,b,{mode:'cut'});
+ r=R.nextRuntime(f.e,f.c,R.startGuide(f.e,f.c,runtime(f),f.scene),f.scene);assert.equal(r.movement,null);assert.deepEqual(r.pose.target,[10,1,0]);
+});
+test('Auto includes queued cues after the actual route and its holds',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[7,1,0]},'To','entry'),cue=M.addView(f.e,f.c,f.q,{...pose,target:[14,1,0]},'Cue');
+ const n=M.addContribution(f.e,f.q,{kind:'narration',name:'Cue',text:'Go here',duration:1,markers:[]},'narration');f.e.uses[cue].cue={useId:n,signal:'complete'};
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),{a,b}=guide(f);M.addStop(f.e,f.p);M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,route,'arrival',5);
+ let r=R.nextRuntime(f.e,f.c,R.startGuide(f.e,f.c,runtime(f),f.scene),f.scene);assert.equal(r.readiness,9);
+ r.autoplay=true;r=tick(f,r,8);assert.equal(r.stopId,b);r=tick(f,r,1);assert.notEqual(r.stopId,b);
+});
+test('missing focus refuses framing, and an explicit missing Stop entry remains repairable',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'Required','entry'),{a}=guide(f);f.c.views[f.e.uses[u].viewId].unresolved=true;
+ const r=runtime(f);assert.match(r.refusal,/Framing removed/);assert.deepEqual(r.pose,pose);
+ f.e.stops[a].entry={kind:'use',useId:'deleted-use'};assert.equal(M.stopEntry(f.e,a).missing,true);
+});
+test('detour to another occurrence of the same Presentation resumes the parent narration run',()=>{
+ const f=fixture(),n=narration(f,10),a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.p);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,2);const token=r.active[n],visit=r.visit;
+ r=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);r=tick(f,r,1);r=R.returnDetour(f.e,f.c,r,f.scene);r=tick(f,r,.25);
+ assert.equal(r.stopId,a);assert.equal(r.visit,visit);assert.equal(r.active[n],token);assert.equal(r.activities[token].status,'running');assert.equal(r.activities[token].elapsed,2.25);
+});
+test('Travel with a deleted coordination station refuses locally instead of dropping its hold',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry'),id=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),{a,b}=guide(f);
+ const anchor=M.addAnchor(f.c,id,[3,1,0]);M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,anchor,2);f.c.connections[id].anchors=[];
+ const r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(R.gateState(f.e,f.c,r).allowed,false);assert.match(R.nextRuntime(f.e,f.c,r,f.scene).refusal,/station.*repair/i);
+});

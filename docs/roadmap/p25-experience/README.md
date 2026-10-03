@@ -70,8 +70,11 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**Plan ready, implementation not started (2026-10-03):** [implementation plan](./design/experience-v2-prototype/implementation-plan.md)
-plans to extend [the shared executable](../../../prototypes/spatial-authoring/README.md) in
-place. The donor stays a runnable regression oracle; the integrated design folder
-retains the finalized synthesis and boards. This work authorizes no T3 production
-implementation. #113 precedes Paper PA0–PA12 and the return to F.
+**Implemented and self-reviewed; final repo gates/closeout blocked by the pre-existing P23B fixture deletion (2026-10-03):**
+[implementation plan](./design/experience-v2-prototype/implementation-plan.md) ·
+[shared executable](../../../prototypes/spatial-authoring/README.md) ·
+[Experience acceptance/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md).
+S0–S9 implement real authoring, isolated visitor execution and both-lens continuity in place.
+The donor stays a runnable regression oracle; the integrated design folder retains the finalized
+synthesis and boards. This work authorizes no T3 production implementation and closes no phase.
+Paper PA0–PA12 follows #113, before returning to F. This is separate from pre-redesign plans above.

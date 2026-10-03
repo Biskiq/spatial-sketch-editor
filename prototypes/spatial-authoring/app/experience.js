@@ -5,7 +5,7 @@ import * as T from './tasks.js';
 import { cancelProposal, onCancel } from './cancel.js';
 import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
-import { S, ctx } from './state.js';
+import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
 import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat } from './experience-model.js';
 export function initExperience() {
@@ -22,8 +22,7 @@ export function command(label, edit) {
 }
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
-  const existing = Object.values(ctx.experience.presentations).find(p => JSON.stringify(p.focus) === JSON.stringify(f));
-  const id = existing?.id || command('Create Presentation', e => addPresentation(e, f));
+  const id = command('Create Presentation', e => addPresentation(e, f));
   openPresentation(id); return id;
 }
 export function openPresentation(id) {
@@ -95,7 +94,8 @@ export function autoView(pid=S.experienceContext.presentation) {
  let target=[-2,1,0];
  if(p.focus.kind==='subjects') { const points=p.focus.ids.map(A.worldOf).filter(Boolean); if(points.length)target=points[0]; }
  if(p.focus.kind==='region')target=p.focus.min.map((n,i)=>(n+p.focus.max[i])/2);
- const pose={target,az:.7,el:.35,frameH:8,flat:0,mirror:false};
+ const fixtureSubject=p.focus.kind==='subjects'&&p.focus.ids.some(id=>ctx.sceneSource.subjects[id]);
+ const pose={target,az:fixtureSubject?1.2:.7,el:.35,frameH:fixtureSubject?3:8,flat:0,mirror:false};
  return command('Add automatic framing',(e,c)=>{const id=addView(e,c,pid,pose,'Auto framing',entryUse(e,pid)?'choice':'entry'); c.views[e.uses[id].viewId].anchor='relative';c.views[e.uses[id].viewId].focusOffset=[0,0,0];return id;});
 }
 export function changeRole(id,role) { return command('Change View role',e=>setRole(e,id,role)); }
@@ -111,7 +111,7 @@ export function preview(pid=S.experienceContext.presentation) {
 }
 export async function exitPreview() {
  const v=S.visitor;if(!v)return false;
- S.visitor=null;const t=v.returnToken;
+ S.visitor=null;S.visitorDrag=null;const t=v.returnToken;
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
  await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);ctx.ui();return true;
 }
@@ -202,6 +202,7 @@ export function proposeFraming(key,value) {
 }
 export function proposePatch(patch) {
  const t=S.task,v=ctx.cameraSource.views[t?.target?.id];if(!v)return false;
+ try{editView({views:{[v.id]:structuredClone(v)}},v.id,patch);}catch(error){S.expAsk=null;A.setStatus(error.message,'refuse');ctx.ui();return false;}
  const reach=viewReach(ctx.experience,v.id);
  S.expAsk={viewId:v.id,useId:t.params.useId,stopId:S.experienceContext.stop,patch,reach};
  if(reach.uses.length<=1&&reach.stops.length<=1)acceptFraming('shared');else ctx.ui();return true;
@@ -272,6 +273,7 @@ export function beginOffer(kind='behavior') {
 export function acceptOffer() {
  const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;
  const value=cap.control==='range'?Number(draft.value):draft.value===true||draft.value==='true';
+ if(cap.control==='range'&&(!Number.isFinite(value)||value<cap.min||value>cap.max)){A.setStatus(`Use a value between ${cap.min} and ${cap.max}`,'refuse');return false;}
  const id=command('Add '+draft.kind,e=>addContribution(e,S.experienceContext.presentation,{kind:'control',name:cap.label,subjectId:draft.subjectId,capabilityId:cap.id,value},draft.kind,draft.trigger));
  S.expOfferDraft=null;ctx.ui();return id;
 }
@@ -298,7 +300,11 @@ export function visitorPointer(event){
  const hit=ctx.stage.pick(event.clientX,event.clientY),id=hit?.object?.userData?.id||hit?.id;
  const e=v.source.experience,u=Object.values(e.uses).find(u=>u.kind==='interaction'&&u.triggerSubjectId===id&&(!u.availability||u.availability===v.runtime.presentationId));if(u)visitorCommand('activate',u.id);
 }
-export function sourceCapability(sid,cid,value){return command('Edit Scene capability',()=>setSceneValue(ctx.sceneSource,sid,cid,value));}
+export function sourceCapability(sid,cid,value){
+ const cap=capability(ctx.sceneSource,sid,cid);
+ if(!cap?.sourceEditable||!Number.isFinite(value)||value<(cap.min??0)||value>(cap.max??1)){A.setStatus('Value outside supported Scene capability range','refuse');ctx.ui();return false;}
+ return command('Edit Scene capability',()=>setSceneValue(ctx.sceneSource,sid,cid,value));
+}
 onCancel(()=>{S.expOfferDraft=null;},12,'Experience offer draft');
 
 export function resetExperience(example=false) {
@@ -308,8 +314,8 @@ export function resetExperience(example=false) {
   const e=ctx.experience,c=ctx.cameraSource;
   const pid=addPresentation(e,{kind:'subjects',ids:['machine']},'Understand the drive');
   e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
-  const base={target:[-10,1.2,1],az:.7,el:.3,frameH:6,flat:0};
-  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:3},'Inside','choice'),output=addView(e,c,pid,{...base,az:1.2},'Output','choice');
+  const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
+  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:1.8},'Inside','choice'),output=addView(e,c,pid,{...base,az:.9},'Output','choice');
   const n=addContribution(e,pid,{kind:'narration',name:'How the drive works',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',fraction:1/3},{id:'output',label:'Follow output',fraction:2/3}]},'narration');
   e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
   const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};
@@ -339,14 +345,14 @@ export function parkExperience() {
 export function experienceParkedContext() {
  const p=S.parkedByLens.experience;if(!p)return null;
  const result={ok:false,reason:'',identity:p.identity,name:p.name,wrongLens:S.lens!=='experience'};
- if(p.identity&&!resolveExperience(p.identity)&&!ctx.sceneSource.subjects[p.identity]){result.reason='Original identity removed';return result;}
+ if(p.identity&&!resolveExperience(p.identity)&&!thing(p.identity)){result.reason='Original identity removed';return result;}
  if(S.sel!==p.identity){result.reason='Select the original identity explicitly';result.fix='select';return result;}
  const x=p.context;
  if(x.presentation&&!ctx.experience.presentations[x.presentation]){result.reason='Presentation removed';return result;}
  if(x.stop&&!ctx.experience.stops[x.stop]){result.reason='Stop removed';return result;}
  if(x.seam&&resolveNext(ctx.experience,x.seam.from).id!==x.seam.to){result.reason='Seam bookends changed';return result;}
  if(p.params.useId){const use=resolveUse(ctx.experience,ctx.cameraSource,p.params.useId);if(!use||use.view.id!==p.target?.id){result.reason='Framing removed or rebound';return result;}}
- if(p.params.connection&&!ctx.cameraSource.connections[p.params.connection]){result.reason='Camera connection removed';return result;}
+ if(p.params.connection&&(!ctx.cameraSource.connections[p.params.connection]||(x.seam&&!originCoverage(ctx.experience,ctx.cameraSource,x.seam.from,x.seam.to).some(row=>row.connectionId===p.params.connection&&!row.missing)))){result.reason='Camera connection removed or rebound';return result;}
  if(p.params.station){const route=ctx.cameraSource.connections[p.params.connection];if(!route||!nav.stations(route).some(s=>s.id===p.params.station)){result.reason='Camera station removed';return result;}}
  result.ok=true;return result;
 }
@@ -359,3 +365,9 @@ export function resumeExperience() {
  S.parkedByLens.experience=null;ctx.ui();return true;
 }
 A.registerLensWork({park:parkExperience,resume:resumeExperience});
+
+export function updateHold(id,seconds) {
+ if(!Number.isFinite(seconds)||seconds<0){A.setStatus('Hold needs a finite nonnegative duration','refuse');return false;}
+ const s=S.experienceContext.seam;if(!s)return false;
+ return command('Edit Experience station hold',e=>{const beat=e.seams[`${s.from}>${s.to}`]?.beats.find(b=>b.id===id&&b.kind==='hold');if(!beat)throw Error('Hold removed');beat.seconds=seconds;});
+}

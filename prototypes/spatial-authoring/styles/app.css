@@ -106,7 +106,7 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .lens .lens-on, .lens button.on { background: var(--instrument); color: var(--ink); }
 .lens button:hover { color: var(--ink); }
 .lens button:focus-visible { outline: 2px solid var(--sel-edge); outline-offset: 1px; }
-/* the bridge's own glyph, and the parked-work block: a relation between two documents, not a warning */
+/* the Presentation glyph, and the parked-work block: a relation between two documents, not a warning */
 .glyph.pres { border-width: 1.5px 1.5px 3px; }
 .relation.parked { background: var(--recess); color: var(--ink-2); box-shadow: inset 3px 0 0 var(--ochre-deep); }
 .relation.parked .lnk { color: var(--ink); }
@@ -756,3 +756,25 @@ body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0
 #visitorSurface .verb { width: auto; display: inline-flex; margin: 4px; padding: 6px 10px; color: #f6f2e5; border-color: #6b6a5e; }
 .visitor-caption { min-height: 24px; color: #f1dbad; }
 #visitorSurface [disabled] { opacity: .45; }
+
+/* Experience uses the existing Head row; no Stage geometry changes with lens context. */
+.doc { min-width: 0; gap: 8px; }
+.active-experience { font-size: var(--txs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 155px; }
+.head-preview { flex-shrink: 0; font: inherit; font-size: var(--tsm); padding: 4px 8px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 3px; }
+.experience-presenter { position: fixed; top: 48px; right: 340px; z-index: 40; width: 265px; padding: 8px; background: var(--chassis); border: 1px dashed var(--ink-3); border-radius: 4px; font-size: var(--txs); }
+.experience-presenter summary { cursor: pointer; }
+body.shot .experience-presenter, .visitor-preview .experience-presenter, .visitor-preview .journeys, .visitor-preview .j-toggle { display: none !important; }
+.exp-deck input, .exp-deck select, .stop-details select { max-width: 100%; min-width: 0; }
+.beat-strip { flex-wrap: wrap; }
+.beat input { width: 60px; }
+@media (max-width: 1280px) { .head { gap: 8px; } .doc-name { font-size: var(--tsm); } .active-experience { max-width: 125px; } }
+@media (max-width: 1060px) {
+  .active-experience { max-width: 100px; }
+  .experience-presenter { right: 12px; }
+  .exp-deck { left: 12px; right: 12px; }
+  .seam-bookends { grid-template-columns: 1fr 1.1fr 1fr; gap: 6px; }
+  .seam-bookends article { min-width: 0; padding: 6px; }
+}
+
+.stop-card.compact { min-width: 95px; max-width: 125px; }
+.stop-summary { max-width: 165px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

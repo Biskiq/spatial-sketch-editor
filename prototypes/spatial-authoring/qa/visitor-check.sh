@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+QA_QUERY="${QA_QUERY:-motion=instant}"
 source "$QA_DIR/lib.sh"
 qa_open
 qa_faults_clear
@@ -11,8 +12,7 @@ agent-browser click '[data-act="exp-example"]' >/dev/null
 qa_frames
 qa_ok 'Load Example is deterministic and never starts playback' "$(qa_js '(!__me.S.visitor && __me.ctx.experience.guide.length===2 && __me.ctx.experience.presentations[__me.S.sel].uses.length===3)')" 'true'
 qa_js '__me.S.presenterSource=JSON.stringify(__me.A.domainSnapshot())' >/dev/null
-# Disclosure is recreated by the source change.
-agent-browser click '.experience-presenter summary' >/dev/null
+# The outside-product disclosure stays open across source changes.
 agent-browser click '[data-act="exp-presenter"][data-delta="1"]' >/dev/null
 qa_frames
 qa_ok 'Presenter Skip observes without source or playback' "$(qa_js '(!__me.S.visitor && __me.S.presenterSource===JSON.stringify(__me.A.domainSnapshot()))')" 'true'
@@ -29,6 +29,7 @@ id="$(qa_jsv 'Object.values(__me.S.visitor.source.experience.uses).find(u=>u.tri
 agent-browser click "[data-command=activate][data-id='$id']" >/dev/null
 qa_frames
 qa_ok 'Switch activation affects Light only in session' "$(qa_js '(__me.S.visitor.runtime.overrides.light.intensity.value===3 && __me.ctx.sceneSource.subjects.light.properties.intensity===2)')" 'true'
+qa_ok 'Light intensity is realized as a visible session effect' "$(qa_js '(()=>{const m=__me.ctx.stage.items.get("light").mesh.material;return m.emissive.getHex()!==0&&m.emissiveIntensity===.75;})()')" 'true'
 id="$(qa_jsv 'Object.values(__me.S.visitor.source.experience.uses).find(u=>u.triggerSubjectId==="piano").id')"
 agent-browser click "[data-command=activate][data-id='$id']" >/dev/null
 qa_frames
