@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Stage S6 axis: the lens, parked World work and explicit Resume.
 #
-# Minimum testing (see .agents/skills/browser-test-hygiene): one browser, one pass, one eval per block —
-# a block performs its command and returns every value its assertions need as a single JSON blob.
+# Minimum testing (see qa/README.md; session lifecycle in .agents/skills/browser-hygiene): one browser,
+# one pass, one eval per block — a block performs its command and returns every value its assertions
+# need as a single JSON blob.
 #
 # What it proves, and only this:
 #   * Crossing lenses parks World work as an *inactive* record, not a hidden session: the reading is

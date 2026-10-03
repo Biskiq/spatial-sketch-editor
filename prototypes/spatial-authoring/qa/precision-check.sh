@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Stage S3 axis: spatial tasks and Precision.
 #
-# Minimum testing (see .agents/skills/browser-test-hygiene): one browser, one pass, and one eval per
-# block — a block performs its command and returns every value its assertions need as a single JSON
-# blob, compared in bash. An assertion therefore costs no browser round trip, and the whole axis stays
-# well under the ~100 evals after which the CLI starts dropping results.
+# Minimum testing (see qa/README.md; session lifecycle in .agents/skills/browser-hygiene): one browser,
+# one pass, and one eval per block — a block performs its command and returns every value its
+# assertions need as a single JSON blob, compared in bash. An assertion therefore costs no browser
+# round trip, and the whole axis stays well under the ~100 evals after which the CLI starts dropping
+# results.
 #
 # What it proves, and only this:
 #   * Look is one work reached three ways (Card verb, keyboard, Index row verb), with the identity that

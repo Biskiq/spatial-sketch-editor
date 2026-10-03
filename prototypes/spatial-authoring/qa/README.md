@@ -27,12 +27,15 @@ an already-running copy instead of starting one; `QA_OUT` moves the captures.
 Each axis is one browser session, torn down however its script ends — pass, failure or interrupt — and
 the next axis never starts until that helper is gone. Never fan an axis into sections that each open
 their own browser and server: every copy pays startup again and leaves the machine slower for the run
-after it. The rules live in `.agents/skills/browser-test-hygiene`.
+after it. Session lifecycle is owned by `.agents/skills/browser-hygiene`; the batching and
+minimum-testing rules below are this harness's own.
 
 Minimum testing: an axis asserts only what its stage can break, aims at seconds rather than tens of
 minutes, and is run on its own while a stage is being built; the full set belongs to a checkpoint.
 Inside an axis, one eval returns a block's whole JSON blob and the assertions compare it in bash, so an
-assertion costs no browser round trip.
+assertion costs no browser round trip. If a run is dragging, cut checks — never let a suite run for
+tens of minutes. The agent runs the axes: handing the command to the owner is not a substitute for a
+run, and a slow suite is fixed by making it smaller and self-closing rather than by passing it on.
 
 What the harness knows about keys, measured rather than assumed:
 

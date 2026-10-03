@@ -767,8 +767,8 @@ production acceptance. They are stated as behaviour, never as DOM.
 ## 8. QA plan
 
 - **New axes.** `paper` (shell, reading, discovery, Card, keys, narrow) and `authoring` (topology,
-  tools, Opening, Draw, Divide, Place). Each is one browser session per the browser-test-hygiene
-  skill, uses one eval per block, and asserts behaviour through `window.__me` plus DOM inventory.
+  tools, Opening, Draw, Divide, Place). Each is one browser session per the browser-hygiene skill,
+  uses one eval per block, and asserts behaviour through `window.__me` plus DOM inventory.
 - **Updated axes.** shell, browse, precision, repair, lens, responsive and flows, as each slice
   states. The meaning of every existing observation is preserved; only selectors and keys move.
   The full set runs at PA12.

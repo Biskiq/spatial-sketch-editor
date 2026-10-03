@@ -84,4 +84,7 @@ major-phase closure is owner-invoked only
 
 ON substantial unfinished work needing same- or cross-agent resume:
 use work-checkpoint skill
+
+ON launching or attaching to a browser (any task — QA, verification, debugging, scraping):
+use browser-hygiene skill
 ```

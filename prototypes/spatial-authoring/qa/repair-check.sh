@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Stage S5 axis: a decision-point reference and its repair.
 #
-# Minimum testing (see .agents/skills/browser-test-hygiene): one browser, one pass, and one eval per
-# block — a block performs its command and returns every value its assertions need as a single JSON
-# blob, compared in bash. The whole axis costs about twenty browser round trips.
+# Minimum testing (see qa/README.md; session lifecycle in .agents/skills/browser-hygiene): one browser,
+# one pass, and one eval per block — a block performs its command and returns every value its
+# assertions need as a single JSON blob, compared in bash. The whole axis costs about twenty browser
+# round trips.
 #
 # What it proves, and only this:
 #   * The fixture leaves one artwork's wall reference explicitly unresolved and the shell says so at
