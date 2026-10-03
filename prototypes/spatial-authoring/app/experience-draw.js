@@ -18,6 +18,13 @@ export function drawExperience() {
  if(x.depth==='overview') {
   e.guide.forEach((id,i)=>{const s=e.stops[id],u=e.presentations[s.presentationId]?.uses.map(uid=>e.uses[uid]).find(u=>u?.role==='entry'),v=c.views[u?.viewId];if(!v)return;const at=ctx.stage.project(v.pose.target);if(!at.behind)ctx.ov.chip(`stop-${id}`,at.x,at.y,String(i+1),'tape exp-stop-pin',{'data-act':'exp-stop','data-id':id,tag:'button',pri:90});});return;
  }
+ if(x.depth==='precision') {
+  const view=c.views[S.task?.target?.id];if(!view)return;
+  const pose=S.cameraDraft?.pose||view.pose;
+  const position=['x','y','z'].includes(S.task.params.grip)?pose.target:eye(pose),at=ctx.stage.project(position);
+  if(!at.behind)ctx.ov.chip('camera-grip',at.x,at.y,`◇ ${S.task.params.grip}`,'tape exp-anchor',{'data-exp-camera':view.id,tag:'button',pri:99});
+  return;
+ }
  const p=e.presentations[x.presentation];if(!p)return;
  for(const id of p.uses) {
   const u=e.uses[id],v=c.views[u?.viewId];if(!v)continue;

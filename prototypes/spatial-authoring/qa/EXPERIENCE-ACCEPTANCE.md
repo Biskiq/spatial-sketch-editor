@@ -42,3 +42,10 @@ S4: focused 5/5; browser 22/22. Seam opening preserves pose/projection, per-orig
 coverage proves 2/3 then explicit 3/3 repair, Cut adds no edge and Travel exposes gaps.
 Explicit route work enters Plan with a canonical return crumb. Connections store only
 interior anchors; generated endpoints and the common evaluator own estimate/execution.
+
+S5: focused 6/6; exact slice snapshot browser 27/27. Outside starts without movement;
+Through remains authoring; one grip owns one numeric tape. Ask Rule in the Card names
+uses/Stops before acceptance. Explicit Stop-entry detach/retarget is one source step;
+Undo reunites the entry. Shared Set choices remain shared, as the reach report states.
+Browser proof uses strict command failures. Bounded cards and compact controls repair
+clipped/covered controls found by actual clicks. Outside default remains an experiment.

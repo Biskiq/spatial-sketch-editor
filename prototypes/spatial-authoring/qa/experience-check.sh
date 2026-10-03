@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Unified Experience wiring; owns one browser/server through lib.sh.
-set -u
+set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$QA_DIR/lib.sh"
 qa_open
@@ -82,6 +82,29 @@ qa_ok 'explicit route work requests Plan and return crumb' "$(qa_js '(__me.S.exp
 agent-browser click '[data-act="exp-route-return"]' >/dev/null
 qa_frames
 qa_ok 'route crumb restores previous standpoint' "$(qa_js '(__me.S.seamPose === JSON.stringify(__me.nav.plainPose()))')" 'true'
+agent-browser click '[data-act="exp-close"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-guide"]' >/dev/null
+qa_frames
+agent-browser click '.stop-card [data-act="exp-stop"]' >/dev/null
+qa_frames
+qa_js '__me.S.preciseBefore={pose:JSON.stringify(__me.nav.plainPose()),undo:__me.S.undo.length}' >/dev/null
+agent-browser click '.stop-card.expanded [data-act="exp-precise"]' >/dev/null
+qa_frames
+qa_ok 'Outside precision keeps standpoint and shows one numeric tape' "$(qa_js '(__me.S.preciseBefore.pose === JSON.stringify(__me.nav.plainPose()) && document.querySelectorAll("[data-exp-precision]").length === 1 && __me.S.task.params.posture === "outside")')" 'true'
+agent-browser fill '[data-exp-precision="frameH"]' '6' >/dev/null
+agent-browser press Tab >/dev/null
+qa_frames
+qa_ok 'Ask Rule names affected Stops before source edit' "$(qa_js '(!!__me.S.expAsk && __me.S.expAsk.reach.stops.length === 2 && __me.S.preciseBefore.undo === __me.S.undo.length)')" 'true'
+agent-browser click '[data-act="exp-scope-local"]' >/dev/null
+qa_frames
+qa_ok 'explicit Stop-entry detachment is one Undo step' "$(qa_js '(__me.S.undo.length === __me.S.preciseBefore.undo + 1 && __me.ctx.experience.stops[__me.S.experienceContext.stop].entry.kind === "use")')" 'true'
+agent-browser click '[data-act="exp-posture"][data-posture="through"]' >/dev/null
+qa_frames
+qa_ok 'Through visibly remains authoring' "$(qa_js '(__me.S.task.params.posture === "through" && !__me.S.visitor && !document.body.classList.contains("visitor-preview") && document.querySelector("#experienceDeck").textContent.includes("Authoring"))')" 'true'
+agent-browser click '#undoBtn' >/dev/null
+qa_frames
+qa_ok 'Undo reunites original Stop entry without restoring Camera' "$(qa_js '(__me.ctx.experience.stops[__me.S.experienceContext.stop].entry.kind === "presentation")')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'

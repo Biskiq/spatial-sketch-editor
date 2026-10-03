@@ -74,3 +74,23 @@ export function addAnchor(c,id,position) {
  const route=c.connections[id];if(!route)throw Error('Connection removed');
  const aid=fresh(c,'anchor');route.anchors.push({id:aid,name:`Anchor ${route.anchors.length+1}`,position:[...position]});return aid;
 }
+export function viewReach(e,viewId) {
+ const uses=Object.values(e.uses).filter(u=>u.viewId===viewId);
+ const stops=Object.values(e.stops).filter(s=>uses.some(u=>stopEntry(e,s.id).id===u.id || (e.presentations[s.presentationId]?.uses.includes(u.id))));
+ return {uses:uses.map(u=>({id:u.id,name:e.presentations[u.presentationId]?.name||u.name})),stops:stops.map(s=>({id:s.id,name:s.name}))};
+}
+export function detachUse(e,c,uid,stopId=null) {
+ const src=resolveUse(e,c,uid);if(!src)throw Error('Framing removed');
+ const vid=fresh(c,'view');c.views[vid]={...copy(src.view),id:vid,name:`${src.view.name} · local`};
+ if(stopId) {
+  if(!e.stops[stopId] || e.stops[stopId].presentationId!==src.use.presentationId)throw Error('Stop and View use no longer match');
+  const id=fresh(e,'use');e.uses[id]={...copy(src.use),id,viewId:vid,role:'stop-entry',stopId};e.stops[stopId].entry={kind:'use',useId:id};return id;
+ }
+ e.uses[uid].viewId=vid;return uid;
+}
+export function editView(c,id,patch) {
+ const v=c.views[id];if(!v)throw Error('View removed');
+ const pose={...v.pose,...copy(patch)};
+ if(!pose.target?.every(Number.isFinite)||![pose.az,pose.el,pose.frameH].every(Number.isFinite)||pose.frameH<=.1)throw Error('Invalid Camera framing');
+ v.pose=pose;v.anchor='fixed';v.revision++;
+}
