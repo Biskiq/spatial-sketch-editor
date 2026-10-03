@@ -20,3 +20,10 @@ test('Set is unordered, with explicit entry and no Guide or Camera connections',
  removeView(e,c,e.uses[ids[1]].viewId);assert.equal(requestView(r,e,c,ids[1]),false);assert.equal(e.uses[ids[1]].role,'entry');
 });
 test('no-View standalone Preview requires no Guide',()=>{const e=createExperience(),c=createCamera(),p=addPresentation(e);const r=createRuntime(e,c,p,pose);assert.deepEqual(r.pose,pose);assert.equal(r.stopId,null);});
+import { addStop, moveStop, resolveNext, stopEntry } from '../app/experience-model.js';
+test('repeated occurrences share framing, reorder only editorial order and resolve one Next',()=>{
+ const e=createExperience(),c=createCamera(),p=addPresentation(e),u=addView(e,c,p,pose,'Entry','entry');
+ const a=addStop(e,p),b=addStop(e,p);assert.notEqual(a,b);assert.equal(stopEntry(e,a).id,u);assert.equal(stopEntry(e,b).id,u);
+ const camera=JSON.stringify(c);assert.equal(resolveNext(e,a).id,b);moveStop(e,b,-1);assert.equal(resolveNext(e,b).id,a);assert.equal(JSON.stringify(c),camera);
+ delete e.uses[u];e.stops[a].entry={kind:'use',useId:u};assert.equal(stopEntry(e,a).missing,true);assert.notEqual(e.stops[a].entry.kind,'hold');
+});

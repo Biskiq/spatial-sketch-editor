@@ -4,7 +4,7 @@ import { cancelProposal, onCancel } from './cancel.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam } from './experience-model.js';
 export function initExperience() {
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
   S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null };
@@ -35,6 +35,11 @@ export function handleExperienceAction(el) {
   if (!action?.startsWith('exp-')) return false;
   if (action === 'exp-create') present();
   if (action === 'exp-open') openPresentation(el.dataset.id);
+  if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
+  if (action === 'exp-guide') guideOverview();
+  if (action === 'exp-stop') expandStop(el.dataset.id);
+  if (action === 'exp-close') closeExperienceWork();
+  if (action === 'exp-move-stop') moveOccurrence(el.dataset.id,Number(el.dataset.delta));
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
@@ -87,4 +92,14 @@ export function regionPoint(p) {
  else { const first=S.task.params.first,second=[p.x,3,p.z];T.end();present({kind:'region',min:first.map((n,i)=>Math.min(n,second[i])),max:first.map((n,i)=>Math.max(n,second[i]))}); }
  ctx.ui();return true;
 }
+
+export function addToGuide(pid=S.experienceContext.presentation) {return command('Add Presentation to Guide',e=>addStop(e,pid));}
+export function guideOverview() {cancelProposal('invoke');S.experienceContext.depth='overview';S.experienceContext.stop=null;T.begin({kind:'experience-overview',subject:S.sel,params:{}});ctx.ui();}
+export function expandStop(id) {
+ const stop=ctx.experience.stops[id];if(!stop)return false;
+ cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null};
+ T.begin({kind:'experience-occurrence',subject:id,target:{id},params:{stop:id}});ctx.ui();return true;
+}
+export function closeExperienceWork() {cancelProposal('task-end');T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
+export function moveOccurrence(id,delta) {return command('Reorder Guide Stop',e=>moveStop(e,id,delta));}
 

@@ -37,3 +37,26 @@ export function removeView(e,c,id) {
  delete c.views[id];
 }
 export function resolveUse(e,c,id) { const u=e.uses[id]; return u&&c.views[u.viewId] ? {use:u,view:c.views[u.viewId]}:null; }
+export function addStop(e,pid) {
+ if(!e.presentations[pid])throw Error('Presentation removed');
+ const id=fresh(e,'stop');e.stops[id]={id,presentationId:pid,name:e.presentations[pid].name,entry:{kind:'presentation'},next:{kind:'order'},pacing:{kind:'auto'},gate:null,choices:[]};e.guide.push(id);return id;
+}
+export function resolveNext(e,id) {
+ const s=e.stops[id];if(!s)return {id:null,missing:true};
+ const next=s.next.kind==='end'?null:s.next.kind==='target'?s.next.id:e.guide[e.guide.indexOf(id)+1]||null;
+ return {id:next,missing:!!next&&!e.stops[next]};
+}
+export function stopEntry(e,id) {
+ const s=e.stops[id];if(!s)return {id:null,missing:true};
+ if(s.entry.kind==='hold')return {id:null,hold:true,missing:false};
+ const uid=s.entry.kind==='use'?s.entry.useId:entryUse(e,s.presentationId)?.id;
+ return {id:uid||null,hold:!uid&&s.entry.kind==='presentation',missing:!!uid&&!e.uses[uid]};
+}
+export function moveStop(e,id,delta) { const i=e.guide.indexOf(id),j=i+delta;if(i<0||j<0||j>=e.guide.length)return false;[e.guide[i],e.guide[j]]=[e.guide[j],e.guide[i]];return true; }
+export function removeStop(e,id) { e.guide=e.guide.filter(x=>x!==id);delete e.stops[id]; }
+export const seamKey = (a,b)=>`${a}>${b}`;
+export function getSeam(e,a,b) { return e.seams[seamKey(a,b)] || {from:a,to:b,mode:'cut',speed:'auto',beats:[]}; }
+export function editSeam(e,a,b,patch) {
+ if(!e.stops[a]||!e.stops[b]||resolveNext(e,a).id!==b)throw Error('Seam bookends no longer adjacent');
+ const key=seamKey(a,b); e.seams[key]={...getSeam(e,a,b),...copy(patch)};return e.seams[key];
+}
