@@ -43,6 +43,21 @@ qa_ok 'Preview without Guide takes over authoring' "$(qa_js '(!!__me.S.visitor &
 agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
 qa_frames
 qa_ok 'Preview restores lens selection pose and frozen source' "$(qa_js '(__me.S.previewBefore.source === JSON.stringify(__me.A.domainSnapshot()) && __me.S.previewBefore.pose === JSON.stringify(__me.nav.plainPose()) && __me.S.previewBefore.sel === __me.S.sel && __me.S.previewBefore.lens === __me.S.lens)')" 'true'
+agent-browser click '[data-act="exp-add-guide"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-add-guide"]' >/dev/null
+qa_frames
+qa_ok 'Guide begins at Peek with distinct repeated Stops' "$(qa_js '(__me.ctx.experience.guide.length === 2 && __me.ctx.experience.guide[0] !== __me.ctx.experience.guide[1] && document.querySelector("#experienceDeck").classList.contains("ordinary"))')" 'true'
+qa_js '__me.S.guidePose=JSON.stringify(__me.nav.plainPose())' >/dev/null
+agent-browser click '[data-act="exp-guide"]' >/dev/null
+qa_frames
+qa_ok 'Overview has occurrence cards and keeps Camera' "$(qa_js '(document.querySelectorAll(".stop-card").length === 2 && __me.S.guidePose === JSON.stringify(__me.nav.plainPose()))')" 'true'
+agent-browser click '.stop-card [data-act="exp-stop"]' >/dev/null
+qa_frames
+qa_ok 'expanded occurrence exposes same unordered Set' "$(qa_js '(document.querySelectorAll(".stop-card.expanded .exp-view").length === 3 && __me.ctx.experience.presentations["pres-highlights"].uses.length === 3)')" 'true'
+agent-browser click '.stop-card.expanded [data-act="exp-move-stop"][data-delta="1"]' >/dev/null
+qa_frames
+qa_ok 'reorder changes order only' "$(qa_js '(__me.ctx.experience.guide[1] === __me.S.sel && Object.keys(__me.ctx.cameraSource.connections).length === 0)')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'

@@ -33,3 +33,7 @@ snapshot was exported and rerun before its commit, preserving later working chan
 S2: focused 3/3; exact slice snapshot browser 11/11. Unordered three-View Set,
 explicit roles, no implicit Guide/edge, standalone visitor takeover and frozen-source
 return. Camera kernel is beneath navigation; region creation is an explicit Stage task.
+
+S3: focused 4/4; exact slice snapshot browser 15/15. Guide starts at Peek, Overview
+and expanded occurrence keep Camera, repeated Stops share their Presentation's Set,
+and reorder only changes editorial order. Stage Overview pins contain occurrence numbers.
