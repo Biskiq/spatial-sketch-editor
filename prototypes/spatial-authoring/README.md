@@ -35,7 +35,7 @@ back. View navigation stays separate from source Undo.
 Lens crossing cancels proposals and parks inactive World work. Returning is ordinary. Explicit
 Resume validates current identity/targets and invokes from the current standpoint. The Experience
 lens is visibly a **read-only continuity fixture**, containing one Presentation referring to the
-window: no authoring, Guide/Stop/Deck, Camera capture or visitor Preview. **#113** owns the real V2
+window: no authoring, Guide/Stop/Deck, Camera capture or visitor Preview. The [#113 implementation plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md) owns the real V2
 Experience executable and both directions of continuity. F and production T1 remain gated.
 
 The predecessor shell, reconciliation and comparisons are preserved in Git; their interaction

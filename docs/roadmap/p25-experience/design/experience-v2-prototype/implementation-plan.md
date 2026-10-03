@@ -1,7 +1,6 @@
 # Experience V2 unified prototype — implementation plan (#113)
 
-**Status:** plan ready; implementation not started. The owner requested plan-only
-completion on 2026-10-03. This is prototype work only. It satisfies no production
+**Status:** implementation authorized on 2026-10-03; S0 complete. This is prototype work only. It satisfies no production
 F/T gate and closes no major phase.
 
 **Goal:** replace the read-only Experience bridge in the accepted World executable
@@ -179,7 +178,7 @@ Paper receives the unified executable, stable selection/navigation/history/cance
   root `npm run test:arch` (includes documentation references).
 - Donor browser startup uses an explicit strict 5173 port when invoking its
   retained Playwright suite; dev's ordinary 3000 port is not its harness contract.
-- No commits or pushes are authorized. Keep the tree reviewable and use
+- Owner authorized one commit per slice on 2026-10-03; pushes remain unauthorized. Use
   slice-closeout only after every required acceptance row passes.
 
 | Slice | Status | Evidence |
