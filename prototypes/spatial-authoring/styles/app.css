@@ -713,7 +713,7 @@ body.reduce-motion * { transition: none !important; }
 .visitor-preview > .head, .visitor-preview > .index, .visitor-preview > .card, .visitor-preview > footer, .visitor-preview .stage-tools, .visitor-preview #instrument, .visitor-preview #truth, .visitor-preview #ovHtml, .visitor-preview #ovSvg, .visitor-preview #where { display: none !important; }
 #visitorSurface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(600px, 90%); padding: 18px; color: #f8f5ea; background: #242623ed; border-radius: 8px; }
 .visitor-title { font-size: 22px; }
-.exp-deck { position: absolute; bottom: 18px; left: 18px; right: 18px; z-index: 8; background: #f4f0e5f5; border: 1px solid #c3baa8; border-radius: 8px; box-shadow: 0 6px 24px #0002; padding: 12px; max-height: 35%; overflow: auto; color: #36382e; }
+.exp-deck { position: absolute; bottom: 18px; left: 18px; right: 18px; z-index: 35; background: #f4f0e5f5; border: 1px solid #c3baa8; border-radius: 8px; box-shadow: 0 6px 24px #0002; padding: 12px; max-height: 35%; overflow: auto; color: #36382e; }
 .exp-deck.ordinary { left: 50%; right: auto; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; padding: 6px 14px; font-size: 12px; white-space: nowrap; }
 .deck-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
 .stop-strip { display:flex; gap: 8px; margin-top: 8px; align-items: stretch; overflow-x: auto; }
@@ -728,3 +728,12 @@ body.reduce-motion * { transition: none !important; }
 .origin-row .verb { font-size: 10px; padding: 4px; }
 .exp-route-path { fill: none; stroke: #986d32; stroke-width: 2; stroke-dasharray: 5 3; }
 .exp-anchor { background: #fcf4dc; color: #8a601d; cursor: grab; }
+.precision-camera { font-size: 12px; }
+.precision-camera .verb { margin: 4px; }
+.numeric-tape { display: inline-flex; gap: 12px; align-items: center; padding: 8px 14px; margin: 8px; border: 1px solid #b28c48; background: #fffcf1; font-family: 'Martian Mono', monospace; }
+.numeric-tape input { width: 85px; font: inherit; }
+.ask-rule { padding: 12px; background: #eee4cc; border-radius: 5px; }
+.stop-strip { max-height: 220px; align-items: flex-start; }
+.stop-card { flex-shrink: 0; max-height: 210px; overflow: auto; }
+.seam-link { align-self: center; min-height: 36px; flex-shrink: 0; }
+.exp-deck .verb { width: auto; display: inline-flex; min-height: 28px; align-items: center; font-size: 11px; padding: 6px 9px; }

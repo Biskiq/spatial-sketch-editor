@@ -42,3 +42,13 @@ test('directed Camera reach is per origin; Cut authors no edge; path estimates m
  assert.equal(c.connections[id].anchors.length,1);assert.equal(path.length,3);
  let r=createRuntime(e,c,p,pose);requestView(r,e,c,destination,'slow',path);const seconds=pathSeconds(path,'slow');r=tickRuntime(e,c,r,seconds);assert.deepEqual(r.pose,evaluatePath(path,1));assert.equal(r.movement,null);
 });
+import { viewReach, detachUse, editView } from '../app/experience-model.js';
+test('Stop-only detachment retargets one occurrence atomically and shared reach names all affected uses',()=>{
+ const e=createExperience(),c=createCamera(),p=addPresentation(e),uid=addView(e,c,p,pose,'Entry','entry'),a=addStop(e,p),b=addStop(e,p);
+ const vid=e.uses[uid].viewId;assert.equal(viewReach(e,vid).stops.length,2);
+ const before=structuredClone({e,c});const local=detachUse(e,c,uid,a);editView(c,e.uses[local].viewId,{frameH:4});
+ assert.equal(stopEntry(e,a).id,local);assert.equal(stopEntry(e,b).id,uid);assert.equal(c.views[vid].pose.frameH,8);
+ assert.equal(e.presentations[p].uses.length,1);// The shared View remains a choice in the unchanged Set of both Stops.
+ assert.equal(viewReach(e,vid).stops.length,2);
+ Object.assign(e,before.e);Object.assign(c,before.c);assert.equal(stopEntry(e,a).id,uid);
+});

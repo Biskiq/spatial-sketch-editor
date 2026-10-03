@@ -355,7 +355,7 @@ function settleAfterOrbit() {
 let hdrag = null;
 let direct = null;
 ctx.ov.html.addEventListener('pointerdown', (e) => {
-  if(E.beginAnchorDrag(e))return;
+  if(E.beginCameraDrag(e)||E.beginAnchorDrag(e))return;
   // D's direct openings: pull the dog-ear to unroll, lift the tab to raise the lid — from where you stand
   const peel = e.target.closest('[data-peel]');
   const lid = e.target.closest('[data-lid]');
@@ -1291,5 +1291,8 @@ boot();
 
 document.addEventListener('change', event => { const el = event.target; if (el.dataset.expField) E.updatePresentation(el.dataset.id, el.dataset.expField, el.value); });
 
-window.addEventListener('pointermove',e=>{if(S.expDrag){const p=groundAt(e);if(p)E.moveAnchorDrag(p);}});
-window.addEventListener('pointerup',()=>E.endAnchorDrag());
+window.addEventListener('pointermove',e=>{if(S.cameraDraft)E.moveCameraDrag(e,groundAt(e));if(S.expDrag){const p=groundAt(e);if(p)E.moveAnchorDrag(p);}});
+window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
+
+document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);});
+
