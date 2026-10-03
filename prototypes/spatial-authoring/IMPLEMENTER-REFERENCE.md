@@ -315,8 +315,8 @@ Nested Back restores parent depth/Reveal/curvature/mirror and its visible Instru
 Measure/Repair resumes freshly; unaccepted candidates are never remembered.
 
 This session-only mechanism is prototype evidence, not F storage, production Camera history or a
-persisted format. The read-only Experience bridge proves World-side crossing; #113 owns real
-Experience procedures and two-way continuity.
+persisted format. Both-lens continuity is exercised by `qa/continuity-check.sh`; Experience procedures register
+through `registerLensWork`, use the same task/navigation/cancellation seams and keep no parked Camera.
 
 ## Prototype-only shortcuts (do not copy)
 
@@ -330,3 +330,34 @@ Experience procedures and two-way continuity.
 - Plan authoring edits existing openings only; drawing new walls or openings in the one renderer is not prototyped.
 
 Unperformed product studies include dog-ear discovery, per-axis scale comprehension and long-chain Esc usability. Keyboard line/typed controls, refusal announcements and live reduced motion are now checked; screen-reader listening, touch/pen, dense-museum/cubic performance, vertical crop/cut-only and new architecture drawing remain outside this bounded prototype. See [acceptance limits](./qa/ACCEPTANCE.md#limits-and-handoff).
+
+## Unified Experience prototype mechanics (#113)
+
+`experience-model.js` keeps Experience references/occurrences separate from `cameraSource` Views,
+connections, interior anchors and stable stations, and from Scene capability fixture properties.
+The aggregate `domainSnapshot` is prototype transaction coordination only. One accepted command
+writes one shared history step; Undo restores source domains and recorded selection, never Camera.
+
+`navigation.js` owns movement and return. The pure `camera-evaluation.js` kernel supplies framing,
+path interpolation, stations and duration to both estimates and visitor execution. `movementTiming`
+in `experience-coordination.js` maps Experience holds/invocations onto the traversed Camera connection;
+beats on alternate origins do not execute, and Cut ignores route coordination. Auto includes queued
+Camera cues after the actual entry route and its holds. Missing framing/stations stay repairable.
+No route search, collision planner or general scheduler is demonstrated.
+
+`experience-runtime.js` adapts donor transitions using visit/run tokens, declared fixture channel
+replacement and bounded 0.25s steps. Media/captions are deterministic fixture simulations. Preview
+clones authored domains, deactivates authoring through the shared task seam, suppresses selection
+rendering and uses a return token distinct from lens parking. Exit restores lens, canonical identity,
+Card context, accepted inspection and standpoint. Runtime effects never write Scene properties.
+
+Experience parked records carry original identity, resolving targets and accepted procedure params.
+Resume refuses removed/rebound Views, routes or stations and never reapplies the parked posture's
+Camera. `parkedByLens` is one map; the `parked` World accessor exists for retained QA compatibility.
+The ordinary return may show Guide Peek but keeps parked work inactive.
+
+Outside is the initial precision posture experiment. Through retains authoring chrome and projects
+its active grip at the framed target. Only route-edit depth exposes geometry grips; coordination
+shows the same named stations on Stage and in the temporal strip. Deck crop/scroll, station
+comprehension and legacy detour pause remain experiments. See
+[Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) for specimen and preservation roles.

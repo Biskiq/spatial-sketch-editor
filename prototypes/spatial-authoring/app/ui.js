@@ -46,7 +46,7 @@ function renderHead() {
   const ub = $('#undoBtn'), rb = $('#redoBtn');
   if (!ub || !rb) return;
   // The lens is a document state, shown where the document's identity is: which kind of document is in
-  // hand, with both lenses real — the bridge is a fixture, not a disabled placeholder.
+  // hand; both lenses share canonical identity and source history.
   for (const b of document.querySelectorAll('#lens [data-act="lens"]')) {
     const on = b.dataset.lens === S.lens;
     if (b.classList.contains('on') !== on) b.classList.toggle('on', on);
@@ -61,10 +61,15 @@ function renderHead() {
     b.classList.toggle('on', on);
     b.setAttribute('aria-expanded', String(on));
   }
+  const active=$('#activeExperience'), preview=$('#headPreview');
+  active.hidden=S.lens!=='experience';active.textContent=ctx.experience.name;
+  preview.dataset.id=S.experienceContext.presentation||'pres-highlights';
+  preview.disabled=!ctx.experience.presentations[preview.dataset.id];
+  preview.title=preview.disabled?'Open a Presentation to Preview':'Preview '+ctx.experience.presentations[preview.dataset.id].name;
   ub.disabled = !u; rb.disabled = !r;
   ub.title = u ? `Undo “${u.label}” (⌘Z)` : 'Nothing to undo';
   rb.title = r ? `Redo “${r.label}” (⇧⌘Z)` : 'Nothing to redo';
-  $('#undoLabel').textContent = u ? u.label : 'No building changes yet';
+  $('#undoLabel').textContent = u ? u.label : 'No source changes yet';
   $('#undoCount').textContent = S.undo.length ? String(S.undo.length) : '';
   $('#docState').textContent = S.undo.length ? `${S.undo.length} change${S.undo.length > 1 ? 's' : ''} · saved` : 'All changes saved';
 }
@@ -609,7 +614,7 @@ function renderCard() {
   else {
     if (rec) html = cardRecord(rec);
     // An identity from another lens is not a World subject, and the World says so instead of showing the
-    // empty state: the selection is real, and what can be done with it is the bridge's own act.
+    // empty state: the selection is real, and what can be done with it is the Experience lens's explicit action.
     else if (!t && id) html = foreignExperienceCard();
     else if (!t) html = emptyCard();
     else if (t.kind === 'walls') html = cardWall(t.item);
@@ -777,7 +782,7 @@ function renderInstrument() {
         : null;
     if (next) next.focus(); else document.querySelector('#gl')?.focus?.();
   };
-  // No World work stands in the bridge: the work in hand is parked and inactive, so the Instrument is
+  // No World work stands in the Experience lens: the work in hand is parked and inactive, so the Instrument is
   // absent from the DOM, not a hidden remnant of another lens' presentation.
   if (S.lens !== 'world') { handoff(); el.hidden = true; el._html = ''; el.innerHTML = ''; el.classList.remove('prec'); return; }
   const d = T.describe();
@@ -997,7 +1002,7 @@ export function updateWhere() {
   const box = $('#where');
   if (!box) return;
   // The plan locator is World furniture: it belongs to reading the museum, so it does not stand in the
-  // bridge, where no World reading is open.
+  // Experience lens, where no World reading is open.
   if (S.lens !== 'world') { box.hidden = true; return; }
   const s = S.session;
   // the locator earns its corner of the paper only while something is open or being drawn
@@ -1083,7 +1088,7 @@ function parkedBlock() {
   const v = parkedContext();
   const kinds = { face: 'a reading', section: 'a section', lift: 'a lift', lookup: 'a look-up', dims: 'measurements', repair: 'a repair' };
   const what = `${p.name ? `the ${p.name}` : 'a location'} · ${p.chain.map((c) => kinds[c.kind] || c.kind).join(' + ')}`;
-  // In the bridge the record is still valid, but Resume is World work: it is named where it will be
+  // In the Experience lens the record is still valid, but Resume is World work: it is named where it will be
   // offered rather than as a button that could not act here.
   if (v.wrongLens) return `<div class="relation parked quiet"><span class="dot"></span><span><b>Parked</b> — ${esc(what)}. Inactive, and waiting in the World lens, where Resume is offered on its own identity.</span></div>`;
   if (v.ok) {

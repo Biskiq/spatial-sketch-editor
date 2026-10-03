@@ -3,9 +3,7 @@ import { byId, findThing } from './model.js';
 // Editor session state. Nothing here is architecture: the museum lives in ctx.museum,
 // and view state (standpoint, what is open, the trail) never enters Undo.
 export const S = {
-  /* which kind of document is in hand. World is where a building is authored; the Experience lens is,
-     in this prototype, one read-only continuity fixture that proves parking, a foreign identity and
-     explicit Resume. The lens is a document state, not a mode of the tools. */
+  /* Two authoring lenses over the same project, with one canonical selection and Camera. */
   lens: 'world',
   sel: null,
   hover: null,

@@ -23,7 +23,7 @@ export function realizeCapabilities() {
   // The authored material, never the one a reading swapped in: a ghost or a selection highlight is a
   // render state with no emissive of its own, and the capability value must survive both.
   const mat=item.mesh.userData.baseMat||item.mesh.material;
-  if(mat?.emissive){const highlight=value('highlight')||value('playing');mat.emissive.setHex(highlight?0x856023:0);
+  if(mat?.emissive){const highlight=value('highlight')||value('playing');mat.emissive.setHex(s.profile==='light'?0xffd273:highlight?0x856023:0);
    if(s.profile==='light')mat.emissiveIntensity=Number(value('intensity')||0)/4;}
  }
  const atmosphere=scene.subjects.atmosphere;if(atmosphere&&ctx.stage.ambient)ctx.stage.ambient.intensity=runtime?.overrides.atmosphere?.ambient?.value??atmosphere.properties.ambient;

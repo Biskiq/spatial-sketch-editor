@@ -1,6 +1,6 @@
 # Experience V2 unified prototype — implementation plan (#113)
 
-**Status:** implementation authorized on 2026-10-03; S0–S8 complete, S9 not started. Reconciliation amendment folded 2026-10-03 (report findings F1–F9 as S8/S9 scope plus shared-shell acceptance; Paper deferrals and intentional/non-normative differences preserved; no runtime change by this amendment). This is prototype work only. It satisfies no production
+**Status:** implementation authorized on 2026-10-03; S0–S9 implemented and self-reviewed; required prototype acceptance passes. Final repository gates/closeout are blocked by a pre-existing missing production fixture outside prototype scope; exact restoration awaits approval. Reconciliation amendment folded 2026-10-03 (report findings F1–F9 as S8/S9 scope plus shared-shell acceptance; Paper deferrals and intentional/non-normative differences preserved; no runtime change by this amendment). This is prototype work only. It satisfies no production
 F/T gate and closes no major phase.
 
 **Goal:** replace the read-only Experience bridge in the accepted World executable
@@ -161,10 +161,9 @@ Harvest all 4.1 rows explicitly:
 
 ## Verification and preservation
 
-Reuse #112’s eleven QA axes and A–F source assertions. Extend the existing harness with Experience and continuity cases. Rewrite bridge-only and superseded shell assertions; do not rebaseline World behavior to make integration pass. Wire the `experience`, `visitor` and `continuity` axes into `qa/run-all.sh` (currently absent there) and declare ownership: `lens-check.sh` owns World parking semantics plus refusal grammar; `continuity-check.sh` owns S8 both-directions plus Preview plus history proof.
+Reuse #112’s eleven QA axes and A–F source assertions. Extend the existing harness with Experience and continuity cases. Rewrite bridge-only and superseded shell assertions; do not rebaseline World behavior to make integration pass. Keep `experience`, `visitor`, `continuity` and shared-shell `reconciliation` axes wired into `qa/run-all.sh` and declare ownership: `lens-check.sh` owns World parking semantics plus refusal grammar; `continuity-check.sh` owns S8 both-directions plus Preview plus history proof.
 
-The commands below describe future implementation verification. No prototype modules
-or tests have been added by this planning task.
+The unified executable and prototype-local tests implement these checks; the donor stays runnable.
 
 Use focused pure tests for identity, source commands, runtime, timing, reachability and station binding, plus real-control browser proof for wiring. Preserve existing captured-control editing, visitor-selection isolation and one-drag/one-Undo regressions.
 
@@ -212,8 +211,9 @@ The reconciliation report's intentional/non-normative differences stand; the S9 
 | S1–S6 | complete; one commit per slice | focused tests and browser 8 → 30 assertions; exact early slice snapshots verified |
 | S7 | complete | focused 29/29, visitor browser 13/13, architecture 276/276; detailed evidence → prototype `qa/EXPERIENCE-ACCEPTANCE.md` |
 | S8 | complete 2026-10-03: lens-keyed parking map, neutral reentry, travel-epoch guards, browse-memory; `qa/continuity-check.sh` new and `experience`/`continuity` axes wired into `qa/run-all.sh`; World-only footer controls (Wall grid, Motion speeds, trail transport) refuse in words from the Experience with layout and stage rect unchanged; bridge Index/Card renderers deleted. Full World QA checkpoint green with no rebaseline. | continuity 52/52, lens 81/81, experience 30/30, all thirteen `run-all` axes 0 failures, focused tests 29/29, root `test:arch` 276/276; the live-framing-drag proof crosses from the keyboard (pointer capture makes a mouse click on the other lens end — and with trivial reach accept — the drag first) |
-| S9 | not started | reconciliation sweep F1–F3/F5–F9 scoped in the S9 row above |
+| S9 | implemented and self-reviewed; final repository gates/closeout blocked by pre-existing P23B fixture deletion | focused 34/34; all fifteen browser axes, 612 assertions; donor 62/62 + typecheck; architecture 276/276; all three replacement mutations rejected. F1–F3/F5–F9, eleven inspected specimens, review fixes and exact blocker are recorded in the Experience acceptance artifact |
 
-No owner product or architecture decision blocks this plan. Outside is the initial
+No owner product or architecture decision blocks this plan. The unrelated fixture
+restoration needs scope approval under AGENTS.md rule 11. Outside is the initial
 precision posture as a documented prototype experiment; exact CSS metrics are
 implementation choices consistent with the existing shell.

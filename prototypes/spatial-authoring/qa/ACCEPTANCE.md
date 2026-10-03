@@ -1,5 +1,7 @@
 # World Authoring Prototype — acceptance and harvest
 
+**Preserved #112 World adoption record; current #113 evidence → [Experience acceptance](./EXPERIENCE-ACCEPTANCE.md).**
+
 **Accepted prototype adoption:** 2026-10-02, #112 scope, at the existing spatial-authoring home.
 S0–S7 were already implemented in stages; S8 completed independent shell/spatial proof and fixed
 the remaining lifecycle defects. S9 replaces predecessor explanations/evidence and routes #113.
@@ -110,9 +112,10 @@ Touch/pen/trackpad feel, screen-reader listening, dense/cubic performance and ex
 remain unperformed product studies. Prior paper-selection composition was resolved by owner material
 calibration before this adoption; PLATE's open owner calls are not ratified here.
 
-**#113:** replace the visibly read-only continuity bridge with finalized Experience V2 executable
-behavior and prove both directions, including Experience procedure parking, foreign identity and
-shared Camera/source continuity. F exact interfaces and T1/T2/T3/T4 production authorization remain
+**#113 successor:** the unified tree now implements finalized Experience V2 and both directions
+of continuity, including procedure parking, foreign identity and shared Camera/source history.
+The #112 counts above remain its adoption record; current #113 results and specimens are owned by
+[Experience acceptance](./EXPERIENCE-ACCEPTANCE.md). F exact interfaces and T1/T2/T3/T4 production authorization remain
 unchanged. No P26 major-phase close is claimed.
 
 ## Preservation

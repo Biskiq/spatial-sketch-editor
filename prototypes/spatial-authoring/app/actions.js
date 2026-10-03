@@ -438,7 +438,7 @@ async function faceInner(id, opts = {}) {
   if (u > 0.5) sess.home = flatHome(sess);
 }
 
-// Every way into spatial work goes through worldOnly(): while the read-only bridge is the document in
+// Every way into spatial work goes through worldOnly(): while Experience is the lens in
 // hand, World work is refused locally and by name, so crossing can never leave a half-invocation or a
 // hidden task behind. See the lens section at the end of this file.
 export const face = (id = S.sel, opts) => run(() => (worldOnly() ? null : faceInner(id, opts)));
@@ -1652,17 +1652,13 @@ export function parkReading() {
 // then the spatial reading through its canonical return. Nothing here replaces the selection.
 
 // ---------------------------------------------------------------- lens: parking World work, resuming it explicitly
-// World is where a building is authored. The Experience lens is, in this prototype, one read-only
-// continuity fixture (fixtures.js): it exists so that crossing can be proved — an *inactive* parked
-// record instead of a hidden session, one canonical selection, one Camera shared by both lenses, an
-// ordinary return, and an explicit validated Resume rather than an automatic restore. Nothing here
-// creates, guides, stops, captures, authors a view or previews a visitor; #113 owns real Experience
-// behaviour and this bridge cannot prove it.
+// Both lenses share one selection, Camera and source history. Invoked work parks inactive and
+// returns only by explicit revalidated Resume; Experience registers its procedures at this seam.
 
 export const lens = () => S.lens;
 export const lensIs = (which) => S.lens === which;
 
-// The refusal that keeps the bridge honest: no World work can be invoked from inside it, so no half
+// The refusal that keeps World work in its owning lens: no World work can be invoked from inside it, so no half
 // invocation, hidden reading or unaccepted proposal can exist while another lens is the document.
 function worldOnly() {
   if (S.lens === 'world') return false;
@@ -1839,7 +1835,7 @@ export function dismissParked() {
   return true;
 }
 
-// The lens button itself. Crossing to the bridge parks; crossing back is ordinary — no Instrument, no
+// The lens button itself. Crossing lenses parks; crossing back is ordinary — no Instrument, no
 // reading, no writer, no restored Search context and no Camera restoration. The parked record waits for
 // an explicit Resume and is never applied by the toggle.
 let lensWork={};
@@ -1860,14 +1856,6 @@ export const restoreInspection = inspection => run(async()=>{
  if(inspection.task)S.task=clone(inspection.task);
  S.reveal=inspection.reveal;ctx.ui();
 });
-
-// The bridge's two explicit actions, and nothing else: change the canonical selection to the
-// Presentation fixture itself, or to the World subject it references. Selection is the one slot both
-// lenses share, so this is the same identity the World lens will come back to — it is not a copy, and
-// no lens ever rewrites the Card to another subject.
-export function selectBridge(id) {
- select(id);setStatus(`Selected ${thing(id)?.item.name||id} — the canonical identity carries between lenses without Camera movement`, 'view');return id;
-}
 
 const labelName = (id) => thing(id)?.item?.name || id;
 

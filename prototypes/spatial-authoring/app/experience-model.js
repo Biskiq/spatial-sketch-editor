@@ -1,7 +1,7 @@
 // Prototype-local authored domains. These are not production document interfaces.
 export const copy = (v) => structuredClone(v);
 export function createExperience() {
-  return { serial: 0, presentations: { 'pres-highlights': { id: 'pres-highlights', name: 'Saltmarsh Highlights', meaning: '', focus: { kind: 'subjects', ids: ['gwin'] }, uses: [] } }, uses: {}, stops: {}, guide: [], seams: {}, definitions: {} };
+  return { name: 'Saltmarsh Experience', serial: 0, presentations: { 'pres-highlights': { id: 'pres-highlights', name: 'Saltmarsh Highlights', meaning: '', focus: { kind: 'subjects', ids: ['gwin'] }, uses: [] } }, uses: {}, stops: {}, guide: [], seams: {}, definitions: {} };
 }
 export const createCamera = () => ({ serial: 0, views: {}, connections: {} });
 export const fresh = (domain, prefix) => `${prefix}-${++domain.serial}`;
@@ -36,7 +36,7 @@ export function removeView(e,c,id) {
  // Never convert a missing entry to intentional hold. References remain repairable.
  delete c.views[id];
 }
-export function resolveUse(e,c,id) { const u=e.uses[id]; return u&&c.views[u.viewId] ? {use:u,view:c.views[u.viewId]}:null; }
+export function resolveUse(e,c,id) { const u=e.uses[id]; return u&&c.views[u.viewId]&&!c.views[u.viewId].unresolved ? {use:u,view:c.views[u.viewId]}:null; }
 export function addStop(e,pid) {
  if(!e.presentations[pid])throw Error('Presentation removed');
  const id=fresh(e,'stop');e.stops[id]={id,presentationId:pid,name:e.presentations[pid].name,entry:{kind:'presentation'},next:{kind:'order'},pacing:{kind:'auto'},gate:null,choices:[]};e.guide.push(id);return id;
@@ -50,7 +50,7 @@ export function stopEntry(e,id) {
  const s=e.stops[id];if(!s)return {id:null,missing:true};
  if(s.entry.kind==='hold')return {id:null,hold:true,missing:false};
  const uid=s.entry.kind==='use'?s.entry.useId:entryUse(e,s.presentationId)?.id;
- return {id:uid||null,hold:!uid&&s.entry.kind==='presentation',missing:!!uid&&!e.uses[uid]};
+ return {id:uid||null,hold:!uid&&s.entry.kind==='presentation',missing:s.entry.kind==='use'&&!e.uses[uid]};
 }
 export function moveStop(e,id,delta) { const i=e.guide.indexOf(id),j=i+delta;if(i<0||j<0||j>=e.guide.length)return false;[e.guide[i],e.guide[j]]=[e.guide[j],e.guide[i]];return true; }
 export function removeStop(e,id) { e.guide=e.guide.filter(x=>x!==id);delete e.stops[id]; }

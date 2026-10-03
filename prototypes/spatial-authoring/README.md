@@ -1,8 +1,8 @@
-# World Authoring Prototype
+# Unified World and Experience V2 Prototype
 
-**Current executable World reference**, adopted in place from the P26 Spatial Authoring Prototype
-under #112 (2026-10-02). It preserves journeys A–F and their spatial laws while using the accepted
-World shell: local Index, dominant Stage, selected identity Card, invoked Look/Details,
+**Current unified executable reference**, adopted in place under #112 and extended by
+#113 (2026-10-03). It preserves World journeys A–F and implements Experience V2 authoring,
+isolated visitor execution and both directions of continuity. The accepted World shell keeps: local Index, dominant Stage, selected identity Card, invoked Look/Details,
 Instrument and Precision. [PLATE §0.8](../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
 owns destination shell design; this static prototype establishes no production interface or cutover.
 
@@ -12,7 +12,7 @@ python3 -m http.server 8826
 # http://localhost:8826/                 explore; J opens the A–F presenter
 # http://localhost:8826/rationale.html   current rationale and specimens
 # ?journey=A&step=0&motion=instant       reproducible presenter entry
-bash qa/run-all.sh                     # both acceptance axes; private server/browser per axis
+bash qa/run-all.sh                     # all fifteen browser axes; private server/browser per axis
 bash scripts/shoot.sh                  # regenerate specimens into qa/out/specimens
 ```
 
@@ -23,6 +23,7 @@ No build step. Three.js is vendored; Google Fonts have system fallbacks. The pre
 - [IMPLEMENTER-REFERENCE.md](./IMPLEMENTER-REFERENCE.md) — formulas, validators, cancellation,
   navigation/task seams and the limits of these mechanisms.
 - [qa/ACCEPTANCE.md](./qa/ACCEPTANCE.md) — acceptance, coverage/harvest and preservation evidence.
+- [qa/EXPERIENCE-ACCEPTANCE.md](./qa/EXPERIENCE-ACCEPTANCE.md) — Experience S0–S9, review fixes, canonical specimens and Paper handoff.
 - [qa/README.md](./qa/README.md) — current executable checks and their actual proof limits.
 
 Try the Garden window's Look → Unroll, or pull the Rotunda dog-ear and stop anywhere. O unrolls,
@@ -32,11 +33,25 @@ P opens Precision. / searches; row verbs distinguish selection from navigation/r
 Esc leaves the foremost writer/Precision/task, Back returns one reading, Shift-Esc puts the chain
 back. View navigation stays separate from source Undo.
 
-Lens crossing cancels proposals and parks inactive World work. Returning is ordinary. Explicit
-Resume validates current identity/targets and invokes from the current standpoint. The Experience
-lens is visibly a **read-only continuity fixture**, containing one Presentation referring to the
-window: no authoring, Guide/Stop/Deck, Camera capture or visitor Preview. The [#113 implementation plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md) owns the real V2
-Experience executable and both directions of continuity. F and production T1 remain gated.
+Lens crossing cancels proposals and parks procedures inactive in their owning lens. Returning is
+ordinary. Explicit Resume revalidates current identity and targets, reactivates accepted parameters
+and keeps the current realized Camera. World-only footer controls refuse in Experience; their
+retirement and Paper authoring belong to the next PR.
+
+In Experience, explicitly open Saltmarsh Highlights or create a Presentation from a selected World
+subject, a region or the environment. Auto and Capture add Views to an unordered Set; Hints and
+Precise Camera are local depth, independent of Guide work. Add to Guide creates occurrences;
+Overview expands a Stop, Seam connects supported Camera Views, and Coordinate binds holds or
+invocations to stable Camera stations. Card headers distinguish shared framing from occurrence reach.
+Head Preview works with no Guide or Views and returns to the exact authoring context.
+
+With screenshot mode off, the outside-product Experience examples disclosure offers Reset and
+Load Example. Back/Skip observes only; loading never plays. The donor at
+[`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
+The integrated design folder retains the finalized synthesis/boards, rather than another executable.
+The [#113 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md)
+owns adoption scope; [Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps its evidence.
+Paper PA0 must reconcile against this unified tree. F and production T1/T2/T3/T4 remain gated.
 
 The predecessor shell, reconciliation and comparisons are preserved in Git; their interaction
 rules are harvested into the current reference/tests. The stable phase-local path is a
