@@ -27,3 +27,18 @@ test('repeated occurrences share framing, reorder only editorial order and resol
  const camera=JSON.stringify(c);assert.equal(resolveNext(e,a).id,b);moveStop(e,b,-1);assert.equal(resolveNext(e,b).id,a);assert.equal(JSON.stringify(c),camera);
  delete e.uses[u];e.stops[a].entry={kind:'use',useId:u};assert.equal(stopEntry(e,a).missing,true);assert.notEqual(e.stops[a].entry.kind,'hold');
 });
+import { originCoverage, addConnection, addAnchor, editSeam } from '../app/experience-model.js';
+import { connectionPath, pathSeconds, evaluatePath } from '../app/camera-evaluation.js';
+test('directed Camera reach is per origin; Cut authors no edge; path estimates match execution',()=>{
+ const e=createExperience(),c=createCamera(),p=addPresentation(e),q=addPresentation(e);
+ const origins=[0,1,2].map(i=>addView(e,c,p,{...pose,target:[i,1,0]},`origin ${i}`,i?'choice':'entry'));
+ const destination=addView(e,c,q,{...pose,target:[10,1,0]},'Entry','entry'),a=addStop(e,p),b=addStop(e,q);
+ const target=e.uses[destination].viewId;origins.slice(0,2).forEach(uid=>addConnection(c,e.uses[uid].viewId,target));
+ assert.equal(originCoverage(e,c,a,b).filter(r=>r.connectionId).length,2);
+ editSeam(e,a,b,{mode:'cut'});assert.equal(Object.keys(c.connections).length,2);
+ const id=addConnection(c,e.uses[origins[2]].viewId,target);addAnchor(c,id,[6,2,1]);
+ assert.equal(originCoverage(e,c,a,b).filter(r=>r.connectionId).length,3);
+ const path=connectionPath(c.connections[id],c.views[e.uses[origins[2]].viewId].pose,c.views[target].pose);
+ assert.equal(c.connections[id].anchors.length,1);assert.equal(path.length,3);
+ let r=createRuntime(e,c,p,pose);requestView(r,e,c,destination,'slow',path);const seconds=pathSeconds(path,'slow');r=tickRuntime(e,c,r,seconds);assert.deepEqual(r.pose,evaluatePath(path,1));assert.equal(r.movement,null);
+});

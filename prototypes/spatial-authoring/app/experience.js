@@ -4,7 +4,7 @@ import { cancelProposal, onCancel } from './cancel.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor } from './experience-model.js';
 export function initExperience() {
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
   S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null };
@@ -40,6 +40,12 @@ export function handleExperienceAction(el) {
   if (action === 'exp-stop') expandStop(el.dataset.id);
   if (action === 'exp-close') closeExperienceWork();
   if (action === 'exp-move-stop') moveOccurrence(el.dataset.id,Number(el.dataset.delta));
+  if (action === 'exp-seam') openSeam(el.dataset.from,el.dataset.to);
+  if (action === 'exp-cut') setSeamMode('cut');
+  if (action === 'exp-travel') setSeamMode('travel');
+  if (action === 'exp-connect') connectOrigin(el.dataset.id);
+  if (action === 'exp-route') editRoute(el.dataset.id);
+  if (action === 'exp-route-return') returnRouteReading();
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
@@ -103,3 +109,40 @@ export function expandStop(id) {
 export function closeExperienceWork() {cancelProposal('task-end');T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
 export function moveOccurrence(id,delta) {return command('Reorder Guide Stop',e=>moveStop(e,id,delta));}
 
+export function openSeam(a,b) {
+ if(resolveNext(ctx.experience,a).id!==b)return false;
+ cancelProposal('invoke');S.experienceContext.depth='seam';S.experienceContext.seam={from:a,to:b};S.experienceContext.stop=null;
+ T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});ctx.ui();return true;
+}
+export function setSeamMode(mode) {const {from,to}=S.experienceContext.seam;return command('Set Seam transition',e=>editSeam(e,from,to,{mode}));}
+export function connectOrigin(uid) {
+ const {from,to}=S.experienceContext.seam;
+ const row=originCoverage(ctx.experience,ctx.cameraSource,from,to).find(r=>r.useId===uid);
+ if(!row||row.missing){A.setStatus('Route needs a resolving origin and destination entry View','refuse');return false;}
+ const id=command('Connect Camera Views',(e,c)=>addConnection(c,row.viewId,row.targetId));
+ S.task.params.originUse=uid;S.task.params.connection=id;ctx.ui();return id;
+}
+export async function editRoute(id) {
+ const route=ctx.cameraSource.connections[id];if(!route)return false;
+ cancelProposal('invoke');
+ const origin=nav.captureOrigin('Return to Seam reading');
+ S.experienceContext.depth='route';S.task.params.connection=id;S.task.params.routeReturn=origin;
+ await nav.fly(A.planCam(),S.motion==='instant'?0:700);ctx.ui();return true;
+}
+export function returnRouteReading() {const o=S.task?.params.routeReturn;if(o)nav.restoreCapture(o);S.experienceContext.depth='seam';if(S.task)delete S.task.params.routeReturn;ctx.ui();}
+export function routePoint(p) {
+ if(S.experienceContext.depth!=='route'||!S.task?.params.connection)return false;
+ command('Add Camera interior anchor',(e,c)=>addAnchor(c,S.task.params.connection,[p.x,1.5,p.z]));return true;
+}
+export function beginAnchorDrag(event) {
+ const el=event.target.closest('[data-exp-anchor]');if(!el||S.visitor)return false;
+ event.preventDefault();event.stopPropagation();cancelProposal('gesture');
+ A.beginEdit();S.expDrag={connection:el.dataset.connection,anchor:el.dataset.expAnchor};el.setPointerCapture(event.pointerId);return true;
+}
+export function moveAnchorDrag(p) {
+ const d=S.expDrag;if(!d)return false;
+ const a=ctx.cameraSource.connections[d.connection]?.anchors.find(a=>a.id===d.anchor);if(!a)return false;
+ a.position=[p.x,a.position[1],p.z];ctx.ui();return true;
+}
+export function endAnchorDrag() {if(!S.expDrag)return false;S.expDrag=null;A.commitEdit('Move Camera interior anchor');ctx.ui();return true;}
+onCancel(()=>{S.expDrag=null;},5,'Experience pointer');

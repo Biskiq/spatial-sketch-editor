@@ -60,3 +60,17 @@ export function editSeam(e,a,b,patch) {
  if(!e.stops[a]||!e.stops[b]||resolveNext(e,a).id!==b)throw Error('Seam bookends no longer adjacent');
  const key=seamKey(a,b); e.seams[key]={...getSeam(e,a,b),...copy(patch)};return e.seams[key];
 }
+export function originCoverage(e,c,a,b) {
+ const from=e.stops[a],dest=stopEntry(e,b),target=resolveUse(e,c,dest.id);
+ const origins=e.presentations[from?.presentationId]?.uses.map(id=>e.uses[id]).filter(Boolean)||[];
+ return origins.map(u=>({useId:u.id,viewId:u.viewId,targetId:target?.view.id||null,connectionId:Object.values(c.connections).find(k=>k.from===u.viewId&&k.to===target?.view.id)?.id||null,missing:!c.views[u.viewId]||!target}));
+}
+export function addConnection(c,from,to) {
+ if(!c.views[from]||!c.views[to])throw Error('Camera endpoints unresolved');
+ const old=Object.values(c.connections).find(k=>k.from===from&&k.to===to);if(old)return old.id;
+ const id=fresh(c,'connection');c.connections[id]={id,from,to,anchors:[],markers:[],speed:'auto'};return id;
+}
+export function addAnchor(c,id,position) {
+ const route=c.connections[id];if(!route)throw Error('Connection removed');
+ const aid=fresh(c,'anchor');route.anchors.push({id:aid,name:`Anchor ${route.anchors.length+1}`,position:[...position]});return aid;
+}
