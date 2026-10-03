@@ -4,7 +4,7 @@ import { stations } from './camera-evaluation.js';
 import { coordinateTiming } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, viewReach } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
-import { resolveExperience } from './experience.js';
+import { resolveExperience, experienceParkedContext } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button = (act, text, id = '') => `<button class="verb" data-act="${act}" data-id="${esc(id)}">${text}</button>`;
 export function experienceIndex() {
@@ -124,4 +124,10 @@ export function visitorHtml() {
 export function sceneCapabilityCard(id) {
  const scene=ctx.sceneSource,s=scene?.subjects[id];if(!s)return '';
  return `<div class="c-sec">Scene source capabilities</div>${capabilities(scene,id).filter(c=>c.sourceEditable).map(c=>`<label class="exp-label">${esc(c.label)} <input type="number" data-exp-scene="${c.id}" data-id="${id}" value="${s.properties[c.channel]}" min="${c.min??0}" max="${c.max??1}" step=".1"></label>`).join('')}<p class="c-hint">Scene source edits share history. Experience effects stay in visitor session state.</p>`;
+}
+
+export function experienceParkedHtml() {
+ const p=S.parkedByLens.experience,v=experienceParkedContext();if(!p)return '';
+ const controls=v.wrongLens?'Switch to Experience for explicit Resume':v.ok?button('exp-resume','Resume'):v.fix==='select'?button('pres-ref','Select original identity',p.identity):'';
+ return `<div class="relation parked"><b>Parked · ${esc(p.name||p.kind)}</b><p>${esc(v.reason||'Inactive procedure; no Camera remembered')}</p>${controls}${button('exp-dismiss-parked','Dismiss')}</div>`;
 }

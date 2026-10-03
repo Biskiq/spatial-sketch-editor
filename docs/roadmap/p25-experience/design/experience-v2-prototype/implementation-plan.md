@@ -1,6 +1,6 @@
 # Experience V2 unified prototype — implementation plan (#113)
 
-**Status:** implementation authorized on 2026-10-03; S0–S7 complete, S8–S9 in progress. This is prototype work only. It satisfies no production
+**Status:** implementation authorized on 2026-10-03; S0–S8 complete, S9 not started. Reconciliation amendment folded 2026-10-03 (report findings F1–F9 as S8/S9 scope plus shared-shell acceptance; Paper deferrals and intentional/non-normative differences preserved; no runtime change by this amendment). This is prototype work only. It satisfies no production
 F/T gate and closes no major phase.
 
 **Goal:** replace the read-only Experience bridge in the accepted World executable
@@ -22,7 +22,13 @@ detour closes → F exact-interface amendments → T1/T2/T3/T4.
 **Scope:** prototype-local native ESM/DOM modules, fixture subjects, tests and
 routed documentation. No production formats, package extraction, framework
 migration, root workspace change, route search, collision planner, general scheduler,
-scripting, media platform, general Presentation fork, or Paper adoption.
+scripting, media platform, general Presentation fork, or Paper adoption — explicitly: the six-slot
+pointer rail, Head-search removal and status-rail retirement, Card rewrite (facts, kind-line, scoped
+list), drafting-state words and Paper⟷3D switch, derived room topology and Wall roles,
+Draw/Opening/Place/Measure/Divide creation paths, and narrow sheets/keymap work (Paper PA0–PA12 in
+the next PR). S8 makes World-only footer controls inert in Experience without changing layout; their
+removal or redesign stays Paper-owned. Exact CSS metrics remain implementation choices consistent
+with the existing shell; QA rasters are specimens, never pixel contracts.
 
 **Starting point:** clean checkout at `e9ebe60a8f7026f8d0279787fb1a1ddba66d8ba1`
 (merged #112). The donor retains its runnable shell as a regression oracle.
@@ -70,9 +76,16 @@ Three donor shortcuts require explicit correction under newer authority:
 
 ## Neutral Resume
 
-`resumeParked()` re-enters World readings through `openSession()`. It establishes a fresh return origin, but the current code still animates toward the reading’s home. Existing lens QA mainly proves the fresh origin and subsequent Put-it-back return.
-
-For #113’s required contract, Resume must reactivate a revalidated procedure **without moving the current rendered standpoint**. Face/Bring into view are subsequent explicit actions. Preserve the existing return-origin assertions and add immediate realized-Camera equality across Resume.
+Resume reactivates a revalidated procedure **without moving the current rendered standpoint**.
+Capture the realized Camera immediately before Resume reactivation; after procedure setup, restore
+that same current Camera. Never restore the original parked or procedure pose. World readings
+re-enter through `openSession()` on a neutral path: teardown/re-setup applies the stored parameters
+without animating toward the reading's home, and travel-epoch guards cancel superseded flights. Experience procedures resume through the
+registered lens work with accepted parameters only. Face/Bring into view are subsequent explicit
+actions. Parked records are keyed by owning lens (`parkedByLens`; the retained `parked` view keeps
+World QA green) and never hold a Camera snapshot; Browse context rides beside the record, never
+inside its chain. Preserve the existing return-origin assertions and require immediate
+realized-Camera equality across Resume.
 
 ## Lens crossing and Preview
 
@@ -109,8 +122,8 @@ Each slice must retain earlier acceptance and end in an observable working state
 | **S5 — precise Camera and reach** | Extend the canonical Camera seam with Outside/Through/Plan postures and direct framing controls. Adapt donor local/shared and Stop-entry detachment helpers. | Precision accessible without Guide; one active numeric tape; Through visibly remains authoring. Ask Rule names affected uses. Explicit detach is atomic and undoable. No unsupported placement overrides or general Presentation-fork system. |
 | **S6 — local coordination** | Add invoked coordination to the selected Seam, using Camera stations and existing capability invocation machinery. | Anchor/pace changes update derived timing while beat references remain stable. Generated samples cannot be selected as stations. Shared route edits show reach; path edits occur only on Stage. |
 | **S7 — complete visitor/regression behavior** | Finish Auto estimates, cues/captions, interactions, interruption, Gates, exploration/rejoin, repair and run identity. Adapt visitor UI and Presenter scenarios rather than their old layout. | Execute retained A0–A22 coverage below. Freeze source through runtime flows; stale runs cannot reclaim effects. Required broken behavior is refused/disabled locally. No general scheduler, scripting or production media system. |
-| **S8 — full continuity** | Generalize World parking to Experience Overview/Seam/coordination/precision; implement neutral Resume; harden Preview return and interleaved source history. | Both directions, accepted edits, canceled drags, changed selection, deleted/rebound targets, repeated crossings, Camera movement in the other lens, ordinary return and explicit Resume. No hidden active work. |
-| **S9 — acceptance and preservation** | Complete unified QA, visual specimens, harvest mapping, readmes/status routing and Paper handoff. | All required rows pass; observed experiments are recorded separately. Retire bridge assertions only after replacement proof. No production cutover or phase closure. |
+| **S8 — full continuity** | Generalize World parking to Experience Overview/Seam/coordination/precision via the lens-keyed parking map (`parkedByLens`, retaining the `parked` view for World QA); neutral Resume on both lenses — revalidate, reactivate from the current standpoint with immediate realized-Camera equality, no Camera snapshot in any record (neutral `openSession` path plus travel-epoch guards; Browse-memory beside the record); harden Preview return (isolated return token, never lens-parking semantics) and interleaved source history; cancel-once covers live Camera framing drags. Make World-only footer controls (Wall grid, Motion speeds, trail transport) inert in Experience — refused in words, layout and stage rect unchanged; rail removal stays Paper-owned. | Both directions, accepted edits, canceled drags (including a live framing drag), changed selection, deleted/rebound targets, repeated crossings, Camera movement in the other lens, ordinary return and explicit Resume; `qa/continuity-check.sh` green; World axes pass with no rebaseline. No hidden active work. |
+| **S9 — acceptance and preservation** | Own the reconciliation sweep. **F1** stale bridge/read-only cleanup: Head/lens comments and titles, `ui.js`/`actions.js`/`main.js`/`state.js` comments, `fixtures.js` fixture `note`/`absent` fields, README/rationale/implementer-ref, the `styles/app.css` bridge comment, `qa/README.md` lens row. Remove `PRESENTATION`/`presentationOf`/`selectBridge`/`pres-sel` only after confirming no QA references remain (`pres-ref` stays — the Experience Card uses it; successor coverage first per the rule below). **F2** Head Preview entry plus active-Experience label in Experience context (Head grid row only — stage rect unchanged). **F3** move the prototype-examples disclosure out of the Experience Index (same outside-product treatment as journeys) and scope the Scene-subject list to locator duty. **F5** rewrite the lens-check bridge block into the Experience-lens block and declare axis ownership: `lens-check.sh` owns World parking semantics plus refusal grammar; `continuity-check.sh` owns both-directions plus Preview plus history. **F6** complete View-use/Stop Card owner/reach headers (shared-vs-occurrence legible). **F7** narrow-Experience proof: Deck and visitor coherent at 1024×768, no Camera refit on resize. **F8** specimen map to QA-1…QA-6 (V2 synthesis §22) plus visitor, foreign selection, parked procedures and narrow desktop. **F9** routing/docs sweep: README title/scope, rationale, IMPLEMENTER-REFERENCE, both ACCEPTANCE roles, P25/P26 pointers, the stale integrated-folder executable-home claim. | All required rows pass, including the shared-shell rows below; observed experiments are recorded separately. No production cutover or phase closure. |
 
 Dependencies are sequential for reviewability. Continuity invariants apply from S1 onward; S8 is comprehensive adversarial proof, not the first integration.
 
@@ -118,13 +131,14 @@ For Camera precision, use **Outside initially** to preserve standpoint; expose T
 
 ## Acceptance
 
-Keep four categories distinct.
+Keep five categories distinct.
 
 | Category | Required proof |
 |---|---|
 | Hard invariants | One canonical selection, Camera/navigation authority, shared Stage, source-history sequence and execution path; separate domain ownership; no source mutation from runtime; no generated authored anchors; stable View/use/Stop/visit/run identities. |
 | V2 design | Ordinary Experience without Guide/Deck; explicit Presentation creation/opening; unordered Set in Plan and 3D; Peek → Overview → expanded occurrence; stable Card; Seam bookends and origin gaps; no implicit Camera movement; local coordination; Ask Rule; progressive Camera; visitor takeover. |
 | Cross-lens contract | World identity enters Experience unchanged; Experience identity enters World unchanged and inert; toggle creates/captures/selects/moves nothing; pending edits cancel; accepted edits survive; procedures park inactive; return is ordinary; Resume revalidates; other-lens Camera movement survives both return and Resume. |
+| Shared shell (S9) | Head carries Preview and the active Experience in Experience context; Experience Index is a locator with no prototype chrome; View-use/Stop Cards show owner and edit reach with shared-vs-occurrence legible; World-only footer controls are inert in Experience with layout and stage rect unchanged; no bridge/read-only copy remains in UI, docs or QA; specimens map QA-1…QA-6. |
 | Observational experiments | Through versus Outside default; Deck crop-docking/spatial memory; station-bound coordination comprehension; legacy checkpoint/cursor and detour expectations. Passing characterization tests does not ratify these policies. |
 
 Harvest all 4.1 rows explicitly:
@@ -147,14 +161,14 @@ Harvest all 4.1 rows explicitly:
 
 ## Verification and preservation
 
-Reuse #112’s eleven QA axes and A–F source assertions. Extend the existing harness with Experience and continuity cases. Rewrite bridge-only and superseded shell assertions; do not rebaseline World behavior to make integration pass.
+Reuse #112’s eleven QA axes and A–F source assertions. Extend the existing harness with Experience and continuity cases. Rewrite bridge-only and superseded shell assertions; do not rebaseline World behavior to make integration pass. Wire the `experience`, `visitor` and `continuity` axes into `qa/run-all.sh` (currently absent there) and declare ownership: `lens-check.sh` owns World parking semantics plus refusal grammar; `continuity-check.sh` owns S8 both-directions plus Preview plus history proof.
 
 The commands below describe future implementation verification. No prototype modules
 or tests have been added by this planning task.
 
 Use focused pure tests for identity, source commands, runtime, timing, reachability and station binding, plus real-control browser proof for wiring. Preserve existing captured-control editing, visitor-selection isolation and one-drag/one-Undo regressions.
 
-Deliberately inspect all six V2 canonical visual states, visitor Preview, foreign selection, parked procedures and narrow desktop. Follow `browser-hygiene` for every browser run. Existing desktop, keyboard and motion coverage remains; add no speculative production device/performance/accessibility gates.
+Deliberately inspect all six V2 canonical visual states, visitor Preview, foreign selection, parked procedures and narrow desktop. Map specimens explicitly to QA-1…QA-6 (V2 synthesis §22) plus visitor, foreign selection, parked procedures and narrow desktop; captures stay evidence, never the assertion mechanism. Follow `browser-hygiene` for every browser run. Existing desktop, keyboard and motion coverage remains; add no speculative production device/performance/accessibility gates.
 
 Run the unconditional root `npm run test:arch`. Prototype checks own runtime behavior unless implementation expands into production code or configuration. The donor Playwright configuration currently expects port **5173**, while its `dev` script specifies **3000**; resolve harness startup explicitly before relying on that suite.
 
@@ -162,7 +176,18 @@ Preserve the donor executable, 4.1 plan, tests, V2 synthesis/boards and #112 acc
 
 Route the new plan from operations/current, roadmap, P25, P26’s prototype handoff and prototype readmes. Update the stale integrated-folder executable-home claim. On implementation acceptance, use slice-closeout without claiming a major-phase close.
 
-Paper receives the unified executable, stable selection/navigation/history/cancellation seams, both-lens parking and Preview-return tests, known prototype shortcuts and preserved A–F evidence. Its PA0 must reconcile against #113’s resulting tree; #113 does not implement Paper’s rail, drawing, derived-room or placement work.
+Paper receives the unified executable, stable selection/navigation/history/cancellation seams, both-lens parking and Preview-return tests, known prototype shortcuts and preserved A–F evidence. Its PA0 must reconcile against #113’s resulting tree; #113 does not implement Paper’s rail, Head, Card, drafting-state, switch, topology, drawing, derived-room or placement work, nor its narrow sheets and keymap.
+
+## Preserved differences — not defects (S9 must not "fix")
+
+The reconciliation report's intentional/non-normative differences stand; the S9 visual pass must not alter them:
+
+- Top-left lens placement beside the brand remains the accepted #112 composition; the centered destination specimen is not required.
+- Current non-amber lens styling (instrument fill for the active lens) remains correct — it avoids the recorded amber-lens drift.
+- Stage-rect-preserving overlays (Instrument, Deck, visitor surface as overlays taking no layout space) remain intentional baseline discipline.
+- The donor remains adapted into native ESM modules, never mounted; its shell stays historical evidence.
+- Outside remains the experimental initial precision posture, not a product ruling.
+- Known QA-board raster quirks (World-board lens amber, post-invocation framing, Create-Presentation copy; Design-QAs file counts versus the six-state prose contract) are recorded drift or stale prose, never implementation defects. Rasters are specimens, never pixel contracts.
 
 
 ## Executable verification and progress
@@ -186,7 +211,8 @@ Paper receives the unified executable, stable selection/navigation/history/cance
 | S0 | baseline verified; mapping recorded in this plan | donor: 62 tests + typecheck pass; all eleven existing World QA axes pass (2026-10-03) |
 | S1–S6 | complete; one commit per slice | focused tests and browser 8 → 30 assertions; exact early slice snapshots verified |
 | S7 | complete | focused 29/29, visitor browser 13/13, architecture 276/276; detailed evidence → prototype `qa/EXPERIENCE-ACCEPTANCE.md` |
-| S8–S9 | in progress | continuity, full acceptance and preservation remain |
+| S8 | complete 2026-10-03: lens-keyed parking map, neutral reentry, travel-epoch guards, browse-memory; `qa/continuity-check.sh` new and `experience`/`continuity` axes wired into `qa/run-all.sh`; World-only footer controls (Wall grid, Motion speeds, trail transport) refuse in words from the Experience with layout and stage rect unchanged; bridge Index/Card renderers deleted. Full World QA checkpoint green with no rebaseline. | continuity 52/52, lens 81/81, experience 30/30, all thirteen `run-all` axes 0 failures, focused tests 29/29, root `test:arch` 276/276; the live-framing-drag proof crosses from the keyboard (pointer capture makes a mouse click on the other lens end — and with trivial reach accept — the drag first) |
+| S9 | not started | reconciliation sweep F1–F3/F5–F9 scoped in the S9 row above |
 
 No owner product or architecture decision blocks this plan. Outside is the initial
 precision posture as a documented prototype experiment; exact CSS metrics are

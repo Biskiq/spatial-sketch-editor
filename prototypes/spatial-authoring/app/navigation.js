@@ -12,7 +12,8 @@
 //     stores them, guards re-entry, and asks the operation layer to enter one.
 import * as THREE from 'three';
 import { S, ctx } from './state.js';
-import { tween } from './anim.js';
+import { onCancel } from './cancel.js';
+import { tween, cancelTweens } from './anim.js';
 
 const st = () => ctx.stage;
 const V3 = THREE.Vector3;
@@ -38,11 +39,16 @@ export function camAt(a, b, e, arc = 0) {
   if (arc) st().cam.el += Math.sin(Math.PI * e) * arc;
 }
 
+let travelGeneration=0;
+export const travelEpoch=()=>travelGeneration;
+onCancel(reason=>{if(['lens','preview','reset','presenter-reset'].includes(reason)){travelGeneration++;cancelTweens();}},1,'Camera interruption');
 export async function fly(to, ms, arc = 0) {
+  const token=travelGeneration;
   // An explicit move is the moment the standpoint is re-derived: any parked hold is released.
   releaseHold();
   const a = camState();
-  await tween(ms, (t) => camAt(a, to, ease(t), arc));
+  await tween(ms, (t) => {if(token===travelGeneration)camAt(a, to, ease(t), arc);});
+  if(token!==travelGeneration)return false;
   if (to.mirror != null) st().cam.mirror = to.mirror;
 }
 

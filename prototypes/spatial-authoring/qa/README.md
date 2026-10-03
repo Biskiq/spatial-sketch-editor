@@ -15,6 +15,8 @@ qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Prec
 qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the Details grammar
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
 qa/run-all.sh lens         # stage S6: the lens, parked work, and explicit Resume from the bridge
+qa/run-all.sh experience   # stage S7: Experience wiring and the visitor's isolated preview
+qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
 qa/mutation-check.sh       # protected regressions on disposable copies

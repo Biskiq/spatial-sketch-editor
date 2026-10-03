@@ -427,11 +427,12 @@ function clearActiveEdit() {
 // Lost capture, pointercancel and Esc are the same policy: whatever was being written is dropped,
 // nothing is accepted, and no trailing pointerup/change/blur can commit it afterwards.
 window.addEventListener('pointercancel', () => { cancelProposal('pointercancel'); requestUI(); });
-window.addEventListener('lostpointercapture', () => { if (hdrag || direct || typeSpec) cancelProposal('lost-capture'); requestUI(); });
+window.addEventListener('lostpointercapture', () => { if (hdrag || direct || typeSpec || S.cameraDraft || S.expDrag) cancelProposal('lost-capture'); requestUI(); });
 
 // This module holds the pointer writers, so it registers how to drop them. Order 10: the writer
 // stops before the candidate snapshot it was written against is rolled back (actions.js, order 60).
 onCancel(() => {
+  drag=null;
   if (direct) { direct = null; document.body.classList.remove('dragging'); }
   if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); }
   if (typeSpec) closeTypein();
@@ -663,7 +664,12 @@ document.addEventListener('click', (e) => {
   const trail = t.closest('[data-trail]');
   if (trail) { A.gotoTrail(+trail.dataset.trail); return; }
   const mo = t.closest('[data-motion]');
-  if (mo) { S.motion = mo.dataset.motion; A.setStatus(motionText(), 'view'); return; }
+  // The Motion speeds are World work: the Experience plays its own moves and never retunes the
+  // World's profiles. The control stays in the footer, but from the other lens it refuses.
+  if (mo) {
+    if (S.lens !== 'world') { A.setStatus('Motion speeds are World work — switch back to the World lens to change them', 'refuse'); return; }
+    S.motion = mo.dataset.motion; A.setStatus(motionText(), 'view'); return;
+  }
   const act = t.closest('[data-act]');
   if (act) {
     const a = act.dataset.act;
@@ -785,6 +791,9 @@ function doAct(a, el) {
     case 'lookat': A.lookAt(el.dataset.id ?? S.sel); break;
     case 'faceit': A.face(el.dataset.id ?? S.sel); break;
     case 'grid':
+      // Wall grid is World work: it is a reading of the wall being authored. The control stays in
+      // the footer, but from the other lens it refuses — same layout, same stage rect.
+      if (S.lens !== 'world') { A.setStatus('Wall grid is World work — switch back to the World lens to change it', 'refuse'); break; }
       S.wallDrafting = !S.wallDrafting;
       A.syncSheets();
       A.setStatus(S.wallDrafting
@@ -811,7 +820,7 @@ function doAct(a, el) {
     // The bridge is a read-only fixture: its two explicit selections are the only things it offers, and
     // it shares this one selection slot with the World. Resume is offered only on the parked identity,
     // with the World lens in hand, and never automatically.
-    case 'lens': closeFinder(); A.switchLens(el.dataset.lens); break;
+    case 'lens': {const browse=!finder.hidden||S.browse.focus; if(S.lens==='world'&&browse)A.rememberBrowse({...S.browse}); A.switchLens(el.dataset.lens);closeFinder();break;}
     case 'resume': A.resumeParked(); break;
     case 'parked-off': A.dismissParked(); break;
     case 'pres-sel': case 'pres-ref': closeFinder(); A.selectBridge(el.dataset.id); break;
@@ -1055,10 +1064,11 @@ window.addEventListener('keydown', (e) => {
     case 'escape': {
       // The one policy first: an unaccepted writer, draft, preview or aim is dropped before any
       // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
-      const held = S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
+      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expOfferDraft || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
       if (held) cancelProposal('esc');
       if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
+      if(S.lens==='experience'&&S.task?.kind.startsWith('experience-')){E.closeExperienceWork();requestUI();break;}
       if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
       // A sheet is the surface in front: Esc closes it before anything about the reading changes, and
@@ -1274,6 +1284,7 @@ function boot() {
   if (q.get('shot')) document.body.classList.add('shot');
   // Capability dispatch: the shell asks the task seam, which routes to these operations. Parking
   // uses the neutral teardown so no lens change ever animates back to an origin pose.
+  A.registerBrowseResume(context=>{S.browse={...context};openFinder(context.q||'');});
   T.setDispatch({
     face: (o) => A.face(o?.id ?? S.sel),
     unroll: (o) => A.unfold(o?.id),
@@ -1295,23 +1306,23 @@ function boot() {
 }
 boot();
 
-document.addEventListener('change', event => { const el = event.target; if (el.dataset.expField) E.updatePresentation(el.dataset.id, el.dataset.expField, el.value); });
+
 
 window.addEventListener('pointermove',e=>{if(S.cameraDraft)E.moveCameraDrag(e,groundAt(e));if(S.expDrag){const p=groundAt(e);if(p)E.moveAnchorDrag(p);}});
 window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
 
-document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);});
+
 
 document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});
 
 document.addEventListener('change',event=>{
  const el=event.target;
  if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
- if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
+
  if(el.dataset.expReuse)E.reuseFraming(el.dataset.expReuse,el.value);
  if(el.dataset.expCue)E.command('Set explicit narration cue',e=>{e.uses[el.dataset.expCue].cue=el.value?JSON.parse(el.value):null;});
  if(el.dataset.expRepair)E.command('Repair missing framing',e=>{e.uses[el.dataset.expRepair].viewId=el.value;});
- if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
+
 });
 window.addEventListener('pointermove',event=>{if(S.visitorDrag&&S.visitor?.runtime.exploring){const d=S.visitorDrag;ctx.stage.cam.az-=(event.clientX-d.x)*.006;ctx.stage.cam.el=Math.max(.06,Math.min(1.5,ctx.stage.cam.el+(event.clientY-d.y)*.005));d.x=event.clientX;d.y=event.clientY;S.visitor.runtime.pose=nav.plainPose();}});
 window.addEventListener('pointerup',()=>{S.visitorDrag=null;});
@@ -1327,3 +1338,20 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
 });
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
+
+const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene);
+let experienceDraft=null,fieldEpoch=0;
+document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
+onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
+document.addEventListener('keydown',event=>{
+ const el=event.target;if(!experienceField(el)||S.visitor)return;
+ if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();cancelProposal('field-cancel');requestUI();return;}
+ if(event.key!=='Enter'||event.shiftKey)return;
+ event.preventDefault();event.stopImmediatePropagation();
+ if(!el.isConnected||experienceDraft?.lens!==S.lens||experienceDraft?.epoch!==fieldEpoch)return;
+ experienceDraft=null;
+ if(el.dataset.expField)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
+ if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
+ if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);
+ if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
+},true);

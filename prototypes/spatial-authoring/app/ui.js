@@ -1,6 +1,6 @@
-import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard } from './experience-ui.js';
+import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard, experienceParkedHtml } from './experience-ui.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
-import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf, PRESENTATION, presentationOf } from './fixtures.js';
+import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf } from './fixtures.js';
 import {
   wallLength, frameAt, fmt, maxTop, topAt, springOf, centroid, planeY, byId, FLOOR_Y, modS, bbox,
 } from './model.js';
@@ -605,7 +605,7 @@ function renderCard() {
   const t = thing(id);
   const rec = id ? metadataOf(id) : null;
   let html = '';
-  if (S.lens !== 'world') html = experienceCard() + parkedBlock();
+  if (S.lens !== 'world') html = experienceParkedHtml() + experienceCard() + parkedBlock();
   else {
     if (rec) html = cardRecord(rec);
     // An identity from another lens is not a World subject, and the World says so instead of showing the
@@ -618,7 +618,7 @@ function renderCard() {
     else html = cardScene(t) + sceneCapabilityCard(id);
     // Above the identity: the parked work belongs to the session, not to the subject, and it must never
     // be the thing you have to scroll a long Card to find.
-    html = parkedBlock() + html;
+    html = parkedBlock() + experienceParkedHtml() + html;
   }
   if (el._html !== html) {
     const focused = document.activeElement?.dataset?.field;
@@ -1069,72 +1069,14 @@ export function updateWhere() {
   if (cap && cap.textContent !== caption) cap.textContent = caption;
 }
 
-// ---------------------------------------------------------------- the bridge lens, and parked work
-// The Experience lens is one read-only continuity fixture, and the shell says so where it is used: what
-// it is, what it references, and what it deliberately does not do. It shares this selection slot and
-// this Camera with the World; the World's own work is parked meanwhile, and Resume is offered in the
-// World lens on the identity it belongs to — never restored by switching back.
+// ---------------------------------------------------------------- parked work in the World lens
+// The World lens is where the building is authored. Work invoked in the other lens is not a hidden
+// session here: it is an inactive record, offered on its own identity with the reason when it cannot be
+// used. Nothing here restores a reading, a Camera or a proposal, and the lens toggle itself never
+// applies a record — only an explicit Resume does.
 
-function renderBridgeIndex(el) {
-  const p = PRESENTATION;
-  let html = `<div class="ix-head"><span class="ix-title">${esc(p.name)}</span><span class="ix-place">${esc(p.ref)}</span><span class="ix-note">${esc(p.note)}</span></div>`;
-  html += `<div class="ix-group">Presentations <span class="ix-note">one fixture</span></div>`;
-  html += `<div class="ix-row${S.sel === p.id ? ' sel' : ''}"><button class="ix-go" data-act="pres-sel" data-id="${p.id}" aria-selected="${S.sel === p.id}"><span class="glyph pres"></span><span class="ix-name">${esc(p.name)}</span><span class="ix-ref">${esc(p.ref)}</span></button>${S.sel === p.id ? '<span class="state quiet">selected</span>' : ''}</div>`;
-  html += `<div class="ix-group">Referenced <span class="ix-note">World subjects</span></div>`;
-  for (const s of p.slots) {
-    const t = thing(s.ref);
-    html += `<div class="ix-row sub${S.sel === s.ref ? ' sel' : ''}"><button class="ix-go" data-act="pres-ref" data-id="${s.ref}" aria-selected="${S.sel === s.ref}"><span class="glyph open"></span><span class="ix-name">${esc(t?.item.name || s.label)}</span><span class="ix-ref">${esc(t ? refOf(s.ref) : s.ref)}</span></button><button class="ix-verb" data-act="pres-ref" data-id="${s.ref}" title="Select the referenced window — the same identity the World lens uses">Select</button></div>`;
-  }
-  html += `<div class="ix-hint">This lens is a continuity fixture for the World Authoring Prototype. It reads the same selection and the same Camera, and it does not yet create presentations, guide, capture, author a Camera View or preview a visitor — those belong to #113.</div>`;
-  if (el._html !== html) { el.innerHTML = html; el._html = html; }
-}
-
-function cardBridge(id, t, rec) {
-  const p = presentationOf(id);
-  if (p) return cardPresentation(p);
-  if (t || rec) return cardForeign(id, t, rec);
-  return `<div class="c-empty"><div class="c-k">The Experience lens</div>
-  <p>One read-only continuity fixture sits here: <b>${esc(PRESENTATION.name)}</b>, referencing the ${esc(thing(PRESENTATION.slots[0].ref)?.item.name || PRESENTATION.slots[0].label)}.</p>
-  <div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${PRESENTATION.id}"><span class="vg pres"></span>Select Presentation</button></div>
-  <p class="c-hint">The World's work is parked while this lens is in hand. It is inactive — nothing is open, nothing is drawn, and no Camera is remembered.</p></div>`;
-}
-
-function cardPresentation(p) {
-  let html = cardHead('Experience · continuity fixture', p.name, `${p.ref} · ${p.note}`);
-  html += `<div class="c-sec">Referenced</div>`;
-  for (const s of p.slots) {
-    const t = thing(s.ref);
-    html += `<div class="relation quiet"><span class="dot"></span><span><b>${esc(t?.item.name || s.label)}</b> — a World subject, by identity. This lens reads it and never edits it.</span><button class="lnk" data-act="pres-ref" data-id="${s.ref}">Select referenced window</button></div>`;
-  }
-  html += `<div class="c-sec">What this lens can do</div><div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${p.id}"><span class="vg pres"></span>Select Presentation</button></div>`;
-  html += `<div class="c-hint">Ordinary Camera input is the same Camera: orbit, zoom, Plan and 3D all still work on the museum. There is no ${p.absent.slice(0, -1).map((s) => s.toLowerCase()).join(', no ')} and no ${p.absent.slice(-1)[0].toLowerCase()} in this prototype.</div>`;
-  html += parkedBlock();
-  return html;
-}
-
-// The World lens, holding an identity that belongs to the bridge. It is not a subject here and it is not
-// nothing: the Card names it, and the one act that makes sense is the explicit selection of a World
-// subject. A parked record about it is never resumed from a foreign identity.
-function legacyForeignCard(id) {
-  const p = presentationOf(id);
-  const name = p ? p.name : 'Another lens’ subject';
-  const sub = p ? `${p.ref} · ${p.note}` : 'selected outside the World lens';
-  return cardHead('Foreign identity · not a World subject', name, sub)
-    + `<div class="relation quiet"><span class="dot"></span><span>It was selected in the Experience lens. The World edits nothing about it: select a wall, an opening, a ceiling or an artwork to work on the building.</span></div>`;
-}
-
-function cardForeign(id, t, rec) {
-  const name = t ? t.item.name : rec.name;
-  const ref = t ? refOf(id) : `${rec.ref || ''} record · no Stage location`;
-  let html = cardHead('From the World lens · read-only here', name, ref);
-  html += `<div class="c-sec">In this lens</div>`;
-  html += `<div class="relation quiet"><span class="dot"></span><span>It is the World's subject, not the bridge's: selecting it here is the same identity the World lens uses. Nothing in this lens edits it or opens a reading about it.</span></div>`;
-  html += `<div class="c-acts"><button class="verb" data-act="pres-sel" data-id="${PRESENTATION.id}"><span class="vg pres"></span>Select Presentation</button></div>`;
-  return html;
-}
-
-// Parked work, offered where it belongs: on its own identity, with the reason when it cannot be used.
-// Nothing here is a hidden session, and nothing is restored by the lens toggle itself.
+// Parked World work, offered where it belongs: on its own identity, with the reason when it cannot be
+// used. The Experience record is rendered by experienceParkedHtml, beside this one.
 function parkedBlock() {
   const p = S.parked;
   if (!p) return '';
