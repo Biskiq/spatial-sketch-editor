@@ -1,3 +1,5 @@
+import { stations } from './camera-evaluation.js';
+import { coordinateTiming } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, viewReach } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
 import { resolveExperience } from './experience.js';
@@ -65,7 +67,7 @@ export function seamHtml({from,to}) {
  const name=id=>e.presentations[e.stops[id]?.presentationId]?.name||'Missing Presentation';
  const compact=S.experienceContext.depth==='coordination'||seam.beats.length>0;
  const reachable=rows.filter(r=>r.connectionId&&!r.missing).length;
- return `<div class="deck-head"><b>Seam · ${esc(seam.mode)} · Experience / Camera</b>${button('exp-close','Close')}</div><div class="seam-bookends"><article><small>FROM STOP ${e.guide.indexOf(from)+1}</small><h3>${esc(name(from))}</h3>${compact?`<p>${rows.length} possible origins</p>`:rows.map(r=>`<div class="origin-row">${esc(c.views[r.viewId]?.name||'Missing View')} · ${r.connectionId?'✓':'GAP'} ${button(r.connectionId?'exp-route':'exp-connect',r.connectionId?'Edit route':'Connect',r.connectionId||r.useId)}</div>`).join('')}</article><article class="seam-instrument"><p>Reachable from ${reachable} of ${rows.length} Views</p>${button('exp-cut','Cut')}${button('exp-travel','Travel')}<p>${seam.mode==='travel'&&reachable<rows.length?'Travel refused for unresolved origins':'Cut authors no Camera edge'}</p>${S.experienceContext.depth==='route'?`${button('exp-route-return','Return to Seam reading')}<p>Click Stage to add an interior anchor; drag its diamond.</p>`:''}</article><article><small>TO STOP ${e.guide.indexOf(to)+1}</small><h3>${esc(name(to))}</h3><p>Entry · ${esc(c.views[e.uses[stopEntry(e,to).id]?.viewId]?.name||'Keep current viewpoint')}</p></article></div>`;
+ return `<div class="deck-head"><b>Seam · ${esc(seam.mode)} · Experience / Camera</b>${button('exp-close','Close')}</div><div class="seam-bookends"><article><small>FROM STOP ${e.guide.indexOf(from)+1}</small><h3>${esc(name(from))}</h3>${compact?`<p>${rows.length} possible origins</p>`:rows.map(r=>`<div class="origin-row">${esc(c.views[r.viewId]?.name||'Missing View')} · ${r.connectionId?'✓':'GAP'} ${button(r.connectionId?'exp-route':'exp-connect',r.connectionId?'Edit route':'Connect',r.connectionId||r.useId)}</div>`).join('')}</article><article class="seam-instrument"><p>Reachable from ${reachable} of ${rows.length} Views</p>${button('exp-cut','Cut')}${button('exp-travel','Travel')}${button('exp-coordinate','Coordinate')}<p>${seam.mode==='travel'&&reachable<rows.length?'Travel refused for unresolved origins':'Cut authors no Camera edge'}</p>${S.experienceContext.depth==='route'?`${button('exp-route-return','Return to Seam reading')}<p>Click Stage to add an interior anchor; drag its diamond.</p>`:''}</article><article><small>TO STOP ${e.guide.indexOf(to)+1}</small><h3>${esc(name(to))}</h3><p>Entry · ${esc(c.views[e.uses[stopEntry(e,to).id]?.viewId]?.name||'Keep current viewpoint')}</p></article></div>${S.experienceContext.depth==='coordination'||seam.beats.length?coordinationHtml(seam):''}`;
 }
 
 export function precisionHtml() {
@@ -78,6 +80,12 @@ export function hintsHtml() {
  const t=S.task,v=ctx.cameraSource.views[t?.target?.id];if(!v)return '<p>Missing framing</p>';
  const hint=(label,key,value)=>button('exp-hint',label).replace('data-id=',`data-key="${key}" data-value="${value}" data-id=`);
  return `<div class="deck-head"><b>Framing Hints · ${esc(v.name)}</b>${button('exp-close','Close')}</div>${hint('Near','frameH',4)}${hint('Far','frameH',12)}${hint('Left','az',v.pose.az-.5)}${hint('Right','az',v.pose.az+.5)}${hint('Eye height','el',.2)}${button('exp-precise','Precise',t.params.useId)}`;
+}
+
+export function coordinationHtml(seam) {
+ const c=ctx.cameraSource.connections[S.task?.params.connection],timing=coordinateTiming(ctx.cameraSource,seam);
+ const options=c?stations(c):[];
+ return `<div class="coordination-strip"><b>Local coordination · Experience beats / Camera stations</b>${c?`<label>Station <select data-exp-station>${options.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></label><label>Pace <select data-exp-pace>${['slow','auto','fast'].map(s=>`<option ${s===c.speed?'selected':''}>${s}</option>`).join('')}</select></label>${button('exp-beat','Hold here')}`:'Choose a resolving Camera route'}<div class="beat-strip">${timing.map(b=>`<button class="beat" data-station="${b.stationId}">${esc(b.stationId)} · ${b.at===null?'Repair':b.at.toFixed(2)+' s'} · hold ${b.seconds}s</button>`).join('')}</div><p>Geometry on Stage. ${c?button('exp-route','Edit route on Stage',c.id):''}</p>${S.expRouteAsk?`<div class="ask-rule">Shared route reaches ${S.expRouteAsk.affected.map(s=>esc(s.key)).join(', ')} ${button('exp-route-scope','Update shared route')}</div>`:''}</div>`;
 }
 
 export function askHtml() {

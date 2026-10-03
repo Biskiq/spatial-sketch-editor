@@ -49,3 +49,8 @@ uses/Stops before acceptance. Explicit Stop-entry detach/retarget is one source 
 Undo reunites the entry. Shared Set choices remain shared, as the reach report states.
 Browser proof uses strict command failures. Bounded cards and compact controls repair
 clipped/covered controls found by actual clicks. Outside default remains an experiment.
+
+S6: focused 7/7; browser 30/30. Stage adds an interior anchor; local coordination
+selects only stable departure/anchor/arrival/named stations. Pace and anchor edits
+rederive timing without changing beat references; missing stations remain repairable.
+The strip edits holds and pace, never path geometry; shared route reach is explicit.
