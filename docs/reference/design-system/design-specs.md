@@ -1,13 +1,22 @@
 # Museum Editor — UI Design System & Implementation Specification
 
-**Status:** canonical UI implementation specification — ratified 2026-08-19;
+**Status:** landed UI implementation specification — ratified 2026-08-19;
 reconciled 2026-08-23 by P9; shell placement/dimensions amended 2026-09-03 by
-the P21+ shell plan (see note below). Blue `#2F8CFF` is the sole target accent
-system.
+the P21+ shell plan (see note below). Blue `#2F8CFF` describes the older implementation
+accent, not the destination selection system.
 **Scope:** technology, component stack, visual tokens, typography, iconography, panel sizing, interaction states, Scene/Camera × Plan/3D workspaces, Inspector, Asset Library, Outliner, Camera Timeline.
 **Provenance:** governs the canonical concepts registered in
 [`docs/reference/design-system/visual-registry.md`](visual-registry.md); executed by
 [P3](../../archive/plans/2026-08-18-P3-ui-overhaul.md).
+
+**New feature design:** use the complete soft-frozen
+[shell and visual-system contract](./editor-shell-and-visual-system.md) for shell
+composition, material, type, controls and state language, and the
+[spatial-instrument grammar](./spatial-instrument-grammar.md) for Stage representation
+and interaction legibility. This specification retains maintained subsystem behavior
+until explicit cutover; its Scene/Camera axis, global Camera Timeline, component-local
+shell numbers and older visual examples do not define the World/Experience destination.
+Domain contracts continue to own identity, legal operations, evaluation and acceptance.
 
 > **P21+ amendment (2026-09-03):** shell **placement and dimensions** are
 > amended by [`design-plan-p21.md`](./design-plan-p21.md) — the P21+
@@ -29,11 +38,11 @@ system.
 > the default theme. The §Plan drafting ink and §5 icon inventories stay
 > frozen.
 >
-> **Authority after P23.14 (2026-09-19, owner-ratified):** the P23.14
+> **Shell authority:** the
 > [`editor-shell-and-visual-system.md`](./editor-shell-and-visual-system.md)
-> contract plus its [`Atlas`](./editor-shell-atlas/index.html)
-> are the **durable design authority for the shell**; later phases fit into that
-> grammar and may depend on it. This file, `design-shell-specs.md` and
+> contract is the **durable design authority for the shell**; the
+> [`Atlas`](./editor-shell-atlas/index.html) retains implementation-era specimens.
+> This file, `design-shell-specs.md` and
 > `shell.md` stay canonical for **capability, ownership, exposure and the frozen
 > Plan/identity/iconography contracts**, while their **shell placement, dimension
 > and type** sections are **descriptive of the landed PLATE system**. Three
@@ -60,14 +69,13 @@ system.
 >    component-local button/track sizing, the 32 px standard toolbar button, and
 >    navy as the product baseline.
 >
-> The ratified shell grammar lives in **four places only**: `editor-shell-and-visual-system.md`
-> §2.8–§2.10 (inheritance, roles-not-numbers, constraint-over-number), §7 (closed
-> ladder, roles, the two scales, control roles, role outcomes), §10–§11 (View Bar
-> `MODE` grammar, Tool Tray R1/R2) and §18 (four distinct surface states, pressed
-> baseline). Do not take a shell type/control/material value from this file when
-> §7 disagrees.
+> The destination shell's **One writable owner per fact**, **Visual and state grammar**
+> and **Typography and control roles** sections govern new shell composition.
+> Stage representation is in the spatial-instrument reference. Do not derive a
+> destination shell type/control/material value from this implementation specification.
 
-This specification translates the approved product model and generated UI concepts into concrete implementation rules. The canonical product remains the explicit `Scene | Camera` × `Plan | 3D` domain/view system:
+This specification translates the maintained product model into implementation rules.
+Its current workspace model is `Scene | Camera` × `Plan | 3D`:
 
 * Scene → Plan = author the museum spatially in 2D (Layout | Arrange)
 * Scene → 3D = full scene-object authoring and new placement
@@ -998,7 +1006,7 @@ The generated expanded Camera design shows the intended five-lane structure, tra
 
 > **P23.14 R3 — controls are ROLES, not numbers (this supersedes the table
 > below for the shell).** Every chrome button is one of four roles from
-> [`editor-shell-and-visual-system.md` §7.4](./editor-shell-and-visual-system.md):
+> [shell — Typography and control roles](./editor-shell-and-visual-system.md#typography-and-control-roles-7):
 > `lg` 30 px / `md` 26 px / `sm` 24 px / `xs` 20 px, each carrying its own
 > padding and type, all scaled by `--editor-control-scale`. Radius follows the
 > material rule (square chassis, ≈3 px instruments). The pre-PLATE standard
@@ -1021,7 +1029,8 @@ transparent background, secondary text
 > tier, the `MODE` pair at 11 px, presses painted with a recessed surface + edge
 > border + inset bottom rule, and tool groups separated by space only. The 28 px
 > enclosed track and the enclosed segmented trough are **superseded**. Tool Tray
-> tools are icon-led and sized to the 44 px rail (`editor-shell-and-visual-system.md` §11).
+> tools are icon-led and sized to the maintained 44 px rail
+> ([landed shell](../components/shell.md#current-implementation--plate-composition-p2314-landed)).
 
 Default:
 
