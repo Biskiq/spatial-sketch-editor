@@ -6,7 +6,7 @@ isolated visitor execution and both directions of continuity. The accepted World
 Instrument and Precision. [PLATE §0.8](../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
 owns destination shell design; this static prototype establishes no production interface or cutover.
 
-**Replacement conformance implementation is in integrated review.** The [active C1–C8 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
+**Replacement C1–C8 in-scope conformance is complete; independent external review pending.** The [active C1–C8 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
 owns the corrections; [fresh product recipes](./qa/CONFORMANCE-MANIFEST.md) and
 [conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) own current proof.
 S0–S9 evidence remains historical and supplies no replacement acceptance.

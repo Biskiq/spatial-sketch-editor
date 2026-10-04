@@ -1,0 +1,41 @@
+PASS: shell rejects host regression, with unaffected controls green
+FAIL  the artwork verb also preserves canonical selection and Card  expected [tide1 / Tide Study I] got [rotunda / Rotunda wall]
+Stage S2 · World shell: PASS=46 FAIL=1
+PASS: lens rejects camera regression, with unaffected controls green
+FAIL  …entered from the standpoint Resume was asked at, so the pre-crossing root is not reused  expected [Plan / 0] got [3D / 0]
+Stage S6 · the lens, parked work and explicit Resume: PASS=80 FAIL=1
+PASS: lens rejects selection regression, with unaffected controls green
+FAIL  …and the World subject it holds is named as the World's  expected to contain [From the World lens] got [Presentation · Experience]
+FAIL  the parked record holds the identity, the host and the reading parameters  expected [{"name":"Garden window","identity":"gwin","chain":["face"],"canceled":[],"ok":true,"reason":"","fix":null}] got [{"name":"Garden window","identity":"gwin","chain":["face"],"canceled":[],"ok":false,"reason":"something else is selected now — the parked work is about the Garden window","fix":"select"}]
+FAIL  crossing parks the repair as its own work, with no reading invented  expected [{"name":"Unplaced panel","identity":"panel","chain":["repair"],"canceled":[],"ok":true,"reason":"","fix":null}] got [{"name":"Unplaced panel","identity":"panel","chain":["repair"],"canceled":[],"ok":false,"reason":"something else is selected now — the parked work is about the Unplaced panel","fix":"select"}]
+FAIL  no live control at #card [data-act="resume"]
+FAIL  Resume re-invokes the repair: the reference is still the subject  expected [repair|panel|panel|wall:null|reference] got [none]
+FAIL  with the relationship changed, Resume is not offered and not silently redirected  expected [False / None / False] got [False / harbor / False]
+FAIL  …and the reason names the host it no longer hangs on  expected to contain [no longer hangs on the North wall] got [Parked, not resumable — something else is selected now — the parked work is about the Harbor at Dusk. Resume never guesses a host or a name: start the work fresh instead.Select Harbor at DuskDismiss]
+Stage S6 · the lens, parked work and explicit Resume: PASS=75 FAIL=7
+PASS: conformance rejects evaluator regression; unrelated derived-intent control stays green
+FAIL  Stage route samples exactly consume the Camera evaluator and remain above the Deck  expected [true] got [false]
+V2 boundary route: PASS=37 FAIL=1
+PASS: conformance rejects parked regression; unrelated derived-intent control stays green
+FAIL  coordination Resume keeps NOW and restores both projections neutrally  expected [{"eye": [-3.2421825179236343, 15.764125717754666, 7.896447543042534], "up": [0, 1, 0], "target": [-8.080767195036646, 1.709802593651605, 2.151877406086804], "dir": [-0.30363806869753107, -0.8819578068849474, -0.36049181698386346], "fov": 40, "dist": 15.935369032836812, "frameH": 11.600000000000001, "mirror": false, "aspect": 0.9832134292565947} / true] got [{"eye": [-8.763252587840327, 1109.7508772304348, 4.190398137363516], "up": [0, 0, -1], "target": [-8.763252587840327, 2.0552499512470064, 4.190398137363449], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947} / true]
+FAIL  resumed route return uses the current invocation standpoint  expected [{"eye": [-3.2421825179236343, 15.764125717754666, 7.896447543042534], "up": [0, 1, 0], "target": [-8.080767195036646, 1.709802593651605, 2.151877406086804], "dir": [-0.30363806869753107, -0.8819578068849474, -0.36049181698386346], "fov": 40, "dist": 15.935369032836812, "frameH": 11.600000000000001, "mirror": false, "aspect": 0.9832134292565947}] got [{"eye": [-8.763252587840327, 1109.7508772304348, 4.190398137363516], "up": [0, 0, -1], "target": [-8.763252587840327, 2.0552499512470064, 4.190398137363449], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947}]
+FAIL  Neutral Resume rendered frame 1 preserves eye/direction/up/FOV/mirror/aspect  expected [{"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947}] got [{"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947}]
+FAIL  Neutral Resume rendered frame 2 preserves eye/direction/up/FOV/mirror/aspect  expected [{"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947}] got [{"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947}]
+FAIL  Neutral Resume rendered frame 3 preserves eye/direction/up/FOV/mirror/aspect  expected [{"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947}] got [{"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947}]
+FAIL  resumed precision truthfully says Plan, with no silent Through alignment  expected [true] got [false]
+V2 boundary resume: PASS=64 FAIL=6
+PASS: conformance rejects shared regression; unrelated derived-intent control stays green
+FAIL  shared Meaning asks before source/history changes  expected [true / -447853416 / 0] got [false / 1689330319 / 1]
+V2 boundary shared: PASS=31 FAIL=1
+PASS: conformance rejects endpoints regression; unrelated derived-intent control stays green
+FAIL  QA-4 actual Plan Camera graph, 2/3 reach, gap, endpoints, anchor and pace  expected [true] got [false]
+V2 boundary route: PASS=37 FAIL=1
+PASS: conformance rejects pins regression; unrelated derived-intent control stays green
+FAIL  QA-2 six distinct reachable pins, L0/L1, no Set or graph  expected [true] got [false]
+V2 boundary overview: PASS=12 FAIL=1
+PASS: conformance rejects stations regression; unrelated derived-intent control stays green
+FAIL  QA-5 station projections mirror, with local beat/hold lanes  expected [true] got [false]
+V2 boundary coordination: PASS=44 FAIL=1
+PASS: conformance rejects preview regression; unrelated derived-intent control stays green
+FAIL  Preview rig and input removed; source frozen  expected [true / -2076798642] got [false / -2076798642]
+V2 boundary preview: PASS=62 FAIL=1

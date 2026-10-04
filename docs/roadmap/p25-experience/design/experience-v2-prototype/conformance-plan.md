@@ -1,15 +1,16 @@
 # Experience V2 prototype conformance — replacement implementation plan
 
-**Status: paused by owner interruption during C8; C1–C7 implemented, replacement acceptance incomplete.**
-Resume from the [checkpoint](../../../../operations/checkpoints/experience-v2-conformance.md).
+**Status: C1–C8 in-scope conformance complete, 2026-10-04; independent external review pending.**
+Current recipes, six-state visual verdicts, frozen-source gates and the external repository blocker →
+[new conformance acceptance][conformance-acceptance]. No merge-readiness or phase-close claim.
 Prepared 2026-10-03 at
 `99dd7ebfca55f68775dbf26bcdb455111b17e669` on `prototype-v2`, initially clean.
 This is a standalone replacement for future #113 implementation and acceptance,
 not additional S10+ work. The [S0–S9 plan](./implementation-plan.md) and
 [acceptance record][old-acceptance] remain unchanged historical evidence; their
-completion labels confer no acceptance under this plan. The original planning request authorized no implementation. The subsequent owner request
-authorizes C1–C8 implementation and conformance evidence; no commit, push, merge,
-issue closure or phase closure is authorized.
+completion labels confer no acceptance under this plan. The original planning request authorized no implementation. The owner resumption on 2026-10-04 authorizes C8 completion, coherent commits and push to
+the existing #113 branch. PR merge/closure, major-phase closure, Paper and production work
+remain outside this authorization.
 
 **Outcome:** the single [spatial-authoring executable][prototype] genuinely
 conforms to the finalized V2 behavior **and** compositions. Another implementer
@@ -54,7 +55,7 @@ absorb missing Experience shell, Set, route, coordination or precision behavior.
 Planning-audit baseline (pre-C1–C7): the bullets below record what the
 planning audit observed before replacement implementation. Current
 implementation and evidence live in the active
-[checkpoint](../../../../operations/checkpoints/experience-v2-conformance.md)
+[conformance acceptance][conformance-acceptance]
 and current captures; the §2 corrections remain the standing obligations.
 
 - Read PLATE §§0.8–0.8.2, the complete relevant V2 requirements and canonical
@@ -107,7 +108,7 @@ spatial relationships, hierarchy or disclosure are not.
 **Planning-audit baseline:** each state's `Planning-audit baseline` paragraph
 below preserves the pre-C1–C7 executable finding as provenance. Current
 implementation and evidence live in the active
-[checkpoint](../../../../operations/checkpoints/experience-v2-conformance.md)
+[conformance acceptance][conformance-acceptance]
 and current captures.
 
 ### QA-1 — ordinary Presentation
@@ -824,9 +825,10 @@ comprehension remain the three Experience experiments. Their fixed constraints
 and instrument semantics are acceptance requirements.
 Paper's PA0 must reconcile against the resulting shared Stage/selection/Camera/
 history/cancellation contracts. No F/T gate or major phase closes as a result.
-Use slice-closeout only when actual implementation acceptance later completes,
-subject to the owner's instructions then. C8 remains paused until the owner
-resumes it from the active checkpoint.
+C8's pause was cleared by the owner resumption. In-scope behavioral/visual acceptance and
+final verification are recorded in the new conformance acceptance; the completed checkpoint
+is retired. Independent external review and the missing-fixture repository blocker remain
+before any merge-readiness or formal closeout claim. No major phase closes here.
 
 ## 7. Plan self-review
 
@@ -883,3 +885,5 @@ resumes it from the active checkpoint.
 [q4]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-4-route.png
 [q5]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-5-coordination.png
 [q6]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-6-precise.png
+
+[conformance-acceptance]: ../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
