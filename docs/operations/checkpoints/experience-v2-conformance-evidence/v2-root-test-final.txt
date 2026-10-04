@@ -1,0 +1,1708 @@
+
+> personal-portfolios@0.1.0 test
+> npm run test -w @portfolio/editor
+
+
+> @portfolio/editor@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+
+stdout | tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+
+docs/operations/checkpoints/pr113-experience-v2.md:27  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md:170  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+
+
+ ❯ tests/docs/documentation-references.test.ts (22 tests | 1 failed) 966ms
+   × documentation references > resolves every relative link, written path and section anchor in the tree 890ms
+     → expected [ { …(5) }, { …(5) } ] to deeply equal []
+   ✓ documentation references > walks a tree large enough for the gate to mean something 27ms
+   ✓ documentation references > covers dot-directory documentation instead of blanket-skipping it 28ms
+   ✓ documentation references > leaves deliberately local artifacts alone 17ms
+   ✓ documentation references > cannot silently lose the documents it exists to protect 1ms
+   ✓ the reference grammar > finds links and definitions in prose but ignores them inside code fences 0ms
+   ✓ the reference grammar > reads a written path inside a text block, which is how routers route 0ms
+   ✓ the reference grammar > does not read a link label as a second reference 0ms
+   ✓ the reference grammar > leaves a template fence alone, because a template is not a claim 0ms
+   ✓ the reference grammar > does not treat illustrative patterns or code as paths 0ms
+   ✓ the reference grammar > leaves historical written paths alone inside a declared evidence region 0ms
+   ✓ the reference grammar > runs an unclosed evidence region to the end of the document 0ms
+   ✓ the reference grammar > keeps checking a record’s links and anchors inside an evidence region 0ms
+   ✓ the reference grammar > strips link decoration: angle brackets and titles 0ms
+   ✓ the reference grammar > catches a numbered-section gap, which is how a heading gets swallowed 0ms
+   ✓ the reference grammar > does not call a restarted address a lost section 0ms
+   ✓ the reference grammar > catches a gap after numbered sections restart 0ms
+   ✓ the reference grammar > reads a moved-section placeholder heading as covering its range 0ms
+   ✓ the reference grammar > catches a heading glued to the rule above it, which never renders 0ms
+   ✓ the reference grammar > leaves documents that declare no numbering contract alone 0ms
+   ✓ the reference grammar > slugs headings the way GitHub does, including em dashes and duplicates 0ms
+   ✓ the reference grammar > resolves against the real tree and reports the failure class 1ms
+ ❯ tests/lib/editor/layout/p23b8-d9-dormant-scan.test.ts (2 tests | 1 failed) 726ms
+   ✓ p23b.8 S3 — D9 dormant mapping has no production readers > wallMeshIdentities / wallMeshCacheKey are retired: absent from production source  327ms
+   × p23b.8 S3 — D9 dormant mapping has no production readers > S-R accessors preserve raw geometry identity, so the compat branch never fires 399ms
+     → Cannot find module '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json' imported from '/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts'
+ ✓ tests/lib/layout/wall-mesh-watertight-matrices.test.ts (8 tests) 1886ms
+   ✓ buildRoomWallMesh > builds a watertight 2-manifold with boundary around opening fixtures (no T-junctions)  797ms
+ ✓ tests/lib/editor/layout/layout-preview-state.test.ts (27 tests) 2576ms
+   ✓ layout preview state > creates, edits, and deletes authored objects while profiles remain read-only  357ms
+ ✓ tests/lib/layout/junction-partition.test.ts (15 tests) 1327ms
+ ✓ tests/lib/layout/layout-scale-compile.test.ts (2 tests) 4300ms
+   ✓ layout-scale-fixtures > passes the strict codec and compiles with zero blocking issues at small and medium scales  418ms
+   ✓ layout-scale-fixtures > compiles the 1,000-room fixture with zero blocking issues  3880ms
+ ✓ tests/lib/editor/layout/layout-interior-anchor-release.test.ts (26 tests) 1098ms
+ ✓ tests/lib/bench/bench-report.test.ts (5 tests) 873ms
+   ✓ bench-report budgets > passes the enforced golden-fixture budgets on a fresh node + browser measurement  869ms
+ ✓ tests/lib/layout/p23b8-p1-randomized-differential.test.ts (3 tests) 793ms
+   ✓ p23b.8 S1 — P1 seeded differential over the three M-3 callers > exercises wall-chain, role change and dissolve with no surviving-key geometry change  788ms
+ ✓ tests/lib/layout/wall-mesh-builder.test.ts (20 tests) 368ms
+ ✓ tests/lib/layout/angled-plan-noding-sweeps.test.ts (2 tests) 6208ms
+   ✓ P23.6e regression — projected Wall endpoints node oblique hosts > stress-splits one oblique host without false 2→3 correspondence  2848ms
+   ✓ P23.6e regression — projected Wall endpoints node oblique hosts > stress-splits both projected hosts without intermittent 3→4 or missed faces  3359ms
+ ✓ tests/lib/layout/layout-angled-plan-integrity.test.ts (11 tests) 309ms
+ ✓ tests/lib/editor/editor-store-camera.test.ts (135 tests) 462ms
+ ✓ tests/lib/layout/layout-identity.test.ts (18 tests) 295ms
+ ✓ tests/lib/bench/browser-bench.test.ts (5 tests) 605ms
+ ✓ tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts (55 tests) 8055ms
+   ✓ P1.4 dense non-degeneracy and finiteness > keeps exact collinear-zero straddle finite, off the near clip, and FOV-bounded at every dense sample  939ms
+   ✓ P1.4 dense non-degeneracy and finiteness > keeps epsilon-offset straddle finite, off the near clip, and FOV-bounded at every dense sample  407ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.0001 (forward, 1s) non-degenerate, seek-stable, and rate-bounded  321ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.0001 (reverse, 1s) non-degenerate, seek-stable, and rate-bounded  354ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.0001 (forward, 2.1s) non-degenerate, seek-stable, and rate-bounded  532ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.0001 (reverse, 2.1s) non-degenerate, seek-stable, and rate-bounded  350ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.05 (forward, 1s) non-degenerate, seek-stable, and rate-bounded  351ms
+   ✓ P1.4 singularity and double-whip matrix > keeps POI offset 0.05 (reverse, 1s) non-degenerate, seek-stable, and rate-bounded  337ms
+ ✓ tests/lib/layout/junction-matrix.test.ts (14 tests) 656ms
+ ✓ tests/lib/layout/layout-snap-extent-parity.test.ts (44 tests) 366ms
+stdout | tests/lib/bench/bend-perf.test.ts
+
+P23.11 Bend performance pass
+{
+  "self-intersection-parity": {
+    "cases": 19,
+    "mismatches": []
+  },
+  "pair-intersection-parity": {
+    "cases": 25,
+    "mismatches": []
+  },
+  "deep-bow-self-intersection": {
+    "samples": 776,
+    "everyPairCount": 301088,
+    "shipped": {
+      "count": 5,
+      "p50": 0.094,
+      "p95": 0.563,
+      "max": 0.563
+    },
+    "referenceEveryPair": {
+      "count": 5,
+      "p50": 17.35,
+      "p95": 30.778,
+      "max": 30.778
+    },
+    "speedupP50": 184.574
+  },
+  "per-move-cost": {
+    "bend-1-wall": {
+      "fixture": {
+        "walls": 1,
+        "rooms": 0,
+        "knots": 0,
+        "openings": 0
+      },
+      "valid": 24,
+      "moves": 24,
+      "pointerCpu": {
+        "count": 24,
+        "p50": 4.384,
+        "p95": 12.22,
+        "max": 17.311
+      },
+      "moveTotal": {
+        "count": 24,
+        "p50": 4.342,
+        "p95": 12.192,
+        "max": 17.266
+      },
+      "stages": {
+        "pointer-cpu": {
+          "count": 24,
+          "p50": 4.384,
+          "p95": 12.22,
+          "max": 17.311
+        },
+        "bend-move-total": {
+          "count": 24,
+          "p50": 4.342,
+          "p95": 12.192,
+          "max": 17.266
+        },
+        "baseline-restore": {
+          "count": 24,
+          "p50": 0.033,
+          "p95": 0.086,
+          "max": 0.087
+        },
+        "restore-reactive-write": {
+          "count": 24,
+          "p50": 0.023,
+          "p95": 0.06,
+          "max": 0.061
+        },
+        "restore-project-clone": {
+          "count": 24,
+          "p50": 0.015,
+          "p95": 0.043,
+          "max": 0.043
+        },
+        "restore-model-project": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.003,
+          "max": 0.003
+        },
+        "restore-issues-clone": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.003,
+          "max": 0.007
+        },
+        "restore-mesh-install": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.008,
+          "max": 0.008
+        },
+        "restore-bookkeeping": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.004,
+          "max": 0.004
+        },
+        "planner-exact-split": {
+          "count": 24,
+          "p50": 0.075,
+          "p95": 0.16,
+          "max": 3.052
+        },
+        "curve-algebra": {
+          "count": 24,
+          "p50": 0.009,
+          "p95": 0.022,
+          "max": 0.072
+        },
+        "candidate-clone": {
+          "count": 24,
+          "p50": 0.004,
+          "p95": 0.01,
+          "max": 0.015
+        },
+        "structural-pre": {
+          "count": 24,
+          "p50": 0.027,
+          "p95": 0.131,
+          "max": 2.375
+        },
+        "topology-pre": {
+          "count": 24,
+          "p50": 0.22,
+          "p95": 1.517,
+          "max": 1.672
+        },
+        "curve-sampling": {
+          "count": 48,
+          "p50": 0.14,
+          "p95": 1.495,
+          "max": 10.797
+        },
+        "face-extraction": {
+          "count": 24,
+          "p50": 0.009,
+          "p95": 0.032,
+          "max": 0.035
+        },
+        "room-reconciliation": {
+          "count": 24,
+          "p50": 0.009,
+          "p95": 0.024,
+          "max": 0.037
+        },
+        "structural-post": {
+          "count": 24,
+          "p50": 0.018,
+          "p95": 0.115,
+          "max": 0.557
+        },
+        "topology-post": {
+          "count": 24,
+          "p50": 0.144,
+          "p95": 3.529,
+          "max": 10.881
+        },
+        "opening-set": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.009,
+          "max": 0.074
+        },
+        "portal-relations": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.005,
+          "max": 0.005
+        },
+        "acceptance-compile": {
+          "count": 24,
+          "p50": 0.298,
+          "p95": 0.713,
+          "max": 0.729
+        },
+        "room-geometry-compile": {
+          "count": 24,
+          "p50": 0.009,
+          "p95": 0.026,
+          "max": 0.045
+        },
+        "finite-thickness": {
+          "count": 24,
+          "p50": 0.024,
+          "p95": 0.084,
+          "max": 0.088
+        },
+        "junction-resolution": {
+          "count": 24,
+          "p50": 0.02,
+          "p95": 0.144,
+          "max": 0.205
+        },
+        "preview-compile-reused": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.006,
+          "max": 0.007
+        },
+        "mesh-prebuild": {
+          "count": 24,
+          "p50": 1.283,
+          "p95": 7.6,
+          "max": 10.309
+        },
+        "mesh-inputs": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.016,
+          "max": 0.018
+        },
+        "mesh-input-validate": {
+          "count": 24,
+          "p50": 0.27,
+          "p95": 0.657,
+          "max": 2.015
+        },
+        "mesh-room-meshes": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.003,
+          "max": 0.003
+        },
+        "mesh-build": {
+          "count": 24,
+          "p50": 0.997,
+          "p95": 6.986,
+          "max": 8.213
+        },
+        "standalone-wall-build": {
+          "count": 24,
+          "p50": 0.111,
+          "p95": 0.303,
+          "max": 0.35
+        },
+        "preview-install": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.01,
+          "max": 0.028
+        },
+        "plan-render-model": {
+          "count": 24,
+          "p50": 0.03,
+          "p95": 0.094,
+          "max": 0.578
+        }
+      }
+    },
+    "bend-3-room": {
+      "fixture": {
+        "walls": 12,
+        "rooms": 3,
+        "knots": 0,
+        "openings": 0
+      },
+      "valid": 24,
+      "moves": 24,
+      "pointerCpu": {
+        "count": 24,
+        "p50": 36.247,
+        "p95": 88.845,
+        "max": 112.882
+      },
+      "moveTotal": {
+        "count": 24,
+        "p50": 36.009,
+        "p95": 88.778,
+        "max": 112.599
+      },
+      "stages": {
+        "pointer-cpu": {
+          "count": 24,
+          "p50": 36.247,
+          "p95": 88.845,
+          "max": 112.882
+        },
+        "bend-move-total": {
+          "count": 24,
+          "p50": 36.009,
+          "p95": 88.778,
+          "max": 112.599
+        },
+        "baseline-restore": {
+          "count": 24,
+          "p50": 0.093,
+          "p95": 0.269,
+          "max": 1.052
+        },
+        "restore-reactive-write": {
+          "count": 24,
+          "p50": 0.075,
+          "p95": 0.231,
+          "max": 0.944
+        },
+        "restore-project-clone": {
+          "count": 24,
+          "p50": 0.057,
+          "p95": 0.188,
+          "max": 0.903
+        },
+        "restore-model-project": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.011,
+          "max": 0.025
+        },
+        "restore-issues-clone": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.008,
+          "max": 0.016
+        },
+        "restore-mesh-install": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.017,
+          "max": 0.055
+        },
+        "restore-bookkeeping": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.005,
+          "max": 0.005
+        },
+        "planner-exact-split": {
+          "count": 24,
+          "p50": 0.084,
+          "p95": 0.317,
+          "max": 0.328
+        },
+        "curve-algebra": {
+          "count": 24,
+          "p50": 0.013,
+          "p95": 0.234,
+          "max": 2.491
+        },
+        "candidate-clone": {
+          "count": 24,
+          "p50": 0.011,
+          "p95": 0.049,
+          "max": 0.139
+        },
+        "structural-pre": {
+          "count": 24,
+          "p50": 0.123,
+          "p95": 0.999,
+          "max": 2.869
+        },
+        "topology-pre": {
+          "count": 24,
+          "p50": 0.333,
+          "p95": 3.11,
+          "max": 8.284
+        },
+        "curve-sampling": {
+          "count": 336,
+          "p50": 0.011,
+          "p95": 0.33,
+          "max": 24.321
+        },
+        "face-extraction": {
+          "count": 24,
+          "p50": 0.229,
+          "p95": 1.96,
+          "max": 8.574
+        },
+        "room-reconciliation": {
+          "count": 24,
+          "p50": 0.022,
+          "p95": 0.072,
+          "max": 0.504
+        },
+        "structural-post": {
+          "count": 24,
+          "p50": 0.084,
+          "p95": 0.285,
+          "max": 10.001
+        },
+        "topology-post": {
+          "count": 24,
+          "p50": 0.32,
+          "p95": 3.955,
+          "max": 27.243
+        },
+        "opening-set": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.021,
+          "max": 0.069
+        },
+        "portal-relations": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.006,
+          "max": 0.016
+        },
+        "acceptance-compile": {
+          "count": 24,
+          "p50": 8.098,
+          "p95": 37.986,
+          "max": 88.276
+        },
+        "room-geometry-compile": {
+          "count": 24,
+          "p50": 4.545,
+          "p95": 35.715,
+          "max": 48.01
+        },
+        "finite-thickness": {
+          "count": 24,
+          "p50": 0.028,
+          "p95": 0.64,
+          "max": 4.67
+        },
+        "junction-resolution": {
+          "count": 24,
+          "p50": 0.105,
+          "p95": 4.086,
+          "max": 7.137
+        },
+        "preview-compile-reused": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.014,
+          "max": 0.694
+        },
+        "mesh-prebuild": {
+          "count": 24,
+          "p50": 7.318,
+          "p95": 18.272,
+          "max": 24.691
+        },
+        "mesh-inputs": {
+          "count": 24,
+          "p50": 0.025,
+          "p95": 0.052,
+          "max": 0.128
+        },
+        "mesh-input-validate": {
+          "count": 24,
+          "p50": 3.506,
+          "p95": 16.367,
+          "max": 18.901
+        },
+        "mesh-room-meshes": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.006,
+          "max": 0.008
+        },
+        "mesh-build": {
+          "count": 24,
+          "p50": 1.14,
+          "p95": 5.201,
+          "max": 6.597
+        },
+        "standalone-wall-build": {
+          "count": 24,
+          "p50": 0.133,
+          "p95": 0.455,
+          "max": 1.224
+        },
+        "preview-install": {
+          "count": 24,
+          "p50": 0.007,
+          "p95": 0.012,
+          "max": 0.016
+        },
+        "plan-render-model": {
+          "count": 24,
+          "p50": 0.061,
+          "p95": 0.272,
+          "max": 0.321
+        }
+      }
+    },
+    "bend-10-wall": {
+      "fixture": {
+        "walls": 10,
+        "rooms": 0,
+        "knots": 0,
+        "openings": 0
+      },
+      "valid": 24,
+      "moves": 24,
+      "pointerCpu": {
+        "count": 24,
+        "p50": 26.684,
+        "p95": 65.735,
+        "max": 127.751
+      },
+      "moveTotal": {
+        "count": 24,
+        "p50": 26.595,
+        "p95": 65.65,
+        "max": 126.966
+      },
+      "stages": {
+        "pointer-cpu": {
+          "count": 24,
+          "p50": 26.684,
+          "p95": 65.735,
+          "max": 127.751
+        },
+        "bend-move-total": {
+          "count": 24,
+          "p50": 26.595,
+          "p95": 65.65,
+          "max": 126.966
+        },
+        "baseline-restore": {
+          "count": 24,
+          "p50": 0.073,
+          "p95": 0.213,
+          "max": 0.436
+        },
+        "restore-reactive-write": {
+          "count": 24,
+          "p50": 0.061,
+          "p95": 0.172,
+          "max": 0.419
+        },
+        "restore-project-clone": {
+          "count": 24,
+          "p50": 0.049,
+          "p95": 0.133,
+          "max": 0.402
+        },
+        "restore-model-project": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.007,
+          "max": 0.014
+        },
+        "restore-issues-clone": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.003,
+          "max": 0.005
+        },
+        "restore-mesh-install": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.011,
+          "max": 0.012
+        },
+        "restore-bookkeeping": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.01,
+          "max": 0.013
+        },
+        "planner-exact-split": {
+          "count": 24,
+          "p50": 0.081,
+          "p95": 0.162,
+          "max": 0.167
+        },
+        "curve-algebra": {
+          "count": 24,
+          "p50": 0.011,
+          "p95": 0.027,
+          "max": 0.041
+        },
+        "candidate-clone": {
+          "count": 24,
+          "p50": 0.008,
+          "p95": 0.023,
+          "max": 0.023
+        },
+        "structural-pre": {
+          "count": 24,
+          "p50": 0.095,
+          "p95": 0.426,
+          "max": 3.768
+        },
+        "topology-pre": {
+          "count": 24,
+          "p50": 0.297,
+          "p95": 2.535,
+          "max": 16.279
+        },
+        "curve-sampling": {
+          "count": 264,
+          "p50": 0.018,
+          "p95": 0.31,
+          "max": 13.916
+        },
+        "face-extraction": {
+          "count": 24,
+          "p50": 0.013,
+          "p95": 0.034,
+          "max": 0.05
+        },
+        "room-reconciliation": {
+          "count": 24,
+          "p50": 0.019,
+          "p95": 0.036,
+          "max": 0.051
+        },
+        "structural-post": {
+          "count": 24,
+          "p50": 0.084,
+          "p95": 0.478,
+          "max": 1.007
+        },
+        "topology-post": {
+          "count": 24,
+          "p50": 0.196,
+          "p95": 0.718,
+          "max": 0.845
+        },
+        "opening-set": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.022,
+          "max": 0.361
+        },
+        "portal-relations": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.008,
+          "max": 0.021
+        },
+        "acceptance-compile": {
+          "count": 24,
+          "p50": 2.694,
+          "p95": 10.776,
+          "max": 32.28
+        },
+        "room-geometry-compile": {
+          "count": 24,
+          "p50": 0.015,
+          "p95": 0.039,
+          "max": 0.789
+        },
+        "finite-thickness": {
+          "count": 24,
+          "p50": 0.037,
+          "p95": 0.775,
+          "max": 1.621
+        },
+        "junction-resolution": {
+          "count": 24,
+          "p50": 0.081,
+          "p95": 0.252,
+          "max": 0.421
+        },
+        "preview-compile-reused": {
+          "count": 24,
+          "p50": 0.004,
+          "p95": 0.013,
+          "max": 1.353
+        },
+        "mesh-prebuild": {
+          "count": 24,
+          "p50": 6.915,
+          "p95": 25.289,
+          "max": 63.312
+        },
+        "mesh-inputs": {
+          "count": 24,
+          "p50": 0.024,
+          "p95": 0.202,
+          "max": 0.225
+        },
+        "mesh-input-validate": {
+          "count": 24,
+          "p50": 3.865,
+          "p95": 17.397,
+          "max": 22.4
+        },
+        "mesh-room-meshes": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.005,
+          "max": 0.01
+        },
+        "mesh-build": {
+          "count": 24,
+          "p50": 1.307,
+          "p95": 6.378,
+          "max": 8.828
+        },
+        "standalone-wall-build": {
+          "count": 24,
+          "p50": 0.129,
+          "p95": 0.382,
+          "max": 1.571
+        },
+        "preview-install": {
+          "count": 24,
+          "p50": 0.006,
+          "p95": 0.01,
+          "max": 0.013
+        },
+        "plan-render-model": {
+          "count": 24,
+          "p50": 0.035,
+          "p95": 0.128,
+          "max": 0.764
+        }
+      }
+    },
+    "bend-50-wall": {
+      "fixture": {
+        "walls": 50,
+        "rooms": 0,
+        "knots": 0,
+        "openings": 0
+      },
+      "valid": 24,
+      "moves": 24,
+      "pointerCpu": {
+        "count": 24,
+        "p50": 76.621,
+        "p95": 149.226,
+        "max": 161.453
+      },
+      "moveTotal": {
+        "count": 24,
+        "p50": 76.534,
+        "p95": 148.987,
+        "max": 161.187
+      },
+      "stages": {
+        "pointer-cpu": {
+          "count": 24,
+          "p50": 76.621,
+          "p95": 149.226,
+          "max": 161.453
+        },
+        "bend-move-total": {
+          "count": 24,
+          "p50": 76.534,
+          "p95": 148.987,
+          "max": 161.187
+        },
+        "baseline-restore": {
+          "count": 24,
+          "p50": 0.167,
+          "p95": 0.518,
+          "max": 0.857
+        },
+        "restore-reactive-write": {
+          "count": 24,
+          "p50": 0.151,
+          "p95": 0.478,
+          "max": 0.797
+        },
+        "restore-project-clone": {
+          "count": 24,
+          "p50": 0.141,
+          "p95": 0.45,
+          "max": 0.754
+        },
+        "restore-model-project": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.006,
+          "max": 0.006
+        },
+        "restore-issues-clone": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.004,
+          "max": 0.005
+        },
+        "restore-mesh-install": {
+          "count": 24,
+          "p50": 0.007,
+          "p95": 0.02,
+          "max": 0.069
+        },
+        "restore-bookkeeping": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.005,
+          "max": 0.007
+        },
+        "planner-exact-split": {
+          "count": 24,
+          "p50": 0.08,
+          "p95": 0.171,
+          "max": 0.183
+        },
+        "curve-algebra": {
+          "count": 24,
+          "p50": 0.01,
+          "p95": 0.02,
+          "max": 0.038
+        },
+        "candidate-clone": {
+          "count": 24,
+          "p50": 0.018,
+          "p95": 0.043,
+          "max": 0.068
+        },
+        "structural-pre": {
+          "count": 24,
+          "p50": 0.257,
+          "p95": 0.594,
+          "max": 0.727
+        },
+        "topology-pre": {
+          "count": 24,
+          "p50": 0.448,
+          "p95": 1.042,
+          "max": 1.065
+        },
+        "curve-sampling": {
+          "count": 1224,
+          "p50": 0.01,
+          "p95": 0.079,
+          "max": 7.105
+        },
+        "face-extraction": {
+          "count": 24,
+          "p50": 0.018,
+          "p95": 0.034,
+          "max": 0.054
+        },
+        "room-reconciliation": {
+          "count": 24,
+          "p50": 0.013,
+          "p95": 0.026,
+          "max": 0.027
+        },
+        "structural-post": {
+          "count": 24,
+          "p50": 0.235,
+          "p95": 1.095,
+          "max": 1.235
+        },
+        "topology-post": {
+          "count": 24,
+          "p50": 0.405,
+          "p95": 2.947,
+          "max": 7.548
+        },
+        "opening-set": {
+          "count": 24,
+          "p50": 0.007,
+          "p95": 0.016,
+          "max": 0.021
+        },
+        "portal-relations": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.016,
+          "max": 0.069
+        },
+        "acceptance-compile": {
+          "count": 24,
+          "p50": 8.819,
+          "p95": 30.837,
+          "max": 31.61
+        },
+        "room-geometry-compile": {
+          "count": 24,
+          "p50": 0.013,
+          "p95": 0.025,
+          "max": 0.025
+        },
+        "finite-thickness": {
+          "count": 24,
+          "p50": 0.032,
+          "p95": 0.099,
+          "max": 0.099
+        },
+        "junction-resolution": {
+          "count": 24,
+          "p50": 0.27,
+          "p95": 2.651,
+          "max": 7.236
+        },
+        "preview-compile-reused": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.008,
+          "max": 0.008
+        },
+        "mesh-prebuild": {
+          "count": 24,
+          "p50": 22.138,
+          "p95": 61.478,
+          "max": 65.687
+        },
+        "mesh-inputs": {
+          "count": 24,
+          "p50": 0.073,
+          "p95": 0.215,
+          "max": 0.59
+        },
+        "mesh-input-validate": {
+          "count": 24,
+          "p50": 15.473,
+          "p95": 37.64,
+          "max": 39.189
+        },
+        "mesh-room-meshes": {
+          "count": 24,
+          "p50": 0.003,
+          "p95": 0.007,
+          "max": 0.14
+        },
+        "mesh-build": {
+          "count": 24,
+          "p50": 0.803,
+          "p95": 4.307,
+          "max": 7.607
+        },
+        "standalone-wall-build": {
+          "count": 24,
+          "p50": 0.117,
+          "p95": 0.549,
+          "max": 6.253
+        },
+        "preview-install": {
+          "count": 24,
+          "p50": 0.004,
+          "p95": 0.029,
+          "max": 0.158
+        },
+        "plan-render-model": {
+          "count": 24,
+          "p50": 0.101,
+          "p95": 0.355,
+          "max": 0.601
+        }
+      }
+    },
+    "bend-10-room": {
+      "fixture": {
+        "walls": 40,
+        "rooms": 10,
+        "knots": 0,
+        "openings": 0
+      },
+      "valid": 24,
+      "moves": 24,
+      "pointerCpu": {
+        "count": 24,
+        "p50": 59.074,
+        "p95": 85.723,
+        "max": 97.725
+      },
+      "moveTotal": {
+        "count": 24,
+        "p50": 58.979,
+        "p95": 85.554,
+        "max": 97.476
+      },
+      "stages": {
+        "pointer-cpu": {
+          "count": 24,
+          "p50": 59.074,
+          "p95": 85.723,
+          "max": 97.725
+        },
+        "bend-move-total": {
+          "count": 24,
+          "p50": 58.979,
+          "p95": 85.554,
+          "max": 97.476
+        },
+        "baseline-restore": {
+          "count": 24,
+          "p50": 0.134,
+          "p95": 0.18,
+          "max": 0.683
+        },
+        "restore-reactive-write": {
+          "count": 24,
+          "p50": 0.12,
+          "p95": 0.161,
+          "max": 0.662
+        },
+        "restore-project-clone": {
+          "count": 24,
+          "p50": 0.108,
+          "p95": 0.142,
+          "max": 0.146
+        },
+        "restore-model-project": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.008,
+          "max": 0.01
+        },
+        "restore-issues-clone": {
+          "count": 24,
+          "p50": 0.001,
+          "p95": 0.002,
+          "max": 0.003
+        },
+        "restore-mesh-install": {
+          "count": 24,
+          "p50": 0.007,
+          "p95": 0.009,
+          "max": 0.009
+        },
+        "restore-bookkeeping": {
+          "count": 24,
+          "p50": 0.002,
+          "p95": 0.002,
+          "max": 0.005
+        },
+        "planner-exact-split": {
+          "count": 24,
+          "p50": 0.077,
+          "p95": 0.084,
+          "max": 0.086
+        },
+        "curve-algebra": {
+          "count": 24,
+          "p50": 0.01,
+          "p95": 0.022,
+          "max": 0.022
+        },
+        "candidate-clone": {
+          "count": 24,
+          "p50": 0.013,
+          "p95": 0.022,
+          "max": 0.022
+        },
+        "structural-pre": {
+          "count": 24,
+          "p50": 0.213,
+          "p95": 0.35,
+          "max": 0.409
+        },
+        "topology-pre": {
+          "count": 24,
+          "p50": 0.368,
+          "p95": 0.5,
+          "max": 1.091
+        },
+        "curve-sampling": {
+          "count": 1008,
+          "p50": 0.007,
+          "p95": 0.107,
+          "max": 2.519
+        },
+        "face-extraction": {
+          "count": 24,
+          "p50": 0.241,
+          "p95": 1.009,
+          "max": 1.345
+        },
+        "room-reconciliation": {
+          "count": 24,
+          "p50": 0.023,
+          "p95": 0.032,
+          "max": 0.049
+        },
+        "structural-post": {
+          "count": 24,
+          "p50": 0.184,
+          "p95": 2.003,
+          "max": 3.344
+        },
+        "topology-post": {
+          "count": 24,
+          "p50": 0.313,
+          "p95": 6.699,
+          "max": 16.552
+        },
+        "opening-set": {
+          "count": 24,
+          "p50": 0.007,
+          "p95": 0.021,
+          "max": 0.034
+        },
+        "portal-relations": {
+          "count": 24,
+          "p50": 0.004,
+          "p95": 0.009,
+          "max": 0.009
+        },
+        "acceptance-compile": {
+          "count": 24,
+          "p50": 13.242,
+          "p95": 38.631,
+          "max": 61.533
+        },
+        "room-geometry-compile": {
+          "count": 24,
+          "p50": 7.877,
+          "p95": 17.298,
+          "max": 31.901
+        },
+        "finite-thickness": {
+          "count": 24,
+          "p50": 0.029,
+          "p95": 0.071,
+          "max": 0.073
+        },
+        "junction-resolution": {
+          "count": 24,
+          "p50": 0.211,
+          "p95": 2.266,
+          "max": 19.613
+        },
+        "preview-compile-reused": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.012,
+          "max": 0.015
+        },
+        "mesh-prebuild": {
+          "count": 24,
+          "p50": 16.522,
+          "p95": 43.66,
+          "max": 46.95
+        },
+        "mesh-inputs": {
+          "count": 24,
+          "p50": 0.039,
+          "p95": 0.064,
+          "max": 0.068
+        },
+        "mesh-input-validate": {
+          "count": 24,
+          "p50": 11.568,
+          "p95": 18.249,
+          "max": 23.376
+        },
+        "mesh-room-meshes": {
+          "count": 24,
+          "p50": 0.004,
+          "p95": 0.006,
+          "max": 0.007
+        },
+        "mesh-build": {
+          "count": 24,
+          "p50": 1.127,
+          "p95": 2.605,
+          "max": 3.184
+        },
+        "standalone-wall-build": {
+          "count": 24,
+          "p50": 0.111,
+          "p95": 0.658,
+          "max": 1.524
+        },
+        "preview-install": {
+          "count": 24,
+          "p50": 0.005,
+          "p95": 0.009,
+          "max": 0.011
+        },
+        "plan-render-model": {
+          "count": 24,
+          "p50": 0.094,
+          "p95": 0.162,
+          "max": 0.242
+        }
+      }
+    }
+  }
+}
+
+
+ ✓ tests/lib/bench/bend-perf.test.ts (10 tests) 7861ms
+   ✓ P23.11 pass — the frozen baseline is derived once per gesture > restores the baseline without rebuilding meshes, while still installing fresh containers  385ms
+   ✓ P23.11 pass — the accepted compile is installed, not recompiled > reuses the acceptance result and installs exactly what a fresh compile produces  921ms
+   ✓ P23.11 pass — the accepted compile is installed, not recompiled > reports the per-move cost of a representative multi-Room Bend  5858ms
+ ✓ tests/lib/editor/layout/layout-3d-picking.test.ts (20 tests) 240ms
+ ✓ tests/lib/editor/layout/layout-transient-preview.test.ts (27 tests) 243ms
+ ✓ tests/lib/editor/layout/layout-room-move-gesture.test.ts (17 tests) 186ms
+ ✓ tests/lib/layout/layout-dissolve-curves.test.ts (9 tests) 172ms
+ ✓ tests/lib/layout/layout-curve-regressions.test.ts (40 tests) 130ms
+ ✓ tests/lib/layout/plan-presentation-foundation.test.ts (8 tests) 152ms
+ ✓ tests/lib/layout/plan-door-window.test.ts (17 tests) 189ms
+ ✓ tests/lib/editor/app/navigator-identity.test.ts (44 tests) 188ms
+ ✓ tests/lib/bench/three-stats.test.ts (2 tests) 143ms
+ ✓ tests/lib/layout/plan-state-controls.test.ts (26 tests) 247ms
+ ✓ tests/lib/layout/plan-render-harness.test.ts (5 tests) 237ms
+ ✓ tests/lib/layout/shared-walls.test.ts (7 tests) 246ms
+ ✓ tests/lib/layout/plan-attention.test.ts (16 tests) 188ms
+ ✓ tests/lib/layout/layout-room-lifecycle.test.ts (46 tests) 177ms
+ ✓ tests/lib/layout/plan-thin-wall.test.ts (5 tests) 212ms
+ ✓ tests/lib/layout/layout-openings.test.ts (32 tests) 197ms
+ ✓ tests/lib/editor/layout/layout-lifecycle-semantics.test.ts (14 tests) 248ms
+ ✓ tests/lib/editor/layout/p23b-m1-room-label-arm.test.ts (18 tests) 253ms
+ ✓ tests/lib/layout/layout-wall-chain.test.ts (48 tests) 168ms
+ ✓ tests/lib/layout/plan-snap-grammar.test.ts (27 tests) 209ms
+ ✓ tests/lib/editor/layout/plan-hit.test.ts (4 tests) 165ms
+ ✓ tests/lib/layout/plan-scene-paint.test.ts (7 tests) 270ms
+ ✓ tests/lib/editor/layout/layout-transient-room-unit.test.ts (15 tests) 104ms
+ ✓ tests/lib/layout/layout-p23b3a-reference.test.ts (24 tests) 120ms
+ ✓ tests/lib/layout/layout-duplicate.test.ts (27 tests) 138ms
+ ✓ tests/lib/museum/visitor-import-boundary.test.ts (6 tests) 64ms
+ ✓ tests/lib/museum/camera-core-boundary.test.ts (5 tests) 154ms
+ ✓ tests/lib/editor/layout/layout-wall-edit-gesture.test.ts (33 tests) 225ms
+ ✓ tests/lib/layout/layout-curve-integration.test.ts (7 tests) 170ms
+ ✓ tests/lib/layout/layout-drafting.test.ts (31 tests) 79ms
+ ✓ tests/lib/editor/layout/p23b-interaction-measure.test.ts (20 tests) 148ms
+ ✓ tests/lib/layout/layout-p23b3a-d12-hazard.test.ts (20 tests) 77ms
+ ✓ tests/lib/editor/app/hierarchy-projection.test.ts (110 tests) 51ms
+ ✓ tests/lib/layout/layout-curve-read-path.test.ts (14 tests) 56ms
+ ✓ tests/lib/editor/project-format-visitor-parity.test.ts (14 tests) 115ms
+ ✓ tests/lib/editor/store/camera-preview-controller.test.ts (25 tests) 67ms
+ ✓ tests/lib/editor/gizmo/layout-gizmo-adapter.test.ts (15 tests) 209ms
+ ✓ tests/lib/editor/layout/layout-replacement-normalization.test.ts (10 tests) 97ms
+ ✓ tests/lib/layout/layout-curve-planners.test.ts (29 tests) 113ms
+ ✓ tests/lib/museum/navigation/camera-motion.test.ts (62 tests) 85ms
+ ✓ tests/lib/layout/layout-room-move.test.ts (30 tests) 135ms
+ ✓ tests/lib/editor/layout/layout-transient-allocation.test.ts (10 tests) 97ms
+ ✓ tests/lib/layout/layout-wall-delete.test.ts (27 tests) 97ms
+ ✓ tests/lib/editor/layout/layout-add-junction.test.ts (9 tests) 72ms
+ ✓ tests/lib/layout/layout-junction-identity.test.ts (9 tests) 119ms
+ ✓ tests/lib/render/wall-geometry-adapter.test.ts (10 tests) 68ms
+ ✓ tests/lib/editor/app/room-delete.test.ts (8 tests) 55ms
+ ✓ tests/lib/layout/plan-empty-state.test.ts (8 tests) 104ms
+ ✓ tests/lib/editor/p23-f0-stage5-small-items.test.ts (15 tests) 60ms
+ ✓ tests/lib/editor/editor-store.test.ts (16 tests) 88ms
+ ✓ tests/lib/editor/store/mutation-policy.test.ts (19 tests) 79ms
+ ✓ tests/lib/editor/layout/layout-bend-command.test.ts (20 tests) 96ms
+ ✓ tests/lib/editor/layout/layout-height-edit-history.test.ts (8 tests) 55ms
+ ✓ tests/lib/editor/project-format-writer-fixtures.test.ts (21 tests) 64ms
+ ✓ tests/lib/editor/import/package-importer.test.ts (9 tests) 77ms
+ ✓ tests/lib/editor/tmp-confirm-gizmo-pointer-pipeline.test.ts (3 tests) 59ms
+ ✓ tests/lib/content/normalize-asset.test.ts (6 tests) 15958ms
+   ✓ normalize-asset.sh (P24A.1 pipeline fixture) > produces identical content hashes on identical reruns  7343ms
+   ✓ normalize-asset.sh (P24A.1 pipeline fixture) > replaces a pre-existing destination on success with no backup litter  2612ms
+   ✓ normalize-asset.sh (P24A.1 pipeline fixture) > canonicalizes loose-but-finite scales to valid JSON numbers  4933ms
+   ✓ normalize-asset.sh (P24A.1 pipeline fixture) > leaves a pre-existing destination unchanged when normalization fails  741ms
+ ✓ tests/lib/editor/layout/layout-lifecycle.test.ts (8 tests) 89ms
+ ✓ tests/lib/editor/store/shell-lanes.test.ts (9 tests) 40ms
+ ✓ tests/lib/editor/asset-load-resolution.test.ts (22 tests) 74ms
+ ✓ tests/lib/layout/layout-migration.test.ts (9 tests) 31ms
+ ✓ tests/lib/editor/layout/layout-undo-branch.test.ts (3 tests) 40ms
+ ✓ tests/lib/editor/layout/layout-3d-selection.test.ts (14 tests) 36ms
+ ✓ tests/lib/editor/export/package-exporter.test.ts (11 tests) 96ms
+ ✓ tests/lib/layout/layout-precision.test.ts (13 tests) 51ms
+ ✓ tests/lib/editor/gizmo/layout-gizmo-candidate.test.ts (11 tests) 52ms
+ ✓ tests/lib/layout/layout-geometry-parity.test.ts (6 tests) 55ms
+ ✓ tests/lib/layout/layout-geometry-boundary.test.ts (8 tests) 69ms
+ ✓ tests/lib/editor/layout/layout-wall-run-height.test.ts (13 tests) 90ms
+ ✓ tests/lib/layout/layout-wall-edit.test.ts (20 tests) 62ms
+ ✓ tests/lib/layout/layout-dissolve-junction.test.ts (22 tests) 48ms
+ ✓ tests/lib/layout/layout-wall-height.test.ts (36 tests) 63ms
+ ✓ tests/lib/editor/layout/plan-overlays.test.ts (20 tests) 57ms
+ ✓ tests/lib/editor/app/inspector-identity.test.ts (23 tests) 69ms
+ ✓ tests/lib/editor/layout/layout-wall-segment-history.test.ts (7 tests) 66ms
+ ✓ tests/lib/editor/layout/layout-names.test.ts (17 tests) 44ms
+ ✓ tests/lib/content/scene-codec.test.ts (39 tests) 59ms
+ ✓ tests/lib/editor/layout/plan-camera-projection.test.ts (13 tests) 38ms
+ ✓ tests/lib/editor/store/project-format-policy.test.ts (18 tests) 42ms
+ ✓ tests/lib/editor/layout/layout-mutation-runner.test.ts (10 tests) 81ms
+ ✓ tests/lib/layout/layout-geometry-golden.test.ts (7 tests) 63ms
+ ✓ tests/lib/editor/store/preview-sequence.test.ts (18 tests) 84ms
+ ✓ tests/lib/editor/layout/p23b-mesh-identity.test.ts (6 tests) 69ms
+ ✓ tests/lib/layout/plan-salience.test.ts (27 tests) 18ms
+ ✓ tests/lib/layout/layout-concave-room-identity.test.ts (6 tests) 49ms
+ ✓ tests/lib/layout/layout-geometry.test.ts (21 tests) 76ms
+ ✓ tests/lib/editor/app/shell-contrast-floor.test.ts (37 tests) 57ms
+ ✓ tests/lib/editor/layout/layout-wall-chain-commit.test.ts (10 tests) 56ms
+ ✓ tests/lib/layout/layout-curve-correspondence.test.ts (3 tests) 47ms
+ ✓ tests/lib/editor/layout/layout-wall-move-adapter.test.ts (4 tests) 44ms
+ ✓ tests/lib/editor/store/preview-scope.test.ts (14 tests) 47ms
+ ✓ tests/lib/layout/layout-render-safe-validation.test.ts (12 tests) 39ms
+ ✓ tests/lib/layout/plan-render-model.test.ts (16 tests) 51ms
+ ✓ tests/lib/layout/layout-wall-role.test.ts (5 tests) 32ms
+ ✓ tests/lib/editor/store/shell-scope.test.ts (16 tests) 48ms
+ ✓ tests/lib/editor/gizmo/layout-gizmo-target.test.ts (32 tests) 37ms
+ ✓ tests/lib/editor/store/selection-matrix.test.ts (11 tests) 47ms
+ ✓ tests/lib/editor/camera/editor-camera-timeline.test.ts (12 tests) 39ms
+ ✓ tests/lib/editor/store/selection-scope.test.ts (17 tests) 82ms
+ ✓ tests/lib/editor/app/interaction-matrix.test.ts (7 tests) 35ms
+ ✓ tests/lib/editor/layout/p23b11-wall-chain-acceptance.test.ts (4 tests) 78ms
+ ✓ tests/lib/editor/export/package-roundtrip-smoke.test.ts (1 test) 29ms
+ ✓ tests/lib/layout/layout-wall-selection.test.ts (20 tests) 36ms
+ ✓ tests/lib/editor/camera-plan/camera-plan-hover.test.ts (5 tests) 38ms
+ ✓ tests/lib/editor/project-format-writers.test.ts (27 tests) 38ms
+ ✓ tests/lib/layout/layout-g2-fixtures.test.ts (18 tests) 40ms
+ ✓ tests/lib/editor/editor-store-placement.test.ts (24 tests) 34ms
+ ✓ tests/lib/layout/plan-room-labels.test.ts (31 tests) 48ms
+ ✓ tests/lib/editor/project/project-codec.test.ts (14 tests) 34ms
+ ✓ tests/lib/layout/layout-junction-wall-ends.test.ts (9 tests) 36ms
+ ✓ tests/lib/layout/layout-dissolve-integration.test.ts (8 tests) 56ms
+ ✓ tests/lib/editor/layout/layout-room-rotation.test.ts (5 tests) 30ms
+ ✓ tests/lib/visitor/visitor-public-route.test.ts (15 tests) 37ms
+ ✓ tests/lib/editor/editor-store-package-archive.test.ts (11 tests) 35ms
+ ✓ tests/lib/editor/camera/editor-camera-preview-affordances.test.ts (7 tests) 18ms
+ ✓ tests/lib/editor/editor-store-shell.test.ts (30 tests) 34ms
+ ✓ tests/lib/editor/store/session-model.test.ts (9 tests) 33ms
+ ✓ tests/lib/editor/store/shell-compact-controls.test.ts (15 tests) 28ms
+ ✓ tests/lib/editor/store/preview-edge-timeline.test.ts (7 tests) 28ms
+ ✓ tests/lib/editor/gizmo/camera-gizmo-adapter.test.ts (11 tests) 18ms
+ ✓ tests/lib/editor/app/inspector-junction-dissolve.test.ts (14 tests) 24ms
+ ✓ tests/lib/editor/editor-store-selection.test.ts (22 tests) 26ms
+ ✓ tests/lib/layout/layout-p23b3a-scoped-gate.test.ts (18 tests) 47ms
+ ✓ tests/lib/layout/layout-presets.test.ts (17 tests) 19ms
+ ✓ tests/lib/layout/layout-curved-rooms.test.ts (15 tests) 27ms
+ ✓ tests/lib/editor/styles/gizmo-single-ending.test.ts (1 test) 29ms
+ ✓ tests/lib/editor/camera-plan/camera-plan-hit.test.ts (6 tests) 21ms
+ ✓ tests/lib/editor/placement-ghost.test.ts (18 tests) 25ms
+ ✓ tests/lib/editor/gizmo/editor-gizmo-behavior-fixtures.test.ts (14 tests) 18ms
+ ✓ tests/lib/editor/gizmo/editor-gizmo-boundary.test.ts (32 tests) 30ms
+ ✓ tests/lib/editor/layout/plan-scene-footprint.test.ts (12 tests) 37ms
+ ✓ tests/lib/layout/layout-curve-schema.test.ts (20 tests) 29ms
+ ✓ tests/lib/layout/layout-curve-split-primitives.test.ts (18 tests) 23ms
+ ✓ tests/lib/editor/app/shell-type-roles.test.ts (14 tests) 26ms
+ ✓ tests/lib/editor/editor-navigation-graph.test.ts (23 tests) 18ms
+ ✓ tests/lib/museum/navigation/camera-route.test.ts (31 tests) 30ms
+ ✓ tests/lib/project/project-compat.test.ts (17 tests) 24ms
+ ✓ tests/lib/editor/app/arrange-delete.test.ts (2 tests) 23ms
+ ✓ tests/lib/layout/layout-wall-birth-height.test.ts (14 tests) 22ms
+ ✓ tests/lib/editor/app/new-project-boot.test.ts (10 tests) 30ms
+ ✓ tests/lib/editor/project-persistence.test.ts (16 tests) 18ms
+ ✓ tests/lib/editor/app/active-editor-selection.test.ts (28 tests) 21ms
+ ✓ tests/lib/editor/camera/editor-directed-edge-motion.test.ts (11 tests) 19ms
+ ✓ tests/lib/layout/layout-room-reconciliation.test.ts (22 tests) 14ms
+ ✓ tests/lib/editor/store/shell-header-chrome.test.ts (11 tests) 20ms
+ ✓ tests/lib/layout/plan-preview-closure.test.ts (11 tests) 21ms
+ ✓ tests/lib/editor/editor-store-textures.test.ts (12 tests) 18ms
+ ✓ tests/lib/bench/p23b-m1-record.test.ts (47 tests) 15ms
+ ✓ tests/lib/content/scene.test.ts (24 tests) 20ms
+ ✓ tests/lib/layout/layout-codec.test.ts (27 tests) 18ms
+ ✓ tests/lib/editor/app/project-session-isolation.test.ts (7 tests) 19ms
+ ✓ tests/lib/editor/gizmo/scene-gizmo-adapter.test.ts (12 tests) 22ms
+ ✓ tests/lib/editor/layout/layout-import-replacement.test.ts (3 tests) 23ms
+ ✓ tests/lib/editor/camera/editor-camera.test.ts (42 tests) 10ms
+ ✓ tests/lib/editor/app/shell-a11y-motion.test.ts (19 tests) 11ms
+ ✓ tests/lib/editor/app/room-focus.test.ts (6 tests) 18ms
+ ✓ tests/lib/editor/app/live-rooms.test.ts (5 tests) 23ms
+ ✓ tests/lib/editor/app/placement.test.ts (6 tests) 24ms
+ ✓ tests/lib/editor/store/history-controller.test.ts (12 tests) 11ms
+ ✓ tests/lib/content/chopin-project.test.ts (5 tests) 17ms
+ ✓ tests/lib/editor/layout/layout-mesh-factory.test.ts (5 tests) 20ms
+ ✓ tests/lib/editor/store/session-state.test.ts (70 tests) 22ms
+ ✓ tests/lib/layout/__fixtures__/layout-scale-fixtures.test.ts (6 tests) 21ms
+ ✓ tests/lib/editor/layout/layout-click-declaration.test.ts (6 tests) 15ms
+ ✓ tests/lib/editor/shell-focus-mode.test.ts (18 tests) 13ms
+ ✓ tests/lib/editor/editor-orientation-gizmo.test.ts (15 tests) 18ms
+ ✓ tests/lib/editor/texture-conversion.test.ts (4 tests) 14ms
+ ✓ tests/lib/editor/layout/layout-object-editing.test.ts (7 tests) 13ms
+ ✓ tests/lib/layout/layout-junction-clearance.test.ts (9 tests) 19ms
+ ✓ tests/lib/editor/editor-store-bind-migration.test.ts (4 tests) 11ms
+ ✓ tests/lib/layout/layout-wall-first-codec.test.ts (14 tests) 16ms
+ ✓ tests/lib/layout/layout-wall-noding.test.ts (12 tests) 15ms
+ ✓ tests/lib/editor/editor-selection.test.ts (27 tests) 9ms
+ ✓ tests/lib/project-model-boundary.test.ts (3 tests) 7ms
+ ✓ tests/lib/editor/camera/cardinal-snap-motion.test.ts (16 tests) 11ms
+ ✓ tests/lib/visitor/visitor-cold-runtime.test.ts (14 tests) 14ms
+ ✓ tests/lib/editor/layout-mesh-parity.test.ts (10 tests) 18ms
+ ✓ tests/lib/layout/p23b7-affected-extent.test.ts (11 tests) 15ms
+ ✓ tests/lib/editor/layout/layout-validation.test.ts (8 tests) 15ms
+ ✓ tests/lib/layout/plan-render-boundary.test.ts (15 tests) 12ms
+ ✓ tests/lib/editor/layout/layout-preview-bounds.test.ts (3 tests) 15ms
+ ✓ tests/lib/editor/app/unified-project-tree.test.ts (43 tests) 11ms
+ ✓ tests/lib/editor/editor-cluster-transform.test.ts (4 tests) 5ms
+ ✓ tests/lib/editor/layout/rooms-to-layout.test.ts (9 tests) 8ms
+ ✓ tests/lib/layout/layout-junction-topology.test.ts (6 tests) 11ms
+ ✓ tests/lib/editor/editor-placement.test.ts (24 tests) 10ms
+ ✓ tests/lib/editor/store/binary-texture-store.test.ts (12 tests) 12ms
+ ✓ tests/lib/editor/app/hierarchy-plan-bridge.test.ts (8 tests) 10ms
+ ✓ tests/lib/editor/store/document-store.test.ts (13 tests) 19ms
+ ✓ tests/lib/bench/bench-boundary.test.ts (5 tests) 5ms
+ ✓ tests/lib/editor/store/selection-store.test.ts (15 tests) 7ms
+ ✓ tests/lib/editor/spatial-registry.test.ts (4 tests) 11ms
+ ✓ tests/lib/layout/plan-numeric-entry.test.ts (61 tests) 12ms
+ ✓ tests/lib/editor/camera-plan/camera-plan-timing.test.ts (5 tests) 19ms
+ ✓ tests/lib/layout/layout-snap.test.ts (51 tests) 11ms
+ ✓ tests/lib/editor/publish-surface.test.ts (17 tests) 8ms
+ ✓ tests/lib/layout/plan-keyboard-readout.test.ts (10 tests) 9ms
+ ✓ tests/lib/editor/app/shell-control-ownership.test.ts (28 tests) 10ms
+ ✓ tests/lib/editor/camera/editor-camera-framing-envelope.test.ts (31 tests) 4ms
+ ✓ tests/lib/editor/app/inspector-target.test.ts (18 tests) 6ms
+ ✓ tests/lib/editor/app/hierarchy-inspector.test.ts (29 tests) 9ms
+ ✓ tests/lib/content/package-format.test.ts (24 tests) 6ms
+ ✓ tests/lib/editor/preview/preview-coordinator.test.ts (5 tests) 8ms
+ ✓ tests/lib/bench/p23b-containment.test.ts (11 tests) 4ms
+ ✓ tests/lib/layout/layout-junction-resolution.test.ts (10 tests) 5ms
+ ✓ tests/lib/editor/context-menu/context-menu.test.ts (25 tests) 7ms
+ ✓ tests/lib/bench/p23b-m1-frame-timing.test.ts (18 tests) 8ms
+ ✓ tests/lib/editor/camera/editor-camera-framing.test.ts (23 tests) 9ms
+ ✓ tests/lib/editor/cluster-obb.test.ts (15 tests) 6ms
+ ✓ tests/lib/editor/camera/editor-camera-path.test.ts (14 tests) 10ms
+stderr | tests/lib/museum/materials/texture-cache.test.ts > texture-cache extensions > defaultSourceLoader dispatcher > rejection from loader produces a failed status (no legacy fallback)
+Failed to load texture for material "effective": /textures/injected-fail.png Error: binary-store refused
+    at /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/tests/lib/museum/materials/texture-cache.test.ts:175:11
+    at mockCall (file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/@vitest/spy/dist/index.js:96:15)
+    at spy (file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/tinyspy/dist/index.js:47:80)
+    at loadViaDefaultSourceLoader (/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/museum/materials/texture-cache.ts:161:27)
+    at loadSource (/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/museum/materials/texture-cache.ts:120:9)
+    at loadSourceTexture (/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/museum/materials/texture-cache.ts:348:10)
+    at /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/museum/materials/texture-cache.ts:366:33
+    at Array.map (<anonymous>)
+    at Module.loadEffectiveTextures (/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/museum/materials/texture-cache.ts:364:13)
+    at /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/tests/lib/museum/materials/texture-cache.test.ts:178:25
+
+ ✓ tests/lib/museum/materials/texture-cache.test.ts (10 tests) 7ms
+ ✓ tests/lib/editor/layout/layout-plan-identity.test.ts (13 tests) 7ms
+ ✓ tests/e2e/test-auth.test.ts (5 tests) 7ms
+ ✓ tests/lib/layout/plan-dimensions.test.ts (28 tests) 8ms
+ ✓ tests/vite/preview-surface-boundary-plugin.test.ts (6 tests) 4ms
+ ✓ tests/lib/editor/texture-verifier.test.ts (6 tests) 5ms
+ ✓ tests/lib/editor/app/camera-drawer.test.ts (15 tests) 7ms
+ ✓ tests/lib/layout/layout-face-extraction.test.ts (11 tests) 9ms
+ ✓ tests/lib/editor/layout/curve-geometry.test.ts (5 tests) 6ms
+ ✓ tests/lib/editor/app/hierarchy-navigator-state.test.ts (28 tests) 6ms
+ ✓ tests/lib/editor/layout/layout-interaction.test.ts (33 tests) 6ms
+ ✓ tests/lib/editor/camera/polar-orbit-handoff.test.ts (4 tests) 5ms
+ ✓ tests/lib/layout/plan-keyboard-navigation.test.ts (21 tests) 5ms
+ ✓ tests/lib/editor/gizmo/editor-gizmo-host.test.ts (15 tests) 6ms
+ ✓ tests/lib/layout/layout-align.test.ts (18 tests) 8ms
+ ✓ tests/lib/layout/layout-room-frame.test.ts (2 tests) 2ms
+ ✓ tests/lib/visitor/visitor-identity-isolation.test.ts (4 tests) 5ms
+ ✓ tests/lib/editor/helpers/package-sha.test.ts (4 tests) 7ms
+ ✓ tests/lib/editor/store/interaction-fsm.test.ts (40 tests) 3ms
+ ✓ tests/lib/editor/editor-shell-boot-core.test.ts (6 tests) 4ms
+ ✓ tests/lib/editor/store/material-resource-mutator.test.ts (24 tests) 6ms
+ ✓ tests/lib/editor/layout/plan-scene-transform.test.ts (6 tests) 7ms
+ ✓ tests/lib/editor/layout/layout-opening-authoring.test.ts (11 tests) 5ms
+ ✓ tests/lib/layout/plan-guide.test.ts (20 tests) 5ms
+ ✓ tests/lib/editor/gizmo/editor-gizmo-policy.test.ts (33 tests) 5ms
+ ✓ tests/lib/editor/camera/editor-camera-connections.test.ts (5 tests) 6ms
+ ✓ tests/lib/editor/store/selection-actions.test.ts (14 tests) 4ms
+ ✓ tests/lib/editor/store/project-export-store.test.ts (34 tests) 5ms
+ ✓ tests/lib/editor/camera/editor-camera-framing-authoring.test.ts (36 tests) 5ms
+ ✓ tests/lib/layout/layout-topology-components.test.ts (8 tests) 5ms
+ ✓ tests/lib/editor/camera/editor-camera-labels.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/layout/layout-room-transform.test.ts (3 tests) 20ms
+ ✓ tests/lib/museum/assets/instance-material-remap.test.ts (3 tests) 6ms
+ ✓ tests/lib/editor/EditorSelectionHelper.test.ts (12 tests) 5ms
+ ✓ tests/lib/editor/camera-plan/camera-plan-state.test.ts (7 tests) 3ms
+ ✓ tests/lib/visitor/preview-surface-boundary.test.ts (9 tests) 3ms
+ ✓ tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts (5 tests) 2ms
+ ✓ tests/lib/layout/layout-wall-topology.test.ts (17 tests) 5ms
+ ✓ tests/lib/editor/camera/cardinal-snap-residual-drag.test.ts (2 tests) 4ms
+ ✓ tests/lib/project/scene-world-conversion.test.ts (8 tests) 4ms
+ ✓ tests/lib/editor/theme.test.ts (12 tests) 6ms
+ ✓ tests/lib/editor/camera/editor-camera-view.test.ts (6 tests) 6ms
+ ✓ tests/lib/editor/layout/layout-transaction.test.ts (4 tests) 2ms
+ ✓ tests/lib/editor/editor-lights.test.ts (5 tests) 7ms
+ ✓ tests/lib/editor/app/shell-state-language.test.ts (7 tests) 9ms
+ ✓ tests/lib/editor/camera/camera-visualization-contract.test.ts (17 tests) 6ms
+ ✓ tests/lib/editor/obb-util-root.test.ts (6 tests) 5ms
+ ✓ tests/vite/public-surface-boundary-plugin.test.ts (4 tests) 3ms
+ ✓ tests/lib/editor/obb-util.test.ts (9 tests) 5ms
+ ✓ tests/lib/museum/layout/wall-material-factory.test.ts (3 tests) 4ms
+ ✓ tests/lib/layout/plan-refusal.test.ts (14 tests) 4ms
+ ✓ tests/lib/editor/layout/layout-opening-editing.test.ts (8 tests) 6ms
+ ✓ tests/lib/editor/editor-primitives.test.ts (3 tests) 3ms
+ ✓ tests/lib/bench/p23b-m1-cpu-profile.test.ts (5 tests) 15ms
+ ✓ tests/lib/content/assets.test.ts (8 tests) 4ms
+ ✓ tests/lib/content/footprint-generator.test.ts (9 tests) 5ms
+ ✓ tests/lib/bench/p23b-m1-attribution.test.ts (7 tests) 4ms
+ ✓ tests/lib/editor/layout/plan-timing-pill.test.ts (4 tests) 4ms
+ ✓ tests/lib/editor/editor-textures.test.ts (11 tests) 5ms
+ ✓ tests/lib/editor/scale-vector.test.ts (26 tests) 4ms
+ ✓ tests/lib/layout/layout-migration-math.test.ts (9 tests) 3ms
+ ✓ tests/lib/editor/store/editor-interaction-store.test.ts (21 tests) 4ms
+ ✓ tests/lib/layout/p23b-measurement-marks-wiring.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/editor-transform.test.ts (13 tests) 4ms
+ ✓ tests/lib/editor/layout/layout-plan-transform.test.ts (8 tests) 3ms
+ ✓ tests/lib/editor/layout/layout-editing.test.ts (5 tests) 3ms
+ ✓ tests/lib/editor/layout/layout-exact-input.test.ts (4 tests) 7ms
+ ✓ tests/lib/editor/helpers/route-clone.test.ts (2 tests) 3ms
+ ✓ tests/lib/editor/layout/arrange-hit.test.ts (10 tests) 2ms
+ ✓ tests/lib/editor/app/editor-entry-boundary.test.ts (4 tests) 4ms
+ ✓ tests/lib/editor/styles/scene-palette.test.ts (2 tests) 3ms
+ ✓ tests/lib/content/texture-uri.test.ts (18 tests) 2ms
+ ✓ tests/lib/layout/p23b5-gesture-scope-wiring.test.ts (7 tests) 3ms
+ ✓ tests/lib/layout/plan-keyboard-session.test.ts (14 tests) 3ms
+ ✓ tests/lib/editor/layout/draft-geometry.test.ts (4 tests) 3ms
+ ✓ tests/lib/editor/layout/layout-auto-bezier.test.ts (4 tests) 4ms
+ ✓ tests/lib/editor/helpers/validators-runner.test.ts (6 tests) 3ms
+ ✓ tests/lib/editor/layout/layout-wall-material.test.ts (7 tests) 3ms
+ ✓ tests/lib/museum/materials/scene-instance-material.test.ts (8 tests) 3ms
+ ✓ tests/lib/editor/preview/project-flows.test.ts (3 tests) 3ms
+ ✓ tests/lib/layout/p23b7-verdict-scope-wiring.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/store/scene-roots.test.ts (16 tests) 5ms
+ ✓ tests/lib/editor/camera-plan/camera-plan-footprints.test.ts (4 tests) 3ms
+ ✓ tests/lib/bench/p23b-m1-gesture.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/layout/p23b-m1-room-drag-arm.test.ts (6 tests) 3ms
+ ✓ tests/lib/museum/paris-activation.test.ts (6 tests) 3ms
+ ✓ tests/lib/editor/interaction-cursor.test.ts (9 tests) 2ms
+ ✓ tests/lib/editor/theme-registry.test.ts (2 tests) 2ms
+ ✓ tests/lib/editor/app/project-persistence-presentation.test.ts (9 tests) 3ms
+ ✓ tests/lib/content/provenance.test.ts (9 tests) 3ms
+ ✓ tests/lib/content/chopin-layout.test.ts (1 test) 2ms
+ ✓ tests/lib/editor/layout/arch-profile.test.ts (4 tests) 2ms
+ ✓ tests/lib/editor/layout/layout-room-editing.test.ts (7 tests) 3ms
+ ✓ tests/lib/editor/editor-vector.test.ts (11 tests) 3ms
+ ✓ tests/lib/visitor/visitor-runtime-state.test.ts (4 tests) 2ms
+ ✓ tests/lib/editor/editor-outliner.test.ts (4 tests) 2ms
+ ✓ tests/lib/layout/layout-portals.test.ts (2 tests) 3ms
+ ✓ tests/lib/editor/layout/plan-scene-hit.test.ts (4 tests) 2ms
+ ✓ tests/lib/editor/editor-assets.test.ts (3 tests) 2ms
+ ✓ tests/lib/editor/editor-transform-target.test.ts (6 tests) 3ms
+ ✓ tests/lib/editor/snap-input-validation.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/app/editor-view-state.test.ts (6 tests) 2ms
+ ✓ tests/lib/state/runtime-state.test.ts (4 tests) 3ms
+ ✓ tests/lib/editor/helpers/mime-sniff.test.ts (5 tests) 2ms
+ ✓ tests/lib/editor/store/editor-toolbar.test.ts (4 tests) 2ms
+ ✓ tests/lib/layout/plan-surrounds.test.ts (2 tests) 1ms
+ ✓ tests/lib/content/rooms.test.ts (2 tests) 2ms
+ ✓ tests/lib/editor/layout/layout-preview-geometry.test.ts (2 tests) 2ms
+ ✓ tests/lib/editor/store/mutation-guards.test.ts (4 tests) 2ms
+ ↓ tests/lib/bench/plan-bench.test.ts (1 test | 1 skipped)
+ ✓ tests/lib/layout/plan-icons.test.ts (6 tests) 9ms
+ ✓ tests/lib/editor/app/relic-smoke.test.ts (16 tests) 40ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 32 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lib/bench/p23b-baseline-contract.test.ts [ tests/lib/bench/p23b-baseline-contract.test.ts ]
+ FAIL  tests/lib/bench/p23b5-reuse-budget.test.ts [ tests/lib/bench/p23b5-reuse-budget.test.ts ]
+ FAIL  tests/lib/bench/p23b5-reuse-ratchet.test.ts [ tests/lib/bench/p23b5-reuse-ratchet.test.ts ]
+ FAIL  tests/lib/bench/p23b7-capture-attribution.test.ts [ tests/lib/bench/p23b7-capture-attribution.test.ts ]
+ FAIL  tests/lib/bench/p23b7-sample-verdict-matrix.test.ts [ tests/lib/bench/p23b7-sample-verdict-matrix.test.ts ]
+ FAIL  tests/lib/layout/layout-snap-input-probe.test.ts [ tests/lib/layout/layout-snap-input-probe.test.ts ]
+ FAIL  tests/lib/layout/p23b-fixture-contract.test.ts [ tests/lib/layout/p23b-fixture-contract.test.ts ]
+ FAIL  tests/lib/layout/p23b-room-unit-proposal-cost.test.ts [ tests/lib/layout/p23b-room-unit-proposal-cost.test.ts ]
+ FAIL  tests/lib/layout/p23b-room-unit-proposal-parity.test.ts [ tests/lib/layout/p23b-room-unit-proposal-parity.test.ts ]
+ FAIL  tests/lib/layout/p23b11-conditional-gate.test.ts [ tests/lib/layout/p23b11-conditional-gate.test.ts ]
+ FAIL  tests/lib/layout/p23b11-correspondence-reference.test.ts [ tests/lib/layout/p23b11-correspondence-reference.test.ts ]
+ FAIL  tests/lib/layout/p23b11-correspondence-shortcircuits.test.ts [ tests/lib/layout/p23b11-correspondence-shortcircuits.test.ts ]
+ FAIL  tests/lib/layout/p23b4-consumer-observations.test.ts [ tests/lib/layout/p23b4-consumer-observations.test.ts ]
+ FAIL  tests/lib/layout/p23b4-extent-pruning.test.ts [ tests/lib/layout/p23b4-extent-pruning.test.ts ]
+ FAIL  tests/lib/layout/p23b4-measurements.test.ts [ tests/lib/layout/p23b4-measurements.test.ts ]
+ FAIL  tests/lib/layout/p23b4-pruning-differential.test.ts [ tests/lib/layout/p23b4-pruning-differential.test.ts ]
+ FAIL  tests/lib/layout/p23b4-sampling-reference.test.ts [ tests/lib/layout/p23b4-sampling-reference.test.ts ]
+ FAIL  tests/lib/layout/p23b4-shared-derivation.test.ts [ tests/lib/layout/p23b4-shared-derivation.test.ts ]
+ FAIL  tests/lib/layout/p23b5-preflight-scope.test.ts [ tests/lib/layout/p23b5-preflight-scope.test.ts ]
+ FAIL  tests/lib/layout/p23b5-s0-reachability.test.ts [ tests/lib/layout/p23b5-s0-reachability.test.ts ]
+ FAIL  tests/lib/layout/p23b7-preflight-reference.test.ts [ tests/lib/layout/p23b7-preflight-reference.test.ts ]
+ FAIL  tests/lib/layout/p23b7-verdict-scope.test.ts [ tests/lib/layout/p23b7-verdict-scope.test.ts ]
+ FAIL  tests/lib/layout/p23b8-d5-identity-falsifier.test.ts [ tests/lib/layout/p23b8-d5-identity-falsifier.test.ts ]
+ FAIL  tests/lib/layout/p23b8-d8-bounded-retention-comparison.test.ts [ tests/lib/layout/p23b8-d8-bounded-retention-comparison.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b-gesture-sampling-report.test.ts [ tests/lib/editor/layout/p23b-gesture-sampling-report.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts [ tests/lib/editor/layout/p23b6-s2-behavior-retention.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b6-s3-h6-retention.test.ts [ tests/lib/editor/layout/p23b6-s3-h6-retention.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b6-s3-prepared-generation.test.ts [ tests/lib/editor/layout/p23b6-s3-prepared-generation.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b6-s3b-mesh-input-contract.test.ts [ tests/lib/editor/layout/p23b6-s3b-mesh-input-contract.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b7-client-reactivity.test.ts [ tests/lib/editor/layout/p23b7-client-reactivity.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b7-mesh-identity-regression.test.ts [ tests/lib/editor/layout/p23b7-mesh-identity-regression.test.ts ]
+ FAIL  tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts [ tests/lib/editor/layout/p23b7-snapshot-payload-guard.test.ts ]
+Error: Cannot find module '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json' imported from '/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts'
+ ❯ src/lib/bench/p23b-fixtures.ts:9:1
+      7|  type LayoutWallCenterline
+      8| } from '@portfolio/layout-core';
+      9| import owner40Payload from '../../../../../docs/roadmap/p23b-geometry-…
+       | ^
+     10| 
+     11| export type P23BSemanticClass = 2 | 3 | 4 | 5;
+
+Caused by: Error: Failed to load url ../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json (resolved id: ../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json) in /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/34]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+AssertionError: expected [ { …(5) }, { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "file": "docs/operations/checkpoints/pr113-experience-v2.md",
++     "kind": "path",
++     "line": 27,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++   {
++     "file": "prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md",
++     "kind": "path",
++     "line": 170,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++ ]
+
+ ❯ tests/docs/documentation-references.test.ts:38:20
+     36|   const findings = scanDocumentation();
+     37|   if (findings.length > 0) console.log(`\n${formatFindings(findings)}\…
+     38|   expect(findings).toEqual([]);
+       |                    ^
+     39|  });
+     40| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/34]⎯
+
+ FAIL  tests/lib/editor/layout/p23b8-d9-dormant-scan.test.ts > p23b.8 S3 — D9 dormant mapping has no production readers > S-R accessors preserve raw geometry identity, so the compat branch never fires
+Error: Cannot find module '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json' imported from '/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts'
+ ❯ src/lib/bench/p23b-fixtures.ts:9:1
+      7|  type LayoutWallCenterline
+      8| } from '@portfolio/layout-core';
+      9| import owner40Payload from '../../../../../docs/roadmap/p23b-geometry-…
+       | ^
+     10| 
+     11| export type P23BSemanticClass = 2 | 3 | 4 | 5;
+
+Caused by: Error: Failed to load url ../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json (resolved id: ../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json) in /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/34]⎯
+
+
+ Test Files  34 failed | 338 passed | 1 skipped (373)
+      Tests  2 failed | 4950 passed | 1 skipped (4953)
+   Start at  23:21:00
+   Duration  38.80s (transform 18.50s, setup 0ms, collect 109.91s, tests 68.63s, environment 39ms, prepare 15.42s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error workspace @portfolio/editor@0.1.0
+npm error location /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error command failed
+npm error command sh -c vitest run

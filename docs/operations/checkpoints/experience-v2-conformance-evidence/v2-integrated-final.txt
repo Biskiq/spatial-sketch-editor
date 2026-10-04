@@ -1,0 +1,874 @@
+
+==================================================================
+  Axis B · journeys A–F
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:56783
+== Axis B · journeys A–F against /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring/qa/baseline.json
+PASS  fixture source digest unchanged  (c9c8929a)
+PASS  50 presenter steps present  (50)
+PASS  Journey A · step 1/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey A · step 2/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey A · step 3/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": -1, "u": 0.5, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside"], "trailPos": 1, "undo": 0, "view": "Rotunda wall at 180\u00b0 from outside"})
+PASS  Journey A · step 4/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.356, "el": 0, "flat": 1, "frameH": 25, "mirror": false, "target": [9.389, 3.25, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.707, 0, 0.707], "dist": 1591.517, "eye": [-1115.983, 3.25, -1121.483], "fov": 0.9, "frameH": 25, "mirror": false, "target": [9.389, 3.25, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0.5, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0"], "trailPos": 2, "undo": 0, "view": "Rotunda wall at 180\u00b0"})
+PASS  Journey A · step 5/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.356, "el": 0, "flat": 1, "frameH": 12.953, "mirror": false, "target": [9.389, 3.25, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.707, 0, 0.707], "dist": 824.572, "eye": [-573.671, 3.25, -579.171], "fov": 0.9, "frameH": 12.953, "mirror": false, "target": [9.389, 3.25, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0.5, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0"], "trailPos": 2, "undo": 0, "view": "Rotunda wall at 180\u00b0"})
+PASS  Journey A · step 6/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.356, "el": 0, "flat": 1, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.707, 0, 0.707], "dist": 743.003, "eye": [-515.993, 3.25, -521.493], "fov": 0.9, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 1, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat"], "trailPos": 3, "undo": 0, "view": "Rotunda wall laid flat"})
+PASS  Journey A · step 7/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.356, "el": 0, "flat": 1, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Garden window arch rise", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.707, 0, 0.707], "dist": 743.003, "eye": [-515.993, 3.25, -521.493], "fov": 0.9, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 1, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat"], "trailPos": 3, "undo": 1, "view": "Rotunda wall laid flat"})
+PASS  Journey A · step 8/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.356, "el": 0, "flat": 1, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Garden window width", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.707, 0, 0.707], "dist": 743.003, "eye": [-515.993, 3.25, -521.493], "fov": 0.9, "frameH": 11.671, "mirror": false, "target": [9.389, 3.25, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 1, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat"], "trailPos": 3, "undo": 2, "view": "Rotunda wall laid flat"})
+PASS  Journey A · step 9/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -1.736, "el": 0.36, "flat": 0, "frameH": 18.871, "mirror": false, "target": [9.389, 1.9, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Garden window sill", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.923, -0.352, 0.154], "dist": 25.923, "eye": [-14.541, 11.032, -0.105], "fov": 40, "frameH": 18.871, "mirror": false, "target": [9.389, 1.9, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0.5, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat", "Rotunda wall at 180\u00b0"], "trailPos": 4, "undo": 3, "view": "Rotunda wall at 180\u00b0"})
+PASS  Journey A · step 10/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -1.736, "el": 0.36, "flat": 0, "frameH": 18.871, "mirror": false, "target": [9.389, 1.9, 3.889]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Rotunda wall top \u2192 Gable", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.923, -0.352, 0.154], "dist": 25.923, "eye": [-14.541, 11.032, -0.105], "fov": 40, "frameH": 18.871, "mirror": false, "target": [9.389, 1.9, 3.889], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "rotunda", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 1, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0.5, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat", "Rotunda wall at 180\u00b0"], "trailPos": 4, "undo": 4, "view": "Rotunda wall at 180\u00b0"})
+PASS  Journey A · step 11/11  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": "Rotunda wall top \u2192 Gable", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "rotunda", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Rotunda wall at 180\u00b0 from outside", "Rotunda wall at 180\u00b0", "Rotunda wall laid flat", "Rotunda wall at 180\u00b0", "3D"], "trailPos": 5, "undo": 4, "view": "3D"})
+PASS  A11 exact source  ({"sourceValues": {"top": {"rh": 7.2}, "window": {"head": 3.4, "rise": 0.45, "sill": 0.7, "w": 2.2}}})
+PASS  Journey B · step 1/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 0, "view": "Plan"})
+PASS  Journey B · step 2/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": {"depth": 6, "hasLine": true, "side": -1, "stage": "aim"}, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 0, "view": "Plan"})
+PASS  Journey B · step 3/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": {"depth": 6, "hasLine": true, "side": -1, "stage": "aim"}, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 0, "view": "Plan"})
+PASS  Journey B · step 4/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "section", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 2253.237, "eye": [-2.05, 3.2, 2253.487], "fov": 0.9, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": null, "session": {"ceilId": null, "cut": {"depth": 6, "n": [0, -1], "p0": [-17, 0.25], "p1": [13, 0.25], "side": -1}, "focusId": null, "focusName": null, "id": 2, "kind": "section", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": null, "part": 1, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"kind": "cut", "label": "the cut, looking north"}, "instrument": true, "kind": "section", "subject": null, "target": {"kind": "cut", "label": "looking north"}}, "taskTitle": "Open along a line", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north"], "trailPos": 2, "undo": 0, "view": "Opened along a line \u00b7 looking north"})
+PASS  Journey B · step 5/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "section", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 2253.237, "eye": [-2.05, 3.2, 2253.487], "fov": 0.9, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": {"depth": 3, "n": [0, -1], "p0": [-17, 0.25], "p1": [13, 0.25], "side": -1}, "focusId": null, "focusName": null, "id": 2, "kind": "section", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": null, "part": 1, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"kind": "cut", "label": "the cut, looking north"}, "instrument": true, "kind": "section", "subject": null, "target": {"kind": "cut", "label": "looking north"}}, "taskTitle": "Open along a line", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north"], "trailPos": 2, "undo": 0, "view": "Opened along a line \u00b7 looking north"})
+PASS  Journey B · step 6/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 22.815, "mirror": false, "target": [-6.871, 2.25, -3.5]}, "crumbs": ["Opened along a line \u00b7 looking north"], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 1452.437, "eye": [-6.871, 2.25, 1448.937], "fov": 0.9, "frameH": 22.815, "mirror": false, "target": [-6.871, 2.25, -3.5], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": null, "focusId": "north", "focusName": "Harbor at Dusk on the North wall", "id": 3, "kind": "face", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": {"kind": "section", "label": "Opened along a line \u00b7 looking north"}, "part": null, "side": 1, "u": 0, "wallId": "north"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 1, "focus": {"id": "north", "kind": "wall-top", "label": "North wall top"}, "instrument": true, "kind": "face", "subject": "harbor", "target": {"id": "north", "kind": "wall", "label": "North wall"}}, "taskTitle": "Facing Harbor at Dusk", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north", "Facing Harbor at Dusk on the North wall"], "trailPos": 3, "undo": 0, "view": "Facing Harbor at Dusk on the North wall"})
+PASS  Journey B · step 7/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "section", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 2253.237, "eye": [-2.05, 3.2, 2253.487], "fov": 0.9, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": {"depth": 3, "n": [0, -1], "p0": [-17, 0.25], "p1": [13, 0.25], "side": -1}, "focusId": null, "focusName": null, "id": 4, "kind": "section", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": null, "part": 1, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 2, "focus": {"kind": "cut", "label": "the cut, looking north"}, "instrument": true, "kind": "section", "subject": null, "target": {"kind": "cut", "label": "looking north"}}, "taskTitle": "Open along a line", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north", "Facing Harbor at Dusk on the North wall", "Opened along a line \u00b7 looking north"], "trailPos": 4, "undo": 0, "view": "Opened along a line \u00b7 looking north"})
+PASS  Journey B · step 8/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "section", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 2253.237, "eye": [-2.05, 3.2, 2253.487], "fov": 0.9, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": {"depth": 4, "n": [0, -1], "p0": [-17, 0.25], "p1": [13, 0.25], "side": -1}, "focusId": null, "focusName": null, "id": 4, "kind": "section", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": null, "part": 1, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 2, "focus": {"kind": "cut", "label": "the cut, looking north"}, "instrument": true, "kind": "section", "subject": null, "target": {"kind": "cut", "label": "looking north"}}, "taskTitle": "Open along a line", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north", "Facing Harbor at Dusk on the North wall", "Opened along a line \u00b7 looking north"], "trailPos": 4, "undo": 0, "view": "Opened along a line \u00b7 looking north"})
+PASS  Journey B · step 9/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0, "flat": 1, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "section", "knife": null, "lastUndo": "Gallery door head", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 2253.237, "eye": [-2.05, 3.2, 2253.487], "fov": 0.9, "frameH": 35.394, "mirror": false, "target": [-2.05, 3.2, 0.25], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gdoor", "session": {"ceilId": null, "cut": {"depth": 6, "n": [0, -1], "p0": [-17, 0.25], "p1": [13, 0.25], "side": -1}, "focusId": null, "focusName": null, "id": 4, "kind": "section", "lift": null, "opening": null, "origin": {"label": "Plan"}, "parent": null, "part": 1, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 2, "focus": {"kind": "cut", "label": "the cut, looking north"}, "instrument": true, "kind": "section", "subject": null, "target": {"kind": "cut", "label": "looking north"}}, "taskTitle": "Open along a line", "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north", "Facing Harbor at Dusk on the North wall", "Opened along a line \u00b7 looking north"], "trailPos": 4, "undo": 1, "view": "Opened along a line \u00b7 looking north"})
+PASS  Journey B · step 10/10  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": "Gallery door head", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "gdoor", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan", "Opened along a line \u00b7 looking north", "Facing Harbor at Dusk on the North wall", "Opened along a line \u00b7 looking north", "Plan"], "trailPos": 5, "undo": 1, "view": "Plan"})
+PASS  B10 exact source  ({"sourceValues": {"doorHead": 3.2}})
+PASS  Journey C · step 1/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "north", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey C · step 2/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "lift", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 5, "kind": "lift", "lift": 1, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lift", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Long Gallery ceiling lifted", "trail": ["3D", "Long Gallery ceiling lifted"], "trailPos": 1, "undo": 0, "view": "Long Gallery ceiling lifted"})
+PASS  Journey C · step 3/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "lift", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 5, "kind": "lift", "lift": 1, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lift", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Long Gallery ceiling lifted", "trail": ["3D", "Long Gallery ceiling lifted"], "trailPos": 1, "undo": 0, "view": "Long Gallery ceiling lifted"})
+PASS  Journey C · step 4/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "lift", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 5, "kind": "lift", "lift": 1, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lift", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Long Gallery ceiling lifted", "trail": ["3D", "Long Gallery ceiling lifted"], "trailPos": 1, "undo": 0, "view": "Long Gallery ceiling lifted"})
+PASS  Journey C · step 5/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "lift", "knife": null, "lastUndo": "Raise North wall", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 5, "kind": "lift", "lift": 1, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lift", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Long Gallery ceiling lifted", "trail": ["3D", "Long Gallery ceiling lifted"], "trailPos": 1, "undo": 1, "view": "Long Gallery ceiling lifted"})
+PASS  Journey C · step 6/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 3.142, "el": -1.571, "flat": 1, "frameH": 23.913, "mirror": false, "target": [-6.871, 3, 0]}, "crumbs": ["Long Gallery ceiling lifted"], "expand": false, "flatHold": null, "hover": null, "kind": "lookup", "knife": null, "lastUndo": "Raise North wall", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 1, 0], "dist": 1522.303, "eye": [-6.871, -1519.303, -0.152], "fov": 0.9, "frameH": 23.913, "mirror": false, "target": [-6.871, 3, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 6, "kind": "lookup", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": {"kind": "lift", "label": "Long Gallery ceiling lifted"}, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 1, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lookup", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Looking up \u00b7 Long Gallery ceiling", "trail": ["3D", "Long Gallery ceiling lifted", "Looking up \u00b7 Long Gallery ceiling"], "trailPos": 2, "undo": 1, "view": "Looking up \u00b7 Long Gallery ceiling"})
+PASS  Journey C · step 7/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 3.142, "el": -1.571, "flat": 1, "frameH": 23.913, "mirror": true, "target": [-6.871, 3, 0]}, "crumbs": ["Long Gallery ceiling lifted"], "expand": false, "flatHold": null, "hover": null, "kind": "lookup", "knife": null, "lastUndo": "Raise North wall", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 1, 0], "dist": 1522.303, "eye": [-6.871, -1519.303, -0.152], "fov": 0.9, "frameH": 23.913, "mirror": true, "target": [-6.871, 3, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "longc", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 6, "kind": "lookup", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": {"kind": "lift", "label": "Long Gallery ceiling lifted"}, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 1, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lookup", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Looking up \u00b7 Long Gallery ceiling", "trail": ["3D", "Long Gallery ceiling lifted", "Looking up \u00b7 Long Gallery ceiling"], "trailPos": 2, "undo": 1, "view": "Looking up \u00b7 Long Gallery ceiling"})
+PASS  Journey C · step 8/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 3.142, "el": -1.571, "flat": 1, "frameH": 23.913, "mirror": true, "target": [-6.871, 3, 0]}, "crumbs": ["Long Gallery ceiling lifted"], "expand": false, "flatHold": null, "hover": null, "kind": "lookup", "knife": null, "lastUndo": "Entrance soffit height", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 1, 0], "dist": 1522.303, "eye": [-6.871, -1519.303, -0.152], "fov": 0.9, "frameH": 23.913, "mirror": true, "target": [-6.871, 3, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "soffit", "session": {"ceilId": "longc", "cut": null, "focusId": null, "focusName": null, "id": 6, "kind": "lookup", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": {"kind": "lift", "label": "Long Gallery ceiling lifted"}, "part": null, "side": null, "u": null, "wallId": null}, "stage": {"h": 834, "w": 820}, "task": {"depth": 1, "focus": {"id": "longc", "kind": "underside", "label": "Long Gallery ceiling underside"}, "instrument": true, "kind": "lookup", "subject": "longc", "target": {"id": "longc", "kind": "ceiling", "label": "Long Gallery ceiling"}}, "taskTitle": "Looking up \u00b7 Long Gallery ceiling", "trail": ["3D", "Long Gallery ceiling lifted", "Looking up \u00b7 Long Gallery ceiling"], "trailPos": 2, "undo": 2, "view": "Looking up \u00b7 Long Gallery ceiling"})
+PASS  Journey C · step 9/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": "Entrance soffit height", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "soffit", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Long Gallery ceiling lifted", "Looking up \u00b7 Long Gallery ceiling", "3D"], "trailPos": 3, "undo": 2, "view": "3D"})
+PASS  C9 exact source  ({"sourceValues": {"north": 4.2, "soffit": 3}})
+PASS  Journey D · step 1/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey D · step 2/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "north", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Facing North wall", "3D"], "trailPos": 2, "undo": 0, "view": "3D"})
+PASS  Journey D · step 3/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 3.601, "el": 0, "flat": 1, "frameH": 46.017, "mirror": false, "target": [7.939, 3.25, 4.93]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.443, 0, 0.896], "dist": 2929.46, "eye": [-1290.99, 3.25, -2620.812], "fov": 0.9, "frameH": 46.017, "mirror": false, "target": [7.939, 3.25, 4.93], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "rotunda", "session": {"ceilId": null, "cut": null, "focusId": "rotunda", "focusName": "Rotunda wall", "id": 8, "kind": "face", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 1, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "rotunda", "kind": "wall-top", "label": "Rotunda wall top"}, "instrument": true, "kind": "face", "subject": "rotunda", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Rotunda wall", "trail": ["3D", "Facing North wall", "3D", "Rotunda wall laid flat"], "trailPos": 3, "undo": 0, "view": "Rotunda wall laid flat"})
+PASS  Journey D · step 4/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 1.571, "el": 0, "flat": 1, "frameH": 10.854, "mirror": false, "target": [-15, 2.35, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-1, 0, 0], "dist": 690.957, "eye": [675.957, 2.35, 0], "fov": 0.9, "frameH": 10.854, "mirror": false, "target": [-15, 2.35, 0], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "entrance", "session": {"ceilId": null, "cut": null, "focusId": "entrance", "focusName": "Entrance", "id": 9, "kind": "face", "lift": null, "opening": "entrance", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "west"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "entrance", "kind": "opening", "label": "Entrance in the West wall"}, "instrument": true, "kind": "face", "subject": "entrance", "target": {"id": "west", "kind": "wall", "label": "West wall"}}, "taskTitle": "Facing Entrance", "trail": ["3D", "Facing North wall", "3D", "Rotunda wall laid flat", "Facing Entrance"], "trailPos": 4, "undo": 0, "view": "Facing Entrance"})
+PASS  Journey D · step 5/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 3.601, "el": 0, "flat": 0, "frameH": 46.017, "mirror": false, "target": [7.939, 3.25, 4.93]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.443, 0, 0.896], "dist": 63.215, "eye": [-20.091, 3.25, -51.731], "fov": 40, "frameH": 46.017, "mirror": false, "target": [7.939, 3.25, 4.93], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "entrance", "session": {"ceilId": null, "cut": null, "focusId": "rotunda", "focusName": "Rotunda wall", "id": 10, "kind": "face", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 1, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "rotunda", "kind": "wall-top", "label": "Rotunda wall top"}, "instrument": true, "kind": "face", "subject": "rotunda", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Rotunda wall", "trail": ["3D", "Facing North wall", "3D", "Rotunda wall laid flat", "Facing Entrance"], "trailPos": 3, "undo": 0, "view": "Rotunda wall laid flat"})
+PASS  Journey D · step 6/6  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "entrance", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Facing North wall", "3D", "Rotunda wall laid flat", "3D"], "trailPos": 4, "undo": 0, "view": "3D"})
+PASS  Journey E · step 1/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 0, "view": "Plan"})
+PASS  Journey E · step 2/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": "Garden window position", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 1, "view": "Plan"})
+PASS  Journey E · step 3/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": "Garden window width", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan"], "trailPos": 1, "undo": 2, "view": "Plan"})
+PASS  Journey E · step 4/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0.8, "flat": 0, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": "Garden window width", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -0.717, -0.697], "dist": 52.554, "eye": [-2, 37.7, 36.614], "fov": 40, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan", "3D"], "trailPos": 2, "undo": 2, "view": "3D"})
+PASS  Journey E · step 5/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0.8, "flat": 0, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": "Garden window head", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -0.717, -0.697], "dist": 52.554, "eye": [-2, 37.7, 36.614], "fov": 40, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan", "3D"], "trailPos": 2, "undo": 3, "view": "3D"})
+PASS  Journey E · step 6/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.734, "el": 0, "flat": 1, "frameH": 14.498, "mirror": false, "target": [7.678, 3.25, 5.05]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Garden window arch rise", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.396, 0, 0.918], "dist": 922.921, "eye": [-357.801, 3.25, -842.421], "fov": 0.9, "frameH": 14.498, "mirror": false, "target": [7.678, 3.25, 5.05], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 11, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Plan", "3D", "Facing Garden window"], "trailPos": 3, "undo": 4, "view": "Facing Garden window"})
+PASS  Journey E · step 7/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": -2.734, "el": 0, "flat": 1, "frameH": 14.498, "mirror": false, "target": [7.678, 3.25, 5.05]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": "Garden window arch rise", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.396, 0, 0.918], "dist": 922.921, "eye": [-357.801, 3.25, -842.421], "fov": 0.9, "frameH": 14.498, "mirror": false, "target": [7.678, 3.25, 5.05], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": {"ceilId": null, "cut": null, "focusId": "gwin", "focusName": "Garden window", "id": 11, "kind": "face", "lift": null, "opening": "gwin", "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "gwin", "kind": "opening", "label": "Garden window in the Rotunda wall"}, "instrument": true, "kind": "face", "subject": "gwin", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Garden window", "trail": ["3D", "Plan", "3D", "Facing Garden window"], "trailPos": 3, "undo": 4, "view": "Facing Garden window"})
+PASS  Journey E · step 8/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 0.8, "flat": 0, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": "Garden window arch rise", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -0.717, -0.697], "dist": 52.554, "eye": [-2, 37.7, 36.614], "fov": 40, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan", "3D", "Facing Garden window", "3D"], "trailPos": 4, "undo": 4, "view": "3D"})
+PASS  E8 exact source  ({"sourceValues": {"window": {"head": 3.8, "rise": 0.6, "s": 6.399999999999999, "w": 2}}})
+PASS  Journey E · step 9/9  ({"browse": {"focus": null, "page": 0, "q": ""}, "cam": {"az": 0, "el": 1.571, "flat": 1, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "plan", "knife": null, "lastUndo": "Garden window width", "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, -1, 0], "dist": 2435.398, "eye": [-2, 2435.398, 0], "fov": 0.9, "frameH": 38.256, "mirror": false, "target": [-2, 0, 0], "up": [0, 0, -1]}, "redo": 2, "reveal": null, "sel": "gwin", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D", "Plan", "3D", "Facing Garden window", "3D", "Plan"], "trailPos": 5, "undo": 2, "view": "Plan"})
+PASS  E9 exact source  ({"sourceValues": {"window": {"head": 3.4, "rise": 0.8, "s": 6.399999999999999, "w": 2}}})
+PASS  Journey F · step 1/5  ({"browse": {"at": null, "focus": null, "page": 0, "q": "tide"}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": null, "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey F · step 2/5  ({"browse": {"at": null, "focus": null, "page": 0, "q": "tide"}, "cam": {"az": 0.72, "el": 0.6, "flat": 0, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "3d", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [-0.544, -0.565, -0.62], "dist": 34.343, "eye": [16.19, 20.592, 21.61], "fov": 40, "frameH": 25, "mirror": false, "target": [-2.5, 1.2, 0.3], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "tide1", "session": null, "stage": {"h": 834, "w": 820}, "task": null, "taskTitle": null, "trail": ["3D"], "trailPos": 0, "undo": 0, "view": "3D"})
+PASS  Journey F · step 3/5  ({"browse": {"at": null, "focus": null, "page": 0, "q": "tide"}, "cam": {"az": 3.414, "el": 0, "flat": 1, "frameH": 14.498, "mirror": false, "target": [6.981, 3.25, 5.297]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.269, 0, 0.963], "dist": 922.921, "eye": [-241.615, 3.25, -883.513], "fov": 0.9, "frameH": 14.498, "mirror": false, "target": [6.981, 3.25, 5.297], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "tide1", "session": {"ceilId": null, "cut": null, "focusId": "rotunda", "focusName": "Tide Study I on the Rotunda wall", "id": 12, "kind": "face", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "rotunda", "kind": "wall-top", "label": "Rotunda wall top"}, "instrument": true, "kind": "face", "subject": "tide1", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Tide Study I", "trail": ["3D", "Facing Tide Study I on the Rotunda wall"], "trailPos": 1, "undo": 0, "view": "Facing Tide Study I on the Rotunda wall"})
+PASS  Journey F · step 4/5  ({"browse": {"at": null, "focus": null, "page": 0, "q": "tide"}, "cam": {"az": 3.414, "el": 0, "flat": 1, "frameH": 14.498, "mirror": false, "target": [6.981, 3.25, 5.297]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0.269, 0, 0.963], "dist": 922.921, "eye": [-241.615, 3.25, -883.513], "fov": 0.9, "frameH": 14.498, "mirror": false, "target": [6.981, 3.25, 5.297], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": null, "focusId": "rotunda", "focusName": "Tide Study I on the Rotunda wall", "id": 12, "kind": "face", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "rotunda"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "rotunda", "kind": "wall-top", "label": "Rotunda wall top"}, "instrument": true, "kind": "face", "subject": "tide1", "target": {"id": "rotunda", "kind": "wall", "label": "Rotunda wall"}}, "taskTitle": "Facing Tide Study I", "trail": ["3D", "Facing Tide Study I on the Rotunda wall"], "trailPos": 1, "undo": 0, "view": "Facing Tide Study I on the Rotunda wall"})
+PASS  Journey F · step 5/5  ({"browse": {"at": null, "focus": null, "page": 0, "q": "tide"}, "cam": {"az": 6.283, "el": 0, "flat": 1, "frameH": 22.815, "mirror": false, "target": [-6.871, 2.25, -3.5]}, "crumbs": [], "expand": false, "flatHold": null, "hover": null, "kind": "face", "knife": null, "lastUndo": null, "lens": "world", "parked": null, "preview": null, "realized": {"aspect": 0.9832134292565947, "dir": [0, 0, -1], "dist": 1452.437, "eye": [-6.871, 2.25, 1448.937], "fov": 0.9, "frameH": 22.815, "mirror": false, "target": [-6.871, 2.25, -3.5], "up": [0, 1, 0]}, "redo": 0, "reveal": null, "sel": "harbor", "session": {"ceilId": null, "cut": null, "focusId": "north", "focusName": "Harbor at Dusk on the North wall", "id": 13, "kind": "face", "lift": null, "opening": null, "origin": {"label": "3D"}, "parent": null, "part": null, "side": 1, "u": 0, "wallId": "north"}, "stage": {"h": 834, "w": 820}, "task": {"depth": 0, "focus": {"id": "north", "kind": "wall-top", "label": "North wall top"}, "instrument": true, "kind": "face", "subject": "harbor", "target": {"id": "north", "kind": "wall", "label": "North wall"}}, "taskTitle": "Facing Harbor at Dusk", "trail": ["3D", "Facing Tide Study I on the Rotunda wall", "Facing Harbor at Dusk on the North wall"], "trailPos": 2, "undo": 0, "view": "Facing Harbor at Dusk on the North wall"})
+PASS  no command or page fault during the full A–F run  (no command or page faults)
+PASS  no console or page errors  (no console/page errors)
+
+Axis B journeys A–F: PASS=59 FAIL=0
+
+==================================================================
+  Axis B · real interaction
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:56851
+== Axis B · real interaction paths
+-- keyboard: search, selection and unwind, from an ordinary state
+PASS  the search field takes focus  (finderInput)
+PASS  a search result becomes the selection  (pears)
+PASS  finding something writes no history  (0)
+PASS  the beacon marks where the found subject is  (pears)
+PASS  a first Esc clears the beacon  (cleared)
+PASS  and keeps the selection  (pears)
+-- facing the Garden window
+PASS  setup: facing the Garden window  (Facing Garden window)
+-- a real handle drag, released
+PASS  the dragged handle is marked while the pointer is down  (true)
+PASS  exactly one measurement is emphasised  (1)
+PASS  one drag = one Undo entry  (1)
+PASS  the drag is one named building change  (Garden window head)
+PASS  the drag moved the value up  (1)
+PASS  emphasis cleared on release  (false)
+PASS  no stale active chip after release  (0)
+PASS  no refusal left on the handle  (false)
+PASS  Undo restored the value  (3.4 vs 3.4 ±0.0001)
+-- a refused drag rolls back completely
+PASS  the refusal is offered during the gesture  (true)
+PASS  the handle shows the refusal  (true)
+PASS  the candidate is stated as a reason, not applied  (1 vs 1 ±0)
+PASS  a refused release writes no history  (0)
+PASS  a refused release leaves the value  (3.4 vs 3.4 ±0.0001)
+PASS  the refusal is announced  (Refused — Head would cross the wall top (6.00) — lower it or raise the wall. Nothing changed.)
+PASS  the announcement says nothing changed  (Refused — Head would cross the wall top (6.00) — lower it or raise the wall. Nothing changed.)
+PASS  the refusal cleared after release  (false)
+-- pooled overlay attributes do not survive a selection change
+PASS  the selected opening's numbers are on the drawing  (1)
+PASS  no chip for the previous subject  (0)
+PASS  the numbers return with the selection  (1)
+-- a number typed on the drawing
+PASS  clicking the number opens the type-in  (true)
+PASS  Enter applied the typed value  (0.55 vs 0.55 ±0.0001)
+PASS  the typed value is one Undo entry  (Garden window sill)
+-- an invalid number is refused locally
+PASS  an invalid number states the reason  (Garden window sill cannot go below the floor)
+PASS  the type-in stays open for correction  (true)
+PASS  an invalid number writes no history  (1)
+PASS  Escape leaves the value alone  (0.55 vs 0.55 ±0.0001)
+PASS  Escape closed the type-in  (true)
+PASS  a canceled type-in writes no history  (1)
+-- Tab moves between numbers without losing the edit
+PASS  the head number opened  (true)
+PASS  Tab committed the field it was in  (3.3 vs 3.30 ±0.0001)
+PASS  Tab lands on the next number  (true)
+-- view state never reaches Undo
+PASS  curvature, square up and inside/outside write no history  (2)
+PASS  the curvature is a real intermediate standpoint  (Rotunda wall at 180° from outside)
+-- section, depth and Reveal are view changes, and a nested return is exact
+PASS  the depth is applied as a reading  (3)
+PASS  the set-aside painting states its reason  (0.75 m beyond the 3.00 m depth)
+PASS  depth writes no history  (2)
+PASS  Reveal writes no history  (2)
+PASS  Reveal leaves the depth alone  (3)
+PASS  the cut reports its nested situation  (Opened along a line · looking north)
+PASS  Esc returns to the same cut  (Opened along a line · looking north)
+PASS  …at the same depth  (3 vs 3 ±0.0001)
+PASS  …with Reveal still on  (harbor)
+-- an accepted edit survives the return home, and Undo moves the building only
+PASS  accepted edits are still in history  (1)
+PASS  Undo left the reading where it was  (true)
+PASS  Undo left the standpoint alone  ([-2.0500000000000007, 3.2, 2253.4868941833565])
+PASS  Undo changed the building  (1)
+PASS  no command or page fault during interaction checks  (no command or page faults)
+PASS  no console or page errors  (no console/page errors)
+
+Axis B interaction: PASS=56 FAIL=0
+
+==================================================================
+  Axis B · pointer flows
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:56898
+== Axis B · pointer flows and exact return
+-- peel a curved wall by hand, from where you stand
+PASS  the pull corner is offered on the selected curved wall  (true)
+PASS  the drag opened a face reading  ({"kind": "face", "id": 1, "wallId": "rotunda", "focusId": "rotunda", "focusName": "Rotunda wall", "opening": null, "ceilId": null, "side": -1, "u": 0.232, "part": null, "lift": null, "cut": null, "parent": null, "origin": {"label": "3D"}})
+PASS  the intermediate curvature is a real editable stop  (true)
+PASS  the peel wrote no history  (0)
+PASS  handles stay live at an intermediate curvature  (true)
+PASS  the reading names the intermediate state  (Rotunda wall at 277° from outside)
+PASS  inside and outside are real standpoints  (1)
+PASS  the wall reaches the flat sheet  (Rotunda wall laid flat)
+PASS  Esc rolls the wall back onto its footprint  (true)
+PASS  …to where it started  (3D)
+-- Plan withholds an edge-on axis, tilt brings it back, and the tilted standpoint returns exactly
+PASS  Plan is a real standpoint  (Plan)
+PASS  Plan withholds the height handle  (false)
+PASS  …and offers the along-wall handle  (true)
+PASS  …while the height number stays typeable  (true)
+PASS  a real Plan drag moves the window along the wall  (1)
+PASS  the Plan move is one named Undo entry  (Garden window position)
+PASS  tilted, the height handle arrives  (true)
+PASS  a real 3D drag raises the head  (Garden window head)
+PASS  Face stands square to the opening  (Facing Garden window)
+PASS  the profile handle is offered square on  (true)
+PASS  a real profile drag is one Undo entry  (Garden window arch rise)
+PASS  Esc returns to the tilted standpoint, not a default 3D  (true)
+PASS  …with the selection intact  (gwin)
+PASS  …and the work named in the summary  (1)
+-- the Wall grid is a reading, not an edit
+PASS  the grid changes no source value  (3)
+PASS  the grid moves no standpoint  ({"az": 0, "el": 0.8, "frameH": 38.256, "flat": 0, "mirror": false, "target": [-2, 0, 0]})
+PASS  the grid keeps the selection  (gwin)
+-- section → go to the host's wall → Esc → the same cut and depth
+PASS  the cut excludes the painting beyond depth  (beyond)
+PASS  going to the wall nests inside the cut  (Opened along a line · looking north)
+PASS  Esc lands back in the cut, not in ordinary 3D  (section)
+PASS  …at the same depth  (3)
+PASS  Include reaches exactly as far as it must  (4)
+PASS  Include writes no history  (3)
+-- exact restoration through the view trail
+PASS  the trail restores standpoint, framing, depth and Reveal exactly  ({"az": 0.05, "fh": 28.31559211267606, "depth": 4, "reveal": null})
+-- the drawn line slides before anything opens, and writes nothing
+PASS  the aim offers a slide grip  (true)
+PASS  the real slide moved the line  (1)
+PASS  the slide opened nothing  (true)
+PASS  the slide wrote no history  (3)
+PASS  the aim is still cancellable  (true)
+-- a closed cut keeps an explicit way back
+PASS  the cut is remembered as a quiet line with a way back  (true)
+PASS  clicking it reopens the same cut  (Opened along a line · looking north)
+PASS  reopening writes no history  (3)
+PASS  no command or page fault during flow checks  (no command or page faults)
+PASS  no console or page errors  (no console/page errors)
+
+Axis B flows: PASS=44 FAIL=0
+
+==================================================================
+  Lifecycle · cancellation, identity, seams
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:56952
+== Stage S1 · lifecycle and seams
+-- an interrupted drag is dropped, and the next drag still commits exactly once
+PASS  the drag is holding a candidate while the pointer is down  (true)
+PASS  an interrupted drag writes no history  (0)
+PASS  an interrupted drag leaves the value  (3.4 vs 3.4 ±0.0001)
+PASS  the candidate snapshot was released  (true)
+PASS  no writer is left emphasising a value  (true)
+PASS  a drag after the interruption still commits once  (1)
+PASS  …with the building changed, not just the history  (1)
+-- an interrupted refused drag leaves nothing behind
+PASS  the refusal is offered while the pointer is down  (true)
+PASS  an interrupted refusal writes no history  (0)
+PASS  the refusal was cleared with it  (true)
+PASS  the value never moved  (3.4 vs 3.4 ±0.0001)
+-- Esc drops a numeric draft before it touches the reading
+PASS  a draft is open  (true)
+PASS  Esc closed the draft  (true)
+PASS  Esc wrote no history for a draft  (0)
+PASS  the draft was not applied  (0.9)
+PASS  the reading is untouched by that Esc  (true)
+PASS  the next Esc leaves the reading  (true)
+-- one validator: the same invalid value is refused the same way from every path
+PASS  the field path refuses with a reason  (Head would cross the wall top (6.00) — lower it or raise the wall)
+PASS  a refused direct proposal changes nothing  (3.4 vs 3.4 ±0.0001)
+PASS  the handle path refuses with the same reason as the field path  (Head would cross the wall top (6.00) — lower it or raise the wall)
+PASS  and the refused drag changed nothing either  (3.4 vs 3.4 ±0.0001)
+-- the initiating identity is not the technical target
+PASS  unrolling around the window keeps the window as the subject  (1)
+PASS  facing an artwork keeps the artwork as the subject  (1)
+PASS  the title names the subject and the target separately  (Facing Harbor at Dusk)
+PASS  a hand peel also describes its work  (1)
+PASS  the task ends with the reading  (true)
+-- parking holds the realized standpoint instead of restoring an origin
+PASS  parking deactivates the reading  (true)
+PASS  parking leaves no temporary geometry  (0)
+PASS  parking releases the aim and the reveal  (true)
+PASS  the realized eye, FOV and framing survive parking  (eye [-2.05, 3.2, 2253.487] fov 0.9)
+PASS  the held flatness is the flatness that was rendered  (true)
+PASS  no origin pose was restored by parking  (true)
+PASS  explicit movement releases the hold  (true)
+PASS  …and the camera is ordinary again  (true)
+-- one owner of the view history
+PASS  a nested return lands on the entry it came from  (11)
+PASS  the trail is the seam's, not a copy in the shell  (true)
+PASS  an aim is open and unaccepted  (true)
+PASS  a canceled aim records no view change  (12)
+PASS  …and leaves no aim behind  (true)
+PASS  no command or page fault during lifecycle checks  (no command or page faults)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S1 lifecycle: PASS=41 FAIL=0
+
+==================================================================
+  Stage S2 · the ordinary World shell
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:56999
+== Stage S2 · the ordinary World shell
+-- one shell, and none of the retired one
+PASS  the Index panel is the relation Index  (Index of this place)
+PASS  the Card panel is the selected subject  (Selected subject)
+PASS  ordinary Card has no technical writer or ownership catalogue  (true)
+PASS  the stage is the world  (true)
+PASS  no domain spine  (false)
+PASS  no navigator tree  (false)
+PASS  no inspector panel  (false)
+PASS  no permanent tool tray  (false)
+PASS  no permanent instrument strip  (false)
+PASS  exactly one search entry  (1)
+PASS  the lens names both documents, and both are real buttons  (World|Experience/2)
+PASS  the World is the lens in hand, and it is the one shown as current  (world/world)
+-- nothing offered is inert
+PASS  no disabled control outside the building history  (0)
+PASS  no modal is open at rest  (true)
+PASS  no work is in hand at rest  (true)
+PASS  a subject with nothing to offer offers nothing  (0)
+PASS  a curved wall offers looking at it, unrolling it, and its numbers in place  (look-face look-unroll look-dims)
+PASS  a ceiling offers lifting it, looking up at it, and its numbers in place  (look-lift look-lookup look-dims)
+PASS  every verb a subject offers is dispatchable  (true)
+PASS  …and every offered verb names its own subject  (true)
+-- the Instrument appears with work, and takes no space from the world
+PASS  the world's navigation sits on the world  (true)
+PASS  the Instrument sits on the world  (true)
+PASS  …and takes no layout space  (absolute)
+PASS  the stage is 820 wide at rest  (820 vs 820 ±0)
+PASS  …and 834 high at rest  (834 vs 834 ±0)
+PASS  invoking work shows the Instrument  (false)
+PASS  the Instrument shows the reading it is in  (Lifted: Entrance soffit)
+PASS  …and the seam names the work in hand  (Entrance soffit lifted)
+PASS  the world did not resize for it  (820 vs 820 ±0)
+PASS  …nor change its height  (834 vs 834 ±0)
+PASS  the Instrument is inside the stage it overlays  (true)
+PASS  the locator does not collide with the navigation on the world  (no)
+PASS  the Instrument leaves when the work does  (true)
+-- a row's verb acts on the row's subject, and never rewrites the identity
+PASS  the artwork's Card is the artwork  (Tide Study I)
+PASS  the artwork offers its own verbs, not the wall's  (look-face look-dims)
+PASS  the wall it hangs on is in the Index, with the wall's own verb  (true)
+PASS  the verb opened the work it named  (rotunda)
+PASS  …on the subject the row named, not on the selection  (rotunda>rotunda)
+PASS  …and left the selection alone  (tide1)
+PASS  the Card still shows the identity, mid-reading  (Tide Study I)
+PASS  the reading is the wall, unrolled  (1 vs 1 ±0.001)
+PASS  the artwork's own verb walks to its wall  (rotunda:Tide Study I on the Rotunda wall)
+PASS  …keeping the artwork as the subject that asked  (tide1>rotunda)
+PASS  the artwork verb also preserves canonical selection and Card  (tide1 / Tide Study I)
+PASS  no shell panel overlaps the world it frames  (true)
+PASS  no command or page fault while driving the shell  (no command or page faults)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S2 · World shell: PASS=47 FAIL=0
+
+==================================================================
+  Stage S3 · spatial tasks and Precision
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57047
+== Stage S3 · spatial tasks and Precision
+-- Look is one work, reached three ways; identity, target and local focus stay apart
+PASS  the Card is the subject, its own verbs offered, spatial and in place kept apart  (Garden window / look-face look-unroll look-dims)
+PASS  nothing is in hand at rest  (none / True)
+PASS  the Card's verb opens the work it names  (face/rotunda/gwin)
+PASS  …the identity that asked kept apart from the target, with the local focus named  (face|gwin|rotunda|opening|Garden window in the Rotunda wall)
+PASS  …and the Instrument says what it is and where  (Facing / Garden window in the Rotunda wall)
+PASS  the keyboard reaches the same work, identity and all  (face|gwin|rotunda|opening|Garden window in the Rotunda wall)
+PASS  the wall it hangs on carries its own verb in the Index  (True)
+PASS  the Index row's verb acts on the wall the row names  (face/rotunda/rotunda)
+PASS  …laid flat  (1 vs 1 ±0.001)
+PASS  …leaving the selection alone  (gwin)
+-- the first gesture is retained: the wall unrolls under the hand, no invocation step
+PASS  mid-gesture the reading is already open, around the window that asked  (face/rotunda/gwin / face|gwin|rotunda|opening|Garden window in the Rotunda wall)
+PASS  …unrolling under the hand, dispatched by the gesture itself  (true / True)
+PASS  letting go leaves the curvature where it was  (true)
+-- measuring in place opens nothing and moves nothing
+PASS  the in-place task is the work in hand  (dims|gwin|gwin|measure|Garden window)
+PASS  …with no reading opened  (none)
+PASS  …the camera exactly where it was, and the world the same size  (16.190 20.592 21.610 / 820x834)
+PASS  …and the Instrument says it is in place  (Measured / in place · nothing opened, nothing moved)
+PASS  …showing the subject's real width without being asked  (1.60 vs 1.6 ±0.001)
+-- one active surface, Precision, refusal, and Esc order
+PASS  a face reading for the work to sit over  (face/rotunda/gwin)
+PASS  measuring takes the surface, touching neither the reading nor the camera  (Measured / face/rotunda/gwin / -643.214 3.250 -648.714)
+PASS  …and leaving it returns the reading's own work  (face/rotunda/gwin / face|gwin|rotunda|opening|Garden window in the Rotunda wall)
+PASS  Precision is entered from the keyboard, as one labelled row on the same surface  (True / Width, Centre along wall, Sill, Head, Arch rise, Clear height)
+PASS  …still the reading it belongs to  (face/rotunda/gwin)
+PASS  a typed value is accepted through the one cast  (2.6 vs 2.6 ±0.0001)
+PASS  …as exactly one Undo entry, labelled for the value  (1 / Garden window width)
+PASS  …without any view change  (-643.214 3.250 -648.714)
+PASS  an invalid number is refused in place, with a reason  (Garden window must be at least 0.40 wide)
+PASS  …writing no history and leaving the accepted value alone  (1 / 2.6)
+PASS  Escape leaves Precision first, the reading untouched  (False / face/rotunda/gwin)
+PASS  …and the next Escape leaves the reading, keeping the selection  (none / gwin)
+-- a number is reachable where no handle is legible, and Precision cannot outlive the work
+PASS  a reading with Precision asked for  (face/rotunda/gwin / True)
+PASS  the wall is laid flat, so widths are foreshortened  (1 vs 1 ±0.001)
+PASS  the width is still measured on the wall, and still editable by number  (2.2 vs 2.2 ±0.0001)
+PASS  …as one accepted edit, with no view change from typing  (2 / 12)
+PASS  leaving the reading ends the work in hand  (none)
+PASS  …and its numbers row goes with it  (False / True)
+PASS  no command or page fault through any of it  (0)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S3 · tasks and Precision: PASS=38 FAIL=0
+
+==================================================================
+  Stage S4 · Browse/Search and Details
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57103
+== Stage S4 · Browse/Search and Details
+-- one bounded list: dense, repeated names, paging, and a register that says where it lives
+PASS  the listing opens on the query typed into the real field  (condition survey / True)
+PASS  repeated display names, distinct records: four survey sheets  (Condition survey|Condition survey|Condition survey|Condition survey)
+PASS  a record with no Stage geometry offers Select alone  (sel / Condition survey)
+PASS  …and says where it really lives  (no location here — kept in the Long Gallery · conservation file; Select only, nothing to fly to)
+PASS  an empty query fills one page and offers more: 9 of 35More results  (9 / True)
+PASS  the museum's own subjects are listed first, and the records after them  (1)
+PASS  More pages the list, keeping the page in shell state: 18 of 35More resultsBack to the first 9  (18 / 1)
+PASS  an empty result names the query and the context it looked in  (Nothing matches “zzzz” in the whole museum)
+PASS  …and no result row is invented  (0)
+PASS  browsing selected nothing, opened nothing and moved nothing  (gwin / none / 16.190 20.592 21.610 / 0)
+-- context is context: a place, the register, and an Index that follows it
+PASS  Escape closes the listing  (False)
+PASS  the selection is set for the context block, with the listing closed  (tide1 / False)
+PASS  the Index place title focuses that place as context  ({"kind":"place","id":"rotunda"})
+PASS  …without touching the selection or opening anything  (tide1 / none)
+PASS  opening Search keeps the context it was left in  (All places,Long Gallery,Rotunda*,Records register)
+PASS  the register is a context of its own  ({"kind":"records"} / All places,Long Gallery,Rotunda,Records register*)
+PASS  …showing records only, with the selection exactly where it was  (Condition survey|Condition survey|Condition survey|Condition survey|Conservation file|Conservation file|Conservation file|Loan agreement|Loan agreement / tide1)
+PASS  …and the Index follows the context: the register, offering no Look  (Records register / 0)
+PASS  clicking the active context leaves it, back to the whole museum  (none)
+-- Select is the identity, and nothing else
+PASS  Select changes the canonical identity  (pears)
+PASS  …and the reading, the work in hand, the camera and history are untouched  (none / none / 16.190 20.592 21.610 / 0 / 1)
+PASS  …and choosing a result dismisses the listing  (False)
+PASS  Select inside an open reading changes the selection and not the reading  (harbor / face/rotunda/gwin)
+PASS  …with the camera exactly where the reading put it  (-643.214 3.250 -648.714)
+PASS  a register record can be selected: an identity is an identity  (loan-1 / Loan agreement)
+PASS  …and the shell says it has no Stage location  (Selected the Loan agreement — a record with no Stage location, kept in the Loans register. Nothing opens, and the view does not move)
+PASS  Open location refuses for it with the real reason, moving nothing  (The Loan agreement is a record with no Stage location — kept in the Loans register, so there is nothing here to open / -643.214 3.250 -648.714 / face/rotunda/gwin / loan-1)
+-- Open location, Bring into view and Face: one promise each, on the record the row names
+PASS  in-place work is in hand, with the camera where it was  (dims|gwin|gwin|measure|Garden window)
+PASS  Open location opens the specialist reading for the record the row names  (face/rotunda/rotunda / face|marsh|rotunda|wall-top|Rotunda wall top)
+PASS  …leaving the selection where it was, the in-place work put away  (gwin / 0)
+PASS  …with the camera moved to the reading it opened  (moved)
+PASS  …as a view state, writing no history  (0)
+PASS  a zoomed-in standpoint reports the artwork as off  (1)
+PASS  …and its row offers the recovery that reason calls for, and no other  (sel,open-loc,lookat,faceit)
+PASS  Bring into view opens nothing and keeps the selection  (none / gwin)
+PASS  …and the camera really moved  (moved)
+PASS  Face works on the record the row names, not on the selection  (face/rotunda/rotunda / face|rotunda|rotunda|wall-top|Rotunda wall top / gwin)
+PASS  staged content has no specialist depth, so its row offers no Open location  (vessel / 1)
+PASS  …and asking for a flight anyway refuses with a reason  (Blue Vessel is staged content — no specialist depth in this prototype. Select it, or bring it into view)
+-- Include and Reveal are view settings, reachable from a result row
+PASS  the cut excludes the painting beyond its depth  (3 / beyond / section//)
+PASS  its row offers exactly the recovery a hidden subject has  (sel,open-loc,include,reveal,faceit)
+PASS  Include reaches exactly as far as it must  (4 / in)
+PASS  …as a view change, writing no history  (0)
+PASS  Reveal shows it through at its true place  (harbor / beyond)
+PASS  …without touching the depth or history  (3 / 0)
+PASS  and the reading can be put back with nothing left showing  (none / None)
+-- Details: Expand, Focus, Select and Open task are four different things
+PASS  at rest the Card offers the disclosure, shut  (0 / False)
+PASS  Expand opens the relations and nothing else  (True / 1)
+PASS  …the relations are named, with their own verbs  (Host Rotunda wall / sel:rotunda look-face:rotunda focus:rotunda)
+PASS  …changing nothing but what is shown  (gwin / none / -12.943 7.662 -10.483)
+PASS  the subject's own in-place work is in hand  (dims|gwin|gwin|measure|Garden window)
+PASS  Focus records the local context without rewriting a measurement of the whole subject  ({"kind":"rel","at":"rotunda","what":"wall-top","label":"Rotunda wall top"} / dims|gwin|gwin|measure|Garden window)
+PASS  the reading for the selection is open, about the opening it walked to  (face/rotunda/gwin / face|gwin|rotunda|opening|Garden window in the Rotunda wall / Garden window in the Rotunda wall)
+PASS  Focus on a reading sets the local point it is about, and the Instrument says so  (face|gwin|rotunda|wall-top|Rotunda wall top / Rotunda wall top)
+PASS  …leaving the identity, the reading and the view exactly where they were  (gwin / Garden window / face/rotunda/gwin / -643.214 3.250 -648.714)
+PASS  …and the Index marks the focused relation  (1)
+PASS  Select on a relation changes identity only, reading and all  (rotunda / Rotunda wall / face/rotunda/gwin / -643.214 3.250 -648.714 / 0)
+PASS  Open task does specialist work on the named target, not on the selection  (face/rotunda/rotunda / face|rotunda|rotunda|wall-top|Rotunda wall top / gwin)
+PASS  no command or page fault through any of it  (0)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S4 · Browse/Search and Details: PASS=60 FAIL=0
+
+==================================================================
+  Stage S5 · an unresolved reference and its repair
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57151
+== Stage S5 · an unresolved reference and its repair
+-- at rest: the warning is there, quiet, in every context, and it says what is really missing
+PASS  the Index carries one unresolved-reference warning, with no task in hand  (1 / none)
+PASS  …naming what is missing, not where anything 'should' be  (no wall reference · Repair from its Card)
+PASS  …and it survives a place context: a document fact, not a place  (1 / gwin)
+PASS  selecting it is an ordinary Select, and the Card is its identity  (panel / Unplaced panel)
+PASS  the Card states the reason and offers Repair, never a Look that would need a host  (look-repair,look-dims / repair,dims)
+PASS  …in the Card's own words, about the marker  (Unresolved reference — no wall is named for it in the source, so nothing here is a host: the marker on the drawing is where it was last seen, not where it hangs. It keeps its own size; only its wall is missing.Repair)
+-- the cached position is a display locator, never a host: nothing flies to it
+PASS  the resolver refuses to call it visible, or to place it in a reading  (unresolved / unresolved)
+PASS  Open location refuses with the reason, and offers the one real route  (Unplaced panel: its wall reference is unresolved — name the wall it belongs on with Repair, from its Card)
+PASS  Look refuses the same way, on the same identity  (Unplaced panel: its wall reference is unresolved — name the wall it belongs on with Repair, from its Card)
+PASS  Bring into view has nothing to bring: the locator is not a standpoint  (There is nothing to bring into view — Unplaced panel: its wall reference is unresolved)
+PASS  …and none of the three moved the camera, the selection or history  (16.190 20.592 21.610 / panel / 0)
+-- Repair is its own work: no reading, no camera, no history, and the walls offered explicitly
+PASS  invoking Repair records the work, with no reading opened and the camera where it was  (repair|panel|panel|reference / none / 16.190 20.592 21.610)
+PASS  …offering every wall in the museum, none of them chosen yet  (north,south,west,rotunda / None / False)
+PASS  …and declaring the two values it will use, before anything is drawn  (Station along the wall, Centre height)
+PASS  …with nothing drawn and nothing written yet  (none / unresolved|0.00|1.60 / 0)
+-- an explicit pick, and a declared candidate the fixture refuses — in place, with the reason
+PASS  picking a wall is explicit: it becomes the candidate, and the panel's own height is declared with it  (west / west|3.50|1.60)
+PASS  …the fixture's own check refuses the declared default rather than nudging it  (Candidate: the West wall. The middle of the wall would not take it — Unplaced panel would cover the Entrance. Declare a station that clears it; nothing is written yet)
+PASS  …leaving the reference untouched: a drawn candidate is not a source  (unresolved|0.00|1.60 / 0)
+PASS  a declared station is drawn where it would hang, and still writes nothing  (west|5.60|1.60 / 0)
+PASS  a height that would cross the wall top is refused in place, with the number  (The West wall is only 4.20 high — the panel would cross its top)
+PASS  …and the candidate is exactly as it was: refusals change nothing  (west|5.60|1.60 / 0)
+PASS  the declared height is taken the same way, recorded in the drawing and not the source  (west|5.60|2.00 / unresolved|0.00|1.60 / 0)
+-- accept once: one validated edit, and the reference — not the view — is what moves
+PASS  Enter accepts the declared candidate as one source edit  (west|5.60|2.00)
+PASS  …one Undo entry, labelled for the reference it repaired  (1 / Repaired the wall reference of the Unplaced panel)
+PASS  …the work ends because the reference it was about is resolved  (none / none)
+PASS  …the panel is really hung on the wall that was chosen  (False / west|5.60|2.00)
+PASS  …and the resolver places it again, with Look back among its capabilities  (1 / face,dims)
+PASS  …the rest warning goes, because the document has no unresolved reference any more  (0)
+PASS  …and the camera never moved: accepting a reference is not a view  (16.190 20.592 21.610)
+-- Undo and Redo move the reference, and the body follows it
+PASS  Undo puts the reference back to unresolved  (unresolved|0.00|1.60 / unresolved / True)
+PASS  …and the warning returns with it  (1)
+PASS  …with the camera untouched by history  (16.190 20.592 21.610)
+PASS  Redo hangs it again on the wall that was chosen  (west|5.60|2.00 / False)
+-- canceled and left-unresolved work writes nothing
+PASS  a candidate is drawn, on a wall that would hold it  (north|4.00|1.60)
+PASS  Escape leaves the work unresolved: nothing written, nothing drawn, no work in hand  (none / none / unresolved|0.00|1.60)
+PASS  …with the same history it started with  (0 / 1)
+PASS  Leave unresolved is the other honest ending, said out loud  (Unplaced panel stays unresolved — nothing was written, and the marker is still where it was last seen)
+PASS  …and it writes nothing either  (none / none / unresolved|0.00|1.60 / 0)
+PASS  no command or page fault through any of it  (0)
+-- Owner/Source/Reach: three supported facts at the edit decision, and no invented scope
+PASS  an opening's fact is owned by the Layout document  (OwnerLayout document — an opening belongs to the wall that carries it || Sourceprototype-local fixture · app/model.js, no production schema behind it || Reachthis opening only — the Rotunda wall keeps its own geometry, and no other wall is touched)
+PASS  …its source is named as this prototype's fixture  (OwnerLayout document — an opening belongs to the wall that carries it || Sourceprototype-local fixture · app/model.js, no production schema behind it || Reachthis opening only — the Rotunda wall keeps its own geometry, and no other wall is touched)
+PASS  …and what it reaches is that opening and its wall alone  (OwnerLayout document — an opening belongs to the wall that carries it || Sourceprototype-local fixture · app/model.js, no production schema behind it || Reachthis opening only — the Rotunda wall keeps its own geometry, and no other wall is touched)
+PASS  an artwork's fact is owned by the Scene document  (OwnerScene document — the artwork, and the wall it hangs on || Sourceprototype-local fixture · app/model.js — its wall reference, unresolved || Reachthis artwork only — Repair writes one reference, and never the wall)
+PASS  …its source is named as unresolved rather than a place  (OwnerScene document — the artwork, and the wall it hangs on || Sourceprototype-local fixture · app/model.js — its wall reference, unresolved || Reachthis artwork only — Repair writes one reference, and never the wall)
+PASS  …and Repair reaches the reference, never the wall  (OwnerScene document — the artwork, and the wall it hangs on || Sourceprototype-local fixture · app/model.js — its wall reference, unresolved || Reachthis artwork only — Repair writes one reference, and never the wall)
+PASS  …with no shared-use, fork or instance-only language anywhere in the shell  (clean)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S5 · unresolved reference and repair: PASS=47 FAIL=0
+
+==================================================================
+  Stage S6 · the lens, parked work and explicit Resume
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57200
+== Stage S6 · the lens, parked work and explicit Resume
+-- crossing with nothing in hand: an ordinary context, and the same Camera
+PASS  crossing changes the lens in hand  (experience)
+PASS  nothing was in hand, so nothing was parked  (None)
+PASS  the Experience Index is its own real work, a locator for Presentations and existing Scene subjects  (Experience / True / True)
+PASS  …and the World subject it holds is named as the World's  (From the World lens)
+PASS  the Camera is exactly where the World left it  (0)
+PASS  …FOV and framing included  (40 vs 40 ±0.001)
+PASS  …and nothing was written: no building change, no history, no trail entry  (c9c8929a / 0 / 1)
+PASS  no World Instrument stands in the Experience lens  (False)
+PASS  Search is refused by name from inside the Experience lens  (Search is World work — switch back to the World lens to search the museum)
+PASS  …and no listing was opened  (False)
+PASS  World work is refused by name too, and nothing opened  (That is World work — switch back to the World lens, then invoke it)
+PASS  …with no reading, no work in hand and no history  (none / none / 0)
+-- the identities the Experience offers: its own Presentation, and the Scene subject it references
+PASS  opening a Presentation makes it the canonical identity  (pres-highlights / Saltmarsh Highlights)
+PASS  …and its Card is the Experience's own, not the World's  (Presentation · Experience)
+PASS  …without opening a reading or moving the Camera  (none / [16.1902,20.5918,21.6098])
+PASS  Selecting the referenced window selects the World subject by identity  (gwin / Garden window)
+PASS  …and the Card says whose subject it is  (From the World lens)
+PASS  selection stays selection in the Experience: nothing opened, nothing written  (none / 0 / [16.1902,20.5918,21.6098])
+PASS  coming back is ordinary: no reading, no work, no Instrument, no listing  (none / none / False / False)
+PASS  …with the Camera still where the Experience left it  ([16.1902,20.5918,21.6098])
+-- parking an unrolled reading: inactive, not hidden, and the eye does not move
+PASS  a half-unrolled reading is open about the window on its host wall  (face/rotunda/gwin / 0.500 / face|gwin|rotunda||opening)
+PASS  the parked record holds the identity, the host and the reading parameters  ({"name":"Garden window","identity":"gwin","chain":["face"],"canceled":[],"ok":true,"reason":"","fix":null})
+PASS  the reading is really gone, not hidden: no session, no work, no knife  (none / none / False)
+PASS  …the wall is back where it was built, and the Instrument has no Work to show  (0 / False)
+PASS  …and the realized eye survived the crossing exactly  (0)
+PASS  …with the FOV and framing it was rendered with  (0.9 vs 0.9 ±0.001)
+PASS  …with no source, history or trail change  (c9c8929a / 0 / 3)
+PASS  the parked standpoint is held, so a deactivated reading cannot dolly the eye  (True)
+PASS  …and it is still held on a later frame  (0)
+-- movement in the other lens survives; a foreign selection makes Resume contextual
+PASS  Plan in the Experience is the same Camera: a real key moves the shared standpoint  (1)
+PASS  …and explicit Camera input ends the parked pose's hold  (False)
+PASS  …and the parked reading is still inactive, still the same record  (none / face)
+PASS  returning with a foreign identity keeps it, and the World Card says whose it is  (pres-highlights / Saltmarsh Highlights / Foreign identity · not a World subject)
+PASS  Resume is contextual: with another identity selected it is not offered  (False / gwin)
+PASS  …and the reason is named locally, with the one act that would fix it  (Parked, not resumable — something else is selected now — the parked work is about the Garden window. Resume never guesses a host or a name: start the work fresh instead.Select Garden windowDismiss)
+PASS  asking for Resume anyway is refused, not guessed  (Resume is not available — something else is selected now — the parked work is about the Garden window. Start the work fresh instead of restoring a guess)
+PASS  …leaving the World ordinary and the record untouched  (none / none / False)
+-- explicit Select, then Resume: revalidated parameters, a fresh return context, no movement
+PASS  Selecting the parked identity by hand makes Resume available  (gwin / True)
+PASS  Resume announces the fresh invocation it just made  (Resumed the work on the Garden window — a fresh invocation from where you stand: Put it back returns here, not to where it was parked)
+PASS  Resume re-enters the reading with its decoded parameters  (face/rotunda/gwin / 0.500 / 1)
+PASS  …and the work in hand with it, about the window and its host wall  (face|gwin|rotunda||opening)
+PASS  …entered from the standpoint Resume was asked at, so the pre-crossing root is not reused  (Plan / 0)
+PASS  Resume is neutral: the rendered standpoint does not move  (0)
+PASS  …FOV and framing included  (0.9 vs 0.9 ±0.001)
+PASS  the record is consumed by the explicit request, and nothing was written  (None / c9c8929a / 0)
+PASS  the resumed work is a view state with a visible Instrument  (True)
+PASS  the first Esc clears the beacon the selection left, and the reading stands  (face/rotunda/gwin / 0)
+PASS  Put it back returns within the new invocation, not to where it was parked  (none / 0)
+PASS  …to the standpoint Resume was asked from, so movement in Experience survives  (0)
+PASS  …and never re-enters the parked reading  (None / none / 0)
+-- a repair: an unaccepted candidate is canceled, never parked
+PASS  a repair is in hand with a declared candidate drawn  (repair|panel|panel|wall:south|reference / {"art":"panel","wall":"south","s":3,"y":1.6})
+PASS  crossing parks the repair as its own work, with no reading invented  ({"name":"Unplaced panel","identity":"panel","chain":["repair"],"canceled":[],"ok":true,"reason":"","fix":null})
+PASS  …the declared candidate is taken off the drawing, not carried over  (None / none)
+PASS  Resume re-invokes the repair: the reference is still the subject  (repair|panel|panel|wall:null|reference)
+PASS  …with no wall picked and no candidate drawn — a proposal is never restored  (None)
+PASS  …and the source still holds the unresolved reference  (north / False)
+PASS  leaving it unresolved writes nothing  (none / 0)
+-- a crossing cancels once: a live draft and a live aim leave nothing behind
+PASS  a real click on a number opens the draft writer, and it holds a typed value  (True)
+PASS  crossing closes the writer and parks the reading underneath it  (False / face / True)
+PASS  a late Enter on the writer that was dropped cannot commit the draft  (c9c8929a / 0 / 3.4)
+PASS  the source value is the accepted one, and no draft was left in the Card  (1.60 / 0)
+PASS  a line can be started with nothing open  (True / none)
+PASS  a real drag leaves a live aim, not an open reading  (True / none)
+PASS  crossing cancels the aim and parks nothing: an aim is a proposal  (False / None)
+PASS  a late Enter cannot open the line that was aimed  (none / c9c8929a / 0)
+PASS  the World is ordinary again: no reading, no knife, nothing parked  (False / none / None)
+-- changed and missing targets are explained, never substituted
+PASS  an artwork reading is open about its host wall  (face/north/north)
+PASS  an accepted edit elsewhere moves the artwork to another host  (south)
+PASS  with the relationship changed, Resume is not offered and not silently redirected  (False / None / False)
+PASS  …and the reason names the host it no longer hangs on  (Parked, not resumable — the Harbor at Dusk no longer hangs on the North wall — the relationship changed, so the parked reading would be about a subject it is not. Resume never guesses a host or a name: start the work fresh instead.Dismiss)
+PASS  asking anyway is refused, and stays refused  (Resume is not available — the Harbor at Dusk no longer hangs on the North wall — the relationship changed, so the parked reading would be about a subject it is not. Start the work fresh instead of restoring a guess)
+PASS  the model keeps its accepted host: nothing was rewritten by the refusal  (south)
+PASS  fresh work on the same identity is the honest alternative  (face/south/south)
+PASS  in-place work on the unplaced panel is in hand  (dims|panel|panel||measure)
+PASS  the fixture loses the artwork while the work is parked  (True)
+PASS  a target that is gone makes Resume unavailable  (False / False)
+PASS  …naming the subject it was about  (Parked, not resumable — Unplaced panel is not in this museum any more. Resume never guesses a host or a name: start the work fresh instead.Dismiss)
+PASS  asking anyway refuses without fabricating anything  (Resume is not available — Unplaced panel is not in this museum any more. Start the work fresh instead of restoring a guess)
+PASS  …and nothing was opened or written  (none / none)
+-- through all of it
+PASS  no command or page fault  (0)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S6 · the lens, parked work and explicit Resume: PASS=81 FAIL=0
+
+==================================================================
+  Stage S7 · Experience wiring and the visitor's isolated preview
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57247
+PASS  ordinary Experience has no Deck or reading  (true)
+PASS  explicit Presentation uses canonical identity  ("pres-highlights")
+PASS  rename writes one source step  (true)
+PASS  foreign identity crosses unchanged and inert  (true)
+PASS  shared Undo restores Experience from World  ("Saltmarsh Highlights")
+PASS  shared Redo restores rename  ("Garden meaning")
+PASS  three Views coexist without Guide or edges  (true)
+PASS  Preview without Guide takes over authoring  (true)
+PASS  Preview restores lens selection pose and frozen source  (true)
+PASS  Guide begins at Peek with distinct repeated Stops  (true)
+PASS  Overview has occurrence cards and keeps Camera  (true)
+PASS  expanded occurrence exposes same unordered Set  (true)
+PASS  reorder changes order only  (true)
+PASS  opening Seam keeps pose and projection  (true)
+PASS  two origins have reach; third remains a gap  (true)
+PASS  Cut creates no edge  (2)
+PASS  Travel exposes unresolved support locally  (true)
+PASS  explicit repair covers third origin only  (true)
+PASS  explicit route work requests Plan and return crumb  (true)
+PASS  route crumb restores previous standpoint  (true)
+PASS  precision opens neutrally with one tape and reports the actual Camera reading  (true)
+PASS  Ask Rule names affected Stops before source edit  (true)
+PASS  explicit Stop-entry detachment is one Undo step  (true)
+PASS  Through visibly remains authoring  (true)
+PASS  Undo reunites original Stop entry without restoring Camera  (true)
+PASS  Stage authors one interior anchor  (1)
+PASS  pace derives timing and keeps stable beat reference  (true)
+PASS  station options contain no generated samples  (true)
+PASS  Experience commands  (no command or page faults)
+PASS  Experience browser  (no console/page errors)
+
+Unified Experience: PASS=30 FAIL=0
+
+==================================================================
+  V2 conformance · product journeys
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57301
+PASS  no-Guide/no-View Preview runs from authored meaning alone  (true / 512101225)
+PASS  no-View Preview restores complete standpoint  ({"eye": [16.190184061368967, 20.591780571473336, 21.609848489536827], "up": [0, 1, 0], "target": [-2.5, 1.2, 0.3], "dir": [-0.5442136537035923, -0.5646424733950355, -0.6204920437531196], "fov": 40, "dist": 34.34346774318278, "frameH": 25, "mirror": false, "aspect": 0.9832134292565947})
+PASS  Auto is derived intent, with no source/history change  (512101225 / 3)
+PASS  QA-1 visible working Set, quiet Card, no Guide/graph/rig  (true)
+PASS  Set markers are actual hit targets  (true)
+PASS  Set has visible direction glyphs separate from identity plates  (true)
+PASS  Plan shows the same unordered Set without authored edits  (["use-2", "use-3"] / 255585439)
+PASS  3D returns the same Set through explicit navigation  (["use-2", "use-3"] / 255585439)
+PASS  visitor removes and deactivates every authoring instrument  (true)
+PASS  first Stop gives Peek only  (true)
+PASS  fixture never selects or opens work  (true)
+PASS  QA-2 six distinct reachable pins, L0/L1, no Set or graph  (true)
+PASS  Stage pin selects occurrence 1 distinctly  ("stop-13")
+PASS  Deck selects that same occurrence 1  ("stop-13")
+PASS  Stage pin selects occurrence 2 distinctly  ("stop-14")
+PASS  Deck selects that same occurrence 2  ("stop-14")
+PASS  Stage pin selects occurrence 3 distinctly  ("stop-15")
+PASS  Deck selects that same occurrence 3  ("stop-15")
+PASS  Stage pin selects occurrence 4 distinctly  ("stop-16")
+PASS  Deck selects that same occurrence 4  ("stop-16")
+PASS  Stage pin selects occurrence 5 distinctly  ("stop-17")
+PASS  Deck selects that same occurrence 5  ("stop-17")
+PASS  Stage pin selects occurrence 6 distinctly  ("stop-18")
+PASS  Deck selects that same occurrence 6  ("stop-18")
+PASS  occurrence selection/disclosure preserves realized Camera and Camera source  ({"eye": [-7.5, 1108.7456272791876, 2.2205845323741684], "up": [0, 0, -1], "target": [-7.5, 1.05, 2.2205845323741005], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947} / "{\"serial\":7,\"views\":{\"view-1\":{\"id\":\"view-1\",\"name\":\"Entry\",\"pose\":{\"target\":[-10,1.1,1],\"az\":-1.4,\"el\":0.3,\"frameH\":3.5,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-2\":{\"id\":\"view-2\",\"name\":\"Inside\",\"pose\":{\"target\":[-10,1.1,1],\"az\":2.9,\"el\":0.55,\"frameH\":2.8,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-3\":{\"id\":\"view-3\",\"name\":\"Output\",\"pose\":{\"target\":[-10,1.1,1],\"az\":0.25,\"el\":0.3,\"frameH\":3.1,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-4\":{\"id\":\"view-4\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-12,1,-1.8],\"az\":0.9,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"mesh\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-5\":{\"id\":\"view-5\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-5,1,-1.8],\"az\":1.4,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"piano\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-6\":{\"id\":\"view-6\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-11,1,2.6],\"az\":-0.7,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"switch\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-7\":{\"id\":\"view-7\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-3,1,2.2],\"az\":-1.1,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"light\"]},\"anchor\":\"fixed\",\"revision\":0}},\"connections\":{}}")
+PASS  QA-3 unclipped L2 schematic Set and spatial Set  (true)
+PASS  schematic Set selects canonical View use without navigation/source edit  ("use-3" / {"eye": [-7.5, 1108.7456272791876, 2.2205845323741684], "up": [0, 0, -1], "target": [-7.5, 1.05, 2.2205845323741005], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947} / -447853416)
+PASS  spatial Set selects the same canonical use  ("use-3" / {"eye": [-7.5, 1108.7456272791876, 2.2205845323741684], "up": [0, 0, -1], "target": [-7.5, 1.05, 2.2205845323741005], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947})
+PASS  shared Set role change asks before source/history changes  (true / -447853416 / 0)
+PASS  shared Meaning asks before source/history changes  (true / -447853416 / 0)
+PASS  Cancel writes zero history  (-447853416 / 0)
+PASS  accepted shared edit is one history step  (1)
+PASS  local Stop entry leaves the shared Set and Camera source intact  ("{\"serial\":7,\"views\":{\"view-1\":{\"id\":\"view-1\",\"name\":\"Entry\",\"pose\":{\"target\":[-10,1.1,1],\"az\":-1.4,\"el\":0.3,\"frameH\":3.5,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-2\":{\"id\":\"view-2\",\"name\":\"Inside\",\"pose\":{\"target\":[-10,1.1,1],\"az\":2.9,\"el\":0.55,\"frameH\":2.8,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-3\":{\"id\":\"view-3\",\"name\":\"Output\",\"pose\":{\"target\":[-10,1.1,1],\"az\":0.25,\"el\":0.3,\"frameH\":3.1,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-4\":{\"id\":\"view-4\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-12,1,-1.8],\"az\":0.9,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"mesh\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-5\":{\"id\":\"view-5\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-5,1,-1.8],\"az\":1.4,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"piano\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-6\":{\"id\":\"view-6\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-11,1,2.6],\"az\":-0.7,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"switch\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-7\":{\"id\":\"view-7\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-3,1,2.2],\"az\":-1.1,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"light\"]},\"anchor\":\"fixed\",\"revision\":0}},\"connections\":{}}" / true)
+PASS  opening Seam does not move realized Camera  ({"eye": [-3.2421825179236343, 15.764125717754666, 7.896447543042534], "up": [0, 1, 0], "target": [-8.080767195036646, 1.709802593651605, 2.151877406086804], "dir": [-0.30363806869753107, -0.8819578068849474, -0.36049181698386346], "fov": 40, "dist": 15.935369032836812, "frameH": 11.600000000000001, "mirror": false, "aspect": 0.9832134292565947})
+PASS  QA-4 actual Plan Camera graph, 2/3 reach, gap, endpoints, anchor and pace  (true)
+PASS  Stage route samples exactly consume the Camera evaluator and remain above the Deck  (true)
+PASS  one accepted observer-anchor drag is one Undo step  (6)
+PASS  Undo restores route source  (-1721273569)
+PASS  station focus highlights both projections without replacing canonical selection  ("stop-16" / true)
+PASS  QA-5 keeps exact QA-4 Camera source and realized standpoint  ({"eye": [-8.763252587840327, 1109.7508772304348, 4.190398137363516], "up": [0, 0, -1], "target": [-8.763252587840327, 2.0552499512470064, 4.190398137363449], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 1107.6956272791876, "frameH": 17.4, "mirror": false, "aspect": 0.9832134292565947} / "{\"serial\":10,\"views\":{\"view-1\":{\"id\":\"view-1\",\"name\":\"Entry\",\"pose\":{\"target\":[-10,1.1,1],\"az\":-1.4,\"el\":0.3,\"frameH\":3.5,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-2\":{\"id\":\"view-2\",\"name\":\"Inside\",\"pose\":{\"target\":[-10,1.1,1],\"az\":2.9,\"el\":0.55,\"frameH\":2.8,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-3\":{\"id\":\"view-3\",\"name\":\"Output\",\"pose\":{\"target\":[-10,1.1,1],\"az\":0.25,\"el\":0.3,\"frameH\":3.1,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-4\":{\"id\":\"view-4\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-12,1,-1.8],\"az\":0.9,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"mesh\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-5\":{\"id\":\"view-5\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-5,1,-1.8],\"az\":1.4,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"piano\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-6\":{\"id\":\"view-6\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-11,1,2.6],\"az\":-0.7,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"switch\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-7\":{\"id\":\"view-7\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-3,1,2.2],\"az\":-1.1,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"light\"]},\"anchor\":\"fixed\",\"revision\":0}},\"connections\":{\"connection-8\":{\"id\":\"connection-8\",\"from\":\"view-1\",\"to\":\"view-7\",\"anchors\":[],\"markers\":[],\"speed\":\"auto\"},\"connection-9\":{\"id\":\"connection-9\",\"from\":\"view-2\",\"to\":\"view-7\",\"anchors\":[{\"id\":\"anchor-10\",\"name\":\"Anchor 1\",\"position\":[-8.240702094597944,1.5,2.100196164393742]}],\"markers\":[],\"speed\":\"auto\"}}}")
+PASS  QA-5 station projections mirror, with local beat/hold lanes  (true)
+PASS  coordination preserves reachable origin/destination identities and visible gap  (true)
+PASS  saved coordination reopens route and both station projections  (true)
+PASS  Camera pace updates displayed timing and retains beat/hold refs  ("[{\"id\":\"beat-21\",\"connectionId\":\"connection-9\",\"stationId\":\"anchor-10\",\"kind\":\"hold\",\"seconds\":1},{\"id\":\"beat-22\",\"connectionId\":\"connection-9\",\"stationId\":\"anchor-10\",\"kind\":\"invoke\",\"seconds\":0,\"useId\":\"contribution-20\"}]" / true)
+PASS  keyboard anchor edit preserves stable beat/hold references  ("[{\"id\":\"beat-21\",\"connectionId\":\"connection-9\",\"stationId\":\"anchor-10\",\"kind\":\"hold\",\"seconds\":1},{\"id\":\"beat-22\",\"connectionId\":\"connection-9\",\"stationId\":\"anchor-10\",\"kind\":\"invoke\",\"seconds\":0,\"useId\":\"contribution-20\"}]")
+PASS  coordination Resume keeps NOW and restores both projections neutrally  ({"eye": [-3.2421825179236343, 15.764125717754666, 7.896447543042534], "up": [0, 1, 0], "target": [-8.080767195036646, 1.709802593651605, 2.151877406086804], "dir": [-0.30363806869753107, -0.8819578068849474, -0.36049181698386346], "fov": 40, "dist": 15.935369032836812, "frameH": 11.600000000000001, "mirror": false, "aspect": 0.9832134292565947} / true)
+PASS  resumed route return uses the current invocation standpoint  ({"eye": [-3.2421825179236343, 15.764125717754666, 7.896447543042534], "up": [0, 1, 0], "target": [-8.080767195036646, 1.709802593651605, 2.151877406086804], "dir": [-0.30363806869753107, -0.8819578068849474, -0.36049181698386346], "fov": 40, "dist": 15.935369032836812, "frameH": 11.600000000000001, "mirror": false, "aspect": 0.9832134292565947})
+PASS  one explicit gap repair yields 3/3 support  (true)
+PASS  Cut preserves Camera source, paints no real route or anchor  ("{\"serial\":11,\"views\":{\"view-1\":{\"id\":\"view-1\",\"name\":\"Entry\",\"pose\":{\"target\":[-10,1.1,1],\"az\":-1.4,\"el\":0.3,\"frameH\":3.5,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-2\":{\"id\":\"view-2\",\"name\":\"Inside\",\"pose\":{\"target\":[-10,1.1,1],\"az\":2.9,\"el\":0.55,\"frameH\":2.8,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-3\":{\"id\":\"view-3\",\"name\":\"Output\",\"pose\":{\"target\":[-10,1.1,1],\"az\":0.25,\"el\":0.3,\"frameH\":3.1,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"machine\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-4\":{\"id\":\"view-4\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-12,1,-1.8],\"az\":0.9,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"mesh\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-5\":{\"id\":\"view-5\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-5,1,-1.8],\"az\":1.4,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"piano\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-6\":{\"id\":\"view-6\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-11,1,2.6],\"az\":-0.7,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"switch\"]},\"anchor\":\"fixed\",\"revision\":0},\"view-7\":{\"id\":\"view-7\",\"name\":\"Gallery entry\",\"pose\":{\"target\":[-3,1,2.2],\"az\":-1.1,\"el\":0.3,\"frameH\":3,\"flat\":0,\"mirror\":false},\"focus\":{\"kind\":\"subjects\",\"ids\":[\"light\"]},\"anchor\":\"fixed\",\"revision\":0}},\"connections\":{\"connection-8\":{\"id\":\"connection-8\",\"from\":\"view-1\",\"to\":\"view-7\",\"anchors\":[],\"markers\":[],\"speed\":\"auto\"},\"connection-9\":{\"id\":\"connection-9\",\"from\":\"view-2\",\"to\":\"view-7\",\"anchors\":[{\"id\":\"anchor-10\",\"name\":\"Anchor 1\",\"position\":[-8.240702094597944,1.5,2.100196164393742]}],\"markers\":[],\"speed\":\"slow\"},\"connection-11\":{\"id\":\"connection-11\",\"from\":\"view-3\",\"to\":\"view-7\",\"anchors\":[],\"markers\":[],\"speed\":\"auto\"}}}" / true)
+PASS  multiple supported routes require an explicit coordination choice  (true)
+PASS  shared route pace asks with two Seams before writing source/history  (true / 1087530481 / 12)
+PASS  shared route Cancel leaves source/history untouched  (1087530481 / 12)
+PASS  accepting shared route pace writes one aggregate history step  (13)
+PASS  shared observer-anchor gesture remains a proposal until scope acceptance  (true / 1190716236 / 13)
+PASS  canceling shared anchor proposal writes zero history  (1190716236 / 13)
+PASS  QA-6 Through has a framing gate, real grips and exactly one local tape; no Guide Deck  (true)
+PASS  switching the active grip removes the previous active input/gesture binding  (true)
+PASS  framing gesture accepts one Camera transaction  (3)
+PASS  typed active framing value accepts one Camera transaction  (4 / true)
+PASS  Preview rig and input removed; source frozen  (true / -2076798642)
+PASS  Preview restores complete realized standpoint and precise context  ({"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947} / true)
+PASS  Outside actually shows observer/frustum and moves from Through explicitly  (true)
+PASS  lens return is ordinary with current standpoint and foreign identity intact  ({"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947} / true)
+PASS  Neutral Resume rendered frame 1 preserves eye/direction/up/FOV/mirror/aspect  ({"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947})
+PASS  Neutral Resume rendered frame 2 preserves eye/direction/up/FOV/mirror/aspect  ({"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947})
+PASS  Neutral Resume rendered frame 3 preserves eye/direction/up/FOV/mirror/aspect  ({"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947})
+PASS  resumed precision truthfully says Plan, with no silent Through alignment  (true)
+PASS  resumed invocation Put it back returns to NOW, not the parked Through pose  ({"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947})
+PASS  Escape rolls back a live framing audition exactly once, without source/history  ({"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947} / -2076798642 / 4)
+PASS  lost capture cancels audition, with no late release commit  ({"eye": [-5.037702741081879, 2.5594735830709467, 2.929239791399211], "up": [0, 1, 0], "target": [-10, 1.2, 1], "dir": [-0.9030642479134813, -0.24740395925452305, -0.35109292941562503], "fov": 40, "dist": 5.494954838909245, "frameH": 4, "mirror": false, "aspect": 0.9832134292565947} / -2076798642 / 4)
+PASS  conformance commands  (no command or page faults)
+PASS  conformance browser  (no console/page errors)
+
+V2 product conformance: PASS=72 FAIL=0
+
+==================================================================
+  Visitor execution
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57359
+PASS  Load Example is deterministic and never starts playback  (true)
+PASS  Presenter Skip observes without source or playback  (true)
+PASS  visitor takeover hides authoring and fills viewport  (true)
+PASS  keyboard Next obeys same Gate as disabled button  (true)
+PASS  Switch activation affects Light only in session  (true)
+PASS  Light intensity is realized as a visible session effect  (true)
+PASS  independent Piano playback is running  (true)
+PASS  caption and cue execute from same clock  (true)
+PASS  completed visit-local Gate allows manual Next  (true)
+PASS  visitor exploration never writes selection  (true)
+PASS  rejoin leaves Auto off  (true)
+PASS  runtime freezes source/history and restores authoring  (true)
+PASS  visitor commands  (no command or page faults)
+PASS  visitor browser  (no console/page errors)
+
+Visitor execution: PASS=14 FAIL=0
+
+==================================================================
+  Shared shell and narrow Experience
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57408
+PASS  Head names active Experience and Index is only a locator  (true)
+PASS  Stop Card names local and shared reach  (true)
+PASS  reopened Stop displays accepted Next, Pacing, Entry  (true)
+PASS  Undo restores entry without changing other fields  (true)
+PASS  narrow Guide keeps Camera intent and a meaningful Stage with unclipped L2  ({"target": [-2.5, 1.2, 0.3], "az": 0.72, "el": 0.6, "frameH": 25, "flat": 0, "mirror": false} / true)
+PASS  narrow Card sheet exposes the selected Stop and local Entry control  (true)
+PASS  View use Card shows owner and current-use meaning  (true)
+PASS  compact desktop preserves source and requested Camera without refit, and exposes sheet controls  ("c9c8929a" / {"target": [-10, 1.1, 1], "az": -1.4, "el": 0.3, "frameH": 3.5, "flat": 0, "mirror": false} / true)
+PASS  narrow visitor fills viewport, authoring controls inactive  (true)
+PASS  narrow Preview returns to exact accepted source  ("c9c8929a")
+PASS  narrow Preview restores complete authoring Camera  ({"eye": [-14.526505175680656, 2.5208864158905397, 1.7807167921620966], "up": [0, 1, 0], "target": [-10, 1.1, 1], "dir": [0.941436085256952, -0.29552020666133966, -0.1623758135650264], "fov": 40, "dist": 4.808085484045589, "frameH": 3.4999999999999996, "mirror": false, "aspect": 1.4586894586894588})
+PASS  reconciliation commands  (no command or page faults)
+PASS  reconciliation browser  (no console/page errors)
+
+Saved controls and narrow Experience: PASS=13 FAIL=0
+
+==================================================================
+  Stage S8 · full continuity between the two lenses
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57458
+== Stage S8 · full continuity between the two lenses
+-- World reading, neutral Resume: the rendered standpoint does not move
+PASS  a half-unrolled World reading is open  (face / 0.500)
+PASS  crossing parks the reading as an inactive record in the World's own map  ({"name":"Garden window","identity":"gwin","kind":null,"chain":["face"],"params":[],"canceled":[]} / None)
+PASS  …and the reading is really gone, with no Instrument in the other lens  (none / none / False)
+PASS  …with the realized eye and FOV exactly where the World left them  (same)
+PASS  …and no source, history or trail change  (c9c8929a / 0 / 3)
+{"actual_rendered": {"eye": [-2, 2435.3982201567624, 1.49125131748207e-13], "up": [0, 0, -1], "target": [-2, 0, 0], "dir": [0, -1, -2.220446049250313e-16], "fov": 0.9, "dist": 2435.3982201567624, "frameH": 38.2559323943662, "mirror": false, "aspect": 0.9832134292565947}, "expected_rendered": {"eye": [-643.2144736315602, 3.25, -648.71447363156], "up": [0, 1, 0], "target": [9.38908729652601, 3.25, 3.889087296526011], "dir": [0.7071067811865477, 0, 0.7071067811865475], "fov": 0.9, "dist": 922.9208067174758, "frameH": 14.49750422535211, "mirror": false, "aspect": 0.9832134292565947}}
+PASS  a real Camera key in the Experience moves the shared standpoint  (MOVED)
+PASS  Resume re-enters the reading with its decoded parameters  (face / 0.500)
+PASS  …about the window and its host wall  (face|gwin|rotunda|)
+PASS  World Resume is neutral: complete rendered Camera stays at the current standpoint  (same)
+PASS  World neutral Resume remains fixed at rendered frame 1  (same)
+PASS  World neutral Resume remains fixed at rendered frame 2  (same)
+PASS  World neutral Resume remains fixed at rendered frame 3  (same)
+PASS  …and it is a fresh invocation with a visible Instrument  (True / None)
+-- Experience Guide, neutral Resume: the procedure is reactivated where you stand
+PASS  a Guide procedure is open in the Experience  (overview / experience-overview|pres-highlights|| / exp-deck overview)
+PASS  crossing parks the Experience procedure in its own map  ({"name":"Saltmarsh Highlights","identity":"pres-highlights","kind":"experience-overview","chain":[],"params":[],"canceled":[]} / None)
+PASS  …and the World's own reading is not parked by it  (none)
+PASS  coming back is ordinary: the procedure is inactive and the Camera has not moved  (ordinary / same)
+PASS  …and Resume is offered on its own identity  (True / {"name":"Saltmarsh Highlights","identity":"pres-highlights","kind":"experience-overview","chain":[],"params":[],"canceled":[]})
+PASS  Resume re-opens the Overview without moving the rendered standpoint  (overview / experience-overview|pres-highlights|| / same)
+PASS  …and the record is consumed  (None)
+-- Experience Precision parks and resumes with no Camera remembered
+PASS  a Precision procedure is open on the captured framing  (precision / experience-camera|use-2|view-1|through)
+PASS  crossing parks it with only the accepted parameters  ({"name":"Entry framing","identity":"use-2","kind":"experience-camera","chain":[],"params":["useId","posture","grip"],"canceled":[]})
+PASS  Resume reports actual Through reading with Stage-local tape  (precision / experience-camera|use-2|view-1|through / exp-deck ordinary)
+PASS  …without moving the rendered standpoint  (same)
+-- Preview return: lens, selection, accepted inspection and standpoint all come back
+PASS  an accepted World reading stands before Preview  (face / face|gwin|rotunda|)
+PASS  Preview takes the visitor over with authoring work suspended  (True / none / none / False)
+PASS  exit restores the lens, the reading and the work in hand  (world / face / face|gwin|rotunda|)
+PASS  …the rendered standpoint exactly  (same)
+PASS  …and the isolated session wrote no source step  (2 / c9c8929a)
+-- Preview from an Experience procedure returns to that procedure
+PASS  a Precision procedure is open before Preview  (precision / experience-camera|use-2|view-1|through)
+PASS  Preview is running against isolated state  (True)
+PASS  exit restores the same procedure, not the Experience's ordinary context  (precision / experience-camera|use-2|view-1|through / exp-deck ordinary)
+PASS  …at the same rendered standpoint  (same)
+-- interleaved history: crossings write nothing, edits share one sequence
+PASS  four crossings wrote no source step  (3)
+PASS  …and the accepted Experience edit is the one step since the World reading  (1)
+PASS  a fresh World reading stands for the history block  (face / Edit Presentation meaning / 3)
+PASS  one Undo reaches the Experience edit from the World lens  (Undid “Edit Presentation meaning” — your view stayed where it is)
+PASS  …and the World's own reading is untouched by it  (face / 2)
+PASS  Redo restores the Experience edit  (Redid “Edit Presentation meaning”)
+PASS  …without restoring a standpoint, so the reading is still open  (face / 3)
+-- a crossing cancels a live Camera framing drag once, and parks nothing for it
+PASS  the Precision procedure is open with a position grip  (precision / experience-camera|use-2|view-1|outside)
+PASS  a real pointer press on the grip chip starts a framing draft  (True)
+PASS  the crossing lands while the drag is still live  (world / False)
+PASS  crossing drops the live framing drag, not a parked proposal  (False)
+PASS  …and the crossing wrote nothing for it  (c9c8929a / 4)
+PASS  the procedure is parked as the accepted work it was  ({"name":"Entry framing","identity":"use-2","kind":"experience-camera","chain":[],"params":["useId","posture","grip"],"canceled":[]} / True)
+PASS  Resume re-opens it with no draft carried over  (False / precision / experience-camera|use-2|view-1|outside)
+-- World-only footer controls are inert in the Experience: refused in words, layout unchanged
+PASS  Wall grid refuses by name from the Experience  (Wall grid is World work — switch back to the World lens to change it)
+PASS  a Motion speed refuses by name too  (Motion speeds are World work — switch back to the World lens to change them)
+PASS  trail transport refuses by name as well  (That is World work — switch back to the World lens, then invoke it)
+PASS  …and nothing happened: no drafting, speed or trail change  (True / instant / 10)
+PASS  …no source step, and the footer's layout and stage rect are exactly what they were  (c9c8929a / {"x":292,"y":40,"width":820,"height":834,"top":40,"right":1112,"bottom":874,"left":292})
+PASS  back in the World the same controls work again  (True / instant)
+-- through all of it
+PASS  no command or page fault  (0)
+PASS  no console or page errors  (no console/page errors)
+
+Stage S8 · full continuity between the two lenses: PASS=55 FAIL=0
+
+==================================================================
+  Stage S7 · responsive and keyboard
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57509
+PASS  initial ordinary pose  (ok)
+PASS  1440×900 DPR1: canvas, picking and unchanged pose  (ok)
+PASS  1280×800 DPR1: canvas, picking and unchanged pose  (ok)
+PASS  1024×768 DPR1: canvas, picking and unchanged pose  (ok)
+PASS  1024×768 DPR2: canvas, picking and unchanged pose  (ok)
+PASS  return to normal device scale for keyboard work  (ok)
+PASS  Card sheet focuses inside and preserves reading/pose  (ok)
+PASS  sheet Esc restores its trigger, keeping selection  (ok)
+PASS  keyboard line: seed, slide, turn, depth, cancel without edits  (ok)
+PASS  numeric refusal announces, retains value and field focus; shortcuts respect writer  (ok)
+PASS  OS preference at boot: reduced motion without changing speed  (ok)
+PASS  live OS change: normal travel reaches identical endpoint  (ok)
+PASS  user override preserves OS preference and motion speed  (ok)
+PASS  no command or page faults  (no command or page faults)
+PASS  no browser errors  (no console/page errors)
+
+S7 responsive and keyboard: PASS=15 FAIL=0
+
+==================================================================
+  Additional source and nested correctness
+==================================================================
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:57556
+PASS  profiles, validators, summary history and nested parking  (ok)
+PASS  keyboard invokes Repair and explicit wall preview  (true)
+PASS  keyboard repair cancel leaves source unchanged  (c9c8929a/0)
+PASS  changing selection cancels a live candidate before late release  (c9c8929a/0)
+PASS  real drag holds a candidate before crossing  (true)
+PASS  lens crossing cancels drag; late release cannot commit  (c9c8929a/0)
+PASS  crossing leaves no writer or hidden Instrument  (true)
+PASS  keyboard Resume reactivates reading and Instrument  (true)
+PASS  presenter resets lens, parked work, sheets and disclosure  (true)
+PASS  no command or page faults  (no command or page faults)
+PASS  no browser errors  (no console/page errors)
+
+Numerical and nested correctness: PASS=11 FAIL=0
+
+qa: all requested axes passed

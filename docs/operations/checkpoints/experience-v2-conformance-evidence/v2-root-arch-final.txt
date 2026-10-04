@@ -1,0 +1,114 @@
+
+> personal-portfolios@0.1.0 test:arch
+> npm run test:arch -w @portfolio/editor
+
+
+> @portfolio/editor@0.1.0 test:arch
+> vitest run --config vitest.arch.config.ts
+
+
+ RUN  v3.2.7 /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+
+ ✓ tests/lib/museum/visitor-import-boundary.test.ts (6 tests) 147ms
+ ✓ tests/lib/museum/camera-core-boundary.test.ts (5 tests) 147ms
+ ✓ tests/lib/layout/layout-geometry-boundary.test.ts (8 tests) 70ms
+ ✓ tests/lib/editor/project-format-writer-fixtures.test.ts (21 tests) 81ms
+stdout | tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+
+docs/operations/checkpoints/pr113-experience-v2.md:27  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md:170  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+
+
+ ❯ tests/docs/documentation-references.test.ts (22 tests | 1 failed) 1094ms
+   × documentation references > resolves every relative link, written path and section anchor in the tree 1033ms
+     → expected [ { …(5) }, { …(5) } ] to deeply equal []
+   ✓ documentation references > walks a tree large enough for the gate to mean something 27ms
+   ✓ documentation references > covers dot-directory documentation instead of blanket-skipping it 22ms
+   ✓ documentation references > leaves deliberately local artifacts alone 8ms
+   ✓ documentation references > cannot silently lose the documents it exists to protect 0ms
+   ✓ the reference grammar > finds links and definitions in prose but ignores them inside code fences 0ms
+   ✓ the reference grammar > reads a written path inside a text block, which is how routers route 0ms
+   ✓ the reference grammar > does not read a link label as a second reference 0ms
+   ✓ the reference grammar > leaves a template fence alone, because a template is not a claim 0ms
+   ✓ the reference grammar > does not treat illustrative patterns or code as paths 0ms
+   ✓ the reference grammar > leaves historical written paths alone inside a declared evidence region 0ms
+   ✓ the reference grammar > runs an unclosed evidence region to the end of the document 0ms
+   ✓ the reference grammar > keeps checking a record’s links and anchors inside an evidence region 0ms
+   ✓ the reference grammar > strips link decoration: angle brackets and titles 0ms
+   ✓ the reference grammar > catches a numbered-section gap, which is how a heading gets swallowed 0ms
+   ✓ the reference grammar > does not call a restarted address a lost section 0ms
+   ✓ the reference grammar > catches a gap after numbered sections restart 0ms
+   ✓ the reference grammar > reads a moved-section placeholder heading as covering its range 0ms
+   ✓ the reference grammar > catches a heading glued to the rule above it, which never renders 0ms
+   ✓ the reference grammar > leaves documents that declare no numbering contract alone 0ms
+   ✓ the reference grammar > slugs headings the way GitHub does, including em dashes and duplicates 0ms
+   ✓ the reference grammar > resolves against the real tree and reports the failure class 1ms
+ ✓ tests/lib/editor/gizmo/editor-gizmo-boundary.test.ts (32 tests) 27ms
+ ✓ tests/lib/visitor/visitor-public-route.test.ts (15 tests) 36ms
+ ✓ tests/lib/editor/project-format-writers.test.ts (27 tests) 44ms
+ ✓ tests/lib/editor/p23-f0-stage5-small-items.test.ts (15 tests) 90ms
+ ✓ tests/lib/visitor/visitor-cold-runtime.test.ts (14 tests) 14ms
+ ✓ tests/lib/editor/project-format-visitor-parity.test.ts (14 tests) 128ms
+ ✓ tests/lib/project-model-boundary.test.ts (3 tests) 15ms
+ ✓ tests/lib/layout/plan-render-boundary.test.ts (15 tests) 12ms
+ ✓ tests/lib/bench/bench-boundary.test.ts (5 tests) 10ms
+ ✓ tests/vite/preview-surface-boundary-plugin.test.ts (6 tests) 7ms
+ ✓ tests/lib/visitor/visitor-identity-isolation.test.ts (4 tests) 6ms
+ ✓ tests/lib/visitor/preview-surface-boundary.test.ts (9 tests) 5ms
+ ✓ tests/lib/editor/editor-store-bind-migration.test.ts (4 tests) 17ms
+ ✓ tests/lib/editor/store/project-format-policy.test.ts (18 tests) 66ms
+ ✓ tests/vite/public-surface-boundary-plugin.test.ts (4 tests) 4ms
+ ✓ tests/lib/editor/app/editor-entry-boundary.test.ts (4 tests) 3ms
+ ✓ tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts (5 tests) 5ms
+ ✓ tests/lib/visitor/visitor-runtime-state.test.ts (4 tests) 2ms
+ ✓ tests/lib/editor/app/relic-smoke.test.ts (16 tests) 54ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+AssertionError: expected [ { …(5) }, { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "file": "docs/operations/checkpoints/pr113-experience-v2.md",
++     "kind": "path",
++     "line": 27,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++   {
++     "file": "prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md",
++     "kind": "path",
++     "line": 170,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++ ]
+
+ ❯ tests/docs/documentation-references.test.ts:38:20
+     36|   const findings = scanDocumentation();
+     37|   if (findings.length > 0) console.log(`\n${formatFindings(findings)}\…
+     38|   expect(findings).toEqual([]);
+       |                    ^
+     39|  });
+     40| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 23 passed (24)
+      Tests  1 failed | 275 passed (276)
+   Start at  23:20:48
+   Duration  11.43s (transform 8.83s, setup 0ms, collect 24.03s, tests 2.08s, environment 3ms, prepare 1.68s)
+
+npm error Lifecycle script `test:arch` failed with error:
+npm error code 1
+npm error path /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error workspace @portfolio/editor@0.1.0
+npm error location /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error command failed
+npm error command sh -c vitest run --config vitest.arch.config.ts
