@@ -1,3 +1,4 @@
+import {realize} from './navigation.js';
 import { fovFor } from './camera-evaluation.js';
 import * as THREE from 'three';
 import { buildWallGeometry, buildSlabGeometry, paintTexture, placeArtwork, wallSampler, horizontalCaps } from './geometry.js';
@@ -591,27 +592,7 @@ export class Stage {
     this.camera.aspect = r.width / Math.max(1, r.height);
   }
 
-  static placeCamera(camera, c, aspect) {
-    const fov = fovFor(c.flat);
-    const dist = c.frameH / (2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2));
-    camera.fov = fov;
-    camera.aspect = aspect;
-    const ce = Math.cos(c.el);
-    camera.position.set(c.target.x + dist * ce * Math.sin(c.az), c.target.y + dist * Math.sin(c.el), c.target.z + dist * ce * Math.cos(c.az));
-    if (c.el > 1.55) camera.up.set(-Math.sin(c.az), 0, -Math.cos(c.az));
-    else if (c.el < -1.55) camera.up.set(Math.sin(c.az), 0, Math.cos(c.az));
-    else camera.up.set(0, 1, 0);
-    camera.lookAt(c.target);
-    camera.near = Math.max(0.1, dist - 140);
-    camera.far = dist + 260;
-    camera.updateProjectionMatrix();
-    if (c.mirror) {
-      camera.projectionMatrix.elements[0] *= -1;
-      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-    }
-    camera.updateMatrixWorld();
-    return dist;
-  }
+  static placeCamera(camera,c,aspect){return realize(camera,c,aspect);}
 
   applyCamera() {
     // A display-scale change can leave the CSS box unchanged, so ResizeObserver need not fire.
@@ -624,18 +605,6 @@ export class Stage {
   camState() {
     const c = this.cam;
     return { target: c.target.clone(), az: c.az, el: c.el, frameH: c.frameH, flat: c.flat, mirror: c.mirror };
-  }
-
-  lerpCam(a, b, t, tFlat = t) {
-    const c = this.cam;
-    c.target.lerpVectors(a.target, b.target, t);
-    let daz = b.az - a.az;
-    while (daz > Math.PI) daz -= Math.PI * 2;
-    while (daz < -Math.PI) daz += Math.PI * 2;
-    c.az = a.az + daz * t;
-    c.el = a.el + (b.el - a.el) * t;
-    c.frameH = Math.exp(lerp(Math.log(a.frameH), Math.log(b.frameH), t));
-    c.flat = a.flat + (b.flat - a.flat) * tFlat;
   }
 
   // visible height that fits a box of half extents (hw, hh) in the current aspect

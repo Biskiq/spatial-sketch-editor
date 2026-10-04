@@ -76,10 +76,14 @@ export class Overlay {
     e.style.top = `${y.toFixed(1)}px`;
     // A pooled label can be reassigned (an editable value becomes a reference or back), so a
     // wrapper attribute from its previous role must never survive into this frame.
-    for (const k of ['data-edit', 'data-sel', 'data-gap']) {
+    // Experience switches a pooled grip between an activation button and the one live gesture.
+    // World retains its established overlay metadata contract.
+    const previous = /\bexp-/.test(cls) ? (e._attrs || []) : [];
+    for (const k of new Set(['data-edit', 'data-sel', 'data-gap', ...previous])) {
       if (!(k in attrs) && e.hasAttribute(k)) e.removeAttribute(k);
     }
     for (const [k, v] of Object.entries(attrs)) if (k !== 'tag' && k !== 'pri' && e.getAttribute(k) !== String(v)) e.setAttribute(k, v);
+    if(/\bexp-/.test(cls))e._attrs = Object.keys(attrs).filter(k=>k!=='tag'&&k!=='pri');
     e._pri = /\bactive\b/.test(cls) ? Math.max(attrs.pri ?? 0, 96) : (attrs.pri ?? defaultPri(cls));
     return e;
   }

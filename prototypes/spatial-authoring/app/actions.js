@@ -160,7 +160,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
   const epoch=nav.travelEpoch();
   const a0 = st().camState();
   const invocationOrigin = nav.captureOrigin(viewLabel(null));
-  nav.releaseHold();
+  if(!neutral)nav.releaseHold();
   if (S.session) {
     const old = S.session;
     origin = old.origin;
@@ -189,7 +189,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
   S.session = sess;
   ctx.ui();
   if(neutral) {
-    KIND[sess.kind].apply(sess,1);onTween?.(1);nav.setCam(a0);S.flatHold=a0.flat;
+    KIND[sess.kind].apply(sess,1);onTween?.(1);
     narrate(null);pushTrail(label);return;
   }
   narrate(narr, sess.kind);
@@ -198,13 +198,13 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
   if (via && !restore) {
     await tween(dur(sess.kind, base * 0.45), (t) => {
       const e = ease(t);
-      st().lerpCam(a, via, e);
+      nav.lerpCam(a, via, e);
       KIND[sess.kind].apply(sess, 0.4 * e);
     });
     const b = st().camState();
     await tween(dur(sess.kind, base * 0.75), (t) => {
       const e = ease(t);
-      st().lerpCam(b, to, e);
+      nav.lerpCam(b, to, e);
       KIND[sess.kind].apply(sess, 0.4 + 0.6 * e);
     });
   } else {
@@ -216,7 +216,7 @@ async function openSession(sess, home, { label, narr, base = 1100, via = null, a
     });
   }
   if(epoch!==nav.travelEpoch())return;
-  if (to.mirror != null) st().cam.mirror = to.mirror;
+  if (to.mirror != null) nav.setCam({mirror:to.mirror});
   saw(sess.kind);
   narrate(null);
   pushTrail(label);
@@ -228,7 +228,7 @@ export async function exitSessionInner(toCam) {
   const sess = S.session;
   const epoch=nav.travelEpoch();
   if (!sess) return;
-  const to = toCam || sess.origin.cam;
+  const to = toCam || nav.originPose(sess.origin);
   narrate(`Putting it back and returning to <b>${sess.origin.label}</b>.`, 'close');
   S.reveal = null;
   S.popover = null;
@@ -238,7 +238,7 @@ export async function exitSessionInner(toCam) {
   await tween(dur('close', u0 > 0.01 ? 1150 : 950), (t) => {
     const e = ease(t);
     camAt(a, to, e, u0 > 0.3 ? rad(14) : 0);
-    if (mirror && e > 0.5) st().cam.mirror = false;
+    if (mirror && e > 0.5) nav.setCam({mirror:false});
     if (u0 > 0.01) applyUnroll(sess, u0 * (1 - e));
     KIND[sess.kind].apply(sess, 1 - e);
   });
@@ -246,7 +246,7 @@ export async function exitSessionInner(toCam) {
   KIND[sess.kind].teardown(sess);
   S.session = null;
   T.end();
-  st().cam.mirror = false;
+  nav.setCam({mirror:false});
   nav.restoreOriginHold(toCam ? null : sess.origin);
   saw('close');
   narrate(null);
@@ -1392,7 +1392,7 @@ KIND.lookup = {
     st().groundOn = true;
     st().d(s.ceilId).solid = false;
     st().setHorizontalCaps(null);
-    st().cam.mirror = false;
+    nav.setCam({mirror:false});
   },
 };
 
@@ -1421,7 +1421,7 @@ export const lookUp = (id) => run(() => (worldOnly() ? null : lookUpInner(id || 
 
 export function toggleMirror() {
   if (S.session?.kind !== 'lookup') return;
-  st().cam.mirror = !st().cam.mirror;
+  nav.setCam({mirror:!st().cam.mirror});
   setStatus(st().cam.mirror ? 'Mirrored to match Plan — east is on the right, as in Plan' : 'As seen from below — east is on your left', 'view');
 }
 
@@ -1643,7 +1643,7 @@ export function parkReading() {
   // A declared candidate is a proposal: like the aim and the ghost, it comes off the drawing when the
   // reading that held it is dropped. Nothing here restores a pose.
   st().clearArtPreview();
-  st().cam.mirror = mirror;
+  nav.setCam({mirror});
   T.end();
   ctx.ui();
 }
@@ -1795,7 +1795,7 @@ async function reenter(step, first, neutral=false) {
     return;
   }
   if (step.kind === 'lift') { await liftInner(step.ceilId, { ...opts, subject: step.subject }); return; }
-  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject }); if(!neutral) st().cam.mirror = !!step.mirror; return; }
+  if (step.kind === 'lookup') { await lookUpInner(step.ceilId, { ...opts, subject: step.subject }); if(!neutral) nav.setCam({mirror:!!step.mirror}); return; }
   if (step.kind === 'dims') { dimensionTask(step.subject); if (step.precision) T.setPrecision(true); return; }
   if (step.kind === 'repair') { repairTask(step.subject); if (step.precision) T.setPrecision(true); }
 }
@@ -1818,7 +1818,7 @@ export const resumeParked = () => run(async () => {
     return null;
   }
   S.parked = null;
-  for (let i = 0; i < p.chain.length; i++) await reenter(p.chain[i], i === 0, true);
+  await nav.neutralInvocation(async()=>{for(let i=0;i<p.chain.length;i++)await reenter(p.chain[i],i===0,true);});
   if(p.browse&&browseResume)browseResume(p.browse);
   setStatus(`Resumed the work on the ${p.name || 'subject'} — a fresh invocation from where you stand: Put it back returns here, not to where it was parked`, 'view');
   ctx.ui();
@@ -1864,3 +1864,5 @@ export function registerBrowseResume(fn){browseResume=fn;}
 // The listing a crossing is leaving: remembered beside the parked record, never inside its chain,
 // and applied only by an explicit Resume. Returning is ordinary — the toggle restores no listing.
 export function rememberBrowse(context) { S.browseMemory=clone(context); return true; }
+
+nav.setWorldPositionResolver(worldOf);

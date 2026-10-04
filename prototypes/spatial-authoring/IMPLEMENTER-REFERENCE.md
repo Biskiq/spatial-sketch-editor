@@ -14,12 +14,12 @@ Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?re
 |---|---|
 | `app/model.js` | Sample museum; wall frames (`frameAt`, `frameUnrolled`); wall-top profile (`topAt`); opening outline (`archHeight`, `openingTopAt`, `springOf`); validation (`validateOpening`, `validateWall`, `validateCeiling`) |
 | `app/geometry.js` | Wall/slab tessellation with profile tops and arches; `horizontalCaps` (plan / look-up poche); `sectionCaps` (vertical poche + crossings) |
-| `app/stage.js` | Three.js stage: one camera (`placeCamera`, `fovFor`), paper blend (`applyPaper`), clipping (`setClips`), caps, displaced copies (`buildAway`, `setAway`, `revealIn`), picking, inset render |
+| `app/stage.js` | Three.js adapter: realizes navigation's Camera output, paper blend (`applyPaper`), clipping (`setClips`), caps, displaced copies (`buildAway`, `setAway`, `revealIn`), picking, inset render |
 | `app/actions.js` | Spatial commands/reading lifecycle, knife, membership, source edits/Undo, current-source parking validation |
-| `app/navigation.js` | Camera realization, neutral hold, invocation origin, fly and chronological recipe trail |
+| `app/navigation.js` + `app/camera-evaluation.js` | Camera intent/resolution, projection, realization, input/motion profiles, evaluated observer routes/stations/timing, neutral hold, opaque invocation origins and chronological recipe trail |
 | `app/tasks.js` | Capability dispatch, identity/target/focus, one task in hand, Precision |
 | `app/cancel.js` | Ordered, idempotent cancellation of every unaccepted writer/candidate/preview/aim |
-| `app/main.js` | Frame loop (`frameState`: flatness, clips, caps); input (orbit/pan/zoom, settle on release, handle drags, typed values, keys) |
+| `app/main.js` | Frame loop (consumes navigation projection; owns clip/cap presentation); dispatches input, handle drags, typed values and keys to owners |
 | `app/draw.js` | Per-frame overlays: the legibility gate, one opening kit for Plan / 3D / face, sheet, section (label budget, locator), lid, look-up, plan, knife grips, beacon |
 | `app/overlay.js` | Keyed element pool and priority declutter |
 | `app/ui.js` | Index, canonical identity Card, Details, invoked Instrument/Precision, trail and locator |
@@ -33,7 +33,7 @@ Jump:   ?journey=A|B|C|D|E|F&step=N   ?motion=adaptive|teach|brisk|instant   ?re
 
 ```js
 cam = { target, az, el, frameH, flat, mirror }        // frameH = visible height at target (zoom)
-fov(flat)  = exp(lerp(ln 40°, ln 0.9°, flat))         // stage.js fovFor
+fov(flat)  = exp(lerp(ln 40°, ln 0.9°, flat))         // Camera kernel fovFor
 dist       = frameH / (2·tan(fov/2))                  // dolly-zoom: framing constant while fov shrinks
 position   = target + dist·(cos el·sin az, sin el, cos el·cos az)
 up         = el > 89° ? (−sin az, 0, −cos az)          // plan: az=0 → north up
@@ -42,7 +42,7 @@ up         = el > 89° ? (−sin az, 0, −cos az)          // plan: az=0 → no
 near/far   = dist − 140 / dist + 260                   // keeps depth precision at huge dist
 ```
 
-Per frame (`main.js frameState`):
+Per frame (`navigation.js readingProjection`; `main.js` consumes the output for clips/materials):
 
 ```js
 freeFlat = smoothstep(70°, 88.5°, el)                        // the plan detent
@@ -338,8 +338,13 @@ connections, interior anchors and stable stations, and from Scene capability fix
 The aggregate `domainSnapshot` is prototype transaction coordination only. One accepted command
 writes one shared history step; Undo restores source domains and recorded selection, never Camera.
 
-`navigation.js` owns movement and return. The pure `camera-evaluation.js` kernel supplies framing,
-path interpolation, stations and duration to both estimates and visitor execution. `movementTiming`
+`navigation.js` owns resolution, projection, input, movement and return. The pure
+`camera-evaluation.js` kernel supplies framing, observer/target route geometry, interpolation,
+stations and duration to Stage, estimates and visitor execution. **Authored anchor positions are
+observer positions in project space**; Camera derives target/aim at each interior station. Generated
+View endpoints never enter the authored anchor array. Relative Views resolve against current World
+facts through the same resolver as Through and visitor; fixed framing reports review after movement.
+`movementTiming`
 in `experience-coordination.js` maps Experience holds/invocations onto the traversed Camera connection;
 beats on alternate origins do not execute, and Cut ignores route coordination. Auto includes queued
 Camera cues after the actual entry route and its holds. Missing framing/stations stay repairable.
@@ -352,12 +357,20 @@ rendering and uses a return token distinct from lens parking. Exit restores lens
 Card context, accepted inspection and standpoint. Runtime effects never write Scene properties.
 
 Experience parked records carry original identity, resolving targets and accepted procedure params.
-Resume refuses removed/rebound Views, routes or stations and never reapplies the parked posture's
-Camera. `parkedByLens` is one map; the `parked` World accessor exists for retained QA compatibility.
+Resume refuses removed/rebound Views, routes or stations. Navigation holds the realized standpoint
+before setup and locks writers during neutral activation; it never moves away and patches the pose
+back. The new invocation's opaque return is captured from now. Posture labels derive from the actual
+reading, with explicit Look through/Outside/Plan actions. Parked records contain no pose or old return
+token. `parkedByLens` is one map; the `parked` World accessor exists for retained QA compatibility.
 The ordinary return may show Guide Peek but keeps parked work inactive.
 
-Outside is the initial precision posture experiment. Through retains authoring chrome and projects
-its active grip at the framed target. Only route-edit depth exposes geometry grips; coordination
-shows the same named stations on Stage and in the temporal strip. Deck crop/scroll, station
-comprehension and legacy detour pause remain experiments. See
-[Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) for specimen and preservation roles.
+Opening precision is neutral; the initial reading remains the posture experiment. Through retains
+authoring chrome with a frame gate, projected target/horizon and one active tape. Outside/Plan show
+the same View's observer/frustum, evaluated at the actual viewport aspect. Camera depth uses a local
+Stage instrument and never creates a Guide Deck. Route/coordination anchors remain editable on Stage;
+the strip only focuses stations and authors Experience holds/invocations. Shared edits propose reach
+before acceptance and recompute it at acceptance. Auto/Hints are accepted session intent until Capture.
+The three V2 experiments remain initial precision posture, crop-docking/spatial memory and station
+comprehension; none waives required density/instruments. See
+[conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md); the
+[S0–S9 record](./qa/EXPERIENCE-ACCEPTANCE.md) is historical.

@@ -31,13 +31,6 @@ ctx.ui = requestUI;
 // ---------------------------------------------------------------- frame
 
 const UP = new V3(0, 1, 0), DOWN = new V3(0, -1, 0);
-const dirOf = (az, el) => new V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
-const angleTo = (c, home) => A.deg(dirOf(c.az, c.el).angleTo(dirOf(home.az, home.el)));
-// How far off the session's square home the view may wander before the paper is withdrawn. The
-// band was 2.5° - 20°, which is inside the range of an ordinary pan: a small turn repainted the
-// whole frame from vellum to mat. 4° - 30° keeps the paper while you inspect the wall off-square,
-// and leaves the withdrawal itself to the rate limit below.
-const detent = (home, c) => 1 - A.smooth(4, 30, angleTo(c, home));
 
 // The mat <-> paper swap repaints the entire frame, and its target hangs on the camera's own angle
 // (the session detent above, or the tilt into Plan). Following that target frame by frame swapped
@@ -63,15 +56,9 @@ function frameState() {
   stage.authoring=!S.visitor;
   const c = stage.cam;
   const s = S.session;
-  const freeFlat = A.smooth(70, 88.5, A.deg(c.el));
-  let flat = freeFlat;
-  let planF = freeFlat;
-  const clips = [];
-  let hCap = null;
-  if (s) {
-    const det = detent(s.home, c);
-    flat = A.lerp(freeFlat, det * (s.flatWanted ?? 1), s.settle);
-    planF = freeFlat * (1 - s.settle);
+  const {flat,planF}=nav.readingProjection();
+  const clips=[];let hCap=null;
+  if(s){
     if (s.kind === 'face') clips.push(s.clip);
     if (s.kind === 'section') clips.push(s.planes.keep, s.planes.depthKeep);
     if (s.kind === 'lookup') {
@@ -95,17 +82,11 @@ function frameState() {
     }
     if (inPlace) { clips.push(k.planes.keep, k.planes.depthKeep); stage.capV.visible = true; }
   }
-  // A parked reading holds the flatness it was rendered with: the derived formula must not dolly
-  // the eye just because the reading stopped being open. Explicit spatial input releases it.
-  const held = nav.hold();
-  if (held != null) { flat = held; planF = held; }
   if (planF > 0.01) {
     const h = A.lerp(9.5, 1.2, ease(planF));
     clips.push(new THREE.Plane(DOWN.clone(), h));
     hCap = h;
   }
-  if(S.visitor){flat=S.visitor.runtime.pose.flat??0;planF=flat;}
-  c.flat = flat;
   stage.paper = slewPaper(flat, performance.now());
   // clipped and set-aside geometry would cast shadows that no longer match what is drawn
   stage.shadowsOff = planF > 0.02 || (s && s.kind !== 'lift') || !!(k?.p1);
@@ -269,19 +250,7 @@ canvas.addEventListener('pointermove', (e) => {
     drag.x = e.clientX; drag.y = e.clientY;
     if (Math.abs(e.clientX - drag.x0) + Math.abs(e.clientY - drag.y0) > 4) drag.moved = true;
     if (!drag.moved || S.busy) return;
-    // Explicit spatial input: the standpoint is being re-derived by hand, so any parked hold ends.
-    nav.releaseHold();
-    const c = stage.cam;
-    if (drag.mode === 'orbit') {
-      c.az -= dx * 0.006;
-      const lo = S.session?.kind === 'lookup' ? -Math.PI / 2 + 1e-4 : S.session ? -0.2 : 0.06;
-      c.el = Math.max(lo, Math.min(Math.PI / 2, c.el + dy * 0.005));
-    } else {
-      const wpp = stage.worldPerPx();
-      const m = stage.camera.matrixWorld.elements;
-      const right = new V3(m[0], m[1], m[2]), up = new V3(m[4], m[5], m[6]);
-      c.target.addScaledVector(right, -dx * wpp * (stage.cam.mirror ? -1 : 1)).addScaledVector(up, dy * wpp);
-    }
+    nav.manipulate({dx,dy,mode:drag.mode});
     return;
   }
   if (!hoverQueued) {
@@ -340,22 +309,14 @@ canvas.addEventListener('wheel', (e) => {
   stage.camera.getWorldDirection(dir);
   const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), c.target);
   const p = stage.rayPlane(e.clientX, e.clientY, pl);
-  c.frameH = Math.max(2.5, Math.min(120, c.frameH * f));
-  if (p) c.target.lerp(p, 1 - f);
+  nav.manipulate({zoom:f,point:p});
   clearTimeout(wheelT);
   wheelT = setTimeout(requestUI, 160);
 }, { passive: false });
 let wheelT = 0;
 
 function settleAfterOrbit() {
-  const s = S.session, c = stage.cam;
-  if (s) {
-    if (angleTo(c, s.home) < 14) run(() => A.fly({ ...stage.camState(), az: s.home.az, el: s.home.el }, dur('settle', 420)));
-    return;
-  }
-  const el = A.deg(c.el);
-  if (el > 79 && el < 89.99) run(async () => { await A.fly({ ...stage.camState(), el: Math.PI / 2, az: Math.round(c.az / (Math.PI / 2)) * (Math.PI / 2) }, dur('settle', 420)); A.pushTrail('Plan'); });
-  else if (el <= 79) { S.last3D = stage.camState(); if (S.trail[S.trailPos]?.kind === 'plan') A.pushTrail('3D'); }
+  nav.settleAfterOrbit({onPlan:()=>A.pushTrail('Plan'),on3D:()=>{if(S.trail[S.trailPos]?.kind==='plan')A.pushTrail('3D');}});
 }
 
 // ---------------------------------------------------------------- handles on the drawing
@@ -1041,7 +1002,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
   const setFrom = (x) => {
     nav.releaseHold();
     const t = 1 - Math.max(0, Math.min(1, (x - track.left) / track.width));
-    stage.cam.el = A.rad(20 + 70 * t);
+    nav.manipulate({el:A.rad(20+70*t)});
   };
   setFrom(e.clientX);
   const move = (ev) => setFrom(ev.clientX);
@@ -1064,7 +1025,7 @@ window.addEventListener('keydown', (e) => {
     case 'escape': {
       // The one policy first: an unaccepted writer, draft, preview or aim is dropped before any
       // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
-      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expOfferDraft || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
+      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expOfferDraft || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
       if (held) cancelProposal('esc');
       if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
@@ -1232,7 +1193,10 @@ const QA = {
   async render() {
     frameOnce(performance.now());
     renderUI();
-    await new Promise((r) => setTimeout(r, 0));
+    // Include the browser's layout/resize turn before observing a completed picture. Preview
+    // changes the Stage rectangle; an immediate frame can otherwise retain its previous aspect.
+    await new Promise((r) => setTimeout(r, 25));
+    resize();
     frameOnce(performance.now());
     return true;
   },
@@ -1270,7 +1234,7 @@ osMotion.addEventListener('change', (e) => { S.osReduced = e.matches; applyMotio
 function boot() {
   resize();
   const c = A.home3D();
-  Object.assign(stage.cam, { target: c.target, az: c.az, el: c.el, frameH: c.frameH, flat: 0 });
+  nav.setCam({...c,flat:0});
   S.last3D = stage.camState();
   A.pushTrail('3D');
   renderUI();
@@ -1320,11 +1284,11 @@ document.addEventListener('change',event=>{
  if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
 
  if(el.dataset.expReuse)E.reuseFraming(el.dataset.expReuse,el.value);
- if(el.dataset.expCue)E.command('Set explicit narration cue',e=>{e.uses[el.dataset.expCue].cue=el.value?JSON.parse(el.value):null;});
+ if(el.dataset.expCue)E.updateUse(el.dataset.expCue,'cue',el.value?JSON.parse(el.value):null);
  if(el.dataset.expRepair)E.command('Repair missing framing',e=>{e.uses[el.dataset.expRepair].viewId=el.value;});
 
 });
-window.addEventListener('pointermove',event=>{if(S.visitorDrag&&S.visitor?.runtime.exploring){const d=S.visitorDrag;ctx.stage.cam.az-=(event.clientX-d.x)*.006;ctx.stage.cam.el=Math.max(.06,Math.min(1.5,ctx.stage.cam.el+(event.clientY-d.y)*.005));d.x=event.clientX;d.y=event.clientY;S.visitor.runtime.pose=nav.plainPose();}});
+window.addEventListener('pointermove',event=>{if(S.visitorDrag&&S.visitor?.runtime.exploring){const d=S.visitorDrag;nav.manipulate({dx:event.clientX-d.x,dy:event.clientY-d.y});d.x=event.clientX;d.y=event.clientY;S.visitor.runtime.pose=nav.plainPose();}});
 window.addEventListener('pointerup',()=>{S.visitorDrag=null;});
 
 document.addEventListener('change',event=>{const d=event.target.dataset,value=event.target.value;
@@ -1356,3 +1320,5 @@ document.addEventListener('keydown',event=>{
  if(el.dataset.expHold)E.updateHold(el.dataset.expHold,Number(el.value));
  if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
 },true);
+
+document.addEventListener('keydown',event=>{const el=event.target.closest?.('[data-exp-anchor]');if(!el||S.visitor)return;const moves={ArrowLeft:[-.25,0],ArrowRight:[.25,0],ArrowUp:[0,-.25],ArrowDown:[0,.25]},m=moves[event.key];if(m){event.preventDefault();event.stopImmediatePropagation();E.nudgeAnchor(el.dataset.connection,el.dataset.expAnchor,...m);}},true);
