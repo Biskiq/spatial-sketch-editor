@@ -11,15 +11,15 @@ Head/ribbon split; P23.14 (`../roadmap/p23-layout-depth/p23.14-shell-visual-syst
 recomposed it into the composition below and retired the pre-P21 section map and
 the pre-P21 `Preview Scene → /museum` row this file used to carry.
 
-**Authority (2026-09-19, owner-ratified):** the durable shell design authority is
-[`editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md),
-now carrying ratifications **R1** (Tool Tray tier), **R2** (armed tool) and **R3**
-(closed type ladder, semantic roles, `--editor-type-scale` /
-`--editor-control-scale`), the View Bar `MODE`-as-caption grammar and the four
-distinct surface states. This file is **descriptive** of that composition and stays
-canonical for **capability, ownership and exposure**. Read the direction first for
-any shell composition, material, type, control or state question; do not take a
-shell value from a component's scoped CSS.
+**Authority:** the complete soft-frozen destination is
+[`editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md).
+Use it for new World/Experience shell composition, lower-surface span, material,
+type, controls, state and return behavior; use
+[spatial-instrument grammar](../design-system/spatial-instrument-grammar.md) for
+Stage representation. This file remains descriptive of the maintained Scene/Camera
+composition and canonical for its current capability/exposure until explicit cutover.
+Domain ownership is governed by architecture/component contracts. Do not take a
+destination shell value from a component's scoped CSS or historical Atlas.
 
 ---
 
@@ -58,7 +58,10 @@ shell value from a component's scoped CSS.
   sit at the 10 px utility tier, the mode pair at 11 px on the 24 px control role,
   tool groups are separated by space alone, and a pressed control takes a
   recessed surface + edge border + inset bottom rule (never a translucent wash).
-  All of those values come from the R3 roles (`editor-shell-and-visual-system.md` §7/§10/§18).
+  These are maintained R3 role outcomes; the destination
+  [type/control system](../design-system/editor-shell-and-visual-system.md#typography-and-control-roles-7)
+  and [state hierarchy](../design-system/editor-shell-and-visual-system.md#state-and-control-hierarchy-183)
+  retain reusable roles rather than this workspace arrangement.
 - **Tool Tray (44 px)** is a Paper-attached vertical instrument rail holding the
   current surface's tool vocabulary — not a second sidebar. Each workspace
   mounts one (Scene Plan drafting, Camera Plan, Scene 3D, camera utilities). Its
@@ -66,9 +69,8 @@ shell value from a component's scoped CSS.
   compact floor for a word wider than the rail) and an armed tool is a
   **darkened surface** — no border, no inboard edge (P23.14 ratifications R1/R2,
   [`editor-shell-ratifications.md`](../../reference/design-system/editor-shell-ratifications.md)).
-  That durable contract (`reference/design-system/editor-shell-and-visual-system.md`) plus its
-  Atlas are the shell design authority; this file is descriptive of it and canonical for
-  capability, ownership and exposure.
+  The Atlas records this implementation's calibration; new shell composition follows
+  the destination contract above.
 - **Navigator (268 px, 240–300)** owns the domain's structure/assets;
   **Inspector (300 px, 280–420)** owns the selection's properties.
 - **Camera Drawer** spans the central work column only: collapsed `48px`

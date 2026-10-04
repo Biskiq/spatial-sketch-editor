@@ -25,6 +25,11 @@ Resource revisions and dependency locks travel with definitions/instances:
 placement does not silently rewrite a locked reference, and an incompatible
 replacement is reported for repair, never auto-matched by name or position.
 
+Destination Stage graphics, handles, measurement feedback and hit legibility follow
+the [spatial-instrument grammar](../design-system/spatial-instrument-grammar.md).
+Placement/domain adapters retain legal operations, target eligibility and
+commit/cancel policy; the grammar adds no universal gizmo or transform capability.
+
 **Open:** level/structure-qualified placement addressing and the frame semantics
 for attached components — implementation decisions within F.1/F.3
 ([`../composition-execution.md`](../composition-execution.md)), subject to its
