@@ -1,0 +1,30 @@
+
+> personal-portfolios@0.1.0 build
+> npm run build:editor && npm run build:museum
+
+
+> personal-portfolios@0.1.0 build:editor
+> npm run build -w @portfolio/editor
+
+
+> @portfolio/editor@0.1.0 build
+> vite build
+
+vite v6.4.3 building SSR bundle for production...
+transforming...
+✓ 2424 modules transformed.
+✗ Build failed in 5.75s
+error during build:
+Could not resolve "../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json" from "src/lib/bench/p23b-fixtures.ts"
+file: /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts
+    at getRollupError (file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/rollup/dist/es/shared/parseAst.js:317:41)
+    at error (file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/rollup/dist/es/shared/parseAst.js:313:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/rollup/dist/es/shared/node-entry.js:22167:24)
+    at file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/node_modules/rollup/dist/es/shared/node-entry.js:22127:26
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error workspace @portfolio/editor@0.1.0
+npm error location /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error command failed
+npm error command sh -c vite build

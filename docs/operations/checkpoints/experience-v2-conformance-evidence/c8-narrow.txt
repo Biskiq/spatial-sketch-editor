@@ -1,0 +1,16 @@
+qa: serving /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring at http://127.0.0.1:54241
+PASS  Head names active Experience and Index is only a locator  (true)
+PASS  Stop Card names local and shared reach  (true)
+PASS  reopened Stop displays accepted Next, Pacing, Entry  (true)
+PASS  Undo restores entry without changing other fields  (true)
+PASS  narrow Guide keeps Camera intent and a meaningful Stage with unclipped L2  ({"target": [-2.5, 1.2, 0.3], "az": 0.72, "el": 0.6, "frameH": 25, "flat": 0, "mirror": false} / true)
+PASS  narrow Card sheet exposes the selected Stop and local Entry control  (true)
+PASS  View use Card shows owner and current-use meaning  (true)
+PASS  compact desktop preserves source and requested Camera without refit, and exposes sheet controls  ("c9c8929a" / {"target": [-10, 1.1, 1], "az": -1.4, "el": 0.3, "frameH": 3.5, "flat": 0, "mirror": false} / true)
+PASS  narrow visitor fills viewport, authoring controls inactive  (true)
+PASS  narrow Preview returns to exact accepted source  ("c9c8929a")
+PASS  narrow Preview restores complete authoring Camera  ({"eye": [-14.526505175680656, 2.5208864158905397, 1.7807167921620966], "up": [0, 1, 0], "target": [-10, 1.1, 1], "dir": [0.941436085256952, -0.29552020666133966, -0.1623758135650264], "fov": 40, "dist": 4.808085484045589, "frameH": 3.4999999999999996, "mirror": false, "aspect": 1.4586894586894588})
+PASS  reconciliation commands  (no command or page faults)
+PASS  reconciliation browser  (no console/page errors)
+
+Saved controls and narrow Experience: PASS=13 FAIL=0

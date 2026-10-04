@@ -1,0 +1,75 @@
+
+ RUN  v3.2.7 /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+
+stdout | tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+
+docs/operations/checkpoints/pr113-experience-v2.md:27  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md:170  docs/roadmap/p23b-geometry-performance/40-walls.json  — missing file
+
+
+ ❯ tests/docs/documentation-references.test.ts (22 tests | 1 failed) 787ms
+   × documentation references > resolves every relative link, written path and section anchor in the tree 740ms
+     → expected [ { …(5) }, { …(5) } ] to deeply equal []
+   ✓ documentation references > walks a tree large enough for the gate to mean something 18ms
+   ✓ documentation references > covers dot-directory documentation instead of blanket-skipping it 18ms
+   ✓ documentation references > leaves deliberately local artifacts alone 7ms
+   ✓ documentation references > cannot silently lose the documents it exists to protect 0ms
+   ✓ the reference grammar > finds links and definitions in prose but ignores them inside code fences 0ms
+   ✓ the reference grammar > reads a written path inside a text block, which is how routers route 0ms
+   ✓ the reference grammar > does not read a link label as a second reference 0ms
+   ✓ the reference grammar > leaves a template fence alone, because a template is not a claim 0ms
+   ✓ the reference grammar > does not treat illustrative patterns or code as paths 0ms
+   ✓ the reference grammar > leaves historical written paths alone inside a declared evidence region 0ms
+   ✓ the reference grammar > runs an unclosed evidence region to the end of the document 0ms
+   ✓ the reference grammar > keeps checking a record’s links and anchors inside an evidence region 0ms
+   ✓ the reference grammar > strips link decoration: angle brackets and titles 0ms
+   ✓ the reference grammar > catches a numbered-section gap, which is how a heading gets swallowed 0ms
+   ✓ the reference grammar > does not call a restarted address a lost section 0ms
+   ✓ the reference grammar > catches a gap after numbered sections restart 0ms
+   ✓ the reference grammar > reads a moved-section placeholder heading as covering its range 0ms
+   ✓ the reference grammar > catches a heading glued to the rule above it, which never renders 0ms
+   ✓ the reference grammar > leaves documents that declare no numbering contract alone 0ms
+   ✓ the reference grammar > slugs headings the way GitHub does, including em dashes and duplicates 0ms
+   ✓ the reference grammar > resolves against the real tree and reports the failure class 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/docs/documentation-references.test.ts > documentation references > resolves every relative link, written path and section anchor in the tree
+AssertionError: expected [ { …(5) }, { …(5) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "file": "docs/operations/checkpoints/pr113-experience-v2.md",
++     "kind": "path",
++     "line": 27,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++   {
++     "file": "prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md",
++     "kind": "path",
++     "line": 170,
++     "raw": "docs/roadmap/p23b-geometry-performance/40-walls.json",
++     "reason": "missing file",
++   },
++ ]
+
+ ❯ tests/docs/documentation-references.test.ts:38:20
+     36|   const findings = scanDocumentation();
+     37|   if (findings.length > 0) console.log(`\n${formatFindings(findings)}\…
+     38|   expect(findings).toEqual([]);
+       |                    ^
+     39|  });
+     40|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 21 passed (22)
+   Start at  14:21:57
+   Duration  1.11s (transform 46ms, setup 0ms, collect 51ms, tests 787ms, environment 0ms, prepare 61ms)

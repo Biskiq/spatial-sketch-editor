@@ -1,0 +1,60 @@
+(node:71699) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring/app/conformance-fixture.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/tony/Documents/Biskiq/spatial-sketch-editor/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ observer anchors, rendered samples, stations and evaluation describe the same nonzero route (2.949042ms)
+✔ detached occurrence entry remains a legitimate origin alongside shared choices (0.347375ms)
+✔ one resolved Camera serves relative framing and fixed-framing review without source mutation (0.2435ms)
+✔ spatial frustum represents the same View framing at the actual viewport aspect (0.215334ms)
+✔ Travel starts on the supported observer route only after reaching the actual departure View (2.147208ms)
+✔ renderer, shell and Experience consumers have no independent Camera writers or interpolation (3.378ms)
+(node:71700) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring/app/experience-model.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/tony/Documents/Biskiq/spatial-sketch-editor/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ explicit creation keeps independent domains and World identities (1.57575ms)
+✔ Set is unordered, with explicit entry and no Guide or Camera connections (1.377167ms)
+✔ no-View standalone Preview requires no Guide (0.507666ms)
+✔ repeated occurrences share framing, reorder only editorial order and resolve one Next (0.21625ms)
+✔ directed Camera reach is per origin; Cut authors no edge; path estimates match execution (0.839708ms)
+✔ Stop-only detachment retargets one occurrence atomically and shared reach names all affected uses (0.348666ms)
+✔ coordination binds stable Camera stations; pace and anchors alter timing without retargeting (0.794375ms)
+(node:71701) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/spatial-authoring/app/experience-model.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/tony/Documents/Biskiq/spatial-sketch-editor/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ A0–A2 low-floor independent Presentation, View and Guide; no-View standalone (2.259458ms)
+✔ A3 independent Piano activation, finite playback and visitor Stop (0.833792ms)
+✔ A4 Switch activation targets Light; unavailable capability refused (0.173583ms)
+✔ A5 narration phrases, captions and Camera cues share simulation clock (0.66175ms)
+✔ A6 Auto measures overlapping work and finite readiness, never sums concurrent narration (0.142291ms)
+✔ A7 Camera cue queues while travel is active; readiness shares evaluation (0.567333ms)
+✔ A8 manual Next is immediate while Auto waits natural readiness (0.601ms)
+✔ A9 Gate is shared by manual/Auto and signals are visit-local (0.287875ms)
+✔ A10 leaving disarms waiting dependency and Cancel releases owned effect (0.72875ms)
+✔ A11 Finish completes after leaving and Continue loop persists until visitor Stop (0.599625ms)
+✔ A12 exploration disarms Camera, rejoin starts at live pose with Auto off (0.808708ms)
+✔ A13 detour pause is observational; return does not replay parent entry (0.737625ms)
+✔ A14 repeated Presentation Stops are distinct visits; View changes do not restart (0.398459ms)
+✔ A15 covered by Camera reach/detachment tests; original Set remains shared after local entry (0.158041ms)
+✔ A16 structural removal/reorder retains explicit broken references for repair (0.0735ms)
+✔ A17 dependency cycles and missing framing never silently become hold (0.192792ms)
+✔ A18 Scene source edits and session effects are separate; session-only source writes refused (0.424125ms)
+✔ A19 runtime flows freeze all authored domains (0.437875ms)
+✔ A20 bounded stepping is deterministic within 1e-8 at supported boundaries (0.564416ms)
+✔ A21–A22 Presenter/Reset are observational; fixture construction deterministic (0.724292ms)
+✔ fixed framing review and relative lowering never mutate authored Camera (0.233125ms)
+✔ station-bound holds delay arrival; invoked controls run once at Camera station (0.731041ms)
+✔ multi-origin coordination executes only the traversed connection, and Cut skips route beats (0.430625ms)
+✔ Auto includes queued cues after the actual route and its holds (0.818208ms)
+✔ missing focus refuses framing, and an explicit missing Stop entry remains repairable (0.198208ms)
+✔ detour to another occurrence of the same Presentation resumes the parent narration run (0.388334ms)
+✔ Travel with a deleted coordination station refuses locally instead of dropping its hold (0.259375ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95.879083

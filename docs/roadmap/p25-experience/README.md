@@ -70,7 +70,7 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**Replacement C1–C8 implementation in integrated conformance review (2026-10-03):**
+**Replacement C1–C8 in-scope conformance complete; independent external review pending (2026-10-04):**
 [standalone replacement plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
 [current conformance evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).

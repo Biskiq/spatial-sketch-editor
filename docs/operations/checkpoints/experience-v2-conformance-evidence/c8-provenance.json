@@ -1,0 +1,199 @@
+{
+  "recorded_date": "2026-10-04",
+  "implementation_base": "a005f649c8f9cb4105753232185bbe713ba85b19",
+  "executable_sha256": "91c8fd76fcf50758026beaf7517701326792ba16c97514d5cd23c05f152ceda0",
+  "hash_recipe": "sorted app/*.js, index.html, styles/app.css; repository-relative path NUL file bytes NUL",
+  "files": {
+    "prototypes/spatial-authoring/app/actions.js": "9dd16a501e39dfeecf9dbaeea21709d2ade3c6790c7d061a194b9c011113e8c9",
+    "prototypes/spatial-authoring/app/anim.js": "e6c49260cc1e278d5ef9cfbbea6b0b86103102e8182ed49aded8bd5f41a90c8e",
+    "prototypes/spatial-authoring/app/camera-evaluation.js": "6a6d4ef62b4dafa4a8ae7177b21e31df4b99b29c6fcd792a68963a24e8ec9026",
+    "prototypes/spatial-authoring/app/cancel.js": "55aeea33184b54ae97ae20b483e877164bde03b9c4a3327eece3365c68dad37f",
+    "prototypes/spatial-authoring/app/conformance-fixture.js": "beac17f0d4045b35f1f7c300e017d8bafcee525560f4f69f24fad028a46a46b8",
+    "prototypes/spatial-authoring/app/draw.js": "8783e97d403e449e7634a5143a5409f7a40febd50a86292ec01fab619ca984b5",
+    "prototypes/spatial-authoring/app/experience-capabilities.js": "8fb87d86e4a0568b546fe23f65780e9d53a5b68e5a4b4334ccdd217102f8df60",
+    "prototypes/spatial-authoring/app/experience-coordination.js": "ba6313b1747cddb448124bff79f74b7ec3e5845910cdc6b4a652eb79ad5172fd",
+    "prototypes/spatial-authoring/app/experience-draw.js": "0788792985eb1c8ed0e22f1ac4f251497266c6332371bf5fc850b20adf8ef812",
+    "prototypes/spatial-authoring/app/experience-model.js": "2c0177191f8af83844119cdf660747ce8a792dbc7137ab24aa7ee745cedd62a5",
+    "prototypes/spatial-authoring/app/experience-runtime.js": "ef7e9f47715ee038f104e1b31c2b88f09f1771bde268e3173494b22a0c295573",
+    "prototypes/spatial-authoring/app/experience-scene.js": "457e4bbfaad68b2277a989c228f24e57b7dcd262ad2bf532f4bef51308fd04b7",
+    "prototypes/spatial-authoring/app/experience-ui.js": "066b7890f8961c85bd2e4cdc998023e7fc7516b6b9b4ab102420d9a02f9b88d1",
+    "prototypes/spatial-authoring/app/experience.js": "be126c9747b20e0fa6a717439434505a9c79cf04db57893bec9a3a3aceb1348f",
+    "prototypes/spatial-authoring/app/fixtures.js": "4099bbadcc423289bbb3afa96626dbf51e52cfc745c825104a3050333f419716",
+    "prototypes/spatial-authoring/app/geometry.js": "68cb61a04ec87d97a4719baf73a70981e25a89a54c2b9d9f2f80b9f98c91b489",
+    "prototypes/spatial-authoring/app/journeys.js": "71078c38792ec809b0937547f65950b573ae0f3f25cabb79406b46b1a5d7e843",
+    "prototypes/spatial-authoring/app/main.js": "73dbff2f1688582117a74456f25270f10f7b430107ffd00cc7bc79cbf8b04c28",
+    "prototypes/spatial-authoring/app/model.js": "a69c87486555d6155bcd3678c2079cfd65e2cb232b96a666fe25197b2711580d",
+    "prototypes/spatial-authoring/app/navigation.js": "b4a5294e16b197328c7fea8178b63691ec3afecb38475e14941db601076416aa",
+    "prototypes/spatial-authoring/app/overlay.js": "5b7280c2c79e69faf4778259a38496c4cb56456b42e7a6f857799a0438d09906",
+    "prototypes/spatial-authoring/app/stage.js": "85d333ff472d10f91bff3f5dcace1188f8c75b4c9e5ce0c3894545e061f22eaa",
+    "prototypes/spatial-authoring/app/state.js": "0fe209677c0623f4d285e35f0c4f4a84baf41ed50b1235be5e35e671dab8888a",
+    "prototypes/spatial-authoring/app/tasks.js": "c44c224ca14fd85a4ec1ccb497f8dfe3450930cae79c78280dc49e2678f1cea1",
+    "prototypes/spatial-authoring/app/ui.js": "3fb33ac6381da667bdbd95e453e48ac1abf09e8a06afb873aa9f37ad1fe32349",
+    "prototypes/spatial-authoring/index.html": "b1618093184c7a8f30b2e73cfff073142814aac8ede4840d4c203660360c43c6",
+    "prototypes/spatial-authoring/styles/app.css": "0de8596aa211e127f3d4449e20a9483905c08d7a5f7fe6787bb929a3e1ff7fc5"
+  },
+  "qa_files": {
+    "prototypes/spatial-authoring/qa/browse-check.sh": "a7f9eaf43e7bf917852a221347363871b56b47563caa0bb7e6f2d534b805cddb",
+    "prototypes/spatial-authoring/qa/capture-baseline.sh": "51111c4ad4b6684a73db0b1e52fbb6d78e742861ec9605f33c128163ec6851e2",
+    "prototypes/spatial-authoring/qa/conformance-check.sh": "6bc9c60b00dfc34c7dcc17613eee7e6f1303f981b0106a4fbdf5983dbe2aa32f",
+    "prototypes/spatial-authoring/qa/conformance-mutation-check.sh": "498648a56ee967d12cce183002c072ab341bfa2ab5b876c4ee781186f3dd7293",
+    "prototypes/spatial-authoring/qa/continuity-check.sh": "a66488e40130f2edd1cc10e9e3963f624f1a13eab8e905aa10b9ab7120bb26a6",
+    "prototypes/spatial-authoring/qa/correctness-check.sh": "9cede81dd447ada6475e249bef4d8cdeb752b315f8a2ad1a83fffbdbc4b2195c",
+    "prototypes/spatial-authoring/qa/experience-check.sh": "1cb1bb637456a2bc1e8ba3afe01636de7c89f74431089725fa1b46918a0e58b1",
+    "prototypes/spatial-authoring/qa/flow-check.sh": "4d23027d0d292b22668d31ab478fdeacd68fd1874041c8ab9ab1164f2e2eecd7",
+    "prototypes/spatial-authoring/qa/interaction-check.sh": "b016acc8cbcdc59a272490ef76a33a70b7e595fe021bef0a23469d7f08672cd4",
+    "prototypes/spatial-authoring/qa/journey-check.sh": "6f5fa89fbf56bb3eb9534d1c68f9aa504474a2423604432b969faebff4c84785",
+    "prototypes/spatial-authoring/qa/lens-check.sh": "b9848e22e308497f377ce46ea78e456eb29de957a279a1b2c6bbb7fb35fe26fc",
+    "prototypes/spatial-authoring/qa/lib.sh": "3ce4d24049432e8a367514f0624fe5ee4fe219a00b2bc5c3a66bdaf0b875a9b5",
+    "prototypes/spatial-authoring/qa/mutation-check.sh": "89425797b7d58588692cf237397b5f9b192e89bb358515401652f220bbfa9aa2",
+    "prototypes/spatial-authoring/qa/policy-check.sh": "c260451c660129ef5fe615e27a8f58fd9512f78d365a1be7bb66b7c1e0b08267",
+    "prototypes/spatial-authoring/qa/precision-check.sh": "c955205bb781c12c48e8a9c048fde424aab9a453b7f48495925dc4072b28d676",
+    "prototypes/spatial-authoring/qa/reconciliation-check.sh": "005317f8cd66564080da3e807af1ace3a04a2ee0106610cdfa940c427ea76c72",
+    "prototypes/spatial-authoring/qa/repair-check.sh": "a58eb465b427dfb096ddf9e1eaaf2de6a02545dfe5f766ce57821eec4272bd18",
+    "prototypes/spatial-authoring/qa/responsive-check.sh": "c57966d1e05c55440582b2243280de915f44f66bb90cc4da9fd2b1295e245dd9",
+    "prototypes/spatial-authoring/qa/run-all.sh": "4270a96b233c380963b8369bfd3dc3a381c53b1c83b5ed246d62d5b7bb10e2f4",
+    "prototypes/spatial-authoring/qa/shell-check.sh": "c527397a464a57838eae36ae50bb8a45eab7251ea9c0674c98c3d3546d2dfd8d",
+    "prototypes/spatial-authoring/qa/visitor-check.sh": "59cdad07f62e707cb7f22c0f884800c25afe1478cb99d10ce43dfdf509a32941",
+    "prototypes/spatial-authoring/tests/camera-conformance.test.mjs": "b6b898205b41c9361a113ce161fc54a9e8ea6761b5223989c86fef1f4d18cb4f",
+    "prototypes/spatial-authoring/tests/experience-model.test.mjs": "b778fd8ea11987d1d57429946a80285e49cf532c923e9b1e0d95b9a780420a50",
+    "prototypes/spatial-authoring/tests/experience-runtime.test.mjs": "a8eb08ea47d9fbf2a559f4d7bfd106e51edbc575fea57651f2b134f0078444df"
+  },
+  "evidence_status": "C8 in-scope acceptance complete; external review pending; missing P23B fixture blocks repository gates",
+  "captures": {
+    "prototypes/spatial-authoring/screens/experience-conformance/narrow-card.png": "568fbdf7e1c54a5543818b85860f41d3713db06f0c67db5762f56d8cf25ccc7e",
+    "prototypes/spatial-authoring/screens/experience-conformance/narrow-guide.png": "4eb081907ed17cd208f6d536df652e3b7dd51cfa2215016e1b589c84cfd9da7c",
+    "prototypes/spatial-authoring/screens/experience-conformance/narrow-precision.png": "fb783aebae83162a15f6b833d32023269a7da3622d409caeada5e5c838372d7e",
+    "prototypes/spatial-authoring/screens/experience-conformance/narrow-visitor.png": "57efc6bc21614e67fc86a448e6ec4423bdc826dbff9b1f481cdbebe8dfdabc80",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-ordinary-board-pair.jpg": "1055b1062be557d36ffcfcf2021b7a671aa7855ae4d95ddfa213eee2ef55461a",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-ordinary.json": "9b83b8bd9a91cbf8a11091e2071ab783725fda683c743f593307fb6c81849e08",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-ordinary.png": "8ec6a1d25022c9da9dec5d3a4bbec1e7affa500b37b95a562b39ef2099923052",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-peek.json": "b13f9f9a5fb983dcd57a79962a0381239df9ceb5b49f343c08ba3063c23094a0",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-peek.png": "42ba7a782f5c3b30cb7429f5bac4e421dbaa51bf3dd1e67a92be5793266eb99e",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-plan.json": "c19cea74109f4ad12a976df68a3e507273ecb9938c850db59a8e84b0427f85b7",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-1-plan.png": "7928979346ab70ca67641b719396bcf0c6b02b2015d0d00f403c0aa86a418806",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-2-overview-board-pair.jpg": "b1dc01b31dd99794247361c059444ad97a4d13e7a4f24563df9d678db299d16f",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-2-overview.json": "5ef9e23715137130e9927fd18ff8600e8434623c6cae0ff91f404d3f8de14ac5",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-2-overview.png": "476eda6b1f34c89094bacca2404ee11b321417f6d0bb05284b58c1d764a23177",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-2-selected.json": "c2d50fd3da6496c13e0a8394ee8180bd74ab76f43a9c174595f113f09d7c40a6",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-2-selected.png": "60da310097c3f43a5f6cb78fa33dc0b31a480cca4c4f3c8eb962bda4582f388f",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-occurrence-board-pair.jpg": "fbb63d7ba4b6a51eed815372952d260f7cbf8ea9b63f2ded7ba011f6a84b507f",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-occurrence.json": "37b5d30cad9863fe46af921b7452e37dec0d1e0df78f2b8c7456bda386a8ed47",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-occurrence.png": "15f66a786b95251749a4b147e89e5598b7f9bc4d66774638e68206ad03dcd93f",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-scope-board-pair.jpg": "bef21da3a64ef06241a31080b76eb4602de2da9ae8966d65ff7963edd952abbb",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-scope.json": "67c06ee18106db15f3cf972d60c4defb17f87141a6079b6e3508a4d5475e8a81",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-3-scope.png": "3779d0350ded3044e7b410e4ffacfe6922d6222ebeaa7232674725566fd37dcb",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-4-route-board-pair.jpg": "eb318b0693058c469d51c22ff4f45d6e1f1fad55109b4afd725f3a0aed72a916",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-4-route.json": "fecbb4f8d090407fa79086b2f75d3a17bb45b7c2b543e7b9b1f494482d56dca6",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-4-route.png": "1b76f37f998c5030735e0eb3e4337022e877ad83444f813d225047aeff1c12c8",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-5-coordination-board-pair.jpg": "b767767f71f867972b93ed6a498facc336d98e2b831cf9dcf5e2c1e89d4d8b09",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-5-coordination.json": "15b5596910e44d8cbba6746e32ad78f76200df40ce1f51a90729989960421fff",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-5-coordination.png": "5b16b992fe726da7b4212d67483318916eae20f7a6ce983d3066d4d0f1898e0a",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-outside-board-pair.jpg": "9d8fa9f2f1111649cd4eff6238f4ee5025fbd371a1aed41916a43239ba060d4d",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-outside.json": "859e0cef4162a24a11f301b4638e3f3036382f4b5141240d9f45ffa4f6ea4a47",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-outside.png": "c0b825eb4054292ec3be5418b1c14503ae23e57e9eb6f3927d43d977f23ef334",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-plan-resume.json": "05ef9f9505ce59a999440ec312cfa1badb650d87b9079feb35492ae33d7a29ba",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-plan-resume.png": "cdff99c04fec8fcf2ab60f782afc7ed54c5b3136a3e2b567fa5eba8bcaf10871",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-precise-board-pair.jpg": "c5c56e06fa2f7702ef1074968ad0c733cda7a23f74bf795570e2f59df4fd12f2",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-precise.json": "67dd7528fd3d08c1c971c715a25c4f531f4b2622d5258ca95fc1fbbd8b59de8e",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-precise.png": "dd255871180f00856ec8694f7841015c5f2b47eab50380b4a5f0be95665515dd",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-visitor.json": "f7347237de891986a36548ef93ec6941b2982b963cfbd4a78ee0c371d13eba1c",
+    "prototypes/spatial-authoring/screens/experience-conformance/qa-6-visitor.png": "d54924728a0c237f0e9f933fe639fda7e66a1dc109c8343c9c8761ee9eaa7953",
+    "prototypes/spatial-authoring/screens/experience-conformance/six-state-review.jpg": "eccc9433785809252b93f9fa211effc727c0d5b71e8072ecff90f66af378a804",
+    "prototypes/spatial-authoring/screens/experience-conformance/transition-overview-occurrence.jpg": "8a6dd736a7b7ad1640f4cf4a34cd1066042ae6d1feea5c5643e9f9226236f4e3",
+    "prototypes/spatial-authoring/screens/experience-conformance/transition-precision-preview.jpg": "44a121d9dfd1fcc7ad87d415a1f31b7a03e278383890b5e9e7c86a6c40691987",
+    "prototypes/spatial-authoring/screens/experience-conformance/transition-route-coordination.jpg": "6766babfc8829ab69323e04158ec44598636407dfa48ebdca2b6de08a375f6b1",
+    "prototypes/spatial-authoring/screens/experience-conformance/transition-set-overview.jpg": "5086069fdc5840fb38d44643429af1cb3be33999f311eb5a2c7533464f458924",
+    "prototypes/spatial-authoring/screens/experience-conformance/world-current.json": "b2d1d2968faf9c48f48a0cdac83f5269de58eecc625c96ddddffb4e7e37a1a74",
+    "prototypes/spatial-authoring/screens/experience-conformance/world-current.png": "b057d9d55dbc6a5480a6d431b7a917f851dbd1466959f1693ce2e0a528dd62bd",
+    "prototypes/spatial-authoring/screens/experience-conformance/world-experience-continuity.jpg": "c1d7a19bc3b4e350e1dad7c97e25f1db9b8f2ac51c765d65f875295bbf4d0c45"
+  },
+  "verification": {
+    "canonical": {
+      "exit": 0,
+      "pass": 75,
+      "fail": 0
+    },
+    "integrated": {
+      "exit": 0,
+      "axes": 16,
+      "pass": 686,
+      "fail": 0
+    },
+    "mutations": {
+      "exit": 0,
+      "world_regressions_rejected": 3,
+      "experience_regressions_rejected": 7
+    },
+    "narrow_successor": {
+      "exit": 0,
+      "pass": 13,
+      "fail": 0
+    },
+    "domain": {
+      "exit": 0,
+      "pass": 40,
+      "fail": 0
+    },
+    "donor": {
+      "exit": 0,
+      "pass": 62,
+      "fail": 0
+    },
+    "donor_typecheck": {
+      "exit": 0
+    },
+    "repository_arch": {
+      "exit": 1,
+      "passing_files": 23,
+      "failing_files": 1,
+      "passing_tests": 275,
+      "failing_tests": 1
+    },
+    "repository_full": {
+      "exit": 1,
+      "passing_files": 338,
+      "failing_files": 34,
+      "skipped_files": 1,
+      "passing_tests": 4950,
+      "failing_tests": 2,
+      "skipped_tests": 1,
+      "collection_failures": 32
+    },
+    "repository_check": {
+      "exit": 1,
+      "errors": 1,
+      "warnings": 0
+    },
+    "repository_build": {
+      "exit": 1
+    },
+    "final_docs": {
+      "exit": 1,
+      "pass": 21,
+      "fail": 1,
+      "findings": 2
+    },
+    "whitespace": {
+      "exit": 0
+    }
+  },
+  "narrow_successor_note": "Standalone final narrow run adds real visibility and hit proof for expanded Entry; supersedes integrated reconciliation row without changing the executable or other 15 axes.",
+  "implementation_revision": "e02cd25872b3249e9a3a579eaf6406a8d82ead25",
+  "logs": {
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-captures.txt": "6f3a02836e2abe610b6ceb933df2dd6fbd1a6c0fe2ae10612d3c4cae5ca66e77",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-diff-check.txt": "de1f71b2f84b641e443bac85ecb55aa30bd4328134f10fa6676d38033301475c",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-docs.txt": "43f99d218f14ec5d39debe2bd1aef306f4fb44e2df78f853d5aa848cbc7dee93",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-domain.txt": "9a2cf2ff142aa6a8f4628669f1a2d7ee956d0e9ed205e646c307361975b7becb",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-donor-typecheck.txt": "0b134f424985d9f2fea39c9b172aef8e14cac82f5b5c53bad8c696958e997667",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-donor.txt": "b6ab17f5d2e4415b04b360b82a79c152b7cea057f612b504be0d7720579648bb",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-integrated.txt": "a312165f50c8735104e0144efa69221da8a26de4819ebe94e63fe5fea19ecfe0",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-mutations.txt": "84e45b8822139babf02b09d16037d3b958a4fbd212bcbdab48eaa10bba69ca43",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-narrow.txt": "7d93605b70de28483dd8305916a3979b562d2358dbbc3e037f51fe6f5deff25c",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-arch.txt": "edad6b15bf147232e025879f0a71ae2b2295aef282b32e7afbe8c9c7c8cc2f23",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-build.txt": "4bb8330993701c0130b73d4676b0739f4e118c9336403025064b9682830cac7e",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-check.txt": "a821f316765d442b08ddb61dfdfc4dfe2b19bff756edea246e33c60c1c9d6049",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-test.txt": "ca47bf0e97326dea02e8a4154b651148cc50e2d2aa866d3283fbc374b2a4efa9",
+    "docs/operations/checkpoints/experience-v2-conformance-evidence/c8-world-calibration.txt": "2ec8bf89a3e58f2b902a853a68b4f78dbe582bc9c88a6f3635ed8c77ae5a3aeb"
+  },
+  "log_format": "Complete substantive output; trailing whitespace and empty final lines normalized for repository diff checks."
+}

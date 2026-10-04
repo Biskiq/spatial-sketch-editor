@@ -1,0 +1,25 @@
+
+> personal-portfolios@0.1.0 check
+> npm run check -w @portfolio/editor && npm run check -w @portfolio/museum
+
+
+> @portfolio/editor@0.1.0 check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+Getting Svelte diagnostics...
+
+/Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor/src/lib/bench/p23b-fixtures.ts:9:28
+Error: Cannot find module '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json' or its corresponding type declarations.
+} from '@portfolio/layout-core';
+import owner40Payload from '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json';
+
+====================================
+svelte-check found 1 error and 0 warnings in 1 file
+npm error Lifecycle script `check` failed with error:
+npm error code 1
+npm error path /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error workspace @portfolio/editor@0.1.0
+npm error location /Users/tony/Documents/Biskiq/spatial-sketch-editor/apps/editor
+npm error command failed
+npm error command sh -c svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
