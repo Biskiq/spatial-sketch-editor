@@ -5,8 +5,9 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: independent external review of #113 →
-       ../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md.
+NEXT: owner review of the proposed #113 C9 model-first authoring-completeness plan →
+       ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
+       Planning only; C9 implementation not authorized or started.
 PRODUCTION ROUTE: (resumes after the prototype detour closes, below) remains F interface
        amendments, then re-derived T1 Spatial/P26, T2 Composition/P24, T3 Experience/P25 and
        T4 Release. P26 implementation and the architecture validation window remain gated.
@@ -14,13 +15,17 @@ PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 
        + real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype
        detour closes → F exact-interface amendments → T1/T2/T3/T4.
        #113 — C1–C8 in-scope behavioral/visual conformance complete (2026-10-04),
-       independent external review pending. Contract →
+       under its tested contract. External manual review exposed donor parity and
+       ordinary-workflow gaps; proposed C9 plan →
+       ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
+       Earlier contract →
        ../roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md.
        Proof, exact executable provenance, final gates and Paper handoff →
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md.
        The missing P23B fixture remains the external repository-gate blocker;
-       restoration needs separate scope authorization. Owner authorized C8 completion,
-       coherent commits and push to #113; no merge, PR/major-phase closure or Paper work.
+       restoration needs separate scope authorization. Earlier owner authorization
+       covered C8 completion, coherent commits and push. Current C9 request is
+       planning-only: no implementation, commit/push, merge, closure or Paper work.
        This work satisfies no F/T1 gate.
        PAPER — next PR after #113, not started: World Paper adoption, PA0–PA12 →
        ../roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md;

@@ -70,14 +70,19 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**Replacement C1–C8 in-scope conformance complete; independent external review pending (2026-10-04):**
+**C1–C8 in-scope conformance complete; C9 model-first reconciliation proposed (2026-10-04):**
 [standalone replacement plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
 [current conformance evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
 The [S0–S9 plan](./design/experience-v2-prototype/implementation-plan.md) remains prior evidence,
 not acceptance authority, along with [S0–S9 acceptance](../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md).
 The replacement corrects V2 composition, disclosure, Camera/return and QA gaps with
-fresh C1–C8 behavioral and blocking visual gates. Final external review remains pending.
+fresh C1–C8 behavioral and blocking visual gates. External manual review then exposed
+authoring-model and ordinary-workflow gaps against Prototype 4.1. The additional
+[C9 authoring-completeness plan](./design/experience-v2-prototype/authoring-completeness-plan.md)
+owns the proposed final parity/journey acceptance boundary, retaining the accepted
+shell and domain authority. It is planning-only; implementation is not authorized
+or started. Final product acceptance remains pending.
 The missing P23B fixture remains a separate repository-gate blocker.
 The donor stays a runnable regression oracle; the integrated design folder retains the finalized
 synthesis and boards. This work authorizes no T3 production implementation and closes no phase.

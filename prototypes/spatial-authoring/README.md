@@ -10,6 +10,10 @@ owns destination shell design; this static prototype establishes no production i
 owns the corrections; [fresh product recipes](./qa/CONFORMANCE-MANIFEST.md) and
 [conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) own current proof.
 S0–S9 evidence remains historical and supplies no replacement acceptance.
+External manual review exposed Experience model/workflow gaps against Prototype 4.1.
+The proposed [C9 authoring-completeness plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
+adds final parity and creator-journey acceptance while retaining C1–C8 shell/domain gains.
+It is planning-only; the behavior described there is not implemented or accepted here.
 
 ```sh
 cd prototypes/spatial-authoring
