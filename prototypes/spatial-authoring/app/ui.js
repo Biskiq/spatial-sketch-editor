@@ -42,6 +42,7 @@ export function renderUI() {
 // no mode pair, no permanent tool catalogue: what a subject can offer belongs to that subject.
 
 function renderHead() {
+  document.body.dataset.lens=S.lens;
   const u = S.undo[S.undo.length - 1], r = S.redo[S.redo.length - 1];
   const ub = $('#undoBtn'), rb = $('#redoBtn');
   if (!ub || !rb) return;
@@ -627,8 +628,10 @@ function renderCard() {
   }
   if (el._html !== html) {
     const focused = document.activeElement?.dataset?.field;
+    const openDetails=el._identity===id?[...el.querySelectorAll('details[open]')].map(d=>d.querySelector('summary')?.textContent):[];
     el.innerHTML = html;
-    el._html = html;
+    el._html = html;el._identity=id;
+    for(const detail of el.querySelectorAll('details'))if(openDetails.includes(detail.querySelector('summary')?.textContent))detail.open=true;
     if (focused) el.querySelector(`[data-field='${focused}']`)?.focus?.();
   }
 }

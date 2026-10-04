@@ -35,3 +35,4 @@ PY
   echo "PASS: $axis rejects $kind regression, with unaffected controls green"
   rg '^FAIL|PASS=[0-9]+ FAIL=' "$log"
 done
+bash "$QA_DIR/conformance-mutation-check.sh"

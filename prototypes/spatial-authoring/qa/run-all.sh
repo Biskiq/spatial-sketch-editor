@@ -49,6 +49,7 @@ case "$WHICH" in
   browse) run "Stage S4 · Browse/Search and Details" browse-check ;;
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
+  conformance) run "V2 conformance · product journeys" conformance-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
   visitor) run "Visitor execution" visitor-check ;;
   reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
@@ -66,6 +67,7 @@ case "$WHICH" in
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check
+    run "V2 conformance · product journeys" conformance-check
     run "Visitor execution" visitor-check
     run "Shared shell and narrow Experience" reconciliation-check
     run "Stage S8 · full continuity between the two lenses" continuity-check

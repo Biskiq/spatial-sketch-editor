@@ -1,7 +1,7 @@
 // Native ESM adaptation of donor arm/begin/close, readiness and bounded stepping.
 // Camera evaluation is delegated to the kernel beneath navigation; no renderer tween lives here.
 import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues } from './experience-model.js';
-import { pathSeconds, evaluatePath, connectionPath, findConnection, stationProgress } from './camera-evaluation.js';
+import { pathSeconds, evaluatePath, connectionPath, findConnection, stationProgress, viewPath, sameViewPose } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
 import { capability, createSceneCapabilities } from './experience-capabilities.js';
 export const BREATHING=2;
@@ -19,7 +19,7 @@ export function createRuntime(e,c,pid,pose,scene=createSceneCapabilities()) {
 export function requestView(r,e,c,id,speed='auto',path=null,seam=null,connectionId=null) {
  const resolved=resolveUse(e,c,id);if(!resolved){r.refusal='Framing removed — choose a View or explicitly keep viewpoint';return false;}
  if(r.movement){r.queue.push({id,speed,path,seam,connectionId});return true;}
- const route=path||[copy(r.pose),copy(resolved.view.pose)];
+ const route=path||viewPath(r.pose,resolved.view.pose);
  const timing=movementTiming(c,seam,route,speed,connectionId);
  r.movement={token:++r.serial,path:route,...timing,elapsed:0};r.viewUseId=id;r.refusal=null;
  if(!r.movement.duration){r.pose=evaluatePath(route,1);r.movement=null;}
@@ -80,7 +80,7 @@ function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene);r.presentation
 export function estimatePresentation(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,entryMovement=null){
  let cameraArrival=0,current=pose;const requests=[];if(entryId)requests.push({id:entryId,at:0});
  for(const u of Object.values(e.uses))if(u.presentationId===pid&&u.viewId&&u.cue){const at=cueSeconds(e,u.cue);if(at!==null)requests.push({id:u.id,at});}
- for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds([current,v.pose],'auto'));current=v.pose;}
+ for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds(viewPath(current,v.pose),'auto'));current=v.pose;}
  const contributions=Object.values(e.uses).filter(u=>u.presentationId===pid&&!u.viewId&&u.kind!=='interaction');
  let end=0;const scene=createSceneCapabilities();for(const u of contributions){const d=e.definitions[u.definitionId];if(d?.kind==='narration')end=Math.max(end,narrationDuration(d));if(d?.kind==='control'){const cap=capability(scene,d.subjectId,d.capabilityId);const at=u.start.kind==='after'?(cueSeconds(e,u.start)??capability(scene,e.definitions[e.uses[u.start.useId]?.definitionId]?.subjectId,e.definitions[e.uses[u.start.useId]?.definitionId]?.capabilityId)?.duration??0):0;end=Math.max(end,at+(cap?.duration||0));}}
  return Math.max(end,cameraArrival)+BREATHING;
@@ -104,7 +104,8 @@ export function gateState(e,c,r){
  if(seam.mode==='travel') {
   const connection=from&&to?findConnection(c,from.view.id,to.view.id):null;
   if(!connection)return {allowed:false,reason:'Travel gap from current View'};
-  const problem=coordinationProblem(e,c,seam,connection,connectionPath(connection,r.pose,to.view.pose));
+  if(r.movement||!sameViewPose(r.pose,from.view.pose))return {allowed:false,reason:'Camera is not yet at the departure View · finish the current move or rejoin'};
+  const problem=coordinationProblem(e,c,seam,connection,connectionPath(connection,from.view.pose,to.view.pose));
   if(problem)return {allowed:false,reason:problem};
  }
  return {allowed:true,reason:''};
@@ -113,7 +114,7 @@ function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
  const s=e.stops[id];if(!s||!e.presentations[s.presentationId]){r.refusal='Stop or Presentation missing';return false;}
  const entry=stopEntry(e,id),to=resolveUse(e,c,entry.id);if(entry.missing||(entry.id&&!to)){r.refusal='Framing removed — repair or explicitly keep viewpoint';return false;}
  const old=r.stopId,seam=old?getSeam(e,old,id):null,from=resolveUse(e,c,r.viewUseId);let path=null,speed='cut',connectionId=null;const origin=copy(r.pose);
- if(seam?.mode==='travel'&&!ignoreTravel){const conn=from&&to?findConnection(c,from.view.id,to.view.id):null;if(!conn){r.refusal='Travel gap from current View';return false;}path=connectionPath(conn,r.pose,to.view.pose);speed=conn.speed;connectionId=conn.id;const problem=coordinationProblem(e,c,seam,conn,path);if(problem){r.refusal=problem;return false;}}
+ if(seam?.mode==='travel'&&!ignoreTravel){const conn=from&&to?findConnection(c,from.view.id,to.view.id):null;if(!conn){r.refusal='Travel gap from current View';return false;}if(r.movement||!sameViewPose(r.pose,from.view.pose)){r.refusal='Camera is not yet at the departure View · finish the current move or rejoin';return false;}path=connectionPath(conn,from.view.pose,to.view.pose);speed=conn.speed;connectionId=conn.id;const problem=coordinationProblem(e,c,seam,conn,path);if(problem){r.refusal=problem;return false;}}
  if(record&&old)r.history.push(old);
  enterPresentation(r,e,c,scene,s.presentationId);r.stopId=id;r.exploring=false;r.refusal=null;
  if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else r.viewUseId=null;
