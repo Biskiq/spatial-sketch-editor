@@ -52,6 +52,43 @@ test('Stop-only detachment retargets one occurrence atomically and shared reach 
  assert.equal(viewReach(e,vid).stops.length,2);
  Object.assign(e,before.e);Object.assign(c,before.c);assert.equal(stopEntry(e,a).id,uid);
 });
+import { clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, presentationUses, addContribution } from '../app/experience-model.js';
+test('C9.1 Reset clears only Experience content and keeps Camera truth and future identities free',()=>{
+ const e=createExperience(),c=createCamera(),p=addPresentation(e,{kind:'subjects',ids:['machine']});
+ addView(e,c,p,pose,'Entry','entry');const serials={e:e.serial,c:c.serial},views=JSON.stringify(c);
+ clearExperience(e);
+ assert.deepEqual(Object.keys(e.presentations),[]);assert.deepEqual(Object.keys(e.uses),[]);assert.deepEqual(Object.keys(e.definitions),[]);assert.deepEqual(e.guide,[]);
+ assert.equal(JSON.stringify(c),views);assert.equal(e.serial,serials.e);assert.equal(c.serial,serials.c);
+ const freshPresentation=addPresentation(e,{kind:'subjects',ids:['machine']});assert.notEqual(freshPresentation,p);
+ assert.equal(captureUses(e,null,'machine','casing').length,0);
+});
+test('C9.1 primary explanation creates one narration use, then updates it in place and preserves markers',()=>{
+ const e=createExperience(),p=addPresentation(e,{kind:'subjects',ids:['machine']});
+ assert.equal(primaryExplanation(e,p),null);
+ assert.equal(setPrimaryExplanation(e,p,'   '),null);
+ const first=setPrimaryExplanation(e,p,'The casing protects the rotor.');
+ assert.equal(first.created,true);
+ const d=e.definitions[e.uses[first.id].definitionId];d.markers.push({id:'inside',label:'Inside',fraction:.5});
+ const again=setPrimaryExplanation(e,p,'The casing protects the moving rotor.');
+ assert.equal(again.id,first.id);assert.equal(again.created,false);
+ assert.equal(presentationUses(e,p).filter(u=>u.kind==='narration').length,1);
+ assert.equal(e.definitions[e.uses[first.id].definitionId].text,'The casing protects the moving rotor.');
+ assert.deepEqual(e.definitions[e.uses[first.id].definitionId].markers,[{id:'inside',label:'Inside',fraction:.5}]);
+});
+test('C9.1 capture creates one Activity and updates it; ambiguity never mutates the first match',()=>{
+ const e=createExperience(),p=addPresentation(e,{kind:'subjects',ids:['machine']});
+ const a=captureCapability(e,p,'machine','casing',1,'Open casing');
+ assert.equal(a.created,true);
+ const b=captureCapability(e,p,'machine','casing',.5,'Open casing');
+ assert.equal(b.updated,true);assert.equal(b.id,a.id);
+ assert.equal(captureUses(e,p,'machine','casing').length,1);
+ assert.equal(e.definitions[e.uses[a.id].definitionId].value,.5);
+ const extra=addContribution(e,p,{kind:'control',name:'Open casing · second',subjectId:'machine',capabilityId:'casing',value:0},'behavior');
+ const c2=captureCapability(e,p,'machine','casing',1,'Open casing');
+ assert.deepEqual(c2.ambiguous,[a.id,extra]);
+ assert.equal(e.definitions[e.uses[a.id].definitionId].value,.5);
+ assert.equal(captureUses(e,p,'machine','casing').length,2);
+});
 import { addBeat } from '../app/experience-model.js';
 import { coordinateTiming } from '../app/experience-coordination.js';
 test('coordination binds stable Camera stations; pace and anchors alter timing without retargeting',()=>{

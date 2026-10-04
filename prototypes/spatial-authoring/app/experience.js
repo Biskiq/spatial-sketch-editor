@@ -8,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, presentationUses } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -23,7 +23,12 @@ export function command(label, edit) {
 }
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
-  const id = command('Create Presentation', e => addPresentation(e, f));
+  const label = f.kind === 'subjects' && f.ids.length === 1 ? thing(f.ids[0])?.item?.name : null;
+  const id = command('Create Presentation', e => addPresentation(e, f, label || 'Untitled Presentation'));
+  // A fresh subject-focused moment suggests Camera framing immediately: derived intent, never an
+  // authored View, and Capture is what accepts it.
+  const derived = nav.deriveFraming(ctx.experience.presentations[id]);
+  if (derived) S.derivedView = { presentation: id, ...derived };
   openPresentation(id); return id;
 }
 export function openPresentation(id) {
@@ -78,16 +83,23 @@ export function handleExperienceAction(el) {
   if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
   if (action === 'exp-route-scope') acceptRoutePace();
   if (action === 'exp-narration') addNarration();
-  if (action === 'exp-offer') beginOffer(el.dataset.kind||'behavior');
+  if (action === 'exp-offer') beginOffer(el.dataset.kind||'behavior',el.dataset.id||null);
   if (action === 'exp-offer-accept') acceptOffer();
   if (action === 'exp-offer-cancel') {S.expOfferDraft=null;ctx.ui();}
+  if (action === 'exp-audition') auditionCapability(el.dataset.id,el.dataset.cap,el.dataset.value==='true');
+  if (action === 'exp-audition-clear') clearAudition(el.dataset.id);
+  if (action === 'exp-use') useCapability(el.dataset.id,el.dataset.cap);
+  if (action === 'exp-use-scope') useCapability(el.dataset.id,el.dataset.cap,'experience');
+  if (action === 'exp-capture-choice') chooseCaptureUse(el.dataset.id);
+  if (action === 'exp-capture-new') captureAnother();
+  if (action === 'exp-capture-cancel') cancelCaptureAsk();
   if (action === 'exp-marker') addMarker(el.dataset.id);
   if (action === 'exp-visitor') visitorCommand(el.dataset.command,el.dataset.id);
   if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
   if (action === 'exp-remove-contribution') command('Remove contribution',e=>delete e.uses[el.dataset.id]);
-  if (action === 'exp-reset') resetExperience(false);
+  if (action === 'exp-reset') resetExperience();
   if (action === 'exp-conformance') loadConformance();
-  if (action === 'exp-example') resetExperience(true);
+  if (action === 'exp-example') loadExample();
   if (action === 'exp-presenter') presenterStep(Number(el.dataset.delta));
   if (action === 'exp-resume') resumeExperience();
   if (action === 'exp-dismiss-parked') {S.parkedByLens.experience=null;ctx.ui();}
@@ -129,9 +141,11 @@ export function preview(pid=S.experienceContext.presentation) {
  if(S.visitor || !ctx.experience.presentations[pid]) return false;
  cancelProposal('preview');
  const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
- // Suspend authoring without writing source or passing through lens parking.
+ // Suspend authoring without writing source or passing through lens parking. Auditions are cleared
+ // before entry: the visit sees authored source, never an authoring projection.
  T.park();
  nav.releaseHold();
+ S.expAudition=null;
  S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),pid,nav.plainPose(),ctx.sceneSource)};
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
@@ -141,6 +155,7 @@ export async function exitPreview() {
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
  await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);
  if(S.task?.kind==='experience-hints'){const p=ctx.experience.presentations[S.task.target.id];S.derivedView=p?{presentation:p.id,...nav.deriveFraming(p,S.task.params.hints)}:null;}
+ S.expReview.previews=(S.expReview?.previews||0)+1;
  ctx.ui();return true;
 }
 let runtimeAt=0;
@@ -297,11 +312,10 @@ export function addNarration(pid=S.experienceContext.presentation) {
 export const editDefinition=(uid,key,value)=>sourceProposal('Edit shared contribution','definition',uid,key,value);
 export function addMarker(uid,label='Named phrase') {
  const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;return sourceProposal('Add shared narration phrase','definition',uid,'markers',[...d.markers,{label,fraction:.5}]);
-}
-export function beginOffer(kind='behavior') {
- const p=ctx.experience.presentations[S.experienceContext.presentation];
- const subject=p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
- S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true};ctx.ui();
+}export function beginOffer(kind='behavior', subjectId=null) {
+  const p=ctx.experience.presentations[S.experienceContext.presentation];
+  const subject=subjectId&&ctx.sceneSource.subjects[subjectId]?subjectId:p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
+  S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true};ctx.ui();
 }
 export function acceptOffer() {
  const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;
@@ -311,6 +325,52 @@ export function acceptOffer() {
  S.expOfferDraft=null;ctx.ui();return id;
 }
 export function changeOfferField(key,value){if(!S.expOfferDraft)return;S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value)[0];S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
+
+// ----- subject-local capability auditions and capture ---------------------
+
+// The audition projects a supported value on the real Stage without touching Scene source, Experience
+// source or Undo. It is the donor's "operate the subject" step, kept distinct from authored Activity.
+export function auditionedValue(sid,cap){
+  const s=ctx.sceneSource.subjects[sid];if(!s)return null;
+  const held=S.expAudition?.[sid]?.[cap.channel];return held===undefined?s.properties[cap.channel]:held;
+}
+export function auditionCapability(sid,cid,value,quiet=false){
+  const scene=ctx.sceneSource,cap=capability(scene,sid,cid),s=scene.subjects[sid];
+  if(!cap||!s)return false;
+  const v=cap.control==='range'?Number(value):(value===true||value==='true');
+  if(cap.control==='range'&&(!Number.isFinite(v)||v<cap.min||v>cap.max)){A.setStatus(`Use a value between ${cap.min} and ${cap.max}`,'refuse');ctx.ui();return false;}
+  (S.expAudition??={})[sid]??={};S.expAudition[sid][cap.channel]=v;
+  if(!quiet){S.expReview.auditions=(S.expReview?.auditions||0)+1;A.setStatus(`${cap.label} · audition only — source and history untouched`,'view');ctx.ui();}
+  return true;
+}
+export function clearAudition(sid){if(!S.expAudition||!(sid in S.expAudition))return false;delete S.expAudition[sid];ctx.ui();return true;}
+export function explainPresentation(pid,text){return command('Edit explanation',e=>setPrimaryExplanation(e,pid,text));}
+// Use in Experience: one uniquely matching captured use is updated in place; no match captures a new
+// Activity; several matches require a choice and never mutate the first enumerated one. Ambiguity is
+// decided before any command, so a refused choice never leaves an empty history step behind.
+export function useCapability(sid,cid,scope='presentation'){
+  const cap=capability(ctx.sceneSource,sid,cid);if(!cap)return false;
+  const pid=scope==='experience'?null:S.experienceContext.presentation;
+  if(scope!=='experience'&&!pid){A.setStatus('Open a Presentation first, or capture explicitly at Experience scope','refuse');ctx.ui();return false;}
+  const value=auditionedValue(sid,cap);
+  const matches=captureUses(ctx.experience,pid,sid,cid);
+  if(matches.length>1){S.expCaptureAsk={sid,cid,pid,value,matches:matches.map(u=>u.id)};ctx.ui();return false;}
+  const result=command(`${cap.label} · ${scope==='experience'?'use at Experience scope':'use in this Presentation'}`,e=>captureCapability(e,pid,sid,cid,value,cap.label));
+  S.expCaptureAsk=null;ctx.ui();return result;
+}
+export function chooseCaptureUse(uid){
+  const ask=S.expCaptureAsk;if(!ask||!ask.matches.includes(uid))return false;
+  const cap=capability(ctx.sceneSource,ask.sid,ask.cid);
+  const result=command('Update captured '+((cap?.label)||'capability'),e=>{const u=e.uses[uid];if(!u||!ask.matches.includes(uid))throw Error('Captured use changed');const d=e.definitions[u.definitionId];if(!d)throw Error('Captured definition missing');d.value=ask.value;return{id:uid,updated:true};});
+  S.expCaptureAsk=null;ctx.ui();return result;
+}
+export function captureAnother(){
+  const ask=S.expCaptureAsk;if(!ask)return false;
+  const cap=capability(ctx.sceneSource,ask.sid,ask.cid);
+  const result=command('Capture another '+((cap?.label)||'use'),e=>captureCapability(e,ask.pid,ask.sid,ask.cid,ask.value,cap?.label||ask.cid));
+  S.expCaptureAsk=null;ctx.ui();return result;
+}
+export function cancelCaptureAsk(){if(!S.expCaptureAsk)return false;S.expCaptureAsk=null;ctx.ui();return true;}
 export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
 export function visitorCommand(action,id=null){
  const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;
@@ -339,29 +399,87 @@ export function sourceCapability(sid,cid,value){
  return command('Edit Scene capability',()=>setSceneValue(ctx.sceneSource,sid,cid,value));
 }
 onCancel(()=>{S.expOfferDraft=null;},12,'Experience offer draft');
-
-export function resetExperience(example=false) {
- if(S.visitor)exitPreview();cancelProposal('reset');T.park();initExperience();
- S.parked=null;S.parkedByLens={};S.undo=[];S.redo=[];S.sel=null;S.expand=false;S.task=null;
- if(example){
-  const e=ctx.experience,c=ctx.cameraSource;
-  const pid=addPresentation(e,{kind:'subjects',ids:['machine']},'Understand the drive');
-  e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
-  const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
-  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:1.8},'Inside','choice'),output=addView(e,c,pid,{...base,az:.9},'Output','choice');
-  const n=addContribution(e,pid,{kind:'narration',name:'How the drive works',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',fraction:1/3},{id:'output',label:'Follow output',fraction:2/3}]},'narration');
-  e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
-  const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};
-  const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete'};e.uses[run].end={kind:'experience'};
-  const piano=addContribution(e,null,{kind:'control',name:'Play Piano',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');e.uses[piano].availability=null;
-  const light=addContribution(e,null,{kind:'control',name:'Light from Switch',subjectId:'light',capabilityId:'intensity',value:3},'interaction','switch');e.uses[light].availability=null;
-  const compare=addPresentation(e,{kind:'subjects',ids:['machine','mesh']},'Compare materials');reuseView(e,c,compare,e.uses[entry].viewId);setRole(e,e.presentations[compare].uses[0],'entry');
-  const a=addStop(e,pid),b=addStop(e,compare);e.stops[a].choices.push({id:fresh(e,'choice'),label:'Compare materials detour',targetId:b,kind:'detour'});
-  S.experienceContext.presentation=pid;S.sel=pid;
- }
- buildCapabilitySubjects();ctx.ui();return true;
+onCancel(reason=>{if(['esc','lens','preview','reset','task-end','invoke','selection'].includes(reason))S.expAudition=null;},9,'Experience audition');
+// Session transients every Experience reset or load clears: context, auditions, drafts and the
+// review observations. It never touches selection, Camera or World truth — those are settled by the
+// caller against the retained domains.
+function clearExperienceTransients(){
+ S.experienceContext={presentation:null,depth:'ordinary',stop:null,seam:null};
+ S.derivedView=null;S.expAudition=null;S.expOfferDraft=null;S.expCaptureAsk=null;S.expAsk=null;S.expSourceAsk=null;S.expRouteAsk=null;
+ S.expReview={auditions:0,previews:0};S.parkedByLens.experience=null;T.end();
 }
-export function presenterStep(delta) {S.experiencePresenter=Math.max(0,Math.min(3,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
+// Remove only the context that no longer resolves: a World subject or a retained Camera View stays
+// selected, an Experience identity does not survive its own removal.
+function settleExperienceSelection(){
+ if(S.sel&&!resolveExperience(S.sel)&&!thing(S.sel))A.select(null);
+}
+// Reset Experience replaces only Experience-authored content with a genuinely empty Experience. Scene,
+// Camera (including unreferenced Views) and the aggregate Undo history are preserved, and the reset is
+// one ordinary Undoable edit; Undo restores it without restoring a viewpoint.
+export function resetExperience() {
+ if(S.visitor)return false;
+ cancelProposal('reset');T.park();nav.discardReturn();clearExperienceTransients();
+ const result=command('Reset Experience',e=>{clearExperience(e);return true;});
+ settleExperienceSelection();ctx.ui();return result;
+}
+// Load Example / Load Conformance explicitly replace Experience fixture content and add Camera fixture
+// artifacts through Camera operations: fresh identities from the retained serials, no deletion of
+// existing Camera truth, no history wipe. One aggregate command holds the whole load, so Undo leaves
+// the independent domains exactly as they were before it. A labelled load is the one place that rebuilds
+// deterministic Experience identities: the whole domain is replaced by the fixture, never merged with it.
+function loadExperienceFixture(label,build,openMain=false){
+ if(S.visitor)return false;
+ cancelProposal('reset');T.park();nav.discardReturn();clearExperienceTransients();
+ const result=command(label,(e,c)=>{clearExperience(e);e.serial=0;return build(e,c);});
+ // Which identity the author was on is settled against the retained World/Camera domains, never adopted
+ // from the loader. Load Example lands on the example's main Presentation because it is loaded to be
+ // edited; the conformance fixture is explicit content only and never selects or opens work.
+ settleExperienceSelection();
+ if(openMain&&result?.presentation&&ctx.experience.presentations[result.presentation]){S.experienceContext.presentation=result.presentation;A.select(result.presentation);}
+ ctx.ui();return result;
+}
+export function loadExample(){return loadExperienceFixture('Load Example',buildExampleFixture,true);}
+export function loadConformance(){return loadExperienceFixture('Load Conformance fixture',(e,c)=>conformanceFixture(e,c));}
+function buildExampleFixture(e,c){
+ const pid=addPresentation(e,{kind:'subjects',ids:['machine']},'Understand the drive');
+ e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
+ const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
+ const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:1.8},'Inside','choice'),output=addView(e,c,pid,{...base,az:.9},'Output','choice');
+ const n=addContribution(e,pid,{kind:'narration',name:'Explanation',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',fraction:1/3},{id:'output',label:'Follow output',fraction:2/3}]},'narration');
+ e.uses[n].primary=true;
+ e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
+ const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};
+ const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete'};e.uses[run].end={kind:'experience'};
+ const piano=addContribution(e,null,{kind:'control',name:'Play Piano',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');e.uses[piano].availability=null;
+ const light=addContribution(e,null,{kind:'control',name:'Light from Switch',subjectId:'light',capabilityId:'intensity',value:3},'interaction','switch');e.uses[light].availability=null;
+ const compare=addPresentation(e,{kind:'subjects',ids:['machine','mesh']},'Compare materials');reuseView(e,c,compare,e.uses[entry].viewId);setRole(e,e.presentations[compare].uses[0],'entry');
+ const a=addStop(e,pid),b=addStop(e,compare);e.stops[a].choices.push({id:fresh(e,'choice'),label:'Compare materials detour',targetId:b,kind:'detour'});
+ return {presentation:pid};
+}
+// The quickstart instructions observe the real product outcomes rather than trusting a button press:
+// Q1 subject + Presentation, Q2 explanation + accepted framing, Q3 operated and captured capability,
+// Q4 a completed no-Guide Preview. Back/Next change only which instruction is shown.
+export function quickstart(){
+ const e=ctx.experience;
+ const working=()=>e.presentations[S.experienceContext.presentation]||Object.values(e.presentations).find(p=>p.focus.kind==='subjects')||null;
+ const primary=pid=>primaryExplanation(e,pid);
+ const captured=()=>Object.values(e.uses).find(u=>!u.viewId&&u.presentationId&&u.kind!=='interaction'&&e.definitions[u.definitionId]?.kind==='control')||null;
+ return [
+  {title:'Subject and Presentation',instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
+   done:()=>Object.values(e.presentations).some(p=>p.focus.kind==='subjects')&&e.guide.length===0,
+   observed:()=>{const p=working();return p?`${p.name} · focus ${p.focus.kind==='subjects'?p.focus.ids.join(', '):p.focus.kind}`:'No Presentation yet';}},
+  {title:'Explanation and framing',instruction:'Write the explanation in the Presentation Card, then Capture the suggested framing.',
+   done:()=>{const p=working();if(!p)return false;const u=primary(p.id);return !!(u&&e.definitions[u.definitionId]?.text.trim())&&p.uses.some(id=>e.uses[id]?.viewId);},
+   observed:()=>{const p=working();if(!p)return 'Waiting for a Presentation';const u=primary(p.id),text=u?e.definitions[u.definitionId]?.text.trim():'';return `${text?`“${text.slice(0,48)}${text.length>48?'…':''}”`:'No explanation'} · ${p.uses.filter(id=>e.uses[id]?.viewId).length} View(s)`;}},
+  {title:'Operate and Use',instruction:'Select the subject again, operate a capability, then Use in this Presentation.',
+   done:()=>!!captured()&&(S.expReview?.auditions||0)>0,
+   observed:()=>{const u=captured();const d=u&&e.definitions[u.definitionId],tries=S.expReview?.auditions||0;return `${d?`${d.name||d.capabilityId} captured${u.presentationId?` in ${e.presentations[u.presentationId]?.name||'a Presentation'}`:''}`:'No captured capability yet'}${tries?` · ${tries} audition${tries===1?'':'s'}`:''}`;}},
+  {title:'Preview without a Guide',instruction:'Preview the Presentation; the explanation, framing and capability run in a private visit. Exit returns exactly.',
+   done:()=>!!S.expReview?.previews,
+   observed:()=>S.expReview?.previews?`Preview completed ${S.expReview.previews}× and returned`:'No completed Preview yet'},
+ ];
+}
+export function presenterStep(delta) {const steps=quickstart();S.experiencePresenter=Math.max(0,Math.min(steps.length-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
 
 export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
 
@@ -409,4 +527,4 @@ export function updateHold(id,seconds) {
  return command('Edit Experience station hold',e=>{const beat=e.seams[`${s.from}>${s.to}`]?.beats.find(b=>b.id===id&&b.kind==='hold');if(!beat)throw Error('Hold removed');beat.seconds=seconds;});
 }
 
-export function loadConformance(){resetExperience(false);const f=conformanceFixture();ctx.experience=f.experience;ctx.cameraSource=f.camera;ctx.ui();}
+

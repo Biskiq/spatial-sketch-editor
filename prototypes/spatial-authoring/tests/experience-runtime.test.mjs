@@ -27,6 +27,22 @@ test('A18 Scene source edits and session effects are separate; session-only sour
 test('A19 runtime flows freeze all authored domains',()=>{const f=fixture();narration(f);control(f,'machine','rotor',true);guide(f);const source=JSON.stringify(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,5);r=R.exploreRuntime(r);r=R.resumeGuide(f.e,f.c,r);r=R.nextRuntime(f.e,f.c,r,f.scene);assert.equal(JSON.stringify(f),source);});
 test('A20 bounded stepping is deterministic within 1e-8 at supported boundaries',()=>{const f=fixture();narration(f);control(f,'machine','casing',1);const base=runtime(f),a=tick(f,base,4);let b=base;for(let i=0;i<16;i++)b=tick(f,b,.25);assert.ok(Math.abs(a.time-b.time)<1e-8);assert.deepEqual(a.overrides,b.overrides);assert.deepEqual(a.signals,b.signals);});
 test('A21–A22 Presenter/Reset are observational; fixture construction deterministic',()=>{const f=fixture(),r=runtime(f),source=JSON.stringify(f);const plan=R.estimatePresentation(f.e,f.c,f.p,pose);assert.equal(plan,2);assert.equal(JSON.stringify(f),source);assert.equal(r.autoplay,false);assert.deepEqual(createSceneCapabilities(),createSceneCapabilities());});
+test('C9.1 ordinary loop executes: the explanation and a captured audition run in a no-Guide Preview',()=>{
+ const f=fixture();
+ assert.equal(M.setPrimaryExplanation(f.e,f.p,'The casing protects the moving rotor.').created,true);
+ const captured=M.captureCapability(f.e,f.p,'machine','casing',.5,'Open casing');assert.equal(captured.created,true);
+ assert.equal(M.presentationUses(f.e,f.p).length,2);assert.equal(Object.keys(f.e.definitions).length,2);
+ assert.deepEqual(f.e.guide,[]);assert.deepEqual(f.c.connections,{});
+ const source=JSON.stringify(f);
+ let r=runtime(f);assert.equal(r.stopId,null);assert.equal(r.presentationId,f.p);
+ r=tick(f,r,2);
+ assert.match(R.narrationCaption(f.e,r),/casing/i);
+ assert.equal(R.projectedValue(f.scene,r,'machine','open'),.5);
+ assert.equal(JSON.stringify(f),source);
+ assert.equal(M.setPrimaryExplanation(f.e,f.p,'The casing protects the moving rotor.').created,false);
+ assert.equal(M.captureCapability(f.e,f.p,'machine','casing',1,'Open casing').updated,true);
+ assert.equal(M.captureUses(f.e,f.p,'machine','casing').length,1);assert.equal(M.presentationUses(f.e,f.p).length,2);
+});
 test('fixed framing review and relative lowering never mutate authored Camera',()=>{const f=fixture(),id=M.addView(f.e,f.c,f.p,pose,'Camera'),v=f.c.views[f.e.uses[id].viewId];v.focusAt=[-10,1,1];const source=JSON.stringify(f.c);assert.match(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].review,/review fixed/);v.anchor='relative';const current=JSON.stringify(f.c);assert.deepEqual(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].pose.target,[-8,1,1]);assert.equal(JSON.stringify(f.c),current);assert.notEqual(current,source);});
 test('station-bound holds delay arrival; invoked controls run once at Camera station',()=>{const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry'),id=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId);const {a,b}=guide(f),controlId=control(f,'light','intensity',4,null);const seam=M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,'arrival',2);M.addInvocationBeat(f.e,f.c,a,b,id,'departure',controlId);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);const duration=r.movement.duration;r=tick(f,r,.25);const token=r.active[controlId];assert.equal(R.projectedValue(f.scene,r,'light','intensity'),4);r=tick(f,r,duration);assert.equal(r.active[controlId],token);assert.equal(r.movement,null);assert.deepEqual(r.pose.target,[10,1,0]);assert.equal(seam.mode,'travel');});
 
