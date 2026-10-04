@@ -28,10 +28,33 @@ click '#lens [data-lens="experience"]'
 click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-create"]'
 fill '[data-exp-field="name"]' 'Why the drive matters'
-fill '[data-exp-field="meaning"]' 'A casing, a rotor, and a path for power.'
+fill '[data-exp-primary]' 'A casing, a rotor, and a path for power.'
+conformance_ok 'quickstart observes the real Presentation it was asked for, not a button press' "$(qa_js '(()=>{const s=document.querySelector("[data-example-step]").textContent,o=document.querySelector("[data-example-observed]").textContent;return s.includes("1/4")&&o.includes("Why the drive matters");})()')" true
+# C9.1 ordinary loop: the subject-local audition is session state; Use captures one honest Activity.
+click '#card .exp-focus [data-operate="machine"]'
+conformance_ok 'the Presentation Card reaches the subject it presents' "$(qa_js '__me.S.sel')" '"machine"'
+before="$(source_hash)"; count="$(undo)"
+fill '[data-exp-audition="casing"]' '0.6'
+conformance_ok 'operating the subject auditions on the real Stage without source or history' "$(qa_jsv 'JSON.stringify(__me.S.expAudition)')" '{"machine":{"open":0.6}}'
+conformance_ok '…and the audition writes no source and no history' "$(source_hash) / $(undo)" "$before / $count"
+conformance_ok 'the audition is stated as a temporary projection' "$(qa_js 'document.querySelector("#card").textContent.includes("Temporary projection")')" true
+click '#card [data-act="exp-use"][data-cap="casing"]'
+conformance_ok 'Use in this Presentation captures one Activity holding the auditioned value' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control"),d=us[0]&&e.definitions[us[0].definitionId];return us.length===1&&us[0].presentationId===pid&&d.subjectId==="machine"&&d.capabilityId==="casing"&&d.value===0.6&&e.guide.length===0&&Object.keys(e.stops).length===0;})()')" true
+conformance_ok 'the capture writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / 0"
+fill '[data-exp-audition="casing"]' '0.9'
+click '#card [data-act="exp-use"][data-cap="casing"]'
+conformance_ok 'updating the captured value reuses that Activity and never duplicates it' "$(qa_js '(()=>{const e=__me.ctx.experience,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control");return us.length===1&&e.definitions[us[0].definitionId].value===0.9&&document.querySelector("#card").textContent.includes("Captured in this Presentation");})()')" true
+pid="$(qa_jsv '__me.S.experienceContext.presentation')"
+click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
+conformance_ok 'the Presentation lists the captured Activity by what it operates, where and how it starts' "$(qa_js '(()=>{const t=document.querySelector("#card details:nth-of-type(3)").textContent;return t.includes("Open casing")&&t.includes("Machine")&&t.includes("in Why the drive matters")&&t.includes("Starts on Presentation entry");})()')" true
+# The contribution row is the product control that opens the Activity; the Card itself can sit under the
+# fixed band, so the same real control is activated directly rather than through hit-testing.
+qa_js '(()=>{document.querySelector("#card details:nth-of-type(3) > summary").click();const b=document.querySelector("#card details:nth-of-type(3) [data-act=\"pres-ref\"]");b.click();return b.dataset.id;})()' >/dev/null;qa_frames
+conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity · Experience")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
+click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 before="$(source_hash)";standpoint="$(pose)"
 click '#headPreview'
-conformance_ok 'no-Guide/no-View Preview runs from authored meaning alone' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&Object.keys(__me.ctx.cameraSource.views).length===0)') / $(source_hash)" "true / $before"
+conformance_ok 'no-Guide/no-View Preview runs the authored explanation and captured capability' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&Object.keys(__me.ctx.cameraSource.views).length===0&&!!__me.S.visitor.runtime.overrides.machine?.open&&Object.values(__me.S.visitor.runtime.activities).some(a=>a.status==="running"))') / $(source_hash)" "true / $before"
 click '[data-act="exp-exit-preview"]'
 conformance_ok 'no-View Preview restores complete standpoint' "$(pose)" "$standpoint"
 before="$(source_hash)"; count="$(undo)"
@@ -63,8 +86,9 @@ click '#card [data-act="exp-add-guide"]'
 conformance_ok 'first Stop gives Peek only' "$(qa_js '(__me.S.experienceContext.depth==="ordinary"&&document.querySelector("#experienceDeck").classList.contains("ordinary"))')" true
 capture qa-1-peek
 # QA-2/3: authored stress fixture has no active procedure or standpoint recipe.
+selected_before="$(qa_js '__me.S.sel')"
 qa_js '__me.E.loadConformance()' >/dev/null
-conformance_ok 'fixture never selects or opens work' "$(qa_js '(__me.S.sel===null&&__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6)')" true
+conformance_ok 'fixture never selects or opens work, and leaves resolving World context alone' "$(qa_js '__me.S.sel') / $(qa_js '(__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6&&__me.S.task===null)')" "$selected_before / true"
 click '#index [data-act="exp-open"][data-id="presentation-1"]'
 click '#experienceDeck [data-act="exp-guide"]'
 click '[data-act="plan"]'

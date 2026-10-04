@@ -764,6 +764,9 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 .exp-deck { position:absolute; bottom:12px; left:12px; right:12px; z-index:35; padding:10px; background:var(--chassis); border:1px solid var(--rule); border-radius:3px; color:var(--ink); }
 /* Expanded editorial work owns shell breadth without resizing the shared Stage/Camera. */
 .exp-deck:not(.ordinary) { position:fixed; bottom:38px; }
+/* While that band is fixed over the bottom of the viewport, the Card keeps its own content scrollable
+   clear of it: identity, actions and details stay reachable instead of hiding behind the band. */
+body.guide-band .card { padding-bottom: 216px; }
 .exp-deck.ordinary { display:flex; align-items:center; justify-content:space-between; gap:12px; height:34px; padding:3px 10px; font-size:var(--txs); }
 .peek-occurrences { display:flex; gap:12px; }
 .peek-stop { background:none; border:0; font:500 var(--txs) var(--ui); color:var(--ink-2); cursor:pointer; }

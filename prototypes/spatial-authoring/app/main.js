@@ -1278,6 +1278,10 @@ window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
 
 
 document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});
+// A subject-local audition updates projection on input without re-rendering the Card (so a range drag
+// is never interrupted), and announces on change. It is session state, never source and never history.
+document.addEventListener('input',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),true);});
+document.addEventListener('change',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),false);});
 
 document.addEventListener('change',event=>{
  const el=event.target;
@@ -1303,7 +1307,7 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
 
-const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene || el.dataset.expHold);
+const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene || el.dataset.expHold || el.dataset.expPrimary);
 let experienceDraft=null,fieldEpoch=0;
 document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
 onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
@@ -1315,6 +1319,7 @@ document.addEventListener('keydown',event=>{
  if(!el.isConnected||experienceDraft?.lens!==S.lens||experienceDraft?.epoch!==fieldEpoch)return;
  experienceDraft=null;
  if(el.dataset.expField)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
+ if(el.dataset.expPrimary)E.explainPresentation(el.dataset.id,el.value);
  if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
  if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);
  if(el.dataset.expHold)E.updateHold(el.dataset.expHold,Number(el.value));

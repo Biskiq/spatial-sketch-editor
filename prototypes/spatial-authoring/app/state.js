@@ -52,6 +52,12 @@ export const S = {
   /* A listing a crossing is leaving, remembered beside the parked record rather than inside it: it is
      context, not work, and only an explicit Resume puts it back. Never a selection, never a Camera. */
   browseMemory: null,
+  /* Experience session state, never source and never Undo. `expAudition` projects supported capability
+     values temporarily while a World subject is operated; `expCaptureAsk` holds the ambiguous
+     captured-use choice; `expReview` records the product outcomes the quickstart instructions observe. */
+  expAudition: null,
+  expCaptureAsk: null,
+  expReview: { auditions: 0, previews: 0 },
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
   /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */

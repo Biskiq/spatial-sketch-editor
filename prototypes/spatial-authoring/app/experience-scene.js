@@ -15,9 +15,12 @@ export function buildCapabilitySubjects() {
 }
 export function realizeCapabilities() {
  const runtime=S.visitor?.runtime,scene=S.visitor?.source.scene||ctx.sceneSource;if(!scene)return;
+ // A subject-local audition projects supported values temporarily: it is session state, never a source
+ // write, never history, and it is cleared before Preview takes the visitor over.
+ const audition=S.visitor?null:S.expAudition;
  for(const s of Object.values(scene.subjects)) {
   const item=ctx.stage.items.get(s.id);if(!item?.capabilityParts)continue;
-  const value=channel=>runtime?.overrides[s.id]?.[channel]?.value??s.properties[channel];
+  const value=channel=>runtime?.overrides[s.id]?.[channel]?.value??audition?.[s.id]?.[channel]??s.properties[channel];
   item.capabilityParts.lid.rotation.z=Number(value('open')||0)*1.2;
   item.capabilityParts.rotor.rotation.y=value('running')?(runtime?.time||0)*5:0;
   // The authored material, never the one a reading swapped in: a ghost or a selection highlight is a

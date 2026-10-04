@@ -112,6 +112,46 @@ export function addContribution(e,pid,definition,kind='behavior',trigger=null) {
  e.uses[id]={id,kind,definitionId:did,presentationId:pid,triggerSubjectId:trigger||definition.subjectId||null,start:{kind:pid?'visit':'experience'},end:{kind:pid?'visit':'experience'},interruption:null,availability:pid,toggle:false};
  return id;
 }
+// Experience Reset clears only Experience-authored content. The Experience serial is kept: the rest of
+// the session (aggregate Undo history, parked work) still refers to the replaced identities, so a fresh
+// empty Experience must never reissue one of them. Camera has its own identity serial and is never
+// touched here.
+export function clearExperience(e) {
+ e.presentations={};e.uses={};e.stops={};e.guide=[];e.seams={};e.definitions={};
+ return e;
+}
+const nonViewUses=(e,pid)=>Object.values(e.uses).filter(u=>u.presentationId===pid&&!u.viewId);
+export const presentationUses=(e,pid)=>nonViewUses(e,pid);
+export function primaryExplanation(e,pid) {
+ return nonViewUses(e,pid).find(u=>u.primary&&e.definitions[u.definitionId]?.kind==='narration')||null;
+}
+// The ordinary creator path: the first non-empty accepted text creates one narration use; every later
+// edit updates that same use, so the explanation never becomes two independently editable authorities.
+export function setPrimaryExplanation(e,pid,text) {
+ if(!e.presentations[pid])throw Error('Presentation missing');
+ const current=String(text??'');
+ const u=primaryExplanation(e,pid);
+ if(u){const d=e.definitions[u.definitionId];if(!d)throw Error('Explanation definition missing');d.text=current;return{id:u.id,created:false};}
+ if(!current.trim())return null;
+ const id=addContribution(e,pid,{kind:'narration',name:'Explanation',text:current,markers:[]},'narration');
+ e.uses[id].primary=true;
+ return {id,created:true};
+}
+// Captured capability uses are matched by subject, capability, presentation scope and kind: a visitor
+// offer is never a captured Activity, and the first enumerated match is never mutated for another.
+export function captureUses(e,pid,sid,cid) {
+ return nonViewUses(e,pid).filter(u=>{
+  const d=e.definitions[u.definitionId];
+  return u.kind!=='interaction'&&d?.kind==='control'&&d.subjectId===sid&&d.capabilityId===cid;
+ });
+}
+export function captureCapability(e,pid,sid,cid,value,name='') {
+ const matches=captureUses(e,pid,sid,cid);
+ if(matches.length>1)return{ambiguous:matches.map(u=>u.id)};
+ if(matches.length===1){const d=e.definitions[matches[0].definitionId];d.value=value;if(name)d.name=name;return{id:matches[0].id,updated:true};}
+ const id=addContribution(e,pid,{kind:'control',name:name||cid,subjectId:sid,capabilityId:cid,value},'behavior');
+ return {id,created:true};
+}
 export function narrationDuration(d) {return d.duration ?? Math.max(1,d.text.trim().split(/\s+/).filter(Boolean).length/2.5);}
 export function cueSeconds(e,cue) {
  const u=e.uses[cue?.useId],d=e.definitions[u?.definitionId];if(d?.kind!=='narration')return null;
