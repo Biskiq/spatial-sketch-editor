@@ -5,9 +5,13 @@ Current recipes, six-state visual verdicts, frozen-source gates and the external
 [new conformance acceptance][conformance-acceptance]. No merge-readiness or phase-close claim.
 External manual review exposed model/workflow gaps outside that acceptance boundary.
 The additional [C9 authoring-completeness plan](./authoring-completeness-plan.md)
-reconciles actual Prototype 4.1 behavior with these shell/domain gains; it is proposed,
-planning-only, with no C9 implementation authorization. C1–C8 proof remains valid
-for the contract it tested, not a complete Experience parity claim.
+reconciles actual Prototype 4.1 behavior with these shell/domain gains. The revised
+plan is ready for implementation; Travel preparation/live invocation and fresh
+repeated-Stop visits are owner-ratified C9 decisions. C9 replaces the ordinary
+per-origin Connect/departure-wait requirements and final exhaustive specimen
+re-verdict with capability-first proof plus blocking structural seams. Earlier
+C1–C8 proof remains valid for its tested contract, not a complete Experience parity
+claim. This docs-only revision authorizes no C9 implementation.
 Prepared 2026-10-03 at
 `99dd7ebfca55f68775dbf26bcdb455111b17e669` on `prototype-v2`, initially clean.
 This is a standalone replacement for future #113 implementation and acceptance,

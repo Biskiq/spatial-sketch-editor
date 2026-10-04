@@ -70,7 +70,7 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**C1–C8 in-scope conformance complete; C9 model-first reconciliation proposed (2026-10-04):**
+**C1–C8 in-scope conformance complete; revised C9 plan ready for implementation (2026-10-04):**
 [standalone replacement plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
 [current conformance evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
@@ -80,9 +80,15 @@ The replacement corrects V2 composition, disclosure, Camera/return and QA gaps w
 fresh C1–C8 behavioral and blocking visual gates. External manual review then exposed
 authoring-model and ordinary-workflow gaps against Prototype 4.1. The additional
 [C9 authoring-completeness plan](./design/experience-v2-prototype/authoring-completeness-plan.md)
-owns the proposed final parity/journey acceptance boundary, retaining the accepted
-shell and domain authority. It is planning-only; implementation is not authorized
-or started. Final product acceptance remains pending.
+defines capability-first parity/journey acceptance, retaining blocking shell,
+information-home, disclosure, spatial/temporal and ownership seams. Travel and
+fresh repeated-Stop visits are owner-ratified; cursor/detour-pause remain trials.
+Experience Reset preserves independent World/Camera truth and shared history.
+MP1 follows C9.1 before lifecycle/Guide expansion; MP2 precedes Travel/agency.
+Implementation is not authorized or started by this docs-only revision. Capability
+acceptance remains pending; detailed density/type/proportion and broader visual
+refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
+targeted structural/reachability evidence, not exhaustive specimen comparison.
 The missing P23B fixture remains a separate repository-gate blocker.
 The donor stays a runnable regression oracle; the integrated design folder retains the finalized
 synthesis and boards. This work authorizes no T3 production implementation and closes no phase.

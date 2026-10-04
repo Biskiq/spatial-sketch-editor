@@ -1,6 +1,8 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: proposed plan, 2026-10-04; implementation not authorized or started.**
+**Status: re-reviewed, ready for implementation, 2026-10-04; implementation not
+authorized or started by this planning request.** Owner-ratified C9 decisions:
+Travel preparation/live invocation (§5, N1) and fresh repeated-Stop visits (§3, N2).
 This is the additional, bounded authoring-completeness slice for
 [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), in the existing
 [unified prototype][unified]. It replaces the final Experience acceptance boundary
@@ -11,7 +13,10 @@ their PASS labels do not establish authoring completeness under C9.
 **Outcome:** one useful Experience authoring model, reachable from Reset, combining
 Prototype 4.1's creator ergonomics and behavioral richness with V2's World |
 Experience shell, Presentation/Stop/Seam vocabulary, Camera authority and spatial
-instruments. UI changes expose that model. They are not a separate redesign.
+instruments. Capability semantics and ordinary creator jobs lead acceptance;
+structural shell/instrument seams remain blocking. UI changes expose that model.
+Detailed visual refinement belongs to the dedicated UI/UX slice following C9
+capability acceptance, under its own scope; C9 does not redesign the shell.
 
 ## 1. Authority, baseline and diagnosis
 
@@ -24,12 +29,13 @@ instruments. UI changes expose that model. They are not a separate redesign.
 | Identity, channels, acceptance and isolated execution | [F target contract][foundation]; this prototype defines no production encoding or exact F interface |
 | Earlier scope and evidence | [C1–C8 plan][c1-c8] and [conformance acceptance][c8-proof]; the six boards are advanced specimens, not the complete creator contract |
 
-Audited checkout and open PR head: `5a482eb3a639d751964d5a9a7d47d36b2cdcd9d6`
-on `prototype-v2`. The starting tree was clean. Source inspection, donor domain
+Initial C9 implementation-audit baseline: `5a482eb3a639d751964d5a9a7d47d36b2cdcd9d6`
+on `prototype-v2`, then also the open PR head. The starting tree was clean.
+Source inspection, donor domain
 tests (**62/62**) and unified domain/runtime tests (**40/40**) were performed in
-this planning task. Planning verification: all 111 references across the five
-changed documents resolve (including the untracked new plan), section/heading
-checks and whitespace pass, and the matrix has 85 unique classified behaviors
+the initial planning task. Planning verification: references across the five
+affected documents resolve, section/heading checks and whitespace pass, and the
+matrix has 85 unique classified behaviors
 with all 18 Presenter topics. The unconditional architecture lane is **275/276**;
 its sole failure is the previously recorded missing P23B fixture, not a new link
 failure. Browser tests were read, not rerun; no new manual usability
@@ -108,7 +114,7 @@ authoring path**, not missing chrome alone.
 | Visitor agency is reduced at the product wiring | `visitorPointer` returns into drag handling whenever exploring, so direct object activation cannot occur there; accessible buttons still work. Standalone rejoin uses Stop entry, and visitor UI lacks the donor's general Presentation opening/closing and transcript controls. |
 | Repair/revision is mostly a model assertion | Profiles can lose support in a test, but the product has no replacement profile picker, contribution rebind surface or routed capability repair notices. Local/shared framing is stronger than revision of other contribution kinds. |
 | Example and Presenter prove less than their labels suggest | Load Example has machine cues, casing/rotor, Piano and Switch → Light, comparison and a detour to comparison. It omits the Wall detour, no-View environment, local Machine highlight, replacement case and route coordination. Presenter is four titles with Back/Skip, hidden during Preview, without task instructions or observed outcomes. |
-| Reset is not the donor's empty Experience | `createExperience` always creates Saltmarsh Highlights. This masks interaction-only and no-Presentation Preview gaps. |
+| Reset fabricates content and crosses ownership boundaries | `createExperience` always creates Saltmarsh Highlights. `resetExperience` calls `initExperience`, replacing Camera/Scene source and clearing shared Undo/Redo. Empty Experience recovery must preserve independent World/Camera truth and history. |
 | Framing is weaker for compound focus | Camera `deriveFraming` uses the first subject and a constant frame height; the donor frames the collection/region extent. A comparison can therefore be structurally present but poorly framed. |
 
 Existing A0–A22-labelled unified tests chiefly construct model state directly.
@@ -118,7 +124,7 @@ The visitor browser script injects a Gate with an authoring API. These are usefu
 mechanism tests, but they do not prove the low-floor jobs their labels imply.
 Keeping the donor's tests green proves donor preservation, not transplantation.
 
-## 2. Complete parity matrix and dispositions
+## 2. Complete parity/invariant matrix and dispositions
 
 Classification describes **current V2**, not the proposed result. PRESERVED means
 the inspected mechanism and relevant existing tests match; it does not waive C9's
@@ -127,115 +133,131 @@ disposition. Gate IDs refer to §9. These rows are the acceptance inventory; a f
 record must give each row a proof, an explicit change rationale, or the stated
 deferral. No row may disappear behind a broad “A0–A22 PASS.”
 
+**Provenance is separate from classification and test result.** The lightweight
+Provenance column marks `D` = donor behavior recovered/retained, `V` = accepted
+V2/C8 or current ratified invariant preserved, `N` = a new C9 reconciliation
+choice, and `T` = an experimental donor policy being characterized. Combined tags
+identify different concerns in one row, not several independent parity wins.
+N1 (§5) and N2 (§3) are explicitly owner-ratified; other `N` choices have their
+rationale in the row/owning section. `T` is not ratified by a passing test.
+
+Final evidence separates donor parity/dispositions, V2 invariant preservation,
+and new C9 decision/trial validation. For a combined row, identify the recovered
+behavior, retained invariant and newly chosen policy separately, with evidence
+links that may share one journey. A flat green percentage cannot count new route
+preparation, fresh repeated visits, or Reset history semantics as recovered
+V4.1 behavior. No extra provenance document or parallel acceptance matrix is needed.
+
 ### Subjects, framing and Presentation composition
 
-| ID | V4.1 behavior in current vocabulary | Current V2 classification and reason | Final decision / proof |
-| --- | --- | --- | --- |
-| W1 | Stable real World subjects: Machine, Piano, Light, Switch, mesh, environment | PRESERVED — Scene fixtures resolve stable subjects | Preserve V2 ownership and real Stage targets; J1/J6 |
-| W2 | Generic descriptors drive range, toggle and action controls | PRESENT BUT WEAKER — descriptors survive, but the capture form normalizes action controls and lacks subject-local operation | Synthesize donor discovery with current adapters; J1/J6 |
-| W3 | Generic visibility/highlight apply across supported subjects | PRESENT BUT WEAKER — highlight is mesh-only; generic visibility and Machine-local highlight are absent | Restore generic capabilities where the fixture adapter supports them; J6/J8 |
-| W4 | Wall unfolding as a capability-backed explanation | INTENTIONALLY SUPERSEDED — Scene `wall` profile exists without a subject; donor's stored World `unfolded` flag is not current Layout ownership | Retain visible behavior via the existing Layout representation evaluator, retire Scene-owned wall property; J6/J8 |
-| W5 | Source-editable capabilities versus Experience audition | PRESENT BUT WEAKER — source inputs exist; temporary authoring auditions do not | Separate source, audition, authored use and visitor run; J1/J6 |
-| W6 | Provider adds a capability without authoring UI branches | PRESENT BUT WEAKER — generic form can enumerate a profile, but no editable provider/profile trial reaches it | Fixture-load an extra declared profile; select it through World controls and use the same subject adapter; J8 |
-| W7 | Replacement profile loses rotor while retaining casing | MISSING — no replacement profile/control | Add bounded provider replacement and local repair, preserving instance/geometry; J8 |
-| W8 | Zero/one/many subjects, region, viewpoint and environment focus | PRESENT BUT WEAKER — model supports compounds; UI lacks a complete focus/rebind path and auto frames only first subject | Restore bounded focus selection and Camera-owned extent framing; richer compound focus may be fixture-loaded; J1/J2/J8 |
-| P1 | Encounter is a reusable meaningful moment | PRESERVED — Presentation identity/meaning/focus/use references are separate from Camera | Keep Presentation vocabulary and composition; J1/J3 |
-| P2 | Plain explanation with inferred duration and optional duration override, no required timing setup | PRESENT BUT HARD TO REACH — Add narration is nested under Contributions; static Meaning alone has no narration; model duration override has no writer | Put primary explanation in the ordinary Card, default use creation on acceptance, optional duration override in detail; J1/J4 |
-| P3 | Multiple View uses belong to one Presentation | PRESERVED — separate Camera Views and Experience uses | Preserve; View additions change neither Stops nor connections; J2 |
-| P4 | Definition versus use identity and reuse | PRESERVED — Camera View reuse makes a new Experience use | Preserve V2 Camera ownership and donor reusable-use mental model; J2/J8 |
-| P5 | Automatic framing follows subjects; fixed framing warns after source edits | PRESENT BUT HARD TO REACH — relative lowering/review exist, but normal Capture always produces fixed framing and no anchoring writer exposes the alternative | Offer Follow focus / Fixed in Camera Card; use one resolver everywhere; J8/J10 |
-| P6 | Accept automatic framing, or capture current view | SEMANTICALLY CHANGED — donor creation authored a default View; V2 correctly separates derived Auto from Capture | Preserve explicit V2 Capture; remove extra explanation setup so quickstart remains comparable; J1 |
-| P7 | One explanation spans several cue-requested Views; named markers retain explicit local time | SEMANTICALLY CHANGED — runtime exists, but generic midpoint fractions replaced donor marker seconds; raw signals replaced phrase selection | Restore named passage/cue selection, marker identity and editable seconds; preserve explicit placement across text edits with duration validation, no general timeline; J2/J4 |
-| P8 | Merely listing Views creates no progression, edges or Stops | PRESERVED — Set is unordered; roles/cues are explicit | Preserve; include Reset and loaded example mutations; J2 |
-| P9 | Optional explicitly suggested View progression and Next/Previous View | MISSING — no `viewOrder` equivalent or visitor step controls | Retain a bounded, opt-in Presentation-local suggestion relation; distinguish Next View from Next Stop; J2 |
-| P10 | Entry selected from the donor's first/suggested View | INTENTIONALLY SUPERSEDED — V2 has an explicit entry role | Preserve explicit entry authority; reordering manual suggestions alone cannot change entry; J2/J3 |
-| P11 | No-View environmental Presentation, outside a Guide | PRESENT BUT WEAKER — API/no-View Preview exist, but Load Example omits the donor's authored environment | Restore meaningful editable environment example and normal creation/Preview; J1/J6 |
-| P12 | Open/close a Presentation spatially or from visitor navigation | MISSING — visitor UI has current moment and Guide start, no independent Presentation opening/closing | Restore visitor-facing available Presentation entry/list and Close; use domain focus, no editor Index in Preview; J5 |
+| ID | V4.1/V2 behavior or invariant | Current V2 classification and reason | Provenance | Final decision / proof |
+| --- | --- | --- | --- | --- |
+| W1 | Stable real World subjects: Machine, Piano, Light, Switch, mesh, environment | PRESERVED — Scene fixtures resolve stable subjects | D+V | Preserve V2 ownership and real Stage targets; J1/J6 |
+| W2 | Generic descriptors drive range, toggle and action controls | PRESENT BUT WEAKER — descriptors survive, but the capture form normalizes action controls and lacks subject-local operation | D | Synthesize donor discovery with current adapters; J1/J6 |
+| W3 | Generic visibility/highlight apply across supported subjects | PRESENT BUT WEAKER — highlight is mesh-only; generic visibility and Machine-local highlight are absent | D | Restore generic capabilities where the fixture adapter supports them; J6/J8 |
+| W4 | Wall unfolding as a capability-backed explanation | INTENTIONALLY SUPERSEDED — Scene `wall` profile exists without a subject; donor's stored World `unfolded` flag is not current Layout ownership | D+V | Retain visible behavior via the existing Layout representation evaluator, retire Scene-owned wall property; J6/J8 |
+| W5 | Source-editable capabilities versus Experience audition | PRESENT BUT WEAKER — source inputs exist; temporary authoring auditions do not | D+V | Separate source, audition, authored use and visitor run; J1/J6 |
+| W6 | Provider adds a capability without authoring UI branches | PRESENT BUT WEAKER — generic form can enumerate a profile, but no editable provider/profile trial reaches it | D | Fixture-load an extra declared profile; select it through World controls and use the same subject adapter; J8 |
+| W7 | Replacement profile loses rotor while retaining casing | MISSING — no replacement profile/control | D | Add bounded provider replacement and local repair, preserving instance/geometry; J8 |
+| W8 | Zero/one/many subjects, region, viewpoint and environment focus | PRESENT BUT WEAKER — model supports compounds; UI lacks a complete focus/rebind path and auto frames only first subject | D+V | Restore bounded focus selection and Camera-owned extent framing; richer compound focus may be fixture-loaded; J1/J2/J8 |
+| P1 | Encounter is a reusable meaningful moment | PRESERVED — Presentation identity/meaning/focus/use references are separate from Camera | D+V | Keep Presentation vocabulary and composition; J1/J3 |
+| P2 | Plain explanation with inferred duration and optional duration override, no required timing setup | PRESENT BUT HARD TO REACH — Add narration is nested under Contributions; static Meaning alone has no narration; model duration override has no writer | D+N | Put primary explanation in the ordinary Card, default use creation on acceptance, optional duration override in detail; J1/J4 |
+| P3 | Multiple View uses belong to one Presentation | PRESERVED — separate Camera Views and Experience uses | D+V | Preserve; View additions change neither Stops nor connections; J2 |
+| P4 | Definition versus use identity and reuse | PRESERVED — Camera View reuse makes a new Experience use | D+V | Preserve V2 Camera ownership and donor reusable-use mental model; J2/J8 |
+| P5 | Automatic framing follows subjects; fixed framing warns after source edits | PRESENT BUT HARD TO REACH — relative lowering/review exist, but normal Capture always produces fixed framing and no anchoring writer exposes the alternative | D+V | Offer Follow focus / Fixed in Camera Card; use one resolver everywhere; J8/J10 |
+| P6 | Accept automatic framing, or capture current view | SEMANTICALLY CHANGED — donor creation authored a default View; V2 correctly separates derived Auto from Capture | D+V | Preserve explicit V2 Capture; remove extra explanation setup so quickstart remains comparable; J1 |
+| P7 | One explanation spans several cue-requested Views; named markers retain explicit local time | SEMANTICALLY CHANGED — runtime exists, but generic midpoint fractions replaced donor marker seconds; raw signals replaced phrase selection | D | Restore named passage/cue selection, marker identity and editable seconds; preserve explicit placement across text edits with duration validation, no general timeline; J2/J4 |
+| P8 | Merely listing Views creates no progression, edges or Stops | PRESERVED — Set is unordered; roles/cues are explicit | D+V | Preserve; include Reset and loaded example mutations; J2 |
+| P9 | Optional explicitly suggested View progression and Next/Previous View | MISSING — no `viewOrder` equivalent or visitor step controls | D | Retain a bounded, opt-in Presentation-local suggestion relation; distinguish Next View from Next Stop; J2 |
+| P10 | Entry selected from the donor's first/suggested View | INTENTIONALLY SUPERSEDED — V2 has an explicit entry role | V | Preserve explicit entry authority; reordering manual suggestions alone cannot change entry; J2/J3 |
+| P11 | No-View environmental Presentation, outside a Guide | PRESENT BUT WEAKER — API/no-View Preview exist, but Load Example omits the donor's authored environment | D | Restore meaningful editable environment example and normal creation/Preview; J1/J6 |
+| P12 | Open/close a Presentation spatially or from visitor navigation | MISSING — visitor UI has current moment and Guide start, no independent Presentation opening/closing | D+V | Restore visitor-facing available Presentation entry/list and Close; use domain focus, no editor Index in Preview; J5 |
 
 ### Activities, relationships, effects and readiness
 
-| ID | V4.1 behavior in current vocabulary | Current V2 classification and reason | Final decision / proof |
-| --- | --- | --- | --- |
-| A1 | Operate subject → Use in Experience | MISSING — generic capture form replaces audition/capture | Restore as the primary authoring path, keep form for advanced rebind only; J1 |
-| A2 | Edit an already captured operation without making a duplicate | MISSING — no selected-subject captured-use binding | Update the uniquely matching use; if ambiguous, ask which existing Activity or explicitly Capture another; J1/J8 |
-| A3 | Activities start at Experience, Presentation entry or dependency signal | SEMANTICALLY CHANGED — `armScope` uses organization; most start kinds are ignored | Restore explicit arming/activation scope independent of organization; J4 |
-| A4 | Dependency listener may be visit-local or Experience-wide | MISSING — after references have no independent arming scope | Restore those two bounded listener scopes; do not create a general scheduler; J4 |
-| A5 | End boundary distinct from organizational home | PRESENT BUT WEAKER — visit/Experience fields exist, no actual boundary picker; completion boundary not fully represented | Restore visit, completion and Experience boundaries plus adapter-defined result retention; J4/J8 |
-| A6 | Casing completes → rotor starts; pending rotor disarms on early departure | PRESERVED — fixture and runtime support a local completion dependency | Preserve and expose editable example; J4 |
-| A7 | Cancel / Finish / Continue differ | PRESERVED — interruption defaults and run tokens implement the core policies | Retain type defaults and optional detail; add boundary/retention cases omitted by present tests; J4 |
-| A8 | Finite state/motion result survives completion to its chosen boundary | PRESERVED — completion does not erase all overrides | Preserve; test a boundary crossed during Finish and newer ownership; J4 |
-| A9 | Persistent rotor crosses departure; visitor Stop remains effective | PRESENT BUT WEAKER — current `armScope` can reissue an Experience-bound use on a repeated Presentation visit | Keep a started persistent invocation; no duplicate/reclaim on framing, rejoin or continuation; J4/J5 |
-| A10 | Local narration/highlight cease on ordinary departure | PRESENT BUT WEAKER — narration cleanup exists; Machine highlight is missing and held/missing cases are incomplete | Restore real local effect and ownership cleanup; J4/J6 |
-| A11 | Narration, cues and Camera evaluation share explicit session time | PRESERVED — bounded steps and Camera evaluation are shared | Preserve one clock/evaluator path; J4/J7 |
-| A12 | Auto uses overlap, finite work, queued movement and scheduled persistent start | PRESENT BUT WEAKER — estimator uses a new default Scene, ignores some activation semantics and per-View movement preferences | Resolve current adapters and eligible work, include actual entry/holds once; J4/J7 |
-| A13 | Auto estimate and speed breakdown available in optional detail | PRESENT BUT WEAKER — timing math exists, ordinary editable Presentation estimate/speed context is absent | Camera-owned movement preference; derived estimate in Card detail, never an authored Presentation duration; J4/J7 |
-| A14 | Caption passage, full transcript and caption toggle share playhead | PRESENT BUT WEAKER — moving word-window caption only, no transcript/toggle or paused caption | Restore coherent passage captions and transcript; simulated text media remains sufficient; J4/J5 |
-| A15 | Missing cues/signals and dependency cycles explain local repair | PRESENT BUT WEAKER — cycles/missing use are detected, missing marker/availability/boundary validation is incomplete | Validate supported signal and scope; disable affected work, estimate valid remainder, repair explicitly; J4/J8 |
-| A16 | Declared channel replacement cannot be undone by stale work | INTENTIONALLY SUPERSEDED — donor broad last-command-wins is replaced with adapter-declared replacement/run ownership | Preserve F-compatible V2 rule; unsupported exclusive conflicts reject; J4/J8 |
+| ID | V4.1/V2 behavior or invariant | Current V2 classification and reason | Provenance | Final decision / proof |
+| --- | --- | --- | --- | --- |
+| A1 | Operate subject → Use in Experience | MISSING — generic capture form replaces audition/capture | D+V | Restore as the primary authoring path, keep form for advanced rebind only; J1 |
+| A2 | Edit an already captured operation without making a duplicate | MISSING — no selected-subject captured-use binding | D+N | Update the uniquely matching use; if ambiguous, ask which existing Activity or explicitly Capture another; J1/J8 |
+| A3 | Activities start at Experience, Presentation entry or dependency signal | SEMANTICALLY CHANGED — `armScope` uses organization; most start kinds are ignored | D | Restore explicit arming/activation scope independent of organization; J4 |
+| A4 | Dependency listener may be visit-local or Experience-wide | MISSING — after references have no independent arming scope | D | Restore those two bounded listener scopes; do not create a general scheduler; J4 |
+| A5 | End boundary distinct from organizational home | PRESENT BUT WEAKER — visit/Experience fields exist, no actual boundary picker; completion boundary not fully represented | D+V | Restore visit, completion and Experience boundaries plus adapter-defined result retention; J4/J8 |
+| A6 | Casing completes → rotor starts; pending rotor disarms on early departure | PRESERVED — fixture and runtime support a local completion dependency | D | Preserve and expose editable example; J4 |
+| A7 | Cancel / Finish / Continue differ | PRESERVED — interruption defaults and run tokens implement the core policies | D+V | Retain type defaults and optional detail; add boundary/retention cases omitted by present tests; J4 |
+| A8 | Finite state/motion result survives completion to its chosen boundary | PRESERVED — completion does not erase all overrides | D+V | Preserve; test a boundary crossed during Finish and newer ownership; J4 |
+| A9 | Persistent rotor crosses departure; visitor Stop remains effective | PRESENT BUT WEAKER — current `armScope` can reissue an Experience-bound use on a repeated Presentation visit | D+V | Keep a started persistent invocation; no duplicate/reclaim on framing, rejoin or continuation; J4/J5 |
+| A10 | Local narration/highlight cease on ordinary departure | PRESENT BUT WEAKER — narration cleanup exists; Machine highlight is missing and held/missing cases are incomplete | D+V | Restore real local effect and ownership cleanup; J4/J6 |
+| A11 | Narration, cues and Camera evaluation share explicit session time | PRESERVED — bounded steps and Camera evaluation are shared | D+V | Preserve one clock/evaluator path; J4/J7 |
+| A12 | Auto uses overlap, finite work, queued movement and scheduled persistent start | PRESENT BUT WEAKER — estimator uses a new default Scene, ignores some activation semantics and per-View movement preferences | D+V | Resolve current adapters and eligible work, include actual entry/holds once; J4/J7 |
+| A13 | Auto estimate and speed breakdown available in optional detail | PRESENT BUT WEAKER — timing math exists, ordinary editable Presentation estimate/speed context is absent | D+V | Camera-owned movement preference; derived estimate in Card detail, never an authored Presentation duration; J4/J7 |
+| A14 | Caption passage, full transcript and caption toggle share playhead | PRESENT BUT WEAKER — moving word-window caption only, no transcript/toggle or paused caption | D | Restore coherent passage captions and transcript; simulated text media remains sufficient; J4/J5 |
+| A15 | Missing cues/signals and dependency cycles explain local repair | PRESENT BUT WEAKER — cycles/missing use are detected, missing marker/availability/boundary validation is incomplete | D+V | Validate supported signal and scope; disable affected work, estimate valid remainder, repair explicitly; J4/J8 |
+| A16 | Declared channel replacement cannot be undone by stale work | INTENTIONALLY SUPERSEDED — donor broad last-command-wins is replaced with adapter-declared replacement/run ownership | V | Preserve F-compatible V2 rule; unsupported exclusive conflicts reject; J4/J8 |
 
 ### Visitor interactions and agency
 
-| ID | V4.1 behavior in current vocabulary | Current V2 classification and reason | Final decision / proof |
-| --- | --- | --- | --- |
-| I1 | Interaction is an offer, not an automatic Activity | PRESERVED — scope arming excludes interactions | Preserve; station invocation must not silently turn an offer into automatic work; J6/J7 |
-| I2 | Activation subject differs from invocation target: Switch → Light | PRESERVED — `triggerSubjectId` is independent | Keep this distinction visible in subject-local offer capture/repair; J6/J8 |
-| I3 | Interaction without a Presentation or Guide | PRESENT BUT HARD TO REACH — pure activation works, but UI capture needs Presentation context and Preview rejects no Presentation | Provide Experience-wide offer capture and world-only visitor session; J6 |
-| I4 | Availability is Experience-wide or contextual, independent of organization | PRESENT BUT WEAKER — model filter exists; acceptOffer defaults contextual and has no editable availability | Restore plain availability picker/default Experience-wide; J6/J8 |
-| I5 | Toggle current state, explicit Play/Stop and accessible controls | PRESENT BUT WEAKER — runtime toggle exists without author control; generic value form lacks adapter action vocabulary | Preserve descriptor-driven actions and explicit visitor toggle; J6 |
-| I6 | Activate a real subject while exploring | SEMANTICALLY CHANGED — pointer handler immediately enters drag mode and cannot activate subjects | Distinguish click from drag at pointer-up; keyboard/panel activation remains available; J5/J6 |
-| I7 | Multiple offers on one activation subject require deliberate choice | PRESENT BUT WEAKER — unified pointer silently picks the first match | Show available offers; never silently choose by enumeration order; J6 |
-| I8 | Interaction changes no Camera or Guide state unless explicitly authored | PRESERVED — ordinary capability offers are independent | Preserve; test completed Light result and Piano Stop during exploration; J6 |
-| V1 | Explore releases Camera/Auto but keeps appropriate activities | PRESERVED — reducer supports release and source isolation | Preserve; demonstrate through actual Stage movement; J5 |
-| V2 | Rejoin from actual pose, preserve visit, Auto remains off | PRESENT BUT WEAKER — Guide rejoin exists; standalone rejoin has no framing target and remaining work is rebuilt from full work | Rejoin current Presentation/View intention with fresh Camera evaluation and supported remainder; J5 |
-| V3 | Missed Camera cues do not replay after exploration | PRESERVED — exploration suppresses cue requests and clears queue | Preserve future-only cue behavior and generation cancellation; J5 |
-| V4 | Manual Next/Previous remain usable during exploration and unfinished movement | SEMANTICALLY CHANGED — Travel introduces departure-pose wait/refusal | Allow permitted manual continuation, evaluate live-start movement through Camera; explicit gaps/Gates still refuse; J3/J5/J7 |
-| V5 | Visitors select any available Presentation View without restarting narration | PRESENT BUT WEAKER — runtime does not restart, but UI exposes only `choice` role and queues explicit choice behind movement | Expose all eligible uses including entry; deliberate choice redirects, automatic cues queue; J2/J5 |
-| V6 | Previous follows actual history, ordinary return is a fresh local visit | PRESERVED — history is session state and visits are distinct | Keep; explain Back versus detour Return; J3/J5 |
-| V7 | Detour preserves parent visit/playhead, subject policies, explicit return | PRESENT BUT WEAKER — pause/bookmark exists; only detour-kind UI, no off-Guide route editor, parent framing/remaining-work restore is incomplete | Retain bounded pause/resume and explicit go versus detour; return from actual pose without duplicate entry; J5 |
-| V8 | Final position remains explorable and exit clears effects | PRESERVED — session teardown and final navigation state exist | Preserve and exercise real controls; J5/J11 |
+| ID | V4.1/V2 behavior or invariant | Current V2 classification and reason | Provenance | Final decision / proof |
+| --- | --- | --- | --- | --- |
+| I1 | Interaction is an offer, not an automatic Activity | PRESERVED — scope arming excludes interactions | D+V | Preserve; station invocation must not silently turn an offer into automatic work; J6/J7 |
+| I2 | Activation subject differs from invocation target: Switch → Light | PRESERVED — `triggerSubjectId` is independent | D | Keep this distinction visible in subject-local offer capture/repair; J6/J8 |
+| I3 | Interaction without a Presentation or Guide | PRESENT BUT HARD TO REACH — pure activation works, but UI capture needs Presentation context and Preview rejects no Presentation | D+V | Provide Experience-wide offer capture and world-only visitor session; J6 |
+| I4 | Availability is Experience-wide or contextual, independent of organization | PRESENT BUT WEAKER — model filter exists; acceptOffer defaults contextual and has no editable availability | D | Restore plain availability picker/default Experience-wide; J6/J8 |
+| I5 | Toggle current state, explicit Play/Stop and accessible controls | PRESENT BUT WEAKER — runtime toggle exists without author control; generic value form lacks adapter action vocabulary | D+V | Preserve descriptor-driven actions and explicit visitor toggle; J6 |
+| I6 | Activate a real subject while exploring | SEMANTICALLY CHANGED — pointer handler immediately enters drag mode and cannot activate subjects | D | Distinguish click from drag at pointer-up; keyboard/panel activation remains available; J5/J6 |
+| I7 | Multiple offers on one activation subject require deliberate choice | PRESENT BUT WEAKER — unified pointer silently picks the first match | D | Show available offers; never silently choose by enumeration order; J6 |
+| I8 | Interaction changes no Camera or Guide state unless explicitly authored | PRESERVED — ordinary capability offers are independent | D+V | Preserve; test completed Light result and Piano Stop during exploration; J6 |
+| V1 | Explore releases Camera/Auto but keeps appropriate activities | PRESERVED — reducer supports release and source isolation | D+V | Preserve; demonstrate through actual Stage movement; J5 |
+| V2 | Rejoin from actual pose, preserve visit, Auto remains off | PRESENT BUT WEAKER — Guide rejoin exists; standalone rejoin has no framing target and remaining work is rebuilt from full work | D+V | Rejoin current Presentation/View intention with fresh Camera evaluation and supported remainder; J5 |
+| V3 | Missed Camera cues do not replay after exploration | PRESERVED — exploration suppresses cue requests and clears queue | D+V | Preserve future-only cue behavior and generation cancellation; J5 |
+| V4 | Manual Next/Previous remain usable during exploration and unfinished movement | SEMANTICALLY CHANGED — Travel introduces departure-pose wait/refusal | D+V+N | Allow permitted manual continuation, evaluate live-start movement through Camera; explicit gaps/Gates still refuse; J3/J5/J7 |
+| V5 | Visitors select any available Presentation View without restarting narration | PRESENT BUT WEAKER — runtime does not restart, but UI exposes only `choice` role and queues explicit choice behind movement | D+V | Expose all eligible uses including entry; deliberate choice redirects, automatic cues queue; J2/J5 |
+| V6 | Previous follows actual history, ordinary return is a fresh local visit | PRESERVED — history is session state and visits are distinct | D+V+N | Retain actual-history Back; N2 makes every ordinary Stop return fresh, including repeated Presentations; distinguish experimental detour Return; J3/J5 |
+| V7 | Detour preserves parent visit/playhead, subject policies, explicit return | PRESENT BUT WEAKER — pause/bookmark exists; only detour-kind UI, no off-Guide route editor, parent framing/remaining-work restore is incomplete | D+V+T | Preserve bookmark/identity/ownership guarantees; characterize experimental parent pause/resume, distinguish go/detour and return from live pose without duplicate entry; J5 |
+| V8 | Final position remains explorable and exit clears effects | PRESERVED — session teardown and final navigation state exist | D+V | Preserve and exercise real controls; J5/J11 |
 
 ### Guide and revision behavior
 
-| ID | V4.1 behavior in current vocabulary | Current V2 classification and reason | Final decision / proof |
-| --- | --- | --- | --- |
-| G1 | Guide optional; add Presentation makes exactly one Stop | PRESERVED — `addStop` references the Presentation as a whole | Preserve default; J3 |
-| G2 | Repeated Presentation occurrences keep distinct Stop identity | PRESERVED — stable separate IDs and references | Preserve, with private runtime visits and independent entry/Next/pacing; J3/J8 |
-| G3 | Default Next comes only from Guide order; explicit target/end overrides | PRESERVED — one resolver, not Camera order | Preserve for controls, runtime and Presenter; J3 |
-| G4 | Reorder/remove reconnects only default order; named references stay repairable | PRESERVED — model preserves explicit target references | Preserve with actual product revision/Undo; J3/J8 |
-| G5 | Entry: Presentation / specific View / keep viewpoint | PRESENT BUT WEAKER — model/control exists, but hold cues and later-entry cue cutoff are missing | Apply policy for the visit; preserve all Presentation contents, suppress earlier automatic viewing when a later entry is deliberately chosen; J3/J4 |
-| G6 | Ordinary Stop editing in compact Guide context | PRESENT BUT HARD TO REACH — Peek selection expands occurrence Deck | Preserve compact awareness, select without expanding, use normal Stop Card; explicit Overview/L2 only; J3/J10 |
-| G7 | Auto / dwell / supported signal pacing | PRESENT BUT WEAKER — runtime supports signal, UI offers Auto or fixed Dwell 5s | Restore editable advanced dwell/signal; default Auto stays setup-free; J3/J4 |
-| G8 | Explicit Gate is distinct from duration/readiness | SEMANTICALLY CHANGED — Travel readiness is checked by the same permission result | Separate authored permission, route validity and readiness; no implicit media/movement Gate; J3/J7 |
-| G9 | Labelled go choices, detour routes and return | PRESENT BUT WEAKER — UI adds only detours to main-Guide Stops, labels/kind not editable | One optional side sequence is sufficient; bounded add/edit/remove and visitor routing; J5/J8 |
-| G10 | Explicit View checkpoint creation, never default promotion | INTENTIONALLY SUPERSEDED — donor's legacy batch helper does not fit ordinary Presentation occurrence language | Use explicit Add another Stop + Enter through View; retire batch-promote-Views shortcut; J3 |
-| G11 | Same-Presentation checkpoint hop can share narration visit | SEMANTICALLY CHANGED — V2 starts a new visit for each Stop | Preserve V2 distinct visits; keep continuous narration only for View changes within a visit and saved detour return. Explicit donor trial retirement; J2/J3/J5 |
-| R1 | Shared/local View edits; Stop-entry-only detaches atomically | PRESERVED — V2 improves reach/Ask and isolates private entry from Set | Preserve; connections are not implicitly cloned and resulting Travel gaps stay explicit; J8 |
-| R2 | Local/shared narration and operation definition edits | PRESENT BUT WEAKER — shared definition proposal exists, local detachment/linked duplication controls absent | Restore bounded copy/link/detach and accurate reach; no general Presentation fork; J8 |
-| R3 | Add, rename, duplicate, replace, regroup and remove uses | PRESENT BUT WEAKER — add/remove and some names exist, contribution revision is incomplete | Restore those bounded operations; organization never rewrites lifecycle; J8 |
-| R4 | Remove Presentation keeps contributions and broken bindings repairable | MISSING — no actual Presentation removal operation | Preserve reusable definitions and unresolved references, offer local repair/remove; never silently promote retained content to Experience-start; J8 |
-| R5 | Missing subject/trigger/target/View/cue/availability/Next/Gate repair | PRESENT BUT WEAKER — diagnostics cover a subset and most product repair writers are absent | Routed notices and compatible rebind/remove controls; required behavior refuses locally, optional behavior disables honestly; J8 |
-| R6 | Missing framing never silently becomes intentional hold | INTENTIONALLY SUPERSEDED — donor `removeUse` converts a referenced explicit View position to hold | Preserve V2/F unresolved binding; explicit keep-viewpoint is a separate edit; J8 |
-| R7 | Source edits, auditions and Preview effects stay separate | PRESENT BUT WEAKER — source/Preview isolated, donor authoring audition omitted | Restore ephemeral auditions outside authored snapshots/history; J1/J6/J11 |
-| R8 | Continuous gesture/typing burst is one Undo edit | PRESENT BUT WEAKER — Camera drag is atomic; text commits are discrete and capability audition/edit gestures are absent | Preserve aggregate history; accepting a value/burst once or a completed gesture once, cancellation zero; J1/J8/J10 |
+| ID | V4.1/V2 behavior or invariant | Current V2 classification and reason | Provenance | Final decision / proof |
+| --- | --- | --- | --- | --- |
+| G1 | Guide optional; add Presentation makes exactly one Stop | PRESERVED — `addStop` references the Presentation as a whole | D+V | Preserve default; J3 |
+| G2 | Repeated Presentation occurrences keep distinct Stop identity | PRESERVED — stable separate IDs and references | D+V+N | Preserve distinct authored identity and local entry/Next/pacing; runtime fresh-visit policy is owner-ratified N2/G11, not donor continuity parity; J3/J8 |
+| G3 | Default Next comes only from Guide order; explicit target/end overrides | PRESERVED — one resolver, not Camera order | D+V | Preserve for controls, runtime and Presenter; J3 |
+| G4 | Reorder/remove reconnects only default order; named references stay repairable | PRESERVED — model preserves explicit target references | D+V | Preserve with actual product revision/Undo; J3/J8 |
+| G5 | Entry: Presentation / specific View / keep viewpoint | PRESENT BUT WEAKER — model/control exists, but hold cues and later-entry cue cutoff are missing | D+V+T | Preserve entry/hold content guarantees; characterize experimental later-entry cursor cutoff without narration seeking; J3/J4 |
+| G6 | Ordinary Stop editing in compact Guide context | PRESENT BUT HARD TO REACH — Peek selection expands occurrence Deck | D+V | Preserve compact awareness, select without expanding, use normal Stop Card; explicit Overview/L2 only; J3/J10 |
+| G7 | Auto / dwell / supported signal pacing | PRESENT BUT WEAKER — runtime supports signal, UI offers Auto or fixed Dwell 5s | D+V | Restore editable advanced dwell/signal; default Auto stays setup-free; J3/J4 |
+| G8 | Explicit Gate is distinct from duration/readiness | SEMANTICALLY CHANGED — Travel readiness is checked by the same permission result | D+V+N | Separate authored permission, route validity and readiness; no implicit media/movement Gate; J3/J7 |
+| G9 | Labelled go choices, detour routes and return | PRESENT BUT WEAKER — UI adds only detours to main-Guide Stops, labels/kind not editable | D+V | One optional side sequence is sufficient; bounded add/edit/remove and visitor routing; J5/J8 |
+| G10 | Explicit View checkpoint creation, never default promotion | INTENTIONALLY SUPERSEDED — donor's legacy batch helper does not fit ordinary Presentation occurrence language | V+N | Use explicit Add another Stop + Enter through View; retire batch-promote-Views shortcut; J3 |
+| G11 | Same-Presentation checkpoint hop can share narration visit | SEMANTICALLY CHANGED — V2 starts a new visit for each Stop | V+N | Owner-ratified N2: fresh Stop visit, preserving C8 identity and superseding donor checkpoint continuity; within-visit View continuity retained, detour pause remains a trial; J2/J3/J5 |
+| R1 | Shared/local View edits; Stop-entry-only detaches atomically | PRESERVED — V2 improves reach/Ask and isolates private entry from Set | D+V | Preserve; connections are not implicitly cloned and resulting Travel gaps stay explicit; J8 |
+| R2 | Local/shared narration and operation definition edits | PRESENT BUT WEAKER — shared definition proposal exists, local detachment/linked duplication controls absent | D+V | Restore bounded copy/link/detach and accurate reach; no general Presentation fork; J8 |
+| R3 | Add, rename, duplicate, replace, regroup and remove uses | PRESENT BUT WEAKER — add/remove and some names exist, contribution revision is incomplete | D+V | Restore those bounded operations; organization never rewrites lifecycle; J8 |
+| R4 | Remove Presentation keeps contributions and broken bindings repairable | MISSING — no actual Presentation removal operation | D+V | Preserve reusable definitions and unresolved references, offer local repair/remove; never silently promote retained content to Experience-start; J8 |
+| R5 | Missing subject/trigger/target/View/cue/availability/Next/Gate repair | PRESENT BUT WEAKER — diagnostics cover a subset and most product repair writers are absent | D+V | Routed notices and compatible rebind/remove controls; required behavior refuses locally, optional behavior disables honestly; J8 |
+| R6 | Missing framing never silently becomes intentional hold | INTENTIONALLY SUPERSEDED — donor `removeUse` converts a referenced explicit View position to hold | V | Preserve V2/F unresolved binding; explicit keep-viewpoint is a separate edit; J8 |
+| R7 | Source edits, auditions and Preview effects stay separate | PRESENT BUT WEAKER — source/Preview isolated, donor authoring audition omitted | D+V | Restore ephemeral auditions outside authored snapshots/history; J1/J6/J11 |
+| R8 | Continuous gesture/typing burst is one Undo edit | PRESENT BUT WEAKER — Camera drag is atomic; text commits are discrete and capability audition/edit gestures are absent | D+V | Preserve aggregate history; accepting a value/burst once or a completed gesture once, cancellation zero; J1/J8/J10 |
 
 ### Camera, coordination, Preview, Presenter and fixture
 
-| ID | V4.1 behavior in current vocabulary | Current V2 classification and reason | Final decision / proof |
-| --- | --- | --- | --- |
-| C1 | Ordinary Travel needs no manual Camera graph construction | SEMANTICALLY CHANGED — Travel flag and per-origin Connect are separate required steps | Explicit Travel prepares Camera-owned direct support in one compound acceptance; §5; J7 |
-| C2 | One adapter evaluates movement, timing, interruption and actual-pose rejoin | INTENTIONALLY SUPERSEDED — V2 separates Camera ownership from donor's straight tween/Experience View definitions | Keep V2 authority; extend supported live-start invocation, no donor Camera transplant; J5/J7 |
-| C3 | Speed/Cut affect movement and Auto estimates without double counting | PRESENT BUT WEAKER — route pace is real, View requests/estimate default to auto and present entry cuts | Expose Camera preference in detail; use actual invoked movement in estimates exactly once; J4/J7 |
-| C4 | Advanced anchors, multiple origins and honest gaps | PRESERVED — a V2 addition with real Camera evaluation | Preserve as deliberately invoked depth; J7/J10 |
-| C5 | Local station + invoke + hold coordination | PRESENT BUT WEAKER — V2 addition is real, but only constructed by advanced QA and has ambiguous entry-plus-station activation/event focus | Required loaded example and real product walkthrough; exact invocation ownership, counterpart focus and runtime proof; J7 |
-| C6 | Simple framing refinements without a Stage property dashboard | PRESENT BUT WEAKER — truthful V2 precision adds a floating list of six property/grip modes | Preserve Outside/Through/Plan and direct grips; move property depth to Camera Card; J10 |
-| X1 | Preview selected Presentation without a Guide, even when one exists | PRESERVED — selected Presentation runtime starts standalone | Keep explicit Preview this Presentation and Preview Guide entries; J1/J3 |
-| X2 | Preview interaction-only Experience / freely open moments | PRESENT BUT WEAKER — runtime parts exist, product preview requires a Presentation | Restore explicit Experience Preview with no fabricated Presentation/Stop; J5/J6 |
-| X3 | Source/session and author/visitor selection isolation | PRESERVED — snapshot, private visitor state and authoring suspension/return | Keep V2's stronger exact context return; J11 |
-| X4 | Reset baseline World + genuinely empty Experience; Load Example editable/no playback | SEMANTICALLY CHANGED — reset creates placeholder Presentation; loader is reduced | Empty Reset Experience; rich native example, clear transients/history, preserve accepted Museum geometry; §7; J1/J11 |
-| X5 | Presenter has quickstart, advanced instructions and observed outcomes | PRESENT BUT WEAKER — four titles, no predicates, invisible in Preview | Observational/dismissible two-part walkthrough across Preview; §8; J9 |
-| X6 | Presenter Back/Skip/close never authors; provider trials use visible commands | PRESENT BUT WEAKER — navigation observational, donor and V2 loader shortcuts are mixed into review surfaces | Separate explicit Reset/Load Example commands; retire Presenter provider mutation buttons; J9 |
-| X7 | Complete donor example: machine/cues/lifetimes/interactions/comparison/Wall/environment/repair | PRESENT BUT WEAKER — only part of the example is loaded; six-Stop fixture is a different shallow composition | Adapt donor concepts into the existing Museum; retain conformance stress specimen separately; §7; J4–J8 |
-| X8 | End-to-end creator jobs, transitions and manual comprehension | PRESENT BUT WEAKER — advanced states and mechanism tests dominate current proof | Journeys from Reset are blocking, with source/runtime results and manual prediction trials; §9 |
+| ID | V4.1/V2 behavior or invariant | Current V2 classification and reason | Provenance | Final decision / proof |
+| --- | --- | --- | --- | --- |
+| C1 | Ordinary Travel needs no manual Camera graph construction | SEMANTICALLY CHANGED — Travel flag and per-origin Connect are separate required steps | D+V+N | Owner-ratified N1: explicit Travel prepares Camera-owned direct support in one compound acceptance, superseding C8 manual graph setup; §5; J7 |
+| C2 | One adapter evaluates movement, timing, interruption and actual-pose rejoin | INTENTIONALLY SUPERSEDED — V2 separates Camera ownership from donor's straight tween/Experience View definitions | D+V+N | Retain donor live-pose behavior through V2 Camera authority; extend ratified N1 invocation support without transplanting the donor Camera mechanism; J5/J7 |
+| C3 | Speed/Cut affect movement and Auto estimates without double counting | PRESENT BUT WEAKER — route pace is real, View requests/estimate default to auto and present entry cuts | D+V | Expose Camera preference in detail; use actual invoked movement in estimates exactly once; J4/J7 |
+| C4 | Advanced anchors, multiple origins and honest gaps | PRESERVED — a V2 addition with real Camera evaluation | V | Preserve as deliberately invoked depth; J7/J10 |
+| C5 | Local station + invoke + hold coordination | PRESENT BUT WEAKER — V2 addition is real, but only constructed by advanced QA and has ambiguous entry-plus-station activation/event focus | V+N | Required loaded example and real product walkthrough; exact invocation ownership, counterpart focus and runtime proof; J7 |
+| C6 | Simple framing refinements without a Stage property dashboard | PRESENT BUT WEAKER — truthful V2 precision adds a floating list of six property/grip modes | D+V | Preserve Outside/Through/Plan and direct grips; move property depth to Camera Card; J10 |
+| X1 | Preview selected Presentation without a Guide, even when one exists | PRESERVED — selected Presentation runtime starts standalone | D+V | Keep explicit Preview this Presentation and Preview Guide entries; J1/J3 |
+| X2 | Preview interaction-only Experience / freely open moments | PRESENT BUT WEAKER — runtime parts exist, product preview requires a Presentation | D+V | Restore explicit Experience Preview with no fabricated Presentation/Stop; J5/J6 |
+| X3 | Source/session and author/visitor selection isolation | PRESERVED — snapshot, private visitor state and authoring suspension/return | D+V | Keep V2's stronger exact context return; J11 |
+| X4 | Donor whole-demo Reset gives baseline World/empty Experience; Load Example editable/no playback | SEMANTICALLY CHANGED — unified reset creates placeholder Presentation, replaces Camera/Scene source and clears aggregate history; loader is reduced | D+V+N | Recover empty Experience and rich example; Experience Reset preserves World/Camera source and shared history in one Undoable edit; loader adds/reuses Camera artifacts without replacement; §7; J1/J11 |
+| X5 | Presenter has quickstart, advanced instructions and observed outcomes | PRESENT BUT WEAKER — four titles, no predicates, invisible in Preview | D+V | Observational/dismissible two-part walkthrough across Preview; §8; J9 |
+| X6 | Presenter Back/Skip/close never authors; provider trials use visible commands | PRESENT BUT WEAKER — navigation observational, donor and V2 loader shortcuts are mixed into review surfaces | D+V+N | Separate explicit Reset/Load Example commands; retire Presenter provider mutation buttons; J9 |
+| X7 | Complete donor example: machine/cues/lifetimes/interactions/comparison/Wall/environment/repair | PRESENT BUT WEAKER — only part of the example is loaded; six-Stop fixture is a different shallow composition | D+V | Adapt donor concepts into the existing Museum; retain conformance stress specimen separately; §7; J4–J8 |
+| X8 | End-to-end creator jobs, transitions and manual comprehension | PRESENT BUT WEAKER — advanced states and mechanism tests dominate current proof | D+V | Journeys from Reset are blocking, with source/runtime results and manual prediction trials; §9 |
+
 
 ## 3. Reconciled model and exact policy decisions
 
@@ -332,14 +354,22 @@ viewing separately and never change Guide position. Explicit manual View choice
 redirects current Camera work; automatic cues may queue behind an active move.
 The active arrived View and queued/requested View are not conflated.
 
-**Intentional donor loss:** separate Stops always produce distinct visits, even
+**N2 — owner-ratified C9 decision, 2026-10-04:** separate Stops always produce distinct visits, even
 when adjacent Stops reference the same Presentation. Local narration restarts on
 an ordinary new Stop; past completion cannot unlock its Gate. The donor's
 same-Presentation checkpoint continuity is retired because it made distinct
 occurrences act like View steps. Continuous framing/narration belongs inside one
-Presentation visit; detour return resumes its saved parent visit. F requires
-private visit/run identity, while narration restart is this plan's product
-recommendation, not a claim that F mandates restarting audio.
+Presentation visit. This preserves C8's distinct Stop/visit/run identities and
+intentionally supersedes V4.1's adjacent same-Presentation checkpoint continuity.
+F requires private visit/run identity; the narration restart policy is an explicit
+owner product decision, not a claim that F mandates restarting audio.
+
+Ratification does not settle the donor's **checkpoint/cursor trial**: a later
+entry View frames without seeking narration and suppresses earlier cue requests
+as characterized above. The **detour-pause trial** (§6) is also still experimental.
+A saved parent visit is distinct from an ordinary new Stop; pause/resume versus
+continuation expectations require manual evidence. Neither trial can reverse N2
+or become a permanent narration cursor/pause engine through a green test.
 
 Guide order is the only default Next authority. Explicit target/end overrides
 and labelled go/detour choices remain Experience facts. One main Guide plus one
@@ -358,8 +388,10 @@ explanation → accept useful Auto framing with Capture (or capture current view
 → select/operate Machine casing → Use in this Presentation → Preview.
 
 The visible result is explanation/caption, useful framing and the actual casing
-effect. Model result: one Presentation, one narration use, one Camera View/use,
-one capability Activity, zero Stops/connections. Preview is a private visit.
+effect. Model result: one Presentation, one narration use, one newly captured Camera
+View/use and one capability Activity, zero Stops and zero new connections.
+Experience Reset may retain pre-existing Camera artifacts; prove deltas against
+the preserved baseline, not an empty Camera document. Preview is a private visit.
 Exit restores the exact authoring context. No Guide, route, lifecycle/cue editor,
 precision rig, timing field or schema term is required. Auto can be suggested at
 creation but never authors Camera data until Capture.
@@ -402,20 +434,22 @@ must end here; advanced work is not required to fix missing defaults.
 | Revise framing locally | Camera Card / supported local scope / accept → detach-and-retarget once → only chosen use or Stop entry changes, honest route consequences |
 | Repair loss | World Machine profile replacement / repair notice / compatible rebind or remove → broken original instruction preserved until acceptance → unaffected narration/Guide still usable; required Gate explains refusal |
 
-## 5. Camera-owned default Travel — recommended decision
+## 5. Camera-owned default Travel — owner-ratified C9 decision N1
 
-**Recommendation: choosing Travel explicitly prepares the missing direct Camera
-connections for that Seam, then selects Travel, in one aggregate authored edit.**
+**N1 — owner-ratified, 2026-10-04: choosing Travel explicitly prepares the missing
+direct Camera connections for that Seam, then selects Travel, in one aggregate
+authored edit; permitted continuation invokes Camera from the actual live pose.**
 Default Guide-add remains Cut. Presentation Set membership, Guide membership,
 selection, View addition and Preview never generate connectivity. Ordinary Travel
 is deliberately requested; it is not an inference from coexistence.
 
-| Option evaluated | Judgment |
-| --- | --- |
-| Travel plus per-origin Connect/graph construction | Retire as the ordinary path: truthful but makes a routine creator job depend on Camera topology knowledge |
-| Separate lightweight Create route | Keep as advanced repair/preparation if useful; as the default it adds a concept/action the explicit Travel request can already authorize |
-| Runtime-only implicit direct traversal | Reject for this prototype: obscures which Camera support was authored, is harder to edit/reuse/diagnose, and risks a hidden fallback path |
-| Travel prepares direct support through Camera | Recommend: narrow explicit user intent, reusable/editable Camera-owned support, transparent consequences and one coherent history result |
+This preserves V4.1's ordinary Travel and early/manual continuation without graph
+surgery. It supersedes the donor's unconnected Experience-owned straight movement
+mechanism, C8's required per-origin Connect recipe, and C8's departure-pose/finish-
+current-move permission restriction. C8's supported-route/gap truth, distinct
+Camera ownership, scope disclosure and single evaluator remain mandatory.
+Explicit preparation makes support authored, reusable, editable and Undoable.
+Advanced Edit route remains the deliberate door for exact path/anchor work.
 
 Experience supplies eligible origin View references and destination viewing
 intent. Camera resolves and validates those requests, reuses existing directed
@@ -489,7 +523,7 @@ Presentation viewing intent; Guide Rejoin restores current Stop intent. Both
 preserve visit/playhead and leave Auto off. Skip passed Camera cues, preserve future
 cues, and compute eligible remaining work rather than replaying a full estimate.
 
-Retain the bounded detour policy: pause parent narration/captions and automatic
+**Experimental detour-pause policy, not part of N1/N2 ratification:** pause parent narration/captions and automatic
 viewing; subject Activities follow their existing declared boundaries while the
 parent visit is suspended; a new detour has its own visit. Return resumes the saved
 parent run, viewpoint intention and supported remaining work from the live pose,
@@ -521,14 +555,40 @@ sufficient; Machine casing/rotor must be visibly distinct and operable, Piano,
 Light and Switch distinguishable, and imported mesh identified as a fixture stand-in.
 This is not asset import or T2 component authoring.
 
-Reset Experience clears Experience/Camera fixture authoring, effects, auditions,
-history and review observations, retaining the current accepted Museum baseline
-and real subject fixtures. It creates no placeholder Presentation. The existing
-full Reset may restore the accepted baseline World as well; label the distinction
-so Experience reset does not silently discard independent World source edits.
-Load Example is an explicit replace/load command with the same transient cleanup;
-it starts no playback, precision, Guide Overview or Camera motion. No fixture owns
-selection/task/standpoint. Explicit Open and Bring into view remain product actions.
+### Reset and fixture ownership
+
+**Reset Experience replaces only Experience-authored content with a genuinely
+empty Experience.** Layout, Scene and Camera source remain unchanged, including
+all Views/connections/anchors/pace, shared artifacts and currently unreferenced
+Camera artifacts. Capture and Travel preparation create Camera truth; being
+created while working in Experience does not transfer ownership to Experience.
+Reset is not Camera garbage collection.
+
+Reset clears the Experience session/effects, auditions and review observations,
+cancels proposals and invalid Experience tasks, and removes only selection/context
+that no longer resolves. It preserves valid World/Camera context and realized
+standpoint. Record one aggregate Undoable Experience reset; preserve earlier shared
+Undo history and use normal new-edit Redo-branch handling, never a whole-history
+wipe. Undo restores the old Experience references to the same retained Camera
+artifacts; it never restores viewpoint.
+
+Load Example/Load Conformance explicitly replace Experience fixture content and
+add Camera fixture artifacts through Camera operations, using fresh non-colliding
+identities or exact compatible reuse. They do not overwrite/delete existing Camera
+truth, rewind World edits/profile choices, or clear aggregate history. Reuse never
+changes an existing View/route silently. A now-missing or unsupported World target
+remains an honest repair case. Record one aggregate load command and clear the
+same Experience transients; playback, precision, Overview and Camera motion stay off.
+
+**For C9, ordinary Reset and loaders retain even unused prior Camera fixture data.**
+This avoids a resource-ownership/garbage-collection subsystem solely for cleanup.
+Whole-demo fixture cleanup may occur only in a separately labelled, explicit
+**Reload Museum demo baseline — replaces Layout, Scene, Camera and Experience**
+command, if supplied. That cross-domain replacement must declare its full scope;
+it is not an alias for Reset Experience and is not required by any creator journey.
+Fixture ownership never authorizes erasing an independently edited/shared artifact
+under the Experience label. No fixture owns selection/task/standpoint; Open and
+Bring into view remain product actions.
 
 | Tier | Required authoring/editability |
 | --- | --- |
@@ -651,7 +711,16 @@ usable standalone moment. Q8 demonstrates agency without requiring advanced
 authoring. The advanced walkthrough may explicitly load the rich example; it
 cannot mark quickstart authoring complete because that example exists.
 
-## 9. Acceptance — creator jobs first, then composition
+## 9. Acceptance — capability first, with blocking structural seams
+
+Capability completeness, ordinary jobs and truthful execution are the primary
+acceptance. PLATE shell structure, information homes, Peek/Stop/Overview hierarchy,
+Seam triptych, Camera/Experience ownership, spatial/temporal counterpart truth,
+selection versus depth, and basic responsive/reachability integrity remain
+blocking. Preserve current visual tokens and semantic species. Detailed density,
+typography, proportions and visual polish are for the subsequent dedicated UI/UX
+slice; they do not trigger a broad C9 visual refinement campaign. A visual defect
+that obscures identity, scope, a required action or counterpart still blocks C9.
 
 Each journey records **task → exact visible controls → authored result → runtime
 result**, including intermediate states, cancellation and revision. Source
@@ -663,8 +732,8 @@ but it cannot bypass visitor permission or substitute for one real-clock run.
 
 | Gate | Blocking proof |
 | --- | --- |
-| **J1 — standalone quickstart** | From genuinely empty Reset, actual subject-local controls create explanation/framing/Activity and Preview it, no forbidden advanced disclosure. Update captured value without duplication. Freeze all source/history; test Preview return |
-| **J2 — Presentation/View independence** | Add/reuse three Views with no Guide/edge; add one Stop only; cue and manual choice keep explanation/visit; opt-in suggested order is separate and does not rewrite entry or connectivity |
+| **J1 — standalone quickstart** | From genuinely empty Experience Reset, actual subject-local controls create explanation/framing/Activity and Preview it, no forbidden advanced disclosure. Compare Camera deltas to the retained baseline. Update captured value without duplication. Freeze all source/history; test Preview return |
+| **J2 — Presentation/View independence** | Add/reuse three Views with no Guide/new edge; add one Stop only; retained Camera baseline stays unchanged apart from explicit Capture. Cue and manual choice keep explanation/visit; opt-in suggestions do not rewrite entry or connectivity |
 | **J3 — simple Guide and entry/permission** | From J1 add A/B and Preview Guide directly, early Next by button/keyboard/Auto rules; compact Stop editing without Overview; repeated identity, order/explicit/end, hold and later-entry cutoff, Gate block/release/revisit |
 | **J4 — lifecycle and natural readiness** | Loaded/editable casing/rotor/local highlight; change start scope/home independently, dependency/retention/interruption, early departure, persistent carry, stale completion/newer command. Narration/caption/cues/estimates agree; finite and persistent overlap numeric oracle and actual route cost/holds counted once |
 | **J5 — agency and detours** | Real Stage drag, direct subject click during exploration, manual View/Next/Back during movement, standalone/Guide rejoin, independent Presentation opening/closing, go versus detour/return. Preserve visit or create a fresh one according to §3/§6; no queued past-cue replay |
@@ -672,23 +741,47 @@ but it cannot bypass visitor permission or substitute for one real-clock run.
 | **J7 — Travel and coordination** | Explicit Travel after Reset creates only scoped Camera support atomically, all real origins covered, no pairwise Set autoconnection. Live-start Next/redirect/rejoin path truthful and frozen-source. Loaded route/anchor/station/invoke/Hold reachable; counterpart focus, duration, stable refs, pace/geometry change, deletion repair, Cut/no other-route execution and exactly-once invocation |
 | **J8 — revision and repair** | Actual rename/copy/link/detach/replace/regroup/remove, contribution-local/shared and Stop-entry-local scope, profile loss and gain, issue links/rebind/remove, missing View/cue/availability/start/boundary/Next/Gate. Undo/Redo restores source relationships only, canceled proposals write zero |
 | **J9 — Presenter** | Quickstart and all advanced outcomes observe real work; Skip/Back/close/reopen/source load isolation; review aid works across Preview; no hidden authoring or weak “field present = succeeded” check |
-| **J10 — shell and instruments** | Retain six advanced specimens and required transition comparisons; add ordinary subject capability, compact Stop Card, revised Camera Card/Stage, loaded coordination focus. PLATE information homes, truthful geometry, one active tape, return, hit reachability at 1440×900 and 1024×768 |
-| **J11 — isolation and preservation** | Freeze authored Layout/Scene/Camera/Experience + history during cues/offers/early Next/Auto/detour/explore; editor writers inactive; exact Preview return, both-lens parking/Resume and World A–F/regression baselines retained |
+| **J10 — structural shell and instruments** | Targeted inspection of ordinary subject capability, compact Peek/Stop Card, deliberate Overview/L2, Seam triptych/local coordination and Camera Card/Stage. Correct PLATE information homes, disclosure/selection, truthful geometry/species/counterpart focus, one active tape and return. Critical actions/Card/grips reachable at 1440×900 and 1024×768; no exhaustive six-state/pair visual re-verdict |
+| **J11 — isolation and preservation** | Freeze authored Layout/Scene/Camera/Experience + history during cues/offers/early Next/Auto/detour/explore; editor writers inactive; exact Preview return, both-lens parking/Resume and World A–F/regression baselines retained. Reset with independent/shared/unreferenced Camera artifacts and prior World/Camera history preserves them; one Undo restores Experience only. Load twice and Undo preserves pre-existing source without ID collisions/overwrites |
 | **J12 — manual comprehension** | Presenter-closed Reset task completed without explanation of graph, lifecycle or schema; record actions/help/forced depth and donor comparison. Predict Stop/View counts, entry/Next, local/shared reach, detour pause, direct activation and station/Hold correspondence; inspect before/after model/runtime outcome |
 
-Manual checkpoints happen after the low-floor pair (C9.1/C9.3), after Travel/agency
-(C9.4/C9.5), and at the rich example/final composition gate (C9.7–C9.9).
-Record comprehension failures as blocking workflow defects where they breach the
-low-floor contract; improve controls before broadening the engine. For retained
-experimental entry-cursor/detour-pause policies, record predicted versus observed
-behavior explicitly; a test cannot ratify a policy by itself.
+### Manual/product checkpoints inside #113
 
-Keep C8's six full-window states, existing macro contracts M0–M8, and its required
-Set/Overview, Overview/expanded occurrence, route/coordination and precision/Preview
-comparison pairs. Add **compact Peek + Stop Card**, **subject audition → captured
-Activity → Preview**, and **station/event focus → runtime hold/invoke** transitions.
-Review all after the final shared UI change. Screenshots support visible hierarchy;
-they are never the primary acceptance for a creator job.
+| Checkpoint | Timing and blocking outcome |
+| --- | --- |
+| **MP1 — standalone low floor** | Immediately after C9.1, before C9.2 or C9.3 starts. A human reviewer completes J1 with Presenter closed: real subject → explanation/framing → capability capture → no-Guide Preview/return. Compare donor action/concept burden, record help/forced depth and source/runtime results. Fix the ordinary loop before investing in lifecycle or Guide work |
+| **MP2 — simple Guide and compact editing** | After C9.2/C9.3, before C9.4 or C9.5 starts. Repeat J1, add A/B, Preview Guide and Next; select/edit Stop at Peek, deliberately open/leave Overview, predict View/Stop counts and scope. Verify advanced lifecycle work did not raise the low floor. Fix workflow failures before high-risk Travel/agency work |
+| **MP3 — Travel and agency** | After C9.4/C9.5. Exercise explicit Travel preparation, early navigation, real exploration/rejoin, interaction and detour return; record predicted versus observed behavior, including experimental cursor/pause policies |
+| **MP4 — rich capability acceptance** | At C9.7–C9.9 completion. Walk the loaded route/station/invoke/Hold interaction, repair/revision and observational Presenter; recheck structural seams once after the final shared UI change. Accept capability semantics and structural integrity, with visual refinement assigned to its later slice |
+
+These are product-evidence checkpoints within the same PR, not new PRs or a
+single end-of-program review. MP1 and MP2 are dependencies: human outcome evidence
+must exist before their dependent work proceeds; automated assertions cannot
+substitute for comprehension. A breach of the low-floor contract blocks onward
+engine expansion. Trial expectation mismatches are recorded for policy evaluation;
+green execution tests establish neither permanent cursor nor detour-pause semantics.
+
+### Minimum structural/visual evidence
+
+Keep C8's six specimens as reference evidence and its structural M0–M8 guarantees:
+shared landmarks, information-driven breadth, Stage dominance, stable Card,
+Overview disclosure, Seam triptych/information homes, local coordination and
+independent Camera depth. Do not require fresh acceptance of every raster, dense
+composition or old comparison pair. Existing behavioral/structural assertions
+retain successor proof; incidental specimen geometry does not become a new gate.
+
+Reuse journey evidence. The final packet normally needs at most four representative
+fresh captures: subject capability Card, compact Peek/Stop Card, selected Seam with
+coordination, and precise Camera Card/Stage. Inspect deliberate Overview/L2 and
+Preview/return in their jobs; they do not need another specimen suite. Check key
+controls and shell landmarks at both supported viewport sizes, adding one narrow
+capture where it best proves reachability. Additional capture or a side-by-side
+comparison is justified only by a specific unresolved structural seam.
+
+No full QA-1–QA-6 regeneration campaign, exhaustive before/after pairs or final
+density/type/proportion tuning is required for C9 acceptance. Spatial facts,
+species and Stage ↔ strip correspondence must remain readable and truthful;
+screenshots merely support those interaction/structural findings.
 
 Existing accepted behavior must have successor proof before assertion replacement,
 under the [repository test doctrine][tests]. The specific C8 departure-wait test
@@ -704,7 +797,8 @@ are behavioral/wiring obligations, not new source-name pins.
 
 Run the unified Node model/runtime/Camera suite and the complete prototype QA
 axis driver with the new journey/Presenter checks; retain all World axes and
-existing mutation obligations. Keep the donor runnable and run its typecheck,
+existing mutation obligations. Automatic captures from those checks do not add
+manual specimen re-verdict obligations. Keep the donor runnable and run its typecheck,
 build, domain and browser regressions with owned browser resources per
 browser-hygiene. Report donor results separately from successor parity.
 
@@ -717,9 +811,10 @@ the fixture, erase historical references or claim merge readiness from green
 prototype tests. Restore it only through separately authorized work.
 
 Final C9 evidence records executable revision/hash, exact journey recipes,
-read-only authored/runtime snapshots, per-row parity dispositions, manual review
-outcomes, updated specimens and all verification results. Only then is #113's
-final external product review meaningful. Paper follows #113; no phase is closed
+read-only authored/runtime snapshots, provenance-separated per-row dispositions,
+MP1–MP4 outcomes, the minimal structural captures and all verification results.
+Capability acceptance hands visual refinement to the separately bounded UI/UX
+slice; it is not exhaustive visual sign-off or merge readiness. Paper follows #113; no phase is closed
 by this plan or by C9 completion alone.
 
 ## 10. Implementation slices in dependency order
@@ -733,15 +828,15 @@ requiring careful successor proof. It is not a calendar commitment.
 
 | Slice | Dependencies | Bounded work and review result | Gates / complexity |
 | --- | --- | --- | --- |
-| **C9.1 — restore the standalone creator loop** | None | Empty Reset, primary explanation/default narration, useful derived framing + explicit Capture, subject-local descriptor controls/audition/Use/update, honest Activity identity, no-Guide Preview. Introduce quickstart instructions and record baseline action comparison | J1/J11; **M**, main risk is source/audition/capture wiring |
-| **C9.2 — reconcile local composition execution** | C9.1 | Separate organization/activation/arming/boundary/retention; repair missing cue/scope validation; captions/transcript, several Views, opt-in suggestions, cue cutoff and hold policy; current-adapter Auto estimates. Incrementally migrate rich machine data | J2/J4; **L**, lifecycle and estimate/playback correspondence are the largest non-Camera work |
-| **C9.3 — normal Guide/Stop editing** | C9.1 + entry policy from C9.2 | Peek selection versus explicit L2, usable normal Stop Card, direct Preview Guide, one Stop per Presentation, order/target/end, default Auto plus advanced dwell/signal/Gate, repeated visits. Retire checkpoint-as-View-step semantics explicitly | J3/J10; **M**, existing model can be retained, selection/disclosure and runtime entry need joint proof |
-| **C9.4 — Camera default Travel and live invocation** | C9.2–C9.3 | One explicit Travel preparation transaction, truthful full-origin coverage, scoped reuse/repair, Camera-owned live-start/redirect evaluation and timing, no departure readiness Gate. Preserve advanced route/anchors/return and replace C8 restrictions with successor proof | J7/J11; **L**, highest ownership/Camera risk; stop if a second evaluator or production interface becomes necessary |
-| **C9.5 — visitor participation and agency** | C9.2–C9.4 | Interaction-only Preview, availability/trigger/target controls, multiple offers, click versus drag, all eligible Views, standalone rejoin/open/close, go choices and one side detour, parent bookmark/remaining-work behavior. Fixture and Presenter instructions accompany it | J5/J6; **L**, session transitions and run ownership need cross-case verification |
+| **C9.1 — restore the standalone creator loop** | None | Empty Experience Reset preserving World/Camera/history, primary explanation/default narration, useful derived framing + explicit Capture, subject-local descriptor controls/audition/Use/update, honest Activity identity, no-Guide Preview. Introduce quickstart instructions and demonstrate only the setup-free lifecycle defaults required by J1. Finish with MP1 before deeper work | J1/J11 + **MP1**; **M**, main risk is source/audition/capture wiring |
+| **C9.2 — reconcile local composition execution** | C9.1 + **MP1 accepted** | Separate organization/activation/arming/boundary/retention; repair missing cue/scope validation; captions/transcript, several Views, opt-in suggestions, experimental cue cutoff and hold policy; current-adapter Auto estimates. Incrementally migrate rich machine data | J2/J4; **L**, lifecycle and estimate/playback correspondence are the largest non-Camera work |
+| **C9.3 — normal Guide/Stop editing** | **MP1 accepted** + entry policy from C9.2 | Peek selection versus explicit L2, usable normal Stop Card, direct Preview Guide, one Stop per Presentation, order/target/end, default Auto plus advanced dwell/signal/Gate, owner-ratified fresh repeated visits. Finish the low-floor Guide proof with MP2 | J3/J10 + **MP2**; **M**, selection/disclosure and runtime entry need joint proof |
+| **C9.4 — Camera default Travel and live invocation** | C9.2–C9.3 + **MP2 accepted** | Implement ratified N1: one explicit Travel preparation transaction, truthful full-origin coverage, scoped reuse/repair, Camera-owned live-start/redirect evaluation and timing, no departure readiness Gate. Preserve advanced route/anchors/return and replace C8 restrictions with successor proof | J7/J11; **L**, highest ownership/Camera risk; stop if a second evaluator or production interface becomes necessary |
+| **C9.5 — visitor participation and agency** | C9.2–C9.4 + **MP2 accepted** | Interaction-only Preview, availability/trigger/target controls, multiple offers, click versus drag, all eligible Views, standalone rejoin/open/close, go choices and one side detour, experimental parent pause/bookmark behavior. Finish with MP3; fixture and Presenter instructions accompany it | J5/J6 + **MP3**; **L**, session transitions and run ownership need cross-case verification |
 | **C9.6 — useful revision and repair** | C9.2–C9.5 | Generic profiles/replacement controls, supported capability rebind and routed notices; definition copy/link/local/shared scope, regroup/removal preservation, missing reference repair and aggregate Undo. No universal graph cloning or story forks | J8; **M**, reach/cancellation and repair usability are the review risks |
 | **C9.7 — rich fixture and exercised local coordination** | C9.4–C9.6 | Finish donor example adaptation including native Wall/environment; load representative route/stations/invokes/holds. Fix activation duplication/event focus, edit duration/rebind/pace/anchor through UI, prove traversed-route-only execution; preserve stress fixture and update recipe | J4–J8/J10; **M**, existing strip/evaluator reused; runtime-safe Wall adapter must reuse World representation |
 | **C9.8 — concise Camera precision surface** | C9.3–C9.4 | Move property/mode depth into Camera Card; keep direct Stage grips, active tape, postures, truthful geometry and current-context return. No new manipulation system or general gizmo | J10/J11; **S–M**, chiefly disclosure and hit/focus continuity |
-| **C9.9 — Presenter completion and final acceptance** | C9.1–C9.8 | Complete outcome predicates and Preview-visible read-only instructions, all 18 required walkthrough topics, manual comprehension checkpoints, parity dispositions, final transitions/visual comparison and repository gates. Publish review evidence only after final executable freezes | J1–J12; **M**, integration/review effort; tests and Presenter already grow in earlier increments |
+| **C9.9 — Presenter completion and capability acceptance** | C9.1–C9.8; **MP1–MP3 recorded** | Complete outcome predicates and Preview-visible read-only instructions, all 18 walkthrough topics, provenance-separated dispositions and repository gates. MP4 reviews capabilities and structural seams using the minimal capture packet; defer detailed visual refinement. Publish evidence after the final executable freezes | J1–J12 + **MP4**; **M**, integration/review effort; tests and Presenter already grow in earlier increments |
 
 The program is medium-to-high complexity, not a polish pass. Model/lifecycle,
 Camera live invocation and visitor transitions are the three high-risk increments;
@@ -783,6 +878,15 @@ Intentionally retire or change:
   placeholder Reset and station binding layered onto implicit entry activation.
 - Donor Presenter provider mutation shortcuts and V2 title-only walkthrough:
   visible source controls/explicit loaders perform changes; Presenter observes.
+- Donor whole-demo Reset under an Experience reset label and V2 wholesale
+  Camera/Scene/history replacement: preserve independent domains and shared Undo,
+  permit explicitly scoped cross-domain demo reload only under its own label.
+
+Detailed density, typography, proportions, spacing and broader visual refinement
+are deferred to the dedicated UI/UX slice after C9 capability semantics pass.
+Preserve existing PLATE grammar/tokens and repair structural legibility/reachability
+failures in C9. This plan does not assign that follow-up a PR or authorize it;
+Paper and production remain separately gated.
 
 Explicit deferrals outside #113: production persistence/codecs/F interface
 amendments, portable performance resource authoring/versioning, real media/audio,
@@ -807,16 +911,21 @@ tests and unread usability evidence; no source snapshot or generated geometry is
 promoted to authored truth. Low-floor tasks have concrete model/runtime results
 and a donor action/concept comparison. Travel/default creation/live-start/history,
 hold and station invocation policies are decided explicitly. Rich fixture tiers,
-local coordination interaction, all 18 Presenter topics, manual checkpoints,
-small dependency-ordered increments and repository verification are specified.
+local coordination interaction, all 18 Presenter topics, MP1 before lifecycle/
+Guide expansion, MP2 before Travel/agency and repository verification are specified.
+Experience Reset and fixture loading preserve independent Camera/World truth and
+aggregate history; proof uses source deltas, not a fabricated empty Camera pool.
+Provenance distinguishes donor recovery, V2 invariants and new choices. Capability
+acceptance keeps structural seams blocking with a minimal visual evidence packet.
 
-**No unresolved owner decision is required to complete this plan.** Travel
-preparation, distinct repeated visits and bounded detour/cursor defaults are stated
-recommendations for owner review, with losses and alternatives visible. They are
-not silently ratified by writing the plan. Implementation awaits a subsequent
-owner instruction. If later manual review rejects a comprehension trial, revise
-this owning plan section rather than append a review diary or implement several
-alternative engines. This task stops after the plan and its self-review.
+**Ready for implementation; no unresolved owner decision blocks C9.** N1 Travel
+and N2 fresh repeated-Stop visits are owner-ratified in their owning sections.
+Checkpoint/cursor and detour-pause policies remain explicitly experimental;
+manual evidence cannot silently ratify them or reopen the accepted N1/N2 rules.
+Implementation is unstarted and requires a subsequent instruction. The later
+UI/UX slice needs its own scope, not an expanded C9 polish pass. If manual review
+finds a workflow failure, revise the owning section and repair it before crossing
+MP1/MP2. This planning task stops after the revised plan and its self-review.
 
 [unified]: ../../../../../prototypes/spatial-authoring/README.md
 [donor]: ../../../../../prototypes/experience-authoring/README.md

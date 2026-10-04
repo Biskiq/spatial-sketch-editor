@@ -11,9 +11,13 @@ owns the corrections; [fresh product recipes](./qa/CONFORMANCE-MANIFEST.md) and
 [conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) own current proof.
 S0–S9 evidence remains historical and supplies no replacement acceptance.
 External manual review exposed Experience model/workflow gaps against Prototype 4.1.
-The proposed [C9 authoring-completeness plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
-adds final parity and creator-journey acceptance while retaining C1–C8 shell/domain gains.
-It is planning-only; the behavior described there is not implemented or accepted here.
+The revised [C9 authoring-completeness plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
+is ready for implementation, with owner-ratified Travel and fresh repeated-Stop
+decisions, independent Camera/World preservation on Experience Reset, and early
+manual checkpoints. Capability acceptance retains blocking PLATE/disclosure/
+ownership/correspondence/reachability seams; detailed visual refinement follows
+in its own UI/UX slice. C9 is unstarted; this executable still has the current
+C1–C8 behavior, including its older Reset and Travel restrictions.
 
 ```sh
 cd prototypes/spatial-authoring
