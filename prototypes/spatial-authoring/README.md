@@ -6,6 +6,10 @@ isolated visitor execution and both directions of continuity. The accepted World
 Instrument and Precision. [PLATE §0.8](../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
 owns destination shell design; this static prototype establishes no production interface or cutover.
 
+**V2 conformance remains unaccepted.** The [standalone replacement plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
+reconciles material behavior, composition and QA gaps. S0–S9 evidence below is historical;
+the replacement implementation has not started.
+
 ```sh
 cd prototypes/spatial-authoring
 python3 -m http.server 8826
@@ -49,8 +53,8 @@ With screenshot mode off, the outside-product Experience examples disclosure off
 Load Example. Back/Skip observes only; loading never plays. The donor at
 [`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
 The integrated design folder retains the finalized synthesis/boards, rather than another executable.
-The [#113 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md)
-owns adoption scope; [Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps its evidence.
+The [replacement #113 conformance plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
+owns future correction scope; [historical Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps S0–S9 evidence.
 Paper PA0 must reconcile against this unified tree. F and production T1/T2/T3/T4 remain gated.
 
 The predecessor shell, reconciliation and comparisons are preserved in Git; their interaction
