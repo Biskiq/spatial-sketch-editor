@@ -9,7 +9,7 @@
 #   * Both directions park: World readings/repairs/in-place work and Experience Guide/Seam/coordination/
 #     Precision procedures each become an inactive record in their own lens, with no Camera snapshot.
 #   * Resume is neutral: the reading or procedure is reactivated where the Camera actually stands, so
-#     the rendered eye and FOV are identical before and after — for either lens.
+#     complete rendered Camera is identical before and after — for either lens.
 #   * Preview return is exact: lens, canonical selection, Card context, accepted inspection (reading,
 #     task, Reveal) and standpoint all come back, and the visitor's isolated session wrote nothing.
 #   * History interleaves: crossings and Preview write no source step; accepted edits in either lens
@@ -43,7 +43,7 @@ BLOB='(() => {
     visitor: !!S.visitor,
     undo: S.undo.length, redo: S.redo.length, lastUndo: S.undo[S.undo.length - 1]?.label || null,
     hash: q.hash(), trail: S.trail.length,
-    eye: real.eye.map((v) => +v.toFixed(4)).join(",") + "|" + (+real.fov.toFixed(4)),
+    eye: JSON.stringify(real),
     cardKick: txt("#card .c-k"), cardTitle: txt("#card .c-t"),
     resumeBtn: !!t("#card [data-act=\"resume\"]"), expResumeBtn: !!t("#card [data-act=\"exp-resume\"]"),
     parkedNote: t("#card .relation.parked") ? t("#card .relation.parked").textContent : null,
@@ -66,7 +66,22 @@ step() { # step <javascript statements>
 field() { python3 -c 'import json, sys
 d = json.loads(sys.argv[1]); v = d.get(sys.argv[2])
 print("None" if v is None else v)' "$last" "$1" 2>/dev/null; }
-same() { [ "$1" = "$2" ] && echo same || echo MOVED; }
+same() {
+ # Complete rendered state, preserving the established World absolute tolerance.
+ python3 - "$1" "$2" <<'PY'
+import json,sys
+def same(a,b):
+    if type(a)!=type(b) and not isinstance(a,(float,int)):return False
+    if isinstance(a,bool):return a==b
+    if isinstance(a,(float,int)):return abs(a-b)<=.002
+    if isinstance(a,dict):return a.keys()==b.keys() and all(same(a[k],b[k]) for k in a)
+    if isinstance(a,list):return len(a)==len(b) and all(same(x,y) for x,y in zip(a,b))
+    return a==b
+a,b=json.loads(sys.argv[1]),json.loads(sys.argv[2]);matched=same(a,b)
+if not matched: print(json.dumps({'actual_rendered':a,'expected_rendered':b}),file=sys.stderr)
+print('same' if matched else 'MOVED')
+PY
+}
 
 # The ordinary World state, established and verified before a block relies on it.
 ordinary() { # ordinary [selection id]
@@ -135,7 +150,11 @@ world
 last="$(step 'A.resumeParked();')"
 qa_ok "Resume re-enters the reading with its decoded parameters" "$(field reading) / $(field u)" "face / 0.500"
 qa_ok "…about the window and its host wall" "$(field task)" "face|gwin|rotunda|"
-qa_ok "Resume is neutral: the eye and FOV do not move at the moment of reactivation" "$(same "$(field eye)" "$M_EYE")" "same"
+qa_ok "World Resume is neutral: complete rendered Camera stays at the current standpoint" "$(same "$(field eye)" "$M_EYE")" "same"
+for frame in 1 2 3;do
+ last="$(step '')"
+ qa_ok "World neutral Resume remains fixed at rendered frame $frame" "$(same "$(field eye)" "$M_EYE")" same
+done
 qa_ok "…and it is a fresh invocation with a visible Instrument" "$(field instr) / $(field parkedW)" "True / None"
 last="$(step "await A.closeAll(); A.dismissParked();")"
 
@@ -158,14 +177,14 @@ last="$(step 'E.closeExperienceWork();')"
 qa_say "-- Experience Precision parks and resumes with no Camera remembered"
 last="$(step "await E.openPresentation('pres-highlights'); E.captureView(); const u=ctx.experience.presentations['pres-highlights'].uses[0]; S.probe={u}; E.preciseView(u);")"
 PREC_USE="$(qa_jsv 'window.__me.S.probe.u')"
-qa_ok "a Precision procedure is open on the captured framing" "$(field depth) / $(field task)" "precision / experience-camera|$PREC_USE|view-1|outside"
+qa_ok "a Precision procedure is open on the captured framing" "$(field depth) / $(field task)" "precision / experience-camera|$PREC_USE|view-1|through"
 P_EYE="$(field eye)"
 world
-qa_ok "crossing parks it with only the accepted parameters" "$(field parkedE)" "{\"name\":\"Captured framing\",\"identity\":\"$PREC_USE\",\"kind\":\"experience-camera\",\"chain\":[],\"params\":[\"useId\",\"posture\",\"grip\"],\"canceled\":[]}"
+qa_ok "crossing parks it with only the accepted parameters" "$(field parkedE)" "{\"name\":\"Entry framing\",\"identity\":\"$PREC_USE\",\"kind\":\"experience-camera\",\"chain\":[],\"params\":[\"useId\",\"posture\",\"grip\"],\"canceled\":[]}"
 experience
 tap '#card [data-act="exp-resume"]'
 last="$(step '')"
-qa_ok "Resume re-opens Precision at Outside, with the one numeric tape" "$(field depth) / $(field task) / $(field deck)" "precision / experience-camera|$PREC_USE|view-1|outside / exp-deck precision"
+qa_ok "Resume reports actual Through reading with Stage-local tape" "$(field depth) / $(field task) / $(field deck)" "precision / experience-camera|$PREC_USE|view-1|through / exp-deck ordinary"
 qa_ok "…without moving the rendered standpoint" "$(same "$(field eye)" "$P_EYE")" "same"
 last="$(step 'E.closeExperienceWork();')"
 
@@ -186,12 +205,12 @@ last="$(step 'await A.closeAll();')"
 qa_say "-- Preview from an Experience procedure returns to that procedure"
 last="$(step "A.switchLens('experience'); await E.openPresentation('pres-highlights'); const u=ctx.experience.presentations['pres-highlights'].uses[0]; S.probe={u}; E.preciseView(u);")"
 PREC_USE2="$(qa_jsv 'window.__me.S.probe.u')"
-qa_ok "a Precision procedure is open before Preview" "$(field depth) / $(field task)" "precision / experience-camera|$PREC_USE2|view-1|outside"
+qa_ok "a Precision procedure is open before Preview" "$(field depth) / $(field task)" "precision / experience-camera|$PREC_USE2|view-1|through"
 Q_EYE="$(field eye)"
 last="$(step "E.preview('pres-highlights');")"
 qa_ok "Preview is running against isolated state" "$(field visitor)" "True"
 last="$(step 'await E.exitPreview();')"
-qa_ok "exit restores the same procedure, not the Experience's ordinary context" "$(field depth) / $(field task) / $(field deck)" "precision / experience-camera|$PREC_USE2|view-1|outside / exp-deck precision"
+qa_ok "exit restores the same procedure, not the Experience's ordinary context" "$(field depth) / $(field task) / $(field deck)" "precision / experience-camera|$PREC_USE2|view-1|through / exp-deck ordinary"
 qa_ok "…at the same rendered standpoint" "$(same "$(field eye)" "$Q_EYE")" "same"
 last="$(step 'E.closeExperienceWork();')"
 
@@ -240,7 +259,7 @@ if [ -n "$GRIP" ] && [ "$GRIP" != none ] && [ "$GRIP" != null ]; then
   qa_ok "crossing drops the live framing drag, not a parked proposal" "$(field expDrag)" "False"
   qa_ok "…and the crossing wrote nothing for it" "$(field hash) / $(field undo)" "$D_HASH / $D_UNDO"
   experience
-  qa_ok "the procedure is parked as the accepted work it was" "$(field parkedE) / $(field expResumeBtn)" "{\"name\":\"Captured framing\",\"identity\":\"$PREC_USE3\",\"kind\":\"experience-camera\",\"chain\":[],\"params\":[\"useId\",\"posture\",\"grip\"],\"canceled\":[]} / True"
+  qa_ok "the procedure is parked as the accepted work it was" "$(field parkedE) / $(field expResumeBtn)" "{\"name\":\"Entry framing\",\"identity\":\"$PREC_USE3\",\"kind\":\"experience-camera\",\"chain\":[],\"params\":[\"useId\",\"posture\",\"grip\"],\"canceled\":[]} / True"
   tap '#card [data-act="exp-resume"]'
   last="$(step '')"
   qa_ok "Resume re-opens it with no draft carried over" "$(field cameraDraft) / $(field depth) / $(field task)" "False / precision / experience-camera|$PREC_USE3|view-1|outside"

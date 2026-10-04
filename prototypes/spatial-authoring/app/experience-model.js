@@ -29,6 +29,7 @@ export function addView(e,c,pid,pose,name='Suggested framing',role='choice') {
 export function entryUse(e,pid) { const p=e.presentations[pid]; return p?.uses.map(id=>e.uses[id]).find(u=>u?.role==='entry') || null; }
 export function setRole(e,id,role) {
  const u=e.uses[id]; if(!u) throw Error('Use removed');
+ if(u.stopId)throw Error('Stop entry roles belong to this occurrence');
  if(role==='entry') for(const other of e.presentations[u.presentationId].uses) if(e.uses[other]?.role==='entry') e.uses[other].role='choice';
  u.role=role;
 }
@@ -62,8 +63,10 @@ export function editSeam(e,a,b,patch) {
 }
 export function originCoverage(e,c,a,b) {
  const from=e.stops[a],dest=stopEntry(e,b),target=resolveUse(e,c,dest.id);
- const origins=e.presentations[from?.presentationId]?.uses.map(id=>e.uses[id]).filter(Boolean)||[];
- return origins.map(u=>({useId:u.id,viewId:u.viewId,targetId:target?.view.id||null,connectionId:Object.values(c.connections).find(k=>k.from===u.viewId&&k.to===target?.view.id)?.id||null,missing:!c.views[u.viewId]||!target}));
+ const entry=stopEntry(e,a).id;
+ const ids=[...(e.presentations[from?.presentationId]?.uses||[]).filter(id=>id===entry||e.uses[id]?.role==='choice'||e.uses[id]?.cue),entry].filter(Boolean);
+ const origins=[...new Set(ids)].map(id=>e.uses[id]).filter(u=>u?.viewId);
+ return origins.map(u=>({useId:u.id,viewId:u.viewId,targetId:target?.view.id||null,connectionId:Object.values(c.connections).find(k=>k.from===u.viewId&&k.to===target?.view.id)?.id||null,missing:!c.views[u.viewId]||!!c.views[u.viewId].unresolved||!target}));
 }
 export function addConnection(c,from,to) {
  if(!c.views[from]||!c.views[to])throw Error('Camera endpoints unresolved');
@@ -128,16 +131,7 @@ export function contributionIssues(e,c,scene,capability) {
  return issues;
 }
 export function reuseView(e,c,pid,vid){if(!c.views[vid]||!e.presentations[pid])throw Error('Reuse target unresolved');const id=fresh(e,'use');e.uses[id]={id,kind:'view',name:c.views[vid].name,presentationId:pid,viewId:vid,role:'choice',cue:null};e.presentations[pid].uses.push(id);return id;}
-export function lowerCamera(c,positions) {
- const derived=copy(c);
- for(const v of Object.values(derived.views)) {
-  if(v.focus?.kind!=='subjects')continue;
-  const current=positions[v.focus.ids[0]];if(!current){v.unresolved=true;continue;}
-  if(v.anchor==='relative')v.pose.target=current.map((n,i)=>n+(v.focusOffset?.[i]||0));
-  else if(v.focusAt&&current.some((n,i)=>Math.abs(n-v.focusAt[i])>1e-6))v.review='World changed — review fixed framing';
- }
- return derived;
-}
+export { resolveCamera as lowerCamera } from './camera-evaluation.js';
 export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId) {
  const u=e.uses[useId];if(!u||u.viewId)throw Error('Choose a supported capability or narration contribution');
  const id=addBeat(e,c,a,b,connectionId,stationId,0),beat=e.seams[seamKey(a,b)].beats.find(b=>b.id===id);beat.kind='invoke';beat.useId=useId;return id;

@@ -1,3 +1,4 @@
+import { conformanceFixture } from './conformance-fixture.js';
 import { createSceneCapabilities, capability, capabilities, setSceneValue } from './experience-capabilities.js';
 import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
 import * as nav from './navigation.js';
@@ -7,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -29,13 +30,25 @@ export function openPresentation(id) {
   if (!ctx.experience.presentations[id]) return false;
   A.select(id); S.experienceContext.presentation = id; ctx.ui(); return true;
 }
-export function updatePresentation(id, key, value) {
-  if (!['name','meaning','focus'].includes(key)) return false;
-  return command(`Edit Presentation ${key}`, e => { const p = e.presentations[id]; if (!p) throw Error('Presentation removed'); p[key] = structuredClone(value); });
+const definitionReach=(e,id)=>Object.values(e.uses).filter(u=>u.definitionId===id).flatMap(u=>{const stops=Object.values(e.stops).filter(s=>s.presentationId===u.presentationId);return stops.length?stops.map(s=>({id:u.id+'@'+s.id,name:`${e.definitions[id]?.name} · Stop ${e.guide.indexOf(s.id)+1}`})):[{id:u.id,name:e.presentations[u.presentationId]?.name||'Experience-wide interaction'}];});
+const presentationReach=(e,id)=>Object.values(e.stops).filter(s=>s.presentationId===id).map(s=>({id:s.id,name:`Stop ${e.guide.indexOf(s.id)+1} · ${s.name}`}));
+function sourceProposal(label,kind,id,key,value){
+ const pid=kind==='definition'?ctx.experience.uses[id]?.definitionId:kind==='presentation'?id:ctx.experience.uses[id]?.presentationId;if(!pid)return false;
+ const affected=kind==='definition'?definitionReach(ctx.experience,pid):presentationReach(ctx.experience,pid);S.expSourceAsk={label,kind,id,key,value:structuredClone(value),pid,affected};
+ if(affected.length<=1)return acceptSource();ctx.ui();return true;
 }
+export function updatePresentation(id,key,value){if(!['name','meaning','focus'].includes(key))return false;return sourceProposal(`Edit Presentation ${key}`,'presentation',id,key,value);}
+export function acceptSource(){
+ const ask=S.expSourceAsk;if(!ask)return false;const affected=ask.kind==='definition'?definitionReach(ctx.experience,ask.pid):presentationReach(ctx.experience,ask.pid);
+ if(JSON.stringify(affected)!==JSON.stringify(ask.affected)){ask.affected=affected;ctx.ui();return false;}
+ const result=command(ask.label,e=>{if(ask.kind==='definition'){const u=e.uses[ask.id],d=e.definitions[ask.pid];if(!d||u?.definitionId!==ask.pid)throw Error('Contribution removed or rebound');d[ask.key]=ask.key==='markers'?ask.value.map(m=>m.id?m:{...m,id:fresh(e,'phrase')}):ask.value;}else if(ask.kind==='presentation'){const p=e.presentations[ask.id];if(!p)throw Error('Presentation removed');p[ask.key]=ask.value;}else{const u=e.uses[ask.id];if(!u||u.presentationId!==ask.pid)throw Error('View use removed or rebound');if(ask.key==='role')setRole(e,ask.id,ask.value);else u[ask.key]=ask.value;}});S.expSourceAsk=null;ctx.ui();return result;
+}
+onCancel(()=>{S.expSourceAsk=null;},12,'Shared Experience proposal');
+export const updateUse=(id,key,value)=>sourceProposal('Edit shared View '+key,'use',id,key,value);
 export function handleExperienceAction(el) {
   const action = el?.dataset?.act;
   if (!action?.startsWith('exp-')) return false;
+  if(S.visitor&&!['exp-visitor','exp-exit-preview'].includes(action))return true;
   if (action === 'exp-create') present();
   if (action === 'exp-open') openPresentation(el.dataset.id);
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
@@ -49,7 +62,7 @@ export function handleExperienceAction(el) {
   if (action === 'exp-connect') connectOrigin(el.dataset.id);
   if (action === 'exp-route') editRoute(el.dataset.id);
   if (action === 'exp-route-return') returnRouteReading();
-  if (action === 'exp-hints') {preciseView(el.dataset.id);S.experienceContext.depth='hints';ctx.ui();}
+  if(action==='exp-hints'&&autoView()){S.experienceContext.depth='hints';ctx.ui();}
   if (action === 'exp-hint') {const v=ctx.cameraSource.views[S.task?.target?.id];if(v)proposeFraming(el.dataset.key,Number(el.dataset.value));}
   if (action === 'exp-precise') preciseView(el.dataset.id);
   if (action === 'exp-posture') posture(el.dataset.posture);
@@ -57,6 +70,8 @@ export function handleExperienceAction(el) {
   if (action === 'exp-scope-shared') acceptFraming('shared');
   if (action === 'exp-scope-local') acceptFraming('local');
   if (action === 'exp-scope-cancel') {S.expAsk=null;ctx.ui();}
+  if(action==='exp-station-focus'){if(S.task)S.task.params.station=el.dataset.id;ctx.ui();}
+  if(action==='exp-route-choice'){if(S.task){S.task.params.connection=el.dataset.id;S.task.params.station='departure';}coordinate();}
   if (action === 'exp-coordinate') coordinate();
   if (action === 'exp-mark-station') command('Name Camera station',(e,c)=>{const r=c.connections[S.task.params.connection];r.markers.push({id:fresh(c,'marker'),name:'Mid-route station',progress:.5});});
   if (action === 'exp-invoke-beat') {const s=S.experienceContext.seam;command('Coordinate capability at station',(e,c)=>addInvocationBeat(e,c,s.from,s.to,S.task.params.connection,S.task.params.station,S.task.params.invokeUse));}
@@ -71,6 +86,7 @@ export function handleExperienceAction(el) {
   if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
   if (action === 'exp-remove-contribution') command('Remove contribution',e=>delete e.uses[el.dataset.id]);
   if (action === 'exp-reset') resetExperience(false);
+  if (action === 'exp-conformance') loadConformance();
   if (action === 'exp-example') resetExperience(true);
   if (action === 'exp-presenter') presenterStep(Number(el.dataset.delta));
   if (action === 'exp-resume') resumeExperience();
@@ -78,6 +94,12 @@ export function handleExperienceAction(el) {
   if (action === 'exp-capture') captureView();
   if (action === 'exp-auto') autoView();
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
+  if(action==='exp-derived-hint')derivedHint(el.dataset.hint);
+  if(action==='exp-bring')bringIntoView();
+  if(action==='exp-source-accept')acceptSource();
+  if(action==='exp-source-cancel'){S.expSourceAsk=null;ctx.ui();}
+  if(action==='exp-camera-return'){nav.putBack();if(S.task)S.task.params.posture=nav.readingFor(cameraSnapshot().views[S.task.target.id]);ctx.ui();}
+  if(action==='exp-route-cancel'){S.expRouteAsk=null;ctx.ui();}
   if (action === 'exp-preview') preview(el.dataset.id || undefined);
   if (action === 'exp-exit-preview') exitPreview();
   if (action === 'exp-region') { cancelProposal('invoke'); T.begin({kind:'experience-region',subject:S.sel,params:{first:null}}); A.setStatus('Choose two corners on the Stage to present a region'); }
@@ -86,19 +108,23 @@ export function handleExperienceAction(el) {
 }
 export function presentationValid(id) { const p = ctx.experience.presentations[id]; return !!p && validateFocus(p, id => !!A.worldOf(id)); }
 
-export function captureView(pid=S.experienceContext.presentation) {
- return command('Capture Camera View', (e,c)=>{const id=addView(e,c,pid,nav.plainPose(),'Captured framing',entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});
+export function captureView(pid=S.experienceContext.presentation){
+ const p=ctx.experience.presentations[pid];if(!p)return false;
+ const derived=S.derivedView?.presentation===pid?nav.deriveFraming(p,S.task?.params.hints||[]):null;
+ const result=command('Capture Camera View',(e,c)=>{const id=addView(e,c,pid,derived?.pose||nav.plainPose(),derived?.name||(entryUse(e,pid)?'Captured perspective':'Entry framing'),entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});S.derivedView=null;if(S.task?.kind==='experience-hints'){T.end();S.experienceContext.depth='ordinary';}ctx.ui();return result;
 }
-export function autoView(pid=S.experienceContext.presentation) {
- const p=ctx.experience.presentations[pid]; if(!p)return false;
- let target=[-2,1,0];
- if(p.focus.kind==='subjects') { const points=p.focus.ids.map(A.worldOf).filter(Boolean); if(points.length)target=points[0]; }
- if(p.focus.kind==='region')target=p.focus.min.map((n,i)=>(n+p.focus.max[i])/2);
- const fixtureSubject=p.focus.kind==='subjects'&&p.focus.ids.some(id=>ctx.sceneSource.subjects[id]);
- const pose={target,az:fixtureSubject?1.2:.7,el:.35,frameH:fixtureSubject?3:8,flat:0,mirror:false};
- return command('Add automatic framing',(e,c)=>{const id=addView(e,c,pid,pose,'Auto framing',entryUse(e,pid)?'choice':'entry'); c.views[e.uses[id].viewId].anchor='relative';c.views[e.uses[id].viewId].focusOffset=[0,0,0];return id;});
+export function autoView(pid=S.experienceContext.presentation){
+ const p=ctx.experience.presentations[pid];if(!p)return false;const derived=nav.deriveFraming(p);if(!derived){A.setStatus('Focus unresolved · repair before framing','refuse');return false;}
+ cancelProposal('invoke');T.begin({kind:'experience-hints',subject:S.sel,target:{id:pid},params:{hints:[]}});S.derivedView={presentation:pid,...derived};ctx.ui();return true;
 }
-export function changeRole(id,role) { return command('Change View role',e=>setRole(e,id,role)); }
+export function derivedHint(label){if(!S.derivedView)autoView();if(!S.task||!S.derivedView)return false;S.task.params.hints.push(label);const p=ctx.experience.presentations[S.derivedView.presentation];S.derivedView={presentation:p.id,...nav.deriveFraming(p,S.task.params.hints)};ctx.ui();return true;}
+export function bringIntoView(){const c=cameraSnapshot(),e=ctx.experience,x=S.experienceContext;let points=[];
+ if(x.seam){for(const row of originCoverage(e,c,x.seam.from,x.seam.to)){for(const id of [row.viewId,row.targetId])if(c.views[id])points.push(nav.eye(c.views[id].pose),c.views[id].pose.target);const r=nav.routeGeometry(c,row.connectionId);if(r)points.push(...r.samples.map(s=>s.observer));}}
+ else if(x.depth==='overview'){points=e.guide.map(id=>resolveUse(e,c,stopEntry(e,id).id)?.view?.pose.target).filter(Boolean);}
+ else{const p=e.presentations[x.presentation];points=(p?.uses||[]).flatMap(id=>{const v=c.views[e.uses[id]?.viewId];return v?[nav.eye(v.pose),v.pose.target]:[];});if(S.derivedView)points.push(nav.eye(S.derivedView.pose),S.derivedView.pose.target);if(!points.length&&p?.focus.kind==='subjects')points=p.focus.ids.map(A.worldOf).filter(Boolean);}
+ return nav.framePoints(points,{plan:nav.plainPose().el>1.4||!!x.seam});
+}
+export const changeRole=(id,role)=>updateUse(id,'role',role);
 export function preview(pid=S.experienceContext.presentation) {
  if(S.visitor || !ctx.experience.presentations[pid]) return false;
  cancelProposal('preview');
@@ -113,7 +139,9 @@ export async function exitPreview() {
  const v=S.visitor;if(!v)return false;
  S.visitor=null;S.visitorDrag=null;const t=v.returnToken;
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
- await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);ctx.ui();return true;
+ await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);
+ if(S.task?.kind==='experience-hints'){const p=ctx.experience.presentations[S.task.target.id];S.derivedView=p?{presentation:p.id,...nav.deriveFraming(p,S.task.params.hints)}:null;}
+ ctx.ui();return true;
 }
 let runtimeAt=0;
 export function visitorFrame(now) {
@@ -138,13 +166,13 @@ export function expandStop(id) {
  cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null};
  T.begin({kind:'experience-occurrence',subject:id,target:{id},params:{stop:id}});ctx.ui();return true;
 }
-export function closeExperienceWork() {cancelProposal('task-end');T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
+export function closeExperienceWork() {cancelProposal('task-end');S.derivedView=null;T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
 export function moveOccurrence(id,delta) {return command('Reorder Guide Stop',e=>moveStop(e,id,delta));}
 
 export function openSeam(a,b) {
  if(resolveNext(ctx.experience,a).id!==b)return false;
  cancelProposal('invoke');S.experienceContext.depth='seam';S.experienceContext.seam={from:a,to:b};S.experienceContext.stop=null;
- T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});ctx.ui();return true;
+ T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});if(ctx.experience.seams[`${a}>${b}`]?.beats.length)coordinate();ctx.ui();return true;
 }
 export function setSeamMode(mode) {const {from,to}=S.experienceContext.seam;return command('Set Seam transition',e=>editSeam(e,from,to,{mode}));}
 export function connectOrigin(uid) {
@@ -158,44 +186,46 @@ export async function editRoute(id) {
  const route=ctx.cameraSource.connections[id];if(!route)return false;
  cancelProposal('invoke');
  const epoch=nav.travelEpoch();
- const origin=nav.captureOrigin('Return to Seam reading');
- S.experienceContext.depth='route';S.task.params.connection=id;S.task.params.routeReturn=origin;
- await nav.fly(A.planCam(),S.motion==='instant'?0:700);if(epoch!==nav.travelEpoch())return false;ctx.ui();return true;
+ nav.beginReturn('Return to Seam reading');
+ S.experienceContext.depth='route';S.task.params.connection=id;
+ await bringIntoView();if(epoch!==nav.travelEpoch())return false;ctx.ui();return true;
 }
-export function returnRouteReading() {const o=S.task?.params.routeReturn;if(o)nav.restoreCapture(o);S.experienceContext.depth='seam';if(S.task)delete S.task.params.routeReturn;ctx.ui();}
-export function routePoint(p) {
- if(S.experienceContext.depth!=='route'||!S.task?.params.connection)return false;
- command('Add Camera interior anchor',(e,c)=>addAnchor(c,S.task.params.connection,[p.x,1.5,p.z]));return true;
+export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';ctx.ui();}
+function routeProposal(id,patch,label){
+ const route=ctx.cameraSource.connections[id];if(!route)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,id);S.expRouteAsk={id,patch,label,affected};
+ if(affected.length<=1)return acceptRoutePace();ctx.ui();return true;
 }
-export function beginAnchorDrag(event) {
- const el=event.target.closest('[data-exp-anchor]');if(!el||S.visitor)return false;
- event.preventDefault();event.stopPropagation();cancelProposal('gesture');
- A.beginEdit();S.expDrag={connection:el.dataset.connection,anchor:el.dataset.expAnchor};el.setPointerCapture(event.pointerId);return true;
+export function routePoint(p){if(!['route','coordination'].includes(S.experienceContext.depth)||!S.task?.params.connection)return false;
+ const id=S.task.params.connection,route=ctx.cameraSource.connections[id],position=[p.x,1.5,p.z];
+ return routeProposal(id,{addAnchor:position},'Add Camera interior anchor');
 }
-export function moveAnchorDrag(p) {
- const d=S.expDrag;if(!d)return false;
- const a=ctx.cameraSource.connections[d.connection]?.anchors.find(a=>a.id===d.anchor);if(!a)return false;
- a.position=[p.x,a.position[1],p.z];ctx.ui();return true;
+export function beginAnchorDrag(event){
+ const el=event.target.closest('[data-exp-anchor]');if(!el||S.visitor)return false;event.preventDefault();event.stopPropagation();cancelProposal('gesture');
+ const a=ctx.cameraSource.connections[el.dataset.connection]?.anchors.find(a=>a.id===el.dataset.expAnchor);if(!a)return false;
+ S.expDrag={connection:el.dataset.connection,anchor:a.id,position:[...a.position],base:[...a.position],moved:false};S.anchorFocus={connection:el.dataset.connection,anchor:a.id};el.setPointerCapture(event.pointerId);return true;
 }
-export function endAnchorDrag() {if(!S.expDrag)return false;S.expDrag=null;A.commitEdit('Move Camera interior anchor');ctx.ui();return true;}
+export function moveAnchorDrag(p){const d=S.expDrag;if(!d)return false;d.position=[p.x,d.base[1],p.z];d.moved=d.position.some((n,i)=>Math.abs(n-d.base[i])>.01);ctx.ui();return true;}
+export function endAnchorDrag(){const d=S.expDrag;if(!d)return false;S.expDrag=null;if(d.moved)routeProposal(d.connection,{anchor:d.anchor,position:d.position},'Move Camera interior anchor');ctx.ui();return true;}
+export function nudgeAnchor(id,anchor,dx,dz){const a=ctx.cameraSource.connections[id]?.anchors.find(a=>a.id===anchor);if(!a)return false;return routeProposal(id,{anchor,position:[a.position[0]+dx,a.position[1],a.position[2]+dz]},'Move Camera interior anchor');}
 onCancel(()=>{S.expDrag=null;},5,'Experience pointer');
 
 export function preciseView(uid) {
  const resolved=resolveUse(ctx.experience,ctx.cameraSource,uid);if(!resolved)return false;
  cancelProposal('invoke');A.select(uid);S.experienceContext={...S.experienceContext,depth:'precision',presentation:resolved.use.presentationId};
+ nav.beginReturn('Before precise Camera');
  T.begin({kind:'experience-camera',subject:uid,target:{id:resolved.view.id},params:{useId:uid,posture:'outside',grip:'frameH'}});ctx.ui();return true;
 }
-export function posture(which) {
- if(S.task?.kind!=='experience-camera')return false;
- const v=ctx.cameraSource.views[S.task.target.id];if(!v)return false;
- S.task.params.posture=which;
- if(which==='through') {nav.releaseHold();nav.applyPose(v.pose);}
- if(which==='plan')nav.fly(A.planCam(),S.motion==='instant'?0:500);
- ctx.ui();return true;
+export async function posture(which){
+ if(S.task?.kind!=='experience-camera')return false;const v=cameraSnapshot().views[S.task.target.id];if(!v)return false;
+ cancelProposal('posture');
+ if(which==='through')nav.lookThrough(v.pose);
+ else if(which==='plan')await nav.framePoints([nav.eye(v.pose),v.pose.target],{plan:true,captureReturn:false});
+ else if(which==='outside')await nav.framePoints([nav.eye(v.pose),v.pose.target,...nav.framingInstrument(v.pose).corners],{captureReturn:false});
+ if(S.task?.kind==='experience-camera')S.task.params.posture=nav.readingFor(v);ctx.ui();return true;
 }
 export function proposeFraming(key,value) {
  const t=S.task;if(t?.kind!=='experience-camera')return false;
- const v=ctx.cameraSource.views[t.target.id];if(!v)return false;
+ const v=cameraSnapshot().views[t.target.id];if(!v)return false;
  const n=Number(value);if(!Number.isFinite(n)){A.setStatus('Use a finite Camera value','refuse');return false;}
  let patch={[key]:n};if(['x','y','z'].includes(key)){const target=[...v.pose.target];target[['x','y','z'].indexOf(key)]=n;patch={target};}
  return proposePatch(patch);
@@ -209,61 +239,64 @@ export function proposePatch(patch) {
 }
 export function acceptFraming(scope) {
  const ask=S.expAsk;if(!ask)return false;
+ const reach=viewReach(ctx.experience,ask.viewId);if(JSON.stringify(reach)!==JSON.stringify(ask.reach)){ask.reach=reach;ctx.ui();return false;}
  const result=command(scope==='shared'?'Update shared Camera framing':'Detach and retarget local Camera framing',(e,c)=>{
+  const resolved=resolveUse(e,c,ask.useId);if(!resolved||resolved.view.id!==ask.viewId)throw Error('Framing removed or rebound');
   let vid=ask.viewId,uid=ask.useId;
   if(scope==='local'){uid=detachUse(e,c,uid,ask.stopId);vid=e.uses[uid].viewId;}
   editView(c,vid,ask.patch);return {uid,vid};
  });
  S.expAsk=null;
- if(S.task?.kind==='experience-camera'){S.task.target.id=result.vid;S.task.params.useId=result.uid;if(S.task.params.posture==='through')nav.applyPose(ctx.cameraSource.views[result.vid].pose);}
+ if(S.task?.kind==='experience-camera'){S.task.target.id=result.vid;S.task.params.useId=result.uid;if(S.sel===ask.useId&&result.uid!==ask.useId){S.sel=result.uid;S.task.subject=result.uid;}if(S.task.params.posture==='through')nav.lookThrough(cameraSnapshot().views[result.vid].pose);}
  ctx.ui();return result;
 }
 onCancel(()=>{S.expAsk=null;},12,'Experience scope proposal');
+onCancel(reason=>{if(['preview','lens','reset','task-end','invoke'].includes(reason))S.derivedView=null;},13,'Derived framing suspension');
 
 export function beginCameraDrag(event) {
  const el=event.target.closest('[data-exp-camera]');if(!el||S.task?.kind!=='experience-camera')return false;
  event.preventDefault();event.stopPropagation();cancelProposal('gesture');
- const v=ctx.cameraSource.views[S.task.target.id];if(!v)return false;
- S.cameraDraft={pose:structuredClone(v.pose),base:structuredClone(v.pose),grip:S.task.params.grip,x:event.clientX,y:event.clientY};
+ const v=cameraSnapshot().views[S.task.target.id];if(!v)return false;
+ S.cameraDraft={pose:structuredClone(v.pose),base:structuredClone(v.pose),grip:S.task.params.grip,origin:nav.captureOrigin('Before Camera gesture'),through:nav.readingFor(v)==='through',x:event.clientX,y:event.clientY};
  el.setPointerCapture(event.pointerId);return true;
 }
 export function moveCameraDrag(event,point) {
  const d=S.cameraDraft;if(!d)return false;
  if(['x','y','z'].includes(d.grip)&&point) {const index=['x','y','z'].indexOf(d.grip);d.pose.target[index]=d.grip==='y'?d.base.target[1]-(event.clientY-d.y)*.025:d.grip==='x'?point.x:point.z;}
- else if(d.grip==='frameH')d.pose.frameH=Math.max(.2,d.base.frameH+(event.clientX-d.x)*.04);
- else d.pose[d.grip]=d.base[d.grip]+(event.clientX-d.x)*.008;
- ctx.ui();return true;
+ else if(d.grip==='frameH')d.pose.frameH=Math.max(.2,d.base.frameH+(event.clientY-d.y)*.04);
+ else d.pose[d.grip]=d.base[d.grip]+(d.grip==='el'?-(event.clientY-d.y):(event.clientX-d.x))*.008;
+ if(d.through)nav.applyPose(d.pose);ctx.ui();return true;
 }
-export function endCameraDrag() {const d=S.cameraDraft;if(!d)return false;S.cameraDraft=null;proposePatch(d.pose);return true;}
-onCancel(()=>{S.cameraDraft=null;},5,'Camera framing gesture');
+export function endCameraDrag() {const d=S.cameraDraft;if(!d)return false;nav.restoreCapture(d.origin);S.cameraDraft=null;proposePatch(d.pose);return true;}
+onCancel(()=>{if(S.cameraDraft?.origin)nav.restoreCapture(S.cameraDraft.origin);S.cameraDraft=null;},5,'Camera framing gesture');
 
-export function coordinate() {
- const x=S.experienceContext,s=x.seam;if(!s)return false;
- const rows=originCoverage(ctx.experience,ctx.cameraSource,s.from,s.to);
- if(!S.task.params.connection)S.task.params.connection=rows.find(r=>r.connectionId)?.connectionId||null;
- if(!S.task.params.connection){A.setStatus('Connect a Camera route before coordinating its stations','refuse');return false;}
- x.depth='coordination';S.task.kind='experience-coordination';S.task.params.station='departure';ctx.ui();return true;
+export function coordinate(){
+ const x=S.experienceContext,s=x.seam;if(!s||!S.task)return false;
+ const seam=ctx.experience.seams[`${s.from}>${s.to}`];if(!seam||seam.mode!=='travel'){A.setStatus('Coordinate needs Travel on a supported Camera route','refuse');return false;}
+ const ids=[...new Set(originCoverage(ctx.experience,cameraSnapshot(),s.from,s.to).filter(r=>!r.missing).map(r=>r.connectionId).filter(Boolean))];
+ if(S.task.params.connection&&!ids.includes(S.task.params.connection))S.task.params.connection=null;
+ if(!S.task.params.connection){const used=[...new Set(seam.beats.map(b=>b.connectionId).filter(id=>ids.includes(id)))];if(used.length===1)S.task.params.connection=used[0];else if(ids.length===1)S.task.params.connection=ids[0];else {x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=true;ctx.ui();return true;}}
+ if(!S.task.params.connection){A.setStatus('Connect a Camera route before coordinating','refuse');return false;}
+ x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=false;
+ const route=ctx.cameraSource.connections[S.task.params.connection];if(!nav.stations(route).some(s=>s.id===S.task.params.station))S.task.params.station='departure';ctx.ui();return true;
 }
 export function beatAtStation(stationId,seconds=1) {
  const {from,to}=S.experienceContext.seam;return command('Add station-bound Experience hold',(e,c)=>addBeat(e,c,from,to,S.task.params.connection,stationId,seconds));
 }
-export function routePace(speed) {
- const id=S.task?.params.connection;if(!id)return false;
- const affected=connectionReach(ctx.experience,ctx.cameraSource,id);
- S.expRouteAsk={id,speed,affected};if(affected.length<=1)return acceptRoutePace();ctx.ui();return true;
-}
-export function acceptRoutePace() {
- const ask=S.expRouteAsk;if(!ask)return false;
- command('Set Camera route pace',(e,c)=>{if(!c.connections[ask.id])throw Error('Route removed');c.connections[ask.id].speed=ask.speed;});S.expRouteAsk=null;ctx.ui();return true;
+export function routePace(speed){const id=S.task?.params.connection;if(!id||!['slow','auto','fast'].includes(speed))return false;return routeProposal(id,{speed},'Set Camera route pace');}
+export function acceptRoutePace(){
+ const ask=S.expRouteAsk;if(!ask)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,ask.id);
+ if(JSON.stringify(affected)!==JSON.stringify(ask.affected)){ask.affected=affected;ctx.ui();return false;}
+ command(ask.label,(e,c)=>{const route=c.connections[ask.id];if(!route)throw Error('Route removed');if(ask.patch.speed)route.speed=ask.patch.speed;if(ask.patch.addAnchor)addAnchor(c,ask.id,ask.patch.addAnchor);if(ask.patch.anchor){const a=route.anchors.find(a=>a.id===ask.patch.anchor);if(!a)throw Error('Anchor removed');a.position=[...ask.patch.position];}});S.expRouteAsk=null;ctx.ui();return true;
 }
 onCancel(()=>{S.expRouteAsk=null;},12,'Camera route pace proposal');
 
 export function addNarration(pid=S.experienceContext.presentation) {
  return command('Add narration',e=>addContribution(e,pid,{kind:'narration',name:'Narration',text:e.presentations[pid]?.meaning||'An explanation of this place.',markers:[]},'narration'));
 }
-export function editDefinition(uid,key,value) {return command('Edit contribution',e=>{const d=e.definitions[e.uses[uid]?.definitionId];if(!d)throw Error('Contribution removed');d[key]=value;});}
+export const editDefinition=(uid,key,value)=>sourceProposal('Edit shared contribution','definition',uid,key,value);
 export function addMarker(uid,label='Named phrase') {
- return command('Add narration phrase',e=>{const d=e.definitions[e.uses[uid]?.definitionId];if(d?.kind!=='narration')throw Error('Not narration');d.markers.push({id:fresh(e,'phrase'),label,fraction:.5});});
+ const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;return sourceProposal('Add shared narration phrase','definition',uid,'markers',[...d.markers,{label,fraction:.5}]);
 }
 export function beginOffer(kind='behavior') {
  const p=ctx.experience.presentations[S.experienceContext.presentation];
@@ -332,15 +365,15 @@ export function presenterStep(delta) {S.experiencePresenter=Math.max(0,Math.min(
 
 export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
 
-export function cameraSnapshot(){const positions=Object.fromEntries(Object.values(ctx.cameraSource.views).flatMap(v=>(v.focus?.ids||[]).map(id=>[id,A.worldOf(id)])));return lowerCamera(ctx.cameraSource,positions);}
+export const cameraSnapshot=()=>nav.resolvedCamera();
 
 export function parkExperience() {
  const t=S.task,x=S.experienceContext;
  if(t?.kind.startsWith('experience-')) {
-  const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','invokeUse','stop'];
+  const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','invokeUse','stop','hints'];
   S.parkedByLens.experience={lens:'experience',identity:t.subject,name:resolveExperience(t.subject)?.item.name||t.subject||'Guide',kind:t.kind,context:structuredClone(x),target:structuredClone(t.target),params:Object.fromEntries(acceptedKeys.filter(k=>k in t.params).map(k=>[k,structuredClone(t.params[k])]))};
  }
- cancelProposal('lens');T.park();S.experienceContext={...x,depth:'ordinary',stop:null,seam:null};ctx.ui();return S.parkedByLens.experience;
+ cancelProposal('lens');T.park();nav.discardReturn();S.derivedView=null;S.experienceContext={...x,depth:'ordinary',stop:null,seam:null};ctx.ui();return S.parkedByLens.experience;
 }
 export function experienceParkedContext() {
  const p=S.parkedByLens.experience;if(!p)return null;
@@ -349,6 +382,7 @@ export function experienceParkedContext() {
  if(S.sel!==p.identity){result.reason='Select the original identity explicitly';result.fix='select';return result;}
  const x=p.context;
  if(x.presentation&&!ctx.experience.presentations[x.presentation]){result.reason='Presentation removed';return result;}
+ if(x.presentation&&!presentationValid(x.presentation)){result.reason='Focus binding unresolved';return result;}
  if(x.stop&&!ctx.experience.stops[x.stop]){result.reason='Stop removed';return result;}
  if(x.seam&&resolveNext(ctx.experience,x.seam.from).id!==x.seam.to){result.reason='Seam bookends changed';return result;}
  if(p.params.useId){const use=resolveUse(ctx.experience,ctx.cameraSource,p.params.useId);if(!use||use.view.id!==p.target?.id){result.reason='Framing removed or rebound';return result;}}
@@ -356,11 +390,14 @@ export function experienceParkedContext() {
  if(p.params.station){const route=ctx.cameraSource.connections[p.params.connection];if(!route||!nav.stations(route).some(s=>s.id===p.params.station)){result.reason='Camera station removed';return result;}}
  result.ok=true;return result;
 }
-export function resumeExperience() {
+export async function resumeExperience() {
  const p=S.parkedByLens.experience,v=experienceParkedContext();
  if(!p||!v?.ok||v.wrongLens){A.setStatus(v?.reason||'Experience work cannot resume here','refuse');return false;}
- cancelProposal('resume');S.experienceContext=structuredClone(p.context);
+ cancelProposal('resume');await nav.neutralInvocation(()=>{S.experienceContext=structuredClone(p.context);
  T.begin({kind:p.kind,subject:p.identity,target:structuredClone(p.target),params:structuredClone(p.params)});
+ if(['route','coordination','precision'].includes(p.context.depth))nav.beginReturn('Current reading');
+ if(p.kind==='experience-hints')S.derivedView={presentation:p.target.id,...nav.deriveFraming(ctx.experience.presentations[p.target.id],p.params.hints)};
+ if(p.kind==='experience-camera')S.task.params.posture=nav.readingFor(cameraSnapshot().views[p.target.id]);});
  // Surface reactivation is neutral even when the remembered posture was Through or Plan.
  S.parkedByLens.experience=null;ctx.ui();return true;
 }
@@ -371,3 +408,5 @@ export function updateHold(id,seconds) {
  const s=S.experienceContext.seam;if(!s)return false;
  return command('Edit Experience station hold',e=>{const beat=e.seams[`${s.from}>${s.to}`]?.beats.find(b=>b.id===id&&b.kind==='hold');if(!beat)throw Error('Hold removed');beat.seconds=seconds;});
 }
+
+export function loadConformance(){resetExperience(false);const f=conformanceFixture();ctx.experience=f.experience;ctx.cameraSource=f.camera;ctx.ui();}

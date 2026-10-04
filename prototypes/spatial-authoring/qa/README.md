@@ -16,8 +16,9 @@ qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the 
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
 qa/run-all.sh lens         # stage S6: the lens, parked work, and World parking and refusal grammar
 qa/run-all.sh experience   # stage S7: Experience wiring and the visitor's isolated preview
+qa/run-all.sh conformance  # V2 product journeys and visible Camera/Set/coordination geometry
 qa/run-all.sh visitor      # visitor controls, effects, Gates and isolation
-qa/run-all.sh reconciliation # shared shell, saved controls, specimens and narrow Experience
+qa/run-all.sh reconciliation # saved controls and narrow Guide/Card/precision/visitor
 qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
@@ -46,7 +47,10 @@ What the harness knows about keys, measured rather than assumed:
 - `agent-browser press <printable key>` does not release the key: the page then receives thousands of
   keydowns a second, forever, so the key's command re-runs whenever the state changes (close a reading
   and watch it open again). `qa_press` therefore dispatches the keydown itself for a single-character
-  key, and dispatches Escape on the focused element after native Escape stalls, and keeps native Enter, Tab and arrows.
+  key. Escape uses a focused dispatch after native Escape stalls. Repair reentry also exposed a
+  retained native Enter accepting the next candidate, so `qa_press Enter` uses the same single
+  focused keydown, uncanceled button activation and keyup. Tab/arrows retain native default
+  behavior. Assertions/tolerances are unchanged.
 - With a live knife aim on screen, `press` hangs for about 30 seconds and drops the key. Where that
   matters, `qa_key_dispatch` dispatches the keydown explicitly instead.
 - A press can therefore also land after the eval that followed it, which is why key-driven assertions
@@ -85,7 +89,11 @@ What the harness knows about keys, measured rather than assumed:
   The Instrument overlays the stage rather than taking layout space, so the stage rect is constant
   across all 50 checkpoints and invoking work cannot change the fit of a reading.
 - B7–B9 preserve the originally unselected Section subject as null; only these three expectations changed during S8, independently protected by correctness parking checks.
-- Screens are captures, never the assertion mechanism.
+- Raster equality is not a contract. **Written V2 visual conformance is a blocking acceptance gate**:
+  review all six full-window states against the original boards, with seven explicit dimensional
+  verdicts and the required comparison pairs. Automated visibility, hit reachability and geometry
+  assertions support that review; they do not substitute for it. Required L0/L1/L2 density,
+  spatial instruments and semantic control hierarchy cannot be waived as observational.
 
 ## Coverage limits (recorded, not hidden)
 
@@ -103,7 +111,11 @@ What the harness knows about keys, measured rather than assumed:
 6. Shell composition is asserted as geometry and inventory (what exists, where it sits, which verbs a
    subject offers), not as appearance: colour, type and spacing are the design system's business and
    are reviewed by eye. The World responsive axis measures narrow desktop and DPR2; reconciliation owns narrow Experience.
-7. `screens/experience-v2/` maps all six canonical V2 states plus visitor, foreign selection, parked procedures and narrow desktop in [Experience acceptance](./EXPERIENCE-ACCEPTANCE.md).
+7. [Conformance manifest](./CONFORMANCE-MANIFEST.md) owns the new product recipes. Fresh captures,
+   read-only state/source sidecars and full-board pairs live in `screens/experience-conformance/`;
+   the [new conformance review](./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) owns their verdicts.
+   `screens/experience-v2/` and [S0–S9 acceptance](./EXPERIENCE-ACCEPTANCE.md) remain historical;
+   their prior pass labels confer no replacement acceptance.
 
 ## Files
 
@@ -124,8 +136,9 @@ What the harness knows about keys, measured rather than assumed:
 | `experience-check.sh` | ordinary authoring, shared history, unordered Set, Guide/Seam, 2-of-3 coverage, Camera reach/detachment and stable coordination wiring |
 | `visitor-check.sh` | outside-product example/Presenter, visitor takeover, independent Piano, visible Switch → Light session effect, keyboard Gate parity, captions/cues, exploration/rejoin and frozen source/history |
 | `continuity-check.sh` | both-direction parking, neutral Resume, canceled live framing drag, exact Preview/accepted-inspection return, interleaved history and inert World footer controls |
-| `reconciliation-check.sh` | Head Preview/active Experience, Index locator, owner/reach Card headers, saved Stop controls/Undo, editable holds, Stage station markers/Through grip, canonical specimens and 1024×768 Experience/visitor behavior |
+| `conformance-check.sh` | actual product journeys QA-1…6, no-View Preview, derived Auto/Capture, repeated Meaning scope, local entry, real observer routes and anchors, stable mirrored stations, shared route scope, spatial precision, neutral Resume/fresh return, Escape/lost capture; permitted authored source loaders only |
+| `reconciliation-check.sh` | Head/Index/owner/reach, saved Stop controls/Undo and 1024×768 Guide/Card/precision/visitor reachability without Camera refit |
 | `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
 | `correctness-check.sh` | remaining numerical and nested-lifecycle obligations, no duplicate broad shell suite |
-| `mutation-check.sh` | same-defect replacement proof, disposable copies only |
+| `mutation-check.sh` / `conformance-mutation-check.sh` | same-defect replacement proof, World plus seven V2 boundaries in disposable copies, affected successor fails and unaffected control passes |
 | `run-all.sh` | the axis driver |
