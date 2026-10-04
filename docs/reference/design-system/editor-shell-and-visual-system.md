@@ -1,2157 +1,989 @@
-# Museum Editor — Shell & Visual-System Contract (PLATE)
+# Museum Editor — destination shell and visual-system contract (PLATE)
 
-**Status:** durable, owner-ratified **normative authority for the editor shell and
-visual system**, promoted here out of the P23.14 implementation slice. The P23.14
-design documents are now history and only supersession pointers remain at their old
-slice paths (§0.6).  
-The post-implementation owner ratifications (R1–R4) and the implementation-era
-rules they produced are folded into the sections below (ratified 2026-09-19).
-**P23.14 is closed** (accepted 2026-09-21): this document is its durable outcome,
-the open owner calls it left behind are §0.3, and its dated artifacts are §0.6.  
-**Visual-language amendment (2026-09-29):** the **desired product visual language** is
-now the owner-accepted P26 demo redesign (merged #104), folded here as the owner-directed
-visual-system sequence step 3 ([`roadmap/README.md`](../../roadmap/README.md)). The
-destination is stated in **§0.7** and labelled **landed now / desired-from-demo
-(unbuilt) / still-unbuilt (T1 after F)** wherever it touches a section below. This is a
-**design target, not a cutover**: the editor still runs the landed PLATE Light chrome
-described here, and §0.3's open calls are unchanged.  
-**Unified-shell amendment (2026-10-01, PR #111):** the owner promotes both finalized
-designs — V2 Experience and the World shell round — into the **durable destination
-shell design**. **§0.8** owns the shared and World laws, **§0.8.1** the Experience
-expression, and **§0.8.2** parked-procedure return. The syntheses and QA remain the
-finalized design records and specimens. These requirements are normative for new
-shell design; they are not a production cutover. The editor still runs the landed
-PLATE chrome, production implementation remains gated, and §0.3's open calls are
-unchanged.
+**Status: soft-frozen destination shell authority.** This document is the complete
+contract for new Museum Editor shell design: composition, disclosure, information
+homes, material, typography, control hierarchy, state language and return behavior.
+Future feature design extends this shell. A proposed shell change must identify and
+justify the rule it changes; a feature brief must not casually reinterpret it.
 
-**World Paper amendment (2026-10-03):** the owner accepts the Paper authoring shell;
-**§0.8.4** owns the destination for authoring in World's Paper reading (rail families,
-Wall authoring with a derived spatial role, Card facts, Search vs Find, precision,
-drafting state, consequences, Paper ⟷ 3D). Not a cutover.
+The destination is **World | Experience over one project**. This is design authority,
+not a claim of production implementation or authorization to cut over the editor.
+The maintained editor's current composition is described in the
+[landed shell contract](../components/shell.md); its implementation remains current
+until explicit migration. Prototype adoption and production delivery have their own
+plans and acceptance gates.
 
-**Working name:** **PLATE**  
-**Purpose:** the normative shell + visual-system contract for Museum Editor, and the
-first document a later phase reads before it touches shell composition, material,
-typography, control metrics or state language.  
-**Evidence annexes (evidence, not authority):**
-[`editor-shell-ratifications.md`](./editor-shell-ratifications.md) — the measurement-grade
-record of R1–R3 and the root cause of the pre-ratification drift;
-[`editor-shell-atlas/`](./editor-shell-atlas/index.html) — the interactive visual/interaction QA companion;
-[the P23.14 shell QA record](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
-— a closed-work stub: its closeout record (acceptance, gate numbers, residuals) is
-in the stub, and the full findings / open-calls / carried-debt body recovers from
-the `git show` anchor inside it.  
-**Provenance only (never authority):** the P23.14 slice's `design/proposals/` and
-`design/briefs/`, the historical
-Designer-D PNG exports, and the pre-PLATE shell specifications' numeric sections.
+Read the shared shell, then the expression for the lens being designed. The visual
+and return rules apply to both. For direct spatial work, also use the
+[spatial-instrument grammar](./spatial-instrument-grammar.md) and the feature's
+domain contract. Historical syntheses and QA are retained as
+[design evidence](#design-evidence); compliance with this contract requires no
+reconstruction of those rounds.
 
-> **Reading order for a later phase:** this document §0 → **§0.7 (the desired visual
-> language and its landed/target/unbuilt labels)** → **§0.8 (the accepted destination
-> shell direction; §0.8.4 for World Paper authoring)** → the section that owns your change
-> (composition §5 · material §4/§6 · type + control §7 · state §18 · density §22) →
-> `editor-shell-ratifications.md` only when you need the
-> measurements behind a ratified decision. Do **not** take a numeric shell value
-> from `docs/reference/design-system/*` or from a component's scoped CSS; those
-> are descriptive or historical (§0.5).
+## Authority and invariants
 
----
+Authority is **by concern**, not a ranking that puts shell design above domain truth.
 
-## 0. Authority and intent
+| Concern | Authority |
+| --- | --- |
+| Shell composition, disclosure, information homes, material, typography, control metrics and state grammar | This document |
+| Stage representation, handles/helpers, precision readouts, layering, hit legibility and correspondence between readings | [Spatial-instrument grammar](./spatial-instrument-grammar.md), consuming this document's visual/state roles and domain operations |
+| Product direction and semantic ownership | [North Star](../north-star.md), [architecture](../architecture.md), the [ratified decision record](../decisions/northstar-ratification-2026-09-27.md) and its [World \| Experience refinement](../decisions/world-experience-reconciliation-2026-09-29.md) |
+| Common identity, persisted units, channels, acceptance and release shapes | [F composition/execution](../composition-execution.md) |
+| Domain validity, identity, Camera evaluation, persistence and history | Their routed [component contracts](../../README.md); shell exposure consumes their operations |
+| Current implementation, delivery sequence and acceptance evidence | Landed contracts, active plans and QA in their respective scopes; none silently changes this destination |
 
-This document is the **durable shell and visual-system authority** for Museum
-Editor. It was promoted, retitled and extended out of the P23.14 implementation
-slice, whose design direction it replaces as the live contract; it supersedes the
-earlier proposal-level interpretations of PLATE while retaining the strongest parts
-of Designer A’s concept. Future work reads it here, in `docs/reference/`, not in the
-P23.14 slice (§0.6).
+World exposes Layout/Scene source truth, composition and intrinsic capability, plus
+Camera inspection. Experience composes visitor meaning and occurrences and may expose
+Camera authoring. Neither lens is a new semantic document. Layout owns architecture
+and its runtime-safe representation; Scene owns objects and world presentation;
+Camera owns Views, connectivity, routes, framing, projection and evaluation;
+Experience owns Presentations, Guide occurrences/order, beats, holds, continuation
+and contextual orchestration. Typed resources remain independently owned.
 
-**Architecture reconciliation (owner-directed, 2026-09-29).** The
-`Scene | Camera` × `Plan | 3D` composition and its Navigator, Inspector,
-Timeline and Camera exposure rules below describe the **landed shell** and its
-P23.14 acceptance. The destination creator-facing lenses are **World |
-Experience** over one project ([North Star](../north-star.md)); the replacement
-shell's accepted destination composition is stated in **§0.8** (2026-10-01, PR
-#111). No current panel placement, axis, dock or
-Plan/3D presentation is a destination composition constraint. Visual material,
-typography, control roles, state language and the one-selection/one-writable-owner
-principles remain this contract's authority. World is not a new document:
-F.2's Layout, Scene, Camera and Experience codec units remain distinct.
+The shell preserves these invariants:
 
-The contract is a synthesis of:
+- **One project and one continuous Stage.** Plan, 3D and focused spatial readings
+  show the same world; a lens or reading change does not launch another application.
+- **One canonical selection value.** It is one identity, or an explicit set where
+  the domain supports sets. Stage, Index, Card, subject Search, Details references
+  and both lenses resolve that value. There are no parallel lens selections.
+- **Selection is distinct from task focus.** Keyboard focus, a technical host,
+  component focus, a reference, a repair candidate and temporary geometry are not
+  substitute selections.
+- **One Camera/navigation authority.** Framing requests, reading transitions,
+  navigation, route evaluation and spatial return use it. Shell surfaces do not own
+  another graph, Camera history or independent pose/FOV interpolation.
+- **One architectural compiler.** Drawing and contextual representation consume
+  canonical Layout output; a shell reading does not reconstruct architecture.
+- **Authored truth excludes session state.** Selection, armed tools, temporary
+  inspection, proposal geometry, shell disclosure and reading settings are not
+  serialized as source. Generated Camera endpoints and geometry stay derived;
+  authored connection anchors are interior only.
+- **One chronological source history**, tagged by owning authority and exposed with
+  verb labels. Valid accepted commands/gestures produce one logical history result.
+  Cross-domain acceptance follows F.4. Cancellation,
+  navigation, spatial return and reading settings are not Undo.
+- **Visitor isolation.** Preview is visitor execution with isolated session state;
+  visitor/public-release chunks exclude editor selection, history, gizmos and
+  authoring machinery. Runtime-safe domain evaluation is shared, not forked.
 
-- the P23.14 research and shell-design context;
-- Designer A’s PLATE proposal;
-- owner ratification and visual exploration;
-- current Museum Editor shell behavior;
-- P23.12 identity/search/Inspector contracts;
-- P23.13 Plan drafting and iconography contracts;
-- P24 staging and multi-selection pressure;
-- P26 contextual architectural-instrument pressure;
-- the four ratified PLATE visual specimens: Scene/Plan, Scene/3D, Camera/Plan, Camera/3D + Timeline.
+### One writable owner per fact (§2.12)
 
-Designer A remains the conceptual ancestor of the material and axis grammar, but this document is now the authority.
+The visual host decides how a control paints; the lens/task context decides what
+is exposed. Every writable fact has one exposed control owner. Another surface
+may display it or open that owner, but must not mount a second writer. Mutually
+exclusive postures may expose the same operation through a deliberate host gate.
+A Card header and its body always describe the same canonical target, with each
+property's actual owner made clear when relevant.
 
-The Atlas produced from this document is **not** the product specification. It is an interactive, falsifiable QA instrument that demonstrates the specification. If an Atlas detail conflicts with this document, this document wins.
+Reusing a component preserves its behavior and domain ownership, not its previous
+layout grammar. Clear inherited layout rules that conflict with the new host;
+verify the composed surface. New shell surfaces consume semantic material, type
+and control roles rather than component-local numbers. A new role requires a
+conscious system change. Fit and legibility constraints outrank obsolete numbers;
+re-derive and validate a metric when its original context no longer applies.
 
----
+## Shared shell (§0.8)
 
-## 0.1 Authority graph (explicit, unambiguous)
+<a id="08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111"></a>
 
-| Rank | Source | Normative for |
-| --- | --- | --- |
-| 1 | **This document** (`editor-shell-and-visual-system.md`, PLATE) | Shell + visual-system composition, material, typography, control metrics, state language, density, responsiveness. Since 2026-09-29 it also states the **desired** visual language folded from the accepted P26 demo (§0.7), labelled landed-vs-target-vs-unbuilt; since 2026-10-01 it also states the accepted destination **World \| Experience** shell direction (§0.8) |
-| 2 | **Subsystem authorities** — P23.12 identity contract; P23.13 Plan drafting, iconography and Plan Paper; `reference/north-star.md`; document/selection/navigation/camera-motion ownership specs | Their own domains, unchanged by P23.14. This document consumes them (§2.6, §2.7) and never overrides them |
-| 3 | **[`editor-shell-atlas/`](./editor-shell-atlas/index.html)** | Canonical interactive visual/interaction **QA companion**. It demonstrates this document; it never decides topology, domain ownership, validation or acceptance numbers |
-| 4 | The **other** `docs/reference/design-system/*` docs (this one excepted) and `docs/reference/components/shell.md` | Still canonical for **capability, ownership, exposure** and the frozen identity/icon/Plan contracts. Their shell **placement, dimension, type, control and material** statements are **descriptive of this document** (§0.5) |
-| 5 | `design/proposals/`, `design/briefs/` (P23.14 slice), historical PNG exports, pre-PLATE shell specs' numeric tables | Provenance and visual exploration only. Never implement from them |
+World and Experience share four persistent landmarks and a contextual lower task
+home. Their identity and relative hierarchy remain recognizable across lenses.
 
-There is no sidecar that competes with rank 1. Ratified changes are written
-**into this document**; the annexes record evidence and history.
+```text
+HEAD — Museum Editor · project · World | Experience · active Experience · history/save · Preview
+INDEX / locator       STAGE — dominant spatial work       CARD — selected identity
+                      contextual lower task home
+```
 
-## 0.2 What changed after implementation — ratification record (2026-09-19)
-
-P23.14 was implemented and reviewed against the PLATE reference PNGs and the
-Atlas. Three owner ratifications and one grammar correction refine the
-pre-implementation direction. They are folded into the sections named below, so a
-later phase never has to reconstruct them from a PR body or a QA note.
-
-| Ratification | Pre-implementation direction said | Ratified, implemented outcome | Folded into |
+| Landmark | Shared responsibility | World expression | Experience expression |
 | --- | --- | --- | --- |
-| **R1 — Tool Tray tier** | §7's approximate hierarchy read as: engraved group labels at 10 px | The rail paints **7 px group / 8 px tool**, with a **6 px compact floor** for a group word that physically cannot fit, opt-in per group (`TRANSFORM` is the known case). Rail stays 44 px, tools ~42 px | §7.3, §11 |
-| **R2 — armed tool** | `--editor-armed` as the rail's armed fill, with a hue plus non-hue cues | Armed = **one material step darker** (recess), full normal ink, **no amber outline, no 3 px accent edge, no label-weight jump**; hover lifts, armed sinks; legible without hue | §11.2, §18.1 |
-| **R3 — type + control scale** | Numeric type/control values distributed across components | **Closed ladder** 9/10/11/12/13/15/20 px + **semantic roles** + two global scales (`--editor-type-scale`, `--editor-control-scale`), plus the cascade rule and the role outcomes | §2.8, §2.9, §7.1–§7.4, and each metric section |
-| **View Bar MODE grammar** | "Scene Plan may additionally expose the subordinate MODE label with Layout / Arrange" | **`MODE` then `Layout` / `Arrange`**: `MODE` is a quiet **non-interactive caption**, not a third segment; the wrapper has no fill, border, radius or padding that reads as one capsule. Pressed/toggled View Bar controls use a **recessed surface + edge border + inset bottom rule** instead of the earlier accent-soft fill | §10, §18.2 |
-| **R4 — one writable owner per fact** | Composition ruled; ownership of individual controls between shell hosts not stated | **The host decides what a control paints; the workspace decides what is exposed.** Five facts had two writable homes (Panels, Scene grid, camera Path/Frame, the MODE-neighbour pair, `POV / Observer`); the Inspector resolves **one exposed target** (`resolveInspectorDomain()` / `resolveInspectorExposure()`) that both header and body consume, while the retained selection stays remembered. Fix the **host gate**, not the button | §2.12, §10, §11 |
+| **Head** | Persistent project/application context, lens switch, save/history and Preview | App actions and source-history access; Paper details below | Active Experience identity in context; the same app and project actions |
+| **Index** | Where am I, and where is that thing? Locator and orientation, not a primary property editor | Local place/level path, relation-aware surroundings, subject Search and Browse | Presentations and relevant relationships, including Guide awareness where present |
+| **Stage** | Continuous spatial truth, focused readings, spatial instruments and direct manipulation | Architecture, objects, inspection, drafting and manipulation | Working Set, Camera rig/routes, Stop entry pins and local spatial coordination |
+| **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? | Quiet identity; invoked structure/reach disclosure | Stable semantic strata for meaning, Camera use and occurrence scope |
+| **Lower task home** | Contextual work at the lower working edge, with span chosen by information structure and selection identity kept in the Card | One **World Instrument** for the invoked task | One shell-owned **Experience Deck** for Guide order, Seam and coordination |
 
-The governing principle behind R1, stated once so it is not re-litigated:
+The wide shell has Index left, dominant Stage center and Card right. The Card is a
+stable vertical landmark; its lower strata or width may compress when spatial work
+needs room, but its canonical identity remains legible or directly recoverable.
+It never morphs into the horizontal task surface. Head remains compact; Index and
+Card are quiet supporting surfaces rather than equally weighted dashboards.
 
-> **The rail's geometry and legibility constraint outrank obsolete numeric
-typography inherited from the pre-PLATE shell.** A historical font size never
-outranks the constraint it was meant to satisfy (§2.10).
+The lower task home is a shared composition principle, **not interchangeable task
+semantics**. World Instrument is subject/task procedure. Experience Deck is extended
+editorial order and local transition work. One does not inherit the other's control
+layout, vocabulary, dimensions or lifecycle. Both remain attached to the shared
+shell and preserve Stage dominance.
 
-**R4** was ratified after the code review of the implementation PR at head `f7a31e2`, which
-accepted the R1–R3 direction and the authority migration but blocked merge on the ownership and
-exposure seams. The measured tables, the leak instances and the review evidence:
-[`editor-shell-ratifications.md`](./editor-shell-ratifications.md) and the QA record's
-*Review pass — ownership by host, exposure by workspace* section.
+### Contextual lower-surface span
 
-## 0.3 Open seams — deliberately NOT settled in this document
+The lower home has **one composition grammar with task-appropriate span**. Its
+horizontal extent follows the information that must be read and worked on together,
+not the lens name, technical complexity or number of uses affected by an edit.
 
-These are unresolved owner calls recorded by the P23.14 review; **closing that slice
-did not settle them**. They are listed here so no later phase mistakes an unsettled
-call for ratified shell design. Do not implement a default for any of them without
-an owner decision.
+- **Local work** stays attached to the central Stage working region and consumes
+  the width its task needs. An Opening procedure, measurement, source edit or
+  repair does not earn shell breadth merely by exposing advanced controls.
+- **Breadth work** may occupy the lower band beneath **Index + Stage + Card**
+  when horizontal order, neighboring comparison or linked relationships materially
+  require that continuity. Guide Overview, Seam bookends and local coordination
+  are canonical examples. Their upper Index/Card landmarks retain their meanings;
+  occupying the band beneath them is not itself sidebar collapse or an ownership change.
 
-| Open seam | State |
-| --- | --- |
-| ~~**F1** Scene workspaces can mount the Camera node editor~~ | **resolved** by R4 — the Scene workspace never mounts the Camera editor (§2.12) |
-| ~~**F2** Inspector header vs body can describe different selections~~ | **resolved** by R4 — one resolved Inspector target feeds both (§2.12) |
-| **F4** Numeric fields report `:invalid` while holding legal values | **not shell design — deferred, not accepted.** Registered as **TD-2** in [`docs/operations/tech-debt/README.md`](../../operations/tech-debt/README.md); the fix changes arrow-key increments, which is Inspector entry design |
-| ~~**F5** `POV / Observer` in both the View Bar and the Camera-Drawer transport~~ | **resolved** by R4 — the drawer is the single owner (§2.12) |
-| Tool Tray **keyboard focus** treatment | open — focus is a *separate* state from armed (§18); any change must preserve a visible, non-hue keyboard affordance |
-| View Bar **pressed fill** | open — the recessed surface in §10/§18.2 is the current baseline; an accent-tinted fill is a one-line reconsideration |
-| **Tray width vs a renamed `TRANSFORM`** | open — product calls; §11 keeps the spec's own vocabulary and the 44 px rail |
-| **View Bar in a squeezed centre column** (progressive density) | open seam — see §22.2 |
+A feature claiming breadth must show what information must remain simultaneously
+legible, why a local span would fragment or cramp that relationship, and how the
+composition preserves Stage dominance, canonical Card identity and the Index's
+locator role. Edit reach alone is insufficient. A World task can qualify on the
+same grounds, but no existing small World procedure is required to become broad,
+and breadth creates no new domain authority or permanent workbench.
 
-None of these rows is closed by the 2026-09-29 visual-language amendment (§0.7); that
-amendment's own open calls are listed separately in §0.7.6.
+Owning a broad slot does not stretch sparse contents. Internal groups size from
+their information; remaining space supplies separation and legibility. Keep span
+stable within a task posture rather than jumping with hover, grip activation or
+small content changes. A deliberate task/depth change can require a different span.
 
-Source of record for each: the P23.14 QA record,
-[`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md)
-(closed-work stub; full body via its `git show` anchor).
+**Peek is the shallow posture of the same shell-owned Deck**, with a compact rail
+at the Stage edge; it need not paint the full breadth required by Overview/Seam.
+This preserves a recognizable lower landmark without a large empty panel.
+After semantic span is decided, overlay, crop or minimal layout reallocation,
+exact dimensions and responsive thresholds remain implementation/usability choices.
+They must preserve spatial memory and never imply Camera navigation.
 
-## 0.4 Carried implementation debt — not design contracts
+### Persistent breadth and contextual depth
 
-Kept out of the design body on purpose. These constrain implementation; they are
-not new shell design:
+At rest, project/lens identity, useful orientation, Stage and canonical Card identity
+persist. Full Browse/Search depth, recovery rows, Look actions, Details, task surfaces,
+precision, repair and edit-reach disclosure appear when context or creator action
+requires them. Capabilities do not earn permanent chrome simply by existing.
 
-- **TD-1** — floor-supported placement is unreachable in canonical wall-first
-  projects, so a fresh project cannot author its first Camera node. Registered in
-  [`docs/operations/tech-debt/README.md`](../../operations/tech-debt/README.md)
-  and owned by P24.2. P23.14 records it as an acceptance limitation and does not
-  work around it.
-- **TD-2** — Inspector numeric fields announce `:invalid` while holding legal values (step
-  base off the `step` grid). Registered as TD-2; owned by whoever next owns Inspector
-  numeric entry, **not** by a shell slice. P23.14 records it and does not change increments.
-- **Manual accessibility rows** — screen-reader reading order, device/coarse-pointer
-  usability. Automated motion/reduced-motion and contrast checks exist, and the
-  coarse-pointer rule now covers every interactive shell species including `a[href]`
-  in both dimensions (≥44 × 44);
-  the OS-preference and physical-device pass remains owed.
-- **Frozen-relic shared components** — the visitor/publication relic shares shell
-  components, so shell changes must be scoped rather than component-local (§2.8).
-- **Residual Inspector role migration** — the Inspector family still pins part of its
-  12 px / 12.5 px tiers (§13.1).
-- **Squeezed-column View Bar pressure** — see §22.2.
+Head owns application actions, not a second task toolbar. Index locates subjects;
+Card explains the selected identity; Stage carries spatial work; the lower surface
+carries the invoked task. A feature must choose its home by that responsibility.
 
-## 0.5 How the older shell documents are classified
+### Canonical identity and state
 
-Every older shell/reference statement now falls into exactly one class:
+A selected identity is echoed consistently in its Index occurrence, Stage geometry
+where applicable, and Card. A reference to it, an active task or an authored relation
+must not masquerade as a second selection. Group headings and relation occurrences
+are visually distinct from selectable entities; nesting is never ownership.
 
-| Class | Meaning | Where |
+Names lead for named subjects. Compact references remain complete; names may ellipsize
+under pressure with the full name available in the Card. Raw canonical IDs belong
+behind Technical details. Repeated names are disambiguated by identity and location,
+never silently matched. Explicit sets use one Card identity with count, kinds and
+shared extent; they do not introduce another selection store.
+
+### Card identity, owner, source and reach
+
+The Card always represents canonical selection, not the current tool, host,
+inspection or task focus. Its identity header remains visible in the normal panel
+and survives compression as a selected-identity control. It can describe related
+facts without changing the header's target.
+
+| Question | Meaning | Disclosure |
 | --- | --- | --- |
-| **Superseded** | A pre-PLATE numeric or compositional rule that this document replaces. Retained only as history; **do not implement** | §0.5 list below; the header notes in `design-specs.md` §6/§20, `design-shell-specs.md` §1–§5, `components/shell.md` |
-| **Descriptive** | A correct description of the landed shell, written before or after P23.14. True today, but it follows this document rather than binding it | `components/shell.md` composition map; `design-specs.md` tables as amended |
-| **Subsystem authority** | Still normative for its own domain, untouched by P23.14 | P23.12 identity; P23.13 Plan drafting/iconography and Plan Paper; document, selection, navigation and camera-motion ownership |
+| **Identity** | What thing or supported set is selected? | Persistent name/reference and kind |
+| **Owner** | Which domain owns this property or operation? | Legible in semantic strata and at an ownership decision |
+| **Source** | Where does this fact come from? | Details or the decision that depends on provenance |
+| **Reach** | What does this particular proposed edit affect? | Before consequential acceptance; shared uses remain distinguishable from this use |
 
-**Superseded list (explicit, so nothing competes silently):**
+These facts are independent. A shared source may participate in local work; owner
+or provenance alone does not announce edit reach. Do not coat every World field
+with ownership glyphs. Experience may keep target and shared-use scope in its header
+because shared meaning and occurrence-local work are central there.
 
-- the pre-PLATE flat type ramp (16 / 14 / 13 / 12.5 / 11.5 px) and its per-surface
-  variants — replaced by §7's closed ladder and roles;
-- the **32 px workspace-ribbon** band and the "Row 1 / Row 2" composition model —
-  replaced by §5's Project Head + View Bar composition;
-- broad-toolbar **group-label** assumptions ("10 px engraved group labels" in a
-  full-width toolbar) — replaced by §7.3 / §11 for the rail, and by the engraved
-  role elsewhere;
-- older **tree-row measurements** (28 px rows, 13 px row text, component-local
-  indents) — replaced by §12.5's row outcomes;
-- **component-local button sizing** (28 px buttons inside a 28 px track, enclosed
-  segmented troughs) — replaced by §7.4's control-role table and §10's View Bar
-  grammar;
-- the **old dark/navy identity as the product baseline** — replaced by §6's PLATE
-  Light default (navy is a retained variant).
+An edit reaching beyond the current use invokes the **Ask Rule**: explain the
+reach and require an explicit scope decision before acceptance. Offer shared update,
+local specialization or a fork only where the domain actually supports it. A
+scope prompt does not invent inheritance, placement overrides or fork semantics.
 
-Each of those is labelled in place in the older file itself, so a reader who lands
-there first is told what it is rather than silently implementing a retired number.
+## World expression
 
-## 0.6 Provenance of this document — the authority migration (2026-09-19)
+World stays calm until creator action requires depth:
 
-The contract above was the P23.14 **design direction** while the slice was being
-designed and implemented. It has since been promoted to durable authority, and the
-slice's design folder is now history. Exactly one copy of each artifact exists:
+**Select → Look or Details → Instrument → Precision.**
 
-| Artifact | Was (P23.14 slice, history) | Is now (durable authority) |
-| --- | --- | --- |
-| Shell + visual-system contract (this document) | `roadmap/p23-layout-depth/p23.14-shell-visual-system/design/final-direction.md` — read as “the final P23.14 direction” | **`reference/design-system/editor-shell-and-visual-system.md`** — read as the product's shell/system contract, slice-independent and ratified |
-| Measurement + ratification annex | `…/design/owner-ratifications.md` | **`reference/design-system/editor-shell-ratifications.md`** — evidence, not authority |
-| Atlas (QA companion) | `…/design/atlas/index.html` + `notes.md` | **`reference/design-system/editor-shell-atlas/`** |
-| P23.14 shell QA record (dated slice artifact) | `…/qa/2026-09-19-P23.14-shell-qa-record.md` | a **closed-work stub** — closeout record (acceptance, gate numbers, rulings, residuals) at the path; the full review-pass body via its `git show` anchor |
+### Ordinary World and the Context Index
 
-At each old path a **supersession pointer** replaces the document, so no second
-live copy exists and any existing link or bookmark still resolves. The Atlas keeps
-its P23.14 provenance in its own wording — it is still the instrument P23.14's
-review was conducted against — but it now lives beside this document as its
-permanent QA companion (§0.1 rank 3).
+Ordinary World answers where I am, what surrounds the subject, what is selected
+and how to reach elsewhere. It shows a useful project/location path, nearby
+relation-aware context, Search/Browse, a minimal identity Card and the world.
+Source/use counts, component trees, attachment detail, precision, cross-lens
+references and specialist machinery are not permanently exposed.
 
-This is a **documentation and authority migration only** — it changed no
-implementation. P23.14 has since **closed** (accepted 2026-09-21, after the PR #61
-code review; closeout PR #71): the slice's prose artifacts are now path-preserving stubs carrying
-`git show <A>:<path>` recovery anchors, its `context/` and `design/` bundles are
-copied to `docs/archive/roadmap/p23/p23.14-shell-visual-system/`, and no slice
-artifact is authority. What closeout did **not** do: settle the §0.3 owner calls,
-fix TD-1/TD-2, or clear the manual-owed accessibility rows.
+The Index uses only non-empty relevant groups such as **Bounds, Openings on bounds,
+Located here, Overlays, Attached here**. A Wall may bound several Spaces; an Opening
+is hosted by a Wall; an object may merely be located in a Space; a Zone may overlap
+Spaces. Location, indentation, ownership and source identity remain distinct.
+Project, structures, levels and Room/Space orientation must scale beyond one museum
+or one level without teaching a fabricated containment model.
 
-**On the wording below.** The sections keep the design-time voice they were written
-in (`P23.14 must…`, `P23.14 should…`, and references to the four PLATE PNGs and the
-Atlas brief). Read that as **this contract** — the shell and visual-system
-requirements it governs — not as a claim about the slice's live review status. The
-slice's current status is §0.3; its dated artifacts are §0.6.
+Browse exposes wider project breadth without changing selection. If the selected
+subject lies outside the browsed context, show a conditional **Selected elsewhere**
+recovery row with identity/location; there is no permanent selection pin.
 
-## 0.7 Desired visual language — folded from the accepted P26 demo (2026-09-29)
+Subject Search explains visibility reasons and keeps four operations separate:
 
-**Status of this section:** the **desired** product visual language, recorded here as the
-owner-directed visual-system sequence step 3
-([`roadmap/README.md`](../../roadmap/README.md)). It is a **design target, not a
-description of the editor.** The editor keeps the landed PLATE Light chrome (§5–§7,
-§6.1, §15–§18) until an explicit cutover, and nothing in this amendment is implemented
-or authorized (§0.7.5).
-
-### 0.7.1 Authority and evidence for the destination
-
-The destination lives **inside this document's rank-1 authority** (§0.1). It mints no
-competing authority; the sources below supply the accepted expression and its evidence.
-
-| Role | Source | What it decides |
-| --- | --- | --- |
-| **Normative** | **This section**, plus the section homes in §0.7.4 | The product's *desired* working-surface, material and state language |
-| **Accepted experience / QA authority** | [Spatial Authoring Prototype](../../../prototypes/spatial-authoring/README.md) — the P26 *Final Design Prototype*, at `prototypes/spatial-authoring/` ([family boundary](../../../prototypes/README.md)) — `styles/app.css`, `app/stage.js`, `app/draw.js`, `app/overlay.js`, `app/actions.js` — and **journeys A–F** (scripted in that folder) | The accepted runnable experience and its specimens. Journeys A–F remain the experience/QA authority for the P26 direction |
-| **Calibration evidence** | [Specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md) §3–§7 · [Acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md) §3–§6 · [Paper-surface brief](../../roadmap/p26-spatial-depth/design/visual-system-refinement/paper-surface-brief.md) | Palette, final calibration and the drafting-surface rule, with measured evidence |
-| **Not a contract** | The prototype's own key bindings, fixture states, notice wording and no-build harness | **Prototype shortcuts are not production contracts.** Never implement a demo shortcut as product behavior |
-
-The demo redesign was merged (#104) and owner-accepted 2026-09-29. The merge changed the
-**demo only**; the editor is unaffected.
-
-### 0.7.2 The desired language in one paragraph
-
-A **dark cutting mat** for spatial modeling, **vellum** for drafting, **technical ink** for
-architecture, and restrained **ochre** for selection and manipulation — held inside the
-same chassis, at the same shell geometry, type ladder and control metrics as the landed
-contract (§0.7.5). Tape (branding/history accents) never encodes selection. **Paper + a
-1 m / 5 m grid is the 2D layout reading**; **Wall grid** controls whether the
-working wall wears the drafting sheet or shows its real material; paper and
-selection compose. **Reduce motion** is a distinct control
-from motion speed. Caution, refusal and view-only (slate/dashed) stay three separate
-notices.
-
-The demo's same-geometry calibration applies to this visual-language specimen;
-World | Experience shell geometry and control placement are not decided by this
-section — §0.8 owns the accepted destination shell laws, and exact geometry and
-placement remain destination implementation work.
-
-### 0.7.3 Status labels used below
-
-| Label | Means |
+| Operation | Effect |
 | --- | --- |
-| **landed now** | Shipped in the editor today — the existing PLATE rules |
-| **desired-from-demo** | Folded from the accepted demo as the target; **not implemented** |
-| **still-unbuilt (T1 after F)** | Demonstrated in the prototype, but production stays gated behind the F interfaces and the re-derived track plan |
+| **Select** | Change canonical identity only |
+| **Open location** | Change Index browsing context |
+| **Bring into view** | Request viewpoint motion through Camera/navigation |
+| **Reveal / Include / Face** | Invoke an available temporary World inspection |
 
-### 0.7.4 Where the destination is written
+Actions operate on their own result; navigation, location and inspection need no
+prior selection. Selecting a result never silently moves the Camera or activates
+inspection. A result can be outside the frame, behind opened architecture or otherwise
+hidden without becoming invalid or replacing the selected identity.
 
-| Section | Owns |
+### Look, Details and the World Instrument
+
+**Look** is a capability-driven door into spatial procedure for the selection/context.
+A curved Wall may offer Face, Unroll or Section; a Ceiling Lift or Look up; an Opening
+Face host or Section through here. A subject with no useful spatial reading needs no
+Look affordance. Look may sit beside selected Stage geometry, but is shell interaction,
+not a world entity or a Camera object.
+
+**Details** exposes identity, source, composition and relationships. Its verbs are
+explicit: **Expand** reveals information, **Focus** deepens task context, **Select**
+changes canonical identity, and **Open task** invokes specialist work. Entity names
+alone do not secretly select. Source uses, internal components and attachments retain
+those distinctions. Do not fabricate selectable component identity where the model
+only supports internal task focus.
+
+One **World Instrument** appears because work is invoked, never merely because a
+selected subject has advanced capabilities. Its coherent home is at the Stage's lower
+edge. It names the task and its technical target, including when that target differs
+from selection: an Opening stays selected while its host Wall is unrolled; an object
+stays selected while a component is task focus. Complexity gathers around that task.
+
+A spatial Instrument and its temporary reading activate and deactivate together.
+There is no active Unroll, Section, Reveal or Lift whose Instrument is hidden.
+Non-spatial component or repair work uses the same task home without becoming another
+composition editor. Precision deepens the current task; it is not an application mode.
+
+### Temporary readings, precision and refusal
+
+Temporary readings show the same source under a changed reading, retain an as-built
+relationship and visibly explain temporary state. They must not look like duplicated
+geometry, authored displacement, deletion, damage or visitor behavior. Labels explain
+legibility honestly, including which axes are to scale or foreshortened. Exact model
+values remain exact regardless of the current projection.
+
+The [spatial-instrument grammar](./spatial-instrument-grammar.md#direct-manipulation-and-precision)
+defines truthful handles, active/read-only emphasis and readout placement. The World
+Instrument supplies the non-pointer precision writer; it is not another selection
+or an excuse to expose duplicate writers.
+
+Refuse invalid edits locally with the proposed value, reason and useful correction
+where available. Accepted geometry remains visible; refused proposal geometry is
+separately transient. Do not clamp silently, commit then roll back, add history noise,
+clear selection or obscure the writer. Corrections are deliberate actions, never
+automatic repairs. Only valid acceptance creates the logical source edit.
+
+### Shared source and repair
+
+Owner, Source and Reach appear where the proposed operation needs them. For a source
+finish change, the Instrument can name the source, selected use, affected uses and
+acceptance scope while the Card keeps the placed object selected.
+
+Broken relationships are discoverable with a proportional parent warning. Repair
+machinery appears on invocation and distinguishes selecting the broken entity, focusing
+it as a task, previewing a candidate and changing the relationship. Show missing identity
+honestly; offer deliberate host selection, detachment or leaving unresolved where
+supported. Never match by repeated name, proximity, nearest object or apparent containment.
+
+### World Paper authoring (§0.8.4)
+
+<a id="084-world-paper-authoring-destination"></a>
+
+The following rules refine World authoring in the Paper reading, including its
+surrounding shell. **They do not change Experience's Card or Deck.** They allow a
+small read-only facts line at World rest, assign permanent pointer families and drafting
+state, and replace the older World history/status surfaces. The shared selection,
+ownership, progressive disclosure and return laws still apply.
+
+Paper is a reading of World's one Stage: plan Paper or a wall laid flat through Face/
+Unroll. It is not another lens, document or workspace with independent state. It draws
+Layout and Scene and owns no source data. Reading settings are view/session state,
+never source or Undo.
+
+| Region | Paper responsibility |
 | --- | --- |
-| §4.4 | Target working surfaces: mat / vellum / technical ink / grid / drafting sheet (**desired-from-demo**) |
-| §6.4 | Target theme values, selection ownership, **Wall grid** and the paper rule (**desired-from-demo**) |
-| §10 | Landed View Bar ownership; desired **Wall grid**, **Reduce motion** and return behavior without assigning their destination shell placement (**desired-from-demo**) |
-| §14, §18.3 | Status Rail constraint and target state language (paper + selection, caution vs refusal vs view-only) |
-| §21 | Contextual instruments — rules unchanged; the destination experience stays **still-unbuilt (T1 after F)** |
-| §23.1 | **Reduce motion** vs motion speed (**desired-from-demo**) |
-| §0.8–§0.8.3 | Promoted destination **shell/disclosure** design for World \| Experience (2026-10-01, PR #111) — shared/World laws, V2 Experience expression, parked-task return and routes to both final syntheses/QA |
-| §0.8.4 | Promoted destination **World Paper authoring** (2026-10-03): rail families, Wall authoring with derived role, host-seeking, Card facts, Search vs Find, precision ladder, drafting state, consequences, Paper ⟷ 3D, narrow desktop, selection/task/history ownership |
-| §26.2 | What acceptance the destination does and does not inherit |
+| **Head** | App menu with Settings, Keys and Hide side panels; lens switch; Undo/Redo with a verb label; save; Preview. No Head search or separate history-list panel |
+| **Index** | Place/level, relation groups, subject Search and Browse. No tools, measures, capability search or task state |
+| **Stage furniture** | Reading cluster, pointer rail, scale bar and datum key; one invoked lower Instrument. No World status rail or persistent message band |
+| **Pointer rail** | What the pointer does; never facts, procedure steps or Apply |
+| **Card** | Identity/name, kind, up to three read-only key facts, a condition only while true, Look, Details and a scoped ⋯ list |
+| **World Instrument** | One of Find, Dimensions, a procedure or a Look session, changing in place; no subject-results browser |
 
-### 0.7.5 What this amendment does not do
+**Permanent pointer families.** The rail is **Select · Draw · Opening · Place ·
+Measure · More**, compact and attached to the Paper edge rather than another sidebar.
+A family needs a distinct pairing of pointer target and gesture
+result, armable with nothing selected, able to find its own target or refuse in words.
+Frequency or familiarity never earns a slot. Variants stay inside their family; a
+new permanent slot needs an owner ruling.
 
-- **No cutover, no implementation authorization.** The editor still runs the landed
-  chrome. [`reference/composition-execution.md`](../../reference/composition-execution.md)
-  (F) remains the operational baton and the format/ownership authority; production
-  implementation of this language is gated behind the foundation gates and the track plan
-  ([`roadmap/README.md`](../../roadmap/README.md) step 4).
-- **No shell metric, type or ownership change from the visual amendment.** §5
-  geometry, §7 ladder / roles / control metrics, §2.12 current host-and-workspace
-  ownership and §8–§17 landed composition were **preserved in the demo**. Their
-  destination exposure is stated by the accepted shell direction in §0.8.
-- **No new authority.** No second Camera/navigation authority, no second architectural
-  compiler, no second selection model, no production design-system package, and **no
-  fourth material class** (§4). The mat and the vellum are two expressions of **PAPER**;
-  ink and ochre are ink and state color (§6), not materials.
-- **No settled §0.3 call.** §0.3 is unchanged; §0.7.6 lists the calls this amendment
-  raises or leaves open.
-- **No re-plan.** T1/T2/T3 production scope is not re-planned here; that follows the F
-  interfaces.
+- **Draw** authors architectural geometry on a working plane: Wall chains, rectangles,
+  circles or polygons.
+- **Opening** cuts an embedded opening in an eligible host's coordinates. Joining
+  Spaces may be a consequence, not its definition; a niche need not connect Spaces.
+- **Place** places an item at a point and dispatches to Layout or Scene ownership.
+- **Measure** produces temporary distances/angles, not authored annotations.
+- **More** opens capability Find.
 
-### 0.7.6 Open owner calls this amendment does not settle
+Tools stay armed until Esc or Select. Arming never changes selection; what a gesture
+makes becomes selected. A tool option strip contains only defaults for the next thing
+and a fading key hint, never existing facts, procedure steps or Apply. Opening retains
+its family while it has its distinct embedded-cut grammar; catalogue-only openings or
+a universally shared host modifier would require an explicit family reconsideration.
 
-| Call | State |
-| --- | --- |
-| **Motion-speed control placement** | **Settled 2026-10-03 by §0.8.4:** the World status rail is retired, and Reduce motion and Motion speed live in Settings. Do not implement the demo's rail placement |
-| **Keyboard focus treatment** | The demo's 2 px dark + 2 px light offset ring is a candidate for the open §0.3 Tool Tray focus seam; that seam stays open |
-| **Mat ↔ paper transition** | The demo rate-limits the ground swap (full swap 420 ms) so a pan cannot flicker; whether that lag is acceptable, and whether a directional wipe is preferred to the global crossfade, is undecided |
-| **Demo evidence gaps** | `prefers-reduced-motion` emulation was not captured and the optional perimeter inner shadow was not added. Recorded unverified, not passed |
+**Walls and hosts.** Draw authors Walls, not a preselected boundary/division/free-standing
+role. Layout derives and explains the resulting role: enclosing Walls bound; a Wall
+that encloses nothing is free-standing; a Wall across an enclosed Room divides it and
+produces derived Room topology. Preview that role at the gesture and describe it in
+Card/Index relations. Role changes follow geometry, never Make-bounding or
+Make-free-standing commands. Rooms remain derived; no Room geometry becomes editable.
+Divide room remains a findable procedure using Wall authoring and consequence planning.
+A Makes chooser is earned only by another authored primitive, never by Wall roles.
+The [Layout ownership contract](../architecture.md#ownership-current-source-of-truth)
+owns the encoding cutover and its remaining migration choices.
 
-**Settled by owner decision (recorded, not open):** selection and manipulation are
-**ochre** and tape never carries selection; the paper rule is **option 1** (the settled
-subject of a face session, straight or curved, or a wall off its footprint) with **Wall
-grid** as the editor-side override — *paper-as-page (option 2) is not open*; the grid
-keeps the plan's §3 hexes with the drafting sheet calibrated to the vellum ground;
-the accepted demo returns via `Esc` / the back action / crumbs, without a tab
-marker. The destination return behavior is fixed in §0.8.2; exact control geometry
-remains implementation work.
+Opening and hosted Place items seek eligible hosts, project onto host axes, name host
+classes and refuse ineligible hosts in words. With a host or one of its Openings selected,
+the selected host is preferred and wins ties. Preferred host is task focus, not a new
+selection. Tools remain armed between hosts; there is no duplicate Add opening verb.
 
----
+**Capability placement.** Capabilities register id, label/synonyms, family/form,
+subject/host kinds, owner, consequence class, precision schema, legibility, order and
+key. Placement follows that description, rather than a feature hand-placing chrome:
+unchanged source means a reading/app setting; pulling already legible geometry means
+handles/tags; a new pointer grammar requires permanent-family admission; a chosen
+subject gives contextual capability; steps, multiple parameters, validation,
+consequences or Apply require an Instrument procedure. Every capability is also
+findable in Find. This is a placement rule, not a persisted-format schema.
 
-## 0.8 Accepted destination shell — unified World | Experience direction (2026-10-01, PR #111)
+**Card facts and discovery.** The name is the Card's one writable fact. Other facts
+are doors to their owner: a settled measure opens Dimensions on that field, a derived
+fact opens Details, and a true condition offers Repair, Resume or Bring into view.
+During work the Card keeps accepted values. No third verb row follows Look/Details;
+nothing on the Card arms a tool. A supported kind change sits on the kind fact itself;
+a Wall role has no kind chooser. Other subject actions live in one fixed-order scoped
+list shared by Card ⋯, context menu and Find's **For …** group. Usage never re-ranks it.
 
-The owner promotes **both finalized designs** into this durable destination shell
-contract (2026-10-01, PR #111):
+Index Search/Browse find subjects and retain the separate result verbs above.
+**Find**, in the Instrument, finds tools, variants, actions, procedures, readings,
+checks, keys and settings. It lists no subjects, never selects, and opening/browsing it
+never moves the Camera. Its contextual scope comes from selection. Choosing a
+capability hands off to that capability's owner. Each discovery home may have at most
+one query-carrying handoff row to the other, never a second result list.
 
-- [Final V2 Experience synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
-  and its [visual QA](../../../prototypes/integrated-experience-authoring/Design-QAs/)
-  — the finalized Experience prototype design; its shell requirements are §0.8.1.
-- [Final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md)
-  and its [visual QA](../../../prototypes/world-experience-shell-round/QA-package/)
-  — the finalized World design; its shared and World shell requirements are below.
-  The workspace [README](../../../prototypes/world-experience-shell-round/README.md)
-  routes provenance, acceptance and deferred implementation questions.
+**Precision ladder.** Precision remains invoked:
 
-**Authority of the destination.** This is the accepted **destination shell/disclosure
-direction** for the unified shell and the direction the bounded prototype-adoption PR
-(#112) implements in [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/README.md).
-The requirements promoted here are **normative destination shell design**, including
-V2's Experience expression, not merely prototype evidence. This document is their
-durable authority; the retained syntheses preserve detailed design rationale and QA
-specimens without becoming another semantic or implementation authority. The design
-preserves P26 journeys A–F and supersedes predecessor P26 shell/chrome/tool
-exposure/disclosure where the World synthesis explicitly covers them. Shell promotion
-does not establish persisted formats or implementation mechanisms, authorize production
-work, or override the ratified product/domain authorities
-([North Star](../north-star.md), [architecture](../architecture.md),
-[F composition/execution](../composition-execution.md), component contracts).
-
-**Shared and World shell laws.** Experience's complementary expression is §0.8.1;
-the common return rule is §0.8.2. QA boards are specimens and never override prose.
-
-- **Two lenses over one project.** World and Experience are authoring intentions over
-the same project/world — not two applications and not merged semantic documents. Both
-use the same Stage, visual language and return behavior.
-- **Persistent shared landmarks.** Head (project identity, lens switch, active Experience
-in Experience context, save/history, Preview) · Index (World's local orientation;
-Experience's Presentation/relationship locator) · Stage (the dominant continuous
-spatial surface) · Card (canonical selected identity). World invokes the full
-Browse/Search hierarchy. World Instrument and Experience Deck are contextual task
-surfaces, not replacements for Card identity.
-- **Persistent breadth, invoked depth.** Ordinary World stays calm — place, nearby
-relation-aware context, selected identity, the world itself. Specialist depth appears
-through procedure: **Select → Look or Details → Instrument → Precision**.
-- **One canonical selection.** Exactly one canonical selection value across Stage, Index,
-Card, search, Details references and both lenses: one identity, or an explicit set where
-the domain supports sets (§0.8.4). No parallel remembered selections, and a lens switch
-never substitutes another identity.
-- **Card identity stability.** The Card represents the canonical selected identity and
-never becomes the current tool, inspection, component focus, host or Instrument.
-- **Look vs Details.** *Look* is capability-driven spatial procedure associated with the
-selection, never a universal menu of disabled commands and never world geometry or
-Camera state. *Details* is subject structure and relations with explicit verbs — Expand /
-Focus / Select / Open task — and relation rows never secretly change selection.
-- **One task surface.** The World Instrument represents the current task and appears
-only because the creator invoked specialist work; there is no Instrument at ordinary
-rest. Spatial inspection and its Instrument stay together: no state where
-Unroll/Section/etc. remains active while the Instrument is hidden.
-- **Task focus is not selection.** A selected Opening may invoke work on its host Wall
-and a selected object may focus an internal component; related host/component identity
-never automatically replaces canonical selection.
-- **Relation-aware Context Index.** Local orientation uses relational groups (for
-example Bounds, Openings on bounds, Located here, Overlays, Attached here) rather than
-hierarchy that would teach false containment or ownership; only non-empty relevant
-groups appear, and the Index is not a verbose graph browser.
-- **Owner / Source / Reach stay distinct** — domain authority, provenance, and the
-consequence of the proposed edit — and appear at the decision point, not as permanent
-glyphs.
-- **One spatial return authority.** Canonical Camera/navigation owns viewpoint movement
-and spatial return; the shell may request Face, Bring into view, Put it back. No
-shell-owned Camera/viewpoint history, and Undo remains accepted source/document
-history. The deterministic unwind is writer/proposal → precision → spatial Instrument →
-Put it back → rest.
-- **Lens crossing parks procedure, not meaning.** Selection and Camera standpoint carry;
-invoked procedure parks and returns only by explicit action (§0.8.2); lens switching
-itself captures no View, creates no Presentation or relation, opens no Guide, moves
-no Camera, and infers no cross-lens
-subject. Foreign selection is represented honestly (a Presentation stays selected and
-inert in World; a Wall stays selected in Experience), and an explicit cross-lens action —
-never the lens toggle itself — may intentionally change lens and selection together.
-- **Unaccepted writer/drag proposals cancel on lens switch** — never a silent commit;
-accepted source edits survive, and there is no speculative "Reopen edit" draft.
-- **Repair is proportional.** A quiet discoverable warning at the parent level; repair
-machinery appears when repair becomes the task; never a silent match by name, proximity
-or containment.
-- **Calmness must not erase orientation.** Ordinary World remains Index + Stage + Card
-with nearby useful structure visible; specialist depth is invoked.
-- **State language survives.** §18's semantic distinctions (selected, hover, keyboard
-focus, armed, disabled, warning, refusal, temporary inspection, preview, authored vs
-derived, canonical selection, task focus, referenced identity) hold in the destination,
-and state is never carried by color alone.
-- **Narrow desktop.** The destination compresses to compact location and
-selected-identity controls with the Stage dominant and the Instrument keeping a coherent
-home; it does not become a second responsive application, and shell-driven Stage
-resizing implies no Camera fit, pan or fly-to.
-
-### 0.8.1 Finalized Experience shell expression
-
-These are the shell requirements promoted from the final V2 design. Experience
-authors meaning and occurrence context; View and route edits delegate to Camera.
-
-- **Scale × Depth.** Subject, Presentation, View, Stop and Guide/Seam are contexts;
-  technical depth is independent. Camera precision is reachable from a View without
-  opening Guide work, and expanding Guide context does not force precision.
-- **Quiet ordinary Experience.** Index is a locator, Stage is dominant, and Card
-  remains the stable identity/meaning/scope surface. A fresh Presentation exposes
-  Meaning, Focus, Show and an explicit add-behavior/offer action. No Guide means no
-  Guide rail; ordinary work has no full Deck, global timeline or Camera rig. Creating
-  or opening a Presentation is explicit, and Preview requires no Guide or Camera graph.
-- **Set is unordered.** A Presentation's View uses form a local constellation, not a
-  filmstrip or progression. Coexistence creates neither Stop occurrences nor Camera
-  edges. View-use roles belong to the Presentation; View geometry belongs to Camera.
-  Plan and 3D show the same working Set with the same meaning.
-- **Stable bottom Deck: Peek → Overview → Seam.** An existing Guide starts with quiet
-  Peek awareness, not a full workspace resize. Overview uses occurrence cards at
-  L0 identity/position, L1 summary and L2 expanded detail; the active occurrence expands
-  while distant occurrences compress. Stage shows numbered Stop entry pins, without
-  entry-facing glyphs or Camera topology. An expanded occurrence exposes its
-  Presentation's unordered Set and distinguishes shared meaning from this Stop's use.
-- **Seam is local transition work.** Adjacent Stop occurrences are bookends around
-  the invoked bottom instrument; unrelated occurrences compress. Opening a Seam does
-  not move Camera or switch Stage to Plan. Explicit route editing may request a useful
-  Plan reading with a return crumb through canonical navigation. Camera relationships
-  are scoped to possible origin Views and destination entry View; each origin's
-  reachability or gap is shown honestly. Cut creates no Camera edge; Travel references
-  supported connectivity and cannot invent motion.
-- **Coordination is invoked depth.** A local temporal strip appears when Coordinate
-  is invoked or the Seam already has coordination. It shares stable Camera stations
-  with the spatial projection; generated points cannot become authored station
-  references. Path geometry is edited on Stage, never in a second route editor.
-  Camera stations and route facts remain distinct from Experience-owned beats, holds
-  and occurrence coordination. The Stage remains dominant; there is no global timeline.
-- **Card and Ask Rule.** Card stays at its vertical landmark with canonical target,
-  property owner and edit reach legible at the decision point. Lower strata collapse
-  according to actual content. An edit reaching beyond the current use requires an
-  explicit scope decision; local and shared choices are offered only when supported by
-  the domain. This is no license to invent placement overrides or fork semantics.
-- **Progressive Camera disclosure.** Auto → Hints → Capture → Precise. Capture is
-  explicit. Outside, Through and Plan are postures on the same Camera View/route, not
-  separate systems. Only the active grip displays its numeric tape. Through retains
-  editor chrome and is visibly distinct from visitor Preview.
-- **Preview is visitor execution.** Authoring infrastructure disappears and visitor
-  session state never writes source. Exit restores authoring lens, selection, Card
-  context, Stage standpoint and inspection state through their canonical authorities.
-  Preview exit and lens switching have distinct return contracts.
-
-V2's remaining usability experiments are Through-versus-Outside initial posture,
-Deck crop-docking and station-bound coordination comprehension (V2 §23). They do not
-reopen the accepted shell architecture or settle PLATE's §0.3/§0.7.6 owner calls.
-Exact dimensions and implementation mechanisms are not derived from QA raster pixels.
-
-### 0.8.2 Parked procedure and lens return
-
-**Park means inactive, remembered session context.** On lens exit, cancel unaccepted
-writers/drags, deactivate that lens's invoked task surface and temporary readings,
-and retain the accepted source edits. World Unroll/Section/Reveal/Lift and Browse/Search
-procedure park; Experience's invoked Deck/Seam and precise Camera procedure follow the
-same rule. Parking stores no authored state and creates no second navigation history.
-
-**Returning to a lens does not resume its parked procedure.** Render the current
-canonical selection and Camera standpoint with ordinary lens context. World returns
-without an active Instrument or inspection; Experience may show quiet awareness of
-an existing Guide but does not reopen Guide or precise Camera work. No old selection,
-Camera snapshot, Browse context or temporary reading is restored by the lens toggle.
-
-**Resume is an explicit task action.** Offer it in relevant Look/Details or Experience
-task context only when the original canonical identity is selected and the task's
-targets still resolve. Revalidate the task against current source before activating
-its surface and reading together. If selection changed, first explicitly select the
-original identity; if a target is missing or the old configuration is invalid, explain
-the unavailable task or offer valid fresh work rather than silently retargeting it.
-Unaccepted proposals never resume.
-
-Reopening starts from the **current** Camera standpoint. Resume does not restore a
-parked Camera pose; any requested Face, Bring into view or Put it back uses canonical
-Camera/navigation. A resumed spatial invocation uses that authority's current return
-context, so Put it back cannot unexpectedly rewind movement performed in the other
-lens. The exact session payload/storage remains implementation work.
-
-For example: Unroll Garden window → Experience → select a Presentation → World
-shows the foreign Presentation with no Instrument. Selecting Garden window and
-explicitly resuming may reopen a revalidated Unroll Instrument. If the Camera moved
-in Experience, that new standpoint survives both the lens return and Resume; any
-subsequent spatial movement is a separate explicit navigation action.
-
-### 0.8.3 Adoption and cutover boundary
-
-This section and §0.8.4 change no landed behavior, authorize no production
-implementation and do not re-plan T1/T2/T3 production scope. They close no §0.3 owner
-call; §0.8.4 settles only §0.7.6's motion-speed placement, because it retires the rail
-that call compared. §§5 and 8–17's landed composition descriptions remain current behavior
-until an explicit cutover; their destination exposure is now governed by §0.8–§0.8.4
-and by §0.7's visual language rather than left open.
-
-### 0.8.4 World Paper authoring (destination)
-
-The owner accepted the Paper authoring shell on 2026-10-03, with its four refinement
-reviews and every recommended ruling, and corrected its Wall semantics. The
-[Paper shell proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md)
-keeps the rationale, comparisons and schematic specimens. Its wireframes are not pixel
-contracts, and its Saltmarsh values are fixture evidence. This subsection is the normative
-destination for authoring in the World lens's Paper reading. It keeps every §0.8 law and
-journeys A–F, and leaves Experience's expression (§0.8.1) unchanged.
-
-**Paper inside World.** Paper is a reading of World's one Stage: plan Paper and a wall
-laid flat (Face, Unroll). It is not a lens, a workspace, a mode with separate state, or a
-document. Paper draws Layout and Scene and owns no authored data. Its reading settings are
-view state: never authored, never in Undo, never project data.
-
-**Responsibilities.** Each region answers one question and never another's:
-
-| Region | Answers | Holds | Never holds |
-| --- | --- | --- | --- |
-| Head | which project, which lens, what changed | app menu (Settings, Keys, Hide side panels), lens switch, Undo/Redo with a verb label, save state, Preview | search, history list, tools, reading settings |
-| Index | where am I, and where is that thing | place and level, relation groups (§0.8), Search and Browse for subjects | tools, measures, task state, capability search |
-| Stage | what the World looks like | the drawing plus four small furniture objects: reading cluster, tool rail, scale bar, datum key; the World Instrument when invoked | panels, persistent messages, a status rail |
-| Tool rail | what my pointer does | the permanent pointer families | facts, steps, Apply |
-| Card | what this thing is | identity and name, the kind line, at most three read-only key facts, a condition line only while true, Look · Details, ⋯ | writable numbers, verb rows, proposal values, steps, validation, Apply/Cancel, tool or reading settings |
-| World Instrument | what I am doing to it | exactly one of Find, Dimensions, a procedure, a Look session | identity (the Card owns it), subject results |
-
-**Permanent pointer families.** A rail slot is admitted only for a distinct pointer
-grammar: a pairing of what the pointer targets and what its gesture produces that no
-family already has, armable with nothing selected, finding its own target or refusing in
-words. Frequency, familiarity and importance never qualify. A new kind of an existing
-gesture is a variant inside its family, and a new slot needs an owner ruling. The rail is
-**Select · Draw · Opening · Place · Measure · More**:
-
-- **Draw** authors new architectural geometry on a working plane (Wall shapes: chain,
-  rectangle, circle, polygon).
-- **Opening** cuts an embedded opening into an existing host, in the host's own
-  coordinates. It may change connectivity (a door through a wall that bounds two rooms
-  joins them), but joining spaces is a possible consequence, not the definition: a niche
-  or a future skylight need not join anything. Opening would lose its slot only if openings
-  became fixed catalogue items (a Place variant) or host-seeking became a modifier every
-  family shares.
-- **Place** puts an item at a point and dispatches it to its owning authority (Layout
-  structure or Scene object), naming the owner where it matters.
-- **Measure** takes temporary distance and angle measurements; nothing it shows is
-  authored until an annotation domain exists.
-- **More** opens Find.
-
-Tools stay armed until Esc or Select. Arming never changes the selection, and what a
-gesture makes becomes selected. A tool's option strip holds only its defaults for the next
-thing it makes, plus a fading key hint; never facts of existing things, steps or Apply.
-
-**Wall authoring: Draw authors spatial geometry; the system derives and explains the
-spatial role it produces.** The Wall is the authored primitive. Draw never asks the
-creator to choose boundary, division or free-standing semantics before drawing, and no
-Make-bounding or Make-free-standing command exists. Walls that take part in a closed
-enclosure act as its boundary. A Wall that encloses nothing is described as free-standing,
-and a Wall drawn across an enclosed room divides it and produces the derived room
-topology. The derived role is previewed at the gesture, described on the Card's kind line
-and in Index relations (*bounds …*, *divides … ↔ …*, *free-standing in …*), and changes only
-through geometry: an end moved to close or open an enclosure, or a Wall added or
-deleted. Rooms stay derived from architecture, and no Room geometry is editable.
-*Divide room* stays a findable intent and procedure for exact placement; its mechanism is
-the same Wall authoring plus topology and consequence planning. A Makes chooser appears
-only once a second authored primitive exists, and a Makes entry is never a Wall role. The
-Layout cutover this requires is recorded in
-[architecture](../architecture.md) §Ownership; the landed authored role stays current until then.
-
-**Host-seeking capability.** Opening and hosted Place items seek an eligible host under the
-pointer, project onto the host's axis, refuse ineligible hosts in words, and stay armed from
-host to host. Each kind names its host class. With a host selected (or an opening, whose
-host counts), the tool starts on that host and the host wins ties. The preferred host is
-task focus, never selection (§0.8). No separate *Add opening* verb exists.
-
-**Capability placement.** Each capability is a registry entry (id, label and synonyms,
-family, form, subject and host kinds, owner, consequence class, precision schema,
-legibility, order and key), and placement is computed from it; features never hand-place
-chrome. In order: a capability that changes no World fact is a reading or app setting; one
-done by pulling something already legible is direct (handles and tags); a new pointer
-grammar is permanent (owner ruling only); one that needs a chosen subject is contextual;
-one that needs steps, several parameters, validation, consequences or Apply is a
-procedure in the Instrument; and every capability is also disclosed in Find.
-
-**Card facts versus active work.** The Card is identity, not work. Its kind line and key
-facts are read-only displays, and every fact is a door to its one writer: a measure opens
-Dimensions on that field, a derived fact opens its derivation in Details, and a condition
-offers its own fix (Repair, Resume, Bring into view). The name is its one writable fact.
-During a procedure the Card keeps showing accepted values.
-
-**No Card verb row.** The Card keeps §0.8's Look and Details and adds no third row. Besides
-those it acts only through a door on the fact a change alters (a kind word with ▾, where a
-subject can become another kind with its identity kept) or on the condition it resolves.
-Nothing on it arms a tool. One ⋯ opens the subject's scoped list: the same list, in one
-fixed order per subject kind that use never re-ranks, as the context menu and Find's
-"For …" group. A Wall has no role kind word.
-
-**Two homes for discovery.** Subjects (identities, places, levels, rooms, objects,
-relations, project structure) are found in the Index's Search and Browse, which keep the
-World synthesis's result verbs: **Select, Open location, Bring into view and Reveal** are
-separate verbs, each acting directly on its own result with its reason. Bring into view,
-Open location and Reveal need no prior selection. Capabilities (tools, variants, actions,
-procedures, readings, checks, keys, settings) are found in **Find**, inside the World
-Instrument, which never lists subjects, never selects and never moves the camera. Find's
-"For …" group and the Card's ⋯ take their scope from the selection. Each home offers at
-most one handoff row that carries the query to the other and never renders the other's
-results. There is no Head search.
-
-**Precision disclosure.** Precision is invoked, never opened by default:
-
-1. **Direct**: drag a handle, with snap marks at the snap point. One undo step on
-   release; an invalid release cancels with none.
-2. **Read**: live tags at the gesture (length, angle, offset, clearance).
-3. **Type at the gesture**: digits turn the live tag into the numeric entry field;
-   commit once, Esc restores and then cancels, blur never commits.
-4. **Dimensions**: every settled writable measure of the selection in the Instrument,
+1. **Direct:** drag a legible handle, with snap marks at the snap point. Valid release
+   commits one undo step; invalid release cancels with none.
+2. **Read:** live length, angle, offset or clearance tags accompany the gesture.
+3. **Type at the gesture:** digits turn the live tag into numeric entry. Commit once;
+   Esc restores the transient value, then cancels; blur never commits.
+4. **Dimensions:** every settled writable measure of the selection in one Instrument,
    with units, keep-anchors and refusal at the field.
-5. **Procedure**: parameters, validation and consequences, committed on Apply.
-
-Settled facts have exactly one shell writer, Dimensions. A live gesture owns its transient
-parameter, and the matching Dimensions field shows it as a display while that lasts; the
-two are never writers at once (§2.12). A Dimensions field commits one undo step; a
-procedure commits one undo step on Apply. While a proposal or gesture is live, Undo and
-Redo are unavailable and say why. A procedure whose options need several source changes
-waits for an atomic composed plan rather than producing several undo steps.
-
-**Direct manipulation first.** What can be done by pulling something legible is done on
-Stage with handles and live tags, not by a command: there are no Move, Rotate or Scale
-commands. Every move validates, and refusals and cautions appear beside the field or
-pointer that caused them, in words. A gesture that changes topology draws its consequences
-during the gesture and commits one step on release, with no Apply interruption.
-
-**Drafting state versus configuration.** Scale, grid and snap are the drafting state:
-always legible as three words beside the Paper ⟷ 3D switch, with off states written as
-words, never shown by colour alone. The scale word opens detents and *Fit all*, each a
-framing request to the one Camera authority. The grid and snap words write on or off and
-name the interval and increment in force. A held modifier suspends snap for one gesture,
-and the snap word says so. Configuration (grid ladder, snap increment and targets, labels
-and dimension display, rulers, cut height, what to show, and the datum as a display of
-Layout's) lives in the Sheet, which shows grid and snap on or off read-only. A property
-joins the drafting state only if it changes how a distance reads or where the next point
-lands; a fourth word needs an owner ruling, and the cluster never carries messages,
-hints, history, tool state or motion settings. **Grid is one fact across Paper surfaces**:
-on a wall laid flat it is the measurement grid that §6.4 and §10 call *Wall grid*, and off
-shows the wall's real material. The paper rule (§6.4) is unchanged. The World status rail
-is retired. Its refusals and hints move to the gesture (§19), and Reduce motion and Motion
-speed move to Settings, which settles §0.7.6's motion-speed placement.
-
-**One World Instrument.** Find, Dimensions, procedures and Look sessions share one task
-surface at the Stage's lower edge, one state at a time, changing in place. It never moves
-the camera and never covers the reading cluster; if it covers its subject, its header
-offers *Bring into view*.
-
-**Consequence disclosure.** For local edits the Stage preview is the consequence.
-Consequences show only when earned: identities created or retired other than the subject,
-splitting or merging, changed derived membership or connectivity, another level, or a
-changed resolution of Camera or Experience references. The grammar is **Creates · Keeps ·
-Splits · Moves (derived) · Connects · Elsewhere · one undo step**, with counts from their
-owning authorities as read-only queries. Focusing a row emphasises that identity on Stage
-as view-only; the selection does not change.
-
-**Paper ⟷ 3D continuity.** One switch over the one Camera authority. A flip tilts about the
-current target and keeps scale; Paper settles azimuth to the nearest 90° detent, and the
-3D end returns to the last working elevation, not a remembered pose. Selection, Card,
-Index, armed tool, open Instrument work, history, grid and snap survive a flip. A flip
-never refits, retargets or rescales, never changes lens and creates no second camera or
-viewport state. A reading flip is not a lens crossing, so work continues.
-
-**Narrow desktop.** Below the width that holds Index, Card and a usable Stage, the Index
-becomes a Head location control opening a sheet (`/` opens it with Search focused), and the
-Card becomes a Head identity chip opening a sheet. The context menu and Find reach the
-scoped list without that sheet. The rail, reading cluster, scale bar and datum key are
-unchanged. The Instrument keeps its lower home, and opening a procedure closes the Card
-sheet. Sheets overlay the Stage and never resize it, and nothing refits on resize (§0.8).
-Hiding the side panels gives the same composition at any width.
-
-**Deterministic ownership of selection, task and history.**
-
-- **One canonical selection value.** It is one identity, or an explicit set where the
-  domain supports sets, never parallel selections. The Card shows a set as one identity
-  (count, kinds, shared extent), with Align and Distribute in its Dimensions and scoped
-  list. Stage, Index rows, the Index's Select verb and Details references write it; Find
-  never does.
-- **Task focus is not selection**: preferred hosts, consequence emphasis and linked tags
-  are view-only.
-- **One writer per fact** (§2.12): armed tool from the rail, reading from the switch,
-  framing from the Camera authority, the drafting words, Sheet configuration, the name
-  from the Card, settled measures from Dimensions, procedure parameters from their
-  procedure, derived facts (including a Wall's role) from no shell writer.
-- **Esc unwinds one level at a time**: field → live gesture (the tool stays armed) →
-  procedure proposal → Find or Dimensions → armed tool to Select → Look session (Put it
-  back) → selection → rest. This refines §0.8's unwind order for Paper.
-- **History.** Undo/Redo is one chronological source history with a verb label, tagged by
-  owning authority. View changes, Paper settings and spatial return are never in it.
-- **Lens crossing.** An unaccepted proposal cancels and its procedure parks; return never
-  resumes it, and Resume is explicit (§0.8.2).
-
-**Not promoted.** Keys (the adoption plan settles them for the prototype), exact geometry,
-prototype mechanisms, fixture values, and any schema for Spaces, Zones, levels,
-constraints, annotations or references. The landed View Bar (§10), Tool Tray (§11) and
-Status Rail (§14) remain current until the World cutover.
-
----
-
-# 1. Product thesis
-
-P23.14 should make Museum Editor feel like a **professional spatial-authoring instrument with a warm working surface held inside a cool engineered chassis**.
-
-The landed shell has hierarchy on the left, work in the center, properties on
-the right, Scene/Camera as domain context, Plan/3D views and a Camera Timeline.
-Those placements remain current behavior until cutover; §0.8 states the accepted
-destination arrangement.
-
-The visual identity must come from structure, material, typography, state and interaction—not decoration.
-
-The product should feel:
-
-- professional;
-- architectural;
-- warm;
-- creative;
-- precise;
-- information-rich;
-- stable;
-- educational when context is needed;
-- distinctive without becoming theatrical.
-
-It must not become:
-
-- generic SaaS;
-- literal CAD cosplay;
-- a floating-card dashboard;
-- a sci-fi control room;
-- a video-editing application;
-- a minimal shell that hides useful structure;
-- a theme whose identity depends mainly on color.
-
----
-
-# 2. Core product contracts
-
-These were not open for redesign in P23.14. Their composition clauses describe
-the landed shell; the enduring semantic/identity rules are called out below.
-
-## 2.1 One product, one world
-
-In the landed shell, Scene and Camera are attention contexts over the same
-project/world, not separate applications. At the destination they remain
-distinct semantic and codec authorities (F.2), even when controls share a
-World or Experience lens.
-
-## 2.2 Durable top-level views
-
-Plan and 3D are the landed durable top-level views. T1's continuous
-viewport/projection seam is destination direction; its shell presentation
-follows the accepted destination direction (§0.8).
-
-P26 contextual orthographic instruments—such as Section, Wall Elevation and Ceiling Focus—must be subordinate contextual instruments entered from a durable view with an obvious return path. They must not become a third peer view or a new top-level world.
-
-## 2.3 Camera Timeline ownership
-
-The landed Camera Timeline is available in Camera Plan and Camera 3D. At the
-Experience-order cutover, Guide order belongs to Experience and Camera retains
-spatial routes/evaluation. The design phase determines timeline/deck placement
-without creating a second order authority.
-
-It is part of the central work surface, not a global application footer and not a Scene feature.
-
-## 2.4 Scene Plan local modes
-
-Layout and Arrange are current Scene Plan local modes. Their destination
-exposure follows the accepted shell direction (§0.8) and the T1 viewport seam.
-
-## 2.5 One selection authority
-
-Navigator, viewport, Inspector, search/reveal, Timeline and status readouts must resolve to the same canonical selection identity.
-
-A selected object must never appear to be one thing in the Navigator and another thing in the Inspector.
-
-## 2.6 P23.12 identity contract survives
-
-P23.14 consumes P23.12 identity. It does not reopen it.
-
-Names, compact references, canonical identity, search behavior and Inspector rename authority remain as ratified in P23.12.
-
-## 2.7 P23.13 drafting/iconography contract survives
-
-Existing ratified Plan drafting language and protected P23.13 iconography remain intact unless an implementation defect requires correction.
-
-P23.14 may harmonize surrounding shell presentation but must not casually redraw or reinterpret the settled Plan authoring silhouettes.
-
-The landed owner ruling retains Wall / Rect Room / Poly Room / Door / Window toolbar icons as Lucide `BrickWall` / `Square` / `Pentagon` / `DoorOpen` / `Grid2x2`. The Plan Door drawing cue remains perpendicular three-dash ink; it is distinct from the retained toolbar Door icon. Other integrated P23.13 drafting marks retain their settled paths.
-
-## 2.8 A shell region replaces presentation grammar; it does not inherit it
-
-> **Reusing an existing component inside a new shell region does not mean its previous layout grammar remains valid there.**
-
-PLATE reuses component **behaviour and ownership** while replacing **presentation**.
-A new shell context must therefore deliberately clear the layout-bearing rules it
-inherits where they conflict with this grammar. Known examples, all four of which
-actually bit P23.14:
-
-- `white-space: nowrap` inherited from a full-width bar (the Tool Tray: labels
-  overran a 39 px text box into the Paper);
-- old group dividers (`padding-right` + `border-right` from a ribbon track) that
-  draw separations this grammar does not have;
-- a segmented control's enclosure — control fill, border, radius, padding —
-  around what should be a caption plus separate buttons (`MODE`, §10);
-- hard-coded component heights (`button { height: 28px }`) sizing a tier the
-  control role says is 24 px, plus component-local padding/radius and old
-  pressed-state fills.
-
-This is **not** a mandate to rewrite components or to duplicate state ownership.
-The durable principle is:
-
-> **Shell composition may reuse behaviour and component ownership while replacing
-> presentation grammar.**
-
-A new shell scope owes a shell-scoped rule + contract test for each inherited
-layout-bearing rule it overrides, because a component's own tests cannot see this
-failure mode (it appears only as layout damage in the composed shell).
-
-## 2.9 Roles, not numbers
-
-> **New shell surfaces consume semantic typography, control and material roles.
-> They do not introduce local numbers merely to visually fit.**
-
-A surface asks for `--editor-type-*` / `--editor-control-*` (or, where the group is
-measured by fit rather than by semantics, the icon/fitted-geometry roles in §7.2).
-If a genuinely new visual tier is required, **update the role system deliberately**
-(§7.1–§7.3) rather than minting a value in a component. Component-scoped CSS is not
-a place where shell values live.
-
-## 2.10 Pin the constraint, not an obsolete implementation number
-
-Reference dimensions remain useful **acceptance baselines** (§5, §26), but a
-historical number never outranks the design constraint it was meant to satisfy
-(§0.2). When a constraint and a pinned number disagree — the 44 px rail versus a
-10 px label — the constraint wins, and the number is re-derived, re-measured and
-re-ratified rather than preserved for its own sake.
-
-## 2.11 Boundaries this reconciliation does not reopen
-
-Folding the ratifications into this document changes **shell presentation only**. It
-does not reopen: P23.12 identity; P23.13 Plan visual/drafting semantics and
-iconography; Plan Paper; visitor/editor isolation; `LayoutDocument` /
-`SceneDocument` ownership; canonical selection, navigation or history authority;
-Camera motion authority; P24 semantics; or P26 detailed interaction design.
-P23.14 remains **shell + visual-system authority** and nothing more.
-
-## 2.12 One writable owner per fact (R4, ratified post-review 2026-09-19)
-
-**The host decides what a control paints; the workspace decides what is exposed.**
-
-Mounting the same component in two shell regions does not make it one owner, and it does not
-make the second region a harmless echo. The implementation review found **five facts with two
-writable homes** — Panel visibility, the Scene grid toggle, the camera Path/Frame helper
-toggles, the View-Bar-mode neighbourhood, and `POV / Observer` — because the Tool Tray and the
-View Bar host the same toolbar component and the View menu repeated the bar's own utilities.
-The ratified rule:
-
-- every writable fact (a toggle, a visibility state, a mode) has **exactly one control owner**;
-- a second surface may **display** a fact, but must not render a second writer;
-- ownership is decided **by host** — Tool Tray = tool vocabulary only; View Bar = menus and
-  workspace utilities; Camera Drawer = transport, lane visibility and `POV / Observer`;
-- exposure is decided **by workspace**;
-- where two contexts legitimately need the same affordance (the collapsed drawer's mini-player
-  vs the expanded transport), fix the **host gate**, not the individual button.
-
-The Inspector is the same rule applied to selection: the workspace resolves **one exposed target**
-through `resolveInspectorDomain()` plus the slot gate `resolveInspectorExposure()`
-([`../../../apps/editor/src/lib/editor/app/inspector-target.ts`](../../../apps/editor/src/lib/editor/app/inspector-target.ts)),
-and both the section header and the body consume it, so the panel can never name an entity whose
-editor is not mounted, and a Scene workspace never exposes Camera framing authoring
-**in the landed shell**. Destination Experience controls may expose Camera edits
-through the canonical Camera authority; one exposed target and one writable
-control owner per fact remain binding.
-
-**A retained inactive selection stays remembered.** Nothing is cleared on a domain or workspace
-switch — the canonical selection model owns continuity, and this rule scopes only its
-*exposure*. Do not implement this reconciliation by clearing stored selections.
-
-Acceptance: `tests/lib/editor/app/shell-control-ownership.test.ts` (unique writable ownership
-per fact), `tests/lib/editor/app/inspector-target.test.ts` (Scene 3D with a selected
-asset; explicit Asset selection; Scene Plan ↔ Scene 3D selection continuity), plus
-`contracts.test.ts` at the composition level. Re-pin existing tests from the duplicated shape to
-this constraint rather than freezing the old layout.
-
----
-
-# 3. Information-rank grammar
-
-The shell should make this rank legible:
-
-**Project → Domain → View → Contextual instrument → Local mode → Tool → Selection / gesture / status**
-
-Each rank has a different visual job.
-
-- **Project** is persistent application context.
-- **Domain (landed shell)** answers whether attention is on Scene or Camera.
-- **View** answers whether the durable representation is Plan or 3D.
-- **Contextual instrument** answers whether the user has entered a subordinate focused representation such as a future P26 Section.
-- **Local mode** changes how the current view is being edited, such as Layout or Arrange.
-- **Tool** is armed action.
-- **Selection / gesture / status** describes the immediate target, interaction or readout.
-
-Do not flatten these ranks into controls with equal visual weight.
-
-The primary signature is perpendicular:
-
-- **Scene / Camera = landed vertical domain axis**
-- **Plan / 3D = landed horizontal view axis**
-
-This relationship remains legible in the current shell; destination hierarchy
-and view exposure are open to the next design phase.
-
----
-
-# 4. PLATE material grammar
-
-PLATE uses exactly three visual-material classes.
-
-## 4.1 CHASSIS
-
-Persistent application structure:
-
-- Domain Spine;
-- Project Head;
-- Navigator;
-- Inspector;
-- View Bar;
-- Status Rail;
-- Camera Drawer shell.
-
-The Chassis is cool, stable, square and quiet.
-
-## 4.2 PAPER
-
-The spatial working surface:
-
-- Scene Plan;
-- Scene 3D;
-- Camera Plan;
-- Camera 3D;
-- future contextual spatial instruments when they replace/focus the current work surface.
-
-The broader PLATE Paper baseline is warm and visually distinct from application chrome. Scene Plan and Camera Plan retain the landed P23.13 Plan Paper `#F5F7F8`; surrounding PLATE Light Chassis does not override this drawing token. A future Plan Paper change requires explicit owner re-ratification and a QA pass.
-
-> **Landed now.** The warm Paper baseline above and the landed P23.13 Plan Paper
-> `#F5F7F8` are what the editor paints today. The **desired-from-demo** Paper is the
-> mat/vellum pair in §4.4 — a target, not the current drawing token. Nothing in §4.4
-> supersedes the P23.13 Plan Paper until an explicit cutover.
-
-Paper may contain spatial drawing, geometry, routes, selection, guides, handles and editor overlays. It should not accumulate application controls.
-
-## 4.3 INSTRUMENT
-
-Controls that act on the work:
-
-- Tool Tray controls;
-- local-mode controls;
-- compact utility controls;
-- transport controls;
-- Timeline controls;
-- numeric editor controls.
-
-Instrument surfaces may have a slight manufactured edge and small radius, but should still feel mechanically integrated into the Chassis.
-
-Do not invent a fourth material class.
-
-## 4.4 Target working surfaces — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
-
-The demo keeps PLATE's three material classes (§4.1–§4.3) and gives the **PAPER** class
-two coordinated expressions. It mints no fourth class, and it changes no shell region:
-
-| Expression | Where the demo uses it | Target meaning |
-| --- | --- | --- |
-| **Cutting mat** (dark) | Scene 3D, Camera 3D, spatial modeling | The *model* is the subject — depth, artwork and geometry read against a dark ground (`#1D3A33`, background/fog `#152C26`, grid `#2B5147` / `#3C6A5C`) |
-| **Vellum** (light drafting) | Scene Plan / Camera Plan layout reading, and a wall shown as a drawing | The *drawing* is the subject — measured paper (`#F3F4EE`) carrying the 1 m / 5 m grid |
-
-- **Ink, not material.** Technical ink draws architecture: `#202422` primary on light
-  surfaces, `#3E4440` reference dimension ink. It is a light-surface role, not a
-  universal mark color over the mat (§6.4).
-- **Ochre is a state color, not a material** — selection and manipulation only (§6.4,
-  §18.3).
-- **Paper boundary.** A 1 CSS px `#B8BEB3` perimeter inset **inside** the stage bounds
-  separates the working surface from the chassis. It must not reduce the canvas
-  rectangle or change camera aspect, overlay coordinates or pointer mapping, and must not
-  intercept picking or cover focus indicators and edge controls.
-- **The grid is a drafting property of Paper** — not a fourth authority and not a camera
-  mode. 1 m minor / 5 m major at the reference architectural scale, on a
-  `1, 2, 5 × 10^n` ladder with the major interval five times the minor; decimation is by
-  *projected CSS-pixel* spacing (target ≥ 16 px between minor lines, fade 16 → 8 px,
-  suppress below 8 px), anchored to the world/floor datum with a stable origin across
-  interval changes. Precision/guidance stays §19's; the grid never delays, changes or
-  decorates a view transition (§4.1).
-- **Drafting sheet.** A wall shown as a drawing wears vellum with the same grid derived
-  from wall distance and height (round, partly peeled or flat; inside or outside; the end
-  and reveal faces stay plain so they acquire no misleading measurement grid). Generated
-  grid coordinates are **display-only** — never authored state, never Undo.
-- The experience this surface serves — continuous Plan↔3D, first-class circular Room
-  creation, peeling, drawn-line Section/Reveal, ceiling lift/look-up — is **still-unbuilt
-  (T1 after F)**. The prototype demonstrates it; production is gated (§21).
-
----
-
-# 5. Reference desktop shell geometry
-
-The Atlas must include a reference desktop frame at **1440 × 900 CSS px** and reproduce the following geometry closely enough for implementation QA.
-
-| Region | Reference geometry |
-|---|---|
-| Domain Spine | x 0, y 0, w 56, h 900 |
-| Project Head | x 56, y 0, w 1384, h 36 |
-| Status Rail | x 56, y 876, w 1384, h 24 |
-| Navigator | x 56, y 36, w 268, h 840 |
-| Inspector | x 1140, y 36, w 300, h 840 |
-| Central work column | x 324, y 36, w 816, h 840 |
-| View Bar | x 324, y 36, w 816, h 34 |
-| Tool Tray | 44 px wide, vertical, attached to the Paper edge |
-| Camera Drawer collapsed | 48 px high |
-| Camera Drawer expanded | 288 px high |
-
-These values define the reference composition, not a requirement that every viewport size use fixed pixels.
-
-Responsive behavior must preserve hierarchy and ownership before preserving exact dimensions.
-
----
-
-# 6. Default theme: PLATE Light
-
-P23.14 introduces a new canonical default theme. It replaces the old navy dark-mode visual identity as the default product appearance.
-
-The existing navy theme is no longer the product-defining baseline. If alternate themes continue to exist, they are variants of the same hierarchy and interaction grammar; they must not redefine component roles.
-
-## 6.1 Default theme tokens
-
-| Role | Baseline color |
-|---|---|
-| PLATE Paper baseline (non-Plan surfaces) | `#F5F2E9` |
-| Plan Paper (Scene Plan and Camera Plan; landed P23.13) | `#F5F7F8` |
-| Chassis main | `#D9DDE0` |
-| Chassis recessed | `#CBD0D4` |
-| Instrument surface | `#E8E5DD` |
-| Primary ink | `#252A2E` |
-| Secondary ink | `#697177` |
-| Scene domain accent | `#A37A3D` |
-| Camera domain accent | `#347D89` |
-| Selection | `#2F8CFF` |
-| Selection dark edge | `#145DA8` |
-| Snap / guide | `#146D68` |
-| Refusal / invalid | `#9B3149` |
-| Armed tool | `#C58B35` |
-
-These are the baseline default-theme values. Minor luminance adjustment is acceptable if necessary for accessibility or rendering consistency, but hue roles and contrast hierarchy must remain stable.
-
-> **Landed now.** §6.1 is the theme the editor ships. The **desired-from-demo** theme
-> is §6.4 — a target, not the current default. Do not migrate implementation tokens to
-> §6.4 from this contract; that is a cutover with its own acceptance (§26.2).
-
-## 6.2 Surface rules
-
-- Major Chassis surfaces use no decorative shadows.
-- Separation comes from 1 px hairlines, tonal stepping and alignment.
-- Chassis surfaces use square corners.
-- Instrument controls may use approximately 3 px radius.
-- Paper handles may use approximately 2 px radius.
-- Avoid pill-shaped controls unless the underlying control semantics truly demand a pill.
-- Avoid floating cards inside Navigator, Inspector and Timeline.
-
-## 6.3 Color ownership
-
-Domain accents belong primarily to the Chassis.
-
-Scene brass and Camera cyan must not flood the Paper.
-
-Paper owns spatial state colors such as selection, snap/guide and refusal.
-
-No critical state may be communicated by hue alone.
-
-## 6.4 Target theme and color ownership — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
-
-These are the demo's **semantic roles**, not a drop-in token migration. Values that
-coincide stay separate roles; changing selection must not incidentally recolor warning,
-history-count, branding, return or displacement cues.
-
-| Semantic role | Target value |
+5. **Procedure:** parameters, validation and consequences, accepted on Apply.
+
+Dimensions is the one settled-measure writer. A live gesture owns its transient
+parameter; the corresponding Dimensions field only displays it until that gesture
+ends. Each accepted field edit or procedure produces one undo step. Undo/Redo is
+unavailable while a proposal/gesture is live and says why. Options needing several
+source changes wait for an atomic composed plan, never several disguised undo steps.
+Supported sets expose Align/Distribute through Dimensions and their scoped list.
+
+Pulling legible geometry is done on Stage, not through Move/Rotate/Scale commands.
+Every move validates. Topology-changing gestures preview consequences and commit
+once on release without an Apply interruption. Cautions/refusals stay near the
+pointer or field that caused them.
+
+**Drafting state.** **Scale · Grid · Snap** remain legible as three words beside the
+Paper ⟷ 3D switch. Off states are words, not color alone. Scale opens detents and
+Fit all as Camera framing requests. Grid/Snap toggle their one fact and name the
+interval/increment in force; a held snap-suspending modifier is reflected in the word.
+A fourth drafting-state word needs an owner ruling: admission requires changing how
+a distance reads or where the next point lands. No messages, hints, history, tool
+state or motion settings belong in that cluster.
+
+The **Sheet** owns configuration: grid ladder, snap increments/targets, labels,
+dimension display, rulers, cut height and what to show. It displays grid/snap on/off
+read-only and shows Layout's datum rather than owning it. Grid is one fact across
+Paper surfaces; on a wall laid flat it is Wall grid, and off reveals real wall
+material under the [paper rule](#material-and-working-surfaces-44).
+Reduce motion and Motion speed live in Settings. The World status rail is retired.
+
+**Instrument and consequences.** Find, Dimensions, procedures and Look share one
+lower task surface, one state at a time. Its appearance never automatically moves
+the Camera or covers the reading cluster. If it obscures its subject, its header
+can offer an explicit Bring into view. Do not hide an active spatial reading by
+switching away from its Instrument; resolve the task through its unwind/return rule.
+
+Local consequences are the Stage preview. Expand consequence disclosure only when
+earned: other identities created/retired, splitting/merging, changed membership or
+connectivity, another level, or changed resolution of Camera/Experience references.
+Use **Creates · Keeps · Splits · Moves (derived) · Connects · Elsewhere · one undo
+step**, with read-only counts from owners. Focusing a consequence row emphasizes
+that identity as view-only; selection stays unchanged.
+
+**Paper ⟷ 3D continuity.** The switch requests a tilt through Camera about the current
+target, keeping scale. Paper settles azimuth to the nearest 90° detent; 3D returns
+to the last working elevation, not a remembered pose. It never refits, retargets,
+rescales, changes lens or creates another viewport state. Selection, Card, Index,
+armed tool, open work, history, grid and snap survive. A reading flip continues work;
+it is not a lens crossing.
+
+Keys, exact geometry, prototype mechanisms, fixture values and new domain schemas
+are not fixed by this Paper contract. The production keymap belongs to its planner.
+
+## Experience expression (§0.8.1)
+
+<a id="081-finalized-experience-shell-expression"></a>
+
+Experience uses the shared shell to author visitor meaning and encounter. It does
+not create a parallel shell or renderer. The following distinctions are visible,
+not merely data-model facts:
+
+| Concept | Meaning and owner |
 | --- | --- |
-| Drafting paper (vellum) | `#F3F4EE` |
-| Chassis main | `#EEEDE8` |
-| Chassis recessed / armed | `#E2E0D8` |
+| **Presentation** | Reusable visitor meaning, focus and participation; Experience-owned |
+| **Camera View** | Reusable framing; Camera-owned even when authored here |
+| **Set** | One Presentation's unordered uses of Camera Views, with Presentation-local roles |
+| **Stop** | One stable Guide occurrence referencing a Presentation; distinct from that Presentation and from a runtime visit |
+| **Seam** | The transition between adjacent occurrences into the following Stop; local Guide work referencing Camera support |
+
+**View progression ≠ Guide order ≠ Camera connectivity.** No visual graph or order
+strip may imply otherwise.
+
+### Scale × Depth
+
+Scale asks **what am I working on?** Depth asks **how much instrument do I need?**
+They are independent, not a mandatory ladder through all contexts.
+
+| Scale contexts | Independent depth examples |
+| --- | --- |
+| Subject, Presentation, Camera View, Stop occurrence, Guide/Seam | Camera: Auto → Hints → Capture → Precise; Seam: route/pace → Coordination → Precision |
+
+Changing scale does not force technical depth. Camera precision is directly reachable
+from a View without a Guide, and broad Guide context does not require precision.
+
+### Ordinary Presentation and its Card
+
+Ordinary Experience shows Index, a dominant 3D Stage and a quiet Card, with no full
+Deck, global timeline or Camera rig. No Guide means no Guide rail. A Guide that
+exists earns quiet Peek awareness rather than an automatically expanded workspace.
+
+Selecting a World subject exposes its relation to Experience. **Present this**
+deliberately creates or opens a Presentation; lens switching creates nothing. A fresh
+Presentation initially shows **Meaning · Focus · Show** plus an explicit
+**Add behavior or offer** entry. Content earns additional **Happens**, **Visitor can**
+and **Guide** strata; empty slots are not permanent machinery. Preview requires no
+Guide or authored Camera graph.
+
+The Card is a structured semantic surface: identity/target and shared-use reach at
+the top, meaning/focus, Camera Show/View facts where relevant, supported behavior or
+visitor offers, and Guide/use relations. It declares **Presentation**, **Camera View**
+or **This Stop** honestly. Lower strata collapse; the header stays stable. Its vertical
+structure does not turn into the Deck.
+
+A Stop Card distinguishes this occurrence's entry View, Cut/Travel, pace invocation,
+continuation, Gate and visitor choices from the shared Presentation's meaning and
+Camera facts. Repeated occurrences may differ without duplicating shared meaning.
+Opening a shared meaning/View writer from a Stop makes its owner and wider reach
+legible and invokes the Ask Rule before acceptance.
+
+### Set representation and visibility
+
+A Set is a **Presentation-local unordered constellation**, not numbered Views or a
+filmstrip. Views are located around their actual focus on Stage and schematically
+around that focus when disclosed inside an occurrence. Names and supported roles
+such as Entry, cue use, visitor choice or suggested framing explain each use. Use
+roles are Experience facts; View pose/projection remain Camera facts.
+
+A Show list in the Card is an inventory/door to those uses, not a sequence. Spatial
+focus connectors and schematic constellation links cannot be read as Camera edges.
+Coexisting Views create no route, progression or Stop. Shared-use labels disclose
+reuse without creating extra View identities.
+
+| Context | Stage disclosure |
+| --- | --- |
+| Ordinary Presentation, 3D or Plan | Only the working Presentation's Set, at the appropriate spatial scale |
+| Guide overview | Numbered Stop entry pins only; no View constellations, entry-facing glyphs or Camera topology |
+| Expanded occurrence | That occurrence's Presentation Set, spatially on Stage and schematically inside the occurrence |
+| Seam | Possible origin Views, destination entry View and relevant Camera relationships for that Seam |
+| Explicit connectivity inspection | Wider Camera connectivity only by a separate request |
+
+Directional View glyphs at disclosed Set/Seam depth describe framing orientation;
+they do not turn Guide overview into a Camera graph or establish new projection data.
+
+### Experience Deck: shell ownership and Guide density
+
+The **Experience shell owns one stable bottom Deck**. Its disclosure posture and
+outer composition stay recognizable regardless of which Guide occurrence or Seam
+is active. Guide contents populate it; a child editor does not replace it with its
+own workbench. It occupies the lower shell span beneath the working regions when
+expanded: Overview, Seam and coordination qualify for the shared breadth rule.
+It is not an instrument trapped inside the Card or Index. The groups inside it
+retain useful sizes rather than expanding every field to fill that span.
+
+| Posture | Composition and purpose |
+| --- | --- |
+| **Peek** | A very shallow rail at the Stage edge: current occurrence/position and quiet Guide awareness. It overlays or minimally occupies the edge; no full workspace resize |
+| **Overview** | A Deck heading with Guide/order context and position, then occurrence cards along editorial order. Stage supplies spatial occurrence locations |
+| **Seam** | The same Deck forms two adjacent occurrence bookends around a wider central Seam instrument; unrelated occurrences compress strongly |
+
+No Guide means no Deck rail. Adding the first Stop starts Peek, not a full-height
+Deck. Expanding is creator intent. Exact heights, crop/dock behavior and spacing
+remain implementation/usability choices; the stable lower home and relative rank do not.
+
+Overview is a **fisheye**, not equal-width cards or a text-only strip:
+
+- **L0:** compact identity/position for distant occurrences.
+- **L1:** thumbnail, title, entry View name and warning state where relevant.
+- **L2:** expanded occurrence with Presentation summary, unordered View constellation
+  and Guide-specific details.
+
+The active occurrence expands as appropriate; nearby occurrences may stay L1 and
+distant ones compress toward L0. Expansion to L2 is its own context, not forced by
+every selection. Repeated Presentations keep separate Stop identities and positions,
+with shared-use context exposed without implying a fork. Neutral editorial connectors
+belong in the Deck; they must not become spatial Camera routes on Stage.
+
+The Deck supplies **editorial order**; Stage supplies **spatial occurrence location**;
+Card supplies **semantic identity, ownership and scope**. These complementary homes
+must compose together. Showing isolated controls or equal cards does not satisfy the
+Guide overview requirement.
+
+### Seam triptych and information homes
+
+Opening a Seam changes the Deck posture, **not the Camera standpoint or Stage reading**.
+Inspecting a relationship is different from editing its spatial support. Draw route,
+anchor manipulation or route repair may explicitly request a useful Plan reading,
+with a return crumb through Camera/navigation. Plan is preferred for route work,
+not a compulsory consequence of opening the Seam.
+
+The Seam composition is a triptych with compressed unrelated order at its sides:
+
+| Home | Required information |
+| --- | --- |
+| **Origin bookend** | Prior Stop and Presentation identity, possible origin Views, and each origin's supported/gap status |
+| **Central Seam instrument** | Seam identity into the following Stop; Cut/Travel; aggregate reachability/spatial status; Camera route summary and pace; Coordinate entry or active coordination depth |
+| **Destination bookend** | Following Stop and Presentation identity, with that Stop's entry View clearly named |
+| **Stage** | Scoped spatial route support, View positions, authored anchors, derived points, gap location, spatial pace cues and direct manipulation |
+| **Card** | Canonical target and property owner/reach; details of the active occurrence-local beat/hold or Camera edit when needed |
+
+Card can compress to its identity header during path work and expand for semantic
+editing. It does not absorb the triptych or become a duplicate route/coordination
+control panel. A task detail can describe a beat under **This Stop** while keeping
+that Stop's canonical identity; task focus need not manufacture another selection.
+
+Travel asks whether **every View the visitor may legitimately occupy at the end of
+the origin Stop** can reach the destination entry View. Show per-origin status and
+an aggregate such as “reachable from 2 of 3 Views.” Fixing one origin does not claim
+all are fixed. Multiple origins are not merely decoration around one tested route.
+
+**Cut** is occurrence-local entry policy and creates no Camera edge; no spatial
+connection is drawn across the world. **Travel** references supported Camera
+connectivity and cannot fabricate motion. Missing support remains an explicit gap.
+Camera owns route geometry and pace; Experience owns the occurrence's choice/use and
+coordination. Shared route/pace edits must disclose their reach.
+
+### Local coordination and Camera/Experience responsibilities
+
+Normal Seam depth shows route, pace and spatial status without a temporal strip.
+**Coordinate**, or existing coordination on that Seam, exposes a compact local strip
+inside the **central Seam panel**. The bookends and shared shell remain, and Stage
+stays dominant. Coordination is not a fourth permanent workspace or a global timeline.
+
+The strip has distinct **Route/stations · Beats · Holds** information homes. The
+Camera route/station row is quiet orientation; the event row shows occurrence-local
+beats; the hold row shows occurrence-local durations. A selected beat/hold exposes
+its binding and reach in the Card. The central panel carries extended relation/time
+structure rather than forcing that structure into vertical Card fields.
+
+The [route/station instrument grammar](./spatial-instrument-grammar.md#camera-routes-and-experience-coordination-projections)
+defines Stage route, authored-anchor, derived-helper, View/end, beat/hold and gap
+species, plus spatial/temporal correspondence. The lower strip must visibly compose
+those relationships, not merely contain controls with matching labels. It consumes
+the shared semantic color/state roles; it does not invent another palette or graph.
+
+Spatial and temporal projections reference **one authored relationship**. Stable
+station references are departure, an authored anchor, arrival or a named marker.
+A beat binds to the station rather than an independently authored seconds value;
+its attachment survives route-pace changes. Generated intermediate points cannot
+become station references. Mirror corresponding station/event emphasis in both
+projections without equating their geometric screen positions.
+
+**Path geometry is edited only on Stage.** The strip displays Camera stations and
+lets Experience coordination be authored; it never becomes a second route editor.
+Invocation time mapping evaluates through Camera. Existing coordination does not
+silently retarget if its referenced station or route becomes unavailable; domain
+validation/repair remains authoritative.
+
+The destination has **no permanent global Camera Timeline**, five Camera track
+lanes, duplicate scrubber or generic video-editor workbench. The maintained
+editor's legacy Timeline is a landed implementation description, not the source
+of Seam composition or Experience ownership.
+
+### Progressive Camera precision
+
+Camera disclosure proceeds through:
+
+| Depth | What it exposes |
+| --- | --- |
+| **Auto** | Derived framing |
+| **Hints** | Near/far, side, height, look-at and movement intent |
+| **Capture** | Explicit creation of a reusable Camera View |
+| **Precise** | A direct Camera instrument on Stage with Camera-owned facts and reach in the Card |
+
+Precise depth has three available postures on the **same Camera View/route**:
+
+- **Outside:** see the observer in the room to work on architecture relationship,
+  height, distance, target or route. A subordinate framed-view inset may assist it.
+- **Through:** look through the View; the image becomes the framing instrument,
+  with frame gate, horizon/height, lens and target grips as supported.
+- **Plan:** work on spatial relationships, connectivity, routes and anchors.
+
+The posture switch belongs to this local Camera task. The
+[Camera framing instrument grammar](./spatial-instrument-grammar.md#camera-framing-instruments)
+defines truthful observer/target representation, framing grips and active-grip tapes.
+The Outside specimen's circle is one possible guide, not a required orbit constraint.
+Chrome and Card remain visible in Through so it is unmistakably authoring, with an
+explicit spatial return. Through and Outside are both available; the initial posture
+is a usability choice. Capture is deliberate, never an effect of lens switching or
+inspection.
+
+## Visual and state grammar (§0.7)
+
+<a id="071-authority-and-evidence-for-the-destination"></a>
+
+The product character comes from structure, material, type and interaction:
+professional spatial work with warm surfaces, restrained technical ink and compact
+controls in a quiet engineered chassis. Rich capability gathers around the current
+question instead of making every region louder. Plan and 3D retain the same visual
+system; alternate themes must preserve its hierarchy and semantics.
+
+### Material and working surfaces (§4.4)
+
+PLATE has exactly three material classes; a task name is not a new material class.
+
+| Class | Role |
+| --- | --- |
+| **Chassis** | Persistent Head, Index, Card and Deck shell: pale, stable, quiet, mostly square, separated by alignment, hairlines and tonal steps |
+| **Paper** | Spatial Stage, expressed as dark **cutting mat** for model/depth work or light **vellum** for measured drawing |
+| **Instrument** | Controls acting on the work: compact manufactured edges, small radii, mechanically attached to the shell/Stage |
+
+The mat gives depth, artwork and geometry a dark ground. Vellum makes measured
+architecture the drawing subject. Ink and ochre are mark/state roles, not additional
+materials. Section, Unroll or precision can use a measured vellum reading without
+creating another shell. A camera route on Plan uses the same Paper as World drafting;
+Experience does not invent a separate theme or drawing surface.
+
+A 1 CSS px inset perimeter separates Paper from chassis without reducing the canvas
+rectangle or changing Camera aspect, pointer mapping or overlay coordinates. It
+intercepts no picking and covers neither edge controls nor focus indicators.
+Major chassis surfaces have no decorative shadows or nested floating dashboard
+cards. Instrument controls may have about 3 px radius and Paper handles about 2 px;
+use roles and restrained edges, not pills as a general style. Occurrence cards are
+semantic order items inside the Deck, not permission to turn all shell panels into cards.
+
+**Grid and wall sheet.** At reference architectural scale, Paper has a 1 m minor/
+5 m major grid on a `1, 2, 5 × 10^n` ladder, major five times minor. Decimate by
+projected CSS-pixel spacing: target at least 16 px, fade from 16 to 8 px and suppress
+below 8 px. Anchor to the world/floor datum with a stable origin across interval
+changes. It is drawing state, never a Camera mode or a reason to delay navigation.
+
+The **paper rule** is fixed: a Wall wears the drafting sheet when it is the settled
+subject of a Face session, straight or curved, or is off its footprint, and keeps
+it as the reading tilts back to 3D. **Wall grid off** overrides that sheet and shows
+real wall material in every reading/curvature; view-only displacement still has a
+slate dashed footprint. On, wall distance/height carries the calibrated vellum grid,
+including partly peeled and inside/outside readings. End/reveal faces stay plain
+rather than suggesting a false measurement surface. Generated grid coordinates are
+display-only. Paper and selection compose; selection does not replace the sheet.
+
+### Semantic color (§6.4)
+
+| Role | Destination calibration |
+| --- | --- |
+| Vellum | `#F3F4EE` |
+| Chassis main / recessed or armed / hover | `#EEEDE8` / `#E2E0D8` / `#F0EFE9` |
 | Instrument surface | `#F8F8F4` |
-| Chassis hover | `#F0EFE9` (perceptual lift) |
-| Primary technical ink | `#202422` on light surfaces |
-| Reference dimension ink | `#3E4440` on light surfaces |
-| Light overlay ink / halo | `#F3F4EE` |
-| Paper grid — minor / major | `#9FB2A2` @ 0.28 / `#809984` @ 0.45 |
-| Ochre core (selection, manipulation) | `#E5A020` |
-| Dark ochre boundary (on light surfaces) | `#8A5B10` |
-| Quiet selection fill | ochre core at 0.10 over the local surface |
-| Clearance caution | `#F7EDE8` surface · `#C85A48` accent · `#3A241D` body · `#7E2718` action |
-| Refusal | `#FDF3F0` fill · `#7E2718` text · terracotta edge |
-| View displacement (view-only) | `#56707C`, dashed |
-| Intentionally open | the existing open-state family, retained |
-| Spatial ground / background / grid | `#1D3A33` / `#152C26` / `#2B5147` minor, `#3C6A5C` major (§4.4) |
+| Primary technical / reference dimension ink on light surfaces | `#202422` / `#3E4440` |
+| Light overlay ink/halo | `#F3F4EE` |
+| Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
+| Mat / background / minor and major grid | `#1D3A33` / `#152C26` / `#2B5147` and `#3C6A5C` |
+| Camera infrastructure | Restrained cyan/teal; the existing Camera accent role is `#347D89` |
+| Selection/manipulation core / dark boundary on light surfaces | `#E5A020` / `#8A5B10`; quiet fill at 0.10 over the local surface |
+| Clearance caution | `#F7EDE8` surface, `#C85A48` accent, `#3A241D` body, `#7E2718` action |
+| Refusal | `#FDF3F0` fill, `#7E2718` text, terracotta edge |
+| View-only displacement | `#56707C`, dashed |
 
-**Color ownership, target.**
+Values are separate semantic roles even when equal. Minor luminance calibration for
+contrast is allowed; do not incidentally recolor caution, history, branding or return
+by changing selection. The drafting sheet matches vellum so rolling a Wall does not
+read as a material replacement. Intentionally open gaps retain their distinct open
+state, not refusal by default.
 
-- **Selection and manipulation are ochre.** Branding/history **tape** accents are not a
-  selection color and must never encode selection; the demo's interim tape-gold selection
-  was reverted and is history, not a variant.
-- **Paper + selection compose** (§18.3): the sheet and its grid stay, a dark-ochre contour
-  draws the selection, and **no ochre floods the page**.
-- **Wall grid** (§10) is the editor-side override of the paper rule: on, the wall
-  being worked on is drawn as drafting paper with its measurement grid; off, every wall
-  keeps its **real material** in every view at every curvature, and a displaced wall keeps
-  its dashed slate footprint so the view-only cue does not depend on the paper.
-- **The paper rule is settled (option 1, not open):** a wall wears the sheet when it is the
-  settled subject of a face session — straight or curved — or when it is off its footprint,
-  and it keeps the sheet when the view tilts back to 3D. *Paper-as-page (option 2) is the
-  unelected alternative, not an open question.*
-- **Ink is surface-relative.** A single dark stroke cannot hold contrast on both the mat
-  and the paper; where content varies, use a two-tone boundary (dark stroke + light halo)
-  or a contrasting core.
+**Canonical selection has the strongest ochre treatment; active lens is neutral.**
+The lens switch uses a quiet pressed/active chassis cue, never a competing amber
+selection. Task focus, referenced subjects and repair candidates are distinguishable
+without selecting them. Branding/history tape never carries selection.
 
-> **Calibration is design memory, not a target:** the drafting sheet is calibrated to match
-> the vellum ground so rolling a wall cannot read as a change of material; grid *hue* is
-> fixed by the plan's hexes and only opacity/emissive response were calibration
-> variables. Evidence: [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md) §3–§4.
+Selection is a persistent contour and quiet tint, never a page flood. On paper use
+the dark boundary; on the mat use the ochre core; variable content may need a two-tone
+stroke/halo. The sheet/grid remain visible. Manipulation emphasizes the active handle,
+affected edge and measurement rather than every dimension or the entire Card.
+Unselected architecture and Camera context remain quiet enough for selection to read.
 
----
+### State and control hierarchy (§18.3)
 
-# 7. Typography and iconography
-
-Use two typographic voices:
-
-- a warm humanist sans for ordinary UI;
-- a narrow mechanical mono for measurements, coordinates, IDs, references, timestamps and precision values.
-
-Do not make the product feel premium by inflating headings.
-
-## 7.1 The ladder (closed, seven steps)
-
-The shell's type is a **closed ladder**. These seven sizes are the only type sizes
-in the product; this replaces the earlier approximate hierarchy (10/11/12/13/15/20)
-and supersedes the pre-PLATE flat ramp (16/14/13/12.5/11.5, which was largely dead
-— components minted their own instead, seventeen different sizes between 9.6 and
-13.6 px across the shell):
-
-| Step | At scale 1 | Typical use |
-| --- | ---: | --- |
-| `-2xs` | 9 px | mono measures only (timeline ticks) |
-| `-xs` | 10 px | engraved/meta labels, references, status, View Bar utilities |
-| `-sm` | 11 px | compact readouts, Domain Spine station labels, View Bar MODE pair |
-| `-md` | 12 px | standard rows, labels, controls, property labels |
-| `-lg` | 13 px | property values, Navigator scope headers |
-| `-xl` | 15 px | panel headings |
-| `-2xl` | 20 px | only where project identity genuinely needs it |
-
-## 7.2 Roles, and the two global scales
-
-Surfaces consume **roles**, never these numbers (§2.9). A role carries family +
-size + weight + leading together (`--editor-type-row`, `-identity`, `-heading`,
-`-engraved`, `-engraved-quiet`, `-row-head`, `-control`, `-control-strong`,
-`-utility`, `-mode`, `-status`, `-property`, `-mono`, `-ref`, `-tick`,
-`-readout`, `-station`, `-tray-group`, `-tray-tool`, `-body`), plus icon and
-fitted-geometry roles for groups measured by **fit** rather than by semantics
-(row height, disclosure target, station height, rail tool, icon sizes).
-
-Two global scales retune the shell, and they are **deliberately independent** —
-"denser buttons" and "bigger type" are different requests:
-
-| Scale | Multiplies | Default |
-| --- | --- | --- |
-| `--editor-type-scale` | every type size and the icon sizes set with a label | `1` = 100 % |
-| `--editor-control-scale` | button height/padding and fitted control geometry, never type | `1` = 100 % |
-
-Both are expressed as factors (`1.15` = 115 %) because a CSS length cannot be
-multiplied by a percentage token.
-
-**Durable cascade constraint:** apply these knobs at **`:root` / the document
-root** (a theme block, or inline on `document.documentElement`). A derived custom
-property is resolved **where it is declared**, so raising the knob in a lower
-subtree does **not** re-derive role tokens already computed at the root. Design the
-knob as a product-wide control and do not expect subtree overrides to work.
-
-## 7.3 Tool Tray tiers (ratified R1 — scoped exception)
-
-The rail is the one container whose **geometry outranks §7.1**: §11 fixes it at
-44 px, and its group label gets a 39 px text box. The rail therefore paints its own
-engraved micro-tier, and a group word that still cannot fit steps down — never
-breaks mid-word to preserve a number:
-
-| Tier | Size |
-| --- | ---: |
-| Tray group label | 7 px |
-| Tray tool label | 8 px |
-| Compact floor — a word wider than the rail, **opt-in per group** | 6 px |
-
-`TRANSFORM` is the known compact case. The compact step is an explicit per-group
-opt-in, never automatic text shrinking. **Do not generalize the 6 px floor to
-ordinary shell typography** — the 10 px engraved tier still owns every other
-engraved label in the shell.
-
-## 7.4 Control roles
-
-Every chrome button is one of four roles; height, padding and type travel together,
-and the pre-ratification generic control names survive only as **aliases** onto them:
-
-| Role | Height | Padding x | Type | Use |
-| --- | ---: | ---: | --- | --- |
-| `lg` | 30 px | 9 px | `control` | primary actions |
-| `md` | 26 px | 9 px | `control` | Project Head, forms |
-| `sm` | 24 px | 8 px | `utility` | View Bar, tabs, icon controls |
-| `xs` | 20 px | 6 px | `utility` | inline row actions |
-
-Radius follows the material rule (§6.2): square chassis, ~3 px instruments.
-Pressed/toggled is a **state**, not a role — see §18.5.
-
-## 7.5 Role outcomes ratified by implementation
-
-These are the reference outcomes of the roles and knobs above at scale 1. They are
-recorded so a later phase can recognise drift, **not** as licence to duplicate a
-literal inside a component (§2.9):
-
-| Surface | Outcome |
+| State | Required distinction |
 | --- | --- |
-| Project Head identity | 14 px identity role |
-| Domain Spine station | 74 px station, 11 px domain label, 24 px icon |
-| View Bar view tabs | engraved view-tab role (12 px, strong weight) |
-| View Bar utilities | 10 px |
-| View Bar MODE pair | 11 px at 24 px control height; caption per §10 |
-| Tool Tray | the dedicated compact engraved/tool roles from §7.3 |
-| Navigator row | 29 px row, 12 px row text, 10 px mono reference, 18 px disclosure affordance |
-| Inspector section heading | 10 px / 600 / ≈ +0.04em (engraved role) |
-| Timeline ruler | 9 px **mono** |
-| Status Rail | 10 px status role, 12 px side padding, ≈ 20 px gaps |
-
-Where a later phase needs a different outcome, it changes the **role** (§2.9).
-
-Existing P23.12 and P23.13 iconography should be retained. Protected Plan authoring silhouettes stay protected. General shell icons should be normalized around the existing visual family rather than replaced wholesale with a new icon library.
-
----
-
-# 8. Domain Spine
-
-The 56 px vertical Spine is the exclusive home of the primary domain axis.
-
-It contains two persistent stations:
-
-- Scene;
-- Camera.
-
-The active station receives a restrained **3 px inboard edge-light** using the domain accent.
-
-Ratified station outcome (R3; §7.5): **74 px** station, **11 px** label set in the
-domain's own casing (`Scene` / `Camera` — not an engraved uppercase token), **24 px**
-icon, and a recess → panel-raised step when active alongside the 3 px edge-light.
-
-Do not use full-surface domain-color fills.
-
-Do not put Settings, Assets, Help or unrelated utilities into the reserved lower Spine merely because space exists.
-
-The empty lower Spine is deliberate breathing room and future capacity, not an invitation to toolbar accretion.
-
----
-
-# 9. Project Head
-
-The Project Head is approximately 36 px high and remains compact.
-
-It holds project/global context such as:
-
-`Projects → project name → session state → Undo/Redo → save state → Spatial / Publish → Preview → Theme → Account → Help`
-
-Spatial and Publish are independent chassis actions, not one segmented control.
-
-Ratified Head outcomes (R3; §7.5): the project identity is the **14 px identity
-role**, the band's controls sit on the **`md` control role** (26 px, 9 px padding),
-and the band keeps compact spacing. The Head stays 36 px — identity may never be
-grown by inflating the band.
-
-Do not create a second global toolbar.
-
----
-
-# 10. View Bar
-
-The View Bar spans only the central work column.
-
-Plan and 3D are engraved view tabs integrated into the Chassis. They must not look like ordinary tool buttons.
-
-Scene Plan exposes the subordinate mode control as **`MODE   Layout | Arrange`**
-(ratified grammar, §0.2):
-
-- `MODE` is a quiet, **non-interactive caption** in the engraved/muted tier with a
-  clear gap before the pair. It is **not** a third segment and not a control.
-- The wrapper carries **no enclosing control fill, no border, no radius and no padding**
-  that would let the three read as one capsule. Only `Layout` and `Arrange` carry button
-  chrome — 11 px type on the 24 px `sm` control role.
-- Tool groups inside the bar are separated by **space only**; there are no divider rules
-  between groups.
-
-Utility controls such as Snap, Grid, route visibility and Panels live in the same horizontal work-context region but are visually subordinate to the durable view tabs, at the **10 px utility tier**.
-
-The View Bar must not extend over Navigator or Inspector.
-
-The View Bar is the **single owner** of the workspace utilities and the View menu (§2.12): Panels,
-Snap, Grid, route visibility, the camera Path/Frame helper toggles and the menu itself each have
-exactly one writable control, and the View menu must not repeat an affordance the bar already
-exposes directly. Progressive density in a squeezed centre column (§22.1) may hide a utility but
-must not create a second copy of it elsewhere.
-
-**Desired-from-demo behaviors (unbuilt).** The accepted demo placed these utilities
-in its View Bar. The destination shell must expose each through one writable
-control (§2.12); §0.8 fixes the shared shell laws, not these utilities' exact
-placement:
-
-- **Wall grid** — the wall being worked on is drawn as drafting paper with its 1 m / 5 m
-  grid; off, every wall keeps its real 3D material in every view at every curvature
-  (§6.4, §4.4).
-- **Reduce motion** — forces presentation duration to zero without changing the selected
-  motion speed (§23.1).
-
-**Return behavior.** The accepted demo uses `Esc`, a back/“put it back” action and
-context crumbs rather than an origin/return tab marker (§21). The destination
-uses §0.8.2's explicit return/resume behavior; exact control geometry remains
-implementation work.
-
-> The demo's utility grouping is prototype evidence, not a placement contract.
-> For World Paper, §0.8.4 now assigns the destination placement: grid (including the
-> Wall grid meaning on wall Paper) and snap in the reading cluster's drafting state,
-> their configuration in the Sheet, and Reduce motion and Motion speed in Settings.
-
----
-
-# 11. Tool Tray
-
-The Tool Tray is a **44 px vertical instrument rail attached directly to the Paper edge**.
-
-It is not a second sidebar and must not become one.
-
-The tray paints the **tool vocabulary only** (`SELECT / TRANSFORM / SPACE / OBJECTS`) and owns no
-View Bar menu or utility, even though both hosts mount the same toolbar component (§2.12). Its
-host decides that; individual buttons must not be conditionally hidden to fake it.
-
-## 11.1 Ratified rail geometry and type (R1)
-
-- The rail stays **44 px**; rail tool buttons remain approximately **42 px** within it.
-- Engraved group tier **7 px**; tool label tier **8 px** (§7.3).
-- **Compact floor 6 px** only where a group word physically cannot fit the rail,
-  opt-in per group; `TRANSFORM` is the known case.
-- Group labels are persistent; tools are compact and icon-led.
-- A group name is never broken mid-word merely to preserve a historical font size
-  (§0.2, §2.10).
-
-Open product calls, not settled here (§0.3): a **wider rail**, or **renaming the
-`TRANSFORM` group**. Keyboard focus is **not** part of this ratification — it is a
-separate state (§18.1).
-
-## 11.2 Ratified armed state (R2)
-
-- Armed = **one material step darker / recessed**. Hover = a **perceptual lift**.
-- **Full normal ink** when armed.
-- **No amber outline, no 3 px accent edge, no label-weight jump.**
-- Armed remains legible **without hue**: it is a luminance step, so it survives a
-  monochrome frame and — being the opposite direction from hover — cannot be mistaken
-  for it.
-- `--editor-armed` remains available for other surfaces; the rail does not have to
-  spend it.
-
-## 11.3 Representative groups
-
-### Scene Plan
-
-- DRAW: Wall, Rect Room, Poly Room
-- OPENINGS: Door, Window
-- OBJECTS: Place, Display, Sculpture, Seating, Platform, Column
-
-### Scene 3D
-
-- SELECT
-- TRANSFORM: Move, Rotate, Scale
-- SPACE: Local, World
-- OBJECTS: relevant placement actions
-
-### Camera Plan
-
-- CAMERA: Select, Add Camera, Connect, Sequence, Play
-
-### Camera 3D
-
-- CAMERA: Select, Move, Look At, Play
-
-The exact tool list remains subject to product capability, but the rail grammar and density do not.
-
----
-
-# 12. Navigator — recursive spatial hierarchy
-
-This is the largest intentional evolution beyond Designer A’s original proposal.
-
-The Navigator is **not** a flat inventory and **not** a filesystem.
-
-It presents two related structures:
-
-1. **canonical spatial containment**;
-2. **contextual projections** of entities relevant to that spatial context.
-
-## 12.1 Future-facing containment model
-
-The hierarchy must support structures such as:
-
-`Site → Building → Floor → Room/Space → Content`
-
-and more generally:
-
-`container → child container → child container → entities`
-
-The product must not permanently hard-code “Museum → Rooms” as the only useful organization.
-
-Examples that should fit without a shell redesign:
-
-- Museum → Floor → Gallery;
-- House → Floor → Room;
-- Campus → Building → Floor → Exhibition Wing → Gallery;
-- future user-defined spatial containers if introduced later.
-
-## 12.2 Contextual projections
-
-A Room/Space may expose contextual groups such as:
-
-- Architecture;
-- Walls;
-- Openings;
-- Junctions;
-- Content;
-- Scene References;
-- future typed relationships.
-
-Visual nesting does **not** by itself establish canonical ownership.
-
-Example:
-
-`Gallery North → Architecture → Walls → W-FJSK`
-
-means “show the canonical wall relevant to Gallery North,” not necessarily “Gallery North owns this wall.”
-
-A shared wall may appear through multiple Room/Space contexts while resolving to the same canonical entity, reference, name and selection.
-
-This principle must remain true for future multi-floor and cross-context features.
-
-## 12.3 Row species
-
-The Navigator must visually distinguish:
-
-1. spatial/container entity;
-2. ordinary entity;
-3. typed group heading;
-4. contextual/reference occurrence;
-5. relation metadata;
-6. authored empty/teaching state.
-
-Group rows such as Architecture, Walls or Content must not masquerade as ordinary selectable domain entities unless they actually become real domain entities.
-
-## 12.4 Identity presentation
-
-Named entities lead with name and preserve the complete compact reference.
-
-Unnamed Wall/Opening/Junction entities may lead with reference according to P23.12.
-
-References never truncate.
-
-Names may ellipsize under pressure, but the Inspector must expose the full name.
-
-## 12.5 Depth and density
-
-Deep hierarchy must remain usable at 268 px reference width.
-
-Use shallow indentation—approximately 10–12 px per level—not oversized folder-tree indentation.
-
-As depth increases, preserve:
-
-- disclosure affordance;
-- entity kind cues;
-- useful name excerpt;
-- full compact reference;
-- active selection;
-- search/reveal context.
-
-Metadata and decorative counts degrade before identity.
-
-Ratified row outcomes (R3; §7.5): **29 px** row, **12 px** row text (`--editor-type-row`),
-**10 px mono** reference in the protected slot, **18 px** disclosure affordance with a
-26 px target. Reuse the row role and the fitted-geometry role — never a literal (§2.9).
-
----
-
-# 13. Inspector
-
-The Inspector remains property-first.
-
-It is not a dashboard, tutorial, project summary or documentation surface.
-
-The top selection header should expose:
-
-- type icon;
-- name or reference;
-- secondary reference when named;
-- kind.
-
-Sections follow entity semantics, for example:
-
-- Geometry;
-- Transform;
-- Placement;
-- Identity;
-- Relationships;
-- Lens;
-- Sequence;
-- Actions.
-
-Consequential/destructive actions come last.
-
-P23.12 rename authority remains Inspector-owned.Technical/raw canonical IDs remain behind the P23.12 Technical details disclosure rather than leaking into normal identity surfaces.
-
-## 13.1 Section headings and property tiers
-
-Section headings use the **engraved role** — 10 px / 600 / ≈ +0.04em, muted, uppercase —
-and property rows use the standard label tier (12 px) with values at the 13 px property
-tier in the mono/sans voice the field requires (§7.5). The selection header's title is
-the panel-heading role.
-
-**Carried implementation note (not design):** the Inspector family still pins some of
-its 12 px / 12.5 px tiers because an earlier slice's contract pins them across nine
-components. That migration is implementation debt (§0.4) — it does not license new
-literals in that panel, and it changes nothing here.
-
----
-
-
-# 14. Status Rail
-
-The Status Rail is approximately 24 px high and is **readout-only**.
-
-It may report:
-
-- current domain and view;
-- current selection/reference;
-- save state;
-- grid/snap/metric state;
-- coordinates or other low-noise work-state readouts.
-
-It must not duplicate toolbar actions.
-
-One fact should have one authoritative control owner. Status may passively echo a fact but should not create a second control.
-
-Ratified rail outcomes (R3; §7.5): **10 px** status role, **12 px** side padding,
-**≈ 20 px** inter-item gaps, and the readable secondary ink tier — quietness
-comes from weight and size, never from under-contrast ink.
-
-**Landed rail constraint; demo placement is open.** The accepted demo places its **Motion
-speed** control at the end of its Status Rail. That is a **prototype placement, not a
-contract**: it is one of the open owner calls (§0.7.6), because the rail is readout-only
-and must not become a second toolbar. Do not implement a Status Rail control from the
-demo, and do not move Precision into the rail (§19).
-
----
-
-# 15. Scene states
-
-## 15.1 Scene / Plan / Layout
-
-The Plan remains the strongest demonstration of PLATE:
-
-- landed P23.13 Plan Paper `#F5F7F8`;
-- cool Chassis;
-- vertical Scene domain station;
-- horizontal Plan view tab;
-- vertical Tool Tray;
-- recursive Navigator;
-- property-first Inspector.
-
-P23.13 owns architectural Plan representation. P23.14 owns the surrounding shell and state language.
-
-Selection must reconcile across Navigator, Plan, Inspector and Status.
-
-## 15.2 Scene / Plan / Arrange
-
-Arrange remains a subordinate Scene Plan local mode, not a new top-level view.
-
-## 15.3 Scene / 3D
-
-Switching Plan → 3D must feel like changing the representation of the same work, not launching a different application.
-
-The shell, Navigator and Inspector stay stable. The Tool Tray vocabulary changes to 3D-relevant instruments.
-
-The 3D viewport remains an editor Paper surface—not a visitor presentation mode.
-
----
-
-# 16. Camera states
-
-Camera uses the same shell grammar but changes work ownership and content.
-
-## 16.1 Camera / Plan
-
-Scene architecture is passive spatial context.
-
-The Camera graph/sequence overlays receive attention priority.
-
-Camera Plan may show:
-
-- camera nodes;
-- route/sequence;
-- direction;
-- selected camera;
-- ordering.
-
-It must **not** show a finite FOV/frustum cone.
-
-Any Camera Graph shown beneath a Floor/Space in the Navigator is a contextual presentation unless/until a separate product contract establishes canonical ownership. Do not infer that a tour or sequence is permanently owned by one floor; future tours may cross floors.
-
-## 16.2 Camera / 3D
-
-A finite frustum for the selected camera is appropriate in Camera 3D.
-
-Route context may remain visible when useful.
-
-The viewport remains an editor view.
-
----
-
-# 17. Camera Drawer and Timeline
-
-The Camera Drawer belongs to the Camera domain and spans the central work column only.
-
-## 17.1 Collapsed
-
-Reference height: **48 px**.
-
-Show compact sequence transport/readout only.
-
-No fake lanes. No ruler.
-
-## 17.2 Expanded
-
-Reference height: **288 px**.
-
-Use exactly these five semantic lanes, in this order:
-
-1. Camera Path
-2. Shots
-3. FOV
-4. Look At
-5. Roll
-
-The Timeline must feel native to the same PLATE instrument system.
-
-Do not introduce:
-
-- audio tracks;
-- object-animation tracks;
-- generic video-editor track taxonomies;
-- storyboard-thumbnail substitution for the semantic lanes;
-- duplicate scrubbers.
-
-Roll is a quiet compressed summary row, explicitly showing 0° when unchanged. It should not look like a waveform.
-
-No-flow, edge and sequence states are states of the same Camera surface, not separate products.
-
----
-
-# 18. Selection and state language
-
-The visual system must clearly distinguish at minimum:
-
-- hover;
-- selected;
-- primary selection;
-- keyboard focus;
-- active domain;
-- active durable view;
-- active local mode;
-- armed tool;
-- disabled;
-- refusal/invalid;
-- warning;
-- destructive action;
-- preview/ghost;
-- snap/guide;
-- authored versus derived information.
-
-Do not overload selection blue to mean every state.
-
-Do not depend on hue alone.
-
-## 18.1 Four surface states stay distinct (implementation-ratified)
-
-| State | Cue |
+| **Hover** | Perceptual lift in chrome; restrained edge/tint below selection on Stage |
+| **Armed** | Neutral material sink, full normal ink; no amber outline, accent edge or label-weight jump |
+| **Selected** | Coherent identity contour/edge and quiet fill across its representations |
+| **Keyboard focus** | Independent visible non-hue focus cue, using focus-visible behavior |
+| **Pressed/toggled or active lens/reading** | Quiet recess, edge and inset rule; does not become selection |
+| **Task focus / reference / candidate** | Named context and distinct emphasis, never a selected-identity echo |
+| **Authored / derived** | Distinct glyph, line or read-only treatment, especially anchors/stations |
+| **Temporary inspection / ghost / Preview** | Explicit temporary or execution context; no apparent source mutation |
+| **Disabled** | Legible unavailability and reason where needed, distinct from quiet enabled controls |
+| **Caution / refusal / destructive** | Separate warning, blocked proposal and consequential-action semantics |
+
+Shape, line, pattern, text, icon and position reinforce color. A refused proposal
+outranks active-value styling locally but preserves keyboard focus and canonical
+identity. View-only displacement is slate/dashed and described as set aside, not an
+error merely because geometry appears moved. Stale gesture emphasis clears on
+completion, cancellation, lost pointer capture or closing its writer.
+
+Project/lens context, reading, contextual task, tool, identity and immediate gesture
+have different visual jobs. Do not flatten them into equally prominent buttons.
+Identity and meaning lead; advanced controls and metadata are subordinate. Strong
+emphasis is local to the current decision. Destructive/consequential actions come
+after ordinary information and use deliberate labels. Context help, empty states
+and refusal reasons teach locally; Card is not a documentation dashboard.
+
+Primary acceptance is emphasized at the active decision. Ordinary actions,
+utilities and relation links use progressively quieter treatments; a list of
+references must not become a stack of primary buttons. Segmented controls use
+the pressed/active baseline, not selection color. Destructive action and refusal
+retain their own semantic roles; disabled controls cannot look like quiet enabled
+ones. Rank follows the action's consequence and context, not the feature's accent.
+
+### Typography and control roles (§7)
+
+Use a warm humanist sans for UI and a narrow mechanical mono for measures,
+coordinates, compact references, timestamps and precision. Headings gain rank
+through structure and weight, not inflation.
+
+The nominal ladder is **9 / 10 / 11 / 12 / 13 / 15 / 20 px at scale 1**: mono ticks,
+engraved/meta, compact readouts, rows/controls, property values, panel headings and
+exceptional project identity. Surfaces consume family/size/weight/leading **roles**,
+not literals. Existing calibrated identity and fitted rail roles are scoped outcomes,
+not permission to add arbitrary sizes.
+
+| Control role | Scale-1 height / horizontal padding | Type role | Use |
+| --- | --- | --- | --- |
+| **lg** | 30 / 9 px | control | Primary actions |
+| **md** | 26 / 9 px | control | Head and forms |
+| **sm** | 24 / 8 px | utility | Utilities, tabs and icon controls |
+| **xs** | 20 / 6 px | utility | Inline row actions |
+
+Control type is the 12 px role; utility type is the 10 px role. Height, padding
+and type travel together through the role system; pressed state is not a new role.
+
+Type and control scales are independent product-wide factors, applied at the document
+root so derived tokens re-evaluate there. Standard row roles retain the calibrated
+29 px row, 12 px text, 10 px mono reference and 18 px disclosure affordance/26 px target;
+section labels use the quiet engraved tier. These are role-system baselines, not
+fixed Index/Card/Deck dimensions or measurements to extract from historical QA.
+
+The maintained 44 px Tool Tray has a scoped fitted micro-tier: 7 px group, 8 px tool,
+6 px opt-in floor only where a group word cannot fit. Do not generalize that floor to
+ordinary typography or force the destination rail into obsolete group vocabulary.
+Destination rail fitting consumes the role system and its actual pointer-family
+composition. The retained project identity role calibrates to 14 px; it does not
+require growing the Head band.
+
+Preserve settled identity and Plan drafting/icon semantics where those tools still
+apply. General icons stay in the existing family; a new shell does not license a
+wholesale redraw. Wall/shape/Opening icons remain distinguishable from the marks
+they produce; the Plan Door cue is perpendicular three-dash ink, not its toolbar icon.
+Derived Rooms are not restored as authored primitives by retaining a shape icon.
+
+### Accessibility and motion
+
+Keyboard navigation, disclosures and precision controls need non-pointer paths.
+Focus remains visible independent of selection/armed state. Contrast applies to quiet
+metadata too; quietness comes from hierarchy, not unreadable ink. Coarse-pointer
+interactive targets need at least 44 × 44 px without changing semantic roles.
+Reduced motion changes presentation, not endpoint meaning, access or source truth.
+
+**Motion speed** selects movement policy, including teaching-then-fast or brisk/instant
+behavior. **Reduce motion** independently forces presentation duration to zero, hides
+timed captions and stops CSS transitions without changing the selected speed; the
+system preference still initializes and works independently. Both use Camera evaluation
+for spatial movement. Instant is not a substitute for the accessibility control.
+World Settings is their assigned home; no World status-rail control survives.
+
+## Return, parking and Preview (§0.8.2)
+
+<a id="082-parked-procedure-and-lens-return"></a>
+
+### Lens crossing and foreign selection
+
+A lens toggle changes authoring intention only. Project identity, canonical selection,
+Camera standpoint and spatial orientation carry. It captures no View, creates no
+Presentation or relation, opens no Guide, moves no Camera and infers no subject.
+An explicit cross-lens action may deliberately change lens and selection together;
+the toggle itself never does.
+
+| Selection carried across | Honest destination behavior |
 | --- | --- |
-| **hover** | perceptual **lift** (`--editor-bg-hover`) |
-| **armed** | material **sink** (§11.2 — recess step, full ink) |
-| **selected** | the selection grammar (accent edge + selection fill), shared with the viewport |
-| **keyboard focus** | its **own independent** focus grammar (offset ring, `:focus-visible` only) |
+| World subject → Experience | Keep that World identity selected; explain exposure, show relevant Presentation/Stop references with explicit Open actions, and offer deliberate Presentation creation where supported |
+| Presentation or Stop → World | Keep the Experience identity selected and inert for unsupported World editing; show references with explicit Select/Open-in-Experience actions; do not restore an old World selection |
+| Camera View → World | Keep the View identity and Camera ownership. World may inspect; durable edits delegate to Camera through Experience's authoring controls. Do not select its framed subject or capture another View |
 
-Hover and armed are deliberately **opposite directions**, so they cannot be confused;
-armed and pressed share the recess step, so a monochrome frame still separates them.
+An unselected referenced object on Stage remains unselected. Neither Presentation
+focus, Stop focus, framed subject nor previous lens selection substitutes for the
+current identity.
 
-**Keyboard focus is not an armed, hover or selected cue.** It stays — it is the only
-keyboard affordance in the shell — and any future change to it must preserve a visible,
-non-hue keyboard cue (§0.3).
+### Parking and explicit Resume
 
-## 18.2 Pressed / toggled baseline
+**Park is inactive remembered session context.** On lens exit, cancel unaccepted
+writers/drags, deactivate invoked task surfaces and temporary readings together,
+and retain accepted source edits. World inspection and Browse/Search procedure park;
+Experience's invoked Deck/Seam and precise Camera procedure use the same rule.
+Parking authors nothing and owns no Camera snapshot/history.
 
-A pressed or toggled chrome control — the View Bar's utilities, the `MODE` pair, a
-toggled tool — is painted with a **recessed material surface** (`--editor-bg-recess`), an
-**edge border** in the state accent and an **inset bottom rule** (the Atlas's
-`button[aria-pressed=true]` grammar).
+Returning shows **current selection and Camera standpoint at ordinary lens rest**.
+World has no active Instrument or inspection; Experience may show Peek for an
+existing Guide but does not reopen Guide or precision work. The toggle restores no
+old Browse context, task, selection, reading or Camera pose.
 
-This replaces the earlier translucent accent-soft wash, which left a pressed control on
-the same surface and height as a resting one. An accent-tinted filled variant is an open
-owner reconsideration (§0.3); do not invent a second pressed treatment elsewhere.
+Resume is explicit in relevant Look/Details, condition or Experience task context.
+It is available only after the original canonical identity is selected and targets/
+configuration are revalidated against current source. Missing or invalid targets
+produce an explanation or valid fresh work, never silent retargeting. Changed
+selection is not replaced to resume a task; unaccepted proposals never resume.
 
-Selection coherence is a signature product behavior: Navigator ↔ viewport ↔ Inspector ↔ Timeline should feel like one identity moving through different representations.
+A resumed surface and its reading activate together from the **current standpoint**.
+Any Face/Bring into view is a separate Camera request. Put it back uses canonical
+navigation's current invocation return context and cannot rewind movement performed
+in the other lens. Session payload/storage remains an implementation choice.
 
-## 18.3 Target state language — folded from the accepted P26 demo (**desired-from-demo · unbuilt**)
+### Spatial return and procedural unwind
 
-§18 and §18.1–§18.2 describe the **landed** state grammar. The destination refines its
-material expression without merging any state:
+Put it back restores the expected spatial reading and standpoint through Camera/
+navigation; the shell does not keep a second viewpoint history. Temporary reading
+state may accompany that authority's return context without becoming authored truth.
+Accepted edits survive procedural exit. Esc cancels/unwinds; it is never Undo.
 
-| Concern | Target (unbuilt) |
+| Context | Esc progression |
 | --- | --- |
-| **Selected** | A persistent **ochre** contour: dark ochre (`#8A5B10`) on paper/light surfaces, ochre core (`#E5A020`) on dark content, a two-tone boundary where the surface varies. Quiet fill is ochre at 0.10 over the local surface — selection is a contour and a tint, never a flood |
-| **Paper + selection** | They **compose**: the sheet and grid stay, the contour draws, and no ochre fills the page. With **Wall grid** off the wall shows its real material + contour (§6.4) |
-| **Manipulating** | Ochre core on the active handle only; emphasize only the affected edge and its measurement. Preserve the selected identity; do not flood the Inspector or strengthen every dimension of the selected object |
-| **Hover** | A restrained tint/edge below selected emphasis (viewport) and the perceptual surface lift in the shell (§18.1) |
-| **Armed tool** | Unchanged — recessed neutral surface, normal ink, no selection-colored fill. The demo preserved R2 (§11.2) |
-| **Refusal** | Explicit refusal styling on the affected control/value plus a readable reason; it outranks the active value's fill/border but must **not** erase the focus indicator or the selected subject's identity. A refused action is not a caution |
-| **Caution / refusal / view-only stay separate** | A clearance caution is `#F7EDE8` / `#C85A48` with its explicit recovery action. Refusal is the dimension/control refusal treatment with a reason. **View-only displacement stays slate and dashed** with “set aside” wording and never becomes a warning merely because a wall moved. Intentionally open gaps keep the existing open-state family |
-
-**Not settled here.** The demo's keyboard focus ring (2 px dark stroke + 2 px light halo
-at 2 px offset) is a candidate for the open §0.3 focus seam; §0.3 stays open (§0.7.6).
-Stale emphasis must still clear on completion, cancellation, lost pointer capture or
-closing the numeric editor.
-
----
-
-# 19. Precision and guidance
-
-Precision feedback should appear close to the gesture that caused it.
-
-Examples:
-
-- dimensions near selected/drawn geometry;
-- snap indication at the snap location;
-- refusal reason near the failed action when practical;
-- numeric precision in Inspector or local direct-entry surfaces.
-
-Do not make the Status Rail carry all precision communication.
-
-Educational guidance should be contextual and authored:
-
-- useful empty states;
-- short reason text for refusal;
-- labels that clarify hierarchy;
-- concise context help where needed.
-
-Do not turn the Inspector into documentation.
-
----
-
-# 20. P24 pressure contract
-
-P23.14 must not pre-design P24 behavior, but it must leave room for P24 without shell reinvention.
-
-The Atlas should pressure-test at least:
-
-- denser Scene content;
-- multiple selected objects;
-- object groups / staging relationships;
-- richer Inspector property sets;
-- materials and lights;
-- larger Navigator inventories.
-
-The shell should absorb these by contextual density and progressive disclosure, not by adding another permanent toolbar or dashboard.
-
----
-
-# 21. P26 contextual-instrument contract
-
-P23.14 must create a clear host for future contextual architectural instruments
-within the landed shell without deciding every P26 interaction today.
-
-In that landed shell, Section / Wall Elevation / Ceiling Focus should:
-
-- enter from an existing durable view;
-- replace or focus the central Paper surface;
-- show their contextual identity visibly;
-- retain domain context;
-- retain selection coherence;
-- expose an obvious return path to the owning durable view;
-- avoid appearing as a third peer view beside Plan and 3D.
-
-The Atlas should include at least one non-authoritative P26 stress specimen showing how a contextual instrument could occupy the landed shell while preserving this hierarchy.
-
-This specimen is for pressure-testing only and must not invent P26 product semantics.
-
-**Desired-from-demo (unbuilt).** The accepted demo demonstrates the destination
-experience for these instruments — Section, depth preview/Reveal, lift and look-up, and
-the drafted surface they read on. Its **journeys A–F remain the experience/QA authority**
-for that direction. Everything the demo shows beyond today's editor — continuous
-Plan↔3D, first-class circular Room creation with one self-connected Wall, peeling,
-drawn-line Section/Reveal, ceiling lift/look-up and exact return — is **still-unbuilt
-(T1 after F)**: production stays gated behind the F interfaces and the re-derived track
-plan. Contextual identity, coherent selection and an obvious return path remain
-behavior constraints. The demo's subordinate Plan/3D presentation is evidence;
-the accepted destination shell hierarchy is stated in §0.8, and the demo's
-shortcuts are not contracts (§0.7.1).
-
----
-
-# 22. Responsive and density behavior
-
-PLATE must survive professional density rather than only hero screenshots.
-
-Required stress cases include:
-
-- Navigator width 240–300 px;
-- 3 floors;
-- 8+ rooms/spaces per floor;
-- 70+ walls total;
-- deeply expanded Room/Space → Architecture → Walls branch;
-- long authored names;
-- duplicate names distinguished by references;
-- a wall exposed from more than one Room/Space context;
-- 8+ cameras;
-- expanded 288 px Camera Timeline;
-- smaller desktop height around 768 px;
-- light and alternate-theme contrast checks if alternate themes remain.
-
-Progressive density is preferred over disappearance.
-
-When space tightens, remove or compress redundant metadata before hiding identity, selection or location.
-
-## 22.1 Open seam — the squeezed View Bar (not settled)
-
-Below roughly 300 px of centre-column width the View Bar's contextual region (a
-`flex: 1; min-width: 0` container) clips its own children, so `Layout | Arrange` is cut
-before anything else gives way. This is **unresolved** (§0.3). The shape of the fix is a
-progressive-density rule keyed to the container — the way the Navigator sheds row
-metadata — but no threshold is ratified here, so do not invent one.
-
-## 22.2 Density order inside the shell
-
-Where space tightens, the shedding order is: decorative/redundant metadata → captions
-and secondary readouts (e.g. the `MODE` caption before its controls) → low-frequency
-utilities. Identity, selection, the durable view tabs and the active tool are the last
-things to compress, never the first.
-
----
-
-# 23. Accessibility and motion
-
-The Atlas and implementation must validate:
-
-- keyboard navigation;
-- visible focus independent from selection;
-- accessible disclosure controls;
-- accessible Inspector controls;
-- non-hue-only state differences;
-- readable contrast;
-- reduced-motion behavior;
-- pointer-target adequacy;
-- coarse-pointer fallback where relevant.
-
-Motion should reinforce hierarchy and continuity, not decorate the shell.
-
-## 23.1 Reduce motion is a control distinct from motion speed (**desired-from-demo · unbuilt**)
-
-Two different questions get two different controls, and neither is a second motion
-authority:
-
-- **Motion speed** — *how* a move travels: the learns-then-fast policy (teaching speed for
-  the first repetitions, fast afterwards), or Brisk/Instant. This is motion *policy*.
-- **Reduce motion** — *whether* anything travels: it forces the presentation duration to
-  zero **without** changing the selected speed, hides timed captions, and stops CSS
-  transitions too. The system `prefers-reduced-motion` setting still initialises it and
-  still works on its own.
-
-Both are presentation inputs evaluated through the **single Camera motion evaluation**
-(AGENTS rule 1; §2.11) — the destination introduces no second evaluator, curve model or
-timeline. Reduce motion is not a re-labelling of Instant, and Instant is not a substitute
-for it. The demo places **Reduce motion** in its View Bar (§10); the destination
-placement of both controls remains open (§0.7.6).
-
----
-
-# 24. Explicit non-goals / rejected interpretations
-
-P23.14 must not:
-
-- turn Scene and Camera into separate applications;
-- turn Plan/3D into a generic dropdown that hides the durable-view distinction;
-- introduce Section/Elevation as a third durable peer view;
-- move the Inspector into a dashboard role;
-- make the Navigator a literal filesystem;
-- infer canonical ownership from tree placement;
-- permanently flatten Navigator into Rooms / Architecture / Placed Content sections;
-- add a second global toolbar;
-- widen the Tool Tray into another sidebar;
-- turn Camera Timeline into a generic video editor;
-- reopen P23.12 identity;
-- redraw settled P23.13 Plan iconography without cause;
-- make the old navy dark mode the default product identity;
-- use theme color as the main source of hierarchy;
-- add chrome simply because empty space exists;
-- collapse hover, armed, selected and keyboard focus into one accent treatment (§18.1);
-- remove the keyboard focus cue without replacing it with a non-hue keyboard affordance (§18.1);
-- dress `MODE` as a third segment inside the `Layout | Arrange` capsule (§10);
-- generalize the Tool Tray's 6 px compact floor to ordinary shell typography (§7.3);
-- let a historical numeric value outrank the constraint it was meant to satisfy (§2.10);
-- present the **desired-from-demo** visual language (§0.7) as shipped, or implement it
-  before its cutover and acceptance (§26.2);
-- migrate editor tokens/components to the §4.4/§6.4 destination as part of a docs or demo
-  change, or mint a production design-system package from the demo.
-
----
-
-# 25. Designer D — Atlas assignment
-
-Designer D should now build or revise the interactive HTML Atlas against this document.
-
-The Atlas is a **QA surface**, not a competing proposal.
-
-Its job is to make the design falsifiable before implementation and during visual acceptance.
-
-## 25.1 Required canonical specimens
-
-The Atlas must include four high-fidelity canonical states:
-
-### A. Scene / Plan / Layout
-
-- recursive multi-floor Navigator;
-- one expanded Space/Room → Architecture → Walls branch;
-- selected wall using P23.12 identity;
-- P23.13 Plan representation;
-- property-first Inspector;
-- landed P23.13 Plan Paper `#F5F7F8` / cool PLATE Chassis.
-
-### B. Scene / 3D
-
-Layout/Arrange remain Scene Plan local modes; Scene 3D has no parallel local-mode control.
-
-- same shell geometry;
-- same recursive hierarchy;
-- selected Scene object;
-- 3D transform instruments;
-- no shell redesign between Plan and 3D.
-
-### C. Camera / Plan / collapsed Drawer
-
-- passive architecture;
-- selected camera graph node;
-- no finite frustum;
-- collapsed 48 px Camera Drawer;
-- Camera hierarchy uses the same Navigator grammar;
-- any floor placement is explicitly contextual, not canonical ownership.
-
-### D. Camera / 3D / expanded Drawer
-
-- selected camera + finite frustum;
-- expanded 288 px Drawer;
-- exactly Camera Path / Shots / FOV / Look At / Roll;
-- no generic video-editor tracks;
-- coherent selection across Navigator / viewport / Inspector / Timeline.
-
-## 25.2 Required stress specimens
-
-The Atlas should also expose interactive stress toggles or dedicated fixtures for:
-
-- deep multi-floor hierarchy;
-- long names + complete compact references;
-- duplicate names;
-- same canonical Wall revealed in two Space contexts;
-- 70+ wall density;
-- 8+ cameras;
-- expanded Timeline at reduced vertical height;
-- empty state;
-- disabled/refusal/warning/destructive states;
-- keyboard focus;
-- reduced motion;
-- future P26 contextual-instrument host.
-
-## 25.3 Atlas authority rule
-
-The four owner-generated PLATE images may be used as visual orientation evidence for composition, warmth and intended density.
-
-They are **not** pixel truth and must not be mined for accidental semantics.
-
-Known examples of generator output that must not become product contracts include:
-
-- arbitrary fixture IDs beyond ratified identity rules;
-- Camera Graph appearing under a Floor as implied ownership;
-- inconsistent utility-control order;
-- generated room/wall relationship mistakes;
-- exact typography/icon deviations from existing P23.12/P23.13 assets.
-
-The Atlas should correct these against this document.
-
----
-
-# 26. Acceptance criteria
-
-P23.14 visual implementation is ready for acceptance when the Atlas and product make the following true simultaneously:
-
-1. A user can identify project, domain, durable view, local mode and active tool without those ranks competing visually.
-2. Scene/Camera remain visibly one product.
-3. Plan/3D remain durable peers.
-4. Paper, Chassis and Instrument are visually distinct without decorative excess.
-5. The new PLATE Light theme is the canonical default and the old navy dark identity is no longer the product baseline.
-6. Navigator supports recursive spatial containment and contextual projections without implying false ownership.
-7. Multi-floor hierarchy does not require a new shell.
-8. P23.12 identity remains intact through Navigator, Inspector, search and selection.
-9. P23.13 Plan representation/iconography remains intact.
-10. Selection is coherent across every visible surface.
-11. Inspector stays property-first.
-12. Status stays readout-only.
-13. Camera Timeline remains Camera-owned and central-work-column aligned.
-14. Camera Plan contains no finite frustum; Camera 3D may.
-15. Expanded Camera Timeline uses exactly the five ratified semantic lanes.
-16. P24 growth can be accommodated without adding permanent chrome.
-17. P26 can enter as subordinate contextual instruments with a visible return path.
-18. The shell survives dense, nested and reduced-height stress fixtures.
-19. Keyboard, focus, contrast and reduced-motion checks pass.
-20. The result still feels recognizably like Museum Editor—evolved, not replaced.
-
-### 26.1 Post-implementation criteria (ratifications R1–R3)
-
-The ratified implementation adds these acceptance criteria:
-
-21. The Tool Tray paints its ratified tier — every group and tool label fits the 44 px
-    rail's text box, `TRANSFORM` resolves at the compact floor, and no label breaks
-    mid-word (§7.3, §11.1).
-22. An armed tool reads as a material sink with full ink, without hue, and cannot be
-    confused with hover (§11.2, §18.1).
-23. No shell surface carries a pinned type or control value: each resolves through a role
-    or a ladder step, and raising `--editor-type-scale` / `--editor-control-scale` at the
-    document root scales type and control geometry respectively, independently (§7.2).
-24. `MODE` reads as a caption rather than a third segment, and pressed View Bar controls
-    use the recessed surface, edge border and inset rule (§10, §18.2).
-25. Reconciling a later surface with this document never reopens P23.14 (closed
-    2026-09-21); the §0.3 owner calls stay open and outrank any implementation default.
-26. Every writable shell fact has exactly one control owner per workspace, the Inspector
-    presents one resolved target in both header and body, and a retained selection stays
-    remembered across workspace switches (§2.12).
-
-### 26.2 Destination acceptance (from the accepted P26 demo)
-
-§26 and §26.1 are the **landed** editor's shell acceptance gate. The destination visual
-language is accepted through the demo's [specification plan](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md)
-**§9.3** (the evidence-and-completion requirement) and the **owner visual acceptance recorded
-2026-09-29** in the demo's [acceptance record](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md);
-it is stated in §0.7. Both finalized designs' **shell/disclosure** requirements are
-separately promoted into §0.8–§0.8.3 (PR #111), with their syntheses and QA specimens,
-and the World Paper authoring destination into §0.8.4 (2026-10-03).
-None of these amendments inherits
-§26's gate, and passing §26 does not verify the
-destination. A cutover to
-§4.4/§6.4/§0.8 will need its own acceptance, planned with its own slice — these
-amendments authorize none.
-
----
-
-# 27. Final design statement
-
-P23.14 should leave Museum Editor with a shell that is recognizable before its palette is visible.
-
-Its signature is:
-
-**spatial Paper (landed cool P23.13 Paper in Plan; warm PLATE Paper elsewhere) held inside a cool engineered Chassis, with compact Instruments attached directly to the work; one coherent identity moving through the landed Scene/Camera × Plan/3D shell.**
-
-The Navigator scales from today’s Rooms to tomorrow’s Buildings, Floors, Spaces and contextual architecture without confusing navigation with ownership.
-
-The new PLATE Light theme becomes the default face of the product. Existing P23.12 identity and P23.13 drafting/iconography remain foundations rather than collateral damage from polish.
-
-This is the direction Designer D should now make concrete and falsifiable in the Atlas.
-
-**Added 2026-09-29 — the visual-language destination.** The landed shell
-description above still describes the editor. §0.7, with §4.4, §6.4, §10,
-§18.3 and §23.1 folding the accepted P26 demo's material and state language —
-**dark cutting mat for spatial modeling, vellum for drafting, technical ink for
-architecture, ochre for selection and manipulation** — calibrated in the demo
-under the same chassis, type ladder, control metrics and landed ownership, with clauses labelled landed-now,
-desired-from-demo or still-unbuilt. The editor keeps running today's landed chrome until
-an explicit cutover.
-
-**Added 2026-10-01 — the shell destination.** Both finalized World and V2 Experience
-designs are promoted into this contract (§0.8–§0.8.3), fixing destination shell/disclosure
-laws: two lenses
-over one project, persistent breadth with invoked depth, one canonical selection,
-Card identity stability, Look vs Details, a task-only Instrument, one
-Camera/navigation return authority, and lens crossing that parks procedure without
-capturing, creating or substituting, with explicit revalidated task resumption. The
-Experience expression fixes Scale × Depth, unordered Sets, Peek/Overview/Seam Deck,
-Ask Rule and progressive Camera disclosure. The landed shell described above remains
-the editor's current behavior until an explicit cutover.
-
-**Added 2026-10-03 — World Paper authoring.** §0.8.4 fixes the destination for authoring
-in World's Paper reading: six permanent pointer families (Select · Draw · Opening · Place ·
-Measure · More), Walls authored with their spatial role derived rather than chosen, a
-read-only fact Card without a verb row, subjects found in the Index and capabilities in
-Find, an invoked precision ladder, a legible Scale · Grid · Snap drafting state, earned
-consequences and Paper ⟷ 3D as one switch over the one Camera authority.
+| Spatial work | Cancel writer/drag proposal → leave precision for the Instrument → Put it back and deactivate reading/Instrument together → rest |
+| Non-spatial component/repair work | Cancel writer/picker → leave precision for task focus → Instrument overview → close Instrument → rest |
+| World Paper | Field → live gesture → procedure proposal → Find/Dimensions → armed tool to Select → Look session through Put it back → selection → rest, unwinding one applicable level at a time |
+
+Paper's field cancellation leaves the tool armed. Ordinary rest has no destructive
+Esc action. Return controls/crumbs must be obvious; exact control geometry is open.
+
+### Preview takeover
+
+Preview is execution, not another authoring mode or a Through-camera overlay.
+Authoring infrastructure disappears; visitor session state never writes source.
+Exiting restores authoring lens, selection, Card context, Stage standpoint and open
+inspection/task context through their authorities. Unlike a lens return, Preview
+exit restores the authoring context from which it was entered.
+
+## Responsive and narrow behavior (§22)
+
+Compress redundant metadata before identity, location, active work and usable Stage.
+Preserve complete compact references, useful names, disclosure and selection under
+dense structure, repeated names and long names. Multi-level projects, shared Walls,
+many objects/Views and reduced desktop height must not require another shell.
+
+At narrow desktop width the Index becomes an invoked sheet behind a compact
+location control; Card becomes an invoked sheet behind a selected-identity control.
+Stage stays dominant, with the active lower task surface in a coherent home.
+Conditional recovery appears if current context cannot identify the selected subject.
+Experience Index may compress to a spine during dense Seam work, while Card identity
+remains legible/recoverable and the Deck still belongs to the shell.
+
+For World Paper, location and identity controls live in Head. Hide side panels uses
+this same composition at any width. Sheets overlay Stage without resizing it;
+opening a procedure closes the Card sheet. The scoped list remains reachable from
+context menu/Find. Rail, reading cluster, scale bar and datum key remain available,
+and the Instrument never covers the drafting words.
+
+Shell resizing, Deck expansion or sheet presentation is **layout behavior**: it
+must not imply a Camera fit, pan, fly-to or authored Camera change. Preserve the
+standpoint and spatial memory as the visible rectangle changes. Explicit spatial
+operations may request framing through Camera; layout changes cannot smuggle in
+that request. Breakpoints, exact widths/heights and Deck crop/docking mechanics
+are implementation/usability choices, not raster-derived product rules.
+
+## Open implementation and usability choices (§0.3 · §0.7.6)
+
+Only the choices below remain open; they do not reopen the shell architecture.
+
+| Choice | Fixed constraint |
+| --- | --- |
+| Initial precise Camera posture: Through or Outside | Both are available, use the same Camera authority, and keep authoring distinct from Preview |
+| Deck crop/docking, exact dimensions and density thresholds | Peek stays quiet; Overview/Seam retain their composition and Stage dominance; layout changes never navigate |
+| Domain-specific instrument geometry, occlusion aids and overlap disambiguation | Follow [spatial-instrument grammar](./spatial-instrument-grammar.md); preserve truthful relationships, semantic species and reachable operations without inventing constraints |
+| Station-bound coordination comprehension | Verify behavior remains understandable after anchor moves, pace changes and shared-route edits; binding/ownership semantics are fixed |
+| Exact keyboard-focus treatment | Independent visible non-hue focus remains required; the demo's two-tone ring is a candidate, not a mandated measurement |
+| Accent-tinted pressed fill reconsideration | The recessed/edge/inset baseline remains; no second treatment is introduced by a feature |
+| Mat ↔ vellum transition timing and wipe/crossfade | Prevent flicker, preserve continuous spatial meaning and reduced-motion endpoints; demo timings are not product law |
+| Production representation of temporary reading/parked session payloads | No authored inspection state, hidden active task or second Camera history |
+
+Internal-component selectable identity and shared-source/local-override semantics
+remain domain questions. Use capabilities and scope choices the domains declare;
+this shell does not resolve their future formats. Layout's Wall-role migration and
+intentionally non-enclosing-ring choice remain with Layout, not with a shell designer.
+Production key bindings belong to delivery planning.
+
+## Conformance test for future design
+
+A feature/domain brief plus this document must suffice to design a conformant shell.
+Its proposal must make these outcomes visible together:
+
+- Shared Head/Index/Stage/Card continuity, with one canonical selection and correct
+  ownership across both lenses and narrow desktop.
+- Calm resting context, purposeful disclosure and the correct lens-specific task
+  home; richer capability does not create permanent parallel chrome.
+- Experience's unordered Set, fisheye Guide occurrences, Seam triptych and local
+  station/beat/hold coordination as complete compositions, not a checklist of controls.
+- Camera geometry/evaluation distinct from Experience order/coordination, with
+  explicit scope and gaps, generated/authored distinctions and no legacy Timeline model.
+- Coherent material, typography, controls, selection/active-lens hierarchy, accessible
+  state distinctions and local precision/refusal.
+- Lens parking, explicit revalidated Resume, spatial return and Preview exit following
+  their different contracts, without source or identity surprises.
+
+Reference images calibrate relative hierarchy, information homes, spatial instruments
+and visual grammar. Exact pixels, fixture values, names/counts, incidental wording,
+generator artifacts and prototype shortcuts are not product contracts. Repeated
+composition supported by written design is meaningful evidence, not optional because
+it appears in a raster. Implementation experiments may vary only within the fixed
+constraints above.
+
+## Design evidence
+
+These retained artifacts explain rationale and supply specimens; they are not a
+fallback specification that a future designer must reopen or an authority cycle.
+
+| Evidence | Role |
+| --- | --- |
+| [World final synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [World QA package](../../../prototypes/world-experience-shell-round/QA-package/) | Shared/World design record and all ten composition/disclosure specimens |
+| [Experience V2 final synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) and [Experience Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/) | Experience design record and canonical Presentation, Guide, occurrence, Seam, coordination and precision specimens |
+| [World Paper proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) | Accepted World-only refinements, owner rulings and schematic rationale |
+| [P26 surface calibration acceptance](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md), [specification](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md) and [prototype journeys](../../../prototypes/spatial-authoring/README.md) | Mat/vellum/grid/state calibration and deep World interaction evidence; shortcuts are not production mechanisms |
+| [Shell ratifications](./editor-shell-ratifications.md) and [Atlas](./editor-shell-atlas/index.html) | Existing role-system and state evidence; the Atlas's landed composition does not redefine this destination |

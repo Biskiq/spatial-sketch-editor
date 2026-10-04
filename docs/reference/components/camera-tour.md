@@ -52,7 +52,13 @@ it never copies Camera truth. A missing referenced View is a repairable unresolv
 binding, distinct from intentional keep-viewpoint. Transient World inspection
 does not become an authored View without explicit capture. Experience may expose
 progressive View/framing/movement controls, but all writes and evaluation go
-through Camera authority; the shell location of those controls is open.
+through Camera authority. The
+[destination shell](../design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
+owns their disclosure, information homes and Outside/Through/Plan postures. The
+[spatial-instrument grammar](../design-system/spatial-instrument-grammar.md#camera-framing-instruments)
+owns truthful observer/target/framing representation, grips and precision feedback;
+it introduces no orbit constraint or additional Camera operation. The graphics and
+input policies below remain the current implementation until cutover.
 
 **Order cutover (destination).** Camera owns Views, connectivity/routes,
 framing/projection and movement evaluation. Experience owns Presentations, Stops,
