@@ -142,6 +142,12 @@ Each slice records:
 
 ### PA0 · Preflight and seams (no behaviour change)
 
+- **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../../p25-experience/design/experience-v2-prototype/conformance-plan.md)
+  and [fresh conformance evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
+  S0–S9 proof is historical. Re-record all current World/Experience axes; the pre-replacement
+  counts below are provenance, not the new entry baseline. Preserve neutral Resume, current
+  invocation returns, observer-anchor semantics, scope proposals, spatial Set/route/rig and
+  visitor isolation. Paper cannot take over an unfinished Experience requirement.
 - **Accepted behaviour.** None visible. This slice prepares one named binding table and the two
   new QA axes.
 - **Replaced / preserved.** It preserves everything and re-records the current

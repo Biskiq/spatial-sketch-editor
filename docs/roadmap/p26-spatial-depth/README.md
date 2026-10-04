@@ -66,8 +66,11 @@ This revision is separate from the pre-redesign production plans below.
 **Prototype adoption (#112) accepted 2026-10-02:** [closed plan and recovery](./design/world-authoring-prototype/implementation-plan.md)
 · [current World executable](../../../prototypes/spatial-authoring/README.md)
 · [acceptance/harvest](../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md).
-The shell is adopted in place with A–F preserved. **#113 implemented and self-reviewed; final gates/closeout pending:** [Experience V2 implementation plan](../p25-experience/design/experience-v2-prototype/implementation-plan.md) extends the shared executable with Experience V2 and both directions of continuity;
-[acceptance/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md) records the proof. F and T1/T2/T3 production gates remain unchanged.
+The shell is adopted in place with A–F preserved. **#113 replacement implementation under conformance review:**
+[active C1–C8 plan](../p25-experience/design/experience-v2-prototype/conformance-plan.md) corrects the shared executable;
+[fresh evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) records current proof.
+S0–S9 evidence is historical. Repository gates remain blocked by the missing P23B fixture;
+final external review is pending. F and T1/T2/T3 production gates remain unchanged.
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 
