@@ -2,7 +2,13 @@
 
 **Status: C9.1–C9.3 implemented and accepted through MP2 (owner-accepted 2026-10-05);
 C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation and agency)
-implemented, self-reviewed and verified; stopped at the MP3 human gate (2026-10-05).**
+implemented, self-reviewed, independently reviewed and verified; stopped at the MP3 human gate
+(2026-10-05).** The independent review of the pushed executable named four acceptance blockers
+(Rejoin/detour Return rebuilding remaining work, the missing interaction-only Preview Experience,
+availability modelled but not authorable, and a same-View Travel shortcut ignoring the live pose),
+and all four are repaired at their owning authority with regression and same-defect mutation
+coverage — V2/V7 (rejoin and detour remainder), I3/J6 (world-only session), I4 (availability) and
+N1 (live pose) respectively.
 The owner authorized implementation through MP2; C9.1 is implemented and MP1 was accepted
 explicitly by the owner (2026-10-04). MP2's three recorded observations are non-blocking and
 assigned outward (shell density → the later UI/UX slice, Guide snap/cut → superseded by C9.4,

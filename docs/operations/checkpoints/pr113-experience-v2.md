@@ -73,15 +73,26 @@ READ:
   collapsed back onto the strict scope predicate. The 13th, entry-plus-station double
   activation, was re-targeted from the tick-repeat defect to the activation contract itself).
 - C9.4/C9.5 (Camera default Travel and live invocation; visitor participation and agency)
-  implemented, self-reviewed and verified at `c118c08b`: pure Node suite **86/86**;
-  `qa/run-all.sh all` **18 axes / 771 assertions / 0 failures, rc=0** at that one revision
-  (`/tmp/c945-all.log`); `qa/mutation-check.sh` **34/34** same-defect rejections (21
-  model/runtime + 3 World/lens + 7 V2 conformance + 3 wiring), with the composition-only rerun
-  green on its 24 C9 obligations. Seven self-review findings were repaired, two of them in
-  surrounding C9.1–C9.3 behavior (an origin already at the destination View was painted and
-  refused as a Travel gap, and the departure-readiness rule had two copies so removing one
-  would have left the other refusing early Next), and the N1-superseded axis steps were
-  rewritten rather than worked around. Details in the evidence record.
+  implemented, self-reviewed and verified: pure Node suite **93/93**; `qa/run-all.sh all`
+  **18 axes / 780 assertions / 0 failures, rc=0** at the reviewed revision (`/tmp/c945b-all.log`);
+  `qa/mutation-check.sh` **39/39** same-defect rejections (26 model/runtime + 3 World/lens + 7 V2
+  conformance + 3 wiring), with the composition-only rerun green on its 29 C9 obligations. Seven
+  self-review findings were repaired, two of them in surrounding C9.1–C9.3 behavior (an origin
+  already at the destination View was painted and refused as a Travel gap, and the
+  departure-readiness rule had two copies so removing one would have left the other refusing early
+  Next), and the N1-superseded axis steps were rewritten rather than worked around.
+- An **independent review** of the pushed C9.4/C9.5 executable then named four acceptance blockers;
+  this repair pass fixed all four at their owning authority, each with behavior coverage and a
+  same-defect mutation: Rejoin and detour Return now resume the playhead (remaining work rather than a
+  rebuilt estimate, a cue whose signal already fired skipped, future cues kept, and the parent's own
+  remainder and cue floor restored on Return); **Preview Experience** exists as the world-only entry
+  that needs no Presentation, Stop or Guide; offer **availability is authorable** with Experience-wide
+  as the default, written in the same aggregate edit and switchable from the Card without changing the
+  offer's home; and a same-View Seam is zero-distance only while the visitor is standing there,
+  otherwise the ordinary Camera framing invocation from the live pose. The review also caught this
+  record naming the missing P23B fixture path outside its `EVIDENCE-PATHS` region, which the repository
+  documentation gate reads as a claim about a missing file; that text is repaired and the gate is green
+  at this revision. Details in the evidence record.
 - Product defects found and fixed during verification: Guide band reachability (band
   measured 285.84px vs Card reserve 216px), visitor transcript crash on View uses without
   `.start`, and the parked-detour parent-visit regression. Details in the evidence record.
@@ -137,6 +148,23 @@ NEXT:
      movement counted once, invoked station work counted at its own station) and compare it
      with the visitor panel; pause and resume Auto and confirm the clock continues rather than
      restarting.
+   - *rejoin and Return keep the remainder* (review repair): in a Stop whose work is a long narration,
+     let part of it play, Explore, and Rejoin — the panel must owe only the part not yet played, a cue
+     whose moment already passed must not be claimed again, and a cue still ahead must still arrive.
+     Take one detour mid-Stop and Return: the parent's own remaining work and cue floor must come back,
+     not the detour's.
+   - *availability authoring* (review repair): add an offer from a Presentation and confirm the draft
+     offers availability with Experience-wide selected; accept it and confirm the Card reads
+     `Experience-wide` while the offer stays homed in that Presentation; switch it to another
+     Presentation and confirm one Undo step and one changed scope.
+   - *Preview the Experience without a Presentation* (review repair): with an Experience-wide offer and
+     no Presentation selected, `Preview Experience` must start a world-only visit (no Presentation, Stop
+     or Guide), offer that participation, and return to authoring untouched. Without any Experience-wide
+     offer the entry must be absent rather than start an empty visit.
+   - *same-View Travel after moving* (review repair): on a Seam whose origin and destination are the
+     same View, press Next while standing at that View (instant, zero distance), then Explore away and
+     press Next again: the Camera must fly back from where it actually is rather than snap, and no route
+     may be invented.
 2. Record the MP3 outcome. Only then start C9.6 revision/repair; it is explicitly not started.
 3. Keep root gates current; carry the missing-fixture blocker explicitly and do not fabricate
    or restore it without separate authorization.

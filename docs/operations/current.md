@@ -6,9 +6,15 @@ CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION A
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
 NEXT: #113 C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation
-       and agency) implemented, self-reviewed and verified at the pushed executable revision
-       recorded in the evidence record, with all 18 prototype axes rerun green there; stopped
-       at the MP3 human gate →
+       and agency) implemented, self-reviewed, independently reviewed and verified at the pushed
+       executable revision recorded in the evidence record, with all 18 prototype axes rerun
+       green there. The independent review named four acceptance blockers — Rejoin/detour Return
+       rebuilding remaining work, the missing interaction-only Preview Experience, availability
+       modelled but not authorable, and a same-View Travel shortcut ignoring the live pose — and
+       all four are repaired at their owning authority with regression and same-defect mutation
+       coverage; it also caught this record naming the missing P23B fixture path outside its
+       `EVIDENCE-PATHS` region, which the repository documentation gate reads as a missing file,
+       now repaired. Stopped at the MP3 human gate →
        ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
        C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04);
        **MP2 accepted by the owner 2026-10-05**, with three non-blocking observations

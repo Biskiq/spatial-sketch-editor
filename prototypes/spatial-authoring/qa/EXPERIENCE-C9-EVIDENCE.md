@@ -34,9 +34,19 @@ C1–C8 behavioral/visual conformance.
   revision the C9.4/C9.5 verification ran against, each run finishing after the last edit to any of
   those files; this record and the four status docs land as the docs-only child of `c118c08b`, so
   the pushed head an independent C9.4/C9.5 review should read is that child.
+- **The independent-review repair pass is `bdaa9a83`** ("C9.4/9.5 review repairs"), pushed to
+  `origin/prototype-v2` as the child of `19074d95`. The executable the review read was `c118c08b`
+  (with `19074d95` as its docs-only child); this record and the four status docs land as the
+  docs-only child of `bdaa9a83`, which is therefore the pushed head a re-review should read. Every
+  `app/`, `tests/` and `qa/` file of `bdaa9a83` is byte-identical to the revision this pass's
+  verification ran against.
 - One executable serves every axis and journey: `index.html` + `app/` in this directory.
   Inspect live Git for exact bytes; the changed paths are:
 
+  - the review repair pass touches `app/experience-runtime.js`, `app/experience.js`,
+    `app/experience-ui.js`, `app/main.js`, `tests/experience-travel-agency.test.mjs`,
+    `qa/visitor-check.sh`, `qa/composition-mutation-check.sh`, this record and the four status docs
+    cited above.
   - C9.4/C9.5 touches `app/camera-evaluation.js`, `app/experience-model.js`,
     `app/experience-runtime.js`, `app/experience-ui.js`, `app/experience-draw.js`,
     `app/experience.js`, `app/main.js`, `tests/camera-conformance.test.mjs`, new
@@ -80,8 +90,10 @@ C1–C8 behavioral/visual conformance.
   explicit aggregate authoring transaction. `prepareTravelSupport` reads the Seam's eligible origins
   with the ordinary `originCoverage` reading and has **Camera** create only the missing direct
   connection for each; existing authored routes are reused untouched, an origin already at the
-  destination View is Camera's own zero-distance evaluation rather than a fabricated edge, and an
-  unresolved origin or destination entry stays a reported gap. Nothing else creates connectivity:
+  destination View is Camera's own zero-distance evaluation rather than a fabricated edge — and only
+  while the visitor is actually standing there; from anywhere else the same-View Seam is the ordinary
+  Camera framing invocation evaluated from the live pose — and an unresolved origin or destination entry
+  stays a reported gap. Nothing else creates connectivity:
   adding or selecting a View and starting a Preview leave the Camera graph alone. Execution is the
   existing Camera evaluator, invoked from the visitor's **live** pose: `liveConnectionPath` is the
   live-start instance of the same route (the authored interior observer anchors and the destination
@@ -97,12 +109,18 @@ C1–C8 behavioral/visual conformance.
   orbits the visitor's own viewpoint and never activates (release decides, with a 6px slop); several
   offers for one subject open an **explicit choice** instead of executing the first enumerated one;
   an offer reads its availability, its activation subject and the subject it operates before the
-  click; eligible Presentation Views stay deliberate visitor choices; another Presentation opens as
-  its own bounded visit — parking a Guide Stop with exactly one return bookmark — and closes back to
-  exploration with the parked Return still explicit; manual View/Next/Back and rejoin follow the
-  accepted live-navigation semantics; the experimental parent pause/bookmark policy is preserved as
-  experimental and is never promoted here; and the whole session runs against a deep copy of
-  World/Scene/Camera/Experience, so no visitor action writes authored source or history.
+  click; an offer's availability is authored explicitly and independently of its organizational home,
+  defaulting to Experience-wide (I4); eligible Presentation Views stay deliberate visitor choices;
+  another Presentation opens as its own bounded visit — parking a Guide Stop with exactly one return
+  bookmark — and closes back to exploration with the parked Return still explicit; Preview Experience
+  starts a world-only visit with no Presentation, Stop or Guide whenever an Experience-wide offer exists
+  (I3/J6); manual View/Next/Back and rejoin follow the accepted live-navigation semantics; Rejoin and
+  detour Return resume the playhead rather than rebuilding an estimate — the remaining work is what each
+  live run has not yet spent, a cue whose own signal already fired is skipped while future cues stay, and
+  Return recomputes the parent's remainder and cue floor instead of leaving the detour's reading attached
+  (V2/V7); the experimental parent pause/bookmark policy is preserved as experimental and is never
+  promoted here; and the whole session runs against a deep copy of World/Scene/Camera/Experience, so no
+  visitor action writes authored source or history.
 
 ## MP1 and MP2 record
 
@@ -279,14 +297,74 @@ touch surrounding C9.1–C9.3 behavior are named as such.
   absence of any per-origin preparation offer; the old gap assertions became full-support
   assertions, and the visitor axis gained the click/drag/choice and open/Return steps.
 
+## Independent C9.4/C9.5 review — four findings repaired (2026-10-05)
+
+An independent review of the pushed C9.4/C9.5 executable re-derived the work rather than trusting the
+report. It confirmed the C9.4 ownership direction (one explicit aggregate preparation, reused routes,
+`liveConnectionPath` inside the Camera evaluator, the shared `travelInvocation`, Cut executing no beats,
+connection-local station work) and most C9.5 visitor mechanics, and named four acceptance blockers the
+green suite did not exercise. All four are repaired at their owning authority, each with behavior-level
+coverage and a same-defect mutation obligation. The earlier 86/86, 18-axis/771 and 34/34 results were
+valid at their revision, but they were coverage holes in the acceptance contract rather than test
+failures — which is the useful part of the finding.
+
+- **Rejoin and detour Return rebuilt remaining work (V2/V7).** `carriedWork` carried only
+  Experience-scoped runs, so a visit-local run live in the *same* visit was counted from its full
+  authored length after Explore → Rejoin; the reading is now honoured for whichever run currently owns
+  the use (work belonging to another visit is still excluded by activation scope, and a stopped or
+  unavailable run still owes nothing). `resumeGuide` also passed no cue floor and no fired-cue predicate,
+  so a cue whose own signal had already fired was owed a Camera move again; the plan now skips cues the
+  runtime has already emitted — the shared emission record, not a second estimate — and the Stop's own
+  cue floor travels with it. `returnDetour` restored the parked parent without recomputing anything,
+  leaving the detour's readiness attached to the parent and the detour's cue floor in place; the bookmark
+  now carries the cue floor and the suppressed-viewing flag, and Return recomputes the parent's own
+  remainder from the restored playhead.
+- **Interaction-only Preview Experience was missing (I3/J6).** The runtime already supported a
+  zero-Presentation visit, but the product path refused it — `preview()` demanded a Presentation — and no
+  entry existed. `previewExperience()` is the third entry into the one runtime, refused only when the
+  Experience has no Experience-wide offer to participate in, and the index exposes it exactly then.
+- **Availability was modelled but not authorable (I4).** The offer draft had Target, Capability and
+  Activation but no availability, and `acceptOffer` left every new offer contextual. The draft now
+  carries availability with **Experience-wide as the default**, the authored choice is written inside the
+  same aggregate edit as the offer, and the contribution Card exposes the same choice through the
+  ordinary writer — so the default and a contextual switch are each one Undo step, and neither changes
+  the offer's organizational home.
+- **A same-View Seam ignored the live pose (N1).** `travelInvocation` treated
+  `from.view.id===to.view.id` as an unconditional zero-distance Cut, which is true only while the visitor
+  is standing at that View: after Explore the nominal origin could still name that View while the live
+  pose had moved, and Next snapped to the destination instead of reclaiming guidance from where the
+  visitor actually was. The zero-distance shortcut is now pose-sensitive, and anywhere else that Seam is
+  the ordinary Camera framing invocation from the live pose — no fabricated edge, no hidden Cut.
+
+Coverage: seven new cases in `tests/experience-travel-agency.test.mjs` — moved-pose same-View Travel;
+completed work owed nothing after Rejoin; a cue whose signal already fired skipped; a future cue kept and
+still firing; Return restoring the parent's remainder and cue floor; offer authoring defaulting to
+Experience-wide and writing a contextual choice in one edit; and a world-only Preview Experience with
+zero Presentations, Stops and Guides. Nine real-UI assertions were added to `qa/visitor-check.sh`
+(availability in the draft with Experience-wide selected, the authored use Experience-wide and still
+homed, the Card reading it back, contextual switching as one ordinary edit, the Experience-only entry,
+the world-only visit, its participation, its activation, and authoring restored untouched). Five new
+same-defect obligations — `same-view-snap`, `rejoin-full-estimate`, `skip-fired-cue`, `detour-readiness`
+and `offer-availability-write` — each reintroduce the named defect while a named neighbour stays green.
+
+### Root-gate finding repaired by this pass
+
+The review pass also caught a defect in this record itself: the root-gates bullet named the missing P23B
+fixture *path* in prose outside the declared `EVIDENCE-PATHS` region, which the repository's
+documentation-reference gate reads as a claim about a file that does not exist. The path is named once,
+inside that region, and nowhere else; the gate is green at this revision (22/22 in
+`apps/editor/tests/docs/documentation-references.test.ts`). The finding was invisible to the earlier
+arch run because that run read the tree before the edit landed, so this record does not claim the
+earlier revision passed it.
+
 ## Verification results
 
 ### Pure Node model/runtime/Camera suite
 
-`node --test tests/*.test.mjs` — **86/86 pass** (`ℹ pass 86`, 0 fail) at the C9.4/C9.5 executable:
-Camera conformance 6, Experience model 11, composition 15, folded external review 15, runtime 28,
-and the new travel/agency file 11. The C9.2/C9.3 increment's run was **75/75** (its first pass
-70/70). The second-pass additions are four review cases: station
+`node --test tests/*.test.mjs` — **93/93 pass** (`ℹ pass 93`, 0 fail) at the reviewed C9.4/C9.5
+executable: Camera conformance 6, Experience model 11, composition 15, folded external review 15,
+runtime 28, and the travel/agency file 18. The first C9.4/C9.5 pass was **86/86**, and the C9.2/C9.3
+increment's run was **75/75** (its first pass 70/70). The second-pass additions are four review cases: station
 invocation replacing the Activity trigger (entry amortization, idempotence, second-station
 refusal, invoked work counted once inside the destination visit); automatic-work-only
 targeting with the shared refusal surface; a View cue driven by Experience-wide output being
@@ -324,29 +402,30 @@ station's absolute observer position.
 
 ### Full prototype axis driver
 
-`qa/run-all.sh all` — **18 axes, 771 assertions, 0 failures, rc=0 at the C9.4/C9.5 executable**
-(log `/tmp/c945-all.log`: every axis reports `FAIL=0`, the chain ends `qa: all requested axes
-passed`, `ALL_RC=0`, 771 `PASS` lines, no console or page faults). Every axis is proven at that
-one revision; none is carried from an earlier pass, and none of the C9.2/C9.3 numbers below is
-inherited. Per axis: journeys A–F 59, real interaction 56, pointer flows 44, lifecycle/policy 41,
-World shell 47, spatial/Precision 38, Browse/Search 60, repair 47, lens/parking/Resume 81,
-Experience wiring 30, V2 conformance 105, C9.1 creator 23, C9.2/C9.3 composition 27, visitor 19,
-shared/narrow reconciliation 13, continuity 55, responsive 15, correctness 11. The increment's
-changes are the conformance axis (101 → 105: one-step Travel support for every legitimate origin,
-no gap and no per-origin preparation offer, the owner-named report, the aggregate Undo step) and
-the visitor axis (14 → 19: a framed used subject's offer, drag activating nothing, click
-activating or opening the explicit choice, opening another Presentation parking one bounded
-Return, and Return restoring it); the Experience axis keeps its 30 assertions with the N1 reading
-rewritten. History is retained rather than superseded: the C9.2/C9.3 run (**762** at `9a44678a`,
-`/tmp/c9-all-final.log`) and the first repair pass's 758 with conformance at 97
+`qa/run-all.sh all` — **18 axes, 780 assertions, 0 failures, rc=0 at the reviewed C9.4/C9.5
+executable** (log `/tmp/c945b-all.log`: every axis reports `FAIL=0`, the chain ends
+`qa: all requested axes passed`, `ALL_RC=0`, 780 `PASS` lines, no console or page faults). Every axis
+is proven at that one revision; none is carried from an earlier pass. Per axis: journeys A–F 59, real
+interaction 56, pointer flows 44, lifecycle/policy 41, World shell 47, spatial/Precision 38,
+Browse/Search 60, repair 47, lens/parking/Resume 81, Experience wiring 30, V2 conformance 105, C9.1
+creator 23, C9.2/C9.3 composition 27, visitor 28, shared/narrow reconciliation 13, continuity 55,
+responsive 15, correctness 11. Across the two C9.4/C9.5 passes the conformance axis gained four
+assertions (one-step Travel support for every legitimate origin, no gap and no per-origin preparation
+offer, the owner-named report, the aggregate Undo step) and the visitor axis gained fourteen (a framed
+used subject's offer, drag activating nothing, click activating or opening the explicit choice, opening
+another Presentation parking one bounded Return, Return restoring it, and the nine review additions above:
+availability authoring, contextual switching, the Experience-only entry, and the world-only visit). The
+Experience axis keeps its 30 assertions with the N1 reading rewritten. History is retained rather than
+superseded: the first C9.4/C9.5 pass (**771**, `/tmp/c945-all.log`), the C9.2/C9.3 run (**762** at
+`9a44678a`, `/tmp/c9-all-final.log`) and the first repair pass's 758 with conformance at 97
 (`/tmp/mp2-run-all-final.log`). Every axis closes its own browser; no session was left running.
 
 ### Mutation obligations (same-defect successor proof on disposable copies)
 
-`qa/mutation-check.sh` — **34/34 rejections, rc=0** at the C9.4/C9.5 executable (full chain
-`/tmp/c945-mutations-all.log`; composition-only rerun `/tmp/c945-comp-mut.log`): 21 model/runtime
-kinds, 3 World/lens kinds, 7 V2 conformance kinds and 3 wiring kinds. History: 23/23 for the first
-repair pass and 28/28 after the second. Each kind reintroduces the named defect in a disposable
+`qa/mutation-check.sh` — **39/39 rejections, rc=0** at the reviewed C9.4/C9.5 executable (full chain
+`/tmp/c945b-mutations-all.log`; composition-only rerun `/tmp/c945b-comp-mut.log`, 29 obligations):
+26 model/runtime kinds, 3 World/lens kinds, 7 V2 conformance kinds and 3 wiring kinds. History: 34/34
+for the first C9.4/C9.5 pass, 23/23 for the first C9.2/C9.3 repair pass and 28/28 after the second. Each kind reintroduces the named defect in a disposable
 copy; the protected assertion must fail while named unrelated controls stay green, never a crash or
 empty observation.
 
@@ -376,6 +455,11 @@ empty observation.
   (`visitor-source-write`); 24 C9 obligations in total (21 model/runtime + 3 wiring). The pure
   obligations now also carry `tests/camera-conformance.test.mjs` and the new travel/agency file,
   so the live-start and visitor-isolation classes are protected where they are contracted.
+- Independent-review obligations (2026-10-05): **a same-View Seam collapsing to an unconditional Cut**
+  (`same-view-snap`), **only Experience-scoped work carrying its playhead** (`rejoin-full-estimate`),
+  **a cue whose signal already fired counted again** (`skip-fired-cue`), **Return leaving the detour's
+  reading on the parent** (`detour-readiness`), and **the authored availability being dropped**
+  (`offer-availability-write`); 29 C9 obligations in total (26 model/runtime + 3 wiring).
 
 ### Defects found and repaired during the C9.2/C9.3 increment
 
@@ -399,18 +483,19 @@ empty observation.
 ### Root repository gates
 
 Run after the prototype work, per the repository test doctrine (task scope never narrows
-required verification), at the C9.4/C9.5 executable revision `c118c08b`. These gates never
-import the prototype's Experience runtime (root workspaces are `apps/*` and `packages/*` only;
-the prototype is not a workspace), so the docs-only child commit cannot change them:
-
-- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c945-arch.log`).
+required verification), at the reviewed C9.4/C9.5 executable revision. These gates never import the
+prototype's Experience runtime (root workspaces are `apps/*` and `packages/*` only; the prototype is
+not a workspace), so a docs-only child commit cannot change them — except for the documentation gate,
+whose finding this pass repaired (see above):- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c945c-arch.log`, rerun after the
+  documentation-reference repair).
 - `npm test` — **33 files failed / 339 passed / 1 skipped; 4951 tests passed, 1 failed,
-  1 skipped**, rc=1 (`/tmp/c945-root-test.log`) — the same signature as the C9.2/C9.3 run. The
+  1 skipped**, rc=1 (`/tmp/c945c-root-test.log`) — the same signature as the C9.2/C9.3 run. The
   one collected failure is the P23B dormant-mapping test whose fixture import is missing, and
   the other 32 failing files fail dependent-suite collection for that same import.
-- `npm run check` — 1 missing-module error, 0 warnings (`/tmp/c945-check.log`; the error names
-  `docs/roadmap/p23b-geometry-performance/40-walls.json`).
-- `npm run build` — unresolved import of the same fixture (`/tmp/c945-build.log`).
+- `npm run check` — 1 missing-module error, 0 warnings (`/tmp/c945c-check.log`; the error names the
+  same P23B wall fixture that *Known limitations* declares once below, and this record names it nowhere
+  else so the repository's documentation-reference gate stays clean).
+- `npm run build` — unresolved import of the same fixture (`/tmp/c945c-build.log`).
 - `git diff --check` (whitespace) — rc=0.
 
 The missing P23B fixture is the external blocker for the three red gates above and is
@@ -433,12 +518,12 @@ blocker; identity as recorded at base `abaa7592`
 EVIDENCE-PATHS: end
 - MP2 is human evidence and is not claimed here; no visual refinement campaign was started
   (that belongs to the dedicated UI/UX slice).
-- The C9.4/C9.5 increment reran the pure suite, the complete prototype axis driver and the full
-  mutation chain at its own executable revision, and reran the root repository gates above at the
-  same revision (arch 276/276 rc=0; test/check/build red only on the missing P23B fixture,
-  unchanged). All 18 axes are therefore proven at `c118c08b`; none is carried from an earlier
-  revision, and nothing above is inherited from the C9.2/C9.3 increment's run. The evidence and
-  status docs land as a docs-only commit on top of it, so the pushed head and the tested
+- The reviewed C9.4/C9.5 increment reran the pure suite, the complete prototype axis driver, the full
+  mutation chain and the root repository gates at its own executable revision, after the
+  documentation-reference repair (arch 276/276 rc=0; test/check/build red only on the missing P23B
+  fixture, unchanged). All 18 axes are therefore proven at the reviewed executable revision; none is
+  carried from an earlier pass, and nothing above is inherited from the C9.2/C9.3 increment's run. The
+  evidence and status docs land as a docs-only commit on top of it, so the pushed head and the tested
   executable differ only in those docs.
 - A station-bound Activity's route and named station are validated where they are read
   (Camera travel and the coordination strip): Experience holds stable identity, never a copy
