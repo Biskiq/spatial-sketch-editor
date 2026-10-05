@@ -37,9 +37,11 @@ C1–C8 behavioral/visual conformance.
 - **The independent-review repair pass is `bdaa9a83`** ("C9.4/9.5 review repairs"), pushed to
   `origin/prototype-v2` as the child of `19074d95`. The executable the review read was `c118c08b`
   (with `19074d95` as its docs-only child); this record and the four status docs land as the
-  docs-only child of `bdaa9a83`, which is therefore the pushed head a re-review should read. Every
+  docs-only child `88dda494`, with this record's own list-rendering fix `4c5188cf` on top, so the
+  pushed head a re-review should read is `4c5188cf` — docs only above the executable `bdaa9a83`. Every
   `app/`, `tests/` and `qa/` file of `bdaa9a83` is byte-identical to the revision this pass's
-  verification ran against.
+  verification ran against, and to every file of the pushed head, which differs from it in markdown
+  alone.
 - One executable serves every axis and journey: `index.html` + `app/` in this directory.
   Inspect live Git for exact bytes; the changed paths are:
 
@@ -356,6 +358,18 @@ inside that region, and nowhere else; the gate is green at this revision (22/22 
 `apps/editor/tests/docs/documentation-references.test.ts`). The finding was invisible to the earlier
 arch run because that run read the tree before the edit landed, so this record does not claim the
 earlier revision passed it.
+
+### Independent re-verification at the pushed head (2026-10-05)
+
+The repair pass was re-run independently rather than read from this record. `node --test
+ tests/*.test.mjs` is **93/93**; `qa/run-all.sh all` is **18 axes, 780 assertions, 0 failures,
+ rc=0**; `qa/mutation-check.sh` is **39/39 rejections, rc=0**; and the documentation-reference gate
+ above is **22/22**. Each of the five repair obligations — `same-view-snap`, `rejoin-full-estimate`,
+ `skip-fired-cue`, `detour-readiness` and `offer-availability-write` — reintroduces its named defect
+ in a disposable copy and is rejected by its named protected assertion while its neighbour stays
+ green. One mutation run met a transient browser-readiness timeout on the `parked` obligation; the
+ obligation itself reproduces cleanly in isolation (V2 boundary resume 94 pass / 6 fail at the
+ `resume` boundary), so it is a harness flake, not a product defect.
 
 ## Verification results
 
