@@ -1,18 +1,18 @@
 // Native ESM adaptation of donor arm/begin/close, readiness and bounded stepping.
 // Camera evaluation is delegated to the kernel beneath navigation; no renderer tween lives here.
-import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues } from './experience-model.js';
+import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, narrationPassages, viewStep } from './experience-model.js';
 import { pathSeconds, evaluatePath, connectionPath, findConnection, stationProgress, viewPath, sameViewPose } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
 import { capability, createSceneCapabilities } from './experience-capabilities.js';
 export const BREATHING=2;
 const eventKey=(visit,id,signal)=>`${visit}|${id}|${signal}`;
-export const signalEmitted=(r,ref)=>!!r.signals[eventKey(r.visit,ref.useId,ref.signal)];
+export const signalEmitted=(r,ref)=>!!ref&&!!r.signals[eventKey(r.visit,ref.useId,ref.signal)];
 export const projectedValue=(scene,r,sid,channel)=>r?.overrides[sid]?.[channel]?.value??scene.subjects[sid]?.properties[channel];
 const note=(r,message)=>{r.log.push({time:r.time,message});r.log=r.log.slice(-60);};
 export function createRuntime(e,c,pid,pose,scene=createSceneCapabilities()) {
- const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,readiness:BREATHING,refusal:null};
- armScope(r,e,c,scene,null);
- enterPresentation(r,e,c,scene,pid);
+ const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,readiness:BREATHING,refusal:null};
+ r.scene=copy(scene);armScope(r,e,c,scene,null);
+ if(pid)enterPresentation(r,e,c,scene,pid);
  const u=entryUse(e,pid);if(u)requestView(r,e,c,u.id,'cut');
  return r;
 }
@@ -22,7 +22,8 @@ export function requestView(r,e,c,id,speed='auto',path=null,seam=null,connection
  const route=path||viewPath(r.pose,resolved.view.pose);
  const timing=movementTiming(c,seam,route,speed,connectionId);
  r.movement={token:++r.serial,path:route,...timing,elapsed:0};r.viewUseId=id;r.refusal=null;
- if(!r.movement.duration){r.pose=evaluatePath(route,1);r.movement=null;}
+ if(!r.movement.duration){r.pose=evaluatePath(route,1);r.arrivedViewUseId=id;r.movement=null;}
+ else r.movement.useId=id;
  return true;
 }
 function removeOwned(r,token){for(const channels of Object.values(r.overrides))for(const [key,patch] of Object.entries(channels))if(patch.owner===token)delete channels[key];}
@@ -34,19 +35,22 @@ function emit(r,e,c,scene,a,signal){
  // Completion ownership follows its originating visit/run. A stale run cannot signal a later visit.
  if(r.active[a.useId]!==a.token)return;
  r.signals[eventKey(a.visit,a.useId,signal)]=true;
- for(const b of Object.values(r.activities)) {const u=e.uses[b.useId];if(b.status==='waiting'&&b.visit===a.visit&&u?.start.kind==='after'&&u.start.useId===a.useId&&u.start.signal===signal)begin(r,e,c,scene,b.token);}
- if(a.visit!==r.visit||r.exploring)return;
- for(const u of Object.values(e.uses))if(u.viewId&&u.cue?.useId===a.useId&&u.cue.signal===signal&&u.presentationId===r.presentationId)requestView(r,e,c,u.id);
+ for(const b of Object.values(r.activities)) {const u=e.uses[b.useId];if(b.status==='waiting'&&(b.visit===a.visit||u?.start.scope==='experience')&&u?.start.kind==='after'&&u.start.useId===a.useId&&u.start.signal===signal)begin(r,e,c,scene,b.token);}
+ if(a.visit!==r.visit||r.exploring||r.viewingSuppressed)return;
+ for(const u of Object.values(e.uses))if(u.viewId&&u.cue?.useId===a.useId&&u.cue.signal===signal&&u.presentationId===r.presentationId&&cueSeconds(e,u.cue)>r.cueFloor)requestView(r,e,c,u.id,c.views[u.viewId]?.speed||'auto');
 }
 function complete(r,e,c,scene,token){const a=r.activities[token];if(!a||r.active[a.useId]!==token||a.status!=='running')return false;
  a.status='complete';const u=e.uses[a.useId],d=e.definitions[u?.definitionId];
  if(d?.kind==='control'&&capability(scene,d.subjectId,d.capabilityId)?.kind==='playback')put(r,d.subjectId,capability(scene,d.subjectId,d.capabilityId).channel,false,token);
- emit(r,e,c,scene,a,'complete');note(r,'Completed '+(d?.name||a.useId));return true;
+ emit(r,e,c,scene,a,'complete');
+ const retention=u.retention||u.end;
+ if(retention?.kind==='complete'||(a.boundaryExpired&&retention?.kind==='visit'))removeOwned(r,token);
+ note(r,'Completed '+(d?.name||a.useId));return true;
 }
 function makeRun(r,e,c,scene,u){
  const token=`visit-${r.visit}/run-${++r.serial}`;
  const unavailable=contributionIssues(e,c,scene,capability).some(i=>i.id===u.id);
- r.activities[token]={token,useId:u.id,visit:r.visit,status:unavailable?'unavailable':u.start.kind==='after'?'waiting':'armed',elapsed:0,duration:null};r.active[u.id]=token;return token;
+ r.activities[token]={token,useId:u.id,visit:r.visit,scope:activationScope(u),status:unavailable?'unavailable':u.start.kind==='after'?'waiting':'armed',elapsed:0,duration:null,boundaryExpired:false};r.active[u.id]=token;return token;
 }
 function begin(r,e,c,scene,token,interaction=false){
  const a=r.activities[token],u=e.uses[a?.useId],d=e.definitions[u?.definitionId];if(!a||!u||!d||a.status==='unavailable')return false;
@@ -67,24 +71,56 @@ function begin(r,e,c,scene,token,interaction=false){
  note(r,'Started '+(d.name||u.id));if(a.duration===0)complete(r,e,c,scene,token);return true;
 }
 function armScope(r,e,c,scene,pid){
- const incoming=Object.values(e.uses).filter(u=>!u.viewId&&u.kind!=='interaction'&&u.presentationId===pid);
+ const incoming=Object.values(e.uses).filter(u=>{
+  if(u.viewId||u.kind==='interaction'||u.start.kind==='station'||activationScope(u)!==pid)return false;
+  const active=r.activities[r.active[u.id]];
+  // Continue and Experience-bound results are carried invocations, not new entry triggers.
+  return !active||!['running','paused','waiting','complete'].includes(active.status)||(active.status==='complete'&&(u.retention||u.end)?.kind!=='experience');
+ });
  incoming.filter(u=>u.start.kind==='after').forEach(u=>makeRun(r,e,c,scene,u));
  incoming.filter(u=>u.start.kind!=='after').forEach(u=>begin(r,e,c,scene,makeRun(r,e,c,scene,u)));
 }
 export function interruption(e,scene,u){const d=e.definitions[u.definitionId],cap=d?.kind==='control'?capability(scene,d.subjectId,d.capabilityId):null;return u.interruption||(d?.kind==='narration'?'cancel':cap?.kind==='loop'?'continue':cap?.duration?'finish':'cancel');}
-function closeVisit(r,e,scene){for(const a of Object.values(r.activities)){const u=e.uses[a.useId];if(a.visit!==r.visit||u?.presentationId===null)continue;
- if(a.status==='waiting')stopRun(r,e,a.token,'Visit left before dependency');
- else if(u.end.kind==='visit'){if(a.status==='complete')removeOwned(r,a.token);else if(['running','paused'].includes(a.status)&&interruption(e,scene,u)==='cancel')stopRun(r,e,a.token,'Visit ended');}
+function closeVisit(r,e,scene,parked=new Set()){for(const a of Object.values(r.activities)){
+ const u=e.uses[a.useId];if(!u)continue;
+ // A detour parks its parent visit: those runs are suspended, not ended, while the bookmark exists.
+ if(parked.has(a.visit))continue;
+ if(a.status==='waiting'&&u.start.kind==='after'&&u.start.scope!=='experience'&&a.visit===r.visit){stopRun(r,e,a.token,'Visit left before dependency');continue;}
+ const retention=u.retention||u.end,retentionExpired=retention?.kind==='visit'&&boundaryScope(u,retention)===r.presentationId;
+ if(retentionExpired){a.boundaryExpired=true;if(a.status==='complete')removeOwned(r,a.token);}
+ if(u.end.kind==='visit'&&boundaryScope(u)===r.presentationId&&['running','paused'].includes(a.status)&&interruption(e,scene,u)==='cancel')stopRun(r,e,a.token,'Visit ended');
 }}
-function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene);r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.queue=[];r.movement=null;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose);}
-export function estimatePresentation(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,entryMovement=null){
+function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene,new Set(r.bookmarks.map(b=>b.visit)));r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.queue=[];r.movement=null;r.viewingSuppressed=false;r.cueFloor=-1;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose,undefined,null,scene);}
+export function presentationPlan(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,entryMovement=null,scene=createSceneCapabilities(),policy={}){
+ const issues=new Set(contributionIssues(e,c,scene,capability).map(i=>i.id)),cache=new Map();
+ // Activation, not organization, determines eligible work. Recursive dependency costs share one
+ // memoized signal calculation; hypothetical visitor offers and unavailable work have no invented cost.
+ function startAt(id,seen=new Set()){
+  if(cache.has(id))return cache.get(id);const u=e.uses[id];
+  if(!u||u.viewId||u.kind==='interaction'||u.start.kind==='station'||issues.has(id)||seen.has(id))return null;
+  if(activationScope(u)!==pid&&activationScope(u)!==null)return null;
+  seen.add(id);let at=0;
+  if(u.start.kind==='after'){
+   const base=startAt(u.start.useId,seen),d=e.definitions[e.uses[u.start.useId]?.definitionId];
+   const offset=d?.kind==='narration'?cueSeconds(e,u.start):u.start.signal==='complete'?capability(scene,d?.subjectId,d?.capabilityId)?.duration??0:null;
+   at=base===null||offset===null?null:base+offset;
+  }
+  cache.set(id,at);return at;
+ }
+ let narrationEnd=0,finiteEnd=0,persistentStart=0;
+ for(const u of Object.values(e.uses)){
+  const at=startAt(u.id);if(at===null)continue;const d=e.definitions[u.definitionId];
+  if(d?.kind==='narration')narrationEnd=Math.max(narrationEnd,at+narrationDuration(d));
+  else if(d?.kind==='control'){const cap=capability(scene,d.subjectId,d.capabilityId);if(!cap)continue;if(cap.kind==='loop')persistentStart=Math.max(persistentStart,at);else finiteEnd=Math.max(finiteEnd,at+(d.value===false?0:cap.duration||0));}
+ }
  let cameraArrival=0,current=pose;const requests=[];if(entryId)requests.push({id:entryId,at:0});
- for(const u of Object.values(e.uses))if(u.presentationId===pid&&u.viewId&&u.cue){const at=cueSeconds(e,u.cue);if(at!==null)requests.push({id:u.id,at});}
- for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds(viewPath(current,v.pose),'auto'));current=v.pose;}
- const contributions=Object.values(e.uses).filter(u=>u.presentationId===pid&&!u.viewId&&u.kind!=='interaction');
- let end=0;const scene=createSceneCapabilities();for(const u of contributions){const d=e.definitions[u.definitionId];if(d?.kind==='narration')end=Math.max(end,narrationDuration(d));if(d?.kind==='control'){const cap=capability(scene,d.subjectId,d.capabilityId);const at=u.start.kind==='after'?(cueSeconds(e,u.start)??capability(scene,e.definitions[e.uses[u.start.useId]?.definitionId]?.subjectId,e.definitions[e.uses[u.start.useId]?.definitionId]?.capabilityId)?.duration??0):0;end=Math.max(end,at+(cap?.duration||0));}}
- return Math.max(end,cameraArrival)+BREATHING;
+ if(policy.cues!==false)for(const u of Object.values(e.uses))if(u.presentationId===pid&&u.viewId&&u.id!==entryId&&u.cue&&!issues.has(u.id)){
+  const local=cueSeconds(e,u.cue),at=startAt(u.cue.useId);if(local!==null&&at!==null&&local>(policy.cueFloor??-1))requests.push({id:u.id,at:at+local});
+ }
+ for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds(viewPath(current,v.pose),v.speed||'auto'));current=v.pose;}
+ return {readiness:Math.max(narrationEnd,finiteEnd,persistentStart,cameraArrival)+BREATHING,narrationEnd,finiteEnd,persistentStart,cameraArrival,requests};
 }
+export function estimatePresentation(...args){return presentationPlan(...args).readiness;}
 function coordinationProblem(e,c,seam,connection,path) {
  for(const beat of seam.beats||[]) {
   if(beat.connectionId!==connection.id)continue;
@@ -98,7 +134,7 @@ export function gateState(e,c,r){
  const next=resolveNext(e,s.id);if(!next.id)return {allowed:false,reason:'End of Guide · explore freely'};
  if(next.missing)return {allowed:false,reason:'Next destination needs repair'};
  const entry=stopEntry(e,next.id);if(entry.missing||(entry.id&&!resolveUse(e,c,entry.id)))return {allowed:false,reason:'Required framing needs repair'};
- if(s.gate&&!e.uses[s.gate.useId])return {allowed:false,reason:'Gate needs repair'};
+ if(s.gate&&!supportedSignal(e,r.scene||createSceneCapabilities(),s.gate))return {allowed:false,reason:'Gate needs repair'};
  if(s.gate&&!signalEmitted(r,s.gate))return {allowed:false,reason:'Waiting for authored Gate'};
  const seam=getSeam(e,s.id,next.id),from=resolveUse(e,c,r.viewUseId),to=resolveUse(e,c,entry.id);
  if(seam.mode==='travel') {
@@ -117,9 +153,10 @@ function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
  if(seam?.mode==='travel'&&!ignoreTravel){const conn=from&&to?findConnection(c,from.view.id,to.view.id):null;if(!conn){r.refusal='Travel gap from current View';return false;}if(r.movement||!sameViewPose(r.pose,from.view.pose)){r.refusal='Camera is not yet at the departure View · finish the current move or rejoin';return false;}path=connectionPath(conn,from.view.pose,to.view.pose);speed=conn.speed;connectionId=conn.id;const problem=coordinationProblem(e,c,seam,conn,path);if(problem){r.refusal=problem;return false;}}
  if(record&&old)r.history.push(old);
  enterPresentation(r,e,c,scene,s.presentationId);r.stopId=id;r.exploring=false;r.refusal=null;
- if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else r.viewUseId=null;
+ r.viewingSuppressed=!!entry.hold;r.cueFloor=entry.id?(cueSeconds(e,e.uses[entry.id]?.cue)??-1):-1;
+ if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else {r.viewUseId=null;r.arrivedViewUseId=null;}
  r.pacingFallback=s.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref);
- r.readiness=estimatePresentation(e,c,s.presentationId,origin,entry.id,{duration:r.movement?.duration||0});note(r,'Entered Stop '+id);return true;
+ r.readiness=estimatePresentation(e,c,s.presentationId,origin,entry.id,{duration:r.movement?.duration||0},scene,{cues:!entry.hold,cueFloor:r.cueFloor});note(r,'Entered Stop '+id);return true;
 }
 export function startGuide(e,c,current,scene=createSceneCapabilities()){const r=copy(current);if(e.guide[0])goStop(r,e,c,scene,e.guide[0],false,true);return r;}
 export function nextRuntime(e,c,current,scene=createSceneCapabilities()){const r=copy(current),gate=gateState(e,c,r);if(!gate.allowed){r.refusal=gate.reason;return r;}goStop(r,e,c,scene,resolveNext(e,r.stopId).id);return r;}
@@ -127,7 +164,7 @@ export function previousRuntime(e,c,current,scene=createSceneCapabilities()){con
 export function activateRuntime(e,c,current,uid,scene=createSceneCapabilities()){const r=copy(current),u=e.uses[uid];if(u?.kind==='interaction'&&(!u.availability||u.availability===r.presentationId))begin(r,e,c,scene,makeRun(r,e,c,scene,u),true);return r;}
 export function stopActivityRuntime(e,current,token){const r=copy(current);stopRun(r,e,token,'Stopped by visitor');return r;}
 export function exploreRuntime(current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=true;r.autoplay=false;r.movement=null;r.queue=[];return r;}
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id);return r;}
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene);return r;}
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
  const r=copy(current);if(detour){r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId});
   for(const a of Object.values(r.activities))if(a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration'&&a.status==='running')a.status='paused';
@@ -136,24 +173,25 @@ export function chooseRuntime(e,c,current,targetId,detour=false,scene=createScen
  goStop(r,e,c,scene,targetId,!detour,true);return r;
 }
 export function returnDetour(e,c,current,scene=createSceneCapabilities()){
- const r=copy(current),b=r.bookmarks.pop();if(!b)return r;closeVisit(r,e,scene);
+ const r=copy(current),parked=new Set(r.bookmarks.map(b=>b.visit)),b=r.bookmarks.pop();if(!b)return r;closeVisit(r,e,scene,parked);
  Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});
  for(const a of Object.values(r.activities))if(a.visit===b.visit&&['paused','waiting'].includes(a.status)){r.active[a.useId]=a.token;if(a.status==='paused')a.status='running';}
  const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);note(r,'Returned without duplicate entry');return r;
 }
-export function lookRuntime(e,c,current,uid,pose=null){const r=copy(current);if(r.exploring)r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;requestView(r,e,c,uid);return r;}
+export function lookRuntime(e,c,current,uid,pose=null){const r=copy(current);if(r.exploring)r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.viewingSuppressed=false;r.movement=null;r.queue=[];requestView(r,e,c,uid,c.views[e.uses[uid]?.viewId]?.speed||'auto');return r;}
+export function viewStepRuntime(e,c,current,delta){const id=viewStep(e,current.presentationId,current.viewUseId,delta);return id?lookRuntime(e,c,current,id):copy(current);}
 export function tickRuntime(e,c,current,seconds,scene=createSceneCapabilities()){
  const r=copy(current);let remaining=Math.max(0,seconds);
  while(remaining>1e-9){const dt=Math.min(.25,remaining);remaining-=dt;r.time+=dt;r.elapsed+=dt;
   if(r.movement){const m=r.movement;m.elapsed=Math.min(m.duration,m.elapsed+dt);let held=0,progress=null;
    for(const h of m.holds||[]){if(m.elapsed>=h.at+h.seconds)held+=h.seconds;else if(m.elapsed>=h.at){progress=h.progress;break;}}
    for(const invocation of m.invokes||[]){if(!invocation.fired&&m.elapsed>=invocation.at){invocation.fired=true;const u=e.uses[invocation.useId];if(u)begin(r,e,c,scene,makeRun(r,e,c,scene,u));}}
-   r.pose=evaluatePath(m.path,progress??(m.travelDuration?(m.elapsed-held)/m.travelDuration:1));if(m.elapsed>=m.duration-1e-9)r.movement=null;
+   r.pose=evaluatePath(m.path,progress??(m.travelDuration?(m.elapsed-held)/m.travelDuration:1));if(m.elapsed>=m.duration-1e-9){r.arrivedViewUseId=m.useId;r.movement=null;}
   }
   for(const a of Object.values(r.activities).filter(a=>a.status==='running')){
    if(r.active[a.useId]!==a.token){stopRun(r,e,a.token,'Superseded run');continue;}
    const u=e.uses[a.useId],d=e.definitions[u?.definitionId];if(!u||!d)continue;const before=a.elapsed;a.elapsed+=dt;
-   if(d.kind==='narration')for(const marker of d.markers){const at=marker.fraction*narrationDuration(d);if(before<at&&a.elapsed>=at)emit(r,e,c,scene,a,`marker:${marker.id}`);}
+   if(d.kind==='narration')for(const marker of d.markers){const at=marker.time??marker.fraction*narrationDuration(d);if((before<at||(at===0&&before===0))&&a.elapsed>=at&&cueSeconds(e,{useId:u.id,signal:`marker:${marker.id}`})!==null)emit(r,e,c,scene,a,`marker:${marker.id}`);}
    if(d.kind==='control'){const cap=capability(scene,d.subjectId,d.capabilityId);if(cap?.kind==='motion')put(r,d.subjectId,cap.channel,Number(a.startValue)+(Number(a.value)-Number(a.startValue))*Math.min(1,a.elapsed/(a.duration||1)),a.token);}
    if(a.duration!==null&&a.elapsed>=a.duration){a.elapsed=a.duration;complete(r,e,c,scene,a.token);}
   }
@@ -167,5 +205,5 @@ export function tickRuntime(e,c,current,seconds,scene=createSceneCapabilities())
  }
  return r;
 }
-export function narrationCaption(e,r){const a=Object.values(r.activities).find(a=>a.status==='running'&&a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration');if(!a)return '';const d=e.definitions[e.uses[a.useId].definitionId],words=d.text.trim().split(/\s+/),at=Math.floor(a.elapsed/narrationDuration(d)*words.length);return words.slice(Math.max(0,at-4),Math.min(words.length,at+7)).join(' ');}
+export function narrationCaption(e,r){const a=Object.values(r.activities).find(a=>['running','paused'].includes(a.status)&&a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration');if(!a)return '';const d=e.definitions[e.uses[a.useId].definitionId];return narrationPassages(d).find(p=>a.elapsed>=p.start&&a.elapsed<p.end)?.text||'';}
 export function completeRun(e,c,current,token,scene=createSceneCapabilities()){const r=copy(current);complete(r,e,c,scene,token);return r;}

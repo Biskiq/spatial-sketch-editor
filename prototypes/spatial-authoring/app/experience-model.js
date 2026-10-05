@@ -1,4 +1,5 @@
 // Prototype-local authored domains. These are not production document interfaces.
+import { capability } from './experience-capabilities.js';
 export const copy = (v) => structuredClone(v);
 export function createExperience() {
   return { name: 'Saltmarsh Experience', serial: 0, presentations: { 'pres-highlights': { id: 'pres-highlights', name: 'Saltmarsh Highlights', meaning: '', focus: { kind: 'subjects', ids: ['gwin'] }, uses: [] } }, uses: {}, stops: {}, guide: [], seams: {}, definitions: {} };
@@ -109,7 +110,7 @@ export function connectionReach(e,c,id) {
 export function addContribution(e,pid,definition,kind='behavior',trigger=null) {
  if(pid&&!e.presentations[pid])throw Error('Presentation removed');
  const did=fresh(e,'definition'),id=fresh(e,'contribution');e.definitions[did]={...copy(definition),id:did};
- e.uses[id]={id,kind,definitionId:did,presentationId:pid,triggerSubjectId:trigger||definition.subjectId||null,start:{kind:pid?'visit':'experience'},end:{kind:pid?'visit':'experience'},interruption:null,availability:pid,toggle:false};
+ e.uses[id]={id,kind,definitionId:did,presentationId:pid,triggerSubjectId:trigger||definition.subjectId||null,start:pid?{kind:'visit',presentationId:pid}:{kind:'experience'},end:pid?{kind:'visit',presentationId:pid}:{kind:'experience'},interruption:null,availability:pid,toggle:false};
  return id;
 }
 // Experience Reset clears only Experience-authored content. The Experience serial is kept: the rest of
@@ -161,15 +162,33 @@ export function narrationDuration(d) {return d.duration ?? Math.max(1,d.text.tri
 export function cueSeconds(e,cue) {
  const u=e.uses[cue?.useId],d=e.definitions[u?.definitionId];if(d?.kind!=='narration')return null;
  if(cue.signal==='complete')return narrationDuration(d);
- const m=d.markers.find(m=>`marker:${m.id}`===cue.signal);return m?m.fraction*narrationDuration(d):null;
+ const m=d.markers.find(m=>`marker:${m.id}`===cue.signal);const at=m?(m.time??m.fraction*narrationDuration(d)):null;return Number.isFinite(at)&&at>=0&&at<=narrationDuration(d)?at:null;
 }
-export function contributionIssues(e,c,scene,capability) {
+export function activationScope(u) {const s=u?.start;if(!s)return u?.presentationId??null;return s.kind==='after'?(s.scope==='experience'?null:s.presentationId??u.presentationId):s.kind==='experience'?null:s.presentationId??u.presentationId;}
+export function boundaryScope(u,boundary=u.end) {return boundary?.kind==='visit'?(boundary.presentationId??activationScope(u)):null;}
+export function supportedSignal(e,scene,ref) {
+ const u=e.uses[ref?.useId],d=e.definitions[u?.definitionId];if(!u||u.viewId||!d)return false;
+ if(d.kind==='narration')return ref.signal==='complete'||cueSeconds(e,ref)!==null;
+ const cap=d.kind==='control'&&capability(scene,d.subjectId,d.capabilityId);return !!cap&&cap.kind!=='loop'&&ref.signal==='complete';
+}
+export function eligibleViews(e,pid) {return (e.presentations[pid]?.uses||[]).filter(id=>e.uses[id]?.viewId&&!e.uses[id].stopId);}
+export function orderedViews(e,pid) {const all=eligibleViews(e,pid);return [...new Set([...(e.presentations[pid]?.viewOrder||[]).filter(id=>all.includes(id)),...all])];}
+export function viewStep(e,pid,current,delta) {const ids=orderedViews(e,pid);return ids[ids.indexOf(current)+delta]||null;}
+export function narrationPassages(d) {
+ const sentences=d.text.trim().match(/[^.!?]+[.!?]*(?:\s+|$)/g)||[];const total=sentences.reduce((n,s)=>n+s.trim().split(/\s+/).length,0)||1;let at=0;
+ return sentences.map(text=>{const start=at;at+=text.trim().split(/\s+/).length/total*narrationDuration(d);return {text:text.trim(),start,end:at};});
+}
+export function contributionIssues(e,c,scene,resolveCapability=capability) {
  const issues=[];
  for(const u of Object.values(e.uses)) {
-  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});continue;}
+  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});if(u.cue&&!supportedSignal(e,scene,u.cue))issues.push({id:u.id,message:'View cue needs repair'});continue;}
   const d=e.definitions[u.definitionId];if(!d){issues.push({id:u.id,message:'Definition missing'});continue;}
-  if(d.kind==='control'&&!capability(scene,d.subjectId,d.capabilityId))issues.push({id:u.id,message:'Subject or capability unavailable'});
+  if(d.kind==='control'&&!resolveCapability(scene,d.subjectId,d.capabilityId))issues.push({id:u.id,message:'Subject or capability unavailable'});
   if(u.kind==='interaction'&&!scene.subjects[u.triggerSubjectId])issues.push({id:u.id,message:'Activation subject missing'});
+  if(u.availability&&!e.presentations[u.availability])issues.push({id:u.id,message:'Availability Presentation missing'});
+  const scope=activationScope(u);if(scope&&!e.presentations[scope])issues.push({id:u.id,message:'Activation Presentation missing'});
+  if(u.start.kind==='after'&&!supportedSignal(e,scene,u.start))issues.push({id:u.id,message:'Start signal needs repair'});
+  for(const b of [u.end,u.retention])if(b?.kind==='visit'&&(!boundaryScope(u,b)||!e.presentations[boundaryScope(u,b)]))issues.push({id:u.id,message:'Boundary Presentation missing'});
   const seen=new Set([u.id]);let dependency=u;
   while(dependency?.start.kind==='after'){if(seen.has(dependency.start.useId)){issues.push({id:u.id,message:'Dependency cycle'});break;}seen.add(dependency.start.useId);dependency=e.uses[dependency.start.useId];if(!dependency)issues.push({id:u.id,message:'Start dependency missing'});}
  }

@@ -54,7 +54,7 @@ qa_js '__me.S.guidePose=JSON.stringify(__me.nav.plainPose())' >/dev/null
 agent-browser click '[data-act="exp-guide"]' >/dev/null
 qa_frames
 qa_ok 'Overview has occurrence cards and keeps Camera' "$(qa_js '(document.querySelectorAll(".stop-card").length === 2 && __me.S.guidePose === JSON.stringify(__me.nav.plainPose()))')" 'true'
-agent-browser click '.stop-card [data-act="exp-stop"]' >/dev/null
+agent-browser click '.stop-card [data-act="exp-expand-stop"]' >/dev/null
 qa_frames
 qa_ok 'expanded occurrence exposes same unordered Set' "$(qa_js '(document.querySelectorAll(".stop-card.expanded .set-node").length === 3 && __me.ctx.experience.presentations["pres-highlights"].uses.length === 3)')" 'true'
 agent-browser click '.stop-card.expanded [data-act="exp-move-stop"][data-delta="1"]' >/dev/null
@@ -88,11 +88,15 @@ agent-browser click '[data-act="exp-close"]' >/dev/null
 qa_frames
 agent-browser click '[data-act="exp-guide"]' >/dev/null
 qa_frames
-agent-browser click '.stop-card [data-act="exp-stop"]' >/dev/null
+agent-browser click '.stop-card [data-act="exp-expand-stop"]' >/dev/null
 qa_frames
 qa_js '__me.S.preciseBefore={pose:JSON.stringify(__me.nav.plainPose()),undo:__me.S.undo.length}' >/dev/null
+# The occurrence band is fixed over the viewport bottom; scroll Card content clear of it before any
+# real pointer click, exactly as the other product recipes do.
+agent-browser scrollintoview '#card .exp-view [data-act="pres-ref"]' >/dev/null
 agent-browser click '#card .exp-view [data-act="pres-ref"]' >/dev/null
 qa_frames
+agent-browser scrollintoview '#card [data-act="exp-precise"]' >/dev/null
 agent-browser click '#card [data-act="exp-precise"]' >/dev/null
 qa_frames
 qa_ok 'precision opens neutrally with one tape and reports the actual Camera reading' "$(qa_js '(__me.S.preciseBefore.pose === JSON.stringify(__me.nav.plainPose()) && document.querySelectorAll("[data-exp-precision]").length === 1 && __me.S.task.params.posture === __me.nav.readingFor(__me.nav.resolvedCamera().views[__me.S.task.target.id]))')" 'true'

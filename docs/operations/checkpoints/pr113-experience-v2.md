@@ -1,68 +1,75 @@
 # PR #113 Experience V2 — checkpoint
 
-TYPE: implementation / final verification
-STATUS: paused for scope approval (2026-10-03)
-GOAL: finish PR #113 through S9, self-review/fixes, required evidence and closeout;
-ready for external review, without merge.
+TYPE: implementation / verification (C9 continuation)
+STATUS: C9.1–C9.3 implemented and verified; stopped for MP2 human review (2026-10-04)
+GOAL: complete the C9 authoring-completeness slice through MP2, then stop for human
+review; no merge or phase closure.
 
 CONSTRAINTS:
 - Prototype-local implementation; no Paper adoption, production formats or phase closure.
-- Owner authorizes coherent slice commits. Approved plan explicitly leaves pushes unauthorized.
+- The owner authorized implementation through MP2; MP1 was explicitly accepted by the
+  owner on 2026-10-04. C9.4/C9.5 wait for MP2.
+- No commit/push/merge was authorized for this increment. The C9.1 slice was committed by
+  the owner's review pass as `abaa7592`; C9.2/C9.3 remains the uncommitted working-tree diff.
 - AGENTS.md rule 11 requires expanded scope before changing the unrelated missing fixture.
-- No subagents or browser sessions remain active. Donor stays unchanged.
+- Donor stays unchanged; every QA axis closes its own browser and server.
 
 READ:
-- `docs/README.md` router; applicable editor test doctrine.
-- `docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md`.
-- PLATE §§0.8–0.8.2; final V2 synthesis §22.
-- Browser-hygiene, agent-browser, slice-closeout and work-checkpoint skills.
+- `docs/README.md` router; `apps/editor/tests/README.md` verification doctrine.
+- `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md` (C9).
+- `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` (C9.1–C9.3 record).
+- Browser-hygiene, agent-browser and slice-closeout skills.
 
-ESTABLISHED:
+## Established — S0–S9 (prior evidence, retained)
+
 - Branch `prototype-v2`; actual PR https://github.com/Biskiq/spatial-sketch-editor/pull/113.
-- Remote PR head was S7 `a433850b`; local S8 `06aeea16` was already present.
-- S0–S9 implementation and in-scope review repairs are complete. Required prototype
-  acceptance passes; evidence/specimens are in `qa/EXPERIENCE-ACCEPTANCE.md`.
-- Full repository gates fail on a fixture deleted by merged PR #98, also absent at
-  #113's base. Production importer remains `apps/editor/src/lib/bench/p23b-fixtures.ts:9`.
-- Exact original: `docs/roadmap/p23b-geometry-performance/40-walls.json`, 61,140 bytes,
-  SHA-256 `63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05`.
-  Recover from `49e1b231e4a79aba4a25bb3a7f0bdc151abfa430^` at that path;
-  prepared copy `/tmp/pr113-original-40-walls.json` is byte-identical.
+- S0–S9 implementation and review repairs are complete; [S0–S9 acceptance][s0s9] and
+  [C1–C8 conformance acceptance][c8] remain prior evidence, not C9 acceptance authority.
+- The missing P23B fixture is a pre-existing repository-gate blocker, also absent at #113's
+  base; exact original identity and recovery guidance are recorded in the C1–C8 acceptance.
+  Restoration needs separately authorized work and was not performed.
 
-EVIDENCE:
-- Prototype pure 34/34; final all-axis browser run 15 axes / 612 assertions.
-- Final specimens/reconciliation 17/17, including accepted numeric value and 3D posture.
-- Three mutation defects rejected with unaffected controls green; donor 62/62 + typecheck.
-- Root architecture 24 files / 276 tests passes. Whitespace check passes.
-- Root `npm test`: 33 failed files / 339 passed / 1 skipped; 4951 passed tests,
-  1 failed / 1 skipped, dependent suites fail missing-fixture collection.
-- Root check: 1 missing-module error / 0 warnings. Build: same unresolved import.
-- Session logs: `/tmp/pr113-{all-axes-final,specimens-final,pure-final,arch-final,mutations,root-test,check,build}.log`.
+## Established — C9 (this increment)
 
-RULED OUT:
-- Missing fixture is caused by #113: deletion predates its base.
-- Need for a generated replacement or production refactor: exact original exists in Git.
-
-DO NOT REPEAT:
-- S1–S8 review, donor harvest investigation, all-axis prototype run and mutation proof.
-- Browser captures: eleven canonical/extra specimens are finalized and inspected.
+- C9.1 committed (`abaa7592`); **MP1 accepted explicitly by the owner 2026-10-04**.
+  Standalone J1 loop inspected with the Presenter closed; no comprehension result invented.
+- C9.2/C9.3 implemented and verified;  the full record, changed paths, repairs and
+  limitations are in [the C9 evidence record][c9].
+- Prototype verification: pure Node suite 60/60; `qa/run-all.sh all` 18 axes /
+  752 assertions / 0 failures, rc=0; `qa/mutation-check.sh` 16/16 same-defect rejections,
+  rc=0 (World 3, V2 7, new C9 obligations 6: organization-as-start, hold cue leakage,
+  entry-plus-station double invoke, empty Reset hidden placeholder, silent first-offer
+  choice, Peek forcing L2).
+- Product defects found and fixed during verification: Guide band reachability (band
+  measured 285.84px vs Card reserve 216px), visitor transcript crash on View uses without
+  `.start`, and the parked-detour parent-visit regression. Details in the evidence record.
+- Root repository gates at base `abaa7592` + this diff: `test:arch` **276/276** rc=0;
+  `npm test` 33 files failed / 339 passed / 1 skipped, 4951 passed / 1 failed / 1 skipped
+  rc=1; `check` 1 missing-module error / 0 warnings; `build` unresolved import;
+  `git diff --check` rc=0. Logs `/tmp/c9-root-{arch2,test2,check2,build2,whitespace}.log`.
+  Every red gate is the same
+  missing P23B fixture, reported separately, not hidden.
+- Donor `prototypes/experience-authoring` (separately reported): typecheck, 62/62 domain
+  tests, production build and Playwright regressions; tree unchanged.
 
 CURRENT:
-- S9 implementation/evidence is finalized for its coherent slice commit; inspect live Git.
-  No fixture restoration,
-  push or merge has been performed. Async owner scope question is pending.
-- Slice-closeout has been read but cannot run: it requires passing recorded root
-  test/check/build gate numbers before reporting merge readiness.
+- MP2 pending human review; C9.4/C9.5 not started. The uncommitted C9.2/C9.3 diff contains
+  the prototype app/QA/tests, styles and the reconciled status docs.
+- A preview of the prototype is left registered for the MP2 manual pass; QA axis servers
+  are all closed.
 
 NEXT:
-1. Check live Git state and owner answer. If approved, restore only the exact fixture
-   and commit it separately; if not approved, carry the pre-existing gate failure explicitly.
-2. After restoration, run root `npm test`, `npm run check`, `npm run build`; inspect any
-   remaining failures within applicable scope. Update acceptance and retire this checkpoint.
-3. Use slice-closeout after required gates pass; preserve full plan/acceptance in an
-   anchor commit before stubbing/tagging. Do not close a major phase or merge. Obtain
-   push authorization before publishing local commits/tag; update PR review description.
+1. Owner performs MP2 (repeat J1; add A/B; Preview Guide and Next; select/edit a Stop at
+   Peek; deliberately open/leave Overview; predict View/Stop counts and scope).
+2. Record the MP2 outcome. Only then start C9.4/C9.5; if MP2 fails, fix the workflow before
+   Travel/agency work.
+3. Keep root gates current; carry the missing-fixture blocker explicitly and do not
+   fabricate or restore it without separate authorization.
 
 OPEN:
-- Owner approval for exact fixture restoration outside #113 prototype scope.
-- Push authorization (approved plan says unauthorized).
+- MP2 outcome (human evidence; automated assertions cannot substitute).
+- Commit/push authorization for C9.2/C9.3 (not requested).
+
+[s0s9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md
+[c8]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
+[c9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md

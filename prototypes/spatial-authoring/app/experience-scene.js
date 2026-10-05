@@ -26,6 +26,7 @@ export function realizeCapabilities() {
  for(const s of Object.values(scene.subjects)) {
   const item=ctx.stage.items.get(s.id);if(!item?.capabilityParts)continue;
   const value=channel=>runtime?.overrides[s.id]?.[channel]?.value??audition?.[s.id]?.[channel]??s.properties[channel];
+  item.group.visible=value('visible')!==false;
   item.capabilityParts.lid.rotation.z=Number(value('open')||0)*1.2;
   const running=!!value('running'),rotor=item.capabilityParts.rotor;
   if(runtime)rotor.rotation.y=running?(runtime.time||0)*5:0;

@@ -70,7 +70,7 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**C1–C8 in-scope conformance complete; revised C9 plan ready for implementation (2026-10-04):**
+**C1–C8 in-scope conformance complete; C9.1–C9.3 implemented and verified, stopped for MP2 (2026-10-04):**
 [standalone replacement plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
 [current conformance evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
@@ -84,8 +84,10 @@ defines capability-first parity/journey acceptance, retaining blocking shell,
 information-home, disclosure, spatial/temporal and ownership seams. Travel and
 fresh repeated-Stop visits are owner-ratified; cursor/detour-pause remain trials.
 Experience Reset preserves independent World/Camera truth and shared history.
-MP1 follows C9.1 before lifecycle/Guide expansion; MP2 precedes Travel/agency.
-Implementation is not authorized or started by this docs-only revision. Capability
+MP1 follows C9.1 before lifecycle/Guide expansion — owner-accepted 2026-10-04;
+MP2 precedes Travel/agency and remains pending human review. Implementation through
+MP2 is authorized and complete; C9.4/C9.5 and later slices are not started.
+Capability
 acceptance remains pending; detailed density/type/proportion and broader visual
 refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
 targeted structural/reachability evidence, not exhaustive specimen comparison.

@@ -2,8 +2,14 @@
 # Product-reachable specimens. Only deterministic authored fixture loading is outside the flow.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+QA_QUERY='motion=instant'
 source "$QA_DIR/lib.sh"
 qa_open
+fixture(){
+ click '#experienceExamples > summary'
+ click "#experienceExamples [data-act=\"$1\"]"
+ click '#experienceExamples > summary'
+}
 qa_faults_clear
 conformance_ok(){ if [ -z "$2" ]; then qa_fail_msg "empty observation: $1"; else qa_ok "$@"; fi; }
 checkpoint(){ if [ "${QA_CONFORMANCE_UNTIL:-}" = "$1" ];then qa_summary "V2 boundary $1";exit;fi; }
@@ -14,7 +20,7 @@ capture(){
  qa_snap "$1"
  qa_js '({viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,lens:__me.S.lens,selection:__me.S.sel,context:__me.S.experienceContext,task:__me.S.task,realized:__me.qa.realized(),source:__me.A.domainSnapshot()})' >"$QA_OUT/$1.json"
 }
-click(){ agent-browser click "$1" >/dev/null; qa_frames; }
+click(){ agent-browser scrollintoview "$1" >/dev/null;qa_scroll_center "$1";agent-browser click "$1" >/dev/null;qa_frames; }
 fill(){ agent-browser fill "$1" "$2" >/dev/null; qa_press Enter; }
 pose(){ qa_js '__me.qa.realized()'; }
 source_hash(){ qa_js '(()=>{const s=JSON.stringify(__me.A.domainSnapshot());let h=0;for(const ch of s)h=(Math.imul(h,31)+ch.charCodeAt(0))|0;return h;})()'; }
@@ -23,8 +29,8 @@ undo(){ qa_jsv '__me.S.undo.length'; }
 visible='e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=="hidden"&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;}'
 hit='e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return at===e||e.contains(at);}'
 # QA-1: Reset, select a subject, explicitly Present, edit Meaning, derive, Capture.
-qa_js '__me.E.resetExperience(false)' >/dev/null
 click '#lens [data-lens="experience"]'
+fixture exp-reset
 click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-create"]'
 fill '[data-exp-field="name"]' 'Why the drive matters'
@@ -55,9 +61,9 @@ conformance_ok 'updating the captured value reuses that Activity and never dupli
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 conformance_ok 'the Presentation lists the captured Activity by what it operates, where and how it starts' "$(qa_js '(()=>{const t=document.querySelector("#card details:nth-of-type(3)").textContent;return t.includes("Open casing")&&t.includes("Machine")&&t.includes("in Why the drive matters")&&t.includes("Starts on Presentation entry");})()')" true
-# The contribution row is the product control that opens the Activity; the Card itself can sit under the
-# fixed band, so the same real control is activated directly rather than through hit-testing.
-qa_js '(()=>{document.querySelector("#card details:nth-of-type(3) > summary").click();const b=document.querySelector("#card details:nth-of-type(3) [data-act=\"pres-ref\"]");b.click();return b.dataset.id;})()' >/dev/null;qa_frames
+# Open the Activity through its real, scroll-reachable contribution row.
+click '#card details:nth-of-type(3) > summary'
+click '#card > details:nth-of-type(3) .contribution [data-act="pres-ref"]'
 conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity · Experience")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 before="$(source_hash)";standpoint="$(pose)"
@@ -97,15 +103,19 @@ capture qa-1-peek
 # QA-2/3: authored stress fixture has no active procedure or standpoint recipe.
 # Selection never silently retargets a replaced Experience identity: the loader invalidates it before
 # the deterministic fixture identities are reissued. World context survives the same load.
-qa_js '__me.E.loadConformance()' >/dev/null
+fixture exp-conformance
 conformance_ok 'fixture never selects or opens work, and a replaced Experience selection is invalidated, never retargeted' "$(qa_js '__me.S.sel') / $(qa_js '(__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6&&__me.S.task===null)')" 'null / true'
-qa_js '__me.A.select("machine")' >/dev/null
-qa_js '__me.E.loadConformance()' >/dev/null
+click '#index [data-act="pres-ref"][data-id="machine"]'
+fixture exp-conformance
 conformance_ok 'a World subject selection survives the same labelled load' "$(qa_js '__me.S.sel')" '"machine"'
 # Ambiguous captures: two matching Activities in one Presentation. The choice is real product UI;
 # Escape drops it whole, and Capture another is an explicit create that touches neither existing value.
 click '#index [data-act="exp-open"][data-id="presentation-1"]'
-qa_js '(()=>{const e=__me.ctx.experience,u=Object.values(e.uses).find(x=>!x.viewId&&e.definitions[x.definitionId]?.capabilityId==="casing"),did="definition-author",uid="use-author";e.definitions[did]={...e.definitions[u.definitionId],id:did,name:"Open casing · authored"};e.uses[uid]={...u,id:uid,definitionId:did};return true;})()' >/dev/null
+click '#card > details:nth-of-type(4) > summary'
+click '#card [data-act="exp-offer"]'
+agent-browser select '[data-exp-offer="kind"]' behavior >/dev/null;qa_frames
+fill '[data-exp-offer="value"]' '1'
+click '#card [data-act="exp-offer-accept"]'
 click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'two matching captures ask which Activity to update, never mutating either' "$(qa_js '(()=>{const e=__me.ctx.experience,a=__me.S.expCaptureAsk,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&u.presentationId===pid&&e.definitions[u.definitionId]?.capabilityId==="casing");return !!a&&a.matches.length===2&&us.length===2&&us.every(u=>e.definitions[u.definitionId].value===1);})()')" true
@@ -142,7 +152,7 @@ done
 conformance_ok 'occurrence selection/disclosure preserves realized Camera and Camera source' "$(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$standpoint / $camera"
 capture qa-2-selected
 stop="$(qa_jsv '__me.ctx.experience.guide[3]')"
-click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
+click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
 conformance_ok 'QA-3 unclipped L2 schematic Set and spatial Set' "$(qa_js "(document.querySelectorAll('.set-node').length===3&&document.querySelectorAll('[data-exp-view]').length===3&&[...document.querySelectorAll('.set-node')].every($visible)&&!document.querySelector('.stop-card.expanded input')&&document.querySelector('.stop-card.expanded').scrollHeight===document.querySelector('.stop-card.expanded').clientHeight)")" true
 conformance_ok 'QA-3 all six occurrence cards stay readable and reachable at L2' "$(qa_js "[...document.querySelectorAll('.stop-card [data-act=exp-stop]')].every(e=>($visible)(e)&&($hit)(e))")" true
 capture qa-3-occurrence
@@ -151,15 +161,15 @@ uid="$(qa_jsv '__me.ctx.experience.presentations[__me.S.experienceContext.presen
 standpoint="$(pose)";before="$(source_hash)"
 click ".set-node[data-id='$uid']"
 conformance_ok 'schematic Set selects canonical View use without navigation/source edit' "$(qa_js '__me.S.sel') / $(pose) / $(source_hash)" "\"$uid\" / $standpoint / $before"
-click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
+click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
 click "[data-exp-view][data-id='$uid']"
 conformance_ok 'spatial Set selects the same canonical use' "$(qa_js '__me.S.sel') / $(pose)" "\"$uid\" / $standpoint"
 count="$(undo)"
 click '#card [data-act="exp-role"][data-role="entry"]'
 conformance_ok 'shared Set role change asks before source/history changes' "$(qa_js '(!!__me.S.expSourceAsk)') / $(source_hash) / $(undo)" "true / $before / $count"
 click '[data-act="exp-source-cancel"]'
-click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
-click '#card .exp-more summary'
+click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
+click '#card > .exp-more > summary'
 before="$(source_hash)"; count="$(undo)"
 fill '[data-exp-field="meaning"]' 'Shared meaning proposed through the product.'
 conformance_ok 'shared Meaning asks before source/history changes' "$(qa_js '(!!__me.S.expSourceAsk&&document.querySelector(".ask-rule").textContent.includes("Stop 6"))') / $(source_hash) / $(undo)" "true / $before / $count"
@@ -171,7 +181,6 @@ fill '[data-exp-field="meaning"]' 'Power travels through the protected rotor.'
 click '[data-act="exp-source-accept"]'
 conformance_ok 'accepted shared edit is one history step' "$(undo)" "$((count+1))"
 # Entry belongs to this occurrence; selecting another shared View changes no Camera source.
-click '.stop-details summary'
 local_entry="$(qa_jsv '__me.ctx.experience.presentations[__me.S.experienceContext.presentation].uses[1]')"
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 agent-browser select '[data-exp-entry]' "$local_entry" >/dev/null;qa_frames
@@ -179,7 +188,7 @@ conformance_ok 'local Stop entry leaves the shared Set and Camera source intact'
 click '#undoBtn'
 # QA-4: open adjacent Seam while 3D, then explicitly author Travel and useful Plan.
 click '#card .stop-details summary'
-click '#card .exp-more summary'
+click '#card > .exp-more > summary'
 click '[data-act="3d"]'
 standpoint="$(pose)"
 to="$(qa_jsv '__me.ctx.experience.guide[4]')"
@@ -225,7 +234,7 @@ capture qa-5-coordination
 checkpoint coordination
 # Reopen has both projections and resolves the route owning saved beats.
 click '[data-act="exp-close"]'
-click '[data-act="exp-guide"]'
+click '#experienceDeck [data-act="exp-guide"]'
 click "[data-act='exp-seam'][data-from='$stop'][data-to='$to']"
 conformance_ok 'saved coordination reopens route and both station projections' "$(qa_js '(!!document.querySelector(".station-projection")&&document.querySelectorAll("[data-exp-station-label]").length>=3&&!!__me.S.task.params.connection)')" true
 # Camera pace and anchor geometry change derived timing without rebinding Experience stations.
@@ -278,7 +287,7 @@ conformance_ok 'shared observer-anchor gesture remains a proposal until scope ac
 click '[data-act="exp-route-cancel"]'
 conformance_ok 'canceling shared anchor proposal writes zero history' "$(source_hash) / $(undo)" "$before / $count"
 # QA-6 no Guide; use the ordinary no-Guide example through actual controls again.
-qa_js '__me.E.resetExperience(false)' >/dev/null
+fixture exp-reset
 click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-create"]'
 click '#card [data-act="exp-auto"]'

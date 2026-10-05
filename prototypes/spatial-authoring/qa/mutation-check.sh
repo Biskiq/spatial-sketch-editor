@@ -36,3 +36,4 @@ PY
   rg '^FAIL|PASS=[0-9]+ FAIL=' "$log"
 done
 bash "$QA_DIR/conformance-mutation-check.sh"
+bash "$QA_DIR/composition-mutation-check.sh"

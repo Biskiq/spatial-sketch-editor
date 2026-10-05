@@ -12,8 +12,9 @@ export function createSceneCapabilities() {
  const fixtures=[['machine','Machine','machine',-10,1,{open:0,running:false}],['piano','Piano','piano',-5,-1.8,{playing:false}],['light','Light','light',-3,2.2,{intensity:2}],['switch','Switch','switch',-11,2.6,{pressed:false}],['mesh','Imported mesh','mesh',-12,-1.8,{highlight:false}],['atmosphere','Museum atmosphere','environment',0,0,{ambient:.65}]];
  return {revision:0,subjects:Object.fromEntries(fixtures.map(([id,name,profile,x,z,properties])=>[id,{id,name,profile,kind:profile,x,z,properties}]))};
 }
-export function capability(scene,sid,id) {const s=scene.subjects[sid];return s?PROFILES[s.profile]?.find(c=>c.id===id)||null:null;}
-export const capabilities = (scene,sid)=>PROFILES[scene.subjects[sid]?.profile]||[];
+export function capability(scene,sid,id) {return capabilities(scene,sid).find(c=>c.id===id)||null;}
+const LOCAL_EFFECTS=[{id:'highlight',label:'Highlight',channel:'highlight',kind:'state',control:'toggle',sourceEditable:false,replace:'replace'},{id:'visibility',label:'Visible',channel:'visible',kind:'state',control:'toggle',sourceEditable:false,replace:'replace'}];
+export const capabilities = (scene,sid)=>{const s=scene.subjects[sid];return s?[...(PROFILES[s.profile]||[]),...(s.profile==='environment'?[]:LOCAL_EFFECTS.filter(c=>!(PROFILES[s.profile]||[]).some(p=>p.channel===c.channel)))]:[];};
 export function setSceneValue(scene,sid,cid,value) {
  const c=capability(scene,sid,cid);if(!c?.sourceEditable)throw Error('Capability is session-only');
  if(c.control==='range'&&(!Number.isFinite(value)||value<c.min||value>c.max))throw Error('Value outside supported range');
