@@ -16,14 +16,15 @@ C1–C8 behavioral/visual conformance.
 
 - Branch `prototype-v2`; base commit `abaa7592730f565a8d47fd8480d69f0907dfe6c7` ("C9.1
   review pass"). The C9.1 slice was committed by the owner's review pass.
-- Commit provenance, corrected against live Git after the second review pass: C9.2/C9.3
-  (with the C9.1 regression hardening it needed) is committed as `12652d9b`, and the first
-  external-review repair pass is committed as `db83a9d7`; both are ancestors of
-  `origin/prototype-v2`, so both are pushed. The earlier text in this record and in the
-  checkpoint that described C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push
-  performed" was stale and is superseded here. This second repair pass is committed on top of
-  `db83a9d7` as its own commit; it was not pushed in this increment, because push was not
-  requested.
+- Commit provenance, correct against live Git at the close of this increment: C9.2/C9.3
+  (with the C9.1 regression hardening it needed) is `12652d9b`, the first external-review
+  repair pass is `db83a9d7`, and the second repair pass is `9a44678a`; all three are pushed to
+  `origin/prototype-v2`. This record's evidence update and the two status docs form the
+  docs-only child of `9a44678a` and are pushed with it, so the pushed head names the exact
+  authenticated executable. An earlier revision of this record and of the checkpoint described
+  C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push performed"; that was stale
+  and was corrected by the second repair pass, and the push itself followed on owner
+  instruction.
 - One executable serves every axis and journey: `index.html` + `app/` in this directory.
   Inspect live Git for exact bytes; the changed paths are:
 
@@ -180,8 +181,9 @@ assertion with a same-defect mutation obligation.
 - **Operational provenance (P2).** The evidence record, checkpoint and `current.md` still
   described C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push performed".
   Git says otherwise (`12652d9b`, then `db83a9d7`, both on `origin/prototype-v2`), so the
-  provenance is corrected in all three records; this second repair pass is its own commit and
-  was not pushed, because push was not requested.
+  provenance is corrected in all three records; this second repair pass is its own commit
+  (`9a44678a`), pushed on the owner's later instruction, and the full axis driver was then
+  rerun at that revision (Verification results).
 
 ## Verification results
 
@@ -213,21 +215,20 @@ still green.
 
 ### Full prototype axis driver
 
-`qa/run-all.sh all` — **18 axes, 758 assertions, 0 failures, rc=0** for the first repair pass
-(log `/tmp/mp2-run-all-final.log`). Per axis: journeys A–F 59, real interaction 56, pointer
-flows 44, lifecycle/policy 41, World shell 47, spatial/Precision 38, Browse/Search 60, repair
-47, lens/parking/Resume 81, Experience wiring 30, V2 conformance 97, C9.1 creator 23,
-C9.2/C9.3 composition 27 (four external-review assertions added), visitor 14, shared/narrow
-reconciliation 13, continuity 55, responsive 15, correctness 11.
-After the second repair pass the two axes whose surfaces and semantics changed were rerun at the
-frozen revision (after the final station-binding UI repair), and the other sixteen are carried
-as the first pass's result rather than re-verified:
-`qa/run-all.sh conformance` — **101 assertions, 0 failures, rc=0**
-(`/tmp/c9-conformance-final.log`; four second-pass assertions: the offer authored through the
-real subject control, the station picker excluding it, the binding read after the real invoke
-click, and the Stop Card declaring `trigger moves here`), and `qa/run-all.sh composition` —
-**27 assertions, 0 failures, rc=0** (`/tmp/c9-composition-final.log`, unchanged surface).
-Every axis closes its own browser; no session was left running.
+`qa/run-all.sh all` — **18 axes, 762 assertions, 0 failures, rc=0 at the frozen executable
+revision `9a44678a`** (log `/tmp/c9-all-final.log`: every axis reports `FAIL=0`, the chain ends
+`qa: all requested axes passed`, `ALL_RC=0`, 762 `PASS` lines, no console or page faults).
+Every axis is proven at that one revision; none is carried from an earlier pass. Per axis:
+journeys A–F 59, real interaction 56, pointer flows 44, lifecycle/policy 41, World shell 47,
+spatial/Precision 38, Browse/Search 60, repair 47, lens/parking/Resume 81, Experience wiring
+30, V2 conformance 101, C9.1 creator 23, C9.2/C9.3 composition 27, visitor 14, shared/narrow
+reconciliation 13, continuity 55, responsive 15, correctness 11. The four review additions in
+the conformance axis (the offer authored through the real subject control, the station picker
+excluding it, the binding read after the real invoke click, and the Stop Card declaring
+`trigger moves here`) are included in that count. The first repair pass's full run — 758
+assertions with conformance at 97 — is retained as history (`/tmp/mp2-run-all-final.log`); the
+second pass supersedes it rather than being carried. Every axis closes its own browser; no
+session was left running.
 
 ### Mutation obligations (same-defect successor proof on disposable copies)
 
@@ -280,10 +281,9 @@ empty observation.
 ### Root repository gates
 
 Run after the prototype work, per the repository test doctrine (task scope never narrows
-required verification), at the committed revision `db83a9d7` plus the second-pass repair diff.
-These gates never import the prototype's Experience runtime (root workspaces are `apps/*` and
-`packages/*` only; the prototype is not a workspace), so they were rerun at the second-pass
-revision and are byte-for-byte unchanged by it:
+required verification), at the frozen revision `9a44678a`. These gates never import the
+prototype's Experience runtime (root workspaces are `apps/*` and `packages/*` only; the
+prototype is not a workspace), so the docs-only child commit cannot change them:
 
 - `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c9-arch-final.log`; rerun at
   the frozen second-pass revision). The docs reconciliation removed the one pre-existing
@@ -317,19 +317,18 @@ blocker; identity as recorded at base `abaa7592`
 EVIDENCE-PATHS: end
 - MP2 is human evidence and is not claimed here; no visual refinement campaign was started
   (that belongs to the dedicated UI/UX slice).
-- The second repair pass reran the pure suite plus the composition, conformance and mutation
-  axes, and reran the root repository gates above at its frozen revision (arch 276/276 rc=0;
-  test/check/build red only on the missing P23B fixture, unchanged). The remaining sixteen
-  prototype axes were not rerun and are carried as the first repair pass's result for
-  `db83a9d7` plus the first repair diff. The second pass changes prototype-authored source and
-  the three status docs only, and the root gates do not import this prototype, so their
-  red/green set is unchanged by it.
+- The second repair pass reran the pure suite, the full mutation chain and the complete
+  prototype axis driver at its frozen executable revision, and reran the root repository gates
+  above at the same revision (arch 276/276 rc=0; test/check/build red only on the missing P23B
+  fixture, unchanged). All 18 axes are therefore proven at `9a44678a`; none is carried from an
+  earlier revision. The evidence and status docs land as a docs-only commit on top of it, so
+  the pushed head and the tested executable differ only in those docs.
 - A station-bound Activity's route and named station are validated where they are read
   (Camera travel and the coordination strip): Experience holds stable identity, never a copy
   of route geometry, so a deleted anchor or station still refuses locally at travel time.
-- No merge, phase closure or Paper work is claimed or performed. C9.2/C9.3 (`12652d9b`) and
-  the first repair pass (`db83a9d7`) were pushed; this second repair pass is committed and not
-  pushed, because push was not requested.
+- No merge, phase closure or Paper work is claimed or performed. C9.2/C9.3 (`12652d9b`), the
+  first repair pass (`db83a9d7`) and the second repair pass (`9a44678a`, with the evidence and
+  status docs as its docs-only child) are committed and pushed to `origin/prototype-v2`.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
