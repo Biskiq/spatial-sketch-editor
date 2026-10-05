@@ -1,7 +1,7 @@
 // Native ESM adaptation of donor arm/begin/close, readiness and bounded stepping.
 // Camera evaluation is delegated to the kernel beneath navigation; no renderer tween lives here.
 import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, signalCanDriveVisitCondition, signalPosition, workDuration, narrationPassages, viewStep } from './experience-model.js';
-import { pathSeconds, evaluatePath, findConnection, liveConnectionPath, stationProgress, viewPath } from './camera-evaluation.js';
+import { pathSeconds, evaluatePath, findConnection, liveConnectionPath, sameViewPose, stationProgress, viewPath } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
 import { capability, createSceneCapabilities } from './experience-capabilities.js';
 export const BREATHING=2;
@@ -9,12 +9,15 @@ const eventKey=(visit,id,signal)=>`${visit}|${id}|${signal}`;
 export const signalEmitted=(r,ref)=>!!ref&&!!r.signals[eventKey(r.visit,ref.useId,ref.signal)];
 export const projectedValue=(scene,r,sid,channel)=>r?.overrides[sid]?.[channel]?.value??scene.subjects[sid]?.properties[channel];
 const note=(r,message)=>{r.log.push({time:r.time,message});r.log=r.log.slice(-60);};
-// Carried, not authored: only an Experience-scoped run that outlives its own visit has already spent
-// part of its authored time, so only the runtime knows where it stands. A run stopped by the visitor or
-// reported unavailable never reaches completion, and neither do its disarmed dependents: both owe this
-// Stop no wait at all, which is why absence of a reading (undefined) and an impossible one (null) differ.
+// Carried, not authored: only the runtime knows how much of an authored run has already been spent, and
+// that reading is honoured for whichever run currently owns the use — an Experience-scoped run that
+// outlives its own visit, or a run still live in this very visit, because Rejoin and detour Return both
+// resume a playhead rather than restarting one. A run stopped by the visitor or reported unavailable
+// never reaches completion, and neither do its disarmed dependents: both owe the visit no wait at all,
+// which is why absence of a reading (undefined, freshly armed) and an impossible one (null) differ.
+// Work belonging to another visit is excluded by activation scope, never by this reading.
 const carriedWork=(r,e)=>id=>{
- const u=e.uses[id];if(!u||activationScope(u)!==null)return undefined;
+ const u=e.uses[id];if(!u)return undefined;
  const a=r.activities[r.active[id]];if(!a)return undefined;
  if(a.status==='stopped'||a.status==='unavailable')return null;
  return {spent:Math.max(0,Number(a.elapsed)||0)};
@@ -167,7 +170,9 @@ export function presentationPlan(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,
  if(policy.cues!==false)for(const u of Object.values(e.uses))if(u.presentationId===pid&&u.viewId&&u.id!==entryId&&u.cue&&!issues.has(u.id)){
   // A cue whose authored moment already passed before this visit cannot fire; it never delays arrival.
   const local=cueSeconds(e,u.cue),at=cueSourceAt(u.cue);
-  if(local!==null&&at!==null&&at>=0&&local>(policy.cueFloor??-1))requests.push({id:u.id,at});
+  // A cue whose own signal already fired in this visit is never re-emitted, so it must not delay arrival
+  // again either: the shared emission record, not a rebuilt estimate, decides that.
+  if(local!==null&&at!==null&&at>=0&&local>(policy.cueFloor??-1)&&!policy.skipCue?.(u.cue))requests.push({id:u.id,at});
  }
  for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds(viewPath(current,v.pose),v.speed||'auto'));current=v.pose;}
  return {readiness:Math.max(narrationEnd,finiteEnd,persistentStart,cameraArrival)+BREATHING,narrationEnd,finiteEnd,persistentStart,cameraArrival,requests};
@@ -198,7 +203,14 @@ function coordinationProblem(e,c,seam,connection,path) {
 function travelInvocation(e,c,r,from,to,seam) {
  const connection=from&&to?findConnection(c,from.view.id,to.view.id):null;
  if(!connection){
-  if(from&&to&&from.view.id===to.view.id)return {path:null,speed:'cut',connectionId:null};
+  if(from&&to&&from.view.id===to.view.id){
+   // Reaching the View the visitor is already standing at is Camera's own zero-distance evaluation. Any
+   //where else the same View identity is only the *nominal* origin: the invocation is then the ordinary
+   //Camera framing path evaluated from the actual live pose — never a fabricated edge, never a hidden Cut,
+   //and never a snap that would silently discard where the visitor actually is.
+   if(sameViewPose(r.pose,to.view.pose))return {path:null,speed:'cut',connectionId:null};
+   return {path:viewPath(r.pose,to.view.pose),speed:to.view.speed||'auto',connectionId:null};
+  }
   return {refusal:'Travel gap from current View'};
  }
  const path=liveConnectionPath(connection,to.view.pose,r.pose);
@@ -241,13 +253,16 @@ export function exploreRuntime(current,pose=null){const r=copy(current);r.pose=c
 export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;const s=e.stops[r.stopId];r.pacingFallback=!!(s?.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref));return r;}
 // Rejoin restores the current Stop's intent, or a standalone visit's Presentation viewing intent, from
 // the live pose: viewing is a Camera framing invocation, not a re-traversal, so no route station runs
-// again and no queued cue replays. The visit and its playhead are preserved; Auto stays off.
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene,{carried:carriedWork(r,e)});return r;}
+// again and no queued cue replays. The visit and its playhead are preserved — the carried reading
+// subtracts what each live run already spent, cues whose signal already fired are skipped, and the
+// remaining Auto clock is re-derived from that remainder rather than from a rebuilt full estimate.
+// Auto stays off, and the Stop's clock starts at the remainder it now owes.
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,r.scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});return r;}
 // One bounded side detour at a time: the parent visit is parked with its own bookmark (the experimental
 // pause policy, not permanent architecture) and its running narration is suspended rather than ended.
 function parkParent(r,e){
  if(r.bookmarks.length)return false;
- r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId});
+ r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId,cueFloor:r.cueFloor,viewingSuppressed:r.viewingSuppressed});
  for(const a of Object.values(r.activities))if(a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration'&&a.status==='running')a.status='paused';
  r.stopId=null;r.presentationId=null;r.visit=0;
  return true;
@@ -278,7 +293,11 @@ export function returnDetour(e,c,current,scene=createSceneCapabilities()){
  const r=copy(current),parked=new Set(r.bookmarks.map(b=>b.visit)),b=r.bookmarks.pop();if(!b)return r;closeVisit(r,e,scene,parked);
  Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});
  for(const a of Object.values(r.activities))if(a.visit===b.visit&&['paused','waiting'].includes(a.status)){r.active[a.useId]=a.token;if(a.status==='paused')a.status='running';}
- const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);note(r,'Returned without duplicate entry');return r;
+ const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);
+ // The parent's own remaining work is recomputed from the restored playhead and the parent's own cue
+ // floor: the detour's readiness is never left attached to the parent after Return.
+ r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});
+ note(r,'Returned without duplicate entry');return r;
 }
 export function lookRuntime(e,c,current,uid,pose=null){const r=copy(current);if(r.exploring)r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.viewingSuppressed=false;r.movement=null;r.queue=[];requestView(r,e,c,uid,c.views[e.uses[uid]?.viewId]?.speed||'auto');return r;}
 export function viewStepRuntime(e,c,current,delta){const id=viewStep(e,current.presentationId,current.viewUseId,delta);return id?lookRuntime(e,c,current,id):copy(current);}

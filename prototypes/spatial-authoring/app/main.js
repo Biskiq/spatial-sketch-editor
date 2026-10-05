@@ -1284,8 +1284,10 @@ document.addEventListener('input',event=>{const el=event.target;if(S.visitor||!e
 document.addEventListener('change',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),false);});
 
 document.addEventListener('change',event=>{
- const el=event.target;
- if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
+ const el=event.target;  if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
+  // Availability is authored explicitly and independently of the offer's organizational home; an empty
+  // choice is Experience-wide, never "the Presentation I happen to be standing in".
+  if(el.dataset.expAvailability)E.updateActivity(el.dataset.expAvailability,'availability',el.value||null);
 
  if(el.dataset.expReuse)E.reuseFraming(el.dataset.expReuse,el.value);
  if(el.dataset.expCue)E.updateUse(el.dataset.expCue,'cue',el.value?JSON.parse(el.value):null);
