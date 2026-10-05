@@ -61,6 +61,7 @@ export function handleExperienceAction(el) {
   if (action === 'exp-stop') selectStop(el.dataset.id);
   if (action === 'exp-expand-stop') expandStop(el.dataset.id);
   if (action === 'exp-preview-guide') previewGuide();
+  if (action === 'exp-preview-experience') previewExperience();
   if (action === 'exp-view-order') suggestViews(el.dataset.id,el.dataset.clear==='true');
   if (action === 'exp-view-order-move') moveSuggestedView(el.dataset.id,Number(el.dataset.delta));
   if (action === 'exp-close') closeExperienceWork();
@@ -146,8 +147,12 @@ export function bringIntoView(){const c=cameraSnapshot(),e=ctx.experience,x=S.ex
  return nav.framePoints(points,{plan:nav.plainPose().el>1.4||!!x.seam});
 }
 export const changeRole=(id,role)=>updateUse(id,'role',role);
-export function preview(pid=S.experienceContext.presentation,guide=false) {
- if(S.visitor || (!guide&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length)) return false;
+export function preview(pid=S.experienceContext.presentation,guide=false,experience=false) {
+ // Three entries, one runtime: Preview this Presentation, Preview Guide, and Preview Experience — the
+ // world-only session that needs no Presentation, Stop or Guide at all (I3/J6). The Experience entry
+ // refuses only when there is genuinely nothing to visit: no Experience-wide offer to participate in.
+ const wide=Object.values(ctx.experience.uses).some(u=>u.kind==='interaction'&&!u.availability);
+ if(S.visitor || (!guide&&!experience&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length) || (experience&&!wide)) return false;
  cancelProposal('preview');
  const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
  // Suspend authoring without writing source or passing through lens parking. Auditions are cleared
@@ -155,7 +160,8 @@ export function preview(pid=S.experienceContext.presentation,guide=false) {
  T.park();
  nav.releaseHold();
  S.expAudition=null;
- S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide?null:pid,nav.plainPose(),ctx.sceneSource)};
+ S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;
+ S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide||experience?null:pid,nav.plainPose(),ctx.sceneSource)};
  S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;
  if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
@@ -186,6 +192,7 @@ export function regionPoint(p) {
 }
 
 export function previewGuide(){return preview(null,true);}
+export function previewExperience(){return preview(null,false,true);}
 export function selectStop(id){
  const stop=ctx.experience.stops[id];if(!stop)return false;
  cancelProposal('selection');A.select(id);
@@ -387,16 +394,20 @@ export function updateStop(id,key,value){return command('Edit this Stop '+key,e=
 export function updateViewSpeed(uid,speed){if(!['cut','slow','auto','fast'].includes(speed))return false;return command('Set Camera View movement',(e,c)=>{const v=c.views[e.uses[uid]?.viewId||uid];if(!v)throw Error('View removed');v.speed=speed;});}export function beginOffer(kind='behavior', subjectId=null) {
   const p=ctx.experience.presentations[S.experienceContext.presentation];
   const subject=subjectId&&ctx.sceneSource.subjects[subjectId]?subjectId:p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
-  S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true};ctx.ui();
+  // I4: availability is independent of organization — the offer is homed in the Presentation being
+  // edited, but it is available Experience-wide until the author says otherwise.
+  S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true,availability:null};ctx.ui();
 }
 export function acceptOffer() {
  const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;
  const value=cap.control==='range'?Number(draft.value):draft.value===true||draft.value==='true';
  if(cap.control==='range'&&(!Number.isFinite(value)||value<cap.min||value>cap.max)){A.setStatus(`Use a value between ${cap.min} and ${cap.max}`,'refuse');return false;}
- const id=command('Add '+draft.kind,e=>addContribution(e,S.experienceContext.presentation,{kind:'control',name:cap.label,subjectId:draft.subjectId,capabilityId:cap.id,value},draft.kind,draft.trigger));
+ // The authored availability is written inside the same aggregate edit as the offer itself, so the
+ // default and an explicit contextual choice are each one ordinary Undo step.
+ const id=command('Add '+draft.kind,e=>{const uid=addContribution(e,S.experienceContext.presentation,{kind:'control',name:cap.label,subjectId:draft.subjectId,capabilityId:cap.id,value},draft.kind,draft.trigger);const u=e.uses[uid];if(u&&draft.kind==='interaction')u.availability=draft.availability||null;return uid;});
  S.expOfferDraft=null;ctx.ui();return id;
 }
-export function changeOfferField(key,value){if(!S.expOfferDraft)return;S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value)[0];S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
+export function changeOfferField(key,value){if(!S.expOfferDraft)return;if(key==='availability'){S.expOfferDraft.availability=value||null;ctx.ui();return;}S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value)[0];S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
 
 // ----- subject-local capability auditions and capture ---------------------
 

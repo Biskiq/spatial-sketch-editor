@@ -5,8 +5,15 @@
 //   * Travel executes the authored Camera route from the visitor's live pose (no departure Gate, no
 //     second tween, no hidden Cut) and fires only the traversed connection's beats, exactly once;
 //   * Cut executes no route beats, and missing support stays an explicit local refusal;
+//   * a same-View Seam is zero-distance only while the visitor is actually standing there, and is a
+//     Camera framing invocation from the live pose anywhere else;
 //   * interaction stays a visitor offer, click is distinguishable from drag, several offers open an
-//     explicit choice, and standalone open/close/rejoin bounded detour only read authored documents.
+//     explicit choice, availability is authored explicitly (Experience-wide by default), and a
+//     world-only session needs no Presentation, Stop or Guide;
+//   * rejoin and detour Return resume the playhead: remaining work is the part not yet spent, cues
+//     whose signal already fired are skipped while future cues are kept, and the parent's own
+//     remaining work is restored rather than the detour's reading;
+//   * standalone open/close/rejoin and one bounded detour only read authored documents.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 // The action layer's animation clock reads the OS motion preference at import time; Node has no
@@ -371,4 +378,145 @@ test('C9.5 a full visitor session leaves authored documents, history and selecti
  await E.exitPreview();
  assert.equal(JSON.stringify({e:ctx.experience,c:ctx.cameraSource,scene:ctx.sceneSource,undo:S.undo.length,sel:S.sel}),snapshot);
  assert.equal(c.connections[route].anchors.length,0);
+});
+
+test('C9.4 same-View Travel from a moved live pose flies from there, never a snap or an edge',()=>{
+ const f=fixture(),{e,c,a}=f;
+ const reuse=M.reuseView(e,c,f.q,useId(e,f.from));      // the destination entry is the same Camera View
+ M.setRole(e,reuse,'entry');
+ M.editSeam(e,a,f.b,{mode:'travel'});
+ const edges=Object.keys(c.connections).length;
+ const standing=run(f);
+ assert.equal(R.nextRuntime(e,c,standing,f.scene).movement,null);   // standing at the View: zero distance
+ // The visitor walks away, then reclaims guidance: the same Seam can no longer be zero distance.
+ const moved={...pose,target:[21,1,0],az:-1.2};
+ const wandered=R.exploreRuntime(run(f),moved);
+ const next=R.nextRuntime(e,c,wandered,f.scene);
+ assert.equal(next.stopId,f.b);assert.equal(next.refusal,null);
+ assert.ok(next.movement);                                          // a real Camera invocation
+ assert.deepEqual(next.movement.path[0],moved);                     // from the actual live pose
+ assert.ok(next.movement.travelDuration>0);
+ assert.deepEqual(next.movement.path.at(-1),c.views[useId(e,f.from)].pose);
+ assert.deepEqual(next.movement.invokes,[]);                        // no authored route work: there is no connection
+ assert.equal(Object.keys(c.connections).length,edges);             // and no edge was fabricated for it
+});
+
+test('C9.5 rejoin never rebuilds completed work',()=>{
+ const f=fixture(),{e,c,a,b}=f;
+ const local=M.addContribution(e,f.q,{kind:'narration',name:'Local',text:'Walkthrough.',duration:10,markers:[]},'narration');
+ M.editSeam(e,a,b,{});
+ let r=run(f);
+ r=R.nextRuntime(e,c,r,f.scene);
+ assert.equal(r.presentationId,f.q);
+ r=tick(f,r,12);                                     // the visit-local run completed
+ assert.equal(r.movement,null);
+ const token=r.active[local];
+ // Rejoin from the Stop's own entry View, so the framing flight is zero and the reading is about work.
+ const entryPose=c.views[useId(e,f.to)].pose;
+ const rejoined=R.resumeGuide(e,c,R.exploreRuntime(r,entryPose),entryPose);
+ assert.equal(rejoined.readiness,R.BREATHING);        // completed work owes nothing again
+ assert.equal(rejoined.active[local],token);          // the same run, never a second one
+ assert.equal(rejoined.movement,null);
+});
+
+test('C9.5 rejoin skips a cue whose signal already fired',()=>{
+ const f=fixture(),{e,c,a,b}=f;
+ const local=M.addContribution(e,f.q,{kind:'narration',name:'Local',text:'Walkthrough.',duration:10,markers:[]},'narration');
+ const finalView=view(e,c,f.q,{...pose,target:[3,1,3]},'Final','choice');
+ e.uses[finalView].cue={useId:local,signal:'complete'};
+ M.editSeam(e,a,b,{});
+ let r=run(f);
+ r=R.nextRuntime(e,c,r,f.scene);
+ r=tick(f,r,12);                                     // completed, so its completion cue already fired
+ assert.equal(R.signalEmitted(r,{useId:local,signal:'complete'}),true);
+ assert.equal(r.movement,null);
+ const entryPose=c.views[useId(e,f.to)].pose;
+ const rejoined=R.resumeGuide(e,c,R.exploreRuntime(r,entryPose),entryPose);
+ assert.equal(rejoined.readiness,R.BREATHING);        // and a cue that happened is not owed a Camera move
+ assert.equal(rejoined.movement,null);
+});
+
+test('C9.5 rejoin keeps a future cue and only skips the cues that already fired',()=>{
+ const f=fixture(),{e,c,a,b}=f;
+ const local=M.addContribution(e,f.q,{kind:'narration',name:'Local',text:'Walkthrough.',duration:10,markers:[{id:'late',label:'Late',time:9}]},'narration');
+ const lateView=view(e,c,f.q,{...pose,target:[40,1,0]},'Late','choice');
+ e.uses[lateView].cue={useId:local,signal:'marker:late'};
+ M.editSeam(e,a,b,{});
+ let r=run(f);
+ r=R.nextRuntime(e,c,r,f.scene);
+ r=tick(f,r,4);                                      // 4 of 10 spent; the cue is still ahead of the playhead
+ assert.equal(R.signalEmitted(r,{useId:local,signal:'marker:late'}),false);
+ const entryPose=c.views[useId(e,f.to)].pose;
+ const rejoined=R.resumeGuide(e,c,R.exploreRuntime(r,entryPose),entryPose);
+ assert.ok(rejoined.readiness>R.BREATHING+6-1e-9);                   // the remaining run, plus the future cue
+ assert.equal(R.signalEmitted(rejoined,{useId:local,signal:'marker:late'}),false);
+ const done=tick(f,rejoined,7);
+ assert.equal(R.signalEmitted(done,{useId:local,signal:'marker:late'}),true);      // and it still fires
+});
+
+test('C9.5 Return from one detour restores the parent remaining work, not the detour reading',()=>{
+ const f=liveFixture(),{e,c,a}=f;
+ const local=M.addContribution(e,f.p,{kind:'narration',name:'Parent',text:'Parent walkthrough.',duration:10,markers:[]},'narration');
+ const third=M.addPresentation(e,{kind:'subjects',ids:['light']});
+ view(e,c,third,{...pose,target:[7,1,7]},'Third','entry');
+ const thirdStop=M.addStop(e,third);
+ M.addContribution(e,third,{kind:'narration',name:'Detour',text:'Detour walkthrough.',duration:40,markers:[]},'narration');
+ let r=run(f);
+ assert.equal(r.presentationId,f.p);
+ r=tick(f,r,4);                                      // 4 of the parent's 10 seconds are spent
+ const floor=r.cueFloor;
+ const detour=R.chooseRuntime(e,c,r,thirdStop,true,f.scene);
+ assert.ok(detour.readiness>R.BREATHING+30);         // the detour's own much longer work
+ const back=R.returnDetour(e,c,detour,f.scene);
+ assert.equal(back.stopId,a);assert.equal(back.presentationId,f.p);
+ assert.equal(back.cueFloor,floor);                  // the parent's own cue floor comes back with it
+ assert.equal(typeof back.active[local],'string');   // and its run resumes rather than restarting
+ assert.ok(Math.abs(back.readiness-(R.BREATHING+6))<1e-9);         // 6 of the parent's 10 seconds remain
+});
+
+test('C9.5 offer authoring defaults to Experience-wide and writes its availability in one edit',()=>{
+ const f=liveFixture();
+ S.experienceContext.presentation=f.p;
+ E.beginOffer('interaction','piano');
+ assert.equal(S.expOfferDraft.availability,null);    // Experience-wide is the authoring default
+ const undo=S.undo.length;
+ const wide=E.acceptOffer();
+ assert.equal(typeof wide,'string');
+ assert.equal(ctx.experience.uses[wide].availability,null);
+ assert.equal(ctx.experience.uses[wide].presentationId,f.p);      // its home is still the Presentation
+ assert.equal(S.undo.length,undo+1);
+ // An explicit contextual choice is authored through the same draft, still one ordinary edit.
+ E.beginOffer('interaction','piano');
+ E.changeOfferField('availability',f.q);
+ const undo2=S.undo.length;
+ const contextual=E.acceptOffer();
+ assert.equal(ctx.experience.uses[contextual].availability,f.q);
+ assert.equal(ctx.experience.uses[contextual].presentationId,f.p);
+ assert.equal(S.undo.length,undo2+1);
+ // The ordinary writer switches an existing offer back to Experience-wide.
+ E.updateActivity(contextual,'availability',null);
+ assert.equal(ctx.experience.uses[contextual].availability,null);
+});
+
+test('C9.5 Preview Experience starts a world-only session with no Presentation, Stop or Guide',async()=>{
+ liveFixture();
+ const e=ctx.experience;
+ for(const id of Object.keys(e.presentations))delete e.presentations[id];
+ e.stops={};e.guide=[];
+ const music=M.addContribution(e,null,{kind:'control',name:'Play piano',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');
+ assert.equal(e.uses[music].availability,null);
+ assert.equal(Object.keys(e.presentations).length,0);
+ assert.equal(Object.keys(e.stops).length,0);assert.equal(e.guide.length,0);
+ assert.equal(E.previewExperience(),true);
+ const r=()=>S.visitor.runtime;
+ assert.equal(r().presentationId,null);assert.equal(r().stopId,null);
+ assert.equal(E.visitorCommand('activate',music),true);
+ assert.equal(R.projectedValue(S.visitor.source.scene,r(),'piano','playing'),true);
+ await E.exitPreview();
+ // Nothing to visit without Experience-wide participation: the entry refuses rather than pretending.
+ const p=M.addPresentation(e,{kind:'subjects',ids:['piano']});
+ e.uses[music].availability=p;
+ assert.equal(E.previewExperience(),false);
+ assert.equal(E.preview(p),true);                    // the Presentation entry still works
+ await E.exitPreview();
 });

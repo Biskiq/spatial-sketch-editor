@@ -14,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness offer-availability-write; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -128,6 +128,36 @@ elif kind == 'offer-automatic':
     replace('app/experience-runtime.js',
             "  if(u.viewId||u.kind==='interaction'||u.start.kind==='station'||activationScope(u)!==pid)return false;",
             "  if(u.viewId||u.start.kind==='station'||activationScope(u)!==pid)return false;")
+elif kind == 'same-view-snap':
+    # A same-View Seam collapses to an unconditional Cut, so a visitor who moved away is snapped to the
+    # destination instead of the invocation being evaluated from the live pose.
+    replace('app/experience-runtime.js',
+            "   if(sameViewPose(r.pose,to.view.pose))return {path:null,speed:'cut',connectionId:null};\n   return {path:viewPath(r.pose,to.view.pose),speed:to.view.speed||'auto',connectionId:null};",
+            "   return {path:null,speed:'cut',connectionId:null};")
+elif kind == 'rejoin-full-estimate':
+    # Only Experience-scoped work carries its playhead again, so Rejoin and detour Return rebuild a full
+    # estimate for a run that is live in this very visit.
+    replace('app/experience-runtime.js',
+            " const u=e.uses[id];if(!u)return undefined;\n const a=r.activities[r.active[id]];if(!a)return undefined;",
+            " const u=e.uses[id];if(!u||activationScope(u)!==null)return undefined;\n const a=r.activities[r.active[id]];if(!a)return undefined;")
+elif kind == 'skip-fired-cue':
+    # A cue whose own signal already fired is counted as future work again, so a finished cue is owed a
+    # Camera move the runtime will never emit.
+    replace('app/experience-runtime.js',
+            "&&!policy.skipCue?.(u.cue))requests.push({id:u.id,at});",
+            ")requests.push({id:u.id,at});")
+elif kind == 'detour-readiness':
+    # Return restores the parked parent without recomputing its remaining work, leaving the detour's
+    # readiness (and cue floor) attached to the parent Stop.
+    replace('app/experience-runtime.js',
+            " r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});\n note(r,'Returned without duplicate entry');",
+            " note(r,'Returned without duplicate entry');")
+elif kind == 'offer-availability-write':
+    # The authored availability is dropped, so every offer silently keeps the organizer's Presentation as
+    # its availability instead of the Experience-wide default the draft showed.
+    replace('app/experience.js',
+            "const u=e.uses[uid];if(u&&draft.kind==='interaction')u.availability=draft.availability||null;return uid;}",
+            "return uid;}")
 elif kind == 'visitor-source-write':
     # The visit runtime reads AND writes the authored documents instead of its own isolated copy, so
     # a visitor activation edits authored Scene source the moment it runs.
@@ -165,6 +195,11 @@ PY
     traversed-only) name='C9.4 early Next from the live pose traverses only the supported redirected route'; control='C9.4 Cut executes no Travel route beats or flight' ;;
     offer-automatic) name='C9.5 offers are never automatic work and availability stays explicit'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     visitor-source-write) name='C9.5 a full visitor session leaves authored documents, history and selection untouched'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
+    same-view-snap) name='C9.4 same-View Travel from a moved live pose'; control='C9.4 Cut executes no Travel route beats or flight' ;;
+    rejoin-full-estimate) name='C9.5 rejoin never rebuilds completed work'; control='C9.5 a click activates, a drag never does' ;;
+    skip-fired-cue) name='C9.5 rejoin skips a cue whose signal already fired'; control='C9.5 rejoin keeps a future cue' ;;
+    detour-readiness) name='C9.5 Return from one detour restores the parent remaining work'; control='C9.5 rejoin keeps a future cue' ;;
+    offer-availability-write) name='C9.5 offer authoring defaults to Experience-wide'; control='C9.5 Preview Experience starts a world-only session' ;;
   esac
   log="$work/pure-$kind.log"
   if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" >"$log" 2>&1; then
