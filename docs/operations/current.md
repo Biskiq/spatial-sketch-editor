@@ -5,17 +5,20 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: #113 C9.2/C9.3 implemented; the five external MP2 review blockers (route writer,
-       explanation binding, Experience-scoped output, Auto remaining work, signal scope)
-       repaired with regression and mutation coverage, and the review's folded second pass
-       (station invocation contract, cue-scope versus Gate scope, remaining-work edge cases,
-       stale provenance) repaired with its own coverage, and all 18 prototype axes rerun
-       green at the repaired revision (`9a44678a`); stopped for MP2 human review →
+NEXT: #113 C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation
+       and agency) implemented, self-reviewed and verified at the pushed executable revision
+       recorded in the evidence record, with all 18 prototype axes rerun green there; stopped
+       at the MP3 human gate →
        ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
-       C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04).
+       C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04);
+       **MP2 accepted by the owner 2026-10-05**, with three non-blocking observations
+       recorded (shell density → later UI/UX slice, Guide snap/cut → superseded by C9.4,
+       View/Presentation removal → C9.6). C9.2/C9.3 plus the two external-review repair
+       passes stay accepted and pushed (`12652d9b`, `db83a9d7`, `9a44678a`).
        Creator-loop regression hardening retains World/Camera/history and exact Preview return.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md.
-       Travel and fresh repeated-Stop visits owner-ratified; C9.4/C9.5 wait for MP2.
+       Travel and fresh repeated-Stop visits owner-ratified; C9.4/C9.5 are now done and
+       MP3 (Travel and agency) is the next human gate. No merge, closure or Paper work.
 PRODUCTION ROUTE: (resumes after the prototype detour closes, below) remains F interface
        amendments, then re-derived T1 Spatial/P26, T2 Composition/P24, T3 Experience/P25 and
        T4 Release. P26 implementation and the architecture validation window remain gated.
