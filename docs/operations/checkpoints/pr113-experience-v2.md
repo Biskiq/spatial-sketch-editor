@@ -1,22 +1,23 @@
 # PR #113 Experience V2 — checkpoint
 
 TYPE: implementation / verification (C9 continuation)
-STATUS: C9.1–C9.3 implemented; five external MP2 review blockers repaired and verified, and
-the review's folded second-pass findings (station activation contract, cue-scope consistency,
-remaining-work edge cases, stale provenance) repaired and verified (2026-10-05); stopped for
-MP2 human review.
-GOAL: complete the C9 authoring-completeness slice through MP2, then stop for human
+STATUS: C9.1–C9.3 implemented and accepted through **MP2 (accepted by the owner 2026-10-05)**;
+C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation and agency)
+implemented, self-reviewed and verified at the executable revision recorded below; stopped at
+the MP3 human gate.
+GOAL: complete the C9 authoring-completeness slice through C9.5 and stop for the MP3 human
 review; no merge or phase closure.
 
 CONSTRAINTS:
 - Prototype-local implementation; no Paper adoption, production formats or phase closure.
 - The owner authorized implementation through MP2; MP1 was explicitly accepted by the
-  owner on 2026-10-04. C9.4/C9.5 wait for MP2.
+  owner on 2026-10-04 and MP2 on 2026-10-05. C9.4/C9.5 were authorized to proceed
+  autonomously after MP2 acceptance and stop at MP3.
 - Commit provenance, correct against live Git: the C9.1 slice is committed by the owner's
   review pass as `abaa7592`; C9.2/C9.3 as `12652d9b`, the first external-review repair as
-  `db83a9d7`, and the second review repair as `9a44678a`; all pushed to `origin/prototype-v2`
-  (the evidence/status update is that commit's docs-only child). No merge or closure was
-  performed.
+  `db83a9d7`, and the second review repair as `9a44678a`; the C9.4/C9.5 increment is
+  `c118c08b`. All are pushed to `origin/prototype-v2` (the evidence/status update is the
+  docs-only child of the commit it records). No merge or closure was performed.
 - AGENTS.md rule 11 requires expanded scope before changing the unrelated missing fixture.
 - Donor stays unchanged; every QA axis closes its own browser and server.
 
@@ -39,6 +40,12 @@ READ:
 
 - C9.1 committed (`abaa7592`); **MP1 accepted explicitly by the owner 2026-10-04**.
   Standalone J1 loop inspected with the Presenter closed; no comprehension result invented.
+- **MP2 accepted by the owner 2026-10-05**: the reviewed J1 repeat, A/B Guide creation,
+  Preview/Next, Peek-level Stop editing and deliberate Overview enter/leave worked with
+  predictable View/Stop/Presentation scope and no workflow failure. Three observations were
+  recorded as non-blocking and assigned outward: shell/control density → the later UI/UX
+  refinement slice; Guide snap/cut → superseded by C9.4; incomplete View/Presentation
+  removal → C9.6 revision/repair.
 - C9.2/C9.3 implemented and verified, committed as `12652d9b` (the full record, changed
   paths, repairs and limitations are in [the C9 evidence record][c9]).
 - External MP2 review (2026-10-05) named five blockers; all five are repaired at their
@@ -65,6 +72,16 @@ READ:
   waited for, a carried dependency paying its elapsed time twice, and the cue predicate
   collapsed back onto the strict scope predicate. The 13th, entry-plus-station double
   activation, was re-targeted from the tick-repeat defect to the activation contract itself).
+- C9.4/C9.5 (Camera default Travel and live invocation; visitor participation and agency)
+  implemented, self-reviewed and verified at `c118c08b`: pure Node suite **86/86**;
+  `qa/run-all.sh all` **18 axes / 771 assertions / 0 failures, rc=0** at that one revision
+  (`/tmp/c945-all.log`); `qa/mutation-check.sh` **34/34** same-defect rejections (21
+  model/runtime + 3 World/lens + 7 V2 conformance + 3 wiring), with the composition-only rerun
+  green on its 24 C9 obligations. Seven self-review findings were repaired, two of them in
+  surrounding C9.1–C9.3 behavior (an origin already at the destination View was painted and
+  refused as a Travel gap, and the departure-readiness rule had two copies so removing one
+  would have left the other refusing early Next), and the N1-superseded axis steps were
+  rewritten rather than worked around. Details in the evidence record.
 - Product defects found and fixed during verification: Guide band reachability (band
   measured 285.84px vs Card reserve 216px), visitor transcript crash on View uses without
   `.start`, and the parked-detour parent-visit regression. Details in the evidence record.
@@ -77,29 +94,59 @@ READ:
   tests, production build and Playwright regressions; tree unchanged.
 
 CURRENT:
-- MP2 pending human review; C9.4/C9.5 not started. C9.2/C9.3 and the first external-review
-  repair pass are committed and pushed (`12652d9b`, `db83a9d7`) and hold the prototype
-  app/QA/tests, styles and the reconciled status docs; the second repair pass is committed and
-  pushed as `9a44678a` (evidence/status docs as its docs-only child) and holds the
-  station-activation, cue-scope, remaining-work and provenance corrections.
-- A preview of the prototype is left registered for the MP2 manual pass; QA axis servers
-  are all closed.
+- MP2 accepted by the owner 2026-10-05 with three non-blocking observations recorded;
+  C9.4/C9.5 implemented, self-reviewed and verified, committed as `c118c08b` and pushed, with
+  the evidence/status docs as its docs-only child. C9.6–C9.9 and Paper are not started.
+- The prototype is left usable for the MP3 walkthrough; QA axis servers close themselves and
+  no session is left running.
 
 NEXT:
-1. Owner performs MP2 (repeat J1; add A/B; Preview Guide and Next; select/edit a Stop at
-   Peek; deliberately open/leave Overview; predict View/Stop counts and scope), including a
-   check that selecting another Stop cannot write to an old route.
-2. Record the MP2 outcome. Only then start C9.4/C9.5; if MP2 fails, fix the workflow before
-   Travel/agency work.
-3. Keep root gates current; carry the missing-fixture blocker explicitly and do not
-   fabricate or restore it without separate authorization.
+1. Owner performs **MP3 — Travel and agency** at the pushed head, with the Presenter closed.
+   Recipe; each step names what must be observable, not merely what to click:
+   - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
+     Presentation holds more than one Framed use, open the Seam and choose Travel. One step
+     must leave every legitimate origin supported (`Prepared n Camera route … · Camera owns
+     route geometry`), no origin as a gap, and the whole preparation as one Undo step. Adding
+     or selecting a View, and starting a Preview, must never add Camera connectivity by
+     themselves.
+   - *visible Camera flight*: Preview on a Travel Seam and press Next. The Camera must fly the
+     authored route instead of snapping; Cut on the same Seam must snap and execute no route
+     beats.
+   - *early/manual navigation during movement*: press Next again while the first flight is in
+     flight. The new move must start from where the Camera actually is, on the supported
+     directed route, with no "finish the current move" demand, and arrive at the authored
+     destination.
+   - *redirect and rejoin*: redirect to another eligible View mid-visit, then Rejoin. Rejoin
+     must restore the Stop's viewing intent from the live pose without replaying route stations
+     or queued cues.
+   - *exploration*: Explore and orbit freely — no offer may fire from exploration.
+   - *direct visitor interaction*: click a used subject, then (separately) drag over it. A click
+     activates what the subject offers; a drag only orbits.
+   - *multiple-offer behavior*: on a subject offering more than one interaction, a click must
+     open an explicit choice naming each offer's activation and target subject, with Cancel;
+     nothing may run before the visitor chooses, and any deliberate navigation must settle an
+     open choice.
+   - *deliberate View choice*: the eligible View controls must re-frame without restarting
+     narration incorrectly — compare caption/transcript state before and after.
+   - *standalone/Guide Presentation open and close*: open another available Presentation — a
+     Guide Stop is parked with exactly one Return that restores it with no duplicate entry;
+     Close on a standalone Presentation returns to exploration, never to authoring.
+   - *one side detour and return*: take one authored detour, then Return; a second detour
+     before returning must be refused with a visible reason rather than replacing the first.
+   - *predicted versus observed cursor/pause*: predict a Stop's readiness/Auto count (Camera
+     movement counted once, invoked station work counted at its own station) and compare it
+     with the visitor panel; pause and resume Auto and confirm the clock continues rather than
+     restarting.
+2. Record the MP3 outcome. Only then start C9.6 revision/repair; it is explicitly not started.
+3. Keep root gates current; carry the missing-fixture blocker explicitly and do not fabricate
+   or restore it without separate authorization.
 
 OPEN:
-- MP2 outcome (human evidence; automated assertions cannot substitute).
-- Push completed for the second repair pass (`9a44678a` plus its docs-only evidence child) on
-  owner instruction; the branch is at the pushed head.
-- All 18 axes (`qa/run-all.sh all` 18/762, 0 failures) are verified at the repaired revision
-  `9a44678a`; no axis is carried from an earlier pass.
+- MP3 outcome (human evidence; automated assertions cannot substitute).
+- Push completed for C9.4/C9.5 (`c118c08b` plus its docs-only evidence child); the branch is at
+  the pushed head and PR #113 stays open and unmerged.
+- All 18 axes are verified at the C9.4/C9.5 executable revision; no axis is carried from an
+  earlier pass.
 
 [s0s9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md
 [c8]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md

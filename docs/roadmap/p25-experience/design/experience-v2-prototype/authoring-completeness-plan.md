@@ -1,14 +1,15 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: C9.1–C9.3 implemented; the five external MP2 review blockers repaired with
-regression coverage, and the review's folded second pass (station invocation contract,
-cue-scope vs Gate scope, remaining-work edge cases, provenance) repaired with its own
-coverage (2026-10-05); stopped for MP2 human review.** The owner authorized
-implementation through MP2; C9.1 is implemented and MP1 was accepted explicitly by the owner
-(2026-10-04). C9.2/C9.3 product work and its verification are complete; the review repair
-record and current counts live in the
+**Status: C9.1–C9.3 implemented and accepted through MP2 (owner-accepted 2026-10-05);
+C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation and agency)
+implemented, self-reviewed and verified; stopped at the MP3 human gate (2026-10-05).**
+The owner authorized implementation through MP2; C9.1 is implemented and MP1 was accepted
+explicitly by the owner (2026-10-04). MP2's three recorded observations are non-blocking and
+assigned outward (shell density → the later UI/UX slice, Guide snap/cut → superseded by C9.4,
+View/Presentation removal → C9.6). C9.2/C9.3 product work and its verification are complete;
+the review repair record, the C9.4/C9.5 behavior record and current counts live in the
 [C9 evidence record](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
-C9.4/C9.5 (Travel and agency) remain not started until MP2 is recorded. Owner-ratified C9 decisions:
+MP3 has not been claimed; C9.6 revision/repair is not started. Owner-ratified C9 decisions:
 Travel preparation/live invocation (§5, N1) and fresh repeated-Stop visits (§3, N2).
 This is the additional, bounded authoring-completeness slice for
 [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), in the existing
