@@ -50,6 +50,8 @@ case "$WHICH" in
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
   conformance) run "V2 conformance · product journeys" conformance-check ;;
+  creator) run "C9.1 · standalone creator and domain preservation" creator-check ;;
+  composition) run "C9.2/C9.3 · composition and compact Guide" composition-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
   visitor) run "Visitor execution" visitor-check ;;
   reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
@@ -68,6 +70,8 @@ case "$WHICH" in
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check
     run "V2 conformance · product journeys" conformance-check
+    run "C9.1 · standalone creator and domain preservation" creator-check
+    run "C9.2/C9.3 · composition and compact Guide" composition-check
     run "Visitor execution" visitor-check
     run "Shared shell and narrow Experience" reconciliation-check
     run "Stage S8 · full continuity between the two lenses" continuity-check
@@ -75,7 +79,7 @@ case "$WHICH" in
     run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
     exit 2
     ;;
 esac

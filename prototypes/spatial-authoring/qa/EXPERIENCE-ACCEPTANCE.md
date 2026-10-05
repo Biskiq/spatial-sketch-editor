@@ -165,6 +165,7 @@ Camera/selection/history/cancellation seams and both-lens regression axes.
 
 ## Repository-wide gate blocker
 
+EVIDENCE-PATHS: start — the deleted P23B fixture this S0–S9 record reports as an external blocker; state at the revision described here
 Broader final verification exposes a pre-existing failure outside #113's scope:
 PR #98 commit `49e1b231e4a79aba4a25bb3a7f0bdc151abfa430` deleted
 `docs/roadmap/p23b-geometry-performance/40-walls.json`, still imported by
@@ -183,3 +184,4 @@ AGENTS.md rule 11. No replacement fixture or production refactor was invented.
 Required prototype acceptance passes, but slice-closeout requires these broader
 gate results to pass before reporting merge readiness. Pushes remain unauthorized;
 #113 remains open and unmerged.
+EVIDENCE-PATHS: end

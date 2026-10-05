@@ -17,12 +17,15 @@ qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Own
 qa/run-all.sh lens         # stage S6: the lens, parked work, and World parking and refusal grammar
 qa/run-all.sh experience   # stage S7: Experience wiring and the visitor's isolated preview
 qa/run-all.sh conformance  # V2 product journeys and visible Camera/Set/coordination geometry
+qa/run-all.sh creator      # C9.1: standalone creator loop, domain preservation and compact reach
+qa/run-all.sh composition  # C9.2/C9.3: composition execution and compact Guide
 qa/run-all.sh visitor      # visitor controls, effects, Gates and isolation
 qa/run-all.sh reconciliation # saved controls and narrow Guide/Card/precision/visitor
 qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
-qa/mutation-check.sh       # protected regressions on disposable copies
+qa/mutation-check.sh       # protected regressions on disposable copies (World, V2, C9.2/C9.3)
+qa/composition-mutation-check.sh # C9.2/C9.3 targeted obligations only (also chained by mutation-check)
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -137,8 +140,10 @@ What the harness knows about keys, measured rather than assumed:
 | `visitor-check.sh` | outside-product example/Presenter, visitor takeover, independent Piano, visible Switch → Light session effect, keyboard Gate parity, captions/cues, exploration/rejoin and frozen source/history |
 | `continuity-check.sh` | both-direction parking, neutral Resume, canceled live framing drag, exact Preview/accepted-inspection return, interleaved history and inert World footer controls |
 | `conformance-check.sh` | actual product journeys QA-1…6, no-View Preview, derived Auto/Capture, repeated Meaning scope, local entry, real observer routes and anchors, stable mirrored stations, shared route scope, spatial precision, neutral Resume/fresh return, Escape/lost capture; permitted authored source loaders only |
+| `creator-check.sh` | C9.1 from a retained non-empty Camera baseline: Reset preserving World/Camera/history, the eight-action subject→explanation→Capture→operate→Use→Preview loop through real controls, update-not-duplicate, Escape cancellation, real-clock Preview and exact return, two labelled loads plus aggregate Undo, and compact 1024 controls |
+| `composition-check.sh` | C9.2/C9.3: organization independent of activation/boundary, Hold and later-entry cue policy, fresh repeated-Stop visits, explicit cue/Gate block and release, opt-in View suggestions, transcript/captions, compact Peek Stop editing with advanced dwell/Gate, and direct Preview Guide |
 | `reconciliation-check.sh` | Head/Index/owner/reach, saved Stop controls/Undo and 1024×768 Guide/Card/precision/visitor reachability without Camera refit |
 | `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
 | `correctness-check.sh` | remaining numerical and nested-lifecycle obligations, no duplicate broad shell suite |
-| `mutation-check.sh` / `conformance-mutation-check.sh` | same-defect replacement proof, World plus seven V2 boundaries in disposable copies, affected successor fails and unaffected control passes |
+| `mutation-check.sh` / `conformance-mutation-check.sh` / `composition-mutation-check.sh` | same-defect replacement proof, World plus seven V2 boundaries and six C9 obligations in disposable copies, affected successor fails and unaffected control passes |
 | `run-all.sh` | the axis driver |

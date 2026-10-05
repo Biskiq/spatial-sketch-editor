@@ -148,6 +148,16 @@ qa_frames() {
   agent-browser eval "(async () => { if (window.__me && window.__me.qa) { await window.__me.qa.render(); } else { await new Promise((r) => setTimeout(r, 60)); } return true; })()" >/dev/null 2>&1
 }
 
+# A control inside a scrollable Card can be on screen yet under the fixed Guide band at non-ordinary
+# Experience depth, so a real pointer click reports the covering band instead. scrollintoview alone can
+# leave it at the viewport edge; centering it in its scroll container keeps the hit test on the control.
+qa_scroll_center() { # qa_scroll_center <selector>
+  local js
+  js="$(python3 -c 'import json, sys
+print("(()=>{const e=document.querySelector(%s);if(!e)return false;e.scrollIntoView({block:%s,inline:%s});return true;})()" % (json.dumps(sys.argv[1]), json.dumps("center"), json.dumps("nearest")))' "$1")"
+  qa_js "$js" >/dev/null
+}
+
 # The page answered at all (its module booted). Under load an eval can come back empty for a
 # while even though the page is healthy, so readiness is gated on this before anything else.
 qa_alive() {

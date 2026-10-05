@@ -5,7 +5,7 @@ QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$QA_DIR/lib.sh"
 qa_open
 qa_faults_clear
-click(){ agent-browser click "$1" >/dev/null;qa_frames; }
+click(){ agent-browser scrollintoview "$1" >/dev/null;agent-browser click "$1" >/dev/null;qa_frames; }
 qa_js '__me.E.loadConformance()' >/dev/null
 click '#lens [data-lens="experience"]'
 qa_ok 'Head names active Experience and Index is only a locator' "$(qa_js '(!document.querySelector("#activeExperience").hidden&&!document.querySelector("#index .experience-presenter"))')" true
@@ -14,17 +14,18 @@ click '[data-act="exp-guide"]'
 id="$(qa_jsv '__me.ctx.experience.guide[3]')"
 click ".stop-card[data-stop='$id'] [data-act=exp-stop]"
 qa_ok 'Stop Card names local and shared reach' "$(qa_js '(document.querySelector("#card").textContent.includes("affect this Stop")&&document.querySelector("#card").textContent.includes("Meaning and Set"))')" true
-click '.stop-details summary'
+click '.stop-details > details > summary'
 agent-browser select '[data-exp-next]' end >/dev/null;qa_frames
 agent-browser select '[data-exp-pacing]' dwell >/dev/null;qa_frames
 agent-browser select '[data-exp-entry]' hold >/dev/null;qa_frames
 click '[data-act="exp-close"]'
 click '[data-act="exp-guide"]'
 click ".stop-card[data-stop='$id'] [data-act=exp-stop]"
-click '.stop-details summary'
+click '.stop-details > details > summary'
 qa_ok 'reopened Stop displays accepted Next, Pacing, Entry' "$(qa_js '(document.querySelector("[data-exp-next]").value==="end"&&document.querySelector("[data-exp-pacing]").value==="dwell"&&document.querySelector("[data-exp-entry]").value==="hold")')" true
 click '#undoBtn'
 qa_ok 'Undo restores entry without changing other fields' "$(qa_js '(document.querySelector("[data-exp-entry]").value==="presentation"&&document.querySelector("[data-exp-next]").value==="end"&&document.querySelector("[data-exp-pacing]").value==="dwell")')" true
+click "#card [data-act=exp-expand-stop][data-id='$id']"
 requested="$(qa_js '__me.nav.plainPose()')"
 agent-browser set viewport 1024 768 >/dev/null;qa_frames
 qa_ok 'narrow Guide keeps Camera intent and a meaningful Stage with unclipped L2' "$(qa_js '__me.nav.plainPose()') / $(qa_js '(document.querySelector("#experienceDeck").getBoundingClientRect().height<innerHeight*.4&&document.querySelector(".stop-card.expanded").scrollHeight===document.querySelector(".stop-card.expanded").clientHeight&&document.documentElement.scrollWidth===innerWidth)')" "$requested / true"
@@ -32,7 +33,7 @@ qa_snap narrow-guide
 click '[data-act="sheet-card"]'
 # The expanded Deck overlays the lower shell; deliberately return to Peek for local Card work.
 click '#experienceDeck [data-act="exp-close"]'
-click '#card .stop-details summary'
+
 qa_ok 'narrow Card sheet exposes the selected Stop and local Entry control' "$(qa_js '(document.querySelector("#card").getBoundingClientRect().right<=innerWidth&&getComputedStyle(document.querySelector("#card")).display!=="none"&&(()=>{const e=document.querySelector("[data-exp-entry]"),r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.height>0&&r.bottom<innerHeight&&(hit===e||e.contains(hit));})())')" true
 qa_snap narrow-card
 click '[data-act="sheet-card"]'

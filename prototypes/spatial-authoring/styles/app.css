@@ -506,7 +506,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .btn { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 5px 10px; font-weight: 600; font-size: var(--tmd); }
 
 /* ---------- the Card ---------- */
-.card { grid-area: card; overflow: auto; border-left: 1px solid var(--rule); padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+.card { grid-area: card; min-height: 0; overflow: auto; border-left: 1px solid var(--rule); padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+/* Card depth scrolls inside its landmark; controls never shrink or spill beneath the status rail. */
+.card > * { flex-shrink: 0; }
 .c-head { display: flex; flex-direction: column; gap: 2px; }
 .c-k { font: 600 var(--txs) var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .c-t { font: 700 var(--t2xl)/1.1 var(--display); letter-spacing: -0.015em; }
@@ -730,7 +732,7 @@ body.shot .experience-presenter, .visitor-preview .experience-presenter, .visito
 @media (max-width: 1280px) { .head { gap: 8px; } .doc-name { font-size: var(--tsm); } .active-experience { max-width: 125px; } }
 @media (max-width: 1060px) {
   .active-experience { max-width: 100px; }
-  .experience-presenter { right: 12px; }
+  .experience-presenter { left: 12px; right: auto; }
   .exp-deck { left: 12px; right: 12px; }
   .seam-bookends { grid-template-columns: 1fr 1.1fr 1fr; gap: 6px; }
   .seam-bookends article { min-width: 0; padding: 6px; }
@@ -766,7 +768,7 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 .exp-deck:not(.ordinary) { position:fixed; bottom:38px; }
 /* While that band is fixed over the bottom of the viewport, the Card keeps its own content scrollable
    clear of it: identity, actions and details stay reachable instead of hiding behind the band. */
-body.guide-band .card { padding-bottom: 216px; }
+body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px); }
 .exp-deck.ordinary { display:flex; align-items:center; justify-content:space-between; gap:12px; height:34px; padding:3px 10px; font-size:var(--txs); }
 .peek-occurrences { display:flex; gap:12px; }
 .peek-stop { background:none; border:0; font:500 var(--txs) var(--ui); color:var(--ink-2); cursor:pointer; }

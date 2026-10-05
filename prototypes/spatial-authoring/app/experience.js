@@ -8,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -58,7 +58,11 @@ export function handleExperienceAction(el) {
   if (action === 'exp-open') openPresentation(el.dataset.id);
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
   if (action === 'exp-guide') guideOverview();
-  if (action === 'exp-stop') expandStop(el.dataset.id);
+  if (action === 'exp-stop') selectStop(el.dataset.id);
+  if (action === 'exp-expand-stop') expandStop(el.dataset.id);
+  if (action === 'exp-preview-guide') previewGuide();
+  if (action === 'exp-view-order') suggestViews(el.dataset.id,el.dataset.clear==='true');
+  if (action === 'exp-view-order-move') moveSuggestedView(el.dataset.id,Number(el.dataset.delta));
   if (action === 'exp-close') closeExperienceWork();
   if (action === 'exp-move-stop') moveOccurrence(el.dataset.id,Number(el.dataset.delta));
   if (action === 'exp-seam') openSeam(el.dataset.from,el.dataset.to);
@@ -94,6 +98,8 @@ export function handleExperienceAction(el) {
   if (action === 'exp-capture-new') captureAnother();
   if (action === 'exp-capture-cancel') cancelCaptureAsk();
   if (action === 'exp-marker') addMarker(el.dataset.id);
+  if (action === 'exp-marker-remove') removeMarker(el.dataset.id,el.dataset.marker);
+  if (action === 'exp-passage') addMarker(el.dataset.id,el.dataset.label,Number(el.dataset.time));
   if (action === 'exp-visitor') visitorCommand(el.dataset.command,el.dataset.id);
   if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
   if (action === 'exp-remove-contribution') command('Remove contribution',e=>delete e.uses[el.dataset.id]);
@@ -137,8 +143,8 @@ export function bringIntoView(){const c=cameraSnapshot(),e=ctx.experience,x=S.ex
  return nav.framePoints(points,{plan:nav.plainPose().el>1.4||!!x.seam});
 }
 export const changeRole=(id,role)=>updateUse(id,'role',role);
-export function preview(pid=S.experienceContext.presentation) {
- if(S.visitor || !ctx.experience.presentations[pid]) return false;
+export function preview(pid=S.experienceContext.presentation,guide=false) {
+ if(S.visitor || (!guide&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length)) return false;
  cancelProposal('preview');
  const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
  // Suspend authoring without writing source or passing through lens parking. Auditions are cleared
@@ -146,7 +152,8 @@ export function preview(pid=S.experienceContext.presentation) {
  T.park();
  nav.releaseHold();
  S.expAudition=null;
- S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),pid,nav.plainPose(),ctx.sceneSource)};
+ S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide?null:pid,nav.plainPose(),ctx.sceneSource)};
+ if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
 export async function exitPreview() {
@@ -174,6 +181,16 @@ export function regionPoint(p) {
  ctx.ui();return true;
 }
 
+export function previewGuide(){return preview(null,true);}
+export function selectStop(id){
+ const stop=ctx.experience.stops[id];if(!stop)return false;
+ cancelProposal('selection');A.select(id);
+ // Peek is awareness, not disclosure. Selecting at Overview keeps Overview; L2 is a separate verb.
+ if(S.experienceContext.depth==='occurrence'){S.experienceContext.depth='overview';T.begin({kind:'experience-overview',subject:id,params:{}});}
+ S.experienceContext={...S.experienceContext,stop:null,presentation:stop.presentationId,seam:null};ctx.ui();return true;
+}
+export function suggestViews(pid,clear=false){return command(clear?'Free View choice':'Suggest a View order',e=>{const p=e.presentations[pid];if(!p)throw Error('Presentation removed');if(clear)delete p.viewOrder;else p.viewOrder=eligibleViews(e,pid);});}
+export function moveSuggestedView(uid,delta){return command('Reorder suggested Views',e=>{const p=e.presentations[e.uses[uid]?.presentationId],ids=p?.viewOrder;if(!ids)return;const at=ids.indexOf(uid),to=at+delta;if(at>=0&&to>=0&&to<ids.length)[ids[at],ids[to]]=[ids[to],ids[at]];});}
 export function addToGuide(pid=S.experienceContext.presentation) {return command('Add Presentation to Guide',e=>addStop(e,pid));}
 export function guideOverview() {cancelProposal('invoke');S.experienceContext.depth='overview';S.experienceContext.stop=null;T.begin({kind:'experience-overview',subject:S.sel,params:{}});ctx.ui();}
 export function expandStop(id) {
@@ -310,9 +327,15 @@ export function addNarration(pid=S.experienceContext.presentation) {
  return command('Add narration',e=>addContribution(e,pid,{kind:'narration',name:'Narration',text:e.presentations[pid]?.meaning||'An explanation of this place.',markers:[]},'narration'));
 }
 export const editDefinition=(uid,key,value)=>sourceProposal('Edit shared contribution','definition',uid,key,value);
-export function addMarker(uid,label='Named phrase') {
- const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;return sourceProposal('Add shared narration phrase','definition',uid,'markers',[...d.markers,{label,fraction:.5}]);
-}export function beginOffer(kind='behavior', subjectId=null) {
+export function addMarker(uid,label='Named phrase',time=null) {
+ const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;
+ return sourceProposal('Add shared narration phrase','definition',uid,'markers',[...d.markers,{label,time:time??narrationDuration(d)/2}]);
+}
+export function removeMarker(uid,id){const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;return sourceProposal('Remove narration phrase','definition',uid,'markers',d.markers.filter(m=>m.id!==id));}
+export function updateMarker(uid,id,key,value){const d=ctx.experience.definitions[ctx.experience.uses[uid]?.definitionId];if(d?.kind!=='narration')return false;if(key==='time'&&(!Number.isFinite(value)||value<0))return false;return sourceProposal('Edit narration phrase','definition',uid,'markers',d.markers.map(m=>m.id===id?{...m,[key]:value}:m));}
+export function updateActivity(uid,key,value){return command('Edit Activity '+key,e=>{const u=e.uses[uid];if(!u||u.viewId)throw Error('Activity removed');u[key]=structuredClone(value);});}
+export function updateStop(id,key,value){return command('Edit this Stop '+key,e=>{const s=e.stops[id];if(!s)throw Error('Stop removed');s[key]=structuredClone(value);});}
+export function updateViewSpeed(uid,speed){if(!['cut','slow','auto','fast'].includes(speed))return false;return command('Set Camera View movement',(e,c)=>{const v=c.views[e.uses[uid]?.viewId||uid];if(!v)throw Error('View removed');v.speed=speed;});}export function beginOffer(kind='behavior', subjectId=null) {
   const p=ctx.experience.presentations[S.experienceContext.presentation];
   const subject=subjectId&&ctx.sceneSource.subjects[subjectId]?subjectId:p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
   S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true};ctx.ui();
@@ -385,6 +408,8 @@ export function visitorCommand(action,id=null){
  if(action==='explore')v.runtime=R.exploreRuntime(r,nav.plainPose());
  if(action==='rejoin')v.runtime=R.resumeGuide(e,c,r,nav.plainPose());
  if(action==='look')v.runtime=R.lookRuntime(e,c,r,id,nav.plainPose());
+ if(action==='next-view'||action==='previous-view')v.runtime=R.viewStepRuntime(e,c,r,action==='next-view'?1:-1);
+ if(action==='captions')v.runtime.captions=!r.captions;
  if(action==='detour')v.runtime=R.chooseRuntime(e,c,r,id,true,scene);
  if(action==='return')v.runtime=R.returnDetour(e,c,r,scene);
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;
@@ -458,11 +483,11 @@ function buildExampleFixture(e,c){
  e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
  const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:1.8},'Inside','choice'),output=addView(e,c,pid,{...base,az:.9},'Output','choice');
- const n=addContribution(e,pid,{kind:'narration',name:'Explanation',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',fraction:1/3},{id:'output',label:'Follow output',fraction:2/3}]},'narration');
+ const n=addContribution(e,pid,{kind:'narration',name:'Explanation',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',time:6},{id:'output',label:'Follow output',time:12}]},'narration');
  e.uses[n].primary=true;
  e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
- const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};
- const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete'};e.uses[run].end={kind:'experience'};
+ const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};e.uses[open].retention={kind:'experience'};
+ const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete',scope:'visit',presentationId:pid};e.uses[run].end={kind:'experience'};
  const piano=addContribution(e,null,{kind:'control',name:'Play Piano',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');e.uses[piano].availability=null;
  const light=addContribution(e,null,{kind:'control',name:'Light from Switch',subjectId:'light',capabilityId:'intensity',value:3},'interaction','switch');e.uses[light].availability=null;
  const compare=addPresentation(e,{kind:'subjects',ids:['machine','mesh']},'Compare materials');reuseView(e,c,compare,e.uses[entry].viewId);setRole(e,e.presentations[compare].uses[0],'entry');

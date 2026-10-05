@@ -5,11 +5,12 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: revised #113 C9 capability-first plan ready for implementation →
+NEXT: #113 C9.2/C9.3 implemented and verified; stopped for MP2 human review →
        ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
-       Travel and fresh repeated-Stop visits owner-ratified (2026-10-04).
-       C9.1 → mandatory low-floor MP1 → C9.2/C9.3 → MP2 before Travel/agency.
-       Await implementation instruction; this revision is docs only, C9 unstarted.
+       C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04).
+       Creator-loop regression hardening retains World/Camera/history and exact Preview return.
+       Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md.
+       Travel and fresh repeated-Stop visits owner-ratified; C9.4/C9.5 wait for MP2.
 PRODUCTION ROUTE: (resumes after the prototype detour closes, below) remains F interface
        amendments, then re-derived T1 Spatial/P26, T2 Composition/P24, T3 Experience/P25 and
        T4 Release. P26 implementation and the architecture validation window remain gated.
@@ -26,8 +27,8 @@ PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md.
        The missing P23B fixture remains the external repository-gate blocker;
        restoration needs separate scope authorization. Earlier owner authorization
-       covered C8 completion, coherent commits and push. Current C9 request is
-       planning-only: no implementation, commit/push, merge, closure or Paper work.
+       covered C8 completion, coherent commits and push. Current C9 instruction authorizes
+       implementation through MP2, with MP1 accepted; no commit/push, merge, closure or Paper work.
        This work satisfies no F/T1 gate.
        C9 acceptance prioritizes capability semantics and blocking structural seams;
        detailed visual refinement belongs to the following dedicated UI/UX slice,

@@ -1479,7 +1479,15 @@ export function cancelEdit() {
 }
 
 export function restoreQuiet(m, domains) {
-  if (domains) { ctx.experience = clone(domains.experience); ctx.cameraSource = clone(domains.cameraSource); ctx.sceneSource = clone(domains.sceneSource); }
+  if (domains) {
+    ctx.experience = clone(domains.experience); ctx.cameraSource = clone(domains.cameraSource); ctx.sceneSource = clone(domains.sceneSource);
+    // Source history never restores session context. A load's working Presentation can disappear on
+    // Undo; drop that invalid context before rendering subject-local capture controls against it.
+    if (S.experienceContext?.presentation && !ctx.experience.presentations[S.experienceContext.presentation]) {
+      S.experienceContext = { presentation:null, depth:'ordinary', stop:null, seam:null };
+      S.derivedView = null; T.end();
+    }
+  }
   ctx.museum = m;
   st().setMuseum(m);
   buildCapabilitySubjects();

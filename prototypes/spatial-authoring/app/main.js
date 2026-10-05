@@ -1297,9 +1297,17 @@ window.addEventListener('pointerup',()=>{S.visitorDrag=null;});
 
 document.addEventListener('change',event=>{const d=event.target.dataset,value=event.target.value;
  if(d.expInterruption)E.command('Set interruption',e=>e.uses[d.expInterruption].interruption=value||null);
- if(d.expAfter)E.command('Set start signal',e=>e.uses[d.expAfter].start=value?{kind:'after',...JSON.parse(value)}:{kind:'visit'});
+ if(d.expAfter){const u=ctx.experience.uses[d.expAfter];E.updateActivity(u.id,'start',value?{...u.start,kind:'after',...JSON.parse(value)}:{kind:'visit',presentationId:u.start.presentationId||u.presentationId});}
+ if(d.expHome)E.updateActivity(d.expHome,'presentationId',value||null);
+ if(d.expStart){const u=ctx.experience.uses[d.expStart];E.updateActivity(u.id,'start',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:value==='after'?{kind:value,scope:'visit',presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation,useId:'',signal:'complete'}:{kind:value});}
+ if(d.expStartPresentation){const u=ctx.experience.uses[d.expStartPresentation];E.updateActivity(u.id,'start',{...u.start,presentationId:value||null,...(u.start.kind==='after'?{scope:value?'visit':'experience'}:{})});}
+ if(d.expBoundary){const u=ctx.experience.uses[d.expBoundary];E.updateActivity(u.id,'end',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
+ if(d.expBoundaryPresentation){const u=ctx.experience.uses[d.expBoundaryPresentation];E.updateActivity(u.id,'end',{...u.end,presentationId:value});}
+ if(d.expRetention){const u=ctx.experience.uses[d.expRetention];E.updateActivity(u.id,'retention',value==='default'?null:value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
+ if(d.expViewSpeed)E.updateViewSpeed(d.expViewSpeed,value);
  if(d.expGate)E.command('Set connection Gate',e=>e.stops[d.expGate].gate=value?JSON.parse(value):null);
- if(d.expPacing)E.command('Set Stop pacing',e=>e.stops[d.expPacing].pacing=value==='dwell'?{kind:'dwell',seconds:5}:{kind:'auto'});
+ if(d.expPacing)E.updateStop(d.expPacing,'pacing',value==='dwell'?{kind:'dwell',seconds:5}:value==='signal'?{kind:'signal',ref:{useId:'',signal:'complete'}}:{kind:'auto'});
+ if(d.expPacingSignal)E.updateStop(d.expPacingSignal,'pacing',{kind:'signal',ref:value?JSON.parse(value):{useId:'',signal:'complete'}});
  if(d.expNext)E.command('Set Next',e=>e.stops[d.expNext].next=value==='order'||value==='end'?{kind:value}:{kind:'target',id:value});
  if(d.expEntry)E.command('Set explicit Stop entry',e=>e.stops[d.expEntry].entry=value==='presentation'||value==='hold'?{kind:value}:{kind:'use',useId:value});
  if(d.expDetour&&value)E.command('Add detour choice',e=>e.stops[d.expDetour].choices.push({id:'choice-'+(++e.serial),targetId:value,label:'Explore '+e.stops[value].name,kind:'detour'}));
@@ -1309,7 +1317,7 @@ document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!
 
 // A field is identified by the presence of its data attribute, never by a truthy value: the primary
 // explanation is a valueless attribute, and an empty string must still be a real, committable field.
-const experienceField = el => el?.dataset && ['expField','expDef','expPrecision','expScene','expHold','expPrimary'].some(k=>k in el.dataset);
+const experienceField = el => el?.dataset && ['expField','expDef','expPrecision','expScene','expHold','expPrimary','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
 let experienceDraft=null,fieldEpoch=0;
 document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
 onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
@@ -1322,7 +1330,9 @@ document.addEventListener('keydown',event=>{
  experienceDraft=null;
  if('expField' in el.dataset)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
  if('expPrimary' in el.dataset)E.explainPresentation(el.dataset.id,el.value);
- if('expDef' in el.dataset)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
+ if('expDef' in el.dataset){const value=el.dataset.expDef==='duration'?(el.value===''?null:Number(el.value)):el.value;if(el.dataset.expDef!=='duration'||value===null||(Number.isFinite(value)&&value>0))E.editDefinition(el.dataset.id,el.dataset.expDef,value);}
+ if('expMarkerField' in el.dataset)E.updateMarker(el.dataset.id,el.dataset.marker,el.dataset.expMarkerField,el.dataset.expMarkerField==='time'?Number(el.value):el.value);
+ if('expStopNumber' in el.dataset&&Number.isFinite(Number(el.value))&&Number(el.value)>0)E.updateStop(el.dataset.id,'pacing',{kind:'dwell',seconds:Number(el.value)});
  if('expPrecision' in el.dataset)E.proposeFraming(el.dataset.expPrecision,el.value);
  if('expHold' in el.dataset)E.updateHold(el.dataset.expHold,Number(el.value));
  if('expScene' in el.dataset)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
