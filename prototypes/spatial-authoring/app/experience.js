@@ -83,7 +83,9 @@ export function handleExperienceAction(el) {
   if(action==='exp-route-choice'){if(S.task){S.task.params.connection=el.dataset.id;S.task.params.station='departure';}coordinate();}
   if (action === 'exp-coordinate') coordinate();
   if (action === 'exp-mark-station') command('Name Camera station',(e,c)=>{const r=c.connections[S.task.params.connection];r.markers.push({id:fresh(c,'marker'),name:'Mid-route station',progress:.5});});
-  if (action === 'exp-invoke-beat') {const s=S.experienceContext.seam;command('Coordinate capability at station',(e,c)=>addInvocationBeat(e,c,s.from,s.to,S.task.params.connection,S.task.params.station,S.task.params.invokeUse));}
+  // Binding a station moves that Activity's trigger onto the chosen Camera station, so a refused target
+  // is an ordinary refusal the author can read — never a page fault and never a silent second trigger.
+  if (action === 'exp-invoke-beat') {const s=S.experienceContext.seam;try{command('Invoke Activity at Camera station',(e,c)=>addInvocationBeat(e,c,s.from,s.to,S.task.params.connection,S.task.params.station,S.task.params.invokeUse,ctx.sceneSource));}catch(error){A.setStatus(error.message,'refuse');ctx.ui();}}
   if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
   if (action === 'exp-route-scope') acceptRoutePace();
   if (action === 'exp-narration') addNarration();

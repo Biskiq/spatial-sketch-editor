@@ -2,9 +2,12 @@
 
 TYPE: prototype acceptance evidence (in progress; MP2 pending)
 STATUS: C9.1–C9.3 implemented; the five external MP2 review blockers repaired with regression
-coverage (2026-10-05); stopped for **MP2 human review**. C9.4/C9.5 (Travel and agency) are not
-started. No commit, push, merge, phase closure or Paper work was requested or performed by this
-increment.
+coverage, then the review's folded second-pass findings (station activation contract, cue-scope
+consistency, remaining-work edge cases, stale provenance) repaired with their own coverage
+(2026-10-05); stopped for **MP2 human review**. C9.4/C9.5 (Travel and agency) are not started.
+No merge, phase closure or Paper work was requested or performed. Commit/push provenance is
+recorded exactly under *Executable revision*; nothing here claims an uncommitted increment that
+Git already holds as commits.
 SCOPE: [C9 authoring-completeness plan][plan] C9.1–C9.3 only. This record supersedes
 nothing in the [C1–C8 conformance record][c8]: that remains the acceptance authority for
 C1–C8 behavioral/visual conformance.
@@ -12,12 +15,24 @@ C1–C8 behavioral/visual conformance.
 ## Executable revision
 
 - Branch `prototype-v2`; base commit `abaa7592730f565a8d47fd8480d69f0907dfe6c7` ("C9.1
-  review pass"). The C9.1 slice was committed by the owner's review pass; C9.2/C9.3 (and the
-  C9.1 regression hardening it needed) is the uncommitted working-tree diff on top.
+  review pass"). The C9.1 slice was committed by the owner's review pass.
+- Commit provenance, corrected against live Git after the second review pass: C9.2/C9.3
+  (with the C9.1 regression hardening it needed) is committed as `12652d9b`, and the first
+  external-review repair pass is committed as `db83a9d7`; both are ancestors of
+  `origin/prototype-v2`, so both are pushed. The earlier text in this record and in the
+  checkpoint that described C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push
+  performed" was stale and is superseded here. This second repair pass is committed on top of
+  `db83a9d7` as its own commit; it was not pushed in this increment, because push was not
+  requested.
 - One executable serves every axis and journey: `index.html` + `app/` in this directory.
   Inspect live Git for exact bytes; the changed paths are:
 
-  - app: `actions.js`, `experience-capabilities.js`, `experience-model.js`,
+  - the second repair pass touches `app/experience-model.js`, `app/experience-runtime.js`,
+    `app/experience-ui.js`, `app/experience.js`, `app/main.js`,
+    `tests/experience-runtime.test.mjs`, `tests/experience-mp2-review.test.mjs`,
+    `qa/composition-mutation-check.sh`, `qa/conformance-check.sh`, this record, the C9 plan
+    header and the status docs below.
+  - first-pass app: `actions.js`, `experience-capabilities.js`, `experience-model.js`,
     `experience-runtime.js`, `experience-scene.js`, `experience-ui.js`, `experience.js`,
     `main.js`
   - styles: `styles/app.css`
@@ -31,6 +46,7 @@ C1–C8 behavioral/visual conformance.
   - docs: `docs/operations/current.md`, `docs/operations/checkpoints/pr113-experience-v2.md`,
     `docs/roadmap/p25-experience/README.md`,
     `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md`
+    (first pass; the second pass updates the last three plus this record)
 
 ## Product work covered
 
@@ -101,11 +117,86 @@ Regression coverage: `tests/experience-mp2-review.test.mjs` (10 cases), four new
 explanation binding, Experience output, completed work, live move, Auto clock, dependency
 scope), and the existing hold-cue mutation now targets the review-era emit gate.
 
+## Second external MP2 review — folded verdict and repairs (2026-10-05)
+
+The same reviewer re-read the committed revision and folded its verdict: **C9.1 accepted**;
+**C9.2 needs repairs** for station activation, cue-scope consistency and remaining-work edge
+cases; **C9.3**'s Guide/Stop workflow looks acceptable once those shared runtime semantics
+are green, and the combined C9.2/C9.3 verdict cannot be accepted while they are red. Each
+finding is repaired at its owning authority, and each repair is protected by a named
+assertion with a same-defect mutation obligation.
+
+- **Station invocation contract (P1).** `addInvocationBeat` was adding `{kind:'invoke',
+  useId}` to the Seam and nothing else, so an Activity armed by Presentation/Experience entry
+  also ran again at the station, and the picker offered every non-View use. Binding a station
+  is now the Activity's **trigger**: the use is re-bound to `{kind:'station', seam,
+  connectionId, stationId, presentationId: destination}`, which replaces entry/Experience/
+  dependency activation, scopes its output to the destination visit, and makes `armScope`
+  (already station-aware) the only arming path. One Activity is invoked by one station — a
+  second binding is refused with an explicit refusal instead of layering a second trigger — and
+  the invocation is idempotent for the same station. Only automatic work this Scene can
+  actually produce is invokable: `invokableRefusal` is the single authority the model refuses
+  with and the coordination picker offers from, so a visitor offer, a Camera View, an
+  unsupported capability and a definition-less use are never presented as traversal work, and
+  UI and contract cannot disagree. The destination plan counts invoked work once, at its own
+  station time inside the incoming movement; the Activity Card reads the binding
+  (`invoked at <station> · Seam i → j`) and the Stop Card's coordination detail says
+  `trigger moves here`. A station trigger whose Seam no longer resolves or is no longer
+  adjacent is a repairable `Station invocation needs repair` issue, never a silent dead end.
+  Coverage: two new review cases (trigger replacement with entry amortization and idempotence;
+  automatic-work-only with the refusal surface), the `double-invoke` mutation now
+  reintroducing the *entry-plus-station* defect by dropping the re-bind, a new
+  `invoke-repeat` obligation for once-per-transition, a new `offer-invoke` obligation, and
+  four real-UI assertions in `conformance-check.sh` (offer authored as an offer, picker
+  exclusion, binding read after the real click, Card reading).
+- **Cue scope versus Gate/pacing scope (P1).** One predicate was answering two questions.
+  `signalCanDriveVisitCondition` is the strict question — Gate, pacing and visit-local
+  dependencies must be released inside the Stop's own visit, so Experience-start completion
+  can never unlock a later Stop. `signalCanCuePresentation` is the live-output question —
+  `emit` deliberately lets Experience-scoped narration cue the View of the current
+  Presentation, so that cue is legitimate work, not an impossible scope. `contributionIssues`
+  now uses the cue predicate for View cues and the strict predicate for dependencies and Stop
+  conditions, which is what makes runtime, repair system and readiness planner agree (J4):
+  the previously rejected cue is no longer reported, no longer dropped from Camera requests,
+  and still fires in the runtime. Coverage: the new `P3 a View cue driven by
+  Experience-wide output…` case (predicate, plan request at the authored phrase time, runtime
+  cue, plus the Gate counter-proof on the same reference), and a `cue-scope` mutation that
+  collapses the cue predicate back onto the strict one while the Gate counter-proof stays
+  green.
+- **Remaining-work edge cases (P1/P2).** `carriedElapsed` subtracted elapsed time
+  independently at every recursive node. The plan now models remaining runtime completion
+  once: `windowOf` places each contribution as the window it actually occupies relative to
+  the visit entry (`start`, `duration`), chaining dependents from the parent's **signal**
+  position and letting a dependent that has already begun keep its own position, so no path
+  pays the same spent time twice. A carried run read as stopped or unavailable returns `null`
+  and is excluded with its disarmed dependents — stopped work never resumes, so a later Stop
+  never waits for its remainder — while absence of a reading still means freshly armed. Cue
+  moments now come from the same model (`signalAt`), and a cue whose authored moment already
+  passed before entry still cannot fire or delay arrival. Coverage: a stopped-run case
+  (readiness drops to breathing, the dependent is stopped with it, Auto advances), a carried
+  dependency case that double-subtracts under the old math (readiness 12 s, not 10 s), and
+  `stopped-remainder`/`carried-dependency` mutations that reintroduce each defect while the
+  unaffected completed-work control stays green.
+- **Operational provenance (P2).** The evidence record, checkpoint and `current.md` still
+  described C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push performed".
+  Git says otherwise (`12652d9b`, then `db83a9d7`, both on `origin/prototype-v2`), so the
+  provenance is corrected in all three records; this second repair pass is its own commit and
+  was not pushed, because push was not requested.
+
 ## Verification results
 
 ### Pure Node model/runtime/Camera suite
 
-`node --test tests/*.test.mjs` — **70/70 pass** (`ℹ pass 70`, 0 fail). The C9 additions are
+`node --test tests/*.test.mjs` — **75/75 pass** (`ℹ pass 75`, 0 fail) after the second repair
+pass; the first pass's run was 70/70. The second-pass additions are four review cases: station
+invocation replacing the Activity trigger (entry amortization, idempotence, second-station
+refusal, invoked work counted once inside the destination visit); automatic-work-only
+targeting with the shared refusal surface; a View cue driven by Experience-wide output being
+legitimate work (predicate, plan request, runtime cue, Gate counter-proof); a stopped carried
+run with its disarmed dependents owing no wait; and a carried dependency counted once rather
+than twice (the same suite also keeps the rewritten multi-origin case, whose invocation target
+is now automatic work instead of an offer).
+The C9 additions are
 in `tests/experience-composition.test.mjs` (14 cases): organization independent of
 activation/boundary, completion/retention boundaries, fresh repeated visits, marker seconds,
 hold cue suppression, later-entry cutoff, manual redirect without restart, Auto estimates
@@ -122,20 +213,31 @@ still green.
 
 ### Full prototype axis driver
 
-`qa/run-all.sh all` — **18 axes, 758 assertions, 0 failures, rc=0** (log
-`/tmp/mp2-run-all-final.log`). Per axis: journeys A–F 59, real interaction 56, pointer flows 44,
-lifecycle/policy 41, World shell 47, spatial/Precision 38, Browse/Search 60, repair 47,
-lens/parking/Resume 81, Experience wiring 30, V2 conformance 97, C9.1 creator 23,
+`qa/run-all.sh all` — **18 axes, 758 assertions, 0 failures, rc=0** for the first repair pass
+(log `/tmp/mp2-run-all-final.log`). Per axis: journeys A–F 59, real interaction 56, pointer
+flows 44, lifecycle/policy 41, World shell 47, spatial/Precision 38, Browse/Search 60, repair
+47, lens/parking/Resume 81, Experience wiring 30, V2 conformance 97, C9.1 creator 23,
 C9.2/C9.3 composition 27 (four external-review assertions added), visitor 14, shared/narrow
-reconciliation 13, continuity 55, responsive 15, correctness 11. Every axis closes its own
-browser; no session was left running.
+reconciliation 13, continuity 55, responsive 15, correctness 11.
+After the second repair pass the two axes whose surfaces and semantics changed were rerun at the
+frozen revision (after the final station-binding UI repair), and the other sixteen are carried
+as the first pass's result rather than re-verified:
+`qa/run-all.sh conformance` — **101 assertions, 0 failures, rc=0**
+(`/tmp/c9-conformance-final.log`; four second-pass assertions: the offer authored through the
+real subject control, the station picker excluding it, the binding read after the real invoke
+click, and the Stop Card declaring `trigger moves here`), and `qa/run-all.sh composition` —
+**27 assertions, 0 failures, rc=0** (`/tmp/c9-composition-final.log`, unchanged surface).
+Every axis closes its own browser; no session was left running.
 
 ### Mutation obligations (same-defect successor proof on disposable copies)
 
-`qa/mutation-check.sh` — **23/23 rejections, rc=0** (full chain log
-`/tmp/mp2-mutations-full.log`; composition-only rerun `/tmp/mp2-mutations-final.log`). Each
-kind reintroduces the named defect in a disposable copy; the protected assertion must fail
-while named unrelated controls stay green, never a crash or empty observation.
+`qa/mutation-check.sh` — **23/23 rejections, rc=0** for the first repair pass (full chain log
+`/tmp/mp2-mutations-full.log`; composition-only rerun `/tmp/mp2-mutations-final.log`) and
+**28/28** after the second (full chain `/tmp/c9-mutations-final.log` rc=0 at the frozen
+revision — World 3, V2 7, C9 18 — with the composition-only rerun 18/18
+`/tmp/comp-mut.log`). Each kind reintroduces the named defect in a disposable copy; the
+protected assertion must fail while named unrelated controls stay green, never a crash or
+empty observation.
 
 - Existing World: host, camera, selection (3).
 - Existing V2: evaluator, parked, shared, endpoints, pins, stations, preview (7).
@@ -148,6 +250,13 @@ while named unrelated controls stay green, never a crash or empty observation.
   a live Camera move**, **Auto restarting the remaining-work clock**, and **impossible
   dependency scope accepted** (7). The runner is `qa/composition-mutation-check.sh`, chained
   by `qa/mutation-check.sh`.
+- Second-review obligations (2026-10-05, folded verdict): **entry-plus-station double
+  activation** (the `double-invoke` kind now drops the station re-bind instead of the per-tick
+  guard, so the obligation matches the contract it protects), **invocation repeating on every
+  tick**, **a visitor offer bound as automatic traversal work**, **a stopped carried run's
+  remainder waited for**, **a carried dependency paying its elapsed time twice**, and **the cue
+  predicate collapsed back onto the strict Gate scope predicate** (5 new kinds, 18 C9
+  obligations in total: 15 model/runtime + 3 wiring).
 
 ### Defects found and repaired during this increment
 
@@ -171,20 +280,22 @@ while named unrelated controls stay green, never a crash or empty observation.
 ### Root repository gates
 
 Run after the prototype work, per the repository test doctrine (task scope never narrows
-required verification). At base `abaa7592` plus the uncommitted C9.2/C9.3 + review-repair diff:
+required verification), at the committed revision `db83a9d7` plus the second-pass repair diff.
+These gates never import the prototype's Experience runtime (root workspaces are `apps/*` and
+`packages/*` only; the prototype is not a workspace), so they were rerun at the second-pass
+revision and are byte-for-byte unchanged by it:
 
-- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/mp2-arch.log`; rerun after
-  the review repairs and their doc updates). The docs reconciliation removed the one
-  pre-existing finding (the old checkpoint revision quoting the deleted fixture) and the
-  historical S0–S9 record now declares that path under the documented `EVIDENCE-PATHS`
-  convention.
+- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c9-arch-final.log`; rerun at
+  the frozen second-pass revision). The docs reconciliation removed the one pre-existing
+  finding (the old checkpoint revision quoting the deleted fixture) and the historical S0–S9
+  record now declares that path under the documented `EVIDENCE-PATHS` convention.
 - `npm test` — **33 files failed / 339 passed / 1 skipped; 4951 tests passed, 1 failed,
-  1 skipped**, rc=1 (`/tmp/mp2-root-test.log`; identical to the pre-review run). The only
+  1 skipped**, rc=1 (`/tmp/c9-root-test-final.log`; identical to the pre-review run). The only
   collected failure is the missing-fixture import; the other 32 failing files fail
   dependent-suite collection for the same reason.
-- `npm run check` — 1 missing-module error, 0 warnings (`/tmp/mp2-check.log`).
-- `npm run build` — unresolved import of the same fixture (`/tmp/mp2-build.log`).
-- `git diff --check` (whitespace) — rc=0 (`/tmp/mp2-whitespace.log`).
+- `npm run check` — 1 missing-module error, 0 warnings (`/tmp/c9-check-final.log`).
+- `npm run build` — unresolved import of the same fixture (`/tmp/c9-build-final.log`).
+- `git diff --check` (whitespace) — rc=0.
 
 The missing P23B fixture is the external blocker for the three red gates above and is
 reported separately; it was not restored, hidden or fabricated.
@@ -206,7 +317,19 @@ blocker; identity as recorded at base `abaa7592`
 EVIDENCE-PATHS: end
 - MP2 is human evidence and is not claimed here; no visual refinement campaign was started
   (that belongs to the dedicated UI/UX slice).
-- No commit, push, merge, phase closure or Paper work is claimed or performed.
+- The second repair pass reran the pure suite plus the composition, conformance and mutation
+  axes, and reran the root repository gates above at its frozen revision (arch 276/276 rc=0;
+  test/check/build red only on the missing P23B fixture, unchanged). The remaining sixteen
+  prototype axes were not rerun and are carried as the first repair pass's result for
+  `db83a9d7` plus the first repair diff. The second pass changes prototype-authored source and
+  the three status docs only, and the root gates do not import this prototype, so their
+  red/green set is unchanged by it.
+- A station-bound Activity's route and named station are validated where they are read
+  (Camera travel and the coordination strip): Experience holds stable identity, never a copy
+  of route geometry, so a deleted anchor or station still refuses locally at travel time.
+- No merge, phase closure or Paper work is claimed or performed. C9.2/C9.3 (`12652d9b`) and
+  the first repair pass (`db83a9d7`) were pushed; this second repair pass is committed and not
+  pushed, because push was not requested.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md

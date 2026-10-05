@@ -126,6 +126,13 @@ count="$(undo)"; views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length
 click '#card [data-act="exp-capture-new"]'
 conformance_ok 'Capture another creates a third Activity and leaves both existing values untouched' "$(qa_js '(()=>{const e=__me.ctx.experience,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.capabilityId==="casing");return us.length===3&&us.filter(u=>e.definitions[u.definitionId].value===1).length===2&&__me.S.expCaptureAsk===null;})()')" true
 conformance_ok 'Capture another writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / $views"
+# A visitor offer is authored through the real subject control and stays an offer: subject-activated
+# availability work, never an automatic Activity a traversal could start.
+click '#index [data-act="pres-ref"][data-id="piano"]'
+click '#card [data-act="exp-offer"][data-kind="interaction"]'
+click '#card [data-act="exp-offer-accept"]'
+offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction")?.id')"
+conformance_ok 'a visitor offer is authored as an offer, never as automatic work' "$(qa_js "(()=>{const u=__me.ctx.experience.uses['$offer'];return !!u&&u.kind==='interaction'&&u.triggerSubjectId==='piano'&&u.start.kind==='visit'&&!u.viewId;})()")" true
 click '#index [data-act="exp-open"][data-id="presentation-1"]'
 click '#experienceDeck [data-act="exp-guide"]'
 click '[data-act="plan"]'
@@ -223,6 +230,10 @@ click '[data-act="exp-beat"]'
 contribution="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.definitionId)?.id')"
 agent-browser select '[data-exp-invoke-use]' "$contribution" >/dev/null;qa_frames
 click '[data-act="exp-invoke-beat"]'
+picker="$(qa_js "(()=>{const e=__me.ctx.experience,opts=[...document.querySelectorAll('[data-exp-invoke-use] option')].map(o=>o.value).filter(Boolean);return opts.includes('$contribution')&&!opts.includes('$offer')&&opts.every(id=>e.uses[id]&&!e.uses[id].viewId&&e.uses[id].kind!=='interaction');})()")"
+conformance_ok 'the station picker offers automatic work only: the visitor offer is never traversal work' "$picker" true
+binding="$(qa_js "(()=>{const e=__me.ctx.experience,x=__me.S.experienceContext,u=e.uses['$contribution'],seam=e.seams[x.seam.from+'>'+x.seam.to];return u.start.kind==='station'&&u.start.stationId==='$anchor'&&u.start.connectionId===__me.S.task.params.connection&&u.start.presentationId===e.stops[x.seam.to].presentationId&&seam.beats.filter(b=>b.kind==='invoke'&&b.useId==='$contribution').length===1;})()")"
+conformance_ok 'invoking moves that Activity trigger to the station instead of adding a second trigger' "$binding" true
 identity="$(qa_js '__me.S.sel')"
 click ".station-tick[data-id='$anchor']"
 conformance_ok 'station focus highlights both projections without replacing canonical selection' "$(qa_js '__me.S.sel') / $(qa_js "(document.querySelector('.station-tick.active').dataset.id==='$anchor'&&document.querySelector('.exp-station.active').dataset.expStationLabel==='$anchor')")" "$identity / true"
@@ -230,6 +241,7 @@ conformance_ok 'QA-5 keeps exact QA-4 Camera source and realized standpoint' "$(
 conformance_ok 'QA-5 station projections mirror, with local beat/hold lanes' "$(qa_js '(()=>{const spatial=[...document.querySelectorAll("[data-exp-station-label]")],temporal=[...document.querySelectorAll("[data-station-counterpart]")];return temporal.length>=3&&temporal.every(t=>spatial.some(s=>s.dataset.expStationLabel===t.dataset.stationCounterpart))&&!!document.querySelector(".coord-beat")&&!!document.querySelector(".coord-hold")&&document.querySelector("[data-hold-duration]").getBoundingClientRect().width>20;})()')" true
 conformance_ok 'coordination preserves reachable origin/destination identities and visible gap' "$(qa_js "([...document.querySelectorAll('[data-endpoint]')].every(e=>($visible)(e)&&($hit)(e))&&($visible)(document.querySelector('[data-exp-gap]')))")" true
 conformance_ok 'Coordination composes inside the central triptych and Card exposes local binding/reach' "$(qa_js '(()=>{const central=document.querySelector(".seam-instrument"),strip=document.querySelector(".coordination-strip"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return central.contains(strip)&&strip.getBoundingClientRect().right<=central.getBoundingClientRect().right&&deck.left<stage.left&&deck.right>stage.right&&!!document.querySelector("#card [data-coordination-detail]")&&document.querySelector("#card [data-coordination-detail]").textContent.includes("Reach · this transition ×1");})()')" true
+conformance_ok 'the Stop Card declares the station binding instead of a second trigger' "$(qa_js 'document.querySelector("#card [data-coordination-detail]").textContent.includes("trigger moves here")')" true
 capture qa-5-coordination
 checkpoint coordination
 # Reopen has both projections and resolves the route owning saved beats.
