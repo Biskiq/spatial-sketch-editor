@@ -520,3 +520,21 @@ test('C9.5 Preview Experience starts a world-only session with no Presentation, 
  assert.equal(E.preview(p),true);                    // the Presentation entry still works
  await E.exitPreview();
 });
+
+test('C9.5 rejoin restores a held viewing intent, so no cue the remainder excluded can run',()=>{
+ const f=fixture(),{e,c,a}=f;
+ const local=M.addContribution(e,f.p,{kind:'narration',name:'Local',text:'Walkthrough.',duration:40,markers:[{id:'late',label:'Late',time:20}]},'narration');
+ e.uses[f.other].cue={useId:local,signal:'marker:late'};
+ e.stops[a].entry={kind:'hold'};                      // this Stop holds the viewpoint explicitly
+ let r=run(f);
+ assert.equal(r.viewingSuppressed,true);              // so no automatic viewing at entry
+ r=R.lookRuntime(e,c,r,f.other);                      // the visitor deliberately chooses a View mid-visit
+ assert.equal(r.viewingSuppressed,false);             // which resumes automatic viewing while it lasts
+ r=R.resumeGuide(e,c,R.exploreRuntime(r),null);
+ assert.equal(r.viewingSuppressed,true);              // Rejoin restores the Stop's held intent
+ const plan=R.presentationPlan(e,c,r.presentationId,r.pose,null,r.movement,f.scene,{cues:false,cueFloor:r.cueFloor,skipCue:cue=>R.signalEmitted(r,cue),carried:()=>undefined});
+ assert.equal(plan.requests.some(x=>x.id===f.other),false);   // so the remainder counts no cue move
+ let moved=null;
+ for(let i=0;i<200;i++){const before=r;r=R.tickRuntime(e,c,r,.25,f.scene);if(!before.movement&&r.movement)moved=r.movement.useId;}
+ assert.equal(moved,null);                            // and the runtime can never perform one
+});

@@ -256,8 +256,11 @@ export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autop
 // again and no queued cue replays. The visit and its playhead are preserved — the carried reading
 // subtracts what each live run already spent, cues whose signal already fired are skipped, and the
 // remaining Auto clock is re-derived from that remainder rather than from a rebuilt full estimate.
+// The viewing intent is restored with it: a Stop entry that holds the viewpoint suppresses automatic
+// cues again, which is exactly the reading the estimate is planned with — so the runtime can never
+// perform a cue the remaining-work planner did not count.
 // Auto stays off, and the Stop's clock starts at the remainder it now owes.
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,r.scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});return r;}
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.viewingSuppressed=!!entry.hold;r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,r.scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});return r;}
 // One bounded side detour at a time: the parent visit is parked with its own bookmark (the experimental
 // pause policy, not permanent architecture) and its running narration is suspended rather than ended.
 function parkParent(r,e){
@@ -295,7 +298,10 @@ export function returnDetour(e,c,current,scene=createSceneCapabilities()){
  for(const a of Object.values(r.activities))if(a.visit===b.visit&&['paused','waiting'].includes(a.status)){r.active[a.useId]=a.token;if(a.status==='paused')a.status='running';}
  const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);
  // The parent's own remaining work is recomputed from the restored playhead and the parent's own cue
- // floor: the detour's readiness is never left attached to the parent after Return.
+ // floor: the detour's readiness is never left attached to the parent after Return. Its viewing intent
+ // comes back the same way, so a held entry is suppressed again rather than left open by a View the
+ // visitor chose before parking.
+ r.viewingSuppressed=!!entry.hold;
  r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});
  note(r,'Returned without duplicate entry');return r;
 }
