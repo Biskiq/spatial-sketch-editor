@@ -88,8 +88,12 @@ MP1 follows C9.1 before lifecycle/Guide expansion — owner-accepted 2026-10-04;
 MP2 precedes Travel/agency and was owner-accepted 2026-10-05, with its three
 observations recorded as non-blocking (shell density later, Guide snap/cut
 superseded by C9.4, View/Presentation removal at C9.6). C9.4 and C9.5 are
-implemented, self-reviewed and verified at the pushed executable revision; MP3
-is the next human gate and C9.6–C9.9 and Paper are not started.
+implemented, self-reviewed, independently reviewed and verified at the pushed
+executable revision; the review's four findings — Rejoin/detour Return rebuilding
+remaining work, the missing interaction-only Preview Experience, availability
+modelled but not authorable, and a same-View Travel shortcut ignoring the live pose
+— are all repaired with regression and mutation coverage. MP3 is the next human
+gate and C9.6–C9.9 and Paper are not started.
 Capability
 acceptance remains pending; detailed density/type/proportion and broader visual
 refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
