@@ -14,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness offer-availability-write; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -152,6 +152,12 @@ elif kind == 'detour-readiness':
     replace('app/experience-runtime.js',
             " r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});\n note(r,'Returned without duplicate entry');",
             " note(r,'Returned without duplicate entry');")
+elif kind == 'rejoin-held-cue':
+    # Rejoin keeps whatever viewing state the visit happened to be in, so a Stop whose entry holds the
+    # viewpoint resumes automatic cues the remainder never counted.
+    replace('app/experience-runtime.js',
+            "if(entry.id)requestView(r,e,c,entry.id);r.viewingSuppressed=!!entry.hold;",
+            "if(entry.id)requestView(r,e,c,entry.id);")
 elif kind == 'offer-availability-write':
     # The authored availability is dropped, so every offer silently keeps the organizer's Presentation as
     # its availability instead of the Experience-wide default the draft showed.
@@ -199,6 +205,7 @@ PY
     rejoin-full-estimate) name='C9.5 rejoin never rebuilds completed work'; control='C9.5 a click activates, a drag never does' ;;
     skip-fired-cue) name='C9.5 rejoin skips a cue whose signal already fired'; control='C9.5 rejoin keeps a future cue' ;;
     detour-readiness) name='C9.5 Return from one detour restores the parent remaining work'; control='C9.5 rejoin keeps a future cue' ;;
+    rejoin-held-cue) name='C9.5 rejoin restores a held viewing intent'; control='C9.5 rejoin keeps a future cue' ;;
     offer-availability-write) name='C9.5 offer authoring defaults to Experience-wide'; control='C9.5 Preview Experience starts a world-only session' ;;
   esac
   log="$work/pure-$kind.log"
