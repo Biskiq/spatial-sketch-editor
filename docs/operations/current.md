@@ -9,7 +9,8 @@ NEXT: #113 C9.2/C9.3 implemented; the five external MP2 review blockers (route w
        explanation binding, Experience-scoped output, Auto remaining work, signal scope)
        repaired with regression and mutation coverage, and the review's folded second pass
        (station invocation contract, cue-scope versus Gate scope, remaining-work edge cases,
-       stale provenance) repaired with its own coverage; stopped for MP2 human review →
+       stale provenance) repaired with its own coverage, and all 18 prototype axes rerun
+       green at the repaired revision (`9a44678a`); stopped for MP2 human review →
        ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
        C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04).
        Creator-loop regression hardening retains World/Camera/history and exact Preview return.
@@ -31,12 +32,12 @@ PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md.
        The missing P23B fixture remains the external repository-gate blocker;
        restoration needs separate scope authorization. Earlier owner authorization
-       covered C8 completion, coherent commits and push; C9.2/C9.3 is committed as `12652d9b`
-       and the first external-review repair as `db83a9d7`, both pushed. The current C9
-       instruction authorizes implementation through MP2, with MP1 accepted; the second
-       review repair is committed on top of `db83a9d7` and not pushed, and no merge, closure
-       or Paper work was performed. The earlier claim here that C9.2/C9.3 was an uncommitted
-       working-tree diff is superseded by live Git.
+       covered C8 completion, coherent commits and push; C9.2/C9.3 is committed as `12652d9b`,
+       the first external-review repair as `db83a9d7`, and the second review repair as
+       `9a44678a`, with the evidence/status update as its docs-only child — all pushed to
+       `origin/prototype-v2` on owner instruction. The current C9 instruction authorizes
+       implementation through MP2, with MP1 accepted; no merge, closure or Paper work was
+       performed.
        This work satisfies no F/T1 gate.
        C9 acceptance prioritizes capability semantics and blocking structural seams;
        detailed visual refinement belongs to the following dedicated UI/UX slice,
