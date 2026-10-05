@@ -12,12 +12,17 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke; do
+for kind in organization hold-cue double-invoke route-writer explanation-binding experience-output completed-work live-move auto-clock scope-validation; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
 shutil.copytree(pathlib.Path(src) / 'app', pathlib.Path(dst) / 'app')
 shutil.copytree(pathlib.Path(src) / 'tests', pathlib.Path(dst) / 'tests')
+# The MP2 review suite imports the real action layer, whose transitive 'three' import must resolve
+# from the repository root even though the disposable copy lives outside the workspace.
+modules = pathlib.Path(src).resolve().parent.parent / 'node_modules'
+if modules.exists():
+    (pathlib.Path(dst) / 'node_modules').symlink_to(modules)
 def replace(rel, old, new):
     p = pathlib.Path(dst) / rel
     s = p.read_text()
@@ -31,21 +36,63 @@ if kind == 'organization':
 elif kind == 'hold-cue':
     # Keeping the viewpoint no longer suppresses automatic Camera cues.
     replace('app/experience-runtime.js',
-            "if(a.visit!==r.visit||r.exploring||r.viewingSuppressed)return;",
-            "if(a.visit!==r.visit||r.exploring)return;")
-else:
+            "if(r.exploring||r.viewingSuppressed)return;",
+            "if(r.exploring)return;")
+elif kind == 'double-invoke':
     # A station invocation re-fires on every tick instead of running once.
     replace('app/experience-runtime.js',
             "if(!invocation.fired&&m.elapsed>=invocation.at){invocation.fired=true;",
             "if(!invocation.fired&&m.elapsed>=invocation.at){")
+elif kind == 'route-writer':
+    # Selecting another Stop no longer ends the route writer.
+    replace('app/experience.js',
+            "const procedure=['occurrence','seam','route','coordination','precision','hints'].includes(x.depth);",
+            "const procedure=['occurrence'].includes(x.depth);")
+elif kind == 'explanation-binding':
+    # The explanation binding collapses back onto the organizational home.
+    replace('app/experience-model.js',
+            "const explained=(u,pid)=>!u.viewId&&u.primary&&(u.primaryFor??u.presentationId)===pid;",
+            "const explained=(u,pid)=>!u.viewId&&u.primary&&u.presentationId===pid;")
+elif kind == 'experience-output':
+    # Experience-scoped output is dropped once its own visit has passed.
+    replace('app/experience-runtime.js',
+            "if(activationScope(e.uses[a.useId])!==null&&a.visit!==r.visit)return;",
+            "if(a.visit!==r.visit)return;")
+elif kind == 'completed-work':
+    # Completed Experience work is counted again as if it had never run.
+    replace('app/experience-runtime.js',
+            "return ['running','paused','complete','stopped'].includes(a.status)?Math.max(0,Math.min(a.duration,a.elapsed)):0;",
+            "return ['running','paused'].includes(a.status)?Math.max(0,Math.min(a.duration,a.elapsed)):0;")
+elif kind == 'live-move':
+    # Auto advances while a Camera move is still in flight.
+    replace('app/experience-runtime.js',
+            "if(ready&&!r.movement&&gateState(e,c,r).allowed)goStop(r,e,c,scene,resolveNext(e,r.stopId).id);",
+            "if(ready&&gateState(e,c,r).allowed)goStop(r,e,c,scene,resolveNext(e,r.stopId).id);")
+elif kind == 'auto-clock':
+    # Enabling Auto restarts the Stop's remaining-work clock.
+    replace('app/experience-runtime.js',
+            "export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;",
+            "export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;r.elapsed=0;")
+else:
+    # An impossible dependency scope is accepted as if it could still fire.
+    replace('app/experience-model.js',
+            "function dependencyInScope(e,u){return u.start.scope==='experience'||signalReaches(e,u.start,activationScope(u));}",
+            "function dependencyInScope(e,u){return true;}")
 PY
   case "$kind" in
     organization) name='organization is independent of explicit activation and boundary'; control='Finish after local departure' ;;
     hold-cue) name='hold suppresses entry and all automatic cues'; control='explicit marker seconds survive' ;;
     double-invoke) name='station-bound holds delay arrival; invoked controls run once at Camera station'; control='multi-origin coordination executes only the traversed connection' ;;
+    route-writer) name='P1 selecting another Stop ends the route writer'; control='P2 a primary explanation keeps its binding' ;;
+    explanation-binding) name='P2 a primary explanation keeps its binding'; control='P1 selecting another Stop ends the route writer' ;;
+    experience-output) name='P3 Experience-start narration keeps captions and View cues'; control='P4 completed Experience work adds no wait' ;;
+    completed-work) name='P4 completed Experience work adds no wait'; control='P3 Experience-start narration keeps captions and View cues' ;;
+    live-move) name='P4 Auto waits for a live Camera move'; control='P4 enabling Auto keeps the Stop remaining-work clock' ;;
+    auto-clock) name='P4 enabling Auto keeps the Stop remaining-work clock'; control='P4 Auto waits for a live Camera move' ;;
+    scope-validation) name='P5 a visit-local dependency in another scope'; control='P5 a View cue that can never fire' ;;
   esac
   log="$work/pure-$kind.log"
-  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" >"$log" 2>&1; then
+  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" >"$log" 2>&1; then
     echo "FAIL: model/runtime accepted the $kind regression"
     exit 1
   fi
